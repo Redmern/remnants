@@ -60,6 +60,12 @@ public sealed class ScavengeData
                 throw new GameDataException($"Item '{item.Id}' is a weapon without actions.");
             if (item.Kind == ItemKind.Consumable && item.Use is null)
                 throw new GameDataException($"Item '{item.Id}' is a consumable without a use effect.");
+            if (item.Kind == ItemKind.Prosthetic && item.Prosthetic is null)
+                throw new GameDataException($"Item '{item.Id}' is a prosthetic without a prosthetic definition.");
+            if (item.Prosthetic is { } p && (p.Quality <= 0 || p.MinMedBayLevel < 1 || p.Region is BodyRegion.Head or BodyRegion.Torso))
+                throw new GameDataException($"Item '{item.Id}': prosthetics replace an arm or leg, with positive quality and Med Bay level of at least 1.");
+            if (item.Salvage is { } salvage && (string.IsNullOrWhiteSpace(salvage.Resource) || salvage.Amount <= 0))
+                throw new GameDataException($"Item '{item.Id}': salvage needs a resource and a positive amount.");
             foreach (var mode in item.Movement?.AddModes ?? [])
                 if (mode.Range < 1 || mode.ApCost < 1)
                     throw new GameDataException($"Item '{item.Id}': added move modes need range and AP cost of at least 1.");

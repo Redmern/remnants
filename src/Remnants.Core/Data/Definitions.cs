@@ -30,6 +30,26 @@ public sealed record BuildingLevelDef
     public int WorkerSlots { get; init; }
     public double OutputMultiplier { get; init; } = 1.0;
     public int Beds { get; init; }
+
+    /// <summary>Care buildings: how many patients can be admitted at once.</summary>
+    public int Patients { get; init; }
+}
+
+/// <summary>
+/// Something a production building makes. Inputs are paid when a batch starts; workers add effort each tick
+/// (their job output) until it reaches <see cref="Work"/>, then the batch yields <see cref="Amount"/> of an item
+/// (into the colony inventory) or of a resource (into the stockpile).
+/// </summary>
+public sealed record RecipeDef
+{
+    public string Id { get; init; } = "";
+    public string Name { get; init; } = "";
+    public int MinLevel { get; init; } = 1;
+    public double Work { get; init; } = 10;
+    public Dictionary<string, double> Inputs { get; init; } = new();
+    public string? Item { get; init; }
+    public string? Resource { get; init; }
+    public double Amount { get; init; } = 1;
 }
 
 public sealed record BuildingDef
@@ -49,6 +69,8 @@ public sealed record BuildingDef
 
     /// <summary>Units per worker per tick at performance 1, before level multiplier.</summary>
     public double BaseOutput { get; init; }
+
+    public List<RecipeDef> Recipes { get; init; } = new();
 
     /// <summary>Index 0 is level 1: its cost is the construction cost.</summary>
     public List<BuildingLevelDef> Levels { get; init; } = new();

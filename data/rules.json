@@ -23,6 +23,24 @@
   "housing": {
     "homelessGraceTicks": 72
   },
+  "expedition": {
+    "partySizeByTownHallLevel": [2, 3, 4],
+    "rationFoodPerMember": 3,
+    "recruitAgeRange": [18, 40]
+  },
+  "medical": {
+    "buildingId": "med_bay",
+    "medicineResourceId": "medicine",
+    "healPerTick": 0.01,
+    "unstaffedCare": 0.25,
+    "medicinePerPatientTick": 0.02,
+    "patientHealthPerTick": 0.5,
+    "naturalHealPerTick": 0.002,
+    "naturalHealMaxSeverity": 0.3,
+    "worsenThreshold": 0.6,
+    "worsenPerTick": 0.002,
+    "severeHealthDrainPerTick": 0.5
+  },
   "layout": {
     "plotColumns": 6,
     "plotRows": 4
@@ -34,7 +52,8 @@
     "childAgeRange": [6, 12],
     "attributeRange": [25, 60],
     "childAttributeRange": [10, 35],
-    "stock": { "wood": 60, "stone": 30, "food": 40 },
+    "stock": { "wood": 60, "stone": 30, "food": 40, "medicine": 2 },
+    "items": { "pipe": 2, "spear": 1, "rag_coat": 2, "padded_vest": 1, "backpack": 1, "bandage": 3, "med_kit": 1 },
     "buildings": ["town_hall", "shelter"],
     "maleNames": ["Arlo", "Tomas", "Jonah", "Silas", "Bram", "Kofi", "Ravi", "Emil"],
     "femaleNames": ["Mara", "Ines", "Juno", "Petra", "Ada", "Noor", "Lena", "Sana"]

@@ -50,6 +50,19 @@ public sealed class GameData
             if (b.Job is not null && !Jobs.ContainsKey(b.Job))
                 throw new GameDataException($"Building '{b.Id}': unknown job '{b.Job}'.");
             if (b.Produces is not null) RequireResource(b.Produces, $"Building '{b.Id}'");
+            foreach (var r in b.Recipes)
+            {
+                if (string.IsNullOrWhiteSpace(r.Id)) throw new GameDataException($"Building '{b.Id}' has a recipe without an id.");
+                if (b.Job is null) throw new GameDataException($"Building '{b.Id}' has recipes but no job to work them.");
+                if ((r.Item is null) == (r.Resource is null))
+                    throw new GameDataException($"Building '{b.Id}' recipe '{r.Id}' must yield exactly one of item or resource.");
+                if (r.Resource is not null) RequireResource(r.Resource, $"Building '{b.Id}' recipe '{r.Id}'");
+                foreach (var res in r.Inputs.Keys) RequireResource(res, $"Building '{b.Id}' recipe '{r.Id}' input");
+                if (r.Work <= 0 || r.Amount <= 0 || r.MinLevel < 1)
+                    throw new GameDataException($"Building '{b.Id}' recipe '{r.Id}' needs positive work and amount and minLevel >= 1.");
+            }
+            if (b.Recipes.Select(r => r.Id).Distinct().Count() != b.Recipes.Count)
+                throw new GameDataException($"Building '{b.Id}' has duplicate recipe ids.");
             for (var i = 0; i < b.Levels.Count; i++)
                 foreach (var (res, amount) in b.Levels[i].Cost)
                 {
@@ -78,11 +91,19 @@ public sealed class GameData
         RequireRange(ng.ChildAttributeRange, "childAttributeRange");
         if (ng.ChildAgeRange[1] >= Rules.AdultAge)
             throw new GameDataException("Rules.newGame.childAgeRange must stay below adultAge.");
+
+        RequireResource(Rules.Medical.MedicineResourceId, "Rules.medical");
+        if (!Buildings.ContainsKey(Rules.Medical.BuildingId))
+            throw new GameDataException($"Rules.medical: unknown building '{Rules.Medical.BuildingId}'.");
+        if (Rules.Expedition.PartySizeByTownHallLevel.Count == 0 || Rules.Expedition.PartySizeByTownHallLevel.Any(n => n < 1))
+            throw new GameDataException("Rules.expedition.partySizeByTownHallLevel needs at least one entry, each at least 1.");
+        if (Rules.Expedition.RationFoodPerMember < 0) throw new GameDataException("Rules.expedition.rationFoodPerMember must not be negative.");
+        RequireRange(Rules.Expedition.RecruitAgeRange, "expedition.recruitAgeRange");
     }
 
     private static void RequireRange(int[] range, string name)
     {
         if (range.Length != 2 || range[0] > range[1])
-            throw new GameDataException($"Rules.newGame.{name} must be [min, max] with min <= max.");
+            throw new GameDataException($"Rules.{(name.Contains('.') ? name : "newGame." + name)} must be [min, max] with min <= max.");
     }
 }

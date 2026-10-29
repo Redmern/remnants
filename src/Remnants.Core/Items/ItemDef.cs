@@ -3,7 +3,7 @@ using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Items;
 
-public enum ItemKind { Weapon, Armor, Clothing, Tool, Consumable, Material }
+public enum ItemKind { Weapon, Armor, Clothing, Tool, Consumable, Material, Prosthetic }
 
 /// <summary>Where an item sits when equipped. Anything not equipped is carried in the pack.</summary>
 public enum EquipSlot { Weapon, Body, Tool }
@@ -115,6 +115,21 @@ public sealed record UseEffect
     public bool Evacuate { get; init; }
 }
 
+/// <summary>A replacement limb fitted at the Med Bay. Quality is the part's efficiency (above 1 beats the original).</summary>
+public sealed record ProstheticDef
+{
+    public BodyRegion Region { get; init; } = BodyRegion.Legs;
+    public double Quality { get; init; } = 0.6;
+    public int MinMedBayLevel { get; init; } = 1;
+}
+
+/// <summary>What a looted item turns into when it reaches the colony stockpile (scrap → 3 Scrap Metal).</summary>
+public sealed record SalvageDef
+{
+    public string Resource { get; init; } = "";
+    public double Amount { get; init; } = 1;
+}
+
 public sealed record ItemDef
 {
     public string Id { get; init; } = "";
@@ -145,6 +160,12 @@ public sealed record ItemDef
     public MovementModifier? Movement { get; init; }
     public List<ActionDef> Actions { get; init; } = new();
     public UseEffect? Use { get; init; }
+
+    /// <summary>Prosthetic items: which limb they replace and how well.</summary>
+    public ProstheticDef? Prosthetic { get; init; }
+
+    /// <summary>If set, the colony stores this item as stockpile resources rather than as an item.</summary>
+    public SalvageDef? Salvage { get; init; }
 
     public EquipSlot? Slot => Kind switch
     {
