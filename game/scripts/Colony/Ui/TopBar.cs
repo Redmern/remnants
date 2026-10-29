@@ -6,7 +6,7 @@ using Remnants.Core.Colony;
 
 namespace Remnants.Game.Colony.Ui;
 
-/// <summary>Stockpile, clock, beds (with a housing-pressure warning), speed controls and the build / save / load / menu buttons.</summary>
+/// <summary>Stockpile, clock, beds (with a housing-pressure warning), speed controls and the build / items / expedition / save / load / menu buttons.</summary>
 public partial class TopBar : PanelContainer
 {
     private readonly ColonySession _session;
@@ -17,6 +17,7 @@ public partial class TopBar : PanelContainer
 
     public event Action? BuildPressed;
     public event Action? ExpeditionPressed;
+    public event Action? ItemsPressed;
     public event Action? MenuPressed;
 
     public TopBar(ColonySession session)
@@ -41,6 +42,7 @@ public partial class TopBar : PanelContainer
         }
         row.AddChild(new VSeparator());
         row.AddChild(Ui.Button("Build", () => BuildPressed?.Invoke(), 70));
+        row.AddChild(Ui.Button("Items", () => ItemsPressed?.Invoke(), 60));
         row.AddChild(Ui.Button("Expedition", () => ExpeditionPressed?.Invoke(), 90));
         row.AddChild(Ui.Button("Save", _session.Save, 60));
         row.AddChild(Ui.Button("Load", _session.Load, 60));

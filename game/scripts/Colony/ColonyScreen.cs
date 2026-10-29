@@ -23,7 +23,8 @@ public partial class ColonyScreen : Node3D
     private EventLog _log = null!;
     private ExpeditionPanel _expedition = null!;
     private MedBayPanel _medBay = null!;
-    private WorkshopPanel _workshop = null!;
+    private ProductionPanel _production = null!;
+    private InventoryPanel _inventory = null!;
     private AfterActionDialog _report = null!;
 
     public override void _Ready()
@@ -55,6 +56,7 @@ public partial class ColonyScreen : Node3D
 
         if ((DebugCapture.HasFlag("--demo") || DebugCapture.HasFlag("--family-demo")) && _session.Sim.State.Tick == 0) RunDemo();
         if (DebugCapture.HasFlag("--family-demo")) RunFamilyDemo();
+        if (DebugCapture.HasFlag("--crafting-demo") && _session.Sim.State.Tick == 0) RunCraftingDemo();
         if (DebugCapture.HasFlag("--loop-demo") && _session.Sim.State.NextExpeditionId == 1)
         {
             ScavengeHandoff.UseAutopilot = DebugCapture.HasFlag("--autopilot");
@@ -132,6 +134,58 @@ public partial class ColonyScreen : Node3D
         _session.SetSpeed(1);
     }
 
+    /// <summary>
+    /// Debug: a grown town for screenshots of crafting tiers. Stocks up, raises the Town Hall to level 3, builds every
+    /// production building and a House, upgrades a few to level 2 and 3, studies a blueprint, staffs the Armory and
+    /// Tailor, fills their queues and opens the Armory's production panel and the item list.
+    /// </summary>
+    private void RunCraftingDemo()
+    {
+        var sim = _session.Sim;
+        foreach (var res in sim.Data.Resources.Keys) sim.State.Stockpile.Add(res, 2000);
+        sim.State.Inventory.Add("bp_riot_armor");
+        sim.State.Inventory.Add("bp_scanner");
+        var hall = sim.State.Buildings.First(b => b.DefId == sim.Data.Rules.TownHallBuildingId).Id;
+        _session.Execute(new Upgrade(hall));
+        _session.Execute(new Upgrade(hall));
+        int? Build(string defId, int plot, int level)
+        {
+            if (_session.Execute(new Construct(defId, plot)).EntityId is not { } id) return null;
+            for (var l = 1; l < level; l++) _session.Execute(new Upgrade(id));
+            return id;
+        }
+        var armory = Build("armory", 8, 2);
+        var tailor = Build("tailor", 9, 3);
+        Build("electronics_lab", 10, 1);
+        Build("kitchen", 14, 1);
+        Build("workshop", 15, 2);
+        Build("house", 16, 1);
+        Build("farm", 2, 3);
+        if (sim.State.Buildings.FirstOrDefault(b => b.DefId == "shelter") is { } shelter) _session.Execute(new Upgrade(shelter.Id));
+        _session.Execute(new StudyBlueprint("bp_riot_armor"));
+
+        var adults = sim.State.Survivors.Where(s => !s.IsChild).Select(s => s.Id).ToList();
+        for (var i = 0; i < adults.Count; i++)
+            if ((i < 2 ? armory : tailor) is { } at) _session.Execute(new AssignJob(adults[i], at));
+        if (armory is { } a)
+        {
+            _session.Execute(new QueueRecipe(a, "riot_armor"));
+            _session.Execute(new QueueRecipe(a, "machete", 5));
+            _session.Execute(new QueueRecipe(a, "pistol", 1, Repeat: true));
+        }
+        if (tailor is { } t)
+        {
+            _session.Execute(new QueueRecipe(t, "padded_vest", 3));
+            _session.Execute(new QueueRecipe(t, "scout_jacket"));
+        }
+        _session.FastForward(30, _ => false);
+        if (armory is { } busy && sim.State.FindBuilding(busy) is { } shop)
+            _session.FastForward(300, s => shop.Queue.FirstOrDefault(o => o.Paid) is { } o && o.Progress > s.Data.Recipes[o.RecipeId].Work * 0.4);
+        _inventory.Toggle();
+        if (armory is { } sel) _town.Select(sel);
+        _session.SetSpeed(1);
+    }
+
     public override void _Process(double delta) => _session.Advance(delta);
 
     private void BuildHud()
@@ -156,6 +210,8 @@ public partial class ColonyScreen : Node3D
         middle.AddChild(_roster);
         middle.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore });
 
+        _inventory = new InventoryPanel(_session);
+        middle.AddChild(_inventory);
         _expedition = new ExpeditionPanel(_session);
         middle.AddChild(_expedition);
 
@@ -164,11 +220,11 @@ public partial class ColonyScreen : Node3D
         _buildMenu = new BuildMenu(_session);
         _buildingPanel = new BuildingPanel(_session);
         _medBay = new MedBayPanel(_session);
-        _workshop = new WorkshopPanel(_session);
+        _production = new ProductionPanel(_session);
         right.AddChild(_buildMenu);
         right.AddChild(_buildingPanel);
         right.AddChild(_medBay);
-        right.AddChild(_workshop);
+        right.AddChild(_production);
 
         _report = new AfterActionDialog { Theme = HudTheme.Shared };
         layer.AddChild(_report);
@@ -191,6 +247,7 @@ public partial class ColonyScreen : Node3D
 
         _topBar.MenuPressed += () => GetTree().ChangeSceneToFile("res://scenes/MainMenu.tscn");
         _topBar.ExpeditionPressed += _expedition.Toggle;
+        _topBar.ItemsPressed += _inventory.Toggle;
         _expedition.PlayPressed += () =>
         {
             _session.PlayExpedition(GetTree());
@@ -219,7 +276,7 @@ public partial class ColonyScreen : Node3D
         {
             _buildingPanel.Show(id);
             _medBay.Show(id);
-            _workshop.Show(id);
+            _production.Show(id);
         };
         _roster.SelectionChanged += id => _walkers.SelectedSurvivorId = id;
     }
@@ -232,7 +289,8 @@ public partial class ColonyScreen : Node3D
         _roster.Refresh();
         _buildingPanel.Refresh();
         _medBay.Refresh();
-        _workshop.Refresh();
+        _production.Refresh();
+        _inventory.Refresh();
         _expedition.Refresh();
         if (_buildMenu.Visible) _buildMenu.Refresh();
         _log.Refresh();
