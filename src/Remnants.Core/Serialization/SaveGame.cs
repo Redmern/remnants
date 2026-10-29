@@ -19,6 +19,23 @@ public static class SaveGame
             ?? throw new JsonException("Save file is empty.");
         if (envelope.Version != Version)
             throw new JsonException($"Unsupported save version {envelope.Version} (expected {Version}).");
-        return new ColonySim(data, envelope.Colony);
+        var colony = envelope.Colony ?? throw new JsonException("Save file has no colony.");
+        Validate(data, colony);
+        return new ColonySim(data, colony);
+    }
+
+    /// <summary>A save must still fit the current data/ (ids can be renamed, levels removed by a balancing edit).</summary>
+    private static void Validate(GameData data, ColonyState colony)
+    {
+        foreach (var b in colony.Buildings)
+        {
+            if (!data.Buildings.TryGetValue(b.DefId, out var def))
+                throw new JsonException($"Save references unknown building type '{b.DefId}'.");
+            if (b.Level < 1 || b.Level > def.MaxLevel)
+                throw new JsonException($"Save has {def.Name} at level {b.Level}; data allows 1..{def.MaxLevel}.");
+        }
+        foreach (var res in colony.Stockpile.Amounts.Keys)
+            if (!data.Resources.ContainsKey(res))
+                throw new JsonException($"Save references unknown resource '{res}'.");
     }
 }

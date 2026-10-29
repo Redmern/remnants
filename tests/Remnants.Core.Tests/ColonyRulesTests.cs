@@ -182,3 +182,15 @@ public class AgingTests
         Assert.Contains(sim.State.Events, e => e.Type == ColonyEventType.BecameAdult);
     }
 }
+
+public class StockpileTests
+{
+    [Fact]
+    public void Float_drift_does_not_block_an_exact_amount()
+    {
+        var stock = new Colony.Stockpile();
+        for (var i = 0; i < 10; i++) stock.Add("food", 0.1);  // 0.9999999999999999
+        Assert.True(stock.TryTake("food", 1.0));
+        Assert.Equal(0, stock.Get("food"));
+    }
+}

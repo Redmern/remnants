@@ -33,3 +33,17 @@ public class DataLoadingTests
         Assert.Throws<GameDataException>(() => GameDataLoader.LoadFromJson("[{", "[]", "[]", "{}"));
     }
 }
+
+public class RulesValidationTests
+{
+    private static GameDataException Load(string rules) => Assert.Throws<GameDataException>(() => GameDataLoader.LoadFromJson(
+        """[{ "id": "food" }]""", "[]", """[{ "id": "town_hall", "levels": [{}] }]""", rules));
+
+    [Fact]
+    public void Fewer_than_two_adults_is_rejected() =>
+        Assert.Contains("adults", Load("""{ "newGame": { "adults": 1, "maleNames": ["A"], "femaleNames": ["B"] } }""").Message);
+
+    [Fact]
+    public void Inverted_range_is_rejected() =>
+        Assert.Contains("attributeRange", Load("""{ "newGame": { "attributeRange": [60, 20], "maleNames": ["A"], "femaleNames": ["B"] } }""").Message);
+}

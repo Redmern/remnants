@@ -44,6 +44,7 @@ public sealed record FoodRules
 
 public sealed record HousingRules
 {
+    /// <summary>Ticks a survivor may spend without a bed; they leave on the tick after.</summary>
     public int HomelessGraceTicks { get; init; } = 72;
 }
 

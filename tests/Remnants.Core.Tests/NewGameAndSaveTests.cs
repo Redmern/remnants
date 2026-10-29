@@ -98,3 +98,22 @@ public class DeterminismAndSaveTests
         Assert.ThrowsAny<System.Text.Json.JsonException>(() => SaveGame.Load(TestData.Real, json));
     }
 }
+
+public class SaveValidationTests
+{
+    [Fact]
+    public void Save_with_a_building_removed_from_data_is_rejected()
+    {
+        var json = SaveGame.Save(NewGame.Create(TestData.Real, 1).State).Replace("\"shelter\"", "\"bunker\"");
+        var ex = Assert.ThrowsAny<System.Text.Json.JsonException>(() => SaveGame.Load(TestData.Real, json));
+        Assert.Contains("bunker", ex.Message);
+    }
+
+    [Fact]
+    public void Save_with_a_level_above_data_max_is_rejected()
+    {
+        var state = NewGame.Create(TestData.Real, 1).State;
+        state.Buildings[0].Level = 99;
+        Assert.ThrowsAny<System.Text.Json.JsonException>(() => SaveGame.Load(TestData.Real, SaveGame.Save(state)));
+    }
+}
