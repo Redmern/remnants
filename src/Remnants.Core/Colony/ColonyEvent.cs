@@ -5,6 +5,7 @@ public enum ColonyEventType
     Constructed, Upgraded, Starving, Died, Left, BecameAdult, Homeless, Housed,
     ExpeditionLaunched, ExpeditionReturned, Recruited, Admitted, Discharged, Healed, InjuryWorsened, LimbLost,
     ProstheticFitted, Crafted, RecipeChanged,
+    NewCouple, BrokeUp, Pregnant, Born, BecameChild, Grieving, Miscarried,
 }
 
 /// <summary>Something notable the UI can show in a log. Purely informational.</summary>

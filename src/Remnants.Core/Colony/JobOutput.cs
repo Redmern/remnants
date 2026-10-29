@@ -11,7 +11,8 @@ namespace Remnants.Core.Colony;
 /// tool          = 1 + toolQuality · job.toolBonus
 /// health        = bodyEfficiency(job regions) · lerp(lowHealthMultiplier, 1, hp/100)
 /// life          = child ? childOutputMultiplier : 1
-/// output/tick   = building.baseOutput · level.outputMultiplier · performance · tool · health · life
+/// mood          = lerp(lowMoodMultiplier, 1, mood/100)
+/// output/tick   = building.baseOutput · level.outputMultiplier · performance · tool · health · life · mood
 /// </code>
 /// </summary>
 public static class JobOutput
@@ -37,6 +38,9 @@ public static class JobOutput
 
     public static double LifeFactor(Survivor s, OutputRules rules) => s.IsChild ? rules.ChildOutputMultiplier : 1;
 
+    public static double MoodFactor(Survivor s, OutputRules rules) =>
+        rules.LowMoodMultiplier + (1 - rules.LowMoodMultiplier) * Math.Clamp(s.Mood / Survivor.MaxMood, 0, 1);
+
     /// <summary>Units of the building's resource this survivor produces in one tick.</summary>
     public static double PerTick(BuildingDef building, int level, JobDef job, Survivor s, OutputRules rules) =>
         building.BaseOutput
@@ -44,5 +48,6 @@ public static class JobOutput
         * Performance(job, s, rules)
         * ToolFactor(job, s)
         * HealthFactor(job, s, rules)
-        * LifeFactor(s, rules);
+        * LifeFactor(s, rules)
+        * MoodFactor(s, rules);
 }

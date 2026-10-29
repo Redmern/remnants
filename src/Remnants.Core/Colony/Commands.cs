@@ -32,6 +32,11 @@ public sealed record FitProsthetic(int SurvivorId, BodyPart Part, string ItemId)
 /// <summary>Choose what a production building works on; null stops it. Switching refunds the batch in progress.</summary>
 public sealed record SetRecipe(int BuildingId, string? RecipeId) : IColonyCommand;
 
+/// <summary>
+/// Nudge two adults: encourage (they bond faster), discourage (they stop bonding; a couple splits up) or neutral.
+/// </summary>
+public sealed record Matchmake(int SurvivorId, int OtherId, PairStance Stance) : IColonyCommand;
+
 public enum CommandError
 {
     None,
@@ -75,6 +80,11 @@ public enum CommandError
     MedBayLevelTooLow,
     UnknownRecipe,
     RecipeLevelTooLow,
+    TooYoung,
+    NotForChildren,
+    Pregnant,
+    SamePerson,
+    AlreadyPartnered,
 }
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>

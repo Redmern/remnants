@@ -19,7 +19,8 @@ public static class Care
                 care += JobOutput.Performance(job, medic, data.Rules.Output)
                     * JobOutput.ToolFactor(job, medic)
                     * JobOutput.HealthFactor(job, medic, data.Rules.Output)
-                    * JobOutput.LifeFactor(medic, data.Rules.Output);
+                    * JobOutput.LifeFactor(medic, data.Rules.Output)
+                    * JobOutput.MoodFactor(medic, data.Rules.Output);
         }
         return rules.HealPerTick * def.Level(medBay.Level).OutputMultiplier * care;
     }
@@ -101,7 +102,7 @@ internal static class MedicalSystem
             if (s.Health <= 0) dead.Add(s);
         }
 
-        foreach (var s in dead) ColonyDeaths.Remove(state, s, "died of untreated injuries", "Untreated injuries");
+        foreach (var s in dead) ColonyDeaths.Remove(state, data, s, "died of untreated injuries", "Untreated injuries");
 
         foreach (var medBay in state.Buildings.Where(b => treatedAt.Contains(b.Id)))
         {
@@ -133,12 +134,13 @@ internal static class MedicalSystem
 /// <summary>Permanent removal of a survivor who died at home: event log and memorial.</summary>
 internal static class ColonyDeaths
 {
-    public static void Remove(ColonyState state, Survivor s, string how, string cause)
+    public static void Remove(ColonyState state, GameData data, Survivor s, string how, string cause)
     {
         s.Health = 0;
         state.Survivors.Remove(s);
         state.Memorial.Add(new(s.Id, s.Name, state.Tick, cause));
         state.Log(new(state.Tick, ColonyEventType.Died, $"{s.Name} {how}.", s.Id));
+        Bonds.OnGone(state, data, s, died: true);
     }
 }
 

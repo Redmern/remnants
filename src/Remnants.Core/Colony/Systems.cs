@@ -23,7 +23,7 @@ internal static class ProductionSystem
 }
 
 /// <summary>
-/// Everyone at home eats each tick (away parties live on the rations they took). Children are fed first;
+/// Everyone at home eats each tick (away parties live on the rations they took). Infants, then children are fed first;
 /// whoever goes hungry takes damage and may die.
 /// </summary>
 internal static class FoodSystem
@@ -32,9 +32,14 @@ internal static class FoodSystem
     {
         var rules = data.Rules.Food;
         var dead = new List<Survivor>();
-        foreach (var s in state.Survivors.Where(s => !s.Away).OrderBy(s => s.IsChild ? 0 : 1).ThenBy(s => s.Id))
+        foreach (var s in state.Survivors.Where(s => !s.Away).OrderBy(s => s.LifeStage).ThenBy(s => s.Id))
         {
-            var need = s.IsChild ? rules.ChildPerTick : rules.AdultPerTick;
+            var need = s.LifeStage switch
+            {
+                LifeStage.Infant => rules.InfantPerTick,
+                LifeStage.Child => rules.ChildPerTick,
+                _ => rules.AdultPerTick,
+            };
             if (state.Stockpile.TryTake(rules.ResourceId, need))
             {
                 s.StarvingTicks = 0;
@@ -49,13 +54,16 @@ internal static class FoodSystem
             if (s.Health <= 0) dead.Add(s);
         }
 
-        foreach (var s in dead) ColonyDeaths.Remove(state, s, "starved to death", "Starvation");
+        foreach (var s in dead) ColonyDeaths.Remove(state, data, s, "starved to death", "Starvation");
     }
 }
 
 /// <summary>
-/// Beds go first to those who already had one, then by id. The homeless count down a grace timer
-/// and leave the colony when it runs out.
+/// Beds go first to those who already had one, then by id. Each bed is in a housing building: people keep their
+/// home while it has room, and newcomers move in with their partner or parents when they can. The homeless count
+/// down a grace timer and leave the colony when it runs out. An infant or child whose timer runs out leaves with a
+/// parent who is at home (mother first) and that parent's departure ends their couple; with no parent at home the
+/// child is taken in by passing travelers.
 /// </summary>
 internal static class HousingSystem
 {
@@ -80,35 +88,75 @@ internal static class HousingSystem
             if (s.HasBed || s.HomelessTicks == 0)
                 state.Log(new(state.Tick, ColonyEventType.Homeless, $"{s.Name} has no bed.", s.Id));
             s.HasBed = false;
+            s.HomeBuildingId = null;
             s.HomelessTicks++;
             if (s.HomelessTicks > data.Rules.Housing.HomelessGraceTicks) leaving.Add(s);
         }
 
-        foreach (var s in leaving)
-        {
-            state.Survivors.Remove(s);
-            state.Log(new(state.Tick, ColonyEventType.Left, $"{s.Name} left: no place to sleep.", s.Id));
-        }
+        AssignHomes(state, data, order.Take(beds).ToList());
+        foreach (var s in leaving) Leave(state, data, s);
     }
 
     public static int Capacity(ColonyState state, GameData data) =>
         state.Buildings.Sum(b => data.Buildings[b.DefId].Level(b.Level).Beds);
-}
 
-/// <summary>Survivors age every tick; children become adults at the configured age.</summary>
-internal static class AgingSystem
-{
-    public static void Run(ColonyState state, GameData data)
+    private static void AssignHomes(ColonyState state, GameData data, List<Survivor> housed)
     {
-        var adultTicks = data.Rules.AdultAge * data.Rules.TicksPerYear;
-        foreach (var s in state.Survivors)
+        var room = state.Buildings.Where(b => data.Buildings[b.DefId].Level(b.Level).Beds > 0).OrderBy(b => b.Id)
+            .ToDictionary(b => b.Id, b => data.Buildings[b.DefId].Level(b.Level).Beds);
+        var moving = new List<Survivor>();
+        foreach (var s in housed)
         {
-            s.AgeTicks++;
-            if (s.IsChild && s.AgeTicks >= adultTicks)
+            if (s.HomeBuildingId is { } home && room.GetValueOrDefault(home) > 0) room[home]--;
+            else
             {
-                s.LifeStage = LifeStage.Adult;
-                state.Log(new(state.Tick, ColonyEventType.BecameAdult, $"{s.Name} is now an adult.", s.Id));
+                s.HomeBuildingId = null;
+                moving.Add(s);
             }
         }
+        foreach (var s in moving)
+        {
+            var near = new[] { s.PartnerId, s.MotherId, s.FatherId }
+                .Select(id => id is { } v ? state.FindSurvivor(v)?.HomeBuildingId : null)
+                .FirstOrDefault(h => h is { } v && room.GetValueOrDefault(v) > 0);
+            // Otherwise pick a building with room for the whole household that still has to move in.
+            var household = moving.Count(o => o.HomeBuildingId is null
+                && (o == s || o.Id == s.PartnerId || o.MotherId == s.Id || o.FatherId == s.Id));
+            var home = near
+                ?? room.Where(kv => kv.Value >= household).Select(kv => (int?)kv.Key).FirstOrDefault()
+                ?? room.First(kv => kv.Value > 0).Key;
+            s.HomeBuildingId = home;
+            room[home]--;
+        }
+    }
+
+    private static void Leave(ColonyState state, GameData data, Survivor s)
+    {
+        if (!state.Survivors.Contains(s)) return;  // already left with their child
+        if (!s.IsChild)
+        {
+            Depart(state, data, s, $"{s.Name} left: no place to sleep.");
+            return;
+        }
+
+        var parent = new[] { s.MotherId, s.FatherId }
+            .Select(id => id is { } v ? state.FindSurvivor(v) : null)
+            .FirstOrDefault(p => p is { Away: false });
+        if (parent is null)
+        {
+            Depart(state, data, s, $"{s.Name} was taken in by passing travelers: no place to sleep.");
+            return;
+        }
+        Depart(state, data, s, $"{s.Name} left with {parent.Name}: no place for the child to sleep.");
+        Depart(state, data, parent, $"{parent.Name} left to look after {s.Name}.");
+    }
+
+    private static void Depart(ColonyState state, GameData data, Survivor s, string message)
+    {
+        state.Survivors.Remove(s);
+        s.AssignedBuildingId = null;
+        s.PatientAtBuildingId = null;
+        state.Log(new(state.Tick, ColonyEventType.Left, message, s.Id));
+        Bonds.OnGone(state, data, s, died: false);
     }
 }

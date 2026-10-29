@@ -116,8 +116,10 @@ public sealed class ColonySim
         CraftingSystem.Run(State, Data);
         MedicalSystem.Run(State, Data);
         FoodSystem.Run(State, Data);
+        RelationshipSystem.Run(State, Data);
+        FamilySystem.Run(State, Data, _rng);
         HousingSystem.Run(State, Data);
-        AgingSystem.Run(State, Data);
+        GrowthSystem.Run(State, Data);
         State.Tick++;
         SyncRng();
     }
@@ -141,6 +143,7 @@ public sealed class ColonySim
             Discharge c => MedicalHandlers.Discharge(this, c),
             FitProsthetic c => MedicalHandlers.FitProsthetic(this, c),
             SetRecipe c => CraftingHandlers.SetRecipe(this, c),
+            Matchmake c => LifeHandlers.Matchmake(this, c),
             _ => CommandResult.Fail(CommandError.UnknownCommand, $"Unknown command {command.GetType().Name}."),
         };
         SyncRng();

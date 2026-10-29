@@ -2,7 +2,8 @@ namespace Remnants.Core.Survivors;
 
 public enum Sex { Male, Female }
 
-public enum LifeStage { Child, Adult }
+/// <summary>Infants grow into children and children into adults (see <c>rules.life</c>).</summary>
+public enum LifeStage { Infant, Child, Adult }
 
 public enum AttributeKind { Strength, Agility, Endurance, Intellect, Creativity, Perception }
 

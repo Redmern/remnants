@@ -8,11 +8,13 @@ namespace Remnants.Core.Serialization;
 /// <summary>
 /// Save/load the colony state as JSON. Definitions are not saved; they reload from data/.
 /// Version 2 adds the item inventory, the expedition (with the scavenge run in progress), patients,
-/// recipes and the memorial; version 1 saves still load (those start empty).
+/// recipes and the memorial. Version 3 adds family life: partners, parents, mood, pregnancies, growth, homes and
+/// relationships. Older saves still load: missing parts start empty, and their children are placed on the new
+/// growth track by age (without inherited aptitudes, so they only change by training).
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 2;
+    public const int Version = 3;
     private const int OldestVersion = 1;
 
     private sealed record Envelope(int Version, ColonyState Colony);
@@ -30,9 +32,21 @@ public static class SaveGame
         if (envelope.Version < OldestVersion || envelope.Version > Version)
             throw new JsonException($"Unsupported save version {envelope.Version} (expected {OldestVersion}..{Version}).");
         var colony = envelope.Colony ?? throw new JsonException("Save file has no colony.");
+        if (envelope.Version < 3) MigrateGrowth(data, colony);
         Validate(data, colony);
         if (scavenge is not null) Validate(scavenge, colony);
         return new ColonySim(data, colony, scavenge);
+    }
+
+    /// <summary>Before version 3 children grew up by age in years; put them at the same share of the growth track.</summary>
+    private static void MigrateGrowth(GameData data, ColonyState colony)
+    {
+        foreach (var s in colony.Survivors.Where(s => s.IsChild))
+        {
+            s.GrowthTicks = Math.Max(data.Rules.Life.InfantTicks, Bonds.GrowthAtAge(s.AgeTicks, data.Rules));
+            s.LifeStage = Bonds.StageAt(s.GrowthTicks, data.Rules.Life);
+            s.AgeTicks = Bonds.AgeTicksAt(s.GrowthTicks, data.Rules);
+        }
     }
 
     /// <summary>A save must still fit the current data/ (ids can be renamed, levels removed by a balancing edit).</summary>
@@ -58,6 +72,14 @@ public static class SaveGame
         foreach (var s in colony.Survivors.Where(s => s.PatientAtBuildingId is not null))
             if (colony.FindBuilding(s.PatientAtBuildingId!.Value) is not { } bay || bay.DefId != data.Rules.Medical.BuildingId)
                 throw new JsonException($"Save has {s.Name} admitted to building {s.PatientAtBuildingId}, which is not a Med Bay.");
+
+        var ids = colony.Survivors.Select(s => s.Id).ToHashSet();
+        foreach (var s in colony.Survivors.Where(s => s.PartnerId is not null))
+            if (colony.FindSurvivor(s.PartnerId!.Value)?.PartnerId != s.Id)
+                throw new JsonException($"Save has {s.Name} partnered with {s.PartnerId}, who is not partnered back.");
+        foreach (var r in colony.Relationships)
+            if (r.A >= r.B || !ids.Contains(r.A) || !ids.Contains(r.B))
+                throw new JsonException($"Save has a relationship between {r.A} and {r.B} that does not fit the survivors.");
 
         var members = colony.Expedition?.Members.Select(m => m.SurvivorId).ToHashSet() ?? [];
         foreach (var id in members)

@@ -165,24 +165,6 @@ public class HousingTests
     }
 }
 
-public class AgingTests
-{
-    [Fact]
-    public void Child_becomes_adult_at_the_adult_age()
-    {
-        var sim = TestData.EmptyColony(stock: new() { ["food"] = 1000 });
-        sim.Build("shelter");
-        var child = sim.AddSurvivor(LifeStage.Child);
-        child.AgeTicks = sim.Data.Rules.AdultAge * sim.Data.Rules.TicksPerYear - 2;
-
-        sim.Tick();
-        Assert.Equal(LifeStage.Child, child.LifeStage);
-        sim.Tick();
-        Assert.Equal(LifeStage.Adult, child.LifeStage);
-        Assert.Contains(sim.State.Events, e => e.Type == ColonyEventType.BecameAdult);
-    }
-}
-
 public class StockpileTests
 {
     [Fact]

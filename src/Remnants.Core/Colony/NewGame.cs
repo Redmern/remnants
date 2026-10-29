@@ -59,6 +59,15 @@ public static class NewGame
         };
         foreach (var attribute in Enum.GetValues<AttributeKind>())
             survivor.Set(attribute, rng.NextInclusive(stats[0], stats[1]));
+        if (stage != LifeStage.Adult)
+        {
+            // Children are part-way through growing up, towards adult-range aptitudes.
+            survivor.GrowthTicks = Bonds.GrowthAtAge(survivor.AgeTicks, data.Rules);
+            survivor.LifeStage = Bonds.StageAt(survivor.GrowthTicks, data.Rules.Life);
+            survivor.AgeTicks = Bonds.AgeTicksAt(survivor.GrowthTicks, data.Rules);
+            foreach (var attribute in Enum.GetValues<AttributeKind>())
+                survivor.Aptitude[attribute] = Math.Max(survivor.Get(attribute), rng.NextInclusive(rules.AttributeRange[0], rules.AttributeRange[1]));
+        }
         return survivor;
     }
 

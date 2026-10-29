@@ -31,6 +31,7 @@ internal static class ExpeditionHandlers
             if (s.Away) return CommandResult.Fail(CommandError.SurvivorAway, $"{s.Name} is already away.");
             if (s.PatientAtBuildingId is not null)
                 return CommandResult.Fail(CommandError.IsPatient, $"{s.Name} is a patient; discharge them first.");
+            if (s.Pregnancy is not null) return CommandResult.Fail(CommandError.Pregnant, $"{s.Name} is expecting and stays home.");
             foreach (var (slot, id) in m.Equipment ?? new())
             {
                 if (!data.Items.TryGetValue(id, out var item)) return CommandResult.Fail(CommandError.UnknownItem, $"No item '{id}'.");
@@ -127,6 +128,7 @@ internal static class ExpeditionHandlers
             state.Survivors.Remove(s);
             state.Memorial.Add(new(s.Id, s.Name, state.Tick, $"Died in {zoneName}"));
             state.Log(new(state.Tick, ColonyEventType.Died, $"{s.Name} died in {zoneName}.", s.Id));
+            Bonds.OnGone(state, sim.Data, s, died: true);
             report.Dead.Add(s.Name);
         }
 
@@ -142,8 +144,14 @@ internal static class ExpeditionHandlers
             s.PatientAtBuildingId = null;
             s.Away = false;
             s.HasBed = false;
+            s.HomeBuildingId = null;
             s.HomelessTicks = 0;
             s.StarvingTicks = 0;
+            s.PartnerId = s.MotherId = s.FatherId = null;
+            s.Pregnancy = null;
+            s.Mood = Survivor.MaxMood;
+            s.GrowthTicks = s.MalnourishedTicks = 0;
+            s.Aptitude = new();
             state.Survivors.Add(s);
             Stow(sim, r);
             state.Log(new(state.Tick, ColonyEventType.Recruited, $"{s.Name} joined the colony.", s.Id));

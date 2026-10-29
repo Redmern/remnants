@@ -22,6 +22,8 @@ public class NewGameTests
         Assert.Contains(adults, s => s.Sex == Sex.Female);
         Assert.Equal(5, sim.State.Survivors.Select(s => s.Name).Distinct().Count());
         Assert.All(children, c => Assert.True(c.AgeTicks < sim.Data.Rules.AdultAge * sim.Data.Rules.TicksPerYear));
+        Assert.All(children, c => Assert.InRange(c.GrowthTicks, sim.Data.Rules.Life.InfantTicks, sim.Data.Rules.Life.GrowthTicks - 1));
+        Assert.All(children, c => Assert.Equal(6, c.Aptitude.Count));
     }
 
     [Fact]

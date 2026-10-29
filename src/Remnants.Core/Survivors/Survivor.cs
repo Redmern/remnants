@@ -4,6 +4,7 @@ public sealed class Survivor
 {
     public const double MaxHealth = 100.0;
     public const double MaxStat = 100.0;
+    public const double MaxMood = 100.0;
 
     public int Id { get; set; }
     public string Name { get; set; } = "";
@@ -40,7 +41,37 @@ public sealed class Survivor
     public int HomelessTicks { get; set; }
     public int StarvingTicks { get; set; }
 
-    public bool IsChild => LifeStage == LifeStage.Child;
+    /// <summary>Partner in a couple, if any (both sides point at each other).</summary>
+    public int? PartnerId { get; set; }
+
+    public int? MotherId { get; set; }
+    public int? FatherId { get; set; }
+
+    /// <summary>0 (despair) to 100 (content). Grief lowers it; it recovers over time. Low mood lowers job output.</summary>
+    public double Mood { get; set; } = MaxMood;
+
+    /// <summary>The child this survivor is carrying, if any.</summary>
+    public Pregnancy? Pregnancy { get; set; }
+
+    /// <summary>Infants and children: ticks grown so far (stage changes at <c>rules.life</c> thresholds).</summary>
+    public long GrowthTicks { get; set; }
+
+    /// <summary>Infants and children: ticks they went hungry while growing (they grow up weaker).</summary>
+    public long MalnourishedTicks { get; set; }
+
+    /// <summary>
+    /// Infants and children: the attribute levels they grow towards (inherited from their parents). Empty for
+    /// adults and for children from older saves, who then only change through training.
+    /// </summary>
+    public Dictionary<AttributeKind, double> Aptitude { get; set; } = new();
+
+    /// <summary>The housing building this survivor sleeps in, while they have a bed.</summary>
+    public int? HomeBuildingId { get; set; }
+
+    /// <summary>Not an adult yet: an infant or a child. Children stay home from expeditions and eat first.</summary>
+    public bool IsChild => LifeStage != LifeStage.Adult;
+
+    public bool IsInfant => LifeStage == LifeStage.Infant;
 
     public bool IsInjured => Body.Parts.Values.Any(p => p.Condition == PartCondition.Injured);
 

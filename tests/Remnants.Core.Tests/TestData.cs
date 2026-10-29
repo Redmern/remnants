@@ -49,7 +49,9 @@ public static class TestData
         var s = Survivor(attributes, stage: stage);
         s.Id = sim.State.NextSurvivorId++;
         s.Name = $"S{s.Id}";
-        s.AgeTicks = (stage == LifeStage.Adult ? 25 : 8) * sim.Data.Rules.TicksPerYear;
+        var life = sim.Data.Rules.Life;
+        s.GrowthTicks = stage switch { LifeStage.Infant => 0, LifeStage.Child => life.InfantTicks + life.ChildTicks / 2, _ => 0 };
+        s.AgeTicks = stage == LifeStage.Adult ? 25 * sim.Data.Rules.TicksPerYear : Bonds.AgeTicksAt(s.GrowthTicks, sim.Data.Rules);
         sim.State.Survivors.Add(s);
         return s;
     }

@@ -29,6 +29,9 @@ public sealed class ColonyState
     /// <summary>The after-action report of the last expedition that came home (for the UI).</summary>
     public ExpeditionReport? LastReport { get; set; }
 
+    /// <summary>Affinity between pairs of adults (and the player's stance on them). See <see cref="Bonds"/>.</summary>
+    public List<Relationship> Relationships { get; set; } = new();
+
     /// <summary>Everyone who died, oldest first. Never trimmed.</summary>
     public List<MemorialEntry> Memorial { get; set; } = new();
     public List<ColonyEvent> Events { get; set; } = new();
@@ -42,6 +45,10 @@ public sealed class ColonyState
 
     /// <summary>Survivors at home (not away on an expedition).</summary>
     public IEnumerable<Survivor> Present => Survivors.Where(s => !s.Away);
+
+    /// <summary>The relationship record of two survivors, if there is one.</summary>
+    public Relationship? FindRelationship(int a, int b) =>
+        Relationships.Find(r => r.A == Math.Min(a, b) && r.B == Math.Max(a, b));
 
     public void Log(ColonyEvent e)
     {
