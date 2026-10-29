@@ -56,6 +56,23 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
 - `scripts/Colony/Ui/` — HUD panels (top bar, roster, building, build menu, event log). Read Core state,
   call the session; no rules. Where the UI needs a rule (Town Hall cap) Core exposes a query.
 - The town is a grid of plots (`rules.layout`); `Construct` takes an optional plot.
+- `scripts/Scavenge/ScavengeSession` — **the entry seam into scavenge mode** (static). `Begin(tree, sim, playerId,
+  onFinished?, returnScene?)` hands a ready `ScavengeSim` to `scenes/scavenge/Scavenge.tscn` (or `Begin(tree, zoneId, seed,
+  party)` builds one with `NewScavenge`). When the party is done and the player closes the summary, `End` stores
+  `LastResult`, raises `Finished`, then calls `onFinished(result)` or changes to `returnScene` (default: main menu).
+  "Leave" mid-run ends it early with `Complete = false`. Opening the scene directly plays a debug mission (`DebugParty`).
+- `ScavengePresenter` — owns the sim for the local player, sends every command, reports `ScavengeError`s as feedback, and
+  answers UI questions by asking Core (`Reachable`, `Combat.CheckReach` / `HitChance`, `VisibleTo`, explored tiles).
+  `TakeNewEvents` hands each command's events (including the AI turns it set off) to the views for replay.
+- `ScavengeScreen` builds the scene: `MapView` (ground/wall/rubble/car/crate models per tile, exits, fog: unexplored tiles
+  hidden, remembered ones dimmed with a material overlay; move/attack/use highlights), `UnitViews` (survivor/enemy models,
+  limbs hidden when missing and swapped for `prosthetic_*` models at the joint, side rings, labels; replays events with
+  tweens and hit flashes, skipping what the local side cannot see), `TacticalCamera` (orthographic, yaw 45°, pitch
+  35.264°; WASD/middle-drag pan, wheel zoom, Q/E rotate 90°). HUD in `Scavenge/Ui/`: `TurnBar` (round, initiative order,
+  AP, End Turn), `UnitPanel` (HP, bleed-out, body parts, movement modes named by `MoveMode.Source`, gear, load),
+  `ActionPanel` (attack choice, use item, loot, recruit, extract), `ScavengeLog`, `ResultPanel` (`ExtractionResult`).
+- Scavenge input: left-click a blue tile to move, a red target to attack with the chosen action, a unit to inspect it;
+  item buttons arm "use on" and the next unit click is the target; right-click/Esc cancels; Space/Enter ends the turn.
 
 ## Rules of the road
 
@@ -95,7 +112,7 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
 ```sh
 ./run-tests.sh            # build solution + run Core tests
 ./run-tests.sh --godot    # also build through the Godot editor headless
-godot-mono --path game    # play (main menu → Colony shows a new Core colony)
+godot-mono --path game    # play (main menu → Colony shows a new Core colony, Scavenge a debug mission)
 godot-mono -e --path game # open in the editor
 ```
 
@@ -103,7 +120,8 @@ Data lookup (`GameDataPaths`): `data/` next to the executable in exported builds
 balancing), the repo's `data/` (`res://../data`) in dev, else the copy embedded in `Remnants.Game.dll`
 at build time — so exports work with nothing copied.
 
-Debug flags (after `--`): `--colony` skips the menu, `--demo` builds a farm and woodcutter and assigns
+Debug flags (after `--`): `--colony` skips the menu, `--scavenge` starts the debug mission (`--autoplay=N` plays N
+orders with a simple bot so enemy turns replay, `--zoom=SIZE` sets the ortho camera size), `--demo` builds a farm and woodcutter and assigns
 the adults, `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG. Needs a display; on
 Wayland pass `--display-driver wayland --disable-vsync` so an unfocused window still renders:
 
