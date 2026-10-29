@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Remnants.Core.Colony;
 using Remnants.Core.Data;
+using Remnants.Core.Scavenge;
 using Remnants.Core.Survivors;
 
 namespace Remnants.Game.Colony;
@@ -23,23 +24,41 @@ public static class ColonyText
     public static int AgeYears(Survivor s, RulesDef rules) => (int)(s.AgeTicks / rules.TicksPerYear);
 
     public static string Job(ColonySim sim, Survivor s) =>
-        s.AssignedBuildingId is { } id && sim.State.FindBuilding(id) is { } b ? sim.Data.Buildings[b.DefId].Name : "Idle";
+        s.Away ? "Away on expedition"
+        : s.PatientAtBuildingId is not null ? "Patient"
+        : s.AssignedBuildingId is { } id && sim.State.FindBuilding(id) is { } b ? sim.Data.Buildings[b.DefId].Name : "Idle";
 
     public static string BuildingName(ColonySim sim, Building b) => $"{sim.Data.Buildings[b.DefId].Name} L{b.Level}";
 
-    /// <summary>One line per non-healthy body part, or "Healthy".</summary>
-    public static string Body(Body body)
+    /// <summary>One line per non-healthy body part, or "Healthy". Prosthetics are named when item data is given.</summary>
+    public static string Body(Body body, ScavengeData? items = null)
     {
         var hurt = body.Parts
             .Where(kv => kv.Value.Condition != PartCondition.Healthy)
             .Select(kv => kv.Value.Condition switch
             {
-                PartCondition.Injured => $"{kv.Key}: injured ({kv.Value.Severity:P0})",
-                PartCondition.Prosthetic => $"{kv.Key}: prosthetic ({kv.Value.ProstheticQuality:P0})",
+                PartCondition.Injured => $"{kv.Key}: injured ({Percent(kv.Value.Severity)})",
+                PartCondition.Prosthetic => kv.Value.ProstheticItemId is { } id && items?.Items.GetValueOrDefault(id) is { } item
+                    ? $"{kv.Key}: {item.Name} ({Percent(kv.Value.ProstheticQuality)})"
+                    : $"{kv.Key}: prosthetic ({Percent(kv.Value.ProstheticQuality)})",
                 _ => $"{kv.Key}: {kv.Value.Condition.ToString().ToLowerInvariant()}",
             })
             .ToList();
         return hurt.Count == 0 ? "Healthy" : string.Join("\n", hurt);
+    }
+
+    public static string Percent(double fraction) => $"{System.Math.Round(fraction * 100):0}%";
+
+    /// <summary>Hours as "5h" or "2d 3h".</summary>
+    public static string Duration(int ticks, RulesDef rules) =>
+        ticks < rules.TicksPerDay ? $"{ticks}h" : $"{ticks / rules.TicksPerDay}d {ticks % rules.TicksPerDay}h";
+
+    /// <summary>A field profile in one line: primary move (and extra modes), AP, initiative, sight, load and attacks.</summary>
+    public static string Profile(UnitProfile p)
+    {
+        var moves = string.Join(" / ", p.Movement.Modes.Select(m => $"{m.Pattern} {m.Range}" + (m.ApCost > 1 ? $" ({m.ApCost} AP)" : "")));
+        var attacks = string.Join(", ", p.Actions.Select(a => $"{a.Name} {a.MinDamage:0}–{a.MaxDamage:0}"));
+        return $"Moves {moves} · AP {p.MaxAp} · init {p.Initiative:0} · sight {p.Sight:0.#} · load {p.Load:0.#}/{p.CarryCapacity:0} · armor {p.Armor:0.#} · {attacks}";
     }
 
     public static string Needs(Survivor s, RulesDef rules)

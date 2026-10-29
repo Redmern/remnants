@@ -94,8 +94,16 @@ internal static class ExpeditionHandlers
             return CommandResult.Fail(CommandError.UnknownItem, $"The result carries unknown item '{unknown}'.");
 
         var zoneName = data.Zones.TryGetValue(expedition.ZoneId, out var zone) ? zone.Name : expedition.ZoneId;
-        var report = new ExpeditionReport(expedition.Id, expedition.ZoneId, state.Tick, [], [], [],
-            new(result.Loot, StringComparer.Ordinal), new(StringComparer.Ordinal));
+        // Loot is what came back beyond the packs the survivors set out with.
+        var loot = new SortedDictionary<string, int>(result.Loot, StringComparer.Ordinal);
+        foreach (var r in result.Returned)
+            foreach (var id in expedition.Members.Single(m => m.SurvivorId == r.Survivor.Id).Pack ?? [])
+            {
+                var left = loot.GetValueOrDefault(id) - 1;
+                if (left > 0) loot[id] = left;
+                else loot.Remove(id);
+            }
+        var report = new ExpeditionReport(expedition.Id, expedition.ZoneId, state.Tick, [], [], [], loot, new(StringComparer.Ordinal));
 
         foreach (var r in result.Returned)
         {

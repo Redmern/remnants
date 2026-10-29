@@ -60,7 +60,7 @@ public partial class SurvivorWalkers : Node3D
         var sim = _session.Sim;
         var homes = AssignHomes();
         var alive = new HashSet<int>();
-        foreach (var s in sim.State.Survivors)
+        foreach (var s in sim.State.Present)
         {
             alive.Add(s.Id);
             if (!_walkers.TryGetValue(s.Id, out var w) || w.Child != s.IsChild)
@@ -135,7 +135,7 @@ public partial class SurvivorWalkers : Node3D
             .OrderBy(b => b.Id)
             .SelectMany(b => Enumerable.Repeat(_layout.Center(b.Plot), sim.Data.Buildings[b.DefId].Level(b.Level).Beds))
             .GetEnumerator();
-        foreach (var s in sim.State.Survivors.OrderBy(s => s.Id))
+        foreach (var s in sim.State.Present.OrderBy(s => s.Id))
             result[s.Id] = s.HasBed && beds.MoveNext() ? beds.Current : camp;
         return result;
     }

@@ -222,6 +222,18 @@ public class ApplyExtractionResultTests
     }
 
     [Fact]
+    public void Report_loot_leaves_out_what_the_party_took_from_home()
+    {
+        var (sim, a, b) = Launched("bandage");
+        var result = LoopTestData.Result(returned: [LoopTestData.Returned(a, pack: ["bandage", "bandage"]), LoopTestData.Returned(b)]);
+
+        Assert.True(sim.Execute(new ApplyExtractionResult(result)).Ok);
+
+        Assert.Equal(new SortedDictionary<string, int> { ["bandage"] = 1 }, sim.State.LastReport!.Loot);
+        Assert.Equal(2, sim.State.Inventory.Count("bandage"));
+    }
+
+    [Fact]
     public void The_dead_are_removed_for_good_with_their_gear()
     {
         var (sim, a, b) = Launched("pipe", "bandage");

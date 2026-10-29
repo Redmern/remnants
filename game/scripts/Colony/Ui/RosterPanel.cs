@@ -75,7 +75,7 @@ public partial class RosterPanel : PanelContainer
         {
             var s = survivors[i];
             _list.SetItemText(i, $"{s.Name}  ·  {(s.IsChild ? "child" : "adult")}  ·  {ColonyText.Job(sim, s)}");
-            _list.SetItemCustomFgColor(i, s.StarvingTicks > 0 || !s.HasBed ? Ui.Bad : Colors.White);
+            _list.SetItemCustomFgColor(i, s.StarvingTicks > 0 || !s.HasBed || sim.IsWorsening(s) ? Ui.Bad : s.Away ? Ui.Muted : Colors.White);
             if (s.Id == SelectedSurvivorId) _list.Select(i);
         }
         if (SelectedSurvivorId is null) _list.DeselectAll();
@@ -105,7 +105,7 @@ public partial class RosterPanel : PanelContainer
             _jobs.Select(index >= 0 ? index : _jobBuildingIds.Count > 0 ? 0 : -1);
         }
 
-        _jobs.Disabled = s is null || _jobBuildingIds.Count == 0;
+        _jobs.Disabled = s is null || s.Away || s.PatientAtBuildingId is not null || _jobBuildingIds.Count == 0;
         _assign.Disabled = _jobs.Disabled;
         _unassign.Disabled = s?.AssignedBuildingId is null;
     }
@@ -129,7 +129,11 @@ public partial class RosterPanel : PanelContainer
         text.AppendLine($"Job: {ColonyText.Job(sim, s)}");
         var hpColor = s.Health < 50 ? Ui.Hex(Ui.Bad) : Ui.Hex(Ui.Good);
         text.AppendLine($"Health: [color=#{hpColor}]{s.Health:0}/{Survivor.MaxHealth:0}[/color]   ({ColonyText.Needs(s, rules)})");
-        text.AppendLine($"Body: {ColonyText.Body(s.Body).Replace("\n", ", ")}");
+        text.AppendLine($"Body: {ColonyText.Body(s.Body, sim.Scavenge).Replace("\n", ", ")}");
+        if (s.PatientAtBuildingId is not null)
+            text.AppendLine($"In the Med Bay, healed in {(sim.HealEta(s) is { } eta ? ColonyText.Duration(eta, rules) : "—")}");
+        else if (sim.IsWorsening(s))
+            text.AppendLine($"[color=#{Ui.Hex(Ui.Bad)}]A severe wound is getting worse: admit to the Med Bay.[/color]");
         text.AppendLine("[color=#aaa]Attributes[/color]");
         text.AppendLine(string.Join("  ", Enum.GetValues<AttributeKind>().Select(a => $"{a.ToString()[..3]} {s.Get(a):0}")));
         var skills = Enum.GetValues<Skill>().Where(k => s.Get(k) >= 0.5).OrderByDescending(k => s.Get(k)).ToList();

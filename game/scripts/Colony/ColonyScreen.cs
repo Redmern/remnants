@@ -21,11 +21,16 @@ public partial class ColonyScreen : Node3D
     private BuildingPanel _buildingPanel = null!;
     private BuildMenu _buildMenu = null!;
     private EventLog _log = null!;
+    private ExpeditionPanel _expedition = null!;
+    private MedBayPanel _medBay = null!;
+    private WorkshopPanel _workshop = null!;
+    private AfterActionDialog _report = null!;
 
     public override void _Ready()
     {
         var data = GameDataPaths.Load();
-        _session = new ColonySession(NewGame.Create(data, NewGameSeed));
+        // The session outlives this scene so a party can leave for the scavenge scene and come back to it.
+        _session = ColonySession.Current ??= new ColonySession(NewGame.Create(data, NewGameSeed, GameDataPaths.LoadScavenge()));
         var layout = new TownLayout(data.Rules.Layout);
         var models = ModelLibrary.Load();
         GD.Print($"Colony: data from {GameDataPaths.Source}, {models.ModelCount} generated models.");
@@ -48,8 +53,38 @@ public partial class ColonyScreen : Node3D
         Wire();
         RefreshAll();
 
-        if (DebugCapture.HasFlag("--demo")) RunDemo();
+        if (DebugCapture.HasFlag("--demo") && _session.Sim.State.Tick == 0) RunDemo();
+        if (DebugCapture.HasFlag("--loop-demo") && _session.Sim.State.Tick == 0) RunLoopDemo();
+        if (DebugCapture.HasFlag("--expedition"))
+        {
+            _expedition.Toggle();
+            _expedition.Pick(_session.Sim.State.Survivors.Where(s => !s.IsChild).Select(s => s.Id).Take(2));
+        }
         if (DebugCapture.FromCommandLine() is { } capture) AddChild(capture);
+        CallDeferred(MethodName.ShowUnseenReport);
+    }
+
+    public override void _ExitTree() => _session.DetachViews();
+
+    private void ShowUnseenReport()
+    {
+        if (_session.UnseenReport is not { } report) return;
+        _session.UnseenReport = null;
+        _report.ShowReport(_session.Sim, report);
+    }
+
+    /// <summary>Debug: send the first two adults to the outskirts with gear, play it out, and show the report.</summary>
+    private void RunLoopDemo()
+    {
+        var sim = _session.Sim;
+        var adults = sim.State.Survivors.Where(s => !s.IsChild).Take(sim.MaxPartySize).ToList();
+        var members = adults.Select((s, i) => new ExpeditionMember(s.Id,
+            new() { [Remnants.Core.Items.EquipSlot.Weapon] = i == 0 ? "pipe" : "spear" }, i == 0 ? ["bandage"] : [])).ToList();
+        if (_session.Execute(new LaunchExpedition("outskirts", members)).Ok) _session.PlayExpedition(GetTree());
+        if (_session.Execute(new Construct("med_bay", 8)).EntityId is not { } bay) return;
+        _session.Execute(new Construct("workshop", 9));
+        foreach (var s in sim.State.Present.Where(s => s.IsInjured).ToList()) _session.Execute(new AdmitPatient(s.Id, bay));
+        _town.Select(bay);
     }
 
     /// <summary>Debug: build a farm and woodcutter, put the adults to work and open the panels (for screenshots).</summary>
@@ -90,12 +125,22 @@ public partial class ColonyScreen : Node3D
         middle.AddChild(_roster);
         middle.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore });
 
+        _expedition = new ExpeditionPanel(_session);
+        middle.AddChild(_expedition);
+
         var right = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         middle.AddChild(right);
         _buildMenu = new BuildMenu(_session);
         _buildingPanel = new BuildingPanel(_session);
+        _medBay = new MedBayPanel(_session);
+        _workshop = new WorkshopPanel(_session);
         right.AddChild(_buildMenu);
         right.AddChild(_buildingPanel);
+        right.AddChild(_medBay);
+        right.AddChild(_workshop);
+
+        _report = new AfterActionDialog();
+        layer.AddChild(_report);
 
         _log = new EventLog(_session);
         column.AddChild(_log);
@@ -114,6 +159,12 @@ public partial class ColonyScreen : Node3D
         };
 
         _topBar.MenuPressed += () => GetTree().ChangeSceneToFile("res://scenes/MainMenu.tscn");
+        _topBar.ExpeditionPressed += _expedition.Toggle;
+        _expedition.PlayPressed += () =>
+        {
+            _session.PlayExpedition(GetTree());
+            CallDeferred(MethodName.ShowUnseenReport); // the stub resolves in place; a real scene comes back through _Ready
+        };
         _topBar.BuildPressed += () =>
         {
             _buildMenu.Visible = !_buildMenu.Visible;
@@ -133,7 +184,12 @@ public partial class ColonyScreen : Node3D
             }
         };
 
-        _town.SelectionChanged += id => _buildingPanel.Show(id);
+        _town.SelectionChanged += id =>
+        {
+            _buildingPanel.Show(id);
+            _medBay.Show(id);
+            _workshop.Show(id);
+        };
         _roster.SelectionChanged += id => _walkers.SelectedSurvivorId = id;
     }
 
@@ -144,6 +200,9 @@ public partial class ColonyScreen : Node3D
         _topBar.Refresh();
         _roster.Refresh();
         _buildingPanel.Refresh();
+        _medBay.Refresh();
+        _workshop.Refresh();
+        _expedition.Refresh();
         if (_buildMenu.Visible) _buildMenu.Refresh();
         _log.Refresh();
     }

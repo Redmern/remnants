@@ -2,6 +2,7 @@ using System;
 using Godot;
 using FileAccess = Godot.FileAccess;
 using Remnants.Core.Colony;
+using Remnants.Core.Scavenge;
 using Remnants.Core.Serialization;
 
 namespace Remnants.Game.Colony;
@@ -9,6 +10,7 @@ namespace Remnants.Game.Colony;
 /// <summary>
 /// Presenter between the colony screen and Core: owns the <see cref="ColonySim"/>, turns frame time into
 /// fixed sim ticks at the chosen speed, and is the only place the UI sends commands through.
+/// Outlives the colony scene (<see cref="Current"/>) so an expedition can leave for the scavenge scene and come back.
 /// Holds no game rules.
 /// </summary>
 public sealed class ColonySession
@@ -27,6 +29,12 @@ public sealed class ColonySession
 
     public ColonySession(ColonySim sim) => Sim = sim;
 
+    /// <summary>The running colony for this game session; survives scene changes.</summary>
+    public static ColonySession? Current { get; set; }
+
+    /// <summary>The after-action report of an expedition that came home and has not been shown yet.</summary>
+    public ExpeditionReport? UnseenReport { get; set; }
+
     public ColonySim Sim { get; private set; }
 
     /// <summary>Sim ticks per <see cref="SecondsPerTick"/>; 0 is paused.</summary>
@@ -40,6 +48,37 @@ public sealed class ColonySession
 
     /// <summary>Feedback for the event log: text and whether it is an error.</summary>
     public event Action<string, bool>? Feedback;
+
+    /// <summary>A screen is going away: drop its handlers so the session does not call into freed nodes.</summary>
+    public void DetachViews()
+    {
+        Changed = null;
+        Replaced = null;
+        Feedback = null;
+    }
+
+    /// <summary>
+    /// Starts (or, after a load, resumes) the active expedition's scavenge run through <see cref="ScavengeHandoff"/>;
+    /// the result is applied to the colony when the run ends.
+    /// </summary>
+    public void PlayExpedition(SceneTree tree)
+    {
+        if (Sim.State.Expedition is null)
+        {
+            Feedback?.Invoke("No party is out.", true);
+            return;
+        }
+        SetSpeed(0);
+        ScavengeHandoff.Begin(tree, new ScavengeRun(Sim.OpenExpeditionScavenge(), ColonySim.ExpeditionPlayerId), ApplyResult);
+    }
+
+    private void ApplyResult(ExtractionResult result)
+    {
+        var applied = Execute(new ApplyExtractionResult(result));
+        if (!applied.Ok) return;
+        UnseenReport = Sim.State.LastReport;
+        SetSpeed(1);
+    }
 
     public void SetSpeed(int speed)
     {
@@ -96,9 +135,9 @@ public sealed class ColonySession
         }
         try
         {
-            Sim = SaveGame.Load(Sim.Data, FileAccess.GetFileAsString(SavePath));
+            Sim = SaveGame.Load(Sim.Data, FileAccess.GetFileAsString(SavePath), Sim.Scavenge);
         }
-        catch (Exception e) when (e is System.Text.Json.JsonException or InvalidOperationException)
+        catch (Exception e) when (e is System.Text.Json.JsonException or InvalidOperationException or ArgumentException)
         {
             Feedback?.Invoke($"Could not load: {e.Message}", true);
             return;
