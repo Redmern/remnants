@@ -16,8 +16,8 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
 
 ## Core layout
 
-- `Data/` — definition records (`ResourceDef`, `JobDef`, `BuildingDef`, `RulesDef`), `GameData`
-  (indexed + validated), `GameDataLoader` (reads `data/*.json`).
+- `Data/` — definition records (`ResourceDef`, `JobDef`, `BuildingDef`, `RecipeDef`, `RulesDef`), `GameData`
+  (indexed + validated, `RecipesFor(building)`), `GameDataLoader` (reads `data/*.json`).
 - `Survivors/` — `Survivor` (attributes, skills, health, assignment, needs, family ties, mood, growth), `Pregnancy` and `Body`
   (head, torso, arms, legs; healthy / injured with severity / missing / prosthetic).
 - `Colony/` — `ColonyState` (plain serializable data), `ColonySim` (tick + command entry point),
@@ -27,15 +27,19 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   - `ItemInventory` — whole items the colony owns (gear, consumables, prosthetics) by item id.
   - `Expedition` + `ExpeditionHandlers` — the loop with scavenge mode (see "Colony ↔ scavenge loop" below).
   - `Medical` (`Care` formulas, `MedicalSystem`, admit/discharge/fit-prosthetic handlers) and `Crafting`
-    (`CraftingSystem`, `SetRecipe`).
+    (`CraftingSystem`: production queues and quality rolls; queue/cancel/set-recipe/study-blueprint handlers) — see
+    "Crafting tiers" below.
   - `Life` (`Bonds` formulas and queries, `RelationshipSystem`, `FamilySystem`, `GrowthSystem`, `Matchmake`) and
     `Relationship` (pair affinity + the player's `PairStance`) — see "Population life" below.
 - `Random/DeterministicRng` — seeded xorshift64*; its state lives in `ColonyState` / `ScavengeState`.
 - `Serialization/` — shared `System.Text.Json` options and `SaveGame` (versioned envelope).
 - `Items/ItemDef` — item definitions: kind/slot, weight, armor/dodge/initiative/AP/sight/carry
-  modifiers, a `MovementModifier`, attack `ActionDef`s, consumable `UseEffect`.
+  modifiers, a `MovementModifier`, attack `ActionDef`s, consumable `UseEffect`, `DeviceDef`, `BlueprintDef`, and for
+  quality variants `BaseId`/`Quality`.
 - `Scavenge/` — the tactical mode (headless):
-  - `ScavengeData` + loader (items, enemies, zones, scavenge rules), `ScavengeDefinitions`.
+  - `ScavengeData` + loader (items, enemies, zones, scavenge rules), `ScavengeDefinitions`. It derives the quality
+    variants of every equippable item (`QualityVariant`, `QualityOf`).
+  - `Devices` — field effects of equipped devices (signal jammer; scanner hook).
   - `TileMap`/`Pos` (terrain grid, exits, symmetric Bresenham LOS), `MapGenerator` (zone template +
     seed → rooms, scatter, exits, carved route), `NewScavenge` (places parties, enemies, caches, NPCs).
   - `Unit` (party survivor, enemy or NPC: side, owner player, body, gear, pack, AI memory).
@@ -64,9 +68,10 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   on each HUD root and on dialogs (a `CanvasLayer` does not pass a theme on). Panels add content, not styles.
 - `scripts/Colony/Ui/` — HUD panels (top bar with a beds/population warning, roster with partner/growth per line, a
   family section, mood and a matchmaking row, building, build menu, event log, `ExpeditionPanel`,
-  `MedBayPanel`, `WorkshopPanel`, `AfterActionDialog`). Read Core state, call the session; no rules. Where the UI
+  `MedBayPanel`, `ProductionPanel`, `InventoryPanel`, `AfterActionDialog`). Read Core state, call the session; no rules. Where the UI
   needs a rule Core exposes a query (`MaxUpgradeLevel`, `MaxPartySize`, `HealPerTick`/`HealEta`, `IsWorsening`,
-  `CraftEffortPerTick`, `PreviewProfile` for a survivor's field profile with a given loadout).
+  `CraftEffortPerTick`, `CraftStatus`, `CanQueue`, `QualityChances`, `PreviewProfile` for a survivor's field profile with
+  a given loadout).
 - `ColonySession.Current` keeps the colony alive across scene changes, so a party can go to the scavenge scene and
   come back. Each `ColonyScreen` detaches its handlers when it leaves the tree.
 - `scripts/ScavengeHandoff` — how the colony enters scavenge mode: `ColonySession.PlayExpedition` builds (or resumes)
@@ -106,7 +111,7 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   `ColonySim.Rng`. Same seed + same commands = identical save JSON (tested).
 - **Commands only.** The UI changes the sim only via `ColonySim.Execute(IColonyCommand)`
   (`AssignJob`, `Unassign`, `Construct`, `Upgrade`, `LaunchExpedition`, `ApplyExtractionResult`, `AdmitPatient`,
-  `Discharge`, `FitProsthetic`, `SetRecipe`, `Matchmake`). Core validates and returns a `CommandResult`
+  `Discharge`, `FitProsthetic`, `SetRecipe`, `QueueRecipe`, `CancelOrder`, `StudyBlueprint`, `Matchmake`). Core validates and returns a `CommandResult`
   with a `CommandError` code. This is also the future client→server intent format.
 - **Tick order:** production (+training) → crafting → medical → food → relationships (mood, affinity, couples) →
   family (births, conception) → housing → growth (aging, growing up).
@@ -152,8 +157,9 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   region, quality, `minMedBayLevel`) in the inventory and a Med Bay of that level. The part's efficiency becomes the
   item's quality — above 1 for cybernetics — which feeds job output (body-region weights), scavenge movement range
   (leg efficiency, plus `scavenge.json` body rules such as two good prosthetic legs → +1 range) and attacks (arms).
-- Sources for the loop until M7: the Workshop's recipes (Herbal Remedy → Medicine, Peg Leg, Hook Arm, Med-kit at L2),
-  loot (`med_supplies`, Servo Arm, Cybernetic Leg/Arm) and the starting inventory (`rules.newGame.items`).
+- Sources: recipes (Workshop: Herbal Remedy → Medicine, Peg Leg, Hook Arm, Med-kit at L2; Electronics Lab: Servo Arm,
+  Cybernetic Leg/Arm from a blueprint), loot (`med_supplies`, Servo Arm, Cybernetic Leg/Arm) and the starting inventory
+  (`rules.newGame.items`).
 
 ## Population life
 
@@ -187,26 +193,69 @@ All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `fo
   Version 2 (and 1) saves load: their children are placed on the growth track by age (no aptitude, so they change
   only by training) and everything else starts empty/content.
 
+## Crafting tiers
+
+- **Buildings**: Workshop (tools, simple weapons, prosthetics), Tailor (cloth, clothing, light armor, bandages,
+  climbing gear), Kitchen (meals, canned rations), Armory (blades, guns, riot armor, Linked gear), Electronics Lab
+  (circuits, binoculars, scanner, jammer, evac beacon, servo and cybernetic limbs), House (10/14/20 beds). Each has 3
+  levels; the Town Hall caps levels as before, and `minTownHallLevel` gates construction (Armory, Electronics Lab,
+  House need Town Hall 2). Each production building has its own job: crafting (Intellect+Creativity), tailoring
+  (Creativity+Agility), cooking (Creativity+Perception), gunsmithing (Intellect+Strength+Perception, Firearms skill),
+  electronics (Intellect+Creativity). Effort per tick is the usual job output formula, and working trains the job.
+- **Recipes** (`data/recipes.json`): building, min level, work, resource `inputs` and item `itemInputs` (any quality of
+  that item counts, worst first), one item or resource output with an amount, optional `minSkill` (some worker needs
+  that much of the job's skill) and optional `blueprint`.
+- **Queue**: each production building holds up to `crafting.maxQueue` orders (`QueueRecipe(building, recipe, count |
+  repeat)`). Each tick it works one order: the first already paid, else the first that can start (skill + inputs), which
+  is then paid. A finished batch decrements a counted order (removed at zero); a repeating order goes to the back, so it
+  runs forever without blocking others. `CancelOrder` refunds a paid batch (the same items back). `SetRecipe` is the
+  old shortcut: the queue becomes one repeating order.
+- **Quality**: crafted gear (any equippable item) rolls a tier: `score = best worker skill/100 + (level−1) ·
+  qualityPerLevel ± qualitySpread` (uniform), the highest tier whose `crafting.qualityThresholds` it reaches. Tiers
+  live in `scavenge.json` `quality` (Crude ×0.8 stats / ×1.15 weight, Standard = the item as defined, Fine ×1.25 /
+  ×0.9); `ScavengeData` derives `{item}@{tier}` variants that scale armor, damage, positive dodge/initiative, sight and
+  carry bonuses. Variants are ordinary item ids, so inventory, expeditions, profiles and saves need nothing special.
+- **Blueprints**: `Blueprint` items (`blueprint.studyAt` + `minLevel`) drop from caches in tier 2–3 zones (the zone
+  loot table is every item with a loot weight at or below the zone's loot tier). `StudyBlueprint(item)` uses one up at
+  a study building of that level and adds it to `ColonyState.KnownBlueprints`; recipes naming it can then be queued.
+- **Kitchen meals**: `food.meals` (best first) are eaten before raw food; one unit covers `foodValue` food of the need
+  and adds `moodPerTick` / `healthPerTick`. Simple Meals turn 4 food into 6 food's worth; Hearty Stew (L2) adds more
+  mood and healing.
+- **Gear in the field**: crafted gear is the same item data as loot, so it drives `ProfileDeriver` (riot armor sets King
+  1, climbing gear cheapens rubble, a grappling hook adds the knight jump, quality scales the numbers). Devices: a
+  **signal jammer** in the Tool slot jams Linked within its radius (they stop taking cover; M8's squad AI should also
+  lose reinforcements and shared targets there). A **scanner** gives sight; `Devices.ScannedBy` is the hook for seeing
+  caches/units through walls, not used by the scavenge view yet. Ammo is not modelled (guns do not use it).
+- **Saves**: version 4 stores queues, `NextOrderId` and `KnownBlueprints`. Older saves migrate: a building's
+  `recipeId`/`craftProgress`/`craftPaid` becomes one repeating order, and the old generic `blueprint` item becomes
+  `bp_scanner` (`SaveGame.LegacyBlueprintItem`).
+- **UI**: selecting a production building shows `ProductionPanel` (queue with progress and cancel, recipe picker with
+  ×1/×5/repeat, locked reasons, inputs, quality odds). The top bar's Items button opens `InventoryPanel` (items by kind
+  and quality, studied blueprints, Study buttons). Buildings render `{type}_l{level}` models, falling back to the
+  nearest lower level.
+
 ## Data files
 
 - `resources.json` — resource ids and names.
 - `jobs.json` — per job: skill + weight, attribute weights, body-region weights, tool bonus, `childrenAllowed`.
-- `buildings.json` — category, job, produced resource, base output, and per-level
-  cost / worker slots / output multiplier / beds / patients. Level 1 cost = construction cost. Production
-  buildings list `recipes` (inputs, work, min level, yielded item or resource).
+- `buildings.json` — category, job, produced resource, base output, `minTownHallLevel`, and per-level
+  cost / worker slots / output multiplier / beds / patients. Level 1 cost = construction cost.
+- `recipes.json` — what production buildings make (see "Crafting tiers").
 - `rules.json` — tick/time scale, output formula constants, training rates, food, housing grace,
-  expedition (party size per Town Hall level, rations, recruit ages), medical (heal/worsen rates, medicine use),
+  meals, crafting (queue limits, quality roll), expedition (party size per Town Hall level, rations, recruit ages), medical (heal/worsen rates, medicine use),
   life (growth stages and rates), relationships (affinity), family (conception, pregnancy, baby names), mood,
   new-game setup (counts, age/stat ranges, stock, starting items, starting buildings, names).
 - `items.json` — weapons (actions), clothing/armor, tools (movement modifiers, carry, sight),
   consumables (med-kit, bandage, evac beacon), materials (with `salvage` into colony resources), prosthetics
-  (region, quality, Med Bay level); tier + loot weight for caches.
+  (region, quality, Med Bay level), devices (scanner, signal jammer), blueprints (study building and level);
+  tier + loot weight for caches; `natural` for enemy body parts (never looted or crafted). Every other item has a
+  recipe or a loot weight (tested).
 - `enemies.json` — hp, AI kind, attributes, skills, equipment (a Husk's claws are an item too).
 - `zones.json` — size, threat, loot tier, terrain densities, spawn/exit edges, enemy count + mix,
   caches, NPC count.
 - `scavenge.json` — terrain table, movement derivation (base pattern/range, Agility per range,
   encumbrance steps, body rules such as "missing leg → King 1"), AP, sight, carry, combat numbers,
-  AI, NPC names, escort radius.
+  AI, NPC names, escort radius, gear quality tiers.
 
 ## Running
 
@@ -225,7 +274,8 @@ Debug flags (after `--`): `--colony` skips the menu, `--scavenge` starts the deb
 orders with a simple bot so enemy turns replay, `--zoom=SIZE` sets the ortho camera size), `--demo` builds a farm and woodcutter and assigns
 the adults, `--loop-demo` sends the adults on an expedition to the outskirts (scavenge screen, or resolved in place with
 `--autopilot`) and builds a Med Bay and Workshop, `--family-demo` does `--demo`, encourages the first man and woman
-and fast-forwards until a baby is born (then selects the mother), `--expedition` opens the expedition planner with two adults picked, `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG. Needs a display; on
+and fast-forwards until a baby is born (then selects the mother), `--crafting-demo` builds a grown town (Town Hall 3, every
+production building, some at level 2–3) with staffed, queued Armory and Tailor and opens the Armory and item panels, `--expedition` opens the expedition planner with two adults picked, `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG. Needs a display; on
 Wayland pass `--display-driver wayland --disable-vsync` so an unfocused window still renders:
 
 ```sh
