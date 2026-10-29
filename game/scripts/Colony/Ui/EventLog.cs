@@ -1,9 +1,13 @@
+using System.Collections.Generic;
 using Godot;
 using Remnants.Core.Colony;
 
 namespace Remnants.Game.Colony.Ui;
 
-/// <summary>Colony events from Core (starvation, departures, construction, ...) plus command feedback.</summary>
+/// <summary>
+/// Colony events from Core (starvation, departures, construction, ...), command feedback, and first-time tips:
+/// Core's <see cref="Advice"/> for the next sensible step, each tip shown once per session.
+/// </summary>
 public partial class EventLog : PanelContainer
 {
     private const int MaxLines = 120;
@@ -12,6 +16,7 @@ public partial class EventLog : PanelContainer
     private readonly RichTextLabel _text = Ui.Rich(scroll: true);
     private ColonyEvent? _lastSeen;
     private int _lines;
+    private readonly HashSet<string> _tipsShown = new();
 
     public EventLog(ColonySession session)
     {
@@ -38,6 +43,8 @@ public partial class EventLog : PanelContainer
         var start = _lastSeen is null ? 0 : events.LastIndexOf(_lastSeen) + 1;
         for (var i = start; i < events.Count; i++) Append(Format(events[i]));
         if (events.Count > 0) _lastSeen = events[^1];
+        if (Advice.Next(_session.Sim) is { } tip && _tipsShown.Add(tip.Id))
+            Append($"[color=#7fc8e8]Tip:[/color] [color=#cfe6ef]{tip.Text}[/color]");
     }
 
     private string Format(ColonyEvent e)

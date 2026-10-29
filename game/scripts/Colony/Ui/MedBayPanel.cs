@@ -70,7 +70,7 @@ public partial class MedBayPanel : PanelContainer
         var medicine = sim.State.Stockpile.Get(rules.Medical.MedicineResourceId);
         var medColor = Ui.Hex(medicine >= rules.Medical.MedicinePerPatientTick ? Ui.Good : Ui.Bad);
         _info.Text = $"Beds {patients.Count}/{level.Patients} · heals {sim.HealPerTick(bay) * 100:0.##}% severity/h per wound\n" +
-                     $"[color=#{medColor}]Medicine {medicine:0.#}[/color] ({rules.Medical.MedicinePerPatientTick:0.##}/patient/h; without it only natural healing)";
+                     $"[color=#{medColor}]Medicine {medicine:0.#}[/color] ({rules.Medical.MedicinePerPatientTick:0.###}/patient/h; without it only natural healing)";
 
         var data = sim.Scavenge!;
         var injured = sim.State.Present.Where(s => s.IsInjured && s.PatientAtBuildingId is null).OrderBy(s => s.Id).ToList();
