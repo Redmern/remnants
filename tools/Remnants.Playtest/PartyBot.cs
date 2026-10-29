@@ -93,11 +93,13 @@ public static class PartyBot
                 .Where(t => Combat.CheckReach(sim.Data, map, unit.Pos, a, t.Pos) == ScavengeError.None)
                 .Select(t => (Action: a, Target: t, Chance: Combat.HitChance(sim.Data, map, unit.Pos, a, t.Pos, sim.Profile(t)))))
             .OrderByDescending(o => o.Chance * (o.Action.MinDamage + o.Action.MaxDamage) / 2 / o.Action.ApCost).ThenBy(o => o.Target.Hp).FirstOrDefault();
-        if (attack.Target is not null && attack.Chance >= 0.2)
+        if (attack.Target is not null && attack.Chance >= 0.2 && !(IsLinked(sim, attack.Target) && attack.Target.Hp > 25))
             return new Attack(playerId, unit.Id, attack.Target.Id, attack.Action.Id);
 
         // 3. Decide where to go: out when hurt, loaded, late or out of caches; else the nearest cache.
-        var leaving = unit.Hp < unit.MaxHp * 0.5
+        // A Linked in sight is beyond a starting party: break off and head out.
+        var leaving = hostiles.Any(h => IsLinked(sim, h))
+                      || unit.Hp < unit.MaxHp * 0.5
                       || profile.Load >= profile.CarryCapacity * 0.8
                       || state.Round >= MaxRounds
                       || allies.Any(a => a.Status == UnitStatus.Downed)
