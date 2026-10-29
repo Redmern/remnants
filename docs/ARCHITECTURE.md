@@ -18,16 +18,18 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
 
 - `Data/` — definition records (`ResourceDef`, `JobDef`, `BuildingDef`, `RulesDef`), `GameData`
   (indexed + validated), `GameDataLoader` (reads `data/*.json`).
-- `Survivors/` — `Survivor` (attributes, skills, health, assignment, needs) and `Body`
+- `Survivors/` — `Survivor` (attributes, skills, health, assignment, needs, family ties, mood, growth), `Pregnancy` and `Body`
   (head, torso, arms, legs; healthy / injured with severity / missing / prosthetic).
 - `Colony/` — `ColonyState` (plain serializable data), `ColonySim` (tick + command entry point),
-  per-concern systems (production, crafting, medical, food, housing, aging), `JobOutput` (the output formula),
+  per-concern systems (production, crafting, medical, food, relationships, family, housing, growth), `JobOutput` (the output formula),
   `Training`, commands + handlers, `NewGame`. `ColonySim` optionally holds the `ScavengeData` (items, zones);
   expeditions, prosthetics and item recipes need it, and it cross-checks colony data that names items.
   - `ItemInventory` — whole items the colony owns (gear, consumables, prosthetics) by item id.
   - `Expedition` + `ExpeditionHandlers` — the loop with scavenge mode (see "Colony ↔ scavenge loop" below).
   - `Medical` (`Care` formulas, `MedicalSystem`, admit/discharge/fit-prosthetic handlers) and `Crafting`
     (`CraftingSystem`, `SetRecipe`).
+  - `Life` (`Bonds` formulas and queries, `RelationshipSystem`, `FamilySystem`, `GrowthSystem`, `Matchmake`) and
+    `Relationship` (pair affinity + the player's `PairStance`) — see "Population life" below.
 - `Random/DeterministicRng` — seeded xorshift64*; its state lives in `ColonyState` / `ScavengeState`.
 - `Serialization/` — shared `System.Text.Json` options and `SaveGame` (versioned envelope).
 - `Items/ItemDef` — item definitions: kind/slot, weight, armor/dodge/initiative/AP/sight/carry
@@ -58,7 +60,8 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   lower level, then a placeholder box), survivors to `survivor_adult_male|female` / `survivor_child`
   (placeholder capsule). `tools/sync-assets.sh [EXPORT_DIR]` refreshes `assets/generated/` from the
   remnants-assets `export/` (default `../../remnants-assets/main/export`).
-- `scripts/Colony/Ui/` — HUD panels (top bar, roster, building, build menu, event log, `ExpeditionPanel`,
+- `scripts/Colony/Ui/` — HUD panels (top bar with a beds/population warning, roster with partner/growth per line, a
+  family section, mood and a matchmaking row, building, build menu, event log, `ExpeditionPanel`,
   `MedBayPanel`, `WorkshopPanel`, `AfterActionDialog`). Read Core state, call the session; no rules. Where the UI
   needs a rule Core exposes a query (`MaxUpgradeLevel`, `MaxPartySize`, `HealPerTick`/`HealEta`, `IsWorsening`,
   `CraftEffortPerTick`, `PreviewProfile` for a survivor's field profile with a given loadout).
@@ -95,9 +98,10 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   `ColonySim.Rng`. Same seed + same commands = identical save JSON (tested).
 - **Commands only.** The UI changes the sim only via `ColonySim.Execute(IColonyCommand)`
   (`AssignJob`, `Unassign`, `Construct`, `Upgrade`, `LaunchExpedition`, `ApplyExtractionResult`, `AdmitPatient`,
-  `Discharge`, `FitProsthetic`, `SetRecipe`). Core validates and returns a `CommandResult`
+  `Discharge`, `FitProsthetic`, `SetRecipe`, `Matchmake`). Core validates and returns a `CommandResult`
   with a `CommandError` code. This is also the future client→server intent format.
-- **Tick order:** production (+training) → crafting → medical → food → housing → aging.
+- **Tick order:** production (+training) → crafting → medical → food → relationships (mood, affinity, couples) →
+  family (births, conception) → housing → growth (aging, growing up).
 - **Scavenge commands** (`Move`, `Attack`, `UseItem`, `PickUp`, `Recruit`, `EndTurn`, `Extract`) carry a
   `PlayerId` + `UnitId`; Core checks ownership and whose turn it is and returns a `ScavengeResult`
   with a `ScavengeError`. Several players' parties can share one instance (each party is a side).
@@ -122,7 +126,7 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   Recruits join as new adults (age from `recruitAgeRange`) without a bed, so the homeless grace timer applies.
   `ColonyState.LastReport` holds the after-action report (returned with new injuries, dead, recruits, loot beyond
   what the party took out, lost gear).
-- **Saving mid-mission**: the colony save (version 2) carries the expedition and its `ScavengeState`, validated
+- **Saving mid-mission**: the colony save (version 2+) carries the expedition and its `ScavengeState`, validated
   against `items.json`/`zones.json` on load; version 1 saves still load. The scavenge screen has no save of its own:
   Leave suspends the run (the result is not final, the party stays out) and the colony can then save; Expedition →
   Play mission resumes it.
@@ -143,15 +147,48 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
 - Sources for the loop until M7: the Workshop's recipes (Herbal Remedy → Medicine, Peg Leg, Hook Arm, Med-kit at L2),
   loot (`med_supplies`, Servo Arm, Cybernetic Leg/Arm) and the starting inventory (`rules.newGame.items`).
 
+## Population life
+
+All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `food.infantPerTick`) and `jobs.json`
+(`childrenAllowed`). The time scale is for fun: growing up takes a few in-game weeks, not years.
+
+- **Relationships**: every tick each pair of single adults at home gains affinity
+  `(base + sharedWorkplace + sharedHome + compatibility · similarity) · (encouraged ? encourageMultiplier : 1)`
+  (similarity = 1 − mean attribute difference / 100); at `coupleThreshold` the closest ready pair becomes a couple
+  (any sexes). `Matchmake(a, b, stance)` lets the player encourage, discourage (no gain; splits a couple) or reset a pair.
+- **Births**: every `conceptionCheckTicks` a woman and man in a couple, both at home, she not pregnant and without
+  an infant, conceive with `conceptionChance` when a bed is free for the baby (beds > people + pregnancies) and the
+  stock holds `minFoodPerPerson` food per person. The baby's aptitude (parents' mean ± `inheritVariation`) is rolled
+  at conception; after `pregnancyTicks` an infant is born with attributes at `birthAttributeFraction` of it and a name
+  from `family.maleNames/femaleNames`. Pregnant survivors stay home from expeditions.
+- **Growing up**: infant → child after `infantTicks`, child → adult `childTicks` later (`GrowthTicks`). Each fed tick
+  moves attributes `attributeGrowthPerTick` of the way to the aptitude; hungry ticks do not and are counted
+  (`MalnourishedTicks`), so malnourished children grow up weaker (noted when they come of age). Infants eat
+  `infantPerTick`, children `childPerTick`, and both are fed before adults. Infants cannot work; children only do
+  `childrenAllowed` jobs (Farming, Scrap Sorting, Crafting) at `childOutputMultiplier`, training at
+  `training.childMultiplier` — they grow into what they do. A minor's age shown in years is their share of `adultAge`.
+- **Mood**: 0–100, starts at 100, recovers `recoveryPerTick`. A death costs the partner `partnerGrief` (and logs
+  grief) and parents/children `familyGrief`; a partner leaving or a break-up costs `heartbreak`. Job output (and
+  medic care) is multiplied by `lerp(lowMoodMultiplier, 1, mood/100)`.
+- **Housing pressure**: beds are spread over housing buildings (`Survivor.HomeBuildingId`); people keep their home
+  and newcomers move in with their partner or parents where there is room. Newborns and recruits without a bed start
+  the homeless grace timer. When it runs out an adult leaves; an infant or child leaves with a parent who is at home
+  (mother first), ending that parent's couple; with no parent at home the child is taken in by passing travelers.
+  Starvation still applies to everyone.
+- **Saves**: version 3 adds partners, parents, mood, pregnancies, growth, homes and `ColonyState.Relationships`.
+  Version 2 (and 1) saves load: their children are placed on the growth track by age (no aptitude, so they change
+  only by training) and everything else starts empty/content.
+
 ## Data files
 
 - `resources.json` — resource ids and names.
-- `jobs.json` — per job: skill + weight, attribute weights, body-region weights, tool bonus.
+- `jobs.json` — per job: skill + weight, attribute weights, body-region weights, tool bonus, `childrenAllowed`.
 - `buildings.json` — category, job, produced resource, base output, and per-level
   cost / worker slots / output multiplier / beds / patients. Level 1 cost = construction cost. Production
   buildings list `recipes` (inputs, work, min level, yielded item or resource).
 - `rules.json` — tick/time scale, output formula constants, training rates, food, housing grace,
   expedition (party size per Town Hall level, rations, recruit ages), medical (heal/worsen rates, medicine use),
+  life (growth stages and rates), relationships (affinity), family (conception, pregnancy, baby names), mood,
   new-game setup (counts, age/stat ranges, stock, starting items, starting buildings, names).
 - `items.json` — weapons (actions), clothing/armor, tools (movement modifiers, carry, sight),
   consumables (med-kit, bandage, evac beacon), materials (with `salvage` into colony resources), prosthetics
@@ -179,7 +216,8 @@ at build time — so exports work with nothing copied.
 Debug flags (after `--`): `--colony` skips the menu, `--scavenge` starts the debug mission (`--autoplay=N` plays N
 orders with a simple bot so enemy turns replay, `--zoom=SIZE` sets the ortho camera size), `--demo` builds a farm and woodcutter and assigns
 the adults, `--loop-demo` sends the adults on an expedition to the outskirts (scavenge screen, or resolved in place with
-`--autopilot`) and builds a Med Bay and Workshop, `--expedition` opens the expedition planner with two adults picked, `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG. Needs a display; on
+`--autopilot`) and builds a Med Bay and Workshop, `--family-demo` does `--demo`, encourages the first man and woman
+and fast-forwards until a baby is born (then selects the mother), `--expedition` opens the expedition planner with two adults picked, `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG. Needs a display; on
 Wayland pass `--display-driver wayland --disable-vsync` so an unfocused window still renders:
 
 ```sh
