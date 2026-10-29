@@ -17,8 +17,8 @@ public static class NewGame
         var state = new ColonyState();
 
         foreach (var (res, amount) in rules.Stock) state.Stockpile.Add(res, amount);
-        foreach (var defId in rules.Buildings)
-            state.Buildings.Add(new Building { Id = state.NextBuildingId++, DefId = defId, Level = 1 });
+        for (var plot = 0; plot < rules.Buildings.Count; plot++)
+            state.Buildings.Add(new Building { Id = state.NextBuildingId++, DefId = rules.Buildings[plot], Level = 1, Plot = plot });
 
         var usedNames = new HashSet<string>();
         for (var i = 0; i < rules.Adults; i++)

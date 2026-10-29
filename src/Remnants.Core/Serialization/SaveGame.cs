@@ -33,7 +33,11 @@ public static class SaveGame
                 throw new JsonException($"Save references unknown building type '{b.DefId}'.");
             if (b.Level < 1 || b.Level > def.MaxLevel)
                 throw new JsonException($"Save has {def.Name} at level {b.Level}; data allows 1..{def.MaxLevel}.");
+            if (b.Plot < 0 || b.Plot >= data.Rules.Layout.PlotCount)
+                throw new JsonException($"Save has {def.Name} on plot {b.Plot}; the town has plots 0..{data.Rules.Layout.PlotCount - 1}.");
         }
+        if (colony.Buildings.GroupBy(b => b.Plot).FirstOrDefault(g => g.Count() > 1) is { } shared)
+            throw new JsonException($"Save has several buildings on plot {shared.Key}.");
         foreach (var res in colony.Stockpile.Amounts.Keys)
             if (!data.Resources.ContainsKey(res))
                 throw new JsonException($"Save references unknown resource '{res}'.");

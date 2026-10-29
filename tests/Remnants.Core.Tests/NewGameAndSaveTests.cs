@@ -116,4 +116,20 @@ public class SaveValidationTests
         state.Buildings[0].Level = 99;
         Assert.ThrowsAny<System.Text.Json.JsonException>(() => SaveGame.Load(TestData.Real, SaveGame.Save(state)));
     }
+
+    [Fact]
+    public void Save_with_two_buildings_on_one_plot_is_rejected()
+    {
+        var state = NewGame.Create(TestData.Real, 1).State;
+        state.Buildings[1].Plot = state.Buildings[0].Plot;
+        Assert.ThrowsAny<System.Text.Json.JsonException>(() => SaveGame.Load(TestData.Real, SaveGame.Save(state)));
+    }
+
+    [Fact]
+    public void Save_with_a_plot_outside_the_town_is_rejected()
+    {
+        var state = NewGame.Create(TestData.Real, 1).State;
+        state.Buildings[0].Plot = TestData.Real.Rules.Layout.PlotCount;
+        Assert.ThrowsAny<System.Text.Json.JsonException>(() => SaveGame.Load(TestData.Real, SaveGame.Save(state)));
+    }
 }

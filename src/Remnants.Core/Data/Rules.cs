@@ -11,6 +11,7 @@ public sealed record RulesDef
     public TrainingRules Training { get; init; } = new();
     public FoodRules Food { get; init; } = new();
     public HousingRules Housing { get; init; } = new();
+    public LayoutRules Layout { get; init; } = new();
     public NewGameRules NewGame { get; init; } = new();
 
     public long TicksPerYear => (long)TicksPerDay * DaysPerYear;
@@ -46,6 +47,15 @@ public sealed record HousingRules
 {
     /// <summary>Ticks a survivor may spend without a bed; they leave on the tick after.</summary>
     public int HomelessGraceTicks { get; init; } = 72;
+}
+
+/// <summary>The town is a grid of building plots; a plot index is row-major (plot = row · columns + column).</summary>
+public sealed record LayoutRules
+{
+    public int PlotColumns { get; init; } = 6;
+    public int PlotRows { get; init; } = 4;
+
+    public int PlotCount => PlotColumns * PlotRows;
 }
 
 public sealed record NewGameRules

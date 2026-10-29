@@ -65,6 +65,10 @@ public sealed class GameData
         foreach (var b in Rules.NewGame.Buildings)
             if (!Buildings.ContainsKey(b)) throw new GameDataException($"Rules.newGame: unknown building '{b}'.");
         var ng = Rules.NewGame;
+        if (Rules.Layout.PlotColumns < 1 || Rules.Layout.PlotRows < 1)
+            throw new GameDataException("Rules.layout needs at least one plot column and row.");
+        if (ng.Buildings.Count > Rules.Layout.PlotCount)
+            throw new GameDataException("Rules.newGame.buildings do not fit on the plots in rules.layout.");
         if (ng.MaleNames.Count == 0 || ng.FemaleNames.Count == 0)
             throw new GameDataException("Rules.newGame needs male and female names.");
         if (ng.Adults < 2) throw new GameDataException("Rules.newGame.adults must be at least 2 (one man, one woman).");

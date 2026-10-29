@@ -33,6 +33,11 @@ public sealed class ColonySim
     public int FreeSlots(Building building) =>
         Data.Buildings[building.DefId].Level(building.Level).WorkerSlots - State.WorkersAt(building.Id).Count();
 
+    public bool IsPlotFree(int plot) => State.Buildings.All(b => b.Plot != plot);
+
+    /// <summary>Unbuilt plots in ascending order.</summary>
+    public IEnumerable<int> FreePlots() => Enumerable.Range(0, Data.Rules.Layout.PlotCount).Where(IsPlotFree);
+
     public void Tick()
     {
         ProductionSystem.Run(State, Data);

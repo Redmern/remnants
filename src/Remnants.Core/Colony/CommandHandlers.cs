@@ -40,12 +40,24 @@ internal static class CommandHandlers
         if (!IsTownHall(sim, def) && sim.TownHallLevel < 1)
             return CommandResult.Fail(CommandError.NoTownHall, "Build a Town Hall first.");
 
+        int plot;
+        if (c.Plot is { } wanted)
+        {
+            if (wanted < 0 || wanted >= sim.Data.Rules.Layout.PlotCount)
+                return CommandResult.Fail(CommandError.InvalidPlot, $"Plot {wanted} is outside the town.");
+            if (!sim.IsPlotFree(wanted))
+                return CommandResult.Fail(CommandError.PlotOccupied, $"Plot {wanted} is already built on.");
+            plot = wanted;
+        }
+        else if (sim.FreePlots().FirstOrDefault(-1) is var first and >= 0) plot = first;
+        else return CommandResult.Fail(CommandError.NoFreePlot, "No free plot left.");
+
         var cost = def.Level(1).Cost;
         if (!sim.State.Stockpile.CanAfford(cost))
             return CommandResult.Fail(CommandError.CannotAfford, $"Cannot afford {def.Name}: {Describe(sim.State.Stockpile.Shortfall(cost))}.");
 
         sim.State.Stockpile.Spend(cost);
-        var building = new Building { Id = sim.State.NextBuildingId++, DefId = def.Id, Level = 1 };
+        var building = new Building { Id = sim.State.NextBuildingId++, DefId = def.Id, Level = 1, Plot = plot };
         sim.State.Buildings.Add(building);
         sim.State.Log(new(sim.State.Tick, ColonyEventType.Constructed, $"Built {def.Name}.", BuildingId: building.Id));
         return CommandResult.Success($"Built {def.Name}.", building.Id);

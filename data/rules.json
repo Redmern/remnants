@@ -23,6 +23,10 @@
   "housing": {
     "homelessGraceTicks": 72
   },
+  "layout": {
+    "plotColumns": 6,
+    "plotRows": 4
+  },
   "newGame": {
     "adults": 3,
     "children": 2,

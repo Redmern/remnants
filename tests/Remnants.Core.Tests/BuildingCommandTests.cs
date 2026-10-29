@@ -115,6 +115,59 @@ public class BuildingCommandTests
     }
 }
 
+public class PlotTests
+{
+    private static Dictionary<string, double> Plenty() => new() { ["wood"] = 1000, ["stone"] = 1000 };
+
+    [Fact]
+    public void New_game_puts_each_starting_building_on_its_own_plot()
+    {
+        var plots = NewGame.Create(TestData.Real, 1).State.Buildings.Select(b => b.Plot).ToList();
+        Assert.Equal(plots.Count, plots.Distinct().Count());
+    }
+
+    [Fact]
+    public void Construct_on_a_chosen_plot()
+    {
+        var sim = TestData.EmptyColony(stock: Plenty());
+        var result = sim.Execute(new Construct("farm", Plot: 7));
+
+        Assert.True(result.Ok, result.Message);
+        Assert.Equal(7, sim.State.FindBuilding(result.EntityId!.Value)!.Plot);
+        Assert.False(sim.IsPlotFree(7));
+    }
+
+    [Fact]
+    public void Construct_without_a_plot_takes_the_first_free_one()
+    {
+        var sim = TestData.EmptyColony(stock: Plenty()); // town hall sits on plot 0
+        var result = sim.Execute(new Construct("farm"));
+        Assert.Equal(1, sim.State.FindBuilding(result.EntityId!.Value)!.Plot);
+    }
+
+    [Fact]
+    public void Construct_rejects_occupied_and_out_of_range_plots_without_spending()
+    {
+        var sim = TestData.EmptyColony(stock: Plenty());
+        var count = sim.Data.Rules.Layout.PlotCount;
+
+        Assert.Equal(CommandError.PlotOccupied, sim.Execute(new Construct("farm", Plot: 0)).Error);
+        Assert.Equal(CommandError.InvalidPlot, sim.Execute(new Construct("farm", Plot: count)).Error);
+        Assert.Equal(CommandError.InvalidPlot, sim.Execute(new Construct("farm", Plot: -1)).Error);
+        Assert.Equal(1000, sim.State.Stockpile.Get("wood"));
+    }
+
+    [Fact]
+    public void Construct_fails_when_the_town_is_full()
+    {
+        var sim = TestData.EmptyColony(stock: new() { ["wood"] = 100_000 });
+        foreach (var _ in sim.FreePlots().ToList()) Assert.True(sim.Execute(new Construct("shelter")).Ok);
+
+        Assert.Empty(sim.FreePlots());
+        Assert.Equal(CommandError.NoFreePlot, sim.Execute(new Construct("shelter")).Error);
+    }
+}
+
 public class JobCommandTests
 {
     [Fact]

@@ -7,7 +7,8 @@ public sealed record AssignJob(int SurvivorId, int BuildingId) : IColonyCommand;
 
 public sealed record Unassign(int SurvivorId) : IColonyCommand;
 
-public sealed record Construct(string BuildingDefId) : IColonyCommand;
+/// <summary>Build on <paramref name="Plot"/>, or on the first free plot when null.</summary>
+public sealed record Construct(string BuildingDefId, int? Plot = null) : IColonyCommand;
 
 public sealed record Upgrade(int BuildingId) : IColonyCommand;
 
@@ -26,6 +27,9 @@ public enum CommandError
     NoTownHall,
     CannotAfford,
     UnknownCommand,
+    InvalidPlot,
+    PlotOccupied,
+    NoFreePlot,
 }
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>
