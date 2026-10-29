@@ -1,0 +1,9 @@
+[
+  { "id": "wood",        "name": "Wood" },
+  { "id": "stone",       "name": "Stone" },
+  { "id": "scrap",       "name": "Scrap Metal" },
+  { "id": "food",        "name": "Food" },
+  { "id": "cloth",       "name": "Cloth" },
+  { "id": "electronics", "name": "Electronics" },
+  { "id": "medicine",    "name": "Medicine" }
+]

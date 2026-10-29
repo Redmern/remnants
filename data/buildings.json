@@ -1,0 +1,75 @@
+[
+  {
+    "id": "town_hall",
+    "name": "Town Hall",
+    "category": "Core",
+    "unique": true,
+    "levels": [
+      { "cost": {},                                      "workerSlots": 0, "beds": 0 },
+      { "cost": { "wood": 80,  "stone": 60 },            "workerSlots": 0, "beds": 0 },
+      { "cost": { "wood": 160, "stone": 140, "scrap": 40 }, "workerSlots": 0, "beds": 0 }
+    ]
+  },
+  {
+    "id": "shelter",
+    "name": "Shelter",
+    "category": "Housing",
+    "levels": [
+      { "cost": { "wood": 20 },               "beds": 6 },
+      { "cost": { "wood": 30, "stone": 10 },  "beds": 8 },
+      { "cost": { "wood": 50, "stone": 30 },  "beds": 12 }
+    ]
+  },
+  {
+    "id": "woodcutter",
+    "name": "Woodcutter",
+    "category": "Gathering",
+    "job": "woodcutting",
+    "produces": "wood",
+    "baseOutput": 0.5,
+    "levels": [
+      { "cost": { "wood": 10, "stone": 5 },   "workerSlots": 2, "outputMultiplier": 1.0 },
+      { "cost": { "wood": 30, "stone": 20 },  "workerSlots": 3, "outputMultiplier": 1.25 },
+      { "cost": { "wood": 60, "stone": 50 },  "workerSlots": 4, "outputMultiplier": 1.5 }
+    ]
+  },
+  {
+    "id": "quarry",
+    "name": "Quarry",
+    "category": "Gathering",
+    "job": "mining",
+    "produces": "stone",
+    "baseOutput": 0.4,
+    "levels": [
+      { "cost": { "wood": 15 },               "workerSlots": 2, "outputMultiplier": 1.0 },
+      { "cost": { "wood": 35, "stone": 20 },  "workerSlots": 3, "outputMultiplier": 1.25 },
+      { "cost": { "wood": 70, "stone": 50 },  "workerSlots": 4, "outputMultiplier": 1.5 }
+    ]
+  },
+  {
+    "id": "scrapyard",
+    "name": "Scrapyard",
+    "category": "Gathering",
+    "job": "scavenging",
+    "produces": "scrap",
+    "baseOutput": 0.25,
+    "levels": [
+      { "cost": { "wood": 20, "stone": 10 },  "workerSlots": 2, "outputMultiplier": 1.0 },
+      { "cost": { "wood": 40, "stone": 30 },  "workerSlots": 3, "outputMultiplier": 1.25 },
+      { "cost": { "wood": 80, "stone": 60, "scrap": 20 }, "workerSlots": 4, "outputMultiplier": 1.5 }
+    ]
+  },
+  {
+    "id": "farm",
+    "name": "Farm",
+    "category": "Gathering",
+    "job": "farming",
+    "produces": "food",
+    "baseOutput": 0.6,
+    "levels": [
+      { "cost": { "wood": 15 },               "workerSlots": 2, "outputMultiplier": 1.0 },
+      { "cost": { "wood": 35, "stone": 15 },  "workerSlots": 3, "outputMultiplier": 1.25 },
+      { "cost": { "wood": 70, "stone": 40 },  "workerSlots": 4, "outputMultiplier": 1.5 }
+    ]
+  }
+]

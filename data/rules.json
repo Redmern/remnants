@@ -1,0 +1,38 @@
+{
+  "ticksPerDay": 24,
+  "daysPerYear": 30,
+  "adultAge": 16,
+  "townHallBuildingId": "town_hall",
+  "output": {
+    "performanceFloor": 0.25,
+    "childOutputMultiplier": 0.5,
+    "lowHealthMultiplier": 0.5
+  },
+  "training": {
+    "skillPerTick": 0.05,
+    "attributePerTick": 0.01,
+    "childMultiplier": 2.0
+  },
+  "food": {
+    "resourceId": "food",
+    "adultPerTick": 0.05,
+    "childPerTick": 0.03,
+    "starvationDamagePerTick": 1.0,
+    "recoveryPerTick": 0.25
+  },
+  "housing": {
+    "homelessGraceTicks": 72
+  },
+  "newGame": {
+    "adults": 3,
+    "children": 2,
+    "adultAgeRange": [20, 45],
+    "childAgeRange": [6, 12],
+    "attributeRange": [25, 60],
+    "childAttributeRange": [10, 35],
+    "stock": { "wood": 60, "stone": 30, "food": 40 },
+    "buildings": ["town_hall", "shelter"],
+    "maleNames": ["Arlo", "Tomas", "Jonah", "Silas", "Bram", "Kofi", "Ravi", "Emil"],
+    "femaleNames": ["Mara", "Ines", "Juno", "Petra", "Ada", "Noor", "Lena", "Sana"]
+  }
+}
