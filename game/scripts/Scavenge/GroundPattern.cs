@@ -14,7 +14,7 @@ public static class GroundPattern
     public const int PatchSize = 4;
 
     /// <summary>Percent of patches that use the base variant.</summary>
-    public const int BaseShare = 75;
+    public const int BaseShare = 85;
 
     public static ulong Seed(TileMap map, string zoneId)
     {

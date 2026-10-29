@@ -38,16 +38,20 @@ public partial class MapView : Node3D
     private MeshInstance3D _hover = null!;
     private readonly Dictionary<HighlightKind, StandardMaterial3D> _highlightMaterials = new();
     private StandardMaterial3D _fogMaterial = null!;
-    /// <summary>Ground meshes are shaded a step darker so walls, cover and units stand out against them.</summary>
-    private readonly HashSet<MeshInstance3D> _ground = new();
-    private StandardMaterial3D _groundShade = null!;
+    /// <summary>
+    /// Ground meshes are shaded a step darker so walls, cover and units stand out against them; patch variants (dirt,
+    /// overgrown) are also pulled toward a flat earth tone so they read as a calm change of surface, not noise.
+    /// </summary>
+    private readonly Dictionary<MeshInstance3D, StandardMaterial3D> _ground = new();
+    private StandardMaterial3D _groundShade = null!, _patchShade = null!;
 
     public void Setup(ScavengePresenter presenter, ScavengeModels models)
     {
         _presenter = presenter;
         _models = models;
         _fogMaterial = Placeholders.Material(new Color(0.01f, 0.01f, 0.03f, 0.72f), unshaded: true);
-        _groundShade = Placeholders.Material(new Color(0.03f, 0.03f, 0.04f, 0.42f), unshaded: true);
+        _groundShade = Placeholders.Material(new Color(0.13f, 0.13f, 0.13f, 0.5f), unshaded: true);
+        _patchShade = Placeholders.Material(new Color(0.12f, 0.115f, 0.1f, 0.55f), unshaded: true);
         // Highlights are framed squares: a strong edge so a field of tiles still shows its grid, a light fill.
         var frame = TileFrame(border: 4, fill: 0.3f);
         foreach (var (kind, color) in new[]
@@ -89,10 +93,11 @@ public partial class MapView : Node3D
             var tile = new Node3D { Name = $"Tile{p.X}_{p.Y}", Position = TileGrid.ToWorld(p) };
             terrain.AddChild(tile);
             _tiles[index] = tile;
-            var ground = _models.Ground(GroundPattern.Variant(seed, p, _models.GroundVariants.Count));
+            var variant = GroundPattern.Variant(seed, p, _models.GroundVariants.Count);
+            var ground = _models.Ground(variant);
             if (GroundPattern.Flip(seed, p)) ground.RotationDegrees = new Vector3(0, 180, 0);
             tile.AddChild(ground);
-            _ground.UnionWith(Meshes(ground));
+            foreach (var mesh in Meshes(ground)) _ground[mesh] = variant == 0 ? _groundShade : _patchShade;
 
             switch (map[p])
             {
@@ -235,7 +240,7 @@ public partial class MapView : Node3D
             var seen = explored.Contains(i) || visible.Contains(i);
             _tiles[i].Visible = seen;
             var overlay = seen && !visible.Contains(i) ? _fogMaterial : null;
-            foreach (var mesh in _tileMeshes[i]) mesh.MaterialOverlay = overlay ?? (_ground.Contains(mesh) ? _groundShade : null);
+            foreach (var mesh in _tileMeshes[i]) mesh.MaterialOverlay = overlay ?? _ground.GetValueOrDefault(mesh);
         }
 
         var caches = _presenter.State.Caches;
