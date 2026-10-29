@@ -41,18 +41,9 @@ public static class Ui
         return rich;
     }
 
-    /// <summary>A dark translucent panel with a VBox inside; returns the VBox to fill.</summary>
+    /// <summary>A HUD panel (styled by <see cref="HudTheme"/>) with a VBox inside; returns the VBox to fill.</summary>
     public static VBoxContainer Panel(PanelContainer panel, int separation = 6)
     {
-        var style = new StyleBoxFlat
-        {
-            BgColor = new Color(0.09f, 0.09f, 0.08f, 0.88f),
-            BorderColor = new Color(0.35f, 0.3f, 0.24f),
-            ContentMarginLeft = 10, ContentMarginRight = 10, ContentMarginTop = 8, ContentMarginBottom = 8,
-        };
-        style.SetBorderWidthAll(1);
-        style.SetCornerRadiusAll(3);
-        panel.AddThemeStyleboxOverride("panel", style);
         var box = new VBoxContainer();
         box.AddThemeConstantOverride("separation", separation);
         panel.AddChild(box);

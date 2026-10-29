@@ -90,6 +90,7 @@ public partial class ScavengeScreen : Node3D
 
     private void BuildHud()
     {
+        HudTheme.Apply(GetTree().Root);
         var layer = new CanvasLayer { Name = "Hud" };
         AddChild(layer);
         var root = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
