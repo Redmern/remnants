@@ -286,7 +286,7 @@ public class WorkshopTests
 
         sim.Advance(TicksFor(sim, shop, "herbal_remedy") + 20);
 
-        Assert.Equal(1, sim.State.Stockpile.Get("medicine"), 6);
+        Assert.Equal(sim.Data.Recipes["herbal_remedy"].Amount, sim.State.Stockpile.Get("medicine"), 6);
         var order = Assert.Single(shop.Queue);
         Assert.Equal(0, order.Progress);
         Assert.False(order.Paid);

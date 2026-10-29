@@ -1,5 +1,5 @@
 [
-  { "id": "herbal_remedy",  "name": "Herbal Remedy",   "building": "workshop", "minLevel": 1, "work": 6,  "inputs": { "food": 4, "wood": 2 },        "resource": "medicine", "amount": 1 },
+  { "id": "herbal_remedy",  "name": "Herbal Remedy",   "building": "workshop", "minLevel": 1, "work": 6,  "inputs": { "food": 4, "wood": 2 },        "resource": "medicine", "amount": 2 },
   { "id": "peg_leg",        "name": "Peg Leg",         "building": "workshop", "minLevel": 1, "work": 12, "inputs": { "wood": 15, "scrap": 5 },      "item": "peg_leg" },
   { "id": "hook_arm",       "name": "Hook Arm",        "building": "workshop", "minLevel": 1, "work": 12, "inputs": { "scrap": 15, "wood": 5 },      "item": "hook_arm" },
   { "id": "pipe",           "name": "Lead Pipe",       "building": "workshop", "minLevel": 1, "work": 5,  "inputs": { "scrap": 4 },                  "item": "pipe" },

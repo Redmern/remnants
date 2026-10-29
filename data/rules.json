@@ -45,9 +45,9 @@
   "medical": {
     "buildingId": "med_bay",
     "medicineResourceId": "medicine",
-    "healPerTick": 0.01,
-    "unstaffedCare": 0.25,
-    "medicinePerPatientTick": 0.02,
+    "healPerTick": 0.012,
+    "unstaffedCare": 0.4,
+    "medicinePerPatientTick": 0.015,
     "patientHealthPerTick": 0.5,
     "naturalHealPerTick": 0.002,
     "naturalHealMaxSeverity": 0.3,
