@@ -8,4 +8,8 @@
   <ItemGroup>
     <ProjectReference Include="..\src\Remnants.Core\Remnants.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Exported builds cannot reach ../data, so the definitions ship inside the assembly (see GameDataPaths). -->
+    <EmbeddedResource Include="..\data\*.json" LogicalName="Remnants.Data.%(Filename)%(Extension)" />
+  </ItemGroup>
 </Project>
