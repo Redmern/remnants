@@ -4,8 +4,8 @@ namespace Remnants.Game;
 
 /// <summary>
 /// The one HUD theme shared by the colony and scavenge screens: near-opaque dark panels with a warm rust border,
-/// flat buttons, slim scrollbars, one font size scale. Applied to the root window (<see cref="Apply"/>), so every
-/// panel, button, label and dialog picks it up; panels then only add their content.
+/// flat buttons, slim scrollbars, one font size scale. Each screen sets it on its HUD root
+/// (and on dialogs under a CanvasLayer, which does not pass themes on); panels then only add their content.
 /// </summary>
 public static class HudTheme
 {
@@ -20,12 +20,6 @@ public static class HudTheme
     private static Theme? _shared;
 
     public static Theme Shared => _shared ??= Build();
-
-    /// <summary>
-    /// Sets the theme on the root window, so every HUD control and dialog in every scene inherits it.
-    /// Each screen calls this, since a scene can be opened directly.
-    /// </summary>
-    public static void Apply(Window root) => root.Theme = Shared;
 
     /// <summary>A flat box: the base for panels, buttons and chips.</summary>
     public static StyleBoxFlat Box(Color bg, Color? border = null, int borderWidth = 1, int radius = 3, int padX = 10, int padY = 8)

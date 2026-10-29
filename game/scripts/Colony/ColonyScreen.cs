@@ -136,10 +136,9 @@ public partial class ColonyScreen : Node3D
 
     private void BuildHud()
     {
-        HudTheme.Apply(GetTree().Root);
         var layer = new CanvasLayer { Name = "Hud" };
         AddChild(layer);
-        var root = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        var root = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Theme = HudTheme.Shared };
         root.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         foreach (var side in new[] { "left", "right", "top", "bottom" }) root.AddThemeConstantOverride($"margin_{side}", 8);
         layer.AddChild(root);
@@ -171,7 +170,7 @@ public partial class ColonyScreen : Node3D
         right.AddChild(_medBay);
         right.AddChild(_workshop);
 
-        _report = new AfterActionDialog();
+        _report = new AfterActionDialog { Theme = HudTheme.Shared };
         layer.AddChild(_report);
 
         _log = new EventLog(_session);

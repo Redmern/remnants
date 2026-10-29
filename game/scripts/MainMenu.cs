@@ -9,7 +9,7 @@ public partial class MainMenu : Control
 
     public override void _Ready()
     {
-        HudTheme.Apply(GetTree().Root);
+        Theme = HudTheme.Shared;
         _status = GetNode<Label>("Center/Menu/Status");
         GetNode<Button>("Center/Menu/ColonyButton").Pressed += OnColonyPressed;
         GetNode<Button>("Center/Menu/ScavengeButton").Pressed += OnScavengePressed;
