@@ -69,7 +69,7 @@ internal static class FoodSystem
 /// <summary>
 /// Beds go first to those who already had one, then by id. Each bed is in a housing building: people keep their
 /// home while it has room, and newcomers move in with their partner or parents when they can. The homeless count
-/// down a grace timer and leave the colony when it runs out. An infant or child whose timer runs out leaves with a
+/// down a grace timer (paused while they are away) and leave the colony when it runs out. An infant or child whose timer runs out leaves with a
 /// parent who is at home (mother first) and that parent's departure ends their couple; with no parent at home the
 /// child is taken in by passing travelers.
 /// </summary>
@@ -97,6 +97,8 @@ internal static class HousingSystem
                 state.Log(new(state.Tick, ColonyEventType.Homeless, $"{s.Name} has no bed.", s.Id));
             s.HasBed = false;
             s.HomeBuildingId = null;
+            // Someone away on an expedition cannot look for a bed; their grace waits until they are home.
+            if (s.Away) continue;
             s.HomelessTicks++;
             if (s.HomelessTicks > data.Rules.Housing.HomelessGraceTicks) leaving.Add(s);
         }

@@ -289,6 +289,21 @@ public class ApplyExtractionResultTests
     }
 
     [Fact]
+    public void A_homeless_member_does_not_leave_the_colony_while_away()
+    {
+        // No housing: both members are homeless. On the road their grace timer waits; the run can still be opened.
+        var sim = LoopTestData.Colony(food: 500);
+        var a = sim.AddSurvivor();
+        var b = sim.AddSurvivor();
+        Assert.True(sim.Execute(new LaunchExpedition("suburb_ruins", [new ExpeditionMember(a.Id), new ExpeditionMember(b.Id)])).Ok);
+        sim.Advance(sim.Data.Rules.Housing.HomelessGraceTicks + 30);
+
+        Assert.Contains(a, sim.State.Survivors);
+        Assert.Equal(ExpeditionPhase.InZone, sim.CurrentExpeditionPhase);
+        Assert.NotNull(sim.OpenExpeditionScavenge());
+    }
+
+    [Fact]
     public void Unfinished_or_foreign_results_are_rejected()
     {
         var (sim, a, b) = Launched();
