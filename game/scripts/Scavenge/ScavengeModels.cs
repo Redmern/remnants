@@ -9,17 +9,11 @@ namespace Remnants.Game.Scavenge;
 
 /// <summary>
 /// Scavenge model lookup on top of the shared <see cref="ModelLibrary"/>: map props, enemies by definition
-/// (<c>enemy_{defId}</c>) and survivor bodies with their limbs swapped for cybernetics or hidden when missing.
+/// (<c>enemy_{defId}</c>) and survivor bodies dressed by <see cref="SurvivorDressing"/> (prosthetics, missing limbs, worn gear).
 /// Every lookup falls back to a primitive so the mode runs with no generated assets.
 /// </summary>
 public sealed class ScavengeModels(ModelLibrary library)
 {
-    private static readonly Dictionary<BodyPart, string> LimbNodes = new()
-    {
-        [BodyPart.LeftArm] = "arm_l", [BodyPart.RightArm] = "arm_r",
-        [BodyPart.LeftLeg] = "leg_l", [BodyPart.RightLeg] = "leg_r",
-    };
-
     public int ModelCount => library.ModelCount;
 
     /// <summary>Ground variants that read as road (painted markings); kept off the open ground so it stays calm.</summary>
@@ -72,35 +66,11 @@ public sealed class ScavengeModels(ModelLibrary library)
         }
 
         var child = unit.Origin?.IsChild ?? false;
-        var id = child ? "survivor_child" : unit.Origin?.Sex == Sex.Female ? "survivor_adult_female" : "survivor_adult_male";
+        var id = ModelLibrary.SurvivorId(child, unit.Origin?.Sex ?? Sex.Male);
         if (library.TryInstance(id) is not { } model) return Placeholders.Survivor(child);
-        FitLimbs(model, unit.Body, child);
+        SurvivorDressing.FitLimbs(library, model, unit.Body, child);
+        SurvivorDressing.AttachGear(library, model, id, unit.Equipment);
         return model;
-    }
-
-    /// <summary>
-    /// Hides missing limbs and swaps cybernetic ones in at the same joint. The prosthetic models are built for
-    /// the adult male; they are moved to this body's joint and scaled down for a child.
-    /// </summary>
-    private void FitLimbs(Node3D model, Body body, bool child)
-    {
-        foreach (var (part, nodeName) in LimbNodes)
-        {
-            var condition = body[part].Condition;
-            if (condition is PartCondition.Healthy or PartCondition.Injured) continue;
-            if (model.FindChild(nodeName, true, false) is not Node3D limb) continue;
-            limb.Visible = false;
-            if (condition != PartCondition.Prosthetic) continue;
-
-            var kind = Body.RegionOf(part) == BodyRegion.Arms ? "arm" : "leg";
-            var side = nodeName[^1];
-            if (library.TryInstance($"prosthetic_{kind}_cyborg_{side}") is not { } prosthetic) continue;
-            var joint = prosthetic.FindChild(nodeName, true, false) as Node3D;
-            var scale = child && joint is not null && joint.Position.Y > 0 ? limb.Position.Y / joint.Position.Y : 1f;
-            prosthetic.Scale = Vector3.One * scale;
-            prosthetic.Position = limb.Position - (joint?.Position ?? Vector3.Zero) * scale;
-            limb.GetParent().AddChild(prosthetic);
-        }
     }
 
     private static Node3D Box(Vector3 size, Color color)

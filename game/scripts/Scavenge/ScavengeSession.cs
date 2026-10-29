@@ -80,7 +80,7 @@ public static class ScavengeSession
 
     /// <summary>
     /// Three adults and a child from a fresh colony, geared so every movement mode and action shows up:
-    /// a scout (rook), a brawler with a med-kit, a grappler (knight jump) with a cybernetic leg, and a child.
+    /// a scout (rook), a brawler with a med-kit and a hook for a left arm, a grappler (knight jump) with a cybernetic leg, and a child.
     /// </summary>
     public static List<PartyMember> DebugParty()
     {
@@ -98,11 +98,16 @@ public static class ScavengeSession
 
         var party = new List<PartyMember>();
         if (adults.Count > 0) party.Add(new PartyMember(adults[0], Gear("pistol", "scout_jacket", "binoculars"), ["bandage", "evac_beacon"]));
-        if (adults.Count > 1) party.Add(new PartyMember(adults[1], Gear("pipe", "padded_vest", "backpack"), ["med_kit", "bandage"]));
+        if (adults.Count > 1)
+        {
+            adults[1].Body.Lose(BodyPart.LeftArm);
+            adults[1].Body.FitProsthetic(BodyPart.LeftArm, 0.5, "hook_arm");
+            party.Add(new PartyMember(adults[1], Gear("pipe", "padded_vest", "backpack"), ["med_kit", "bandage"]));
+        }
         if (adults.Count > 2)
         {
             adults[2].Body.Lose(BodyPart.LeftLeg);
-            adults[2].Body.FitProsthetic(BodyPart.LeftLeg, 1.1);
+            adults[2].Body.FitProsthetic(BodyPart.LeftLeg, 1.1, "cyber_leg");
             party.Add(new PartyMember(adults[2], Gear("spear", "rag_coat", "grappling_hook"), ["bandage"]));
         }
         if (child is not null) party.Add(new PartyMember(child, Gear("pipe"), []));

@@ -93,7 +93,7 @@ public partial class UnitViews : Node3D
             ((StandardMaterial3D)view.Ring.MaterialOverride).AlbedoColor = SidePalette.For(_presenter, unit);
             UpdateLabel(view, unit);
 
-            var bodyKey = BodyKey(unit.Body);
+            var bodyKey = BodyKey(unit);
             if (bodyKey != view.BodyKey && unit.Kind != UnitKind.Enemy)
             {
                 view.Model.QueueFree();
@@ -139,7 +139,7 @@ public partial class UnitViews : Node3D
         AddChild(root);
         var view = new View
         {
-            Root = root, Model = model, Pose = pose, Ring = ring, Label = label, Bar = bar, BarFill = barFill, BodyKey = BodyKey(unit.Body),
+            Root = root, Model = model, Pose = pose, Ring = ring, Label = label, Bar = bar, BarFill = barFill, BodyKey = BodyKey(unit),
         };
         _views[unit.Id] = view;
         return view;
@@ -163,7 +163,10 @@ public partial class UnitViews : Node3D
         };
     }
 
-    private static string BodyKey(Body body) => string.Join(",", body.Parts.OrderBy(kv => kv.Key).Select(kv => (int)kv.Value.Condition));
+    /// <summary>What the model shows: limb conditions (and prosthetic kind) plus worn gear; the model is rebuilt when it changes.</summary>
+    private static string BodyKey(Unit unit) =>
+        string.Join(",", unit.Body.Parts.OrderBy(kv => kv.Key).Select(kv => $"{(int)kv.Value.Condition}{(kv.Value.ProstheticQuality < 1 ? "" : "+")}"))
+        + "|" + string.Join(",", unit.Equipment.OrderBy(kv => kv.Key).Select(kv => kv.Value));
 
     /// <summary>
     /// Plays events in order. Steps the local side cannot see (an enemy moving in the dark) are skipped
