@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using Godot;
 using FileAccess = Godot.FileAccess;
@@ -19,6 +21,8 @@ public sealed class ModelLibrary
     private static readonly string[] ManifestPaths = [$"{Root}/manifest.json", $"{Root}/export/manifest.json"];
 
     private readonly Dictionary<string, string> _files = new();
+    private readonly Dictionary<string, string[]> _tags = new();
+    private readonly Dictionary<string, Dictionary<string, string>> _params = new();
     private readonly Dictionary<string, PackedScene?> _scenes = new();
     private readonly Dictionary<string, GltfState?> _gltf = new();
 
@@ -36,7 +40,7 @@ public sealed class ModelLibrary
         return library;
     }
 
-    /// <summary>Accepts <c>{ "assets": [ {id, category, file}, ... ] }</c> or a bare array; skips malformed entries.</summary>
+    /// <summary>Accepts <c>{ "assets": [ {id, category, file, tags?, params?}, ... ] }</c> or a bare array; skips malformed entries.</summary>
     private void ReadManifest(string path)
     {
         var dir = path.GetBaseDir();
@@ -51,8 +55,13 @@ public sealed class ModelLibrary
             {
                 if (entry.ValueKind != JsonValueKind.Object) continue;
                 if (!entry.TryGetProperty("id", out var id) || !entry.TryGetProperty("file", out var file)) continue;
-                if (id.GetString() is { Length: > 0 } key && file.GetString() is { Length: > 0 } rel)
-                    _files[key] = $"{dir}/{rel}";
+                if (id.GetString() is not { Length: > 0 } key || file.GetString() is not { Length: > 0 } rel) continue;
+                _files[key] = $"{dir}/{rel}";
+                if (entry.TryGetProperty("tags", out var tags) && tags.ValueKind == JsonValueKind.Array)
+                    _tags[key] = tags.EnumerateArray().Where(t => t.ValueKind == JsonValueKind.String).Select(t => t.GetString()!).ToArray();
+                if (entry.TryGetProperty("params", out var ps) && ps.ValueKind == JsonValueKind.Object)
+                    _params[key] = ps.EnumerateObject().Where(kv => kv.Value.ValueKind == JsonValueKind.String)
+                        .ToDictionary(kv => kv.Name, kv => kv.Value.GetString()!);
             }
         }
         catch (JsonException e)
@@ -60,6 +69,13 @@ public sealed class ModelLibrary
             GD.PushWarning($"Ignoring invalid model manifest {path}: {e.Message}");
         }
     }
+
+    /// <summary>Ids of the models carrying every one of these manifest tags, sorted so picks are stable.</summary>
+    public IReadOnlyList<string> Tagged(params string[] tags) =>
+        _tags.Where(kv => tags.All(kv.Value.Contains)).Select(kv => kv.Key).Order(StringComparer.Ordinal).ToList();
+
+    /// <summary>A string entry of a model's manifest <c>params</c> (e.g. a ground tile's <c>variant</c>).</summary>
+    public string? Param(string id, string key) => _params.GetValueOrDefault(id)?.GetValueOrDefault(key);
 
     /// <summary>Instances the generated model with this id, or null if it is unknown or fails to load.</summary>
     public Node3D? TryInstance(string id)

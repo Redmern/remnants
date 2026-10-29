@@ -17,12 +17,14 @@ public enum HighlightKind { Move, Attack, Use, Selected, Hover }
 /// </summary>
 public partial class MapView : Node3D
 {
-    private static readonly Color MoveColor = new(0.35f, 0.75f, 0.95f, 0.38f);
-    private static readonly Color AttackColor = new(0.95f, 0.3f, 0.22f, 0.5f);
-    private static readonly Color UseColor = new(0.45f, 0.9f, 0.45f, 0.45f);
-    private static readonly Color SelectedColor = new(1f, 0.82f, 0.35f, 0.55f);
-    private static readonly Color HoverColor = new(1f, 1f, 1f, 0.25f);
+    private static readonly Color MoveColor = new(0.4f, 0.78f, 1f, 0.8f);
+    private static readonly Color AttackColor = new(1f, 0.32f, 0.24f, 0.95f);
+    private static readonly Color UseColor = new(0.45f, 0.95f, 0.5f, 0.9f);
+    private static readonly Color SelectedColor = new(1f, 0.8f, 0.3f, 1f);
+    private static readonly Color HoverColor = new(1f, 1f, 1f, 0.7f);
     private static readonly Color ExitColor = new(0.4f, 0.95f, 0.5f, 0.45f);
+    private static readonly Color GridColor = new(0f, 0f, 0f, 0.22f);
+    private static readonly Color WaterColor = new(0.13f, 0.22f, 0.26f, 0.9f);
 
     private ScavengePresenter _presenter = null!;
     private ScavengeModels _models = null!;
@@ -33,35 +35,53 @@ public partial class MapView : Node3D
     private MeshInstance3D[][] _tileMeshes = [];
     private readonly Dictionary<int, Node3D> _crates = new();
     private readonly Node3D _highlights = new() { Name = "Highlights" };
-    private readonly MeshInstance3D _hover = Quad(HoverColor, 0.06f);
+    private MeshInstance3D _hover = null!;
     private readonly Dictionary<HighlightKind, StandardMaterial3D> _highlightMaterials = new();
     private StandardMaterial3D _fogMaterial = null!;
+    /// <summary>Ground meshes are shaded a step darker so walls, cover and units stand out against them.</summary>
+    private readonly HashSet<MeshInstance3D> _ground = new();
+    private StandardMaterial3D _groundShade = null!;
 
     public void Setup(ScavengePresenter presenter, ScavengeModels models)
     {
         _presenter = presenter;
         _models = models;
         _fogMaterial = Placeholders.Material(new Color(0.01f, 0.01f, 0.03f, 0.72f), unshaded: true);
+        _groundShade = Placeholders.Material(new Color(0.03f, 0.03f, 0.04f, 0.42f), unshaded: true);
+        // Highlights are framed squares: a strong edge so a field of tiles still shows its grid, a light fill.
+        var frame = TileFrame(border: 4, fill: 0.3f);
         foreach (var (kind, color) in new[]
                  {
                      (HighlightKind.Move, MoveColor), (HighlightKind.Attack, AttackColor), (HighlightKind.Use, UseColor),
                      (HighlightKind.Selected, SelectedColor), (HighlightKind.Hover, HoverColor),
                  })
-            _highlightMaterials[kind] = Placeholders.Material(color, unshaded: true);
+            _highlightMaterials[kind] = Framed(frame, color);
         BuildTerrain();
         AddChild(_highlights);
-        _hover.Visible = false;
+        _hover = new MeshInstance3D
+        {
+            Mesh = new PlaneMesh { Size = new Vector2(1.9f, 1.9f) }, MaterialOverride = _highlightMaterials[HighlightKind.Hover],
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Visible = false,
+        };
         AddChild(_hover);
     }
 
+    /// <summary>
+    /// Ground in calm patches (<see cref="GroundPattern"/>) with a faint tactical grid; walls, rubble and cover props;
+    /// exit markers facing the way out. Tile choices come from the manifest, so new variants drop in on sync.
+    /// </summary>
     private void BuildTerrain()
     {
         var map = _presenter.State.Map;
+        var seed = GroundPattern.Seed(map, _presenter.State.ZoneId);
         _tiles = new Node3D[map.Width * map.Height];
         _tileMeshes = new MeshInstance3D[_tiles.Length][];
         var terrain = new Node3D { Name = "Terrain" };
         AddChild(terrain);
         var carsPlaced = new HashSet<Pos>();
+        var gridMesh = new PlaneMesh { Size = new Vector2(TileGrid.TileSize, TileGrid.TileSize) };
+        var gridMaterial = Framed(TileFrame(border: 1, fill: 0f), GridColor);
+        var waterMaterial = Placeholders.Material(WaterColor, unshaded: true);
 
         foreach (var p in map.AllPositions)
         {
@@ -69,46 +89,62 @@ public partial class MapView : Node3D
             var tile = new Node3D { Name = $"Tile{p.X}_{p.Y}", Position = TileGrid.ToWorld(p) };
             terrain.AddChild(tile);
             _tiles[index] = tile;
-            tile.AddChild(_models.Ground());
+            var ground = _models.Ground(GroundPattern.Variant(seed, p, _models.GroundVariants.Count));
+            if (GroundPattern.Flip(seed, p)) ground.RotationDegrees = new Vector3(0, 180, 0);
+            tile.AddChild(ground);
+            _ground.UnionWith(Meshes(ground));
 
             switch (map[p])
             {
                 case Terrain.Wall:
-                    AddWall(tile, map, p);
+                    AddWall(tile, map, p, seed);
                     break;
                 case Terrain.Rubble:
                     var rubble = _models.Rubble();
-                    rubble.RotationDegrees = new Vector3(0, (p.X * 37 + p.Y * 91) % 4 * 90, 0);
+                    rubble.RotationDegrees = new Vector3(0, GroundPattern.Pick(seed, p, 4, 5) * 90, 0);
                     tile.AddChild(rubble);
                     break;
                 case Terrain.Cover:
-                    AddCar(tile, map, p, carsPlaced);
+                    AddCover(tile, map, p, carsPlaced, seed);
                     break;
                 case Terrain.Water:
-                    tile.AddChild(Quad(new Color(0.18f, 0.32f, 0.38f, 0.85f), 0.1f, 1.96f));
+                    tile.AddChild(new MeshInstance3D
+                    {
+                        Mesh = new PlaneMesh { Size = new Vector2(1.96f, 1.96f) }, MaterialOverride = waterMaterial,
+                        Position = new Vector3(0, 0.1f, 0), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+                    });
                     break;
             }
-            if (map.IsExit(p))
-            {
-                tile.AddChild(Quad(ExitColor, 0.09f, 1.7f));
-                tile.AddChild(new Label3D
+            if (map[p] != Terrain.Wall)
+                tile.AddChild(new MeshInstance3D
                 {
-                    Text = "EXIT", FontSize = 40, PixelSize = 0.01f, Position = new Vector3(0, 0.35f, 0),
-                    Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Modulate = new Color(0.6f, 1f, 0.65f),
-                    OutlineSize = 8,
+                    Name = "Grid", Mesh = gridMesh, MaterialOverride = gridMaterial, Position = new Vector3(0, 0.09f, 0),
+                    CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
                 });
-            }
+            if (map.IsExit(p)) AddExit(tile, map, p);
 
             _tileMeshes[index] = Meshes(tile);
         }
     }
 
-    /// <summary>A wall segment runs along X; turn it to follow neighbouring walls, two crossed at corners.</summary>
-    private void AddWall(Node3D tile, TileMap map, Pos p)
+    private static bool Is(TileMap map, Pos p, params Terrain[] kinds) => map.InBounds(p) && kinds.Contains(map[p]);
+
+    /// <summary>
+    /// A wall segment runs along X; turn it to follow neighbouring walls, two crossed at corners. A wall tile with no
+    /// wall beside it is a stand-alone block: one of the high-cover props (container, barricade) when there are any.
+    /// </summary>
+    private void AddWall(Node3D tile, TileMap map, Pos p, ulong seed)
     {
-        bool WallAt(int dx, int dy) => map.InBounds(p + new Pos(dx, dy)) && map[p + new Pos(dx, dy)] == Terrain.Wall;
+        bool WallAt(int dx, int dy) => Is(map, p + new Pos(dx, dy), Terrain.Wall);
         var eastWest = WallAt(1, 0) || WallAt(-1, 0);
         var northSouth = WallAt(0, 1) || WallAt(0, -1);
+        if (!eastWest && !northSouth && _models.HighCover.Count > 0
+            && _models.Prop(_models.HighCover[GroundPattern.Pick(seed, p, _models.HighCover.Count, 6)]) is { } block)
+        {
+            block.RotationDegrees = new Vector3(0, GroundPattern.Pick(seed, p, 4, 7) * 90, 0);
+            tile.AddChild(block);
+            return;
+        }
         if (eastWest || !northSouth) tile.AddChild(_models.Wall());
         if (northSouth)
         {
@@ -118,27 +154,73 @@ public partial class MapView : Node3D
         }
     }
 
-    /// <summary>The car model covers two tiles along X: pair cover tiles where possible, shrink a lone one.</summary>
-    private void AddCar(Node3D tile, TileMap map, Pos p, HashSet<Pos> placed)
+    /// <summary>
+    /// Two cover tiles side by side make a wrecked car (the model covers two tiles along X). A lone cover tile gets a
+    /// low-cover prop (barrier, sandbags) lined up with neighbouring walls or cover; without those, a shrunken car.
+    /// </summary>
+    private void AddCover(Node3D tile, TileMap map, Pos p, HashSet<Pos> placed, ulong seed)
     {
         if (placed.Contains(p)) return;
         placed.Add(p);
-        var car = _models.Car();
         var east = p + new Pos(1, 0);
         var south = p + new Pos(0, 1);
-        if (map.InBounds(east) && map[east] == Terrain.Cover && placed.Add(east))
+        if (Is(map, east, Terrain.Cover) && !placed.Contains(east))
+        {
+            placed.Add(east);
+            var car = _models.Car();
             car.Position = new Vector3(TileGrid.TileSize / 2, 0, 0);
-        else if (map.InBounds(south) && map[south] == Terrain.Cover && placed.Add(south))
+            car.RotationDegrees = new Vector3(0, GroundPattern.Flip(seed, p) ? 180 : 0, 0);
+            tile.AddChild(car);
+            return;
+        }
+        if (Is(map, south, Terrain.Cover) && !placed.Contains(south))
         {
+            placed.Add(south);
+            var car = _models.Car();
             car.Position = new Vector3(0, 0, TileGrid.TileSize / 2);
-            car.RotationDegrees = new Vector3(0, 90, 0);
+            car.RotationDegrees = new Vector3(0, GroundPattern.Flip(seed, p) ? 270 : 90, 0);
+            tile.AddChild(car);
+            return;
         }
-        else
+
+        if (_models.LowCover.Count > 0 && _models.Prop(_models.LowCover[GroundPattern.Pick(seed, p, _models.LowCover.Count, 8)]) is { } prop)
         {
-            car.Scale = Vector3.One * 0.5f;
-            car.RotationDegrees = new Vector3(0, (p.X + p.Y) % 2 == 0 ? 30 : -30, 0);
+            // Props run along X; turn them to continue a north-south line of walls or cover.
+            var alongZ = Is(map, p + new Pos(0, 1), Terrain.Wall, Terrain.Cover) || Is(map, p + new Pos(0, -1), Terrain.Wall, Terrain.Cover);
+            var alongX = Is(map, p + new Pos(1, 0), Terrain.Wall, Terrain.Cover) || Is(map, p + new Pos(-1, 0), Terrain.Wall, Terrain.Cover);
+            var turned = alongZ && !alongX || !alongZ && !alongX && GroundPattern.Flip(seed, p);
+            prop.RotationDegrees = new Vector3(0, turned ? 90 : 0, 0);
+            tile.AddChild(prop);
+            return;
         }
-        tile.AddChild(car);
+
+        var small = _models.Car();
+        small.Scale = Vector3.One * 0.5f;
+        small.RotationDegrees = new Vector3(0, (p.X + p.Y) % 2 == 0 ? 30 : -30, 0);
+        tile.AddChild(small);
+    }
+
+    /// <summary>The exit marker's chevrons point along its +Z: turn them toward the nearest map edge, the way out.</summary>
+    private void AddExit(Node3D tile, TileMap map, Pos p)
+    {
+        if (_models.ExitMarker() is { } marker)
+        {
+            var toEdge = new[]
+            {
+                (p.X, new Vector2(-1, 0)), (map.Width - 1 - p.X, new Vector2(1, 0)),
+                (p.Y, new Vector2(0, -1)), (map.Height - 1 - p.Y, new Vector2(0, 1)),
+            }.MinBy(e => e.Item1).Item2;
+            marker.Rotation = new Vector3(0, Mathf.Atan2(toEdge.X, toEdge.Y), 0);
+            tile.AddChild(marker);
+            return;
+        }
+        tile.AddChild(Quad(ExitColor, 0.09f, 1.7f));
+        tile.AddChild(new Label3D
+        {
+            Text = "EXIT", FontSize = 40, PixelSize = 0.01f, Position = new Vector3(0, 0.35f, 0),
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Modulate = new Color(0.6f, 1f, 0.65f),
+            OutlineSize = 8,
+        });
     }
 
     /// <summary>Fog and crates from the latest state.</summary>
@@ -153,7 +235,7 @@ public partial class MapView : Node3D
             var seen = explored.Contains(i) || visible.Contains(i);
             _tiles[i].Visible = seen;
             var overlay = seen && !visible.Contains(i) ? _fogMaterial : null;
-            foreach (var mesh in _tileMeshes[i]) mesh.MaterialOverlay = overlay;
+            foreach (var mesh in _tileMeshes[i]) mesh.MaterialOverlay = overlay ?? (_ground.Contains(mesh) ? _groundShade : null);
         }
 
         var caches = _presenter.State.Caches;
@@ -191,7 +273,7 @@ public partial class MapView : Node3D
     {
         var quad = new MeshInstance3D
         {
-            Mesh = new PlaneMesh { Size = new Vector2(1.8f, 1.8f) },
+            Mesh = new PlaneMesh { Size = new Vector2(1.9f, 1.9f) },
             MaterialOverride = _highlightMaterials[kind],
             Position = TileGrid.ToWorld(p) + new Vector3(0, kind == HighlightKind.Selected ? 0.13f : 0.12f, 0),
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
@@ -211,6 +293,30 @@ public partial class MapView : Node3D
     {
         _hover.Visible = p is { } tile && _presenter.State.Map.InBounds(tile);
         if (p is { } at) _hover.Position = TileGrid.ToWorld(at) + new Vector3(0, 0.14f, 0);
+    }
+
+    /// <summary>A white square texture: opaque border <paramref name="border"/> texels wide (of 64), the inside at <paramref name="fill"/> alpha.</summary>
+    private static ImageTexture TileFrame(int border, float fill)
+    {
+        const int size = 64;
+        var image = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
+        for (var y = 0; y < size; y++)
+        for (var x = 0; x < size; x++)
+        {
+            var edge = x < border || y < border || x >= size - border || y >= size - border;
+            image.SetPixel(x, y, new Color(1, 1, 1, edge ? 1 : fill));
+        }
+        image.GenerateMipmaps();
+        return ImageTexture.CreateFromImage(image);
+    }
+
+    private static StandardMaterial3D Framed(Texture2D frame, Color color)
+    {
+        var material = Placeholders.Material(color, unshaded: true);
+        material.AlbedoTexture = frame;
+        material.Transparency = BaseMaterial3D.TransparencyEnum.Alpha;
+        material.TextureFilter = BaseMaterial3D.TextureFilterEnum.LinearWithMipmapsAnisotropic;
+        return material;
     }
 
     private static MeshInstance3D Quad(Color color, float height, float size = 1.9f) => new()

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using Remnants.Core.Scavenge;
 using Remnants.Core.Survivors;
@@ -21,7 +22,37 @@ public sealed class ScavengeModels(ModelLibrary library)
 
     public int ModelCount => library.ModelCount;
 
-    public Node3D Ground() => library.TryInstance("ground_tile") ?? Box(new Vector3(1.96f, 0.1f, 1.96f), new Color(0.32f, 0.31f, 0.29f));
+    /// <summary>Ground variants that read as road (painted markings); kept off the open ground so it stays calm.</summary>
+    private static readonly HashSet<string> RoadVariants = ["asphalt"];
+
+    /// <summary>
+    /// Ground tile ids from the manifest (tags <c>tile</c> + <c>ground</c>), the calm base first, then patch variants.
+    /// A new <c>ground_tile_*</c> synced from remnants-assets joins the patches with no code change.
+    /// </summary>
+    public IReadOnlyList<string> GroundVariants { get; } = GroundIds(library);
+
+    /// <summary>Low cover props (tag <c>cover_low</c>) and stand-alone high cover (tag <c>cover_high</c>).</summary>
+    public IReadOnlyList<string> LowCover { get; } = library.Tagged("cover_low");
+    public IReadOnlyList<string> HighCover { get; } = library.Tagged("cover_high");
+
+    private static List<string> GroundIds(ModelLibrary library)
+    {
+        var ids = library.Tagged("tile", "ground");
+        var calm = ids.Where(id => !RoadVariants.Contains(library.Param(id, "variant") ?? "")).ToList();
+        if (calm.Count == 0) return ids.ToList();
+        // Concrete is the base where it exists: the plainest surface, so props and units read against it.
+        return calm.OrderBy(id => library.Param(id, "variant") == "concrete" ? 0 : 1).ThenBy(id => id, System.StringComparer.Ordinal).ToList();
+    }
+
+    /// <summary>A ground tile: the variant with this index into <see cref="GroundVariants"/>, else a flat slab.</summary>
+    public Node3D Ground(int variant = 0) =>
+        (GroundVariants.Count > 0 ? library.TryInstance(GroundVariants[variant % GroundVariants.Count]) : null)
+        ?? Box(new Vector3(1.96f, 0.1f, 1.96f), new Color(0.32f, 0.31f, 0.29f));
+
+    /// <summary>A model by manifest id (cover, markers); null when it is not there.</summary>
+    public Node3D? Prop(string id) => library.TryInstance(id);
+
+    public Node3D? ExitMarker() => library.TryInstance("exit_marker");
 
     public Node3D Wall() => library.TryInstance("wall_segment") ?? Box(new Vector3(2f, 2.2f, 0.3f), new Color(0.5f, 0.48f, 0.44f));
 
