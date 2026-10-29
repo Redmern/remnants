@@ -60,6 +60,8 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   lower level, then a placeholder box), survivors to `survivor_adult_male|female` / `survivor_child`
   (placeholder capsule). `tools/sync-assets.sh [EXPORT_DIR]` refreshes `assets/generated/` from the
   remnants-assets `export/` (default `../../remnants-assets/main/export`).
+- `scripts/HudTheme` — the one `Theme` for both screens' HUDs (opaque dark panels, buttons, scrollbars, font size), set
+  on each HUD root and on dialogs (a `CanvasLayer` does not pass a theme on). Panels add content, not styles.
 - `scripts/Colony/Ui/` — HUD panels (top bar with a beds/population warning, roster with partner/growth per line, a
   family section, mood and a matchmaking row, building, build menu, event log, `ExpeditionPanel`,
   `MedBayPanel`, `WorkshopPanel`, `AfterActionDialog`). Read Core state, call the session; no rules. Where the UI
@@ -80,12 +82,18 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
 - `ScavengePresenter` — owns the sim for the local player, sends every command, reports `ScavengeError`s as feedback, and
   answers UI questions by asking Core (`Reachable`, `Combat.CheckReach` / `HitChance`, `VisibleTo`, explored tiles).
   `TakeNewEvents` hands each command's events (including the AI turns it set off) to the views for replay.
-- `ScavengeScreen` builds the scene: `MapView` (ground/wall/rubble/car/crate models per tile, exits, fog: unexplored tiles
-  hidden, remembered ones dimmed with a material overlay; move/attack/use highlights), `UnitViews` (survivor/enemy models,
-  limbs hidden when missing and swapped for `prosthetic_*` models at the joint, side rings, labels; replays events with
+- `ScavengeScreen` builds the scene: `MapView` (models per tile, exits, fog: unexplored tiles hidden, remembered ones
+  dimmed with a material overlay; framed move/attack/use highlights). Tile models are picked from manifest tags, so new
+  variants drop in via `tools/sync-assets.sh`: ground = `tile`+`ground` (concrete base with patches of the others, picked by
+  `GroundPattern` from a hash of the map; the striped asphalt variant is left out), lone Cover tile = `cover_low`, paired
+  Cover tiles = `wrecked_car`, stand-alone Wall tile = `cover_high`, wall runs = `wall_segment`, exits = `exit_marker`
+  facing the map edge. `UnitViews` (survivor/enemy models,
+  limbs hidden when missing and swapped for `prosthetic_*` models at the joint, side rings; names only for the selected,
+  hovered and acting units, an HP bar when focused or hurt; replays events with
   tweens and hit flashes, skipping what the local side cannot see), `TacticalCamera` (orthographic, yaw 45°, pitch
-  35.264°; WASD/middle-drag pan, wheel zoom, Q/E rotate 90°). HUD in `Scavenge/Ui/`: `TurnBar` (round, initiative order,
-  AP, End Turn), `UnitPanel` (HP, bleed-out, body parts, movement modes named by `MoveMode.Source`, gear, load),
+  35.264°; WASD/middle-drag pan, wheel zoom, Q/E rotate 90°; starts on the party, follows other units' visible actions).
+  `SidePalette` colours rings, labels and turn chips alike. HUD in `Scavenge/Ui/`: `TurnBar` (round, initiative order as
+  side-coloured chips, AP, End Turn), `UnitPanel` (HP, bleed-out, hurt body parts, movement modes named by `MoveMode.Source`, gear, load),
   `ActionPanel` (attack choice, use item, loot, recruit, extract), `ScavengeLog`, `ResultPanel` (`ExtractionResult`).
 - Scavenge input: left-click a blue tile to move, a red target to attack with the chosen action, a unit to inspect it;
   item buttons arm "use on" and the next unit click is the target; right-click/Esc cancels; Space/Enter ends the turn.
