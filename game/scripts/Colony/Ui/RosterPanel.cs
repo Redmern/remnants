@@ -88,18 +88,22 @@ public partial class RosterPanel : PanelContainer
     private void RefreshJobs(ColonySim sim, Survivor? s)
     {
         var buildings = sim.State.Buildings.Where(b => sim.Data.Buildings[b.DefId].Job is not null).OrderBy(b => b.Id).ToList();
-        var previous = _jobs.Selected >= 0 && _jobs.Selected < _jobBuildingIds.Count ? _jobBuildingIds[_jobs.Selected] : (int?)null;
-        _jobs.Clear();
-        _jobBuildingIds.Clear();
-        foreach (var b in buildings)
+        var labels = buildings.Select(b =>
+            $"{ColonyText.BuildingName(sim, b)}  ({sim.State.WorkersAt(b.Id).Count()}/{sim.Data.Buildings[b.DefId].Level(b.Level).WorkerSlots})").ToList();
+
+        // Rebuild only on change: clearing every tick would close an open dropdown.
+        var unchanged = _jobs.ItemCount == labels.Count && labels.Select((l, i) => _jobs.GetItemText(i) == l).All(same => same);
+        if (!unchanged || _jobs.Selected < 0)
         {
-            var slots = sim.Data.Buildings[b.DefId].Level(b.Level).WorkerSlots;
-            _jobs.AddItem($"{ColonyText.BuildingName(sim, b)}  ({sim.State.WorkersAt(b.Id).Count()}/{slots})");
-            _jobBuildingIds.Add(b.Id);
+            var previous = _jobs.Selected >= 0 && _jobs.Selected < _jobBuildingIds.Count ? _jobBuildingIds[_jobs.Selected] : (int?)null;
+            _jobs.Clear();
+            _jobBuildingIds.Clear();
+            foreach (var label in labels) _jobs.AddItem(label);
+            _jobBuildingIds.AddRange(buildings.Select(b => b.Id));
+            var want = previous ?? s?.AssignedBuildingId;
+            var index = want is { } w ? _jobBuildingIds.IndexOf(w) : -1;
+            _jobs.Select(index >= 0 ? index : _jobBuildingIds.Count > 0 ? 0 : -1);
         }
-        var want = previous ?? s?.AssignedBuildingId;
-        var index = want is { } w ? _jobBuildingIds.IndexOf(w) : -1;
-        _jobs.Select(index >= 0 ? index : _jobBuildingIds.Count > 0 ? 0 : -1);
 
         _jobs.Disabled = s is null || _jobBuildingIds.Count == 0;
         _assign.Disabled = _jobs.Disabled;

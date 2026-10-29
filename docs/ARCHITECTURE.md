@@ -26,6 +26,21 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
 - `Random/DeterministicRng` — seeded xorshift64*; its state lives in `ColonyState`.
 - `Serialization/` — shared `System.Text.Json` options and `SaveGame` (versioned envelope).
 
+## Game layout (`game/`)
+
+- `scripts/Colony/ColonySession` — presenter: owns the `ColonySim`, runs fixed ticks at pause/1x/2x/4x
+  (`SecondsPerTick` real seconds per tick at 1x), sends every command, saves/loads `user://colony.json`.
+- `scripts/Colony/ColonyScreen` — builds the scene in code and wires views to the session.
+- `TownView` (ground, plot grid, building nodes, plot picking), `SurvivorWalkers` (purely visual
+  home ↔ work walking), `OrbitCamera` (WASD/arrows/middle-drag pan, wheel zoom, Q/E/right-drag rotate).
+- `ModelLibrary` — reads `assets/generated/manifest.json`; buildings map to `{type}_l{level}` (nearest
+  lower level, then a placeholder box), survivors to `survivor_adult_male|female` / `survivor_child`
+  (placeholder capsule). `tools/sync-assets.sh [EXPORT_DIR]` refreshes `assets/generated/` from the
+  remnants-assets `export/` (default `../../remnants-assets/main/export`).
+- `scripts/Colony/Ui/` — HUD panels (top bar, roster, building, build menu, event log). Read Core state,
+  call the session; no rules. Where the UI needs a rule (Town Hall cap) Core exposes a query.
+- The town is a grid of plots (`rules.layout`); `Construct` takes an optional plot.
+
 ## Rules of the road
 
 - **State vs rules.** `ColonyState` is data only. Rules live in `ColonySim` and its systems.
@@ -55,5 +70,14 @@ godot-mono --path game    # play (main menu → Colony shows a new Core colony)
 godot-mono -e --path game # open in the editor
 ```
 
-The game finds `data/` at `res://../data`, i.e. next to `game/`. Exported builds will need the
-data copied in; that is an M2+ concern.
+Data lookup (`GameDataPaths`): `data/` next to the executable in exported builds (lets players override
+balancing), the repo's `data/` (`res://../data`) in dev, else the copy embedded in `Remnants.Game.dll`
+at build time — so exports work with nothing copied.
+
+Debug flags (after `--`): `--colony` skips the menu, `--demo` builds a farm and woodcutter and assigns
+the adults, `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG. Needs a display; on
+Wayland pass `--display-driver wayland --disable-vsync` so an unfocused window still renders:
+
+```sh
+godot-mono --display-driver wayland --disable-vsync --path game -- --colony --demo --screenshot=/tmp/colony.png --frames=300 --quit
+```
