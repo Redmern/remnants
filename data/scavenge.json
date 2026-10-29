@@ -1,0 +1,45 @@
+{
+  "terrain": {
+    "Floor":  { "moveCost": 1 },
+    "Rubble": { "moveCost": 2, "cover": 0.1 },
+    "Cover":  { "moveCost": 2, "cover": 0.3 },
+    "Water":  { "moveCost": 3 },
+    "Wall":   { "passable": false, "blocksSight": true, "cover": 0.4 }
+  },
+  "movement": {
+    "basePattern": "King",
+    "baseRange": 1,
+    "agilityPerRange": 30,
+    "apCost": 1,
+    "minRange": 1,
+    "encumbrance": [ { "load": 0.6, "rangePenalty": 1 }, { "load": 0.85, "rangePenalty": 2 } ],
+    "body": [
+      { "region": "Legs", "condition": "Missing", "minCount": 1, "modifier": { "setPattern": "King", "maxRange": 1 } },
+      { "region": "Legs", "condition": "Prosthetic", "minCount": 2, "minQuality": 1.2, "modifier": { "rangeBonus": 1 } }
+    ]
+  },
+  "turn": { "baseAp": 3, "pickUpApCost": 1, "recruitApCost": 1, "initiativePerAgility": 1.0, "initiativePerLoad": 0.5 },
+  "sight": { "base": 4, "perPerception": 0.06 },
+  "carry": { "base": 10, "perStrength": 0.3 },
+  "combat": {
+    "skillAccuracy": 0.003,
+    "perceptionAccuracy": 0.002,
+    "dodgePerAgility": 0.002,
+    "rangeFalloff": 0.03,
+    "minHitChance": 0.05,
+    "maxHitChance": 0.95,
+    "hitLocations": { "Head": 10, "Torso": 40, "LeftArm": 12.5, "RightArm": 12.5, "LeftLeg": 12.5, "RightLeg": 12.5 },
+    "partToughness": { "Head": 30, "Torso": 60, "Arms": 35, "Legs": 40 },
+    "limbLossChance": 0.5,
+    "bleedOutRounds": 3,
+    "instantDeathHp": -40,
+    "unarmed": { "id": "punch", "name": "Punch", "pattern": "Melee", "reach": 1, "minDamage": 2, "maxDamage": 5,
+                 "apCost": 1, "accuracy": 0.8, "skill": "Melee", "strengthScaling": 1.0, "noise": 1 }
+  },
+  "ai": { "wanderChance": 0.5, "minSpawnDistance": 8 },
+  "npc": {
+    "attributeRange": [20, 55],
+    "names": ["Wren", "Odile", "Caspar", "Hana", "Milo", "Yara", "Dov", "Tamsin", "Ezra", "Rosa"]
+  },
+  "escortRadius": 2
+}

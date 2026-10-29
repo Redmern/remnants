@@ -1,0 +1,23 @@
+[
+  {
+    "id": "outskirts", "name": "Town Outskirts", "width": 24, "height": 24, "threat": 1, "lootTier": 1,
+    "terrain": { "rooms": [2, 3], "roomSize": [4, 7], "rubble": 0.06, "cover": 0.04, "water": 0.0 },
+    "spawnEdge": "South", "exitEdge": "North", "exits": 2,
+    "enemies": [3, 5], "enemyMix": [ { "id": "husk", "weight": 1 } ],
+    "caches": [3, 5], "itemsPerCache": [1, 3], "npcs": [0, 1]
+  },
+  {
+    "id": "suburb_ruins", "name": "Suburb Ruins", "width": 28, "height": 28, "threat": 2, "lootTier": 2,
+    "terrain": { "rooms": [3, 5], "roomSize": [4, 8], "rubble": 0.08, "cover": 0.05, "water": 0.02 },
+    "spawnEdge": "South", "exitEdge": "North", "exits": 2,
+    "enemies": [5, 7], "enemyMix": [ { "id": "husk", "weight": 6 }, { "id": "linked", "weight": 1 } ],
+    "caches": [4, 6], "itemsPerCache": [1, 3], "npcs": [1, 1]
+  },
+  {
+    "id": "network_relay", "name": "Network Relay", "width": 32, "height": 32, "threat": 3, "lootTier": 3,
+    "terrain": { "rooms": [4, 6], "roomSize": [5, 9], "rubble": 0.07, "cover": 0.07, "water": 0.0 },
+    "spawnEdge": "West", "exitEdge": "East", "exits": 2,
+    "enemies": [7, 10], "enemyMix": [ { "id": "husk", "weight": 3 }, { "id": "linked", "weight": 2 } ],
+    "caches": [5, 7], "itemsPerCache": [2, 3], "npcs": [0, 2]
+  }
+]
