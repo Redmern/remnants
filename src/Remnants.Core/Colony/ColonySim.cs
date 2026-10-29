@@ -28,6 +28,10 @@ public sealed class ColonySim
     public int TownHallLevel =>
         State.Buildings.Where(b => b.DefId == Data.Rules.TownHallBuildingId).Select(b => b.Level).DefaultIfEmpty(0).Max();
 
+    /// <summary>Highest level this building type may currently reach: its max level, capped by the Town Hall level.</summary>
+    public int MaxUpgradeLevel(BuildingDef def) =>
+        def.Id == Data.Rules.TownHallBuildingId ? def.MaxLevel : Math.Min(def.MaxLevel, TownHallLevel);
+
     public int BedCapacity => HousingSystem.Capacity(State, Data);
 
     public int FreeSlots(Building building) =>

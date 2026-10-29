@@ -71,7 +71,7 @@ internal static class CommandHandlers
         var next = building.Level + 1;
         if (next > def.MaxLevel)
             return CommandResult.Fail(CommandError.MaxLevel, $"{def.Name} is already at max level {def.MaxLevel}.");
-        if (!IsTownHall(sim, def) && next > sim.TownHallLevel)
+        if (next > sim.MaxUpgradeLevel(def))
             return CommandResult.Fail(CommandError.TownHallLevelTooLow,
                 $"{def.Name} level {next} needs Town Hall level {next} (have {sim.TownHallLevel}).");
 

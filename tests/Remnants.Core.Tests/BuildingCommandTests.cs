@@ -82,6 +82,14 @@ public class BuildingCommandTests
     }
 
     [Fact]
+    public void Max_upgrade_level_follows_the_town_hall_but_not_for_the_town_hall_itself()
+    {
+        var sim = TestData.EmptyColony(townHallLevel: 2);
+        Assert.Equal(2, sim.MaxUpgradeLevel(sim.Data.Buildings["farm"]));
+        Assert.Equal(sim.Data.TownHall.MaxLevel, sim.MaxUpgradeLevel(sim.Data.TownHall));
+    }
+
+    [Fact]
     public void Cannot_upgrade_past_max_level()
     {
         var sim = TestData.EmptyColony(townHallLevel: 3, stock: new() { ["wood"] = 1000, ["stone"] = 1000, ["scrap"] = 1000 });
