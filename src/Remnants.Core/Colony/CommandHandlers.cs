@@ -45,6 +45,9 @@ internal static class CommandHandlers
             return CommandResult.Fail(CommandError.AlreadyExists, $"Only one {def.Name} allowed.");
         if (!IsTownHall(sim, def) && sim.TownHallLevel < 1)
             return CommandResult.Fail(CommandError.NoTownHall, "Build a Town Hall first.");
+        if (!IsTownHall(sim, def) && sim.TownHallLevel < def.MinTownHallLevel)
+            return CommandResult.Fail(CommandError.TownHallLevelTooLow,
+                $"{def.Name} needs Town Hall level {def.MinTownHallLevel} (have {sim.TownHallLevel}).");
 
         int plot;
         if (c.Plot is { } wanted)

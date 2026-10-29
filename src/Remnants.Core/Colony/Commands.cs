@@ -29,8 +29,20 @@ public sealed record Discharge(int SurvivorId) : IColonyCommand;
 /// <summary>Fit a prosthetic item from the inventory onto a missing limb, at a Med Bay of the item's level.</summary>
 public sealed record FitProsthetic(int SurvivorId, BodyPart Part, string ItemId) : IColonyCommand;
 
-/// <summary>Choose what a production building works on; null stops it. Switching refunds the batch in progress.</summary>
+/// <summary>
+/// Shortcut: replace a production building's queue with one repeating order of this recipe; null clears the queue.
+/// A dropped batch in progress refunds its inputs.
+/// </summary>
 public sealed record SetRecipe(int BuildingId, string? RecipeId) : IColonyCommand;
+
+/// <summary>Add an order of <paramref name="Count"/> batches (or a repeating one) to the back of a building's queue.</summary>
+public sealed record QueueRecipe(int BuildingId, string RecipeId, int Count = 1, bool Repeat = false) : IColonyCommand;
+
+/// <summary>Remove an order from a building's queue; a batch in progress refunds its inputs.</summary>
+public sealed record CancelOrder(int BuildingId, int OrderId) : IColonyCommand;
+
+/// <summary>Study (use up) a blueprint item at its study building, unlocking the recipes that name it.</summary>
+public sealed record StudyBlueprint(string ItemId) : IColonyCommand;
 
 /// <summary>
 /// Nudge two adults: encourage (they bond faster), discourage (they stop bonding; a couple splits up) or neutral.
@@ -80,6 +92,13 @@ public enum CommandError
     MedBayLevelTooLow,
     UnknownRecipe,
     RecipeLevelTooLow,
+    RecipeLocked,
+    InvalidCount,
+    QueueFull,
+    UnknownOrder,
+    NotABlueprint,
+    AlreadyKnown,
+    NoStudyBuilding,
     TooYoung,
     NotForChildren,
     Pregnant,

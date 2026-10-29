@@ -4,7 +4,7 @@ public enum ColonyEventType
 {
     Constructed, Upgraded, Starving, Died, Left, BecameAdult, Homeless, Housed,
     ExpeditionLaunched, ExpeditionReturned, Recruited, Admitted, Discharged, Healed, InjuryWorsened, LimbLost,
-    ProstheticFitted, Crafted, RecipeChanged,
+    ProstheticFitted, Crafted, RecipeChanged, OrderQueued, OrderCancelled, BlueprintStudied,
     NewCouple, BrokeUp, Pregnant, Born, BecameChild, Grieving, Miscarried,
 }
 

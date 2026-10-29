@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Remnants.Core.Colony;
 using Remnants.Core.Data;
 using Remnants.Core.Scavenge;
@@ -11,11 +12,17 @@ namespace Remnants.Core.Serialization;
 /// recipes and the memorial. Version 3 adds family life: partners, parents, mood, pregnancies, growth, homes and
 /// relationships. Older saves still load: missing parts start empty, and their children are placed on the new
 /// growth track by age (without inherited aptitudes, so they only change by training).
+/// Version 4 adds crafting tiers: production queues (a building's old single recipe becomes one repeating order with
+/// its progress), studied blueprints, and the generic "blueprint" item became specific blueprints (old ones turn into
+/// <see cref="LegacyBlueprintItem"/>).
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 3;
+    public const int Version = 4;
     private const int OldestVersion = 1;
+
+    /// <summary>What a pre-version-4 generic "blueprint" item becomes.</summary>
+    public const string LegacyBlueprintItem = "bp_scanner";
 
     private sealed record Envelope(int Version, ColonyState Colony);
 
@@ -27,7 +34,10 @@ public static class SaveGame
     /// </summary>
     public static ColonySim Load(GameData data, string json, ScavengeData? scavenge = null)
     {
-        var envelope = JsonSerializer.Deserialize<Envelope>(json, Json.Options)
+        var node = JsonNode.Parse(json, documentOptions: new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true })
+            ?? throw new JsonException("Save file is empty.");
+        if (node["version"]?.GetValue<int>() is < 4 and >= OldestVersion && node["colony"] is JsonObject old) MigrateCrafting(old);
+        var envelope = node.Deserialize<Envelope>(Json.Options)
             ?? throw new JsonException("Save file is empty.");
         if (envelope.Version < OldestVersion || envelope.Version > Version)
             throw new JsonException($"Unsupported save version {envelope.Version} (expected {OldestVersion}..{Version}).");
@@ -36,6 +46,61 @@ public static class SaveGame
         Validate(data, colony);
         if (scavenge is not null) Validate(scavenge, colony);
         return new ColonySim(data, colony, scavenge);
+    }
+
+    /// <summary>
+    /// Before version 4 a production building had one recipe (<c>recipeId</c>, <c>craftProgress</c>, <c>craftPaid</c>):
+    /// it becomes a repeating order. The generic "blueprint" item id becomes <see cref="LegacyBlueprintItem"/>
+    /// everywhere it appears (inventory, packs, caches, loot); no state property was ever named "blueprint".
+    /// </summary>
+    private static void MigrateCrafting(JsonObject colony)
+    {
+        var nextOrder = 1;
+        foreach (var b in colony["buildings"]?.AsArray().OfType<JsonObject>() ?? [])
+        {
+            var recipe = b["recipeId"]?.GetValue<string>();
+            var progress = b["craftProgress"]?.GetValue<double>() ?? 0;
+            var paid = b["craftPaid"]?.GetValue<bool>() ?? false;
+            b.Remove("recipeId");
+            b.Remove("craftProgress");
+            b.Remove("craftPaid");
+            if (recipe is null) continue;
+            b["queue"] = new JsonArray(new JsonObject
+            {
+                ["id"] = nextOrder++, ["recipeId"] = recipe, ["remaining"] = 1, ["repeat"] = true,
+                ["progress"] = progress, ["paid"] = paid,
+            });
+        }
+        colony["nextOrderId"] = nextOrder;
+        RenameItem(colony, "blueprint", LegacyBlueprintItem);
+    }
+
+    private static void RenameItem(JsonNode node, string from, string to)
+    {
+        switch (node)
+        {
+            case JsonObject obj:
+                foreach (var (key, child) in obj.ToList())
+                {
+                    if (child is null) continue;
+                    if (child is JsonValue v && v.TryGetValue<string>(out var str) && str == from) obj[key] = to;
+                    else RenameItem(child, from, to);
+                    if (key == from)
+                    {
+                        var value = obj[key];
+                        obj.Remove(key);
+                        obj[to] = value?.DeepClone();
+                    }
+                }
+                break;
+            case JsonArray array:
+                for (var i = 0; i < array.Count; i++)
+                {
+                    if (array[i] is JsonValue v && v.TryGetValue<string>(out var str) && str == from) array[i] = to;
+                    else if (array[i] is { } child) RenameItem(child, from, to);
+                }
+                break;
+        }
     }
 
     /// <summary>Before version 3 children grew up by age in years; put them at the same share of the growth track.</summary>
@@ -66,9 +131,10 @@ public static class SaveGame
         foreach (var res in colony.Stockpile.Amounts.Keys)
             if (!data.Resources.ContainsKey(res))
                 throw new JsonException($"Save references unknown resource '{res}'.");
-        foreach (var b in colony.Buildings.Where(b => b.RecipeId is not null))
-            if (data.Buildings[b.DefId].Recipes.All(r => r.Id != b.RecipeId))
-                throw new JsonException($"Save has {data.Buildings[b.DefId].Name} on unknown recipe '{b.RecipeId}'.");
+        foreach (var b in colony.Buildings)
+            foreach (var order in b.Queue)
+                if (!data.Recipes.TryGetValue(order.RecipeId, out var recipe) || recipe.Building != b.DefId)
+                    throw new JsonException($"Save has {data.Buildings[b.DefId].Name} on unknown recipe '{order.RecipeId}'.");
         foreach (var s in colony.Survivors.Where(s => s.PatientAtBuildingId is not null))
             if (colony.FindBuilding(s.PatientAtBuildingId!.Value) is not { } bay || bay.DefId != data.Rules.Medical.BuildingId)
                 throw new JsonException($"Save has {s.Name} admitted to building {s.PatientAtBuildingId}, which is not a Med Bay.");
@@ -98,6 +164,8 @@ public static class SaveGame
         }
 
         foreach (var id in colony.Inventory.Counts.Keys) RequireItem(id);
+        foreach (var id in colony.KnownBlueprints) RequireItem(id);
+        foreach (var id in colony.Buildings.SelectMany(b => b.Queue).SelectMany(o => o.PaidItems)) RequireItem(id);
         foreach (var part in colony.Survivors.SelectMany(s => s.Body.Parts.Values))
             if (part.ProstheticItemId is { } id) RequireItem(id);
         if (colony.Expedition is not { } expedition) return;

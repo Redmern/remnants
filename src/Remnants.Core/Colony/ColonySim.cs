@@ -81,6 +81,16 @@ public sealed class ColonySim
     /// <summary>Recipe effort per tick from the building's current workers.</summary>
     public double CraftEffortPerTick(Building building) => CraftingSystem.EffortPerTick(State, Data, building);
 
+    /// <summary>Whether this recipe can be queued now, and why not (level, blueprint, missing item data).</summary>
+    public CommandResult CanQueue(Building building, RecipeDef recipe) => CraftingHandlers.CheckRecipe(this, building, recipe);
+
+    /// <summary>What the head of a building's queue is doing (for the production panel).</summary>
+    public CraftStatus CraftStatus(Building building) => CraftingSystem.Status(State, Data, Scavenge, building);
+
+    /// <summary>Chance of each quality tier for a batch of this recipe with the building's current workers (empty for non-gear).</summary>
+    public IReadOnlyList<(string Tier, double Chance)> QualityChances(Building building, RecipeDef recipe) =>
+        CraftingSystem.QualityChances(State, Data, Scavenge, building, recipe);
+
     /// <summary>The scavenge party for the active expedition, from the members' current colony state.</summary>
     public PartySetup ExpeditionParty() =>
         ExpeditionHandlers.Party(this, State.Expedition ?? throw new InvalidOperationException("No expedition is out."));
@@ -113,7 +123,7 @@ public sealed class ColonySim
     public void Tick()
     {
         ProductionSystem.Run(State, Data);
-        CraftingSystem.Run(State, Data);
+        CraftingSystem.Run(State, Data, Scavenge, _rng);
         MedicalSystem.Run(State, Data);
         FoodSystem.Run(State, Data);
         RelationshipSystem.Run(State, Data);
@@ -143,6 +153,9 @@ public sealed class ColonySim
             Discharge c => MedicalHandlers.Discharge(this, c),
             FitProsthetic c => MedicalHandlers.FitProsthetic(this, c),
             SetRecipe c => CraftingHandlers.SetRecipe(this, c),
+            QueueRecipe c => CraftingHandlers.Queue(this, c),
+            CancelOrder c => CraftingHandlers.Cancel(this, c),
+            StudyBlueprint c => CraftingHandlers.Study(this, c),
             Matchmake c => LifeHandlers.Matchmake(this, c),
             _ => CommandResult.Fail(CommandError.UnknownCommand, $"Unknown command {command.GetType().Name}."),
         };
@@ -157,9 +170,19 @@ public sealed class ColonySim
     {
         foreach (var id in data.Rules.NewGame.Items.Keys)
             if (!scavenge.Items.ContainsKey(id)) throw new GameDataException($"Rules.newGame.items: unknown item '{id}'.");
-        foreach (var b in data.Buildings.Values)
-            foreach (var r in b.Recipes.Where(r => r.Item is not null))
-                if (!scavenge.Items.ContainsKey(r.Item!)) throw new GameDataException($"Building '{b.Id}' recipe '{r.Id}': unknown item '{r.Item}'.");
+        foreach (var r in data.Recipes.Values)
+        {
+            if (r.Item is not null && !scavenge.Items.ContainsKey(r.Item)) throw new GameDataException($"Recipe '{r.Id}': unknown item '{r.Item}'.");
+            foreach (var id in r.ItemInputs.Keys)
+                if (!scavenge.Items.ContainsKey(id)) throw new GameDataException($"Recipe '{r.Id}': unknown input item '{id}'.");
+            if (r.Blueprint is not null && scavenge.Items.GetValueOrDefault(r.Blueprint)?.Kind != ItemKind.Blueprint)
+                throw new GameDataException($"Recipe '{r.Id}': '{r.Blueprint}' is not a blueprint item.");
+        }
+        foreach (var item in scavenge.Items.Values)
+            if (item.Blueprint is { } bp && (!data.Buildings.TryGetValue(bp.StudyAt, out var at) || bp.MinLevel < 1 || bp.MinLevel > at.MaxLevel))
+                throw new GameDataException($"Item '{item.Id}': blueprints are studied at a known building, at a level it has.");
+        foreach (var tier in data.Rules.Crafting.QualityThresholds.Keys)
+            if (scavenge.Rules.Quality.All(q => q.Id != tier)) throw new GameDataException($"Rules.crafting.qualityThresholds: unknown quality tier '{tier}'.");
         foreach (var item in scavenge.Items.Values)
             if (item.Salvage is { } salvage && !data.Resources.ContainsKey(salvage.Resource))
                 throw new GameDataException($"Item '{item.Id}' salvages into unknown resource '{salvage.Resource}'.");

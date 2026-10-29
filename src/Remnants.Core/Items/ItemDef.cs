@@ -3,7 +3,7 @@ using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Items;
 
-public enum ItemKind { Weapon, Armor, Clothing, Tool, Consumable, Material, Prosthetic }
+public enum ItemKind { Weapon, Armor, Clothing, Tool, Consumable, Material, Prosthetic, Blueprint }
 
 /// <summary>Where an item sits when equipped. Anything not equipped is carried in the pack.</summary>
 public enum EquipSlot { Weapon, Body, Tool }
@@ -130,6 +130,29 @@ public sealed record SalvageDef
     public double Amount { get; init; } = 1;
 }
 
+/// <summary>What an equipped device does in the field.</summary>
+public enum DeviceEffect
+{
+    /// <summary>Scanner: hook for revealing caches and units through walls within the radius (not used by scavenge yet; its sight bonus is).</summary>
+    Scanner,
+    /// <summary>Signal jammer: Linked within the radius lose their Network coordination (they stop taking cover).</summary>
+    Jammer,
+}
+
+public sealed record DeviceDef
+{
+    public DeviceEffect Effect { get; init; }
+    public int Radius { get; init; } = 3;
+}
+
+/// <summary>A blueprint is studied (and used up) at a building to unlock the recipes that name it.</summary>
+public sealed record BlueprintDef
+{
+    /// <summary>Building type it is studied at (Town Hall, Electronics Lab).</summary>
+    public string StudyAt { get; init; } = "";
+    public int MinLevel { get; init; } = 1;
+}
+
 public sealed record ItemDef
 {
     public string Id { get; init; } = "";
@@ -166,6 +189,27 @@ public sealed record ItemDef
 
     /// <summary>If set, the colony stores this item as stockpile resources rather than as an item.</summary>
     public SalvageDef? Salvage { get; init; }
+
+    /// <summary>Equipped devices (Tool slot) with a field effect.</summary>
+    public DeviceDef? Device { get; init; }
+
+    /// <summary>Blueprint items: where they are studied.</summary>
+    public BlueprintDef? Blueprint { get; init; }
+
+    /// <summary>Part of an enemy (claws): never looted or crafted.</summary>
+    public bool Natural { get; init; }
+
+    /// <summary>Quality variants: the item they are a variant of (null for a defined item).</summary>
+    public string? BaseId { get; init; }
+
+    /// <summary>Quality variants: the tier id (null for a defined item, which is the base tier).</summary>
+    public string? Quality { get; init; }
+
+    /// <summary>The defined item this is or is a variant of.</summary>
+    public string DefinedId => BaseId ?? Id;
+
+    /// <summary>Gear that comes in quality tiers when crafted.</summary>
+    public bool HasQuality => Slot is not null && !Natural;
 
     public EquipSlot? Slot => Kind switch
     {

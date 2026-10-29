@@ -39,20 +39,33 @@ public sealed record BuildingLevelDef
 }
 
 /// <summary>
-/// Something a production building makes. Inputs are paid when a batch starts; workers add effort each tick
-/// (their job output) until it reaches <see cref="Work"/>, then the batch yields <see cref="Amount"/> of an item
-/// (into the colony inventory) or of a resource (into the stockpile).
+/// Something a production building makes (data/recipes.json). A batch's inputs (resources and items) are paid when
+/// it starts; the building's workers add their job output as effort each tick until it reaches <see cref="Work"/>,
+/// then the batch yields <see cref="Amount"/> of an item (into the colony inventory, at a rolled quality for gear) or
+/// of a resource (into the stockpile). Recipes naming a <see cref="Blueprint"/> stay locked until it is studied.
 /// </summary>
 public sealed record RecipeDef
 {
     public string Id { get; init; } = "";
     public string Name { get; init; } = "";
+
+    /// <summary>Building type that makes it; its job does the work and trains.</summary>
+    public string Building { get; init; } = "";
     public int MinLevel { get; init; } = 1;
     public double Work { get; init; } = 10;
     public Dictionary<string, double> Inputs { get; init; } = new();
+
+    /// <summary>Items used up per batch: item id → count.</summary>
+    public Dictionary<string, int> ItemInputs { get; init; } = new();
     public string? Item { get; init; }
     public string? Resource { get; init; }
     public double Amount { get; init; } = 1;
+
+    /// <summary>At least one worker needs this much of the job's skill, or the building idles.</summary>
+    public double MinSkill { get; init; }
+
+    /// <summary>Blueprint item that must have been studied before the recipe can be queued.</summary>
+    public string? Blueprint { get; init; }
 }
 
 public sealed record BuildingDef
@@ -73,7 +86,8 @@ public sealed record BuildingDef
     /// <summary>Units per worker per tick at performance 1, before level multiplier.</summary>
     public double BaseOutput { get; init; }
 
-    public List<RecipeDef> Recipes { get; init; } = new();
+    /// <summary>Town Hall level needed to construct it (on top of the Town Hall capping every building's level).</summary>
+    public int MinTownHallLevel { get; init; }
 
     /// <summary>Index 0 is level 1: its cost is the construction cost.</summary>
     public List<BuildingLevelDef> Levels { get; init; } = new();

@@ -11,6 +11,7 @@ public sealed record RulesDef
     public TrainingRules Training { get; init; } = new();
     public FoodRules Food { get; init; } = new();
     public HousingRules Housing { get; init; } = new();
+    public CraftingRules Crafting { get; init; } = new();
     public ExpeditionRules Expedition { get; init; } = new();
     public MedicalRules Medical { get; init; } = new();
     public LifeRules Life { get; init; } = new();
@@ -51,6 +52,42 @@ public sealed record FoodRules
     public double InfantPerTick { get; init; } = 0.02;
     public double StarvationDamagePerTick { get; init; } = 1.0;
     public double RecoveryPerTick { get; init; } = 0.25;
+
+    /// <summary>Cooked food, best first: eaten before raw food when in stock.</summary>
+    public List<MealRules> Meals { get; init; } = new();
+}
+
+/// <summary>
+/// A Kitchen product. One unit covers <see cref="FoodValue"/> food of someone's need (so cooking stretches food), and
+/// each tick someone eats it they gain extra mood and health.
+/// </summary>
+public sealed record MealRules
+{
+    public string Resource { get; init; } = "";
+    public double FoodValue { get; init; } = 1;
+    public double MoodPerTick { get; init; }
+    public double HealthPerTick { get; init; }
+}
+
+/// <summary>
+/// Production queues and the quality roll of crafted gear:
+/// <code>
+/// score = best worker's job skill / 100 + (level − 1) · qualityPerLevel + uniform(−qualitySpread, +qualitySpread)
+/// </code>
+/// The result is the highest tier whose threshold the score reaches; below every threshold, the lowest tier.
+/// </summary>
+public sealed record CraftingRules
+{
+    /// <summary>Orders a building's queue may hold.</summary>
+    public int MaxQueue { get; init; } = 8;
+
+    /// <summary>Largest batch count of one order.</summary>
+    public int MaxBatches { get; init; } = 20;
+    public double QualitySpread { get; init; } = 0.2;
+    public double QualityPerLevel { get; init; } = 0.05;
+
+    /// <summary>Quality tier id → minimum score (tier ids from <c>scavenge.json</c> quality).</summary>
+    public Dictionary<string, double> QualityThresholds { get; init; } = new();
 }
 
 public sealed record HousingRules

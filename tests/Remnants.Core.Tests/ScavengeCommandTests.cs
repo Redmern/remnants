@@ -69,15 +69,15 @@ public class ScavengeCommandTests
     {
         var u = SurvivorUnit(pos: new(0, 0));
         var sim = Arena(4, 4, [u]);
-        sim.State.Caches.Add(new LootCache { Id = 1, Pos = new(1, 1), Items = ["scrap", "blueprint"] });
+        sim.State.Caches.Add(new LootCache { Id = 1, Pos = new(1, 1), Items = ["scrap", "bp_scanner"] });
         sim.State.Caches.Add(new LootCache { Id = 2, Pos = new(3, 3), Items = ["scrap"] });
 
         Assert.Equal(ScavengeError.UnknownCache, sim.Execute(new PickUp(1, u.Id, 9, "scrap")).Error);
         Assert.Equal(ScavengeError.TooFar, sim.Execute(new PickUp(1, u.Id, 2, "scrap")).Error);
         Assert.Equal(ScavengeError.ItemNotInCache, sim.Execute(new PickUp(1, u.Id, 1, "pistol")).Error);
 
-        Assert.True(sim.Execute(new PickUp(1, u.Id, 1, "blueprint")).Ok);
-        Assert.Equal(["blueprint"], u.Pack);
+        Assert.True(sim.Execute(new PickUp(1, u.Id, 1, "bp_scanner")).Ok);
+        Assert.Equal(["bp_scanner"], u.Pack);
         Assert.Equal(2, u.Ap);
 
         u.Pack.AddRange(Enumerable.Repeat("scrap", 24)); // capacity 25 kg, 24.1 carried

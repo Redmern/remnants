@@ -24,7 +24,8 @@ internal static class ProductionSystem
 
 /// <summary>
 /// Everyone at home eats each tick (away parties live on the rations they took). Infants, then children are fed first;
-/// whoever goes hungry takes damage and may die.
+/// whoever goes hungry takes damage and may die. Cooked meals (<c>food.meals</c>, best first) are eaten before raw
+/// food: one unit covers its food value of the need and adds its mood and health bonus.
 /// </summary>
 internal static class FoodSystem
 {
@@ -40,6 +41,13 @@ internal static class FoodSystem
                 LifeStage.Child => rules.ChildPerTick,
                 _ => rules.AdultPerTick,
             };
+            if (rules.Meals.FirstOrDefault(m => state.Stockpile.TryTake(m.Resource, need / m.FoodValue)) is { } meal)
+            {
+                s.StarvingTicks = 0;
+                s.Health = Math.Min(Survivor.MaxHealth, s.Health + rules.RecoveryPerTick + meal.HealthPerTick);
+                s.Mood = Math.Min(Survivor.MaxMood, s.Mood + meal.MoodPerTick);
+                continue;
+            }
             if (state.Stockpile.TryTake(rules.ResourceId, need))
             {
                 s.StarvingTicks = 0;

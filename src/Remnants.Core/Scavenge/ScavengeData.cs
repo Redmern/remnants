@@ -16,7 +16,8 @@ public sealed class ScavengeData
 
     public ScavengeData(IEnumerable<ItemDef> items, IEnumerable<EnemyDef> enemies, IEnumerable<ZoneDef> zones, ScavengeRules rules)
     {
-        Items = Index(items, i => i.Id, "item");
+        // Variants are always derived (so data built from another ScavengeData's items gets them fresh).
+        Items = Index(WithQualityVariants(items.Where(i => i.BaseId is null).ToList(), rules.Quality), i => i.Id, "item");
         Enemies = Index(enemies, e => e.Id, "enemy");
         Zones = Index(zones, z => z.Id, "zone");
         Rules = rules;
@@ -24,6 +25,53 @@ public sealed class ScavengeData
     }
 
     public TerrainDef Terrain(Terrain terrain) => Rules.Terrain[terrain];
+
+    /// <summary>The item id of <paramref name="itemId"/> at a quality tier (the defined id for the base tier).</summary>
+    public string QualityVariant(string itemId, string tierId)
+    {
+        var item = Items[itemId];
+        var tier = Rules.Quality.Find(q => q.Id == tierId) ?? throw new ArgumentException($"Unknown quality '{tierId}'.", nameof(tierId));
+        if (!item.HasQuality || tier.Base) return item.DefinedId;
+        return $"{item.DefinedId}@{tier.Id}";
+    }
+
+    /// <summary>The quality tier an item is at (the base tier for defined items), or null when there are no tiers.</summary>
+    public QualityTierDef? QualityOf(ItemDef item) =>
+        item.Quality is { } q ? Rules.Quality.Find(t => t.Id == q) : Rules.Quality.Find(t => t.Base);
+
+    private static IEnumerable<ItemDef> WithQualityVariants(List<ItemDef> items, List<QualityTierDef> tiers)
+    {
+        foreach (var item in items) yield return item;
+        foreach (var item in items.Where(i => i.HasQuality))
+            foreach (var tier in tiers.Where(t => !t.Base))
+                yield return Variant(item, tier);
+    }
+
+    /// <summary>Gear at a quality tier: what it does scales with the tier, how heavy it is with its weight multiplier.</summary>
+    private static ItemDef Variant(ItemDef item, QualityTierDef tier)
+    {
+        var m = tier.StatMultiplier;
+        double Bonus(double value) => value > 0 ? value * m : value;
+        return item with
+        {
+            Id = $"{item.Id}@{tier.Id}",
+            Name = $"{tier.Name} {item.Name}",
+            BaseId = item.Id,
+            Quality = tier.Id,
+            LootWeight = 0,
+            Weight = Math.Round(item.Weight * tier.WeightMultiplier, 2),
+            Armor = item.Armor * m,
+            Dodge = Bonus(item.Dodge),
+            Initiative = Bonus(item.Initiative),
+            SightBonus = item.SightBonus * m,
+            CarryBonus = item.CarryBonus * m,
+            Actions = item.Actions.Select(a => a with
+            {
+                MinDamage = (int)Math.Round(a.MinDamage * m),
+                MaxDamage = (int)Math.Round(a.MaxDamage * m),
+            }).ToList(),
+        };
+    }
 
     private static Dictionary<string, T> Index<T>(IEnumerable<T> items, Func<T, string> id, string kind)
     {
@@ -52,8 +100,22 @@ public sealed class ScavengeData
         if (Rules.Npc.Names.Count == 0) throw new GameDataException("Scavenge rules: npc.names is empty.");
         RequireRange(Rules.Npc.AttributeRange, "Scavenge rules npc.attributeRange");
 
+        if (Rules.Quality.Count > 0)
+        {
+            if (Rules.Quality.Count(q => q.Base) != 1) throw new GameDataException("Scavenge rules: quality needs exactly one base tier.");
+            if (Rules.Quality.Any(q => string.IsNullOrWhiteSpace(q.Id) || q.Id.Contains('@') || q.StatMultiplier <= 0 || q.WeightMultiplier <= 0))
+                throw new GameDataException("Scavenge rules: quality tiers need an id without '@' and positive multipliers.");
+            if (Rules.Quality.Select(q => q.Id).Distinct().Count() != Rules.Quality.Count)
+                throw new GameDataException("Scavenge rules: duplicate quality tier ids.");
+        }
+
         foreach (var item in Items.Values)
         {
+            if (item.BaseId is null && item.Id.Contains('@')) throw new GameDataException($"Item id '{item.Id}' must not contain '@' (reserved for quality variants).");
+            if ((item.Kind == ItemKind.Blueprint) != (item.Blueprint is not null))
+                throw new GameDataException($"Item '{item.Id}': blueprint items (and only they) need a blueprint definition.");
+            if (item.Device is { } device && (item.Kind != ItemKind.Tool || device.Radius < 1))
+                throw new GameDataException($"Item '{item.Id}': devices are tools with a radius of at least 1.");
             if (item.Weight < 0) throw new GameDataException($"Item '{item.Id}' has negative weight.");
             foreach (var a in item.Actions) ValidateAction(a, $"Item '{item.Id}'");
             if (item.Kind == ItemKind.Weapon && item.Actions.Count == 0)

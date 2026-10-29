@@ -176,4 +176,21 @@ public sealed record ScavengeRules
 
     /// <summary>Followers within this many tiles leave with the unit that extracts.</summary>
     public int EscortRadius { get; init; } = 2;
+
+    /// <summary>Quality tiers of crafted gear, worst first. The <c>base</c> tier is the item as defined.</summary>
+    public List<QualityTierDef> Quality { get; init; } = new();
+}
+
+/// <summary>
+/// A quality tier for gear (Crude / Standard / Fine). Every equippable item gets a variant per non-base tier,
+/// id <c>{item}@{tier}</c>, with armor, damage, dodge/initiative bonuses, sight and carry bonuses scaled by
+/// <see cref="StatMultiplier"/> and weight by <see cref="WeightMultiplier"/>.
+/// </summary>
+public sealed record QualityTierDef
+{
+    public string Id { get; init; } = "";
+    public string Name { get; init; } = "";
+    public double StatMultiplier { get; init; } = 1;
+    public double WeightMultiplier { get; init; } = 1;
+    public bool Base { get; init; }
 }

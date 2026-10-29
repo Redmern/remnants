@@ -256,7 +256,7 @@ public class WorkshopTests
     }
 
     private static int TicksFor(ColonySim sim, Building shop, string recipeId) =>
-        (int)Math.Ceiling(sim.Data.Buildings[shop.DefId].Recipes.Single(r => r.Id == recipeId).Work / sim.CraftEffortPerTick(shop) - 1e-9);
+        (int)Math.Ceiling(sim.Data.Recipes[recipeId].Work / sim.CraftEffortPerTick(shop) - 1e-9);
 
     [Fact]
     public void Workshop_makes_a_peg_leg_from_wood_and_scrap()
@@ -287,8 +287,9 @@ public class WorkshopTests
         sim.Advance(TicksFor(sim, shop, "herbal_remedy") + 20);
 
         Assert.Equal(1, sim.State.Stockpile.Get("medicine"), 6);
-        Assert.Equal(0, shop.CraftProgress);
-        Assert.False(shop.CraftPaid);
+        var order = Assert.Single(shop.Queue);
+        Assert.Equal(0, order.Progress);
+        Assert.False(order.Paid);
     }
 
     [Fact]

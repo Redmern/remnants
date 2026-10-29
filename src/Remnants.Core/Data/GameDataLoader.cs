@@ -3,7 +3,7 @@ using Remnants.Core.Serialization;
 
 namespace Remnants.Core.Data;
 
-/// <summary>Loads definitions from the data/ folder (resources.json, jobs.json, buildings.json, rules.json).</summary>
+/// <summary>Loads definitions from the data/ folder (resources.json, jobs.json, buildings.json, rules.json, recipes.json).</summary>
 public static class GameDataLoader
 {
     public static GameData LoadFromDirectory(string directory)
@@ -15,15 +15,16 @@ public static class GameDataLoader
             return File.ReadAllText(path);
         }
 
-        return LoadFromJson(Read("resources.json"), Read("jobs.json"), Read("buildings.json"), Read("rules.json"));
+        return LoadFromJson(Read("resources.json"), Read("jobs.json"), Read("buildings.json"), Read("rules.json"), Read("recipes.json"));
     }
 
-    public static GameData LoadFromJson(string resources, string jobs, string buildings, string rules) =>
+    public static GameData LoadFromJson(string resources, string jobs, string buildings, string rules, string recipes = "[]") =>
         new(
             Parse<List<ResourceDef>>(resources, "resources"),
             Parse<List<JobDef>>(jobs, "jobs"),
             Parse<List<BuildingDef>>(buildings, "buildings"),
-            Parse<RulesDef>(rules, "rules"));
+            Parse<RulesDef>(rules, "rules"),
+            Parse<List<RecipeDef>>(recipes, "recipes"));
 
     private static T Parse<T>(string json, string name)
     {

@@ -8,22 +8,33 @@ public sealed class GameData
     public IReadOnlyDictionary<string, ResourceDef> Resources { get; }
     public IReadOnlyDictionary<string, JobDef> Jobs { get; }
     public IReadOnlyDictionary<string, BuildingDef> Buildings { get; }
+    public IReadOnlyDictionary<string, RecipeDef> Recipes { get; }
     public RulesDef Rules { get; }
+
+    private readonly Dictionary<string, List<RecipeDef>> _recipesByBuilding;
 
     public GameData(
         IEnumerable<ResourceDef> resources,
         IEnumerable<JobDef> jobs,
         IEnumerable<BuildingDef> buildings,
-        RulesDef rules)
+        RulesDef rules,
+        IEnumerable<RecipeDef>? recipes = null)
     {
         Resources = Index(resources, r => r.Id, "resource");
         Jobs = Index(jobs, j => j.Id, "job");
         Buildings = Index(buildings, b => b.Id, "building");
+        var recipeList = (recipes ?? []).ToList();
+        Recipes = Index(recipeList, r => r.Id, "recipe");
+        _recipesByBuilding = recipeList.GroupBy(r => r.Building).ToDictionary(g => g.Key, g => g.ToList());
         Rules = rules;
         Validate();
     }
 
     public BuildingDef TownHall => Buildings[Rules.TownHallBuildingId];
+
+    /// <summary>The recipes a building type makes, in data order.</summary>
+    public IReadOnlyList<RecipeDef> RecipesFor(string buildingDefId) =>
+        _recipesByBuilding.TryGetValue(buildingDefId, out var list) ? list : [];
 
     private static Dictionary<string, T> Index<T>(IEnumerable<T> items, Func<T, string> id, string kind)
     {
@@ -50,19 +61,8 @@ public sealed class GameData
             if (b.Job is not null && !Jobs.ContainsKey(b.Job))
                 throw new GameDataException($"Building '{b.Id}': unknown job '{b.Job}'.");
             if (b.Produces is not null) RequireResource(b.Produces, $"Building '{b.Id}'");
-            foreach (var r in b.Recipes)
-            {
-                if (string.IsNullOrWhiteSpace(r.Id)) throw new GameDataException($"Building '{b.Id}' has a recipe without an id.");
-                if (b.Job is null) throw new GameDataException($"Building '{b.Id}' has recipes but no job to work them.");
-                if ((r.Item is null) == (r.Resource is null))
-                    throw new GameDataException($"Building '{b.Id}' recipe '{r.Id}' must yield exactly one of item or resource.");
-                if (r.Resource is not null) RequireResource(r.Resource, $"Building '{b.Id}' recipe '{r.Id}'");
-                foreach (var res in r.Inputs.Keys) RequireResource(res, $"Building '{b.Id}' recipe '{r.Id}' input");
-                if (r.Work <= 0 || r.Amount <= 0 || r.MinLevel < 1)
-                    throw new GameDataException($"Building '{b.Id}' recipe '{r.Id}' needs positive work and amount and minLevel >= 1.");
-            }
-            if (b.Recipes.Select(r => r.Id).Distinct().Count() != b.Recipes.Count)
-                throw new GameDataException($"Building '{b.Id}' has duplicate recipe ids.");
+            if (b.MinTownHallLevel < 0 || b.MinTownHallLevel > TownHallMaxLevel())
+                throw new GameDataException($"Building '{b.Id}': minTownHallLevel {b.MinTownHallLevel} is out of range.");
             for (var i = 0; i < b.Levels.Count; i++)
                 foreach (var (res, amount) in b.Levels[i].Cost)
                 {
@@ -73,6 +73,30 @@ public sealed class GameData
 
         if (!Buildings.ContainsKey(Rules.TownHallBuildingId))
             throw new GameDataException($"Rules: unknown town hall building '{Rules.TownHallBuildingId}'.");
+        foreach (var r in Recipes.Values)
+        {
+            var where = $"Recipe '{r.Id}'";
+            if (!Buildings.TryGetValue(r.Building, out var b)) throw new GameDataException($"{where}: unknown building '{r.Building}'.");
+            if (b.Job is null) throw new GameDataException($"{where}: building '{b.Id}' has no job to work it.");
+            if ((r.Item is null) == (r.Resource is null))
+                throw new GameDataException($"{where} must yield exactly one of item or resource.");
+            if (r.Resource is not null) RequireResource(r.Resource, where);
+            foreach (var res in r.Inputs.Keys) RequireResource(res, $"{where} input");
+            if (r.Work <= 0 || r.Amount <= 0 || r.MinLevel < 1 || r.MinLevel > b.MaxLevel)
+                throw new GameDataException($"{where} needs positive work and amount and a minLevel the building can reach.");
+            if (r.Item is not null && r.Amount != Math.Round(r.Amount))
+                throw new GameDataException($"{where} yields items, so its amount must be whole.");
+            if (r.Inputs.Values.Any(v => v < 0) || r.ItemInputs.Values.Any(v => v < 1) || r.MinSkill < 0)
+                throw new GameDataException($"{where}: inputs must be positive and minSkill not negative.");
+        }
+        var c = Rules.Crafting;
+        if (c.MaxQueue < 1 || c.MaxBatches < 1 || c.QualitySpread < 0)
+            throw new GameDataException("Rules.crafting needs maxQueue and maxBatches of at least 1 and a non-negative qualitySpread.");
+        foreach (var meal in Rules.Food.Meals)
+        {
+            RequireResource(meal.Resource, "Rules.food.meals");
+            if (meal.FoodValue <= 0) throw new GameDataException($"Rules.food.meals '{meal.Resource}' needs a positive foodValue.");
+        }
         RequireResource(Rules.Food.ResourceId, "Rules.food");
         foreach (var res in Rules.NewGame.Stock.Keys) RequireResource(res, "Rules.newGame.stock");
         foreach (var b in Rules.NewGame.Buildings)
@@ -112,6 +136,8 @@ public sealed class GameData
         if (family.MaleNames.Count == 0 || family.FemaleNames.Count == 0)
             throw new GameDataException("Rules.family needs male and female names for newborns.");
     }
+
+    private int TownHallMaxLevel() => Buildings.TryGetValue(Rules.TownHallBuildingId, out var th) ? th.MaxLevel : 0;
 
     private static void RequireRange(int[] range, string name)
     {

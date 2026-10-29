@@ -7,7 +7,8 @@ namespace Remnants.Core.Scavenge;
 /// and randomness only comes from the sim's RNG.
 /// <list type="bullet">
 /// <item>Husk: wander; aggro on sight or noise; close in and attack.</item>
-/// <item>Linked (stub, full squad AI is M8): like a Husk, but with a gun it first steps into cover that still has a shot.</item>
+/// <item>Linked (stub, full squad AI is M8): like a Husk, but with a gun it first steps into cover that still has a shot.
+/// A jammed Linked (see <see cref="Devices.IsJammed"/>) fights like a Husk.</item>
 /// <item>Recruit: follow its leader.</item>
 /// </list>
 /// </summary>
@@ -44,7 +45,7 @@ internal static class ScavengeAi
                 return;
             }
 
-            if (def?.Ai == AiKind.Linked && !tookCover)
+            if (def?.Ai == AiKind.Linked && !tookCover && !Devices.IsJammed(sim, unit))
             {
                 tookCover = true;
                 if (TakeCover(sim, unit, target)) continue;
