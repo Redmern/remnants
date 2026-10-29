@@ -1,0 +1,62 @@
+{
+  "style_revision": "be444580",
+  "theme": {
+    "name": "REMNANTS",
+    "pitch": "Post-AI-apocalypse colony-builder seen from an isometric / top-down camera. Low-poly,\nchunky, readable silhouettes with flat-shaded faces and big color blocks. The world is\nrusted metal, cracked concrete and creeping moss under an overcast sky. Anything still\nconnected to the AI Network glows a cold cyan \u2014 it is the only saturated color in the\nworld, so the player learns to read cyan as danger (or as valuable tech).",
+    "mood": [
+      "muted",
+      "weathered",
+      "makeshift",
+      "hopeful-grim",
+      "cold tech"
+    ]
+  },
+  "palette": {
+    "concrete": "#8a8a82",
+    "concrete_dark": "#5e5f5a",
+    "asphalt": "#3b3d3c",
+    "rust": "#8b4a2b",
+    "rust_light": "#b0673a",
+    "metal": "#6e7275",
+    "metal_dark": "#45494c",
+    "wood": "#7a5a3a",
+    "wood_dark": "#523b26",
+    "moss": "#5d6b3a",
+    "moss_dark": "#3f4a28",
+    "dirt": "#6b5843",
+    "soil": "#4a3a2a",
+    "crop": "#7d8a3c",
+    "canvas": "#a39a7c",
+    "tarp_blue": "#4f6170",
+    "brick": "#7d4a3c",
+    "glass_dark": "#2e3a3f",
+    "hazard_yellow": "#b8962e",
+    "med_white": "#c9c6bb",
+    "med_red": "#9b3a32",
+    "skin_light": "#d2a782",
+    "skin_mid": "#a8774f",
+    "skin_dark": "#6e4a33",
+    "hair_dark": "#2e2620",
+    "hair_brown": "#5a3e2a",
+    "hair_red": "#7e3f22",
+    "cloth_olive": "#5f6440",
+    "cloth_khaki": "#8c7f5c",
+    "cloth_denim": "#46566a",
+    "cloth_brown": "#5e4636",
+    "cloth_grey": "#5a5a58",
+    "cloth_red": "#7a3b33",
+    "leather": "#4a3527",
+    "husk_skin": "#7d7e70",
+    "husk_metal": "#4c4a45",
+    "husk_eye": "#6a5a2e",
+    "linked_shell": "#23272c",
+    "linked_plate": "#3a4048",
+    "network_cyan": "#3fe0f0",
+    "network_cyan_dim": "#2a8f9a"
+  },
+  "emission": {
+    "network_cyan": 4.0,
+    "network_cyan_dim": 1.2,
+    "husk_eye": 1.5
+  }
+}

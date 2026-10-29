@@ -1,0 +1,935 @@
+{
+  "version": 1,
+  "style_revision": "be444580",
+  "conventions": {
+    "up": "+Y",
+    "units": "meters",
+    "front": "+Z (Godot Vector3.ModelFront)",
+    "origin": "ground center unless `pivot` says otherwise",
+    "tile_size_m": 2.0,
+    "camera": {
+      "projection": "orthographic",
+      "iso_yaw_deg": 45.0,
+      "iso_pitch_deg": 35.264,
+      "views": [
+        "front",
+        "iso",
+        "top"
+      ]
+    }
+  },
+  "assets": [
+    {
+      "id": "farm_l1",
+      "category": "building",
+      "file": "building/farm_l1.glb",
+      "tags": [
+        "colony",
+        "production",
+        "food",
+        "level1"
+      ],
+      "params": {
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 6.0,
+        "y": 3.9,
+        "z": 6.0
+      },
+      "tris": 1736,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 3x3 tiles (6x6 m). Crop field front, shed back-left, water tank back-right.",
+      "style_revision": "be444580"
+    },
+    {
+      "id": "med_bay_l1",
+      "category": "building",
+      "file": "building/med_bay_l1.glb",
+      "tags": [
+        "colony",
+        "medical",
+        "healing",
+        "level1"
+      ],
+      "params": {
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 4.0,
+        "y": 3.4,
+        "z": 4.0
+      },
+      "tris": 728,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles (4x4 m). Container clinic back-left, triage tent right, awning front.",
+      "style_revision": "be444580"
+    },
+    {
+      "id": "quarry_l1",
+      "category": "building",
+      "file": "building/quarry_l1.glb",
+      "tags": [
+        "colony",
+        "production",
+        "stone",
+        "level1"
+      ],
+      "params": {
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 6.0,
+        "y": 4.625,
+        "z": 4.0
+      },
+      "tris": 792,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 3x2 tiles (6x4 m, wide along X). Rock face back-left, derrick right, blocks front.",
+      "style_revision": "be444580"
+    },
+    {
+      "id": "scrapyard_l1",
+      "category": "building",
+      "file": "building/scrapyard_l1.glb",
+      "tags": [
+        "colony",
+        "production",
+        "salvage",
+        "level1"
+      ],
+      "params": {
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 6.0,
+        "y": 6.189,
+        "z": 6.0
+      },
+      "tris": 1132,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 3x3 tiles (6x6 m). Heaps left/back, crane back-right, bales front-right.",
+      "style_revision": "be444580"
+    },
+    {
+      "id": "shelter_l1",
+      "category": "building",
+      "file": "building/shelter_l1.glb",
+      "tags": [
+        "colony",
+        "housing",
+        "beds",
+        "level1"
+      ],
+      "params": {
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 4.0,
+        "y": 3.43,
+        "z": 4.0
+      },
+      "tris": 808,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles (4x4 m). Hut back-left, tarp lean-to with cots on the right.",
+      "style_revision": "be444580"
+    },
+    {
+      "id": "town_hall_l1",
+      "category": "building",
+      "file": "building/town_hall_l1.glb",
+      "tags": [
+        "colony",
+        "civic",
+        "hq",
+        "level1"
+      ],
+      "params": {
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 6.0,
+        "y": 7.805,
+        "z": 6.0
+      },
+      "tris": 1376,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 3x3 tiles (6x6 m). Hall + porch at front (-Y), bell tower back-right.",
+      "style_revision": "be444580"
+    },
+    {
+      "id": "woodcutter_l1",
+      "category": "building",
+      "file": "building/woodcutter_l1.glb",
+      "tags": [
+        "colony",
+        "production",
+        "wood",
+        "level1"
+      ],
+      "params": {
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 4.0,
+        "y": 2.713,
+        "z": 4.0
+      },
+      "tris": 1744,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles (4x4 m). Open shed at the back, log pile front-right, saw bench left.",
+      "style_revision": "be444580"
+    },
+    {
+      "id": "workshop_l1",
+      "category": "building",
+      "file": "building/workshop_l1.glb",
+      "tags": [
+        "colony",
+        "production",
+        "crafting",
+        "level1"
+      ],
+      "params": {
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 4.0,
+        "y": 5.15,
+        "z": 4.0
+      },
+      "tris": 936,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles (4x4 m). Open-front shop back-left, chimney back-right, anvil yard right.",
+      "style_revision": "be444580"
+    },
+    {
+      "id": "enemy_husk",
+      "category": "enemy",
+      "file": "enemy/enemy_husk.glb",
+      "tags": [
+        "enemy",
+        "husk",
+        "humanoid"
+      ],
+      "params": {},
+      "dimensions_m": {
+        "x": 0.782,
+        "y": 1.66,
+        "z": 0.534
+      },
+      "tris": 940,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "~1.7 m hunched. Dull amber eye, no cyan. Parts: head/torso/arm_l/arm_r/leg_l/leg_r.",
+      "style_revision": "be444580",
+      "parts": {
+        "head": {
+          "joint": [
+            -0.0436,
+            1.288,
+            0.1857
+          ],
+          "note": "pivot at neck"
+        },
+        "torso": {
+          "joint": [
+            0.0,
+            0.8732,
+            -0.0
+          ],
+          "note": "pivot at waist"
+        },
+        "arm_l": {
+          "joint": [
+            0.2096,
+            1.271,
+            0.1664
+          ],
+          "note": "l arm, pivot at shoulder joint"
+        },
+        "arm_r": {
+          "joint": [
+            -0.2877,
+            1.2188,
+            0.1664
+          ],
+          "note": "cyborg r arm, pivot at shoulder joint"
+        },
+        "leg_l": {
+          "joint": [
+            0.11,
+            0.8,
+            -0.0
+          ],
+          "note": "l leg, pivot at hip joint"
+        },
+        "leg_r": {
+          "joint": [
+            -0.11,
+            0.8,
+            -0.0
+          ],
+          "note": "r leg, pivot at hip joint"
+        }
+      }
+    },
+    {
+      "id": "enemy_linked",
+      "category": "enemy",
+      "file": "enemy/enemy_linked.glb",
+      "tags": [
+        "enemy",
+        "linked",
+        "humanoid",
+        "network"
+      ],
+      "params": {},
+      "dimensions_m": {
+        "x": 1.179,
+        "y": 2.136,
+        "z": 0.543
+      },
+      "tris": 932,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "~2.1 m. Glowing cyan (emissive) visor, chest core and seams. Parts: head/torso/arm_l/arm_r/leg_l/leg_r.",
+      "style_revision": "be444580",
+      "parts": {
+        "head": {
+          "joint": [
+            0.0,
+            1.7758,
+            -0.0
+          ],
+          "note": "pivot at neck"
+        },
+        "torso": {
+          "joint": [
+            0.0,
+            1.2072,
+            -0.0
+          ],
+          "note": "pivot at waist; shoulder plates ride on it"
+        },
+        "arm_l": {
+          "joint": [
+            0.31,
+            1.7308,
+            -0.0
+          ],
+          "note": "l arm, pivot at shoulder joint"
+        },
+        "leg_l": {
+          "joint": [
+            0.12,
+            1.08,
+            -0.0
+          ],
+          "note": "l leg, pivot at hip joint"
+        },
+        "arm_r": {
+          "joint": [
+            -0.31,
+            1.7308,
+            -0.0
+          ],
+          "note": "r arm, pivot at shoulder joint"
+        },
+        "leg_r": {
+          "joint": [
+            -0.12,
+            1.08,
+            -0.0
+          ],
+          "note": "r leg, pivot at hip joint"
+        }
+      }
+    },
+    {
+      "id": "ground_tile",
+      "category": "prop",
+      "file": "prop/ground_tile.glb",
+      "tags": [
+        "scavenge",
+        "tile",
+        "ground"
+      ],
+      "params": {
+        "variant": "asphalt"
+      },
+      "dimensions_m": {
+        "x": 2.0,
+        "y": 0.17,
+        "z": 2.0
+      },
+      "tris": 184,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "2x2 m floor tile for the scavenge map, cracked asphalt. Top z~0.07.",
+      "style_revision": "be444580"
+    },
+    {
+      "id": "loot_crate",
+      "category": "prop",
+      "file": "prop/loot_crate.glb",
+      "tags": [
+        "scavenge",
+        "loot",
+        "interactable"
+      ],
+      "params": {},
+      "dimensions_m": {
+        "x": 1.12,
+        "y": 0.67,
+        "z": 0.673
+      },
+      "tris": 160,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Pickup marker on the tactical map. ~1 m long, sits inside one tile.",
+      "style_revision": "be444580"
+    },
+    {
+      "id": "rubble",
+      "category": "prop",
+      "file": "prop/rubble.glb",
+      "tags": [
+        "scavenge",
+        "cover",
+        "half_cover"
+      ],
+      "params": {},
+      "dimensions_m": {
+        "x": 1.812,
+        "y": 0.87,
+        "z": 1.62
+      },
+      "tris": 284,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Half cover. Fits one tile (~1.8 m footprint), ~0.8 m tall.",
+      "style_revision": "be444580"
+    },
+    {
+      "id": "wall_segment",
+      "category": "prop",
+      "file": "prop/wall_segment.glb",
+      "tags": [
+        "scavenge",
+        "cover",
+        "full_cover",
+        "wall"
+      ],
+      "params": {},
+      "dimensions_m": {
+        "x": 2.0,
+        "y": 2.18,
+        "z": 0.929
+      },
+      "tris": 252,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Full cover. Exactly 2.0 m along X, 0.3 m thick; chain along X for cover lines.",
+      "style_revision": "be444580"
+    },
+    {
+      "id": "wrecked_car",
+      "category": "prop",
+      "file": "prop/wrecked_car.glb",
+      "tags": [
+        "scavenge",
+        "cover",
+        "full_cover",
+        "vehicle"
+      ],
+      "params": {},
+      "dimensions_m": {
+        "x": 3.96,
+        "y": 1.345,
+        "z": 2.014
+      },
+      "tris": 568,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Full cover. 2x1 tiles (~4 m along X), ~1.3 m tall. Nose points +X.",
+      "style_revision": "be444580"
+    },
+    {
+      "id": "prosthetic_arm_cyborg_l",
+      "category": "prosthetic",
+      "file": "prosthetic/prosthetic_arm_cyborg_l.glb",
+      "tags": [
+        "prosthetic",
+        "cyborg",
+        "arm",
+        "side_l",
+        "network_tech"
+      ],
+      "params": {
+        "limb": "arm",
+        "side": "l",
+        "body": "adult_male"
+      },
+      "dimensions_m": {
+        "x": 0.261,
+        "y": 0.813,
+        "z": 0.283
+      },
+      "tris": 248,
+      "pivot": "joint",
+      "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Replaces arm_l on adult bodies; origin at the shoulder joint.",
+      "style_revision": "be444580",
+      "parts": {
+        "arm_l": {
+          "joint": [
+            0.25,
+            1.3995,
+            -0.0
+          ],
+          "note": "cyborg l arm, pivot at shoulder joint"
+        }
+      }
+    },
+    {
+      "id": "prosthetic_arm_cyborg_r",
+      "category": "prosthetic",
+      "file": "prosthetic/prosthetic_arm_cyborg_r.glb",
+      "tags": [
+        "prosthetic",
+        "cyborg",
+        "arm",
+        "side_r",
+        "network_tech"
+      ],
+      "params": {
+        "limb": "arm",
+        "side": "r",
+        "body": "adult_male"
+      },
+      "dimensions_m": {
+        "x": 0.261,
+        "y": 0.813,
+        "z": 0.283
+      },
+      "tris": 248,
+      "pivot": "joint",
+      "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Replaces arm_r on adult bodies; origin at the shoulder joint.",
+      "style_revision": "be444580",
+      "parts": {
+        "arm_r": {
+          "joint": [
+            -0.25,
+            1.3995,
+            -0.0
+          ],
+          "note": "cyborg r arm, pivot at shoulder joint"
+        }
+      }
+    },
+    {
+      "id": "prosthetic_leg_cyborg_l",
+      "category": "prosthetic",
+      "file": "prosthetic/prosthetic_leg_cyborg_l.glb",
+      "tags": [
+        "prosthetic",
+        "cyborg",
+        "leg",
+        "side_l",
+        "network_tech"
+      ],
+      "params": {
+        "limb": "leg",
+        "side": "l",
+        "body": "adult_male"
+      },
+      "dimensions_m": {
+        "x": 0.216,
+        "y": 0.96,
+        "z": 0.398
+      },
+      "tris": 288,
+      "pivot": "joint",
+      "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Replaces leg_l on adult bodies; origin at the hip joint.",
+      "style_revision": "be444580",
+      "parts": {
+        "leg_l": {
+          "joint": [
+            0.11,
+            0.9,
+            -0.0
+          ],
+          "note": "cyborg l leg, pivot at hip joint"
+        }
+      }
+    },
+    {
+      "id": "prosthetic_leg_cyborg_r",
+      "category": "prosthetic",
+      "file": "prosthetic/prosthetic_leg_cyborg_r.glb",
+      "tags": [
+        "prosthetic",
+        "cyborg",
+        "leg",
+        "side_r",
+        "network_tech"
+      ],
+      "params": {
+        "limb": "leg",
+        "side": "r",
+        "body": "adult_male"
+      },
+      "dimensions_m": {
+        "x": 0.216,
+        "y": 0.96,
+        "z": 0.398
+      },
+      "tris": 288,
+      "pivot": "joint",
+      "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Replaces leg_r on adult bodies; origin at the hip joint.",
+      "style_revision": "be444580",
+      "parts": {
+        "leg_r": {
+          "joint": [
+            -0.11,
+            0.9,
+            -0.0
+          ],
+          "note": "cyborg r leg, pivot at hip joint"
+        }
+      }
+    },
+    {
+      "id": "survivor_adult_female",
+      "category": "survivor",
+      "file": "survivor/survivor_adult_female.glb",
+      "tags": [
+        "survivor",
+        "adult",
+        "female"
+      ],
+      "params": {
+        "kind": "adult_female"
+      },
+      "dimensions_m": {
+        "x": 0.675,
+        "y": 1.671,
+        "z": 0.431
+      },
+      "tris": 832,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "1.68 m. Rust-red jacket, scarf, ponytail. Swappable limbs: see parts.",
+      "style_revision": "be444580",
+      "parts": {
+        "head": {
+          "joint": [
+            0.0,
+            1.3412,
+            -0.0
+          ],
+          "note": "pivot at neck"
+        },
+        "torso": {
+          "joint": [
+            0.0,
+            0.9608,
+            -0.0
+          ],
+          "note": "pivot at waist"
+        },
+        "arm_l": {
+          "joint": [
+            0.21,
+            1.2992,
+            -0.0
+          ],
+          "note": "l arm, pivot at shoulder joint"
+        },
+        "leg_l": {
+          "joint": [
+            0.11,
+            0.86,
+            -0.0
+          ],
+          "note": "l leg, pivot at hip joint"
+        },
+        "arm_r": {
+          "joint": [
+            -0.21,
+            1.2992,
+            -0.0
+          ],
+          "note": "r arm, pivot at shoulder joint"
+        },
+        "leg_r": {
+          "joint": [
+            -0.11,
+            0.86,
+            -0.0
+          ],
+          "note": "r leg, pivot at hip joint"
+        }
+      }
+    },
+    {
+      "id": "survivor_adult_male",
+      "category": "survivor",
+      "file": "survivor/survivor_adult_male.glb",
+      "tags": [
+        "survivor",
+        "adult",
+        "male"
+      ],
+      "params": {
+        "kind": "adult_male"
+      },
+      "dimensions_m": {
+        "x": 0.783,
+        "y": 1.787,
+        "z": 0.554
+      },
+      "tris": 800,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "1.80 m. Olive field jacket, backpack, beard. Swappable limbs: see parts.",
+      "style_revision": "be444580",
+      "parts": {
+        "head": {
+          "joint": [
+            0.0,
+            1.447,
+            -0.0
+          ],
+          "note": "pivot at neck"
+        },
+        "torso": {
+          "joint": [
+            0.0,
+            1.008,
+            -0.0
+          ],
+          "note": "pivot at waist"
+        },
+        "arm_l": {
+          "joint": [
+            0.25,
+            1.3995,
+            -0.0
+          ],
+          "note": "l arm, pivot at shoulder joint"
+        },
+        "leg_l": {
+          "joint": [
+            0.11,
+            0.9,
+            -0.0
+          ],
+          "note": "l leg, pivot at hip joint"
+        },
+        "arm_r": {
+          "joint": [
+            -0.25,
+            1.3995,
+            -0.0
+          ],
+          "note": "r arm, pivot at shoulder joint"
+        },
+        "leg_r": {
+          "joint": [
+            -0.11,
+            0.9,
+            -0.0
+          ],
+          "note": "r leg, pivot at hip joint"
+        }
+      }
+    },
+    {
+      "id": "survivor_adult_male_cyborg",
+      "category": "survivor",
+      "file": "survivor/survivor_adult_male_cyborg.glb",
+      "tags": [
+        "survivor",
+        "adult",
+        "male",
+        "prosthetic",
+        "fit_check"
+      ],
+      "params": {
+        "kind": "adult_male",
+        "cyborg": [
+          "leg_l",
+          "arm_r"
+        ]
+      },
+      "dimensions_m": {
+        "x": 0.792,
+        "y": 1.787,
+        "z": 0.619
+      },
+      "tris": 1152,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Fit check: adult male with prosthetic_leg_cyborg_l + prosthetic_arm_cyborg_r swapped in at the same joints. Reference for the in-game part swap.",
+      "style_revision": "be444580",
+      "parts": {
+        "head": {
+          "joint": [
+            0.0,
+            1.447,
+            -0.0
+          ],
+          "note": "pivot at neck"
+        },
+        "torso": {
+          "joint": [
+            0.0,
+            1.008,
+            -0.0
+          ],
+          "note": "pivot at waist"
+        },
+        "arm_l": {
+          "joint": [
+            0.25,
+            1.3995,
+            -0.0
+          ],
+          "note": "l arm, pivot at shoulder joint"
+        },
+        "leg_l": {
+          "joint": [
+            0.11,
+            0.9,
+            -0.0
+          ],
+          "note": "cyborg l leg, pivot at hip joint"
+        },
+        "arm_r": {
+          "joint": [
+            -0.25,
+            1.3995,
+            -0.0
+          ],
+          "note": "cyborg r arm, pivot at shoulder joint"
+        },
+        "leg_r": {
+          "joint": [
+            -0.11,
+            0.9,
+            -0.0
+          ],
+          "note": "r leg, pivot at hip joint"
+        }
+      }
+    },
+    {
+      "id": "survivor_child",
+      "category": "survivor",
+      "file": "survivor/survivor_child.glb",
+      "tags": [
+        "survivor",
+        "child"
+      ],
+      "params": {
+        "kind": "child"
+      },
+      "dimensions_m": {
+        "x": 0.534,
+        "y": 1.19,
+        "z": 0.334
+      },
+      "tris": 712,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "1.15 m. Oversized hoodie. Grows into an adult body (separate asset).",
+      "style_revision": "be444580",
+      "parts": {
+        "head": {
+          "joint": [
+            0.0,
+            0.8397,
+            -0.0
+          ],
+          "note": "pivot at neck"
+        },
+        "torso": {
+          "joint": [
+            0.0,
+            0.589,
+            -0.0
+          ],
+          "note": "pivot at waist"
+        },
+        "arm_l": {
+          "joint": [
+            0.16,
+            0.8018,
+            -0.0
+          ],
+          "note": "l arm, pivot at shoulder joint"
+        },
+        "leg_l": {
+          "joint": [
+            0.08,
+            0.52,
+            -0.0
+          ],
+          "note": "l leg, pivot at hip joint"
+        },
+        "arm_r": {
+          "joint": [
+            -0.16,
+            0.8018,
+            -0.0
+          ],
+          "note": "r arm, pivot at shoulder joint"
+        },
+        "leg_r": {
+          "joint": [
+            -0.08,
+            0.52,
+            -0.0
+          ],
+          "note": "r leg, pivot at hip joint"
+        }
+      }
+    }
+  ]
+}
