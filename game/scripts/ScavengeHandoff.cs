@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Godot;
 using Remnants.Core.Scavenge;
+using Remnants.Game.Scavenge;
 
 namespace Remnants.Game;
 
@@ -9,52 +10,36 @@ namespace Remnants.Game;
 public sealed record ScavengeRun(ScavengeSim Sim, int PlayerId);
 
 /// <summary>
-/// The seam between the colony and the scavenge screen. The colony calls <see cref="Begin"/> with the run built from
-/// its expedition; the scavenge screen plays <see cref="Pending"/> and calls <see cref="Finish"/> with the party's
-/// <see cref="ExtractionResult"/> once it is done, which returns to the colony scene and hands the result over.
-/// While <see cref="ScenePath"/> is null (no scavenge screen yet) the run is resolved in place by <see cref="Autopilot"/>.
+/// The colony's way into scavenge mode. <see cref="Begin"/> plays the run on the scavenge screen
+/// (<see cref="ScavengeSession"/>); when the party is done and the player closes the summary, the result goes to
+/// <c>onFinished</c> and the game returns to the colony scene. With <see cref="UseAutopilot"/> (debug) the run is
+/// resolved in place by <see cref="Autopilot"/> instead.
 /// </summary>
 public static class ScavengeHandoff
 {
     public const string ColonyScene = "res://scenes/Colony.tscn";
 
-    /// <summary>The scavenge scene to switch to; null resolves runs with the autopilot stub.</summary>
-    public static string? ScenePath { get; set; }
-
-    public static ScavengeRun? Pending { get; private set; }
-
-    private static Action<ExtractionResult>? _onFinished;
-    private static SceneTree? _tree;
+    /// <summary>Debug / screenshots: resolve runs in place instead of opening the scavenge screen.</summary>
+    public static bool UseAutopilot { get; set; }
 
     public static void Begin(SceneTree tree, ScavengeRun run, Action<ExtractionResult> onFinished)
     {
-        Pending = run;
-        _onFinished = onFinished;
-        _tree = tree;
-        if (ScenePath is { } scene)
+        if (UseAutopilot)
         {
-            tree.ChangeSceneToFile(scene);
+            var result = Autopilot.Play(run.Sim, run.PlayerId);
+            Callable.From(() => onFinished(result)).CallDeferred();
             return;
         }
-        var result = Autopilot.Play(run.Sim, run.PlayerId);
-        Callable.From(() => Finish(result)).CallDeferred();
-    }
-
-    /// <summary>Called by the scavenge screen (or the stub) when the party is done.</summary>
-    public static void Finish(ExtractionResult result)
-    {
-        var callback = _onFinished;
-        var tree = _tree;
-        Pending = null;
-        _onFinished = null;
-        _tree = null;
-        callback?.Invoke(result);
-        if (ScenePath is not null && tree is not null) tree.ChangeSceneToFile(ColonyScene);
+        ScavengeSession.Begin(tree, run.Sim, run.PlayerId, result =>
+        {
+            onFinished(result);
+            tree.ChangeSceneToFile(ColonyScene);
+        }, ColonyScene);
     }
 }
 
 /// <summary>
-/// Stand-in for the scavenge screen until it is wired: every party unit walks toward the nearest exit and extracts;
+/// Debug stand-in for playing a run: every party unit walks toward the nearest exit and extracts;
 /// enemies act as usual, so injuries, deaths and loss of the downed still happen. Plays only through Core commands.
 /// </summary>
 public static class Autopilot

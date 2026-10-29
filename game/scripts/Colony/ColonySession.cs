@@ -72,13 +72,27 @@ public sealed class ColonySession
         ScavengeHandoff.Begin(tree, new ScavengeRun(Sim.OpenExpeditionScavenge(), ColonySim.ExpeditionPlayerId), ApplyResult);
     }
 
+    /// <summary>A message for the colony log that arose while no colony screen was listening.</summary>
+    public string? UnseenNotice { get; set; }
+
+    /// <summary>
+    /// Applies a finished run. A run left early (the scavenge screen's Leave) is not final: the party stays out and
+    /// the run, kept in the expedition, resumes from the Expedition panel; a colony save keeps it too.
+    /// </summary>
     private void ApplyResult(ExtractionResult result)
     {
+        if (!result.Complete)
+        {
+            UnseenNotice = "The party is still out: open Expedition → Play mission to continue the run.";
+            return;
+        }
         var applied = Execute(new ApplyExtractionResult(result));
         if (!applied.Ok) return;
         UnseenReport = Sim.State.LastReport;
         SetSpeed(1);
     }
+
+    public void Notify(string message, bool error = false) => Feedback?.Invoke(message, error);
 
     public void SetSpeed(int speed)
     {

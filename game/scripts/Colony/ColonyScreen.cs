@@ -54,7 +54,11 @@ public partial class ColonyScreen : Node3D
         RefreshAll();
 
         if (DebugCapture.HasFlag("--demo") && _session.Sim.State.Tick == 0) RunDemo();
-        if (DebugCapture.HasFlag("--loop-demo") && _session.Sim.State.Tick == 0) RunLoopDemo();
+        if (DebugCapture.HasFlag("--loop-demo") && _session.Sim.State.NextExpeditionId == 1)
+        {
+            ScavengeHandoff.UseAutopilot = DebugCapture.HasFlag("--autopilot");
+            RunLoopDemo();
+        }
         if (DebugCapture.HasFlag("--expedition"))
         {
             _expedition.Toggle();
@@ -68,12 +72,20 @@ public partial class ColonyScreen : Node3D
 
     private void ShowUnseenReport()
     {
+        if (_session.UnseenNotice is { } notice)
+        {
+            _session.UnseenNotice = null;
+            _session.Notify(notice);
+        }
         if (_session.UnseenReport is not { } report) return;
         _session.UnseenReport = null;
         _report.ShowReport(_session.Sim, report);
     }
 
-    /// <summary>Debug: send the first two adults to the outskirts with gear, play it out, and show the report.</summary>
+    /// <summary>
+    /// Debug: send the first adults to the outskirts with gear and play the run (on the scavenge screen, or in place
+    /// with <c>--autopilot</c>), then build a Med Bay and Workshop to come back to.
+    /// </summary>
     private void RunLoopDemo()
     {
         var sim = _session.Sim;
@@ -163,7 +175,7 @@ public partial class ColonyScreen : Node3D
         _expedition.PlayPressed += () =>
         {
             _session.PlayExpedition(GetTree());
-            CallDeferred(MethodName.ShowUnseenReport); // the stub resolves in place; a real scene comes back through _Ready
+            CallDeferred(MethodName.ShowUnseenReport); // the autopilot resolves in place; the scavenge screen comes back through _Ready
         };
         _topBar.BuildPressed += () =>
         {
