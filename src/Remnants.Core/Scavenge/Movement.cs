@@ -40,7 +40,10 @@ public static class Movement
     private static bool CanPass(ScavengeState state, Unit mover, Pos p) =>
         state.UnitAt(p) is not { } other || !other.HostileTo(mover);
 
-    /// <summary>Multi-step walk in 8 directions, summing terrain costs up to the range (Dijkstra).</summary>
+    /// <summary>
+    /// Multi-step walk in 8 directions, summing terrain costs up to the range (Dijkstra). One step is always allowed,
+    /// so a slow unit can still slog onto rubble or water instead of being stuck behind it.
+    /// </summary>
     private static IEnumerable<Pos> Walk(ScavengeState state, Unit unit, MovementProfile profile, MoveMode mode)
     {
         var map = state.Map;
@@ -57,6 +60,8 @@ public static class Movement
                 if (d.X != 0 && d.Y != 0 && !CornerOpen(map, profile, p, d)) continue;
                 if (!CanPass(state, unit, n)) continue;
                 var cost = mode.IgnoresTerrain ? key.Item1 + 1 : key.Item1 + step;
+                // The first step is always possible: rough ground just uses up the whole move.
+                if (p == unit.Pos) cost = Math.Min(cost, mode.Range);
                 if (cost > mode.Range || (best.TryGetValue(n, out var b) && b <= cost)) continue;
                 best[n] = cost;
                 queue.Enqueue(n, (cost, map.Index(n)));
@@ -69,7 +74,7 @@ public static class Movement
     private static bool CornerOpen(TileMap map, MovementProfile profile, Pos from, Pos d) =>
         profile.Cost(map[new Pos(from.X + d.X, from.Y)]) is not null || profile.Cost(map[new Pos(from.X, from.Y + d.Y)]) is not null;
 
-    /// <summary>Straight lines: stops at impassable terrain or a hostile, costs summed up to the range.</summary>
+    /// <summary>Straight lines: stops at impassable terrain or a hostile, costs summed up to the range (the first step always fits).</summary>
     private static IEnumerable<Pos> Lines(ScavengeState state, Unit unit, MovementProfile profile, MoveMode mode, Pos[] directions)
     {
         var map = state.Map;
@@ -83,6 +88,7 @@ public static class Movement
                 if (!map.InBounds(n) || profile.Cost(map[n]) is not { } step) break;
                 if (d.X != 0 && d.Y != 0 && !CornerOpen(map, profile, p, d)) break;
                 cost += mode.IgnoresTerrain ? 1 : step;
+                if (p == unit.Pos) cost = Math.Min(cost, mode.Range);
                 if (cost > mode.Range || !CanPass(state, unit, n)) break;
                 if (Free(state, unit, n)) yield return n;
                 p = n;

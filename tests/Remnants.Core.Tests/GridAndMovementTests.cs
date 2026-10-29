@@ -33,6 +33,36 @@ public class MovementTests
     }
 
     [Fact]
+    public void A_range_one_unit_can_always_take_one_step_onto_rough_terrain()
+    {
+        // Low agility (or hurt legs, heavy armor, a missing leg) leaves range 1; rubble and water cost more than that.
+        var u = SurvivorUnit(pos: new(0, 1));
+        u.Attributes[AttributeKind.Agility] = 10;
+        var sim = Arena(4, 3, [u], [
+            "r##.",
+            "r~..",
+            "r#..",
+        ]);
+        var reach = sim.Reachable(u).Keys.ToHashSet();
+        Assert.Contains(new Pos(1, 1), reach); // water costs 3: one slog step uses the whole move
+        Assert.Contains(new Pos(0, 0), reach);
+        Assert.DoesNotContain(new Pos(2, 1), reach); // but no further
+    }
+
+    [Fact]
+    public void A_range_one_rook_can_step_onto_rubble()
+    {
+        var u = SurvivorUnit(pos: new(0, 0), body: "scout_jacket");
+        u.Attributes[AttributeKind.Agility] = 0;
+        u.Body.Injure(BodyPart.LeftLeg, 0.9);
+        var sim = Arena(3, 1, [u], [".r."]);
+        Assert.Equal(1, sim.Profile(u).Movement.Modes[0].Range);
+        var reach = sim.Reachable(u).Keys.ToHashSet();
+        Assert.Contains(new Pos(1, 0), reach);
+        Assert.DoesNotContain(new Pos(2, 0), reach);
+    }
+
+    [Fact]
     public void Rook_pattern_moves_only_in_straight_orthogonal_lines()
     {
         var u = SurvivorUnit(pos: new(3, 3), body: "scout_jacket"); // range 3, rook
