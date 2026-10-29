@@ -41,5 +41,10 @@
     "attributeRange": [20, 55],
     "names": ["Wren", "Odile", "Caspar", "Hana", "Milo", "Yara", "Dov", "Tamsin", "Ezra", "Rosa"]
   },
-  "escortRadius": 2
+  "escortRadius": 2,
+  "quality": [
+    { "id": "crude",    "name": "Crude",    "statMultiplier": 0.8,  "weightMultiplier": 1.15 },
+    { "id": "standard", "name": "Standard", "statMultiplier": 1.0,  "weightMultiplier": 1.0, "base": true },
+    { "id": "fine",     "name": "Fine",     "statMultiplier": 1.25, "weightMultiplier": 0.9 }
+  ]
 }

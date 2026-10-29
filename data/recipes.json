@@ -1,0 +1,37 @@
+[
+  { "id": "herbal_remedy",  "name": "Herbal Remedy",   "building": "workshop", "minLevel": 1, "work": 6,  "inputs": { "food": 4, "wood": 2 },        "resource": "medicine", "amount": 1 },
+  { "id": "peg_leg",        "name": "Peg Leg",         "building": "workshop", "minLevel": 1, "work": 12, "inputs": { "wood": 15, "scrap": 5 },      "item": "peg_leg" },
+  { "id": "hook_arm",       "name": "Hook Arm",        "building": "workshop", "minLevel": 1, "work": 12, "inputs": { "scrap": 15, "wood": 5 },      "item": "hook_arm" },
+  { "id": "pipe",           "name": "Lead Pipe",       "building": "workshop", "minLevel": 1, "work": 5,  "inputs": { "scrap": 4 },                  "item": "pipe" },
+  { "id": "spear",          "name": "Rebar Spear",     "building": "workshop", "minLevel": 1, "work": 7,  "inputs": { "scrap": 3, "wood": 4 },       "item": "spear" },
+  { "id": "med_kit",        "name": "Med-kit",         "building": "workshop", "minLevel": 2, "work": 10, "inputs": { "medicine": 2, "cloth": 2 },   "item": "med_kit" },
+  { "id": "grappling_hook", "name": "Grappling Hook",  "building": "workshop", "minLevel": 2, "work": 14, "inputs": { "scrap": 8, "cloth": 3 },     "item": "grappling_hook", "minSkill": 15 },
+
+  { "id": "fiber_cloth",    "name": "Plant-fiber Cloth", "building": "tailor", "minLevel": 1, "work": 5,  "inputs": { "food": 3 },                   "resource": "cloth", "amount": 1 },
+  { "id": "bandage",        "name": "Bandages",        "building": "tailor",   "minLevel": 1, "work": 4,  "inputs": { "cloth": 1 },                  "item": "bandage", "amount": 2 },
+  { "id": "rag_coat",       "name": "Rag Coat",        "building": "tailor",   "minLevel": 1, "work": 8,  "inputs": { "cloth": 3 },                  "item": "rag_coat" },
+  { "id": "backpack",       "name": "Backpack",        "building": "tailor",   "minLevel": 1, "work": 9,  "inputs": { "cloth": 4, "scrap": 1 },      "item": "backpack" },
+  { "id": "padded_vest",    "name": "Padded Vest",     "building": "tailor",   "minLevel": 1, "work": 10, "inputs": { "cloth": 5, "wood": 2 },       "item": "padded_vest" },
+  { "id": "climbing_gear",  "name": "Climbing Gear",   "building": "tailor",   "minLevel": 2, "work": 12, "inputs": { "cloth": 4, "scrap": 3 },      "item": "climbing_gear", "minSkill": 10 },
+  { "id": "scout_jacket",   "name": "Scout Jacket",    "building": "tailor",   "minLevel": 2, "work": 14, "inputs": { "cloth": 6, "scrap": 1 },      "item": "scout_jacket", "minSkill": 15 },
+
+  { "id": "simple_meal",    "name": "Simple Meals",    "building": "kitchen",  "minLevel": 1, "work": 4,  "inputs": { "food": 4 },                   "resource": "meal", "amount": 3 },
+  { "id": "hearty_stew",    "name": "Hearty Stew",     "building": "kitchen",  "minLevel": 2, "work": 6,  "inputs": { "food": 5, "medicine": 0.5 }, "resource": "stew", "amount": 3, "minSkill": 10 },
+  { "id": "canned_food",    "name": "Canned Rations",  "building": "kitchen",  "minLevel": 2, "work": 5,  "inputs": { "food": 4, "scrap": 1 },      "item": "canned_food" },
+
+  { "id": "machete",        "name": "Machete",         "building": "armory",   "minLevel": 1, "work": 10, "inputs": { "scrap": 6, "wood": 1 },       "item": "machete" },
+  { "id": "pistol",         "name": "Pistol",          "building": "armory",   "minLevel": 2, "work": 16, "inputs": { "scrap": 10, "electronics": 1 }, "item": "pistol", "minSkill": 15 },
+  { "id": "riot_armor",     "name": "Riot Armor",      "building": "armory",   "minLevel": 2, "work": 20, "inputs": { "scrap": 18, "cloth": 6 },     "item": "riot_armor", "blueprint": "bp_riot_armor" },
+  { "id": "rifle",          "name": "Hunting Rifle",   "building": "armory",   "minLevel": 3, "work": 22, "inputs": { "scrap": 14, "wood": 4, "electronics": 1 }, "item": "rifle", "blueprint": "bp_rifle", "minSkill": 25 },
+  { "id": "linked_carbine", "name": "Linked Carbine",  "building": "armory",   "minLevel": 3, "work": 26, "inputs": { "scrap": 16, "electronics": 4 }, "item": "linked_carbine", "blueprint": "bp_linked_carbine", "minSkill": 30 },
+  { "id": "linked_plating", "name": "Linked Plating",  "building": "armory",   "minLevel": 3, "work": 22, "inputs": { "scrap": 12, "electronics": 3 }, "itemInputs": { "padded_vest": 1 }, "item": "linked_plating", "blueprint": "bp_linked_plating" },
+
+  { "id": "salvage_circuits", "name": "Salvaged Circuits", "building": "electronics_lab", "minLevel": 1, "work": 6, "inputs": { "scrap": 6 },     "resource": "electronics", "amount": 1 },
+  { "id": "binoculars",     "name": "Binoculars",      "building": "electronics_lab", "minLevel": 1, "work": 10, "inputs": { "scrap": 3, "electronics": 1 }, "item": "binoculars" },
+  { "id": "servo_arm",      "name": "Servo Arm",       "building": "electronics_lab", "minLevel": 2, "work": 20, "inputs": { "scrap": 10, "electronics": 4 }, "item": "servo_arm", "minSkill": 15 },
+  { "id": "scanner",        "name": "Scanner",         "building": "electronics_lab", "minLevel": 2, "work": 16, "inputs": { "electronics": 3 }, "itemInputs": { "binoculars": 1 }, "item": "scanner", "blueprint": "bp_scanner" },
+  { "id": "evac_beacon",    "name": "Evac Beacon",     "building": "electronics_lab", "minLevel": 2, "work": 14, "inputs": { "electronics": 4, "scrap": 4 }, "item": "evac_beacon", "blueprint": "bp_evac_beacon" },
+  { "id": "signal_jammer",  "name": "Signal Jammer",   "building": "electronics_lab", "minLevel": 3, "work": 24, "inputs": { "electronics": 6, "scrap": 4 }, "item": "signal_jammer", "blueprint": "bp_signal_jammer", "minSkill": 25 },
+  { "id": "cyber_leg",      "name": "Cybernetic Leg",  "building": "electronics_lab", "minLevel": 3, "work": 30, "inputs": { "electronics": 8, "scrap": 12 }, "item": "cyber_leg", "blueprint": "bp_cybernetics", "minSkill": 30 },
+  { "id": "cyber_arm",      "name": "Cybernetic Arm",  "building": "electronics_lab", "minLevel": 3, "work": 30, "inputs": { "electronics": 8, "scrap": 12 }, "item": "cyber_arm", "blueprint": "bp_cybernetics", "minSkill": 30 }
+]

@@ -96,12 +96,71 @@
       { "cost": { "wood": 25, "stone": 10 },               "workerSlots": 2, "outputMultiplier": 1.0 },
       { "cost": { "wood": 45, "stone": 30, "scrap": 20 },  "workerSlots": 3, "outputMultiplier": 1.25 },
       { "cost": { "wood": 80, "stone": 50, "scrap": 40 },  "workerSlots": 4, "outputMultiplier": 1.5 }
-    ],
-    "recipes": [
-      { "id": "herbal_remedy", "name": "Herbal Remedy", "minLevel": 1, "work": 6,  "inputs": { "food": 4, "wood": 2 }, "resource": "medicine", "amount": 1 },
-      { "id": "peg_leg",       "name": "Peg Leg",       "minLevel": 1, "work": 12, "inputs": { "wood": 15, "scrap": 5 }, "item": "peg_leg", "amount": 1 },
-      { "id": "hook_arm",      "name": "Hook Arm",      "minLevel": 1, "work": 12, "inputs": { "scrap": 15, "wood": 5 }, "item": "hook_arm", "amount": 1 },
-      { "id": "med_kit",       "name": "Med-kit",       "minLevel": 2, "work": 10, "inputs": { "medicine": 2, "cloth": 2 }, "item": "med_kit", "amount": 1 }
+    ]
+  },
+  {
+    "id": "tailor",
+    "name": "Tailor",
+    "category": "Production",
+    "unique": true,
+    "job": "tailoring",
+    "baseOutput": 1.0,
+    "levels": [
+      { "cost": { "wood": 30, "stone": 10 },                              "workerSlots": 2, "outputMultiplier": 1.0 },
+      { "cost": { "wood": 50, "stone": 30, "cloth": 10 },                 "workerSlots": 3, "outputMultiplier": 1.25 },
+      { "cost": { "wood": 80, "stone": 50, "cloth": 20, "scrap": 20 },    "workerSlots": 4, "outputMultiplier": 1.5 }
+    ]
+  },
+  {
+    "id": "kitchen",
+    "name": "Kitchen",
+    "category": "Care",
+    "unique": true,
+    "job": "cooking",
+    "baseOutput": 1.0,
+    "levels": [
+      { "cost": { "wood": 30, "stone": 20 },                              "workerSlots": 2, "outputMultiplier": 1.0 },
+      { "cost": { "wood": 50, "stone": 40, "scrap": 10 },                 "workerSlots": 3, "outputMultiplier": 1.25 },
+      { "cost": { "wood": 80, "stone": 60, "scrap": 30 },                 "workerSlots": 4, "outputMultiplier": 1.5 }
+    ]
+  },
+  {
+    "id": "armory",
+    "name": "Armory",
+    "category": "Production",
+    "unique": true,
+    "minTownHallLevel": 2,
+    "job": "gunsmithing",
+    "baseOutput": 1.0,
+    "levels": [
+      { "cost": { "wood": 40, "stone": 40, "scrap": 30 },                 "workerSlots": 2, "outputMultiplier": 1.0 },
+      { "cost": { "wood": 60, "stone": 60, "scrap": 50 },                 "workerSlots": 3, "outputMultiplier": 1.25 },
+      { "cost": { "wood": 90, "stone": 80, "scrap": 80, "electronics": 10 }, "workerSlots": 4, "outputMultiplier": 1.5 }
+    ]
+  },
+  {
+    "id": "electronics_lab",
+    "name": "Electronics Lab",
+    "category": "Production",
+    "unique": true,
+    "minTownHallLevel": 2,
+    "job": "electronics",
+    "baseOutput": 1.0,
+    "levels": [
+      { "cost": { "wood": 40, "stone": 30, "scrap": 30, "electronics": 5 },  "workerSlots": 2, "outputMultiplier": 1.0 },
+      { "cost": { "wood": 60, "stone": 50, "scrap": 50, "electronics": 15 }, "workerSlots": 3, "outputMultiplier": 1.25 },
+      { "cost": { "wood": 90, "stone": 70, "scrap": 80, "electronics": 30 }, "workerSlots": 3, "outputMultiplier": 1.5 }
+    ]
+  },
+  {
+    "id": "house",
+    "name": "House",
+    "category": "Housing",
+    "minTownHallLevel": 2,
+    "levels": [
+      { "cost": { "wood": 60, "stone": 40 },                "beds": 10 },
+      { "cost": { "wood": 80, "stone": 60, "scrap": 10 },   "beds": 14 },
+      { "cost": { "wood": 120, "stone": 90, "scrap": 30 },  "beds": 20 }
     ]
   }
 ]

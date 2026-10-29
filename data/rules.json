@@ -20,7 +20,18 @@
     "childPerTick": 0.04,
     "infantPerTick": 0.02,
     "starvationDamagePerTick": 1.0,
-    "recoveryPerTick": 0.25
+    "recoveryPerTick": 0.25,
+    "meals": [
+      { "resource": "stew", "foodValue": 2.5, "moodPerTick": 0.1, "healthPerTick": 0.5 },
+      { "resource": "meal", "foodValue": 2.0, "moodPerTick": 0.05, "healthPerTick": 0.15 }
+    ]
+  },
+  "crafting": {
+    "maxQueue": 8,
+    "maxBatches": 20,
+    "qualitySpread": 0.2,
+    "qualityPerLevel": 0.05,
+    "qualityThresholds": { "standard": 0.15, "fine": 0.6 }
   },
   "housing": {
     "homelessGraceTicks": 72

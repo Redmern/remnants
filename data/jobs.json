@@ -55,5 +55,43 @@
     "attributes": { "Intellect": 0.5, "Creativity": 0.5 },
     "bodyParts": { "Arms": 0.7, "Head": 0.3 },
     "toolBonus": 0.5
+  },
+  {
+    "id": "tailoring",
+    "childrenAllowed": true,
+    "name": "Tailoring",
+    "skill": "Tailoring",
+    "skillWeight": 1.0,
+    "attributes": { "Creativity": 0.5, "Agility": 0.5 },
+    "bodyParts": { "Arms": 0.7, "Head": 0.3 },
+    "toolBonus": 0.4
+  },
+  {
+    "id": "electronics",
+    "name": "Electronics",
+    "skill": "Electronics",
+    "skillWeight": 1.2,
+    "attributes": { "Intellect": 0.6, "Creativity": 0.4 },
+    "bodyParts": { "Arms": 0.5, "Head": 0.5 },
+    "toolBonus": 0.5
+  },
+  {
+    "id": "gunsmithing",
+    "name": "Gunsmithing",
+    "skill": "Firearms",
+    "skillWeight": 1.0,
+    "attributes": { "Intellect": 0.5, "Strength": 0.3, "Perception": 0.2 },
+    "bodyParts": { "Arms": 0.7, "Head": 0.3 },
+    "toolBonus": 0.5
+  },
+  {
+    "id": "cooking",
+    "childrenAllowed": true,
+    "name": "Cooking",
+    "skill": "Cooking",
+    "skillWeight": 1.0,
+    "attributes": { "Creativity": 0.5, "Perception": 0.5 },
+    "bodyParts": { "Arms": 0.6, "Head": 0.4 },
+    "toolBonus": 0.3
   }
 ]
