@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "style_revision": "be444580",
+  "style_revision": "efda7377",
   "conventions": {
     "up": "+Y",
     "units": "meters",
@@ -19,6 +19,56 @@
     }
   },
   "assets": [
+    {
+      "id": "armory_l1",
+      "category": "building",
+      "file": "building/armory_l1.glb",
+      "tags": [
+        "colony",
+        "production",
+        "weapons",
+        "level1"
+      ],
+      "params": {
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 4.0,
+        "y": 2.75,
+        "z": 4.0
+      },
+      "tris": 1384,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles (4x4 m). Bunker back-left with striped door, sandbag U in front, gun rack under an overhang on the right, ammo crates front-right.",
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "electronics_lab_l1",
+      "category": "building",
+      "file": "building/electronics_lab_l1.glb",
+      "tags": [
+        "colony",
+        "production",
+        "electronics",
+        "level1"
+      ],
+      "params": {
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 4.0,
+        "y": 6.3,
+        "z": 4.0
+      },
+      "tris": 1520,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles (4x4 m). Container lab along the back with a dish on the roof, antenna mast back-right, screen bench under a tarp front, spools/batteries front-right.",
+      "style_revision": "efda7377"
+    },
     {
       "id": "farm_l1",
       "category": "building",
@@ -42,7 +92,108 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles (6x6 m). Crop field front, shed back-left, water tank back-right.",
-      "style_revision": "be444580"
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "farm_l2",
+      "category": "building",
+      "file": "building/farm_l2.glb",
+      "tags": [
+        "colony",
+        "production",
+        "food",
+        "level2"
+      ],
+      "params": {
+        "level": 2
+      },
+      "dimensions_m": {
+        "x": 6.0,
+        "y": 3.9,
+        "z": 6.0
+      },
+      "tris": 1932,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 3x3 tiles. Brick shed with a metal roof, second field under a canvas hoop tunnel, metal-banded tank, taller fence on concrete posts.",
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "farm_l3",
+      "category": "building",
+      "file": "building/farm_l3.glb",
+      "tags": [
+        "colony",
+        "production",
+        "food",
+        "level3"
+      ],
+      "params": {
+        "level": 3
+      },
+      "dimensions_m": {
+        "x": 6.0,
+        "y": 4.3,
+        "z": 6.0
+      },
+      "tris": 2092,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 3x3 tiles. Glass greenhouse with Network grow light, solar shed roof, steel tank with Network pump, irrigation line, concrete front wall with floodlit gate.",
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "house_l1",
+      "category": "building",
+      "file": "building/house_l1.glb",
+      "tags": [
+        "colony",
+        "housing",
+        "beds",
+        "level1"
+      ],
+      "params": {
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 6.0,
+        "y": 4.95,
+        "z": 4.0
+      },
+      "tris": 1512,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 3x2 tiles (6x4 m, wide along X). Main house left/center (two rooms) with cross gable + porch at the front, chimney left, bunk lean-to right, yard with fence front.",
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "kitchen_l1",
+      "category": "building",
+      "file": "building/kitchen_l1.glb",
+      "tags": [
+        "colony",
+        "care",
+        "food",
+        "meals",
+        "level1"
+      ],
+      "params": {
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 4.0,
+        "y": 5.01,
+        "z": 4.0
+      },
+      "tris": 1548,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles (4x4 m). Open cook shelter back with range + stovepipe, table and benches under it, cauldron on a tripod front-right, smoke rack front-left.",
+      "style_revision": "efda7377"
     },
     {
       "id": "med_bay_l1",
@@ -67,7 +218,57 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Container clinic back-left, triage tent right, awning front.",
-      "style_revision": "be444580"
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "med_bay_l2",
+      "category": "building",
+      "file": "building/med_bay_l2.glb",
+      "tags": [
+        "colony",
+        "medical",
+        "healing",
+        "level2"
+      ],
+      "params": {
+        "level": 2
+      },
+      "dimensions_m": {
+        "x": 4.0,
+        "y": 3.4,
+        "z": 4.0
+      },
+      "tris": 1036,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles. Clean container on a concrete foundation, metal canopy, the tent replaced by a gabled brick ward with a red-cross gable.",
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "med_bay_l3",
+      "category": "building",
+      "file": "building/med_bay_l3.glb",
+      "tags": [
+        "colony",
+        "medical",
+        "healing",
+        "level3"
+      ],
+      "params": {
+        "level": 3
+      },
+      "dimensions_m": {
+        "x": 4.0,
+        "y": 5.8,
+        "z": 4.0
+      },
+      "tris": 1484,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles. Second container module stacked on top (roof cross moves up), roof terrace with floodlight, concrete ward with solar, sandbags, Network diagnostic beacon.",
+      "style_revision": "efda7377"
     },
     {
       "id": "quarry_l1",
@@ -92,7 +293,57 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x2 tiles (6x4 m, wide along X). Rock face back-left, derrick right, blocks front.",
-      "style_revision": "be444580"
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "quarry_l2",
+      "category": "building",
+      "file": "building/quarry_l2.glb",
+      "tags": [
+        "colony",
+        "production",
+        "stone",
+        "level2"
+      ],
+      "params": {
+        "level": 2
+      },
+      "dimensions_m": {
+        "x": 6.0,
+        "y": 4.625,
+        "z": 4.0
+      },
+      "tris": 1304,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 3x2 tiles. Iron-banded derrick on a concrete footing, second (tripod) hoist over the pallet, mine-cart rails along the face, plank fence.",
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "quarry_l3",
+      "category": "building",
+      "file": "building/quarry_l3.glb",
+      "tags": [
+        "colony",
+        "production",
+        "stone",
+        "level3"
+      ],
+      "params": {
+        "level": 3
+      },
+      "dimensions_m": {
+        "x": 6.0,
+        "y": 5.125,
+        "z": 4.0
+      },
+      "tris": 1448,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 3x2 tiles. Steel derrick with a motor winch house (Network core), steel tripod hoist, ore cart on rails, floodlight mast, concrete jersey barriers.",
+      "style_revision": "efda7377"
     },
     {
       "id": "scrapyard_l1",
@@ -117,7 +368,57 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles (6x6 m). Heaps left/back, crane back-right, bales front-right.",
-      "style_revision": "be444580"
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "scrapyard_l2",
+      "category": "building",
+      "file": "building/scrapyard_l2.glb",
+      "tags": [
+        "colony",
+        "production",
+        "salvage",
+        "level2"
+      ],
+      "params": {
+        "level": 2
+      },
+      "dimensions_m": {
+        "x": 6.0,
+        "y": 6.789,
+        "z": 6.0
+      },
+      "tris": 1372,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 3x3 tiles. Straight metal fence, taller crane, bigger heap, sorting bins under a lean-to, more bales.",
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "scrapyard_l3",
+      "category": "building",
+      "file": "building/scrapyard_l3.glb",
+      "tags": [
+        "colony",
+        "production",
+        "salvage",
+        "level3"
+      ],
+      "params": {
+        "level": 3
+      },
+      "dimensions_m": {
+        "x": 6.0,
+        "y": 6.789,
+        "z": 6.0
+      },
+      "tris": 1712,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 3x3 tiles. Concrete perimeter wall, crane with floodlights and a Network-charged magnet, hydraulic baler press, solar on the sorting shed.",
+      "style_revision": "efda7377"
     },
     {
       "id": "shelter_l1",
@@ -142,7 +443,82 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Hut back-left, tarp lean-to with cots on the right.",
-      "style_revision": "be444580"
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "shelter_l2",
+      "category": "building",
+      "file": "building/shelter_l2.glb",
+      "tags": [
+        "colony",
+        "housing",
+        "beds",
+        "level2"
+      ],
+      "params": {
+        "level": 2
+      },
+      "dimensions_m": {
+        "x": 4.0,
+        "y": 3.98,
+        "z": 4.0
+      },
+      "tris": 1168,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles. Brick hut with a gabled metal roof, tarp on a metal frame over a bunk + cot, brick fire pit, plank fence.",
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "shelter_l3",
+      "category": "building",
+      "file": "building/shelter_l3.glb",
+      "tags": [
+        "colony",
+        "housing",
+        "beds",
+        "level3"
+      ],
+      "params": {
+        "level": 3
+      },
+      "dimensions_m": {
+        "x": 4.0,
+        "y": 4.78,
+        "z": 4.0
+      },
+      "tris": 1640,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles. Two-storey concrete bunkhouse, flat roof with solar, two bunks under a framed tarp, sandbags, floodlight, Network heater.",
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "tailor_l1",
+      "category": "building",
+      "file": "building/tailor_l1.glb",
+      "tags": [
+        "colony",
+        "production",
+        "clothing",
+        "level1"
+      ],
+      "params": {
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 4.0,
+        "y": 2.97,
+        "z": 4.0
+      },
+      "tris": 1504,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles (4x4 m). Shack back-left, awning + cutting table front-left, mannequin by the door, drying frame with hanging cloth down the right side.",
+      "style_revision": "efda7377"
     },
     {
       "id": "town_hall_l1",
@@ -167,7 +543,57 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles (6x6 m). Hall + porch at front (-Y), bell tower back-right.",
-      "style_revision": "be444580"
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "town_hall_l2",
+      "category": "building",
+      "file": "building/town_hall_l2.glb",
+      "tags": [
+        "colony",
+        "civic",
+        "hq",
+        "level2"
+      ],
+      "params": {
+        "level": 2
+      },
+      "dimensions_m": {
+        "x": 6.0,
+        "y": 8.704,
+        "z": 6.0
+      },
+      "tris": 1964,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 3x3 tiles. Two-storey brick hall, gabled porch, planked bell tower, brick yard wall.",
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "town_hall_l3",
+      "category": "building",
+      "file": "building/town_hall_l3.glb",
+      "tags": [
+        "colony",
+        "civic",
+        "hq",
+        "level3"
+      ],
+      "params": {
+        "level": 3
+      },
+      "dimensions_m": {
+        "x": 6.0,
+        "y": 8.704,
+        "z": 6.0
+      },
+      "tris": 2468,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 3x3 tiles. Concrete HQ with plated walls, roof solar, steel watchtower with floodlights + Network relay, sandbagged concrete perimeter.",
+      "style_revision": "efda7377"
     },
     {
       "id": "woodcutter_l1",
@@ -192,7 +618,57 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Open shed at the back, log pile front-right, saw bench left.",
-      "style_revision": "be444580"
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "woodcutter_l2",
+      "category": "building",
+      "file": "building/woodcutter_l2.glb",
+      "tags": [
+        "colony",
+        "production",
+        "wood",
+        "level2"
+      ],
+      "params": {
+        "level": 2
+      },
+      "dimensions_m": {
+        "x": 4.0,
+        "y": 3.27,
+        "z": 4.0
+      },
+      "tris": 2068,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles. Gabled timber shed on a brick base with a closed side, taller firewood stacks, bigger trunk pyramid, steel saw table.",
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "woodcutter_l3",
+      "category": "building",
+      "file": "building/woodcutter_l3.glb",
+      "tags": [
+        "colony",
+        "production",
+        "wood",
+        "level3"
+      ],
+      "params": {
+        "level": 3
+      },
+      "dimensions_m": {
+        "x": 4.0,
+        "y": 4.8,
+        "z": 4.0
+      },
+      "tris": 2620,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles. Steel-framed mill shed with plated walls, roof solar, sawdust cyclone + duct, trunks in a steel rack, guarded powered saw with a Network core, floodlight.",
+      "style_revision": "efda7377"
     },
     {
       "id": "workshop_l1",
@@ -217,7 +693,57 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Open-front shop back-left, chimney back-right, anvil yard right.",
-      "style_revision": "be444580"
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "workshop_l2",
+      "category": "building",
+      "file": "building/workshop_l2.glb",
+      "tags": [
+        "colony",
+        "production",
+        "crafting",
+        "level2"
+      ],
+      "params": {
+        "level": 2
+      },
+      "dimensions_m": {
+        "x": 4.0,
+        "y": 5.95,
+        "z": 4.0
+      },
+      "tris": 1092,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles. All-brick shop, taller banded chimney, half-open roller door, steel hoist beam, metal lean-to over the anvil yard.",
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "workshop_l3",
+      "category": "building",
+      "file": "building/workshop_l3.glb",
+      "tags": [
+        "colony",
+        "production",
+        "crafting",
+        "level3"
+      ],
+      "params": {
+        "level": 3
+      },
+      "dimensions_m": {
+        "x": 4.0,
+        "y": 5.95,
+        "z": 4.0
+      },
+      "tris": 1356,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles. Concrete shop with plated walls, chimney with a steel scrubber, hazard-yellow gantry hoist, solar yard roof over a lathe, Network-fed forge, floodlight.",
+      "style_revision": "efda7377"
     },
     {
       "id": "enemy_husk",
@@ -239,7 +765,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "~1.7 m hunched. Dull amber eye, no cyan. Parts: head/torso/arm_l/arm_r/leg_l/leg_r.",
-      "style_revision": "be444580",
+      "style_revision": "efda7377",
       "parts": {
         "head": {
           "joint": [
@@ -253,7 +779,7 @@
           "joint": [
             0.0,
             0.8732,
-            -0.0
+            0.0
           ],
           "note": "pivot at waist"
         },
@@ -277,7 +803,7 @@
           "joint": [
             0.11,
             0.8,
-            -0.0
+            0.0
           ],
           "note": "l leg, pivot at hip joint"
         },
@@ -285,9 +811,82 @@
           "joint": [
             -0.11,
             0.8,
-            -0.0
+            0.0
           ],
           "note": "r leg, pivot at hip joint"
+        }
+      }
+    },
+    {
+      "id": "enemy_husk_crawler",
+      "category": "enemy",
+      "file": "enemy/enemy_husk_crawler.glb",
+      "tags": [
+        "enemy",
+        "husk",
+        "humanoid",
+        "crawler"
+      ],
+      "params": {},
+      "dimensions_m": {
+        "x": 0.738,
+        "y": 0.855,
+        "z": 1.584
+      },
+      "tris": 916,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Legless Husk crawling prone, ~0.85 m tall, ~1.6 m long (head -Y). Dull amber eye, no cyan. Parts: head/torso/arm_l/arm_r/leg_l/leg_r (legs are stumps).",
+      "style_revision": "efda7377",
+      "parts": {
+        "head": {
+          "joint": [
+            0.0157,
+            0.4644,
+            0.1675
+          ],
+          "note": "pivot at neck"
+        },
+        "torso": {
+          "joint": [
+            0.0091,
+            0.3697,
+            -0.2792
+          ],
+          "note": "pivot at waist"
+        },
+        "arm_l": {
+          "joint": [
+            0.2644,
+            0.4371,
+            0.121
+          ],
+          "note": "l arm, pivot at shoulder joint"
+        },
+        "arm_r": {
+          "joint": [
+            -0.2343,
+            0.4719,
+            0.121
+          ],
+          "note": "cyborg r arm, pivot at shoulder joint"
+        },
+        "leg_l": {
+          "joint": [
+            0.1176,
+            0.3483,
+            -0.3801
+          ],
+          "note": "l leg stump, pivot at hip joint"
+        },
+        "leg_r": {
+          "joint": [
+            -0.1024,
+            0.3483,
+            -0.3801
+          ],
+          "note": "r leg stump, pivot at hip joint"
         }
       }
     },
@@ -312,13 +911,13 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "~2.1 m. Glowing cyan (emissive) visor, chest core and seams. Parts: head/torso/arm_l/arm_r/leg_l/leg_r.",
-      "style_revision": "be444580",
+      "style_revision": "efda7377",
       "parts": {
         "head": {
           "joint": [
             0.0,
             1.7758,
-            -0.0
+            0.0
           ],
           "note": "pivot at neck"
         },
@@ -326,7 +925,7 @@
           "joint": [
             0.0,
             1.2072,
-            -0.0
+            0.0
           ],
           "note": "pivot at waist; shoulder plates ride on it"
         },
@@ -334,7 +933,7 @@
           "joint": [
             0.31,
             1.7308,
-            -0.0
+            0.0
           ],
           "note": "l arm, pivot at shoulder joint"
         },
@@ -342,7 +941,7 @@
           "joint": [
             0.12,
             1.08,
-            -0.0
+            0.0
           ],
           "note": "l leg, pivot at hip joint"
         },
@@ -350,7 +949,7 @@
           "joint": [
             -0.31,
             1.7308,
-            -0.0
+            0.0
           ],
           "note": "r arm, pivot at shoulder joint"
         },
@@ -358,11 +957,1403 @@
           "joint": [
             -0.12,
             1.08,
-            -0.0
+            0.0
           ],
           "note": "r leg, pivot at hip joint"
         }
+      },
+      "sockets": {
+        "hand_r": {
+          "point": [
+            -0.4675,
+            0.9918,
+            0.2058
+          ],
+          "part": "arm_r",
+          "note": "rides on arm_r; gear attach point `hand_r` goes here"
+        },
+        "back": {
+          "point": [
+            0.0,
+            1.4965,
+            -0.17
+          ],
+          "part": "torso",
+          "note": "rides on torso; gear attach point `back` goes here"
+        },
+        "torso": {
+          "point": [
+            0.0,
+            1.4965,
+            0.0
+          ],
+          "part": "torso",
+          "note": "rides on torso; gear attach point `torso` goes here"
+        },
+        "head": {
+          "point": [
+            0.0,
+            1.9308,
+            0.0
+          ],
+          "part": "head",
+          "note": "rides on head; gear attach point `head` goes here"
+        }
       }
+    },
+    {
+      "id": "enemy_linked_drone",
+      "category": "enemy",
+      "file": "enemy/enemy_linked_drone.glb",
+      "tags": [
+        "enemy",
+        "linked",
+        "drone",
+        "network",
+        "flying"
+      ],
+      "params": {},
+      "dimensions_m": {
+        "x": 1.32,
+        "y": 1.845,
+        "z": 1.32
+      },
+      "tris": 748,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Hovering scout, body ~1.3 m up, ~1.2 m across the rotors. Parts: body, eye, rotor_fl/rotor_fr/rotor_bl/rotor_br (pivot at the rotor hub), hover_field (on the ground, pivot at the origin). Eye faces -Y. Bob the body/eye/rotors, not the field.",
+      "style_revision": "efda7377",
+      "parts": {
+        "body": {
+          "joint": [
+            0.0,
+            1.3,
+            0.0
+          ],
+          "note": "drone body, pivot at its centre"
+        },
+        "eye": {
+          "joint": [
+            0.0,
+            1.3,
+            0.3
+          ],
+          "note": "sensor eye facing -Y"
+        },
+        "rotor_fl": {
+          "joint": [
+            0.46,
+            1.4,
+            0.46
+          ],
+          "note": "rotor, pivot at the hub (spin about Z)"
+        },
+        "rotor_fr": {
+          "joint": [
+            -0.46,
+            1.4,
+            0.46
+          ],
+          "note": "rotor, pivot at the hub (spin about Z)"
+        },
+        "rotor_bl": {
+          "joint": [
+            0.46,
+            1.4,
+            -0.46
+          ],
+          "note": "rotor, pivot at the hub (spin about Z)"
+        },
+        "rotor_br": {
+          "joint": [
+            -0.46,
+            1.4,
+            -0.46
+          ],
+          "note": "rotor, pivot at the hub (spin about Z)"
+        },
+        "hover_field": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "anti-grav projection on the ground"
+        }
+      }
+    },
+    {
+      "id": "enemy_linked_warden",
+      "category": "enemy",
+      "file": "enemy/enemy_linked_warden.glb",
+      "tags": [
+        "enemy",
+        "linked",
+        "humanoid",
+        "network",
+        "warden",
+        "heavy"
+      ],
+      "params": {},
+      "dimensions_m": {
+        "x": 1.636,
+        "y": 2.365,
+        "z": 0.839
+      },
+      "tris": 1432,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "~2.4 m heavy Linked. Tower shield on arm_l, cannon gauntlet on arm_r. Cyan (emissive) visor, chest core, seams. Parts: head/torso/arm_l/arm_r/leg_l/leg_r.",
+      "style_revision": "efda7377",
+      "parts": {
+        "head": {
+          "joint": [
+            0.0,
+            2.0653,
+            0.0
+          ],
+          "note": "pivot at neck"
+        },
+        "torso": {
+          "joint": [
+            0.0,
+            1.2652,
+            0.0
+          ],
+          "note": "pivot at waist; shoulder plates ride on it"
+        },
+        "arm_l": {
+          "joint": [
+            0.42,
+            2.0078,
+            0.0
+          ],
+          "note": "l arm, pivot at shoulder joint"
+        },
+        "leg_l": {
+          "joint": [
+            0.17,
+            1.12,
+            0.0
+          ],
+          "note": "l leg, pivot at hip joint"
+        },
+        "arm_r": {
+          "joint": [
+            -0.42,
+            2.0078,
+            0.0
+          ],
+          "note": "r arm, pivot at shoulder joint"
+        },
+        "leg_r": {
+          "joint": [
+            -0.17,
+            1.12,
+            0.0
+          ],
+          "note": "r leg, pivot at hip joint"
+        }
+      },
+      "sockets": {
+        "hand_r": {
+          "point": [
+            -0.6246,
+            1.1749,
+            0.2572
+          ],
+          "part": "arm_r",
+          "note": "rides on arm_r; gear attach point `hand_r` goes here"
+        },
+        "back": {
+          "point": [
+            0.0,
+            1.6703,
+            -0.23
+          ],
+          "part": "torso",
+          "note": "rides on torso; gear attach point `back` goes here"
+        },
+        "torso": {
+          "point": [
+            0.0,
+            1.6703,
+            0.0
+          ],
+          "part": "torso",
+          "note": "rides on torso; gear attach point `torso` goes here"
+        },
+        "head": {
+          "point": [
+            0.0,
+            2.2203,
+            0.0
+          ],
+          "part": "head",
+          "note": "rides on head; gear attach point `head` goes here"
+        }
+      }
+    },
+    {
+      "id": "item_backpack",
+      "category": "gear",
+      "file": "gear/item_backpack.glb",
+      "tags": [
+        "gear",
+        "item",
+        "tool",
+        "tier1"
+      ],
+      "params": {
+        "item": "backpack"
+      },
+      "dimensions_m": {
+        "x": 0.42,
+        "y": 0.561,
+        "z": 0.349
+      },
+      "tris": 384,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Canvas pack with bedroll; shoulder straps on its -Y face (the wearer's back). 0.42 x 0.35 x 0.56 m (w x d x h). Attach: back (strap face), hand_r (top grab loop).",
+      "style_revision": "efda7377",
+      "attach": {
+        "back": {
+          "point": [
+            0.0,
+            0.26,
+            0.1747
+          ],
+          "note": "strap face on the wearer's back"
+        },
+        "hand_r": {
+          "point": [
+            0.0,
+            0.46,
+            0.1097
+          ],
+          "note": "carried by the grab loop"
+        }
+      }
+    },
+    {
+      "id": "item_bandage",
+      "category": "gear",
+      "file": "gear/item_bandage.glb",
+      "tags": [
+        "gear",
+        "item",
+        "consumable",
+        "tier1"
+      ],
+      "params": {
+        "item": "bandage"
+      },
+      "dimensions_m": {
+        "x": 0.111,
+        "y": 0.096,
+        "z": 0.183
+      },
+      "tris": 88,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Gauze roll with a loose tail, roll 11 cm wide x 10 cm tall, tail out to 18 cm deep. Attach: hand_r, torso (tucked in a chest pouch).",
+      "style_revision": "efda7377",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0013,
+            0.048,
+            -0.0434
+          ],
+          "note": "roll held in the fist"
+        },
+        "torso": {
+          "point": [
+            0.0013,
+            0.048,
+            -0.2384
+          ],
+          "note": "tucked in a chest pouch, roll against the chest"
+        }
+      }
+    },
+    {
+      "id": "item_binoculars",
+      "category": "gear",
+      "file": "gear/item_binoculars.glb",
+      "tags": [
+        "gear",
+        "item",
+        "tool",
+        "tier2"
+      ],
+      "params": {
+        "item": "binoculars"
+      },
+      "dimensions_m": {
+        "x": 0.225,
+        "y": 0.104,
+        "z": 0.204
+      },
+      "tris": 296,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Chunky field binoculars, lenses toward -Y. 0.23 x 0.2 x 0.1 m (w x d x h). Attach: hand_r (bridge), torso (hung on the chest, eyepieces to the body).",
+      "style_revision": "efda7377",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.0462,
+            -0.002
+          ],
+          "note": "fist round the bridge, lenses forward"
+        },
+        "torso": {
+          "point": [
+            0.0,
+            0.0462,
+            -0.252
+          ],
+          "note": "hung on the chest: eyepiece face sits 0.15 m in front of the chest centre"
+        }
+      }
+    },
+    {
+      "id": "item_blueprint",
+      "category": "gear",
+      "file": "gear/item_blueprint.glb",
+      "tags": [
+        "gear",
+        "item",
+        "material",
+        "tier3"
+      ],
+      "params": {
+        "item": "blueprint"
+      },
+      "dimensions_m": {
+        "x": 0.452,
+        "y": 0.11,
+        "z": 0.172
+      },
+      "tris": 116,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Rolled tube of blue paper with leather ties, 0.45 x 0.17 x 0.11 m (w x d x h, with the loose sheet). Attach: hand_r, back (slung across).",
+      "style_revision": "efda7377",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.055,
+            -0.0311
+          ],
+          "note": "roll held in the fist"
+        },
+        "back": {
+          "point": [
+            0.0,
+            0.055,
+            0.0189
+          ],
+          "note": "slung across the back in its ties"
+        }
+      }
+    },
+    {
+      "id": "item_canned_food",
+      "category": "gear",
+      "file": "gear/item_canned_food.glb",
+      "tags": [
+        "gear",
+        "item",
+        "material",
+        "tier1"
+      ],
+      "params": {
+        "item": "canned_food"
+      },
+      "dimensions_m": {
+        "x": 0.192,
+        "y": 0.211,
+        "z": 0.101
+      },
+      "tris": 252,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Three labelled cans, one lying on two, 0.19 x 0.1 x 0.21 m (w x d x h). Attach: hand_r.",
+      "style_revision": "efda7377",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.163,
+            0.0016
+          ],
+          "note": "cans scooped up under one arm / in the fist"
+        }
+      }
+    },
+    {
+      "id": "item_climbing_gear",
+      "category": "gear",
+      "file": "gear/item_climbing_gear.glb",
+      "tags": [
+        "gear",
+        "item",
+        "tool",
+        "tier1"
+      ],
+      "params": {
+        "item": "climbing_gear"
+      },
+      "dimensions_m": {
+        "x": 0.375,
+        "y": 0.415,
+        "z": 0.271
+      },
+      "tris": 500,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Upright rope coil standing in a harness loop, carabiners clipped on. 0.38 x 0.27 x 0.42 m (w x d x h). Attach: hand_r (lashing on top of the coil), back.",
+      "style_revision": "efda7377",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.375,
+            -0.0043
+          ],
+          "note": "fist round the top lashing"
+        },
+        "back": {
+          "point": [
+            0.0,
+            0.215,
+            0.0657
+          ],
+          "note": "coil slung flat against the back"
+        }
+      }
+    },
+    {
+      "id": "item_cloth",
+      "category": "gear",
+      "file": "gear/item_cloth.glb",
+      "tags": [
+        "gear",
+        "item",
+        "material",
+        "tier1"
+      ],
+      "params": {
+        "item": "cloth"
+      },
+      "dimensions_m": {
+        "x": 0.366,
+        "y": 0.212,
+        "z": 0.281
+      },
+      "tris": 248,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Folded bolt of three cloth layers tied with a cord, 0.37 x 0.28 x 0.21 m (w x d x h). Attach: hand_r (cord on top), back.",
+      "style_revision": "efda7377",
+      "attach": {
+        "hand_r": {
+          "point": [
+            -0.0334,
+            0.192,
+            0.0004
+          ],
+          "note": "fist round the cord knot"
+        },
+        "back": {
+          "point": [
+            -0.0134,
+            0.09,
+            0.1304
+          ],
+          "note": "bolt strapped flat on the back"
+        }
+      }
+    },
+    {
+      "id": "item_electronics",
+      "category": "gear",
+      "file": "gear/item_electronics.glb",
+      "tags": [
+        "gear",
+        "item",
+        "material",
+        "tier2"
+      ],
+      "params": {
+        "item": "electronics"
+      },
+      "dimensions_m": {
+        "x": 0.26,
+        "y": 0.099,
+        "z": 0.194
+      },
+      "tris": 304,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Salvaged circuit board with chips and coiled wires, 0.26 x 0.19 x 0.1 m (w x d x h). Dead human tech, no cyan. Attach: hand_r.",
+      "style_revision": "efda7377",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.064,
+            0.0
+          ],
+          "note": "board held flat in the fist"
+        }
+      }
+    },
+    {
+      "id": "item_evac_beacon",
+      "category": "gear",
+      "file": "gear/item_evac_beacon.glb",
+      "tags": [
+        "gear",
+        "item",
+        "consumable",
+        "tier2"
+      ],
+      "params": {
+        "item": "evac_beacon"
+      },
+      "dimensions_m": {
+        "x": 0.13,
+        "y": 0.421,
+        "z": 0.135
+      },
+      "tris": 288,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Chunky handheld flare/radio beacon: yellow body, red strobe, stub antenna, 0.13 x 0.14 x 0.42 m (w x d x h). Attach: hand_r (rubber grip), torso (belt clip).",
+      "style_revision": "efda7377",
+      "attach": {
+        "hand_r": {
+          "point": [
+            -0.0001,
+            0.115,
+            0.0025
+          ],
+          "note": "fist round the rubber grip, strobe up"
+        },
+        "torso": {
+          "point": [
+            -0.0001,
+            0.18,
+            -0.2175
+          ],
+          "note": "belt/chest clip on the +Y side against the body"
+        }
+      }
+    },
+    {
+      "id": "item_grappling_hook",
+      "category": "gear",
+      "file": "gear/item_grappling_hook.glb",
+      "tags": [
+        "gear",
+        "item",
+        "tool",
+        "tier2"
+      ],
+      "params": {
+        "item": "grappling_hook"
+      },
+      "dimensions_m": {
+        "x": 0.378,
+        "y": 0.573,
+        "z": 0.339
+      },
+      "tris": 344,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Three-prong grapnel standing on its prongs, rope coiled round the shaft. 0.38 x 0.34 x 0.57 m (w x d x h). Attach: hand_r (leather grip on the shaft), back.",
+      "style_revision": "efda7377",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.4212,
+            -0.0468
+          ],
+          "note": "fist round the leather grip, prongs down"
+        },
+        "back": {
+          "point": [
+            0.0,
+            0.2912,
+            0.1632
+          ],
+          "note": "slung on the back, front prong against it"
+        }
+      }
+    },
+    {
+      "id": "item_husk_claws",
+      "category": "gear",
+      "file": "gear/item_husk_claws.glb",
+      "tags": [
+        "gear",
+        "item",
+        "weapon",
+        "melee",
+        "husk"
+      ],
+      "params": {
+        "item": "husk_claws"
+      },
+      "dimensions_m": {
+        "x": 0.17,
+        "y": 0.175,
+        "z": 0.609
+      },
+      "tris": 264,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Husk Claws. ~0.5 m: scrap gauntlet with three hooked blades, dull amber (husk_eye) node, no cyan. Attach: hand_r (inside the gauntlet).",
+      "style_revision": "efda7377",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.065,
+            -0.1047
+          ],
+          "note": "fist inside the gauntlet; blades forward"
+        }
+      }
+    },
+    {
+      "id": "item_linked_carbine",
+      "category": "gear",
+      "file": "gear/item_linked_carbine.glb",
+      "tags": [
+        "gear",
+        "item",
+        "weapon",
+        "ranged",
+        "tier3",
+        "two_handed",
+        "linked",
+        "network"
+      ],
+      "params": {
+        "item": "linked_carbine"
+      },
+      "dimensions_m": {
+        "x": 0.08,
+        "y": 0.225,
+        "z": 0.965
+      },
+      "tris": 188,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Linked Carbine. ~0.85 m sleek dark Network gun, cyan (emissive) seams, cell and muzzle. Attach: hand_r (pistol grip), back (mid-length).",
+      "style_revision": "efda7377",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.05,
+            -0.1525
+          ],
+          "note": "pistol grip; muzzle forward"
+        },
+        "back": {
+          "point": [
+            0.0,
+            0.1,
+            -0.0525
+          ],
+          "note": "mid-length; slung diagonally, muzzle/tip up",
+          "rot_deg": [
+            -90.0,
+            0.0,
+            35.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "item_linked_plating",
+      "category": "gear",
+      "file": "gear/item_linked_plating.glb",
+      "tags": [
+        "gear",
+        "item",
+        "armor",
+        "apparel",
+        "tier3",
+        "linked",
+        "network"
+      ],
+      "params": {
+        "item": "linked_plating"
+      },
+      "dimensions_m": {
+        "x": 0.7,
+        "y": 0.547,
+        "z": 0.439
+      },
+      "tris": 440,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Linked Plating. Near-black Network chest plating with cyan (emissive) seams, sized for adult_male. Attach: torso.",
+      "style_revision": "efda7377",
+      "attach": {
+        "torso": {
+          "point": [
+            0.0,
+            0.2525,
+            0.0004
+          ],
+          "note": "garment chest centre = body torso socket (adult_male rest pose)"
+        }
+      }
+    },
+    {
+      "id": "item_machete",
+      "category": "gear",
+      "file": "gear/item_machete.glb",
+      "tags": [
+        "gear",
+        "item",
+        "weapon",
+        "melee",
+        "tier2"
+      ],
+      "params": {
+        "item": "machete"
+      },
+      "dimensions_m": {
+        "x": 0.068,
+        "y": 0.121,
+        "z": 0.665
+      },
+      "tris": 192,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Machete. ~0.6 m, blade upright edge-down, leather-wrapped handle. Attach: hand_r.",
+      "style_revision": "efda7377",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.062,
+            -0.2225
+          ],
+          "note": "handle; blade forward, edge down"
+        }
+      }
+    },
+    {
+      "id": "item_med_kit",
+      "category": "gear",
+      "file": "gear/item_med_kit.glb",
+      "tags": [
+        "gear",
+        "item",
+        "consumable",
+        "tier1"
+      ],
+      "params": {
+        "item": "med_kit"
+      },
+      "dimensions_m": {
+        "x": 0.352,
+        "y": 0.315,
+        "z": 0.155
+      },
+      "tris": 220,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "White case with red crosses and a top handle, 0.35 x 0.16 x 0.32 m (w x d x h). Attach: hand_r (handle), back (strapped on).",
+      "style_revision": "efda7377",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.298,
+            -0.0025
+          ],
+          "note": "fist round the top handle"
+        },
+        "back": {
+          "point": [
+            0.0,
+            0.12,
+            0.0725
+          ],
+          "note": "strapped flat on the back"
+        }
+      }
+    },
+    {
+      "id": "item_padded_vest",
+      "category": "gear",
+      "file": "gear/item_padded_vest.glb",
+      "tags": [
+        "gear",
+        "item",
+        "armor",
+        "apparel",
+        "tier1"
+      ],
+      "params": {
+        "item": "padded_vest"
+      },
+      "dimensions_m": {
+        "x": 0.548,
+        "y": 0.567,
+        "z": 0.393
+      },
+      "tris": 348,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Padded Vest. Sleeveless quilted vest with tape patches, sized for adult_male. Attach: torso.",
+      "style_revision": "efda7377",
+      "attach": {
+        "torso": {
+          "point": [
+            0.0,
+            0.2825,
+            -0.0015
+          ],
+          "note": "garment chest centre = body torso socket (adult_male rest pose)"
+        }
+      }
+    },
+    {
+      "id": "item_pipe",
+      "category": "gear",
+      "file": "gear/item_pipe.glb",
+      "tags": [
+        "gear",
+        "item",
+        "weapon",
+        "melee",
+        "tier1"
+      ],
+      "params": {
+        "item": "pipe"
+      },
+      "dimensions_m": {
+        "x": 0.15,
+        "y": 0.106,
+        "z": 0.87
+      },
+      "tris": 224,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Lead Pipe. ~0.8 m length of rusty pipe, taped grip, T-fitting head. Attach: hand_r (taped grip), back (mid-length).",
+      "style_revision": "efda7377",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.053,
+            -0.285
+          ],
+          "note": "taped grip, pipe points forward"
+        },
+        "back": {
+          "point": [
+            0.0,
+            0.053,
+            -0.015
+          ],
+          "note": "mid-length; slung diagonally, muzzle/tip up",
+          "rot_deg": [
+            -90.0,
+            0.0,
+            35.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "item_pistol",
+      "category": "gear",
+      "file": "gear/item_pistol.glb",
+      "tags": [
+        "gear",
+        "item",
+        "weapon",
+        "ranged",
+        "tier2"
+      ],
+      "params": {
+        "item": "pistol"
+      },
+      "dimensions_m": {
+        "x": 0.06,
+        "y": 0.223,
+        "z": 0.29
+      },
+      "tris": 180,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Pistol. ~0.28 m, upright (grip down), taped grip. Attach: hand_r (grip).",
+      "style_revision": "efda7377",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.065,
+            -0.085
+          ],
+          "note": "grip; barrel forward"
+        }
+      }
+    },
+    {
+      "id": "item_rag_coat",
+      "category": "gear",
+      "file": "gear/item_rag_coat.glb",
+      "tags": [
+        "gear",
+        "item",
+        "clothing",
+        "apparel",
+        "tier1"
+      ],
+      "params": {
+        "item": "rag_coat"
+      },
+      "dimensions_m": {
+        "x": 0.773,
+        "y": 1.149,
+        "z": 0.397
+      },
+      "tris": 404,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Rag Coat. Knee-length patched coat sized for adult_male, worn shape. Attach: torso (body chest-centre socket).",
+      "style_revision": "efda7377",
+      "attach": {
+        "torso": {
+          "point": [
+            0.0,
+            0.8246,
+            0.0085
+          ],
+          "note": "garment chest centre = body torso socket (adult_male rest pose)"
+        }
+      }
+    },
+    {
+      "id": "item_rifle",
+      "category": "gear",
+      "file": "gear/item_rifle.glb",
+      "tags": [
+        "gear",
+        "item",
+        "weapon",
+        "ranged",
+        "tier3",
+        "two_handed"
+      ],
+      "params": {
+        "item": "rifle"
+      },
+      "dimensions_m": {
+        "x": 0.131,
+        "y": 0.238,
+        "z": 1.16
+      },
+      "tris": 372,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Hunting Rifle. ~1.1 m bolt rifle, wood stock, scope. Attach: hand_r (stock wrist), back (mid-length).",
+      "style_revision": "efda7377",
+      "attach": {
+        "hand_r": {
+          "point": [
+            -0.0317,
+            0.094,
+            -0.19
+          ],
+          "note": "stock wrist behind the trigger; muzzle forward"
+        },
+        "back": {
+          "point": [
+            -0.0317,
+            0.094,
+            0.01
+          ],
+          "note": "mid-length; slung diagonally, muzzle/tip up",
+          "rot_deg": [
+            -90.0,
+            0.0,
+            35.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "item_riot_armor",
+      "category": "gear",
+      "file": "gear/item_riot_armor.glb",
+      "tags": [
+        "gear",
+        "item",
+        "armor",
+        "apparel",
+        "tier3",
+        "heavy"
+      ],
+      "params": {
+        "item": "riot_armor"
+      },
+      "dimensions_m": {
+        "x": 0.82,
+        "y": 0.787,
+        "z": 0.44
+      },
+      "tris": 404,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Riot Armor. Plate vest + layered shoulder plates + neck guard, sized for adult_male (no helmet: torso only). Attach: torso.",
+      "style_revision": "efda7377",
+      "attach": {
+        "torso": {
+          "point": [
+            0.0,
+            0.4325,
+            0.005
+          ],
+          "note": "garment chest centre = body torso socket (adult_male rest pose)"
+        }
+      }
+    },
+    {
+      "id": "item_scout_jacket",
+      "category": "gear",
+      "file": "gear/item_scout_jacket.glb",
+      "tags": [
+        "gear",
+        "item",
+        "clothing",
+        "apparel",
+        "tier2"
+      ],
+      "params": {
+        "item": "scout_jacket"
+      },
+      "dimensions_m": {
+        "x": 0.812,
+        "y": 0.657,
+        "z": 0.407
+      },
+      "tris": 448,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Scout Jacket. Hip-length olive field jacket, hood, pockets, bandolier strap. Sized for adult_male. Attach: torso.",
+      "style_revision": "efda7377",
+      "attach": {
+        "torso": {
+          "point": [
+            0.0,
+            0.3525,
+            0.0134
+          ],
+          "note": "garment chest centre = body torso socket (adult_male rest pose)"
+        }
+      }
+    },
+    {
+      "id": "item_scrap",
+      "category": "gear",
+      "file": "gear/item_scrap.glb",
+      "tags": [
+        "gear",
+        "item",
+        "material",
+        "tier1"
+      ],
+      "params": {
+        "item": "scrap"
+      },
+      "dimensions_m": {
+        "x": 0.467,
+        "y": 0.227,
+        "z": 0.335
+      },
+      "tris": 92,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Lashed stack of rusty scrap plates and a pipe, 0.47 x 0.34 x 0.23 m (w x d x h). Attach: hand_r (lashing on top), back.",
+      "style_revision": "efda7377",
+      "attach": {
+        "hand_r": {
+          "point": [
+            -0.0084,
+            0.227,
+            0.002
+          ],
+          "note": "fist round the two lashings on top"
+        },
+        "back": {
+          "point": [
+            -0.0084,
+            0.1155,
+            0.162
+          ],
+          "note": "bundle strapped flat on the back"
+        }
+      }
+    },
+    {
+      "id": "item_spear",
+      "category": "gear",
+      "file": "gear/item_spear.glb",
+      "tags": [
+        "gear",
+        "item",
+        "weapon",
+        "melee",
+        "tier1",
+        "two_handed"
+      ],
+      "params": {
+        "item": "spear"
+      },
+      "dimensions_m": {
+        "x": 0.15,
+        "y": 0.08,
+        "z": 1.91
+      },
+      "tris": 220,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Rebar Spear (reach 2). ~1.8 m rebar shaft, lashed scrap blade, two cloth grips. Attach: hand_r (rear grip), back (mid-length).",
+      "style_revision": "efda7377",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.04,
+            -0.445
+          ],
+          "note": "rear (main) grip; the off hand takes the front grip"
+        },
+        "back": {
+          "point": [
+            0.0,
+            0.04,
+            -0.025
+          ],
+          "note": "mid-length; slung diagonally, muzzle/tip up",
+          "rot_deg": [
+            -90.0,
+            0.0,
+            35.0
+          ]
+        }
+      }
+    },
+    {
+      "id": "building_shell",
+      "category": "prop",
+      "file": "prop/building_shell.glb",
+      "tags": [
+        "scavenge",
+        "ruin",
+        "building_shell"
+      ],
+      "params": {},
+      "dimensions_m": {
+        "x": 6.0,
+        "y": 3.1,
+        "z": 6.0
+      },
+      "tris": 872,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "3x3 tiles (6x6 m). Walls (0.3 m thick) hug the outer edge of the 8 perimeter tiles; tiles (col,row) from -X/-Y corner. Wall cells: all perimeter tiles except (1,0) front doorway (-Y) and (2,1) east breach (+X); centre (1,1) open floor. Walls 1.2-3.1 m tall with window holes; roof gone.",
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "cover_high_container",
+      "category": "prop",
+      "file": "prop/cover_high_container.glb",
+      "tags": [
+        "scavenge",
+        "cover",
+        "cover_high",
+        "terrain_wall"
+      ],
+      "params": {
+        "kind": "container"
+      },
+      "dimensions_m": {
+        "x": 1.98,
+        "y": 2.32,
+        "z": 1.98
+      },
+      "tris": 408,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "High cover (terrain Wall, blocks sight). Rusted cargo container cut down to one tile, ~1.9x1.9 m, ~2.3 m tall; doors face -Y.",
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "cover_high_wall",
+      "category": "prop",
+      "file": "prop/cover_high_wall.glb",
+      "tags": [
+        "scavenge",
+        "cover",
+        "cover_high",
+        "terrain_wall"
+      ],
+      "params": {
+        "kind": "barricade"
+      },
+      "dimensions_m": {
+        "x": 1.98,
+        "y": 2.49,
+        "z": 1.334
+      },
+      "tris": 516,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "High cover (terrain Wall, blocks sight). Makeshift scrap barricade: corrugated sheets on posts, 2.0 m along X, ~2.3 m tall.",
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "cover_low_barrier",
+      "category": "prop",
+      "file": "prop/cover_low_barrier.glb",
+      "tags": [
+        "scavenge",
+        "cover",
+        "cover_low",
+        "terrain_cover"
+      ],
+      "params": {
+        "kind": "barrier"
+      },
+      "dimensions_m": {
+        "x": 1.98,
+        "y": 0.84,
+        "z": 0.988
+      },
+      "tris": 152,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Low cover (terrain Cover). Chipped concrete road barrier, 2.0 m along X, ~0.85 m tall.",
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "cover_low_sandbags",
+      "category": "prop",
+      "file": "prop/cover_low_sandbags.glb",
+      "tags": [
+        "scavenge",
+        "cover",
+        "cover_low",
+        "terrain_cover"
+      ],
+      "params": {
+        "kind": "sandbags"
+      },
+      "dimensions_m": {
+        "x": 1.9,
+        "y": 0.778,
+        "z": 1.12
+      },
+      "tris": 816,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Low cover (terrain Cover). Sandbag wall ~1.9 m along X, ~0.9 m tall, one tile.",
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "dead_tree",
+      "category": "prop",
+      "file": "prop/dead_tree.glb",
+      "tags": [
+        "scavenge",
+        "nature",
+        "tree"
+      ],
+      "params": {},
+      "dimensions_m": {
+        "x": 1.731,
+        "y": 3.574,
+        "z": 1.308
+      },
+      "tris": 328,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "One tile, ~3.6 m tall. Trunk at the origin; crown fits in ~1.9x1.9 m. Blocks movement (terrain Wall or Cover, game's choice).",
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "exit_marker",
+      "category": "prop",
+      "file": "prop/exit_marker.glb",
+      "tags": [
+        "scavenge",
+        "exit",
+        "extraction",
+        "marker"
+      ],
+      "params": {},
+      "dimensions_m": {
+        "x": 1.9,
+        "y": 3.17,
+        "z": 1.935
+      },
+      "tris": 720,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "One tile (1.9x1.9 m deck, top z~0.1). Chevrons point -Y = the way out; rotate so -Y faces the map edge. Flare pole ~3.2 m at the back (+Y).",
+      "style_revision": "efda7377"
     },
     {
       "id": "ground_tile",
@@ -386,7 +2377,82 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "2x2 m floor tile for the scavenge map, cracked asphalt. Top z~0.07.",
-      "style_revision": "be444580"
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "ground_tile_concrete",
+      "category": "prop",
+      "file": "prop/ground_tile_concrete.glb",
+      "tags": [
+        "scavenge",
+        "tile",
+        "ground",
+        "concrete"
+      ],
+      "params": {
+        "variant": "concrete"
+      },
+      "dimensions_m": {
+        "x": 2.0,
+        "y": 0.179,
+        "z": 2.0
+      },
+      "tris": 172,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "2x2 m floor tile, cracked concrete yard / pavement. Top z~0.07.",
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "ground_tile_dirt",
+      "category": "prop",
+      "file": "prop/ground_tile_dirt.glb",
+      "tags": [
+        "scavenge",
+        "tile",
+        "ground",
+        "dirt"
+      ],
+      "params": {
+        "variant": "dirt"
+      },
+      "dimensions_m": {
+        "x": 2.0,
+        "y": 0.184,
+        "z": 2.0
+      },
+      "tris": 160,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "2x2 m floor tile, packed earth with cart ruts (along Y), stones and weeds. Top z~0.07.",
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "ground_tile_overgrown",
+      "category": "prop",
+      "file": "prop/ground_tile_overgrown.glb",
+      "tags": [
+        "scavenge",
+        "tile",
+        "ground",
+        "overgrown"
+      ],
+      "params": {
+        "variant": "overgrown"
+      },
+      "dimensions_m": {
+        "x": 2.0,
+        "y": 0.27,
+        "z": 2.0
+      },
+      "tris": 184,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "2x2 m floor tile, broken paving slabs swallowed by moss and grass clumps. Top z~0.07.",
+      "style_revision": "efda7377"
     },
     {
       "id": "loot_crate",
@@ -408,7 +2474,30 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Pickup marker on the tactical map. ~1 m long, sits inside one tile.",
-      "style_revision": "be444580"
+      "style_revision": "efda7377"
+    },
+    {
+      "id": "network_pylon",
+      "category": "prop",
+      "file": "prop/network_pylon.glb",
+      "tags": [
+        "scavenge",
+        "network",
+        "linked_zone",
+        "pylon"
+      ],
+      "params": {},
+      "dimensions_m": {
+        "x": 1.936,
+        "y": 5.0,
+        "z": 1.814
+      },
+      "tris": 540,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "One tile (1.8x1.8 m plinth), ~5 m tall. Emissive cyan rings/core: give the environment glow. Blocks movement and sight (terrain Wall).",
+      "style_revision": "efda7377"
     },
     {
       "id": "rubble",
@@ -430,7 +2519,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Half cover. Fits one tile (~1.8 m footprint), ~0.8 m tall.",
-      "style_revision": "be444580"
+      "style_revision": "efda7377"
     },
     {
       "id": "wall_segment",
@@ -453,7 +2542,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Full cover. Exactly 2.0 m along X, 0.3 m thick; chain along X for cover lines.",
-      "style_revision": "be444580"
+      "style_revision": "efda7377"
     },
     {
       "id": "wrecked_car",
@@ -476,7 +2565,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Full cover. 2x1 tiles (~4 m along X), ~1.3 m tall. Nose points +X.",
-      "style_revision": "be444580"
+      "style_revision": "efda7377"
     },
     {
       "id": "prosthetic_arm_cyborg_l",
@@ -504,13 +2593,13 @@
       "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Replaces arm_l on adult bodies; origin at the shoulder joint.",
-      "style_revision": "be444580",
+      "style_revision": "efda7377",
       "parts": {
         "arm_l": {
           "joint": [
             0.25,
             1.3995,
-            -0.0
+            0.0
           ],
           "note": "cyborg l arm, pivot at shoulder joint"
         }
@@ -542,15 +2631,89 @@
       "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Replaces arm_r on adult bodies; origin at the shoulder joint.",
-      "style_revision": "be444580",
+      "style_revision": "efda7377",
       "parts": {
         "arm_r": {
           "joint": [
             -0.25,
             1.3995,
-            -0.0
+            0.0
           ],
           "note": "cyborg r arm, pivot at shoulder joint"
+        }
+      }
+    },
+    {
+      "id": "prosthetic_arm_hook_l",
+      "category": "prosthetic",
+      "file": "prosthetic/prosthetic_arm_hook_l.glb",
+      "tags": [
+        "prosthetic",
+        "crude",
+        "arm",
+        "side_l"
+      ],
+      "params": {
+        "limb": "arm",
+        "side": "l",
+        "body": "adult_male"
+      },
+      "dimensions_m": {
+        "x": 0.296,
+        "y": 0.873,
+        "z": 0.363
+      },
+      "tris": 372,
+      "pivot": "joint",
+      "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Leather upper-arm socket, metal rod forearm and a chunky hook. Replaces arm_l on adult bodies; origin at the shoulder joint.",
+      "style_revision": "efda7377",
+      "parts": {
+        "arm_l": {
+          "joint": [
+            0.25,
+            1.3995,
+            0.0
+          ],
+          "note": "crude l hook arm, pivot at shoulder joint"
+        }
+      }
+    },
+    {
+      "id": "prosthetic_arm_hook_r",
+      "category": "prosthetic",
+      "file": "prosthetic/prosthetic_arm_hook_r.glb",
+      "tags": [
+        "prosthetic",
+        "crude",
+        "arm",
+        "side_r"
+      ],
+      "params": {
+        "limb": "arm",
+        "side": "r",
+        "body": "adult_male"
+      },
+      "dimensions_m": {
+        "x": 0.296,
+        "y": 0.873,
+        "z": 0.363
+      },
+      "tris": 372,
+      "pivot": "joint",
+      "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Leather upper-arm socket, metal rod forearm and a chunky hook. Replaces arm_r on adult bodies; origin at the shoulder joint.",
+      "style_revision": "efda7377",
+      "parts": {
+        "arm_r": {
+          "joint": [
+            -0.25,
+            1.3995,
+            0.0
+          ],
+          "note": "crude r hook arm, pivot at shoulder joint"
         }
       }
     },
@@ -580,13 +2743,13 @@
       "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Replaces leg_l on adult bodies; origin at the hip joint.",
-      "style_revision": "be444580",
+      "style_revision": "efda7377",
       "parts": {
         "leg_l": {
           "joint": [
             0.11,
             0.9,
-            -0.0
+            0.0
           ],
           "note": "cyborg l leg, pivot at hip joint"
         }
@@ -618,15 +2781,89 @@
       "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Replaces leg_r on adult bodies; origin at the hip joint.",
-      "style_revision": "be444580",
+      "style_revision": "efda7377",
       "parts": {
         "leg_r": {
           "joint": [
             -0.11,
             0.9,
-            -0.0
+            0.0
           ],
           "note": "cyborg r leg, pivot at hip joint"
+        }
+      }
+    },
+    {
+      "id": "prosthetic_leg_peg_l",
+      "category": "prosthetic",
+      "file": "prosthetic/prosthetic_leg_peg_l.glb",
+      "tags": [
+        "prosthetic",
+        "crude",
+        "leg",
+        "side_l"
+      ],
+      "params": {
+        "limb": "leg",
+        "side": "l",
+        "body": "adult_male"
+      },
+      "dimensions_m": {
+        "x": 0.235,
+        "y": 1.0,
+        "z": 0.22
+      },
+      "tris": 244,
+      "pivot": "joint",
+      "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Strapped leather socket on a wooden peg with a rubber foot. Replaces leg_l on adult bodies; origin at the hip joint.",
+      "style_revision": "efda7377",
+      "parts": {
+        "leg_l": {
+          "joint": [
+            0.11,
+            0.9,
+            0.0
+          ],
+          "note": "crude l peg leg, pivot at hip joint"
+        }
+      }
+    },
+    {
+      "id": "prosthetic_leg_peg_r",
+      "category": "prosthetic",
+      "file": "prosthetic/prosthetic_leg_peg_r.glb",
+      "tags": [
+        "prosthetic",
+        "crude",
+        "leg",
+        "side_r"
+      ],
+      "params": {
+        "limb": "leg",
+        "side": "r",
+        "body": "adult_male"
+      },
+      "dimensions_m": {
+        "x": 0.235,
+        "y": 1.0,
+        "z": 0.22
+      },
+      "tris": 244,
+      "pivot": "joint",
+      "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Strapped leather socket on a wooden peg with a rubber foot. Replaces leg_r on adult bodies; origin at the hip joint.",
+      "style_revision": "efda7377",
+      "parts": {
+        "leg_r": {
+          "joint": [
+            -0.11,
+            0.9,
+            0.0
+          ],
+          "note": "crude r peg leg, pivot at hip joint"
         }
       }
     },
@@ -652,13 +2889,13 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "1.68 m. Rust-red jacket, scarf, ponytail. Swappable limbs: see parts.",
-      "style_revision": "be444580",
+      "style_revision": "efda7377",
       "parts": {
         "head": {
           "joint": [
             0.0,
             1.3412,
-            -0.0
+            0.0
           ],
           "note": "pivot at neck"
         },
@@ -666,7 +2903,7 @@
           "joint": [
             0.0,
             0.9608,
-            -0.0
+            0.0
           ],
           "note": "pivot at waist"
         },
@@ -674,7 +2911,7 @@
           "joint": [
             0.21,
             1.2992,
-            -0.0
+            0.0
           ],
           "note": "l arm, pivot at shoulder joint"
         },
@@ -682,7 +2919,7 @@
           "joint": [
             0.11,
             0.86,
-            -0.0
+            0.0
           ],
           "note": "l leg, pivot at hip joint"
         },
@@ -690,7 +2927,7 @@
           "joint": [
             -0.21,
             1.2992,
-            -0.0
+            0.0
           ],
           "note": "r arm, pivot at shoulder joint"
         },
@@ -698,9 +2935,47 @@
           "joint": [
             -0.11,
             0.86,
-            -0.0
+            0.0
           ],
           "note": "r leg, pivot at hip joint"
+        }
+      },
+      "sockets": {
+        "hand_r": {
+          "point": [
+            -0.2922,
+            0.6899,
+            0.0959
+          ],
+          "part": "arm_r",
+          "note": "rides on arm_r; gear attach point `hand_r` goes here"
+        },
+        "back": {
+          "point": [
+            0.0,
+            1.156,
+            -0.135
+          ],
+          "part": "torso",
+          "note": "rides on torso; gear attach point `back` goes here"
+        },
+        "torso": {
+          "point": [
+            0.0,
+            1.156,
+            0.0
+          ],
+          "part": "torso",
+          "note": "rides on torso; gear attach point `torso` goes here"
+        },
+        "head": {
+          "point": [
+            0.0,
+            1.5012,
+            0.0
+          ],
+          "part": "head",
+          "note": "rides on head; gear attach point `head` goes here"
         }
       }
     },
@@ -726,13 +3001,13 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "1.80 m. Olive field jacket, backpack, beard. Swappable limbs: see parts.",
-      "style_revision": "be444580",
+      "style_revision": "efda7377",
       "parts": {
         "head": {
           "joint": [
             0.0,
             1.447,
-            -0.0
+            0.0
           ],
           "note": "pivot at neck"
         },
@@ -740,7 +3015,7 @@
           "joint": [
             0.0,
             1.008,
-            -0.0
+            0.0
           ],
           "note": "pivot at waist"
         },
@@ -748,7 +3023,7 @@
           "joint": [
             0.25,
             1.3995,
-            -0.0
+            0.0
           ],
           "note": "l arm, pivot at shoulder joint"
         },
@@ -756,7 +3031,7 @@
           "joint": [
             0.11,
             0.9,
-            -0.0
+            0.0
           ],
           "note": "l leg, pivot at hip joint"
         },
@@ -764,7 +3039,7 @@
           "joint": [
             -0.25,
             1.3995,
-            -0.0
+            0.0
           ],
           "note": "r arm, pivot at shoulder joint"
         },
@@ -772,9 +3047,47 @@
           "joint": [
             -0.11,
             0.9,
-            -0.0
+            0.0
           ],
           "note": "r leg, pivot at hip joint"
+        }
+      },
+      "sockets": {
+        "hand_r": {
+          "point": [
+            -0.3384,
+            0.7433,
+            0.1035
+          ],
+          "part": "arm_r",
+          "note": "rides on arm_r; gear attach point `hand_r` goes here"
+        },
+        "back": {
+          "point": [
+            0.0,
+            1.2325,
+            -0.15
+          ],
+          "part": "torso",
+          "note": "rides on torso; gear attach point `back` goes here"
+        },
+        "torso": {
+          "point": [
+            0.0,
+            1.2325,
+            0.0
+          ],
+          "part": "torso",
+          "note": "rides on torso; gear attach point `torso` goes here"
+        },
+        "head": {
+          "point": [
+            0.0,
+            1.612,
+            0.0
+          ],
+          "part": "head",
+          "note": "rides on head; gear attach point `head` goes here"
         }
       }
     },
@@ -806,13 +3119,13 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Fit check: adult male with prosthetic_leg_cyborg_l + prosthetic_arm_cyborg_r swapped in at the same joints. Reference for the in-game part swap.",
-      "style_revision": "be444580",
+      "style_revision": "efda7377",
       "parts": {
         "head": {
           "joint": [
             0.0,
             1.447,
-            -0.0
+            0.0
           ],
           "note": "pivot at neck"
         },
@@ -820,7 +3133,7 @@
           "joint": [
             0.0,
             1.008,
-            -0.0
+            0.0
           ],
           "note": "pivot at waist"
         },
@@ -828,7 +3141,7 @@
           "joint": [
             0.25,
             1.3995,
-            -0.0
+            0.0
           ],
           "note": "l arm, pivot at shoulder joint"
         },
@@ -836,7 +3149,7 @@
           "joint": [
             0.11,
             0.9,
-            -0.0
+            0.0
           ],
           "note": "cyborg l leg, pivot at hip joint"
         },
@@ -844,7 +3157,7 @@
           "joint": [
             -0.25,
             1.3995,
-            -0.0
+            0.0
           ],
           "note": "cyborg r arm, pivot at shoulder joint"
         },
@@ -852,9 +3165,47 @@
           "joint": [
             -0.11,
             0.9,
-            -0.0
+            0.0
           ],
           "note": "r leg, pivot at hip joint"
+        }
+      },
+      "sockets": {
+        "hand_r": {
+          "point": [
+            -0.3384,
+            0.7433,
+            0.1035
+          ],
+          "part": "arm_r",
+          "note": "rides on arm_r; gear attach point `hand_r` goes here"
+        },
+        "back": {
+          "point": [
+            0.0,
+            1.2325,
+            -0.15
+          ],
+          "part": "torso",
+          "note": "rides on torso; gear attach point `back` goes here"
+        },
+        "torso": {
+          "point": [
+            0.0,
+            1.2325,
+            0.0
+          ],
+          "part": "torso",
+          "note": "rides on torso; gear attach point `torso` goes here"
+        },
+        "head": {
+          "point": [
+            0.0,
+            1.612,
+            0.0
+          ],
+          "part": "head",
+          "note": "rides on head; gear attach point `head` goes here"
         }
       }
     },
@@ -879,13 +3230,13 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "1.15 m. Oversized hoodie. Grows into an adult body (separate asset).",
-      "style_revision": "be444580",
+      "style_revision": "efda7377",
       "parts": {
         "head": {
           "joint": [
             0.0,
             0.8397,
-            -0.0
+            0.0
           ],
           "note": "pivot at neck"
         },
@@ -893,7 +3244,7 @@
           "joint": [
             0.0,
             0.589,
-            -0.0
+            0.0
           ],
           "note": "pivot at waist"
         },
@@ -901,7 +3252,7 @@
           "joint": [
             0.16,
             0.8018,
-            -0.0
+            0.0
           ],
           "note": "l arm, pivot at shoulder joint"
         },
@@ -909,7 +3260,7 @@
           "joint": [
             0.08,
             0.52,
-            -0.0
+            0.0
           ],
           "note": "l leg, pivot at hip joint"
         },
@@ -917,7 +3268,7 @@
           "joint": [
             -0.16,
             0.8018,
-            -0.0
+            0.0
           ],
           "note": "r arm, pivot at shoulder joint"
         },
@@ -925,9 +3276,47 @@
           "joint": [
             -0.08,
             0.52,
-            -0.0
+            0.0
           ],
           "note": "r leg, pivot at hip joint"
+        }
+      },
+      "sockets": {
+        "hand_r": {
+          "point": [
+            -0.2297,
+            0.3795,
+            0.0675
+          ],
+          "part": "arm_r",
+          "note": "rides on arm_r; gear attach point `hand_r` goes here"
+        },
+        "back": {
+          "point": [
+            0.0,
+            0.7194,
+            -0.115
+          ],
+          "part": "torso",
+          "note": "rides on torso; gear attach point `back` goes here"
+        },
+        "torso": {
+          "point": [
+            0.0,
+            0.7194,
+            0.0
+          ],
+          "part": "torso",
+          "note": "rides on torso; gear attach point `torso` goes here"
+        },
+        "head": {
+          "point": [
+            0.0,
+            0.9948,
+            0.0
+          ],
+          "part": "head",
+          "note": "rides on head; gear attach point `head` goes here"
         }
       }
     }
