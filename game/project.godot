@@ -1,0 +1,15 @@
+; Engine configuration file.
+config_version=5
+
+[application]
+config/name="Remnants"
+run/main_scene="res://scenes/MainMenu.tscn"
+config/features=PackedStringArray("4.7", "C#", "Forward Plus")
+
+[dotnet]
+project/assembly_name="Remnants.Game"
+project/solution_directory=".."
+
+[display]
+window/size/viewport_width=1280
+window/size/viewport_height=720
