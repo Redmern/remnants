@@ -77,9 +77,9 @@ public static class ScavengeTestData
     /// <summary>
     /// An open floor arena. Units get ids in order; parties are created for every player id present.
     /// The turn order is exactly the units in the given order (not initiative), and the first one is up
-    /// with full AP, so tests control who acts. Optional rows draw terrain: . floor, # wall, r rubble, c cover, ~ water, E exit.
+    /// with full AP, so tests control who acts. Optional rows draw terrain: . floor, # wall, P pylon, r rubble, c cover, ~ water, E exit.
     /// </summary>
-    public static ScavengeSim Arena(int width, int height, IEnumerable<Unit> units, string[]? rows = null, ulong seed = 1)
+    public static ScavengeSim Arena(int width, int height, IEnumerable<Unit> units, string[]? rows = null, ulong seed = 1, string zoneId = "outskirts")
     {
         var map = new TileMap(width, height);
         if (rows is not null)
@@ -89,12 +89,12 @@ public static class ScavengeTestData
                     var p = new Pos(x, y);
                     map[p] = rows[y][x] switch
                     {
-                        '#' => Terrain.Wall, 'r' => Terrain.Rubble, 'c' => Terrain.Cover, '~' => Terrain.Water, _ => Terrain.Floor,
+                        '#' => Terrain.Wall, 'P' => Terrain.Pylon, 'r' => Terrain.Rubble, 'c' => Terrain.Cover, '~' => Terrain.Water, _ => Terrain.Floor,
                     };
                     if (rows[y][x] == 'E') map.Exits.Add(p);
                 }
 
-        var state = new ScavengeState { ZoneId = "outskirts", Map = map, Round = 1, RngState = new Random.DeterministicRng(seed).State };
+        var state = new ScavengeState { ZoneId = zoneId, Map = map, Round = 1, RngState = new Random.DeterministicRng(seed).State };
         foreach (var u in units)
         {
             u.Id = state.NextUnitId++;

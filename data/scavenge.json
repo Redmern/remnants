@@ -4,7 +4,8 @@
     "Rubble": { "moveCost": 2, "cover": 0.1 },
     "Cover":  { "moveCost": 2, "cover": 0.3 },
     "Water":  { "moveCost": 3 },
-    "Wall":   { "passable": false, "blocksSight": true, "cover": 0.4 }
+    "Wall":   { "passable": false, "blocksSight": true, "cover": 0.4 },
+    "Pylon":  { "passable": false, "cover": 0.3 }
   },
   "movement": {
     "basePattern": "King",
@@ -37,6 +38,16 @@
                  "apCost": 1, "accuracy": 0.8, "skill": "Melee", "strengthScaling": 1.0, "noise": 1 }
   },
   "ai": { "wanderChance": 0.5, "minSpawnDistance": 8 },
+  "network": {
+    "pylonRange": 8,
+    "reinforceAfterRounds": 3,
+    "retreatHpFraction": 0.35,
+    "suppressBelowHitChance": 0.3,
+    "suppressApPenalty": 1,
+    "coverWeight": 10,
+    "apWeight": 0.5
+  },
+  "world": { "colonyPos": [0.22, 0.7] },
   "npc": {
     "attributeRange": [20, 55],
     "names": ["Wren", "Odile", "Caspar", "Hana", "Milo", "Yara", "Dov", "Tamsin", "Ezra", "Rosa"]

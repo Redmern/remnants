@@ -92,6 +92,9 @@ public sealed record ActionDef
 
     /// <summary>Needs both arms: arm factor is the average of both, not the best one.</summary>
     public bool TwoHanded { get; init; }
+
+    /// <summary>Splash radius (Chebyshev) around the target: other hostiles of the attacker in it are attacked too, each with its own roll.</summary>
+    public int Area { get; init; }
 }
 
 /// <summary>What using a consumable does.</summary>

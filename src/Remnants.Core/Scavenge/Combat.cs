@@ -44,13 +44,41 @@ public static class Combat
         return Math.Clamp(chance, c.MinHitChance, c.MaxHitChance);
     }
 
+    /// <summary>
+    /// Pays the AP, makes noise, and strikes the target; an area action then strikes every other unit hostile to the
+    /// attacker within <see cref="ActionProfile.Area"/> of the target (by id, each with its own roll).
+    /// </summary>
     internal static void Resolve(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target)
+    {
+        attacker.Ap -= action.ApCost;
+        sim.MakeNoise(attacker, action.Noise);
+        var center = target.Pos;
+        Strike(sim, attacker, action, target);
+        if (action.Area <= 0) return;
+        foreach (var other in sim.State.Units
+                     .Where(u => u.Id != target.Id && u.IsActive && attacker.HostileTo(u) && u.Pos.Chebyshev(center) <= action.Area)
+                     .OrderBy(u => u.Id).ToList())
+            Strike(sim, attacker, action, other);
+    }
+
+    /// <summary>
+    /// Suppressing fire: no damage roll, but the target is pinned and loses AP next turn. Needs a ranged action that
+    /// reaches the target.
+    /// </summary>
+    internal static void Suppress(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target)
+    {
+        attacker.Ap -= action.ApCost;
+        sim.MakeNoise(attacker, action.Noise);
+        target.Suppressed = true;
+        sim.State.Log(new(sim.State.Round, ScavengeEventType.Suppressed,
+            $"{attacker.Name} pins {target.Name} down with suppressing fire ({action.Name}).", attacker.Id, target.Id, target.Pos));
+    }
+
+    private static void Strike(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target)
     {
         var data = sim.Data;
         var state = sim.State;
         var chance = HitChance(data, state.Map, attacker.Pos, action, target.Pos, sim.Profile(target));
-        attacker.Ap -= action.ApCost;
-        sim.MakeNoise(attacker, action.Noise);
 
         if (sim.Rng.NextDouble() >= chance)
         {

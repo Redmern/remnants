@@ -3,10 +3,15 @@ using Remnants.Core.Serialization;
 
 namespace Remnants.Core.Scavenge;
 
-/// <summary>Save/load a scavenge instance as JSON. Definitions are not saved; they reload from data/.</summary>
+/// <summary>
+/// Save/load a scavenge instance as JSON. Definitions are not saved; they reload from data/.
+/// Version 2 adds the Network alarm (<see cref="ScavengeState.AlarmRounds"/>, reinforcement waves), suppression and
+/// pylon tiles; version 1 saves load with those at their defaults.
+/// </summary>
 public static class ScavengeSave
 {
-    public const int Version = 1;
+    public const int Version = 2;
+    private const int OldestVersion = 1;
 
     private sealed record Envelope(int Version, ScavengeState Scavenge);
 
@@ -16,8 +21,8 @@ public static class ScavengeSave
     {
         var envelope = JsonSerializer.Deserialize<Envelope>(json, Json.Options)
             ?? throw new JsonException("Save file is empty.");
-        if (envelope.Version != Version)
-            throw new JsonException($"Unsupported scavenge save version {envelope.Version} (expected {Version}).");
+        if (envelope.Version < OldestVersion || envelope.Version > Version)
+            throw new JsonException($"Unsupported scavenge save version {envelope.Version} (expected {OldestVersion}..{Version}).");
         var state = envelope.Scavenge ?? throw new JsonException("Save file has no scavenge state.");
         Validate(data, state);
         return new ScavengeSim(data, state);

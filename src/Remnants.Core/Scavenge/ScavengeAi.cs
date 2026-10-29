@@ -7,8 +7,10 @@ namespace Remnants.Core.Scavenge;
 /// and randomness only comes from the sim's RNG.
 /// <list type="bullet">
 /// <item>Husk: wander; aggro on sight or noise; close in and attack.</item>
-/// <item>Linked (stub, full squad AI is M8): like a Husk, but with a gun it first steps into cover that still has a shot.
-/// A jammed Linked (see <see cref="Devices.IsJammed"/>) fights like a Husk.</item>
+/// <item>Linked: squad AI over the <see cref="Network"/>. It knows every hostile its group sees, the group shares one
+/// focus (weakest / most exposed), and each unit first takes the best firing position (a shot at the focus, cover,
+/// flanking tiles that strip the focus's cover), then shoots, or lays down suppressing fire when the odds are poor.
+/// Badly hurt units fall back to cover while the squad holds. A jammed Linked is cut off and fights like a Husk.</item>
 /// <item>Recruit: follow its leader.</item>
 /// </list>
 /// </summary>
@@ -20,13 +22,14 @@ internal static class ScavengeAi
     public static void TakeTurn(ScavengeSim sim, Unit unit)
     {
         if (unit.FollowingId is not null) Follow(sim, unit);
-        else if (unit.Kind == UnitKind.Enemy) Fight(sim, unit);
+        else if (unit.Kind != UnitKind.Enemy) return;
+        else if (Network.GroupOf(sim, unit) is { } group) Squad(sim, unit, group);
+        else Fight(sim, unit);
     }
 
+    /// <summary>Husk behaviour (and a jammed Linked's): hunt the nearest hostile in sight, close in, attack.</summary>
     private static void Fight(ScavengeSim sim, Unit unit)
     {
-        var def = unit.EnemyDefId is { } id ? sim.Data.Enemies[id] : null;
-        var tookCover = false;
         for (var step = 0; step < MaxStepsPerTurn && unit.IsActive && unit.Ap > 0; step++)
         {
             var target = Spot(sim, unit);
@@ -45,14 +48,159 @@ internal static class ScavengeAi
                 return;
             }
 
-            if (def?.Ai == AiKind.Linked && !tookCover && !Devices.IsJammed(sim, unit))
-            {
-                tookCover = true;
-                if (TakeCover(sim, unit, target)) continue;
-            }
             if (TryAttack(sim, unit, target)) continue;
             if (!StepToward(sim, unit, target.Pos)) return;
         }
+    }
+
+    /// <summary>One Linked unit's turn inside its network group (see the class summary).</summary>
+    private static void Squad(ScavengeSim sim, Unit unit, NetworkGroup group)
+    {
+        var rules = sim.Data.Rules.Network;
+        var positioned = false;
+        var retreating = false;
+        for (var step = 0; step < MaxStepsPerTurn && unit.IsActive && unit.Ap > 0; step++)
+        {
+            var known = Network.Known(sim, group);
+            if (known.Count == 0)
+            {
+                // Nobody in the group sees anything: chase the last shared sighting, else wander.
+                var last = group.Units.Where(u => u.Ai.Mode == AiMode.Hunting && u.Ai.LastKnown is not null)
+                    .OrderBy(u => u.Id).Select(u => u.Ai.LastKnown).FirstOrDefault();
+                if (last is { } goal && unit.Pos != goal && StepToward(sim, unit, goal)) continue;
+                foreach (var u in group.Units) (u.Ai.Mode, u.Ai.LastKnown) = (AiMode.Idle, null);
+                Wander(sim, unit);
+                return;
+            }
+
+            var focus = Network.Focus(sim, group, known)!;
+            Share(sim, group, focus);
+
+            if (!positioned)
+            {
+                positioned = true;
+                var others = group.Units.Count(u => u.Id != unit.Id && u.IsActive && u.Hp > u.MaxHp * rules.RetreatHpFraction);
+                if (unit.Hp <= unit.MaxHp * rules.RetreatHpFraction && others > 0)
+                {
+                    retreating = true;
+                    if (Retreat(sim, unit, known)) continue;
+                }
+                else if (Reposition(sim, unit, focus, known)) continue;
+            }
+
+            if (TryAttackAbove(sim, unit, focus, rules.SuppressBelowHitChance)) continue;
+            if (known.Where(t => t.Id != focus.Id).Any(t => TryAttackAbove(sim, unit, t, rules.SuppressBelowHitChance))) continue;
+            if (Suppress(sim, unit, focus)) return;
+            if (retreating || !StepToward(sim, unit, focus.Pos)) return;
+        }
+    }
+
+    /// <summary>Every unit in the group now hunts the focus; one that was idle and does not see it learns of it through the Network.</summary>
+    private static void Share(ScavengeSim sim, NetworkGroup group, Unit focus)
+    {
+        foreach (var u in group.Units.Where(u => u.IsActive))
+        {
+            if (u.Ai.Mode == AiMode.Idle)
+            {
+                var seesIt = Visibility.CanSee(sim.Data, sim.State.Map, u.Pos, sim.Profile(u).Sight, focus.Pos);
+                sim.Log(ScavengeEventType.Spotted,
+                    seesIt ? $"{u.Name} spotted {focus.Name}." : $"{u.Name} learns of {focus.Name} through the Network.", u, focus);
+            }
+            u.Ai.Mode = AiMode.Hunting;
+            u.Ai.TargetId = focus.Id;
+            u.Ai.LastKnown = focus.Pos;
+        }
+    }
+
+    /// <summary>Attack the target with the best action whose hit chance is at least <paramref name="minChance"/>.</summary>
+    private static bool TryAttackAbove(ScavengeSim sim, Unit unit, Unit target, double minChance)
+    {
+        var map = sim.State.Map;
+        var targetProfile = sim.Profile(target);
+        var best = sim.Profile(unit).Actions
+            .Where(a => a.ApCost <= unit.Ap && Combat.CheckReach(sim.Data, map, unit.Pos, a, target.Pos) == ScavengeError.None)
+            .Select(a => (Action: a, Chance: Combat.HitChance(sim.Data, map, unit.Pos, a, target.Pos, targetProfile)))
+            .Where(x => x.Chance + 1e-9 >= minChance)
+            .OrderByDescending(x => x.Chance * (x.Action.MinDamage + x.Action.MaxDamage) / 2)
+            .ThenBy(x => x.Action.Id, StringComparer.Ordinal)
+            .FirstOrDefault();
+        if (best.Action is null) return false;
+        Combat.Resolve(sim, unit, best.Action, target);
+        return true;
+    }
+
+    /// <summary>Pin the target with the cheapest ranged action that reaches it (if it is not pinned already).</summary>
+    private static bool Suppress(ScavengeSim sim, Unit unit, Unit target)
+    {
+        if (target.Suppressed) return false;
+        var action = sim.Profile(unit).Actions
+            .Where(a => a.Pattern != AttackPattern.Melee && a.ApCost <= unit.Ap
+                        && Combat.CheckReach(sim.Data, sim.State.Map, unit.Pos, a, target.Pos) == ScavengeError.None)
+            .OrderBy(a => a.ApCost).ThenBy(a => a.Id, StringComparer.Ordinal)
+            .FirstOrDefault();
+        if (action is null) return false;
+        Combat.Suppress(sim, unit, action, target);
+        return true;
+    }
+
+    /// <summary>
+    /// Scores every tile the unit can reach (and staying put): the expected damage of its best shot at the focus from
+    /// there with the AP left, plus cover against every known hostile, plus a little for AP saved. Moves to the best one.
+    /// A move that strips the focus of cover it had is logged as a flank.
+    /// </summary>
+    private static bool Reposition(ScavengeSim sim, Unit unit, Unit focus, List<Unit> known)
+    {
+        var data = sim.Data;
+        var map = sim.State.Map;
+        var rules = data.Rules.Network;
+        var profile = sim.Profile(unit);
+        var focusProfile = sim.Profile(focus);
+
+        double Score(Pos tile, int cost)
+        {
+            var ap = unit.Ap - cost;
+            var shot = profile.Actions
+                .Where(a => a.ApCost <= ap && Combat.CheckReach(data, map, tile, a, focus.Pos) == ScavengeError.None)
+                .Select(a => Combat.HitChance(data, map, tile, a, focus.Pos, focusProfile)
+                             * Math.Max(1, (a.MinDamage + a.MaxDamage) / 2 - focusProfile.Armor))
+                .DefaultIfEmpty(0).Max();
+            var cover = known.Select(t => Combat.CoverAgainst(data, map, tile, t.Pos)).DefaultIfEmpty(0).Min();
+            return shot + cover * rules.CoverWeight + ap * rules.ApWeight;
+        }
+
+        var stay = Score(unit.Pos, 0);
+        var best = sim.Reachable(unit)
+            .Where(kv => kv.Value <= unit.Ap)
+            .Select(kv => (Pos: kv.Key, Ap: kv.Value, Score: Score(kv.Key, kv.Value)))
+            .OrderByDescending(o => o.Score).ThenBy(o => o.Ap).ThenBy(o => map.Index(o.Pos))
+            .FirstOrDefault();
+        if (best.Ap == 0 || best.Score <= stay + 1e-9) return false;
+
+        var coverBefore = Combat.CoverAgainst(data, map, focus.Pos, unit.Pos);
+        MoveTo(sim, unit, best.Pos, best.Ap);
+        if (coverBefore > 0 && Combat.CoverAgainst(data, map, focus.Pos, best.Pos) <= 0
+            && profile.Actions.Any(a => Combat.CheckReach(data, map, best.Pos, a, focus.Pos) == ScavengeError.None))
+            sim.Log(ScavengeEventType.Flanked, $"{unit.Name} flanks {focus.Name}.", unit, focus);
+        return true;
+    }
+
+    /// <summary>Fall back: the reachable tile farthest from the nearest known hostile, then with the most cover.</summary>
+    private static bool Retreat(ScavengeSim sim, Unit unit, List<Unit> known)
+    {
+        var data = sim.Data;
+        var map = sim.State.Map;
+        int Distance(Pos p) => known.Min(t => t.Pos.Chebyshev(p));
+        double Cover(Pos p) => known.Select(t => Combat.CoverAgainst(data, map, p, t.Pos)).Min();
+
+        var best = sim.Reachable(unit)
+            .Where(kv => kv.Value <= unit.Ap)
+            .Select(kv => (Pos: kv.Key, Ap: kv.Value))
+            .OrderByDescending(o => Distance(o.Pos)).ThenByDescending(o => Cover(o.Pos)).ThenBy(o => o.Ap).ThenBy(o => map.Index(o.Pos))
+            .FirstOrDefault();
+        if (best.Ap == 0 || (Distance(best.Pos), Cover(best.Pos)).CompareTo((Distance(unit.Pos), Cover(unit.Pos))) <= 0) return false;
+        MoveTo(sim, unit, best.Pos, best.Ap);
+        sim.Log(ScavengeEventType.Retreated, $"{unit.Name} falls back.", unit);
+        return true;
     }
 
     /// <summary>Nearest conscious hostile in sight; remembers it. Falls back to null (and keeps the memory).</summary>
@@ -104,27 +252,6 @@ internal static class ScavengeAi
             .ToList();
         if (options.Count == 0) return false;
         MoveTo(sim, unit, options[0].Pos, options[0].Ap);
-        return true;
-    }
-
-    /// <summary>Linked: if exposed, step to the nearest reachable covered tile that still has a ranged shot at the target.</summary>
-    private static bool TakeCover(ScavengeSim sim, Unit unit, Unit target)
-    {
-        var data = sim.Data;
-        var map = sim.State.Map;
-        var ranged = sim.Profile(unit).Actions.Where(a => a.Pattern != AttackPattern.Melee).ToList();
-        if (ranged.Count == 0 || Combat.CoverAgainst(data, map, unit.Pos, target.Pos) > 0) return false;
-
-        var spot = sim.Reachable(unit)
-            .Where(kv => ranged.Any(a => kv.Value + a.ApCost <= unit.Ap
-                                         && Combat.CheckReach(data, map, kv.Key, a, target.Pos) == ScavengeError.None))
-            .Where(kv => Combat.CoverAgainst(data, map, kv.Key, target.Pos) > 0)
-            .OrderBy(kv => kv.Key.Chebyshev(unit.Pos))
-            .ThenBy(kv => map.Index(kv.Key))
-            .Select(kv => (Pos?)kv.Key)
-            .FirstOrDefault();
-        if (spot is not { } p) return false;
-        MoveTo(sim, unit, p, sim.Reachable(unit)[p]);
         return true;
     }
 

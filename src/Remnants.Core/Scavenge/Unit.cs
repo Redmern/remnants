@@ -65,6 +65,9 @@ public sealed class Unit
     public int BleedOut { get; set; }
     public bool Stabilized { get; set; }
 
+    /// <summary>Pinned by suppressing fire: loses AP at the start of its next turn.</summary>
+    public bool Suppressed { get; set; }
+
     public Dictionary<AttributeKind, double> Attributes { get; set; } = new();
     public Dictionary<Skill, double> Skills { get; set; } = new();
     public Body Body { get; set; } = new();

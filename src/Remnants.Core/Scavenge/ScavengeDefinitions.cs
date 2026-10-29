@@ -3,7 +3,8 @@ using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Scavenge;
 
-public enum Terrain { Floor, Rubble, Cover, Water, Wall }
+/// <summary>Pylon: a Network relay mast (impassable, gives cover); see <see cref="Network"/>.</summary>
+public enum Terrain { Floor, Rubble, Cover, Water, Wall, Pylon }
 
 public enum MapEdge { North, South, East, West }
 
@@ -29,6 +30,9 @@ public sealed record EnemyDef
     /// <summary>Survivors go Downed at 0 HP; most enemies just die.</summary>
     public bool CanBeDowned { get; init; }
 
+    /// <summary>Linked: how far (Chebyshev) this unit links to other Network nodes. Drones relay further.</summary>
+    public int RelayRange { get; init; }
+
     /// <summary>Missing attributes default to 50.</summary>
     public Dictionary<AttributeKind, double> Attributes { get; init; } = new();
     public Dictionary<Skill, double> Skills { get; init; } = new();
@@ -41,6 +45,20 @@ public sealed record WeightedId
 {
     public string Id { get; init; } = "";
     public double Weight { get; init; } = 1;
+
+    /// <summary>Optional cap on how many of this enemy a zone spawns (early zones: "occasional 1–2 Linked").</summary>
+    public int? Max { get; init; }
+}
+
+/// <summary>Reinforcements a zone's pylons can call in once the Network has been alarmed for long enough.</summary>
+public sealed record ReinforcementDef
+{
+    /// <summary>How many times the pylons can call (0 = never).</summary>
+    public int Waves { get; init; }
+
+    /// <summary>Units per wave.</summary>
+    public int[] Count { get; init; } = [1, 2];
+    public List<WeightedId> Mix { get; init; } = new();
 }
 
 public sealed record ZoneTerrainDef
@@ -70,6 +88,75 @@ public sealed record ZoneDef
     public int[] Caches { get; init; } = [3, 5];
     public int[] ItemsPerCache { get; init; } = [1, 3];
     public int[] Npcs { get; init; } = [0, 1];
+
+    /// <summary>Network pylons placed on the map (min, max).</summary>
+    public int[] Pylons { get; init; } = [0, 0];
+    public ReinforcementDef Reinforcements { get; init; } = new();
+
+    // World map (colony side): where the zone is, how far, and how it recovers from being picked over.
+
+    /// <summary>Region label on the world map.</summary>
+    public string Region { get; init; } = "";
+
+    /// <summary>Marker position on the world map, each axis 0..1 (x east, y south).</summary>
+    public double[] MapPos { get; init; } = [0.5, 0.5];
+
+    /// <summary>One-way travel time in colony days.</summary>
+    public double TravelDays { get; init; }
+
+    /// <summary>Depletion (0..1) a visit adds; fewer caches spawn while depleted.</summary>
+    public double DepletionPerVisit { get; init; } = 0.4;
+
+    /// <summary>Depletion recovered per colony day.</summary>
+    public double ReplenishPerDay { get; init; } = 0.05;
+
+    /// <summary>What the colony knows about the zone in a new game.</summary>
+    public ZoneIntel StartIntel { get; init; } = ZoneIntel.Unknown;
+
+    /// <summary>Zones a visit here reveals as rumors.</summary>
+    public List<string> Reveals { get; init; } = new();
+    public string Description { get; init; } = "";
+}
+
+/// <summary>
+/// How much the colony knows about a zone: unknown (not on the map), rumored (name, distance, rough threat) or
+/// scouted (everything: threat, reward tier, Linked presence, enemy count). Visiting a zone scouts it.
+/// </summary>
+public enum ZoneIntel { Unknown, Rumored, Scouted }
+
+/// <summary>World map presentation data (scavenge.json <c>world</c>).</summary>
+public sealed record WorldRules
+{
+    /// <summary>The colony's marker position, each axis 0..1.</summary>
+    public double[] ColonyPos { get; init; } = [0.5, 0.5];
+}
+
+/// <summary>
+/// Linked squad rules (scavenge.json <c>network</c>). Linked units and pylons form a relay graph; what one node sees,
+/// every node in its connected component knows.
+/// </summary>
+public sealed record NetworkRules
+{
+    /// <summary>Relay range of a pylon tile (Chebyshev).</summary>
+    public int PylonRange { get; init; } = 8;
+
+    /// <summary>Rounds of alarm (a connected Linked knows a hostile) before an online pylon calls reinforcements.</summary>
+    public int ReinforceAfterRounds { get; init; } = 3;
+
+    /// <summary>HP fraction at or below which a Linked falls back (unless it is the last of its squad).</summary>
+    public double RetreatHpFraction { get; init; } = 0.35;
+
+    /// <summary>Below this hit chance a Linked lays down suppressing fire instead of a real shot.</summary>
+    public double SuppressBelowHitChance { get; init; } = 0.3;
+
+    /// <summary>AP a suppressed unit loses on its next turn.</summary>
+    public int SuppressApPenalty { get; init; } = 1;
+
+    /// <summary>Position scoring: value of cover at the end tile, per point of cover (0..1).</summary>
+    public double CoverWeight { get; init; } = 10;
+
+    /// <summary>Position scoring: value per AP left after moving (Linked prefer short moves).</summary>
+    public double ApWeight { get; init; } = 0.5;
 }
 
 /// <summary>A movement modifier that applies while the body matches, e.g. a missing leg caps range at 1.</summary>
@@ -173,6 +260,8 @@ public sealed record ScavengeRules
     public CombatRules Combat { get; init; } = new();
     public AiRules Ai { get; init; } = new();
     public NpcRules Npc { get; init; } = new();
+    public NetworkRules Network { get; init; } = new();
+    public WorldRules World { get; init; } = new();
 
     /// <summary>Followers within this many tiles leave with the unit that extracts.</summary>
     public int EscortRadius { get; init; } = 2;

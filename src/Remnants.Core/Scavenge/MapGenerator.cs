@@ -58,8 +58,32 @@ public static class MapGenerator
         var spawnEdge = EdgeTiles(map, zone.SpawnEdge);
         var anchor = spawnEdge[spawnEdge.Count / 2];
         foreach (var exit in map.Exits) Carve(data, map, anchor, exit);
+        var reachable = Flood(data, map, anchor);
 
-        return new GeneratedMap(map, anchor, Flood(data, map, anchor));
+        // Pylons stand on open floor deep in the zone, away from the spawn edge and from each other, and never cut the
+        // route: a candidate is skipped if placing it would disconnect a reachable tile.
+        var pylons = rng.NextInclusive(zone.Pylons[0], zone.Pylons[1]);
+        var candidates = reachable
+            .Where(p => map[p] == Terrain.Floor && !map.IsExit(p) && Depth(map, zone.SpawnEdge, p) >= map.Height / 3
+                        && Depth(map, zone.ExitEdge, p) >= 2)
+            .OrderBy(map.Index).ToList();
+        for (var placed = 0; placed < pylons && candidates.Count > 0;)
+        {
+            var p = candidates[rng.Next(0, candidates.Count)];
+            candidates.Remove(p);
+            if (map.AllPositions.Any(q => map[q] == Terrain.Pylon && q.Chebyshev(p) < 6)) continue;
+            map[p] = Terrain.Pylon;
+            var after = Flood(data, map, anchor);
+            if (after.Count != reachable.Count - 1)
+            {
+                map[p] = Terrain.Floor;
+                continue;
+            }
+            reachable = after;
+            placed++;
+        }
+
+        return new GeneratedMap(map, anchor, reachable);
     }
 
     /// <summary>How far a tile is from an edge (0 = on it).</summary>

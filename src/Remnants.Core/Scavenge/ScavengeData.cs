@@ -97,6 +97,9 @@ public sealed class ScavengeData
             if (Rules.Combat.PartToughness.GetValueOrDefault(region) <= 0)
                 throw new GameDataException($"Scavenge rules: combat.partToughness.{region} must be positive.");
         ValidateAction(Rules.Combat.Unarmed, "Scavenge rules unarmed");
+        if (Rules.Network.PylonRange < 1 || Rules.Network.ReinforceAfterRounds < 1)
+            throw new GameDataException("Scavenge rules: network.pylonRange and network.reinforceAfterRounds must be at least 1.");
+        if (Rules.World.ColonyPos.Length != 2) throw new GameDataException("Scavenge rules: world.colonyPos must be [x, y].");
         if (Rules.Npc.Names.Count == 0) throw new GameDataException("Scavenge rules: npc.names is empty.");
         RequireRange(Rules.Npc.AttributeRange, "Scavenge rules npc.attributeRange");
 
@@ -136,6 +139,7 @@ public sealed class ScavengeData
         foreach (var enemy in Enemies.Values)
         {
             if (enemy.Hp <= 0) throw new GameDataException($"Enemy '{enemy.Id}' needs positive hp.");
+            if (enemy.Ai == AiKind.Linked && enemy.RelayRange < 1) throw new GameDataException($"Enemy '{enemy.Id}': Linked need a relayRange of at least 1.");
             foreach (var item in enemy.Equipment)
                 if (!Items.TryGetValue(item, out var def) || def.Slot is null)
                     throw new GameDataException($"Enemy '{enemy.Id}': '{item}' is not an equippable item.");
@@ -155,8 +159,19 @@ public sealed class ScavengeData
             RequireRange(zone.Terrain.RoomSize, $"{where} terrain.roomSize");
             if (zone.Terrain.RoomSize[0] < 3) throw new GameDataException($"{where}: rooms must be at least 3 wide.");
             if (zone.Enemies[1] > 0 && zone.EnemyMix.Count == 0) throw new GameDataException($"{where} has enemies but no enemyMix.");
-            foreach (var e in zone.EnemyMix)
+            foreach (var e in zone.EnemyMix.Concat(zone.Reinforcements.Mix))
                 if (!Enemies.ContainsKey(e.Id)) throw new GameDataException($"{where}: unknown enemy '{e.Id}'.");
+            RequireRange(zone.Pylons, $"{where} pylons");
+            RequireRange(zone.Reinforcements.Count, $"{where} reinforcements.count");
+            if (zone.Reinforcements.Waves > 0 && zone.Reinforcements.Mix.Count == 0)
+                throw new GameDataException($"{where} has reinforcement waves but no reinforcement mix.");
+            if (zone.TravelDays < 0) throw new GameDataException($"{where}: travelDays must not be negative.");
+            if (zone.DepletionPerVisit is < 0 or > 1 || zone.ReplenishPerDay < 0)
+                throw new GameDataException($"{where}: depletionPerVisit must be 0..1 and replenishPerDay not negative.");
+            if (zone.MapPos.Length != 2 || zone.MapPos.Any(v => v is < 0 or > 1))
+                throw new GameDataException($"{where}: mapPos must be [x, y] with both in 0..1.");
+            foreach (var other in zone.Reveals)
+                if (!Zones.ContainsKey(other)) throw new GameDataException($"{where} reveals unknown zone '{other}'.");
             if (zone.Caches[1] > 0 && !Items.Values.Any(i => i.LootWeight > 0 && i.Tier <= zone.LootTier))
                 throw new GameDataException($"{where} has caches but no items at loot tier {zone.LootTier}.");
         }

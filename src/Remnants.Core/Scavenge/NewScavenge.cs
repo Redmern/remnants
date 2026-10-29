@@ -11,6 +11,9 @@ public sealed record PartyMember(Survivor Survivor, Dictionary<EquipSlot, string
 /// <summary>One player's party entering a zone.</summary>
 public sealed record PartySetup(int PlayerId, List<PartyMember> Members);
 
+/// <summary>How the zone is right now: <see cref="Depletion"/> (0..1) thins out the loot caches of a picked-over zone.</summary>
+public sealed record ZoneConditions(double Depletion = 0);
+
 /// <summary>
 /// Builds a scavenge instance: generates the zone map from its template and a seed, places every party
 /// along the spawn edge, then enemies, loot caches and NPC survivors. Survivors are copied in; the colony's
@@ -18,7 +21,7 @@ public sealed record PartySetup(int PlayerId, List<PartyMember> Members);
 /// </summary>
 public static class NewScavenge
 {
-    public static ScavengeSim Create(ScavengeData data, string zoneId, ulong seed, IReadOnlyList<PartySetup> parties)
+    public static ScavengeSim Create(ScavengeData data, string zoneId, ulong seed, IReadOnlyList<PartySetup> parties, ZoneConditions? conditions = null)
     {
         if (!data.Zones.TryGetValue(zoneId, out var zone)) throw new ArgumentException($"Unknown zone '{zoneId}'.", nameof(zoneId));
         ValidateParties(data, parties);
@@ -52,18 +55,23 @@ public static class NewScavenge
         var enemySpots = open.Where(p => map[p] == Terrain.Floor && FarFromSpawn(p, data.Rules.Ai.MinSpawnDistance)).ToList();
         var mix = zone.EnemyMix.OrderBy(e => e.Id, StringComparer.Ordinal).ToList();
         var enemyCount = rng.NextInclusive(zone.Enemies[0], zone.Enemies[1]);
+        var spawned = new Dictionary<string, int>();
         for (var i = 0; i < enemyCount; i++)
         {
+            // A capped entry (max) drops out of the mix once it is full.
+            var allowed = mix.Where(e => e.Max is not { } max || spawned.GetValueOrDefault(e.Id) < max).ToList();
+            if (allowed.Count == 0) break;
             var spot = TakeRandom(rng, enemySpots, Free);
             if (spot is null) break;
-            var def = data.Enemies[PickWeighted(rng, mix, e => e.Weight).Id];
+            var def = data.Enemies[PickWeighted(rng, allowed, e => e.Weight).Id];
+            spawned[def.Id] = spawned.GetValueOrDefault(def.Id) + 1;
             state.Units.Add(EnemyUnit(data, state, def, spot.Value));
         }
 
         var lootTable = data.Items.Values.Where(i => i.LootWeight > 0 && i.Tier <= zone.LootTier)
             .OrderBy(i => i.Id, StringComparer.Ordinal).ToList();
         var cacheSpots = open.Where(p => MapGenerator.Depth(map, zone.SpawnEdge, p) >= 3).ToList();
-        var cacheCount = rng.NextInclusive(zone.Caches[0], zone.Caches[1]);
+        var cacheCount = (int)Math.Round(rng.NextInclusive(zone.Caches[0], zone.Caches[1]) * (1 - Math.Clamp(conditions?.Depletion ?? 0, 0, 1)));
         for (var i = 0; i < cacheCount; i++)
         {
             var spot = TakeRandom(rng, cacheSpots, p => Free(p) && state.Caches.All(c => c.Pos != p));
@@ -137,7 +145,7 @@ public static class NewScavenge
         };
     }
 
-    private static Unit EnemyUnit(ScavengeData data, ScavengeState state, EnemyDef def, Pos pos)
+    internal static Unit EnemyUnit(ScavengeData data, ScavengeState state, EnemyDef def, Pos pos)
     {
         var number = state.Units.Count(u => u.EnemyDefId == def.Id) + 1;
         return new Unit
@@ -192,7 +200,7 @@ public static class NewScavenge
         return pick;
     }
 
-    private static T PickWeighted<T>(DeterministicRng rng, IReadOnlyList<T> items, Func<T, double> weight)
+    internal static T PickWeighted<T>(DeterministicRng rng, IReadOnlyList<T> items, Func<T, double> weight)
     {
         var roll = rng.NextDouble() * items.Sum(weight);
         foreach (var item in items)

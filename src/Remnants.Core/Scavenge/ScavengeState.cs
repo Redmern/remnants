@@ -14,6 +14,7 @@ public enum ScavengeEventType
 {
     RoundStarted, Moved, Attacked, Missed, Injured, LimbLost, Downed, Died, BledOut,
     Stabilized, Revived, Healed, Evacuated, Extracted, PickedUp, Recruited, Spotted, PartyDone, Finished,
+    Suppressed, Flanked, Retreated, Reinforced,
 }
 
 /// <summary>Something notable for the UI log or animation. Purely informational.</summary>
@@ -46,6 +47,12 @@ public sealed class ScavengeState
 
     /// <summary>Tiles each side has ever seen (map index), for fog of war. Sorted so saves are stable.</summary>
     public Dictionary<string, SortedSet<int>> Explored { get; set; } = new();
+
+    /// <summary>Consecutive rounds the Network has been alarmed (see <see cref="Network"/>); reset when it calls.</summary>
+    public int AlarmRounds { get; set; }
+
+    /// <summary>Reinforcement waves the zone's pylons have called so far.</summary>
+    public int ReinforcementWaves { get; set; }
 
     public List<ScavengeEvent> Events { get; set; } = new();
 

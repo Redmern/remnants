@@ -171,7 +171,7 @@ public class ScavengeDeterminismAndSaveTests
     public void Wrong_version_and_unknown_definitions_are_rejected()
     {
         var json = ScavengeSave.Save(Played(4, commands: 5).State);
-        Assert.ThrowsAny<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, json.Replace("\"version\": 1", "\"version\": 99")));
+        Assert.ThrowsAny<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, json.Replace($"\"version\": {ScavengeSave.Version}", "\"version\": 99")));
         var ex = Assert.ThrowsAny<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, json.Replace("\"padded_vest\"", "\"kevlar\"")));
         Assert.Contains("kevlar", ex.Message);
         Assert.ThrowsAny<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, json.Replace("\"zoneId\": \"suburb_ruins\"", "\"zoneId\": \"moon\"")));

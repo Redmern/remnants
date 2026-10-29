@@ -94,6 +94,12 @@ public sealed class ScavengeSim
                 continue;
             }
             unit.Ap = Profile(unit).MaxAp;
+            if (unit.Suppressed)
+            {
+                unit.Suppressed = false;
+                unit.Ap = Math.Max(1, unit.Ap - Data.Rules.Network.SuppressApPenalty);
+                State.Log(new(State.Round, ScavengeEventType.Suppressed, $"{unit.Name} is pinned down ({unit.Ap} AP).", unit.Id, Pos: unit.Pos));
+            }
             if (unit.PlayerControlled) return;
 
             ScavengeAi.TakeTurn(this, unit);
@@ -113,6 +119,7 @@ public sealed class ScavengeSim
             if (u.BleedOut <= 0) Kill(u, ScavengeEventType.BledOut, $"{u.Name} bled out.");
         }
         UpdateParties();
+        Network.RoundStarted(this);
 
         State.TurnOrder = State.Units
             .Where(u => u.IsActive && u.Side != Unit.NeutralSide)
