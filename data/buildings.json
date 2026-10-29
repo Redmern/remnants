@@ -147,7 +147,7 @@
     "job": "electronics",
     "baseOutput": 1.0,
     "levels": [
-      { "cost": { "wood": 40, "stone": 30, "scrap": 30, "electronics": 5 },  "workerSlots": 2, "outputMultiplier": 1.0 },
+      { "cost": { "wood": 40, "stone": 30, "scrap": 40 },                     "workerSlots": 2, "outputMultiplier": 1.0 },
       { "cost": { "wood": 60, "stone": 50, "scrap": 50, "electronics": 15 }, "workerSlots": 3, "outputMultiplier": 1.25 },
       { "cost": { "wood": 90, "stone": 70, "scrap": 80, "electronics": 30 }, "workerSlots": 3, "outputMultiplier": 1.5 }
     ]

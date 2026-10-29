@@ -16,7 +16,7 @@ public sealed record PlaythroughSummary(
     ulong Seed, int Days, int FinalPopulation, int StarvationDeaths, int ExpeditionDeaths, int OtherDeaths,
     int Departures, int Births, double? FirstBirthDay, double? FirstPregnancyDay, double? HouseAffordableDay, double? HouseBuiltDay,
     double? TownHall2Day, double? FirstStarvingDay, double MinFoodDays, int Expeditions, int ExpeditionsWithDeaths,
-    int LinkedEncountersEarly, double? WorkshopDay, double? ArmoryDay, int CraftedItems, int Recruits);
+    int LinkedEncountersEarly, double? WorkshopDay, double? ArmoryDay, double? LabDay, int CraftedItems, int Recruits);
 
 /// <summary>Runs <see cref="ColonyBot"/> on a fresh New Game and records a daily timeline.</summary>
 public sealed class Playthrough
@@ -35,7 +35,7 @@ public sealed class Playthrough
 
     private readonly List<ColonyEvent> _events = [];
     private int _starvationDeaths, _expeditionDeaths, _otherDeaths, _departures, _births, _crafted, _recruits;
-    private double? _firstBirth, _firstPregnancy, _houseAffordable, _houseBuilt, _townHall2, _firstStarving, _workshop, _armory;
+    private double? _firstBirth, _firstPregnancy, _houseAffordable, _houseBuilt, _townHall2, _firstStarving, _workshop, _armory, _lab;
     private double _minFoodDays = double.MaxValue;
 
     public PlaythroughSummary Run(int days, int actEveryTicks = 4)
@@ -68,7 +68,7 @@ public sealed class Playthrough
         var linkedEarly = Bot.Expeditions.Where(e => Sim.Scavenge!.Zones[e.Zone].Threat <= 1).Sum(e => e.Stats.LinkedSeen);
         return new PlaythroughSummary(Seed, days, Sim.State.Survivors.Count, _starvationDeaths, _expeditionDeaths, _otherDeaths,
             _departures, _births, _firstBirth, _firstPregnancy, _houseAffordable, _houseBuilt, _townHall2, _firstStarving,
-            _minFoodDays, Bot.Expeditions.Count, Bot.Expeditions.Count(e => e.Dead > 0), linkedEarly, _workshop, _armory, _crafted, _recruits);
+            _minFoodDays, Bot.Expeditions.Count, Bot.Expeditions.Count(e => e.Dead > 0), linkedEarly, _workshop, _armory, _lab, _crafted, _recruits);
     }
 
     /// <summary>Where people are right now: workers per building, patients, away, idle.</summary>
@@ -127,6 +127,7 @@ public sealed class Playthrough
         if (_townHall2 is null && Sim.TownHallLevel >= 2) _townHall2 = Day;
         if (_workshop is null && s.Buildings.Any(b => b.DefId == "workshop")) _workshop = Day;
         if (_armory is null && s.Buildings.Any(b => b.DefId == "armory")) _armory = Day;
+        if (_lab is null && s.Buildings.Any(b => b.DefId == "electronics_lab")) _lab = Day;
         var food = Sim.Data.Rules.Food;
         var need = s.Survivors.Where(x => !x.Away).Sum(x => x.IsInfant ? food.InfantPerTick : x.IsChild ? food.ChildPerTick : food.AdultPerTick)
                    * Sim.Data.Rules.TicksPerDay;
