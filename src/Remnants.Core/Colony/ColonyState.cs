@@ -26,6 +26,9 @@ public sealed class ColonyState
 
     public int NextExpeditionId { get; set; } = 1;
 
+    /// <summary>World map knowledge and depletion per zone id; zones never touched are not listed.</summary>
+    public SortedDictionary<string, ZoneStatus> Zones { get; set; } = new(StringComparer.Ordinal);
+
     public int NextOrderId { get; set; } = 1;
 
     /// <summary>Blueprint item ids the colony has studied; recipes that name them can be queued.</summary>

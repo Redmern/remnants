@@ -39,6 +39,7 @@
   "expedition": {
     "partySizeByTownHallLevel": [2, 3, 4],
     "rationFoodPerMember": 3,
+    "rationFoodPerMemberPerDay": 2,
     "recruitAgeRange": [18, 40]
   },
   "medical": {

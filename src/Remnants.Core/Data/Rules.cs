@@ -104,6 +104,9 @@ public sealed record ExpeditionRules
     /// <summary>Food each member takes from the stockpile at launch. Away survivors do not eat colony food.</summary>
     public double RationFoodPerMember { get; init; } = 3;
 
+    /// <summary>Extra rations per member per travel day, both ways (zones farther out cost more food).</summary>
+    public double RationFoodPerMemberPerDay { get; init; } = 2;
+
     /// <summary>Age in years given to recruits (who arrive without a known age).</summary>
     public int[] RecruitAgeRange { get; init; } = [18, 40];
 }

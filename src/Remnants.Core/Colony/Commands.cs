@@ -104,6 +104,9 @@ public enum CommandError
     Pregnant,
     SamePerson,
     AlreadyPartnered,
+    ZoneUnknown,
+    NotArrived,
+    PartyReturning,
 }
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>

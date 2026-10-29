@@ -10,10 +10,15 @@ public sealed record ExpeditionMember(int SurvivorId, Dictionary<EquipSlot, stri
     public IEnumerable<string> AllItems => (Equipment?.Values ?? Enumerable.Empty<string>()).Concat(Pack ?? []);
 }
 
+/// <summary>Where an expedition is: on the road out, in the zone (the mission can be played), or on the way home.</summary>
+public enum ExpeditionPhase { Outbound, InZone, Returning }
+
 /// <summary>
 /// A party out in a zone. The scavenge run is built from <see cref="Seed"/> and the members' state at launch;
 /// while it is being played the presenter keeps the live <see cref="Scavenge"/> state here so a colony save
-/// carries the mission in progress.
+/// carries the mission in progress. Far zones take colony time: the party walks <see cref="TravelTicks"/> out
+/// (the mission opens at <see cref="ArrivalTick"/>) and the same back; the finished run waits in
+/// <see cref="PendingResult"/> until <see cref="ReturnTick"/>, when it is applied.
 /// </summary>
 public sealed class Expedition
 {
@@ -23,8 +28,35 @@ public sealed class Expedition
     public long LaunchedTick { get; set; }
     public List<ExpeditionMember> Members { get; set; } = new();
 
+    /// <summary>One-way travel time in ticks (0 for a zone on the doorstep).</summary>
+    public long TravelTicks { get; set; }
+
+    /// <summary>When the party reaches the zone.</summary>
+    public long ArrivalTick { get; set; }
+
+    /// <summary>The zone's depletion at launch; the run is generated with it.</summary>
+    public double Depletion { get; set; }
+
     /// <summary>The scavenge instance in progress, once started. Null until then.</summary>
     public ScavengeState? Scavenge { get; set; }
+
+    /// <summary>The finished run, carried home; applied at <see cref="ReturnTick"/>.</summary>
+    public ExtractionResult? PendingResult { get; set; }
+    public long ReturnTick { get; set; }
+
+    public ExpeditionPhase PhaseAt(long tick) =>
+        PendingResult is not null ? ExpeditionPhase.Returning : tick < ArrivalTick ? ExpeditionPhase.Outbound : ExpeditionPhase.InZone;
+}
+
+/// <summary>What the colony knows about a zone and how picked-over it is. Absent = untouched, intel as the zone starts.</summary>
+public sealed class ZoneStatus
+{
+    public ZoneIntel Intel { get; set; }
+
+    /// <summary>0 = fresh, 1 = stripped bare. Recovers <see cref="ZoneDef.ReplenishPerDay"/> per day.</summary>
+    public double Depletion { get; set; }
+    public int Visits { get; set; }
+    public long? LastVisitTick { get; set; }
 }
 
 /// <summary>A party member as they came home.</summary>

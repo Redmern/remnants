@@ -15,10 +15,13 @@ namespace Remnants.Core.Serialization;
 /// Version 4 adds crafting tiers: production queues (a building's old single recipe becomes one repeating order with
 /// its progress), studied blueprints, and the generic "blueprint" item became specific blueprints (old ones turn into
 /// <see cref="LegacyBlueprintItem"/>).
+/// Version 5 adds the world map: per-zone intel and depletion (<see cref="ColonyState.Zones"/>) and the expedition's
+/// road (travel, arrival, the result carried home). Older saves start with every zone as data says and an expedition
+/// already in its zone; an older scavenge run in progress loads as scavenge save version 1.
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 4;
+    public const int Version = 5;
     private const int OldestVersion = 1;
 
     /// <summary>What a pre-version-4 generic "blueprint" item becomes.</summary>
@@ -164,6 +167,8 @@ public static class SaveGame
         }
 
         foreach (var id in colony.Inventory.Counts.Keys) RequireItem(id);
+        foreach (var zoneId in colony.Zones.Keys)
+            if (!data.Zones.ContainsKey(zoneId)) throw new JsonException($"Save references unknown zone '{zoneId}'.");
         foreach (var id in colony.KnownBlueprints) RequireItem(id);
         foreach (var id in colony.Buildings.SelectMany(b => b.Queue).SelectMany(o => o.PaidItems)) RequireItem(id);
         foreach (var part in colony.Survivors.SelectMany(s => s.Body.Parts.Values))
@@ -172,5 +177,7 @@ public static class SaveGame
         if (!data.Zones.ContainsKey(expedition.ZoneId)) throw new JsonException($"Save references unknown zone '{expedition.ZoneId}'.");
         foreach (var id in expedition.Members.SelectMany(m => m.AllItems)) RequireItem(id);
         if (expedition.Scavenge is { } run) ScavengeSave.Validate(data, run);
+        if (expedition.PendingResult is { } result)
+            foreach (var id in result.Returned.Concat(result.Recruits).SelectMany(r => r.Equipment.Values.Concat(r.Pack))) RequireItem(id);
     }
 }

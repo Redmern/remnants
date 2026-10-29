@@ -92,6 +92,23 @@ public sealed class ColonySim
         CraftingSystem.QualityChances(State, Data, Scavenge, building, recipe);
 
     /// <summary>The scavenge party for the active expedition, from the members' current colony state.</summary>
+    /// <summary>The active expedition's phase now, or null when no party is out.</summary>
+    public ExpeditionPhase? CurrentExpeditionPhase => State.Expedition?.PhaseAt(State.Tick);
+
+    /// <summary>Every zone with what the colony knows about it, for the world map (unknown zones included; the UI hides them).</summary>
+    public IEnumerable<ZoneInfo> WorldZones()
+    {
+        var scavenge = Scavenge ?? throw new InvalidOperationException("Scavenge data is not loaded.");
+        return scavenge.Zones.Values.OrderBy(z => z.Threat).ThenBy(z => z.Id, StringComparer.Ordinal)
+            .Select(z => WorldMap.Info(State, Data, scavenge, z));
+    }
+
+    public ZoneInfo ZoneInfo(string zoneId)
+    {
+        var scavenge = Scavenge ?? throw new InvalidOperationException("Scavenge data is not loaded.");
+        return WorldMap.Info(State, Data, scavenge, scavenge.Zones[zoneId]);
+    }
+
     public PartySetup ExpeditionParty() =>
         ExpeditionHandlers.Party(this, State.Expedition ?? throw new InvalidOperationException("No expedition is out."));
 
@@ -104,8 +121,10 @@ public sealed class ColonySim
     {
         var expedition = State.Expedition ?? throw new InvalidOperationException("No expedition is out.");
         var data = Scavenge ?? throw new InvalidOperationException("Scavenge data is not loaded.");
+        if (expedition.PhaseAt(State.Tick) != ExpeditionPhase.InZone)
+            throw new InvalidOperationException("The party is not in the zone (still on the road, or heading home).");
         if (expedition.Scavenge is { } running) return new ScavengeSim(data, running);
-        var sim = NewScavenge.Create(data, expedition.ZoneId, expedition.Seed, [ExpeditionParty()]);
+        var sim = NewScavenge.Create(data, expedition.ZoneId, expedition.Seed, [ExpeditionParty()], new ZoneConditions(expedition.Depletion));
         expedition.Scavenge = sim.State;
         return sim;
     }
@@ -131,6 +150,7 @@ public sealed class ColonySim
         HousingSystem.Run(State, Data);
         GrowthSystem.Run(State, Data);
         State.Tick++;
+        WorldMap.Run(this);
         SyncRng();
     }
 
