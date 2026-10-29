@@ -154,8 +154,8 @@ goes over the internet; the protocol version covers that change.
   loot). The client applies it to its colony as the expedition's result (`ColonySession.ApplyMultiplayerResult`
   remaps the server's player id to `ColonySim.ExpeditionPlayerId`) and saves. A result that is not final (the player
   left early, or the connection was lost for good) leaves the party out in the colony, as Leave does in single player.
-- **What the server trusts.** It checks the party size (`--max-party`, default the largest Town Hall party) and that
-  every item exists and sits in its slot. It does **not** know the colony: a modified client can join with invented
+- **What the server trusts.** It checks the party size (`--max-party`, default the largest Town Hall party), that nobody
+  in it is a child (a join with one is refused), and that every item exists and sits in its slot. It does **not** know the colony: a modified client can join with invented
   survivors and gear, and can apply any result to its own save (or play the same expedition again locally after
   leaving). Fine between friends on a LAN; not for strangers.
 - **What a server-saved colony would need:** colonies stored server-side (accounts, the colony save per account);

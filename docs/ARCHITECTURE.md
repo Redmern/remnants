@@ -11,6 +11,7 @@ See `PLAN.md` for the design. This file is the short "where does what live" map.
 | `src/Remnants.Server` | Headless console server for one shared scavenge instance (and a `--bot` client). | Net |
 | `tests/Remnants.Core.Tests` | xUnit tests for Core, run headless. | Core |
 | `tests/Remnants.Net.Tests` | Protocol round-trips, scripted 2-player loopback games, a localhost TCP game. | Net |
+| `tools/Remnants.Playtest` | Headless bot playthroughs of a fresh colony and zone trials, for balancing. See `BALANCE.md`. | Core |
 | `game/` | Godot 4.7 C# project: presentation + input only. | Core, Net |
 | `data/` | JSON definitions loaded by Core. Balancing is a data edit. | — |
 
@@ -25,7 +26,7 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   (head, torso, arms, legs; healthy / injured with severity / missing / prosthetic).
 - `Colony/` — `ColonyState` (plain serializable data), `ColonySim` (tick + command entry point),
   per-concern systems (production, crafting, medical, food, relationships, family, housing, growth), `JobOutput` (the output formula),
-  `Training`, commands + handlers, `NewGame`. `ColonySim` optionally holds the `ScavengeData` (items, zones);
+  `Training`, commands + handlers, `NewGame`, `Advice` (first-time tips: the next sensible step for a colony state). `ColonySim` optionally holds the `ScavengeData` (items, zones);
   expeditions, prosthetics and item recipes need it, and it cross-checks colony data that names items.
   - `ItemInventory` — whole items the colony owns (gear, consumables, prosthetics) by item id.
   - `Expedition` + `ExpeditionHandlers` — the loop with scavenge mode (see "Colony ↔ scavenge loop" below).
@@ -49,7 +50,8 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   - `ProfileDeriver` — **the core of the mode**: attributes + equipped gear + body state →
     `UnitProfile` (`MovementProfile` with chess-like modes King/Rook/Bishop/Queen/Knight and terrain
     costs; `ActionProfile`s; AP; initiative; sight; carry; armor; dodge). Pure and never stored.
-  - `Movement` (reachable tiles per mode, distance fields), `Combat` (reach, cover, hit chance,
+  - `Movement` (reachable tiles per mode, distance fields; the first step of a move always fits, so a range-1 unit can
+    slog onto rubble or water), `Combat` (reach, cover, hit chance,
     body-part injuries, limb loss, Downed → bleed-out → Dead), `Visibility` (per-side fog + explored).
   - `ScavengeSim` — `Execute(IScavengeCommand)`; initiative turn order across all units of all
     sides; AI turns (`ScavengeAi`: Husk, Linked squad, recruit followers) run inside it. See "Linked squad AI" below.
@@ -83,10 +85,10 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
 - `scripts/HudTheme` — the one `Theme` for both screens' HUDs (opaque dark panels, buttons, scrollbars, font size), set
   on each HUD root and on dialogs (a `CanvasLayer` does not pass a theme on). Panels add content, not styles.
 - `scripts/Colony/Ui/` — HUD panels (top bar with a beds/population warning, roster with partner/growth per line, a
-  family section, mood and a matchmaking row, building, build menu, event log, `ExpeditionPanel`,
+  family section, mood and a matchmaking row, building, build menu, event log with first-time tips from `Advice`, `ExpeditionPanel`,
   `MedBayPanel`, `ProductionPanel`, `InventoryPanel`, `AfterActionDialog`). Read Core state, call the session; no rules. Where the UI
   needs a rule Core exposes a query (`MaxUpgradeLevel`, `MaxPartySize`, `HealPerTick`/`HealEta`, `IsWorsening`,
-  `CraftEffortPerTick`, `CraftStatus`, `CanQueue`, `QualityChances`, `PreviewProfile` for a survivor's field profile with
+  `CraftEffortPerTick`, `CraftStatus`, `SkillGap`, `CanQueue`, `QualityChances`, `PreviewProfile` for a survivor's field profile with
   a given loadout).
 - `ColonySession.Current` keeps the colony alive across scene changes, so a party can go to the scavenge scene and
   come back. Each `ColonyScreen` detaches its handlers when it leaves the tree.
@@ -149,7 +151,8 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
 
 ## Colony ↔ scavenge loop
 
-- **Launch** (`LaunchExpedition(zoneId, members)`): adults only, at home and not patients; party size ≤
+- **Launch** (`LaunchExpedition(zoneId, members)`): adults only (and `NewScavenge` rejects a child in any party, so
+  debug and server parties cannot carry one either), at home and not patients; party size ≤
   `rules.expedition.partySizeByTownHallLevel[TownHall-1]`; each member's equipment (by slot) and pack come out of
   the colony inventory; `rationFoodPerMember` food per member is taken from the stockpile. One expedition at a time.
   Members are `Away`: no job, **they do not eat colony food** (the rations cover them), they are not treated and
@@ -212,7 +215,7 @@ All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `fo
   medic care) is multiplied by `lerp(lowMoodMultiplier, 1, mood/100)`.
 - **Housing pressure**: beds are spread over housing buildings (`Survivor.HomeBuildingId`); people keep their home
   and newcomers move in with their partner or parents where there is room. Newborns and recruits without a bed start
-  the homeless grace timer. When it runs out an adult leaves; an infant or child leaves with a parent who is at home
+  the homeless grace timer (it waits while they are away on an expedition). When it runs out an adult leaves; an infant or child leaves with a parent who is at home
   (mother first), ending that parent's couple; with no parent at home the child is taken in by passing travelers.
   Starvation still applies to everyone.
 - **Saves**: version 3 adds partners, parents, mood, pregnancies, growth, homes and `ColonyState.Relationships`.
@@ -234,7 +237,9 @@ All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `fo
 - **Queue**: each production building holds up to `crafting.maxQueue` orders (`QueueRecipe(building, recipe, count |
   repeat)`). Each tick it works one order: the first already paid, else the first that can start (skill + inputs), which
   is then paid. A finished batch decrements a counted order (removed at zero); a repeating order goes to the back, so it
-  runs forever without blocking others. `CancelOrder` refunds a paid batch (the same items back). `SetRecipe` is the
+  runs forever without blocking others. When nothing can go because every order needs more skill than any worker has,
+  the workers **practise** (train as if working), so a fresh colony with no skills grows into gated recipes;
+  `ColonySim.SkillGap` says which skill, how far off and how long. `CancelOrder` refunds a paid batch (the same items back). `SetRecipe` is the
   old shortcut: the queue becomes one repeating order.
 - **Quality**: crafted gear (any equippable item) rolls a tier: `score = best worker skill/100 + (level−1) ·
   qualityPerLevel ± qualitySpread` (uniform), the highest tier whose `crafting.qualityThresholds` it reaches. Tiers
@@ -336,6 +341,8 @@ All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `fo
 godot-mono --path game    # play (main menu → Colony shows a new Core colony, Scavenge a debug mission)
 godot-mono -e --path game # open in the editor
 dotnet run --project src/Remnants.Server -- --port 7777   # multiplayer server; then Multiplayer → Join in two games
+dotnet run --project tools/Remnants.Playtest -- --data=data --seeds=1..20 --days=60 --quiet   # balance sweep (BALANCE.md)
+dotnet run --project tools/Remnants.Playtest -- --data=data --zone=all --runs=300            # zone lethality
 ```
 
 Data lookup (`GameDataPaths`): `data/` next to the executable in exported builds (lets players override
