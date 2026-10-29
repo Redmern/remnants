@@ -1,4 +1,5 @@
 using Godot;
+using Remnants.Game.Scavenge;
 
 namespace Remnants.Game;
 
@@ -14,9 +15,11 @@ public partial class MainMenu : Control
 
         // `-- --colony` skips the menu (handy with DebugCapture's --screenshot).
         if (DebugCapture.HasFlag("--colony")) CallDeferred(MethodName.OnColonyPressed);
+        // `-- --scavenge` starts the debug mission (see ScavengeSession.DebugParty).
+        else if (DebugCapture.HasFlag("--scavenge")) CallDeferred(MethodName.OnScavengePressed);
     }
 
     private void OnColonyPressed() => GetTree().ChangeSceneToFile("res://scenes/Colony.tscn");
 
-    private void OnScavengePressed() => _status.Text = "Scavenge mode is not built yet.";
+    private void OnScavengePressed() => ScavengeSession.BeginDebug(GetTree());
 }
