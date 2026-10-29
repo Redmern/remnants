@@ -142,12 +142,25 @@ public partial class ProductionPanel : PanelContainer
         {
             CraftStatus.Idle => "[color=#999]Idle. Queue a recipe and assign workers.[/color]",
             CraftStatus.NoWorkers => $"[color=#{Ui.Hex(Ui.Bad)}]No workers assigned.[/color]",
-            CraftStatus.NeedsSkill => $"[color=#{Ui.Hex(Ui.Bad)}]Workers lack the skill for every order.[/color]",
+            CraftStatus.NeedsSkill => NeedsSkill(sim, building),
             CraftStatus.WaitingForInputs => $"[color=#{Ui.Hex(Ui.Bad)}]Waiting for materials.[/color]",
             _ when working is not null => $"Working on [b]{sim.Data.Recipes[working.RecipeId].Name}[/b], {rate:0.##} work/h: done in "
                 + ColonyText.Duration((int)System.Math.Ceiling((sim.Data.Recipes[working.RecipeId].Work - working.Progress) / System.Math.Max(rate, 1e-6)), sim.Data.Rules),
             _ => $"Starting next hour, {rate:0.##} work/h.",
         };
+    }
+
+    /// <summary>Which skill is missing, how far off the best worker is, that they practise meanwhile, and what else to do.</summary>
+    private static string NeedsSkill(ColonySim sim, Building building)
+    {
+        if (sim.SkillGap(building) is not { } gap) return $"[color=#{Ui.Hex(Ui.Bad)}]Workers lack the skill for every order.[/color]";
+        var eta = gap.Ticks is { } t && t < int.MaxValue ? $", about {ColonyText.Duration(t, sim.Data.Rules)}" : "";
+        var easy = sim.Data.RecipesFor(building.DefId)
+            .Where(r => r.MinSkill <= gap.Best + 1e-9 && sim.CanQueue(building, r).Ok)
+            .Select(r => r.Name).FirstOrDefault();
+        var hint = easy is null ? "" : $" Or queue {easy} first: making it trains the skill too.";
+        return $"[color=#{Ui.Hex(Ui.Bad)}]Needs {gap.Skill} {gap.Needed:0} (best worker {gap.Best:0}).[/color] "
+            + $"Workers are practising{eta}.{hint}";
     }
 
     private static string Output(ColonySim sim, RecipeDef r) =>

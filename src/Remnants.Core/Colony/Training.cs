@@ -24,5 +24,21 @@ public static class Training
         }
     }
 
+    /// <summary>Ticks of work until this survivor's job skill reaches <paramref name="target"/> (0 if it already does).</summary>
+    public static int TicksToReach(JobDef job, Survivor s, double target, TrainingRules rules)
+    {
+        var rate = rules.SkillPerTick * (s.IsChild ? rules.ChildMultiplier : 1.0);
+        var current = s.Get(job.Skill);
+        if (current + 1e-9 >= target) return 0;
+        if (rate <= 0 || target >= Survivor.MaxStat) return int.MaxValue;
+        var ticks = 0;
+        while (current + 1e-9 < target && ticks < 1_000_000)
+        {
+            current += Gain(rate, current);
+            ticks++;
+        }
+        return ticks;
+    }
+
     private static double Gain(double baseGain, double current) => baseGain * (1 - current / Survivor.MaxStat);
 }

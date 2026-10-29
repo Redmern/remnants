@@ -84,6 +84,9 @@ public sealed class ColonySim
     /// <summary>Whether this recipe can be queued now, and why not (level, blueprint, missing item data).</summary>
     public CommandResult CanQueue(Building building, RecipeDef recipe) => CraftingHandlers.CheckRecipe(this, building, recipe);
 
+    /// <summary>The closest skill its workers lack for a queued order (they practise meanwhile), or null.</summary>
+    public SkillGap? SkillGap(Building building) => CraftingSystem.Gap(State, Data, building);
+
     /// <summary>What the head of a building's queue is doing (for the production panel).</summary>
     public CraftStatus CraftStatus(Building building) => CraftingSystem.Status(State, Data, Scavenge, building);
 

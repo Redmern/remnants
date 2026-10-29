@@ -180,6 +180,28 @@ public class ProductionQueueTests
     }
 
     [Fact]
+    public void Workers_practise_while_every_order_needs_more_skill_and_then_make_it()
+    {
+        // A fresh colony has no skills: an Armory with only a Pistol (Firearms 15) queued must not stall forever.
+        var (sim, shop, worker) = Shop("armory", level: 2, skill: 0);
+        sim.Build("shelter"); // practice takes days; the worker needs a bed meanwhile
+        sim.State.Stockpile.Add("scrap", 20);
+        sim.State.Stockpile.Add("electronics", 2);
+        Assert.True(sim.Execute(new QueueRecipe(shop.Id, "pistol")).Ok);
+        var gap = sim.SkillGap(shop)!;
+        Assert.Equal((Skill.Firearms, 0.0, 15.0), (gap.Skill, gap.Best, gap.Needed));
+        Assert.NotNull(gap.Ticks);
+
+        sim.Advance(gap.Ticks!.Value - 1);
+        Assert.Equal(CraftStatus.NeedsSkill, sim.CraftStatus(shop));
+        Assert.True(worker.Get(Skill.Firearms) > 10);
+        sim.Advance(2);
+        Assert.Null(sim.SkillGap(shop));
+        RunUntilDone(sim, shop);
+        Assert.Equal(1, sim.State.Inventory.Counts.Where(kv => kv.Key.StartsWith("pistol")).Sum(kv => kv.Value));
+    }
+
+    [Fact]
     public void New_production_buildings_need_the_town_hall_level()
     {
         var sim = LoopTestData.Colony(townHallLevel: 1);

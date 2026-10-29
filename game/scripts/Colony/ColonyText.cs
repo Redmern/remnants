@@ -107,9 +107,14 @@ public static class ColonyText
         id is not { } v ? null
         : state.FindSurvivor(v)?.Name ?? (state.Memorial.Find(m => m.SurvivorId == v) is { } dead ? $"{dead.Name} †" : null);
 
-    /// <summary>"Infant 40%", "Child 75%" or "Adult".</summary>
+    /// <summary>"Infant (40% to child)", "Child (75% to adult)" or "Adult": a bare percentage next to a name reads as health.</summary>
     public static string Stage(Survivor s, RulesDef rules) =>
-        s.IsChild ? $"{s.LifeStage} {Percent(Bonds.StageProgress(s, rules.Life))}" : "Adult";
+        s.IsChild ? $"{s.LifeStage} ({Percent(Bonds.StageProgress(s, rules.Life))} to {(s.IsInfant ? "child" : "adult")})" : "Adult";
+
+    /// <summary>"child · adult in 2d 4h": the roster's short growth note for a minor.</summary>
+    public static string GrowthNote(Survivor s, RulesDef rules) =>
+        $"{s.LifeStage.ToString().ToLowerInvariant()} · {(s.IsInfant ? "child" : "adult")} in "
+        + (Bonds.TicksToNextStage(s, rules.Life) is { } t ? Duration((int)t, rules) : "—");
 
     public static string Mood(Survivor s) =>
         s.Mood >= 80 ? "content" : s.Mood >= 55 ? "low" : s.Mood >= 30 ? "grieving" : "despairing";

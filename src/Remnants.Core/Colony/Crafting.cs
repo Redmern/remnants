@@ -9,11 +9,18 @@ namespace Remnants.Core.Colony;
 public enum CraftStatus { Idle, NoWorkers, NeedsSkill, WaitingForInputs, Working }
 
 /// <summary>
+/// The closest skill requirement the building's workers fall short of: which skill, the best worker's level, the level
+/// needed, and the ticks of practice until the best worker gets there.
+/// </summary>
+public sealed record SkillGap(Skill Skill, double Best, double Needed, int? Ticks);
+
+/// <summary>
 /// Production buildings work their queue. Each tick the building works one order: the first whose batch is already
 /// paid, else the first that can start (a worker has the recipe's <c>minSkill</c> and its inputs are in stock), whose
 /// inputs are then paid. Its workers add their job output as effort (and train). A finished batch yields its item —
 /// gear at a quality rolled from the best worker's skill — or resource; a counted order then loses a batch (and leaves
-/// the queue at zero), a repeating order moves to the back.
+/// the queue at zero), a repeating order moves to the back. When nothing can go because an order needs more skill than
+/// any worker has, the workers practise: they train as if working, so a fresh colony grows into its recipes.
 /// </summary>
 internal static class CraftingSystem
 {
@@ -27,7 +34,13 @@ internal static class CraftingSystem
             if (workers.Count == 0) continue;
             var job = data.Jobs[def.Job];
             var order = Pick(state, data, items, building, workers, job);
-            if (order is null) continue;
+            if (order is null)
+            {
+                var skill = BestSkill(workers, job);
+                if (building.Queue.Any(o => data.Recipes[o.RecipeId].MinSkill > skill + 1e-9))
+                    foreach (var w in workers) Training.TrainTick(job, w, data.Rules.Training);
+                continue;
+            }
             var recipe = data.Recipes[order.RecipeId];
             if (!order.Paid) Pay(state, items, recipe, order);
 
@@ -51,6 +64,21 @@ internal static class CraftingSystem
         if (Pick(state, data, items, building, workers, job) is not null) return CraftStatus.Working;
         var skill = BestSkill(workers, job);
         return building.Queue.All(o => data.Recipes[o.RecipeId].MinSkill > skill + 1e-9) ? CraftStatus.NeedsSkill : CraftStatus.WaitingForInputs;
+    }
+
+    /// <summary>The smallest skill shortfall among the queued orders, or null when the workers can make all of them.</summary>
+    public static SkillGap? Gap(ColonyState state, GameData data, Building building)
+    {
+        var def = data.Buildings[building.DefId];
+        if (def.Job is null) return null;
+        var job = data.Jobs[def.Job];
+        var workers = state.WorkersAt(building.Id).ToList();
+        var best = workers.OrderByDescending(w => w.Get(job.Skill)).FirstOrDefault();
+        var skill = best?.Get(job.Skill) ?? 0;
+        var needed = building.Queue.Select(o => data.Recipes[o.RecipeId].MinSkill).Where(m => m > skill + 1e-9).DefaultIfEmpty(0).Min();
+        if (needed <= 0) return null;
+        int? ticks = best is null ? null : Training.TicksToReach(job, best, needed, data.Rules.Training);
+        return new SkillGap(job.Skill, skill, needed, ticks);
     }
 
     /// <summary>Effort per tick the building's current workers add (for an ETA in the UI).</summary>

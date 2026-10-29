@@ -111,7 +111,7 @@ public partial class RosterPanel : PanelContainer
     /// <summary>The roster's relationship line: partner and pregnancy for adults, stage and growth for minors.</summary>
     private static string Ties(ColonySim sim, Survivor s)
     {
-        if (s.IsChild) return $"  ·  {ColonyText.Stage(s, sim.Data.Rules).ToLowerInvariant()}";
+        if (s.IsChild) return $"  ·  {ColonyText.GrowthNote(s, sim.Data.Rules)}";
         var text = ColonyText.PersonName(sim.State, s.PartnerId) is { } partner ? $" ♥ {partner}" : "";
         return s.Pregnancy is not null ? text + "  ·  expecting" : text;
     }
