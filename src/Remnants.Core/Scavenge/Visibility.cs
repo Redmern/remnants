@@ -1,0 +1,42 @@
+namespace Remnants.Core.Scavenge;
+
+/// <summary>Fog of war: what a unit, or a whole side, can see. Sight radius comes from the unit's profile (Perception, eyes, gear).</summary>
+public static class Visibility
+{
+    public static bool CanSee(ScavengeData data, TileMap map, Pos from, double sight, Pos to) =>
+        from.DistanceSquared(to) <= sight * sight + 1e-9 && map.HasLineOfSight(data, from, to);
+
+    /// <summary>Tile indices visible to one unit.</summary>
+    public static HashSet<int> VisibleTiles(ScavengeData data, TileMap map, Unit unit, double sight)
+    {
+        var result = new HashSet<int>();
+        var r = (int)Math.Ceiling(sight);
+        for (var y = unit.Pos.Y - r; y <= unit.Pos.Y + r; y++)
+            for (var x = unit.Pos.X - r; x <= unit.Pos.X + r; x++)
+            {
+                var p = new Pos(x, y);
+                if (map.InBounds(p) && CanSee(data, map, unit.Pos, sight, p)) result.Add(map.Index(p));
+            }
+        return result;
+    }
+
+    /// <summary>Tile indices currently visible to a side: the union over its conscious units.</summary>
+    public static HashSet<int> SideVisible(ScavengeData data, ScavengeState state, string side)
+    {
+        var result = new HashSet<int>();
+        foreach (var u in state.Units.Where(u => u.Side == side && u.IsActive))
+            result.UnionWith(VisibleTiles(data, state.Map, u, ProfileDeriver.Derive(data, u).Sight));
+        return result;
+    }
+
+    /// <summary>Adds what every party side sees right now to its explored set.</summary>
+    public static void UpdateExplored(ScavengeData data, ScavengeState state)
+    {
+        foreach (var party in state.Parties.Where(p => !p.Done))
+        {
+            if (!state.Explored.TryGetValue(party.Side, out var explored))
+                state.Explored[party.Side] = explored = new SortedSet<int>();
+            explored.UnionWith(SideVisible(data, state, party.Side));
+        }
+    }
+}

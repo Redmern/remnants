@@ -1,0 +1,50 @@
+using Remnants.Core.Items;
+using Remnants.Core.Survivors;
+
+namespace Remnants.Core.Scavenge;
+
+/// <summary>A survivor who made it out, as they are now (injuries, health) and what they bring.</summary>
+public sealed record ReturnedSurvivor(Survivor Survivor, bool Evacuated, Dictionary<EquipSlot, string> Equipment, List<string> Pack);
+
+/// <summary>
+/// What a party's run feeds back into the colony (M5): who came home and in what shape, recruits, the dead,
+/// and the carried loot. Final once <see cref="Complete"/> is true.
+/// </summary>
+public sealed record ExtractionResult(
+    int PlayerId,
+    bool Complete,
+    List<ReturnedSurvivor> Returned,
+    List<ReturnedSurvivor> Recruits,
+    List<Survivor> Deaths,
+    SortedDictionary<string, int> Loot)
+{
+    internal static ExtractionResult Build(ScavengeSim sim, int playerId)
+    {
+        var state = sim.State;
+        var party = state.FindParty(playerId) ?? throw new ArgumentException($"No party for player {playerId}.");
+        var mine = state.Units.Where(u => u.PlayerId == playerId).ToList();
+        bool Out(Unit u) => u.Status is UnitStatus.Extracted or UnitStatus.Evacuated;
+
+        var returned = mine.Where(u => u.Kind == UnitKind.Survivor && Out(u)).Select(ToReturned).ToList();
+        var recruits = mine.Where(u => u.Kind == UnitKind.Npc && Out(u)).Select(ToReturned).ToList();
+        var deaths = mine.Where(u => u.Kind == UnitKind.Survivor && u.Status == UnitStatus.Dead).Select(u => Snapshot(u, 0)).ToList();
+
+        var loot = new SortedDictionary<string, int>(StringComparer.Ordinal);
+        foreach (var id in returned.Concat(recruits).SelectMany(r => r.Pack))
+            loot[id] = loot.GetValueOrDefault(id) + 1;
+
+        return new ExtractionResult(playerId, party.Done, returned, recruits, deaths, loot);
+    }
+
+    private static ReturnedSurvivor ToReturned(Unit u) =>
+        new(Snapshot(u, Math.Clamp(u.Hp, 1, Survivor.MaxHealth)), u.Status == UnitStatus.Evacuated, new(u.Equipment), new(u.Pack));
+
+    /// <summary>The survivor as they entered, with the run's injuries and health applied.</summary>
+    private static Survivor Snapshot(Unit u, double health)
+    {
+        var s = NewScavenge.Clone(u.Origin!);
+        s.Body = NewScavenge.Clone(u.Body);
+        s.Health = health;
+        return s;
+    }
+}
