@@ -6,7 +6,8 @@
   "output": {
     "performanceFloor": 0.25,
     "childOutputMultiplier": 0.5,
-    "lowHealthMultiplier": 0.5
+    "lowHealthMultiplier": 0.5,
+    "lowMoodMultiplier": 0.8
   },
   "training": {
     "skillPerTick": 0.05,
@@ -16,7 +17,8 @@
   "food": {
     "resourceId": "food",
     "adultPerTick": 0.05,
-    "childPerTick": 0.03,
+    "childPerTick": 0.04,
+    "infantPerTick": 0.02,
     "starvationDamagePerTick": 1.0,
     "recoveryPerTick": 0.25
   },
@@ -40,6 +42,36 @@
     "worsenThreshold": 0.6,
     "worsenPerTick": 0.002,
     "severeHealthDrainPerTick": 0.5
+  },
+  "life": {
+    "infantTicks": 120,
+    "childTicks": 336,
+    "attributeGrowthPerTick": 0.006,
+    "birthAttributeFraction": 0.2,
+    "inheritVariation": 12,
+    "malnourishedNoteShare": 0.2
+  },
+  "relationships": {
+    "basePerTick": 0.05,
+    "sharedWorkplacePerTick": 0.15,
+    "sharedHomePerTick": 0.05,
+    "compatibilityPerTick": 0.1,
+    "encourageMultiplier": 3,
+    "coupleThreshold": 100
+  },
+  "family": {
+    "conceptionCheckTicks": 24,
+    "conceptionChance": 0.35,
+    "minFoodPerPerson": 2,
+    "pregnancyTicks": 96,
+    "maleNames": ["Oren", "Lio", "Teo", "Finn", "Ezra", "Milo", "Ansel", "Dario", "Kai", "Rune"],
+    "femaleNames": ["Wren", "Ivy", "Nia", "Elsa", "Talia", "Rhea", "Mina", "Lark", "Zora", "Cleo"]
+  },
+  "mood": {
+    "partnerGrief": 50,
+    "familyGrief": 25,
+    "heartbreak": 20,
+    "recoveryPerTick": 0.15
   },
   "layout": {
     "plotColumns": 6,

@@ -13,6 +13,10 @@ public sealed record RulesDef
     public HousingRules Housing { get; init; } = new();
     public ExpeditionRules Expedition { get; init; } = new();
     public MedicalRules Medical { get; init; } = new();
+    public LifeRules Life { get; init; } = new();
+    public RelationshipRules Relationships { get; init; } = new();
+    public FamilyRules Family { get; init; } = new();
+    public MoodRules Mood { get; init; } = new();
     public LayoutRules Layout { get; init; } = new();
     public NewGameRules NewGame { get; init; } = new();
 
@@ -27,6 +31,9 @@ public sealed record OutputRules
 
     /// <summary>Output multiplier at 0 health; scales linearly to 1 at full health.</summary>
     public double LowHealthMultiplier { get; init; } = 0.5;
+
+    /// <summary>Output multiplier at mood 0; scales linearly to 1 at full mood.</summary>
+    public double LowMoodMultiplier { get; init; } = 0.8;
 }
 
 public sealed record TrainingRules
@@ -40,7 +47,8 @@ public sealed record FoodRules
 {
     public string ResourceId { get; init; } = "food";
     public double AdultPerTick { get; init; } = 0.05;
-    public double ChildPerTick { get; init; } = 0.03;
+    public double ChildPerTick { get; init; } = 0.04;
+    public double InfantPerTick { get; init; } = 0.02;
     public double StarvationDamagePerTick { get; init; } = 1.0;
     public double RecoveryPerTick { get; init; } = 0.25;
 }
@@ -86,6 +94,72 @@ public sealed record MedicalRules
     public double WorsenThreshold { get; init; } = 0.6;
     public double WorsenPerTick { get; init; } = 0.002;
     public double SevereHealthDrainPerTick { get; init; } = 0.5;
+}
+
+/// <summary>
+/// Growing up. The time scale is for fun, not realism: an infant becomes a child after <see cref="InfantTicks"/>
+/// and an adult <see cref="ChildTicks"/> later. While growing, each fed tick moves every attribute
+/// <see cref="AttributeGrowthPerTick"/> of the way to the inherited aptitude; hungry ticks do not, so malnourished
+/// children grow up weaker. A minor's age in years is shown as their share of <c>adultAge</c>.
+/// </summary>
+public sealed record LifeRules
+{
+    public int InfantTicks { get; init; } = 120;
+    public int ChildTicks { get; init; } = 336;
+    public double AttributeGrowthPerTick { get; init; } = 0.006;
+
+    /// <summary>A newborn's attributes as a fraction of their aptitude.</summary>
+    public double BirthAttributeFraction { get; init; } = 0.2;
+
+    /// <summary>Aptitude = mean of the parents' attributes ± up to this much (uniform).</summary>
+    public double InheritVariation { get; init; } = 12;
+
+    /// <summary>A coming-of-age note says "malnourished" when at least this share of growing up was hungry.</summary>
+    public double MalnourishedNoteShare { get; init; } = 0.2;
+
+    public int GrowthTicks => InfantTicks + ChildTicks;
+}
+
+/// <summary>
+/// Affinity between two adults at home who are both single grows every tick:
+/// <code>
+/// gain = (base + sharedWorkplace? + sharedHome? + compatibility · similarity) · (encouraged ? encourageMultiplier : 1)
+/// similarity = 1 − mean |attribute difference| / 100
+/// </code>
+/// A discouraged pair gains nothing. At <see cref="CoupleThreshold"/> they become a couple.
+/// </summary>
+public sealed record RelationshipRules
+{
+    public double BasePerTick { get; init; } = 0.05;
+    public double SharedWorkplacePerTick { get; init; } = 0.15;
+    public double SharedHomePerTick { get; init; } = 0.05;
+    public double CompatibilityPerTick { get; init; } = 0.1;
+    public double EncourageMultiplier { get; init; } = 3;
+    public double CoupleThreshold { get; init; } = 100;
+}
+
+/// <summary>
+/// Every <see cref="ConceptionCheckTicks"/> a woman and man in a couple, both at home, may conceive with
+/// <see cref="ConceptionChance"/> when the colony has a bed free for the baby (beds &gt; people + pregnancies), at
+/// least <see cref="MinFoodPerPerson"/> food per person in stock, and she has no infant already.
+/// </summary>
+public sealed record FamilyRules
+{
+    public int ConceptionCheckTicks { get; init; } = 24;
+    public double ConceptionChance { get; init; } = 0.35;
+    public double MinFoodPerPerson { get; init; } = 2;
+    public int PregnancyTicks { get; init; } = 96;
+    public List<string> MaleNames { get; init; } = new();
+    public List<string> FemaleNames { get; init; } = new();
+}
+
+/// <summary>Mood drops when someone close dies or leaves and recovers by <see cref="RecoveryPerTick"/>.</summary>
+public sealed record MoodRules
+{
+    public double PartnerGrief { get; init; } = 50;
+    public double FamilyGrief { get; init; } = 25;
+    public double Heartbreak { get; init; } = 20;
+    public double RecoveryPerTick { get; init; } = 0.15;
 }
 
 /// <summary>The town is a grid of building plots; a plot index is row-major (plot = row · columns + column).</summary>

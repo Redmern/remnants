@@ -20,6 +20,9 @@ public sealed record JobDef
 
     /// <summary>Output bonus at tool quality 1 (0.5 = +50%).</summary>
     public double ToolBonus { get; init; }
+
+    /// <summary>Light work children may do as apprentices (at <c>output.childOutputMultiplier</c>; they train faster).</summary>
+    public bool ChildrenAllowed { get; init; }
 }
 
 public enum BuildingCategory { Core, Housing, Gathering, Production, Care }

@@ -19,6 +19,7 @@
   },
   {
     "id": "scavenging",
+    "childrenAllowed": true,
     "name": "Scrap Sorting",
     "skill": "Crafting",
     "skillWeight": 0.8,
@@ -28,6 +29,7 @@
   },
   {
     "id": "farming",
+    "childrenAllowed": true,
     "name": "Farming",
     "skill": "Farming",
     "skillWeight": 1.0,
@@ -46,6 +48,7 @@
   },
   {
     "id": "crafting",
+    "childrenAllowed": true,
     "name": "Crafting",
     "skill": "Crafting",
     "skillWeight": 1.0,

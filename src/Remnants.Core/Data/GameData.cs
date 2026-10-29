@@ -99,6 +99,18 @@ public sealed class GameData
             throw new GameDataException("Rules.expedition.partySizeByTownHallLevel needs at least one entry, each at least 1.");
         if (Rules.Expedition.RationFoodPerMember < 0) throw new GameDataException("Rules.expedition.rationFoodPerMember must not be negative.");
         RequireRange(Rules.Expedition.RecruitAgeRange, "expedition.recruitAgeRange");
+
+        var life = Rules.Life;
+        if (life.InfantTicks < 1 || life.ChildTicks < 1) throw new GameDataException("Rules.life needs infantTicks and childTicks of at least 1.");
+        if (life.AttributeGrowthPerTick is < 0 or > 1 || life.BirthAttributeFraction is < 0 or > 1 || life.InheritVariation < 0)
+            throw new GameDataException("Rules.life: attributeGrowthPerTick and birthAttributeFraction must be in 0..1, inheritVariation not negative.");
+        if (Rules.Relationships.CoupleThreshold <= 0) throw new GameDataException("Rules.relationships.coupleThreshold must be positive.");
+        var family = Rules.Family;
+        if (family.ConceptionCheckTicks < 1 || family.PregnancyTicks < 1)
+            throw new GameDataException("Rules.family needs conceptionCheckTicks and pregnancyTicks of at least 1.");
+        if (family.ConceptionChance is < 0 or > 1) throw new GameDataException("Rules.family.conceptionChance must be in 0..1.");
+        if (family.MaleNames.Count == 0 || family.FemaleNames.Count == 0)
+            throw new GameDataException("Rules.family needs male and female names for newborns.");
     }
 
     private static void RequireRange(int[] range, string name)
