@@ -61,7 +61,16 @@ public class MovementProfileTests
     {
         var u = WithAgility(95, body: "scout_jacket");
         u.Body.Lose(BodyPart.LeftLeg);
-        Assert.Equal(new MoveMode(MovePattern.King, 1, 1, false), Derive(u).Movement.Primary);
+        Assert.Equal(new MoveMode(MovePattern.King, 1, 1, false, "missing legs"), Derive(u).Movement.Primary);
+    }
+
+    [Fact]
+    public void Modes_name_what_gave_them_so_the_ui_can_explain_movement()
+    {
+        Assert.Null(Derive(WithAgility(50)).Movement.Primary.Source);
+        Assert.Equal("Scout Jacket", Derive(WithAgility(50, body: "scout_jacket")).Movement.Primary.Source);
+        var knight = Derive(WithAgility(50, tool: "grappling_hook")).Movement.Modes.Single(m => m.Pattern == MovePattern.Knight);
+        Assert.Equal("Grappling Hook", knight.Source);
     }
 
     [Fact]
@@ -134,7 +143,7 @@ public class MovementProfileTests
         };
         var data = new ScavengeData(Real.Items.Values.Append(bishopCoat), Real.Enemies.Values, Real.Zones.Values, Real.Rules);
         var u = WithAgility(50, body: "bishop_coat");
-        Assert.Equal(new MoveMode(MovePattern.Bishop, 4, 1, false), ProfileDeriver.Derive(data, u).Movement.Primary);
+        Assert.Equal(new MoveMode(MovePattern.Bishop, 4, 1, false, "Bishop Coat"), ProfileDeriver.Derive(data, u).Movement.Primary);
     }
 }
 

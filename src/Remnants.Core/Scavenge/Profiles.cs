@@ -3,8 +3,11 @@ using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Scavenge;
 
-/// <summary>One concrete way a unit can move this turn.</summary>
-public sealed record MoveMode(MovePattern Pattern, int Range, int ApCost, bool IgnoresTerrain);
+/// <summary>
+/// One concrete way a unit can move this turn. <see cref="Source"/> names what gave it its pattern
+/// (an item name or a body state such as "missing legs"); null for the plain base walk.
+/// </summary>
+public sealed record MoveMode(MovePattern Pattern, int Range, int ApCost, bool IgnoresTerrain, string? Source = null);
 
 /// <summary>How a unit moves: its modes (the first is the primary walk) and what each terrain costs it.</summary>
 public sealed record MovementProfile(IReadOnlyList<MoveMode> Modes, IReadOnlyDictionary<Terrain, int> TerrainCosts)
@@ -89,35 +92,37 @@ public static class ProfileDeriver
         var rules = data.Rules.Movement;
         var pattern = rules.BasePattern;
         var range = (double)rules.BaseRange + Math.Floor(unit.Get(AttributeKind.Agility) / rules.AgilityPerRange);
+        string? patternSource = null;
         var caps = new List<int>();
-        var extraModes = new List<MoveModeDef>();
+        var extraModes = new List<(MoveModeDef Mode, string Source)>();
         var costs = Enum.GetValues<Terrain>()
             .Where(t => data.Terrain(t).Passable)
             .ToDictionary(t => t, t => data.Terrain(t).MoveCost);
 
-        void Apply(MovementModifier? m)
+        void Apply(MovementModifier? m, string source)
         {
             if (m is null) return;
-            if (m.SetPattern is { } p) pattern = p;
+            if (m.SetPattern is { } p) (pattern, patternSource) = (p, source);
             range += m.RangeBonus;
             if (m.MaxRange is { } cap) caps.Add(cap);
-            extraModes.AddRange(m.AddModes);
+            extraModes.AddRange(m.AddModes.Select(mode => (mode, source)));
             foreach (var (terrain, cost) in m.TerrainCosts)
                 if (costs.TryGetValue(terrain, out var current)) costs[terrain] = Math.Min(current, Math.Max(1, cost));
         }
 
-        foreach (var item in working) Apply(item.Movement);
+        foreach (var item in working) Apply(item.Movement, item.Name);
 
         range -= rules.Encumbrance.Where(s => loadRatio + 1e-9 >= s.Load).Select(s => s.RangePenalty).DefaultIfEmpty(0).Max();
         range = Math.Floor(range * unit.Body.RegionEfficiency(BodyRegion.Legs) + 1e-9);
 
-        foreach (var rule in rules.Body.Where(r => BodyMatches(unit.Body, r))) Apply(rule.Modifier);
+        foreach (var rule in rules.Body.Where(r => BodyMatches(unit.Body, r)))
+            Apply(rule.Modifier, $"{rule.Condition} {rule.Region}".ToLowerInvariant());
 
         var primary = Math.Max(rules.MinRange, (int)range);
         if (caps.Count > 0) primary = Math.Min(primary, caps.Min());
 
-        var modes = new List<MoveMode> { new(pattern, primary, rules.ApCost, false) };
-        modes.AddRange(extraModes.Select(m => new MoveMode(m.Pattern, m.Range, m.ApCost, m.IgnoresTerrain)));
+        var modes = new List<MoveMode> { new(pattern, primary, rules.ApCost, false, patternSource) };
+        modes.AddRange(extraModes.Select(m => new MoveMode(m.Mode.Pattern, m.Mode.Range, m.Mode.ApCost, m.Mode.IgnoresTerrain, m.Source)));
         return new MovementProfile(modes, costs);
     }
 
