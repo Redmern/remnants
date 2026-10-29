@@ -17,12 +17,31 @@ public sealed class ColonyState
     public List<Survivor> Survivors { get; set; } = new();
     public List<Building> Buildings { get; set; } = new();
     public Stockpile Stockpile { get; set; } = new();
+
+    /// <summary>Items the colony owns (gear, consumables, prosthetics), by item id.</summary>
+    public ItemInventory Inventory { get; set; } = new();
+
+    /// <summary>The party currently out in a zone, if any. One expedition at a time.</summary>
+    public Expedition? Expedition { get; set; }
+
+    public int NextExpeditionId { get; set; } = 1;
+
+    /// <summary>The after-action report of the last expedition that came home (for the UI).</summary>
+    public ExpeditionReport? LastReport { get; set; }
+
+    /// <summary>Everyone who died, oldest first. Never trimmed.</summary>
+    public List<MemorialEntry> Memorial { get; set; } = new();
     public List<ColonyEvent> Events { get; set; } = new();
 
     public Survivor? FindSurvivor(int id) => Survivors.Find(s => s.Id == id);
     public Building? FindBuilding(int id) => Buildings.Find(b => b.Id == id);
 
     public IEnumerable<Survivor> WorkersAt(int buildingId) => Survivors.Where(s => s.AssignedBuildingId == buildingId);
+
+    public IEnumerable<Survivor> PatientsAt(int buildingId) => Survivors.Where(s => s.PatientAtBuildingId == buildingId);
+
+    /// <summary>Survivors at home (not away on an expedition).</summary>
+    public IEnumerable<Survivor> Present => Survivors.Where(s => !s.Away);
 
     public void Log(ColonyEvent e)
     {

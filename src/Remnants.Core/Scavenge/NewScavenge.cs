@@ -90,6 +90,13 @@ public static class NewScavenge
         return sim;
     }
 
+    /// <summary>
+    /// The profile a colony survivor would have in the field with this gear (movement mode, AP, actions...),
+    /// for the expedition planner. Uses the same unit construction as a real run.
+    /// </summary>
+    public static UnitProfile PreviewProfile(ScavengeData data, PartyMember member) =>
+        ProfileDeriver.Derive(data, SurvivorUnit(data, new ScavengeState(), 1, member, default));
+
     private static void ValidateParties(ScavengeData data, IReadOnlyList<PartySetup> parties)
     {
         if (parties.Count == 0) throw new ArgumentException("A scavenge run needs at least one party.");

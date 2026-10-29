@@ -94,7 +94,7 @@ public class DeterminismAndSaveTests
     [Fact]
     public void Wrong_save_version_is_rejected()
     {
-        var json = SaveGame.Save(new ColonyState()).Replace("\"version\": 1", "\"version\": 99");
+        var json = SaveGame.Save(new ColonyState()).Replace($"\"version\": {SaveGame.Version}", "\"version\": 99");
         Assert.ThrowsAny<System.Text.Json.JsonException>(() => SaveGame.Load(TestData.Real, json));
     }
 }

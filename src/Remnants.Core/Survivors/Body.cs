@@ -10,6 +10,9 @@ public sealed class BodyPartState
     /// <summary>Efficiency of a fitted prosthetic. Can exceed 1: cybernetics may beat the original.</summary>
     public double ProstheticQuality { get; set; }
 
+    /// <summary>Item id of the fitted prosthetic, for display. Null for prosthetics from before items existed.</summary>
+    public string? ProstheticItemId { get; set; }
+
     /// <summary>How well this part works, as a multiplier (1 = healthy).</summary>
     public double Efficiency => Condition switch
     {
@@ -59,15 +62,17 @@ public sealed class Body
         state.Condition = PartCondition.Missing;
         state.Severity = 0;
         state.ProstheticQuality = 0;
+        state.ProstheticItemId = null;
     }
 
-    public void FitProsthetic(BodyPart part, double quality)
+    public void FitProsthetic(BodyPart part, double quality, string? itemId = null)
     {
         var state = Parts[part];
         if (state.Condition != PartCondition.Missing)
             throw new InvalidOperationException($"{part} is not missing; cannot fit a prosthetic.");
         state.Condition = PartCondition.Prosthetic;
         state.ProstheticQuality = quality;
+        state.ProstheticItemId = itemId;
     }
 
     /// <summary>Average efficiency of the parts in a region.</summary>

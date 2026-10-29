@@ -30,11 +30,19 @@ public sealed class Survivor
     /// <summary>The building this survivor works at, if any. Single source of truth for assignment.</summary>
     public int? AssignedBuildingId { get; set; }
 
+    /// <summary>On an expedition: no job, does not eat colony food, is not treated. Set by <c>LaunchExpedition</c>.</summary>
+    public bool Away { get; set; }
+
+    /// <summary>The Med Bay this survivor is admitted to as a patient, if any. Patients do not work.</summary>
+    public int? PatientAtBuildingId { get; set; }
+
     public bool HasBed { get; set; }
     public int HomelessTicks { get; set; }
     public int StarvingTicks { get; set; }
 
     public bool IsChild => LifeStage == LifeStage.Child;
+
+    public bool IsInjured => Body.Parts.Values.Any(p => p.Condition == PartCondition.Injured);
 
     public double Get(AttributeKind attribute) => Attributes.GetValueOrDefault(attribute);
     public double Get(Skill skill) => Skills.GetValueOrDefault(skill);

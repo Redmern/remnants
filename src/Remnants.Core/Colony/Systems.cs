@@ -3,7 +3,7 @@ using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Colony;
 
-/// <summary>Workers at gathering buildings produce resources and train.</summary>
+/// <summary>Workers at gathering buildings produce resources and train. Care and crafting have their own systems.</summary>
 internal static class ProductionSystem
 {
     public static void Run(ColonyState state, GameData data)
@@ -11,26 +11,28 @@ internal static class ProductionSystem
         foreach (var building in state.Buildings)
         {
             var def = data.Buildings[building.DefId];
-            if (def.Job is null) continue;
+            if (def.Job is null || def.Produces is null) continue;
             var job = data.Jobs[def.Job];
             foreach (var worker in state.WorkersAt(building.Id).OrderBy(w => w.Id))
             {
-                if (def.Produces is not null)
-                    state.Stockpile.Add(def.Produces, JobOutput.PerTick(def, building.Level, job, worker, data.Rules.Output));
+                state.Stockpile.Add(def.Produces, JobOutput.PerTick(def, building.Level, job, worker, data.Rules.Output));
                 Training.TrainTick(job, worker, data.Rules.Training);
             }
         }
     }
 }
 
-/// <summary>Everyone eats each tick. Children are fed first; whoever goes hungry takes damage and may die.</summary>
+/// <summary>
+/// Everyone at home eats each tick (away parties live on the rations they took). Children are fed first;
+/// whoever goes hungry takes damage and may die.
+/// </summary>
 internal static class FoodSystem
 {
     public static void Run(ColonyState state, GameData data)
     {
         var rules = data.Rules.Food;
         var dead = new List<Survivor>();
-        foreach (var s in state.Survivors.OrderBy(s => s.IsChild ? 0 : 1).ThenBy(s => s.Id))
+        foreach (var s in state.Survivors.Where(s => !s.Away).OrderBy(s => s.IsChild ? 0 : 1).ThenBy(s => s.Id))
         {
             var need = s.IsChild ? rules.ChildPerTick : rules.AdultPerTick;
             if (state.Stockpile.TryTake(rules.ResourceId, need))
@@ -47,12 +49,7 @@ internal static class FoodSystem
             if (s.Health <= 0) dead.Add(s);
         }
 
-        foreach (var s in dead)
-        {
-            s.Health = 0;
-            state.Survivors.Remove(s);
-            state.Log(new(state.Tick, ColonyEventType.Died, $"{s.Name} starved to death.", s.Id));
-        }
+        foreach (var s in dead) ColonyDeaths.Remove(state, s, "starved to death", "Starvation");
     }
 }
 

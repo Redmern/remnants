@@ -39,11 +39,13 @@ public sealed record ExtractionResult(
     private static ReturnedSurvivor ToReturned(Unit u) =>
         new(Snapshot(u, Math.Clamp(u.Hp, 1, Survivor.MaxHealth)), u.Status == UnitStatus.Evacuated, new(u.Equipment), new(u.Pack));
 
-    /// <summary>The survivor as they entered, with the run's injuries and health applied.</summary>
+    /// <summary>The survivor as they entered, with the run's injuries, health and any attribute/skill gains applied.</summary>
     private static Survivor Snapshot(Unit u, double health)
     {
         var s = NewScavenge.Clone(u.Origin!);
         s.Body = NewScavenge.Clone(u.Body);
+        foreach (var (attribute, value) in u.Attributes) s.Set(attribute, value);
+        foreach (var (skill, value) in u.Skills) s.Set(skill, value);
         s.Health = health;
         return s;
     }

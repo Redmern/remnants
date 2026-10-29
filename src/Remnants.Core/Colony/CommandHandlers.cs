@@ -12,6 +12,9 @@ internal static class CommandHandlers
         if (building is null) return CommandResult.Fail(CommandError.UnknownBuilding, $"No building {c.BuildingId}.");
         var def = sim.Data.Buildings[building.DefId];
         if (def.Job is null) return CommandResult.Fail(CommandError.NoJobAtBuilding, $"{def.Name} has no job.");
+        if (survivor.Away) return CommandResult.Fail(CommandError.SurvivorAway, $"{survivor.Name} is away on an expedition.");
+        if (survivor.PatientAtBuildingId is not null)
+            return CommandResult.Fail(CommandError.IsPatient, $"{survivor.Name} is a patient; discharge them first.");
         if (survivor.AssignedBuildingId == building.Id)
             return CommandResult.Success($"{survivor.Name} already works at {def.Name}.", building.Id);
         if (sim.FreeSlots(building) <= 0)
@@ -85,8 +88,8 @@ internal static class CommandHandlers
         return CommandResult.Success($"{def.Name} reached level {next}.", building.Id);
     }
 
-    private static bool IsTownHall(ColonySim sim, BuildingDef def) => def.Id == sim.Data.Rules.TownHallBuildingId;
+    internal static bool IsTownHall(ColonySim sim, BuildingDef def) => def.Id == sim.Data.Rules.TownHallBuildingId;
 
-    private static string Describe(Dictionary<string, double> shortfall) =>
+    internal static string Describe(Dictionary<string, double> shortfall) =>
         "need " + string.Join(", ", shortfall.Select(kv => $"{Math.Ceiling(kv.Value)} more {kv.Key}"));
 }

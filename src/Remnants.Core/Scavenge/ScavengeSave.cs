@@ -24,7 +24,7 @@ public static class ScavengeSave
     }
 
     /// <summary>A save must still fit the current data/ (an item or enemy may have been renamed by a balancing edit).</summary>
-    private static void Validate(ScavengeData data, ScavengeState state)
+    internal static void Validate(ScavengeData data, ScavengeState state)
     {
         if (!data.Zones.ContainsKey(state.ZoneId)) throw new JsonException($"Save references unknown zone '{state.ZoneId}'.");
         if (state.Map.Tiles.Count != state.Map.Width * state.Map.Height)
