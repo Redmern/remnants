@@ -44,6 +44,11 @@ custom_minimum_size = Vector2(280, 48)
 layout_mode = 2
 text = "Scavenge"
 
+[node name="MultiplayerButton" type="Button" parent="Center/Menu"]
+custom_minimum_size = Vector2(280, 48)
+layout_mode = 2
+text = "Multiplayer"
+
 [node name="Status" type="Label" parent="Center/Menu"]
 layout_mode = 2
 horizontal_alignment = 1

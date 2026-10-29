@@ -203,6 +203,27 @@ public class MultiplayerTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void With_nobody_connected_the_instance_holds_still_until_the_seats_are_given_up()
+    {
+        var f = new NetFixture(new HostOptions { TurnSeconds = 0, ReconnectSeconds = 60 });
+        var (a, b) = f.StartTwo();
+        a.Link.Close(); // Bob still plays, so Alice's units wait out their turns until Bob is up
+        b.Link.Close();
+        var round = f.Sim.State.Round;
+        var turn = f.Sim.State.CurrentUnitId;
+        f.Clock.Advance(30);
+        f.Host.Tick();
+        Assert.Equal(round, f.Sim.State.Round);
+        Assert.Equal(turn, f.Sim.State.CurrentUnitId);
+        Assert.Equal(HostPhase.Playing, f.Host.Phase);
+
+        f.Clock.Advance(31);
+        f.Host.Tick();
+        Assert.Equal(HostPhase.Ended, f.Host.Phase);
+        Assert.Equal(round, f.Sim.State.Round);
+    }
+
+    [Fact]
     public void A_seat_is_given_up_after_the_reconnect_window()
     {
         var f = new NetFixture(new HostOptions { TurnSeconds = 0, ReconnectSeconds = 60 });

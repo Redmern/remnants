@@ -81,6 +81,23 @@ public sealed class ColonySession
         ScavengeHandoff.Begin(tree, new ScavengeRun(Sim.OpenExpeditionScavenge(), ColonySim.ExpeditionPlayerId), ApplyResult);
     }
 
+    /// <summary>
+    /// Multiplayer: the expedition's party, if one is in its zone and has not started a local run, to take into a
+    /// shared instance instead (see <see cref="ApplyMultiplayerResult"/>).
+    /// </summary>
+    public PartySetup? MultiplayerParty() =>
+        Sim.State.Expedition is { Scavenge: null } e && e.PhaseAt(Sim.State.Tick) == ExpeditionPhase.InZone ? Sim.ExpeditionParty() : null;
+
+    /// <summary>
+    /// Applies a shared instance's result to this colony as the expedition's (the server numbered the player
+    /// differently) and saves. The client is trusted here; see docs/MULTIPLAYER.md, "Trust gap".
+    /// </summary>
+    public void ApplyMultiplayerResult(ExtractionResult result)
+    {
+        ApplyResult(result with { PlayerId = ColonySim.ExpeditionPlayerId });
+        Save();
+    }
+
     /// <summary>A message for the colony log that arose while no colony screen was listening.</summary>
     public string? UnseenNotice { get; set; }
 

@@ -48,12 +48,9 @@ public static class Program
             TurnSeconds = a.Double("--turn-seconds", 60),
             ReconnectSeconds = a.Double("--reconnect-seconds", 120),
         };
-        var host = new GameHost(scavenge, options) { Log = Print };
+        using var server = HostedServer.Start(scavenge, options, IPAddress.Parse(a.Value("--bind") ?? "0.0.0.0"), a.Int("--port", Protocol.DefaultPort), Print);
         var done = new TaskCompletionSource();
-        host.Ended += () => done.TrySetResult();
-
-        using var server = new TcpServer(host, IPAddress.Parse(a.Value("--bind") ?? "0.0.0.0"), a.Int("--port", Protocol.DefaultPort)) { Log = Print };
-        server.Start();
+        server.Host.Ended += () => done.TrySetResult();
         Print($"Remnants server v{Protocol.Version} on port {server.Port}: zone {options.ZoneId}, seed {options.Seed}, " +
               $"{options.MinPlayers}-{options.MaxPlayers} players, turn timer {options.TurnSeconds}s, reconnect window {options.ReconnectSeconds}s");
 
@@ -62,8 +59,7 @@ public static class Program
             e.Cancel = true;
             done.TrySetResult();
         };
-        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(250));
-        while (!done.Task.IsCompleted && await timer.WaitForNextTickAsync()) server.Run(host.Tick);
+        await done.Task;
         // Let the last MissionEnded frames go out before the process exits.
         await Task.Delay(500);
         Print("server stopped");

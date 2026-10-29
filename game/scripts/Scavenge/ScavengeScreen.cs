@@ -33,12 +33,14 @@ public partial class ScavengeScreen : Node3D
     private int? _lastActingId;
     private string? _usingItem;
     private bool _busy;
+    private bool _pushPending;
+    private HashSet<int> _seen = [];
     private Pos? _hover;
 
     public override void _Ready()
     {
         _mission = ScavengeSession.TakeMission();
-        _presenter = new ScavengePresenter(_mission.Sim, _mission.PlayerId);
+        _presenter = new ScavengePresenter(_mission.Driver);
         var models = new ScavengeModels(ModelLibrary.Load());
         GD.Print($"Scavenge: zone {_presenter.State.ZoneId}, {_presenter.State.Units.Count} units, {models.ModelCount} generated models.");
 
@@ -138,7 +140,12 @@ public partial class ScavengeScreen : Node3D
             if (error) Toast(message);
         };
         _turnBar.EndTurnPressed += OnEndTurn;
-        _turnBar.LeavePressed += () => ScavengeSession.End(GetTree(), _presenter.Sim.ResultFor(_presenter.PlayerId));
+        _turnBar.LeavePressed += () =>
+        {
+            _presenter.Driver.Leave();
+            Finish();
+        };
+        _presenter.Pushed += OnPushed;
         _turnBar.UnitClicked += id =>
         {
             Select(id);
@@ -151,8 +158,12 @@ public partial class ScavengeScreen : Node3D
             RefreshHud();
         };
         _actionPanel.CommandRequested += command => _ = Run(command);
-        _result.ContinuePressed += () => ScavengeSession.End(GetTree(), _presenter.Sim.ResultFor(_presenter.PlayerId));
+        _result.ContinuePressed += Finish;
     }
+
+    /// <summary>Back to the caller with the local result (an unfinished one if a remote result never came).</summary>
+    private void Finish() =>
+        ScavengeSession.End(GetTree(), _presenter.Result() ?? new ExtractionResult(_presenter.PlayerId, false, [], [], [], new()));
 
     public override void _UnhandledInput(InputEvent e)
     {
@@ -241,31 +252,52 @@ public partial class ScavengeScreen : Node3D
     private async Task<bool> Run(IScavengeCommand command)
     {
         if (_busy) return false;
-        var seenBefore = new HashSet<int>(_presenter.Visible);
-        var result = _presenter.Execute(command);
-        if (!result.Ok)
-        {
-            RefreshHud();
-            return false;
-        }
-
-        var events = _presenter.TakeNewEvents();
-        seenBefore.UnionWith(_presenter.Visible);
         _busy = true;
-        _usingItem = null;
-        _map.ClearHighlights();
-        RefreshHud();
-        _map.Sync();
-        await _units.Replay(events, seenBefore, e =>
+        var result = await _presenter.Execute(command);
+        if (result.Ok) _usingItem = null;
+        await ReplayNew();
+        return result.Ok;
+    }
+
+    /// <summary>Remote: another player acted, a turn timed out, a result arrived. Replayed now, or after the current replay.</summary>
+    private void OnPushed()
+    {
+        if (!IsInsideTree()) return;
+        if (_busy)
         {
-            if (!Shown(e, seenBefore)) return;
-            _log.Event(e);
-            // Follow what others do in sight (enemy turns, recruits) so it never happens off screen.
-            if (e.Type is ScavengeEventType.Moved or ScavengeEventType.Attacked or ScavengeEventType.Missed
-                && e.UnitId is { } actor && _presenter.State.FindUnit(actor) is { } u && u.PlayerId != _presenter.PlayerId
-                && _units.WorldOf(actor) is { } at)
-                _camera.Follow(e.Type == ScavengeEventType.Moved && e.Pos is { } to ? TileGrid.ToWorld(to) : at);
-        });
+            _pushPending = true;
+            return;
+        }
+        _busy = true;
+        _ = ReplayNew();
+    }
+
+    /// <summary>Replays every event not shown yet against what the side saw before and sees now, then syncs. Expects <see cref="_busy"/> set.</summary>
+    private async Task ReplayNew()
+    {
+        do
+        {
+            _pushPending = false;
+            var events = _presenter.TakeNewEvents();
+            var seenBefore = new HashSet<int>(_seen);
+            seenBefore.UnionWith(_presenter.Visible);
+            if (events.Count > 0)
+            {
+                _map.ClearHighlights();
+                RefreshHud();
+                _map.Sync();
+                await _units.Replay(events, seenBefore, e =>
+                {
+                    if (!Shown(e, seenBefore)) return;
+                    _log.Event(e);
+                    // Follow what others do in sight (enemy turns, recruits) so it never happens off screen.
+                    if (e.Type is ScavengeEventType.Moved or ScavengeEventType.Attacked or ScavengeEventType.Missed
+                        && e.UnitId is { } actor && _presenter.State.FindUnit(actor) is { } u && u.PlayerId != _presenter.PlayerId
+                        && _units.WorldOf(actor) is { } at)
+                        _camera.Follow(e.Type == ScavengeEventType.Moved && e.Pos is { } to ? TileGrid.ToWorld(to) : at);
+                });
+            }
+        } while (_pushPending);
         _busy = false;
 
         if (_presenter.ActingUnit is { } acting && acting.Id != _lastActingId)
@@ -274,7 +306,6 @@ public partial class ScavengeScreen : Node3D
             _camera.GlideTo(TileGrid.ToWorld(acting.Pos));
         }
         SyncAll();
-        return true;
     }
 
     /// <summary>Whether the local player gets to hear about an event (no news of enemies moving in the dark).</summary>
@@ -306,8 +337,9 @@ public partial class ScavengeScreen : Node3D
         _map.Sync();
         _units.Sync();
         RefreshHud();
-        if (_presenter.Done && !_result.Visible)
-            _result.Present(_presenter.Sim.Data, _presenter.Sim.ResultFor(_presenter.PlayerId));
+        _seen = new HashSet<int>(_presenter.Visible);
+        if (_presenter.Done && !_result.Visible && _presenter.Result() is { } result)
+            _result.Present(_presenter.Sim.Data, result);
     }
 
     /// <summary>The middle of the local party, where the camera starts.</summary>
@@ -387,7 +419,10 @@ public partial class ScavengeScreen : Node3D
         for (var i = 0; i < steps && !_presenter.Done; i++)
         {
             while (_busy) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-            if (_presenter.ActingUnit is not { } u) break;
+            // Multiplayer: wait (up to a minute) for another player or the AI to hand the turn back.
+            for (var wait = 0; _presenter.ActingUnit is null && !_presenter.Done && _presenter.Driver is RemoteDriver && wait < 3600; wait++)
+                await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            if (_presenter.ActingUnit is not { } u || _busy) break;
             var pid = _presenter.PlayerId;
             var profile = _presenter.Sim.Profile(u);
             var attack = profile.Actions.Where(a => a.ApCost <= u.Ap)

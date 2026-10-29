@@ -9,8 +9,8 @@ using Remnants.Core.Survivors;
 
 namespace Remnants.Game.Scavenge;
 
-/// <summary>A mission handed to the scavenge scene: the sim to play and which player the local side is.</summary>
-public sealed record ScavengeMission(ScavengeSim Sim, int PlayerId, Action<ExtractionResult>? OnFinished, string ReturnScene);
+/// <summary>A mission handed to the scavenge scene: where the game runs (local sim or server) and who the local player is.</summary>
+public sealed record ScavengeMission(IScavengeDriver Driver, Action<ExtractionResult>? OnFinished, string ReturnScene);
 
 /// <summary>
 /// The single entry point into scavenge mode. A caller (the colony loop, the main menu) hands over a ready
@@ -41,9 +41,13 @@ public static class ScavengeSession
     /// result and owns what happens next (e.g. changing scene); without one the game returns to <paramref name="returnScene"/>.
     /// </summary>
     public static void Begin(SceneTree tree, ScavengeSim sim, int playerId = LocalPlayerId,
-        Action<ExtractionResult>? onFinished = null, string? returnScene = null)
+        Action<ExtractionResult>? onFinished = null, string? returnScene = null) =>
+        Begin(tree, new LocalDriver(sim, playerId), onFinished, returnScene);
+
+    /// <summary>Plays whatever <paramref name="driver"/> runs: a local sim, or a multiplayer session (<see cref="RemoteDriver"/>).</summary>
+    public static void Begin(SceneTree tree, IScavengeDriver driver, Action<ExtractionResult>? onFinished = null, string? returnScene = null)
     {
-        Pending = new ScavengeMission(sim, playerId, onFinished, returnScene ?? MenuScene);
+        Pending = new ScavengeMission(driver, onFinished, returnScene ?? MenuScene);
         LastResult = null;
         tree.ChangeSceneToFile(ScenePath);
     }
@@ -64,9 +68,9 @@ public static class ScavengeSession
     /// <summary>The pending mission, or a fresh debug one when the scene was opened directly (editor, --scavenge).</summary>
     public static ScavengeMission TakeMission()
     {
-        var mission = Pending ?? new ScavengeMission(
+        var mission = Pending ?? new ScavengeMission(new LocalDriver(
             NewScavenge.Create(GameDataPaths.LoadScavenge(), DebugZoneArg, DebugSeedArg, [new PartySetup(LocalPlayerId, DebugParty())]),
-            LocalPlayerId, null, MenuScene);
+            LocalPlayerId), null, MenuScene);
         Pending = mission;
         return mission;
     }
@@ -86,9 +90,9 @@ public static class ScavengeSession
     /// Three adults and a child from a fresh colony, geared so every movement mode and action shows up:
     /// a scout (rook), a brawler with a med-kit and a hook for a left arm, a grappler (knight jump) with a cybernetic leg, and a child.
     /// </summary>
-    public static List<PartyMember> DebugParty()
+    public static List<PartyMember> DebugParty(ulong colonySeed = 1)
     {
-        var colony = NewGame.Create(GameDataPaths.Load(), 1).State.Survivors;
+        var colony = NewGame.Create(GameDataPaths.Load(), colonySeed).State.Survivors;
         var adults = colony.Where(s => !s.IsChild).ToList();
         var child = colony.FirstOrDefault(s => s.IsChild);
 

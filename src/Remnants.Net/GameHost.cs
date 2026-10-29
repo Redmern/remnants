@@ -308,8 +308,11 @@ public sealed class GameHost : IHostSink
     {
         if (Phase != HostPhase.Playing || Sim is null) return;
         var state = Sim.State;
+        // Dropped seats wait out their turns, but only while someone connected is still playing: with nobody
+        // there to play against, the instance holds still instead of running the AI against the absent.
+        bool SomeonePlaying() => _seats.Any(s => s.Connection is not null && state.FindParty(s.PlayerId) is { Done: false });
         for (var guard = 0; guard < 10000 && !state.Finished && state.CurrentUnit is { PlayerControlled: true } unit
-                            && SeatOf(unit.PlayerId) is { Connection: null }; guard++)
+                            && SeatOf(unit.PlayerId) is { Connection: null } && SomeonePlaying(); guard++)
             Act(new EndTurn(unit.PlayerId!.Value, unit.Id));
 
         var key = (state.Round, state.TurnIndex, state.CurrentUnitId);

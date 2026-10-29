@@ -12,6 +12,8 @@ namespace Remnants.Game.Scavenge.Ui;
 public partial class TurnBar : PanelContainer
 {
     private readonly ScavengePresenter _presenter;
+    private bool _busy;
+    private double _sinceTick;
     private readonly Label _zone = UiKit.Label(size: 15);
     private readonly HBoxContainer _order = new();
     private readonly Label _ap = UiKit.Label(size: 15);
@@ -64,11 +66,29 @@ public partial class TurnBar : PanelContainer
             _order.AddChild(chip);
         }
 
+        _busy = busy;
+        _ap.Text = Status();
+        _endTurn.Disabled = _presenter.ActingUnit is null || busy;
+    }
+
+    /// <summary>AP of the acting unit; in multiplayer also whose turn it is and the turn timer.</summary>
+    private string Status()
+    {
         var acting = _presenter.ActingUnit;
-        _ap.Text = acting is null
-            ? busy ? "Enemy turn…" : _presenter.Done ? "Run over" : "Waiting…"
-            : $"{acting.Name}: {acting.Ap}/{_presenter.Sim.Profile(acting).MaxAp} AP";
-        _endTurn.Disabled = acting is null || busy;
+        var remote = _presenter.Driver.TurnStatus();
+        if (acting is not null)
+            return $"{acting.Name}: {acting.Ap}/{_presenter.Sim.Profile(acting).MaxAp} AP" + (remote is null ? "" : $" · {remote}");
+        if (_presenter.Done) return "Run over";
+        return remote ?? (_busy ? "Enemy turn…" : "Waiting…");
+    }
+
+    /// <summary>Keeps a multiplayer turn timer counting down between server updates.</summary>
+    public override void _Process(double delta)
+    {
+        _sinceTick += delta;
+        if (_sinceTick < 0.25 || _presenter.Driver is LocalDriver) return;
+        _sinceTick = 0;
+        _ap.Text = Status();
     }
 
     /// <summary>A turn-order chip: a side-colour stripe on the left; the acting unit filled with its colour and framed.</summary>

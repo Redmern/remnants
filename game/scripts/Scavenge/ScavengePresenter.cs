@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Remnants.Core.Scavenge;
 
 namespace Remnants.Game.Scavenge;
@@ -9,26 +10,32 @@ namespace Remnants.Game.Scavenge;
 public sealed record AttackOption(Unit Target, ActionProfile Action, double HitChance);
 
 /// <summary>
-/// Presenter between the scavenge screen and Core: owns the <see cref="ScavengeSim"/> for one local player,
-/// sends every command, answers the UI's questions by asking Core (reach, hit chance, fog), and hands out
-/// the events each command produced so the views can replay them. Holds no game rules.
+/// Presenter between the scavenge screen and Core: plays one local player through an <see cref="IScavengeDriver"/>
+/// (an in-process <see cref="ScavengeSim"/>, or the multiplayer server), sends every command, answers the UI's
+/// questions by asking Core (reach, hit chance, fog), and hands out the events each command produced so the views
+/// can replay them. Holds no game rules.
 /// </summary>
 public sealed class ScavengePresenter
 {
-    private ScavengeEvent? _lastSeen;
     private HashSet<int> _visible = [];
 
-    public ScavengePresenter(ScavengeSim sim, int playerId)
+    public ScavengePresenter(IScavengeDriver driver)
     {
-        Sim = sim;
-        PlayerId = playerId;
-        var events = sim.State.Events;
-        _lastSeen = events.Count > 0 ? events[^1] : null;
+        Driver = driver;
+        driver.Pushed += () =>
+        {
+            RefreshVisibility();
+            Pushed?.Invoke();
+        };
+        driver.Noticed += text => Feedback?.Invoke(text, false);
         RefreshVisibility();
     }
 
-    public ScavengeSim Sim { get; }
-    public int PlayerId { get; }
+    public IScavengeDriver Driver { get; }
+
+    /// <summary>The sim to ask; for a remote game a fresh read model after every server update, so never cache it.</summary>
+    public ScavengeSim Sim => Driver.Sim;
+    public int PlayerId => Driver.PlayerId;
     public ScavengeState State => Sim.State;
     public Party Party => State.FindParty(PlayerId)!;
     public string Side => Party.Side;
@@ -49,26 +56,22 @@ public sealed class ScavengePresenter
     /// <summary>Command outcome for the log and toast: text and whether it failed.</summary>
     public event Action<string, bool>? Feedback;
 
-    public ScavengeResult Execute(IScavengeCommand command)
+    /// <summary>The game moved on without a local command (remote: another player acted, a turn timed out).</summary>
+    public event Action? Pushed;
+
+    public async Task<ScavengeResult> Execute(IScavengeCommand command)
     {
-        var result = Sim.Execute(command);
+        var result = await Driver.Execute(command);
         if (!result.Ok) Feedback?.Invoke($"{ScavengeText.Error(result.Error)}: {result.Message}", true);
         RefreshVisibility();
         return result;
     }
 
-    /// <summary>Core events logged since the last call, oldest first (the list is capped, so found by identity).</summary>
-    public List<ScavengeEvent> TakeNewEvents()
-    {
-        var events = State.Events;
-        var start = 0;
-        if (_lastSeen is not null)
-            for (var i = events.Count - 1; i >= 0; i--)
-                if (ReferenceEquals(events[i], _lastSeen)) { start = i + 1; break; }
-        var fresh = events.Skip(start).ToList();
-        if (events.Count > 0) _lastSeen = events[^1];
-        return fresh;
-    }
+    /// <summary>Events since the last call, oldest first.</summary>
+    public List<ScavengeEvent> TakeNewEvents() => Driver.TakeNewEvents();
+
+    /// <summary>The local player's result; null while a remote one is still on its way.</summary>
+    public ExtractionResult? Result() => Driver.Result();
 
     public bool IsVisible(Pos p) => State.Map.InBounds(p) && _visible.Contains(State.Map.Index(p));
     public bool IsExplored(Pos p) => State.Map.InBounds(p) && Explored.Contains(State.Map.Index(p));
@@ -100,5 +103,5 @@ public sealed class ScavengePresenter
     public IEnumerable<Unit> RecruitableNear(Unit unit) =>
         State.Units.Where(u => u.Kind == UnitKind.Npc && u.IsActive && u.Side == Unit.NeutralSide && u.Pos.Chebyshev(unit.Pos) <= 1);
 
-    private void RefreshVisibility() => _visible = Sim.VisibleTo(PlayerId);
+    private void RefreshVisibility() => _visible = Driver.Visible;
 }

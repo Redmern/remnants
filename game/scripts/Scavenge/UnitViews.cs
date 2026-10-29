@@ -83,6 +83,10 @@ public partial class UnitViews : Node3D
     /// <summary>Snap every unit to the current state: position, pose, fog, ring colour, label, limbs.</summary>
     public void Sync()
     {
+        // A remote view drops units the side no longer sees; their models stay hidden until they show up again.
+        var present = _presenter.State.Units.Select(u => u.Id).ToHashSet();
+        foreach (var (id, stale) in _views)
+            if (!present.Contains(id)) stale.Root.Visible = false;
         foreach (var unit in _presenter.State.Units)
         {
             var view = Ensure(unit);
