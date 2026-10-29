@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Multiplayer: protocol, transports, the authoritative host and the client session. Pure .NET, never Godot. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Remnants.Net</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Remnants.Core\Remnants.Core.csproj" />
+  </ItemGroup>
+</Project>

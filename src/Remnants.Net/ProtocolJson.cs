@@ -1,0 +1,45 @@
+using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
+using Remnants.Core.Scavenge;
+using Remnants.Core.Serialization;
+
+namespace Remnants.Net;
+
+/// <summary>
+/// JSON for the wire: Core's save options (camelCase, string enums), compact, plus a <c>kind</c> discriminator for
+/// Core's <see cref="IScavengeCommand"/> records so Core itself needs no serialization attributes.
+/// </summary>
+public static class ProtocolJson
+{
+    public static readonly JsonSerializerOptions Options = Create();
+
+    public static string Serialize(Message message) => JsonSerializer.Serialize(message, Options);
+
+    public static Message Deserialize(string json) =>
+        JsonSerializer.Deserialize<Message>(json, Options) ?? throw new JsonException("Empty message.");
+
+    private static JsonSerializerOptions Create()
+    {
+        var resolver = new DefaultJsonTypeInfoResolver();
+        resolver.Modifiers.Add(info =>
+        {
+            if (info.Type != typeof(IScavengeCommand)) return;
+            info.PolymorphismOptions = new JsonPolymorphismOptions
+            {
+                TypeDiscriminatorPropertyName = "kind",
+                UnknownDerivedTypeHandling = System.Text.Json.Serialization.JsonUnknownDerivedTypeHandling.FailSerialization,
+                DerivedTypes =
+                {
+                    new JsonDerivedType(typeof(Move), "move"),
+                    new JsonDerivedType(typeof(Attack), "attack"),
+                    new JsonDerivedType(typeof(UseItem), "useItem"),
+                    new JsonDerivedType(typeof(PickUp), "pickUp"),
+                    new JsonDerivedType(typeof(Recruit), "recruit"),
+                    new JsonDerivedType(typeof(EndTurn), "endTurn"),
+                    new JsonDerivedType(typeof(Extract), "extract"),
+                },
+            };
+        });
+        return new JsonSerializerOptions(Json.Options) { WriteIndented = false, TypeInfoResolver = resolver };
+    }
+}
