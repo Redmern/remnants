@@ -131,7 +131,7 @@ public partial class ExpeditionPanel : PanelContainer
     }
 
     private static IEnumerable<Survivor> Candidates(ColonySim sim) =>
-        sim.State.Present.Where(s => !s.IsChild && s.PatientAtBuildingId is null).OrderBy(s => s.Id);
+        sim.State.Present.Where(s => !s.IsChild && s.PatientAtBuildingId is null && s.Pregnancy is null).OrderBy(s => s.Id);
 
     private void RefreshZone()
     {

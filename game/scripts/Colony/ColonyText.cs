@@ -25,6 +25,7 @@ public static class ColonyText
 
     public static string Job(ColonySim sim, Survivor s) =>
         s.Away ? "Away on expedition"
+        : s.IsInfant ? "Baby"
         : s.PatientAtBuildingId is not null ? "Patient"
         : s.AssignedBuildingId is { } id && sim.State.FindBuilding(id) is { } b ? sim.Data.Buildings[b.DefId].Name : "Idle";
 
@@ -61,7 +62,19 @@ public static class ColonyText
         return $"Moves {moves} · AP {p.MaxAp} · init {p.Initiative:0} · sight {p.Sight:0.#} · load {p.Load:0.#}/{p.CarryCapacity:0} · armor {p.Armor:0.#} · {attacks}";
     }
 
-    public static string Needs(Survivor s, RulesDef rules)
+    /// <summary>A living survivor's name, a dead one's from the memorial ("Ada †"), else null (left the colony).</summary>
+    public static string? PersonName(ColonyState state, int? id) =>
+        id is not { } v ? null
+        : state.FindSurvivor(v)?.Name ?? (state.Memorial.Find(m => m.SurvivorId == v) is { } dead ? $"{dead.Name} †" : null);
+
+    /// <summary>"Infant 40%", "Child 75%" or "Adult".</summary>
+    public static string Stage(Survivor s, RulesDef rules) =>
+        s.IsChild ? $"{s.LifeStage} {Percent(Bonds.StageProgress(s, rules.Life))}" : "Adult";
+
+    public static string Mood(Survivor s) =>
+        s.Mood >= 80 ? "content" : s.Mood >= 55 ? "low" : s.Mood >= 30 ? "grieving" : "despairing";
+
+        public static string Needs(Survivor s, RulesDef rules)
     {
         var parts = new List<string>();
         if (s.StarvingTicks > 0) parts.Add($"starving {s.StarvingTicks}h");

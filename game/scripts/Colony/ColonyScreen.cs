@@ -53,7 +53,8 @@ public partial class ColonyScreen : Node3D
         Wire();
         RefreshAll();
 
-        if (DebugCapture.HasFlag("--demo") && _session.Sim.State.Tick == 0) RunDemo();
+        if ((DebugCapture.HasFlag("--demo") || DebugCapture.HasFlag("--family-demo")) && _session.Sim.State.Tick == 0) RunDemo();
+        if (DebugCapture.HasFlag("--family-demo")) RunFamilyDemo();
         if (DebugCapture.HasFlag("--loop-demo") && _session.Sim.State.NextExpeditionId == 1)
         {
             ScavengeHandoff.UseAutopilot = DebugCapture.HasFlag("--autopilot");
@@ -111,6 +112,24 @@ public partial class ColonyScreen : Node3D
         _roster.Select(adults.FirstOrDefault());
         if (farm is { } f) _town.Select(f);
         _session.SetSpeed(4);
+    }
+
+    /// <summary>
+    /// Debug: encourage the first man and woman, fast-forward until a baby is born (and a little after), then show
+    /// the mother's family in the roster (for screenshots of population life).
+    /// </summary>
+    private void RunFamilyDemo()
+    {
+        var sim = _session.Sim;
+        var adults = sim.State.Survivors.Where(s => !s.IsChild).ToList();
+        if (adults.FirstOrDefault(s => s.Sex == Remnants.Core.Survivors.Sex.Female) is not { } woman
+            || adults.FirstOrDefault(s => s.Sex == Remnants.Core.Survivors.Sex.Male) is not { } man) return;
+        _session.Execute(new Matchmake(woman.Id, man.Id, PairStance.Encourage));
+        sim.State.Stockpile.Add(sim.Data.Rules.Food.ResourceId, 200);  // so the colony can afford a family right away
+        _session.FastForward(20_000, s => s.State.Events.Any(e => e.Type == ColonyEventType.Born));
+        _session.FastForward(30, _ => false);
+        _roster.Select(woman.Id);
+        _session.SetSpeed(1);
     }
 
     public override void _Process(double delta) => _session.Advance(delta);

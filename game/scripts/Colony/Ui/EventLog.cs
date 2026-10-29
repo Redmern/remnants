@@ -44,8 +44,11 @@ public partial class EventLog : PanelContainer
     {
         var color = e.Type switch
         {
-            ColonyEventType.Died or ColonyEventType.Left or ColonyEventType.Starving or ColonyEventType.Homeless => Ui.Hex(Ui.Bad),
+            ColonyEventType.Died or ColonyEventType.Left or ColonyEventType.Starving or ColonyEventType.Homeless
+                or ColonyEventType.Grieving or ColonyEventType.BrokeUp => Ui.Hex(Ui.Bad),
             ColonyEventType.Constructed or ColonyEventType.Upgraded or ColonyEventType.Housed => Ui.Hex(Ui.Good),
+            ColonyEventType.NewCouple or ColonyEventType.Pregnant or ColonyEventType.Born
+                or ColonyEventType.BecameChild or ColonyEventType.BecameAdult => "e8c27a",
             _ => "dddddd",
         };
         var rules = _session.Sim.Data.Rules;

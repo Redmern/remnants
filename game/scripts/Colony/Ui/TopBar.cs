@@ -2,15 +2,17 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using Remnants.Core.Colony;
 
 namespace Remnants.Game.Colony.Ui;
 
-/// <summary>Stockpile, clock, beds, speed controls and the build / save / load / menu buttons.</summary>
+/// <summary>Stockpile, clock, beds (with a housing-pressure warning), speed controls and the build / save / load / menu buttons.</summary>
 public partial class TopBar : PanelContainer
 {
     private readonly ColonySession _session;
     private readonly Label _resources = Ui.Label(size: 15);
     private readonly Label _clock = Ui.Label(size: 15);
+    private readonly Label _pressure = Ui.Label(size: 15, color: Ui.Bad);
     private readonly Dictionary<int, Button> _speedButtons = new();
 
     public event Action? BuildPressed;
@@ -26,6 +28,7 @@ public partial class TopBar : PanelContainer
 
         _resources.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         row.AddChild(_resources);
+        row.AddChild(_pressure);
         row.AddChild(_clock);
         row.AddChild(new VSeparator());
 
@@ -52,6 +55,14 @@ public partial class TopBar : PanelContainer
         var people = sim.State.Survivors.Count;
         var away = sim.State.Survivors.Count(s => s.Away);
         _resources.Text = string.Join("   ", stock) + $"     Pop {people}{(away > 0 ? $" ({away} away)" : "")}  Beds {sim.BedCapacity}";
+        var homeless = sim.State.Survivors.Count(s => !s.HasBed);
+        var expecting = sim.State.Survivors.Count(s => s.Pregnancy is not null);
+        var free = Bonds.FreeBedsForBabies(sim.State, sim.Data);
+        _pressure.Text = homeless > 0 ? $"⚠ {homeless} without a bed"
+            : free < 0 ? $"⚠ beds short for {expecting} on the way"
+            : free == 0 ? "Beds full: no room for babies"
+            : "";
+        _pressure.TooltipText = "Without a bed people leave when their grace time runs out; couples only have children when a bed is free.";
         _clock.Text = ColonyText.Clock(sim);
         foreach (var (speed, button) in _speedButtons) button.SetPressedNoSignal(speed == _session.Speed);
     }

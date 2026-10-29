@@ -116,6 +116,13 @@ public sealed class ColonySession
         if (ticks > 0) Changed?.Invoke();
     }
 
+    /// <summary>Debug: run up to <paramref name="maxTicks"/> ticks at once, stopping early when <paramref name="until"/> holds.</summary>
+    public void FastForward(int maxTicks, Func<ColonySim, bool> until)
+    {
+        for (var i = 0; i < maxTicks && !until(Sim); i++) Sim.Tick();
+        Changed?.Invoke();
+    }
+
     public CommandResult Execute(IColonyCommand command)
     {
         var events = Sim.State.Events.Count;
