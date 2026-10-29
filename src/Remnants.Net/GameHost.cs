@@ -189,7 +189,7 @@ public sealed class GameHost : IHostSink
 
     /// <summary>
     /// The server trusts the client's colony for who is in the party (see docs/MULTIPLAYER.md, "Trust gap"); it only
-    /// checks that the party fits the instance and that every item exists and sits in its slot.
+    /// checks that the party fits the instance, that nobody in it is a child, and that every item exists and sits in its slot.
     /// </summary>
     private string? ValidateParty(Join join)
     {
@@ -199,6 +199,7 @@ public sealed class GameHost : IHostSink
         foreach (var m in join.Party)
         {
             if (m.Survivor is null) return "A party member has no survivor record.";
+            if (m.Survivor.IsChild) return $"{m.Survivor.Name} is a child; children stay home.";
             foreach (var (slot, id) in m.Equipment ?? new())
                 if (!_data.Items.TryGetValue(id, out var item) || item.Slot != slot) return $"{m.Survivor.Name}: '{id}' does not go in the {slot} slot.";
             foreach (var id in m.Pack ?? [])

@@ -87,14 +87,14 @@ public static class ScavengeSession
     }
 
     /// <summary>
-    /// Three adults and a child from a fresh colony, geared so every movement mode and action shows up:
-    /// a scout (rook), a brawler with a med-kit and a hook for a left arm, a grappler (knight jump) with a cybernetic leg, and a child.
+    /// The three adults of a fresh colony, geared so every movement mode and action shows up: a scout (rook), a brawler
+    /// with a med-kit and a hook for a left arm, and a grappler (knight jump) with a cybernetic leg. Children never go
+    /// on a run (Core rejects them), so the colony's children stay out of it.
     /// </summary>
     public static List<PartyMember> DebugParty(ulong colonySeed = 1)
     {
         var colony = NewGame.Create(GameDataPaths.Load(), colonySeed).State.Survivors;
         var adults = colony.Where(s => !s.IsChild).ToList();
-        var child = colony.FirstOrDefault(s => s.IsChild);
 
         Dictionary<EquipSlot, string> Gear(string weapon, string? body = null, string? tool = null)
         {
@@ -118,7 +118,6 @@ public static class ScavengeSession
             adults[2].Body.FitProsthetic(BodyPart.LeftLeg, 1.1, "cyber_leg");
             party.Add(new PartyMember(adults[2], Gear("spear", "rag_coat", "grappling_hook"), ["bandage"]));
         }
-        if (child is not null) party.Add(new PartyMember(child, Gear("pipe"), []));
         return party;
     }
 }

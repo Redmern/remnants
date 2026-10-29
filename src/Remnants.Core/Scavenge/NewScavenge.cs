@@ -114,6 +114,7 @@ public static class NewScavenge
             if (party.Members.Count == 0) throw new ArgumentException($"Player {party.PlayerId}'s party is empty.");
             foreach (var m in party.Members)
             {
+                if (m.Survivor.IsChild) throw new ArgumentException($"{m.Survivor.Name} is a child; children never go on a run.");
                 foreach (var (slot, id) in m.Equipment ?? new())
                     if (!data.Items.TryGetValue(id, out var item) || item.Slot != slot)
                         throw new ArgumentException($"{m.Survivor.Name}: '{id}' is not an item for the {slot} slot.");

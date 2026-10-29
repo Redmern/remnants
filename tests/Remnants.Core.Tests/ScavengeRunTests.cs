@@ -101,6 +101,15 @@ public class MapGeneratorTests
     }
 
     [Fact]
+    public void Children_never_go_on_a_run()
+    {
+        var party = Party(1);
+        party.Members[1].Survivor.LifeStage = LifeStage.Child;
+        var error = Assert.Throws<ArgumentException>(() => NewScavenge.Create(Real, "outskirts", 1, [party]));
+        Assert.Contains("child", error.Message);
+    }
+
+    [Fact]
     public void Survivors_are_copied_in_and_the_colony_records_stay_untouched()
     {
         var setup = Party(1, members: 1);

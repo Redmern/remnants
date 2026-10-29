@@ -48,6 +48,12 @@ public class MultiplayerTests(ITestOutputHelper output)
         cheat.Client.Join("Cheat", party);
         Assert.Contains("laser_cannon", cheat.Last<JoinRefused>().Reason);
 
+        var family = f.Connect("Family");
+        var withChild = NetFixture.Party("F");
+        withChild[1].Survivor.LifeStage = Remnants.Core.Survivors.LifeStage.Child;
+        family.Client.Join("Family", withChild);
+        Assert.Contains("child", family.Last<JoinRefused>().Reason);
+
         var big = f.Connect("Big");
         big.Client.Join("Big", NetFixture.Party("G", 9));
         Assert.Contains("limited", big.Last<JoinRefused>().Reason);
