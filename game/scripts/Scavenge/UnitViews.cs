@@ -10,7 +10,8 @@ using Remnants.Game.Colony;
 namespace Remnants.Game.Scavenge;
 
 /// <summary>
-/// One node per unit (model, side ring, name/HP label). <see cref="Sync"/> snaps everything to Core state;
+/// One node per unit (model, side ring, name label, HP bar). Names show only for the units in focus (selected,
+/// hovered, acting) or downed; the HP bar for those and for anyone hurt. <see cref="Sync"/> snaps everything to Core state;
 /// <see cref="Replay"/> plays a command's events step by step (moves tween, hits flash) so the player can follow
 /// enemy turns. Purely visual.
 /// </summary>
@@ -19,11 +20,7 @@ public partial class UnitViews : Node3D
     private const float MoveSeconds = 0.28f;
     private const float StrikeSeconds = 0.16f;
 
-    private static readonly Color MineColor = new(0.95f, 0.75f, 0.3f);
-    private static readonly Color RecruitColor = new(0.55f, 0.9f, 0.5f);
-    private static readonly Color EnemyColor = new(0.9f, 0.3f, 0.25f);
-    private static readonly Color LinkedColor = new(0.3f, 0.85f, 0.95f);
-    private static readonly Color NeutralColor = new(0.85f, 0.85f, 0.85f);
+    private const float BarWidth = 0.9f, BarHeight = 0.09f;
 
     private static readonly Regex DamagePattern = new(@"for (\d+)", RegexOptions.Compiled);
 
@@ -34,6 +31,8 @@ public partial class UnitViews : Node3D
         public Node3D Pose = null!;
         public MeshInstance3D Ring = null!;
         public Label3D Label = null!;
+        public Node3D Bar = null!;
+        public MeshInstance3D BarFill = null!;
         public string BodyKey = "";
     }
 
@@ -41,6 +40,7 @@ public partial class UnitViews : Node3D
     private ScavengeModels _models = null!;
     private readonly Dictionary<int, View> _views = new();
     private StandardMaterial3D _hitFlash = null!, _healFlash = null!;
+    private readonly HashSet<int> _focus = new();
 
     public void Setup(ScavengePresenter presenter, ScavengeModels models)
     {
@@ -52,6 +52,34 @@ public partial class UnitViews : Node3D
 
     public Vector3? WorldOf(int unitId) => _views.TryGetValue(unitId, out var v) ? v.Root.Position : null;
 
+    /// <summary>The units whose name and HP show: the selected, the hovered and the acting one.</summary>
+    public void SetFocus(params int?[] unitIds)
+    {
+        _focus.Clear();
+        foreach (var id in unitIds)
+            if (id is { } i) _focus.Add(i);
+        foreach (var unit in _presenter.State.Units)
+            if (_views.TryGetValue(unit.Id, out var view)) UpdateLabel(view, unit);
+    }
+
+    private void UpdateLabel(View view, Unit unit)
+    {
+        var downed = unit.Status == UnitStatus.Downed;
+        var focused = _focus.Contains(unit.Id);
+        view.Label.Visible = focused || downed;
+        view.Label.Text = downed ? $"{unit.Name}\nDOWN {(unit.Stabilized ? "stable" : $"{unit.BleedOut}r")}" : unit.Name;
+        view.Label.Modulate = downed ? new Color(1f, 0.55f, 0.45f) : SidePalette.For(_presenter, unit).Lightened(0.3f);
+
+        var health = unit.MaxHp > 0 ? Mathf.Clamp((float)(unit.Hp / unit.MaxHp), 0, 1) : 0;
+        view.Bar.Visible = !downed && (focused || health < 1);
+        var width = BarWidth * health;
+        var fill = (QuadMesh)view.BarFill.Mesh;
+        fill.Size = new Vector2(Mathf.Max(width, 0.001f), BarHeight);
+        fill.CenterOffset = new Vector3((width - BarWidth) / 2, 0, 0);
+        ((StandardMaterial3D)view.BarFill.MaterialOverride).AlbedoColor =
+            health < 0.35f ? new Color(0.95f, 0.35f, 0.25f) : health < 0.7f ? new Color(0.95f, 0.8f, 0.3f) : new Color(0.5f, 0.85f, 0.4f);
+    }
+
     /// <summary>Snap every unit to the current state: position, pose, fog, ring colour, label, limbs.</summary>
     public void Sync()
     {
@@ -62,11 +90,8 @@ public partial class UnitViews : Node3D
             view.Root.Visible = _presenter.CanSee(unit);
             view.Pose.RotationDegrees = unit.Status == UnitStatus.Downed ? new Vector3(0, 0, 80) : Vector3.Zero;
             view.Pose.Position = unit.Status == UnitStatus.Downed ? new Vector3(0, 0.3f, 0) : Vector3.Zero;
-            ((StandardMaterial3D)view.Ring.MaterialOverride).AlbedoColor = RingColor(unit);
-            view.Label.Text = unit.Status == UnitStatus.Downed
-                ? $"{unit.Name}\nDOWN {(unit.Stabilized ? "stable" : $"{unit.BleedOut}r")}"
-                : $"{unit.Name}\n{unit.Hp:0}/{unit.MaxHp:0}";
-            view.Label.Modulate = unit.Status == UnitStatus.Downed ? new Color(1f, 0.55f, 0.45f) : RingColor(unit).Lightened(0.3f);
+            ((StandardMaterial3D)view.Ring.MaterialOverride).AlbedoColor = SidePalette.For(_presenter, unit);
+            UpdateLabel(view, unit);
 
             var bodyKey = BodyKey(unit.Body);
             if (bodyKey != view.BodyKey && unit.Kind != UnitKind.Enemy)
@@ -92,21 +117,30 @@ public partial class UnitViews : Node3D
         var ring = new MeshInstance3D
         {
             Mesh = new TorusMesh { InnerRadius = 0.62f, OuterRadius = 0.78f, Rings = 24, RingSegments = 6 },
-            MaterialOverride = Placeholders.Material(RingColor(unit), unshaded: true),
+            MaterialOverride = Placeholders.Material(SidePalette.For(_presenter, unit), unshaded: true),
             Scale = new Vector3(1, 0.15f, 1),
             Position = new Vector3(0, 0.12f, 0),
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
         };
         root.AddChild(ring);
+        var top = unit.EnemyDefId?.StartsWith("linked") == true ? 2.6f : 2.2f;
         var label = new Label3D
         {
-            FontSize = 24, PixelSize = 0.01f, OutlineSize = 7, NoDepthTest = true,
-            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
-            Position = new Vector3(0, unit.EnemyDefId == "linked" ? 2.6f : 2.2f, 0),
+            FontSize = 22, PixelSize = 0.01f, OutlineSize = 7, NoDepthTest = true, RenderPriority = 2, OutlineRenderPriority = 1,
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, VerticalAlignment = VerticalAlignment.Bottom,
+            Position = new Vector3(0, top + 0.12f, 0),
         };
         root.AddChild(label);
+        var bar = new Node3D { Name = "HpBar", Position = new Vector3(0, top, 0) };
+        bar.AddChild(BarQuad(new Vector2(BarWidth + 0.06f, BarHeight + 0.06f), new Color(0.05f, 0.05f, 0.05f, 0.85f), 0));
+        var barFill = BarQuad(new Vector2(BarWidth, BarHeight), Colors.White, 1);
+        bar.AddChild(barFill);
+        root.AddChild(bar);
         AddChild(root);
-        var view = new View { Root = root, Model = model, Pose = pose, Ring = ring, Label = label, BodyKey = BodyKey(unit.Body) };
+        var view = new View
+        {
+            Root = root, Model = model, Pose = pose, Ring = ring, Label = label, Bar = bar, BarFill = barFill, BodyKey = BodyKey(unit.Body),
+        };
         _views[unit.Id] = view;
         return view;
     }
@@ -114,13 +148,20 @@ public partial class UnitViews : Node3D
     /// <summary>Models face +Z; turn them toward the default iso camera (south-east) so faces read.</summary>
     private static Vector3 Facing(Unit unit) => new(0, 45, 0);
 
-    private Color RingColor(Unit u) => u switch
+    /// <summary>A camera-facing quad drawn over the scene; the fill's own mesh is resized as HP changes.</summary>
+    private static MeshInstance3D BarQuad(Vector2 size, Color color, int priority)
     {
-        { Kind: UnitKind.Enemy } => u.EnemyDefId == "linked" ? LinkedColor : EnemyColor,
-        _ when _presenter.IsMine(u) => u.FollowingId is null ? MineColor : RecruitColor,
-        { Side: Unit.NeutralSide } => NeutralColor,
-        _ => EnemyColor,
-    };
+        var material = Placeholders.Material(color, unshaded: true);
+        material.BillboardMode = BaseMaterial3D.BillboardModeEnum.Enabled;
+        material.NoDepthTest = true;
+        material.RenderPriority = priority;
+        material.Transparency = BaseMaterial3D.TransparencyEnum.Alpha;
+        return new MeshInstance3D
+        {
+            Mesh = new QuadMesh { Size = size }, MaterialOverride = material,
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+        };
+    }
 
     private static string BodyKey(Body body) => string.Join(",", body.Parts.OrderBy(kv => kv.Key).Select(kv => (int)kv.Value.Condition));
 

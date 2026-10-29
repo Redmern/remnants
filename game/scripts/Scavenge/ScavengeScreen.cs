@@ -58,7 +58,7 @@ public partial class ScavengeScreen : Node3D
         BuildHud();
         Wire();
         SelectActing();
-        if (_presenter.ActingUnit is { } acting) _camera.Focus(TileGrid.ToWorld(acting.Pos));
+        _camera.Focus(PartyCentre());
         SyncAll();
         foreach (var e in _presenter.State.Events.Where(Shown).TakeLast(8)) _log.Event(e);
 
@@ -90,10 +90,9 @@ public partial class ScavengeScreen : Node3D
 
     private void BuildHud()
     {
-        HudTheme.Apply(GetTree().Root);
         var layer = new CanvasLayer { Name = "Hud" };
         AddChild(layer);
-        var root = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        var root = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Theme = HudTheme.Shared };
         root.SetAnchorsPreset(Control.LayoutPreset.FullRect);
         foreach (var side in new[] { "left", "right", "top", "bottom" }) root.AddThemeConstantOverride($"margin_{side}", 8);
         layer.AddChild(root);
@@ -105,12 +104,13 @@ public partial class ScavengeScreen : Node3D
 
         var middle = new HBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
         column.AddChild(middle);
+        // Panels hug their content (top-left unit, top-right actions, bottom-right log) so the map stays open.
         _unitPanel = new UnitPanel(_presenter);
         middle.AddChild(_unitPanel);
         middle.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore });
         var right = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         middle.AddChild(right);
-        _actionPanel = new ActionPanel(_presenter);
+        _actionPanel = new ActionPanel(_presenter) { SizeFlagsVertical = Control.SizeFlags.ShrinkBegin };
         right.AddChild(_actionPanel);
 
         _toast = Colony.Ui.Ui.Label("", 17, Colony.Ui.Ui.Bad);
@@ -120,10 +120,13 @@ public partial class ScavengeScreen : Node3D
         _toast.MouseFilter = Control.MouseFilterEnum.Ignore;
         column.AddChild(_toast);
 
-        _log = new ScavengeLog();
-        column.AddChild(_log);
+        var bottom = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        column.AddChild(bottom);
+        bottom.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore });
+        _log = new ScavengeLog { CustomMinimumSize = new Vector2(460, 130) };
+        bottom.AddChild(_log);
 
-        _result = new ResultPanel { Visible = false };
+        _result = new ResultPanel { Visible = false, Theme = HudTheme.Shared };
         layer.AddChild(_result);
     }
 
@@ -161,6 +164,7 @@ public partial class ScavengeScreen : Node3D
                 {
                     _hover = hover;
                     _map.SetHover(hover);
+                    RefreshFocus();
                 }
                 break;
             case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } click:
@@ -254,7 +258,13 @@ public partial class ScavengeScreen : Node3D
         _map.Sync();
         await _units.Replay(events, seenBefore, e =>
         {
-            if (Shown(e, seenBefore)) _log.Event(e);
+            if (!Shown(e, seenBefore)) return;
+            _log.Event(e);
+            // Follow what others do in sight (enemy turns, recruits) so it never happens off screen.
+            if (e.Type is ScavengeEventType.Moved or ScavengeEventType.Attacked or ScavengeEventType.Missed
+                && e.UnitId is { } actor && _presenter.State.FindUnit(actor) is { } u && u.PlayerId != _presenter.PlayerId
+                && _units.WorldOf(actor) is { } at)
+                _camera.Follow(e.Type == ScavengeEventType.Moved && e.Pos is { } to ? TileGrid.ToWorld(to) : at);
         });
         _busy = false;
 
@@ -300,9 +310,24 @@ public partial class ScavengeScreen : Node3D
             _result.Present(_presenter.Sim.Data, _presenter.Sim.ResultFor(_presenter.PlayerId));
     }
 
+    /// <summary>The middle of the local party, where the camera starts.</summary>
+    private Vector3 PartyCentre()
+    {
+        var mine = _presenter.State.Units.Where(u => u.OnMap && _presenter.IsMine(u)).Select(u => TileGrid.ToWorld(u.Pos)).ToList();
+        return mine.Count == 0 ? TileGrid.Center(_presenter.State.Map) : mine.Aggregate(Vector3.Zero, (a, b) => a + b) / mine.Count;
+    }
+
+    /// <summary>Names and HP bars show for the selected, hovered and acting units.</summary>
+    private void RefreshFocus()
+    {
+        var hovered = _hover is { } p && _presenter.State.UnitAt(p) is { } u && _presenter.CanSee(u) ? u.Id : (int?)null;
+        _units.SetFocus(_selectedId, hovered, _presenter.ActingUnit?.Id);
+    }
+
     private void RefreshHud()
     {
         var selected = _selectedId is { } id ? _presenter.State.FindUnit(id) : null;
+        RefreshFocus();
         _turnBar.Refresh(_busy);
         _unitPanel.Present(selected);
         _actionPanel.Refresh(_busy, _usingItem);
@@ -335,7 +360,7 @@ public partial class ScavengeScreen : Node3D
         if (!isActing || _actionPanel.ActionId is not { } actionId || _presenter.Sim.Profile(selected).Action(actionId) is not { } action) return;
         foreach (var option in _presenter.AttackOptions(selected, action))
             _map.Highlight(option.Target.Pos, HighlightKind.Attack,
-                action.ApCost > selected.Ap ? $"{option.HitChance:P0} · no AP" : $"{option.HitChance:P0}");
+                $"{option.HitChance:P0} · {action.MinDamage:0}–{action.MaxDamage:0}" + (action.ApCost > selected.Ap ? " · no AP" : ""));
     }
 
     private void Toast(string message)

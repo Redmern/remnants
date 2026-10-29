@@ -5,7 +5,10 @@ using UiKit = Remnants.Game.Colony.Ui.Ui;
 
 namespace Remnants.Game.Scavenge.Ui;
 
-/// <summary>Zone and round, the initiative order for this round (current unit marked), AP left and End Turn.</summary>
+/// <summary>
+/// Zone and round, the initiative order for this round as side-coloured chips (the acting unit framed and bright,
+/// units that already acted faded, unseen ones as grey "?"), AP left and End Turn.
+/// </summary>
 public partial class TurnBar : PanelContainer
 {
     private readonly ScavengePresenter _presenter;
@@ -27,7 +30,7 @@ public partial class TurnBar : PanelContainer
         row.AddChild(_zone);
         row.AddChild(new VSeparator());
         row.AddChild(UiKit.Label("Order", 13, UiKit.Muted));
-        _order.AddThemeConstantOverride("separation", 4);
+        _order.AddThemeConstantOverride("separation", 3);
         var scroll = new ScrollContainer
         {
             SizeFlagsHorizontal = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 34),
@@ -53,17 +56,9 @@ public partial class TurnBar : PanelContainer
             if (state.FindUnit(state.TurnOrder[i]) is not { } u || !u.OnMap) continue;
             var current = i == state.TurnIndex && !state.Finished;
             var known = _presenter.CanSee(u);
-            var chip = new Button
-            {
-                Text = known ? u.Name : "?",
-                ToggleMode = true,
-                ButtonPressed = current,
-                FocusMode = FocusModeEnum.None,
-                Disabled = i < state.TurnIndex,
-                TooltipText = known ? $"{ScavengeText.Kind(u)} · {ScavengeText.Status(u)}" : "Unseen",
-            };
-            chip.AddThemeColorOverride("font_color", ChipColor(u, known));
-            chip.AddThemeColorOverride("font_pressed_color", Colors.White);
+            var chip = Chip(known ? u.Name : "?", known ? SidePalette.For(_presenter, u) : SidePalette.Unknown, current);
+            chip.TooltipText = known ? $"{ScavengeText.Kind(u)} · {ScavengeText.Status(u)}" : "Unseen";
+            if (i < state.TurnIndex) chip.Modulate = new Color(1, 1, 1, 0.4f);
             var id = u.Id;
             chip.Pressed += () => UnitClicked?.Invoke(id);
             _order.AddChild(chip);
@@ -76,8 +71,22 @@ public partial class TurnBar : PanelContainer
         _endTurn.Disabled = acting is null || busy;
     }
 
-    private Color ChipColor(Unit u, bool known) => !known ? UiKit.Muted
-        : u.Kind == UnitKind.Enemy ? UiKit.Bad
-        : _presenter.IsMine(u) ? UiKit.Good
-        : Colors.White;
+    /// <summary>A turn-order chip: a side-colour stripe on the left; the acting unit filled with its colour and framed.</summary>
+    private static Button Chip(string text, Color side, bool current)
+    {
+        var chip = new Button { Text = text, FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(current ? 64 : 28, 30) };
+        var box = HudTheme.Box(current ? side.Darkened(0.55f) : new Color(0.12f, 0.115f, 0.1f), current ? side : null, borderWidth: 2, padX: 8, padY: 3);
+        box.BorderColor = side;
+        box.BorderWidthLeft = 4;
+        if (!current) box.BorderWidthTop = box.BorderWidthRight = box.BorderWidthBottom = 0;
+        var hover = (StyleBoxFlat)box.Duplicate();
+        hover.BgColor = box.BgColor.Lightened(0.12f);
+        chip.AddThemeStyleboxOverride("normal", box);
+        chip.AddThemeStyleboxOverride("pressed", box);
+        chip.AddThemeStyleboxOverride("hover", hover);
+        chip.AddThemeColorOverride("font_color", current ? Colors.White : side.Lightened(0.15f));
+        chip.AddThemeColorOverride("font_hover_color", Colors.White);
+        if (current) chip.AddThemeFontSizeOverride("font_size", 15);
+        return chip;
+    }
 }

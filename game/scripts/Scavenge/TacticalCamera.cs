@@ -31,8 +31,21 @@ public partial class TacticalCamera : Node3D
 
     public void Focus(Vector3 point) => Position = Clamp(new Vector3(point.X, 0, point.Z));
 
+    private Tween? _glide;
+
     /// <summary>Glide toward a point, e.g. the unit whose turn it is.</summary>
-    public void GlideTo(Vector3 point) => CreateTween().TweenProperty(this, "position", Clamp(new Vector3(point.X, 0, point.Z)), 0.35);
+    public void GlideTo(Vector3 point)
+    {
+        _glide?.Kill();
+        _glide = CreateTween().SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
+        _glide.TweenProperty(this, "position", Clamp(new Vector3(point.X, 0, point.Z)), 0.4);
+    }
+
+    /// <summary>Glide to a point only when it is away from the middle of the view, so following a unit does not jitter.</summary>
+    public void Follow(Vector3 point)
+    {
+        if (new Vector2(point.X - Position.X, point.Z - Position.Z).Length() > Camera.Size * 0.3f) GlideTo(point);
+    }
 
     public override void _Process(double delta)
     {
