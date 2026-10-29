@@ -21,6 +21,46 @@ public static class ColonyText
         return $"Day {day}, {hour:00}:00";
     }
 
+    public static string Travel(double days) => days <= 0 ? "on the doorstep" : days == 1 ? "1 day away" : $"{days:0.#} days away";
+
+    public static Godot.Color ThreatColor(int threat) => threat switch
+    {
+        <= 1 => new Godot.Color(0.6f, 0.85f, 0.55f),
+        2 => new Godot.Color(0.95f, 0.75f, 0.4f),
+        3 => new Godot.Color(0.9f, 0.45f, 0.35f),
+        _ => new Godot.Color(0.85f, 0.35f, 0.75f),
+    };
+
+    public static string Presence(LinkedPresence presence) => presence switch
+    {
+        LinkedPresence.None => "no Linked seen",
+        LinkedPresence.Rare => "the odd Linked",
+        LinkedPresence.Some => "Linked squads",
+        _ => "dense Linked presence",
+    };
+
+    /// <summary>
+    /// A zone as the colony knows it (BBCode): a rumor gives distance and a hint; a scouted zone everything —
+    /// threat, reward tier, Linked presence, enemies, caches, how picked-over it is and the rations a member needs.
+    /// </summary>
+    public static string ZoneSummary(ColonySim sim, ZoneInfo info)
+    {
+        var zone = info.Zone;
+        var travel = $"{Travel(zone.TravelDays)} · rations {info.RationsPerMember:0.#} food per member";
+        if (info.Intel != ZoneIntel.Scouted)
+            return $"[color=#aaa]Rumored[/color] — {zone.Region}\n{travel}\n[i]{zone.Description}[/i]\nNot scouted: threat and rewards unknown until a party has been there.";
+
+        var data = sim.Scavenge!;
+        var mix = string.Join(", ", zone.EnemyMix.Select(e => data.Enemies[e.Id].Name));
+        var threat = ThreatColor(zone.Threat).ToHtml(false);
+        var picked = info.Depletion > 0.01 ? $" · [color=#e0a070]picked over {info.Depletion:P0}[/color]" : "";
+        var pylonCount = zone.Pylons[0] == zone.Pylons[1] ? $"{zone.Pylons[0]}" : $"{zone.Pylons[0]}–{zone.Pylons[1]}";
+        var pylons = zone.Pylons[1] > 0 ? $" · {pylonCount} pylon{(zone.Pylons[1] > 1 ? "s" : "")} (reinforcements)" : "";
+        return $"[color=#{threat}]Threat {zone.Threat}[/color] · reward: loot tier {zone.LootTier}, {zone.Caches[0]}–{zone.Caches[1]} caches{picked}\n" +
+               $"{Presence(info.Linked)}{pylons}\n" +
+               $"{zone.Enemies[0]}–{zone.Enemies[1]} enemies ({mix}) · {zone.Npcs[0]}–{zone.Npcs[1]} strangers\n{travel}";
+    }
+
     public static int AgeYears(Survivor s, RulesDef rules) => (int)(s.AgeTicks / rules.TicksPerYear);
 
     public static string Job(ColonySim sim, Survivor s) =>

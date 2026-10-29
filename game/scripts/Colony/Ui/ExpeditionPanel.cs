@@ -4,14 +4,17 @@ using System.Linq;
 using Godot;
 using Remnants.Core.Colony;
 using Remnants.Core.Items;
+using Remnants.Core.Scavenge;
 using Remnants.Core.Survivors;
 
 namespace Remnants.Game.Colony.Ui;
 
 /// <summary>
-/// Plans and launches an expedition: zone picker (threat / reward), party picker for the adults at home with each
-/// one's gear from the colony inventory and the field profile that gear gives them (movement mode, AP, attacks).
-/// While a party is out it shows who and offers to play (or resume) the mission. Core validates the launch.
+/// Plans and launches an expedition: zone picker (known zones only, with what the colony knows: threat / reward /
+/// Linked presence / travel), a World map button, party picker for the adults at home with each one's gear from the
+/// colony inventory and the field profile that gear gives them (movement mode, AP, attacks). While a party is out it
+/// shows who and where they are (on the road, in the zone, heading home) and offers to play (or resume) the mission
+/// once they have arrived. Core validates the launch.
 /// </summary>
 public partial class ExpeditionPanel : PanelContainer
 {
@@ -41,6 +44,9 @@ public partial class ExpeditionPanel : PanelContainer
     /// <summary>Asks the screen to switch to the scavenge run.</summary>
     public event Action? PlayPressed;
 
+    /// <summary>Asks the screen to open the world map.</summary>
+    public event Action? WorldMapPressed;
+
     public ExpeditionPanel(ColonySession session)
     {
         _session = session;
@@ -58,6 +64,7 @@ public partial class ExpeditionPanel : PanelContainer
         var zoneRow = new HBoxContainer();
         zoneRow.AddChild(Ui.Label("Zone"));
         zoneRow.AddChild(_zone);
+        zoneRow.AddChild(Ui.Button("World map", () => WorldMapPressed?.Invoke()));
         planner.AddChild(zoneRow);
         planner.AddChild(_zoneInfo);
         planner.AddChild(_partyInfo);
@@ -81,6 +88,19 @@ public partial class ExpeditionPanel : PanelContainer
         Refresh();
     }
 
+    /// <summary>Opens the planner on a zone (the world map's "Plan expedition").</summary>
+    public void PlanFor(string zoneId)
+    {
+        Visible = true;
+        _signature = "";
+        Refresh();
+        var index = _zoneIds.IndexOf(zoneId);
+        if (index < 0) return;
+        _zone.Select(index);
+        RefreshZone();
+        RefreshSummary();
+    }
+
     /// <summary>Debug / screenshots: tick these survivors in the party picker.</summary>
     public void Pick(IEnumerable<int> survivorIds)
     {
@@ -101,21 +121,34 @@ public partial class ExpeditionPanel : PanelContainer
         if (expedition is not null)
         {
             var names = expedition.Members.Select(m => sim.State.FindSurvivor(m.SurvivorId)?.Name ?? "?");
-            var state = expedition.Scavenge is { } run ? $"round {run.Round}" : "not started";
+            var phase = expedition.PhaseAt(sim.State.Tick);
+            var state = phase switch
+            {
+                ExpeditionPhase.Outbound => $"on the road, arriving in {expedition.ArrivalTick - sim.State.Tick} h",
+                ExpeditionPhase.Returning => $"heading home, back in {expedition.ReturnTick - sim.State.Tick} h",
+                _ => expedition.Scavenge is { } run ? $"round {run.Round}" : "in the zone, not started",
+            };
             _away.Text = $"[b]{data.Zones[expedition.ZoneId].Name}[/b]: {string.Join(", ", names)} ({state}).";
             _away.Visible = true;
+            _play.Disabled = phase != ExpeditionPhase.InZone;
             return;
         }
         _away.Visible = false;
 
-        if (_zoneIds.Count == 0)
+        // Only zones the colony knows of; the list grows as visits reveal more.
+        var known = sim.WorldZones().Where(z => z.Intel != ZoneIntel.Unknown).ToList();
+        if (!known.Select(z => z.Zone.Id).SequenceEqual(_zoneIds))
         {
-            foreach (var zone in data.Zones.Values.OrderBy(z => z.Threat).ThenBy(z => z.Id))
+            var selected = _zone.Selected >= 0 && _zone.Selected < _zoneIds.Count ? _zoneIds[_zone.Selected] : null;
+            _zoneIds.Clear();
+            _zone.Clear();
+            foreach (var info in known)
             {
-                _zoneIds.Add(zone.Id);
-                _zone.AddItem($"{zone.Name}  (threat {zone.Threat}, loot tier {zone.LootTier})");
+                _zoneIds.Add(info.Zone.Id);
+                var threat = info.Intel == ZoneIntel.Scouted ? $"threat {info.Zone.Threat}, loot tier {info.Zone.LootTier}" : "rumored";
+                _zone.AddItem($"{info.Zone.Name}  ({threat}, {ColonyText.Travel(info.Zone.TravelDays)})");
             }
-            _zone.Select(0);
+            _zone.Select(Math.Max(0, selected is null ? 0 : _zoneIds.IndexOf(selected)));
         }
 
         var candidates = Candidates(sim).ToList();
@@ -133,16 +166,13 @@ public partial class ExpeditionPanel : PanelContainer
     private static IEnumerable<Survivor> Candidates(ColonySim sim) =>
         sim.State.Present.Where(s => !s.IsChild && s.PatientAtBuildingId is null && s.Pregnancy is null).OrderBy(s => s.Id);
 
+    private string? SelectedZone => _zone.Selected >= 0 && _zone.Selected < _zoneIds.Count ? _zoneIds[_zone.Selected] : null;
+
     private void RefreshZone()
     {
-        var data = _session.Sim.Scavenge!;
-        if (_zone.Selected < 0) return;
-        var zone = data.Zones[_zoneIds[_zone.Selected]];
-        var mix = string.Join(", ", zone.EnemyMix.Select(e => data.Enemies[e.Id].Name));
-        var threat = Ui.Hex(zone.Threat >= 3 ? Ui.Bad : zone.Threat == 2 ? new Color(0.95f, 0.75f, 0.4f) : Ui.Good);
-        _zoneInfo.Text =
-            $"[color=#{threat}]Threat {zone.Threat}[/color] · reward: loot tier {zone.LootTier}, {zone.Caches[0]}–{zone.Caches[1]} caches\n" +
-            $"{zone.Width}×{zone.Height} tiles · {zone.Enemies[0]}–{zone.Enemies[1]} enemies ({mix}) · {zone.Npcs[0]}–{zone.Npcs[1]} strangers";
+        if (SelectedZone is not { } id) return;
+        _zoneInfo.Text = ColonyText.ZoneSummary(_session.Sim, _session.Sim.ZoneInfo(id));
+        RefreshSummary();
     }
 
     private void RebuildRows(ColonySim sim, List<Survivor> candidates)
@@ -263,8 +293,8 @@ public partial class ExpeditionPanel : PanelContainer
     private void RefreshSummary()
     {
         var sim = _session.Sim;
-        var rules = sim.Data.Rules.Expedition;
-        var food = rules.RationFoodPerMember * _picked.Count;
+        var perMember = SelectedZone is { } zoneId ? sim.ZoneInfo(zoneId).RationsPerMember : sim.Data.Rules.Expedition.RationFoodPerMember;
+        var food = perMember * _picked.Count;
         _partyInfo.Text = $"Party {_picked.Count}/{sim.MaxPartySize} (Town Hall L{sim.TownHallLevel}) · rations {food:0} food " +
                           $"(have {sim.State.Stockpile.Get(sim.Data.Rules.Food.ResourceId):0}) · away members don't eat at home";
         _launch.Disabled = _picked.Count == 0;
@@ -276,13 +306,14 @@ public partial class ExpeditionPanel : PanelContainer
 
     private void Launch()
     {
-        if (_zone.Selected < 0) return;
+        if (SelectedZone is not { } zoneId) return;
         var members = _picked.OrderBy(kv => kv.Key)
             .Select(kv => new ExpeditionMember(kv.Key, new(kv.Value.Equipment), new(kv.Value.Pack)))
             .ToList();
-        if (!_session.Execute(new LaunchExpedition(_zoneIds[_zone.Selected], members)).Ok) return;
+        if (!_session.Execute(new LaunchExpedition(zoneId, members)).Ok) return;
         _picked.Clear();
         _signature = "";
-        PlayPressed?.Invoke();
+        // A zone on the doorstep is played right away; a far one waits until the party has arrived.
+        if (_session.Sim.CurrentExpeditionPhase == ExpeditionPhase.InZone) PlayPressed?.Invoke();
     }
 }

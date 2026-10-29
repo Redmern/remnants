@@ -8,8 +8,9 @@ using Remnants.Game.Colony;
 namespace Remnants.Game.Scavenge;
 
 /// <summary>
-/// Scavenge model lookup on top of the shared <see cref="ModelLibrary"/>: map props, enemies by definition
-/// (<c>enemy_{defId}</c>) and survivor bodies dressed by <see cref="SurvivorDressing"/> (prosthetics, missing limbs, worn gear).
+/// Scavenge model lookup on top of the shared <see cref="ModelLibrary"/>: map props (pylon tiles: <c>network_pylon</c>),
+/// enemies by definition (<c>enemy_{defId}</c>: husk, husk_crawler, linked, linked_drone, linked_warden) and survivor
+/// bodies dressed by <see cref="SurvivorDressing"/> (prosthetics, missing limbs, worn gear).
 /// Every lookup falls back to a primitive so the mode runs with no generated assets.
 /// </summary>
 public sealed class ScavengeModels(ModelLibrary library)
@@ -54,13 +55,27 @@ public sealed class ScavengeModels(ModelLibrary library)
 
     public Node3D Car() => library.TryInstance("wrecked_car") ?? Box(new Vector3(3.9f, 1.3f, 2f), new Color(0.55f, 0.3f, 0.2f));
 
+    /// <summary>A Network relay pylon (<c>network_pylon</c>), else a cyan-tipped mast.</summary>
+    public Node3D Pylon()
+    {
+        if (library.TryInstance("network_pylon") is { } pylon) return pylon;
+        var root = Box(new Vector3(0.5f, 2.6f, 0.5f), new Color(0.35f, 0.37f, 0.4f));
+        root.AddChild(new MeshInstance3D
+        {
+            Mesh = new SphereMesh { Radius = 0.3f, Height = 0.6f },
+            MaterialOverride = Placeholders.Material(new Color(0.3f, 0.85f, 0.95f), unshaded: true),
+            Position = new Vector3(0, 2.8f, 0),
+        });
+        return root;
+    }
+
     public Node3D Crate() => library.TryInstance("loot_crate") ?? Box(new Vector3(1.1f, 0.65f, 0.65f), new Color(0.6f, 0.5f, 0.25f));
 
     public Node3D Unit(Unit unit)
     {
         if (unit.Kind == UnitKind.Enemy)
         {
-            var linked = unit.EnemyDefId == "linked";
+            var linked = unit.EnemyDefId?.StartsWith("linked") == true;
             return library.TryInstance($"enemy_{unit.EnemyDefId}")
                    ?? Capsule(linked ? 2.1f : 1.7f, linked ? new Color(0.3f, 0.75f, 0.85f) : new Color(0.55f, 0.45f, 0.3f));
         }

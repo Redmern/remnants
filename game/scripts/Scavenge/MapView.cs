@@ -112,6 +112,9 @@ public partial class MapView : Node3D
                 case Terrain.Cover:
                     AddCover(tile, map, p, carsPlaced, seed);
                     break;
+                case Terrain.Pylon:
+                    tile.AddChild(_models.Pylon());
+                    break;
                 case Terrain.Water:
                     tile.AddChild(new MeshInstance3D
                     {

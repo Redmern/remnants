@@ -32,6 +32,7 @@ public partial class ScavengeLog : PanelContainer
             ScavengeEventType.Extracted or ScavengeEventType.Evacuated or ScavengeEventType.Recruited or ScavengeEventType.Healed
                 or ScavengeEventType.Stabilized or ScavengeEventType.Revived or ScavengeEventType.PickedUp => UiKit.Hex(UiKit.Good),
             ScavengeEventType.RoundStarted => "e8d8a0",
+            ScavengeEventType.Reinforced or ScavengeEventType.Flanked or ScavengeEventType.Suppressed => "70d8e8",
             _ => "dddddd",
         };
         Append($"[color=#888]R{e.Round}[/color]  [color=#{color}]{e.Message}[/color]");

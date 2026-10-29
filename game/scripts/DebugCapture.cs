@@ -15,7 +15,7 @@ public partial class DebugCapture : Node
 
     public static bool HasFlag(string flag) => OS.GetCmdlineUserArgs().Contains(flag);
 
-    private static string? Value(string name) =>
+    public static string? Value(string name) =>
         OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith($"{name}="))?[(name.Length + 1)..];
 
     public static DebugCapture? FromCommandLine()

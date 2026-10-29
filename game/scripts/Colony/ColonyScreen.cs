@@ -1,6 +1,7 @@
 using System.Linq;
 using Godot;
 using Remnants.Core.Colony;
+using Remnants.Core.Scavenge;
 using Remnants.Game.Colony.Ui;
 
 namespace Remnants.Game.Colony;
@@ -22,6 +23,7 @@ public partial class ColonyScreen : Node3D
     private BuildMenu _buildMenu = null!;
     private EventLog _log = null!;
     private ExpeditionPanel _expedition = null!;
+    private WorldMapPanel _worldMap = null!;
     private MedBayPanel _medBay = null!;
     private ProductionPanel _production = null!;
     private InventoryPanel _inventory = null!;
@@ -67,6 +69,8 @@ public partial class ColonyScreen : Node3D
             _expedition.Toggle();
             _expedition.Pick(_session.Sim.State.Survivors.Where(s => !s.IsChild).Select(s => s.Id).Take(2));
         }
+        if (DebugCapture.HasFlag("--world-demo") && _session.Sim.State.Tick == 0) RunWorldDemo();
+        if (DebugCapture.HasFlag("--world-map") || DebugCapture.HasFlag("--world-demo")) _worldMap.Open(DebugCapture.Value("--zone"));
         if (DebugCapture.FromCommandLine() is { } capture) AddChild(capture);
         CallDeferred(MethodName.ShowUnseenReport);
     }
@@ -100,6 +104,27 @@ public partial class ColonyScreen : Node3D
         _session.Execute(new Construct("workshop", 9));
         foreach (var s in sim.State.Present.Where(s => s.IsInjured).ToList()) _session.Execute(new AdmitPatient(s.Id, bay));
         _town.Select(bay);
+    }
+
+    /// <summary>
+    /// Debug (screenshots of the world map): a colony a few weeks in — the near zones scouted and picked over, rumors of
+    /// the Iron Corridor — with a party on the road to the Suburb Ruins.
+    /// </summary>
+    private void RunWorldDemo()
+    {
+        var sim = _session.Sim;
+        // Debug only: fake the knowledge a few earlier runs would have brought home.
+        foreach (var (id, intel, depletion, visits) in new[]
+                 {
+                     ("outskirts", ZoneIntel.Scouted, 0.45, 3), ("scrapyard_flats", ZoneIntel.Scouted, 0.2, 1),
+                     ("suburb_ruins", ZoneIntel.Scouted, 0.0, 1), ("flooded_mall", ZoneIntel.Rumored, 0.0, 0),
+                     ("rail_depot", ZoneIntel.Scouted, 0.1, 1), ("network_relay", ZoneIntel.Rumored, 0.0, 0),
+                 })
+            sim.State.Zones[id] = new ZoneStatus { Intel = intel, Depletion = depletion, Visits = visits };
+        sim.State.Stockpile.Add(sim.Data.Rules.Food.ResourceId, 50);
+        var adults = sim.State.Survivors.Where(s => !s.IsChild).Take(2)
+            .Select(s => new ExpeditionMember(s.Id, new() { [Remnants.Core.Items.EquipSlot.Weapon] = "pipe" })).ToList();
+        if (_session.Execute(new LaunchExpedition("suburb_ruins", adults)).Ok) _session.FastForward(10, _ => false);
     }
 
     /// <summary>Debug: build a farm and woodcutter, put the adults to work and open the panels (for screenshots).</summary>
@@ -226,6 +251,9 @@ public partial class ColonyScreen : Node3D
         right.AddChild(_medBay);
         right.AddChild(_production);
 
+        _worldMap = new WorldMapPanel(_session) { Theme = HudTheme.Shared };
+        layer.AddChild(_worldMap);
+
         _report = new AfterActionDialog { Theme = HudTheme.Shared };
         layer.AddChild(_report);
 
@@ -248,6 +276,8 @@ public partial class ColonyScreen : Node3D
         _topBar.MenuPressed += () => GetTree().ChangeSceneToFile("res://scenes/MainMenu.tscn");
         _topBar.ExpeditionPressed += _expedition.Toggle;
         _topBar.ItemsPressed += _inventory.Toggle;
+        _expedition.WorldMapPressed += () => _worldMap.Open();
+        _worldMap.PlanPressed += _expedition.PlanFor;
         _expedition.PlayPressed += () =>
         {
             _session.PlayExpedition(GetTree());
@@ -283,6 +313,7 @@ public partial class ColonyScreen : Node3D
 
     private void RefreshAll()
     {
+        if (_session.UnseenReport is not null) ShowUnseenReport();  // a party walked home from a far zone
         _town.Sync();
         _walkers.Sync();
         _topBar.Refresh();
@@ -292,6 +323,7 @@ public partial class ColonyScreen : Node3D
         _production.Refresh();
         _inventory.Refresh();
         _expedition.Refresh();
+        _worldMap.Refresh();
         if (_buildMenu.Visible) _buildMenu.Refresh();
         _log.Refresh();
     }

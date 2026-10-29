@@ -63,10 +63,19 @@ public sealed class ColonySession
     /// </summary>
     public void PlayExpedition(SceneTree tree)
     {
-        if (Sim.State.Expedition is null)
+        if (Sim.State.Expedition is not { } expedition)
         {
             Feedback?.Invoke("No party is out.", true);
             return;
+        }
+        switch (expedition.PhaseAt(Sim.State.Tick))
+        {
+            case ExpeditionPhase.Outbound:
+                Feedback?.Invoke($"The party is still on the road ({expedition.ArrivalTick - Sim.State.Tick} h to go).", true);
+                return;
+            case ExpeditionPhase.Returning:
+                Feedback?.Invoke($"The party is heading home ({expedition.ReturnTick - Sim.State.Tick} h to go).", true);
+                return;
         }
         SetSpeed(0);
         ScavengeHandoff.Begin(tree, new ScavengeRun(Sim.OpenExpeditionScavenge(), ColonySim.ExpeditionPlayerId), ApplyResult);
@@ -86,9 +95,12 @@ public sealed class ColonySession
             UnseenNotice = "The party is still out: open Expedition → Play mission to continue the run.";
             return;
         }
+        var before = Sim.State.LastReport;
         var applied = Execute(new ApplyExtractionResult(result));
         if (!applied.Ok) return;
-        UnseenReport = Sim.State.LastReport;
+        // A far zone's party walks home first; its report arrives with it (see TakeArrivedReport).
+        if (!ReferenceEquals(before, Sim.State.LastReport)) UnseenReport = Sim.State.LastReport;
+        else UnseenNotice = applied.Message;
         SetSpeed(1);
     }
 
@@ -106,12 +118,14 @@ public sealed class ColonySession
         if (Speed == 0) return;
         _accumulator += delta * Speed;
         var ticks = 0;
+        var report = Sim.State.LastReport;
         while (_accumulator >= SecondsPerTick && ticks < MaxTicksPerFrame)
         {
             _accumulator -= SecondsPerTick;
             Sim.Tick();
             ticks++;
         }
+        if (!ReferenceEquals(report, Sim.State.LastReport)) UnseenReport = Sim.State.LastReport;
         if (ticks == MaxTicksPerFrame) _accumulator = 0;
         if (ticks > 0) Changed?.Invoke();
     }
@@ -119,7 +133,9 @@ public sealed class ColonySession
     /// <summary>Debug: run up to <paramref name="maxTicks"/> ticks at once, stopping early when <paramref name="until"/> holds.</summary>
     public void FastForward(int maxTicks, Func<ColonySim, bool> until)
     {
+        var report = Sim.State.LastReport;
         for (var i = 0; i < maxTicks && !until(Sim); i++) Sim.Tick();
+        if (!ReferenceEquals(report, Sim.State.LastReport)) UnseenReport = Sim.State.LastReport;
         Changed?.Invoke();
     }
 
