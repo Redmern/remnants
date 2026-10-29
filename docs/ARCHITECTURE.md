@@ -49,7 +49,8 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   - `Movement` (reachable tiles per mode, distance fields), `Combat` (reach, cover, hit chance,
     body-part injuries, limb loss, Downed → bleed-out → Dead), `Visibility` (per-side fog + explored).
   - `ScavengeSim` — `Execute(IScavengeCommand)`; initiative turn order across all units of all
-    sides; AI turns (`ScavengeAi`: Husk, Linked stub, recruit followers) run inside it.
+    sides; AI turns (`ScavengeAi`: Husk, Linked squad, recruit followers) run inside it. See "Linked squad AI" below.
+  - `Network` — the Linked relay graph (groups, shared knowledge, squad focus, pylon alarm and reinforcements).
   - `ExtractionResult` per player — returned survivors (with injuries/health), recruits, deaths, loot.
   - `ScavengeSave` — versioned save/load with validation against `data/`.
 
@@ -238,13 +239,58 @@ All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `fo
   **signal jammer** in the Tool slot jams Linked within its radius (they stop taking cover; M8's squad AI should also
   lose reinforcements and shared targets there). A **scanner** gives sight; `Devices.ScannedBy` is the hook for seeing
   caches/units through walls, not used by the scavenge view yet. Ammo is not modelled (guns do not use it).
-- **Saves**: version 4 stores queues, `NextOrderId` and `KnownBlueprints`. Older saves migrate: a building's
+- **Saves**: version 5 adds `ColonyState.Zones` and the expedition's road (`travelTicks`, `arrivalTick`, `depletion`,
+  `pendingResult`, `returnTick`); version 4 and older load with zones as the data starts and an expedition already in
+  its zone. Scavenge saves are version 2 (alarm, reinforcement waves, suppression); version 1 loads.
+- **Saves (v4)**: version 4 stores queues, `NextOrderId` and `KnownBlueprints`. Older saves migrate: a building's
   `recipeId`/`craftProgress`/`craftPaid` becomes one repeating order, and the old generic `blueprint` item becomes
   `bp_scanner` (`SaveGame.LegacyBlueprintItem`).
 - **UI**: selecting a production building shows `ProductionPanel` (queue with progress and cancel, recipe picker with
   ×1/×5/repeat, locked reasons, inputs, quality odds). The top bar's Items button opens `InventoryPanel` (items by kind
   and quality, studied blueprints, Study buttons). Buildings render `{type}_l{level}` models, falling back to the
   nearest lower level.
+
+## Linked squad AI
+
+- **Network** (`Scavenge/Network.cs`): nodes are active, unjammed Linked units and online `Pylon` tiles (a terrain:
+  impassable, cover, does not block sight). Two units link within either one's `enemies[].relayRange` (Chebyshev; the
+  drone relays furthest), a unit and a pylon or two pylons within `network.pylonRange`. A connected group knows every
+  hostile any member sees (`Known`) and shares one **focus**: lowest `HP / exposure`, where exposure is 1 − the least
+  cover the target has against any member (weakest / most exposed).
+- **A Linked turn** (`ScavengeAi.Squad`): share the sighting (idle members start hunting; one that does not see the
+  target logs "learns of X through the Network"); if badly hurt (`retreatHpFraction`) and the squad still has a healthy
+  member, **fall back** to the farthest, most covered tile; else **reposition** once to the reachable tile scoring best on
+  expected damage at the focus (hit chance includes the focus's cover, so tiles that strip it — **flanking**, logged —
+  score higher) + `coverWeight` × own cover against every known hostile + `apWeight` × AP left; then **shoot** the focus
+  (or another known hostile) when the hit chance is at least `suppressBelowHitChance`, else lay down **suppressing fire**
+  (`Unit.Suppressed`: it loses `suppressApPenalty` AP at the start of its next turn); else close in.
+- **Reinforcements**: at round start the Network is alarmed while a group with an online pylon knows a hostile;
+  after `reinforceAfterRounds` such rounds in a row that pylon calls a wave (`zones[].reinforcements`: waves, count,
+  mix) onto free floor next to it (`ScavengeState.AlarmRounds`, `ReinforcementWaves`).
+- **Signal jammer** (Tool device): a Linked inside a hostile jammer's radius is off the Network — no sharing, no
+  coordination, fights like a Husk — and pylons inside it go offline (no relay, no reinforcements).
+- **Enemy variants** are data (`enemies.json` + `natural` items): Husk; Husk Crawler (fast, low HP, dodgy "low profile"
+  carapace); Linked; Linked Drone (rotors: Queen move, rubble/cover/water cost 1, weak zapper, long relay, sharp
+  sight — the spotter); Linked Warden (shell: King 1, armor 7; `pulse` with `area: 1` hits everyone hostile around the
+  target, each with its own roll). Models are `enemy_{id}`; pylon tiles `network_pylon`.
+- Scenario tests (`LinkedAiTests`) build small arenas and assert sharing, relay range, pylon relay, jamming, flanking,
+  focus fire, suppression, retreat and reinforcements.
+
+## World map
+
+- `zones.json` holds the world: per zone `region`, `mapPos` (0..1), `travelDays`, `depletionPerVisit`, `replenishPerDay`,
+  `startIntel` (Unknown / Rumored / Scouted), `reveals` (zones a visit turns into rumors), `description`, plus the scavenge
+  template (threat, loot tier, `enemyMix` entries with an optional `max` cap, `pylons`, `reinforcements`). Seven zones run
+  from the doorstep Outskirts (Husks only) to the Core Spire (4 days, Wardens, three pylons, the best loot).
+- Colony side (`Colony/World.cs`, `WorldMap`): `ColonyState.Zones` keeps intel, depletion and visits per zone (absent =
+  as the data starts). Launch needs a zone that is not Unknown and rations of `rationFoodPerMember +
+  rationFoodPerMemberPerDay · 2 · travelDays` per member. `Expedition` phases: **Outbound** until `ArrivalTick` (the
+  mission cannot be opened), **InZone**, **Returning** (`ApplyExtractionResult` on a far zone stores `PendingResult` and
+  `ReturnTick`; the tick applies it then). On return the zone is Scouted, depleted, and its `reveals` become Rumored;
+  depletion recovers per day and thins the next run's caches (`NewScavenge` `ZoneConditions`). `ColonySim.WorldZones()` /
+  `ZoneInfo(id)` give the UI everything incl. `LinkedPresence`.
+- Game: `WorldMapPanel` (opened from Expedition → World map) draws the chart in code; clicking a marker shows its card;
+  "Plan expedition" opens the expedition planner on that zone, which launches as before.
 
 ## Data files
 
@@ -265,7 +311,7 @@ All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `fo
 - `enemies.json` — hp, AI kind, attributes, skills, equipment (a Husk's claws are an item too).
 - `zones.json` — size, threat, loot tier, terrain densities, spawn/exit edges, enemy count + mix,
   caches, NPC count.
-- `scavenge.json` — terrain table, movement derivation (base pattern/range, Agility per range,
+- `scavenge.json` — `network` (Linked squad tuning), `world.colonyPos`, terrain table, movement derivation (base pattern/range, Agility per range,
   encumbrance steps, body rules such as "missing leg → King 1"), AP, sight, carry, combat numbers,
   AI, NPC names, escort radius, gear quality tiers.
 
@@ -287,7 +333,9 @@ orders with a simple bot so enemy turns replay, `--zoom=SIZE` sets the ortho cam
 the adults, `--loop-demo` sends the adults on an expedition to the outskirts (scavenge screen, or resolved in place with
 `--autopilot`) and builds a Med Bay and Workshop, `--family-demo` does `--demo`, encourages the first man and woman
 and fast-forwards until a baby is born (then selects the mother), `--crafting-demo` builds a grown town (Town Hall 3, every
-production building, some at level 2–3) with staffed, queued Armory and Tailor and opens the Armory and item panels, `--expedition` opens the expedition planner with two adults picked, `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG. Needs a display; on
+production building, some at level 2–3) with staffed, queued Armory and Tailor and opens the Armory and item panels, `--expedition` opens the expedition planner with two adults picked, `--world-map` opens the world map
+(`--zone=ID` selects a marker), `--world-demo` fakes a few weeks of scouting and sends a party on the road (for
+screenshots); `--scavenge --zone=ID --seed=N` plays the debug mission in another zone, `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG. Needs a display; on
 Wayland pass `--display-driver wayland --disable-vsync` so an unfocused window still renders:
 
 ```sh

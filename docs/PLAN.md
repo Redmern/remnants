@@ -114,7 +114,7 @@ palette (rust, concrete, moss) with cold cyan accents for anything Network-conne
 | M5 | Loop | send party from colony → scavenge → return loot, injuries, recruits; med bay, prosthetics |
 | M6 | Life | relationships, births, children growth, job-based training, housing/starvation departures |
 | M7 | Crafting tiers | tailor, electronics lab, armory, blueprints, gear affects scavenge profiles |
-| M8 | Linked AI + zones | squad AI, threat/reward zones, world map |
+| M8 | Linked AI + zones | squad AI, threat/reward zones, world map (done: Network relay, flank/focus/suppress/retreat, pylon reinforcements, enemy variants, 7-zone world map with travel, intel, depletion) |
 | M9 | Multiplayer scavenge | headless server, shared instances, PvP |
 
 Assets run in parallel: style guide → survivors (adult/child, m/f) → level-1 buildings →
