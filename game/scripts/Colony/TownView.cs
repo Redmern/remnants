@@ -6,17 +6,17 @@ using Godot;
 namespace Remnants.Game.Colony;
 
 /// <summary>
-/// Renders the town from Core state: ground, plot grid and one node per building. Handles plot
+/// Renders the town from Core state: ground and scenery (<see cref="TownDressing"/>), plot grid and one node per building. Handles plot
 /// picking (select a building, or choose a plot while placing a new one). Sends no commands itself.
 /// </summary>
 public partial class TownView : Node3D
 {
-    private static readonly Color PlotColor = new(0.24f, 0.23f, 0.2f);
+    private static readonly Color PlotColor = new(0.42f, 0.39f, 0.33f);
     private static readonly Color FreeHover = new(0.35f, 0.6f, 0.3f);
     private static readonly Color BlockedHover = new(0.65f, 0.25f, 0.2f);
     private static readonly Color SelectedColor = new(0.85f, 0.65f, 0.25f);
 
-    private readonly Dictionary<int, (Node3D Node, string DefId, int Level, int Plot)> _buildings = new();
+    private readonly Dictionary<int, (Node3D Node, string DefId, int Level, int Plot, Label3D Label)> _buildings = new();
     private readonly List<StandardMaterial3D> _plotMaterials = new();
 
     private ColonySession _session = null!;
@@ -91,7 +91,8 @@ public partial class TownView : Node3D
             var node = new Node3D { Name = $"Building{b.Id}", Position = _layout.Center(b.Plot) };
             var model = _models.Building(def, b.Level);
             node.AddChild(model);
-            node.AddChild(new Label3D
+            // Shown only for the hovered and selected building (see RefreshPlots), so names never pile up over the town.
+            var label = new Label3D
             {
                 Text = ColonyText.BuildingName(sim, b),
                 Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
@@ -100,9 +101,11 @@ public partial class TownView : Node3D
                 PixelSize = 0.01f,
                 OutlineSize = 12,
                 NoDepthTest = true,
-            });
+                Visible = false,
+            };
+            node.AddChild(label);
             AddChild(node);
-            _buildings[b.Id] = (node, b.DefId, b.Level, b.Plot);
+            _buildings[b.Id] = (node, b.DefId, b.Level, b.Plot, label);
         }
 
         foreach (var gone in _buildings.Keys.Where(id => !alive.Contains(id)).ToList())
@@ -185,22 +188,39 @@ public partial class TownView : Node3D
             else if (plot == _hoverPlot) color = PlotColor.Lightened(0.15f);
             _plotMaterials[plot].AlbedoColor = color;
         }
+        foreach (var (buildingId, entry) in _buildings)
+            entry.Label.Visible = buildingId == SelectedBuildingId || entry.Plot == _hoverPlot;
+    }
+
+    /// <summary>The plot top: a light kerb a few texels wide round a plain inside (the albedo colour tints both).</summary>
+    private static ImageTexture PlotFrame()
+    {
+        const int size = 128, border = 2;
+        var image = Image.CreateEmpty(size, size, false, Image.Format.Rgb8);
+        for (var y = 0; y < size; y++)
+        for (var x = 0; x < size; x++)
+        {
+            var edge = x < border || y < border || x >= size - border || y >= size - border;
+            image.SetPixel(x, y, edge ? Colors.White : new Color(0.78f, 0.78f, 0.78f));
+        }
+        image.GenerateMipmaps();
+        return ImageTexture.CreateFromImage(image);
     }
 
     private void BuildGround()
     {
-        var size = _layout.Extent + new Vector2(80, 80);
-        AddChild(new MeshInstance3D
-        {
-            Name = "Ground",
-            Mesh = new PlaneMesh { Size = size },
-            MaterialOverride = Placeholders.Material(new Color(0.33f, 0.31f, 0.26f)),
-        });
+        var sim = _session.Sim;
+        var hall = sim.State.Buildings.FirstOrDefault(b => b.DefId == sim.Data.Rules.TownHallBuildingId);
+        var (campfire, playground) = hall is null ? (new Vector3(0, 0, -_layout.Extent.Y / 2 - 4), Vector3.Zero) : _layout.Commons(hall.Plot);
+        TownDressing.Build(this, _layout, _models, campfire, playground);
 
+        // Plots are cleared, packed-earth lots with a pale kerb, a step lighter than the ground around them.
+        var frame = PlotFrame();
         var tile = new BoxMesh { Size = new Vector3(TownLayout.PlotSize - 0.6f, 0.1f, TownLayout.PlotSize - 0.6f) };
         for (var plot = 0; plot < _layout.Count; plot++)
         {
             var material = Placeholders.Material(PlotColor);
+            material.AlbedoTexture = frame;
             _plotMaterials.Add(material);
             AddChild(new MeshInstance3D
             {
