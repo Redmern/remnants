@@ -23,8 +23,24 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
 - `Colony/` — `ColonyState` (plain serializable data), `ColonySim` (tick + command entry point),
   per-concern systems (production, food, housing, aging), `JobOutput` (the output formula),
   `Training`, commands + handlers, `NewGame`.
-- `Random/DeterministicRng` — seeded xorshift64*; its state lives in `ColonyState`.
+- `Random/DeterministicRng` — seeded xorshift64*; its state lives in `ColonyState` / `ScavengeState`.
 - `Serialization/` — shared `System.Text.Json` options and `SaveGame` (versioned envelope).
+- `Items/ItemDef` — item definitions: kind/slot, weight, armor/dodge/initiative/AP/sight/carry
+  modifiers, a `MovementModifier`, attack `ActionDef`s, consumable `UseEffect`.
+- `Scavenge/` — the tactical mode (headless):
+  - `ScavengeData` + loader (items, enemies, zones, scavenge rules), `ScavengeDefinitions`.
+  - `TileMap`/`Pos` (terrain grid, exits, symmetric Bresenham LOS), `MapGenerator` (zone template +
+    seed → rooms, scatter, exits, carved route), `NewScavenge` (places parties, enemies, caches, NPCs).
+  - `Unit` (party survivor, enemy or NPC: side, owner player, body, gear, pack, AI memory).
+  - `ProfileDeriver` — **the core of the mode**: attributes + equipped gear + body state →
+    `UnitProfile` (`MovementProfile` with chess-like modes King/Rook/Bishop/Queen/Knight and terrain
+    costs; `ActionProfile`s; AP; initiative; sight; carry; armor; dodge). Pure and never stored.
+  - `Movement` (reachable tiles per mode, distance fields), `Combat` (reach, cover, hit chance,
+    body-part injuries, limb loss, Downed → bleed-out → Dead), `Visibility` (per-side fog + explored).
+  - `ScavengeSim` — `Execute(IScavengeCommand)`; initiative turn order across all units of all
+    sides; AI turns (`ScavengeAi`: Husk, Linked stub, recruit followers) run inside it.
+  - `ExtractionResult` per player — returned survivors (with injuries/health), recruits, deaths, loot.
+  - `ScavengeSave` — versioned save/load with validation against `data/`.
 
 ## Game layout (`game/`)
 
@@ -51,6 +67,11 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   (`AssignJob`, `Unassign`, `Construct`, `Upgrade`). Core validates and returns a `CommandResult`
   with a `CommandError` code. This is also the future client→server intent format.
 - **Tick order:** production (+training) → food → housing → aging.
+- **Scavenge commands** (`Move`, `Attack`, `UseItem`, `PickUp`, `Recruit`, `EndTurn`, `Extract`) carry a
+  `PlayerId` + `UnitId`; Core checks ownership and whose turn it is and returns a `ScavengeResult`
+  with a `ScavengeError`. Several players' parties can share one instance (each party is a side).
+  A party is done when it has no conscious controllable unit left (its downed die, recruits stay);
+  the instance finishes when every party is done.
 
 ## Data files
 
@@ -60,6 +81,14 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   cost / worker slots / output multiplier / beds. Level 1 cost = construction cost.
 - `rules.json` — tick/time scale, output formula constants, training rates, food, housing grace,
   new-game setup (counts, age/stat ranges, stock, starting buildings, names).
+- `items.json` — weapons (actions), clothing/armor, tools (movement modifiers, carry, sight),
+  consumables (med-kit, bandage, evac beacon), materials; tier + loot weight for caches.
+- `enemies.json` — hp, AI kind, attributes, skills, equipment (a Husk's claws are an item too).
+- `zones.json` — size, threat, loot tier, terrain densities, spawn/exit edges, enemy count + mix,
+  caches, NPC count.
+- `scavenge.json` — terrain table, movement derivation (base pattern/range, Agility per range,
+  encumbrance steps, body rules such as "missing leg → King 1"), AP, sight, carry, combat numbers,
+  AI, NPC names, escort radius.
 
 ## Running
 
