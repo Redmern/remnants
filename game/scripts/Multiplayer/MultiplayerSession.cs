@@ -106,15 +106,55 @@ public static class MultiplayerSession
         try
         {
             var transport = await TcpClientTransport.ConnectAsync(hostName, port);
-            Client = new NetClient(transport, GameDataPaths.LoadScavenge(), NetPump.Post);
+            var client = new NetClient(transport, GameDataPaths.LoadScavenge(), NetPump.Post);
+            Client = client;
+            client.Changed += () =>
+            {
+                if (client.CanReconnect && client.RefusedReason is null) _ = Reconnect(client, hostName, port);
+            };
             transport.Start();
-            Client.Join(name, party);
+            client.Join(name, party);
             return null;
         }
         catch (Exception e) when (e is System.Net.Sockets.SocketException or ArgumentException or OperationCanceledException)
         {
             return $"Could not connect to {hostName}:{port}: {e.Message}";
         }
+    }
+
+    private static bool _reconnecting;
+
+    /// <summary>A dropped link during a mission: retry every few seconds within the server's reconnect window.</summary>
+    private static async Task Reconnect(NetClient client, string hostName, int port)
+    {
+        if (_reconnecting) return;
+        _reconnecting = true;
+        var deadline = DateTime.UtcNow.AddSeconds(client.Mission?.ReconnectSeconds ?? 0);
+        while (DateTime.UtcNow < deadline && client.CanReconnect && client.RefusedReason is null && Client == client)
+        {
+            await Task.Delay(3000);
+            try
+            {
+                var transport = await TcpClientTransport.ConnectAsync(hostName, port);
+                NetPump.Post(() =>
+                {
+                    if (!client.CanReconnect || Client != client)
+                    {
+                        transport.Close();
+                        return;
+                    }
+                    client.Reconnect(transport);
+                    transport.Start();
+                    GD.Print("Multiplayer: reconnected");
+                });
+                break;
+            }
+            catch (System.Net.Sockets.SocketException e)
+            {
+                GD.Print($"Multiplayer: reconnect failed ({e.Message}), retrying");
+            }
+        }
+        _reconnecting = false;
     }
 
     public static (string Host, int Port) ParseAddress(string address)

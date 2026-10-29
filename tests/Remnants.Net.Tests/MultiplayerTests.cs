@@ -224,6 +224,32 @@ public class MultiplayerTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public void The_same_client_session_reconnects_over_a_new_link_and_keeps_playing()
+    {
+        var f = new NetFixture(new HostOptions { TurnSeconds = 0, ReconnectSeconds = 60 });
+        var (a, b) = f.StartTwo();
+        b.Link.Close();
+        Assert.Equal(ClientPhase.Disconnected, b.Client.Phase);
+        Assert.True(b.Client.CanReconnect);
+        var bob = b.Client;
+        var stale = b.View;
+
+        f.EndTurnsUntil(() => f.Sim.State.Round >= 3, a);
+        var link = f.Hub.Connect();
+        bob.Reconnect(link);
+        Assert.Equal(ClientPhase.Playing, bob.Phase);
+        Assert.NotSame(stale, bob.View!.State);
+        Assert.Equal(f.Sim.State.Round, bob.View.State.Round);
+
+        var again = new TestPlayer { Link = link, Client = bob, Name = "Bob" };
+        f.EndTurnsUntil(() => f.PlayerUp(a, again) == again, a, again);
+        Assert.True(again.Do(new EndTurn(bob.PlayerId, f.Sim.State.CurrentUnitId!.Value)).Ok);
+
+        bob.Leave();
+        Assert.False(bob.CanReconnect);
+    }
+
+    [Fact]
     public void A_seat_is_given_up_after_the_reconnect_window()
     {
         var f = new NetFixture(new HostOptions { TurnSeconds = 0, ReconnectSeconds = 60 });

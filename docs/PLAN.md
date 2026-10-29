@@ -84,7 +84,8 @@ a few people into dangerous zones (**Scavenge mode**). Every loss is permanent.
 remnants/                         (git repo, Godot project + .NET solution)
   Remnants.sln
   src/Remnants.Core/              pure C# rules: Survivors, Colony, Scavenge, Items, Data
-  src/Remnants.Server/            (M8) headless authoritative server
+  src/Remnants.Net/               (M9) protocol, transports, fog filter, authoritative host, client
+  src/Remnants.Server/            (M9) headless authoritative server
   tests/Remnants.Core.Tests/      xUnit, the sim is tested headless
   game/                           Godot 4.7 C# project (presentation + input only)
     assets/generated/             synced from remnants-assets export (do not edit by hand)
@@ -115,7 +116,7 @@ palette (rust, concrete, moss) with cold cyan accents for anything Network-conne
 | M6 | Life | relationships, births, children growth, job-based training, housing/starvation departures |
 | M7 | Crafting tiers | tailor, electronics lab, armory, blueprints, gear affects scavenge profiles |
 | M8 | Linked AI + zones | squad AI, threat/reward zones, world map (done: Network relay, flank/focus/suppress/retreat, pylon reinforcements, enemy variants, 7-zone world map with travel, intel, depletion) |
-| M9 | Multiplayer scavenge | headless server, shared instances, PvP |
+| M9 | Multiplayer scavenge | headless server, shared instances, PvP (done for localhost/LAN: authoritative server, per-side fog, interleaved turns with AFK timer, disconnect/reconnect, per-player results; see MULTIPLAYER.md) |
 
 Assets run in parallel: style guide → survivors (adult/child, m/f) → level-1 buildings →
 Husk → Linked → tiles/props → building upgrade levels → gear.

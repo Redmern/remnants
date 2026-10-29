@@ -7,8 +7,11 @@ See `PLAN.md` for the design. This file is the short "where does what live" map.
 | Path | What | Depends on |
 |------|------|------------|
 | `src/Remnants.Core` | All game rules. Pure C#, **no Godot**. Deterministic. | — |
+| `src/Remnants.Net` | Multiplayer: protocol, TCP/loopback transports, per-side fog (`SideFog`), the authoritative `GameHost`, the client `NetClient`. No Godot. See `MULTIPLAYER.md`. | Core |
+| `src/Remnants.Server` | Headless console server for one shared scavenge instance (and a `--bot` client). | Net |
 | `tests/Remnants.Core.Tests` | xUnit tests for Core, run headless. | Core |
-| `game/` | Godot 4.7 C# project: presentation + input only. | Core |
+| `tests/Remnants.Net.Tests` | Protocol round-trips, scripted 2-player loopback games, a localhost TCP game. | Net |
+| `game/` | Godot 4.7 C# project: presentation + input only. | Core, Net |
 | `data/` | JSON definitions loaded by Core. Balancing is a data edit. | — |
 
 Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load inside Godot).
@@ -97,7 +100,11 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   party)` builds one with `NewScavenge`). When the party is done and the player closes the summary, `End` stores
   `LastResult`, raises `Finished`, then calls `onFinished(result)` or changes to `returnScene` (default: main menu).
   "Leave" mid-run ends it early with `Complete = false`. Opening the scene directly plays a debug mission (`DebugParty`).
-- `ScavengePresenter` — owns the sim for the local player, sends every command, reports `ScavengeError`s as feedback, and
+- `ScavengeDriver` — `IScavengeDriver`, where the screen's game runs: `LocalDriver` (an in-process `ScavengeSim`) or
+  `RemoteDriver` (a multiplayer `NetClient`; its `Sim` is a read model of the server's fog-filtered view, rebuilt per
+  snapshot, and it raises `Pushed` when other players act). `ScavengeSession.Begin` takes a sim or a driver.
+- `ScavengePresenter` — plays the local player through the driver, sends every command (awaited: remote commands
+  return after the server's snapshot), reports `ScavengeError`s as feedback, and
   answers UI questions by asking Core (`Reachable`, `Combat.CheckReach` / `HitChance`, `VisibleTo`, explored tiles).
   `TakeNewEvents` hands each command's events (including the AI turns it set off) to the views for replay.
 - `ScavengeScreen` builds the scene: `MapView` (models per tile, exits, fog: unexplored tiles hidden, remembered ones
@@ -110,11 +117,17 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   hovered and acting units, an HP bar when focused or hurt; replays events with
   tweens and hit flashes, skipping what the local side cannot see), `TacticalCamera` (orthographic, yaw 45°, pitch
   35.264°; WASD/middle-drag pan, wheel zoom, Q/E rotate 90°; starts on the party, follows other units' visible actions).
-  `SidePalette` colours rings, labels and turn chips alike. HUD in `Scavenge/Ui/`: `TurnBar` (round, initiative order as
+  `SidePalette` colours rings, labels and turn chips alike (other players' parties violet). Units that leave a remote
+  view are hidden; the turn bar shows whose turn it is and the turn timer in multiplayer. HUD in `Scavenge/Ui/`: `TurnBar` (round, initiative order as
   side-coloured chips, AP, End Turn), `UnitPanel` (HP, bleed-out, hurt body parts, movement modes named by `MoveMode.Source`, gear, load),
   `ActionPanel` (attack choice, use item, loot, recruit, extract), `ScavengeLog`, `ResultPanel` (`ExtractionResult`).
 - Scavenge input: left-click a blue tile to move, a red target to attack with the chosen action, a unit to inspect it;
   item buttons arm "use on" and the next unit click is the target; right-click/Esc cancels; Space/Enter ends the turn.
+
+- `scripts/Multiplayer/` — `MultiplayerMenu` (scene `Multiplayer.tscn`: name, address, Host / Join, lobby with Ready),
+  `MultiplayerSession` (the party from the colony's waiting expedition or a debug party, the connection, the in-process
+  host, auto-reconnect, applying the result to the colony), `NetPump` (posts network callbacks onto the main thread).
+  See `MULTIPLAYER.md`.
 
 ## Rules of the road
 
@@ -322,6 +335,7 @@ All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `fo
 ./run-tests.sh --godot    # also build through the Godot editor headless
 godot-mono --path game    # play (main menu → Colony shows a new Core colony, Scavenge a debug mission)
 godot-mono -e --path game # open in the editor
+dotnet run --project src/Remnants.Server -- --port 7777   # multiplayer server; then Multiplayer → Join in two games
 ```
 
 Data lookup (`GameDataPaths`): `data/` next to the executable in exported builds (lets players override
@@ -335,7 +349,8 @@ the adults, `--loop-demo` sends the adults on an expedition to the outskirts (sc
 and fast-forwards until a baby is born (then selects the mother), `--crafting-demo` builds a grown town (Town Hall 3, every
 production building, some at level 2–3) with staffed, queued Armory and Tailor and opens the Armory and item panels, `--expedition` opens the expedition planner with two adults picked, `--world-map` opens the world map
 (`--zone=ID` selects a marker), `--world-demo` fakes a few weeks of scouting and sends a party on the road (for
-screenshots); `--scavenge --zone=ID --seed=N` plays the debug mission in another zone, `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG. Needs a display; on
+screenshots); `--scavenge --zone=ID --seed=N` plays the debug mission in another zone, `--multiplayer` opens the multiplayer menu and
+`--mp-host[=PORT]` / `--mp-join=ADDR` with `--mp-name`, `--mp-ready`, … script it (see `MULTIPLAYER.md`), `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG. Needs a display; on
 Wayland pass `--display-driver wayland --disable-vsync` so an unfocused window still renders:
 
 ```sh

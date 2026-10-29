@@ -15,20 +15,33 @@ public enum ClientPhase { Connecting, Lobby, Playing, Ended, Disconnected }
 /// </summary>
 public sealed class NetClient
 {
-    private readonly IClientTransport _transport;
+    private IClientTransport _transport;
     private readonly Action<Action> _post;
     private readonly Dictionary<int, TaskCompletionSource<ScavengeResult>> _pending = new();
     private readonly List<ScavengeEvent> _events = new();
     private int _nextRequest = 1;
     private DateTimeOffset _turnReceived;
+    private string _name = "";
 
     public NetClient(IClientTransport transport, ScavengeData data, Action<Action>? post = null)
     {
         _transport = transport;
         Data = data;
         _post = post ?? (a => a());
-        transport.Received += m => _post(() => Handle(m));
-        transport.Closed += () => _post(OnClosed);
+        Attach(transport);
+    }
+
+    /// <summary>Listens to a link; messages from a link that was since replaced (<see cref="Reconnect"/>) are dropped.</summary>
+    private void Attach(IClientTransport transport)
+    {
+        transport.Received += m => _post(() =>
+        {
+            if (ReferenceEquals(transport, _transport)) Handle(m);
+        });
+        transport.Closed += () => _post(() =>
+        {
+            if (ReferenceEquals(transport, _transport)) OnClosed();
+        });
     }
 
     public ScavengeData Data { get; }
@@ -49,6 +62,12 @@ public sealed class NetClient
     public ExtractionResult? Result { get; private set; }
     public string? EndReason { get; private set; }
 
+    /// <summary>The player chose to <see cref="Leave"/>; a dropped link (false) may <see cref="Reconnect"/>.</summary>
+    public bool LeftOnPurpose { get; private set; }
+
+    /// <summary>A dropped mission seat that can still be retaken with the reconnect token.</summary>
+    public bool CanReconnect => Phase == ClientPhase.Disconnected && !LeftOnPurpose && ReconnectToken is not null && Mission is not null;
+
     /// <summary>Anything changed (lobby, view, turn, result, connection).</summary>
     public event Action? Changed;
 
@@ -62,8 +81,24 @@ public sealed class NetClient
     public double TurnSecondsLeft(DateTimeOffset now) =>
         Turn is { SecondsLeft: > 0 } t ? Math.Max(0, t.SecondsLeft - (now - _turnReceived).TotalSeconds) : 0;
 
-    public void Join(string name, List<PartyMember> party, string? reconnectToken = null) =>
+    public void Join(string name, List<PartyMember> party, string? reconnectToken = null)
+    {
+        _name = name;
         _transport.Send(new Join(Protocol.Version, name, party, reconnectToken));
+    }
+
+    /// <summary>
+    /// Retakes the seat over a new link after the old one dropped. The view, log and result carry on; the server
+    /// answers with a fresh <see cref="MissionStarted"/> and <see cref="Snapshot"/>.
+    /// </summary>
+    public void Reconnect(IClientTransport transport)
+    {
+        if (!CanReconnect) throw new InvalidOperationException("Nothing to reconnect to.");
+        _transport = transport;
+        RefusedReason = null;
+        Attach(transport);
+        transport.Send(new Join(Protocol.Version, _name, [], ReconnectToken));
+    }
 
     public void SetReady(bool ready) => _transport.Send(new Ready(ready));
 
@@ -82,6 +117,7 @@ public sealed class NetClient
     /// <summary>Leave for good (no reconnect).</summary>
     public void Leave()
     {
+        LeftOnPurpose = true;
         if (Phase is ClientPhase.Disconnected) return;
         _transport.Send(new Leave());
         _transport.Close();
@@ -102,7 +138,7 @@ public sealed class NetClient
             case Welcome w:
                 PlayerId = w.PlayerId;
                 ReconnectToken = w.ReconnectToken;
-                if (Phase == ClientPhase.Connecting) Phase = ClientPhase.Lobby;
+                if (Phase is ClientPhase.Connecting or ClientPhase.Disconnected) Phase = ClientPhase.Lobby;
                 break;
             case JoinRefused r:
                 RefusedReason = r.Reason;
@@ -139,7 +175,7 @@ public sealed class NetClient
                 Noticed?.Invoke(n.Text);
                 break;
             case MissionEnded e:
-                Result = e.Result;
+                Result ??= e.Result;
                 EndReason = e.Reason;
                 Phase = ClientPhase.Ended;
                 break;

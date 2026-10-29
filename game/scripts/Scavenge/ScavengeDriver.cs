@@ -117,7 +117,8 @@ public sealed class RemoteDriver : IScavengeDriver
 
     public string? TurnStatus()
     {
-        if (_client.Phase == ClientPhase.Disconnected) return "Disconnected from the server";
+        if (_client.Phase == ClientPhase.Disconnected)
+            return _client.CanReconnect && _client.RefusedReason is null ? "Connection lost · reconnecting…" : "Disconnected from the server";
         if (_client.Turn is not { } turn) return null;
         var left = _client.TurnSecondsLeft(DateTimeOffset.UtcNow);
         var clock = turn.SecondsLeft > 0 ? $" · {Math.Ceiling(left):0}s" : "";
