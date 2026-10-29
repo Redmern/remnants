@@ -58,12 +58,24 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
 - `scripts/Colony/ColonySession` — presenter: owns the `ColonySim`, runs fixed ticks at pause/1x/2x/4x
   (`SecondsPerTick` real seconds per tick at 1x), sends every command, saves/loads `user://colony.json`.
 - `scripts/Colony/ColonyScreen` — builds the scene in code and wires views to the session.
-- `TownView` (ground, plot grid, building nodes, plot picking), `SurvivorWalkers` (purely visual
-  home ↔ work walking), `OrbitCamera` (WASD/arrows/middle-drag pan, wheel zoom, Q/E/right-drag rotate).
+- `TownView` (plot grid as kerbed packed-earth lots, building nodes, plot picking; building names only for the hovered
+  and selected building), `TownDressing` (purely visual scenery from the kit: noise-varied earth, a campfire on the
+  commons, a loose fence of barriers/sandbags with a gate and a rutted road, dead trees, rubble and ruined shells
+  outside), `SurvivorWalkers` (purely visual ambient life: workers circle their workplace with the odd break at home,
+  idle adults potter near home or sit at the campfire, children play by the Town Hall, patients sit outside the Med
+  Bay, infants stay home; long walks follow the gutters between plots, figures keep apart, at most 2x speed),
+  `OrbitCamera` (WASD/arrows/middle-drag pan, wheel zoom, Q/E/right-drag rotate). `TownLayout.Commons` puts the
+  campfire and playground just outside the grid beside the Town Hall, so they never take a plot.
 - `ModelLibrary` — reads `assets/generated/manifest.json`; buildings map to `{type}_l{level}` (nearest
   lower level, then a placeholder box), survivors to `survivor_adult_male|female` / `survivor_child`
-  (placeholder capsule). `tools/sync-assets.sh [EXPORT_DIR]` refreshes `assets/generated/` from the
+  (placeholder capsule), dressed by `SurvivorDressing` (below). `tools/sync-assets.sh [EXPORT_DIR]` refreshes `assets/generated/` from the
   remnants-assets `export/` (default `../../remnants-assets/main/export`).
+- `SurvivorDressing` (shared by both views, purely visual): missing limbs hidden; prosthetics swapped in at the joint,
+  `prosthetic_*_hook|peg_*` below quality 1, `*_cyborg_*` from there; equipped gear hung on the body's manifest
+  `sockets` (the `item_{baseId}` model's `attach` point lands on the socket, under the part it rides on, turned by its
+  `rot_deg`, scaled by chest height for bodies other than the adult male). Body → torso; weapon → hand, else back (a
+  missing arm drops it to the back; a prosthetic arm holds it); tool → back, else chest, else hand. Colony survivors
+  carry no gear in Core, so the colony shows prosthetics only.
 - `scripts/HudTheme` — the one `Theme` for both screens' HUDs (opaque dark panels, buttons, scrollbars, font size), set
   on each HUD root and on dialogs (a `CanvasLayer` does not pass a theme on). Panels add content, not styles.
 - `scripts/Colony/Ui/` — HUD panels (top bar with a beds/population warning, roster with partner/growth per line, a
@@ -90,10 +102,10 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
 - `ScavengeScreen` builds the scene: `MapView` (models per tile, exits, fog: unexplored tiles hidden, remembered ones
   dimmed with a material overlay; framed move/attack/use highlights). Tile models are picked from manifest tags, so new
   variants drop in via `tools/sync-assets.sh`: ground = `tile`+`ground` (concrete base with patches of the others, picked by
-  `GroundPattern` from a hash of the map; the striped asphalt variant is left out), lone Cover tile = `cover_low`, paired
+  `GroundPattern` from a hash of the map, 85% base; patches are shaded toward a flat earth tone; the striped asphalt variant is left out), lone Cover tile = `cover_low`, paired
   Cover tiles = `wrecked_car`, stand-alone Wall tile = `cover_high`, wall runs = `wall_segment`, exits = `exit_marker`
   facing the map edge. `UnitViews` (survivor/enemy models,
-  limbs hidden when missing and swapped for `prosthetic_*` models at the joint, side rings; names only for the selected,
+  survivors dressed by `SurvivorDressing` with their gear and prosthetics, side rings; names only for the selected,
   hovered and acting units, an HP bar when focused or hurt; replays events with
   tweens and hit flashes, skipping what the local side cannot see), `TacticalCamera` (orthographic, yaw 45°, pitch
   35.264°; WASD/middle-drag pan, wheel zoom, Q/E rotate 90°; starts on the party, follows other units' visible actions).
