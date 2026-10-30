@@ -31,6 +31,7 @@ public sealed class ColonySim
         if (scavenge is not null) ValidateLinks(data, scavenge);
         _rng = new DeterministicRng { State = state.RngState == 0 ? new DeterministicRng(0).State : state.RngState };
         SyncRng();
+        if (state.Weather.Seed == 0) state.Weather.Seed = Colony.Weather.SeedFrom(state.RngState);
     }
 
     /// <summary>Sim-owned randomness. Always draw through this so the state stays in the save.</summary>
@@ -219,16 +220,31 @@ public sealed class ColonySim
             throw new InvalidOperationException("The party is not in the zone (still on the road, or heading home).");
         if (expedition.Scavenge is { } running) return new ScavengeSim(data, running);
         var sim = NewScavenge.Create(data, expedition.ZoneId, expedition.Seed, [ExpeditionParty()],
-            new ZoneConditions(expedition.Depletion, MissionEnvironment(expedition.ArrivalTick)));
+            new ZoneConditions(expedition.Depletion, MissionEnvironment(expedition.ArrivalTick, expedition.ZoneId)));
         expedition.Scavenge = sim.State;
         return sim;
     }
 
-    /// <summary>The field environment of a mission that starts at <paramref name="tick"/> (its hour and day phase).</summary>
-    public ScavengeEnvironment MissionEnvironment(long tick) =>
-        Data.Rules.DayNight.Enabled
+    /// <summary>
+    /// The field environment of a mission that starts at <paramref name="tick"/>: its hour and day phase, and with a zone
+    /// the weather over its region then, with the spells that follow within <see cref="FieldWeatherRules.LookaheadHours"/>
+    /// as changes during the run (<see cref="FieldWeatherRules.RoundsPerHour"/> rounds to the hour).
+    /// </summary>
+    public ScavengeEnvironment MissionEnvironment(long tick, string? zoneId = null)
+    {
+        var env = Data.Rules.DayNight.Enabled
             ? ScavengeEnvironment.At(DayNight.Hour(tick, Data.Rules), DayNight.PhaseAt(tick, Data.Rules))
             : ScavengeEnvironment.At(12, DayPhase.Day);
+        if (!Data.Weather.Enabled || zoneId is null || Scavenge?.Zones.GetValueOrDefault(zoneId) is not { } zone) return env;
+        var region = Colony.Weather.RegionOf(Data, zone);
+        var field = Data.Weather.Field;
+        var spells = Colony.Weather.SpellsBetween(State, Data, region, tick, tick + field.LookaheadHours);
+        env.Weather = spells[0].Kind;
+        env.Intensity = spells[0].Intensity;
+        env.Shifts = spells.Skip(1)
+            .Select(s => new WeatherShift(1 + (int)(s.Start - tick) * field.RoundsPerHour, s.Kind, s.Intensity)).ToList();
+        return env;
+    }
 
     /// <summary>
     /// When a party launched now would reach a zone, in which phase, and — when waiting for <paramref name="waitFor"/> — the
@@ -239,8 +255,11 @@ public sealed class ColonySim
     public ArrivalPlan PlanArrival(string zoneId, DayPhase? waitFor = null)
     {
         var scavenge = Scavenge ?? throw new InvalidOperationException("Scavenge data is not loaded.");
-        var arrival = State.Tick + WorldMap.TravelTicks(Data, scavenge.Zones[zoneId]);
-        if (!Data.Rules.DayNight.Enabled) return new ArrivalPlan(arrival, DayPhase.Day, 0, 0);
+        var zone = scavenge.Zones[zoneId];
+        var travel = WorldMap.Travel(this, zone, State.Tick);
+        var arrival = State.Tick + travel.Ticks;
+        var delay = travel.DelayTicks <= 0 ? 0 : Math.Ceiling(Data.Rules.Expedition.RationFoodPerMemberPerDay * travel.DelayTicks / Data.Rules.TicksPerDay);
+        if (!Data.Rules.DayNight.Enabled) return new ArrivalPlan(arrival, DayPhase.Day, 0, 0, travel, delay);
         long wait = 0;
         if (waitFor is { } want && DayNight.PhaseAt(arrival, Data.Rules) != want)
         {
@@ -248,7 +267,7 @@ public sealed class ColonySim
             wait = ((start - DayNight.Hour(arrival, Data.Rules)) % Data.Rules.TicksPerDay + Data.Rules.TicksPerDay) % Data.Rules.TicksPerDay;
         }
         var food = wait == 0 ? 0 : Math.Ceiling(Data.Rules.Expedition.RationFoodPerMemberPerDay * wait / Data.Rules.TicksPerDay);
-        return new ArrivalPlan(arrival + wait, DayNight.PhaseAt(arrival + wait, Data.Rules), wait, food);
+        return new ArrivalPlan(arrival + wait, DayNight.PhaseAt(arrival + wait, Data.Rules), wait, food, travel, delay);
     }
 
     /// <summary>A survivor's field profile (movement mode, AP, attacks) with this gear, for the expedition planner.</summary>
@@ -269,6 +288,7 @@ public sealed class ColonySim
         MedicalSystem.Run(State, Data);
         FoodSystem.Run(State, Data);
         DayNightSystem.Run(State, Data);
+        WeatherSystem.Run(State, Data, _rng);
         RelationshipSystem.Run(State, Data);
         CyberneticsSystem.Run(this, _rng);
         FamilySystem.Run(State, Data, _rng);
@@ -310,6 +330,7 @@ public sealed class ColonySim
             CancelStudy c => StudyHandlers.Cancel(this, c),
             SetNightShift c => DayNightHandlers.SetNightShift(this, c),
             InstallFloodlight c => DayNightHandlers.InstallFloodlight(this, c),
+            RepairBuilding c => WeatherHandlers.Repair(this, c),
             _ => CommandResult.Fail(CommandError.UnknownCommand, $"Unknown command {command.GetType().Name}."),
         };
         SyncRng();

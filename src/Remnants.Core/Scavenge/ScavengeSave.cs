@@ -16,10 +16,12 @@ namespace Remnants.Core.Scavenge;
 /// Version 6 adds the run's environment (hour, day phase, weather slot); older saves load at midday in clear weather.
 /// Version 7 adds cybernetics: survivor units' cybernetic hooks (<see cref="Unit.CyberHooks"/>) and parts locked by
 /// interference; an older run gets its survivors' hooks resolved from their bodies on load, with nothing locked.
+/// Version 8 adds the weather's intensity, its changes still to come, and the rounds of the last thunder and lightning;
+/// older runs load with steady weather.
 /// </summary>
 public static class ScavengeSave
 {
-    public const int Version = 7;
+    public const int Version = 8;
     private const int OldestVersion = 1;
 
     private sealed record Envelope(int Version, ScavengeState Scavenge);

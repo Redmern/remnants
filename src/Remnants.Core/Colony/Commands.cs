@@ -28,6 +28,9 @@ public sealed record LaunchExpedition(string ZoneId, List<ExpeditionMember> Memb
 /// </summary>
 public sealed record SendScoutDrone(string ZoneId, int? PilotId = null) : IColonyCommand;
 
+/// <summary>Repair a building struck by lightning (<c>weather.repair.cost</c>).</summary>
+public sealed record RepairBuilding(int BuildingId) : IColonyCommand;
+
 /// <summary>Bring the active expedition home: survivors, injuries, deaths, recruits and loot.</summary>
 public sealed record ApplyExtractionResult(ExtractionResult Result) : IColonyCommand;
 
@@ -183,6 +186,9 @@ public enum CommandError
     AlreadyBooked,
     UnknownSurgery,
     NoCybernetics,
+    NotDamaged,
+    RouteBlocked,
+    DronesGrounded,
 }
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>

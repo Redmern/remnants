@@ -52,6 +52,8 @@ public sealed class ColonyState
     /// next tier needs one of its requirements in here.
     /// </summary>
     public SortedSet<string> KnownCybernetics { get; set; } = new(StringComparer.Ordinal);
+    /// <summary>The weather's seed and the spells worked out so far (see <see cref="Colony.Weather"/>).</summary>
+    public WeatherState Weather { get; set; } = new();
 
     /// <summary>The after-action report of the last expedition that came home (for the UI).</summary>
     public ExpeditionReport? LastReport { get; set; }

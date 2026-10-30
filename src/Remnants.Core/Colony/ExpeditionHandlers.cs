@@ -47,9 +47,11 @@ internal static class ExpeditionHandlers
         if (!state.Inventory.HasAll(gear))
             return CommandResult.Fail(CommandError.MissingItems, $"Not enough gear in the inventory: {DescribeMissing(state.Inventory, gear, data)}.");
         var plan = sim.PlanArrival(zone.Id, c.WaitFor);
+        if (plan.Blocked)
+            return CommandResult.Fail(CommandError.RouteBlocked, $"{plan.Travel!.Modifiers.First(m => m.Blocks).Reason}. Wait for it to pass.");
         var rations = new Dictionary<string, double>
         {
-            [sim.Data.Rules.Food.ResourceId] = (WorldMap.RationsPerMember(sim.Data, zone) + plan.WaitRationsPerMember) * c.Members.Count,
+            [sim.Data.Rules.Food.ResourceId] = (WorldMap.RationsPerMember(sim.Data, zone) + plan.ExtraRationsPerMember) * c.Members.Count,
         };
         if (!state.Stockpile.CanAfford(rations))
             return CommandResult.Fail(CommandError.CannotAfford, $"Not enough rations: {CommandHandlers.Describe(state.Stockpile.Shortfall(rations))}.");
@@ -63,7 +65,7 @@ internal static class ExpeditionHandlers
             s.Away = true;
         }
 
-        var travel = WorldMap.TravelTicks(sim.Data, zone);
+        var travel = plan.Travel?.Ticks ?? WorldMap.TravelTicks(sim.Data, zone);
         var expedition = new Expedition
         {
             Id = state.NextExpeditionId++,
@@ -78,7 +80,7 @@ internal static class ExpeditionHandlers
         };
         state.Expedition = expedition;
         var names = string.Join(", ", c.Members.Select(m => state.FindSurvivor(m.SurvivorId)!.Name));
-        var road = travel > 0 ? $" ({zone.TravelDays:0.#} days on the road)" : "";
+        var road = travel > 0 ? $" ({travel / (double)sim.Data.Rules.TicksPerDay:0.#} days on the road)" : "";
         if (plan.WaitTicks > 0) road += $", waiting {plan.WaitTicks} h for {plan.Phase.ToString().ToLowerInvariant()}";
         state.Log(new(state.Tick, ColonyEventType.ExpeditionLaunched, $"{names} set out for {zone.Name}{road}."));
         return CommandResult.Success($"{names} set out for {zone.Name}{road}.", expedition.Id);
@@ -110,6 +112,9 @@ internal static class ExpeditionHandlers
 
         if (expedition.TravelTicks > 0)
         {
+            // The road home has its own weather: TravelTicks becomes the way back.
+            if (data.Zones.TryGetValue(expedition.ZoneId, out var zone))
+                expedition.TravelTicks = Math.Max(1, WorldMap.Travel(sim, zone, state.Tick, homeward: true).Ticks);
             expedition.PendingResult = result;
             expedition.ReturnTick = state.Tick + expedition.TravelTicks;
             expedition.Scavenge = null;

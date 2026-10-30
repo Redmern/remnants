@@ -9,6 +9,7 @@
 
   { "id": "fiber_cloth",    "name": "Plant-fiber Cloth", "building": "tailor", "minLevel": 1, "work": 5,  "inputs": { "food": 3 },                   "resource": "cloth", "amount": 1 },
   { "id": "bandage",        "name": "Bandages",        "building": "tailor",   "minLevel": 1, "work": 4,  "inputs": { "cloth": 1 },                  "item": "bandage", "amount": 2 },
+  { "id": "dust_mask",      "name": "Dust Mask & Goggles", "building": "tailor", "minLevel": 1, "work": 5, "inputs": { "cloth": 2, "scrap": 1 }, "item": "dust_mask", "amount": 2 },
   { "id": "rag_coat",       "name": "Rag Coat",        "building": "tailor",   "minLevel": 1, "work": 8,  "inputs": { "cloth": 3 },                  "item": "rag_coat" },
   { "id": "backpack",       "name": "Backpack",        "building": "tailor",   "minLevel": 1, "work": 9,  "inputs": { "cloth": 4, "scrap": 1 },      "item": "backpack" },
   { "id": "padded_vest",    "name": "Padded Vest",     "building": "tailor",   "minLevel": 1, "work": 10, "inputs": { "cloth": 5, "wood": 2 },       "item": "padded_vest" },

@@ -38,7 +38,7 @@ public static class NewScavenge
         var state = new ScavengeState
         {
             ZoneId = zone.Id, Map = generated.Map,
-            Environment = env is null ? new ScavengeEnvironment() : ScavengeEnvironment.At(env.Hour, env.Phase, env.Weather),
+            Environment = env is null ? new ScavengeEnvironment() : env.Copy(),
         };
         var map = state.Map;
         var open = generated.Reachable.Where(p => !map.IsExit(p)).OrderBy(map.Index).ToList();

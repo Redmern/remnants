@@ -39,10 +39,13 @@ namespace Remnants.Core.Serialization;
 /// the scavenge run carries the units' cybernetic hooks (<see cref="ScavengeSave"/> version 7). Older prosthetics are
 /// mapped into the tree by <see cref="MigrateCybernetics"/>: an item outside the tree (none before items existed) becomes the
 /// crude part below quality 1 and the standard cyborg part from there, and pays its tier's replacement humanity.
+/// Version 13 adds the weather (<see cref="ColonyState.Weather"/>: its seed and spells) and lightning damage
+/// (<see cref="Building.Damaged"/>), and carries the run's changing weather (<see cref="ScavengeSave"/> version 8). Older
+/// saves get a weather seed from their RNG state and nothing damaged.
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 12;
+    public const int Version = 13;
     private const int OldestVersion = 1;
 
     /// <summary>What a pre-version-4 generic "blueprint" item becomes.</summary>

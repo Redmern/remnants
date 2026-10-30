@@ -28,7 +28,10 @@ public sealed class Expedition
     public long LaunchedTick { get; set; }
     public List<ExpeditionMember> Members { get; set; } = new();
 
-    /// <summary>One-way travel time in ticks (0 for a zone on the doorstep).</summary>
+    /// <summary>
+    /// One-way travel time in ticks (0 for a zone on the doorstep): the way out with its weather, and once the party heads
+    /// home, the way back (<see cref="WorldMap.Travel"/>).
+    /// </summary>
     public long TravelTicks { get; set; }
 
     /// <summary>When the party reaches the zone (and the mission starts: its time of day is this tick's).</summary>
@@ -79,7 +82,16 @@ public sealed class DroneFlight
 }
 
 /// <summary>When a party would reach its zone and in which day phase; how long it waits for it and the food that costs.</summary>
-public sealed record ArrivalPlan(long ArrivalTick, DayPhase Phase, long WaitTicks, double WaitRationsPerMember);
+/// <paramref name="Travel"/> is the trip out with its terms (weather); <paramref name="DelayRationsPerMember"/> the food for the
+/// days they add.
+public sealed record ArrivalPlan(long ArrivalTick, DayPhase Phase, long WaitTicks, double WaitRationsPerMember,
+    TravelPlan? Travel = null, double DelayRationsPerMember = 0)
+{
+    /// <summary>Food per member on top of the zone's rations: the wait and the delays on the road.</summary>
+    public double ExtraRationsPerMember => WaitRationsPerMember + DelayRationsPerMember;
+
+    public bool Blocked => Travel?.Blocked == true;
+}
 
 /// <summary>A party member as they came home.</summary>
 public sealed record ReportSurvivor(int SurvivorId, string Name, bool Evacuated, double Health, List<string> NewInjuries);

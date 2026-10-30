@@ -138,6 +138,7 @@ public enum ScavengeError
     LowBattery,
     /// <summary>The action needs a perk the unit does not have (Spotter, Payload).</summary>
     MissingPerk,
+    DroneGrounded,
 }
 
 /// <summary>Outcome of a scavenge command. <see cref="EntityId"/> carries e.g. the attacked unit.</summary>

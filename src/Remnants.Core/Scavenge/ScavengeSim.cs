@@ -156,6 +156,7 @@ public sealed class ScavengeSim
         }
         UpdateParties();
         Detection.Expire(Data, State);
+        FieldEnvironment.RoundStarted(this);
         Alliances.RoundStarted(this);
         Hacking.RoundStarted(this);
         Drones.RoundStarted(this);
@@ -271,9 +272,10 @@ public sealed class ScavengeSim
     {
         foreach (var u in State.Units.Where(u => u.IsActive && u.Kind == UnitKind.Enemy && u.Ai.Mode == AiMode.Idle))
         {
-            // Husks hear further in the dark (FieldEnvironment).
-            var heard = FieldEnvironment.SenseOf(Data, State, u) == SenseKind.Husk
-                ? radius * FieldEnvironment.Effects(Data, State).HuskHearingMultiplier : radius;
+            // Husks hear further in the dark; rain drowns noise out for everyone (FieldEnvironment).
+            var effects = FieldEnvironment.Effects(Data, State);
+            var heard = radius * effects.HearingMultiplier
+                        * (FieldEnvironment.SenseOf(Data, State, u) == SenseKind.Husk ? effects.HuskHearingMultiplier : 1);
             if (!u.HostileTo(source) || u.Pos.Chebyshev(source.Pos) > heard + 1e-9) continue;
             u.Ai.Mode = AiMode.Hunting;
             u.Ai.TargetId = null;
@@ -303,8 +305,10 @@ public sealed class ScavengeSim
             if (unit.Pos.Chebyshev(sensor.Pos) > sensor.Radius || from.Chebyshev(sensor.Pos) <= sensor.Radius) continue;
             Trip(sensor, unit);
         }
+        // Thunder drowns out footsteps; rain shortens how far they carry.
+        var hear = FieldEnvironment.ThunderNow(State) ? -1 : fog.HearMovement * FieldEnvironment.Effects(Data, State).HearingMultiplier;
         foreach (var side in Detection.PartySides(State).Where(s => s != unit.Side && unit.Side != Unit.NeutralSide))
-            if (State.Units.Any(u => u.Side == side && u.IsActive && u.Pos.Chebyshev(unit.Pos) <= fog.HearMovement)
+            if (State.Units.Any(u => u.Side == side && u.IsActive && u.Pos.Chebyshev(unit.Pos) <= hear + 1e-9)
                 && !Detection.SideSees(Data, State, side, unit))
                 Detection.AddContact(Data, State, side, unit.Pos, ContactKind.Movement, unit.Id);
         Hacking.CameraCheck(this, unit);

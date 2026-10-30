@@ -30,6 +30,7 @@ public enum ScavengeEventType
     DroneDeployed, DroneFlown, DroneRecalled, DroneLanded, Marked, PayloadDropped,
     RelayDisrupted,
     LimbLocked,
+    WeatherChanged, Thunder, Lightning,
 }
 
 /// <summary>
