@@ -821,3 +821,12 @@ Economy only (`--no-expeditions`): Town Hall 2 day 21.0 → 19.6, House affordab
 Watch next: the Hunting Lodge and Husk-zone game (the bot never hunts Husk game, so taint is untested in the sweep),
 the Greenhouse and the Cold Cellar (both behind schematics the bot does not find pre-merge), and variety (the bot
 cooks two or three dishes; Same Again rarely triggers).
+
+### After merging story-schematics, story-campaign and weather
+
+Same sweep (20 seeds × 60 days), `main` with schematics, story and weather vs this branch on top of it: median
+population 8 → 8, Town Hall 2 day 29.5 → 28.8, House affordable 46.8 → 44.5, Armory 50.8 → 47.5, Lab 59.0 → 58.6, min
+food 4.1 → 3.7 days, starvation 0 → 0, departures 15 → 11, births 36 → 34, expedition deaths 7 → 12 over 317 → 328 runs
+(within the noise of 20 colonies; zone trials are the better read), food rotted 42 per colony, food poisonings 0. Weather
+now waters or buries the crops per harvest (`Crops.Multiplier` in `HarvestSystem`; the Greenhouse is indoors) instead of
+scaling every farming worker, and rain or storms skip the Campfire's supper bonus as they skip campfire evenings.

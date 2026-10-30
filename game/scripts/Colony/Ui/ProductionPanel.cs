@@ -138,7 +138,9 @@ public partial class ProductionPanel : PanelContainer
         column.MouseFilter = MouseFilterEnum.Ignore;
         card.AddChild(column);
         var head = Widgets.Row(4);
-        head.AddChild(Icons.Rect(known ? OutputIcon(sim, r) : Icons.Get("stat_lock", 18), 18, known ? Palette.Amber : Palette.TextMuted));
+        var own = known && r.Item is { } dish && sim.Data.Food?.IsFood(dish) == true;
+        head.AddChild(Icons.Rect(known ? OutputIcon(sim, r) : Icons.Get("stat_lock", 18), own ? 24 : 18,
+            own ? FoodText.Tint(sim, r.Item!, Palette.Amber) : known ? Palette.Amber : Palette.TextMuted));
         var name = Widgets.Label(r.Name, "Heading", size: 14);
         name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         name.ClipText = true;
@@ -157,9 +159,12 @@ public partial class ProductionPanel : PanelContainer
             var soon = FoodText.SoonestSpoil(sim, key);
             var text = $"{FoodText.KeyName(sim, key)} {have}/{need}";
             var tip = $"{FoodText.KeyName(sim, key)}: {have} fresh in the pantry, {need} per batch" + (soon is { } t ? $"; the soonest spoils in {FoodText.SpoilsIn(sim, t)}" : "");
-            var icon = key.StartsWith(FoodData.TagPrefix) ? Icons.Get("item_food", 14) : FoodText.Icon(sim, key, 14);
-            var chip = Widgets.Chip(icon, soon is { } s && s < 3 * sim.Data.Rules.TicksPerDay ? $"{text} · {FoodText.SpoilsIn(sim, s)}" : text,
-                have >= need ? Palette.Text : Palette.Danger, tip);
+            // A tag shows the icon of a food it stands for (any meat → game meat).
+            var shown = key.StartsWith(FoodData.TagPrefix)
+                ? sim.Data.Food!.Items.Keys.FirstOrDefault(i => sim.Data.Food.Matches(i, key)) ?? key
+                : key;
+            var chip = Widgets.Chip(FoodText.Icon(sim, shown, 14), soon is { } s && s < 3 * sim.Data.Rules.TicksPerDay ? $"{text} · {FoodText.SpoilsIn(sim, s)}" : text,
+                have >= need ? Palette.Text : Palette.Danger, tip, FoodText.Tint(sim, shown, Palette.TextMuted));
             chips.AddChild(chip);
         }
         foreach (var (res, amount) in r.Inputs)
@@ -326,6 +331,7 @@ public partial class ProductionPanel : PanelContainer
 
     private static Texture2D OutputIcon(ColonySim sim, RecipeDef r) =>
         r.Learns is not null ? Icons.Get("item_schematic", 18, "item_blueprint")
+        : r.Item is { } food && sim.Data.Food?.IsFood(food) == true ? FoodText.Icon(sim, food, 18)
         : r.Item is { } item && sim.Scavenge?.Items.GetValueOrDefault(item) is { } def
             ? Icons.Item(def.DefinedId, def.Kind.ToString(), 18)
             : Icons.Resource(r.Resource ?? "", 18);

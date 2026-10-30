@@ -16,8 +16,27 @@ public static class FoodText
     public static string KeyName(ColonySim sim, string key) =>
         key.StartsWith(FoodData.TagPrefix) ? "any " + key[FoodData.TagPrefix.Length..].Replace('_', ' ') : ItemName(sim, key);
 
-    public static Texture2D Icon(ColonySim sim, string itemId, int size = 16) =>
-        sim.Scavenge?.Items.GetValueOrDefault(itemId) is { } def ? Icons.Item(def.DefinedId, def.Kind.ToString(), size) : Icons.Get("item_food", size);
+    private const string FoodIconDir = "res://assets/generated/ui/food/";
+    private static readonly Dictionary<string, Texture2D?> FoodIcons = new();
+
+    /// <summary>Tint for <see cref="Icon"/>: none for the food's own (coloured) icon, else <paramref name="fallback"/> for a line icon.</summary>
+    public static Color Tint(ColonySim sim, string itemId, Color fallback)
+    {
+        Icon(sim, itemId);
+        return FoodIcons.GetValueOrDefault(itemId) is not null ? Colors.White : fallback;
+    }
+
+    /// <summary>The food's own icon from the asset pipeline (<c>icon_food_{id}</c>), else the line icon of its kind.</summary>
+    public static Texture2D Icon(ColonySim sim, string itemId, int size = 16)
+    {
+        if (!FoodIcons.TryGetValue(itemId, out var own))
+        {
+            var path = $"{FoodIconDir}icon_food_{itemId}_64.png";
+            FoodIcons[itemId] = own = ResourceLoader.Exists(path) ? GD.Load<Texture2D>(path) : null;
+        }
+        if (own is not null) return own;
+        return sim.Scavenge?.Items.GetValueOrDefault(itemId) is { } def ? Icons.Item(def.DefinedId, def.Kind.ToString(), size) : Icons.Get("item_food", size);
+    }
 
     /// <summary>"2d 4h" until it spoils, "spoiled", or "keeps" for food that never spoils.</summary>
     public static string SpoilsIn(ColonySim sim, double? ticks) =>

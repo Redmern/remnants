@@ -76,7 +76,7 @@ public partial class PantryPanel : PanelContainer
         var card = new PanelContainer { ThemeTypeVariation = "Card" };
         var row = Widgets.Row(6);
         card.AddChild(row);
-        row.AddChild(Icons.Rect(FoodText.Icon(sim, e.ItemId, 18), 18, Palette.Amber));
+        row.AddChild(Icons.Rect(FoodText.Icon(sim, e.ItemId, 18), 28, FoodText.Tint(sim, e.ItemId, Palette.Amber)));
         var column = Widgets.Column(1);
         column.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         var name = Widgets.Label($"{FoodText.ItemName(sim, e.ItemId)}  ×{e.Count}", size: 14);

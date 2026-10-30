@@ -539,6 +539,150 @@
       "style_revision": "09d4038e"
     },
     {
+      "id": "campfire_cooking",
+      "category": "building",
+      "file": "building/campfire_cooking.glb",
+      "tags": [
+        "colony",
+        "food",
+        "cooking",
+        "care",
+        "survivor_tech",
+        "emissive",
+        "level1"
+      ],
+      "params": {
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 2.0,
+        "y": 1.484,
+        "z": 2.0
+      },
+      "tris": 976,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 1x1 tile (2x2 m). Fire ring at the center, tripod pot over it, spit along X on forked sticks, log seats -Y and +X, wood pile and cooking crate at the back. Embers/flames emissive.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "cold_cellar_l1",
+      "category": "building",
+      "file": "building/cold_cellar_l1.glb",
+      "tags": [
+        "colony",
+        "food",
+        "storage",
+        "care",
+        "survivor_tech",
+        "level1"
+      ],
+      "params": {
+        "level": 1,
+        "powered": false
+      },
+      "dimensions_m": {
+        "x": 2.0,
+        "y": 1.461,
+        "z": 2.0
+      },
+      "tris": 400,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 1x1 tile (2x2 m). Earth mound over the cellar, stone face and plank door on -Y down three steps, vent pipe on top.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "cold_cellar_l1_powered",
+      "category": "building",
+      "file": "building/cold_cellar_l1_powered.glb",
+      "tags": [
+        "colony",
+        "food",
+        "storage",
+        "care",
+        "survivor_tech",
+        "powered",
+        "emissive",
+        "level1"
+      ],
+      "params": {
+        "level": 1,
+        "powered": true
+      },
+      "dimensions_m": {
+        "x": 2.0,
+        "y": 1.461,
+        "z": 2.0
+      },
+      "tris": 684,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "cold_cellar_l1 plus a compressor box front-right (amber running lamp, emissive), a cable to a solar panel on the mound and a white lamp over the door (non-emissive lens: light it in the game).",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "cold_cellar_l2",
+      "category": "building",
+      "file": "building/cold_cellar_l2.glb",
+      "tags": [
+        "colony",
+        "food",
+        "storage",
+        "care",
+        "survivor_tech",
+        "level2"
+      ],
+      "params": {
+        "level": 2,
+        "powered": false
+      },
+      "dimensions_m": {
+        "x": 2.0,
+        "y": 1.526,
+        "z": 2.0
+      },
+      "tris": 376,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 1x1 tile. Concrete face, steel door, two capped vent stacks, ice sledge.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "cold_cellar_l2_powered",
+      "category": "building",
+      "file": "building/cold_cellar_l2_powered.glb",
+      "tags": [
+        "colony",
+        "food",
+        "storage",
+        "care",
+        "survivor_tech",
+        "powered",
+        "emissive",
+        "level2"
+      ],
+      "params": {
+        "level": 2,
+        "powered": true
+      },
+      "dimensions_m": {
+        "x": 2.0,
+        "y": 1.526,
+        "z": 2.0
+      },
+      "tris": 692,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "cold_cellar_l2 plus the compressor, panel, cable and white door lamp, as cold_cellar_l1_powered.",
+      "style_revision": "09d4038e"
+    },
+    {
       "id": "electronics_lab_l1",
       "category": "building",
       "file": "building/electronics_lab_l1.glb",
@@ -767,11 +911,11 @@
         "y": 2.63,
         "z": 4.0
       },
-      "tris": 1088,
+      "tris": 1548,
       "pivot": "ground_center",
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
-      "notes": "footprint 2x2 tiles (4x4 m). One glass bay (x -1.9..0.3, y -1.8..1.3) with two raised beds, door on -Y; rain barrel and seed crates in the open half.",
+      "notes": "footprint 2x2 tiles (4x4 m). One glass bay (x -1.9..0.3, y -1.8..1.3) with two raised beds planted in rows (greens, tomatoes or beans), door on -Y; rain barrel and seed crates in the open half.",
       "style_revision": "09d4038e"
     },
     {
@@ -790,11 +934,11 @@
         "level": 2
       },
       "dimensions_m": {
-        "x": 4.0,
+        "x": 4.016,
         "y": 2.63,
         "z": 4.03
       },
-      "tris": 2008,
+      "tris": 2928,
       "pivot": "ground_center",
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
@@ -824,6 +968,88 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x2 tiles (6x4 m, wide along X). Main house left/center (two rooms) with cross gable + porch at the front, chimney left, bunk lean-to right, yard with fence front.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "hunting_lodge_l1",
+      "category": "building",
+      "file": "building/hunting_lodge_l1.glb",
+      "tags": [
+        "colony",
+        "food",
+        "hunting",
+        "gathering",
+        "survivor_tech",
+        "level1"
+      ],
+      "params": {
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 4.0,
+        "y": 2.102,
+        "z": 4.0
+      },
+      "tris": 876,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles (4x4 m). Hide lean-to at the back (y 0.4..1.9) over a butcher block, hide-scraping frame front-left, meat gallows front-right, forage basket. Entrance -Y.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "hunting_lodge_l2",
+      "category": "building",
+      "file": "building/hunting_lodge_l2.glb",
+      "tags": [
+        "colony",
+        "food",
+        "hunting",
+        "gathering",
+        "survivor_tech",
+        "level2"
+      ],
+      "params": {
+        "level": 2
+      },
+      "dimensions_m": {
+        "x": 4.02,
+        "y": 2.66,
+        "z": 4.02
+      },
+      "tris": 1816,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles. Log cabin at the back with a shake roof and door on -Y, two hide frames, tanning tub, drying line with pelts, meat gallows.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "hunting_lodge_l3",
+      "category": "building",
+      "file": "building/hunting_lodge_l3.glb",
+      "tags": [
+        "colony",
+        "food",
+        "hunting",
+        "gathering",
+        "survivor_tech",
+        "emissive",
+        "level3"
+      ],
+      "params": {
+        "level": 3
+      },
+      "dimensions_m": {
+        "x": 4.02,
+        "y": 3.36,
+        "z": 4.02
+      },
+      "tris": 2260,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles. Log cabin with a stone chimney and boardwalk, covered meat rack, tanning vats, two hide frames, amber lantern by the door (emissive).",
       "style_revision": "09d4038e"
     },
     {
@@ -1204,6 +1430,62 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Two-storey concrete bunkhouse, flat roof with solar, two bunks under a framed tarp, sandbags, floodlight, Network heater.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "smokehouse_l1",
+      "category": "building",
+      "file": "building/smokehouse_l1.glb",
+      "tags": [
+        "colony",
+        "food",
+        "production",
+        "cooking",
+        "survivor_tech",
+        "emissive",
+        "level1"
+      ],
+      "params": {
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 2.02,
+        "y": 2.81,
+        "z": 2.02
+      },
+      "tris": 876,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 1x1 tile (2x2 m). Plank shed (x -0.9..0.35, y -0.45..0.9) with the door on -Y half open, fire pit front-right feeding it through a flue, wood pile at the back. Fire glows (emissive).",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "smokehouse_l2",
+      "category": "building",
+      "file": "building/smokehouse_l2.glb",
+      "tags": [
+        "colony",
+        "food",
+        "production",
+        "cooking",
+        "survivor_tech",
+        "emissive",
+        "level2"
+      ],
+      "params": {
+        "level": 2
+      },
+      "dimensions_m": {
+        "x": 2.02,
+        "y": 2.96,
+        "z": 2.02
+      },
+      "tris": 964,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 1x1 tile. Brick-based shed with a metal roof, iron stove-box with a pipe front-right, side drying rack of fish under an awning, salt barrel.",
       "style_revision": "09d4038e"
     },
     {
@@ -4955,6 +5237,51 @@
       }
     },
     {
+      "id": "item_muffler",
+      "category": "gear",
+      "file": "gear/item_muffler.glb",
+      "tags": [
+        "gear",
+        "item",
+        "material",
+        "vehicle_part",
+        "vehicle_upgrade",
+        "tier2"
+      ],
+      "params": {
+        "item": "muffler"
+      },
+      "dimensions_m": {
+        "x": 0.21,
+        "y": 0.526,
+        "z": 0.646
+      },
+      "tris": 180,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Scrap muffler can with its pipes (the upg_muffler shape at 0.7 size). ~0.21 x 0.65 x 0.53 m (w x d x h). Attach: hand_r (heat shield), back. Fits as upg_muffler.",
+      "style_revision": "09d4038e",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.5256,
+            0.0
+          ],
+          "note": "carried by the top"
+        },
+        "back": {
+          "point": [
+            0.0,
+            0.2628,
+            -0.3232
+          ],
+          "note": "strapped to the back by its rear face"
+        }
+      }
+    },
+    {
       "id": "item_padded_vest",
       "category": "gear",
       "file": "gear/item_padded_vest.glb",
@@ -5679,6 +6006,235 @@
       }
     },
     {
+      "id": "item_spotlight",
+      "category": "gear",
+      "file": "gear/item_spotlight.glb",
+      "tags": [
+        "gear",
+        "item",
+        "material",
+        "vehicle_part",
+        "vehicle_upgrade",
+        "tier1",
+        "emissive"
+      ],
+      "params": {
+        "item": "spotlight"
+      },
+      "dimensions_m": {
+        "x": 0.2,
+        "y": 0.3,
+        "z": 0.18
+      },
+      "tris": 124,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "One salvaged spotlight on its bracket and foot, white lens with an amber ring, facing the front. ~0.2 x 0.18 x 0.3 m (w x d x h). Attach: hand_r (lamp housing), back. Four of them make upg_spotlights.",
+      "style_revision": "09d4038e",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.3,
+            0.0
+          ],
+          "note": "carried by the top"
+        },
+        "back": {
+          "point": [
+            0.0,
+            0.15,
+            -0.09
+          ],
+          "note": "strapped to the back by its rear face"
+        }
+      }
+    },
+    {
+      "id": "item_turbo",
+      "category": "gear",
+      "file": "gear/item_turbo.glb",
+      "tags": [
+        "gear",
+        "item",
+        "material",
+        "vehicle_part",
+        "vehicle_upgrade",
+        "tier3"
+      ],
+      "params": {
+        "item": "turbo"
+      },
+      "dimensions_m": {
+        "x": 0.35,
+        "y": 0.364,
+        "z": 0.301
+      },
+      "tris": 236,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Supercharger blower off its car: finned case, pulley, intake scoop (the upg_turbo shape at 0.7 size). ~0.35 x 0.3 x 0.36 m (w x d x h). Attach: hand_r (scoop lip), back. Fits as upg_turbo.",
+      "style_revision": "09d4038e",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.364,
+            0.0
+          ],
+          "note": "carried by the top"
+        },
+        "back": {
+          "point": [
+            0.0,
+            0.182,
+            -0.1505
+          ],
+          "note": "strapped to the back by its rear face"
+        }
+      }
+    },
+    {
+      "id": "item_tyre_desert",
+      "category": "gear",
+      "file": "gear/item_tyre_desert.glb",
+      "tags": [
+        "gear",
+        "item",
+        "material",
+        "vehicle_part",
+        "vehicle_upgrade",
+        "tier3"
+      ],
+      "params": {
+        "item": "tyre",
+        "kind": "desert"
+      },
+      "dimensions_m": {
+        "x": 0.37,
+        "y": 0.69,
+        "z": 0.672
+      },
+      "tris": 280,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Wide sand balloon tyre with paddles and a hazard-yellow beadlock, standing on its tread. r 0.32 m. Attach: hand_r (top of the tyre), back. Fits as upg_tyres_desert.",
+      "style_revision": "09d4038e",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.69,
+            0.0
+          ],
+          "note": "fist round the top of the tyre"
+        },
+        "back": {
+          "point": [
+            0.0,
+            0.345,
+            0.0
+          ],
+          "note": "tyre slung flat against the back, hub on the spine"
+        }
+      }
+    },
+    {
+      "id": "item_tyre_offroad",
+      "category": "gear",
+      "file": "gear/item_tyre_offroad.glb",
+      "tags": [
+        "gear",
+        "item",
+        "material",
+        "vehicle_part",
+        "vehicle_upgrade",
+        "tier2"
+      ],
+      "params": {
+        "item": "tyre",
+        "kind": "offroad"
+      },
+      "dimensions_m": {
+        "x": 0.27,
+        "y": 0.702,
+        "z": 0.702
+      },
+      "tris": 308,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Knobbly off-road tyre on a rust rim standing on its tread, axle along X. ~0.27 x 0.7 x 0.7 m. Attach: hand_r (top of the tyre), back. Fits as upg_tyres_offroad.",
+      "style_revision": "09d4038e",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.7016,
+            0.0
+          ],
+          "note": "fist round the top of the tyre"
+        },
+        "back": {
+          "point": [
+            0.0,
+            0.3508,
+            0.0
+          ],
+          "note": "tyre slung flat against the back, hub on the spine"
+        }
+      }
+    },
+    {
+      "id": "item_tyre_runflat",
+      "category": "gear",
+      "file": "gear/item_tyre_runflat.glb",
+      "tags": [
+        "gear",
+        "item",
+        "material",
+        "vehicle_part",
+        "vehicle_upgrade",
+        "tier4"
+      ],
+      "params": {
+        "item": "tyre",
+        "kind": "runflat"
+      },
+      "dimensions_m": {
+        "x": 0.34,
+        "y": 0.672,
+        "z": 0.672
+      },
+      "tris": 504,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Armoured run-flat tyre: steel sidewall shields, studded tread, standing on its tread. r 0.32 m. Attach: hand_r (top of the tyre), back. Fits as upg_tyres_runflat.",
+      "style_revision": "09d4038e",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.6724,
+            0.0
+          ],
+          "note": "fist round the top of the tyre"
+        },
+        "back": {
+          "point": [
+            0.0,
+            0.3362,
+            0.0
+          ],
+          "note": "tyre slung flat against the back, hub on the spine"
+        }
+      }
+    },
+    {
       "id": "item_weapon_kit_mk2",
       "category": "gear",
       "file": "gear/item_weapon_kit_mk2.glb",
@@ -5807,6 +6363,51 @@
             0.31
           ],
           "note": "tyre slung flat against the back"
+        }
+      }
+    },
+    {
+      "id": "item_winch",
+      "category": "gear",
+      "file": "gear/item_winch.glb",
+      "tags": [
+        "gear",
+        "item",
+        "material",
+        "vehicle_part",
+        "vehicle_upgrade",
+        "tier3"
+      ],
+      "params": {
+        "item": "winch"
+      },
+      "dimensions_m": {
+        "x": 0.576,
+        "y": 0.216,
+        "z": 0.432
+      },
+      "tris": 180,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Drum winch with its cable and hook (the upg_winch shape at 0.8 size). ~0.58 x 0.43 x 0.22 m (w x d x h). Attach: hand_r (drum), back. Fits as upg_winch.",
+      "style_revision": "09d4038e",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.216,
+            0.0
+          ],
+          "note": "carried by the top"
+        },
+        "back": {
+          "point": [
+            0.0,
+            0.108,
+            -0.216
+          ],
+          "note": "strapped to the back by its rear face"
         }
       }
     },
@@ -7603,6 +8204,354 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Low cover (terrain Cover). Sandbag wall ~1.9 m along X, ~0.9 m tall, one tile.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_beans_s1",
+      "category": "prop",
+      "file": "prop/crop_beans_s1.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage1"
+      ],
+      "params": {
+        "crop": "beans",
+        "stage": 1
+      },
+      "dimensions_m": {
+        "x": 0.5,
+        "y": 0.187,
+        "z": 2.0
+      },
+      "tris": 216,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "beans row, growth stage 1/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_beans_s2",
+      "category": "prop",
+      "file": "prop/crop_beans_s2.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage2"
+      ],
+      "params": {
+        "crop": "beans",
+        "stage": 2
+      },
+      "dimensions_m": {
+        "x": 0.512,
+        "y": 1.008,
+        "z": 2.0
+      },
+      "tris": 348,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "beans row, growth stage 2/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_beans_s3",
+      "category": "prop",
+      "file": "prop/crop_beans_s3.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage3"
+      ],
+      "params": {
+        "crop": "beans",
+        "stage": 3
+      },
+      "dimensions_m": {
+        "x": 0.514,
+        "y": 1.455,
+        "z": 2.0
+      },
+      "tris": 636,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "beans row, growth stage 3/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_corn_s1",
+      "category": "prop",
+      "file": "prop/crop_corn_s1.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage1"
+      ],
+      "params": {
+        "crop": "corn",
+        "stage": 1
+      },
+      "dimensions_m": {
+        "x": 0.5,
+        "y": 0.302,
+        "z": 2.0
+      },
+      "tris": 204,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "corn row, growth stage 1/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_corn_s2",
+      "category": "prop",
+      "file": "prop/crop_corn_s2.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage2"
+      ],
+      "params": {
+        "crop": "corn",
+        "stage": 2
+      },
+      "dimensions_m": {
+        "x": 0.656,
+        "y": 0.82,
+        "z": 2.0
+      },
+      "tris": 264,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "corn row, growth stage 2/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_corn_s3",
+      "category": "prop",
+      "file": "prop/crop_corn_s3.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage3"
+      ],
+      "params": {
+        "crop": "corn",
+        "stage": 3
+      },
+      "dimensions_m": {
+        "x": 0.892,
+        "y": 2.05,
+        "z": 2.016
+      },
+      "tris": 544,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "corn row, growth stage 3/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_herbs_s1",
+      "category": "prop",
+      "file": "prop/crop_herbs_s1.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage1"
+      ],
+      "params": {
+        "crop": "herbs",
+        "stage": 1
+      },
+      "dimensions_m": {
+        "x": 0.5,
+        "y": 0.19,
+        "z": 2.0
+      },
+      "tris": 108,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "herbs row, growth stage 1/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_herbs_s2",
+      "category": "prop",
+      "file": "prop/crop_herbs_s2.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage2"
+      ],
+      "params": {
+        "crop": "herbs",
+        "stage": 2
+      },
+      "dimensions_m": {
+        "x": 0.5,
+        "y": 0.294,
+        "z": 2.0
+      },
+      "tris": 332,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "herbs row, growth stage 2/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_herbs_s3",
+      "category": "prop",
+      "file": "prop/crop_herbs_s3.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage3"
+      ],
+      "params": {
+        "crop": "herbs",
+        "stage": 3
+      },
+      "dimensions_m": {
+        "x": 0.5,
+        "y": 0.5,
+        "z": 2.011
+      },
+      "tris": 500,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "herbs row, growth stage 3/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_potato_s1",
+      "category": "prop",
+      "file": "prop/crop_potato_s1.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage1"
+      ],
+      "params": {
+        "crop": "potato",
+        "stage": 1
+      },
+      "dimensions_m": {
+        "x": 0.5,
+        "y": 0.172,
+        "z": 2.0
+      },
+      "tris": 204,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "potato row, growth stage 1/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_potato_s2",
+      "category": "prop",
+      "file": "prop/crop_potato_s2.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage2"
+      ],
+      "params": {
+        "crop": "potato",
+        "stage": 2
+      },
+      "dimensions_m": {
+        "x": 0.5,
+        "y": 0.421,
+        "z": 2.029
+      },
+      "tris": 224,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "potato row, growth stage 2/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_potato_s3",
+      "category": "prop",
+      "file": "prop/crop_potato_s3.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage3"
+      ],
+      "params": {
+        "crop": "potato",
+        "stage": 3
+      },
+      "dimensions_m": {
+        "x": 0.5,
+        "y": 0.58,
+        "z": 2.061
+      },
+      "tris": 464,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "potato row, growth stage 3/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
       "style_revision": "09d4038e"
     },
     {
@@ -39078,6 +40027,1216 @@
       "style_revision": "09d4038e"
     },
     {
+      "id": "icon_food_beans",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_beans.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "beans",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_beans.svg",
+      "notes": "Food icon: beans (raw produce).",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_beans_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_beans_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "beans",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_beans_64.svg",
+      "notes": "Food icon: beans (raw produce).",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_boiled_potatoes",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_boiled_potatoes.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "boiled_potatoes",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_boiled_potatoes.svg",
+      "notes": "Meal icon: a steaming bowl of potatoes.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_boiled_potatoes_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_boiled_potatoes_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "boiled_potatoes",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_boiled_potatoes_64.svg",
+      "notes": "Meal icon: a steaming bowl of potatoes.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_canned_food",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_canned_food.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "canned_food",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_canned_food.svg",
+      "notes": "Food icon: a dented food tin (preserved).",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_canned_food_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_canned_food_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "canned_food",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_canned_food_64.svg",
+      "notes": "Food icon: a dented food tin (preserved).",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_corn",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_corn.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "corn",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_corn.svg",
+      "notes": "Food icon: corn cob in its husk (raw produce).",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_corn_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_corn_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "corn",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_corn_64.svg",
+      "notes": "Food icon: corn cob in its husk (raw produce).",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_dried_food",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_dried_food.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "dried_food",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_dried_food.svg",
+      "notes": "Food icon: dried slices strung on twine.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_dried_food_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_dried_food_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "dried_food",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_dried_food_64.svg",
+      "notes": "Food icon: dried slices strung on twine.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_feast",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_feast.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "feast",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_feast.svg",
+      "notes": "Meal icon: a laden platter: roast bird, bread, tomatoes.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_feast_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_feast_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "feast",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_feast_64.svg",
+      "notes": "Meal icon: a laden platter: roast bird, bread, tomatoes.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_field_rations",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_field_rations.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "field_rations",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_field_rations.svg",
+      "notes": "Meal icon: olive ration pouch with a tin and a spoon.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_field_rations_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_field_rations_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "field_rations",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_field_rations_64.svg",
+      "notes": "Meal icon: olive ration pouch with a tin and a spoon.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_flatbread",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_flatbread.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "flatbread",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_flatbread.svg",
+      "notes": "Meal icon: a stack of charred flatbreads.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_flatbread_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_flatbread_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "flatbread",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_flatbread_64.svg",
+      "notes": "Meal icon: a stack of charred flatbreads.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_herbs",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_herbs.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "herbs",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_herbs.svg",
+      "notes": "Food icon: tied herb bundle (ingredient).",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_herbs_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_herbs_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "herbs",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_herbs_64.svg",
+      "notes": "Food icon: tied herb bundle (ingredient).",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_husk_meat",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_husk_meat.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "tainted"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "husk_meat",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_husk_meat.svg",
+      "notes": "Food icon: husk meat. Same cut as meat but grey-green and mottled, a metal shard in it: tainted.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_husk_meat_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_husk_meat_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "tainted"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "husk_meat",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_husk_meat_64.svg",
+      "notes": "Food icon: husk meat. Same cut as meat but grey-green and mottled, a metal shard in it: tainted.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_meat",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_meat.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "meat",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_meat.svg",
+      "notes": "Food icon: raw meat cut with a marrow bone.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_meat_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_meat_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "meat",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_meat_64.svg",
+      "notes": "Food icon: raw meat cut with a marrow bone.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_medicinal_broth",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_medicinal_broth.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "medicinal_broth",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_medicinal_broth.svg",
+      "notes": "Meal icon: enamel bowl with a red cross, herb broth, steam.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_medicinal_broth_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_medicinal_broth_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "medicinal_broth",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_medicinal_broth_64.svg",
+      "notes": "Meal icon: enamel bowl with a red cross, herb broth, steam.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_mushrooms",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_mushrooms.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "mushrooms",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_mushrooms.svg",
+      "notes": "Food icon: two foraged mushrooms.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_mushrooms_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_mushrooms_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "mushrooms",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_mushrooms_64.svg",
+      "notes": "Food icon: two foraged mushrooms.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_pickles",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_pickles.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "pickles",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_pickles.svg",
+      "notes": "Food icon: a jar of pickles in brine.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_pickles_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_pickles_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "pickles",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_pickles_64.svg",
+      "notes": "Food icon: a jar of pickles in brine.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_pie",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_pie.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "pie",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_pie.svg",
+      "notes": "Meal icon: a lattice pie with a slice cut out.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_pie_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_pie_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "pie",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_pie_64.svg",
+      "notes": "Meal icon: a lattice pie with a slice cut out.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_potato",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_potato.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "potato",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_potato.svg",
+      "notes": "Food icon: potatoes (raw produce).",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_potato_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_potato_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "potato",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_potato_64.svg",
+      "notes": "Food icon: potatoes (raw produce).",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_preserved_rations",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_preserved_rations.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "preserved_rations",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_preserved_rations.svg",
+      "notes": "Meal icon: wax-paper parcel tied with string, stamped.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_preserved_rations_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_preserved_rations_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "preserved_rations",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_preserved_rations_64.svg",
+      "notes": "Meal icon: wax-paper parcel tied with string, stamped.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_roast",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_roast.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "roast",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_roast.svg",
+      "notes": "Meal icon: a roast leg on a plate.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_roast_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_roast_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "roast",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_roast_64.svg",
+      "notes": "Meal icon: a roast leg on a plate.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_roots",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_roots.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "roots",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_roots.svg",
+      "notes": "Food icon: gnarled foraged roots.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_roots_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_roots_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "roots",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_roots_64.svg",
+      "notes": "Food icon: gnarled foraged roots.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_salt",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_salt.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "salt",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_salt.svg",
+      "notes": "Food icon: an open sack of salt.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_salt_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_salt_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "salt",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_salt_64.svg",
+      "notes": "Food icon: an open sack of salt.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_salted_meat",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_salted_meat.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "salted_meat",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_salted_meat.svg",
+      "notes": "Food icon: a slab of meat crusted with salt.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_salted_meat_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_salted_meat_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "salted_meat",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_salted_meat_64.svg",
+      "notes": "Food icon: a slab of meat crusted with salt.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_smoked_meat",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_smoked_meat.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "smoked_meat",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_smoked_meat.svg",
+      "notes": "Food icon: a smoked ham hung on a string.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_smoked_meat_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_smoked_meat_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "smoked_meat",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_smoked_meat_64.svg",
+      "notes": "Food icon: a smoked ham hung on a string.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_spices",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_spices.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "spices",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_spices.svg",
+      "notes": "Food icon: mortar and pestle with a chili.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_spices_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_spices_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "spices",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_spices_64.svg",
+      "notes": "Food icon: mortar and pestle with a chili.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_stew",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_stew.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "stew",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_stew.svg",
+      "notes": "Meal icon: a pot of stew with a ladle.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_stew_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_stew_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "stew",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_stew_64.svg",
+      "notes": "Meal icon: a pot of stew with a ladle.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_stim_tea",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_stim_tea.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "stim_tea",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_stim_tea.svg",
+      "notes": "Meal icon: tin mug of tea with zig-zag amber steam.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_stim_tea_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_stim_tea_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "stim_tea",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_stim_tea_64.svg",
+      "notes": "Meal icon: tin mug of tea with zig-zag amber steam.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_vegetables",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_vegetables.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "vegetables",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_vegetables.svg",
+      "notes": "Food icon: carrot, tomato and cabbage.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_vegetables_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_vegetables_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "vegetables",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_vegetables_64.svg",
+      "notes": "Food icon: carrot, tomato and cabbage.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_water",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_water.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "water",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_water.svg",
+      "notes": "Food icon: a canteen and a water drop.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_water_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_water_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "water",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_water_64.svg",
+      "notes": "Food icon: a canteen and a water drop.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
       "id": "icon_research_data",
       "category": "ui",
       "kind": "image",
@@ -39580,6 +41739,1011 @@
       }
     },
     {
+      "id": "upg_armor_plates_t0",
+      "category": "vehicle",
+      "file": "vehicle/upg_armor_plates_t0.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_armor",
+        "tier0"
+      ],
+      "params": {
+        "upgrade": "armor_plates",
+        "model": "handcart",
+        "slot": "armor",
+        "tier": 0
+      },
+      "dimensions_m": {
+        "x": 1.11,
+        "y": 0.421,
+        "z": 1.575
+      },
+      "tris": 240,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Armour upgrade for the T0 handcart (vehicle_handcart*, upg_armor slot): welded mismatched plates on the flanks (cut round the wheels), across the nose and the tail, hazard-striped bottom edges. Fitted in the vehicle's model space: parent under its upg_armor node at identity, scale 1. Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_armor_plates_t1",
+      "category": "vehicle",
+      "file": "vehicle/upg_armor_plates_t1.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_armor",
+        "tier1"
+      ],
+      "params": {
+        "upgrade": "armor_plates",
+        "model": "bicycle_cart",
+        "slot": "armor",
+        "tier": 1
+      },
+      "dimensions_m": {
+        "x": 0.95,
+        "y": 0.654,
+        "z": 2.924
+      },
+      "tris": 300,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Armour upgrade for the T1 bicycle cart (vehicle_bicycle_cart*, upg_armor slot): welded mismatched plates on the flanks (cut round the wheels), across the nose and the tail, hazard-striped bottom edges. Fitted in the vehicle's model space: parent under its upg_armor node at identity, scale 1. Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_armor_plates_t2",
+      "category": "vehicle",
+      "file": "vehicle/upg_armor_plates_t2.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_armor",
+        "tier2"
+      ],
+      "params": {
+        "upgrade": "armor_plates",
+        "model": "motorbike",
+        "slot": "armor",
+        "tier": 2
+      },
+      "dimensions_m": {
+        "x": 1.445,
+        "y": 0.851,
+        "z": 2.136
+      },
+      "tris": 252,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Armour upgrade for the T2 motorbike + sidecar (vehicle_motorbike*, upg_armor slot): welded mismatched plates on the flanks (cut round the wheels), across the nose and the tail, hazard-striped bottom edges. Fitted in the vehicle's model space: parent under its upg_armor node at identity, scale 1. Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_armor_plates_t3",
+      "category": "vehicle",
+      "file": "vehicle/upg_armor_plates_t3.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_armor",
+        "tier3"
+      ],
+      "params": {
+        "upgrade": "armor_plates",
+        "model": "buggy",
+        "slot": "armor",
+        "tier": 3
+      },
+      "dimensions_m": {
+        "x": 1.35,
+        "y": 0.539,
+        "z": 3.244
+      },
+      "tris": 168,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Armour upgrade for the T3 dune buggy (vehicle_buggy*, upg_armor slot): welded mismatched plates on the flanks (cut round the wheels), across the nose and the tail, hazard-striped bottom edges. Fitted in the vehicle's model space: parent under its upg_armor node at identity, scale 1. Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_armor_plates_t4",
+      "category": "vehicle",
+      "file": "vehicle/upg_armor_plates_t4.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_armor",
+        "tier4"
+      ],
+      "params": {
+        "upgrade": "armor_plates",
+        "model": "truck",
+        "slot": "armor",
+        "tier": 4
+      },
+      "dimensions_m": {
+        "x": 2.07,
+        "y": 0.602,
+        "z": 5.206
+      },
+      "tris": 348,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Armour upgrade for the T4 pickup truck (vehicle_truck*, upg_armor slot): welded mismatched plates on the flanks (cut round the wheels), across the nose and the tail, hazard-striped bottom edges. Fitted in the vehicle's model space: parent under its upg_armor node at identity, scale 1. Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_armor_plates_t5",
+      "category": "vehicle",
+      "file": "vehicle/upg_armor_plates_t5.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_armor",
+        "tier5"
+      ],
+      "params": {
+        "upgrade": "armor_plates",
+        "model": "rig",
+        "slot": "armor",
+        "tier": 5
+      },
+      "dimensions_m": {
+        "x": 2.51,
+        "y": 1.451,
+        "z": 6.756
+      },
+      "tris": 528,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Armour upgrade for the T5 war-rig (vehicle_rig*, upg_armor slot): welded mismatched plates on the flanks (cut round the wheels), across the nose and the tail, hazard-striped bottom edges. Fitted in the vehicle's model space: parent under its upg_armor node at identity, scale 1. Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_cage_t0",
+      "category": "vehicle",
+      "file": "vehicle/upg_cage_t0.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_armor",
+        "tier0"
+      ],
+      "params": {
+        "upgrade": "cage",
+        "model": "handcart",
+        "slot": "armor",
+        "tier": 0
+      },
+      "dimensions_m": {
+        "x": 1.054,
+        "y": 0.431,
+        "z": 1.381
+      },
+      "tris": 224,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Armour upgrade for the T0 handcart (vehicle_handcart*, upg_armor slot): grille and cage bars: window / lamp grilles, crash bars, roll hoops. Fitted in the vehicle's model space: parent under its upg_armor node at identity, scale 1. Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_cage_t1",
+      "category": "vehicle",
+      "file": "vehicle/upg_cage_t1.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_armor",
+        "tier1"
+      ],
+      "params": {
+        "upgrade": "cage",
+        "model": "bicycle_cart",
+        "slot": "armor",
+        "tier": 1
+      },
+      "dimensions_m": {
+        "x": 0.893,
+        "y": 0.391,
+        "z": 2.801
+      },
+      "tris": 224,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Armour upgrade for the T1 bicycle cart (vehicle_bicycle_cart*, upg_armor slot): grille and cage bars: window / lamp grilles, crash bars, roll hoops. Fitted in the vehicle's model space: parent under its upg_armor node at identity, scale 1. Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_cage_t2",
+      "category": "vehicle",
+      "file": "vehicle/upg_cage_t2.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_armor",
+        "tier2"
+      ],
+      "params": {
+        "upgrade": "cage",
+        "model": "motorbike",
+        "slot": "armor",
+        "tier": 2
+      },
+      "dimensions_m": {
+        "x": 1.393,
+        "y": 0.875,
+        "z": 1.216
+      },
+      "tris": 288,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Armour upgrade for the T2 motorbike + sidecar (vehicle_motorbike*, upg_armor slot): grille and cage bars: window / lamp grilles, crash bars, roll hoops. Fitted in the vehicle's model space: parent under its upg_armor node at identity, scale 1. Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_cage_t3",
+      "category": "vehicle",
+      "file": "vehicle/upg_cage_t3.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_armor",
+        "tier3"
+      ],
+      "params": {
+        "upgrade": "cage",
+        "model": "buggy",
+        "slot": "armor",
+        "tier": 3
+      },
+      "dimensions_m": {
+        "x": 1.254,
+        "y": 0.827,
+        "z": 2.312
+      },
+      "tris": 224,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Armour upgrade for the T3 dune buggy (vehicle_buggy*, upg_armor slot): grille and cage bars: window / lamp grilles, crash bars, roll hoops. Fitted in the vehicle's model space: parent under its upg_armor node at identity, scale 1. Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_cage_t4",
+      "category": "vehicle",
+      "file": "vehicle/upg_cage_t4.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_armor",
+        "tier4"
+      ],
+      "params": {
+        "upgrade": "cage",
+        "model": "truck",
+        "slot": "armor",
+        "tier": 4
+      },
+      "dimensions_m": {
+        "x": 1.993,
+        "y": 1.427,
+        "z": 2.871
+      },
+      "tris": 336,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Armour upgrade for the T4 pickup truck (vehicle_truck*, upg_armor slot): grille and cage bars: window / lamp grilles, crash bars, roll hoops. Fitted in the vehicle's model space: parent under its upg_armor node at identity, scale 1. Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_cage_t5",
+      "category": "vehicle",
+      "file": "vehicle/upg_cage_t5.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_armor",
+        "tier5"
+      ],
+      "params": {
+        "upgrade": "cage",
+        "model": "rig",
+        "slot": "armor",
+        "tier": 5
+      },
+      "dimensions_m": {
+        "x": 2.513,
+        "y": 2.267,
+        "z": 2.951
+      },
+      "tris": 352,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Armour upgrade for the T5 war-rig (vehicle_rig*, upg_armor slot): grille and cage bars: window / lamp grilles, crash bars, roll hoops. Fitted in the vehicle's model space: parent under its upg_armor node at identity, scale 1. Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_cargo_rack",
+      "category": "vehicle",
+      "file": "vehicle/upg_cargo_rack.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_utility"
+      ],
+      "params": {
+        "upgrade": "cargo_rack",
+        "slot": "utility"
+      },
+      "dimensions_m": {
+        "x": 1.36,
+        "y": 0.49,
+        "z": 1.16
+      },
+      "tris": 288,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Utility upgrade (any upg_utility_N slot). Tube cargo rack on short legs with raised side rails, loaded with a tarp bundle, a crate and a hazard-yellow jerry can. ~1.36 x 1.16 x 0.5 m at scale 1. Origin = mount point (base centre); parent under the slot node, scale by its `scale`. Front -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_drone_pad",
+      "category": "vehicle",
+      "file": "vehicle/upg_drone_pad.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_utility",
+        "emissive"
+      ],
+      "params": {
+        "upgrade": "drone_pad",
+        "slot": "utility"
+      },
+      "dimensions_m": {
+        "x": 0.9,
+        "y": 0.24,
+        "z": 0.9
+      },
+      "tris": 264,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Utility upgrade (any upg_utility_N slot). Landing pad on four feet: hazard-striped front and back edges, white H, olive charger box with an amber lamp. For the scout drone. ~0.9 x 0.9 x 0.24 m at scale 1. Origin = mount point (base centre); parent under the slot node, scale by its `scale`. Front -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_fuel_tanks",
+      "category": "vehicle",
+      "file": "vehicle/upg_fuel_tanks.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_utility"
+      ],
+      "params": {
+        "upgrade": "fuel_tanks",
+        "slot": "utility"
+      },
+      "dimensions_m": {
+        "x": 1.0,
+        "y": 0.538,
+        "z": 0.78
+      },
+      "tris": 292,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Utility upgrade (any upg_utility_N slot). Two long fuel tanks (rust and steel) strapped on a cradle, filler caps and a crossover hose. ~1.0 x 0.8 x 0.53 m at scale 1. Origin = mount point (base centre); parent under the slot node, scale by its `scale`. Front -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_medkit_locker",
+      "category": "vehicle",
+      "file": "vehicle/upg_medkit_locker.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_utility"
+      ],
+      "params": {
+        "upgrade": "medkit_locker",
+        "slot": "utility"
+      },
+      "dimensions_m": {
+        "x": 0.62,
+        "y": 0.475,
+        "z": 0.435
+      },
+      "tris": 96,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Utility upgrade (any upg_utility_N slot). Steel locker with a white door and red cross, latch, hinges, leather strap. ~0.62 x 0.47 x 0.47 m at scale 1. Origin = mount point (base centre); parent under the slot node, scale by its `scale`. Front -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_muffler",
+      "category": "vehicle",
+      "file": "vehicle/upg_muffler.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_engine"
+      ],
+      "params": {
+        "upgrade": "muffler",
+        "slot": "engine"
+      },
+      "dimensions_m": {
+        "x": 0.3,
+        "y": 0.751,
+        "z": 0.923
+      },
+      "tris": 180,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Engine upgrade (upg_engine slot). Scrap muffler can on two brackets, inlet pipe out the front, upright tailpipe at the back. ~0.3 x 0.84 x 0.72 m at scale 1. Origin = mount point (base centre); parent under the slot node, scale by its `scale`. Front -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_radio_booster",
+      "category": "vehicle",
+      "file": "vehicle/upg_radio_booster.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_utility",
+        "emissive"
+      ],
+      "params": {
+        "upgrade": "radio_booster",
+        "slot": "utility"
+      },
+      "dimensions_m": {
+        "x": 0.49,
+        "y": 1.6,
+        "z": 0.25
+      },
+      "tris": 148,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Utility upgrade (any upg_utility_N slot). Olive field radio box with a 1.5 m whip antenna on a spring base, cross-arm, amber tip lamp and status LED, second short whip. ~0.5 x 0.26 x 1.6 m at scale 1. Origin = mount point (base centre); parent under the slot node, scale by its `scale`. Front -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_ram_t0",
+      "category": "vehicle",
+      "file": "vehicle/upg_ram_t0.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_armor",
+        "tier0"
+      ],
+      "params": {
+        "upgrade": "ram",
+        "model": "handcart",
+        "slot": "armor",
+        "tier": 0
+      },
+      "dimensions_m": {
+        "x": 0.84,
+        "y": 0.29,
+        "z": 0.472
+      },
+      "tris": 152,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Armour upgrade for the T0 handcart (vehicle_handcart*, upg_armor slot): front ram: striped beam ahead of the nose with forward spikes, braced back to the frame. Fitted in the vehicle's model space: parent under its upg_armor node at identity, scale 1. Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_ram_t1",
+      "category": "vehicle",
+      "file": "vehicle/upg_ram_t1.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_armor",
+        "tier1"
+      ],
+      "params": {
+        "upgrade": "ram",
+        "model": "bicycle_cart",
+        "slot": "armor",
+        "tier": 1
+      },
+      "dimensions_m": {
+        "x": 0.4,
+        "y": 0.26,
+        "z": 0.756
+      },
+      "tris": 116,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Armour upgrade for the T1 bicycle cart (vehicle_bicycle_cart*, upg_armor slot): front ram: striped beam ahead of the nose with forward spikes, braced back to the frame. Fitted in the vehicle's model space: parent under its upg_armor node at identity, scale 1. Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_ram_t2",
+      "category": "vehicle",
+      "file": "vehicle/upg_ram_t2.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_armor",
+        "tier2"
+      ],
+      "params": {
+        "upgrade": "ram",
+        "model": "motorbike",
+        "slot": "armor",
+        "tier": 2
+      },
+      "dimensions_m": {
+        "x": 1.417,
+        "y": 0.3,
+        "z": 1.254
+      },
+      "tris": 204,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Armour upgrade for the T2 motorbike + sidecar (vehicle_motorbike*, upg_armor slot): front ram: striped beam ahead of the nose with forward spikes, braced back to the frame. Fitted in the vehicle's model space: parent under its upg_armor node at identity, scale 1. Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_ram_t3",
+      "category": "vehicle",
+      "file": "vehicle/upg_ram_t3.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_armor",
+        "tier3"
+      ],
+      "params": {
+        "upgrade": "ram",
+        "model": "buggy",
+        "slot": "armor",
+        "tier": 3
+      },
+      "dimensions_m": {
+        "x": 1.56,
+        "y": 0.42,
+        "z": 0.905
+      },
+      "tris": 224,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Armour upgrade for the T3 dune buggy (vehicle_buggy*, upg_armor slot): front ram: striped beam ahead of the nose with forward spikes, braced back to the frame. Fitted in the vehicle's model space: parent under its upg_armor node at identity, scale 1. Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_ram_t4",
+      "category": "vehicle",
+      "file": "vehicle/upg_ram_t4.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_armor",
+        "tier4"
+      ],
+      "params": {
+        "upgrade": "ram",
+        "model": "truck",
+        "slot": "armor",
+        "tier": 4
+      },
+      "dimensions_m": {
+        "x": 2.1,
+        "y": 0.55,
+        "z": 0.746
+      },
+      "tris": 260,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Armour upgrade for the T4 pickup truck (vehicle_truck*, upg_armor slot): front ram: striped beam ahead of the nose with forward spikes, braced back to the frame. Fitted in the vehicle's model space: parent under its upg_armor node at identity, scale 1. Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_ram_t5",
+      "category": "vehicle",
+      "file": "vehicle/upg_ram_t5.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_armor",
+        "tier5"
+      ],
+      "params": {
+        "upgrade": "ram",
+        "model": "rig",
+        "slot": "armor",
+        "tier": 5
+      },
+      "dimensions_m": {
+        "x": 2.6,
+        "y": 0.5,
+        "z": 0.739
+      },
+      "tris": 296,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Armour upgrade for the T5 war-rig (vehicle_rig*, upg_armor slot): front ram: striped beam ahead of the nose with forward spikes, braced back to the frame. Fitted in the vehicle's model space: parent under its upg_armor node at identity, scale 1. Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_roof_turret",
+      "category": "vehicle",
+      "file": "vehicle/upg_roof_turret.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_utility"
+      ],
+      "params": {
+        "upgrade": "roof_turret",
+        "slot": "utility",
+        "tiers": [
+          4,
+          5
+        ]
+      },
+      "dimensions_m": {
+        "x": 0.943,
+        "y": 0.982,
+        "z": 1.572
+      },
+      "tris": 404,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Utility upgrade. T4-T5 only (upg_utility_1, the roof): ring mount with a survivor-made gun (welded pipe barrel and shroud, receiver, olive ammo can), split shield with hazard stripes, spade grips, sandbags round the back of the ring. Barrel toward the front. ~0.9 x 1.6 x 1.0 m at scale 1. Origin = mount point (base centre); parent under the slot node, scale by its `scale`. Front -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_smoke_launcher",
+      "category": "vehicle",
+      "file": "vehicle/upg_smoke_launcher.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_utility"
+      ],
+      "params": {
+        "upgrade": "smoke_launcher",
+        "slot": "utility"
+      },
+      "dimensions_m": {
+        "x": 0.52,
+        "y": 0.441,
+        "z": 0.358
+      },
+      "tris": 276,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Utility upgrade (any upg_utility_N slot). Two rows of three smoke tubes tilted forward and up on a welded block, hazard-yellow caps, wiring box. ~0.52 x 0.4 x 0.45 m at scale 1. Origin = mount point (base centre); parent under the slot node, scale by its `scale`. Front -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_solar_charger",
+      "category": "vehicle",
+      "file": "vehicle/upg_solar_charger.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_utility",
+        "emissive"
+      ],
+      "params": {
+        "upgrade": "solar_charger",
+        "slot": "utility"
+      },
+      "dimensions_m": {
+        "x": 1.14,
+        "y": 0.482,
+        "z": 0.806
+      },
+      "tris": 192,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Utility upgrade (any upg_utility_N slot). Salvaged solar panel on a hinged stand, tilted toward the front, battery box below with an amber LED. ~1.14 x 0.85 x 0.62 m at scale 1. Origin = mount point (base centre); parent under the slot node, scale by its `scale`. Front -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_spotlights",
+      "category": "vehicle",
+      "file": "vehicle/upg_spotlights.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_utility",
+        "emissive"
+      ],
+      "params": {
+        "upgrade": "spotlights",
+        "slot": "utility"
+      },
+      "dimensions_m": {
+        "x": 1.02,
+        "y": 0.38,
+        "z": 0.135
+      },
+      "tris": 344,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Utility upgrade (any upg_utility_N slot). Light bar on two posts: four lamps facing the front, white outboard and amber (emissive signal_amber) inboard. ~1.06 x 0.16 x 0.39 m at scale 1. Origin = mount point (base centre); parent under the slot node, scale by its `scale`. Front -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_trailer",
+      "category": "vehicle",
+      "file": "vehicle/upg_trailer.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_utility",
+        "emissive"
+      ],
+      "params": {
+        "upgrade": "trailer",
+        "slot": "utility",
+        "hitch_z": 0.6
+      },
+      "dimensions_m": {
+        "x": 1.57,
+        "y": 0.995,
+        "z": 2.425
+      },
+      "tris": 684,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Towed trailer (takes a utility slot, hangs on the vehicle's tow_hitch node, scaled by its `scale`): plank box on two knobbly wheels, A-frame tongue, jack stand, fenders, hazard-striped tail with amber lamps, tarp bundle, crate and drum. Origin = the hitch coupler, 0.6 m above the ground at scale 1; the trailer trails toward +Y (glTF -Z). Parts: body + wheel_l, wheel_r (pivot at the hub, spin about X). Survivor tech, no cyan.",
+      "style_revision": "09d4038e",
+      "parts": {
+        "body": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "trailer body; origin = the hitch coupler"
+        },
+        "wheel_l": {
+          "joint": [
+            0.68,
+            -0.3,
+            -1.55
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_r": {
+          "joint": [
+            -0.68,
+            -0.3,
+            -1.55
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      }
+    },
+    {
+      "id": "upg_turbo",
+      "category": "vehicle",
+      "file": "vehicle/upg_turbo.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_engine",
+        "emissive"
+      ],
+      "params": {
+        "upgrade": "turbo",
+        "slot": "engine"
+      },
+      "dimensions_m": {
+        "x": 0.5,
+        "y": 0.52,
+        "z": 0.43
+      },
+      "tris": 236,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Engine upgrade (upg_engine slot). Supercharger blower through the hood: finned case, belt pulley, rust intake scoop with a dark mouth facing the front, twin velocity stacks. ~0.5 x 0.46 x 0.52 m at scale 1. Origin = mount point (base centre); parent under the slot node, scale by its `scale`. Front -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_tyres_desert",
+      "category": "vehicle",
+      "file": "vehicle/upg_tyres_desert.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_tyres"
+      ],
+      "params": {
+        "upgrade": "tyres",
+        "kind": "desert",
+        "slot": "tyres"
+      },
+      "dimensions_m": {
+        "x": 0.52,
+        "y": 1.05,
+        "z": 1.014
+      },
+      "tris": 280,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Tyre upgrade (upg_tyres slot): one wheel, wide sand balloon: 1.5x the stock width, rounded shoulders, sand paddles, hazard-yellow beadlock. Reference size radius 0.5 m, width 0.3 m (desert 0.45 m), origin at the hub, axle along X: set it as each wheel_* node's mesh and scale that node by upgrade_slots.upg_tyres.wheels[name].scale. Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_tyres_offroad",
+      "category": "vehicle",
+      "file": "vehicle/upg_tyres_offroad.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_tyres"
+      ],
+      "params": {
+        "upgrade": "tyres",
+        "kind": "offroad",
+        "slot": "tyres"
+      },
+      "dimensions_m": {
+        "x": 0.37,
+        "y": 1.04,
+        "z": 1.04
+      },
+      "tris": 308,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Tyre upgrade (upg_tyres slot): one wheel, deep knobbly tread (two staggered rows of knobs), rust rim. Reference size radius 0.5 m, width 0.3 m (desert 0.45 m), origin at the hub, axle along X: set it as each wheel_* node's mesh and scale that node by upgrade_slots.upg_tyres.wheels[name].scale. Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_tyres_runflat",
+      "category": "vehicle",
+      "file": "vehicle/upg_tyres_runflat.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_tyres"
+      ],
+      "params": {
+        "upgrade": "tyres",
+        "kind": "runflat",
+        "slot": "tyres"
+      },
+      "dimensions_m": {
+        "x": 0.44,
+        "y": 1.02,
+        "z": 1.02
+      },
+      "tris": 504,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Tyre upgrade (upg_tyres slot): one wheel, armoured: steel sidewall shields with bolts and hazard band, studded tread. Reference size radius 0.5 m, width 0.3 m (desert 0.45 m), origin at the hub, axle along X: set it as each wheel_* node's mesh and scale that node by upgrade_slots.upg_tyres.wheels[name].scale. Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_winch",
+      "category": "vehicle",
+      "file": "vehicle/upg_winch.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_utility"
+      ],
+      "params": {
+        "upgrade": "winch",
+        "slot": "utility"
+      },
+      "dimensions_m": {
+        "x": 0.72,
+        "y": 0.27,
+        "z": 0.54
+      },
+      "tris": 180,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Utility upgrade (any upg_utility_N slot). Drum winch: rust cable on a steel drum between side cheeks, motor on +X, fairlead and hazard-yellow hook at the front. ~0.72 x 0.4 x 0.27 m at scale 1. Origin = mount point (base centre); parent under the slot node, scale by its `scale`. Front -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "upg_workbench",
+      "category": "vehicle",
+      "file": "vehicle/upg_workbench.glb",
+      "tags": [
+        "vehicle",
+        "vehicle_upgrade",
+        "survivor_tech",
+        "slot_utility",
+        "emissive"
+      ],
+      "params": {
+        "upgrade": "workbench",
+        "slot": "utility"
+      },
+      "dimensions_m": {
+        "x": 0.84,
+        "y": 0.72,
+        "z": 0.83
+      },
+      "tris": 192,
+      "pivot": "upgrade_slot",
+      "pivot_note": "origin is the mount point: parent it under the vehicle's upgrade slot node (upg_*, tow_hitch for the trailer, the wheel_* node for tyres) at identity, scaled by the slot's `scale`",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Utility upgrade (any upg_utility_N slot). Fold-out bench: rust tool chest whose front flap folds down into a worktop on two struts (toward the front), vise, hammer and wrench, pegboard with tools and an amber lamp at the back. ~0.84 x 0.83 x 0.72 m at scale 1. Origin = mount point (base centre); parent under the slot node, scale by its `scale`. Front -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "09d4038e"
+    },
+    {
       "id": "vehicle_bicycle_cart",
       "category": "vehicle",
       "file": "vehicle/vehicle_bicycle_cart.glb",
@@ -39644,6 +42808,137 @@
             -0.92
           ],
           "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            0.0,
+            0.7483,
+            0.08
+          ],
+          "kind": "engine",
+          "scale": 0.5,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: on the rear mudguard (pedal-assist kit)"
+        },
+        "upg_tyres": {
+          "point": [
+            0.0,
+            0.0,
+            -0.1575
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: swap each wheel_* node's mesh for the tyre mesh and scale that node by wheels[name].scale",
+          "wheels": {
+            "wheel_f": {
+              "hub": [
+                0.0,
+                0.3483,
+                1.13
+              ],
+              "scale": [
+                0.2,
+                0.68,
+                0.68
+              ]
+            },
+            "wheel_r": {
+              "hub": [
+                0.0,
+                0.3483,
+                0.08
+              ],
+              "scale": [
+                0.2,
+                0.68,
+                0.68
+              ]
+            },
+            "wheel_tl": {
+              "hub": [
+                0.5,
+                0.2683,
+                -0.92
+              ],
+              "scale": [
+                0.2,
+                0.52,
+                0.52
+              ]
+            },
+            "wheel_tr": {
+              "hub": [
+                -0.5,
+                0.2683,
+                -0.92
+              ],
+              "scale": [
+                0.2,
+                0.52,
+                0.52
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            0.0,
+            0.0083,
+            -0.17
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t1",
+            "upg_cage_t1",
+            "upg_ram_t1"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            0.0,
+            0.7083,
+            -0.92
+          ],
+          "kind": "utility",
+          "scale": 0.5,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: on the trailer load"
+        },
+        "tow_hitch": {
+          "point": [
+            0.0,
+            0.3,
+            -1.55
+          ],
+          "kind": "hitch",
+          "scale": 0.5,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
         }
       }
     },
@@ -39713,6 +43008,137 @@
           ],
           "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
         }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            0.0,
+            0.7483,
+            0.08
+          ],
+          "kind": "engine",
+          "scale": 0.5,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: on the rear mudguard (pedal-assist kit)"
+        },
+        "upg_tyres": {
+          "point": [
+            0.0,
+            0.0,
+            -0.1575
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: swap each wheel_* node's mesh for the tyre mesh and scale that node by wheels[name].scale",
+          "wheels": {
+            "wheel_f": {
+              "hub": [
+                0.0,
+                0.3483,
+                1.13
+              ],
+              "scale": [
+                0.2,
+                0.68,
+                0.68
+              ]
+            },
+            "wheel_r": {
+              "hub": [
+                0.0,
+                0.3483,
+                0.08
+              ],
+              "scale": [
+                0.2,
+                0.68,
+                0.68
+              ]
+            },
+            "wheel_tl": {
+              "hub": [
+                0.5,
+                0.2683,
+                -0.92
+              ],
+              "scale": [
+                0.2,
+                0.52,
+                0.52
+              ]
+            },
+            "wheel_tr": {
+              "hub": [
+                -0.5,
+                0.2683,
+                -0.92
+              ],
+              "scale": [
+                0.2,
+                0.52,
+                0.52
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            0.0,
+            0.0083,
+            -0.17
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t1",
+            "upg_cage_t1",
+            "upg_ram_t1"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            0.0,
+            0.7083,
+            -0.92
+          ],
+          "kind": "utility",
+          "scale": 0.5,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: on the trailer load"
+        },
+        "tow_hitch": {
+          "point": [
+            0.0,
+            0.3,
+            -1.55
+          ],
+          "kind": "hitch",
+          "scale": 0.5,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
+        }
       }
     },
     {
@@ -39780,6 +43206,137 @@
             -0.895
           ],
           "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            0.0,
+            0.7483,
+            0.105
+          ],
+          "kind": "engine",
+          "scale": 0.5,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: on the rear mudguard (pedal-assist kit)"
+        },
+        "upg_tyres": {
+          "point": [
+            0.0,
+            0.0,
+            -0.1325
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: swap each wheel_* node's mesh for the tyre mesh and scale that node by wheels[name].scale",
+          "wheels": {
+            "wheel_f": {
+              "hub": [
+                0.0,
+                0.3483,
+                1.155
+              ],
+              "scale": [
+                0.2,
+                0.68,
+                0.68
+              ]
+            },
+            "wheel_r": {
+              "hub": [
+                0.0,
+                0.3483,
+                0.105
+              ],
+              "scale": [
+                0.2,
+                0.68,
+                0.68
+              ]
+            },
+            "wheel_tl": {
+              "hub": [
+                0.5,
+                0.2683,
+                -0.895
+              ],
+              "scale": [
+                0.2,
+                0.52,
+                0.52
+              ]
+            },
+            "wheel_tr": {
+              "hub": [
+                -0.5,
+                0.2683,
+                -0.895
+              ],
+              "scale": [
+                0.2,
+                0.52,
+                0.52
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            0.0,
+            0.0083,
+            -0.145
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t1",
+            "upg_cage_t1",
+            "upg_ram_t1"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            0.0,
+            0.7083,
+            -0.895
+          ],
+          "kind": "utility",
+          "scale": 0.5,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: on the trailer load"
+        },
+        "tow_hitch": {
+          "point": [
+            0.0,
+            0.3,
+            -1.525
+          ],
+          "kind": "hitch",
+          "scale": 0.5,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
         }
       }
     },
@@ -39849,6 +43406,160 @@
           ],
           "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
         }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            0.0,
+            0.965,
+            -1.2475
+          ],
+          "kind": "engine",
+          "scale": 0.85,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: engine deck, over the air filter"
+        },
+        "upg_tyres": {
+          "point": [
+            0.0,
+            0.0,
+            -0.0775
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: swap each wheel_* node's mesh for the tyre mesh and scale that node by wheels[name].scale",
+          "wheels": {
+            "wheel_fl": {
+              "hub": [
+                0.9,
+                0.435,
+                0.9725
+              ],
+              "scale": [
+                0.9333,
+                0.84,
+                0.84
+              ]
+            },
+            "wheel_fr": {
+              "hub": [
+                -0.9,
+                0.435,
+                0.9725
+              ],
+              "scale": [
+                0.9333,
+                0.84,
+                0.84
+              ]
+            },
+            "wheel_rl": {
+              "hub": [
+                0.94,
+                0.495,
+                -1.1275
+              ],
+              "scale": [
+                1.1333,
+                0.96,
+                0.96
+              ]
+            },
+            "wheel_rr": {
+              "hub": [
+                -0.94,
+                0.495,
+                -1.1275
+              ],
+              "scale": [
+                1.1333,
+                0.96,
+                0.96
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            0.0,
+            0.015,
+            -0.1275
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t3",
+            "upg_cage_t3",
+            "upg_ram_t3"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            0.0,
+            1.535,
+            -0.2075
+          ],
+          "kind": "utility",
+          "scale": 0.85,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: roll-cage roof"
+        },
+        "upg_utility_2": {
+          "point": [
+            0.0,
+            0.735,
+            1.3225
+          ],
+          "kind": "utility",
+          "scale": 0.85,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: nose"
+        },
+        "tow_hitch": {
+          "point": [
+            0.0,
+            0.51,
+            -1.7475
+          ],
+          "kind": "hitch",
+          "scale": 0.85,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
+        }
       }
     },
     {
@@ -39916,6 +43627,160 @@
             -1.085
           ],
           "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            0.0,
+            0.965,
+            -1.205
+          ],
+          "kind": "engine",
+          "scale": 0.85,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: engine deck, over the air filter"
+        },
+        "upg_tyres": {
+          "point": [
+            0.0,
+            0.0,
+            -0.035
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: swap each wheel_* node's mesh for the tyre mesh and scale that node by wheels[name].scale",
+          "wheels": {
+            "wheel_fl": {
+              "hub": [
+                0.9,
+                0.435,
+                1.015
+              ],
+              "scale": [
+                0.9333,
+                0.84,
+                0.84
+              ]
+            },
+            "wheel_fr": {
+              "hub": [
+                -0.9,
+                0.435,
+                1.015
+              ],
+              "scale": [
+                0.9333,
+                0.84,
+                0.84
+              ]
+            },
+            "wheel_rl": {
+              "hub": [
+                0.94,
+                0.495,
+                -1.085
+              ],
+              "scale": [
+                1.1333,
+                0.96,
+                0.96
+              ]
+            },
+            "wheel_rr": {
+              "hub": [
+                -0.94,
+                0.495,
+                -1.085
+              ],
+              "scale": [
+                1.1333,
+                0.96,
+                0.96
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            0.0,
+            0.015,
+            -0.085
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t3",
+            "upg_cage_t3",
+            "upg_ram_t3"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            0.0,
+            1.535,
+            -0.165
+          ],
+          "kind": "utility",
+          "scale": 0.85,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: roll-cage roof"
+        },
+        "upg_utility_2": {
+          "point": [
+            0.0,
+            0.735,
+            1.365
+          ],
+          "kind": "utility",
+          "scale": 0.85,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: nose"
+        },
+        "tow_hitch": {
+          "point": [
+            0.0,
+            0.51,
+            -1.705
+          ],
+          "kind": "hitch",
+          "scale": 0.85,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
         }
       }
     },
@@ -39985,6 +43850,160 @@
           ],
           "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
         }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            0.0,
+            0.965,
+            -1.315
+          ],
+          "kind": "engine",
+          "scale": 0.85,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: engine deck, over the air filter"
+        },
+        "upg_tyres": {
+          "point": [
+            0.0,
+            0.0,
+            -0.145
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: swap each wheel_* node's mesh for the tyre mesh and scale that node by wheels[name].scale",
+          "wheels": {
+            "wheel_fl": {
+              "hub": [
+                0.9,
+                0.435,
+                0.905
+              ],
+              "scale": [
+                0.9333,
+                0.84,
+                0.84
+              ]
+            },
+            "wheel_fr": {
+              "hub": [
+                -0.9,
+                0.435,
+                0.905
+              ],
+              "scale": [
+                0.9333,
+                0.84,
+                0.84
+              ]
+            },
+            "wheel_rl": {
+              "hub": [
+                0.94,
+                0.495,
+                -1.195
+              ],
+              "scale": [
+                1.1333,
+                0.96,
+                0.96
+              ]
+            },
+            "wheel_rr": {
+              "hub": [
+                -0.94,
+                0.495,
+                -1.195
+              ],
+              "scale": [
+                1.1333,
+                0.96,
+                0.96
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            0.0,
+            0.015,
+            -0.195
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t3",
+            "upg_cage_t3",
+            "upg_ram_t3"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            0.0,
+            1.535,
+            -0.275
+          ],
+          "kind": "utility",
+          "scale": 0.85,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: roll-cage roof"
+        },
+        "upg_utility_2": {
+          "point": [
+            0.0,
+            0.735,
+            1.255
+          ],
+          "kind": "utility",
+          "scale": 0.85,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: nose"
+        },
+        "tow_hitch": {
+          "point": [
+            0.0,
+            0.51,
+            -1.815
+          ],
+          "kind": "hitch",
+          "scale": 0.85,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
+        }
       }
     },
     {
@@ -40036,6 +44055,113 @@
             -0.4212
           ],
           "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            -0.24,
+            0.5304,
+            0.1488
+          ],
+          "kind": "engine",
+          "scale": 0.55,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: front-left of the bed (no engine: bolt-on helper)"
+        },
+        "upg_tyres": {
+          "point": [
+            0.0,
+            0.0,
+            -0.4212
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: swap each wheel_* node's mesh for the tyre mesh and scale that node by wheels[name].scale",
+          "wheels": {
+            "wheel_l": {
+              "hub": [
+                0.56,
+                0.3904,
+                -0.4212
+              ],
+              "scale": [
+                0.3,
+                0.76,
+                0.76
+              ]
+            },
+            "wheel_r": {
+              "hub": [
+                -0.56,
+                0.3904,
+                -0.4212
+              ],
+              "scale": [
+                0.3,
+                0.76,
+                0.76
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            0.0,
+            0.0104,
+            -0.2712
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t0",
+            "upg_cage_t0",
+            "upg_ram_t0"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            0.05,
+            0.8904,
+            -0.6212
+          ],
+          "kind": "utility",
+          "scale": 0.55,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: top of the load"
+        },
+        "tow_hitch": {
+          "point": [
+            0.0,
+            0.33,
+            -1.1712
+          ],
+          "kind": "hitch",
+          "scale": 0.55,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
         }
       }
     },
@@ -40089,6 +44215,113 @@
           ],
           "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
         }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            -0.24,
+            0.5304,
+            0.1488
+          ],
+          "kind": "engine",
+          "scale": 0.55,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: front-left of the bed (no engine: bolt-on helper)"
+        },
+        "upg_tyres": {
+          "point": [
+            0.0,
+            0.0,
+            -0.4212
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: swap each wheel_* node's mesh for the tyre mesh and scale that node by wheels[name].scale",
+          "wheels": {
+            "wheel_l": {
+              "hub": [
+                0.56,
+                0.3904,
+                -0.4212
+              ],
+              "scale": [
+                0.3,
+                0.76,
+                0.76
+              ]
+            },
+            "wheel_r": {
+              "hub": [
+                -0.56,
+                0.3904,
+                -0.4212
+              ],
+              "scale": [
+                0.3,
+                0.76,
+                0.76
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            0.0,
+            0.0104,
+            -0.2712
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t0",
+            "upg_cage_t0",
+            "upg_ram_t0"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            0.05,
+            0.8904,
+            -0.6212
+          ],
+          "kind": "utility",
+          "scale": 0.55,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: top of the load"
+        },
+        "tow_hitch": {
+          "point": [
+            0.0,
+            0.33,
+            -1.1712
+          ],
+          "kind": "hitch",
+          "scale": 0.55,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
+        }
       }
     },
     {
@@ -40140,6 +44373,113 @@
             -0.4162
           ],
           "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            -0.24,
+            0.5304,
+            0.1538
+          ],
+          "kind": "engine",
+          "scale": 0.55,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: front-left of the bed (no engine: bolt-on helper)"
+        },
+        "upg_tyres": {
+          "point": [
+            0.0,
+            0.0,
+            -0.4162
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: swap each wheel_* node's mesh for the tyre mesh and scale that node by wheels[name].scale",
+          "wheels": {
+            "wheel_l": {
+              "hub": [
+                0.56,
+                0.3904,
+                -0.4162
+              ],
+              "scale": [
+                0.3,
+                0.76,
+                0.76
+              ]
+            },
+            "wheel_r": {
+              "hub": [
+                -0.56,
+                0.3904,
+                -0.4162
+              ],
+              "scale": [
+                0.3,
+                0.76,
+                0.76
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            0.0,
+            0.0104,
+            -0.2662
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t0",
+            "upg_cage_t0",
+            "upg_ram_t0"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            0.05,
+            0.8904,
+            -0.6162
+          ],
+          "kind": "utility",
+          "scale": 0.55,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: top of the load"
+        },
+        "tow_hitch": {
+          "point": [
+            0.0,
+            0.33,
+            -1.1662
+          ],
+          "kind": "hitch",
+          "scale": 0.55,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
         }
       }
     },
@@ -40201,6 +44541,148 @@
           ],
           "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
         }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            0.795,
+            0.315,
+            0.0225
+          ],
+          "kind": "engine",
+          "scale": 0.7,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: bolted to the engine's left (+X) flank"
+        },
+        "upg_tyres": {
+          "point": [
+            0.0617,
+            0.0,
+            -0.0675
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: swap each wheel_* node's mesh for the tyre mesh and scale that node by wheels[name].scale",
+          "wheels": {
+            "wheel_f": {
+              "hub": [
+                0.495,
+                0.375,
+                0.7225
+              ],
+              "scale": [
+                0.4333,
+                0.72,
+                0.72
+              ]
+            },
+            "wheel_r": {
+              "hub": [
+                0.495,
+                0.375,
+                -0.6975
+              ],
+              "scale": [
+                0.4333,
+                0.72,
+                0.72
+              ]
+            },
+            "wheel_s": {
+              "hub": [
+                -0.805,
+                0.315,
+                -0.2275
+              ],
+              "scale": [
+                0.3667,
+                0.6,
+                0.6
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            0.175,
+            0.015,
+            -0.0775
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t2",
+            "upg_cage_t2",
+            "upg_ram_t2"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            0.495,
+            0.855,
+            -0.8775
+          ],
+          "kind": "utility",
+          "scale": 0.7,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: rear fender behind the seat"
+        },
+        "upg_utility_2": {
+          "point": [
+            -0.325,
+            0.775,
+            0.1225
+          ],
+          "kind": "utility",
+          "scale": 0.7,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: sidecar tub"
+        },
+        "tow_hitch": {
+          "point": [
+            0.495,
+            0.42,
+            -1.1975
+          ],
+          "kind": "hitch",
+          "scale": 0.7,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
+        }
       }
     },
     {
@@ -40260,6 +44742,148 @@
             -0.2275
           ],
           "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            0.795,
+            0.315,
+            0.0225
+          ],
+          "kind": "engine",
+          "scale": 0.7,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: bolted to the engine's left (+X) flank"
+        },
+        "upg_tyres": {
+          "point": [
+            0.0617,
+            0.0,
+            -0.0675
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: swap each wheel_* node's mesh for the tyre mesh and scale that node by wheels[name].scale",
+          "wheels": {
+            "wheel_f": {
+              "hub": [
+                0.495,
+                0.375,
+                0.7225
+              ],
+              "scale": [
+                0.4333,
+                0.72,
+                0.72
+              ]
+            },
+            "wheel_r": {
+              "hub": [
+                0.495,
+                0.375,
+                -0.6975
+              ],
+              "scale": [
+                0.4333,
+                0.72,
+                0.72
+              ]
+            },
+            "wheel_s": {
+              "hub": [
+                -0.805,
+                0.315,
+                -0.2275
+              ],
+              "scale": [
+                0.3667,
+                0.6,
+                0.6
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            0.175,
+            0.015,
+            -0.0775
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t2",
+            "upg_cage_t2",
+            "upg_ram_t2"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            0.495,
+            0.855,
+            -0.8775
+          ],
+          "kind": "utility",
+          "scale": 0.7,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: rear fender behind the seat"
+        },
+        "upg_utility_2": {
+          "point": [
+            -0.325,
+            0.775,
+            0.1225
+          ],
+          "kind": "utility",
+          "scale": 0.7,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: sidecar tub"
+        },
+        "tow_hitch": {
+          "point": [
+            0.495,
+            0.42,
+            -1.1975
+          ],
+          "kind": "hitch",
+          "scale": 0.7,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
         }
       }
     },
@@ -40321,6 +44945,148 @@
           ],
           "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
         }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            0.795,
+            0.315,
+            0.0575
+          ],
+          "kind": "engine",
+          "scale": 0.7,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: bolted to the engine's left (+X) flank"
+        },
+        "upg_tyres": {
+          "point": [
+            0.0617,
+            0.0,
+            -0.0325
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: swap each wheel_* node's mesh for the tyre mesh and scale that node by wheels[name].scale",
+          "wheels": {
+            "wheel_f": {
+              "hub": [
+                0.495,
+                0.375,
+                0.7575
+              ],
+              "scale": [
+                0.4333,
+                0.72,
+                0.72
+              ]
+            },
+            "wheel_r": {
+              "hub": [
+                0.495,
+                0.375,
+                -0.6625
+              ],
+              "scale": [
+                0.4333,
+                0.72,
+                0.72
+              ]
+            },
+            "wheel_s": {
+              "hub": [
+                -0.805,
+                0.315,
+                -0.1925
+              ],
+              "scale": [
+                0.3667,
+                0.6,
+                0.6
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            0.175,
+            0.015,
+            -0.0425
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t2",
+            "upg_cage_t2",
+            "upg_ram_t2"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            0.495,
+            0.855,
+            -0.8425
+          ],
+          "kind": "utility",
+          "scale": 0.7,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: rear fender behind the seat"
+        },
+        "upg_utility_2": {
+          "point": [
+            -0.325,
+            0.775,
+            0.1575
+          ],
+          "kind": "utility",
+          "scale": 0.7,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: sidecar tub"
+        },
+        "tow_hitch": {
+          "point": [
+            0.495,
+            0.42,
+            -1.1625
+          ],
+          "kind": "hitch",
+          "scale": 0.7,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
+        }
       }
     },
     {
@@ -40374,6 +45140,148 @@
             -0.55
           ],
           "note": "beacon pole, amber lamp on top (z ~2.7 m); blink it in the game"
+        }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            0.265,
+            0.315,
+            -0.06
+          ],
+          "kind": "engine",
+          "scale": 0.7,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: bolted to the engine's left (+X) flank"
+        },
+        "upg_tyres": {
+          "point": [
+            -0.4683,
+            0.0,
+            -0.15
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: the wheels are baked into `vehicle` here, so tyre upgrades are not shown",
+          "wheels": {
+            "wheel_f": {
+              "hub": [
+                -0.035,
+                0.375,
+                0.64
+              ],
+              "scale": [
+                0.4333,
+                0.72,
+                0.72
+              ]
+            },
+            "wheel_r": {
+              "hub": [
+                -0.035,
+                0.375,
+                -0.78
+              ],
+              "scale": [
+                0.4333,
+                0.72,
+                0.72
+              ]
+            },
+            "wheel_s": {
+              "hub": [
+                -1.335,
+                0.315,
+                -0.31
+              ],
+              "scale": [
+                0.3667,
+                0.6,
+                0.6
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            -0.355,
+            0.015,
+            -0.16
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t2",
+            "upg_cage_t2",
+            "upg_ram_t2"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            -0.035,
+            0.855,
+            -0.96
+          ],
+          "kind": "utility",
+          "scale": 0.7,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: rear fender behind the seat"
+        },
+        "upg_utility_2": {
+          "point": [
+            -0.855,
+            0.775,
+            0.04
+          ],
+          "kind": "utility",
+          "scale": 0.7,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: sidecar tub"
+        },
+        "tow_hitch": {
+          "point": [
+            -0.035,
+            0.42,
+            -1.28
+          ],
+          "kind": "hitch",
+          "scale": 0.7,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
         }
       }
     },
@@ -40429,6 +45337,160 @@
           ],
           "note": "beacon pole, amber lamp on top (z ~2.7 m); blink it in the game"
         }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            -0.53,
+            0.965,
+            -1.2475
+          ],
+          "kind": "engine",
+          "scale": 0.85,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: engine deck, over the air filter"
+        },
+        "upg_tyres": {
+          "point": [
+            -0.53,
+            0.0,
+            -0.0775
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: the wheels are baked into `vehicle` here, so tyre upgrades are not shown",
+          "wheels": {
+            "wheel_fl": {
+              "hub": [
+                0.37,
+                0.435,
+                0.9725
+              ],
+              "scale": [
+                0.9333,
+                0.84,
+                0.84
+              ]
+            },
+            "wheel_fr": {
+              "hub": [
+                -1.43,
+                0.435,
+                0.9725
+              ],
+              "scale": [
+                0.9333,
+                0.84,
+                0.84
+              ]
+            },
+            "wheel_rl": {
+              "hub": [
+                0.41,
+                0.495,
+                -1.1275
+              ],
+              "scale": [
+                1.1333,
+                0.96,
+                0.96
+              ]
+            },
+            "wheel_rr": {
+              "hub": [
+                -1.47,
+                0.495,
+                -1.1275
+              ],
+              "scale": [
+                1.1333,
+                0.96,
+                0.96
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            -0.53,
+            0.015,
+            -0.1275
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t3",
+            "upg_cage_t3",
+            "upg_ram_t3"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            -0.53,
+            1.535,
+            -0.2075
+          ],
+          "kind": "utility",
+          "scale": 0.85,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: roll-cage roof"
+        },
+        "upg_utility_2": {
+          "point": [
+            -0.53,
+            0.735,
+            1.3225
+          ],
+          "kind": "utility",
+          "scale": 0.85,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: nose"
+        },
+        "tow_hitch": {
+          "point": [
+            -0.53,
+            0.51,
+            -1.7475
+          ],
+          "kind": "hitch",
+          "scale": 0.85,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
+        }
       }
     },
     {
@@ -40483,6 +45545,184 @@
           ],
           "note": "beacon pole, amber lamp on top (z ~2.7 m); blink it in the game"
         }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            -0.53,
+            1.22,
+            1.87
+          ],
+          "kind": "engine",
+          "scale": 1.0,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: through the hood"
+        },
+        "upg_tyres": {
+          "point": [
+            -0.53,
+            0.0,
+            0.045
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: the wheels are baked into `vehicle` here, so tyre upgrades are not shown",
+          "wheels": {
+            "wheel_fl": {
+              "hub": [
+                0.39,
+                0.46,
+                1.52
+              ],
+              "scale": [
+                1.0,
+                0.92,
+                0.92
+              ]
+            },
+            "wheel_fr": {
+              "hub": [
+                -1.45,
+                0.46,
+                1.52
+              ],
+              "scale": [
+                1.0,
+                0.92,
+                0.92
+              ]
+            },
+            "wheel_rl": {
+              "hub": [
+                0.39,
+                0.46,
+                -1.43
+              ],
+              "scale": [
+                1.0,
+                0.92,
+                0.92
+              ]
+            },
+            "wheel_rr": {
+              "hub": [
+                -1.45,
+                0.46,
+                -1.43
+              ],
+              "scale": [
+                1.0,
+                0.92,
+                0.92
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            -0.53,
+            0.0,
+            -0.08
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t4",
+            "upg_cage_t4",
+            "upg_ram_t4"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            -0.53,
+            1.98,
+            0.32
+          ],
+          "kind": "utility",
+          "scale": 1.0,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger",
+            "upg_roof_turret"
+          ],
+          "note": "utility slot: cab roof"
+        },
+        "upg_utility_2": {
+          "point": [
+            -0.53,
+            0.74,
+            -1.93
+          ],
+          "kind": "utility",
+          "scale": 1.0,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: cargo bed floor"
+        },
+        "upg_utility_3": {
+          "point": [
+            -0.53,
+            0.68,
+            2.52
+          ],
+          "kind": "utility",
+          "scale": 1.0,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: front bumper"
+        },
+        "tow_hitch": {
+          "point": [
+            -0.53,
+            0.6,
+            -2.8
+          ],
+          "kind": "hitch",
+          "scale": 1.0,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
+        }
       }
     },
     {
@@ -40536,6 +45776,231 @@
             -0.55
           ],
           "note": "beacon pole, amber lamp on top (z ~2.7 m); blink it in the game"
+        }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            -0.53,
+            1.665,
+            2.4775
+          ],
+          "kind": "engine",
+          "scale": 1.25,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: through the hood"
+        },
+        "upg_tyres": {
+          "point": [
+            -0.53,
+            0.0,
+            -0.6392
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: the wheels are baked into `vehicle` here, so tyre upgrades are not shown",
+          "wheels": {
+            "wheel_fl": {
+              "hub": [
+                0.55,
+                0.575,
+                2.1775
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            },
+            "wheel_fr": {
+              "hub": [
+                -1.61,
+                0.575,
+                2.1775
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            },
+            "wheel_ml": {
+              "hub": [
+                0.55,
+                0.575,
+                -1.4225
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            },
+            "wheel_mr": {
+              "hub": [
+                -1.61,
+                0.575,
+                -1.4225
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            },
+            "wheel_rl": {
+              "hub": [
+                0.55,
+                0.575,
+                -2.6725
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            },
+            "wheel_rr": {
+              "hub": [
+                -1.61,
+                0.575,
+                -2.6725
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            -0.53,
+            0.015,
+            -0.2725
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t5",
+            "upg_cage_t5",
+            "upg_ram_t5"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            -0.53,
+            2.665,
+            0.9275
+          ],
+          "kind": "utility",
+          "scale": 1.25,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger",
+            "upg_roof_turret"
+          ],
+          "note": "utility slot: cab roof"
+        },
+        "upg_utility_2": {
+          "point": [
+            -0.53,
+            2.515,
+            -0.9225
+          ],
+          "kind": "utility",
+          "scale": 1.25,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: cargo cage top, front"
+        },
+        "upg_utility_3": {
+          "point": [
+            -0.53,
+            2.515,
+            -2.6225
+          ],
+          "kind": "utility",
+          "scale": 1.25,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: cargo cage top, rear"
+        },
+        "upg_utility_4": {
+          "point": [
+            -0.53,
+            1.135,
+            3.3275
+          ],
+          "kind": "utility",
+          "scale": 1.25,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: top of the plow"
+        },
+        "tow_hitch": {
+          "point": [
+            -0.53,
+            0.75,
+            -3.6525
+          ],
+          "kind": "hitch",
+          "scale": 1.25,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
         }
       }
     },
@@ -40621,6 +46086,231 @@
           ],
           "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
         }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            0.0,
+            1.665,
+            2.4775
+          ],
+          "kind": "engine",
+          "scale": 1.25,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: through the hood"
+        },
+        "upg_tyres": {
+          "point": [
+            0.0,
+            0.0,
+            -0.6392
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: swap each wheel_* node's mesh for the tyre mesh and scale that node by wheels[name].scale",
+          "wheels": {
+            "wheel_fl": {
+              "hub": [
+                1.08,
+                0.575,
+                2.1775
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            },
+            "wheel_fr": {
+              "hub": [
+                -1.08,
+                0.575,
+                2.1775
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            },
+            "wheel_ml": {
+              "hub": [
+                1.08,
+                0.575,
+                -1.4225
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            },
+            "wheel_mr": {
+              "hub": [
+                -1.08,
+                0.575,
+                -1.4225
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            },
+            "wheel_rl": {
+              "hub": [
+                1.08,
+                0.575,
+                -2.6725
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            },
+            "wheel_rr": {
+              "hub": [
+                -1.08,
+                0.575,
+                -2.6725
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            0.0,
+            0.015,
+            -0.2725
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t5",
+            "upg_cage_t5",
+            "upg_ram_t5"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            0.0,
+            2.665,
+            0.9275
+          ],
+          "kind": "utility",
+          "scale": 1.25,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger",
+            "upg_roof_turret"
+          ],
+          "note": "utility slot: cab roof"
+        },
+        "upg_utility_2": {
+          "point": [
+            0.0,
+            2.515,
+            -0.9225
+          ],
+          "kind": "utility",
+          "scale": 1.25,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: cargo cage top, front"
+        },
+        "upg_utility_3": {
+          "point": [
+            0.0,
+            2.515,
+            -2.6225
+          ],
+          "kind": "utility",
+          "scale": 1.25,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: cargo cage top, rear"
+        },
+        "upg_utility_4": {
+          "point": [
+            0.0,
+            1.135,
+            3.3275
+          ],
+          "kind": "utility",
+          "scale": 1.25,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: top of the plow"
+        },
+        "tow_hitch": {
+          "point": [
+            0.0,
+            0.75,
+            -3.6525
+          ],
+          "kind": "hitch",
+          "scale": 1.25,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
+        }
       }
     },
     {
@@ -40704,6 +46394,231 @@
             -2.76
           ],
           "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            0.0,
+            1.665,
+            2.39
+          ],
+          "kind": "engine",
+          "scale": 1.25,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: through the hood"
+        },
+        "upg_tyres": {
+          "point": [
+            0.0,
+            0.0,
+            -0.7267
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: swap each wheel_* node's mesh for the tyre mesh and scale that node by wheels[name].scale",
+          "wheels": {
+            "wheel_fl": {
+              "hub": [
+                1.08,
+                0.575,
+                2.09
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            },
+            "wheel_fr": {
+              "hub": [
+                -1.08,
+                0.575,
+                2.09
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            },
+            "wheel_ml": {
+              "hub": [
+                1.08,
+                0.575,
+                -1.51
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            },
+            "wheel_mr": {
+              "hub": [
+                -1.08,
+                0.575,
+                -1.51
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            },
+            "wheel_rl": {
+              "hub": [
+                1.08,
+                0.575,
+                -2.76
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            },
+            "wheel_rr": {
+              "hub": [
+                -1.08,
+                0.575,
+                -2.76
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            0.0,
+            0.015,
+            -0.36
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t5",
+            "upg_cage_t5",
+            "upg_ram_t5"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            0.0,
+            2.665,
+            0.84
+          ],
+          "kind": "utility",
+          "scale": 1.25,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger",
+            "upg_roof_turret"
+          ],
+          "note": "utility slot: cab roof"
+        },
+        "upg_utility_2": {
+          "point": [
+            0.0,
+            2.515,
+            -1.01
+          ],
+          "kind": "utility",
+          "scale": 1.25,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: cargo cage top, front"
+        },
+        "upg_utility_3": {
+          "point": [
+            0.0,
+            2.515,
+            -2.71
+          ],
+          "kind": "utility",
+          "scale": 1.25,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: cargo cage top, rear"
+        },
+        "upg_utility_4": {
+          "point": [
+            0.0,
+            1.135,
+            3.24
+          ],
+          "kind": "utility",
+          "scale": 1.25,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: top of the plow"
+        },
+        "tow_hitch": {
+          "point": [
+            0.0,
+            0.75,
+            -3.74
+          ],
+          "kind": "hitch",
+          "scale": 1.25,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
         }
       }
     },
@@ -40789,6 +46704,231 @@
           ],
           "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
         }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            0.0,
+            1.665,
+            2.39
+          ],
+          "kind": "engine",
+          "scale": 1.25,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: through the hood"
+        },
+        "upg_tyres": {
+          "point": [
+            0.0,
+            0.0,
+            -0.7267
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: swap each wheel_* node's mesh for the tyre mesh and scale that node by wheels[name].scale",
+          "wheels": {
+            "wheel_fl": {
+              "hub": [
+                1.08,
+                0.575,
+                2.09
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            },
+            "wheel_fr": {
+              "hub": [
+                -1.08,
+                0.575,
+                2.09
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            },
+            "wheel_ml": {
+              "hub": [
+                1.08,
+                0.575,
+                -1.51
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            },
+            "wheel_mr": {
+              "hub": [
+                -1.08,
+                0.575,
+                -1.51
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            },
+            "wheel_rl": {
+              "hub": [
+                1.08,
+                0.575,
+                -2.76
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            },
+            "wheel_rr": {
+              "hub": [
+                -1.08,
+                0.575,
+                -2.76
+              ],
+              "scale": [
+                1.3333,
+                1.12,
+                1.12
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            0.0,
+            0.015,
+            -0.36
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t5",
+            "upg_cage_t5",
+            "upg_ram_t5"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            0.0,
+            2.665,
+            0.84
+          ],
+          "kind": "utility",
+          "scale": 1.25,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger",
+            "upg_roof_turret"
+          ],
+          "note": "utility slot: cab roof"
+        },
+        "upg_utility_2": {
+          "point": [
+            0.0,
+            2.515,
+            -1.01
+          ],
+          "kind": "utility",
+          "scale": 1.25,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: cargo cage top, front"
+        },
+        "upg_utility_3": {
+          "point": [
+            0.0,
+            2.515,
+            -2.71
+          ],
+          "kind": "utility",
+          "scale": 1.25,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: cargo cage top, rear"
+        },
+        "upg_utility_4": {
+          "point": [
+            0.0,
+            1.135,
+            3.24
+          ],
+          "kind": "utility",
+          "scale": 1.25,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: top of the plow"
+        },
+        "tow_hitch": {
+          "point": [
+            0.0,
+            0.75,
+            -3.74
+          ],
+          "kind": "hitch",
+          "scale": 1.25,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
+        }
       }
     },
     {
@@ -40856,6 +46996,184 @@
             -1.43
           ],
           "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            0.0,
+            1.1975,
+            1.87
+          ],
+          "kind": "engine",
+          "scale": 1.0,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: through the hood"
+        },
+        "upg_tyres": {
+          "point": [
+            0.0,
+            0.0,
+            0.045
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: swap each wheel_* node's mesh for the tyre mesh and scale that node by wheels[name].scale",
+          "wheels": {
+            "wheel_fl": {
+              "hub": [
+                0.92,
+                0.4375,
+                1.52
+              ],
+              "scale": [
+                1.0,
+                0.92,
+                0.92
+              ]
+            },
+            "wheel_fr": {
+              "hub": [
+                -0.92,
+                0.4375,
+                1.52
+              ],
+              "scale": [
+                1.0,
+                0.92,
+                0.92
+              ]
+            },
+            "wheel_rl": {
+              "hub": [
+                0.92,
+                0.4375,
+                -1.43
+              ],
+              "scale": [
+                1.0,
+                0.92,
+                0.92
+              ]
+            },
+            "wheel_rr": {
+              "hub": [
+                -0.92,
+                0.4375,
+                -1.43
+              ],
+              "scale": [
+                1.0,
+                0.92,
+                0.92
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            0.0,
+            -0.0225,
+            -0.08
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t4",
+            "upg_cage_t4",
+            "upg_ram_t4"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            0.0,
+            1.9575,
+            0.32
+          ],
+          "kind": "utility",
+          "scale": 1.0,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger",
+            "upg_roof_turret"
+          ],
+          "note": "utility slot: cab roof"
+        },
+        "upg_utility_2": {
+          "point": [
+            0.0,
+            0.7175,
+            -1.93
+          ],
+          "kind": "utility",
+          "scale": 1.0,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: cargo bed floor"
+        },
+        "upg_utility_3": {
+          "point": [
+            0.0,
+            0.6575,
+            2.52
+          ],
+          "kind": "utility",
+          "scale": 1.0,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: front bumper"
+        },
+        "tow_hitch": {
+          "point": [
+            0.0,
+            0.6,
+            -2.8
+          ],
+          "kind": "hitch",
+          "scale": 1.0,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
         }
       }
     },
@@ -40925,6 +47243,184 @@
           ],
           "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
         }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            0.0,
+            1.1975,
+            1.87
+          ],
+          "kind": "engine",
+          "scale": 1.0,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: through the hood"
+        },
+        "upg_tyres": {
+          "point": [
+            0.0,
+            0.0,
+            0.045
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: swap each wheel_* node's mesh for the tyre mesh and scale that node by wheels[name].scale",
+          "wheels": {
+            "wheel_fl": {
+              "hub": [
+                0.92,
+                0.4375,
+                1.52
+              ],
+              "scale": [
+                1.0,
+                0.92,
+                0.92
+              ]
+            },
+            "wheel_fr": {
+              "hub": [
+                -0.92,
+                0.4375,
+                1.52
+              ],
+              "scale": [
+                1.0,
+                0.92,
+                0.92
+              ]
+            },
+            "wheel_rl": {
+              "hub": [
+                0.92,
+                0.4375,
+                -1.43
+              ],
+              "scale": [
+                1.0,
+                0.92,
+                0.92
+              ]
+            },
+            "wheel_rr": {
+              "hub": [
+                -0.92,
+                0.4375,
+                -1.43
+              ],
+              "scale": [
+                1.0,
+                0.92,
+                0.92
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            0.0,
+            -0.0225,
+            -0.08
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t4",
+            "upg_cage_t4",
+            "upg_ram_t4"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            0.0,
+            1.9575,
+            0.32
+          ],
+          "kind": "utility",
+          "scale": 1.0,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger",
+            "upg_roof_turret"
+          ],
+          "note": "utility slot: cab roof"
+        },
+        "upg_utility_2": {
+          "point": [
+            0.0,
+            0.7175,
+            -1.93
+          ],
+          "kind": "utility",
+          "scale": 1.0,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: cargo bed floor"
+        },
+        "upg_utility_3": {
+          "point": [
+            0.0,
+            0.6575,
+            2.52
+          ],
+          "kind": "utility",
+          "scale": 1.0,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: front bumper"
+        },
+        "tow_hitch": {
+          "point": [
+            0.0,
+            0.6,
+            -2.8
+          ],
+          "kind": "hitch",
+          "scale": 1.0,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
+        }
       }
     },
     {
@@ -40992,6 +47488,184 @@
             -1.46
           ],
           "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      },
+      "upgrade_slots": {
+        "upg_engine": {
+          "point": [
+            0.0,
+            1.1975,
+            1.84
+          ],
+          "kind": "engine",
+          "scale": 1.0,
+          "accepts": [
+            "upg_turbo",
+            "upg_muffler"
+          ],
+          "note": "engine slot: through the hood"
+        },
+        "upg_tyres": {
+          "point": [
+            0.0,
+            0.0,
+            0.015
+          ],
+          "kind": "tyres",
+          "accepts": [
+            "upg_tyres_offroad",
+            "upg_tyres_desert",
+            "upg_tyres_runflat"
+          ],
+          "note": "tyre slot: swap each wheel_* node's mesh for the tyre mesh and scale that node by wheels[name].scale",
+          "wheels": {
+            "wheel_fl": {
+              "hub": [
+                0.92,
+                0.4375,
+                1.49
+              ],
+              "scale": [
+                1.0,
+                0.92,
+                0.92
+              ]
+            },
+            "wheel_fr": {
+              "hub": [
+                -0.92,
+                0.4375,
+                1.49
+              ],
+              "scale": [
+                1.0,
+                0.92,
+                0.92
+              ]
+            },
+            "wheel_rl": {
+              "hub": [
+                0.92,
+                0.4375,
+                -1.46
+              ],
+              "scale": [
+                1.0,
+                0.92,
+                0.92
+              ]
+            },
+            "wheel_rr": {
+              "hub": [
+                -0.92,
+                0.4375,
+                -1.46
+              ],
+              "scale": [
+                1.0,
+                0.92,
+                0.92
+              ]
+            }
+          }
+        },
+        "upg_armor": {
+          "point": [
+            0.0,
+            -0.0225,
+            -0.11
+          ],
+          "kind": "armor",
+          "scale": 1.0,
+          "accepts": [
+            "upg_armor_plates_t4",
+            "upg_cage_t4",
+            "upg_ram_t4"
+          ],
+          "note": "armour slot at the model origin: the tier's fitted plates / cage / ram hang here unscaled"
+        },
+        "upg_utility_1": {
+          "point": [
+            0.0,
+            1.9575,
+            0.29
+          ],
+          "kind": "utility",
+          "scale": 1.0,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger",
+            "upg_roof_turret"
+          ],
+          "note": "utility slot: cab roof"
+        },
+        "upg_utility_2": {
+          "point": [
+            0.0,
+            0.7175,
+            -1.96
+          ],
+          "kind": "utility",
+          "scale": 1.0,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: cargo bed floor"
+        },
+        "upg_utility_3": {
+          "point": [
+            0.0,
+            0.6575,
+            2.49
+          ],
+          "kind": "utility",
+          "scale": 1.0,
+          "accepts": [
+            "upg_cargo_rack",
+            "upg_trailer",
+            "upg_fuel_tanks",
+            "upg_spotlights",
+            "upg_winch",
+            "upg_smoke_launcher",
+            "upg_radio_booster",
+            "upg_drone_pad",
+            "upg_medkit_locker",
+            "upg_workbench",
+            "upg_solar_charger"
+          ],
+          "note": "utility slot: front bumper"
+        },
+        "tow_hitch": {
+          "point": [
+            0.0,
+            0.6,
+            -2.83
+          ],
+          "kind": "hitch",
+          "scale": 1.0,
+          "accepts": [
+            "upg_trailer"
+          ],
+          "note": "upg_trailer (which takes a utility slot) couples here, scaled by `scale`"
         }
       }
     },

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using Remnants.Core.Colony;
 
 namespace Remnants.Game.Colony;
 
@@ -121,9 +122,51 @@ public partial class TownView : Node3D
         {
             _buildings[gone].Node.QueueFree();
             _buildings.Remove(gone);
+            _crops.Remove(gone);
         }
+        foreach (var b in sim.State.Buildings) SyncCrops(sim, b);
         if (SelectedBuildingId is { } sel && !alive.Contains(sel)) Select(null);
         RefreshPlots();
+    }
+
+    /// <summary>Crop rows on a Farm by what it grows and how far along it is (stage 1–3); the key they were built for.</summary>
+    private readonly Dictionary<int, string> _crops = new();
+
+    /// <summary>Farm harvest id → crop row model family (manifest <c>crop_{family}_s1..s3</c>).</summary>
+    private static readonly Dictionary<string, string> CropRows = new()
+    {
+        ["potatoes"] = "potato", ["beans"] = "beans", ["corn"] = "corn", ["herbs"] = "herbs",
+    };
+
+    /// <summary>
+    /// Lays the farm's crop rows over its field: the row model of its crop at the growth stage of the standing crop (1 just
+    /// planted, 2 half grown, 3 ripe and coming in). Rebuilt only when the crop or stage changes.
+    /// </summary>
+    private void SyncCrops(ColonySim sim, Building b)
+    {
+        if (b.DefId != "farm" || !_buildings.TryGetValue(b.Id, out var entry)) return;
+        var harvest = Harvesting.Current(sim.Data, b);
+        if (harvest is null || !CropRows.TryGetValue(harvest.Id, out var family))
+        {
+            if (_crops.Remove(b.Id)) entry.Node.GetNodeOrNull("Crops")?.QueueFree();
+            return;
+        }
+        var grow = harvest.GrowDays * sim.Data.Rules.TicksPerDay;
+        var wait = Harvesting.TicksUntilReady(sim.State, b);
+        var stage = wait <= 0 || grow <= 0 ? 3 : 1 - wait / grow < 0.5 ? 1 : 2;
+        var key = $"{family}:{stage}:{entry.Level}";
+        if (_crops.GetValueOrDefault(b.Id) == key && entry.Node.GetNodeOrNull("Crops") is not null) return;
+        _crops[b.Id] = key;
+        entry.Node.GetNodeOrNull("Crops")?.Free();
+        var rows = new Node3D { Name = "Crops" };
+        // The field is the front half of the 6 x 6 m farm (+Z); rows run front to back, 0.6 m apart.
+        for (var i = 0; i < 7; i++)
+            if (_models.TryInstance($"crop_{family}_s{stage}") is { } row)
+            {
+                row.Position = new Vector3(-1.8f + 0.6f * i, 0.02f, 1.5f);
+                rows.AddChild(row);
+            }
+        entry.Node.AddChild(rows);
     }
 
     public override void _UnhandledInput(InputEvent e)

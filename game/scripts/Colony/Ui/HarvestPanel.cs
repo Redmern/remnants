@@ -94,7 +94,7 @@ public partial class HarvestPanel : PanelContainer
         column.MouseFilter = MouseFilterEnum.Ignore;
         card.AddChild(column);
         var head = Widgets.Row(4);
-        foreach (var item in h.Outputs.Keys.Take(3)) head.AddChild(Icons.Rect(FoodText.Icon(sim, item, 16), 16, current ? Palette.Amber : Palette.TextMuted));
+        foreach (var item in h.Outputs.Keys.Take(3)) head.AddChild(Icons.Rect(FoodText.Icon(sim, item, 16), 20, FoodText.Tint(sim, item, current ? Palette.Amber : Palette.TextMuted)));
         var name = Widgets.Label(h.Name, "Heading", size: 14);
         name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         head.AddChild(name);

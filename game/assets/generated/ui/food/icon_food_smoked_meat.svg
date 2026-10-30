@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<g transform="scale(1)">
+<g transform="translate(64 64) scale(1.08) translate(-64 -64)">
+<path d="M30,112 a34,7 0 1,0 68,0 a34,7 0 1,0 -68,0 Z" fill="#3b3d3c" opacity="0.45"/>
+<path d="M64,6 L64,24" fill="none" stroke="#a39a7c" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="64" cy="26" r="5" fill="#a39a7c" stroke="#3b3d3c" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M56,30 C56,30 72,30 72,30 C74,44 100,58 100,82 C100,104 82,114 64,114 C46,114 28,104 28,82 C28,58 54,44 56,30 Z" fill="#4a3527" stroke="#3b3d3c" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M40,74 C50,66 80,66 90,76" fill="none" stroke="#b0673a" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M36,92 C50,84 80,86 92,96" fill="none" stroke="#b0673a" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M46,56 C54,52 72,52 80,58" fill="none" stroke="#7a5a3a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M54,32 a10,5 0 1,0 20,0 a10,5 0 1,0 -20,0 Z" fill="#c9c6bb" stroke="#3b3d3c" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+</g>
+</g>
+</svg>
