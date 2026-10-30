@@ -1,63 +1,71 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Godot;
 using Remnants.Core.Scavenge;
+using Remnants.Game.Hud;
 using UiKit = Remnants.Game.Colony.Ui.Ui;
 
 namespace Remnants.Game.Scavenge.Ui;
 
 /// <summary>
-/// Defenses against the fog for the acting unit: Overwatch (react to the first hostile that shows itself), Brace (no
-/// ambush bonus against it, extra cover) and Lookout (more sight and detection this round). Costs come from Core's
-/// rules; Core decides whether it works. Kept separate from <see cref="ActionPanel"/> so it can be restyled alone.
+/// Defenses against the fog for the acting unit, as <see cref="ActionButton"/>s with AP pips and hotkeys: Overwatch
+/// (O; react to the first hostile that shows itself), Brace (B; no ambush bonus against it, extra cover) and Lookout
+/// (L; more sight and detection this round). Costs come from Core's rules; Core decides whether it works.
 /// </summary>
 public partial class StancePanel : PanelContainer
 {
     private readonly ScavengePresenter _presenter;
-    private readonly VBoxContainer _content = new();
+    private readonly VBoxContainer _content = Widgets.Column(4);
+    private readonly List<ActionButton> _buttons = new();
 
     public event Action<IScavengeCommand>? CommandRequested;
 
     public StancePanel(ScavengePresenter presenter)
     {
         _presenter = presenter;
-        CustomMinimumSize = new Vector2(260, 0);
+        CustomMinimumSize = new Vector2(300, 0);
         var box = UiKit.Panel(this);
-        box.AddChild(UiKit.Heading("Stance"));
-        _content.AddThemeConstantOverride("separation", 4);
+        box.AddChild(Widgets.SectionHeader("Stance", "stance_overwatch"));
         box.AddChild(_content);
+    }
+
+    /// <summary>Presses the stance bound to the key in <paramref name="e"/>, if it is available.</summary>
+    public bool PressHotkey(InputEvent e)
+    {
+        var button = _buttons.FirstOrDefault(b => b.Hotkey is { } k && !b.Disabled && Hotkeys.Pressed(e, k));
+        button?.EmitSignal(BaseButton.SignalName.Pressed);
+        return button is not null;
     }
 
     public void Refresh(bool busy)
     {
-        foreach (var child in _content.GetChildren()) child.QueueFree();
+        Widgets.Clear(_content);
+        _buttons.Clear();
         var unit = _presenter.ActingUnit;
         Visible = unit is not null && !busy;
         if (unit is null || busy) return;
 
         var fog = _presenter.Sim.Data.Rules.Fog;
         var pid = _presenter.PlayerId;
-        Add($"Overwatch  ·  {fog.Overwatch.ApCost} AP, ends turn",
+        Add("stance_overwatch", "Overwatch", "ends the turn", "scav_overwatch",
             "Fire at the first hostile that moves or reveals itself in sight and reach (once).",
-            fog.Overwatch.ApCost, new SetStance(pid, unit.Id, Stance.Overwatch), unit);
-        Add($"Brace  ·  {fog.Brace.ApCost} AP, ends turn",
+            fog.Overwatch.ApCost, new SetStance(pid, unit.Id, Stance.Overwatch), unit, unit.Stance == Stance.Overwatch);
+        Add("stance_brace", "Brace", $"+{fog.Brace.CoverBonus * 100:0}% cover · ends the turn", "scav_brace",
             $"No ambush bonus against {unit.Name}, +{fog.Brace.CoverBonus * 100:0}% cover; {fog.Brace.NextTurnApPenalty} AP less next turn.",
-            fog.Brace.ApCost, new SetStance(pid, unit.Id, Stance.Brace), unit);
-        var lookout = Add($"Lookout  ·  {fog.Lookout.ApCost} AP",
+            fog.Brace.ApCost, new SetStance(pid, unit.Id, Stance.Brace), unit, unit.Stance == Stance.Brace);
+        Add("stance_scan", unit.Lookout ? "On lookout" : "Lookout", $"+{fog.Lookout.SightBonus:0} sight this round", "scav_lookout",
             $"+{fog.Lookout.SightBonus:0} sight and sharper eyes until {unit.Name}'s next turn.",
-            fog.Lookout.ApCost, new Lookout(pid, unit.Id), unit);
-        if (unit.Lookout)
-        {
-            lookout.Disabled = true;
-            lookout.Text = "On lookout";
-        }
+            fog.Lookout.ApCost, new Lookout(pid, unit.Id), unit, unit.Lookout);
     }
 
-    private Button Add(string text, string tooltip, int cost, IScavengeCommand command, Unit unit)
+    private void Add(string icon, string text, string detail, string hotkey, string tooltip, int cost, IScavengeCommand command, Unit unit, bool active)
     {
-        var button = UiKit.Button(text, () => CommandRequested?.Invoke(command));
-        button.TooltipText = tooltip;
-        button.Disabled = cost > unit.Ap;
+        var button = new ActionButton(icon, text, detail, cost, hotkey, tooltip);
+        button.Pressed += () => CommandRequested?.Invoke(command);
+        button.SetBlocked(active || cost > unit.Ap, cost > unit.Ap);
+        if (active) button.ThemeTypeVariation = "Primary";
+        _buttons.Add(button);
         _content.AddChild(button);
-        return button;
     }
 }

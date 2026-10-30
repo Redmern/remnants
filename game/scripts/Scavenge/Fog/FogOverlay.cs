@@ -8,29 +8,45 @@ namespace Remnants.Game.Scavenge.Fog;
 /// <summary>
 /// What the fog of war adds to the map, all of it read from Core state the local side may know (purely visual):
 /// <list type="bullet">
-/// <item>contacts — a "?" disc (<c>contact_marker</c>, amber) where the side heard something, fading with age;</item>
+/// <item>contacts — a disc (<c>contact_marker</c>, amber) where the side heard something, fading with age;</item>
 /// <item>overwatch — an eye ring (<c>overwatch_marker</c>) under units on overwatch, and for the local side's own a
-///   ring at their sight radius so the covered area shows;</item>
-/// <item>brace / lookout tags over the local side's units, a red "revealed" ring on hostiles revealed to the side;</item>
+///   soft amber ring at their sight radius, only while that unit is selected or hovered (<see cref="SetFocus"/>);</item>
+/// <item>a red "revealed" ring on hostiles revealed to the side;</item>
 /// <item>burning flares (<c>item_flare_lit</c> + light + a disc over the lit area) and the side's own motion sensors
 ///   (<c>item_motion_sensor</c> + its radius);</item>
 /// <item>incoming fire — on an ambush of one of the side's units, a red streak from where it came from (the attacker if
 ///   seen, else the attack contact) to the victim.</item>
 /// </list>
-/// Rebuilt on every <see cref="Sync"/>; kept apart from the other views so the HUD restyle can leave it alone.
+/// Rebuilt on every <see cref="Sync"/>. Text (the "?" of contacts, OVERWATCH / BRACED / LOOKOUT / REVEALED, AMBUSH!) is
+/// drawn by the HUD (<see cref="Ui.WorldTags"/>, fed by <see cref="Popped"/>) so it stacks with names and previews.
+/// Cyan stays reserved for the Network: the player's own overwatch is amber.
 /// </summary>
 public partial class FogOverlay : Node3D
 {
-    public static readonly Color ContactColor = new(1f, 0.72f, 0.25f);
-    public static readonly Color OverwatchColor = new(0.35f, 0.9f, 1f);
-    public static readonly Color HostileOverwatchColor = new(1f, 0.35f, 0.3f);
-    public static readonly Color RevealedColor = new(1f, 0.2f, 0.15f);
+    public static readonly Color ContactColor = Hud.Palette.Amber;
+    public static readonly Color OverwatchColor = Hud.Palette.Amber;
+    public static readonly Color HostileOverwatchColor = Hud.Palette.Danger;
+    public static readonly Color RevealedColor = Hud.Palette.Danger;
     public static readonly Color FlareColor = new(1f, 0.45f, 0.3f);
     public static readonly Color SensorColor = new(0.55f, 1f, 0.55f);
 
     private ScavengePresenter _presenter = null!;
     private ScavengeModels _models = null!;
     private Node3D _markers = null!;
+    private readonly Dictionary<int, Node3D> _watchRanges = new();
+    private readonly HashSet<int> _focus = new();
+
+    /// <summary>A pop-up for the HUD over a spot: text, colour.</summary>
+    public event System.Action<Vector3, string, Color>? Popped;
+
+    /// <summary>Overwatch ranges show only for these units (selected, hovered).</summary>
+    public void SetFocus(params int?[] unitIds)
+    {
+        _focus.Clear();
+        foreach (var id in unitIds)
+            if (id is { } i) _focus.Add(i);
+        foreach (var (id, range) in _watchRanges) range.Visible = _focus.Contains(id);
+    }
 
     public void Setup(ScavengePresenter presenter, ScavengeModels models)
     {
@@ -43,6 +59,7 @@ public partial class FogOverlay : Node3D
     public void Sync()
     {
         foreach (var child in _markers.GetChildren()) child.QueueFree();
+        _watchRanges.Clear();
         var state = _presenter.State;
 
         foreach (var contact in _presenter.Contacts)
@@ -53,12 +70,6 @@ public partial class FogOverlay : Node3D
             var marker = Marker("contact_marker", color with { A = 0.8f * fade }, 0.8f);
             marker.Position = TileGrid.ToWorld(contact.Pos) + Vector3.Up * 0.06f;
             _markers.AddChild(marker);
-            _markers.AddChild(Tag(contact.Kind switch
-            {
-                ContactKind.Attack => "?!",
-                ContactKind.Sensor => "?·",
-                _ => "?",
-            }, color with { A = fade }, TileGrid.ToWorld(contact.Pos) + Vector3.Up * 1.2f, 64));
         }
 
         foreach (var unit in state.Units.Where(u => u.OnMap && _presenter.CanSee(u)))
@@ -70,17 +81,15 @@ public partial class FogOverlay : Node3D
                 var marker = Marker("overwatch_marker", (mine ? OverwatchColor : HostileOverwatchColor) with { A = 0.85f }, 0.9f);
                 marker.Position = at + Vector3.Up * 0.05f;
                 _markers.AddChild(marker);
-                if (mine) _markers.AddChild(Ring(at, (float)_presenter.Sim.Profile(unit).Sight * TileGrid.TileSize, OverwatchColor with { A = 0.55f }));
-                _markers.AddChild(Tag(mine ? "OVERWATCH" : "ON WATCH", mine ? OverwatchColor : HostileOverwatchColor, at + Vector3.Up * 2.9f));
+                if (mine)
+                {
+                    var range = WatchRange(at, (float)_presenter.Sim.Profile(unit).Sight * TileGrid.TileSize);
+                    range.Visible = _focus.Contains(unit.Id);
+                    _watchRanges[unit.Id] = range;
+                    _markers.AddChild(range);
+                }
             }
-            else if (unit.Stance == Stance.Brace && mine)
-                _markers.AddChild(Tag("BRACED", new Color(0.9f, 0.85f, 0.6f), at + Vector3.Up * 2.9f));
-            if (unit.Lookout && mine) _markers.AddChild(Tag("LOOKOUT", new Color(0.8f, 0.95f, 1f), at + Vector3.Up * 3.2f));
-            if (!mine && _presenter.IsRevealed(unit))
-            {
-                _markers.AddChild(Ring(at, 0.95f, RevealedColor with { A = 0.9f }, 0.08f));
-                _markers.AddChild(Tag("REVEALED", RevealedColor, at + Vector3.Up * 3.5f));
-            }
+            if (!mine && _presenter.IsRevealed(unit)) _markers.AddChild(Ring(at, 0.95f, RevealedColor with { A = 0.9f }, 0.08f));
         }
 
         foreach (var flare in state.Flares.Where(f => f.UntilRound >= state.Round))
@@ -144,17 +153,14 @@ public partial class FogOverlay : Node3D
         AddChild(head);
         head.LookAtFromPosition(end - (end - start).Normalized() * 0.5f, end, Vector3.Up);
         head.RotateObjectLocal(Vector3.Right, -Mathf.Pi / 2);
-        var tag = Tag("AMBUSH!", RevealedColor, end + Vector3.Up * 1.4f, 40);
-        AddChild(tag);
+        Popped?.Invoke(TileGrid.ToWorld(victim.Pos), "AMBUSH!", RevealedColor);
 
         var tween = CreateTween();
         tween.TweenInterval(1.6);
-        tween.Parallel().TweenProperty(tag, "position:y", tag.Position.Y + 0.8f, 1.6);
         tween.TweenCallback(Callable.From(() =>
         {
             streak.QueueFree();
             head.QueueFree();
-            tag.QueueFree();
         }));
     }
 
@@ -186,19 +192,14 @@ public partial class FogOverlay : Node3D
         CullMode = BaseMaterial3D.CullModeEnum.Disabled,
     };
 
-    private static Label3D Tag(string text, Color color, Vector3 at, int size = 26) => new()
+    /// <summary>The area a unit on overwatch covers: a soft amber edge with a fainter halo just inside it.</summary>
+    private static Node3D WatchRange(Vector3 at, float radius)
     {
-        Text = text,
-        FontSize = size,
-        PixelSize = 0.01f,
-        OutlineSize = 8,
-        Modulate = color,
-        NoDepthTest = true,
-        RenderPriority = 3,
-        OutlineRenderPriority = 2,
-        Billboard = BaseMaterial3D.BillboardModeEnum.Enabled,
-        Position = at,
-    };
+        var root = new Node3D();
+        root.AddChild(Ring(at, radius, OverwatchColor with { A = 0.3f }, 0.04f));
+        root.AddChild(Ring(at, radius - 0.25f, OverwatchColor with { A = 0.08f }, 0.18f));
+        return root;
+    }
 
     private static MeshInstance3D Ring(Vector3 at, float radius, Color color, float width = 0.06f) => new()
     {

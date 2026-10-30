@@ -225,9 +225,9 @@ public partial class MapView : Node3D
         tile.AddChild(Quad(ExitColor, 0.09f, 1.7f));
         tile.AddChild(new Label3D
         {
-            Text = "EXIT", FontSize = 40, PixelSize = 0.01f, Position = new Vector3(0, 0.35f, 0),
-            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Modulate = new Color(0.6f, 1f, 0.65f),
-            OutlineSize = 8,
+            Text = "EXIT", FontSize = 40, PixelSize = 0.01f, Position = new Vector3(0, 0.35f, 0), Font = Hud.Fonts.DisplayBold,
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Modulate = Hud.Palette.Good,
+            OutlineSize = 10, OutlineModulate = new Color(Hud.Palette.Void, 0.9f),
         });
     }
 
@@ -290,10 +290,12 @@ public partial class MapView : Node3D
         if (label is null) return;
         _highlights.AddChild(new Label3D
         {
-            Text = label, FontSize = kind == HighlightKind.Attack ? 44 : 32, PixelSize = 0.01f, OutlineSize = 10,
+            // Tile notes sit low (move cost, who an item reaches); text over units is the HUD's (Ui.WorldTags).
+            Text = label, FontSize = 30, PixelSize = 0.01f, OutlineSize = 12, Font = Hud.Fonts.BodyBold,
+            OutlineModulate = new Color(Hud.Palette.Void, 0.9f),
             Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, NoDepthTest = true,
-            Position = TileGrid.ToWorld(p) + new Vector3(0, kind == HighlightKind.Attack ? 2.9f : 0.5f, 0),
-            Modulate = kind == HighlightKind.Attack ? new Color(1f, 0.75f, 0.65f) : new Color(0.8f, 0.95f, 1f),
+            Position = TileGrid.ToWorld(p) + new Vector3(0, 0.5f, 0),
+            Modulate = kind == HighlightKind.Use ? Hud.Palette.Good : Hud.Palette.Text,
         });
     }
 

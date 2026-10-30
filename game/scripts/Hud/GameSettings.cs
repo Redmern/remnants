@@ -149,6 +149,18 @@ public static class Hotkeys
         new("camera_rotate_left", "Rotate camera left", "Colony", [Key.Q]),
         new("camera_rotate_right", "Rotate camera right", "Colony", [Key.R]),
         new("end_turn", "End turn", "Scavenge", [Key.Space, Key.Enter]),
+        new("scav_attack_1", "First attack", "Scavenge", [Key.Key1]),
+        new("scav_attack_2", "Second attack", "Scavenge", [Key.Key2]),
+        new("scav_attack_3", "Third attack", "Scavenge", [Key.Key3]),
+        new("scav_item_1", "Use first item", "Scavenge", [Key.Key4]),
+        new("scav_item_2", "Use second item", "Scavenge", [Key.Key5]),
+        new("scav_item_3", "Use third item", "Scavenge", [Key.Key6]),
+        new("scav_overwatch", "Overwatch", "Scavenge", [Key.O]),
+        new("scav_brace", "Brace", "Scavenge", [Key.B]),
+        new("scav_lookout", "Lookout", "Scavenge", [Key.L]),
+        new("scav_loot", "Take the first loot", "Scavenge", [Key.F]),
+        new("scav_recruit", "Recruit", "Scavenge", [Key.T]),
+        new("scav_extract", "Extract", "Scavenge", [Key.X]),
     ];
 
     /// <summary>Camera panning is not an action (it reads WASD and arrows directly); listed for the settings screen.</summary>
@@ -157,6 +169,7 @@ public static class Hotkeys
         ("Pan camera", "W A S D / arrows / middle-drag"),
         ("Zoom", "Mouse wheel"),
         ("Rotate camera (scavenge)", "Q / E"),
+        ("Cancel aiming (scavenge)", "Right-click / Esc"),
         ("Orbit camera (colony)", "Right-drag"),
     ];
 

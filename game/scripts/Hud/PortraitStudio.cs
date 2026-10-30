@@ -53,6 +53,12 @@ public partial class PortraitStudio : Node
         });
     }
 
+    /// <summary>Any model, cached under <paramref name="key"/> (which must change when the look does).</summary>
+    public static Texture2D For(SceneTree tree, string key, Func<ModelLibrary, Node3D> build) => Instance(tree).Get(key, build);
+
+    /// <summary>A body's look for cache keys: life stage plus each part's condition and prosthetic kind.</summary>
+    public static string LookOf(Body body) => Look("", body);
+
     /// <summary>A stable background tint per person so identical models still read as different people.</summary>
     public static Color Backdrop(int id)
     {

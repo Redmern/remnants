@@ -23,14 +23,13 @@ public partial class ScavengeScreen : Node3D
     private FogOverlay _fog = null!;
     private TacticalCamera _camera = null!;
 
+    private ScavengeHud _hud = null!;
     private TurnBar _turnBar = null!;
     private UnitPanel _unitPanel = null!;
     private ActionPanel _actionPanel = null!;
     private StancePanel _stancePanel = null!;
     private ScavengeLog _log = null!;
     private ResultPanel _result = null!;
-    private Label _toast = null!;
-    private Tween? _toastTween;
 
     private int? _selectedId;
     private int? _lastActingId;
@@ -74,6 +73,8 @@ public partial class ScavengeScreen : Node3D
         if (Fog.FogDemo.Requested) _ = FogDemoScript();
         if (float.TryParse(DebugValue("--zoom"), out var zoom)) _camera.Camera.Size = zoom;
         if (int.TryParse(DebugValue("--autoplay"), out var steps)) _ = Autoplay(steps);
+        if (int.TryParse(DebugValue("--select-unit"), out var unitId)) CallDeferred(MethodName.SelectForCapture, unitId);
+        if (DebugCapture.HasFlag("--pause-menu")) _hud.Pause.CallDeferred(Hud.Overlay.MethodName.Open);
     }
 
     private void AddEnvironment()
@@ -99,46 +100,11 @@ public partial class ScavengeScreen : Node3D
 
     private void BuildHud()
     {
-        var layer = new CanvasLayer { Name = "Hud" };
-        AddChild(layer);
-        var root = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Theme = HudTheme.Shared };
-        root.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        foreach (var side in new[] { "left", "right", "top", "bottom" }) root.AddThemeConstantOverride($"margin_{side}", 8);
-        layer.AddChild(root);
-
-        var column = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        root.AddChild(column);
-        _turnBar = new TurnBar(_presenter);
-        column.AddChild(_turnBar);
-
-        var middle = new HBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
-        column.AddChild(middle);
-        // Panels hug their content (top-left unit, top-right actions, bottom-right log) so the map stays open.
-        _unitPanel = new UnitPanel(_presenter);
-        middle.AddChild(_unitPanel);
-        middle.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore });
-        var right = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        middle.AddChild(right);
-        _actionPanel = new ActionPanel(_presenter) { SizeFlagsVertical = Control.SizeFlags.ShrinkBegin };
-        right.AddChild(_actionPanel);
-        _stancePanel = new StancePanel(_presenter) { SizeFlagsVertical = Control.SizeFlags.ShrinkBegin };
-        right.AddChild(_stancePanel);
-
-        _toast = Colony.Ui.Ui.Label("", 17, Colony.Ui.Ui.Bad);
-        _toast.HorizontalAlignment = HorizontalAlignment.Center;
-        _toast.AddThemeConstantOverride("outline_size", 6);
-        _toast.AddThemeColorOverride("font_outline_color", Colors.Black);
-        _toast.MouseFilter = Control.MouseFilterEnum.Ignore;
-        column.AddChild(_toast);
-
-        var bottom = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        column.AddChild(bottom);
-        bottom.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore });
-        _log = new ScavengeLog { CustomMinimumSize = new Vector2(460, 130) };
-        bottom.AddChild(_log);
-
-        _result = new ResultPanel { Visible = false, Theme = HudTheme.Shared };
-        layer.AddChild(_result);
+        _hud = new ScavengeHud(_presenter);
+        AddChild(_hud);
+        _hud.Tags.Setup(_presenter, _units, _camera.Camera);
+        (_turnBar, _unitPanel, _actionPanel, _stancePanel, _log, _result) =
+            (_hud.TurnBar, _hud.UnitPanel, _hud.Actions, _hud.Stances, _hud.Log, _hud.Result);
     }
 
     private void Wire()
@@ -148,12 +114,21 @@ public partial class ScavengeScreen : Node3D
             _log.Feedback(message, error);
             if (error) Toast(message);
         };
-        _turnBar.EndTurnPressed += OnEndTurn;
-        _turnBar.LeavePressed += () =>
+        _hud.EndTurnRequested += OnEndTurn;
+        _hud.LeaveRequested += () =>
         {
             _presenter.Driver.Leave();
             Finish();
         };
+        _hud.BackRequested += () =>
+        {
+            if (_usingItem is null) return false;
+            _usingItem = null;
+            RefreshHud();
+            return true;
+        };
+        _units.Floated += (at, text, color, big) => _hud.Tags.Pop(at, text, color, big);
+        _fog.Popped += (at, text, color) => _hud.Tags.Pop(at, text, color, true);
         _presenter.Pushed += OnPushed;
         _turnBar.UnitClicked += id =>
         {
@@ -194,13 +169,6 @@ public partial class ScavengeScreen : Node3D
             case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Right }:
                 _usingItem = null;
                 SelectActing();
-                RefreshHud();
-                break;
-            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.Space or Key.Enter }:
-                OnEndTurn();
-                break;
-            case InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape }:
-                _usingItem = null;
                 RefreshHud();
                 break;
         }
@@ -323,6 +291,13 @@ public partial class ScavengeScreen : Node3D
         SyncAll();
     }
 
+    /// <summary>Debug (<c>--select-unit=ID</c>, for screenshots): select a unit as if clicked, after any demo staging.</summary>
+    private async void SelectForCapture(int unitId)
+    {
+        await ToSignal(GetTree().CreateTimer(1.0), SceneTreeTimer.SignalName.Timeout);
+        Select(unitId);
+    }
+
     private void SelectActing()
     {
         if (_presenter.ActingUnit is { } acting) Select(acting.Id);
@@ -357,7 +332,8 @@ public partial class ScavengeScreen : Node3D
     private void RefreshFocus()
     {
         var hovered = _hover is { } p && _presenter.State.UnitAt(p) is { } u && _presenter.CanSee(u) ? u.Id : (int?)null;
-        _units.SetFocus(_selectedId, hovered, _presenter.ActingUnit?.Id);
+        _hud.Tags.SetFocus(_selectedId, hovered, _presenter.ActingUnit?.Id);
+        _fog.SetFocus(_selectedId, hovered);
     }
 
     private void RefreshHud()
@@ -375,6 +351,8 @@ public partial class ScavengeScreen : Node3D
     private void RefreshHighlights(Unit? selected)
     {
         _map.ClearHighlights();
+        var previews = new Dictionary<int, WorldTags.Preview>();
+        _hud.Tags.SetPreviews(previews);
         if (selected is null || !selected.OnMap || !_presenter.CanSee(selected)) return;
         _map.Highlight(selected.Pos, HighlightKind.Selected);
         if (_busy || _presenter.Done) return;
@@ -405,20 +383,16 @@ public partial class ScavengeScreen : Node3D
 
         if (!isActing || _actionPanel.ActionId is not { } actionId || _presenter.Sim.Profile(selected).Action(actionId) is not { } action) return;
         foreach (var option in _presenter.AttackOptions(selected, action))
-            _map.Highlight(option.Target.Pos, HighlightKind.Attack,
-                (option.Ambush is { Braced: false } ? "AMBUSH " : "") +
-                $"{option.HitChance:P0} · {action.MinDamage:0}–{action.MaxDamage:0}" + (action.ApCost > selected.Ap ? " · no AP" : ""));
+        {
+            _map.Highlight(option.Target.Pos, HighlightKind.Attack);
+            var ambush = option.Ambush is { Braced: false };
+            previews[option.Target.Id] = new WorldTags.Preview(
+                (ambush ? "AMBUSH " : "") + $"{option.HitChance * 100:0}% · {action.MinDamage:0}–{action.MaxDamage:0}" + (action.ApCost > selected.Ap ? " · no AP" : ""),
+                ambush, action.ApCost > selected.Ap);
+        }
     }
 
-    private void Toast(string message)
-    {
-        _toast.Text = message;
-        _toast.Modulate = Colors.White;
-        _toastTween?.Kill();
-        _toastTween = CreateTween();
-        _toastTween.TweenInterval(2.2);
-        _toastTween.TweenProperty(_toast, "modulate:a", 0f, 0.6);
-    }
+    private void Toast(string message) => _hud.Toasts.Show("Can't do that", message, "stat_warning", Hud.Palette.Danger);
 
     private static string? DebugValue(string name) =>
         OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith($"{name}="))?[(name.Length + 1)..];

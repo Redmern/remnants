@@ -10,8 +10,8 @@ using Remnants.Game.Colony;
 namespace Remnants.Game.Scavenge;
 
 /// <summary>
-/// One node per unit (model, side ring, name label, HP bar). Names show only for the units in focus (selected,
-/// hovered, acting) or downed; the HP bar for those and for anyone hurt. <see cref="Sync"/> snaps everything to Core state;
+/// One node per unit (model, side ring). Names, HP bars and pop-ups are HUD chips (<see cref="Ui.WorldTags"/>, fed by
+/// <see cref="Floated"/>) so they stack instead of overlapping. <see cref="Sync"/> snaps everything to Core state;
 /// <see cref="Replay"/> plays a command's events step by step (moves tween, hits flash) so the player can follow
 /// enemy turns. Purely visual.
 /// </summary>
@@ -20,7 +20,6 @@ public partial class UnitViews : Node3D
     private const float MoveSeconds = 0.28f;
     private const float StrikeSeconds = 0.16f;
 
-    private const float BarWidth = 0.9f, BarHeight = 0.09f;
 
     private static readonly Regex DamagePattern = new(@"for (\d+)", RegexOptions.Compiled);
 
@@ -30,9 +29,6 @@ public partial class UnitViews : Node3D
         public Node3D Model = null!;
         public Node3D Pose = null!;
         public MeshInstance3D Ring = null!;
-        public Label3D Label = null!;
-        public Node3D Bar = null!;
-        public MeshInstance3D BarFill = null!;
         public string BodyKey = "";
     }
 
@@ -40,7 +36,9 @@ public partial class UnitViews : Node3D
     private ScavengeModels _models = null!;
     private readonly Dictionary<int, View> _views = new();
     private StandardMaterial3D _hitFlash = null!, _healFlash = null!;
-    private readonly HashSet<int> _focus = new();
+
+    /// <summary>A pop-up for the HUD: where (unit position), what, which colour, and whether it is a big one.</summary>
+    public event System.Action<Vector3, string, Color, bool>? Floated;
 
     public void Setup(ScavengePresenter presenter, ScavengeModels models)
     {
@@ -51,34 +49,6 @@ public partial class UnitViews : Node3D
     }
 
     public Vector3? WorldOf(int unitId) => _views.TryGetValue(unitId, out var v) ? v.Root.Position : null;
-
-    /// <summary>The units whose name and HP show: the selected, the hovered and the acting one.</summary>
-    public void SetFocus(params int?[] unitIds)
-    {
-        _focus.Clear();
-        foreach (var id in unitIds)
-            if (id is { } i) _focus.Add(i);
-        foreach (var unit in _presenter.State.Units)
-            if (_views.TryGetValue(unit.Id, out var view)) UpdateLabel(view, unit);
-    }
-
-    private void UpdateLabel(View view, Unit unit)
-    {
-        var downed = unit.Status == UnitStatus.Downed;
-        var focused = _focus.Contains(unit.Id);
-        view.Label.Visible = focused || downed;
-        view.Label.Text = downed ? $"{unit.Name}\nDOWN {(unit.Stabilized ? "stable" : $"{unit.BleedOut}r")}" : unit.Name;
-        view.Label.Modulate = downed ? new Color(1f, 0.55f, 0.45f) : SidePalette.For(_presenter, unit).Lightened(0.3f);
-
-        var health = unit.MaxHp > 0 ? Mathf.Clamp((float)(unit.Hp / unit.MaxHp), 0, 1) : 0;
-        view.Bar.Visible = !downed && (focused || health < 1);
-        var width = BarWidth * health;
-        var fill = (QuadMesh)view.BarFill.Mesh;
-        fill.Size = new Vector2(Mathf.Max(width, 0.001f), BarHeight);
-        fill.CenterOffset = new Vector3((width - BarWidth) / 2, 0, 0);
-        ((StandardMaterial3D)view.BarFill.MaterialOverride).AlbedoColor =
-            health < 0.35f ? new Color(0.95f, 0.35f, 0.25f) : health < 0.7f ? new Color(0.95f, 0.8f, 0.3f) : new Color(0.5f, 0.85f, 0.4f);
-    }
 
     /// <summary>Snap every unit to the current state: position, pose, fog, ring colour, label, limbs.</summary>
     public void Sync()
@@ -95,7 +65,6 @@ public partial class UnitViews : Node3D
             view.Pose.RotationDegrees = unit.Status == UnitStatus.Downed ? new Vector3(0, 0, 80) : Vector3.Zero;
             view.Pose.Position = unit.Status == UnitStatus.Downed ? new Vector3(0, 0.3f, 0) : Vector3.Zero;
             ((StandardMaterial3D)view.Ring.MaterialOverride).AlbedoColor = SidePalette.For(_presenter, unit);
-            UpdateLabel(view, unit);
 
             var bodyKey = BodyKey(unit);
             if (bodyKey != view.BodyKey && unit.Kind != UnitKind.Enemy)
@@ -127,23 +96,10 @@ public partial class UnitViews : Node3D
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
         };
         root.AddChild(ring);
-        var top = unit.EnemyDefId?.StartsWith("linked") == true ? 2.6f : 2.2f;
-        var label = new Label3D
-        {
-            FontSize = 22, PixelSize = 0.01f, OutlineSize = 7, NoDepthTest = true, RenderPriority = 2, OutlineRenderPriority = 1,
-            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, VerticalAlignment = VerticalAlignment.Bottom,
-            Position = new Vector3(0, top + 0.12f, 0),
-        };
-        root.AddChild(label);
-        var bar = new Node3D { Name = "HpBar", Position = new Vector3(0, top, 0) };
-        bar.AddChild(BarQuad(new Vector2(BarWidth + 0.06f, BarHeight + 0.06f), new Color(0.05f, 0.05f, 0.05f, 0.85f), 0));
-        var barFill = BarQuad(new Vector2(BarWidth, BarHeight), Colors.White, 1);
-        bar.AddChild(barFill);
-        root.AddChild(bar);
         AddChild(root);
         var view = new View
         {
-            Root = root, Model = model, Pose = pose, Ring = ring, Label = label, Bar = bar, BarFill = barFill, BodyKey = BodyKey(unit),
+            Root = root, Model = model, Pose = pose, Ring = ring, BodyKey = BodyKey(unit),
         };
         _views[unit.Id] = view;
         return view;
@@ -151,21 +107,6 @@ public partial class UnitViews : Node3D
 
     /// <summary>Models face +Z; turn them toward the default iso camera (south-east) so faces read.</summary>
     private static Vector3 Facing(Unit unit) => new(0, 45, 0);
-
-    /// <summary>A camera-facing quad drawn over the scene; the fill's own mesh is resized as HP changes.</summary>
-    private static MeshInstance3D BarQuad(Vector2 size, Color color, int priority)
-    {
-        var material = Placeholders.Material(color, unshaded: true);
-        material.BillboardMode = BaseMaterial3D.BillboardModeEnum.Enabled;
-        material.NoDepthTest = true;
-        material.RenderPriority = priority;
-        material.Transparency = BaseMaterial3D.TransparencyEnum.Alpha;
-        return new MeshInstance3D
-        {
-            Mesh = new QuadMesh { Size = size }, MaterialOverride = material,
-            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
-        };
-    }
 
     /// <summary>What the model shows: limb conditions (and prosthetic kind) plus worn gear; the model is rebuilt when it changes.</summary>
     private static string BodyKey(Unit unit) =>
@@ -210,9 +151,9 @@ public partial class UnitViews : Node3D
                     {
                         Flash(target, _hitFlash);
                         var damage = DamagePattern.Match(e.Message);
-                        FloatText(target.Root.Position, damage.Success ? $"-{damage.Groups[1].Value}" : "hit", new Color(1f, 0.4f, 0.3f));
+                        FloatText(target.Root.Position, damage.Success ? $"-{damage.Groups[1].Value}" : "hit", Hud.Palette.Danger);
                     }
-                    else FloatText(target.Root.Position, "miss", new Color(0.85f, 0.85f, 0.85f));
+                    else FloatText(target.Root.Position, "miss", Hud.Palette.TextMuted);
                     await TweenTo(actor.Root, home, StrikeSeconds);
                     await Wait(0.12f);
                     break;
@@ -223,14 +164,14 @@ public partial class UnitViews : Node3D
                     {
                         Flash(target, _hitFlash);
                         var hidden = DamagePattern.Match(e.Message);
-                        FloatText(target.Root.Position, hidden.Success ? $"-{hidden.Groups[1].Value}" : "hit", new Color(1f, 0.4f, 0.3f));
+                        FloatText(target.Root.Position, hidden.Success ? $"-{hidden.Groups[1].Value}" : "hit", Hud.Palette.Danger);
                     }
-                    else FloatText(target.Root.Position, "miss", new Color(0.85f, 0.85f, 0.85f));
+                    else FloatText(target.Root.Position, "miss", Hud.Palette.TextMuted);
                     await Wait(0.3f);
                     break;
 
                 case ScavengeEventType.LimbLost when actor is not null && Seen(e.Pos):
-                    FloatText(actor.Root.Position + Vector3.Up * 0.5f, "limb lost!", new Color(1f, 0.25f, 0.2f));
+                    FloatText(actor.Root.Position + Vector3.Up * 0.5f, "limb lost!", Hud.Palette.Danger);
                     await Wait(0.3f);
                     break;
 
@@ -238,11 +179,11 @@ public partial class UnitViews : Node3D
                     var tip = CreateTween();
                     tip.TweenProperty(actor.Pose, "rotation_degrees", new Vector3(0, 0, 80), 0.25);
                     await ToSignal(tip, Tween.SignalName.Finished);
-                    FloatText(actor.Root.Position, "DOWN", new Color(1f, 0.5f, 0.3f));
+                    FloatText(actor.Root.Position, "DOWN", Hud.Palette.Danger);
                     break;
 
                 case ScavengeEventType.Died or ScavengeEventType.BledOut when actor is not null && (Seen(e.Pos) || Mine(e.UnitId)):
-                    FloatText(actor.Root.Position, "dead", new Color(0.7f, 0.7f, 0.7f));
+                    FloatText(actor.Root.Position, "dead", Hud.Palette.TextMuted);
                     var sink = CreateTween();
                     sink.TweenProperty(actor.Root, "scale", new Vector3(1, 0.05f, 1), 0.3);
                     await ToSignal(sink, Tween.SignalName.Finished);
@@ -251,14 +192,14 @@ public partial class UnitViews : Node3D
                     break;
 
                 case ScavengeEventType.Extracted or ScavengeEventType.Evacuated when actor is not null:
-                    FloatText(actor.Root.Position, e.Type == ScavengeEventType.Extracted ? "extracted" : "evacuated", new Color(0.6f, 1f, 0.6f));
+                    FloatText(actor.Root.Position, e.Type == ScavengeEventType.Extracted ? "extracted" : "evacuated", Hud.Palette.Good);
                     await TweenTo(actor.Root, actor.Root.Position + Vector3.Up * 3, 0.35f);
                     actor.Root.Visible = false;
                     break;
 
                 case ScavengeEventType.Healed or ScavengeEventType.Stabilized or ScavengeEventType.Revived when target is not null:
                     Flash(target, _healFlash);
-                    FloatText(target.Root.Position, e.Type.ToString().ToLowerInvariant(), new Color(0.5f, 1f, 0.5f));
+                    FloatText(target.Root.Position, e.Type.ToString().ToLowerInvariant(), Hud.Palette.Good);
                     await Wait(0.3f);
                     break;
             }
@@ -285,17 +226,5 @@ public partial class UnitViews : Node3D
         };
     }
 
-    private void FloatText(Vector3 at, string text, Color color)
-    {
-        var label = new Label3D
-        {
-            Text = text, FontSize = 48, PixelSize = 0.01f, OutlineSize = 10, NoDepthTest = true, Modulate = color,
-            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Position = at + new Vector3(0, 2.4f, 0),
-        };
-        AddChild(label);
-        var tween = CreateTween().SetParallel();
-        tween.TweenProperty(label, "position", label.Position + Vector3.Up * 1.2f, 0.9);
-        tween.TweenProperty(label, "modulate:a", 0f, 0.9).SetDelay(0.3);
-        tween.Chain().TweenCallback(Callable.From(label.QueueFree));
-    }
+    private void FloatText(Vector3 at, string text, Color color) => Floated?.Invoke(at, text, color, text.StartsWith('-'));
 }

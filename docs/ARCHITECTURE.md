@@ -142,13 +142,14 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   return after the server's snapshot), reports `ScavengeError`s as feedback, and
   answers UI questions by asking Core (`Reachable`, `Combat.CheckReach` / `HitChance`, `VisibleTo`, explored tiles).
   `TakeNewEvents` hands each command's events (including the AI turns it set off) to the views for replay.
-- `Scavenge/Fog/FogOverlay` — the fog's map layer (purely visual, rebuilt on sync): contact `?` markers
-  (`contact_marker`, tinted amber, `?!` red for where shots came from), overwatch eye rings (`overwatch_marker`) and the
-  covered radius for the local side's watchers, brace/lookout tags, a red ring on revealed hostiles, burning flares
-  (`item_flare_lit` + a light + the lit disc), the local side's motion sensors (`item_motion_sensor` + radius), and a
-  red incoming-fire streak from the source to the victim when one of ours is ambushed. `Scavenge/Ui/StancePanel` —
-  Overwatch / Brace / Lookout buttons for the acting unit. Both are separate from the other views so the HUD restyle can
-  take them on alone. Flares and sensors are "use" items that target a tile (highlighted in range); attack previews say
+- `Scavenge/Fog/FogOverlay` — the fog's map layer (purely visual, rebuilt on sync): contact markers
+  (`contact_marker`, tinted amber, red for where shots came from), overwatch eye rings (`overwatch_marker`) and, for the
+  local side's watchers, a soft amber ring at their sight radius shown only while that unit is selected or hovered
+  (`SetFocus`), a red ring on revealed hostiles, burning flares (`item_flare_lit` + a light + the lit disc), the local
+  side's motion sensors (`item_motion_sensor` + radius), and a red incoming-fire streak from the source to the victim
+  when one of ours is ambushed. Its text (contact `?`, OVERWATCH / BRACED / LOOKOUT / REVEALED, AMBUSH!) is drawn by
+  the HUD's `WorldTags`. `Scavenge/Ui/StancePanel` — Overwatch (O) / Brace (B) / Lookout (L) buttons for the acting
+  unit. Flares and sensors are "use" items that target a tile (highlighted in range); attack previews say
   `AMBUSH 85% · 8–14` when the target's side cannot see the attacker. Units show only when the side sees them
   (`IScavengeDriver.SeenUnits`), not merely their tile. `--fog-demo` stages an ambush with a unit on overwatch
   (`Fog/FogDemo`, `ScavengeScreen.FogDemo`), with `--screenshot=PATH --quit` saving the moment.
@@ -163,11 +164,19 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   tweens and hit flashes, skipping what the local side cannot see), `TacticalCamera` (orthographic, yaw 45°, pitch
   35.264°; WASD/middle-drag pan, wheel zoom, Q/E rotate 90°; starts on the party, follows other units' visible actions).
   `SidePalette` colours rings, labels and turn chips alike (other players' parties violet). Units that leave a remote
-  view are hidden; the turn bar shows whose turn it is and the turn timer in multiplayer. HUD in `Scavenge/Ui/`: `TurnBar` (round, initiative order as
-  side-coloured chips, AP, End Turn), `UnitPanel` (HP, bleed-out, hurt body parts, movement modes named by `MoveMode.Source`, gear, load),
-  `ActionPanel` (attack choice, use item, loot, recruit, extract), `ScavengeLog`, `ResultPanel` (`ExtractionResult`).
+  view are hidden; the turn bar shows whose turn it is and the turn timer in multiplayer. HUD in `Scavenge/Ui/`, laid out
+  by `ScavengeHud` (which also owns the hotkeys and the pause menu): `TurnBar` (zone, round, initiative order as
+  portrait chips with a side-colour edge, the acting unit's AP pips, End Turn, Leave, menu), `UnitPanel` (cards: portrait
+  rendered from the unit's model with its gear, HP bar and AP pips; Body with part icons and bars; field profile chips;
+  gear, pack and load), `ActionPanel` and `StancePanel` built from `ActionButton`s (icon, detail line, AP-cost pips, hotkey
+  keycap), `WorldTags` (everything written over the map as HUD chips in one stack per unit — name and HP bar, status
+  tags, attack preview with hit chance and AMBUSH, rising pop-ups — so nothing overlaps; contacts' `?` on their tiles),
+  `ScavengeLog` (icon per event kind; only Network events are cyan), `ResultPanel` (`ExtractionResult` in the
+  after-action style). Portraits of field units come from `UnitPortrait`.
 - Scavenge input: left-click a blue tile to move, a red target to attack with the chosen action, a unit to inspect it;
-  item buttons arm "use on" and the next unit click is the target; right-click/Esc cancels; Space/Enter ends the turn.
+  item buttons arm "use on" and the next unit click is the target; right-click/Esc cancels (Esc with nothing to cancel
+  opens the pause menu); Space/Enter ends the turn; 1–3 pick the attack, 4–6 aim an item, O/B/L stances, F loot,
+  T recruit, X extract.
 
 - `scripts/Multiplayer/` — `MultiplayerMenu` (scene `Multiplayer.tscn`: name, address, Host / Join, lobby with Ready),
   `MultiplayerSession` (the party from the colony's waiting expedition or a debug party, the connection, the in-process
@@ -453,7 +462,8 @@ the adults, `--loop-demo` sends the adults on an expedition to the outskirts (sc
 `--autopilot`) and builds a Med Bay and Workshop, `--family-demo` does `--demo`, encourages the first man and woman
 and fast-forwards until a baby is born (then selects the mother), `--crafting-demo` builds a grown town (Town Hall 3, every
 production building, some at level 2–3) with staffed, queued Armory and Tailor and opens the Armory and item panels, `--expedition` opens the expedition planner with two adults picked, `--world-map` opens the world map
-(`--zone=ID` selects a marker), `--fog-demo` (with `--scavenge`) stages a fog ambush, `--world-demo` fakes a few weeks of scouting and sends a party on the road (for
+(`--zone=ID` selects a marker), `--fog-demo` (with `--scavenge`) stages a fog ambush (`--select-unit=watcher` shows the unit on overwatch with its range;
+`--select-unit=ID` and `--pause-menu` work in any scavenge run), `--world-demo` fakes a few weeks of scouting and sends a party on the road (for
 screenshots); `--scavenge --zone=ID --seed=N` plays the debug mission in another zone, `--multiplayer` opens the multiplayer menu and
 `--mp-host[=PORT]` / `--mp-join=ADDR` with `--mp-name`, `--mp-ready`, … script it (see `MULTIPLAYER.md`), `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG (any scene). HUD shots: `--pause-menu`, `--settings`, `--build-menu`, `--select-survivor=ID`, `--survivor-tab=N` (colony), `--menu-settings` (main menu). Needs a display; on
 Wayland pass `--display-driver wayland --disable-vsync` so an unfocused window still renders:

@@ -34,6 +34,8 @@ public partial class ScavengeScreen
             // Replay the streak for the still frame (the live one may have faded during the replay).
             _fog.Incoming(_presenter.State.Events.Last(e => e.Type == ScavengeEventType.Ambushed));
         }
+        // `--select-unit=watcher` shows the unit on overwatch instead (its range ring shows only while selected).
+        if (DebugValue("--select-unit") == "watcher" && watcher is { } w) Select(w);
         await ToSignal(GetTree().CreateTimer(0.6), SceneTreeTimer.SignalName.Timeout);
         if (DebugCapture.Value("--screenshot") is { Length: > 0 } path)
         {

@@ -33,3 +33,6 @@ shot pause_menu        150 --colony --crafting-demo --pause-menu
 shot settings          150 --colony --settings
 shot scavenge          200 --scavenge
 shot scavenge_autoplay 600 --scavenge --autoplay=6
+shot scavenge_pause    200 --scavenge --pause-menu
+shot fog_demo          3000 --scavenge --fog-demo
+shot fog_overwatch     3000 --scavenge --fog-demo --select-unit=watcher

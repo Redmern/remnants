@@ -6,10 +6,11 @@ namespace Remnants.Game.Scavenge;
 /// <summary>One colour per side (other players' parties get their own), used by unit rings, world labels and turn-order chips so they all agree.</summary>
 public static class SidePalette
 {
-    public static readonly Color Mine = new(0.95f, 0.75f, 0.3f);
-    public static readonly Color Recruit = new(0.55f, 0.9f, 0.5f);
-    public static readonly Color Enemy = new(0.9f, 0.3f, 0.25f);
-    public static readonly Color Linked = new(0.3f, 0.85f, 0.95f);
+    public static readonly Color Mine = Hud.Palette.Amber;
+    public static readonly Color Recruit = Hud.Palette.Good;
+    public static readonly Color Enemy = Hud.Palette.Danger;
+    /// <summary>The AI Network's units: the one place cyan is used.</summary>
+    public static readonly Color Linked = Hud.Palette.Network;
     /// <summary>Another player's party (multiplayer): hostile, but not the AI.</summary>
     public static readonly Color OtherPlayer = new(0.75f, 0.45f, 0.95f);
     public static readonly Color Neutral = new(0.85f, 0.85f, 0.85f);
