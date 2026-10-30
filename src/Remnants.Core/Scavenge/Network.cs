@@ -61,13 +61,16 @@ public static class Network
     public static NetworkGroup? GroupOf(ScavengeSim sim, Unit unit) =>
         Groups(sim).FirstOrDefault(g => g.Units.Any(u => u.Id == unit.Id));
 
-    /// <summary>Conscious hostiles any unit of the group can see, by id.</summary>
+    /// <summary>
+    /// Conscious hostiles any unit of the group detects (<see cref="Detection.Spots"/>; a drone spots for the squad), or
+    /// that stand in a flare's light, by id.
+    /// </summary>
     public static List<Unit> Known(ScavengeSim sim, NetworkGroup group)
     {
-        var map = sim.State.Map;
-        var sights = group.Units.Where(u => u.IsActive).Select(u => (Unit: u, Sight: sim.Profile(u).Sight)).ToList();
+        var members = group.Units.Where(u => u.IsActive).ToList();
         return sim.State.Units
-            .Where(t => t.IsActive && sights.Any(s => s.Unit.HostileTo(t) && Visibility.CanSee(sim.Data, map, s.Unit.Pos, s.Sight, t.Pos)))
+            .Where(t => t.IsActive && members.Any(m => m.HostileTo(t)
+                && (Detection.IsLit(sim.State, t.Pos) || Detection.Spots(sim.Data, sim.State, m, t))))
             .OrderBy(t => t.Id)
             .ToList();
     }

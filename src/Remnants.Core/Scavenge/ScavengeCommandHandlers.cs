@@ -26,6 +26,7 @@ internal static class ScavengeCommandHandlers
         unit.Pos = c.To;
         unit.Ap -= cost;
         sim.State.Log(new(sim.State.Round, ScavengeEventType.Moved, $"{unit.Name} moved {from} -> {c.To}.", unit.Id, Pos: c.To));
+        sim.Moved(unit, from);
         return ScavengeResult.Success($"{unit.Name} moved to {c.To}.");
     }
 
@@ -34,6 +35,8 @@ internal static class ScavengeCommandHandlers
         var target = sim.State.FindUnit(c.TargetId);
         if (target is not { OnMap: true } || !unit.HostileTo(target))
             return ScavengeResult.Fail(ScavengeError.InvalidTarget, $"Unit {c.TargetId} is not a hostile target.");
+        if (!Detection.SideSees(sim.Data, sim.State, unit.Side, target))
+            return ScavengeResult.Fail(ScavengeError.NotVisible, $"{unit.Name}'s side cannot see unit {c.TargetId}.");
         var action = sim.Profile(unit).Action(c.ActionId);
         if (action is null) return ScavengeResult.Fail(ScavengeError.UnknownAction, $"{unit.Name} cannot use '{c.ActionId}' now.");
         if (action.ApCost > unit.Ap) return NotEnoughAp(unit, action.ApCost);
@@ -49,6 +52,7 @@ internal static class ScavengeCommandHandlers
         if (!unit.Pack.Contains(c.ItemId)) return ScavengeResult.Fail(ScavengeError.ItemNotCarried, $"{unit.Name} carries no '{c.ItemId}'.");
         var item = sim.Item(c.ItemId);
         if (item.Use is not { } use) return ScavengeResult.Fail(ScavengeError.NotUsable, $"{item.Name} cannot be used.");
+        if (use.TargetsTile) return UseOnTile(sim, unit, c, item, use);
 
         var target = c.TargetId is { } id ? sim.State.FindUnit(id) : unit;
         if (target is not { OnMap: true } || unit.HostileTo(target))
@@ -88,6 +92,82 @@ internal static class ScavengeCommandHandlers
         unit.Ap -= use.ApCost;
         if (use.Consumed) unit.Pack.Remove(c.ItemId);
         return ScavengeResult.Success($"{unit.Name} used {item.Name} on {target.Name}.", target.Id);
+    }
+
+    /// <summary>A flare thrown at, or a motion sensor placed on, a tile within the item's range.</summary>
+    private static ScavengeResult UseOnTile(ScavengeSim sim, Unit unit, UseItem c, Items.ItemDef item, Items.UseEffect use)
+    {
+        var state = sim.State;
+        if (c.At is not { } at || !state.Map.InBounds(at))
+            return ScavengeResult.Fail(ScavengeError.InvalidTile, $"{item.Name} needs a tile on the map.");
+        if (unit.Pos.Chebyshev(at) > use.Range) return ScavengeResult.Fail(ScavengeError.TooFar, $"{at} is out of {item.Name}'s reach.");
+        if (use.SensorRadius > 0 && !sim.Data.Terrain(state.Map[at]).Passable)
+            return ScavengeResult.Fail(ScavengeError.InvalidTile, $"{item.Name} cannot be placed on {state.Map[at]}.");
+        if (use.ApCost > unit.Ap) return NotEnoughAp(unit, use.ApCost);
+
+        unit.Ap -= use.ApCost;
+        if (use.Consumed) unit.Pack.Remove(c.ItemId);
+        if (use.LightRadius > 0)
+        {
+            state.Flares.Add(new Flare(at, use.LightRadius, state.Round + use.LightRounds - 1));
+            state.Log(new(state.Round, ScavengeEventType.FlareLit, $"{unit.Name} throws a {item.Name}: {at} is lit up.", unit.Id, Pos: at));
+            // Hostiles standing in the light are seen now; overwatch on them may fire.
+            foreach (var u in state.Units.Where(u => u.IsActive && Detection.IsLit(state, u.Pos)).OrderBy(u => u.Id).ToList())
+                sim.CheckOverwatch(u);
+        }
+        if (use.SensorRadius > 0)
+        {
+            var sensor = new Sensor(state.NextSensorId++, unit.Side, at, use.SensorRadius, item.Id);
+            state.Sensors.Add(sensor);
+            state.Log(new(state.Round, ScavengeEventType.SensorPlaced, $"{unit.Name} sets up a {item.Name} at {at}.", unit.Id, Pos: at,
+                Side: unit.Side));
+            foreach (var u in state.Units.Where(u => u.IsActive && u.Side != unit.Side && u.Side != Unit.NeutralSide
+                                                     && u.Pos.Chebyshev(at) <= sensor.Radius).OrderBy(u => u.Id).ToList())
+                sim.Trip(sensor, u);
+        }
+        return ScavengeResult.Success($"{unit.Name} used {item.Name} at {at}.");
+    }
+
+    /// <summary>Overwatch or brace: pays the AP and ends the turn (see <see cref="ScavengeSim"/>).</summary>
+    public static ScavengeResult SetStance(ScavengeSim sim, Unit unit, SetStance c)
+    {
+        var fog = sim.Data.Rules.Fog;
+        var cost = c.Stance switch
+        {
+            Stance.Overwatch => fog.Overwatch.ApCost,
+            Stance.Brace => fog.Brace.ApCost,
+            _ => -1,
+        };
+        if (cost < 0) return ScavengeResult.Fail(ScavengeError.InvalidStance, $"'{c.Stance}' is not a stance a unit can take.");
+        if (cost > unit.Ap) return NotEnoughAp(unit, cost);
+        if (c.Stance == Stance.Overwatch && sim.Profile(unit).Actions.Count == 0)
+            return ScavengeResult.Fail(ScavengeError.InvalidStance, $"{unit.Name} has nothing to fire on overwatch.");
+
+        unit.Ap = 0;
+        Enter(sim, unit, c.Stance);
+        return ScavengeResult.Success(c.Stance == Stance.Overwatch ? $"{unit.Name} is on overwatch." : $"{unit.Name} braces.");
+    }
+
+    /// <summary>Puts a unit in a stance and logs it (players through <see cref="SetStance"/>, the Linked lurking).</summary>
+    internal static void Enter(ScavengeSim sim, Unit unit, Stance stance)
+    {
+        unit.Stance = stance;
+        unit.Reactions = stance == Stance.Overwatch ? sim.Data.Rules.Fog.Overwatch.Reactions : 0;
+        if (stance == Stance.Overwatch)
+            sim.State.Log(new(sim.State.Round, ScavengeEventType.Overwatch, $"{unit.Name} goes on overwatch.", unit.Id, Pos: unit.Pos));
+        else
+            sim.State.Log(new(sim.State.Round, ScavengeEventType.Braced, $"{unit.Name} braces for an ambush.", unit.Id, Pos: unit.Pos));
+    }
+
+    public static ScavengeResult Lookout(ScavengeSim sim, Unit unit, Lookout c)
+    {
+        if (unit.Lookout) return ScavengeResult.Fail(ScavengeError.AlreadyOnLookout, $"{unit.Name} is already on lookout.");
+        var cost = sim.Data.Rules.Fog.Lookout.ApCost;
+        if (cost > unit.Ap) return NotEnoughAp(unit, cost);
+        unit.Ap -= cost;
+        unit.Lookout = true;
+        sim.Log(ScavengeEventType.Lookout, $"{unit.Name} scans the surroundings.", unit);
+        return ScavengeResult.Success($"{unit.Name} is on lookout.");
     }
 
     public static ScavengeResult PickUp(ScavengeSim sim, Unit unit, PickUp c)

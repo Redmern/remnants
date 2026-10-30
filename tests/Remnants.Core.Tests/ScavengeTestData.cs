@@ -147,7 +147,7 @@ public static class ScavengeTestData
         if (map.IsExit(u.Pos)) return new Extract(pid, u.Id);
 
         var profile = sim.Profile(u);
-        foreach (var target in sim.State.Units.Where(t => t.IsActive && u.HostileTo(t)).OrderBy(t => t.Id))
+        foreach (var target in sim.State.Units.Where(t => t.IsActive && u.HostileTo(t) && Detection.SideSees(sim.Data, sim.State, u.Side, t)).OrderBy(t => t.Id))
             foreach (var a in profile.Actions.Where(a => a.ApCost <= u.Ap))
                 if (Combat.CheckReach(sim.Data, map, u.Pos, a, target.Pos) == ScavengeError.None)
                     return new Attack(pid, u.Id, target.Id, a.Id);

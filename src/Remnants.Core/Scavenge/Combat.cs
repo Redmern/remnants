@@ -31,39 +31,79 @@ public static class Combat
     }
 
     /// <summary>
-    /// Action accuracy minus the target's dodge and cover, minus range falloff past the first tile,
-    /// clamped to the rules' min/max.
+    /// Action accuracy minus the target's dodge and cover (plus its brace bonus), minus range falloff past the first tile,
+    /// plus an ambush bonus, clamped to the rules' min/max. An ambush may also take the dodge away.
     /// </summary>
-    public static double HitChance(ScavengeData data, TileMap map, Pos from, ActionProfile action, Pos target, UnitProfile targetProfile)
+    public static double HitChance(ScavengeData data, TileMap map, Pos from, ActionProfile action, Pos target, UnitProfile targetProfile,
+        AmbushInfo? ambush = null)
     {
         var c = data.Rules.Combat;
         var chance = action.Accuracy
-            - targetProfile.Dodge
+            - (ambush is { IgnoreDodge: true } ? Math.Min(0, targetProfile.Dodge) : targetProfile.Dodge)
             - CoverAgainst(data, map, target, from)
-            - Math.Max(0, Math.Sqrt(from.DistanceSquared(target)) - 1) * c.RangeFalloff;
+            - targetProfile.CoverBonus
+            - Math.Max(0, Math.Sqrt(from.DistanceSquared(target)) - 1) * c.RangeFalloff
+            + (ambush?.HitBonus ?? 0);
         return Math.Clamp(chance, c.MinHitChance, c.MaxHitChance);
     }
 
+    /// <summary>The hit chance of this attack as it would resolve now, ambush included (for previews and the AI).</summary>
+    public static double ChanceToHit(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, Pos? from = null) =>
+        HitChance(sim.Data, sim.State.Map, from ?? attacker.Pos, action, target.Pos, sim.Profile(target),
+            AmbushAgainst(sim.Data, sim.State, attacker, target, from));
+
     /// <summary>
-    /// Pays the AP, makes noise, and strikes the target; an area action then strikes every other unit hostile to the
-    /// attacker within <see cref="ActionProfile.Area"/> of the target (by id, each with its own roll).
+    /// Whether an attack on <paramref name="target"/> would come from the fog: its side does not see the attacker (at
+    /// <paramref name="from"/>, default where it stands). Null when it would not. A braced target gets no bonus against
+    /// it; an ally next to the target ("watching each other's backs") takes off <see cref="AmbushRules.BacksReduction"/>.
     /// </summary>
-    internal static void Resolve(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target)
+    public static AmbushInfo? AmbushAgainst(ScavengeData data, ScavengeState state, Unit attacker, Unit target, Pos? from = null)
     {
-        attacker.Ap -= action.ApCost;
+        if (!attacker.HostileTo(target)) return null;
+        bool Hidden()
+        {
+            if (from is not { } at || at == attacker.Pos) return !Detection.SideSees(data, state, target.Side, attacker);
+            var moved = attacker.Pos;
+            attacker.Pos = at;
+            try { return !Detection.SideSees(data, state, target.Side, attacker); }
+            finally { attacker.Pos = moved; }
+        }
+        if (!Hidden()) return null;
+
+        var rules = data.Rules.Fog.Ambush;
+        if (target.Stance == Stance.Brace) return new AmbushInfo(0, 1, false, Braced: true, Backs: false);
+        var backs = state.Units.Any(u => u.Id != target.Id && u.IsActive && u.Side == target.Side && u.Pos.Chebyshev(target.Pos) <= 1);
+        var keep = backs ? 1 - rules.BacksReduction : 1;
+        return new AmbushInfo(rules.HitBonus * keep, 1 + (rules.DamageMultiplier - 1) * keep, rules.IgnoreDodge, Braced: false, Backs: backs);
+    }
+
+    /// <summary>
+    /// Pays the AP (not for an overwatch reaction, which instead loses accuracy), makes noise, and strikes the target; an
+    /// area action then strikes every other unit hostile to the attacker within <see cref="ActionProfile.Area"/> of the
+    /// target (by id, each with its own roll). Whether each strike comes from the fog is judged before anything resolves.
+    /// Afterwards the attacker is revealed to every side it hit at for <see cref="ActionProfile.Reveal"/> rounds, those
+    /// sides get an attack contact pointing at it, every other side in earshot a noise contact, and overwatch may react.
+    /// </summary>
+    internal static void Resolve(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, bool reaction = false)
+    {
+        if (!reaction) attacker.Ap -= action.ApCost;
         sim.MakeNoise(attacker, action.Noise);
         var center = target.Pos;
-        Strike(sim, attacker, action, target);
-        if (action.Area <= 0) return;
-        foreach (var other in sim.State.Units
-                     .Where(u => u.Id != target.Id && u.IsActive && attacker.HostileTo(u) && u.Pos.Chebyshev(center) <= action.Area)
-                     .OrderBy(u => u.Id).ToList())
-            Strike(sim, attacker, action, other);
+        var targets = new List<Unit> { target };
+        if (action.Area > 0)
+            targets.AddRange(sim.State.Units
+                .Where(u => u.Id != target.Id && u.IsActive && attacker.HostileTo(u) && u.Pos.Chebyshev(center) <= action.Area)
+                .OrderBy(u => u.Id));
+        var ambushes = targets.Select(t => AmbushAgainst(sim.Data, sim.State, attacker, t)).ToList();
+        var penalty = reaction ? sim.Data.Rules.Fog.Overwatch.AccuracyPenalty : 0;
+        for (var i = 0; i < targets.Count; i++)
+            Strike(sim, attacker, action with { Accuracy = action.Accuracy - penalty }, targets[i], ambushes[i]);
+        AfterAttack(sim, attacker, action, targets);
     }
 
     /// <summary>
     /// Suppressing fire: no damage roll, but the target is pinned and loses AP next turn. Needs a ranged action that
-    /// reaches the target.
+    /// reaches the target. Gives the attacker away like any shot.
     /// </summary>
     internal static void Suppress(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target)
     {
@@ -71,27 +111,53 @@ public static class Combat
         sim.MakeNoise(attacker, action.Noise);
         target.Suppressed = true;
         sim.State.Log(new(sim.State.Round, ScavengeEventType.Suppressed,
-            $"{attacker.Name} pins {target.Name} down with suppressing fire ({action.Name}).", attacker.Id, target.Id, target.Pos));
+            $"{attacker.Name} pins {target.Name} down with suppressing fire ({action.Name}).", attacker.Id, target.Id, target.Pos,
+            Anonymous: $"{target.Name} is pinned down by fire from the fog."));
+        AfterAttack(sim, attacker, action, [target]);
     }
 
-    private static void Strike(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target)
+    private static void AfterAttack(ScavengeSim sim, Unit attacker, ActionProfile action, List<Unit> targets)
+    {
+        var state = sim.State;
+        var data = sim.Data;
+        var struck = new HashSet<string>();
+        foreach (var t in targets.Where(t => t.Side != attacker.Side))
+        {
+            if (struck.Add(t.Side) && !Detection.SideSees(data, state, t.Side, attacker))
+                Detection.AddContact(data, state, t.Side, attacker.Pos, ContactKind.Attack, attacker.Id, t.Pos);
+            if (action.Reveal > 0) Detection.Reveal(state, attacker, t.Side, state.Round + action.Reveal);
+        }
+        foreach (var side in Detection.PartySides(state).Where(s => s != attacker.Side && !struck.Contains(s)))
+            if (state.Units.Any(u => u.Side == side && u.IsActive && u.Pos.Chebyshev(attacker.Pos) <= action.Noise)
+                && !Detection.SideSees(data, state, side, attacker))
+                Detection.AddContact(data, state, side, attacker.Pos, ContactKind.Noise, attacker.Id);
+        sim.CheckOverwatch(attacker);
+    }
+
+    private static void Strike(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, AmbushInfo? ambush)
     {
         var data = sim.Data;
         var state = sim.State;
-        var chance = HitChance(data, state.Map, attacker.Pos, action, target.Pos, sim.Profile(target));
+        var chance = HitChance(data, state.Map, attacker.Pos, action, target.Pos, sim.Profile(target), ambush);
+        if (ambush is { } a)
+            state.Log(new(state.Round, ScavengeEventType.Ambushed,
+                $"{attacker.Name} ambushes {target.Name} from the fog{a.Describe()}.", attacker.Id, target.Id, target.Pos,
+                Anonymous: $"{target.Name} was ambushed from the fog{a.Describe()}."));
 
         if (sim.Rng.NextDouble() >= chance)
         {
             state.Log(new(state.Round, ScavengeEventType.Missed,
-                $"{attacker.Name} missed {target.Name} ({action.Name}, {chance:P0}).", attacker.Id, target.Id, target.Pos));
+                $"{attacker.Name} missed {target.Name} ({action.Name}, {chance:P0}).", attacker.Id, target.Id, target.Pos,
+                Anonymous: $"An attack from the fog missed {target.Name}."));
             return;
         }
 
-        var raw = action.MinDamage + (action.MaxDamage - action.MinDamage) * sim.Rng.NextDouble();
+        var raw = (action.MinDamage + (action.MaxDamage - action.MinDamage) * sim.Rng.NextDouble()) * (ambush?.DamageMultiplier ?? 1);
         var damage = Math.Max(1, raw - sim.Profile(target).Armor);
         var part = PickHitLocation(sim, target);
         state.Log(new(state.Round, ScavengeEventType.Attacked,
-            $"{attacker.Name} hit {target.Name}'s {part} for {damage:0} ({action.Name}).", attacker.Id, target.Id, target.Pos));
+            $"{attacker.Name} hit {target.Name}'s {part} for {damage:0} ({action.Name}).", attacker.Id, target.Id, target.Pos,
+            Anonymous: $"{target.Name} was hit in the {part} for {damage:0} from the fog."));
         ApplyDamage(sim, target, part, damage);
     }
 
@@ -147,4 +213,16 @@ public static class Combat
         state.Log(new(state.Round, ScavengeEventType.Downed,
             $"{target.Name} is down and bleeding out ({c.BleedOutRounds} rounds).", target.Id, Pos: target.Pos));
     }
+}
+
+/// <summary>
+/// An attack from the fog: what it adds to the hit chance and damage, and whether the target loses its dodge.
+/// <see cref="Braced"/>: the target was braced, so the attack is unseen but gains nothing. <see cref="Backs"/>: an ally
+/// next to the target cut the bonuses.
+/// </summary>
+public sealed record AmbushInfo(double HitBonus, double DamageMultiplier, bool IgnoreDodge, bool Braced, bool Backs)
+{
+    /// <summary>" (+20% hit)", " (braced)", " (+10% hit, backs covered)" for the log.</summary>
+    public string Describe() =>
+        Braced ? " (braced: no bonus)" : $" (+{HitBonus * 100:0}% hit{(Backs ? ", backs covered" : "")})";
 }

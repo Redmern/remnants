@@ -20,12 +20,16 @@ public static class Visibility
         return result;
     }
 
-    /// <summary>Tile indices currently visible to a side: the union over its conscious units.</summary>
+    /// <summary>
+    /// Tile indices currently visible to a side: the union over its conscious units, plus tiles lit by flares. Seeing a
+    /// tile shows the terrain and caches on it; whether a hostile standing there is seen is <see cref="Detection"/>'s call.
+    /// </summary>
     public static HashSet<int> SideVisible(ScavengeData data, ScavengeState state, string side)
     {
         var result = new HashSet<int>();
         foreach (var u in state.Units.Where(u => u.Side == side && u.IsActive))
             result.UnionWith(VisibleTiles(data, state.Map, u, ProfileDeriver.Derive(data, u).Sight));
+        if (result.Count > 0) result.UnionWith(Detection.LitTiles(state));
         return result;
     }
 

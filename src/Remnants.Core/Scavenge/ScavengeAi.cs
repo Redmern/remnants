@@ -10,7 +10,9 @@ namespace Remnants.Core.Scavenge;
 /// <item>Linked: squad AI over the <see cref="Network"/>. It knows every hostile its group sees, the group shares one
 /// focus (weakest / most exposed), and each unit first takes the best firing position (a shot at the focus, cover,
 /// flanking tiles that strip the focus's cover), then shoots, or lays down suppressing fire when the odds are poor.
-/// Badly hurt units fall back to cover while the squad holds. A jammed Linked is cut off and fights like a Husk.</item>
+/// Badly hurt units fall back to cover while the squad holds. They use the fog: firing positions the focus's side would
+/// not detect them on score higher (an ambush gets the bonus), and a Linked that knows of nobody, or still has AP after
+/// closing in, waits hidden on overwatch. A jammed Linked is cut off and fights like a Husk.</item>
 /// <item>Recruit: follow its leader.</item>
 /// </list>
 /// </summary>
@@ -69,6 +71,7 @@ internal static class ScavengeAi
                     .OrderBy(u => u.Id).Select(u => u.Ai.LastKnown).FirstOrDefault();
                 if (last is { } goal && unit.Pos != goal && StepToward(sim, unit, goal)) continue;
                 foreach (var u in group.Units) (u.Ai.Mode, u.Ai.LastKnown) = (AiMode.Idle, null);
+                if (Lurk(sim, unit)) return;
                 Wander(sim, unit);
                 return;
             }
@@ -91,8 +94,19 @@ internal static class ScavengeAi
             if (TryAttackAbove(sim, unit, focus, rules.SuppressBelowHitChance)) continue;
             if (known.Where(t => t.Id != focus.Id).Any(t => TryAttackAbove(sim, unit, t, rules.SuppressBelowHitChance))) continue;
             if (Suppress(sim, unit, focus)) return;
-            if (retreating || !StepToward(sim, unit, focus.Pos)) return;
+            if (retreating || !StepToward(sim, unit, focus.Pos)) break;
         }
+        if (unit.IsActive && !retreating) Lurk(sim, unit);
+    }
+
+    /// <summary>A Linked with AP for it left at the end of its turn waits on overwatch (rules.fog.ai.linkedLurk).</summary>
+    private static bool Lurk(ScavengeSim sim, Unit unit)
+    {
+        var fog = sim.Data.Rules.Fog;
+        if (!fog.Ai.LinkedLurk || unit.Ap < fog.Overwatch.ApCost || unit.Stance != Stance.None) return false;
+        unit.Ap = 0;
+        ScavengeCommandHandlers.Enter(sim, unit, Stance.Overwatch);
+        return true;
     }
 
     /// <summary>Every unit in the group now hunts the focus; one that was idle and does not see it learns of it through the Network.</summary>
@@ -102,7 +116,7 @@ internal static class ScavengeAi
         {
             if (u.Ai.Mode == AiMode.Idle)
             {
-                var seesIt = Visibility.CanSee(sim.Data, sim.State.Map, u.Pos, sim.Profile(u).Sight, focus.Pos);
+                var seesIt = Detection.Spots(sim.Data, sim.State, u, focus);
                 sim.Log(ScavengeEventType.Spotted,
                     seesIt ? $"{u.Name} spotted {focus.Name}." : $"{u.Name} learns of {focus.Name} through the Network.", u, focus);
             }
@@ -116,10 +130,9 @@ internal static class ScavengeAi
     private static bool TryAttackAbove(ScavengeSim sim, Unit unit, Unit target, double minChance)
     {
         var map = sim.State.Map;
-        var targetProfile = sim.Profile(target);
         var best = sim.Profile(unit).Actions
             .Where(a => a.ApCost <= unit.Ap && Combat.CheckReach(sim.Data, map, unit.Pos, a, target.Pos) == ScavengeError.None)
-            .Select(a => (Action: a, Chance: Combat.HitChance(sim.Data, map, unit.Pos, a, target.Pos, targetProfile)))
+            .Select(a => (Action: a, Chance: Combat.ChanceToHit(sim, unit, a, target)))
             .Where(x => x.Chance + 1e-9 >= minChance)
             .OrderByDescending(x => x.Chance * (x.Action.MinDamage + x.Action.MaxDamage) / 2)
             .ThenBy(x => x.Action.Id, StringComparer.Ordinal)
@@ -145,7 +158,9 @@ internal static class ScavengeAi
 
     /// <summary>
     /// Scores every tile the unit can reach (and staying put): the expected damage of its best shot at the focus from
-    /// there with the AP left, plus cover against every known hostile, plus a little for AP saved. Moves to the best one.
+    /// there with the AP left (an ambush from a hidden tile counts), plus cover against every known hostile, plus
+    /// <see cref="FogAiRules.HiddenWeight"/> when no known hostile would detect it there, plus a little for AP saved.
+    /// Moves to the best one.
     /// A move that strips the focus of cover it had is logged as a flank.
     /// </summary>
     private static bool Reposition(ScavengeSim sim, Unit unit, Unit focus, List<Unit> known)
@@ -159,13 +174,15 @@ internal static class ScavengeAi
         double Score(Pos tile, int cost)
         {
             var ap = unit.Ap - cost;
+            var hidden = !known.Any(t => Detection.Spots(data, sim.State, t, unit, targetAt: tile));
+            var ambush = hidden ? Combat.AmbushAgainst(data, sim.State, unit, focus, tile) : null;
             var shot = profile.Actions
                 .Where(a => a.ApCost <= ap && Combat.CheckReach(data, map, tile, a, focus.Pos) == ScavengeError.None)
-                .Select(a => Combat.HitChance(data, map, tile, a, focus.Pos, focusProfile)
-                             * Math.Max(1, (a.MinDamage + a.MaxDamage) / 2 - focusProfile.Armor))
+                .Select(a => Combat.HitChance(data, map, tile, a, focus.Pos, focusProfile, ambush)
+                             * Math.Max(1, (a.MinDamage + a.MaxDamage) / 2 * (ambush?.DamageMultiplier ?? 1) - focusProfile.Armor))
                 .DefaultIfEmpty(0).Max();
             var cover = known.Select(t => Combat.CoverAgainst(data, map, tile, t.Pos)).DefaultIfEmpty(0).Min();
-            return shot + cover * rules.CoverWeight + ap * rules.ApWeight;
+            return shot + cover * rules.CoverWeight + ap * rules.ApWeight + (hidden ? data.Rules.Fog.Ai.HiddenWeight : 0);
         }
 
         var stay = Score(unit.Pos, 0);
@@ -203,12 +220,12 @@ internal static class ScavengeAi
         return true;
     }
 
-    /// <summary>Nearest conscious hostile in sight; remembers it. Falls back to null (and keeps the memory).</summary>
+    /// <summary>Nearest conscious hostile it detects (or lit by a flare); remembers it. Falls back to null (and keeps the memory).</summary>
     private static Unit? Spot(ScavengeSim sim, Unit unit)
     {
-        var sight = sim.Profile(unit).Sight;
         var target = sim.State.Units
-            .Where(u => u.IsActive && unit.HostileTo(u) && Visibility.CanSee(sim.Data, sim.State.Map, unit.Pos, sight, u.Pos))
+            .Where(u => u.IsActive && unit.HostileTo(u)
+                        && (Detection.IsLit(sim.State, u.Pos) || Detection.Spots(sim.Data, sim.State, unit, u)))
             .OrderBy(u => u.Pos.Chebyshev(unit.Pos))
             .ThenBy(u => u.Id)
             .FirstOrDefault();
@@ -225,10 +242,9 @@ internal static class ScavengeAi
     private static bool TryAttack(ScavengeSim sim, Unit unit, Unit target)
     {
         var map = sim.State.Map;
-        var targetProfile = sim.Profile(target);
         var best = sim.Profile(unit).Actions
             .Where(a => a.ApCost <= unit.Ap && Combat.CheckReach(sim.Data, map, unit.Pos, a, target.Pos) == ScavengeError.None)
-            .OrderByDescending(a => Combat.HitChance(sim.Data, map, unit.Pos, a, target.Pos, targetProfile) * (a.MinDamage + a.MaxDamage) / 2)
+            .OrderByDescending(a => Combat.ChanceToHit(sim, unit, a, target) * (a.MinDamage + a.MaxDamage) / 2)
             .ThenBy(a => a.Id, StringComparer.Ordinal)
             .FirstOrDefault();
         if (best is null) return false;
@@ -288,5 +304,6 @@ internal static class ScavengeAi
         unit.Pos = to;
         unit.Ap -= ap;
         sim.State.Log(new(sim.State.Round, ScavengeEventType.Moved, $"{unit.Name} moved {from} -> {to}.", unit.Id, Pos: to));
+        sim.Moved(unit, from);
     }
 }

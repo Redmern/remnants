@@ -19,6 +19,16 @@ public enum UnitStatus
 
 public enum AiMode { Idle, Hunting }
 
+/// <summary>A defensive stance held from the end of a unit's turn until its next turn starts.</summary>
+public enum Stance
+{
+    None,
+    /// <summary>Reaction attack on the first hostile that moves or reveals itself in sight and reach.</summary>
+    Overwatch,
+    /// <summary>Hunkered down: no ambush bonus against it, extra cover, fewer AP next turn.</summary>
+    Brace,
+}
+
 /// <summary>What an AI-controlled unit remembers between turns.</summary>
 public sealed class AiMemory
 {
@@ -67,6 +77,15 @@ public sealed class Unit
 
     /// <summary>Pinned by suppressing fire: loses AP at the start of its next turn.</summary>
     public bool Suppressed { get; set; }
+
+    /// <summary>Held until this unit's next turn starts.</summary>
+    public Stance Stance { get; set; }
+
+    /// <summary>Overwatch reactions left this stance.</summary>
+    public int Reactions { get; set; }
+
+    /// <summary>On lookout (scanning) until its next turn: more sight and detection.</summary>
+    public bool Lookout { get; set; }
 
     public Dictionary<AttributeKind, double> Attributes { get; set; } = new();
     public Dictionary<Skill, double> Skills { get; set; } = new();

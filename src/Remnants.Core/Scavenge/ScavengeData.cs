@@ -65,6 +65,8 @@ public sealed class ScavengeData
             Initiative = Bonus(item.Initiative),
             SightBonus = item.SightBonus * m,
             CarryBonus = item.CarryBonus * m,
+            Stealth = Bonus(item.Stealth),
+            Detection = Bonus(item.Detection),
             Actions = item.Actions.Select(a => a with
             {
                 MinDamage = (int)Math.Round(a.MinDamage * m),
@@ -125,6 +127,10 @@ public sealed class ScavengeData
                 throw new GameDataException($"Item '{item.Id}' is a weapon without actions.");
             if (item.Kind == ItemKind.Consumable && item.Use is null)
                 throw new GameDataException($"Item '{item.Id}' is a consumable without a use effect.");
+            if (item.Use is { LightRadius: > 0 } flare && flare.LightRounds < 1)
+                throw new GameDataException($"Item '{item.Id}': a flare needs lightRounds of at least 1.");
+            if (item.Use is { TargetsTile: true } placed && placed.Range < 1)
+                throw new GameDataException($"Item '{item.Id}': items used on a tile need a range of at least 1.");
             if (item.Kind == ItemKind.Prosthetic && item.Prosthetic is null)
                 throw new GameDataException($"Item '{item.Id}' is a prosthetic without a prosthetic definition.");
             if (item.Prosthetic is { } p && (p.Quality <= 0 || p.MinMedBayLevel < 1 || p.Region is BodyRegion.Head or BodyRegion.Torso))

@@ -54,6 +54,8 @@ public sealed class ScavengeSim
             UseItem c => ScavengeCommandHandlers.UseItem(this, unit!, c),
             PickUp c => ScavengeCommandHandlers.PickUp(this, unit!, c),
             Recruit c => ScavengeCommandHandlers.Recruit(this, unit!, c),
+            SetStance c => ScavengeCommandHandlers.SetStance(this, unit!, c),
+            Lookout c => ScavengeCommandHandlers.Lookout(this, unit!, c),
             EndTurn => ScavengeResult.Success($"{unit!.Name} ends their turn."),
             Extract => ScavengeCommandHandlers.Extract(this, unit!),
             _ => ScavengeResult.Fail(ScavengeError.UnknownCommand, $"Unknown command {command.GetType().Name}."),
@@ -63,7 +65,7 @@ public sealed class ScavengeSim
         {
             UpdateParties();
             // The acting unit's turn ends on EndTurn, or when it left the map or can no longer act.
-            if (command is EndTurn || unit is not { IsActive: true })
+            if (command is EndTurn or SetStance || unit is not { IsActive: true })
             {
                 State.TurnIndex++;
                 AdvanceTurns();
@@ -93,7 +95,7 @@ public sealed class ScavengeSim
                 State.TurnIndex++;
                 continue;
             }
-            unit.Ap = Profile(unit).MaxAp;
+            BeginTurn(unit);
             if (unit.Suppressed)
             {
                 unit.Suppressed = false;
@@ -108,6 +110,20 @@ public sealed class ScavengeSim
         }
     }
 
+    /// <summary>
+    /// A unit's turn starts: its stance and lookout end (bracing costs <see cref="BraceRules.NextTurnApPenalty"/> AP),
+    /// then it gets fresh AP.
+    /// </summary>
+    private void BeginTurn(Unit unit)
+    {
+        var braced = unit.Stance == Stance.Brace;
+        unit.Stance = Stance.None;
+        unit.Reactions = 0;
+        unit.Lookout = false;
+        unit.Ap = Profile(unit).MaxAp;
+        if (braced) unit.Ap = Math.Max(1, unit.Ap - Data.Rules.Fog.Brace.NextTurnApPenalty);
+    }
+
     /// <summary>Bleeding ticks down, then everyone conscious (except idle NPCs) is ordered by initiative.</summary>
     private void StartRound()
     {
@@ -119,6 +135,7 @@ public sealed class ScavengeSim
             if (u.BleedOut <= 0) Kill(u, ScavengeEventType.BledOut, $"{u.Name} bled out.");
         }
         UpdateParties();
+        Detection.Expire(Data, State);
         Network.RoundStarted(this);
 
         State.TurnOrder = State.Units
@@ -188,6 +205,76 @@ public sealed class ScavengeSim
             u.Ai.Mode = AiMode.Hunting;
             u.Ai.TargetId = null;
             u.Ai.LastKnown = source.Pos;
+        }
+    }
+
+    private bool _reacting;
+
+    /// <summary>
+    /// After a unit moved (player or AI): motion sensors it entered reveal it to their side, sides it is unseen by but
+    /// close to hear it (movement contact), and overwatch may fire on it.
+    /// </summary>
+    internal void Moved(Unit unit, Pos from)
+    {
+        var fog = Data.Rules.Fog;
+        foreach (var sensor in State.Sensors.OrderBy(s => s.Id).ToList())
+        {
+            if (sensor.Side == unit.Side || unit.Side == Unit.NeutralSide) continue;
+            if (unit.Pos.Chebyshev(sensor.Pos) > sensor.Radius || from.Chebyshev(sensor.Pos) <= sensor.Radius) continue;
+            Trip(sensor, unit);
+        }
+        foreach (var side in Detection.PartySides(State).Where(s => s != unit.Side && unit.Side != Unit.NeutralSide))
+            if (State.Units.Any(u => u.Side == side && u.IsActive && u.Pos.Chebyshev(unit.Pos) <= fog.HearMovement)
+                && !Detection.SideSees(Data, State, side, unit))
+                Detection.AddContact(Data, State, side, unit.Pos, ContactKind.Movement, unit.Id);
+        CheckOverwatch(unit);
+    }
+
+    /// <summary>A motion sensor goes off: the unit is revealed to the sensor's side, which gets an alert and a contact.</summary>
+    internal void Trip(Sensor sensor, Unit unit)
+    {
+        Detection.Reveal(State, unit, sensor.Side, State.Round + Data.Rules.Fog.SensorRevealRounds);
+        Detection.AddContact(Data, State, sensor.Side, unit.Pos, ContactKind.Sensor, unit.Id);
+        State.Log(new(State.Round, ScavengeEventType.SensorTripped,
+            $"{Item(sensor.ItemId).Name} at {sensor.Pos}: {unit.Name} moving at {unit.Pos}!", unit.Id, Pos: unit.Pos,
+            Anonymous: $"{Item(sensor.ItemId).Name} at {sensor.Pos}: movement at {unit.Pos}!", Side: sensor.Side));
+    }
+
+    /// <summary>
+    /// Overwatch: every unit on overwatch hostile to <paramref name="unit"/> that sees it now (by its own eyes, or as
+    /// revealed to its side within its sight) and reaches it fires one reaction, by id, while the unit stands. A
+    /// reaction does not set off further reactions.
+    /// </summary>
+    internal void CheckOverwatch(Unit unit)
+    {
+        if (_reacting || !unit.IsActive) return;
+        _reacting = true;
+        try
+        {
+            foreach (var watcher in State.Units.Where(u => u.IsActive && u.Stance == Stance.Overwatch && u.Reactions > 0 && u.HostileTo(unit))
+                         .OrderBy(u => u.Id).ToList())
+            {
+                if (!unit.IsActive) break;
+                var sees = Detection.Spots(Data, State, watcher, unit)
+                           || (Detection.IsRevealed(State, unit.Id, watcher.Side)
+                               && Visibility.CanSee(Data, State.Map, watcher.Pos, Profile(watcher).Sight, unit.Pos));
+                if (!sees) continue;
+                var action = Profile(watcher).Actions
+                    .Where(a => Combat.CheckReach(Data, State.Map, watcher.Pos, a, unit.Pos) == ScavengeError.None)
+                    .OrderByDescending(a => Combat.ChanceToHit(this, watcher, a, unit) * (a.MinDamage + a.MaxDamage) / 2)
+                    .ThenBy(a => a.Id, StringComparer.Ordinal)
+                    .FirstOrDefault();
+                if (action is null) continue;
+                watcher.Reactions--;
+                State.Log(new(State.Round, ScavengeEventType.Overwatch,
+                    $"{watcher.Name} reacts on overwatch: {action.Name} at {unit.Name}!", watcher.Id, unit.Id, unit.Pos,
+                    Anonymous: $"Overwatch fire from the fog at {unit.Name}!"));
+                Combat.Resolve(this, watcher, action, unit, reaction: true);
+            }
+        }
+        finally
+        {
+            _reacting = false;
         }
     }
 

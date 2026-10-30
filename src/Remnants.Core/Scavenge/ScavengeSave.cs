@@ -6,11 +6,12 @@ namespace Remnants.Core.Scavenge;
 /// <summary>
 /// Save/load a scavenge instance as JSON. Definitions are not saved; they reload from data/.
 /// Version 2 adds the Network alarm (<see cref="ScavengeState.AlarmRounds"/>, reinforcement waves), suppression and
-/// pylon tiles; version 1 saves load with those at their defaults.
+/// pylon tiles; version 1 saves load with those at their defaults. Version 3 adds the fog of war: stances, lookout,
+/// contacts, reveals, flares and motion sensors; older saves load with none (everyone out of stance, nothing placed).
 /// </summary>
 public static class ScavengeSave
 {
-    public const int Version = 2;
+    public const int Version = 3;
     private const int OldestVersion = 1;
 
     private sealed record Envelope(int Version, ScavengeState Scavenge);
@@ -49,6 +50,11 @@ public static class ScavengeSave
                 if (data.Items[id].Slot != slot) throw new JsonException($"Unit {u.Id} has '{id}' in the {slot} slot.");
         }
         foreach (var id in state.Caches.SelectMany(c => c.Items)) RequireItem(id);
+        foreach (var sensor in state.Sensors)
+        {
+            RequireItem(sensor.ItemId);
+            if (!state.Map.InBounds(sensor.Pos)) throw new JsonException($"Sensor {sensor.Id} is off the map at {sensor.Pos}.");
+        }
         foreach (var id in state.TurnOrder)
             if (state.FindUnit(id) is null) throw new JsonException($"Turn order references unknown unit {id}.");
     }

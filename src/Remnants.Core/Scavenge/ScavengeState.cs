@@ -15,11 +15,46 @@ public enum ScavengeEventType
     RoundStarted, Moved, Attacked, Missed, Injured, LimbLost, Downed, Died, BledOut,
     Stabilized, Revived, Healed, Evacuated, Extracted, PickedUp, Recruited, Spotted, PartyDone, Finished,
     Suppressed, Flanked, Retreated, Reinforced,
+    Ambushed, Overwatch, Braced, Lookout, Revealed, FlareLit, SensorPlaced, SensorTripped,
 }
 
-/// <summary>Something notable for the UI log or animation. Purely informational.</summary>
+/// <summary>
+/// Something notable for the UI log or animation. Purely informational.
+/// <see cref="Anonymous"/> is the text for a side that cannot see the actor (<see cref="UnitId"/>): "Ana was hit from
+/// the fog" instead of naming the Linked; without it such a side does not hear of the event at all (see
+/// <see cref="FogLog"/>). <see cref="Side"/> limits the event to one side (a motion sensor's alert).
+/// </summary>
 public sealed record ScavengeEvent(
-    int Round, ScavengeEventType Type, string Message, int? UnitId = null, int? TargetId = null, Pos? Pos = null);
+    int Round, ScavengeEventType Type, string Message, int? UnitId = null, int? TargetId = null, Pos? Pos = null,
+    string? Anonymous = null, string? Side = null);
+
+/// <summary>A side knows something is near a tile without knowing what: a "?" on its map.</summary>
+public enum ContactKind
+{
+    /// <summary>Heard gunfire or a fight.</summary>
+    Noise,
+    /// <summary>Heard something moving close by.</summary>
+    Movement,
+    /// <summary>Where an attack on one of its units came from (with <see cref="Contact.Toward"/>).</summary>
+    Attack,
+    /// <summary>A motion sensor went off.</summary>
+    Sensor,
+}
+
+/// <summary>
+/// A per-side "something is there". <see cref="Pos"/> is approximate (up to <see cref="FogRules.ContactFuzz"/> off), it
+/// carries no identity, and it fades after <see cref="FogRules.ContactRounds"/>.
+/// </summary>
+public sealed record Contact(string Side, Pos Pos, ContactKind Kind, int Round, Pos? Toward = null);
+
+/// <summary>A unit revealed to a side (muzzle flash, motion sensor) through <see cref="UntilRound"/>: stealth does not hide it there.</summary>
+public sealed record Reveal(int UnitId, string Side, int UntilRound);
+
+/// <summary>A burning flare: every side sees every tile within the radius, and everyone on them.</summary>
+public sealed record Flare(Pos Pos, double Radius, int UntilRound);
+
+/// <summary>A motion sensor placed by a side: reveals and alerts on hostiles that move within its radius.</summary>
+public sealed record Sensor(int Id, string Side, Pos Pos, int Radius, string ItemId);
 
 /// <summary>
 /// The complete mutable state of one scavenge instance. Plain data so it serializes;
@@ -53,6 +88,15 @@ public sealed class ScavengeState
 
     /// <summary>Reinforcement waves the zone's pylons have called so far.</summary>
     public int ReinforcementWaves { get; set; }
+
+    /// <summary>Per-side contacts ("?" markers). Expired ones are dropped at round start.</summary>
+    public List<Contact> Contacts { get; set; } = new();
+
+    /// <summary>Units revealed to a side despite their stealth.</summary>
+    public List<Reveal> Reveals { get; set; } = new();
+    public List<Flare> Flares { get; set; } = new();
+    public List<Sensor> Sensors { get; set; } = new();
+    public int NextSensorId { get; set; } = 1;
 
     public List<ScavengeEvent> Events { get; set; } = new();
 

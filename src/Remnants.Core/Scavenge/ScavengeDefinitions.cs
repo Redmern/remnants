@@ -33,6 +33,9 @@ public sealed record EnemyDef
     /// <summary>Linked: how far (Chebyshev) this unit links to other Network nodes. Drones relay further.</summary>
     public int RelayRange { get; init; }
 
+    /// <summary>Added to the derived stealth: Linked move like hunters, Husks shamble.</summary>
+    public double Stealth { get; init; }
+
     /// <summary>Missing attributes default to 50.</summary>
     public Dictionary<AttributeKind, double> Attributes { get; init; } = new();
     public Dictionary<Skill, double> Skills { get; init; } = new();
@@ -238,6 +241,109 @@ public sealed record CombatRules
     public ActionDef Unarmed { get; init; } = new();
 }
 
+/// <summary>
+/// Fog of war beyond plain sight (scavenge.json <c>fog</c>): stealth against detection, contacts, ambushes, and the
+/// defenses against them. See <see cref="Detection"/>.
+/// </summary>
+public sealed record FogRules
+{
+    /// <summary>Stealth = base + (Agility - 50) · perAgility - load · perKg + gear + (leg efficiency - 1) · legEfficiency.</summary>
+    public StealthRules Stealth { get; init; } = new();
+
+    /// <summary>Detection = (base + (Perception - 50) · perPerception + gear + stance bonuses) · head efficiency.</summary>
+    public DetectionRules Detection { get; init; } = new();
+
+    /// <summary>Within this Chebyshev distance a unit in sight is always seen, however stealthy.</summary>
+    public int CloseRange { get; init; } = 1;
+
+    /// <summary>Detection lost per tile of distance beyond <see cref="CloseRange"/>.</summary>
+    public double PerTile { get; init; } = 2.5;
+
+    /// <summary>Rounds a contact (a "?" for something heard, not seen) stays on a side's map.</summary>
+    public int ContactRounds { get; init; } = 2;
+
+    /// <summary>A contact is placed up to this many tiles off the real position (each axis).</summary>
+    public int ContactFuzz { get; init; } = 1;
+
+    /// <summary>Unseen hostiles moving within this distance (Chebyshev) of a side's unit become movement contacts.</summary>
+    public int HearMovement { get; init; } = 3;
+
+    /// <summary>Rounds a unit stays revealed to a side after tripping its motion sensor.</summary>
+    public int SensorRevealRounds { get; init; } = 1;
+
+    public AmbushRules Ambush { get; init; } = new();
+    public OverwatchRules Overwatch { get; init; } = new();
+    public BraceRules Brace { get; init; } = new();
+    public LookoutRules Lookout { get; init; } = new();
+    public FogAiRules Ai { get; init; } = new();
+}
+
+public sealed record StealthRules
+{
+    public double Base { get; init; } = 10;
+    public double PerAgility { get; init; } = 0.3;
+    public double PerKg { get; init; } = 1;
+
+    /// <summary>Hurt or peg legs are loud; cybernetic legs above 1 are quieter.</summary>
+    public double LegEfficiency { get; init; } = 20;
+}
+
+public sealed record DetectionRules
+{
+    public double Base { get; init; } = 30;
+    public double PerPerception { get; init; } = 0.5;
+}
+
+/// <summary>An attack whose target's side cannot see the attacker when it resolves.</summary>
+public sealed record AmbushRules
+{
+    public double HitBonus { get; init; } = 0.2;
+    public double DamageMultiplier { get; init; } = 1.25;
+
+    /// <summary>The target cannot dodge what it does not see coming.</summary>
+    public bool IgnoreDodge { get; init; } = true;
+
+    /// <summary>"Watching each other's backs": share of the bonuses removed when an ally stands next to the target.</summary>
+    public double BacksReduction { get; init; } = 0.5;
+}
+
+/// <summary>Overwatch stance: ends the turn; reacts to the first hostile that moves or reveals itself in sight and reach.</summary>
+public sealed record OverwatchRules
+{
+    /// <summary>AP needed to go on overwatch (the rest of the turn is forfeited).</summary>
+    public int ApCost { get; init; } = 2;
+    public int Reactions { get; init; } = 1;
+    public double AccuracyPenalty { get; init; } = 0.1;
+    public double DetectionBonus { get; init; } = 10;
+}
+
+/// <summary>Brace / hunker: ends the turn; no ambush bonus against the unit, extra cover, fewer AP next turn.</summary>
+public sealed record BraceRules
+{
+    public int ApCost { get; init; } = 1;
+    public double CoverBonus { get; init; } = 0.15;
+    public int NextTurnApPenalty { get; init; } = 1;
+}
+
+/// <summary>Lookout / scan: spend AP for sight and detection until the unit's next turn.</summary>
+public sealed record LookoutRules
+{
+    public int ApCost { get; init; } = 1;
+    public double SightBonus { get; init; } = 2;
+    public double DetectionBonus { get; init; } = 15;
+    public double DetectionPerPerception { get; init; } = 0.2;
+}
+
+/// <summary>How the Linked use the fog.</summary>
+public sealed record FogAiRules
+{
+    /// <summary>Position scoring: value of a tile no known hostile would detect the unit on.</summary>
+    public double HiddenWeight { get; init; } = 4;
+
+    /// <summary>A Linked that knows of nobody waits on overwatch instead of wandering.</summary>
+    public bool LinkedLurk { get; init; } = true;
+}
+
 public sealed record AiRules
 {
     public double WanderChance { get; init; } = 0.5;
@@ -261,6 +367,7 @@ public sealed record ScavengeRules
     public AiRules Ai { get; init; } = new();
     public NpcRules Npc { get; init; } = new();
     public NetworkRules Network { get; init; } = new();
+    public FogRules Fog { get; init; } = new();
     public WorldRules World { get; init; } = new();
 
     /// <summary>Followers within this many tiles leave with the unit that extracts.</summary>

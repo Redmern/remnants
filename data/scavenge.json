@@ -47,6 +47,21 @@
     "coverWeight": 10,
     "apWeight": 0.5
   },
+  "fog": {
+    "stealth": { "base": 10, "perAgility": 0.3, "perKg": 1.0, "legEfficiency": 20 },
+    "detection": { "base": 30, "perPerception": 0.5 },
+    "closeRange": 1,
+    "perTile": 2.5,
+    "contactRounds": 2,
+    "contactFuzz": 1,
+    "hearMovement": 3,
+    "sensorRevealRounds": 1,
+    "ambush": { "hitBonus": 0.2, "damageMultiplier": 1.25, "ignoreDodge": true, "backsReduction": 0.5 },
+    "overwatch": { "apCost": 2, "reactions": 1, "accuracyPenalty": 0.1, "detectionBonus": 10 },
+    "brace": { "apCost": 1, "coverBonus": 0.15, "nextTurnApPenalty": 1 },
+    "lookout": { "apCost": 1, "sightBonus": 2, "detectionBonus": 15, "detectionPerPerception": 0.2 },
+    "ai": { "hiddenWeight": 4, "linkedLurk": true }
+  },
   "world": { "colonyPos": [0.22, 0.7] },
   "npc": {
     "attributeRange": [20, 55],

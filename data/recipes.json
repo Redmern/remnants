@@ -13,6 +13,7 @@
   { "id": "backpack",       "name": "Backpack",        "building": "tailor",   "minLevel": 1, "work": 9,  "inputs": { "cloth": 4, "scrap": 1 },      "item": "backpack" },
   { "id": "padded_vest",    "name": "Padded Vest",     "building": "tailor",   "minLevel": 1, "work": 10, "inputs": { "cloth": 5, "wood": 2 },       "item": "padded_vest" },
   { "id": "climbing_gear",  "name": "Climbing Gear",   "building": "tailor",   "minLevel": 2, "work": 12, "inputs": { "cloth": 4, "scrap": 3 },      "item": "climbing_gear", "minSkill": 10 },
+  { "id": "camo_cloak",     "name": "Camo Cloak",      "building": "tailor",   "minLevel": 2, "work": 12, "inputs": { "cloth": 5, "wood": 1 },       "item": "camo_cloak", "minSkill": 10 },
   { "id": "scout_jacket",   "name": "Scout Jacket",    "building": "tailor",   "minLevel": 2, "work": 14, "inputs": { "cloth": 6, "scrap": 1 },      "item": "scout_jacket", "minSkill": 15 },
 
   { "id": "simple_meal",    "name": "Simple Meals",    "building": "kitchen",  "minLevel": 1, "work": 4,  "inputs": { "food": 4 },                   "resource": "meal", "amount": 3 },
@@ -27,6 +28,8 @@
   { "id": "linked_plating", "name": "Linked Plating",  "building": "armory",   "minLevel": 3, "work": 22, "inputs": { "scrap": 12, "electronics": 3 }, "itemInputs": { "padded_vest": 1 }, "item": "linked_plating", "blueprint": "bp_linked_plating" },
 
   { "id": "salvage_circuits", "name": "Salvaged Circuits", "building": "electronics_lab", "minLevel": 1, "work": 6, "inputs": { "scrap": 6 },     "resource": "electronics", "amount": 1 },
+  { "id": "flare",          "name": "Flares",          "building": "electronics_lab", "minLevel": 1, "work": 5, "inputs": { "scrap": 2, "cloth": 1 }, "item": "flare", "amount": 2 },
+  { "id": "motion_sensor",  "name": "Motion Sensor",   "building": "electronics_lab", "minLevel": 1, "work": 9, "inputs": { "scrap": 3, "electronics": 1 }, "item": "motion_sensor" },
   { "id": "binoculars",     "name": "Binoculars",      "building": "electronics_lab", "minLevel": 1, "work": 10, "inputs": { "scrap": 3, "electronics": 1 }, "item": "binoculars" },
   { "id": "servo_arm",      "name": "Servo Arm",       "building": "electronics_lab", "minLevel": 2, "work": 20, "inputs": { "scrap": 10, "electronics": 4 }, "item": "servo_arm", "minSkill": 15 },
   { "id": "scanner",        "name": "Scanner",         "building": "electronics_lab", "minLevel": 2, "work": 16, "inputs": { "electronics": 3 }, "itemInputs": { "binoculars": 1 }, "item": "scanner", "blueprint": "bp_scanner" },

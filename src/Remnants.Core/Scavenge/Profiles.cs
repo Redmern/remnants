@@ -30,9 +30,14 @@ public sealed record ActionProfile(
     int ApCost,
     double Accuracy,
     int Noise,
-    int Area = 0);
+    int Area = 0,
+    int Reveal = 1);
 
-/// <summary>Everything the rules need about a unit, derived from attributes + carried gear + body state.</summary>
+/// <summary>
+/// Everything the rules need about a unit, derived from attributes + carried gear + body state + stance.
+/// <see cref="Stealth"/> and <see cref="Detection"/> decide who sees whom inside sight (<see cref="Detection"/>);
+/// <see cref="CoverBonus"/> is extra cover from bracing.
+/// </summary>
 public sealed record UnitProfile(
     MovementProfile Movement,
     IReadOnlyList<ActionProfile> Actions,
@@ -42,7 +47,10 @@ public sealed record UnitProfile(
     double CarryCapacity,
     double Load,
     double Armor,
-    double Dodge)
+    double Dodge,
+    double Stealth = 0,
+    double Detection = 0,
+    double CoverBonus = 0)
 {
     public ActionProfile? Action(string id) => Actions.FirstOrDefault(a => a.Id == id);
 }
@@ -62,18 +70,38 @@ public static class ProfileDeriver
         var load = unit.AllItems.Sum(id => data.Items[id].Weight);
         var capacity = rules.Carry.Base + unit.Get(AttributeKind.Strength) * rules.Carry.PerStrength + equipped.Sum(i => i.CarryBonus);
         var agility = unit.Get(AttributeKind.Agility);
+        var fog = rules.Fog;
+        var head = unit.Body.RegionEfficiency(BodyRegion.Head);
+        var enemy = unit.EnemyDefId is { } enemyId ? data.Enemies[enemyId] : null;
+
+        var sight = rules.Sight.Base + unit.Get(AttributeKind.Perception) * rules.Sight.PerPerception + equipped.Sum(i => i.SightBonus);
+        var detection = fog.Detection.Base + (unit.Get(AttributeKind.Perception) - 50) * fog.Detection.PerPerception + working.Sum(i => i.Detection);
+        if (unit.Lookout)
+        {
+            sight += fog.Lookout.SightBonus;
+            detection += fog.Lookout.DetectionBonus + unit.Get(AttributeKind.Perception) * fog.Lookout.DetectionPerPerception;
+        }
+        if (unit.Stance == Stance.Overwatch) detection += fog.Overwatch.DetectionBonus;
+        var stealth = fog.Stealth.Base
+            + (agility - 50) * fog.Stealth.PerAgility
+            - load * fog.Stealth.PerKg
+            + equipped.Sum(i => i.Stealth)
+            + (enemy?.Stealth ?? 0)
+            + (unit.Body.RegionEfficiency(BodyRegion.Legs) - 1) * fog.Stealth.LegEfficiency;
 
         return new UnitProfile(
             Movement: DeriveMovement(data, unit, working, capacity > 0 ? load / capacity : double.PositiveInfinity),
             Actions: DeriveActions(data, unit, working),
             MaxAp: Math.Max(1, rules.Turn.BaseAp + equipped.Sum(i => i.ApBonus)),
             Initiative: agility * rules.Turn.InitiativePerAgility + equipped.Sum(i => i.Initiative) - load * rules.Turn.InitiativePerLoad,
-            Sight: Math.Max(1, (rules.Sight.Base + unit.Get(AttributeKind.Perception) * rules.Sight.PerPerception + equipped.Sum(i => i.SightBonus))
-                               * unit.Body.RegionEfficiency(BodyRegion.Head)),
+            Sight: Math.Max(1, sight * head),
             CarryCapacity: capacity,
             Load: load,
             Armor: equipped.Sum(i => i.Armor),
-            Dodge: (agility - 50) * rules.Combat.DodgePerAgility + equipped.Sum(i => i.Dodge));
+            Dodge: (agility - 50) * rules.Combat.DodgePerAgility + equipped.Sum(i => i.Dodge),
+            Stealth: stealth,
+            Detection: detection * head,
+            CoverBonus: unit.Stance == Stance.Brace ? fog.Brace.CoverBonus : 0);
     }
 
     /// <summary>Equipped item defs in slot order (Weapon, Body, Tool), the order modifiers apply in.</summary>
@@ -165,7 +193,7 @@ public static class ProfileDeriver
             damageScale = Math.Max(0, damageScale);
 
             result.Add(new ActionProfile(a.Id, a.Name, itemId, a.Pattern, a.Reach,
-                a.MinDamage * damageScale, a.MaxDamage * damageScale, a.ApCost, Math.Max(0, accuracy), a.Noise, a.Area));
+                a.MinDamage * damageScale, a.MaxDamage * damageScale, a.ApCost, Math.Max(0, accuracy), a.Noise, a.Area, a.Reveal));
         }
 
         foreach (var item in working)

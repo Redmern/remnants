@@ -95,6 +95,12 @@ public sealed record ActionDef
 
     /// <summary>Splash radius (Chebyshev) around the target: other hostiles of the attacker in it are attacked too, each with its own roll.</summary>
     public int Area { get; init; }
+
+    /// <summary>
+    /// Rounds the attacker stays revealed to the victim's side after using this (muzzle flash). Stealth no longer hides
+    /// it there, but it still has to be in the side's sight. Melee reveals less than gunfire.
+    /// </summary>
+    public int Reveal { get; init; } = 1;
 }
 
 /// <summary>What using a consumable does.</summary>
@@ -116,6 +122,18 @@ public sealed record UseEffect
 
     /// <summary>Pulls the target off the map; it counts as returned home.</summary>
     public bool Evacuate { get; init; }
+
+    /// <summary>Flare: thrown at a tile within <see cref="Range"/>; lights this radius (Euclidean) so every side sees all of it.</summary>
+    public double LightRadius { get; init; }
+
+    /// <summary>Flare: rounds the light lasts (the current one counts).</summary>
+    public int LightRounds { get; init; }
+
+    /// <summary>Motion sensor: placed on a tile within <see cref="Range"/>; reveals hostiles that move within this radius (Chebyshev).</summary>
+    public int SensorRadius { get; init; }
+
+    /// <summary>Used on a tile (<see cref="Remnants.Core.Scavenge.UseItem.At"/>) rather than on a unit.</summary>
+    public bool TargetsTile => LightRadius > 0 || SensorRadius > 0;
 }
 
 /// <summary>A replacement limb fitted at the Med Bay. Quality is the part's efficiency (above 1 beats the original).</summary>
@@ -136,7 +154,7 @@ public sealed record SalvageDef
 /// <summary>What an equipped device does in the field.</summary>
 public enum DeviceEffect
 {
-    /// <summary>Scanner: hook for revealing caches and units through walls within the radius (not used by scavenge yet; its sight bonus is).</summary>
+    /// <summary>Scanner: hostile units within the radius are seen by the carrier's side, through walls and stealth.</summary>
     Scanner,
     /// <summary>Signal jammer: Linked within the radius lose their Network coordination (they stop taking cover).</summary>
     Jammer,
@@ -179,6 +197,12 @@ public sealed record ItemDef
     public int ApBonus { get; init; }
     public double SightBonus { get; init; }
     public double CarryBonus { get; init; }
+
+    /// <summary>Added to the wearer's stealth: a rag coat is quiet, riot armor loud, a camo cloak hides (see <see cref="Remnants.Core.Scavenge.Detection"/>).</summary>
+    public double Stealth { get; init; }
+
+    /// <summary>Added to the carrier's detection (binoculars, scanner).</summary>
+    public double Detection { get; init; }
 
     /// <summary>Movement and action modifiers only apply when this body requirement holds.</summary>
     public BodyRequirement? Requires { get; init; }

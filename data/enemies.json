@@ -1,6 +1,6 @@
 [
   {
-    "id": "husk", "name": "Husk", "hp": 40, "ai": "Husk",
+    "id": "husk", "name": "Husk", "hp": 40, "ai": "Husk", "stealth": -2,
     "attributes": { "Strength": 60, "Agility": 40, "Endurance": 70, "Perception": 35 },
     "skills": { "Melee": 30 },
     "equipment": ["husk_claws"]
@@ -12,7 +12,7 @@
     "equipment": ["crawler_mandibles", "crawler_carapace"]
   },
   {
-    "id": "linked", "name": "Linked", "hp": 70, "ai": "Linked", "relayRange": 6,
+    "id": "linked", "name": "Linked", "hp": 70, "ai": "Linked", "relayRange": 6, "stealth": 25,
     "attributes": { "Strength": 55, "Agility": 55, "Endurance": 60, "Perception": 65 },
     "skills": { "Firearms": 50, "Melee": 40 },
     "equipment": ["linked_carbine", "linked_plating"]

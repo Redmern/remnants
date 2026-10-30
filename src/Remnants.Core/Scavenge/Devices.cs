@@ -9,8 +9,8 @@ namespace Remnants.Core.Scavenge;
 /// <item>Jammer: a Linked unit within the radius (Chebyshev) of a hostile carrier drops off the <see cref="Network"/>: it
 /// neither shares nor receives what the squad sees, does not coordinate (cover, flanking, focus fire, suppression) and
 /// fights like a Husk. Pylons in the radius go offline, so they neither relay nor call reinforcements.</item>
-/// <item>Scanner: its sight bonus applies through the profile; <see cref="ScannedBy"/> is the hook for showing caches and
-/// units through walls, which the scavenge view does not use yet.</item>
+/// <item>Scanner: its sight and detection bonuses apply through the profile, and hostile units within its radius are seen
+/// by the carrier's side through walls and stealth (<see cref="Detection.SideSees"/>).</item>
 /// </list>
 /// </summary>
 public static class Devices
@@ -38,10 +38,13 @@ public static class Devices
 
     private static IEnumerable<(Unit Unit, DeviceDef Device)> Carriers(ScavengeSim sim, DeviceEffect effect) =>
         sim.State.Units.Where(u => u.IsActive)
-            .SelectMany(u => Working(sim, u).Where(d => d.Effect == effect).Select(d => (u, d)));
+            .SelectMany(u => Working(sim.Data, u).Where(d => d.Effect == effect).Select(d => (u, d)));
 
-    private static IEnumerable<DeviceDef> Working(ScavengeSim sim, Unit unit) =>
-        unit.Equipment.Values.Select(id => sim.Data.Items[id])
+    private static IEnumerable<DeviceDef> Working(ScavengeSim sim, Unit unit) => Working(sim.Data, unit);
+
+    /// <summary>Devices the unit carries equipped and can work (body requirement met), while it is active.</summary>
+    public static IEnumerable<DeviceDef> Working(ScavengeData data, Unit unit) =>
+        !unit.IsActive ? [] : unit.Equipment.Values.Select(id => data.Items[id])
             .Where(i => i.Device is not null && ProfileDeriver.MeetsRequirement(unit.Body, i.Requires))
             .Select(i => i.Device!);
 }
