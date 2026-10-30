@@ -440,9 +440,13 @@ public static class Campaign
                 if (e.Value > 0) lines?.Add($"{e.Value} × {ItemName(sim, e.Id)}");
                 break;
             case EffectKind.Resource when e.Id == Pantry.FoodKey:
-                // "food" rewards are food value: canned food into the pantry.
-                Pantry.AddFoodValue(state, sim.Data, e.Value);
-                lines?.Add($"{e.Value} food (canned)");
+                // "food" rewards are food value: canned food into the pantry (a negative one is taken out, as far as it goes).
+                if (e.Value < 0) Pantry.TakeFoodValue(state, sim.Data, Math.Min(-e.Value, Pantry.FoodValue(state, sim.Data)));
+                else
+                {
+                    Pantry.AddFoodValue(state, sim.Data, e.Value);
+                    lines?.Add($"{e.Value} food (canned)");
+                }
                 break;
             case EffectKind.Resource:
                 state.Stockpile.Add(e.Id, e.Value);

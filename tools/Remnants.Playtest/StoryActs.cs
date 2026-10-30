@@ -161,8 +161,10 @@ public static class StoryActs
         var state = sim.State;
         foreach (var (id, n) in new[] { ("linked_carbine", 6), ("linked_plating", 6), ("rifle", 6), ("riot_armor", 6), ("med_kit", 12), ("bandage", 20), ("hacking_kit", 3), ("cyberdeck", 1), ("backpack", 4), ("flare", 6) })
             if (sim.Scavenge!.Items.ContainsKey(id) && state.Inventory.Count(id) < n) state.Inventory.Add(id, n - state.Inventory.Count(id));
-        foreach (var (res, n) in new[] { ("food", 400.0), ("wood", 200.0), ("scrap", 200.0), ("medicine", 40.0) })
+        foreach (var (res, n) in new[] { ("wood", 200.0), ("scrap", 200.0), ("medicine", 40.0) })
             if (state.Stockpile.Get(res) < n) state.Stockpile.Add(res, n - state.Stockpile.Get(res));
+        var food = Pantry.FoodValue(sim);
+        if (food < 400) Pantry.AddFoodValue(state, sim.Data, 400 - food);
     }
 
     /// <summary>Once a day: stock topped up, the party patched up (this is a story run, not a survival test).</summary>

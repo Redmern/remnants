@@ -187,7 +187,7 @@ public static class StoryCharacters
         var state = sim.State;
         var home = state.Survivors.Where(s => !s.Away).ToList();
         var humanity = ColonyHumanity(sim);
-        var food = state.Stockpile.Get("food");
+        var food = Pantry.FoodValue(state, sim.Data);
         foreach (var s in home)
         {
             if (s.TraitHooks.GetValueOrDefault(Colony.PerkHooks.HumanityGrowthPerDay) is var grow and > 0 && s.Body.Humanity < HumanityGrowthCap)
