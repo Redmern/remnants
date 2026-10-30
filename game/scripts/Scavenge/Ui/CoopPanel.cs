@@ -10,8 +10,8 @@ namespace Remnants.Game.Scavenge.Ui;
 
 /// <summary>
 /// Teamwork for the acting unit, as <see cref="ActionButton"/>s with AP pips and hotkeys: hand an item to an ally next
-/// to it (G; the selected ally if it is one), carry or put down a downed unit of the team (C), team pings (Z danger,
-/// V go here, N loot; then click a tile), and alliances: accept (Y) or decline (U) an offer, offer one to a rival
+/// to it (G; the selected ally if it is one), carry or put down a downed unit of the team (C), team pings in one row of
+/// icon buttons named in their tooltips (Z danger, V go here, N loot; then click a tile), and alliances: accept (Y) or decline (U) an offer, offer one to a rival
 /// player whose party you see (Y), or announce leaving the team (no hotkey, it takes a round's warning). Hidden when
 /// there is nothing to do. Every button sends a Core command through the screen; Core decides whether it works.
 /// </summary>
@@ -116,15 +116,17 @@ public partial class CoopPanel : PanelContainer
         {
             var left = coop.PingsPerTurn - unit.PingsUsed;
             _content.AddChild(Widgets.Label($"PING ({left}/{coop.PingsPerTurn} LEFT)", "Heading"));
+            var pings = Widgets.Row(4);
+            _content.AddChild(pings);
             foreach (var (kind, hotkey) in new[] { (PingKind.Danger, "scav_ping_danger"), (PingKind.GoHere, "scav_ping_go"), (PingKind.Loot, "scav_ping_loot") })
             {
                 var k = kind;
-                var button = new ActionButton(PingIcon(kind), PingName(kind), "", 0, hotkey, $"Mark a tile \"{PingName(kind)}\" for your team (then click it)") { ToggleMode = true };
+                var button = new ActionButton(PingIcon(kind), "", "", 0, hotkey, $"Ping \"{PingName(kind)}\": mark a tile for your team (then click it)") { ToggleMode = true };
                 button.ButtonPressed = pinging == kind;
                 button.SetBlocked(left <= 0);
                 button.Pressed += () => PingChosen?.Invoke(k);
                 _buttons.Add(button);
-                _content.AddChild(button);
+                pings.AddChild(button);
             }
         }
 
