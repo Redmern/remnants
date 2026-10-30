@@ -200,36 +200,10 @@ public partial class PerksTab : VBoxContainer
         foreach (var (job, v) in e.CraftQuality) parts.Add($"+{v * 100:0} {sim.Data.Jobs[job].Name} quality");
         if (e.StudySpeed > 0) parts.Add($"+{e.StudySpeed * 100:0}% study speed");
         if (e.XpBonus > 0) parts.Add($"+{e.XpBonus * 100:0}% XP");
-        foreach (var (hook, v) in e.Hooks) parts.Add(HookText(hook, v));
+        foreach (var (hook, v) in e.Hooks) parts.Add(CyberText.Hook(hook, v));
         var text = string.Join(" · ", parts);
         return bb && text.Length > 0 ? Palette.Paint(text, Palette.Amber) : text;
     }
-
-    private static string HookText(string hook, double v) => hook switch
-    {
-        PerkHooks.HackChanceBonus => $"Hack chance +{v * 100:0}",
-        PerkHooks.HackAlarmReduction => $"Hacks {v * 100:0}% quieter",
-        PerkHooks.CanHackLinked => "Can hack Linked",
-        PerkHooks.FieldRepair => "Field repairs",
-        PerkHooks.HackApDiscount => $"Hacks cost {v:0} AP less",
-        PerkHooks.DroneRangeBonus => $"Drone range +{v:0}",
-        PerkHooks.DroneBatteryBonus => $"Drone battery +{v:0}",
-        PerkHooks.DroneCanMark => "Drone marks targets",
-        PerkHooks.DronePayload => "Drone payload",
-        PerkHooks.AccuracyBonus => $"Accuracy +{v * 100:0}",
-        PerkHooks.MeleeDamageBonus => $"Melee damage +{v * 100:0}%",
-        PerkHooks.OverwatchReactionsBonus => $"+{v:0} overwatch reaction",
-        PerkHooks.BraceCoverBonus => $"Braced cover +{v * 100:0}%",
-        PerkHooks.StealthBonus => $"Stealth +{v:0}",
-        PerkHooks.DetectionBonus => $"Detection +{v:0}",
-        PerkHooks.SightBonus => $"Sight +{v:0}",
-        PerkHooks.CarryBonus => $"Carry +{v:0} kg",
-        PerkHooks.LootBonus => $"Loot +{v * 100:0}%",
-        PerkHooks.FieldHealBonus => $"Healing items +{v * 100:0}%",
-        PerkHooks.ReviveHpBonus => $"Revive +{v:0} HP",
-        PerkHooks.BleedoutRoundsBonus => $"Bleed-out +{v:0} round",
-        _ => $"{hook} {v:0.##}",
-    };
 }
 
 /// <summary>

@@ -47,6 +47,7 @@ public partial class ScavengeLog : PanelContainer
             ScavengeEventType.Ambushed => ("stat_warning", Palette.Danger),
             ScavengeEventType.Alarm or ScavengeEventType.OverrideEnded => ("stat_linked", Palette.Network),
             ScavengeEventType.HackFailed => ("stat_warning", Palette.Danger),
+            ScavengeEventType.LimbLocked => ("body_prosthetic", Palette.Network),
             ScavengeEventType.Hacked or ScavengeEventType.HackProgress or ScavengeEventType.Overridden => ("skill_hacking", Palette.Amber),
             ScavengeEventType.DroneDeployed or ScavengeEventType.DroneFlown or ScavengeEventType.DroneRecalled or ScavengeEventType.DroneLanded
                 or ScavengeEventType.Marked or ScavengeEventType.PayloadDropped => ("skill_dronepiloting", Palette.Amber),

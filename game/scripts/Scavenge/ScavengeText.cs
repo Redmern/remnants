@@ -44,7 +44,8 @@ public static class ScavengeText
         {
             PartCondition.Healthy => $"{Part(kv.Key)}: ok",
             PartCondition.Injured => $"{Part(kv.Key)}: injured {kv.Value.Severity:P0}",
-            PartCondition.Prosthetic => $"{Part(kv.Key)}: cybernetic {kv.Value.ProstheticQuality:P0}",
+            PartCondition.Prosthetic when kv.Value.Interfered => $"{Part(kv.Key)}: cybernetic, LOCKED by interference",
+            PartCondition.Prosthetic => $"{Part(kv.Key)}: cybernetic {kv.Value.Efficiency:P0}",
             _ => $"{Part(kv.Key)}: missing",
         }, kv.Value.Condition));
 

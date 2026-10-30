@@ -110,7 +110,7 @@ public partial class UnitViews : Node3D
 
     /// <summary>What the model shows: limb conditions (and prosthetic kind) plus worn gear; the model is rebuilt when it changes.</summary>
     private static string BodyKey(Unit unit) => unit.Side + "|" +
-        string.Join(",", unit.Body.Parts.OrderBy(kv => kv.Key).Select(kv => $"{(int)kv.Value.Condition}{(kv.Value.ProstheticQuality < 1 ? "" : "+")}"))
+        string.Join(",", unit.Body.Parts.OrderBy(kv => kv.Key).Select(kv => SurvivorDressing.LimbKey(kv.Value)))
         + "|" + string.Join(",", unit.Equipment.OrderBy(kv => kv.Key).Select(kv => kv.Value));
 
     /// <summary>

@@ -8,7 +8,8 @@ namespace Remnants.Game.Colony;
 
 /// <summary>
 /// Purely visual body dressing shared by the colony and scavenge views: missing limbs hidden, prosthetics swapped in
-/// at the joint (crude peg/hook below quality 1, cybernetic from there), and equipped gear hung on the body's sockets
+/// at the joint (the model the part's cybernetics node names, tinted by its tier; see <see cref="ProstheticModel"/>), and
+/// equipped gear hung on the body's sockets
 /// (manifest <c>sockets</c> on bodies, <c>attach</c> on <c>item_*</c> models: the item's attach point lands on the
 /// socket, parented under the part it rides on).
 /// </summary>
@@ -49,15 +50,55 @@ public static class SurvivorDressing
 
             var kind = Body.RegionOf(part) == BodyRegion.Arms ? "arm" : "leg";
             var side = nodeName[^1];
-            var crude = state.ProstheticQuality < 1 ? kind == "arm" ? "hook" : "peg" : "cyborg";
-            if ((library.TryInstance($"prosthetic_{kind}_{crude}_{side}") ?? library.TryInstance($"prosthetic_{kind}_cyborg_{side}"))
+            var (variant, tint) = ProstheticModel(state, kind);
+            if ((library.TryInstance($"prosthetic_{kind}_{variant}_{side}") ?? library.TryInstance($"prosthetic_{kind}_cyborg_{side}"))
                 is not { } prosthetic) continue;
+            if (tint is { } t) Tint(prosthetic, t);
             var joint = prosthetic.FindChild(nodeName, true, false) as Node3D;
             var scale = child && joint is not null && joint.Position.Y > 0 ? limb.Position.Y / joint.Position.Y : 1f;
             prosthetic.Scale = Vector3.One * scale;
             prosthetic.Position = limb.Position - (joint?.Position ?? Vector3.Zero) * scale;
             limb.GetParent().AddChild(prosthetic);
         }
+    }
+
+    /// <summary>
+    /// The model variant for a fitted part (<c>prosthetic_{kind}_{variant}_{side}</c>) and the tint it wears: the node's
+    /// <c>model</c> id and its tier's tint (cybernetics.json), so per-tier meshes drop in by data. Parts outside the tree
+    /// (old saves without data) fall back to hook/peg below quality 1 and cyborg from there.
+    /// </summary>
+    public static (string Variant, Color? Tint) ProstheticModel(BodyPartState state, string kind)
+    {
+        var cyber = GameDataPaths.LoadScavenge().Cybernetics;
+        if (cyber?.Node(state.ProstheticItemId) is { } node)
+            return (node.Model, cyber.Tier(node.Tier).Tint is { } hex ? new Color(hex) : null);
+        return (state.ProstheticQuality < 1 ? kind == "arm" ? "hook" : "peg" : "cyborg", null);
+    }
+
+    /// <summary>A part's look for model and portrait cache keys: condition plus which prosthetic it wears.</summary>
+    public static string LimbKey(BodyPartState p) =>
+        p.Condition == PartCondition.Prosthetic ? $"{(int)p.Condition}{p.ProstheticItemId ?? (p.ProstheticQuality < 1 ? "-" : "+")}" : $"{(int)p.Condition}";
+
+    /// <summary>
+    /// Stand-in for per-tier meshes: every surface gets a copy of its material with the albedo pulled toward the tier's
+    /// tint (the copy is per instance, so the shared model stays as it is).
+    /// </summary>
+    private static void Tint(Node node, Color tint)
+    {
+        if (node is MeshInstance3D mesh && mesh.Mesh is { } m)
+            for (var i = 0; i < m.GetSurfaceCount(); i++)
+                if (mesh.GetActiveMaterial(i) is BaseMaterial3D material && material.Duplicate() is BaseMaterial3D copy)
+                {
+                    copy.AlbedoColor = material.AlbedoColor * Colors.White.Lerp(tint, 0.7f);
+                    if (tint.V > 0.75f && tint.B > tint.R) // Network-grade: a faint cold glow
+                    {
+                        copy.EmissionEnabled = true;
+                        copy.Emission = tint;
+                        copy.EmissionEnergyMultiplier = 0.25f;
+                    }
+                    mesh.SetSurfaceOverrideMaterial(i, copy);
+                }
+        foreach (var child in node.GetChildren()) Tint(child, tint);
     }
 
     /// <summary>

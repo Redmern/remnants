@@ -38,7 +38,9 @@ public partial class SurvivorPanel : PanelContainer
     private readonly Dictionary<Skill, StatBar> _skills = new();
 
     // Body
-    private readonly Dictionary<BodyPart, (TextureRect Icon, Label Text, StatBar Bar)> _parts = new();
+    private readonly Dictionary<BodyPart, (TextureRect Icon, Label Text, StatBar Bar, Label Detail)> _parts = new();
+    private readonly StatBar _humanity = new("body_prosthetic");
+    private readonly Label _humanityText = Widgets.Wrapped("", "Small");
 
     // Family
     private readonly RichTextLabel _family = Ui.Rich();
@@ -128,20 +130,32 @@ public partial class SurvivorPanel : PanelContainer
 
     private Control BodyTab()
     {
-        var box = Widgets.Column(8);
+        var box = Widgets.Column(6);
+        box.AddChild(Labelled("Humanity", Icons.Get("stat_mood", 16), _humanity));
+        _humanityText.AddThemeColorOverride("font_color", Palette.TextMuted);
+        box.AddChild(_humanityText);
         foreach (var part in Enum.GetValues<BodyPart>())
         {
             var row = Widgets.Row(8);
             var icon = Icons.Rect(Icons.BodyPart(part.ToString(), 22), 22, Palette.TextMuted);
             row.AddChild(icon);
-            var col = Widgets.Column(2);
+            // "Left leg: Cyborg Runner Leg  ▬▬▬ 135%" on one line, the tier / upkeep line under it for prosthetics.
+            var col = Widgets.Column(0);
             col.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            var line = Widgets.Row(6);
             var text = Widgets.Label("", "");
-            var bar = new StatBar(null);
-            col.AddChild(text);
-            col.AddChild(bar);
+            text.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            text.ClipText = true;
+            var bar = new StatBar(null, 90);
+            bar.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+            var detail = Widgets.Label("", "Small", Palette.TextMuted);
+            detail.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            line.AddChild(text);
+            line.AddChild(bar);
+            col.AddChild(line);
+            col.AddChild(detail);
             row.AddChild(col);
-            _parts[part] = (icon, text, bar);
+            _parts[part] = (icon, text, bar, detail);
             box.AddChild(row);
         }
         return Scroll(box, "Body");
@@ -312,14 +326,32 @@ public partial class SurvivorPanel : PanelContainer
 
     private void RefreshBody(ColonySim sim, Survivor s)
     {
-        foreach (var (part, (icon, text, bar)) in _parts)
+        var cyber = sim.Data.Cybernetics;
+        var humanity = s.Body.Humanity;
+        if (cyber is not null)
+        {
+            var (band, color) = CyberText.Humanity(cyber.Humanity, humanity);
+            _humanity.Set(humanity / Body.MaxHumanity, $"{humanity:0}", color);
+            _humanityText.Text = band switch
+            {
+                "whole" => "Whole: their prosthetics have not changed who they are.",
+                "strained" => $"Strained: mood cannot rise above {Cybernetics.MoodCap(cyber.Humanity, humanity):0}.",
+                _ => $"Detached: mood at most {Cybernetics.MoodCap(cyber.Humanity, humanity):0}; their partner drifts away and their children suffer.",
+            };
+            _humanity.TooltipText = $"Humanity {humanity:0}/100: 100 minus what each prosthetic costs (more for an elective augmentation). " +
+                                    $"Below {cyber.Humanity.MoodCapFrom:0} mood is capped; below {cyber.Humanity.Detached:0} partners and children suffer.";
+        }
+        _humanity.GetParent<Control>().Visible = _humanityText.Visible = cyber is not null;
+        foreach (var (part, (icon, text, bar, detail)) in _parts)
         {
             var p = s.Body[part];
             var name = Spaced(part.ToString());
+            detail.Visible = false;
             switch (p.Condition)
             {
                 case PartCondition.Healthy:
                     text.Text = $"{name}: healthy";
+                    text.TooltipText = part == BodyPart.Eyes ? "Eyes are never lost: an eye implant is always an elective augmentation." : "";
                     bar.Set(1, "100%", Palette.Good);
                     icon.Modulate = Palette.TextMuted;
                     break;
@@ -336,8 +368,19 @@ public partial class SurvivorPanel : PanelContainer
                 default:
                     var item = p.ProstheticItemId is { } pid && sim.Scavenge?.Items.GetValueOrDefault(pid) is { } def ? def.Name : "prosthetic";
                     text.Text = $"{name}: {item}";
-                    bar.Set(Math.Min(1, p.ProstheticQuality), $"{ColonyText.Percent(p.ProstheticQuality)} eff.", p.ProstheticQuality >= 1 ? Palette.Good : Palette.Warn);
+                    bar.Set(Math.Min(1, p.Efficiency), $"{ColonyText.Percent(p.Efficiency)} eff.", p.Efficiency >= 1 ? Palette.Good : Palette.Warn);
                     icon.Modulate = Palette.Amber;
+                    if (cyber is not null && CyberText.Node(cyber, p) is { } node)
+                    {
+                        var lines = new List<string> { CyberText.TierAndSpec(cyber, node) + (p.Elective ? " · augmentation" : "") + $" · −{p.HumanityCost:0} humanity" };
+                        if (CyberText.Upkeep(cyber, p, sim.Data.Rules.TicksPerDay) is { } upkeep) lines.Add(upkeep);
+                        detail.Text = string.Join(" · ", lines);
+                        detail.Visible = true;
+                        detail.AddThemeColorOverride("font_color", p.Upkeep < 1 - 1e-9 ? Palette.Warn : Palette.TextMuted);
+                        icon.Modulate = CyberText.Tint(cyber, node.Tier).Lerp(Palette.Amber, 0.3f);
+                        text.TooltipText = string.Join(" · ", CyberText.ItemStats(sim.Scavenge!.Items[node.Id]).Concat(CyberText.Effects(node.Effects, sim.Data)));
+                        text.MouseFilter = MouseFilterEnum.Stop;
+                    }
                     break;
             }
         }

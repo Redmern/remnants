@@ -169,7 +169,7 @@ public partial class SurvivorWalkers : Node3D
     /// <summary>What the figure looks like: a new model is built when it changes (grew up, lost or got a limb).</summary>
     private static string Look(Survivor s) =>
         $"{s.LifeStage}|" + string.Join(",", s.Body.Parts.OrderBy(kv => kv.Key)
-            .Select(kv => $"{(int)kv.Value.Condition}{(kv.Value.ProstheticQuality < 1 ? "" : "+")}"));
+            .Select(kv => SurvivorDressing.LimbKey(kv.Value)));
 
     /// <summary>Puts sleepers inside at once instead of walking them home (after a jump in time, e.g. debug captures).</summary>
     public void Settle()

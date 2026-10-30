@@ -32,6 +32,9 @@ public partial class ColonyHud : CanvasLayer
     public PauseMenu Pause { get; }
     public SettingsPanel Settings { get; } = new();
 
+    /// <summary>The cybernetics tree (from the Med Bay, Workshop and Electronics Lab).</summary>
+    public CyberneticsPanel Cybernetics { get; }
+
     /// <summary>Esc with nothing else to close; the screen may cancel placement or deselect first.</summary>
     public event Func<bool>? BackRequested;
 
@@ -124,8 +127,13 @@ public partial class ColonyHud : CanvasLayer
             new("Quit", "ui_quit", () => GetTree().Quit(), "Quit the game? Unsaved progress is lost.", "Quit to the desktop"),
         ]) { Theme = HudTheme.Shared };
         Pause.Closed += ResumeTime;
+        Cybernetics = new CyberneticsPanel(session);
+        AddChild(Cybernetics);
         AddChild(Pause);
         AddChild(Settings);
+        MedBay.CyberneticsPressed += (who, part) =>
+            Cybernetics.Open(part is { } p ? Remnants.Core.Data.CyberneticsData.SlotOf(p) : null, who, part);
+        Production.CyberneticsPressed += () => Cybernetics.Open();
 
         Log.Important += n => Toasts.Show(n.Title, n.Text, n.Icon, n.Color, n.Key, n.Merged);
         TopBar.MenuPressed += OpenPause;
@@ -144,6 +152,7 @@ public partial class ColonyHud : CanvasLayer
         MedBay.Refresh();
         Production.Refresh();
         Study.Refresh();
+        Cybernetics.Refresh();
         Inventory.Refresh();
         Expedition.Refresh();
         WorldMap.Refresh();
@@ -169,7 +178,7 @@ public partial class ColonyHud : CanvasLayer
     public override void _UnhandledInput(InputEvent e)
     {
         if (e is not InputEventKey { Pressed: true, Echo: false }) return;
-        if (Pause.Visible || Settings.Visible) return; // the overlays handle their own Esc
+        if (Pause.Visible || Settings.Visible || Cybernetics.Visible) return; // the overlays handle their own Esc
         if (Hotkeys.Pressed(e, "pause_menu")) Back();
         else if (Hotkeys.Pressed(e, "toggle_pause")) _session.SetSpeed(_session.Speed == 0 ? Math.Max(1, _speedBeforePause) : Remember());
         else if (Hotkeys.Pressed(e, "speed_1")) _session.SetSpeed(1);

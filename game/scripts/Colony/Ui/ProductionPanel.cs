@@ -27,7 +27,12 @@ public partial class ProductionPanel : PanelContainer
     private string _ordersShown = "";
     private string _recipesShown = "";
 
+    private readonly Button _cyber;
+
     public int? BuildingId { get; private set; }
+
+    /// <summary>"Cybernetics" pressed (shown where prosthetics are made).</summary>
+    public event System.Action? CyberneticsPressed;
 
     public ProductionPanel(ColonySession session)
     {
@@ -35,7 +40,10 @@ public partial class ProductionPanel : PanelContainer
         CustomMinimumSize = new Vector2(320, 0);
         Visible = false;
         var box = Ui.Panel(this);
-        box.AddChild(Ui.Heading("Production", "skill_crafting"));
+        _cyber = Widgets.IconButton("body_prosthetic", "Cybernetics", "The cybernetics tree: which limbs can be made here and what they need",
+            () => CyberneticsPressed?.Invoke(), variation: "Flat");
+        _cyber.CustomMinimumSize = new Vector2(0, 26);
+        box.AddChild(Widgets.SectionHeader("Production", "skill_crafting", _cyber));
         box.AddChild(_status);
         box.AddChild(_orders);
 
@@ -64,6 +72,7 @@ public partial class ProductionPanel : PanelContainer
         var recipes = building is null ? [] : sim.Data.RecipesFor(building.DefId);
         Visible = recipes.Count > 0;
         if (!Visible) return;
+        _cyber.Visible = sim.Data.Cybernetics is { } cyber && recipes.Any(r => cyber.Node(r.Item) is not null);
 
         RefreshRecipes(sim, building!, recipes);
         RefreshOrders(sim, building!);

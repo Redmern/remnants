@@ -110,6 +110,7 @@ public partial class UnitPanel : PanelContainer
             var text = Widgets.Label("", "", size: 13);
             text.CustomMinimumSize = new Vector2(118, 0);
             text.ClipText = true;
+            text.MouseFilter = MouseFilterEnum.Stop;
             row.AddChild(text);
             var bar = new StatBar(null) { SizeFlagsHorizontal = SizeFlags.ExpandFill };
             row.AddChild(bar);
@@ -166,7 +167,7 @@ public partial class UnitPanel : PanelContainer
         // Machines have no limbs or pack worth a card.
         _bodyCard.Visible = _gearCard.Visible = unit.Kind is not (UnitKind.Drone or UnitKind.Device);
 
-        RefreshBody(unit);
+        RefreshBody(data, unit);
         RefreshProfile(profile);
         RefreshGear(data, unit, profile);
     }
@@ -198,8 +199,9 @@ public partial class UnitPanel : PanelContainer
         _droneText.Text = string.Join("\n", lines);
     }
 
-    private void RefreshBody(Unit unit)
+    private void RefreshBody(ScavengeData data, Unit unit)
     {
+        var cyber = data.Cybernetics;
         foreach (var (part, (icon, text, bar)) in _parts)
         {
             var p = unit.Body[part];
@@ -222,9 +224,25 @@ public partial class UnitPanel : PanelContainer
                     icon.Modulate = Palette.TextDim;
                     break;
                 default:
-                    text.Text = $"{name} · prosthetic";
-                    bar.Set(Math.Min(1, p.ProstheticQuality), Fmt.Percent(p.ProstheticQuality), p.ProstheticQuality >= 1 ? Palette.Good : Palette.Warn);
-                    icon.Modulate = Palette.Amber;
+                    var node = CyberText.Node(cyber, p);
+                    var item = p.ProstheticItemId is { } pid && data.Items.TryGetValue(pid, out var def) ? def : null;
+                    if (p.Interfered)
+                    {
+                        // Network interference this round: the part is dead weight until the next roll.
+                        text.Text = $"{name} · LOCKED";
+                        bar.Set(0, "locked", Palette.Network);
+                        icon.Modulate = Palette.Network;
+                        text.TooltipText = $"{item?.Name ?? "Implant"}: locked up by Network interference this round (Linked nearby, an Override hacker or a jammer).";
+                        break;
+                    }
+                    text.Text = node is null ? $"{name} · prosthetic" : $"{name} · T{node.Tier}";
+                    bar.Set(Math.Min(1, p.Efficiency), Fmt.Percent(p.Efficiency), p.Efficiency >= 1 ? Palette.Good : Palette.Warn);
+                    icon.Modulate = cyber is not null && node is not null ? CyberText.Tint(cyber, node.Tier).Lerp(Palette.Amber, 0.3f) : Palette.Amber;
+                    text.TooltipText = item is null ? "" : string.Join("\n", new[] { item.Name + (cyber is not null && node is not null ? $" ({CyberText.TierAndSpec(cyber, node)})" : "") }
+                        .Concat(CyberText.ItemStats(item))
+                        .Concat(node is null ? [] : CyberText.Effects(node.Effects with { JobOutput = new(), CraftQuality = new() }))
+                        .Append(cyber is not null && node is not null && cyber.Tier(node.Tier).Interference ? "Network-grade: Linked nearby can lock it up." : "")
+                        .Where(l => l.Length > 0));
                     break;
             }
         }

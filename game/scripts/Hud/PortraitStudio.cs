@@ -72,7 +72,7 @@ public partial class PortraitStudio : Node
         foreach (var part in Enum.GetValues<BodyPart>())
         {
             var p = body[part];
-            parts.Add($"{(int)p.Condition}{(p.ProstheticQuality < 1 ? "" : "+")}");
+            parts.Add(Colony.SurvivorDressing.LimbKey(p));
         }
         return stage + ":" + string.Join("", parts);
     }
