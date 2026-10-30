@@ -362,3 +362,160 @@ outcomes (lockers block tiles, so runs differ), as in the fog pass.
 
 Watch next pass: Rail Depot and up are harder with cameras and turrets; the hack AP cost (2) against the per-device work;
 whether a novice should get lockers at 65% (they are not on the Network) or terminals higher than ~35%.
+
+## Linked carbine pass
+
+The fog pass found that a geared party which fights the Linked still loses, and named the Linked carbine as the lever.
+The aim: **the carbine is the turning point against the Linked, not a straight upgrade.** A starting party still has
+to run. A geared party with carbines and the fog defenses can stand and fight Linked squads in the mid zones and
+usually win, though it comes home hurt. Rail Depot, Network Relay and Core Spire stay very dangerous, but two carbines,
+armor and good play give a fair chance in the Depot.
+
+Measured with `--zone=… --runs=300` and the kits below. The before numbers are `main` at the hacking-and-drones pass
+with only the new kit options added. "Lose someone when a Linked shows" counts runs where the side picked out a Linked.
+The kits are `--kit=geared` (pistol / rifle, vest / camo cloak, binoculars, flares, sensor; the bot stands and fights),
+plus `--carbines=N` (that many members carry a Linked carbine instead of their gun), `--armor` (everyone wears Linked
+plating) and `--carbine-quality=fine|crude`. The bot fires the carbine whenever it has one: it picks the attack with
+the best expected damage per AP, and the bane counts in the hit chance it sees.
+
+### What changed
+
+- **Bane** (new in Core, `ActionDef.bane`): an attack's edge against enemies whose `enemies[].tags` contain its tag.
+  The Linked, the drones, the Wardens and the cameras are tagged `network`. The carbine's burst now has
+  `bane: { tag: network, hitBonus: 0.3, damageMultiplier: 2.0, armorPierce: 4, disruptRounds: 2 }`. Against the
+  Network it hits more often, hits twice as hard, ignores the Linked's plating, and knocks a hit Linked off the relay
+  for this round and the next (it fights alone, as if jammed). Against Husks it is the same gun as before (Burst
+  10–16, reach 8, 1 AP, noise 10, reveal 2). The Linked keep carrying the same carbine (and its model); nothing they
+  shoot carries the tag, so the Linked are exactly as strong as before against every party.
+- **Quality matters more**: quality tiers now scale a bane (its extra damage and its pierce) too, and the carbine's
+  `qualityAccuracy: 0.4` adds accuracy per point of multiplier: Fine +0.10, Crude −0.08. Fine carbines are what make
+  the high zones winnable. Crude ones are a trap (Suburb Ruins with 2 crude carbines: 51% someone dies, 28% wipes).
+- **Drops** (new in Core, `enemies[].drops`): an enemy leaves only what its drop table rolls, never its equipment.
+  Before, every dead Linked left its carbine (a 100% drop). Now: Linked carbine 15% and blueprint 5%; Warden carbine
+  60%, blueprint 25% and electronics always; Linked Drone electronics 50%. Caches in the tier-3 zones (Rail Depot and
+  up) still roll carbines (loot weight 0.5) and blueprints (0.4). The Armory recipe was already in place: level 3,
+  scrap 16, electronics 4, Gunsmithing 30, gated by "Blueprint: Linked Carbine", which is studied at Electronics Lab
+  level 2.
+- **No ammo.** Core has no ammunition or charge system, and a consumable cannot be tied to an attack with data alone.
+  A data-only version would be a pack item that does nothing, so this pass skips it.
+- Linked HP, armor, stealth and the squad AI numbers are unchanged. The bane did all the work, so nothing had to make
+  the Linked weaker against parties without a carbine.
+
+How the bane got there (2 carbines, someone dies / wipes; Rail Depot with plating):
+
+| bane | Suburb Ruins | Flooded Mall | Rail Depot + plating |
+|---|---|---|---|
+| none (before) | 37% / 23% | 67% / 49% | 92% / 86% |
+| ×1.5 damage, pierce 4, +0.15 hit | 28% / 12% | 45% / 26% | 71% / 56% |
+| ×1.75, pierce 4, +0.2 hit, relay knock-off 2 | 26% / 10% | 40% / 18% | 63% / 44% |
+| **×2.0, pierce 4, +0.3 hit, relay knock-off 2** | **22% / 10%** | **31% / 11%** | **45% / 27%** |
+
+The relay knock-off was worth only 1–2 points by itself (squads still focus fire with whoever is left on the relay),
+but it is what makes a hit felt in the AI's play. The accuracy bonus did the most: survivors start with Firearms 0, so
+before this pass they hit a Linked about 40% of the time while the Linked hit them 55–75%.
+
+### Results (before → after, 300 runs each)
+
+**Starting kit**
+
+| zone | someone dies | wipe | lose someone when a Linked shows | Linked kills / run |
+|---|---|---|---|---|
+| Town Outskirts | 6% → **6%** | 1% → **1%** | — → **—** | 0.00 → **0.00** |
+| Scrapyard Flats | 8% → **8%** | 2% → **2%** | — → **—** | 0.00 → **0.00** |
+| Suburb Ruins | 33% → **33%** | 12% → **12%** | 82% → **82%** | 0.00 → **0.00** |
+| Flooded Mall | 52% → **52%** | 22% → **22%** | 59% → **60%** | 0.19 → **0.19** |
+| Rail Depot | 92% → **92%** | 63% → **64%** | 94% → **94%** | 0.19 → **0.17** |
+| Network Relay | 99% → **98%** | 86% → **86%** | 99% → **98%** | 0.19 → **0.20** |
+| Core Spire | 100% → **100%** | 96% → **97%** | 100% → **100%** | 0.33 → **0.35** |
+
+**Geared, no carbine**
+
+| zone | someone dies | wipe | lose someone when a Linked shows | Linked kills / run |
+|---|---|---|---|---|
+| Town Outskirts | 6% → **6%** | 1% → **1%** | — → **—** | 0.00 → **0.00** |
+| Scrapyard Flats | 11% → **11%** | 4% → **4%** | — → **—** | 0.00 → **0.00** |
+| Suburb Ruins | 54% → **54%** | 38% → **38%** | 93% → **94%** | 0.04 → **0.04** |
+| Flooded Mall | 81% → **82%** | 66% → **65%** | 87% → **89%** | 0.34 → **0.34** |
+| Rail Depot | 98% → **97%** | 96% → **95%** | 98% → **98%** | 0.41 → **0.39** |
+| Network Relay | 100% → **100%** | 99% → **99%** | 100% → **100%** | 0.46 → **0.44** |
+| Core Spire | 100% → **100%** | 100% → **100%** | 100% → **100%** | 0.53 → **0.52** |
+
+**Geared, 1 carbine**
+
+| zone | someone dies | wipe | lose someone when a Linked shows | Linked kills / run |
+|---|---|---|---|---|
+| Town Outskirts | 3% → **3%** | 0% → **0%** | — → **—** | 0.00 → **0.00** |
+| Scrapyard Flats | 7% → **7%** | 1% → **1%** | — → **—** | 0.00 → **0.00** |
+| Suburb Ruins | 35% → **23%** | 22% → **12%** | 91% → **48%** | 0.06 → **0.18** |
+| Flooded Mall | 72% → **46%** | 52% → **20%** | 81% → **48%** | 0.48 → **0.95** |
+| Rail Depot | 95% → **80%** | 90% → **62%** | 96% → **80%** | 0.57 → **2.08** |
+| Network Relay | 100% → **96%** | 100% → **90%** | 100% → **96%** | 0.63 → **2.54** |
+| Core Spire | 100% → **99%** | 100% → **99%** | 100% → **99%** | 0.69 → **2.83** |
+
+**Geared, 2 carbines**
+
+| zone | someone dies | wipe | lose someone when a Linked shows | Linked kills / run |
+|---|---|---|---|---|
+| Town Outskirts | 3% → **3%** | 0% → **0%** | — → **—** | 0.00 → **0.00** |
+| Scrapyard Flats | 4% → **4%** | 1% → **1%** | — → **—** | 0.00 → **0.00** |
+| Suburb Ruins | 37% → **22%** | 23% → **10%** | 90% → **30%** | 0.07 → **0.23** |
+| Flooded Mall | 67% → **31%** | 49% → **11%** | 74% → **31%** | 0.52 → **1.06** |
+| Rail Depot | 96% → **63%** | 88% → **40%** | 97% → **64%** | 0.64 → **2.88** |
+| Network Relay | 100% → **80%** | 99% → **65%** | 100% → **80%** | 0.66 → **4.29** |
+| Core Spire | 100% → **95%** | 99% → **91%** | 100% → **95%** | 0.71 → **4.96** |
+
+**Geared, 2 carbines + Linked plating**
+
+| zone | someone dies | wipe | lose someone when a Linked shows | Linked kills / run |
+|---|---|---|---|---|
+| Town Outskirts | 1% → **1%** | 0% → **0%** | — → **—** | 0.00 → **0.00** |
+| Scrapyard Flats | 1% → **1%** | 0% → **0%** | — → **—** | 0.00 → **0.00** |
+| Suburb Ruins | 23% → **7%** | 13% → **1%** | 75% → **12%** | 0.09 → **0.25** |
+| Flooded Mall | 48% → **10%** | 34% → **2%** | 60% → **12%** | 0.64 → **1.05** |
+| Rail Depot | 92% → **45%** | 86% → **27%** | 95% → **46%** | 0.76 → **3.13** |
+| Network Relay | 99% → **71%** | 97% → **57%** | 99% → **71%** | 0.82 → **5.14** |
+| Core Spire | 100% → **90%** | 100% → **82%** | 100% → **90%** | 0.82 → **5.95** |
+
+**Geared, 2 Fine carbines** (`--carbine-quality=fine`; after only)
+
+| zone | someone dies | wipe | lose someone when a Linked shows | Linked kills / run |
+|---|---|---|---|---|
+| Town Outskirts | 0% | 0% | — | 0.00 |
+| Scrapyard Flats | 0% | 0% | — | 0.00 |
+| Suburb Ruins | 6% | 2% | 14% | 0.25 |
+| Flooded Mall | 13% | 3% | 15% | 1.11 |
+| Rail Depot | 44% | 20% | 44% | 3.35 |
+| Network Relay | 64% | 44% | 64% | 5.45 |
+| Core Spire | 81% | 74% | 81% | 6.97 |
+
+### Against the targets
+
+| target | result |
+|---|---|
+| Starting kit roughly unchanged | **met**: identical to within 1 point (the drop roll shifts the RNG stream a little) |
+| 2 carbines, Suburb Ruins: someone dies ≤ 25%, wipes ≤ 5% | deaths **met** (22%); wipes **missed** (10%) |
+| 2 carbines, Flooded Mall: someone dies ≤ 25%, wipes ≤ 5% | **missed** (31% / 11%) |
+| …the same with Linked plating, or with Fine carbines | **met**: Suburb 7% / 1% and 6% / 2%; Mall 10% / 2% and 13% / 3% |
+| Rail Depot, 2 carbines + armor: wipes ≤ 30% | **met** (27%, from 86%); with Fine carbines and no plating 20% |
+| Network Relay and Core Spire stay harder than Rail Depot | **met**: 57% / 82% wipes vs 27% (plating); 44% / 74% vs 20% (Fine) |
+
+- **Against the Linked the carbine is the turning point.** In Suburb Ruins, losing someone when a Linked shows drops
+  from 82% (starting kit) and 94% (geared, no carbine) to 48% with one carbine and 30% with two. In Flooded Mall the
+  drop is 89% → 31%. Linked kills per run go up 3–6× over the geared kit without a carbine. The kill-to-drop rate (15%) means a party that can already
+  fight the Linked brings home a carbine every few runs in the Depot. Before that, carbines come from Rail Depot caches,
+  from Wardens, or from the Armory blueprint.
+- **The misses are Husk fights, not Linked fights.** With 2 unarmored carbines, 20% of Suburb runs *without* a Linked
+  still lose someone (starting kit: 21%), and so do 32% of Mall runs without one (starting kit: 26%). In the Mall, runs
+  with a Linked are no deadlier than runs without one (31% vs 32%). The geared kit does no better than pipes and spears
+  against Husks: a two-handed gun
+  loses accuracy fast once Husk claws injure an arm, and the bot walks into melee range to shoot. Making the carbine
+  better against Husks would make it a straight upgrade, which this pass was told to avoid. With plating, or with Fine
+  carbines, both mid zones meet the targets.
+- Not trivial: with 2 carbines, Rail Depot still loses someone in 63% of runs (45% with plating), and Core Spire wipes
+  82–91% unless the carbines are Fine.
+- Bot tries that did not help, so they were left out: walking back to a downed ally to revive them (deaths unchanged,
+  more stalls), and holding overwatch for Husks coming in instead of closing in (geared deaths +9 points).
+
+Watch next: the Husk side of geared play (a ranged unit stepping out of melee before it shoots; Husk accuracy 0.75 +
+skill against Firearms-0 survivors); whether Fine carbines (+0.10 accuracy, ×2.25 against the Network) make the Relay too
+easy for a late colony; carbine drop pacing in a colony sweep.

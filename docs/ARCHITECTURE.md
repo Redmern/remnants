@@ -334,7 +334,9 @@ All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `fo
   qualityPerLevel ± qualitySpread` (uniform), the highest tier whose `crafting.qualityThresholds` it reaches. Tiers
   live in `scavenge.json` `quality` (Crude ×0.8 stats / ×1.15 weight, Standard = the item as defined, Fine ×1.25 /
   ×0.9); `ScavengeData` derives `{item}@{tier}` variants that scale armor, damage, positive dodge/initiative, sight and
-  carry bonuses. Variants are ordinary item ids, so inventory, expeditions, profiles and saves need nothing special.
+  carry bonuses, plus an action's `bane` (its damage bonus and armor pierce) and `qualityAccuracy` (accuracy per point
+  of multiplier: the Linked carbine's 0.4 makes Fine +0.10, Crude −0.08). Variants are ordinary item ids, so
+  inventory, expeditions, profiles and saves need nothing special.
 - **Blueprints**: `Blueprint` items (`blueprint.studyAt` + `minLevel`) drop from caches in tier 2–3 zones (the zone
   loot table is every item with a loot weight at or below the zone's loot tier). `StudyBlueprint(item)` uses one up at
   a study building of that level and adds it to `ColonyState.KnownBlueprints`; recipes naming it can then be queued.
@@ -522,6 +524,13 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
 - **Reinforcements**: at round start the Network is alarmed while a group with an online pylon knows a hostile;
   after `reinforceAfterRounds` such rounds in a row that pylon calls a wave (`zones[].reinforcements`: waves, count,
   mix) onto free floor next to it (`ScavengeState.AlarmRounds`, `ReinforcementWaves`).
+- **Anti-Network weapons**: an action's `bane` (`tag`, `hitBonus`, `damageMultiplier`, `armorPierce`, `disruptRounds`)
+  applies against enemies whose `enemies[].tags` hold the tag (`Combat.Bane`): more hit chance, the damage roll
+  multiplied, armor counted for less, and a hit Linked knocked off the relay (`Unit.OffRelayUntilRound`, treated as
+  jammed) for that many rounds. The Linked carbine carries one against `network`; the Linked themselves carry the same
+  carbine, but nothing they shoot is tagged, so it does not make them stronger.
+- **Drops**: a killed enemy leaves only what its `enemies[].drops` roll (each `{item, chance}` on its own, from the sim
+  RNG), never its equipment: a Linked sometimes its carbine or the carbine blueprint, a Warden more often.
 - **Signal jammer** (Tool device): a Linked inside a hostile jammer's radius is off the Network — no sharing, no
   coordination, fights like a Husk — and pylons inside it go offline (no relay, no reinforcements).
 - **Enemy variants** are data (`enemies.json` + `natural` items): Husk; Husk Crawler (fast, low HP, dodgy "low profile"
@@ -687,13 +696,14 @@ An hour is a tick (`hour = tick % ticksPerDay`); a new game starts at `newGame.s
   life (growth stages and rates), relationships (affinity), family (conception, pregnancy, baby names), mood,
   new-game setup (counts, age/stat ranges, stock, starting items, starting buildings, names, start hour), `dayNight`
   (phase hours, work and sleep windows, sleep / campfire / supper mood, Night Shift, sleep debt, light, Floodlight cost).
-- `items.json` — weapons (actions, with `noise` and `reveal`), clothing/armor (with `stealth`), tools (movement modifiers, carry, sight, `detection`),
+- `items.json` — weapons (actions, with `noise`, `reveal`, `bane` and `qualityAccuracy`), clothing/armor (with `stealth`), tools (movement modifiers, carry, sight, `detection`),
   flares and motion sensors (`use.lightRadius`/`lightRounds`, `use.sensorRadius`: used on a tile),
   consumables (med-kit, bandage, evac beacon), materials (with `salvage` into colony resources), prosthetics
   (region, quality, Med Bay level), devices (scanner, signal jammer), blueprints (study building and level);
   tier + loot weight for caches; `natural` for enemy body parts (never looted or crafted). Every other item has a
   recipe or a loot weight (tested).
-- `enemies.json` — hp, AI kind, attributes, skills, equipment (a Husk's claws are an item too).
+- `enemies.json` — hp, AI kind, attributes, skills, equipment (a Husk's claws are an item too), `tags` (for weapon
+  banes) and `drops` (what a kill leaves behind).
 - `zones.json` — size, threat, loot tier, terrain densities, spawn/exit edges, enemy count + mix,
   caches, NPC count, hackable devices per kind.
 - `scavenge.json` — `hacking`, `devices`, `drone`, `world.droneScout` (see "Hacking and scout drones"), `coop` (alliance offer / break-warning rounds, pings, give and carry costs, carry movement penalty,
