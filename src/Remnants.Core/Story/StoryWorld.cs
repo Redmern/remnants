@@ -129,7 +129,7 @@ public static class StoryWorld
         foreach (var t in campaign.Taken)
         {
             var s = t.Survivor;
-            s.Id = state.NextSurvivorId++;
+            // Ids are never reused, so the survivor comes back as who they were (a story character's SurvivorId still holds).
             s.Away = false;
             s.AssignedBuildingId = s.PatientAtBuildingId = s.HomeBuildingId = null;
             s.HasBed = false;
@@ -137,6 +137,12 @@ public static class StoryWorld
             s.Mood = Math.Min(s.Mood, 40);
             s.Body.HumanityLoss = Math.Clamp(s.Body.HumanityLoss + humanityLost, 0, Body.MaxHumanity);
             state.Survivors.Add(s);
+            if (s.UniqueId is { } unique && campaign.Characters.GetValueOrDefault(unique) is { } c)
+            {
+                c.Joined = true;
+                c.Left = false;
+                campaign.Flags.Remove($"{unique}_left");
+            }
             names.Add(s.Name);
             state.Log(new(state.Tick, ColonyEventType.Recruited, $"{s.Name} came home. They are not quite who they were.", s.Id));
         }

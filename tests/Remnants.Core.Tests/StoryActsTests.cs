@@ -473,6 +473,53 @@ public class StoryActsTests
     }
 
     [Fact]
+    public void A_taken_character_comes_home_as_themselves_and_is_still_joined()
+    {
+        var sim = Joined("iris");
+        var campaign = sim.State.Campaign!;
+        var iris = StoryCharacters.SurvivorOf(sim, "iris")!;
+        var id = iris.Id;
+        StoryWorld.TakeAway(sim, [id]);
+        sim.Tick();
+        Assert.False(campaign.Character("iris").Dead);
+        StoryWorld.ReturnTaken(sim, 40);
+        sim.Tick();
+        Assert.Equal(id, StoryCharacters.SurvivorOf(sim, "iris")!.Id);
+        Assert.True(Campaign.Holds(sim, new ConditionDef { Joined = "iris" }));
+        Assert.False(campaign.Character("iris").Left);
+    }
+
+    [Fact]
+    public void A_network_grade_part_fitted_before_doc_came_does_not_count_against_her_oath()
+    {
+        var sim = NewStory();
+        var campaign = sim.State.Campaign!;
+        var a = sim.State.Survivors.First(s => !s.IsChild);
+        a.Body.Fit(BodyPart.LeftArm, 1, "network_arm");
+        sim.Tick();
+        Assert.Equal(0, campaign.Flag(StoryCharacters.DocT4Count));
+        StoryCharacters.Join(sim, "hale");
+        a.Body.Fit(BodyPart.RightLeg, 1, "network_leg");
+        sim.Tick();
+        Assert.Equal(1, campaign.Flag(StoryCharacters.DocT4Count));
+        Assert.NotNull(StoryCharacters.SurvivorOf(sim, "hale"));
+        Assert.Contains(campaign.Inbox, c => c.DialogueId == "doc_oath_warn");
+    }
+
+    [Fact]
+    public void A_repeatable_mission_closed_for_good_does_not_come_back()
+    {
+        var sim = NewStory();
+        var campaign = sim.State.Campaign!;
+        var p = campaign.Progress("side_docs_rounds");
+        p.Status = MissionStatus.Done;
+        p.RepeatTick = sim.State.Tick + 5;
+        Campaign.Apply(sim, new EffectDef { Kind = EffectKind.Close, Id = "side_docs_rounds", Text = "failed" }, "test");
+        Days(sim, 1);
+        Assert.Equal(MissionStatus.Done, p.Status);
+    }
+
+    [Fact]
     public void Save_and_load_keeps_unique_survivors_traits_world_effects_and_the_taken()
     {
         var sim = Joined("seven", "hale");
@@ -622,6 +669,25 @@ public class StoryFieldTests
         MissionRules.Update(sim);
         Assert.Equal(ObjectiveStatus.Failed, sim.Status("n"));
         Assert.Equal(MissionOutcome.Failed, sim.State.Mission!.Outcome);
+    }
+
+    [Fact]
+    public void A_coop_guests_downed_survivor_is_not_the_storys_to_take_and_a_prompt_with_no_open_option_is_skipped()
+    {
+        var sim = Run([new ObjectiveDef { Id = "half", Kind = ObjectiveKind.Keep, Count = 50, FailsMission = true }],
+            [new TriggerDef { Id = "ask", When = new TriggerWhen { Kind = TriggerKind.Start }, Actions =
+                [new TriggerAction { Kind = TriggerActionKind.Prompt, Prompt = new PromptDef { Id = "p", Speaker = "x", Text = "?",
+                    Options = [new PromptOption("a", "A", null, new FieldCondition { Flag = "never" })] } }] }],
+            enemies: [new MapEnemyDef("linked", "east", "link", 1)], takeTag: "link", players: 2, members: 1);
+        Assert.Null(sim.State.Mission!.Pending);
+        var guest = sim.State.Units.First(u => u.PlayerId == 2 && u.Kind == UnitKind.Survivor);
+        sim.State.Units.Single(u => u.Tag == "link").Pos = new Pos(5, 3);
+        guest.Pos = new Pos(5, 2);
+        guest.Status = UnitStatus.Downed;
+        MissionRules.RoundStarted(sim);
+        MissionRules.RoundStarted(sim);
+        Assert.Empty(sim.State.Mission.Taken);
+        Assert.Equal(UnitStatus.Downed, guest.Status);
     }
 
     [Fact]

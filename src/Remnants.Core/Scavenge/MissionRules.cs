@@ -118,7 +118,10 @@ public static class MissionRules
                 switch (o.Kind)
                 {
                     case ObjectiveKind.Reach:
-                        var reachers = o.By is { } by ? state.Units.Where(u => u.Side == side && u.IsActive && u.Tag == by).ToList() : survivors;
+                        // By a tag, or by a story character (a unique survivor tagged "key" still counts as Iris or Seven).
+                        var reachers = o.By is { } by
+                            ? state.Units.Where(u => u.Side == side && u.IsActive && (u.Tag == by || u.Origin?.UniqueId == by || u.CharacterId == by)).ToList()
+                            : survivors;
                         if (run.Marker(o.Marker).Any(m => reachers.Any(u => u.Pos.Chebyshev(m) <= o.Radius))) to = ObjectiveStatus.Done;
                         break;
                     case ObjectiveKind.Keep:
@@ -288,7 +291,10 @@ public static class MissionRules
                 }
                 break;
             case TriggerActionKind.Prompt:
-                run.Pending = a.Prompt! with { Options = a.Prompt.Options.Where(o => run.Holds(o.If)).ToList() };
+                // A prompt whose every option is guarded off is skipped, not left blocking the run.
+                var open = a.Prompt!.Options.Where(o => run.Holds(o.If)).ToList();
+                if (open.Count == 0) break;
+                run.Pending = a.Prompt with { Options = open };
                 state.Log(new(state.Round, ScavengeEventType.MissionPrompt, $"{a.Prompt!.Speaker}: {a.Prompt.Text}", Side: side));
                 break;
             case TriggerActionKind.Split:
@@ -302,7 +308,10 @@ public static class MissionRules
                 foreach (var u in Tagged())
                 {
                     u.Status = UnitStatus.Extracted;
+                    if (u.CarriedById is { } bearer && state.FindUnit(bearer) is { } b) b.CarryingId = null;
+                    if (u.CarryingId is { } carried && state.FindUnit(carried) is { } c) c.CarriedById = null;
                     u.CarriedById = null;
+                    u.CarryingId = null;
                     state.Log(new(state.Round, ScavengeEventType.Chatter, $"{u.Name} is gone.", u.Id, Pos: u.Pos, Side: side));
                 }
                 break;
@@ -352,7 +361,9 @@ public static class MissionRules
         if (run.Def.TakeTag is not { } tag) return;
         var state = sim.State;
         var side = PartySide(state);
-        foreach (var u in state.Units.Where(u => u.Side == side && u.Kind == UnitKind.Survivor).OrderBy(u => u.Id).ToList())
+        // Only the host's own survivors: a co-op guest's people are not the story's to keep (theirs fall as in any run).
+        var host = HostPlayerId(state);
+        foreach (var u in state.Units.Where(u => u.Side == side && u.Kind == UnitKind.Survivor && u.PlayerId == host).OrderBy(u => u.Id).ToList())
         {
             var held = u.Status == UnitStatus.Downed && u.CarriedById is null
                        && state.Units.Any(t => t.IsActive && t.Tag == tag && t.HostileTo(u) && t.Pos.Chebyshev(u.Pos) <= 1);
@@ -389,7 +400,8 @@ public static class MissionRules
             s.Progress++;
             state.Log(new(state.Round, ScavengeEventType.ObjectiveUpdated, $"{o.Text} ({s.Progress}/{o.Count})", Side: side));
             if (s.Progress < o.Count) continue;
-            if (o.Item is { } item) carriers[0].Pack.Add(item);
+            // The host's carrier takes it (the mission's item goes home with the host); a guest's only if no host is there.
+            if (o.Item is { } item) (carriers.FirstOrDefault(c => c.PlayerId == HostPlayerId(state)) ?? carriers[0]).Pack.Add(item);
             Set(sim, o, s, ObjectiveStatus.Done);
             if (o.Item is { } picked) Fire(sim, t => t.When.Kind == TriggerKind.PickedUp && t.When.Item == picked);
         }

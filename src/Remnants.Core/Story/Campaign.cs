@@ -497,8 +497,10 @@ public static class Campaign
                     closing.Status = MissionStatus.Done;
                     closing.Outcome = e.Text ?? "done";
                     closing.DoneTick = state.Tick;
-                    closing.RetryTick = null;
                 }
+                // Closed for good: no retry, and a repeatable mission does not come back.
+                closing.RetryTick = null;
+                closing.RepeatTick = null;
                 break;
             case EffectKind.WorldEffect:
                 StoryWorld.Start(sim, e.Id, e.Value);

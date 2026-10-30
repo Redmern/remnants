@@ -165,6 +165,7 @@ public sealed class StoryData
                 {
                     if (a.Enemy is { } e && !scavenge.Enemies.ContainsKey(e)) errors.Add($"{where}: trigger {t.Id} spawns unknown enemy '{e}'.");
                     if (a.Objective is { } ao && !objectiveIds.Contains(ao)) errors.Add($"{where}: trigger {t.Id} names unknown objective '{ao}'.");
+                    if (a.Prompt is { } pr && pr.Options.All(o => o.If is not null)) errors.Add($"{where}: prompt {pr.Id} has no option without a guard.");
                 }
             }
         }

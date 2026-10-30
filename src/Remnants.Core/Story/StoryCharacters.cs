@@ -204,8 +204,8 @@ public static class StoryCharacters
     }
 
     /// <summary>
-    /// Doc's oath: every Network-grade (tier 4) part newly fitted in the colony is counted once
-    /// (<c>doc_t4_count</c>). The first, while Doc is in the colony, brings her warning; the second, she leaves.
+    /// Doc's oath: every Network-grade (tier 4) part newly fitted in the colony while she is in it is counted once
+    /// (<c>doc_t4_count</c>; the M16 key-carrier's port counts too). The first, while Doc is in the colony, brings her warning; the second, she leaves.
     /// </summary>
     private static void DocsOath(ColonySim sim)
     {
@@ -215,9 +215,9 @@ public static class StoryCharacters
             foreach (var (part, p) in s.Body.Parts.OrderBy(kv => kv.Key).ToList())
             {
                 if (p.Condition != PartCondition.Prosthetic || cyber.Node(p.ProstheticItemId) is not { Tier: >= 4 }) continue;
-                if (!campaign.T4Seen.Add($"{s.Id}:{part}")) continue;
+                // Each part once; only parts fitted while Doc is here break her oath (one fitted before she came is not hers to refuse).
+                if (!campaign.T4Seen.Add($"{s.Id}:{part}") || !campaign.Character(Doc).Joined) continue;
                 var count = campaign.Flags[DocT4Count] = campaign.Flag(DocT4Count) + 1;
-                if (!campaign.Character(Doc).Joined) continue;
                 if (count == 1 && sim.Story!.Dialogues.ContainsKey("doc_oath_warn")) Campaign.QueueCall(sim, "doc_oath_warn");
                 if (count >= 2)
                 {
