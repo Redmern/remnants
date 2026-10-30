@@ -10,7 +10,7 @@ namespace Remnants.Game.Colony.Ui;
 /// <summary>
 /// The production queue of the selected building (Workshop, Tailor, Kitchen, Armory, Electronics Lab): orders with
 /// progress and quality odds (cancel any), and a recipe picker to queue one batch, five, or a repeating order.
-/// Locked recipes say why (level, blueprint). Core decides what is allowed.
+/// Locked recipes say why (level, schematic); Decrypt orders appear while their chip is in the stores. Core decides what is allowed.
 /// </summary>
 public partial class ProductionPanel : PanelContainer
 {
@@ -82,7 +82,11 @@ public partial class ProductionPanel : PanelContainer
 
     private void RefreshRecipes(ColonySim sim, Building building, IReadOnlyList<RecipeDef> recipes)
     {
-        var signature = $"{building.Id}:{building.Level}:{string.Join(",", sim.State.KnownBlueprints)}";
+        // Decrypt orders only show while their chip is in the stores and the schematic is still unknown.
+        recipes = recipes.Where(r => r.Learns is not { } learns
+            || sim.State.Inventory.Has(learns) && !Remnants.Core.Schematics.Schematics.Has(sim, learns)).ToList();
+        var chips = recipes.Where(r => r.Learns is not null).Select(r => $"{r.Learns}:{sim.State.Inventory.Count(r.Learns!)}");
+        var signature = $"{building.Id}:{building.Level}:{string.Join(",", sim.State.Schematics.Known)}:{string.Join(",", chips)}";
         if (signature == _recipesShown) return;
         _recipesShown = signature;
         var selected = _recipes.Selected >= 0 && _recipes.Selected < _ids.Count ? _ids[_recipes.Selected] : null;
@@ -95,10 +99,10 @@ public partial class ProductionPanel : PanelContainer
             var lockNote = check.Error switch
             {
                 CommandError.RecipeLevelTooLow => $"  [L{r.MinLevel}]",
-                CommandError.RecipeLocked => "  [blueprint]",
+                CommandError.RecipeLocked => "  [schematic]",
                 _ => "",
             };
-            _recipes.AddIconItem(OutputIcon(sim, r), $"{r.Name} → {Output(sim, r)}{lockNote}");
+            _recipes.AddIconItem(OutputIcon(sim, r), r.Learns is null ? $"{r.Name} → {Output(sim, r)}{lockNote}" : $"{r.Name}{lockNote}");
             _recipes.SetItemDisabled(_recipes.ItemCount - 1, !check.Ok);
         }
         var index = selected is null ? -1 : _ids.IndexOf(selected);
@@ -179,7 +183,8 @@ public partial class ProductionPanel : PanelContainer
     }
 
     private static string Output(ColonySim sim, RecipeDef r) =>
-        r.Item is { } item ? $"{r.Amount:0} {sim.Scavenge?.Items.GetValueOrDefault(item)?.Name ?? item}" : $"{r.Amount:0.#} {sim.Data.Resources[r.Resource!].Name}";
+        r.Learns is { } learns ? $"the {sim.Data.Schematics.All[learns].Name} schematic"
+        : r.Item is { } item ? $"{r.Amount:0} {sim.Scavenge?.Items.GetValueOrDefault(item)?.Name ?? item}" : $"{r.Amount:0.#} {sim.Data.Resources[r.Resource!].Name}";
 
     private static string RecipeInfo(ColonySim sim, Building building, RecipeDef r)
     {
@@ -206,7 +211,8 @@ public partial class ProductionPanel : PanelContainer
     }
 
     private static Texture2D OutputIcon(ColonySim sim, RecipeDef r) =>
-        r.Item is { } item && sim.Scavenge?.Items.GetValueOrDefault(item) is { } def
+        r.Learns is not null ? Icons.Get("item_schematic", 18, "item_blueprint")
+        : r.Item is { } item && sim.Scavenge?.Items.GetValueOrDefault(item) is { } def
             ? Icons.Item(def.DefinedId, def.Kind.ToString(), 18)
             : Icons.Resource(r.Resource ?? "", 18);
 }

@@ -175,11 +175,20 @@ public sealed class ColonySession
         SyncPhase();
     }
 
+    /// <summary>Events the player's own commands logged (newest few): the log shows them, toasts skip them.</summary>
+    private readonly System.Collections.Generic.Queue<ColonyEvent> _commandEvents = new();
+
+    /// <summary>Whether this event came from a command the player just gave (so it needs no toast).</summary>
+    public bool FromCommand(ColonyEvent e) => System.Linq.Enumerable.Any(_commandEvents, x => ReferenceEquals(x, e));
+
     public CommandResult Execute(IColonyCommand command)
     {
         var events = Sim.State.Events.Count;
         var last = events > 0 ? Sim.State.Events[^1] : null;
         var result = Sim.Execute(command);
+        var start = last is null ? 0 : Sim.State.Events.LastIndexOf(last) + 1;
+        for (var i = start; i < Sim.State.Events.Count; i++) _commandEvents.Enqueue(Sim.State.Events[i]);
+        while (_commandEvents.Count > 32) _commandEvents.Dequeue();
         // Core already logged an event for this (e.g. "Built Farm."); don't say it twice.
         var logged = Sim.State.Events.Count != events || (events > 0 && !ReferenceEquals(Sim.State.Events[^1], last));
         if (!result.Ok || !logged) Feedback?.Invoke(result.Message, !result.Ok);
