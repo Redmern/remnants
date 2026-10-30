@@ -2,6 +2,7 @@ using Remnants.Core.Data;
 using Remnants.Core.Items;
 using Remnants.Core.Random;
 using Remnants.Core.Scavenge;
+using Remnants.Core.Schematics;
 using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Colony;
@@ -76,8 +77,8 @@ public static class Cybernetics
         {
             var at = sim.Data.Buildings[recipe.Building];
             if (!state.Buildings.Any(b => b.DefId == at.Id && b.Level >= recipe.MinLevel)) missing.Add($"{at.Name} level {recipe.MinLevel}");
-            if (recipe.Blueprint is { } bp && !state.KnownBlueprints.Contains(bp))
-                missing.Add($"{sim.Scavenge?.Items.GetValueOrDefault(bp)?.Name ?? bp} studied");
+            if (sim.Data.Schematics.GateOfRecipe(recipe.Id) is { } gate && !Schematics.Schematics.Has(sim, gate))
+                missing.Add($"Schematic: {sim.Data.Schematics.All[gate].Name}");
         }
         else if (!IsKnown(state, node)) missing.Add("found as loot only");
         var owned = sim.Scavenge is null ? 0 : state.Inventory.Counts.Where(kv => sim.Scavenge.Items.TryGetValue(kv.Key, out var i) && i.DefinedId == node.Id).Sum(kv => kv.Value);
@@ -89,12 +90,22 @@ public static class Cybernetics
     }
 
     /// <summary>
-    /// The way into a design: one of its lower-tier requirements known, or its blueprint studied (a blueprint skips the
-    /// tier below). Tier 0 has no requirement.
+    /// The way into a design: one of its lower-tier requirements known, or (tiers with <c>schematicSkips</c>) its tier
+    /// schematic known, which skips the tier below. Tier 0 has no requirement.
     /// </summary>
-    public static bool WayIn(ColonyState state, CyberneticsData cyber, CyberNodeDef node) =>
-        node.Requires.Count == 0 || node.Requires.Any(r => IsKnown(state, cyber.Nodes[r]))
-        || node.Blueprint is { } bp && state.KnownBlueprints.Contains(bp);
+    public static bool WayIn(ColonySim sim, CyberneticsData cyber, CyberNodeDef node) =>
+        node.Requires.Count == 0 || node.Requires.Any(r => IsKnown(sim.State, cyber.Nodes[r]))
+        || cyber.Def.Tiers.Find(t => t.Tier == node.Tier) is { SchematicSkips: true } && TierGate(sim, node) is { } gate && Schematics.Schematics.Has(sim, gate);
+
+    /// <summary>The schematic gating a design's tier (<c>prosthetic</c> unlock <c>tier:N</c>), or null when the tier is free.</summary>
+    public static string? TierGate(ColonySim sim, CyberNodeDef node) => sim.Data.Schematics.GateOf(UnlockKind.Prosthetic, TierUnlockId(node.Tier));
+
+    /// <summary>The schematic gating a design's specialisation (<c>spec:ID</c>), or null.</summary>
+    public static string? SpecGate(ColonySim sim, CyberNodeDef node) =>
+        node.Spec is { } spec ? sim.Data.Schematics.GateOf(UnlockKind.Prosthetic, SpecUnlockId(spec)) : null;
+
+    public static string TierUnlockId(int tier) => $"tier:{tier}";
+    public static string SpecUnlockId(string spec) => $"spec:{spec}";
 
     /// <summary>Tree requirements only (a way in, the perk): what crafting checks on top of the recipe.</summary>
     private static List<string> Missing(ColonySim sim, CyberNodeDef node)
@@ -102,11 +113,11 @@ public static class Cybernetics
         var state = sim.State;
         var cyber = sim.Data.Cybernetics!;
         var missing = new List<string>();
-        if (!WayIn(state, cyber, node))
-        {
-            var know = $"know {string.Join(" or ", node.Requires.Select(r => sim.Scavenge?.Items.GetValueOrDefault(r)?.Name ?? r))}";
-            missing.Add(node.Blueprint is { } bp ? $"{know}, or study {sim.Scavenge?.Items.GetValueOrDefault(bp)?.Name ?? bp}" : know);
-        }
+        if (!WayIn(sim, cyber, node))
+            missing.Add($"know {string.Join(" or ", node.Requires.Select(r => sim.Scavenge?.Items.GetValueOrDefault(r)?.Name ?? r))}");
+        foreach (var gate in new[] { TierGate(sim, node), SpecGate(sim, node) })
+            if (gate is not null && !Schematics.Schematics.Has(sim, gate))
+                missing.Add($"Schematic: {sim.Data.Schematics.All[gate].Name}");
         if (node.Perk is { } perk && !ColonyHasPerk(state, perk))
             missing.Add($"someone with {sim.Data.Perks.GetValueOrDefault(perk)?.Name ?? perk}");
         return missing;

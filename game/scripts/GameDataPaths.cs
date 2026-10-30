@@ -15,12 +15,13 @@ namespace Remnants.Game;
 /// </summary>
 public static class GameDataPaths
 {
-    private static readonly string[] Files = ["resources.json", "jobs.json", "buildings.json", "rules.json", "recipes.json", "perks.json", "cybernetics.json", "food.json", "schematics.food.json"];
+    private static readonly string[] Files = ["resources.json", "jobs.json", "buildings.json", "rules.json", "recipes.json", "perks.json", "cybernetics.json", "schematics.json", "food.json"];
     private static readonly string[] ScavengeFiles = ["items.json", "enemies.json", "zones.json", "scavenge.json"];
     private const string EmbeddedPrefix = "Remnants.Data.";
 
     private static GameData? _data;
     private static ScavengeData? _scavenge;
+    private static Remnants.Core.Story.StoryData? _story;
 
     /// <summary>Where the loaded data came from, for diagnostics.</summary>
     public static string Source { get; private set; } = "";
@@ -30,13 +31,36 @@ public static class GameDataPaths
     /// <summary>Scavenge definitions (items, enemies, zones, rules), found the same way as the colony data.</summary>
     public static ScavengeData LoadScavenge() => _scavenge ??= LoadScavengeFresh();
 
+    /// <summary>The story (data/story): missions, dialogue, maps. A Sandbox colony carries it too and simply never uses it.</summary>
+    public static Remnants.Core.Story.StoryData LoadStory() => _story ??= LoadStoryFresh();
+
+    private static Remnants.Core.Story.StoryData LoadStoryFresh()
+    {
+        foreach (var dir in CandidateDirectories())
+            if (File.Exists(Path.Combine(dir, "story", "characters.json")))
+                return Remnants.Core.Story.StoryDataLoader.LoadFromDirectory(Path.Combine(dir, "story"));
+        const string prefix = "Remnants.Story.";
+        var names = typeof(GameDataPaths).Assembly.GetManifestResourceNames().Where(n => n.StartsWith(prefix, StringComparison.Ordinal)).ToList();
+        string Read(string name)
+        {
+            using var stream = typeof(GameDataPaths).Assembly.GetManifestResourceStream(name)!;
+            using var reader = new StreamReader(stream);
+            return reader.ReadToEnd();
+        }
+        // RecursiveDir keeps the folder ("missions/", or "missions\" built on Windows).
+        IEnumerable<(string, string)> In(string folder) => names
+            .Where(n => n[prefix.Length..].Replace('\\', '/').StartsWith(folder + "/", StringComparison.Ordinal))
+            .Select(n => (n, Read(n)));
+        return Remnants.Core.Story.StoryDataLoader.LoadFromJson(Read(prefix + "characters.json"), In("missions"), In("dialogue"), In("maps"));
+    }
+
     private static ScavengeData LoadScavengeFresh()
     {
         foreach (var dir in CandidateDirectories())
             if (ScavengeFiles.All(f => File.Exists(Path.Combine(dir, f))))
                 return ScavengeDataLoader.LoadFromDirectory(dir);
         return ScavengeDataLoader.LoadFromJson(ReadEmbedded("items.json"), ReadEmbedded("enemies.json"),
-            ReadEmbedded("zones.json"), ReadEmbedded("scavenge.json"), ReadEmbedded("perks.json"), ReadEmbedded("cybernetics.json"));
+            ReadEmbedded("zones.json"), ReadEmbedded("scavenge.json"), ReadEmbedded("perks.json"), ReadEmbedded("cybernetics.json"), ReadEmbedded("schematics.json"));
     }
 
     private static GameData LoadFresh()
@@ -61,8 +85,8 @@ public static class GameDataPaths
 
     private static GameData LoadEmbedded() =>
         GameDataLoader.LoadFromJson(ReadEmbedded("resources.json"), ReadEmbedded("jobs.json"), ReadEmbedded("buildings.json"), ReadEmbedded("rules.json"),
-            ReadEmbedded("recipes.json"), ReadEmbedded("perks.json"), ReadEmbedded("cybernetics.json"), ReadEmbedded("food.json"),
-            ReadEmbedded("schematics.food.json"));
+            ReadEmbedded("recipes.json"), ReadEmbedded("perks.json"), ReadEmbedded("cybernetics.json"), ReadEmbedded("weather.json"),
+            ReadEmbedded("food.json"), ReadEmbedded("schematics.json"), ReadEmbedded("schematics.food.json"));
 
     private static string ReadEmbedded(string file)
     {

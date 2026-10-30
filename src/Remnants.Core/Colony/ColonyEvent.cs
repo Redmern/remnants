@@ -4,12 +4,16 @@ public enum ColonyEventType
 {
     Constructed, Upgraded, Starving, Died, Left, BecameAdult, Homeless, Housed,
     ExpeditionLaunched, ExpeditionReturned, Recruited, Admitted, Discharged, Healed, InjuryWorsened, LimbLost,
-    ProstheticFitted, Crafted, RecipeChanged, OrderQueued, OrderCancelled, BlueprintStudied,
+    ProstheticFitted, Crafted, RecipeChanged, OrderQueued, OrderCancelled,
     NewCouple, BrokeUp, Pregnant, Born, BecameChild, Grieving, Miscarried,
     ExpeditionArrived, ExpeditionHeadingHome, ZoneRevealed, DroneScouted, DroneLost, DroneReturned,
     LevelUp, PerkLearned, StudyStarted, StudyFinished, StudyEnded,
     NightShift, Tired, FloodlightFitted,
     SurgeryBooked, SurgeryDone, SurgeryComplication, SurgeryCancelled, ProstheticServiced, ProstheticNeedsService, Humanity,
+    SchematicFound, SchematicLearned, SchematicHeardOf, ResearchStarted, ResearchFinished, ResearchEnded,
+    TraderArrived, TraderLeft, Traded, ContractOffered, ContractAccepted, ContractDone, ContractFailed,
+    StoryMission, RadioCall,
+    WeatherChanged, Storm, LightningStruck, Repaired,
     HarvestChanged, FoodRotted, FoodPoisoning,
 }
 

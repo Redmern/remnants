@@ -42,7 +42,7 @@ public class PantryTests
         Assert.Contains(sim.State.Events, e => e.Type == ColonyEventType.FoodRotted);
 
         var cold = Colony();
-        cold.State.KnownBlueprints.Add("sch_cold_cellar");
+        Schematics.Schematics.Grant(cold, "sch_cold_cellar", Schematics.SchematicSource.Debug);
         cold.Build("cold_cellar");
         Pantry.Add(cold.State, cold.Data, "meat", 4);
         Pantry.Add(cold.State, cold.Data, "canned_food", 1);
@@ -299,9 +299,8 @@ public class CookingTests
         Assert.Equal(CommandError.RecipeLocked, sim.Execute(new QueueRecipe(kitchen.Id, "feast")).Error);
         Assert.True(sim.Execute(new QueueRecipe(kitchen.Id, "stew")).Ok);  // mid recipes are in the default set
 
-        sim.State.Inventory.Add("sch_feast");
-        Assert.True(sim.Execute(new StudyBlueprint("sch_feast")).Ok);
-        Assert.True(FoodSchematics.Has(sim, "sch_feast"));
+        Assert.Equal(Schematics.ReceiveOutcome.Learned, Schematics.Schematics.Receive(sim, "sch_feast", Schematics.SchematicSource.Loot).Outcome);
+        Assert.True(Schematics.Schematics.Has(sim, "sch_feast"));
         Assert.True(sim.Execute(new QueueRecipe(kitchen.Id, "feast")).Ok);
     }
 
@@ -311,9 +310,9 @@ public class CookingTests
         var sim = LoopTestData.Colony(townHallLevel: 2, food: 0);
         foreach (var (res, n) in sim.Data.Buildings["cold_cellar"].Level(1).Cost) sim.State.Stockpile.Add(res, n);
         Assert.Equal(CommandError.SchematicNeeded, sim.Execute(new Construct("cold_cellar")).Error);
-        sim.State.KnownBlueprints.Add("sch_cold_cellar");
+        Schematics.Schematics.Grant(sim, "sch_cold_cellar", Schematics.SchematicSource.Debug);
         Assert.True(sim.Execute(new Construct("cold_cellar")).Ok);
-        Assert.False(FoodSchematics.LevelUnlocked(sim, "greenhouse", 1));
+        Assert.False(Schematics.Schematics.LevelUnlocked(sim, "greenhouse", 1));
     }
 
     [Fact]

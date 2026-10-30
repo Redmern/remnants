@@ -67,12 +67,12 @@ public static class Progression
         return gained;
     }
 
-    /// <summary>A perk's state for a survivor: owned, locked behind a datashard, missing requirements, or open.</summary>
+    /// <summary>A perk's state for a survivor: owned, locked behind a schematic (technique), missing requirements, or open.</summary>
     public static PerkStatus Status(ColonySim sim, Survivor s, PerkDef perk)
     {
         if (s.HasPerk(perk.Id)) return new(perk, PerkBlock.Owned, []);
         var missing = Missing(sim, s, perk);
-        if (perk.Requires.Blueprint is { } bp && !sim.State.KnownBlueprints.Contains(bp))
+        if (!Schematics.Schematics.PerkUnlocked(sim, perk.Id))
             return new(perk, PerkBlock.Locked, missing);
         if (missing.Count > 0) return new(perk, PerkBlock.MissingPrerequisites, missing);
         return new(perk, s.PerkPoints >= perk.Cost ? PerkBlock.Ok : PerkBlock.NoPoints, []);
@@ -94,8 +94,8 @@ public static class Progression
             if (!s.HasPerk(id)) missing.Add($"Perk: {data.Perks[id].Name}");
         if (r.Building is { } b && !sim.State.Buildings.Any(x => x.DefId == b && x.Level >= r.BuildingLevel))
             missing.Add($"{data.Buildings[b].Name}{(r.BuildingLevel > 1 ? $" level {r.BuildingLevel}" : "")}");
-        if (r.Blueprint is { } bp && !sim.State.KnownBlueprints.Contains(bp))
-            missing.Add($"Study {sim.Scavenge?.Items.GetValueOrDefault(bp)?.Name ?? bp}");
+        if (data.Schematics.GateOfPerk(perk.Id) is { } gate && !Schematics.Schematics.Has(sim, gate))
+            missing.Add($"Schematic: {data.Schematics.All[gate].Name}");
         return missing;
     }
 
@@ -138,7 +138,7 @@ internal static class ProgressionHandlers
                 return CommandResult.Fail(CommandError.AlreadyHasPerk, $"{s.Name} already has {perk.Name}.");
             case PerkBlock.Locked:
                 return CommandResult.Fail(CommandError.PerkLocked,
-                    $"{perk.Name} is locked: study {sim.Scavenge?.Items.GetValueOrDefault(perk.Requires.Blueprint!)?.Name ?? perk.Requires.Blueprint} first.");
+                    $"{perk.Name} is locked: the colony needs the {sim.Data.Schematics.All[sim.Data.Schematics.GateOfPerk(perk.Id)!].Name} schematic first.");
             case PerkBlock.MissingPrerequisites:
                 return CommandResult.Fail(CommandError.PerkRequirementsNotMet, $"{s.Name} needs {string.Join(", ", status.Missing)}.");
             case PerkBlock.NoPoints:

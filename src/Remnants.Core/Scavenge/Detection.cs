@@ -9,7 +9,8 @@ namespace Remnants.Core.Scavenge;
 /// (<see cref="FieldEnvironment"/>). No randomness: the same positions and gear
 /// always give the same answer. A side also sees
 /// <list type="bullet">
-/// <item>everyone on a tile lit by a <see cref="Flare"/> (every side sees lit tiles);</item>
+/// <item>everyone on a tile lit by a <see cref="Flare"/> (every side sees lit tiles), and everyone on the map in the round
+/// lightning strikes (<see cref="FieldEnvironment.LightningNow"/>);</item>
 /// <item>a unit <see cref="Reveal"/>ed to it (muzzle flash, motion sensor) while one of its units has line of sight to it
 /// within <see cref="FogRules.RevealSightMultiplier"/> times its sight;</item>
 /// <item>hostiles within a working scanner's (or thermal eye's) radius of one of its units, through walls and stealth;</item>
@@ -43,7 +44,7 @@ public static class Detection
         if (!target.OnMap) return false;
         var observers = state.Units.Where(u => u.Side == side && u.IsActive).ToList();
         if (observers.Count == 0) return false;
-        if (IsLit(state, target.Pos)) return true;
+        if (IsLit(state, target.Pos) || FieldEnvironment.LightningNow(state)) return true;
         if (Drones.IsMarked(state, target.Id, side)) return true;
         if (IsRevealed(state, target.Id, side) && observers.Any(o => SeesRevealed(data, state, o, target))) return true;
         if (observers.Any(o => o.HostileTo(target) && ScanRadius(data, o) is var r && r > 0 && o.Pos.Chebyshev(target.Pos) <= r))

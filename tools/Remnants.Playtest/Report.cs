@@ -42,9 +42,29 @@ public static class Report
                           $"food poisonings {runs.Sum(r => r.Food!.Poisonings)}, batches cooked/preserved {runs.Sum(r => r.Food!.Cooked)} " +
                           $"({(double)runs.Sum(r => r.Food!.Cooked) / runs.Count:0}/colony), mean nutrition at the end {Median(r => r.Food!.MeanNutrition):0.00} (median), " +
                           $"cooked share of the diet {Median(r => r.Food!.CookedShareEaten) * 100:0}% (median)");
+        if (runs.All(r => r.Schematics is not null))
+        {
+            var known = string.Join(" / ", Enumerable.Range(0, 3).Select(i => D(Median(r => r.Schematics!.KnownAt[i])).Trim()));
+            var sources = runs.SelectMany(r => r.Schematics!.BySource).GroupBy(kv => kv.Key)
+                .Select(g => $"{g.Key} {g.Sum(kv => kv.Value)}");
+            sb.AppendLine($"schematics: first learned day {D(Median(r => r.Schematics!.FirstDay)).Trim()} ({runs.Count(r => r.Schematics!.FirstDay is not null)}/{runs.Count}), " +
+                          $"first tier-2 day {D(Median(r => r.Schematics!.FirstTier2Day)).Trim()} ({runs.Count(r => r.Schematics!.FirstTier2Day is not null)}/{runs.Count}), " +
+                          $"known at day 30/60/90 {known} (median), by source [{string.Join(", ", sources)}], found {runs.Sum(r => r.Schematics!.Found)}, " +
+                          $"duplicates {runs.Sum(r => r.Schematics!.Duplicates)}, Research Data gained {runs.Sum(r => r.Schematics!.ResearchDataGained):0}, " +
+                          $"trader visits {runs.Sum(r => r.Schematics!.TraderVisits)}, contracts done {runs.Sum(r => r.Schematics!.ContractsDone)}, " +
+                          $"Town Hall 3 reached {runs.Count(r => r.Schematics!.TownHallLevel >= 3)}/{runs.Count}, Armory + Lab L2 " +
+                          $"{runs.Count(r => r.Schematics!.ArmoryAndLab2)}/{runs.Count}, ran a threat-2 zone {runs.Count(r => r.Schematics!.MaxThreatRun >= 2)}/{runs.Count}");
+        }
         sb.AppendLine($"totals: starvation deaths {runs.Sum(r => r.StarvationDeaths)}, expedition deaths {runs.Sum(r => r.ExpeditionDeaths)} over {runs.Sum(r => r.Expeditions)} expeditions " +
                       $"({runs.Sum(r => r.ExpeditionsWithDeaths)} with deaths), departures {runs.Sum(r => r.Departures)}, births {runs.Sum(r => r.Births)}, " +
                       $"early Linked sightings {runs.Sum(r => r.LinkedEncountersEarly)}, recruits {runs.Sum(r => r.Recruits)}");
+        var hours = runs.SelectMany(r => r.WeatherHours).GroupBy(kv => kv.Key).ToDictionary(g => g.Key, g => g.Sum(kv => kv.Value));
+        if (hours.Count > 0)
+        {
+            var total = (double)Math.Max(1, hours.Values.Sum());
+            sb.AppendLine($"weather at home: {string.Join(", ", hours.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} {100 * kv.Value / total:0}%"))}; " +
+                          $"lightning strikes {runs.Sum(r => r.LightningStrikes)} ({(double)runs.Sum(r => r.LightningStrikes) / runs.Count:0.0}/colony), repairs {runs.Sum(r => r.Repairs)}");
+        }
         return sb.ToString();
     }
 }

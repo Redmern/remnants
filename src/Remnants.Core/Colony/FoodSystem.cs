@@ -195,7 +195,8 @@ internal static class FoodSystem
             if (meal.Hot && data.Rules.DayNight.Enabled && DayNight.PhaseAt(state.Tick, data.Rules) is DayPhase.Dusk or DayPhase.Night)
             {
                 supper = data.Rules.DayNight.NightMealMoodPerTick;
-                if (state.Buildings.Any(b => b.DefId == food.Rules.CampfireBuilding)) supper *= food.Rules.CampfireSupperMultiplier;
+                if (state.Buildings.Any(b => b.DefId == food.Rules.CampfireBuilding) && !Weather.KindOf(data, Weather.Current(state, data)).Colony.NoCampfire)
+                    supper *= food.Rules.CampfireSupperMultiplier;
             }
             s.Mood = Math.Min(Survivor.MaxMood, s.Mood + (meal.MoodPerTick * q + supper) * share);
             if (meal.Hot || meal.MoodPerTick > 0) s.TicksSinceCooked = 0;

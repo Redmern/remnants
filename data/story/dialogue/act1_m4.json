@@ -1,0 +1,67 @@
+[
+  {
+    "id": "m4_brief", "mode": "Radio", "caller": "iris", "title": "The Stranger",
+    "nodes": [
+      { "id": "a", "speaker": "iris", "text": "I've got a weak signal out in the Suburb Ruins. A handheld. Someone keeps keying it and not saying anything.", "next": "b" },
+      { "id": "b", "speaker": "iris", "text": "They're in a house. I think they're hurt. And the Husks around them... aren't walking. They're just standing there. In the fog.", "next": "c" },
+      { "id": "c", "speaker": "pell", "text": "Why would they stand still?", "next": "d" },
+      { "id": "d", "speaker": "iris", "text": "Because something's still moving inside. They're waiting.", "next": "e" },
+      { "id": "e", "speaker": "player", "text": "", "choices": [
+        { "text": "We'll bring them home.", "next": "e1" },
+        { "text": "It could be a trap.", "next": "e2" },
+        { "text": "Why do you care who it is?", "next": "e3" }
+      ] },
+      { "id": "e1", "speaker": "iris", "text": "Good. Take a med-kit, or bandages at least. They won't walk on their own.", "next": "f" },
+      { "id": "e2", "speaker": "iris", "text": "Husks don't set traps. Husks don't do anything new. That's what bothers me.", "next": "f" },
+      { "id": "e3", "speaker": "iris", "text": "Because the handheld's on a caravan band. Whoever it is, they've got friends with trucks.", "next": "f" },
+      { "id": "f", "speaker": "iris", "text": "Fog's heavy. Use Lookout. Throw a flare if you have one. And when you move them, move fast." }
+    ]
+  },
+  {
+    "id": "m4_debrief", "mode": "InPerson", "caller": "juniper", "title": "Juniper",
+    "nodes": [
+      { "id": "a", "speaker": "narration", "text": "(Juniper sits by the fire with her leg up, wrapped in your bandages. Pell watches her like she fell out of the sky.)", "next": "b" },
+      { "id": "b", "speaker": "juniper", "text": "My cart's by your gate. Take it. It's a cart, not a gift. I'll want it back someday.", "next": "c" },
+      { "id": "c", "speaker": "juniper", "text": "Marrow runs the Long Haul. Four trucks, freight roads, trades with anyone who doesn't shoot first. He'll be here in two days. He'll want to thank you.", "next": "d" },
+      { "id": "d", "speaker": "player", "text": "", "choices": [
+        { "text": "What does he trade?", "next": "d1" },
+        { "text": "What were you doing out there alone?", "next": "d2" }
+      ] },
+      { "id": "d1", "speaker": "juniper", "text": "Everything. Fuel, parts, guns, plans. He says the road's free. It'll kill you, but it's free.", "next": "e" },
+      { "id": "d2", "speaker": "juniper", "text": "Scouting a way round the Linked. There isn't one anymore. They're further out than last year.", "next": "e" },
+      { "id": "e", "speaker": "juniper", "text": "Here. Plans for a bicycle cart, and a manual. Marrow says always pay in paper. Paper doesn't run out." }
+    ]
+  },
+  {
+    "id": "m4_failed", "mode": "Radio", "caller": "iris", "title": "Juniper",
+    "nodes": [
+      { "id": "a", "speaker": "iris", "text": "The handheld's gone quiet.", "next": "b" },
+      { "id": "b", "speaker": "iris", "text": "Her name was Juniper. It's written on the inside of the case. She rode for a caravan.", "next": "c" },
+      { "id": "c", "speaker": "iris", "text": "They'll come looking. When they do... tell them the truth. It's all you've got." }
+    ]
+  },
+  {
+    "id": "marrow_hello", "mode": "InPerson", "caller": "marrow", "title": "The Long Haul",
+    "nodes": [
+      { "id": "a", "speaker": "narration", "text": "(Four trucks pull up outside the fence, engines ticking. A big man in a sheepskin collar climbs down and takes his goggles off.)", "next": "b" },
+      { "id": "b", "speaker": "marrow", "text": "Abel Marrow. You found my outrider. That puts me in your debt, and I hate being in anybody's debt.", "next": "c" },
+      { "id": "c", "speaker": "marrow", "text": "So here's how we fix that. I come by every ten days. You trade fair, I trade fair. First visit, I'm generous.", "next": "d" },
+      { "id": "d", "speaker": "player", "text": "", "choices": [
+        { "text": "Deal.", "next": "d1" },
+        { "text": "What do you have?", "next": "d2" }
+      ] },
+      { "id": "d1", "speaker": "marrow", "text": "Good. Everything's for sale except the road. The road's free.", "next": "e" },
+      { "id": "d2", "speaker": "marrow", "text": "Fuel, parts, and a few plans I'm not supposed to have. A bike's two wheels, a prayer and a muffler. We'll talk.", "next": "e" },
+      { "id": "e", "speaker": "marrow", "text": "Count the people. Then count the cargo. In that order. See you in ten." }
+    ]
+  },
+  {
+    "id": "marrow_grief", "mode": "InPerson", "caller": "marrow", "title": "The Long Haul",
+    "nodes": [
+      { "id": "a", "speaker": "narration", "text": "(Four trucks outside the fence. Nobody climbs down for a long time.)", "next": "b" },
+      { "id": "b", "speaker": "marrow", "text": "Abel Marrow. You went in after Juniper. I heard.", "next": "c" },
+      { "id": "c", "speaker": "marrow", "text": "I'm not going to say thank you. I'm going to trade with you, because the road's the road. But the prices are the prices for a while.", "next": "d" },
+      { "id": "d", "speaker": "marrow", "text": "She was nineteen. Write that down somewhere." }
+    ]
+  }
+]

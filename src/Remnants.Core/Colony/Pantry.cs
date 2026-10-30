@@ -63,6 +63,19 @@ public sealed record TakenFood(string ItemId, int Count, string Quality, bool Ta
 /// <summary>Queries and changes on the pantry. Everything here is deterministic and keeps lots and inventory counts in step.</summary>
 public static class Pantry
 {
+    /// <summary>Cost and reward key that means "this much food value" (trader prices, contracts): see <c>Schematics.Payment</c>.</summary>
+    public const string FoodKey = "food";
+
+    /// <summary>Item food value given as (trader prices, rewards): canned food, which keeps.</summary>
+    public const string ProvisionItem = "canned_food";
+
+    /// <summary>Adds at least <paramref name="value"/> food value as <see cref="ProvisionItem"/>.</summary>
+    public static void AddFoodValue(ColonyState state, GameData data, double value)
+    {
+        var each = data.Food?.Items.GetValueOrDefault(ProvisionItem)?.FoodValue ?? 1;
+        Add(state, data, ProvisionItem, (int)Math.Ceiling(value / Math.Max(each, 1e-9) - 1e-9));
+    }
+
     /// <summary>How fast produce and meat age now (1 = full speed; a Cold Cellar slows it).</summary>
     public static double CellarRate(ColonyState state, GameData data) => FoodSystem.CellarRate(state, data);
 

@@ -21,6 +21,7 @@ public partial class ScavengeScreen : Node3D
     private MapView _map = null!;
     private UnitViews _units = null!;
     private FogOverlay _fog = null!;
+    private Ui.ObjectiveMarkers _objectives = null!;
     private DeviceViews _devices = null!;
     private TacticalCamera _camera = null!;
 
@@ -58,6 +59,7 @@ public partial class ScavengeScreen : Node3D
         _camera = new TacticalCamera { Name = "Camera" };
         AddChild(_camera);
         _camera.SetBounds(Vector2.Zero, new Vector2((map.Width - 1) * TileGrid.TileSize, (map.Height - 1) * TileGrid.TileSize));
+        AddWeather();
 
         _map = new MapView { Name = "Map" };
         AddChild(_map);
@@ -71,6 +73,9 @@ public partial class ScavengeScreen : Node3D
         _devices = new DeviceViews { Name = "Devices" };
         AddChild(_devices);
         _devices.Setup(_presenter, models);
+        _objectives = new Ui.ObjectiveMarkers { Name = "Objectives" };
+        AddChild(_objectives);
+        _objectives.Setup(_presenter, models);
 
         BuildHud();
         _audio = new Audio.ScavengeAudio { Name = "Audio" };
@@ -95,13 +100,43 @@ public partial class ScavengeScreen : Node3D
     /// <summary>
     /// The colony's sky and light at the run's hour (<see cref="ScavengeState.Environment"/>, the server's in
     /// multiplayer): dawn and dusk warm, night dark blue with flares and muzzle flashes lighting the ground. No distance
-    /// fog on the tactical map. Weather would plug into <see cref="Colony.DayNightLighting.Weather"/>.
+    /// fog on the tactical map, only weather's ground mist. The weather (<see cref="WeatherFx.WeatherView"/>) grades that light
+    /// and draws rain and dust; it follows the run's environment on every sync, and lightning flashes on Core's event.
     /// </summary>
     private void AddEnvironment()
     {
-        var lighting = new Colony.DayNightLighting { Name = "Lighting", UseFog = false };
-        AddChild(lighting);
-        lighting.SetupFixed(_presenter.State.Environment.Hour + 0.5);
+        _lighting = new Colony.DayNightLighting { Name = "Lighting", UseFog = false };
+        AddChild(_lighting);
+        _lighting.SetupFixed(_presenter.State.Environment.Hour + 0.5);
+    }
+
+    private Colony.DayNightLighting _lighting = null!;
+    private WeatherFx.WeatherView _weather = null!;
+
+    private void AddWeather()
+    {
+        _weather = new WeatherFx.WeatherView { Name = "Weather", AmbientLightning = false };
+        AddChild(_weather);
+        _weather.Setup(_camera.Camera, _lighting, 26f);
+        SyncWeather(instant: true);
+    }
+
+    private void SyncWeather(bool instant = false)
+    {
+        var env = _presenter.State.Environment;
+        _weather.Set(env.Weather, env.Intensity, instant);
+        WeatherFx.WeatherSounds.Set(env.Weather, env.Intensity);
+    }
+
+    /// <summary>A replayed weather event: the sky turns, thunder rolls, lightning flashes.</summary>
+    private void WeatherEvent(ScavengeEvent e)
+    {
+        switch (e.Type)
+        {
+            case ScavengeEventType.WeatherChanged: SyncWeather(); break;
+            case ScavengeEventType.Lightning: _weather.Strike(0.15f); break;
+            case ScavengeEventType.Thunder: Audio.WeatherAudio.Lightning(0.9f); break;
+        }
     }
 
     private void BuildHud()
@@ -322,6 +357,7 @@ public partial class ScavengeScreen : Node3D
                     _log.Event(e);
                     _fog.Incoming(e);
                     _audio.Step(e);
+                    WeatherEvent(e);
                     // Follow what others do in sight (enemy turns, recruits) so it never happens off screen.
                     if (e.Type is ScavengeEventType.Moved or ScavengeEventType.Attacked or ScavengeEventType.Missed
                         && e.UnitId is { } actor && _presenter.State.FindUnit(actor) is { } u && u.PlayerId != _presenter.PlayerId
@@ -361,10 +397,12 @@ public partial class ScavengeScreen : Node3D
 
     private void SyncAll()
     {
+        SyncWeather();
         _map.Sync();
         _units.Sync();
         _fog.Sync();
         _devices.Sync();
+        _objectives.Sync();
         RefreshHud();
         _seen = new HashSet<int>(_presenter.Visible);
         if (_presenter.Done && !_result.Visible && _presenter.Result() is { } result)
@@ -397,6 +435,7 @@ public partial class ScavengeScreen : Node3D
         _techPanel.Refresh(_busy, _aim);
         _coopPanel.Refresh(_busy, selected, _pinging);
         _hud.Banner.Refresh();
+        _hud.RefreshStory();
         RefreshHighlights(selected);
     }
 

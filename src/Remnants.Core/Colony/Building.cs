@@ -18,6 +18,8 @@ public sealed class Building
     /// <summary>A Floodlight is fitted: an outdoor building is lit at level 1.</summary>
     public bool Floodlight { get; set; }
 
+    /// <summary>Struck by lightning: works at reduced output until repaired (see <c>RepairBuilding</c>).</summary>
+    public bool Damaged { get; set; }
     /// <summary>Farms, greenhouses, hunting lodges: the harvest worked (data/food.json); null = the building's default.</summary>
     public string? Harvest { get; set; }
 

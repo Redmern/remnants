@@ -12,6 +12,7 @@ dotnet run --project src/Remnants.Server -- --port 7777
 #    options: --zone ID (default suburb_ruins) --seed N --players 2 (min to start) --max-players 4
 #             --turn-seconds 60 (0 = no AFK timer) --reconnect-seconds 120 --max-party N --bind 0.0.0.0 --data DIR
 #             --coop (everyone on one team; default versus) --hour 0-23 (time of day; default: from the seed)
+#             --weather KIND[:INTENSITY] (clear, overcast, rain, thunderstorm, fog, dust_storm; default: from the seed)
 
 # 2. two game clients: main menu → Multiplayer → name + server address → Join → Ready
 godot-mono --path game
@@ -91,7 +92,7 @@ the discriminator), `giveItem`, `carry`, `putDown`, and pings, alliance offers a
 called this "v2"; 2 was already the fog of war, so co-op is 3.) **4: hacking and drones** — the command kinds `hack`,
 `deployDrone`, `flyDrone`, `recallDrone`, `markTarget`, `dropPayload`, and devices and drone marks in views. **6: cybernetics** — bodies carry the eyes and each
 part's humanity, upkeep and `interfered` flag, units carry `cyberHooks` (stripped from other players' views like perk
-hooks), and the `limbLocked` event.
+hooks), and the `limbLocked` event. **7: schematics** — schematic items (`sch_*`, kind `Schematic`) in packs and caches; `MissionEnded.result` carries `sharedSchematics` (co-op: what allies on the side carried out, copied to each ally who got home; versus: none) and `heardOf` (schematics the side saw but left behind, or glimpsed on a terminal it failed to hack).
 
 | Direction | Message | Meaning |
 |-----------|---------|---------|
@@ -294,6 +295,21 @@ map), Accept (Y) / Decline (U) an offer, Offer an alliance (Y) to a rival you se
   (shorter human sight, stealth bonus except against the Linked and cameras), so a party seen by day is not sent at night,
   and flares (which every side sees) show the same lit ground to all. `NightNetTests` stage it with `CheckFog` on every
   message: server-decided hour in both views, a day/night standoff (sent by day, not at night, nothing leaked), a flare.
+
+## Weather over the wire
+
+- **The server decides the weather** like the hour: `HostOptions.Weather` / `WeatherIntensity` / `WeatherShifts`
+  (`--weather KIND[:INTENSITY]`), else `FieldEnvironment.RollWeather(data, seed)` (clear about half the time, else one of
+  `scavenge.json environment.weather`). A host playing from the colony's waiting party passes the weather over the zone
+  at arrival and the changes due within the mission (`ColonySim.MissionEnvironment(tick, zone)`).
+- **Every view carries it**: weather, intensity, the changes still to come, and the rounds of the last thunder and
+  lightning (protocol version 8). The changes apply at round start on the server; `WeatherChanged`, `Thunder` and
+  `Lightning` events name no unit and go to every side (`FogLog`).
+- **Fog follows the weather on the server** through the same `Detection` / `Visibility`: dust or fog hides what clear
+  weather shows; in a lightning round every unit on the map is seen by every side, and only in that round. Thunder
+  silences movement contacts. `WeatherNetTests` check with `CheckFog` on every message: the server's weather in both views,
+  the roll from the seed, a clear/dust standoff (sent in clear, not in dust, nothing leaked), lightning for its round
+  only, and a change reaching every client. `NetFixture` plays in clear weather unless a test asks.
 
 ## Parties and results — the trust gap
 

@@ -146,9 +146,26 @@ public partial class ExpeditionPanel : PanelContainer
         Refresh();
     }
 
+    /// <summary>The story mission this party is for (from its briefing), or null for a plain expedition.</summary>
+    public string? MissionId { get; private set; }
+
+    /// <summary>Opens the planner for a story mission: its zone, its party size, and Launch sends it on the mission.</summary>
+    public void PlanForMission(string missionId)
+    {
+        if (_session.Sim.Story?.Mission(missionId) is not { Zone: { } zone }) return;
+        PlanFor(zone);
+        MissionId = missionId;
+        _launchOnline.Visible = false;
+        _launch.Text = "Launch mission";
+        RefreshSummary();
+    }
+
     /// <summary>Opens the planner on a zone (the world map's "Plan expedition").</summary>
     public void PlanFor(string zoneId)
     {
+        MissionId = null;
+        _launchOnline.Visible = true;
+        _launch.Text = "Launch expedition";
         Visible = true;
         _signature = "";
         Refresh();
@@ -374,10 +391,12 @@ public partial class ExpeditionPanel : PanelContainer
         var perMember = SelectedZone is { } zoneId ? sim.ZoneInfo(zoneId).RationsPerMember : sim.Data.Rules.Expedition.RationFoodPerMember;
         if (SelectedZone is { } zid) perMember += RefreshArrival(sim, zid);
         var food = perMember * _picked.Count;
-        _partyInfo.Text = $"Party {_picked.Count}/{sim.MaxPartySize} (Town Hall L{sim.TownHallLevel}) · rations {food:0} food " +
+        var cap = Math.Max(sim.MaxPartySize, MissionId is { } m ? sim.Story?.Mission(m)?.MaxParty ?? 0 : 0);
+        var mission = MissionId is { } mid && sim.Story?.Mission(mid) is { } md ? $"Mission: {md.Name} · " : "";
+        _partyInfo.Text = $"{mission}Party {_picked.Count}/{cap} (Town Hall L{sim.TownHallLevel}) · rations {food:0} food " +
                           $"(have {sim.FoodStock:0}) · away members don't eat at home";
         RefreshRations(sim, food);
-        _launch.Disabled = _launchOnline.Disabled = _picked.Count == 0;
+        _launch.Disabled = _launchOnline.Disabled = _picked.Count == 0 || _blocked;
         var data = sim.Scavenge!;
         var signature = string.Join(",", sim.State.Inventory.Counts.Select(kv => $"{kv.Key}:{kv.Value}"));
         if (signature == _inventoryShown) return;
@@ -394,6 +413,9 @@ public partial class ExpeditionPanel : PanelContainer
         }
         _inventory.AddChild(flow);
     }
+
+    /// <summary>The planned trip's route is closed by the weather (launching would fail).</summary>
+    private bool _blocked;
 
     private DayPhase? WaitFor => WaitChoices[Math.Clamp(_wait.Selected, 0, WaitChoices.Length - 1)];
 
@@ -457,14 +479,21 @@ public partial class ExpeditionPanel : PanelContainer
         _arrival.Text = $"Arrives day {DayNight.Day(plan.ArrivalTick, rules)}, {DayNight.Hour(plan.ArrivalTick, rules):00}:00 · {plan.Phase.ToString().ToUpperInvariant()}";
         _arrival.AddThemeColorOverride("font_color", color);
         var wait = plan.WaitTicks > 0 ? $"Waits {plan.WaitTicks} h outside: +{plan.WaitRationsPerMember:0} food each. " : "";
+        // The travel planner's terms (weather; vehicles add theirs): delays, or a closed route.
+        _blocked = plan.Blocked;
+        foreach (var term in plan.Travel?.Modifiers ?? [])
+            wait += term.Blocks ? $"{term.Reason}: wait for it to pass. " : $"{term.Reason}" + (plan.DelayRationsPerMember > 0 ? $" (+{plan.DelayRationsPerMember:0} food each). " : ". ");
+        var there = Weather.SpellAt(sim.State, sim.Data, Weather.RegionOf(sim.Data, sim.Scavenge!.Zones[zoneId]), sim.State.Tick);
+        if (sim.Data.Weather.Enabled && there.Kind != "clear")
+            wait += $"{ColonyText.WeatherName(sim, there.Kind, there.Intensity)} over {sim.Scavenge!.Zones[zoneId].Region} right now. ";
         _arrivalNote.Text = wait + plan.Phase switch
         {
             DayPhase.Night => "Night: your people see much less and are harder to spot — but not by the Linked's sensors or cameras. More Husks, and they hear further. Flares light further; muzzle flashes give shooters away.",
             DayPhase.Dawn or DayPhase.Dusk => "Half light: sight a little shorter, a little easier to slip by Husks.",
             _ => "Daylight: everyone sees well.",
         };
-        _arrivalNote.AddThemeColorOverride("font_color", plan.Phase == DayPhase.Night ? Palette.Night : Ui.Muted);
-        return (float)plan.WaitRationsPerMember;
+        _arrivalNote.AddThemeColorOverride("font_color", plan.Blocked ? Palette.Danger : plan.Phase == DayPhase.Night ? Palette.Night : Ui.Muted);
+        return (float)plan.ExtraRationsPerMember;
     }
 
     private void Launch(bool online)
@@ -473,8 +502,12 @@ public partial class ExpeditionPanel : PanelContainer
         var members = _picked.OrderBy(kv => kv.Key)
             .Select(kv => new ExpeditionMember(kv.Key, new(kv.Value.Equipment), new(kv.Value.Pack)))
             .ToList();
-        if (!_session.Execute(new LaunchExpedition(zoneId, members, WaitFor, Rations)).Ok) return;
+        IColonyCommand command = MissionId is { } missionId
+            ? new Remnants.Core.Story.LaunchStoryMission(missionId, members)
+            : new LaunchExpedition(zoneId, members, WaitFor, Rations);
+        if (!_session.Execute(command).Ok) return;
         _wait.Select(0);
+        MissionId = null;
         _picked.Clear();
         _signature = "";
         // A zone on the doorstep is played right away; a far one waits until the party has arrived.

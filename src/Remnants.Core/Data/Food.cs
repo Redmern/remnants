@@ -240,34 +240,6 @@ public sealed record RationRules
     public double FieldBuffHours { get; init; } = 24;
 }
 
-/// <summary>
-/// The schematics that gate food content (data/schematics.food.json, in the story-schematics catalogue format: a
-/// <c>schematics</c> list with <c>unlocks</c> of kind <c>Recipe</c>, <c>Building</c> or <c>BuildingLevel</c>). Read here
-/// until that catalogue merges; <c>FoodSchematics</c> is the adapter the rules go through.
-/// </summary>
-public sealed record FoodSchematicFile
-{
-    public List<FoodSchematicDef> Schematics { get; init; } = new();
-}
-
-public sealed record FoodSchematicDef
-{
-    public string Id { get; init; } = "";
-    public string Name { get; init; } = "";
-    public int Tier { get; init; } = 1;
-    public List<FoodUnlockDef> Unlocks { get; init; } = new();
-    public List<string> Sources { get; init; } = new();
-    public string Description { get; init; } = "";
-}
-
-public sealed record FoodUnlockDef
-{
-    /// <summary><c>Recipe</c>, <c>Building</c> (level 1) or <c>BuildingLevel</c>.</summary>
-    public string Kind { get; init; } = "";
-    public string Id { get; init; } = "";
-    public int Level { get; init; } = 1;
-}
-
 /// <summary>Food definitions indexed by id, checked against the colony data.</summary>
 public sealed class FoodData
 {
@@ -276,37 +248,21 @@ public sealed class FoodData
     public IReadOnlyDictionary<string, HarvestDef> Harvests { get; }
     public IReadOnlyDictionary<string, BuffDef> Buffs { get; }
     public FoodRulesDef Rules => Def.Rules;
-    public FoodSchematicFile Schematics { get; }
 
     private readonly Dictionary<string, List<HarvestDef>> _harvestsByBuilding;
-    private readonly Dictionary<string, string> _recipeGates = new(StringComparer.Ordinal);
-    private readonly Dictionary<(string Building, int Level), string> _levelGates = new();
 
-    public FoodData(FoodDef def, FoodSchematicFile? schematics = null)
+    public FoodData(FoodDef def)
     {
         Def = def;
         Items = Index(def.Items, i => i.Id, "food item");
         Harvests = Index(def.Harvests, h => h.Id, "harvest");
         Buffs = Index(def.Buffs, b => b.Id, "buff");
-        Schematics = schematics ?? new FoodSchematicFile();
         _harvestsByBuilding = new();
         foreach (var h in def.Harvests)
             foreach (var b in h.Buildings)
             {
                 if (!_harvestsByBuilding.TryGetValue(b, out var list)) _harvestsByBuilding[b] = list = new();
                 list.Add(h);
-            }
-        foreach (var s in Schematics.Schematics)
-            foreach (var u in s.Unlocks)
-            {
-                var added = u.Kind switch
-                {
-                    "Recipe" => _recipeGates.TryAdd(u.Id, s.Id),
-                    "Building" => _levelGates.TryAdd((u.Id, 1), s.Id),
-                    "BuildingLevel" => _levelGates.TryAdd((u.Id, u.Level), s.Id),
-                    _ => throw new GameDataException($"Food schematic '{s.Id}': unknown unlock kind '{u.Kind}'."),
-                };
-                if (!added) throw new GameDataException($"Food schematic '{s.Id}': '{u.Id}' is already gated by another schematic.");
             }
     }
 
@@ -323,14 +279,6 @@ public sealed class FoodData
             : itemId == key;
 
     public const string TagPrefix = "tag:";
-
-    /// <summary>The schematic a recipe needs, if any.</summary>
-    public string? GateOfRecipe(string recipeId) => _recipeGates.GetValueOrDefault(recipeId);
-
-    /// <summary>The schematic a building type at this level needs (level 1 = the building itself), if any.</summary>
-    public string? GateOfBuildingLevel(string buildingId, int level) => _levelGates.GetValueOrDefault((buildingId, level));
-
-    public FoodSchematicDef? Schematic(string id) => Schematics.Schematics.Find(s => s.Id == id);
 
     internal void Validate(GameData data)
     {
@@ -370,11 +318,6 @@ public sealed class FoodData
                 var known = key.StartsWith(TagPrefix, StringComparison.Ordinal) ? tags.Contains(key[TagPrefix.Length..]) : Items.ContainsKey(key);
                 if (!known) throw new GameDataException($"Recipe '{r.Id}': unknown ingredient '{key}'.");
             }
-        foreach (var r in _recipeGates.Keys)
-            if (!data.Recipes.ContainsKey(r)) throw new GameDataException($"Food schematics: unknown recipe '{r}'.");
-        foreach (var (b, level) in _levelGates.Keys)
-            if (!data.Buildings.TryGetValue(b, out var bd) || level < 1 || level > bd.MaxLevel)
-                throw new GameDataException($"Food schematics: unknown building level '{b}' L{level}.");
     }
 
     private static Dictionary<string, T> Index<T>(IEnumerable<T> items, Func<T, string> id, string kind)

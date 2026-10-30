@@ -7,24 +7,30 @@ namespace Remnants.Core.Tests;
 /// <summary>Shared fixtures: the real data/ folder, plus small hand-built defs for exact-math tests.</summary>
 public static class TestData
 {
-    private static readonly Lazy<GameData> RealNights =
+    private static readonly Lazy<GameData> Shipped =
         new(() => GameDataLoader.LoadFromDirectory(Path.Combine(AppContext.BaseDirectory, "data")));
 
-    private static readonly Lazy<GameData> RealData = new(() =>
+    private static readonly Lazy<GameData> RealNights = new(() => With(Shipped.Value, nights: true, weather: false));
+
+    private static readonly Lazy<GameData> RealData = new(() => With(Shipped.Value, nights: false, weather: false));
+
+    private static GameData With(GameData d, bool nights, bool weather)
     {
-        var d = RealNights.Value;
-        var rules = d.Rules with { DayNight = d.Rules.DayNight with { Enabled = false } };
-        return new GameData(d.Resources.Values, d.Jobs.Values, d.Buildings.Values, rules, d.Recipes.Values, d.Progression, d.Cybernetics?.Def,
-            d.Food?.Def, d.Food?.Schematics);
-    });
+        var rules = d.Rules with { DayNight = d.Rules.DayNight with { Enabled = nights && d.Rules.DayNight.Enabled } };
+        return new GameData(d.Resources.Values, d.Jobs.Values, d.Buildings.Values, rules, d.Recipes.Values, d.Progression, d.Cybernetics?.Def, d.Schematics,
+            d.Weather with { Enabled = weather && d.Weather.Enabled }, d.Food?.Def);
+    }
 
     /// <summary>
-    /// The real data/ folder with the day and night cycle off (everyone works every tick, nobody sleeps), so tests of
-    /// other rules can count ticks without a clock. <see cref="RealWithNights"/> is the data exactly as shipped.
+    /// The real data/ folder with the day and night cycle and the weather off (everyone works every tick, nobody sleeps,
+    /// always clear), so tests of other rules can count ticks without a clock. <see cref="RealWithNights"/> turns the
+    /// cycle on; <see cref="RealWithWeather"/> is the data exactly as shipped.
     /// </summary>
     public static GameData Real => RealData.Value;
 
     public static GameData RealWithNights => RealNights.Value;
+
+    public static GameData RealWithWeather => Shipped.Value;
 
     public static JobDef Job(
         Dictionary<AttributeKind, double>? attributes = null,

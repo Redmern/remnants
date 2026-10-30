@@ -47,7 +47,7 @@ internal static class ScavengeAi
                     }
                     continue;
                 }
-                Wander(sim, unit);
+                if (!Patrol(sim, unit)) Wander(sim, unit);
                 return;
             }
 
@@ -79,7 +79,7 @@ internal static class ScavengeAi
                     .OrderBy(u => u.Id).Select(u => u.Ai.LastKnown).FirstOrDefault();
                 if (last is { } goal && unit.Pos != goal && StepToward(sim, unit, goal)) continue;
                 foreach (var u in group.Units) (u.Ai.Mode, u.Ai.LastKnown) = (AiMode.Idle, null);
-                if (Lurk(sim, unit)) return;
+                if (Patrol(sim, unit) || Lurk(sim, unit)) return;
                 Wander(sim, unit);
                 return;
             }
@@ -285,6 +285,23 @@ internal static class ScavengeAi
             .ToList();
         if (options.Count == 0) return false;
         MoveTo(sim, unit, options[0].Pos, options[0].Ap);
+        return true;
+    }
+
+    /// <summary>A unit with a scripted patrol walks its waypoints in a loop (the same route every time: watch it once, then go round).</summary>
+    private static bool Patrol(ScavengeSim sim, Unit unit)
+    {
+        if (unit.Patrol.Count == 0) return false;
+        for (var tries = 0; tries < unit.Patrol.Count; tries++)
+        {
+            var goal = unit.Patrol[unit.PatrolIndex % unit.Patrol.Count];
+            if (unit.Pos.Chebyshev(goal) <= 0 || !StepToward(sim, unit, goal) && unit.Pos.Chebyshev(goal) <= 1)
+            {
+                unit.PatrolIndex = (unit.PatrolIndex + 1) % unit.Patrol.Count;
+                continue;
+            }
+            return true;
+        }
         return true;
     }
 

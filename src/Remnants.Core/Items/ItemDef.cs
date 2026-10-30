@@ -3,7 +3,7 @@ using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Items;
 
-public enum ItemKind { Weapon, Armor, Clothing, Tool, Consumable, Material, Prosthetic, Blueprint, Food }
+public enum ItemKind { Weapon, Armor, Clothing, Tool, Consumable, Material, Prosthetic, Schematic, Food }
 
 /// <summary>Where an item sits when equipped. Anything not equipped is carried in the pack.</summary>
 public enum EquipSlot { Weapon, Body, Tool }
@@ -213,14 +213,6 @@ public sealed record DroneItemDef
     public int ControlRange { get; init; } = 6;
 }
 
-/// <summary>A blueprint is studied (and used up) at a building to unlock the recipes that name it.</summary>
-public sealed record BlueprintDef
-{
-    /// <summary>Building type it is studied at (Town Hall, Electronics Lab).</summary>
-    public string StudyAt { get; init; } = "";
-    public int MinLevel { get; init; } = 1;
-}
-
 /// <summary>
 /// A field manual (a Material item): used up when a skill study starts with it. It speeds the study up and lets a
 /// student without a mentor go past the self-study cap, up to <see cref="Cap"/>.
@@ -284,14 +276,17 @@ public sealed record ItemDef
     /// <summary>Scout drones (see <see cref="DroneItemDef"/>).</summary>
     public DroneItemDef? Drone { get; init; }
 
-    /// <summary>Blueprint items: where they are studied.</summary>
-    public BlueprintDef? Blueprint { get; init; }
+    /// <summary>Schematic items: the schematic (data/schematics.json) they carry. Made from the catalogue, never in items.json.</summary>
+    public string? Schematic { get; init; }
 
     /// <summary>Manuals: the skill they teach (see <see cref="ManualDef"/>).</summary>
     public ManualDef? Manual { get; init; }
 
     /// <summary>Part of an enemy (claws): never looted or crafted.</summary>
     public bool Natural { get; init; }
+
+    /// <summary>A story quest item (the relay antenna): placed by a mission's map, never looted or crafted.</summary>
+    public bool Quest { get; init; }
 
     /// <summary>Quality variants: the item they are a variant of (null for a defined item).</summary>
     public string? BaseId { get; init; }

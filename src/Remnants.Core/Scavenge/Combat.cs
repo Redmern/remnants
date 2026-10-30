@@ -50,8 +50,13 @@ public static class Combat
 
     /// <summary>The hit chance of this attack as it would resolve now, ambush included (for previews and the AI).</summary>
     public static double ChanceToHit(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, Pos? from = null) =>
-        HitChance(sim.Data, sim.State.Map, from ?? attacker.Pos, action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) },
+        HitChance(sim.Data, sim.State.Map, from ?? attacker.Pos,
+            action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) - WeatherPenalty(sim, action) },
             target.Pos, sim.Profile(target), AmbushAgainst(sim.Data, sim.State, attacker, target, from), Bane(sim.Data, action, target));
+
+    /// <summary>What the weather takes off a ranged attack's hit chance (dust in the air; melee is unaffected).</summary>
+    public static double WeatherPenalty(ScavengeSim sim, ActionProfile action) =>
+        action.Pattern == AttackPattern.Melee ? 0 : FieldEnvironment.Effects(sim.Data, sim.State).RangedAccuracyPenalty;
 
     /// <summary>What a drone's mark on the target adds to the attacker's side's hit chance.</summary>
     public static double MarkBonus(ScavengeSim sim, Unit attacker, Unit target) =>

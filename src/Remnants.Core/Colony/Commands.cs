@@ -31,6 +31,9 @@ public sealed record SetHarvest(int BuildingId, string HarvestId) : IColonyComma
 /// </summary>
 public sealed record SendScoutDrone(string ZoneId, int? PilotId = null) : IColonyCommand;
 
+/// <summary>Repair a building struck by lightning (<c>weather.repair.cost</c>).</summary>
+public sealed record RepairBuilding(int BuildingId) : IColonyCommand;
+
 /// <summary>Bring the active expedition home: survivors, injuries, deaths, recruits and loot.</summary>
 public sealed record ApplyExtractionResult(ExtractionResult Result) : IColonyCommand;
 
@@ -67,9 +70,6 @@ public sealed record QueueRecipe(int BuildingId, string RecipeId, int Count = 1,
 
 /// <summary>Remove an order from a building's queue; a batch in progress refunds its inputs.</summary>
 public sealed record CancelOrder(int BuildingId, int OrderId) : IColonyCommand;
-
-/// <summary>Study (use up) a blueprint item at its study building, unlocking the recipes that name it.</summary>
-public sealed record StudyBlueprint(string ItemId) : IColonyCommand;
 
 /// <summary>
 /// Nudge two adults: encourage (they bond faster), discourage (they stop bonding; a couple splits up) or neutral.
@@ -142,7 +142,7 @@ public enum CommandError
     InvalidCount,
     QueueFull,
     UnknownOrder,
-    NotABlueprint,
+    NotASchematic,
     AlreadyKnown,
     NoStudyBuilding,
     TooYoung,
@@ -186,9 +186,28 @@ public enum CommandError
     AlreadyBooked,
     UnknownSurgery,
     NoCybernetics,
-    /// <summary>Food: the building does not harvest, or not this; or the schematic for a building (level) is not known.</summary>
-    UnknownHarvest,
+    /// <summary>Building or level gated by a schematic the colony does not know.</summary>
     SchematicNeeded,
+    /// <summary>Food: the building does not harvest, or not this.</summary>
+    UnknownHarvest,
+    NotResearchable,
+    NotHeardOf,
+    ResearchBusy,
+    NoResearch,
+    IsResearching,
+    NoTrader,
+    NotInStock,
+    UnknownCall,
+    NoContract,
+    /// <summary>Story commands in a Sandbox colony (or without story data).</summary>
+    NoCampaign,
+    UnknownMission,
+    MissionNotAvailable,
+    NoDialogue,
+    InvalidChoice,
+    NotDamaged,
+    RouteBlocked,
+    DronesGrounded,
 }
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>

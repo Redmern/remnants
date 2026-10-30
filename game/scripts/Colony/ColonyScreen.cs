@@ -2,6 +2,7 @@ using System.Linq;
 using Godot;
 using Remnants.Core.Colony;
 using Remnants.Core.Scavenge;
+using Remnants.Core.Schematics;
 using Remnants.Game.Colony.Ui;
 
 namespace Remnants.Game.Colony;
@@ -28,6 +29,8 @@ public partial class ColonyScreen : Node3D
         var data = GameDataPaths.Load();
         // The session outlives this scene so a party can leave for the scavenge scene and come back to it.
         _session = ColonySession.Current ??= new ColonySession(NewGame.Create(data, NewGameSeed, GameDataPaths.LoadScavenge()));
+        // `--story` (with --colony) founds a Story colony.
+        if (DebugCapture.HasFlag("--story") && _session.Sim.State.Campaign is null && IsFreshGame) Remnants.Core.Story.Campaign.Start(_session.Sim);
         var layout = new TownLayout(data.Rules.Layout);
         var models = ModelLibrary.Load();
         GD.Print($"Colony: data from {GameDataPaths.Source}, {models.ModelCount} generated models.");
@@ -52,11 +55,18 @@ public partial class ColonyScreen : Node3D
         var audio = new Audio.ColonyAudio { Name = "Audio" };
         AddChild(audio);
         audio.Setup(_session, layout, camera, _hud);
+        var weatherView = new WeatherFx.WeatherView { Name = "WeatherView" };
+        AddChild(weatherView);
+        weatherView.Setup(camera.Camera, _town.Lighting, 28f);
+        var weather = new WeatherFx.ColonyWeather { Name = "Weather" };
+        AddChild(weather);
+        weather.Setup(_session, weatherView);
 
         if ((DebugCapture.HasFlag("--demo") || DebugCapture.HasFlag("--family-demo")) && IsFreshGame) RunDemo();
         if (DebugCapture.HasFlag("--family-demo")) RunFamilyDemo();
         if (DebugCapture.HasFlag("--crafting-demo") && IsFreshGame) RunCraftingDemo();
         if (DebugCapture.HasFlag("--food-demo") && IsFreshGame) RunFoodDemo(DebugCapture.Value("--food-view") ?? "kitchen");
+        if (DebugCapture.HasFlag("--schematics-demo") && IsFreshGame) RunSchematicsDemo();
         if (DebugCapture.HasFlag("--perks-demo") && IsFreshGame) RunPerksDemo();
         if (DebugCapture.HasFlag("--loop-demo") && _session.Sim.State.NextExpeditionId == 1)
         {
@@ -86,11 +96,25 @@ public partial class ColonyScreen : Node3D
             _hud.Roster.Select(null);
             _town.Select(null);
         }
+        if (DebugCapture.Value("--story-demo") is { Length: > 0 } storyStage && IsFreshGame) RunStoryDemo(storyStage);
         if (DebugCapture.HasFlag("--world-map") || DebugCapture.HasFlag("--world-demo")) _hud.WorldMap.Open(DebugCapture.Value("--zone"));
         if (DebugCapture.HasFlag("--pause-menu")) _hud.CallDeferred(ColonyHud.MethodName.OpenPause);
         if (DebugCapture.HasFlag("--settings")) _hud.Settings.CallDeferred(Hud.Overlay.MethodName.Open);
         if (DebugCapture.HasFlag("--build-menu")) CallDeferred(MethodName.ToggleBuildMenu);
         if (int.TryParse(DebugCapture.Value("--select-survivor"), out var who)) _hud.Roster.Select(who);
+        if (DebugCapture.HasFlag("--archive"))
+        {
+            _hud.Roster.Select(null);
+            _hud.Inventory.Open(archive: true);
+            if (DebugCapture.Value("--archive-filter") is { } filter) _hud.Inventory.Archive.ShowFilter(filter);
+        }
+        if (DebugCapture.HasFlag("--collapse-log")) _hud.Log.ToggleCollapsed();
+        if (DebugCapture.HasFlag("--research")) SelectFirst(_session.Sim.Data.Schematics.Rules.Research.Building);
+        if (DebugCapture.Value("--radio") is { } radioTab)
+        {
+            SelectFirst(_session.Sim.Data.Schematics.Rules.Radio.Building);
+            _hud.Radio.ShowTab(radioTab);
+        }
         if (int.TryParse(DebugCapture.Value("--survivor-tab"), out var tab)) _hud.Survivor.ShowTab(tab);
         CallDeferred(MethodName.ShowUnseenReport);
     }
@@ -187,6 +211,8 @@ public partial class ColonyScreen : Node3D
     {
         _session.FastForward(_session.Sim.Data.Rules.TicksPerDay, s => s.Hour == hour);
         _session.SetSpeed(0);
+        // A demo's speed can come back once the HUD settles; hold the hour for the capture.
+        GetTree().CreateTimer(0.25).Timeout += () => _session.SetSpeed(0);
         _walkers.Settle();
     }
 
@@ -210,7 +236,7 @@ public partial class ColonyScreen : Node3D
 
     /// <summary>
     /// Debug (screenshots of perks and study): Town Hall 2 with an Electronics Lab, a few days of work behind everyone,
-    /// a hacker with the Tech perks and a studied datashard, two classes at the Lab (Hacking with a mentor, a child on
+    /// a hacker with the Tech perks and the Network Ghost schematic, two classes at the Lab (Hacking with a mentor, a child on
     /// Drone Piloting with a manual); selects the hacker's apprentice and the Lab.
     /// </summary>
     private void RunPerksDemo()
@@ -223,9 +249,8 @@ public partial class ColonyScreen : Node3D
         var farm = _session.Execute(new Construct("farm", 9)).EntityId;
         if (lab is not { } l) return;
         _session.Execute(new Upgrade(l));
-        sim.State.Inventory.Add("ds_network_ghost");
         sim.State.Inventory.Add("manual_drone_ops");
-        _session.Execute(new StudyBlueprint("ds_network_ghost"));
+        Schematics.Grant(sim, "sch_network_ghost", SchematicSource.Debug);
 
         var adults = sim.State.Survivors.Where(s => !s.IsChild).ToList();
         var children = sim.State.Survivors.Where(s => s.IsChild && !s.IsInfant).ToList();
@@ -261,8 +286,8 @@ public partial class ColonyScreen : Node3D
 
     /// <summary>
     /// Debug (screenshots of cybernetics, <c>--cyber-demo</c>): Town Hall 3 with a Med Bay, Workshop and Electronics Lab
-    /// at level 2; a Cyber-Surgeon at the Med Bay and a Biomech / Neural Interface engineer; Blueprint: Cybernetics
-    /// studied and a few designs and components in the stores; a veteran wearing mixed tiers (a mechanical leg, a cyborg
+    /// at level 2; a Cyber-Surgeon at the Med Bay and a Biomech / Neural Interface engineer; the prosthetics schematics
+    /// known and a few designs and components in the stores; a veteran wearing mixed tiers (a mechanical leg, a cyborg
     /// runner leg, a blade arm and a Network-grade arm as replacements, a scope eye as an augmentation, so humanity is
     /// low); and the engineer booked for
     /// surgery on a lost leg. Selects the Med Bay and the veteran; <c>--cyber-tree</c> opens the tree on the legs.
@@ -286,10 +311,12 @@ public partial class ColonyScreen : Node3D
         var lab = Build("electronics_lab", 10, 2);
         Build("house", 14, 1);
         Build("farm", 15, 2);
-        foreach (var id in new[] { "bp_cybernetics", "mech_leg", "mech_arm", "runner_leg", "silent_leg", "precision_arm", "labor_arm",
+        foreach (var id in new[] { "sch_mech_limbs", "sch_powered_limbs", "sch_cybernetics", "sch_spec_runner", "sch_spec_silent", "sch_spec_precision",
+                     "sch_spec_labor", "sch_spec_hacker", "sch_spec_blade", "sch_spec_scope_eye" })
+            if (sim.Data.Schematics.Find(id) is not null) Schematics.Grant(sim, id, SchematicSource.Debug);
+        foreach (var id in new[] { "mech_leg", "mech_arm", "runner_leg", "silent_leg", "precision_arm", "labor_arm",
                      "servo", "servo", "power_cell", "neural_link", "myomer_bundle", "cyber_leg", "blade_arm" })
             sim.State.Inventory.Add(id);
-        _session.Execute(new StudyBlueprint("bp_cybernetics"));
 
         var adults = sim.State.Survivors.Where(s => !s.IsChild).ToList();
         if (adults.Count < 3 || bay is not { } medBay || lab is not { } l2) return;
@@ -341,7 +368,7 @@ public partial class ColonyScreen : Node3D
         var sim = _session.Sim;
         var state = sim.State;
         foreach (var res in sim.Data.Resources.Keys) state.Stockpile.Add(res, 2000);
-        foreach (var sch in new[] { "sch_feast", "sch_medicinal_broth", "sch_cold_cellar", "sch_greenhouse", "sch_pickling" }) state.KnownBlueprints.Add(sch);
+        foreach (var sch in new[] { "sch_feast", "sch_medicinal_broth", "sch_cold_cellar", "sch_greenhouse", "sch_pickling" }) Schematics.Grant(sim, sch, SchematicSource.Debug);
         var hall = state.Buildings.First(b => b.DefId == sim.Data.Rules.TownHallBuildingId).Id;
         _session.Execute(new Upgrade(hall));
         _session.Execute(new Upgrade(hall));
@@ -444,12 +471,13 @@ public partial class ColonyScreen : Node3D
     /// production building and a House, upgrades a few to level 2 and 3, studies a blueprint, staffs the Armory and
     /// Tailor, fills their queues and opens the Armory's production panel and the item list.
     /// </summary>
-    private void RunCraftingDemo()
+    private void RunCraftingDemo(bool open = true)
     {
         var sim = _session.Sim;
-        foreach (var res in sim.Data.Resources.Keys) sim.State.Stockpile.Add(res, 2000);
-        sim.State.Inventory.Add("bp_riot_armor");
-        sim.State.Inventory.Add("bp_scanner");
+        foreach (var res in sim.Data.Resources.Keys.Where(r => r != sim.Data.Schematics.Rules.ResearchDataResource)) sim.State.Stockpile.Add(res, 2000);
+        // Debug only: the schematics a grown town would have found (Riot Armor, and the Tailor's third level).
+        foreach (var id in new[] { "sch_riot_armor", "sch_tailor_3" })
+            if (sim.Data.Schematics.Find(id) is not null) Schematics.Grant(sim, id, SchematicSource.Debug);
         var hall = sim.State.Buildings.First(b => b.DefId == sim.Data.Rules.TownHallBuildingId).Id;
         _session.Execute(new Upgrade(hall));
         _session.Execute(new Upgrade(hall));
@@ -467,7 +495,6 @@ public partial class ColonyScreen : Node3D
         Build("house", 16, 1);
         Build("farm", 2, 3);
         if (sim.State.Buildings.FirstOrDefault(b => b.DefId == "shelter") is { } shelter) _session.Execute(new Upgrade(shelter.Id));
-        _session.Execute(new StudyBlueprint("bp_riot_armor"));
 
         var adults = sim.State.Survivors.Where(s => !s.IsChild).Select(s => s.Id).ToList();
         for (var i = 0; i < adults.Count; i++)
@@ -486,9 +513,77 @@ public partial class ColonyScreen : Node3D
         _session.FastForward(30, _ => false);
         if (armory is { } busy && sim.State.FindBuilding(busy) is { } shop)
             _session.FastForward(300, s => shop.Queue.FirstOrDefault(o => o.Paid) is { } o && o.Progress > s.Data.Recipes[o.RecipeId].Work * 0.4);
+        if (!open) return;
         _hud.Inventory.Toggle();
         if (armory is { } sel) _town.Select(sel);
         _session.SetSpeed(1);
+    }
+
+    /// <summary>
+    /// Debug (screenshots of schematics, <c>--schematics-demo</c>): the crafting demo's grown town plus a Radio Mast and an
+    /// Electronics Lab L2; some schematics known, some heard of, three encrypted chips (one queued for decrypting),
+    /// Research Data, the Evac Beacon being researched, Suburb Ruins scouted, the trader parked outside with its call
+    /// waiting and a contract on offer. Paused. <c>--archive</c>, <c>--research</c> and <c>--radio=calls|trader|contracts</c>
+    /// open the screens.
+    /// </summary>
+    private void RunSchematicsDemo()
+    {
+        var sim = _session.Sim;
+        RunCraftingDemo(open: false);
+        _session.Execute(new Construct(sim.Data.Schematics.Rules.Radio.Building));
+        if (sim.State.Buildings.FirstOrDefault(b => b.DefId == "electronics_lab") is { Level: < 2 } lab) _session.Execute(new Upgrade(lab.Id));
+        foreach (var zone in new[] { "outskirts", "scrapyard_flats", "suburb_ruins" })
+            if (sim.Scavenge?.Zones.ContainsKey(zone) == true) sim.State.Zones[zone] = new ZoneStatus { Intel = ZoneIntel.Scouted, Visits = 1 };
+
+        // Debug only: what a few weeks of runs, a trader and a terminal would have brought.
+        foreach (var id in new[] { "sch_watchtower", "sch_camo_cloak", "sch_rifle", "sch_scout_drone", "sch_mech_limbs", "sch_network_ghost", "sch_workshop_3" })
+            Schematics.Grant(sim, id, SchematicSource.Loot);
+        foreach (var (id, where) in new[]
+                 {
+                     ("sch_evac_beacon", "in a story dialogue"), ("sch_greenhouse", "on a terminal in Suburb Ruins"),
+                     ("sch_powered_limbs", "dropped by a Linked in Suburb Ruins"), ("sch_signal_jammer", "on a terminal in Rail Depot"),
+                     ("sch_armory_3", "in the trader's stock"), ("sch_network_grade", "on a Warden in the Core Spire"),
+                 })
+            Schematics.HearOf(sim, id, where);
+        foreach (var id in new[] { "sch_override", "sch_cyberdeck", "sch_linked_plating" }) Schematics.Receive(sim, id, SchematicSource.Terminal);
+        sim.State.Inventory.Add("sch_rifle");  // a copy to sell
+        var rd = sim.Data.Schematics.Rules.ResearchDataResource;
+        sim.State.Stockpile.Add(rd, 23);
+        if (sim.State.Buildings.FirstOrDefault(b => b.DefId == "electronics_lab") is { } lab2)
+            _session.Execute(new QueueRecipe(lab2.Id, Schematics.DecryptRecipeId("sch_linked_plating")));
+        var researcher = sim.State.Survivors.Where(s => !s.IsChild).OrderByDescending(s => Research.Factor(sim, s)).FirstOrDefault();
+        if (researcher is not null) _session.Execute(new StartResearch("sch_evac_beacon", researcher.Id));
+        _session.FastForward(20, _ => false);
+
+        // Debug only: park the trader now (as RadioMast does on a visit) with a contract on offer.
+        var radio = sim.State.Radio;
+        var tpd = sim.Data.Rules.TicksPerDay;
+        if (RadioMast.Trader(sim) is { } trader)
+        {
+            radio.Stock = ["sch_greenhouse", "sch_armory_3"];
+            radio.TraderLeavesTick = sim.State.Tick + tpd + 7;
+            radio.NextVisitTick = sim.State.Tick + 10 * tpd;
+            radio.Visits++;
+            foreach (var id in radio.Stock) Schematics.HearOf(sim, id, $"in {trader.Name}'s stock");
+            RadioMast.Enqueue(sim, RadioCallKind.Trader, trader.Id, trader.Name, trader.Greeting, expiresInTicks: radio.TraderLeavesTick - sim.State.Tick);
+        }
+        radio.Contract = new RadioContract
+        {
+            Id = radio.NextContractId++, ZoneId = "suburb_ruins", DueTick = sim.State.Tick + 6 * tpd,
+            Reward = new() { [rd] = 4, ["scrap"] = 15 },
+        };
+        radio.NextContractTick = sim.State.Tick + 6 * tpd;
+        RadioMast.Enqueue(sim, RadioCallKind.Contract, "radio", "A voice on the radio",
+            "Need someone to run Suburb Ruins in the next 6 days. Pays 4 Research Data, 15 Scrap.", radio.Contract.Id.ToString(), 6 * tpd);
+        RadioMast.Enqueue(sim, RadioCallKind.News, "radio", "Static, then a voice",
+            "…anyone on this band: the Rail Depot lights came on last night. Stay clear of the yard.");
+        _session.SetSpeed(0);
+    }
+
+    /// <summary>Selects the colony's first building of this type, if any.</summary>
+    private void SelectFirst(string defId)
+    {
+        if (_session.Sim.State.Buildings.Where(b => b.DefId == defId).MaxBy(b => b.Level) is { } b) _town.Select(b.Id);
     }
 
     public override void _Process(double delta) => _session.Advance(delta);
@@ -555,7 +650,10 @@ public partial class ColonyScreen : Node3D
             _hud.Production.Show(id);
             _hud.Study.Show(id);
             _hud.Harvest.Show(id);
+            _hud.Research.Show(id);
+            _hud.Radio.Show(id);
         };
+        _hud.ResearchRequested += () => SelectFirst(_session.Sim.Data.Schematics.Rules.Research.Building);
         _hud.Building.Closed += () => _town.Select(null);
         _hud.Roster.SelectionChanged += id => _walkers.SelectedSurvivorId = id;
     }

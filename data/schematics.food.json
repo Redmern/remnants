@@ -102,27 +102,6 @@
         "Research"
       ],
       "description": "Pressed, salted bars from an old army manual: light and nearly ageless."
-    },
-    {
-      "id": "sch_greenhouse",
-      "name": "Greenhouse",
-      "tier": 2,
-      "unlocks": [
-        {
-          "kind": "Building",
-          "id": "greenhouse"
-        }
-      ],
-      "sources": [
-        "Loot",
-        "Trade",
-        "Research",
-        "Story"
-      ],
-      "storyMissions": [
-        "M11"
-      ],
-      "description": "Glass, frames and a stove: food that ignores the weather."
     }
   ],
   "traders": []

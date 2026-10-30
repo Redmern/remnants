@@ -11,7 +11,7 @@ namespace Remnants.Game.Colony.Ui;
 /// <summary>
 /// The survivor panel's Perks tab: level, XP bar and unspent points; a discipline switcher; the discipline's perk tree
 /// (tiers top to bottom, lines from each prerequisite) where each node shows owned / open / missing requirements /
-/// locked behind a datashard, with requirements in its tooltip; and the picked perk in detail with the Learn button.
+/// locked behind a schematic, with requirements in its tooltip; and the picked perk in detail with the Learn button.
 /// Core decides (<see cref="ColonySim.PerkStatus"/>, <see cref="ChoosePerk"/>).
 /// </summary>
 public partial class PerksTab : VBoxContainer
@@ -129,10 +129,14 @@ public partial class PerksTab : VBoxContainer
         {
             PerkBlock.Ok => $"Spend {picked.Perk.Cost} perk point{(picked.Perk.Cost == 1 ? "" : "s")} on {picked.Perk.Name}.",
             PerkBlock.NoPoints => "No perk point to spend: level up through work, study and missions, or learn it from a mentor at the study building.",
-            PerkBlock.Locked => "Locked: study the datashard at the Electronics Lab first (Items).",
+            PerkBlock.Locked => $"Locked: {LockText(sim, picked!.Perk.Id)}. See the Schematics archive (Items).",
             _ => "Requirements not met yet (see above).",
         };
     }
+
+    /// <summary>"needs the Network Ghost schematic".</summary>
+    private static string LockText(ColonySim sim, string perkId) =>
+        sim.Data.Schematics.GateOfPerk(perkId) is { } gate ? $"needs the {sim.Data.Schematics.All[gate].Name} schematic" : "needs a schematic";
 
     private void Learn()
     {
@@ -149,7 +153,7 @@ public partial class PerksTab : VBoxContainer
             PerkBlock.Owned => Palette.Paint("Learned", Palette.Good),
             PerkBlock.Ok => Palette.Paint("Ready to learn", Palette.Amber),
             PerkBlock.NoPoints => Palette.Paint("Needs a perk point", Palette.Warn),
-            PerkBlock.Locked => Palette.Paint("Locked: datashard needed", Palette.Danger),
+            PerkBlock.Locked => Palette.Paint($"Locked: {LockText(sim, p.Id)}", Palette.Danger),
             _ => Palette.Paint("Requirements missing", Palette.TextMuted),
         };
         var lines = new List<string>
@@ -186,8 +190,8 @@ public partial class PerksTab : VBoxContainer
         if (r.Building is { } b)
             yield return Mark(sim.State.Buildings.Any(x => x.DefId == b && x.Level >= r.BuildingLevel),
                 $"{sim.Data.Buildings[b].Name}{(r.BuildingLevel > 1 ? $" L{r.BuildingLevel}" : "")}");
-        if (r.Blueprint is { } bp)
-            yield return Mark(sim.State.KnownBlueprints.Contains(bp), sim.Scavenge?.Items.GetValueOrDefault(bp)?.Name ?? bp);
+        if (sim.Data.Schematics.GateOfPerk(p.Id) is { } gate)
+            yield return Mark(Remnants.Core.Schematics.Schematics.Has(sim, gate), $"needs the {sim.Data.Schematics.All[gate].Name} schematic");
         if (r.AdultsOnly) yield return Mark(!s.IsChild, "Adult");
     }
 

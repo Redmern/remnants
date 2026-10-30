@@ -1,8 +1,9 @@
 [
-  { "id": "wood",        "name": "Wood" },
-  { "id": "stone",       "name": "Stone" },
-  { "id": "scrap",       "name": "Scrap Metal" },
-  { "id": "cloth",       "name": "Cloth" },
-  { "id": "electronics", "name": "Electronics" },
-  { "id": "medicine",    "name": "Medicine" }
+  {"id": "wood", "name": "Wood"},
+  {"id": "stone", "name": "Stone"},
+  {"id": "scrap", "name": "Scrap Metal"},
+  {"id": "cloth", "name": "Cloth"},
+  {"id": "electronics", "name": "Electronics"},
+  {"id": "medicine", "name": "Medicine"},
+  {"id": "research_data", "name": "Research Data"}
 ]

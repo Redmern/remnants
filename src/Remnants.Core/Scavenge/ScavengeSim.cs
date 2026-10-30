@@ -46,15 +46,20 @@ public sealed class ScavengeSim
     /// <summary>Starts round 1 and runs AI turns until the first player-controlled unit is up.</summary>
     public void Start()
     {
-        if (State.Round == 0) AdvanceTurns();
+        if (State.Round == 0)
+        {
+            MissionRules.Started(this);
+            AdvanceTurns();
+        }
         Visibility.UpdateExplored(Data, State);
         SyncRng();
     }
 
     public ScavengeResult Execute(IScavengeCommand command)
     {
-        var result = ScavengeCommandHandlers.Validate(this, command, out var unit) ?? command switch
+        var result = ScavengeCommandHandlers.Validate(this, command, out var unit) ?? MissionRules.Blocked(this, command) ?? command switch
         {
+            ChooseOption c => MissionRules.Choose(this, unit!, c),
             Move c => ScavengeCommandHandlers.Move(this, unit!, c),
             Attack c => ScavengeCommandHandlers.Attack(this, unit!, c),
             UseItem c => ScavengeCommandHandlers.UseItem(this, unit!, c),
@@ -82,6 +87,7 @@ public sealed class ScavengeSim
 
         if (result.Ok)
         {
+            MissionRules.Update(this);
             UpdateParties();
             // The acting unit's turn ends on EndTurn, or when it left the map or can no longer act.
             if (command is EndTurn or SetStance || unit is not { IsActive: true })
@@ -124,6 +130,7 @@ public sealed class ScavengeSim
             if (unit.PlayerControlled) return;
 
             ScavengeAi.TakeTurn(this, unit);
+            MissionRules.Update(this);
             UpdateParties();
             State.TurnIndex++;
         }
@@ -157,11 +164,14 @@ public sealed class ScavengeSim
         }
         UpdateParties();
         Detection.Expire(Data, State);
+        FieldEnvironment.RoundStarted(this);
         Alliances.RoundStarted(this);
         Hacking.RoundStarted(this);
         Drones.RoundStarted(this);
         Network.RoundStarted(this);
         Interference.RoundStarted(this);
+        MissionRules.RoundStarted(this);
+        if (State.Finished) return;
 
         // Drones fly on their operator's AP and cameras only watch: neither takes turns.
         State.TurnOrder = State.Units
@@ -255,7 +265,7 @@ public sealed class ScavengeSim
         if (unit.Kind == UnitKind.Device) Hacking.UnitKilled(this, unit);
 
         var drops = unit.Kind == UnitKind.Enemy && unit.EnemyDefId is { } enemyId
-            ? Data.Enemies[enemyId].Drops.Where(d => Rng.NextDouble() < d.Chance).Select(d => d.Item).ToList()
+            ? Schematics.SchematicDrops.EnemyDrops(Data, Data.Enemies[enemyId], Rng, State.KnownSchematics)
             : unit.AllItems.Where(id => unit.Kind != UnitKind.Device || Data.Items[id].LootWeight > 0).ToList();
         if (drops.Count == 0) return;
         var cache = State.Caches.Find(c => c.Pos == unit.Pos);
@@ -272,9 +282,10 @@ public sealed class ScavengeSim
     {
         foreach (var u in State.Units.Where(u => u.IsActive && u.Kind == UnitKind.Enemy && u.Ai.Mode == AiMode.Idle))
         {
-            // Husks hear further in the dark (FieldEnvironment).
-            var heard = FieldEnvironment.SenseOf(Data, State, u) == SenseKind.Husk
-                ? radius * FieldEnvironment.Effects(Data, State).HuskHearingMultiplier : radius;
+            // Husks hear further in the dark; rain drowns noise out for everyone (FieldEnvironment).
+            var effects = FieldEnvironment.Effects(Data, State);
+            var heard = radius * effects.HearingMultiplier
+                        * (FieldEnvironment.SenseOf(Data, State, u) == SenseKind.Husk ? effects.HuskHearingMultiplier : 1);
             if (!u.HostileTo(source) || u.Pos.Chebyshev(source.Pos) > heard + 1e-9) continue;
             u.Ai.Mode = AiMode.Hunting;
             u.Ai.TargetId = null;
@@ -304,10 +315,13 @@ public sealed class ScavengeSim
             if (unit.Pos.Chebyshev(sensor.Pos) > sensor.Radius || from.Chebyshev(sensor.Pos) <= sensor.Radius) continue;
             Trip(sensor, unit);
         }
+        // Thunder drowns out footsteps; rain shortens how far they carry.
+        var hear = FieldEnvironment.ThunderNow(State) ? -1 : fog.HearMovement * FieldEnvironment.Effects(Data, State).HearingMultiplier;
         foreach (var side in Detection.PartySides(State).Where(s => s != unit.Side && unit.Side != Unit.NeutralSide))
-            if (State.Units.Any(u => u.Side == side && u.IsActive && u.Pos.Chebyshev(unit.Pos) <= fog.HearMovement)
+            if (State.Units.Any(u => u.Side == side && u.IsActive && u.Pos.Chebyshev(unit.Pos) <= hear + 1e-9)
                 && !Detection.SideSees(Data, State, side, unit))
                 Detection.AddContact(Data, State, side, unit.Pos, ContactKind.Movement, unit.Id);
+        MissionRules.Moved(this, unit);
         Hacking.CameraCheck(this, unit);
         CheckOverwatch(unit);
     }
