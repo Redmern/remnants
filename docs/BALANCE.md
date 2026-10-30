@@ -646,3 +646,58 @@ Watch next pass: T1 at day ~80 feels late for the first amputee (Workshop 2 wait
 bot's order); the runner pair dominates every kit because the bot's answer to danger is running; humanity strain on
 couples is unmeasured in sweeps (no bot augments), so its rates (`partnerStrainPerTick` 0.05, breakup below 40) are a
 first guess.
+
+## Vehicles
+
+Vehicles (ARCHITECTURE.md "Vehicles") trade road time and rations for fuel, noise and a parked stash. All numbers live in
+`data/vehicles.json`; the scavenge side in `scavenge.json` (`vehicle`, `salvage`). Tools: `--travel-table`, zone trials
+with `--vehicle=TIER` (the party is capped at the vehicle's seats), colony sweeps with `--no-vehicles` or
+`--schematics=vehicles` (every vehicle schematic known from day 1). Numbers from the rebased branch.
+
+**Travel days each way, food per member for the round trip, fuel per trip** (`--travel-table`; motor vehicles with
+headlights; without them a trip that leaves or arrives at night takes ÷0.75 as long):
+
+| zone | walk | handcart | bicycle cart | motorbike | buggy | truck | armored rig |
+|---|---|---|---|---|---|---|---|
+| Scrapyard Flats / Suburb Ruins (1 d) | 1.00 · 7 | 1.00 · 7 · 0 | 0.67 · 5.7 · 0 | 0.40 · 4.6 · 2 | 0.33 · 4.3 · 3 | 0.50 · 5 · 6 | 0.57 · 5.3 · 10 |
+| Flooded Mall / Rail Depot (2 d) | 2.00 · 11 | 2.00 · 11 · 0 | 1.33 · 8.3 · 0 | 0.80 · 6.2 · 4 | 0.67 · 5.7 · 6 | 1.00 · 7 · 12 | 1.14 · 7.6 · 19 |
+| Network Relay (3 d) | 3.00 · 15 | 3.00 · 15 · 0 | 2.00 · 11 · 0 | out of range | 1.00 · 7 · 8 | 1.50 · 9 · 18 | 1.71 · 9.9 · 28 |
+| Core Spire (4 d) | 4.00 · 19 | 4.00 · 19 · 0 | 2.67 · 13.7 · 0 | out of range | out of range | 2.00 · 11 · 24 | 2.29 · 12.1 · 37 |
+
+A party of four to the Rail Depot saves 21 food by buggy for 6 fuel (= 10 food at the still's 5 food → 3 fuel), and is home
+in under a day and a half instead of four. The truck and rig trade speed for seats, cargo and armor; the rig's 37 fuel to
+the Spire is the price of the safest ride there. Extra fuel cans (+1 day range) put the motorbike in reach of the Relay.
+
+**In the field** (zone trials, 200 runs, starting gear; party 3, the motorbike seats 2):
+
+| Suburb Ruins | someone dies | deaths/run | items/run | stashed/run | noise (more Husks) |
+|---|---|---|---|---|---|
+| on foot | 23% | 0.32 | 11.6 | — | — |
+| handcart | 19% | 0.20 | 11.5 | 0.7 | 0 |
+| bicycle cart | 19% | 0.20 | 11.5 | 0.7 | 0 |
+| motorbike (2) | 35% | 0.45 | 7.5 | 0.5 | ×1.12 |
+| buggy | 22% | 0.27 | 11.1 | 0.8 | ×1.18 |
+| truck | 27% | 0.34 | 10.6 | 0.6 | ×1.25 |
+| armored rig | 30% | 0.42 | 10.3 | 0.6 | ×1.30 |
+
+- A quiet vehicle helps: the parked handcart/cart is an extraction point next to the spawn, so a hurt party gets out sooner
+  (deaths 0.32 → 0.20). The motor tiers pay for their noise in Husks: a first pass at noise 0.25 / 0.35 / 0.5 / 0.6 took
+  Scrapyard Flats from 7% to 30% runs with a death by truck; halved (0.12 / 0.18 / 0.25 / 0.3) the truck is 9% → 15% there and
+  the buggy is about even with walking in the Ruins. The muffler (×0.5 noise) and smoke launcher (no extra Husks) are the
+  answer for a player who wants both speed and a quiet arrival. The motorbike row is a party of two, hence the deaths.
+- The bot stashes little (0.5–0.8 items a run): it only unloads when it walks past the vehicle loaded with materials. A
+  player who ferries salvage to the stash brings home a cargo's worth more; the stash's value is in the hands, not the bot.
+- Salvage: 1 roll in tier 1 zones, 2 in tier 2–3, +1 with a winch; engines and chassis only with the vehicle parked.
+
+**Colony sweeps** (60 days, 20 seeds; 120 days, 10 seeds): on foot vs with vehicles the colonies match within noise (60 d:
+TH2 29.5 vs 30.5, population 8 vs 8, expedition deaths 8 vs 8 over ~330 runs; 120 d: population 20 vs 16 with every vehicle
+schematic, TH2 29.0 vs 29.8). The bot's Garage spends scrap and a worker slot early; it builds vehicles only with scrap to
+spare, so even with all schematics known it rarely gets past the handcart (a bicycle cart by day ~97 in one seed of ten).
+That is the bot's caution, not a gate: the build costs are 15 wood + 2 wheels (handcart) up to 50 scrap + 6 wheels, 3
+frames, a diesel and 6 plates (rig).
+
+**Watch next pass**
+- A bot strategy that commits to a Garage line (parts → motorbike → buggy) to measure motor tiers in a real colony.
+- Wear (3% a day each way) and repairs (a spare part = 25% of the hull or 50% of a part) are gentle; nothing has broken down
+  in the sweeps because the bot drives little.
+- Upgrade quality spread (Crude ×0.8 … Fine ×1.25) is cosmetic at today's numbers for small effects (tyres ×1.05).
