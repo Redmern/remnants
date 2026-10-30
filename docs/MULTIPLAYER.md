@@ -416,7 +416,12 @@ and results are (see "Parties and results — the trust gap"). The server narrow
   line, plausible mods / Mk. Field offers are checked against the server's own packs.
 - **Suspicious amounts** (above `suspiciousResourceAmount` 200 / `suspiciousItemCount` 10) go through but are logged with
   the player's name and market id; so are reused transaction ids.
-- **Rate limits and listing caps** (above) keep one client from flooding the market.
+- **Rate limits and listing caps** (above) keep one client from flooding the market. A retry of a transaction the server
+  already carried out is always answered, never rate-limited.
+- **A lost commit**: the server commits a live trade and sends `TradeCommit` to both, with no acknowledgement. A client
+  that drops (or crashes) in that instant never sees it and refunds its escrow (on the lost connection, or when the colony
+  screen opens), while the other side's courier still delivers. The window is one message long; closing it needs the
+  server-saved colony below (or a commit ack plus a pending-commit claim, like the Trading Post's).
 
 A **server-saved colony** would close the gap: colonies stored per account on the server; the trade window's lobby goods
 and the market's escrow taken from the stored colony by the server (`ColonyTrade.Escrow` running there); couriers and

@@ -69,7 +69,8 @@ public sealed class MarketHost : IHostSink
             Log?.Invoke($"ignored {message.GetType().Name} before hello from connection {connection.Id}");
             return;
         }
-        if (!Allow(client.Requests, _rules.Market.RequestsPerMinute))
+        // A retry of something already done is always answered (never rate-limited), or the client would refund it.
+        if (!IsRepeat(message) && !Allow(client.Requests, _rules.Market.RequestsPerMinute))
         {
             if (RequestId(message) is { } rid) client.Connection.Send(new MarketResult(rid, false, "Too many requests; slow down.", Code: "rate"));
             return;
@@ -286,6 +287,13 @@ public sealed class MarketHost : IHostSink
     {
         if (TradeGoods.Suspicious(goods, _rules) is { } big) Log?.Invoke($"suspicious {what} by {client.Name} ({client.PlayerId}): {big}");
     }
+
+    private bool IsRepeat(Message m) => m switch
+    {
+        MarketPost p => _store.Data.Transactions.ContainsKey(p.TxId ?? ""),
+        MarketAccept a => _store.Data.Transactions.ContainsKey(a.TxId ?? ""),
+        _ => false,
+    };
 
     private static int? RequestId(Message m) => m switch
     {

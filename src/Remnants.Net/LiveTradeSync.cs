@@ -64,7 +64,9 @@ public sealed class LiveTradeSync : IDisposable
         switch (message)
         {
             case TradeUpdate u when u.Trade.Venue == TradeVenue.Lobby && colony is not null:
-                if (!_client.SidesOf(u.Trade).Me.Confirmed && ColonyTrade.Refund(colony, EscrowId(u.Trade.TradeId))) ColonyChanged?.Invoke();
+                // Only an unlock (an offer changed, someone unlocked) takes back a confirm. An update that merely does not show
+                // my confirm yet (the other side's confirm got there first) must keep the escrow: mine is on its way.
+                if (!_client.SidesOf(u.Trade).Me.Locked && ColonyTrade.Refund(colony, EscrowId(u.Trade.TradeId))) ColonyChanged?.Invoke();
                 break;
             case TradeCancelled c when colony is not null:
                 if (ColonyTrade.Refund(colony, EscrowId(c.TradeId))) ColonyChanged?.Invoke();

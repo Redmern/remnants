@@ -356,4 +356,21 @@ public class MarketTests
         Assert.Equal(70, aliceColony.State.Stockpile.Get("scrap"), 6);
         Assert.Empty(market.Host.Data.Claims);
     }
+
+    [Fact]
+    public void A_retry_of_a_done_trade_is_answered_even_when_rate_limited()
+    {
+        var m = new Market(rules: Rules with { Market = Rules.Market with { RequestsPerMinute = 3 } });
+        var raw = m.Hub.Connect();
+        raw.Send(new MarketHello(Protocol.Version, "Sally", TradeIdentity.Create("Sally").Key));
+        var post = new MarketPost(1, "mkt-post-r", [TradeGood.Resource("wood", 10)], [TradeGood.Resource("scrap", 3)]);
+        raw.Send(post);
+        raw.Send(new MarketList(2));
+        raw.Send(new MarketList(3));
+        raw.Send(post with { RequestId = 4 });
+        var answer = raw.Inbox.OfType<MarketResult>().Last();
+        Assert.Equal(4, answer.RequestId);
+        Assert.True(answer.Ok);
+        Assert.Single(m.Host.Data.Listings);
+    }
 }

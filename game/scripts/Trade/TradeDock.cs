@@ -106,10 +106,13 @@ public partial class TradeDock : Control
             case TradeUpdate update:
                 var (me, _) = _client.SidesOf(update.Trade);
                 // The inviter sees the window at once; the invited player once they accept.
+                // One window, one trade: a second open trade waits until the first is over.
+                if (Window.TradeId is { } shown && shown != update.Trade.TradeId) break;
                 if (update.Trade.Accepted || update.Trade.Sides[0].PlayerId == me.PlayerId) Window.Show(update.Trade);
                 break;
             case TradeCancelled cancelled:
-                if (Window.TradeId == cancelled.TradeId || cancelled.TradeId == 0) Window.Dismiss();
+                // Id 0 is a refused request: it says nothing about the trade on screen.
+                if (cancelled.TradeId != 0 && Window.TradeId == cancelled.TradeId) Window.Dismiss();
                 _toasts.Show("Trade off", cancelled.Reason, "ui_trade", Palette.Warn, "trade");
                 break;
         }

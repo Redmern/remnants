@@ -135,7 +135,13 @@ public partial class TradingPostPanel : Overlay
         Redraw();
     }
 
-    public override void _ExitTree() => _market?.Close();
+    public override void _ExitTree()
+    {
+        _gone = true;
+        _market?.Close();
+    }
+
+    private bool _gone;
 
     private VBoxContainer Page(string name, VBoxContainer stack)
     {
@@ -173,6 +179,7 @@ public partial class TradingPostPanel : Overlay
             var listed = false;
             market.Changed += () =>
             {
+                if (_gone || market != _market) return; // a replaced or closed connection's late news
                 // First listing as soon as the server has said hello.
                 if (!listed && market.Welcome is not null)
                 {
@@ -244,7 +251,7 @@ public partial class TradingPostPanel : Overlay
 
     private void Redraw()
     {
-        if (!IsInsideTree() || _session is null) return;
+        if (_gone || !IsInstanceValid(this) || !IsInsideTree() || _session is null) return;
         var sim = _session.Sim;
         var market = _market;
         _status.Text = market switch

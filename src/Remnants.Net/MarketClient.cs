@@ -192,7 +192,8 @@ public sealed class MarketClient
     private void Resend()
     {
         if (_colony() is not { } colony) return;
-        foreach (var e in ColonyTrade.Of(colony).Escrows.Where(e => e.Market is not null).ToList())
+        var inFlight = _pending.Values.Select(p => p.TxId).OfType<string>().ToHashSet();
+        foreach (var e in ColonyTrade.Of(colony).Escrows.Where(e => e.Market is not null && !inFlight.Contains(e.TxId)).ToList())
         {
             var op = e.Market!;
             var tx = e.TxId;

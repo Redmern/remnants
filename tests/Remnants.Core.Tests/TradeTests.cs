@@ -330,4 +330,15 @@ public class TradeTests
         Assert.Equal(ScavengeError.CarryLimitExceeded, result.Error);
         Assert.Contains(heavy.Id, a.Pack);
     }
+
+    [Fact]
+    public void Escrow_checks_the_total_of_lines_sharing_an_item()
+    {
+        var colony = Colony(null, ("pistol", 1));
+        var a = TradeGood.Item("pistol") with { Extras = new ItemExtras(["scope"]) };
+        var b = TradeGood.Item("pistol") with { Extras = new ItemExtras(["grip"]) };
+        Assert.False(ColonyTrade.Escrow(colony, "tx", [a, b], "test").Ok);
+        Assert.Equal(1, colony.State.Inventory.Count("pistol"));
+        Assert.Empty(colony.State.Trade.Escrows);
+    }
 }

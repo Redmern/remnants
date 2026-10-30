@@ -58,7 +58,8 @@ public static class ColonyTrade
         if (trade.WasApplied(txId)) return CommandResult.Fail(CommandError.AlreadyKnown, "That trade is already settled.");
         var lines = TradeGoods.Normalize(goods);
         var state = colony.State;
-        foreach (var g in lines)
+        // Lines of one id (an item with different mods) draw on the same stock: check their total.
+        foreach (var g in lines.GroupBy(g => (g.Kind, g.Id)).Select(grp => grp.First() with { Count = grp.Sum(x => x.Count) }))
         {
             var have = g.Kind == GoodKind.Resource ? state.Stockpile.Get(g.Id) : state.Inventory.Count(g.Id);
             if (have + 1e-9 < g.Count)

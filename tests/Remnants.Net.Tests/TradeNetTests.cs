@@ -262,4 +262,26 @@ public class TradeNetTests
         Assert.Contains("allies", x.Last<TradeCancelled>().Reason);
         Assert.Empty(y.Link.Inbox.OfType<TradeInvite>());
     }
+
+    [Fact]
+    public void A_confirm_overtaken_by_the_other_sides_confirm_keeps_its_escrow()
+    {
+        var f = new NetFixture(Options());
+        var a = Seat(f, "Alice", 1);
+        var b = Seat(f, "Bob", 2);
+        var id = Open(a, b);
+        a.Client.OfferTrade(id, [TradeGood.Resource("scrap", 20)]);
+        b.Client.OfferTrade(id, [TradeGood.Resource("wood", 10)]);
+        a.Client.LockTrade(id, true);
+        b.Client.LockTrade(id, true);
+        // Alice escrows and her confirm is in flight while Bob's confirm reaches the server first.
+        Assert.True(ColonyTrade.Escrow(a.Colony, a.Sync.EscrowId(id), [TradeGood.Resource("scrap", 20)], "trade").Ok);
+        Assert.True(b.Sync.Confirm(id).Ok);
+        Assert.Single(a.Colony.State.Trade.Escrows); // the update without her confirm must not refund
+        a.Client.ConfirmTrade(id);
+
+        Assert.Equal(1, f.Host.Trades.Committed);
+        Assert.Empty(a.Colony.State.Trade.Escrows);
+        Assert.Equal(30, a.Colony.State.Stockpile.Get("scrap"), 6); // paid exactly once
+    }
 }
