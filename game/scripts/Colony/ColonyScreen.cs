@@ -153,7 +153,20 @@ public partial class ColonyScreen : Node3D
         sim.State.Stockpile.Add(sim.Data.Rules.Food.ResourceId, 50);
         var adults = sim.State.Survivors.Where(s => !s.IsChild).Take(2)
             .Select(s => new ExpeditionMember(s.Id, new() { [Remnants.Core.Items.EquipSlot.Weapon] = "pipe" })).ToList();
-        if (_session.Execute(new LaunchExpedition("suburb_ruins", adults)).Ok) _session.FastForward(10, _ => false);
+        // --vehicle=TIER: the party drives (fuel in the stores), so the map shows the vehicle token on the road.
+        int? vehicleId = null;
+        if (DebugCapture.Value("--vehicle") is { } tier && sim.Data.VehicleTiers.ContainsKey(tier))
+        {
+            sim.State.Stockpile.Add(sim.Data.Vehicles.FuelResource, 50);
+            var v = VehicleDemo(sim, tier, sim.Data.VehicleTiers[tier].Name);
+            v.Upgrades.Add(FittedUpgrade.Standard("headlights"));
+            vehicleId = v.Id;
+        }
+        if (_session.Execute(new LaunchExpedition("suburb_ruins", adults, VehicleId: vehicleId)).Ok)
+        {
+            _session.FastForward(vehicleId is null ? 10 : 4, _ => false);
+            if (vehicleId is not null) _session.SetSpeed(0);
+        }
     }
 
     /// <summary>

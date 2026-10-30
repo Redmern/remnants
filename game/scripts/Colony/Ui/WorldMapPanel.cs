@@ -455,7 +455,10 @@ public partial class WorldMapCanvas : Control
         DrawString(font, at + new Vector2(-width / 2, r + 24), name, HorizontalAlignment.Left, -1, 14, Ink);
     }
 
-    /// <summary>The party as a marker on its road: walking out, in the zone, or walking home.</summary>
+    /// <summary>
+    /// The party as a marker on its road: walking out, in the zone, or walking home. A party in a vehicle shows as the
+    /// vehicle's token (its icon and tier) with its name and condition under it.
+    /// </summary>
     private void DrawParty(ColonySim sim, ScavengeData data, Vector2 colony)
     {
         if (sim.State.Expedition is not { } e || !data.Zones.TryGetValue(e.ZoneId, out var zone)) return;
@@ -464,10 +467,23 @@ public partial class WorldMapCanvas : Control
         var progress = e.PhaseAt(tick) switch
         {
             ExpeditionPhase.Outbound => e.TravelTicks > 0 ? (tick - e.LaunchedTick) / (float)e.TravelTicks : 1f,
-            ExpeditionPhase.Returning => e.TravelTicks > 0 ? 1f - (tick - (e.ReturnTick - e.TravelTicks)) / (float)e.TravelTicks : 0f,
+            ExpeditionPhase.Returning => (e.ReturnTravelTicks > 0 ? e.ReturnTravelTicks : e.TravelTicks) is var back and > 0
+                ? 1f - (tick - (e.ReturnTick - back)) / (float)back : 0f,
             _ => 1f,
         };
         var at = colony.Lerp(target, Mathf.Clamp(progress, 0, 1)) + new Vector2(0, -Radius(zone) - 10) * (progress >= 1 ? 1 : 0);
+        if (e.VehicleId is { } vid && sim.FindVehicle(vid) is { } vehicle)
+        {
+            var stats = sim.VehicleStats(vehicle);
+            var font = ThemeDB.FallbackFont;
+            DrawCircle(at, 13, new Color(0.12f, 0.1f, 0.08f));
+            DrawArc(at, 13, 0, Mathf.Tau, 28, Hud.Palette.Amber, 2.5f, true);
+            DrawTextureRect(Hud.Icons.Get("ui_vehicle", 18), new Rect2(at - new Vector2(9, 9), new Vector2(18, 18)), false, Hud.Palette.Amber);
+            var label = $"T{stats.Tier.Tier} {vehicle.Name} {vehicle.Condition:0}/{stats.MaxCondition:0}";
+            var width = font.GetStringSize(label, HorizontalAlignment.Left, -1, 13).X;
+            DrawString(font, at + new Vector2(-width / 2, -18), label, HorizontalAlignment.Left, -1, 13, Hud.Palette.Gauge(vehicle.Condition / stats.MaxCondition));
+            return;
+        }
         DrawCircle(at, 7, new Color(0.95f, 0.9f, 0.7f));
         DrawArc(at, 7, 0, Mathf.Tau, 20, new Color(0.1f, 0.1f, 0.1f), 2f, true);
     }

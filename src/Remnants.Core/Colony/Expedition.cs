@@ -59,6 +59,9 @@ public sealed class Expedition
     public ExtractionResult? PendingResult { get; set; }
     public long ReturnTick { get; set; }
 
+    /// <summary>How long the way home takes (set when the run is over; a vehicle may drive it faster or slower than the way out).</summary>
+    public long ReturnTravelTicks { get; set; }
+
     public ExpeditionPhase PhaseAt(long tick) =>
         PendingResult is not null ? ExpeditionPhase.Returning : tick < ArrivalTick ? ExpeditionPhase.Outbound : ExpeditionPhase.InZone;
 }

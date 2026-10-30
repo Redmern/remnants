@@ -141,6 +141,7 @@ internal static class ExpeditionHandlers
         {
             expedition.PendingResult = result;
             expedition.ReturnTick = state.Tick + home.Ticks;
+            expedition.ReturnTravelTicks = home.Ticks;
             expedition.Scavenge = null;
             var days = home.Ticks / (double)sim.Data.Rules.TicksPerDay;
             var message = $"The run is over; the party is heading home ({days:0.#} days).";
