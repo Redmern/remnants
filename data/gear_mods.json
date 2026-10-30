@@ -244,7 +244,7 @@
     { "id": "mod_quiet_fabric", "name": "Quiet Fabric", "building": "tailor", "minLevel": 1, "work": 8, "inputs": { "cloth": 5 }, "item": "mod_quiet_fabric", "minSkill": 10 },
     { "id": "mod_camo_urban", "name": "Urban Camo", "building": "tailor", "minLevel": 1, "work": 6, "inputs": { "cloth": 3 }, "item": "mod_camo_urban" },
     { "id": "mod_camo_wasteland", "name": "Wasteland Camo", "building": "tailor", "minLevel": 1, "work": 6, "inputs": { "cloth": 3 }, "item": "mod_camo_wasteland" },
-    { "id": "mod_camo_foliage", "name": "Foliage Camo", "building": "tailor", "minLevel": 2, "work": 6, "inputs": { "cloth": 3, "food": 2 }, "item": "mod_camo_foliage" },
+    { "id": "mod_camo_foliage", "name": "Foliage Camo", "building": "tailor", "minLevel": 2, "work": 6, "inputs": { "cloth": 3, "wood": 2 }, "item": "mod_camo_foliage" },
     { "id": "mod_waterproofing", "name": "Waterproofing", "building": "tailor", "minLevel": 1, "work": 6, "inputs": { "cloth": 3, "wood": 2 }, "item": "mod_waterproofing" },
     { "id": "mod_helmet_visor", "name": "Visor", "building": "armory", "minLevel": 1, "work": 6, "inputs": { "scrap": 4 }, "item": "mod_helmet_visor" },
     { "id": "mod_dust_filter", "name": "Dust Filter", "building": "tailor", "minLevel": 1, "work": 5, "inputs": { "cloth": 2, "scrap": 1 }, "item": "mod_dust_filter" },

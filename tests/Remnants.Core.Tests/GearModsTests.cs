@@ -432,4 +432,19 @@ public class GearModsTests
         sim.State.Inventory.Add("pistol+mod_sharpened_edge");
         Assert.ThrowsAny<Exception>(() => SaveGame.Load(TestData.Real, SaveGame.Save(sim.State), Real));
     }
+
+    [Fact]
+    public void Saves_from_before_gear_mods_load_unchanged()
+    {
+        var sim = LoopTestData.Colony(items: new() { ["pistol"] = 1 });
+        var old = SaveGame.Save(sim.State).Replace($"\"version\": {SaveGame.Version}", $"\"version\": {SaveGame.GearModsVersion - 1}");
+        Assert.Equal(1, SaveGame.Load(TestData.Real, old, Real).State.Inventory.Count("pistol"));
+
+        var field = Arena(6, 6, [SurvivorUnit(weapon: "pistol")]);
+        var run = ScavengeSave.Save(field.State).Replace($"\"version\": {ScavengeSave.Version}", $"\"version\": {ScavengeSave.Version - 1}")
+            .Replace("\"moved\": false,", "").Replace("\"facing\": null,", "");
+        var loaded = ScavengeSave.Load(Real, run);
+        Assert.False(loaded.State.Units[0].Moved);
+        Assert.Null(loaded.State.Units[0].Facing);
+    }
 }
