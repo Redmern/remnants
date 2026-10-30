@@ -32,8 +32,8 @@ public static class Alliances
     {
         var state = sim.State;
         if (from == to || state.FindParty(to) is not { Done: false })
-            return ScavengeResult.Fail(ScavengeError.NotAPlayer, $"Player {to} has no party in the zone.");
-        if (state.Allied(from, to)) return ScavengeResult.Fail(ScavengeError.AlreadyAllied, $"Player {to} is already an ally.");
+            return ScavengeResult.Fail(ScavengeError.NotAPlayer, $"{state.PlayerName(to)} has no party in the zone.");
+        if (state.Allied(from, to)) return ScavengeResult.Fail(ScavengeError.AlreadyAllied, $"{state.PlayerName(to)} is already an ally.");
         if (state.Proposals.Any(p => (p.FromPlayerId, p.ToPlayerId) == (from, to) || (p.FromPlayerId, p.ToPlayerId) == (to, from)))
             return ScavengeResult.Fail(ScavengeError.ProposalPending, "An alliance offer between you is already open.");
         if (!InContact(sim, from, to)) return ScavengeResult.Fail(ScavengeError.NoContact, "Your parties must see each other to talk.");
@@ -46,33 +46,34 @@ public static class Alliances
         var state = sim.State;
         state.Proposals.Add(new AllianceProposal(c.PlayerId, c.ToPlayerId, state.Round));
         state.Log(new(state.Round, ScavengeEventType.AllianceProposed,
-            $"Player {c.PlayerId} offers player {c.ToPlayerId} an alliance.",
+            $"{state.PlayerName(c.PlayerId)} offers {state.PlayerName(c.ToPlayerId)} an alliance.",
             Sides: [Side(state, c.PlayerId), Side(state, c.ToPlayerId)]));
-        return ScavengeResult.Success($"Alliance offered to player {c.ToPlayerId}.");
+        return ScavengeResult.Success($"Alliance offered to {state.PlayerName(c.ToPlayerId)}.");
     }
 
     internal static ScavengeResult Respond(ScavengeSim sim, Unit unit, RespondAlliance c)
     {
         var state = sim.State;
         var offer = state.Proposals.Find(p => p.FromPlayerId == c.FromPlayerId && p.ToPlayerId == c.PlayerId);
-        if (offer is null) return ScavengeResult.Fail(ScavengeError.NoProposal, $"Player {c.FromPlayerId} made you no offer.");
+        var from = state.PlayerName(c.FromPlayerId);
+        if (offer is null) return ScavengeResult.Fail(ScavengeError.NoProposal, $"{from} made you no offer.");
         if (c.Accept && state.Allied(c.FromPlayerId, c.PlayerId))
-            return ScavengeResult.Fail(ScavengeError.AlreadyAllied, $"Player {c.FromPlayerId} is already an ally.");
+            return ScavengeResult.Fail(ScavengeError.AlreadyAllied, $"{from} is already an ally.");
         if (c.Accept && state.FindParty(c.FromPlayerId) is not { Done: false })
-            return ScavengeResult.Fail(ScavengeError.NotAPlayer, $"Player {c.FromPlayerId} has left the zone.");
+            return ScavengeResult.Fail(ScavengeError.NotAPlayer, $"{from} has left the zone.");
         state.Proposals.Remove(offer);
         var sides = new List<string> { Side(state, c.FromPlayerId), Side(state, c.PlayerId) };
         if (!c.Accept)
         {
             state.Log(new(state.Round, ScavengeEventType.AllianceDeclined,
-                $"Player {c.PlayerId} declines player {c.FromPlayerId}'s alliance.", Sides: sides));
-            return ScavengeResult.Success($"Declined player {c.FromPlayerId}'s offer.");
+                $"{state.PlayerName(c.PlayerId)} declines {from}'s alliance.", Sides: sides));
+            return ScavengeResult.Success($"Declined {from}'s offer.");
         }
         var side = Merge(state, c.FromPlayerId, c.PlayerId);
         state.Log(new(state.Round, ScavengeEventType.AllianceAccepted,
-            $"Players {c.FromPlayerId} and {c.PlayerId} are allies now: shared sight, no friendly fire.",
+            $"{from} and {state.PlayerName(c.PlayerId)} are allies now: shared sight, no friendly fire.",
             Sides: [side]));
-        return ScavengeResult.Success($"Allied with player {c.FromPlayerId}.");
+        return ScavengeResult.Success($"Allied with {from}.");
     }
 
     internal static ScavengeResult Break(ScavengeSim sim, Unit unit, BreakAlliance c)
@@ -85,7 +86,7 @@ public static class Alliances
         var effective = state.Round + 1 + sim.Data.Rules.Coop.BreakWarningRounds;
         state.Breaks.Add(new AllianceBreak(c.PlayerId, side, state.Round, effective));
         state.Log(new(state.Round, ScavengeEventType.AllianceBreakWarning,
-            $"Player {c.PlayerId} will leave the alliance when round {effective} starts.", Sides: [side]));
+            $"{state.PlayerName(c.PlayerId)} will leave the alliance when round {effective} starts.", Sides: [side]));
         return ScavengeResult.Success($"Leaving the alliance at round {effective}.");
     }
 
@@ -105,7 +106,7 @@ public static class Alliances
             var own = Split(state, b.PlayerId);
             var rest = Side(state, staying);
             state.Log(new(state.Round, ScavengeEventType.AllianceBroken,
-                $"Player {b.PlayerId} has left the alliance: no more shared sight, and you are fair game to each other.",
+                $"{state.PlayerName(b.PlayerId)} has left the alliance: no more shared sight, and you are fair game to each other.",
                 Sides: [own, rest]));
         }
     }

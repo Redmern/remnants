@@ -138,6 +138,38 @@ public class CoopTests
     }
 
     [Fact]
+    public void Alliance_and_party_log_lines_name_the_players_or_fall_back_to_player_n()
+    {
+        var a = SurvivorUnit(1, new(1, 1));
+        var b = SurvivorUnit(2, new(4, 1));
+        var sim = Arena(10, 4, [a, b], ["E........."]);
+        PartyOf(sim, 1).Name = "Alice";
+        string Line(ScavengeEventType type) => sim.State.Events.Last(e => e.Type == type).Message;
+
+        Assert.Equal("Alliance offered to Player 2.", sim.Execute(new ProposeAlliance(1, a.Id, 2)).Message);
+        Assert.Equal("Alice offers Player 2 an alliance.", Line(ScavengeEventType.AllianceProposed));
+        PartyOf(sim, 2).Name = "Rook";
+        TurnOf(sim, b);
+        Assert.True(sim.Execute(new RespondAlliance(2, b.Id, 1, Accept: true)).Ok);
+        Assert.Equal("Alice and Rook are allies now: shared sight, no friendly fire.", Line(ScavengeEventType.AllianceAccepted));
+        Assert.True(sim.Execute(new BreakAlliance(2, b.Id)).Ok);
+        Assert.StartsWith("Rook will leave the alliance", Line(ScavengeEventType.AllianceBreakWarning));
+
+        TurnOf(sim, a);
+        Assert.True(sim.Execute(new Move(1, a.Id, new(0, 0))).Ok);
+        Assert.True(sim.Execute(new Extract(1, a.Id)).Ok);
+        Assert.Equal("Alice's run is over.", Line(ScavengeEventType.PartyDone));
+
+        var named = NewScavenge.Create(Real, "suburb_ruins", 5, [Party(1) with { Name = "Alice" }, Party(2)]);
+        Assert.Equal("Alice", named.State.PlayerName(1));
+        Assert.Equal("Player 2", named.State.PlayerName(2));
+        var node = System.Text.Json.Nodes.JsonNode.Parse(ScavengeSave.Save(named.State))!;
+        Assert.Equal("Alice", ScavengeSave.Load(Real, node.ToJsonString()).State.PlayerName(1));
+        node["scavenge"]!["parties"]![0]!.AsObject().Remove("name"); // a save from before names
+        Assert.Equal("Player 1", ScavengeSave.Load(Real, node.ToJsonString()).State.PlayerName(1));
+    }
+
+    [Fact]
     public void Breaking_an_alliance_takes_a_full_warning_round_and_ends_shared_sight_then()
     {
         var a = SurvivorUnit(1, new(1, 1));

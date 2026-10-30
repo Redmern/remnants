@@ -200,7 +200,7 @@ public sealed class ScavengeSim
                     u.PlayerId = leader?.PlayerId;
                     u.FollowingId = leader?.Id;
                 }
-                State.Log(new(State.Round, ScavengeEventType.PartyDone, $"Player {party.PlayerId}'s run is over."));
+                State.Log(new(State.Round, ScavengeEventType.PartyDone, $"{State.PlayerName(party.PlayerId)}'s run is over."));
             }
             CoopActions.Sync(State);
         } while (changed);

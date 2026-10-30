@@ -238,7 +238,7 @@ public sealed class GameHost : IHostSink
         try
         {
             Sim = NewScavenge.Create(_data, Options.ZoneId, Options.Seed,
-                _seats.Select(s => new PartySetup(s.PlayerId, s.Party, s.StartTeam(Options.Mode))).ToList());
+                _seats.Select(s => new PartySetup(s.PlayerId, s.Party, s.StartTeam(Options.Mode), s.Name)).ToList());
         }
         catch (ArgumentException e)
         {

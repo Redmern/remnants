@@ -45,7 +45,7 @@ public interface IScavengeDriver
     /// <summary>The player walks away mid-run (the screen's Leave).</summary>
     void Leave();
 
-    /// <summary>A player's name for labels ("Player 2" locally).</summary>
+    /// <summary>A player's name for labels (their party's name, else "Player 2").</summary>
     string PlayerName(int playerId);
 
     /// <summary>Remote only: a line of alliance news for this player (offer, accepted, declined, break warning, broken), for banners.</summary>
@@ -78,7 +78,7 @@ public sealed class LocalDriver : IScavengeDriver
     public event Action<string>? Noticed { add { } remove { } }
     public event Action<string>? AllianceNews { add { } remove { } }
 
-    public string PlayerName(int playerId) => $"Player {playerId}";
+    public string PlayerName(int playerId) => Sim.State.PlayerName(playerId);
 
     public Task<ScavengeResult> Execute(IScavengeCommand command) => Task.FromResult(Sim.Execute(command));
 

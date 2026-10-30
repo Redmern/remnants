@@ -75,7 +75,7 @@ public class ProtocolTests
     public void A_co_op_view_with_pings_and_alliances_round_trips()
     {
         var sim = NewScavenge.Create(NetFixture.Data, "outskirts", 3,
-            [new PartySetup(1, NetFixture.Party("A"), Team: 1), new PartySetup(2, NetFixture.Party("B"), Team: 1)]);
+            [new PartySetup(1, NetFixture.Party("A"), Team: 1, Name: "Ana"), new PartySetup(2, NetFixture.Party("B"), Team: 1, Name: "Bo")]);
         var up = sim.State.CurrentUnit!;
         Assert.True(sim.Execute(new PingTile(up.PlayerId!.Value, up.Id, new Pos(2, 2), PingKind.Danger)).Ok);
         Assert.True(sim.Execute(new BreakAlliance(up.PlayerId!.Value, up.Id)).Ok);
@@ -85,6 +85,7 @@ public class ProtocolTests
         var view = fog.View(sim);
         Assert.Single(view.Pings);
         Assert.Single(view.Breaks);
+        Assert.Equal(["Ana", "Bo"], view.Parties.Select(p => p.Name)); // log lines and labels use them
         RoundTrips(new Snapshot(view, fog.Visible.Order().ToList(), []));
         RoundTrips(new MissionStarted(sim.State.ZoneId, sim.State.Map, [new PlayerInfo(1, "A", 1), new PlayerInfo(2, "B", 1)], 60, 120, MissionMode.Coop));
     }

@@ -10,9 +10,10 @@ public sealed record PartyMember(Survivor Survivor, Dictionary<EquipSlot, string
 
 /// <summary>
 /// One player's party entering a zone. Parties with the same <see cref="Team"/> start allied (one side, see
-/// <see cref="Alliances"/>) and spawn next to each other; null = on its own.
+/// <see cref="Alliances"/>) and spawn next to each other; null = on its own. <see cref="Name"/> is the player's name
+/// for log lines (null = "Player N").
 /// </summary>
-public sealed record PartySetup(int PlayerId, List<PartyMember> Members, int? Team = null);
+public sealed record PartySetup(int PlayerId, List<PartyMember> Members, int? Team = null, string? Name = null);
 
 /// <summary>How the zone is right now: <see cref="Depletion"/> (0..1) thins out the loot caches of a picked-over zone.</summary>
 public sealed record ZoneConditions(double Depletion = 0);
@@ -55,7 +56,7 @@ public static class NewScavenge
                 if (!teamSides.TryGetValue(team, out var shared)) teamSides[team] = shared = Unit.TeamSide(state.NextTeamId++);
                 side = shared;
             }
-            state.Parties.Add(new Party { PlayerId = party.PlayerId, Side = side });
+            state.Parties.Add(new Party { PlayerId = party.PlayerId, Name = party.Name ?? "", Side = side });
             var spots = open
                 .Where(p => MapGenerator.Depth(map, zone.SpawnEdge, p) <= 2 && Free(p))
                 .OrderBy(p => p.DistanceSquared(anchor)).ThenBy(map.Index)

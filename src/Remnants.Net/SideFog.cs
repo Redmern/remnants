@@ -94,7 +94,7 @@ public sealed class SideFog(int playerId, string side)
             Finished = state.Finished,
             Map = new TileMap(),
             // Other teams' alliances are none of this player's business: their parties show as on their own.
-            Parties = state.Parties.Select(p => new Party { PlayerId = p.PlayerId, Side = Shown(p.Side, p.PlayerId), Done = p.Done, Left = p.Left }).ToList(),
+            Parties = state.Parties.Select(p => new Party { PlayerId = p.PlayerId, Name = p.Name, Side = Shown(p.Side, p.PlayerId), Done = p.Done, Left = p.Left }).ToList(),
             Units = units,
             Caches = _knownCaches.Values.OrderBy(c => c.Id).Select(c => new LootCache { Id = c.Id, Pos = c.Pos, Items = new(c.Items) }).ToList(),
             Explored = state.Explored.TryGetValue(Side, out var explored)

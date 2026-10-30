@@ -5,6 +5,9 @@ public sealed class Party
 {
     public int PlayerId { get; set; }
 
+    /// <summary>The player's name for log lines ("" = unnamed: "Player N"; saves from before names load so).</summary>
+    public string Name { get; set; } = "";
+
     /// <summary>The party's side now: <see cref="Unit.PlayerSide"/> alone, or its team's <see cref="Unit.TeamSide"/> while allied.</summary>
     public string Side { get; set; } = "";
 
@@ -193,6 +196,9 @@ public sealed class ScavengeState
 
     /// <summary>The device on a tile (a camera may sit in a wall), if any.</summary>
     public ZoneDevice? DeviceAt(Pos p) => Devices.Find(d => d.Pos == p);
+
+    /// <summary>A player's name for log lines: their party's <see cref="Party.Name"/>, else "Player N".</summary>
+    public string PlayerName(int playerId) => FindParty(playerId)?.Name is { Length: > 0 } name ? name : $"Player {playerId}";
 
     /// <summary>The unit standing on a tile, if any (alive or downed; the dead leave a cache instead).</summary>
     public Unit? UnitAt(Pos p) => Units.Find(u => u.OnMap && u.Pos == p && u.CarriedById is null);
