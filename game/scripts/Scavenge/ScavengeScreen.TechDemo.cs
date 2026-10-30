@@ -2,6 +2,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 using Remnants.Core.Scavenge;
+using Remnants.Game.Scavenge.Ui;
 
 namespace Remnants.Game.Scavenge;
 
@@ -13,6 +14,95 @@ public partial class ScavengeScreen
     /// until the hacked turret fires at the Husk. <c>drone</c>: launch the drone and fly it toward the hidden Husk until it
     /// shows. Then (with <c>--screenshot=PATH</c>) the frame is saved.
     /// </summary>
+    /// <summary>
+    /// The electronics stagings: <c>medic</c> launches the medic drone next to the hurt teammate and treats them; <c>cargo</c>
+    /// launches the cargo drone by the cache, loads two items and flies it next to the exit (Ferry ready); <c>combat</c> launches
+    /// the combat drone and fires at the Husk; <c>emp</c> throws the EMP over the Linked and its drone and holds the burst.
+    /// Debug only: the operator's AP is topped up between orders so one turn shows the whole moment.
+    /// </summary>
+    private async Task ElectronicsDemo(int pid, System.Func<Task> settle)
+    {
+        if (_presenter.ActingUnit is not { } op) return;
+        var state = _presenter.State;
+        void TopUp() => op.Ap = _presenter.Sim.Profile(op).MaxAp;
+        async Task Order(IScavengeCommand c)
+        {
+            await settle();
+            TopUp();
+            await Run(c);
+            await settle();
+        }
+        Pos DeployNear(Pos target) => _presenter.DeployTiles(op).OrderBy(p => p.Chebyshev(target)).ThenBy(p => p.DistanceSquared(target)).First();
+        switch (TechDemo.Mode)
+        {
+            case "medic":
+                if (state.Units.FirstOrDefault(u => u.Side == op.Side && u.Kind == UnitKind.Survivor && u.Id != op.Id && u.Hp < u.MaxHp) is not { } hurt) break;
+                await Order(new DeployDrone(pid, op.Id, DeployNear(hurt.Pos)));
+                if (op.DroneId is not { } medic) break;
+                await Order(new DroneHeal(pid, op.Id, hurt.Id));
+                TopUp();
+                Select(op.Id);
+                _aim = TechAim.Heal;
+                RefreshHud();
+                if (state.FindUnit(medic) is { } m) _camera.GlideTo((TileGrid.ToWorld(m.Pos) + TileGrid.ToWorld(hurt.Pos)) / 2);
+                _camera.Camera.Size = 16;
+                break;
+            case "cargo":
+                var cache = state.Caches.Last();
+                await Order(new DeployDrone(pid, op.Id, DeployNear(cache.Pos)));
+                if (op.DroneId is not { } cargoId || state.FindUnit(cargoId) is not { } cargo) break;
+                if (cargo.Pos.Chebyshev(cache.Pos) > 1)
+                    await Order(new FlyDrone(pid, op.Id, Drones.FlightTargets(_presenter.Sim, op).OrderBy(p => p.Chebyshev(cache.Pos)).First()));
+                foreach (var item in cache.Items.Take(2).ToList()) await Order(new DroneLoad(pid, op.Id, cache.Id, item));
+                var exit = state.Map.Exits.OrderBy(x => x.Chebyshev(cargo.Pos)).First();
+                if (!DroneRoles.FerryPoint(_presenter.Sim, cargo.Pos))
+                    await Order(new FlyDrone(pid, op.Id, Drones.FlightTargets(_presenter.Sim, op)
+                        .Where(p => DroneRoles.FerryPoint(_presenter.Sim, p)).OrderBy(p => p.Chebyshev(exit)).DefaultIfEmpty(exit).First()));
+                TopUp();
+                Select(op.Id);
+                _camera.GlideTo((TileGrid.ToWorld(cargo.Pos) + TileGrid.ToWorld(op.Pos)) / 2);
+                _camera.Camera.Size = 18;
+                break;
+            case "combat":
+                var husk = state.Units.Last(u => u.Kind == UnitKind.Enemy && u.OnMap);
+                await Order(new DeployDrone(pid, op.Id, DeployNear(husk.Pos)));
+                if (op.DroneId is not { } gunId) break;
+                await settle();
+                TopUp();
+                if (DroneRoles.FireTargets(_presenter.Sim, op).FirstOrDefault() is { } target)
+                {
+                    _camera.GlideTo((TileGrid.ToWorld(state.FindUnit(gunId)!.Pos) + TileGrid.ToWorld(target.Pos)) / 2);
+                    await Order(new DroneFire(pid, op.Id, target.Id));
+                    // Replay the shot for the still, aimed on the next target highlight.
+                    if (state.Events.LastOrDefault(e => e.UnitId == gunId && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed) is { } shot)
+                    {
+                        TopUp();
+                        Select(op.Id);
+                        _aim = TechAim.Fire;
+                        RefreshHud();
+                        _ = _units.Replay([shot], _presenter.Visible);
+                        await ToSignal(GetTree().CreateTimer(0.25), SceneTreeTimer.SignalName.Timeout);
+                        return;
+                    }
+                }
+                Select(op.Id);
+                break;
+            case "emp":
+                var linked = state.Units.First(u => u.Kind == UnitKind.Enemy && u.EnemyDefId == "linked" && u.OnMap);
+                _units.HoldEffects = true;
+                _camera.GlideTo((TileGrid.ToWorld(op.Pos) + TileGrid.ToWorld(linked.Pos)) / 2);
+                await settle();
+                TopUp();
+                _usingItem = "emp_grenade";
+                RefreshHud();
+                await ToSignal(GetTree().CreateTimer(0.3), SceneTreeTimer.SignalName.Timeout);
+                await Order(new UseItem(pid, op.Id, "emp_grenade", At: linked.Pos));
+                Select(linked.Id);
+                await ToSignal(GetTree().CreateTimer(0.4), SceneTreeTimer.SignalName.Timeout);
+                break;
+        }
+    }
+
     private async Task TechDemoScript()
     {
         await ToSignal(GetTree().CreateTimer(0.8), SceneTreeTimer.SignalName.Timeout);
@@ -67,6 +157,7 @@ public partial class ScavengeScreen
                 }
                 break;
         }
+        await ElectronicsDemo(pid, Settle);
         await ToSignal(GetTree().CreateTimer(0.5), SceneTreeTimer.SignalName.Timeout);
         if (DebugCapture.Value("--screenshot") is { Length: > 0 } path)
         {

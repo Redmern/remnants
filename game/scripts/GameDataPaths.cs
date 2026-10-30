@@ -60,7 +60,8 @@ public static class GameDataPaths
             if (ScavengeFiles.All(f => File.Exists(Path.Combine(dir, f))))
                 return ScavengeDataLoader.LoadFromDirectory(dir);
         return ScavengeDataLoader.LoadFromJson(ReadEmbedded("items.json"), ReadEmbedded("enemies.json"),
-            ReadEmbedded("zones.json"), ReadEmbedded("scavenge.json"), ReadEmbedded("perks.json"), ReadEmbedded("cybernetics.json"), ReadEmbedded("schematics.json"));
+            ReadEmbedded("zones.json"), ReadEmbedded("scavenge.json"), ReadEmbedded("perks.json"), ReadEmbedded("cybernetics.json"), ReadEmbedded("electronics.json"),
+            ReadEmbedded("schematics.json"), ReadEmbedded("schematics.electronics.json"));
     }
 
     private static GameData LoadFresh()
@@ -86,7 +87,8 @@ public static class GameDataPaths
     private static GameData LoadEmbedded() =>
         GameDataLoader.LoadFromJson(ReadEmbedded("resources.json"), ReadEmbedded("jobs.json"), ReadEmbedded("buildings.json"), ReadEmbedded("rules.json"),
             ReadEmbedded("recipes.json"), ReadEmbedded("perks.json"), ReadEmbedded("cybernetics.json"), ReadEmbedded("weather.json"),
-            ReadEmbedded("food.json"), ReadEmbedded("schematics.json"), ReadEmbedded("schematics.food.json"));
+            ReadEmbedded("food.json"), ReadEmbedded("electronics.json"), ReadEmbedded("schematics.json"), ReadEmbedded("schematics.food.json"),
+            ReadEmbedded("schematics.electronics.json"));
 
     private static string ReadEmbedded(string file)
     {

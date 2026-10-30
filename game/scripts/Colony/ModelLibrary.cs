@@ -188,7 +188,7 @@ public sealed class ModelLibrary
             model.Scale = Vector3.One * (1 + 0.12f * (level - l));
             return model;
         }
-        return Placeholders.Building(def.Category, level);
+        return Placeholders.Building(def.Category, level, def.Id);
     }
 
     public static string SurvivorId(bool child, Sex sex) =>

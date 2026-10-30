@@ -19,6 +19,7 @@ public partial class ColonyScreen : Node3D
     private TownView _town = null!;
     private SurvivorWalkers _walkers = null!;
     private ColonyHud _hud = null!;
+    private PowerOverlay _power = null!;
 
     /// <summary>A new game nobody has played yet (debug demos only stage on one).</summary>
     private bool IsFreshGame => _session.Sim.State.Tick == _session.Sim.Data.Rules.NewGame.StartHour;
@@ -48,6 +49,10 @@ public partial class ColonyScreen : Node3D
         _walkers = new SurvivorWalkers { Name = "Survivors" };
         AddChild(_walkers);
         _walkers.Setup(_session, layout, models);
+
+        _power = new PowerOverlay { Name = "PowerGrid" };
+        AddChild(_power);
+        _power.Setup(_session, layout);
 
         BuildHud();
         Wire();
@@ -81,6 +86,8 @@ public partial class ColonyScreen : Node3D
         if (DebugCapture.HasFlag("--cyber-demo") && IsFreshGame) RunCyberDemo();
         if (DebugCapture.HasFlag("--world-demo") && IsFreshGame) RunWorldDemo();
         if (DebugCapture.HasFlag("--night-demo") && IsFreshGame) RunNightDemo();
+        if (DebugCapture.HasFlag("--power-demo") && IsFreshGame) RunPowerDemo();
+        if (DebugCapture.HasFlag("--power-overlay")) TogglePowerOverlay();
         if (int.TryParse(DebugCapture.Value("--hour"), out var hour)) JumpToHour(hour);
         // `--anim-demo=colony` (with --demo): close on the Woodcutter and Farm so the work loops read (FrameRecorder).
         if (DebugCapture.Value("--anim-demo") == "colony" && _session.Sim.State.Buildings.FirstOrDefault(b => b.DefId == "woodcutter") is { } cutter)
@@ -204,6 +211,75 @@ public partial class ColonyScreen : Node3D
             _town.Select(cutter.Id);
         }
         _session.FastForward(2 * sim.Data.Rules.TicksPerDay, _ => false);
+    }
+
+    /// <summary>
+    /// Debug (screenshots of electronics and power, <c>--power-demo</c>): Town Hall 3; a Fuel Generator, Solar Array and Battery
+    /// Bank; a level 3 Electronics Lab staffed by two skilled engineers with a component, a tier 3 (needs power) chip, a device
+    /// and a disassembly queued; a level 3 Med Bay switched off the grid; two drained sensor kits on the charging bench. Runs to
+    /// midday so the sun is up and the batteries are filling, then opens the lab's bench (<c>--bench-tab=NAME</c> picks the tab).
+    /// </summary>
+    private void RunPowerDemo()
+    {
+        var sim = _session.Sim;
+        foreach (var res in sim.Data.Resources.Keys) sim.State.Stockpile.Add(res, 2000);
+        var hall = sim.State.Buildings.First(b => b.DefId == sim.Data.Rules.TownHallBuildingId).Id;
+        _session.Execute(new Upgrade(hall));
+        _session.Execute(new Upgrade(hall));
+        int? Build(string defId, int plot, int level)
+        {
+            var built = _session.Execute(new Construct(defId, plot));
+            if (built.EntityId is not { } id)
+            {
+                GD.Print($"power-demo: {defId}: {built.Message}");
+                return null;
+            }
+            for (var l = 1; l < level; l++) _session.Execute(new Upgrade(id));
+            return id;
+        }
+        // The schematics a few runs would have brought home: Lab and Med Bay L3, solar, batteries, the chip fab and the EMP.
+        foreach (var schematic in new[] { "sch_lab_3", "sch_med_bay_3", "sch_solar_array", "sch_battery_bank", "sch_microchip", "sch_emp_grenade" })
+            Remnants.Core.Schematics.Schematics.Grant(sim, schematic, Remnants.Core.Schematics.SchematicSource.Loot);
+        var lab = Build("electronics_lab", 8, 3);
+        Build("fuel_generator", 9, 1);
+        Build("solar_array", 15, 2);
+        Build("battery_bank", 14, 1);
+        var bay = Build("med_bay", 10, 3);
+        var farm = Build("farm", 16, 1);
+        foreach (var (id, n) in new[] { ("wiring", 6), ("circuit_board", 4), ("power_cell", 3), ("broken_gadget", 4), ("smashed_drone", 1), ("antenna", 2) })
+            sim.State.Inventory.Add(id, n);
+        if (lab is not { } l) return;
+
+        var adults = sim.State.Survivors.Where(s => !s.IsChild).ToList();
+        // Debug only: engineers as if they had worked the bench for weeks.
+        foreach (var s in adults.Take(2))
+        {
+            s.Set(Remnants.Core.Survivors.Skill.Electronics, 42);
+            _session.Execute(new AssignJob(s.Id, l));
+        }
+        if (farm is { } f)
+            foreach (var s in adults.Skip(2)) _session.Execute(new AssignJob(s.Id, f));
+        _session.Execute(new QueueRecipe(l, "microchip", 2));
+        _session.Execute(new QueueRecipe(l, "circuit_board", 3));
+        _session.Execute(new QueueRecipe(l, "wiring", 1, Repeat: true));
+        _session.Execute(new QueueRecipe(l, "emp_grenade"));
+        _session.Execute(new QueueRecipe(l, Remnants.Core.Data.DisassemblyDef.RecipePrefix + "broken_gadget", 3));
+        if (bay is { } b) _session.Execute(new SetPower(b, false));
+        // Debug only: two sensor kits came home flat from a run.
+        sim.State.Charging.Add(new ChargingItem { ItemId = "motion_sensor_mk2", Work = 30, Done = 0 });
+        sim.State.Charging.Add(new ChargingItem { ItemId = "motion_sensor_mk3", Work = 24, Done = 0 });
+        // Midday: the sun is up, the batteries are filling, the bench is busy.
+        _session.FastForward(sim.Data.Rules.TicksPerDay, s => s.Hour == 12);
+        _town.Select(l);
+        _hud.CallDeferred(ColonyHud.MethodName.ScrollSideTo, _hud.Production);
+        if (DebugCapture.Value("--bench-tab") is { Length: > 0 } tab) _hud.Production.ShowGroup(tab);
+        _session.SetSpeed(0);
+    }
+
+    private void TogglePowerOverlay()
+    {
+        _power.Toggle();
+        _hud.TopBar.SetPowerOverlay(_power.Visible);
     }
 
     /// <summary>Debug: run to the next <paramref name="hour"/>:00, pause there and put everyone where that hour has them.</summary>
@@ -630,6 +706,7 @@ public partial class ColonyScreen : Node3D
             CallDeferred(MethodName.ShowUnseenReport); // the autopilot resolves in place; the scavenge screen comes back through _Ready
         };
         _hud.TopBar.BuildPressed += ToggleBuildMenu;
+        _hud.TopBar.PowerPressed += TogglePowerOverlay;
         _hud.BuildMenu.Closed += ToggleBuildMenu;
         _hud.BuildMenu.TypeChosen += defId => _town.BeginPlacing(defId);
         _town.PlacingChanged += () =>
@@ -670,6 +747,7 @@ public partial class ColonyScreen : Node3D
         if (_session.UnseenReport is not null) ShowUnseenReport();  // a party walked home from a far zone
         _town.Sync();
         _walkers.Sync();
+        _power.Sync();
         _hud.Refresh();
     }
 }

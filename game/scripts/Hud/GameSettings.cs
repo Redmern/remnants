@@ -167,6 +167,7 @@ public static class Hotkeys
         new("open_items", "Items", "Colony", [Key.I]),
         new("open_log", "Event log filters", "Colony", [Key.L]),
         new("cycle_survivor", "Next survivor", "Colony", [Key.Tab]),
+        new("open_power", "Power grid overlay", "Colony", [Key.P]),
         new("camera_rotate_left", "Rotate camera left", "Colony", [Key.Q]),
         new("camera_rotate_right", "Rotate camera right", "Colony", [Key.R]),
         new("end_turn", "End turn", "Scavenge", [Key.Space, Key.Enter]),
@@ -194,6 +195,8 @@ public static class Hotkeys
         new("scav_fly", "Fly the scout drone", "Scavenge", [Key.J]),
         new("scav_mark", "Mark a target with the drone", "Scavenge", [Key.M]),
         new("scav_payload", "Drop a payload from the drone", "Scavenge", [Key.P]),
+        new("scav_drone_action", "Drone role: heal / load / fire", "Scavenge", [Key.R]),
+        new("scav_ferry", "Cargo drone: ferry the load out", "Scavenge", [Key.I]),
     ];
 
     /// <summary>Camera panning is not an action (it reads WASD and arrows directly); listed for the settings screen.</summary>

@@ -9,8 +9,9 @@ namespace Remnants.Game.Colony.Ui;
 
 /// <summary>
 /// The colony's top bar: clock and speed, a chip per resource (amount, change over the last day, a tooltip that
-/// explains it: what makes it and, for food, what is eaten), population, beds and food pressure, and the Build /
-/// Items / Expedition / World map / Menu buttons with their hotkeys.
+/// explains it: what makes it and, for food, what is eaten), population, beds and food pressure, the power grid once
+/// there is one (used / supply, battery charge, tinted on a brownout or a tripped breaker; its button opens the grid
+/// overlay), and the Build / Items / Expedition / World map / Menu buttons with their hotkeys.
 /// </summary>
 public partial class TopBar : PanelContainer
 {
@@ -35,6 +36,10 @@ public partial class TopBar : PanelContainer
     private readonly PanelContainer _beds;
     private readonly PanelContainer _food;
     private readonly ResourceHistory _history = new();
+    private readonly PanelContainer _power;
+    private readonly PanelContainer _battery;
+    private readonly Button _grid;
+    private readonly VSeparator _powerRule = new();
 
     public event Action? BuildPressed;
     public event Action? ExpeditionPressed;
@@ -44,6 +49,9 @@ public partial class TopBar : PanelContainer
     public event Action? PantryPressed;
     public event Action? WorldMapPressed;
     public event Action? MenuPressed;
+
+    /// <summary>The grid button (or P): show or hide the power overlay on the town.</summary>
+    public event Action? PowerPressed;
 
     public TopBar(ColonySession session)
     {
@@ -135,6 +143,14 @@ public partial class TopBar : PanelContainer
         {
             if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) PantryPressed?.Invoke();
         };
+        _power = Widgets.Chip(Icons.Get("stat_power", 16), "");
+        _battery = Widgets.Chip(Icons.Get("stat_battery", 16), "");
+        _grid = Widgets.IconButton("ui_power_grid", "", "Power grid overlay: who is fed, and switches", () => PowerPressed?.Invoke(), Hotkeys.KeyName("open_power"));
+        _grid.ToggleMode = true;
+        row.AddChild(_powerRule);
+        row.AddChild(_power);
+        row.AddChild(_battery);
+        row.AddChild(_grid);
         row.AddChild(new VSeparator());
 
         row.AddChild(Widgets.IconButton("ui_build", "", "Build", () => BuildPressed?.Invoke(), Hotkeys.KeyName("open_build")));
@@ -144,6 +160,9 @@ public partial class TopBar : PanelContainer
         row.AddChild(Widgets.IconButton("ui_world_map", "", "World map", () => WorldMapPressed?.Invoke()));
         row.AddChild(Widgets.IconButton("ui_menu", "", "Menu: save, load, settings", () => MenuPressed?.Invoke(), Hotkeys.KeyName("pause_menu")));
     }
+
+    /// <summary>The power overlay hotkey does what the grid button does.</summary>
+    public void EmitPower() => PowerPressed?.Invoke();
 
     /// <summary>The Build hotkey does what the button does.</summary>
     public void EmitBuild() => BuildPressed?.Invoke();
@@ -232,6 +251,41 @@ public partial class TopBar : PanelContainer
             chip.Set(amount, perDay, ResourceTip(sim, id, amount, perDay));
         }
         RefreshPressure(sim);
+        RefreshPower(sim);
+    }
+
+    /// <summary>Shows the overlay toggle as pressed or not.</summary>
+    public void SetPowerOverlay(bool on) => _grid.SetPressedNoSignal(on);
+
+    /// <summary>Supply and demand, battery and trouble; hidden until a generator or battery bank stands (the early game is unchanged).</summary>
+    private void RefreshPower(ColonySim sim)
+    {
+        var nodes = sim.PowerNodes();
+        var grid = nodes.Any(n => n.Role is PowerRole.Generator or PowerRole.Storage);
+        _power.Visible = _battery.Visible = _grid.Visible = _powerRule.Visible = grid;
+        if (!grid) return;
+        var p = sim.State.Power;
+        var tripped = sim.State.Tick < p.BreakerUntil;
+        var color = tripped ? Palette.Danger : p.Brownout ? Palette.Warn : Palette.Text;
+        var shed = nodes.Count(n => n.Role is PowerRole.Consumer && n.On && !n.Fed);
+        var generators = nodes.Where(n => n.Role == PowerRole.Generator).ToList();
+        var tip = new List<string>
+        {
+            $"Power: {p.Used:0.#} used of {p.Capacity:0.#} available this hour (demand {p.Demand:0.#}).",
+            string.Join("\n", generators.Select(g => $"  {sim.Data.Buildings[g.DefId].Name}: {g.Amount:0.#} ({(g.On ? g.Note : "off")})")),
+        };
+        if (tripped) tip.Add($"BREAKER TRIPPED: every consumer is dark for {p.BreakerUntil - sim.State.Tick} h. Switch something off or add power.");
+        else if (p.Brownout) tip.Add($"Brownout: {shed} building{(shed == 1 ? "" : "s")} not fed (lowest priority first).");
+        tip.Add("Open the grid overlay (P) to see who is fed and switch buildings.");
+        SetChip(_power, (tripped ? "TRIPPED " : "") + $"{p.Used:0.#}/{p.Capacity:0.#}" + (p.Brownout || tripped ? " !" : ""), color,
+            string.Join("\n", tip.Where(t => t.Length > 0)), tripped || p.Brownout ? "stat_warning" : "stat_power");
+
+        var cap = sim.PowerStorageCapacity;
+        _battery.Visible = cap > 0;
+        if (cap <= 0) return;
+        var share = Math.Clamp(p.Stored / cap, 0, 1);
+        SetChip(_battery, $"{share * 100:0}%", share < 0.15 ? Palette.Warn : Palette.Text,
+            $"Batteries: {p.Stored:0.#} of {cap:0.#} stored. Spare solar charges them; they cover the night.");
     }
 
     private void RefreshPressure(ColonySim sim)

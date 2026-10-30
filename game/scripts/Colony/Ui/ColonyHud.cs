@@ -141,8 +141,8 @@ public partial class ColonyHud : CanvasLayer
         stack.AddChild(MedBay);
         stack.AddChild(Radio);
         stack.AddChild(Research);
-        stack.AddChild(Study);
         stack.AddChild(Production);
+        stack.AddChild(Study);
         Log = new EventLog(session);
         right.AddChild(Log);
 
@@ -224,6 +224,9 @@ public partial class ColonyHud : CanvasLayer
     /// <summary>Scrolls the right-hand panel column so <paramref name="control"/> is in view (after layout).</summary>
     public void ScrollRightTo(Control control) => _rightScroll.CallDeferred(ScrollContainer.MethodName.EnsureControlVisible, control);
 
+    /// <summary>Scrolls the right-hand column so a panel shows (debug captures of long panels).</summary>
+    public void ScrollSideTo(Control panel) => ScrollRightTo(panel);
+
     public void OpenPause()
     {
         if (Pause.Visible) return;
@@ -253,6 +256,7 @@ public partial class ColonyHud : CanvasLayer
         else if (Hotkeys.Pressed(e, "open_items")) Inventory.Toggle();
         else if (Hotkeys.Pressed(e, "open_log")) Log.ToggleCollapsed();
         else if (Hotkeys.Pressed(e, "cycle_survivor")) Roster.SelectNext();
+        else if (Hotkeys.Pressed(e, "open_power")) TopBar.EmitPower();
         else return;
         GetViewport().SetInputAsHandled();
     }

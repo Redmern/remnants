@@ -10,7 +10,9 @@ namespace Remnants.Game.Colony.Ui;
 /// The selected building: icon, name, category and level pips; its workers as portraits (empty slots shown);
 /// what it makes per day (tooltip: per worker); beds or patient beds; and the next upgrade as cost chips (missing
 /// resources marked) with the Town Hall cap; for workplaces the Night Shift toggle with its penalty, and for an unlit
-/// outdoor one the Floodlight that lets it run. Core decides whether an upgrade, a night shift or a Floodlight goes through.
+/// outdoor one the Floodlight that lets it run; for buildings on the power grid a Power section (what it makes, stores or
+/// draws, whether it is fed, the bonus power gives) with its on/off switch. Core decides whether an upgrade, a night
+/// shift, a Floodlight or a switch goes through.
 /// </summary>
 public partial class BuildingPanel : PanelContainer
 {
@@ -38,6 +40,9 @@ public partial class BuildingPanel : PanelContainer
     private readonly Label _repairNote = Widgets.Wrapped("", "Small");
     private readonly MarginContainer _repairCost = new();
     private Button _repair = null!;
+    private readonly VBoxContainer _powerBox = Widgets.Column(4);
+    private readonly Label _powerLines = Widgets.Wrapped("", "Small");
+    private readonly Button _powerSwitch;
     private string _workerSignature = "";
     private string _costSignature = "";
 
@@ -94,6 +99,12 @@ public partial class BuildingPanel : PanelContainer
         repairRow.AddChild(_repairCost);
         _repairBox.AddChild(repairRow);
         box.AddChild(_repairBox);
+        _powerBox.AddChild(Widgets.SectionHeader("Power", "stat_power"));
+        _powerBox.AddChild(_powerLines);
+        _powerSwitch = Widgets.IconButton("stat_power", "On the grid", "", TogglePower);
+        _powerSwitch.ToggleMode = true;
+        _powerBox.AddChild(_powerSwitch);
+        box.AddChild(_powerBox);
 
         _upgradeBox.AddChild(Widgets.SectionHeader("Upgrade", "ui_chevron_up"));
         _upgradeBox.AddChild(_upgradeTitle);
@@ -138,6 +149,7 @@ public partial class BuildingPanel : PanelContainer
         _output.Visible = _output.Text.Length > 0;
         RefreshNight(sim, building, def);
         RefreshRepair(sim, building, def);
+        RefreshPower(sim, building);
         RefreshUpgrade(sim, building, def);
     }
 
@@ -186,6 +198,32 @@ public partial class BuildingPanel : PanelContainer
     private void Repair()
     {
         if (BuildingId is { } id) _session.Execute(new RepairBuilding(id));
+    }
+
+    private void RefreshPower(ColonySim sim, Building building)
+    {
+        var nodes = sim.PowerNodes().Where(n => n.BuildingId == building.Id).ToList();
+        _powerBox.Visible = nodes.Count > 0;
+        if (nodes.Count == 0) return;
+        var on = nodes[0].On;
+        var lines = nodes.Select(n => PowerText.Line(sim, n)).ToList();
+        if (sim.Data.Buildings[building.DefId].Category == Remnants.Core.Data.BuildingCategory.Power && sim.State.Power is var p)
+            lines.Add($"Grid: {p.Used:0.#} used of {p.Capacity:0.#}" + (sim.PowerStorageCapacity > 0 ? $", batteries {p.Stored:0.#}/{sim.PowerStorageCapacity:0.#}" : ""));
+        _powerLines.Text = string.Join("\n", lines);
+        var unfed = nodes.Any(n => n.Role == PowerRole.Consumer && n.On && !n.Fed && !PowerText.Idle(sim, n));
+        _powerLines.AddThemeColorOverride("font_color", !on ? Palette.TextMuted : unfed ? Palette.Warn : Palette.Text);
+        _powerSwitch.SetPressedNoSignal(on);
+        _powerSwitch.Text = on ? "On the grid" : "Switched off";
+        _powerSwitch.TooltipText = on
+            ? "Switch it off: a consumer stops drawing (and loses its bonus), a generator stays cold and burns no fuel."
+            : "Switch it back on the grid.";
+    }
+
+    private void TogglePower()
+    {
+        if (BuildingId is not { } id) return;
+        var on = _session.Sim.PowerNodes().FirstOrDefault(n => n.BuildingId == id)?.On ?? true;
+        _session.Execute(new SetPower(id, !on));
     }
 
     private void ToggleNightShift()
@@ -242,6 +280,7 @@ public partial class BuildingPanel : PanelContainer
             return $"Produce and meat age at {Pantry.CellarRate(sim.State, sim.Data) * 100:0}% speed";
         if (level.Beds > 0) return $"Sleeps {level.Beds}";
         if (level.Patients > 0) return $"{level.Patients} patient beds";
+        if (def.Category == Remnants.Core.Data.BuildingCategory.Power) return "Part of the colony power grid.";
         return "";
     }
 

@@ -13,6 +13,10 @@ namespace Remnants.Game.Colony.Ui;
 /// Locked recipes say why (level, schematic); Decrypt orders appear while their chip is in the stores. Core decides what is allowed.
 /// At a cooking building (Campfire, Kitchen, Smokehouse) the picker is a recipe book instead: every dish as a card, known or
 /// locked (level, schematic), with ingredient chips (stock, need, and when the soonest of it spoils), what the dish does and its buffs.
+/// <para>A bench whose recipes have groups (the Electronics Lab: Components, Devices, Upgrades, Disassembly) shows them as
+/// tabs; ungrouped recipes there go under Other. Recipes that need power carry a badge, disassembly shows its yields and
+/// research chance, and a building on the grid shows whether it is fed and what that gives. The Electronics Lab also
+/// lists the charging bench (drained devices home from the field, with progress and ETA).</para>
 /// </summary>
 public partial class ProductionPanel : PanelContainer
 {
@@ -25,6 +29,14 @@ public partial class ProductionPanel : PanelContainer
     private readonly OptionButton _amount = new() { FocusMode = FocusModeEnum.None };
     private readonly RichTextLabel _recipeInfo = Ui.Rich();
     private readonly List<string> _ids = new();
+    private readonly HBoxContainer _groupTabs = Widgets.Row(2);
+    private readonly Dictionary<string, Button> _groupButtons = new();
+    private string? _group;
+    private readonly Label _power = Widgets.Wrapped("", "Small");
+    private readonly VBoxContainer _bench = Widgets.Column(4);
+    private readonly VBoxContainer _benchRows = Widgets.Column(3);
+    private readonly Label _benchNote = Widgets.Wrapped("", "Small");
+    private string _benchShown = "";
     private readonly List<(ProgressBar Bar, Label Text, int OrderId)> _rows = new();
     private string _ordersShown = "";
     private string _recipesShown = "";
@@ -55,11 +67,13 @@ public partial class ProductionPanel : PanelContainer
         var header = Widgets.SectionHeader("Production", "skill_crafting", _cyber);
         _title = header.GetChildren().OfType<Label>().First();
         box.AddChild(header);
+        box.AddChild(_power);
         box.AddChild(_status);
         box.AddChild(_orders);
 
         box.AddChild(_book);
         box.AddChild(Ui.Heading("Queue a recipe", "ui_plus"));
+        box.AddChild(_groupTabs);
         var row = new HBoxContainer();
         row.AddChild(_recipes);
         foreach (var (label, _, _) in Amounts) _amount.AddItem(label);
@@ -68,6 +82,29 @@ public partial class ProductionPanel : PanelContainer
         box.AddChild(row);
         box.AddChild(_recipeInfo);
         _recipes.ItemSelected += _ => Refresh();
+
+        _bench.AddChild(Widgets.SectionHeader("Charging bench", "stat_battery"));
+        _bench.AddChild(_benchNote);
+        _bench.AddChild(_benchRows);
+        box.AddChild(_bench);
+    }
+
+    /// <summary>The recipe groups of a bench (ungrouped ones as "Other" when others are grouped); empty when none are.</summary>
+    private static List<string> Groups(IReadOnlyList<RecipeDef> recipes)
+    {
+        if (recipes.All(r => r.Group is null)) return [];
+        var order = new List<string> { "Components", "Devices", "Upgrades", "Disassembly" };
+        return recipes.Select(GroupOf).Distinct().OrderBy(g => order.IndexOf(g) is var i and >= 0 ? i : order.Count).ToList();
+    }
+
+    private static string GroupOf(RecipeDef r) => r.Group ?? "Other";
+
+    /// <summary>Switches the recipe picker to a group's tab (the tabs themselves and debug captures).</summary>
+    public void ShowGroup(string group)
+    {
+        _group = group;
+        _recipesShown = "";
+        Refresh();
     }
 
     public void Show(int? buildingId)
@@ -91,9 +128,15 @@ public partial class ProductionPanel : PanelContainer
         _recipes.Visible = !cooking;
         _book.Visible = cooking;
         if (cooking) RefreshBook(sim, building!, recipes);
-        else RefreshRecipes(sim, building!, recipes);
+        else
+        {
+            RefreshGroups(recipes);
+            RefreshRecipes(sim, building!, _group is null ? recipes : recipes.Where(r => GroupOf(r) == _group).ToList());
+        }
         RefreshOrders(sim, building!);
         _status.Text = Status(sim, building!);
+        RefreshPower(sim, building!);
+        RefreshBench(sim, building!);
         var current = Current;
         _recipeInfo.Text = current is not null && sim.Data.Recipes.TryGetValue(current, out var r) ? RecipeInfo(sim, building!, r) : "";
     }
@@ -192,13 +235,97 @@ public partial class ProductionPanel : PanelContainer
         return string.Join("\n\n", new[] { $"{r.Name}: {FoodText.Effects(sim, sim.Data.Food!.Items[item])}" }.Concat(buffs));
     }
 
+    private void RefreshGroups(IReadOnlyList<RecipeDef> recipes)
+    {
+        var groups = Groups(recipes);
+        _groupTabs.Visible = groups.Count > 0;
+        if (groups.Count == 0)
+        {
+            _group = null;
+            return;
+        }
+        if (_group is null || !groups.Contains(_group)) _group = groups[0];
+        if (!groups.SequenceEqual(_groupButtons.Keys))
+        {
+            Widgets.Clear(_groupTabs);
+            _groupButtons.Clear();
+            foreach (var g in groups)
+            {
+                var group = g;
+                var count = recipes.Count(r => GroupOf(r) == g);
+                var tab = Widgets.TextButton(g, () => ShowGroup(group), $"{g}: {count} recipe{(count == 1 ? "" : "s")}", "Tab");
+                tab.ToggleMode = true;
+                tab.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+                tab.AddThemeFontSizeOverride("font_size", 13);
+                _groupButtons[g] = tab;
+                _groupTabs.AddChild(tab);
+            }
+        }
+        foreach (var (g, tab) in _groupButtons) tab.SetPressedNoSignal(g == _group);
+    }
+
+    /// <summary>"Powered: +25% crafting speed" / "Unpowered …", for buildings that draw from the grid.</summary>
+    private void RefreshPower(ColonySim sim, Building building)
+    {
+        var nodes = sim.PowerNodes();
+        var node = nodes.FirstOrDefault(n => n.BuildingId == building.Id && n.Role == PowerRole.Consumer);
+        _power.Visible = node is not null;
+        if (node is null) return;
+        var grid = nodes.Any(n => n.Role is PowerRole.Generator or PowerRole.Storage);
+        var (text, color) = !node.On ? ("Switched off the grid: no bonus, tier 3 parts wait.", Palette.TextMuted)
+            : sim.IsPowered(building) ? ($"Powered: {node.Note}.", Palette.Good)
+            : !grid ? ($"Unpowered: no generator yet. Power gives {node.Note}.", Palette.TextMuted)
+            : !PowerText.Idle(sim, node) ? ($"Unpowered: the grid cannot feed its {node.Amount:0.#} draw. Power gives {node.Note}.", Palette.Warn)
+            : ($"Idle: it draws only while someone is on shift. Power gives {node.Note}.", Palette.TextMuted);
+        _power.Text = text;
+        _power.AddThemeColorOverride("font_color", color);
+    }
+
+    /// <summary>The charging bench: drained devices in arrival order with progress and ETA (only at the Electronics Lab).</summary>
+    private void RefreshBench(ColonySim sim, Building building)
+    {
+        var e = sim.Data.Electronics;
+        _bench.Visible = e is not null && building.DefId == e.Disassembly.Building;
+        if (e is null || !_bench.Visible) return;
+        var charging = sim.State.Charging;
+        var fed = sim.State.Power.Charging;
+        var atOnce = System.Math.Min(charging.Count, e.Charging.MaxAtOnce);
+        _benchNote.Text = charging.Count == 0 ? "Nothing to charge. Reusable devices that come home flat wait here."
+            : fed ? $"On the grid: {atOnce} charging at once, {e.Charging.PoweredRate / System.Math.Max(e.Charging.UnpoweredRate, 1e-6):0.#}× the trickle rate."
+            : $"Off the grid: trickle charging, {atOnce} at once. A fed grid charges far faster.";
+        _benchNote.AddThemeColorOverride("font_color", charging.Count > 0 && !fed ? Palette.Warn : Palette.TextMuted);
+        var signature = string.Join(";", charging.Select(c => $"{c.ItemId}:{c.Done:0.##}/{c.Work:0.##}")) + fed;
+        if (signature == _benchShown) return;
+        _benchShown = signature;
+        Widgets.Clear(_benchRows);
+        for (var index = 0; index < charging.Count; index++)
+        {
+            var item = charging[index];
+            var def = sim.Scavenge?.Items.GetValueOrDefault(item.ItemId);
+            var active = index < e.Charging.MaxAtOnce;
+            var row = Widgets.Row(8);
+            row.AddChild(Icons.Rect(def is null ? Icons.Get("item_tool", 18) : Icons.Item(def.DefinedId, def.Kind.ToString(), 18), 18,
+                active ? Palette.Amber : Palette.TextDim));
+            var col = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+            col.AddThemeConstantOverride("separation", 1);
+            var eta = Power.ChargeEta(sim.State, sim.Data, item);
+            var when = eta is { } t ? $"ready in {ColonyText.Duration(t, sim.Data.Rules)}" : "not charging";
+            col.AddChild(Ui.Label($"{def?.Name ?? item.ItemId}  ·  {(active ? when : "queued, " + when)}", 13));
+            var bar = new ProgressBar { ShowPercentage = false, CustomMinimumSize = new Vector2(0, 5), MaxValue = 1, Value = item.Work > 0 ? item.Done / item.Work : 1 };
+            bar.AddThemeStyleboxOverride("fill", HudTheme.Box(fed ? Palette.Good : Palette.Warn, radius: 2, padX: 0, padY: 0));
+            col.AddChild(bar);
+            row.AddChild(col);
+            _benchRows.AddChild(row);
+        }
+    }
+
     private void RefreshRecipes(ColonySim sim, Building building, IReadOnlyList<RecipeDef> recipes)
     {
         // Decrypt orders only show while their chip is in the stores and the schematic is still unknown.
         recipes = recipes.Where(r => r.Learns is not { } learns
             || sim.State.Inventory.Has(learns) && !Remnants.Core.Schematics.Schematics.Has(sim, learns)).ToList();
         var chips = recipes.Where(r => r.Learns is not null).Select(r => $"{r.Learns}:{sim.State.Inventory.Count(r.Learns!)}");
-        var signature = $"{building.Id}:{building.Level}:{string.Join(",", sim.State.Schematics.Known)}:{string.Join(",", chips)}";
+        var signature = $"{building.Id}:{building.Level}:{_group}:{string.Join(",", sim.State.Schematics.Known)}:{string.Join(",", chips)}";
         if (signature == _recipesShown) return;
         _recipesShown = signature;
         var selected = _recipes.Selected >= 0 && _recipes.Selected < _ids.Count ? _ids[_recipes.Selected] : null;
@@ -214,7 +341,7 @@ public partial class ProductionPanel : PanelContainer
                 CommandError.RecipeLocked => "  [schematic]",
                 _ => "",
             };
-            _recipes.AddIconItem(OutputIcon(sim, r), r.Learns is null ? $"{r.Name} → {Output(sim, r)}{lockNote}" : $"{r.Name}{lockNote}");
+            _recipes.AddIconItem(OutputIcon(sim, r), r.Learns is null ? $"{r.Name} → {Output(sim, r)}{(r.NeedsPower ? "  [needs power]" : "")}{lockNote}" : $"{r.Name}{lockNote}");
             _recipes.SetItemDisabled(_recipes.ItemCount - 1, !check.Ok);
         }
         var index = selected is null ? -1 : _ids.IndexOf(selected);
@@ -246,6 +373,7 @@ public partial class ProductionPanel : PanelContainer
                 column.AddChild(text);
                 column.AddChild(bar);
                 inner.AddChild(column);
+                if (sim.Data.Recipes[order.RecipeId].NeedsPower) inner.AddChild(PowerBadge(sim.IsPowered(building)));
                 var cancel = Widgets.IconButton("ui_close", "", "Cancel (a batch in progress gives its inputs back)",
                     () => _session.Execute(new CancelOrder(building.Id, orderId)), variation: "Flat");
                 inner.AddChild(cancel);
@@ -275,6 +403,8 @@ public partial class ProductionPanel : PanelContainer
             CraftStatus.NoWorkers => $"[color=#{Ui.Hex(Ui.Bad)}]No workers assigned.[/color]",
             CraftStatus.NeedsSkill => NeedsSkill(sim, building),
             CraftStatus.WaitingForInputs => $"[color=#{Ui.Hex(Ui.Bad)}]Waiting for materials.[/color]",
+            CraftStatus.NeedsPower => $"[color=#{Ui.Hex(Palette.Warn)}]Needs power: the next order is tier 3 and waits for the grid.[/color] "
+                + "Workers practise meanwhile. Build a generator, or switch something else off.",
             _ when working is not null => $"Working on [b]{sim.Data.Recipes[working.RecipeId].Name}[/b], {rate:0.##} work/h on shift: done in "
                 + ColonyText.Duration((int)System.Math.Ceiling((sim.Data.Recipes[working.RecipeId].Work - working.Progress) / System.Math.Max(average, 1e-6)), sim.Data.Rules),
             _ => $"Starting next hour, {rate:0.##} work/h.",
@@ -294,9 +424,23 @@ public partial class ProductionPanel : PanelContainer
             + $"Workers are practising{eta}.{hint}";
     }
 
-    private static string Output(ColonySim sim, RecipeDef r) =>
-        r.Learns is { } learns ? $"the {sim.Data.Schematics.All[learns].Name} schematic"
-        : r.Item is { } item ? $"{r.Amount:0} {sim.Scavenge?.Items.GetValueOrDefault(item)?.Name ?? item}" : $"{r.Amount:0.#} {sim.Data.Resources[r.Resource!].Name}";
+    private static string Output(ColonySim sim, RecipeDef r)
+    {
+        string Name(string id) => sim.Scavenge?.Items.GetValueOrDefault(id)?.Name ?? id;
+        if (r.Learns is { } learns) return $"the {sim.Data.Schematics.All[learns].Name} schematic";
+        if (r.Item is not { } item) return $"{r.Amount:0.#} {sim.Data.Resources[r.Resource!].Name}";
+        var main = $"{r.Amount:0} {Name(item)}";
+        return r.Byproducts.Count == 0 ? main : main + ", " + string.Join(", ", r.Byproducts.Select(kv => $"{kv.Value} {Name(kv.Key)}"));
+    }
+
+    /// <summary>A small "needs power" chip, green when the building is fed.</summary>
+    private static Control PowerBadge(bool powered)
+    {
+        var chip = Widgets.Chip(Icons.Get("stat_power", 14), powered ? "power" : "no power", powered ? Palette.Good : Palette.Warn,
+            powered ? "Tier 3: needs power, and has it." : "Tier 3: only progresses while the building is powered.", powered ? Palette.Good : Palette.Warn);
+        chip.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        return chip;
+    }
 
     private static string RecipeInfo(ColonySim sim, Building building, RecipeDef r)
     {
@@ -307,6 +451,14 @@ public partial class ProductionPanel : PanelContainer
             inputs = string.Join(", ", r.Ingredients.Select(kv => $"{kv.Value} {FoodText.KeyName(sim, kv.Key)}").Prepend(r.Inputs.Count > 0 ? inputs : null).OfType<string>());
         var afford = sim.State.Stockpile.CanAfford(r.Inputs) && CraftingIngredients(sim, r);
         var lines = new List<string> { $"Needs [color=#{Ui.Hex(afford ? Ui.Good : Ui.Bad)}]{inputs}[/color], {r.Work:0.#} work" };
+        if (r.Group == "Disassembly")
+        {
+            lines.Add($"Yields [color=#{Ui.Hex(Palette.Amber)}]{Output(sim, r)}[/color]; skill and Circuit Tinkerer may add one more of each.");
+            if (r.ResearchChance > 0) lines.Add($"{r.ResearchChance * 100:0}% chance of Research Data per batch.");
+        }
+        if (r.NeedsPower)
+            lines.Add(sim.IsPowered(building) ? $"[color=#{Ui.Hex(Ui.Good)}]Needs power: the bench is powered.[/color]"
+                : $"[color=#{Ui.Hex(Palette.Warn)}]Needs power: it waits until the bench is on a fed grid.[/color]");
         if (r.MinSkill > 0) lines.Add($"A worker needs {sim.Data.Jobs[sim.Data.Buildings[building.DefId].Job!].Skill} {r.MinSkill:0}");
         var check = sim.CanQueue(building, r);
         if (!check.Ok) lines.Add($"[color=#{Ui.Hex(Ui.Bad)}]{check.Message}[/color]");
