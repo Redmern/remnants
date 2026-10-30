@@ -18,8 +18,10 @@ public static class Protocol
     /// 6: cybernetics (eyes in bodies, units' cybernetic hooks, parts locked by interference, the limb-locked event).
     /// 7: schematics (schematic items; the result's co-op schematic copies and heard-of schematics).
     /// 8: weather: the environment's intensity, coming changes and the rounds of the last thunder and lightning.
+    /// 9: electronics (droneHeal / droneLoad / droneFerry / droneFire commands, decoy units, device charges, secured
+    /// cargo in results, the new events).
     /// </summary>
-    public const int Version = 7;
+    public const int Version = 9;
     public const int DefaultPort = 7777;
 }
 
