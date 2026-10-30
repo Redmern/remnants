@@ -75,6 +75,7 @@
     "colony.study_started": [],
     "colony.study_ended": [],
     "colony.raid_warned": "hack_fail_alarm",
+    "colony.raid_at_the_fence": "fog_ambush_sting",
     "colony.raid_repelled": "sting_extraction",
     "colony.raid_breached": "fog_ambush_sting",
     "colony.defense_built": "ui_build_complete",

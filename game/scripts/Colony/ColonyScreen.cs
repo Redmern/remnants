@@ -20,10 +20,10 @@ public partial class ColonyScreen : Node3D
     private DefenseView _defenses = null!;
     private ColonyHud _hud = null!;
     private OrbitCamera _camera = null!;
-    private TownLayout _layout = null!;
 
-    /// <summary>The raid report last shown (or present at load), so only a new one pops up.</summary>
-    private Remnants.Core.Raids.RaidReport? _seenRaidReport;
+    /// <summary>The raid at the fence time was stopped for (once each).</summary>
+    private int? _pausedForRaid;
+    private TownLayout _layout = null!;
 
     /// <summary>A new game nobody has played yet (debug demos only stage on one).</summary>
     private bool IsFreshGame => _session.Sim.State.Tick == _session.Sim.Data.Rules.NewGame.StartHour;
@@ -61,7 +61,6 @@ public partial class ColonyScreen : Node3D
         camera.KeyRotationBlocked = () => _defenses.PlacingDefId is not null;
         _camera = camera;
         _layout = layout;
-        _seenRaidReport = _session.Sim.State.Defense.LastReport;
 
         BuildHud();
         Wire();
@@ -420,6 +419,9 @@ public partial class ColonyScreen : Node3D
                 _defenses.DebugHover(14, 22);
                 if (nest is { } post) _defenses.Select(post);
                 break;
+            case "battle":
+                RunBattleDemo();
+                break;
             case "warning":
             case "prep":
             case "report":
@@ -438,6 +440,35 @@ public partial class ColonyScreen : Node3D
                 break;
             }
         }
+    }
+
+    /// <summary>
+    /// Debug (<c>--raid-demo=battle</c>): on the raid demo's town, a Husk horde from the north arrives at 22:00 and is
+    /// fought; the battle opens a few rounds in (the defenders hold their ground, the Husks come on), at night.
+    /// </summary>
+    private void RunBattleDemo()
+    {
+        var sim = _session.Sim;
+        var state = sim.State.Defense;
+        _session.FastForward(sim.Data.Rules.TicksPerDay, s => s.Hour == 21);
+        state.Raid = new Remnants.Core.Raids.Raid
+        {
+            Id = state.NextRaidId++, Kind = Remnants.Core.Raids.ThreatKind.Husk, Size = 8, Approach = Remnants.Core.Raids.Side.North,
+            SetOutTick = sim.State.Tick, ArrivalTick = sim.State.Tick + 1, Stage = Remnants.Core.Raids.RaidStage.Approaching, Fight = true,
+        };
+        state.Raid.WarnTick = state.Raid.ArrivalTick;
+        _session.FastForward(4, s => s.State.Defense.Raid is { Stage: Remnants.Core.Raids.RaidStage.Battle });
+        _session.SetSpeed(0);
+        if (state.Raid is not { Stage: Remnants.Core.Raids.RaidStage.Battle }) return;
+        // Debug only: a few rounds pass with everyone holding position, so the horde is at the barricades.
+        var battle = Remnants.Core.Raids.RaidBattle.Open(sim);
+        var player = ColonySim.ExpeditionPlayerId;
+        for (var i = 0; i < 400 && battle.State.Round < 4 && !(battle.State.FindParty(player)?.Done ?? true); i++)
+        {
+            if (battle.State.CurrentUnit is not { } unit || unit.PlayerId != player) break;
+            if (!battle.Execute(new EndTurn(player, unit.Id)).Ok) break;
+        }
+        _session.PlayRaidBattle(GetTree());
     }
 
     /// <summary>
@@ -506,8 +537,7 @@ public partial class ColonyScreen : Node3D
         _session.Changed += RefreshAll;
         _session.Replaced += () =>
         {
-            _seenRaidReport = _session.Sim.State.Defense.LastReport;
-            _defenses.Reset();
+                _defenses.Reset();
             _town.Reset();
             _walkers.Reset();
             _hud.Roster.Select(null);
@@ -576,6 +606,7 @@ public partial class ColonyScreen : Node3D
             _hud.Defense.Show(id);
         };
         _hud.Defense.Closed += () => _defenses.Select(null);
+        _hud.Banner.FightPressed += () => _session.PlayRaidBattle(GetTree());
         _defenses.PlaceRequested += commands =>
         {
             if (commands.Count == 1) _session.Execute(commands[0]);
@@ -612,9 +643,15 @@ public partial class ColonyScreen : Node3D
         _walkers.Sync();
         _defenses.Sync();
         _hud.Refresh();
-        if (_session.Sim.State.Defense.LastReport is { } raid && !ReferenceEquals(raid, _seenRaidReport))
+        // They are at the fence: time stops once so the player can go fight (letting it run settles it after a while).
+        if (_session.Sim.State.Defense.Raid is { Stage: Remnants.Core.Raids.RaidStage.Battle } fence && fence.Id != _pausedForRaid)
         {
-            _seenRaidReport = raid;
+            _pausedForRaid = fence.Id;
+            if (_session.Speed > 0) _session.SetSpeed(0);
+        }
+        if (_session.Sim.State.Defense.LastReport is { } raid && !ReferenceEquals(raid, _session.SeenRaidReport))
+        {
+            _session.SeenRaidReport = raid;
             _hud.RaidReport.ShowReport(raid);
         }
     }

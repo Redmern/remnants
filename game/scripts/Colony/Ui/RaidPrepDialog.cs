@@ -14,8 +14,8 @@ namespace Remnants.Game.Colony.Ui;
 /// locked in, the away, patients and children cannot stand), shelter the children, shut the gates, recall the party
 /// (only while <see cref="DefenseHandlers.CanRecall"/>). Right: where the warning came from
 /// (<see cref="RaidWarning.Sources"/>) and the odds from <see cref="AutoResolve.Assess"/> — defense against attack as a bar
-/// with the verdict and the breakdown. Then "Auto-resolve on arrival" (the default) and a disabled "Fight it" for the
-/// tactical battle to come. Every toggle is a command; the preview re-reads Core.
+/// with the verdict and the breakdown. Then the plan: "Fight it at the fence" (<see cref="ChooseFight"/>; disabled with
+/// <see cref="RaidBattle.CannotFight"/>'s reason) or "Auto-resolve on arrival" (the default). Every toggle is a command; the preview re-reads Core.
 /// </summary>
 public partial class RaidPrepDialog : Overlay
 {
@@ -32,6 +32,9 @@ public partial class RaidPrepDialog : Overlay
     private readonly Label _verdict = Widgets.Label("", "Display");
     private readonly Label _numbers = Widgets.Wrapped("", "Small");
     private readonly VBoxContainer _breakdown = Widgets.Column(2);
+    private readonly Label _plan = Widgets.Label("", "Small");
+    private readonly Button _fight;
+    private readonly Button _auto;
     private string _signature = "";
 
     public RaidPrepDialog() : this(null!) { }
@@ -86,12 +89,14 @@ public partial class RaidPrepDialog : Overlay
 
         var buttons = Widgets.Row(8);
         buttons.AddChild(Widgets.Spacer());
-        var fight = Widgets.IconButton("ui_attack", "Fight it (coming soon)", "Fighting the raid on the tactical map comes in a later update.", () => { });
-        fight.Disabled = true;
-        buttons.AddChild(fight);
-        var auto = Widgets.IconButton("stat_check", "Auto-resolve on arrival", "The defenders handle it when the raid arrives; you get a report.", AutoResolveOnArrival, Hotkeys.KeyName("pause_menu"), "Primary");
-        auto.CustomMinimumSize = new Vector2(240, 40);
-        buttons.AddChild(auto);
+        buttons.AddChild(_plan);
+        buttons.AddChild(Widgets.Spacer());
+        _fight = Widgets.IconButton("ui_attack", "Fight it at the fence", "", () => Choose(true));
+        _fight.CustomMinimumSize = new Vector2(220, 40);
+        buttons.AddChild(_fight);
+        _auto = Widgets.IconButton("stat_check", "Auto-resolve on arrival", "The defenders handle it when the raid arrives; you get a report.", () => Choose(false), Hotkeys.KeyName("pause_menu"));
+        _auto.CustomMinimumSize = new Vector2(240, 40);
+        buttons.AddChild(_auto);
         Body.AddChild(buttons);
     }
 
@@ -111,10 +116,24 @@ public partial class RaidPrepDialog : Overlay
         Refresh();
     }
 
-    private void AutoResolveOnArrival()
+    /// <summary>Fight it on the tactical map when it arrives, or let it auto-resolve; either closes the screen.</summary>
+    private void Choose(bool fight)
     {
-        if (Raid() is { Fight: true }) _session.Execute(new ChooseFight(false));
+        if (Raid() is { } raid && raid.Fight != fight) _session.Execute(new ChooseFight(fight));
         Close();
+    }
+
+    /// <summary>Esc keeps the plan as it is.</summary>
+    private void RefreshPlan(ColonySim sim, Raid raid)
+    {
+        var why = RaidBattle.CannotFight(sim, raid);
+        _fight.Disabled = why is not null;
+        _fight.TooltipText = why ?? "Fight them yourself on a map of the colony when they arrive: your walls, posts, traps and turrets, " +
+            "the defenders with the colony's gear. Hold out and keep the Town Hall standing.";
+        _fight.ThemeTypeVariation = raid.Fight ? "Primary" : "";
+        _auto.ThemeTypeVariation = raid.Fight ? "" : "Primary";
+        _plan.Text = raid.Fight ? "Plan: you fight it on the map." : "Plan: the defenders handle it.";
+        _plan.AddThemeColorOverride("font_color", raid.Fight ? Palette.Amber : Palette.TextMuted);
     }
 
     public void Refresh()
@@ -126,7 +145,7 @@ public partial class RaidPrepDialog : Overlay
             Close();  // it arrived (or was never there)
             return;
         }
-        var signature = $"{sim.State.Tick}|{string.Join(",", raid.Defenders)}|{raid.ChildrenSheltered}|{raid.GatesClosed}|{sim.State.Expedition?.Id}|{sim.State.Defense.Guards.Count}";
+        var signature = $"{sim.State.Tick}|{raid.Fight}|{string.Join(",", raid.Defenders)}|{raid.ChildrenSheltered}|{raid.GatesClosed}|{sim.State.Expedition?.Id}|{sim.State.Defense.Guards.Count}";
         if (signature == _signature) return;
         _signature = signature;
         var threat = raids.Threat(raid.Kind);
@@ -135,6 +154,7 @@ public partial class RaidPrepDialog : Overlay
         RefreshDefenders(sim, raid);
         RefreshOrders(sim, raids, raid);
         RefreshOdds(sim, raids, raid);
+        RefreshPlan(sim, raid);
     }
 
     // ---- defenders ----
