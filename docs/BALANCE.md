@@ -768,3 +768,64 @@ night (Linked kills per run): clear 63% → 84% (2.94 → 2.23), rain 59% → 79
 Watch next: the bot does not use the forecast (it never times a run for fog or a storm, nor holds back from one); dust
 masks and the dust's health loss barely show at 1% dust hours at home; a geared party might want to hold its fire in
 dust (−15%) rather than trade shots.
+
+## Field loot and salvage
+
+Kills now leave loot most of the time and maps have salvage nodes (ARCHITECTURE.md "Field loot and salvage"). The party
+bot takes whole piles when they fit, salvages nodes it has seen when it is healthy, nothing has been heard for two
+rounds, the run is young (≤ round 24) and it has 5 kg of room under 80% load, and drops its least valuable material
+over 85% (where the second encumbrance step makes it crawl). `--no-salvage` turns salvage off.
+
+Loot per kill (find tier 1, `LootCatalog.Expected`): Husk empty 20%, ~1.5 items (scrap, cloth, canned food, bandage,
+flare, sometimes a crude pipe or machete, rarely a Data Shard → 1 Research Data); Crawler empty 30%, ~1; Tally
+scavenger ~2 plus their pistol 30% of the time (crude 2:1); Cole always pistol, med-kit, food, scrap and more; cameras
+and turrets electronics / scrap / parts; the Linked keep their cores, carbines and schematics and add one salvage pick.
+Each threat tier above 1 adds +0.35 picks, +15% quantity, −3% empty and ×1.25 rare chances.
+
+Building materials are heavy on purpose: Salvaged Wood 2.5 kg → 2 wood, Stone Blocks 3 kg → 2 stone, a Concrete Chunk
+4 kg → 2 stone, against a carry capacity of ~21–27 kg with 7–10 kg of gear on.
+
+### Zone trials (200 runs, 2 adults, starting gear; resources carried home per run)
+
+| zone | before: deaths / items / scrap, cloth, food | after: deaths / items | after: scrap, cloth, food, wood, stone, electronics | salvage actions |
+|---|---|---|---|---|
+| Town Outskirts | 4% / 11.1 / 4.4, 1.9, 2.3 | 6% / 16.6 | 7.4, 4.3, 3.4, 2.3, 1.0, 0.6 | 3.6 |
+| Scrapyard Flats | 10% / 11.7 / 5.4, 2.2, 3.3 | 15% / 15.7 | 8.6, 4.0, 3.7, 0.9, 0.8, 0.7 | 2.9 |
+| Suburb Ruins | 32% / 8.4 / 2.6, 1.2, 1.7 | 35% / 14.1 | 5.3, 4.5, 3.1, 1.4, 0.3, 2.0 | 1.2 |
+| Flooded Mall | 55% / 5.5 / 1.8, 0.8, 0.9 | 56% / 9.6 | 4.2, 2.9, 1.6, 0.5, 0.2, 1.8 | 0.6 |
+| Rail Depot | — | 94% / 2.1 | 0.9, 0.5, 0.4, 0, 0.1, 0.3 | 0.2 |
+
+Enemy loot alone (`--no-salvage`): Outskirts 5% deaths, 13.6 items, scrap 5.4 cloth 3.3 food 3.3; Scrapyard 16%, 14.1
+items, scrap 6.9. So kills add ~2.5 items per early run and salvage another ~3 (mostly wood and stone), at the price of
+longer runs (rounds 15 → 19 in the Outskirts) and a little more risk: the deaths drift up by a point or two, within the
+noise of 200 runs except the Scrapyard (+5), where the Crawlers and the noise of the cars add up.
+
+### Colony sweep (20 seeds × 60 days)
+
+| | before | after |
+|---|---|---|
+| median population at day 60 | 8 | 9 |
+| Town Hall 2 (median day) | 29.5 | 28.6 |
+| House affordable / Armory / Electronics Lab (median day) | 46.8 / 50.8 / 59.0 | 44.7 / 47.8 / 54.8 |
+| first birth (median day) | 51 | 47 |
+| min food stock (days of need, median) | 4.1 | 4.2 |
+| expedition deaths | 7 over 317 runs | 12 over 326 runs |
+| starvation deaths | 0 | 0 |
+
+Against the targets: the first week stays tight (food minimum unchanged), wood and stone still come from the Woodcutter
+and Quarry (a run brings ~3–5 of each against ~10 per worker-day at home, and costs two adults for days), Town Hall 2
+stays around day 30 (−1 day). Scrap and electronics are what speed up: the Armory comes 3 days and the Lab 4 days
+earlier. A first draft gave scrap 9–11 per run and noisy, greedy salvaging: TH2 day 26.8 and 19 expedition deaths; the
+careful salvaging and less scrap from Husks and cars brought both back.
+
+Watch next: expedition deaths (12 vs 7) are the cost of longer runs; if they stay high, trim salvage `noise` or give the
+bot a stricter "nothing heard" window. Wood and stone from the field are deliberately small; a player who hauls (stash
+at the exit, come back) gets more than the bot, which never stashes.
+
+### Assets still placeholders
+
+- Model `loot_bag` (a kill's remains / dropped items; now a 0.65× loot crate), a dedicated glint effect.
+- Sounds `loot_glint` (a pile appearing), `salvage_wood`, `salvage_metal`, `salvage_stone` (salvage uses `debris_rattle`
+  for now), `item_drop` (drop and stash use `loot_pickup`).
+- Props reused for nodes: `rubble`, `dead_tree`, `ruins_house_shelf` (furniture), `ruins_house_bed` (bedding),
+  `wrecked_car`, `building_shell` (scaled 0.45), `terminal_room_server_rack` (dead electronics).

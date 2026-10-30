@@ -967,6 +967,55 @@ Colony and world in `data/weather.json`, field effects in `scavenge.json environ
   in the colony (from now on) and in the debug mission. Not done yet: wind on trees and flags, a wet-surface shader.
 - **Multiplayer**: the server decides it (see MULTIPLAYER.md "Weather over the wire").
 
+## Field loot and salvage
+
+Core: `Scavenge/LootTables.cs` (tables, rolls), `Scavenge/FieldLoot.cs` (kills, piles, take all, drop, stash, hooks),
+`Scavenge/FieldSalvage.cs` (nodes, the Salvage action). Data: `data/loot_tables.json` (+ `loot_tables.<feature>.json`),
+`data/salvage.json`. Numbers: BALANCE.md "Field loot and salvage".
+
+- **Loot tables** (`LootCatalog`): per table a `nothing` chance (guaranteed entries still drop), `rolls` weighted picks
+  from `entries` (`qty`, `minTier`/`maxTier`, `quality` weights → a gear variant), `rare` entries rolled on their own,
+  `guaranteed` ones always. `rules` scale by the find tier (the zone's threat 1..4: more picks, more of each, less empty,
+  likelier rares) and add picks at night, in some weather and per point of the finder's `loot_bonus` hook; `difficulty`
+  multiplies quantities per Story difficulty. `LootCatalog.Expected` gives the means (tooltips, bot, tests).
+- **Kills** (`ScavengeSim.Kill` → `FieldLoot.Drops`): an enemy, or a camera/turret unit, rolls its `enemies.json` `loot`
+  table, then its `drops` schematics exactly as SCHEMATICS.md says (on the sim RNG, first hit only). Table rolls use their
+  own RNG per kill and per salvage lot (`FieldLoot.Rng`: `ScavengeState.LootSeed` + the unit or node), so loot never
+  shifts combat rolls. The killer (`Combat.ApplyDamage` passes the attacker) brings its perks. The loot lies in a pile
+  (`LootCache.Kind` Remains, `Source` = the unit's name), logged as `LootDropped` with the tile and no actor, so only sides
+  that see the tile hear "Husk 3 dropped: 2 Scrap, Bandage".
+- **Piles**: `LootCache` with `Kind` (Cache, Remains, Dropped, Stash), `Source`, `PlayerId` (a stash's owner). `PickUp`
+  takes one item, `TakeAll` everything that fits (lightest first) for one pick-up's AP, `DropItem` puts a carried item on
+  the tile (`salvage.json` `dropApCost`), `StashItem` puts it in the player's parked vehicle (`FieldLoot.VehicleStash`
+  adapter) or, on an exit tile, in their stash pile (`stashApCost`). What is left in a stash goes into
+  `ExtractionResult.Stash` → `ZoneStatus.Stash` and is back on the zone's first exit next run (plain runs only).
+- **Salvage nodes** (`SalvageNode`: kind, tile, lots left, progress; shared by everyone): placed per zone from
+  `salvage.json` `zones` (or `default`) on their own seed after the devices (`FieldSalvage.Place`: Rubble on rubble,
+  wrecked cars on cover, the rest on floor by a wall), or at handmade-map markers (`HandmadeMapDef.Salvage`). `Salvage`
+  (adjacent, `apCost` AP) adds 1 + the best carried tool's bonus to the node's progress, makes noise (idle enemies in
+  earshot hunt, other parties get a Noise contact unless they see the worker), practises the node's `skill` and gives
+  field XP; at `work` points a lot comes off: the node's table (quantity + `yieldPerSkill` × skill) plus
+  `FieldSalvage.Extras[kind]` rolls (vehicles: wreck parts), into the pack while it fits, the rest onto a pile there.
+- **Raids**: `FieldLoot.RaidSpoils(colony, enemyIds, tier)` rolls the killed raiders' tables on the colony RNG and
+  deposits them (`ExpeditionHandlers.Deposit`: salvage → stockpile, schematics received, the rest into the inventory).
+- **Data rules**: an entry naming an item the data does not have, or an extension of a missing table, is skipped and
+  listed in `ScavengeData.LootWarnings` (the game and the playtest print them); bad numbers are `GameDataException`s.
+  **A feature adds loot** in its own `data/loot_tables.<feature>.json`: `"tables": [...]` for new tables (a new enemy
+  names one with `loot`), `"extend": [{ "table": "husk", "entries": [...], "rare": [...] }]` to add to existing ones. It
+  can ship before its items merge.
+- Net: `SideFog` keeps piles (with kind and source) and salvage nodes per side as last seen; node progress only while in
+  sight; the loot seed is never sent. Commands `takeAll`, `dropItem`, `stashItem`, `salvage`.
+- Game: piles draw as a crate (a small one, or amber for a stash, for a `loot_bag` model to replace) with a bobbing amber
+  gem (`MapView.Pile`); `SalvageViews` draws floor nodes' props with a ring and a progress arc; `LootTip` (hover: pile
+  contents, node yield / actions / noise / lots), `LootPanel` (carry bar against the encumbrance steps, item chips, Take
+  all (F), Drop, Stash), the Salvage button (I) in `ActionPanel`. `--loot-demo=pile|salvage` (with `--scavenge`) stages
+  both for stills.
+- **Saves**: keyed versions `ScavengeSave.LootVersion` (piles' kind, source and owner, nodes, loot seed, difficulty; an
+  older run gets a loot seed from its RNG state) and `SaveGame.LootVersion` (zone stashes); `Protocol.LootVersion`.
+- Tests: `LootTests.cs` (tables, warnings, empty share, tiers, quality, piles, determinism, take all, drop and stash,
+  vehicle adapter, stash between runs, raid spoils, salvage work / tools / noise / overflow / extras, placement, saves);
+  Net: `LootNetTests` (no pile or line for a rival who never saw the tile; salvage round trip).
+
 ## Data files
 
 - `resources.json` — resource ids and names.
@@ -994,7 +1043,11 @@ Colony and world in `data/weather.json`, field effects in `scavenge.json environ
   tier + loot weight for caches; `natural` for enemy body parts (never looted or crafted). Every other item has a
   recipe or a loot weight (tested).
 - `enemies.json` — hp, AI kind, attributes, skills, equipment (a Husk's claws are an item too), `tags` (for weapon
-  banes) and `drops` (what a kill leaves behind; Linked and Wardens always leave Linked cores).
+  banes), `loot` (its loot table) and `drops` (schematics and fixed items; Linked and Wardens always leave Linked cores).
+- `loot_tables.json` — loot tables and their scaling rules; `loot_tables.<feature>.json` add tables or extend them (see
+  "Field loot and salvage").
+- `salvage.json` — salvage node kinds (table, prop, terrain, work, lots, AP, noise, skill, tools), zone densities, drop and
+  stash costs.
 - `zones.json` — size, threat, loot tier, terrain densities, spawn/exit edges, enemy count + mix,
   caches, NPC count, hackable devices per kind.
 - `weather.json` — weather kinds (hours, intensity, forecast confusion, drones, colony and travel effects), the Markov
