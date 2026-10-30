@@ -175,7 +175,11 @@ internal static class ScavengeAi
         double Score(Pos tile, int cost)
         {
             var ap = unit.Ap - cost;
-            var hidden = !known.Any(t => Detection.Spots(data, sim.State, t, unit, targetAt: tile));
+            // Hidden: out of every known hostile's eyes, not in a flare's light, not revealed or scanned there.
+            var hidden = !Detection.IsLit(sim.State, tile) && !known.Any(t =>
+                Detection.Spots(data, sim.State, t, unit, targetAt: tile)
+                || Detection.IsRevealed(sim.State, unit.Id, t.Side)
+                || (Detection.ScanRadius(data, t) is var r && r > 0 && t.Pos.Chebyshev(tile) <= r));
             var ambush = hidden ? Combat.AmbushAgainst(data, sim.State, unit, focus, tile) : null;
             var shot = profile.Actions
                 .Where(a => a.ApCost <= ap && Combat.CheckReach(data, map, tile, a, focus.Pos) == ScavengeError.None)

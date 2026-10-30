@@ -38,9 +38,9 @@ public static class Detection
     {
         if (target.Side == side) return true;
         if (!target.OnMap) return false;
-        if (IsLit(state, target.Pos)) return true;
         var observers = state.Units.Where(u => u.Side == side && u.IsActive).ToList();
         if (observers.Count == 0) return false;
+        if (IsLit(state, target.Pos)) return true;
         if (IsRevealed(state, target.Id, side) && observers.Any(o => SeesRevealed(data, state, o, target))) return true;
         if (observers.Any(o => o.HostileTo(target) && ScanRadius(data, o) is var r && r > 0 && o.Pos.Chebyshev(target.Pos) <= r))
             return true;

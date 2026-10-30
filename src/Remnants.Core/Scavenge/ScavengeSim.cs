@@ -21,6 +21,7 @@ public sealed class ScavengeSim
         State = state;
         _rng = new DeterministicRng { State = state.RngState == 0 ? new DeterministicRng(0).State : state.RngState };
         SyncRng();
+        state.Stamp = StampSeenBy;
     }
 
     /// <summary>Sim-owned randomness. Always draw through this so the state stays in the save.</summary>
@@ -210,6 +211,13 @@ public sealed class ScavengeSim
 
     private bool _reacting;
 
+    /// <summary>Records which party sides see an event's actor right now (see <see cref="FogLog"/>).</summary>
+    private ScavengeEvent StampSeenBy(ScavengeEvent e)
+    {
+        if (e.UnitId is not { } id || State.FindUnit(id) is not { } actor) return e;
+        return e with { SeenBy = Detection.PartySides(State).Where(side => Detection.SideSees(Data, State, side, actor)).ToList() };
+    }
+
     /// <summary>
     /// After a unit moved (player or AI): motion sensors it entered reveal it to their side, sides it is unseen by but
     /// close to hear it (movement contact), and overwatch may fire on it.
@@ -255,6 +263,7 @@ public sealed class ScavengeSim
                          .OrderBy(u => u.Id).ToList())
             {
                 if (!unit.IsActive) break;
+                if (!watcher.IsActive || watcher.Reactions <= 0) continue;
                 var sees = Detection.Spots(Data, State, watcher, unit) || Detection.SeesRevealed(Data, State, watcher, unit);
                 if (!sees) continue;
                 var action = Profile(watcher).Actions

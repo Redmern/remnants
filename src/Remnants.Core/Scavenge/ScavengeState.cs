@@ -24,9 +24,11 @@ public enum ScavengeEventType
 /// the fog" instead of naming the Linked; without it such a side does not hear of the event at all (see
 /// <see cref="FogLog"/>). <see cref="Side"/> limits the event to one side (a motion sensor's alert).
 /// </summary>
+/// <see cref="SeenBy"/>: the party sides that saw the actor when the event was logged (filled in by the sim), so a side
+/// hears a hidden unit's moves only while it actually saw them.
 public sealed record ScavengeEvent(
     int Round, ScavengeEventType Type, string Message, int? UnitId = null, int? TargetId = null, Pos? Pos = null,
-    string? Anonymous = null, string? Side = null);
+    string? Anonymous = null, string? Side = null, List<string>? SeenBy = null);
 
 /// <summary>A side knows something is near a tile without knowing what: a "?" on its map.</summary>
 public enum ContactKind
@@ -111,8 +113,13 @@ public sealed class ScavengeState
 
     public Unit? CurrentUnit => CurrentUnitId is { } id ? FindUnit(id) : null;
 
+    /// <summary>Set by the sim: fills <see cref="ScavengeEvent.SeenBy"/> as an event is logged. Not saved.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Func<ScavengeEvent, ScavengeEvent>? Stamp { get; set; }
+
     public void Log(ScavengeEvent e)
     {
+        if (Stamp is { } stamp) e = stamp(e);
         Events.Add(e);
         if (Events.Count > MaxEvents) Events.RemoveRange(0, Events.Count - MaxEvents);
     }

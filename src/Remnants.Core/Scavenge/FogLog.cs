@@ -6,7 +6,9 @@ namespace Remnants.Core.Scavenge;
 /// <list type="bullet">
 /// <item>round and party bookkeeping always;</item>
 /// <item>an event limited to one side (<see cref="ScavengeEvent.Side"/>) only there;</item>
-/// <item>an event whose actor is someone else's unit the side did not see (before or after): only in its
+/// <item>an event about someone else's unit the side does not know (the target unseen before and after, or the actor
+///   not seen when the event was logged, <see cref="ScavengeEvent.SeenBy"/>): a target it does not know drops the event;
+///   an actor it did not see leaves only its
 ///   <see cref="ScavengeEvent.Anonymous"/> form, actor removed ("Ana was ambushed from the fog"), and only if it was
 ///   done to the side's own unit or on a tile it saw; without an anonymous form, not at all;</item>
 /// <item>otherwise anything done by or to its own units, or on a tile it saw.</item>
@@ -31,15 +33,17 @@ public static class FogLog
             if (e.Side is { } only && only != side) continue;
 
             var targetMine = e.TargetId is { } t && mine(t);
+            if (e.TargetId is { } other && !targetMine && !knownUnit(other)) continue;
             var onSeenTile = e.Pos is { } p && seenTile(p);
-            if (e.UnitId is { } actor && !mine(actor) && !knownUnit(actor))
+            var actorSeen = e.UnitId is not { } who || mine(who) || (e.SeenBy is { } seers ? seers.Contains(side) : knownUnit(who));
+            if (!actorSeen)
             {
                 if (e.Anonymous is { } text && (targetMine || onSeenTile || e.Side == side))
-                    result.Add(e with { UnitId = null, Message = text, Anonymous = null });
+                    result.Add(e with { UnitId = null, Message = text, Anonymous = null, SeenBy = null });
                 continue;
             }
             if ((e.UnitId is { } u && mine(u)) || targetMine || onSeenTile || e.Side == side)
-                result.Add(e with { Anonymous = null });
+                result.Add(e with { Anonymous = null, SeenBy = null });
         }
         return result;
     }

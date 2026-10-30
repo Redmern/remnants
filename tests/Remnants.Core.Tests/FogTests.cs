@@ -87,7 +87,36 @@ public class FogTests
         var linked = EnemyUnit("linked", new(5, 4));
         var sim = Arena(12, 9, [u, linked]);
 
-        Assert.Equal(ScavengeError.NotVisible, sim.Execute(new Attack(1, u.Id, linked.Id, "shoot")).Error);
+        var hidden = sim.Execute(new Attack(1, u.Id, linked.Id, "shoot"));
+        var missing = sim.Execute(new Attack(1, u.Id, 99, "shoot"));
+        Assert.Equal(ScavengeError.NotVisible, hidden.Error);
+        // A hidden unit and no unit at all answer alike, so ids cannot be probed.
+        Assert.Equal(missing.Error, hidden.Error);
+        Assert.Equal(missing.Message.Replace("99", "X"), hidden.Message.Replace(linked.Id.ToString(), "X"));
+    }
+
+    [Fact]
+    public void The_log_never_names_or_places_a_unit_the_side_does_not_see()
+    {
+        bool Mine(int id) => id == 1;
+        bool Known(int id) => id is 1 or 2; // 2 was seen before; 3 never
+        bool SeenTile(Pos p) => true;
+        var events = new List<ScavengeEvent>
+        {
+            // Our blast hits a hidden third unit: dropped, not "hit Ghost".
+            new(1, ScavengeEventType.Attacked, "P1 hit Ghost's Torso", UnitId: 1, TargetId: 3, Pos: new(2, 2)),
+            // Unit 2 was seen earlier but not when it moved: its move is not heard, even on a visible tile.
+            new(1, ScavengeEventType.Moved, "Raider moved", UnitId: 2, Pos: new(4, 4), SeenBy: []),
+            // ...but while seen it is.
+            new(1, ScavengeEventType.Moved, "Raider moved", UnitId: 2, Pos: new(5, 4), SeenBy: [P1]),
+            // Unseen when it shot us: anonymous.
+            new(1, ScavengeEventType.Ambushed, "Raider ambushes P1", UnitId: 2, TargetId: 1, Pos: new(0, 0), Anonymous: "P1 was ambushed", SeenBy: []),
+        };
+        var heard = FogLog.Filter(events, P1, Mine, Known, SeenTile);
+        Assert.Equal(["Raider moved", "P1 was ambushed"], heard.Select(e => e.Message));
+        Assert.Equal(new Pos(5, 4), heard[0].Pos);
+        Assert.Null(heard[1].UnitId);
+        Assert.All(heard, e => Assert.Null(e.SeenBy));
     }
 
     [Fact]
@@ -95,6 +124,7 @@ public class FogTests
     {
         var u = SurvivorUnit(pos: new(1, 4), attributes: 20);
         var linked = EnemyUnit("linked", new(8, 4));
+        u.Attributes[AttributeKind.Perception] = 10; // sight ~4.6, a muzzle flash ~6.9: the Linked at 7 stays unseen
         var sim = Arena(11, 9, [u, linked], Corridor);
         Assert.False(Detection.SideSees(sim.Data, sim.State, P1, linked));
 

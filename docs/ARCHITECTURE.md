@@ -353,7 +353,9 @@ positions and gear always give the same answer), and per side.
   known hostile would detect it on and scores shots with the ambush bonus, so they fire from the fog; drones (Perception
   85) spot for the group; a signal jammer cuts a Linked off from that shared knowledge. Husks do not plan ambushes but
   can still stumble out of the dark.
-- **Log** (`FogLog`): an event whose actor the side did not see (before or after) shows only in its `Anonymous` form
+- **Log** (`FogLog`): the sim stamps each event with the party sides that saw its actor at that moment
+  (`ScavengeEvent.SeenBy`); an event about a target the side never saw is dropped, and one whose actor it did not see
+  then shows only in its `Anonymous` form
   ("Ana was ambushed from the fog (+20% hit)", "Ana was hit in the Torso for 12 from the fog"), or not at all; side-only
   events stay with their side. The local driver and the server's `SideFog` both use it.
 - **Saves**: scavenge save version 3 (stances, lookout, contacts, reveals, flares, sensors); colony save version 6 carries

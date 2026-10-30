@@ -144,6 +144,9 @@ public sealed class NetFixture
                 var before = _lastShown.GetValueOrDefault(player.Name, []);
                 foreach (var e in s.Events)
                 {
+                    if (e.SeenBy is not null) FogViolations.Add($"{player.Name} was sent who saw '{e.Message}'.");
+                    if (e.TargetId is { } tid && sim.State.FindUnit(tid) is { } tu && !Theirs(tu) && !shown.Contains(tid) && !before.Contains(tid))
+                        FogViolations.Add($"{player.Name} heard '{e.Message}' about {tu.Name}, whom they never saw.");
                     if (e.Anonymous is not null) FogViolations.Add($"{player.Name} was sent the actor-less text of '{e.Message}'.");
                     if (e.Side is { } only && only != side) FogViolations.Add($"{player.Name} was sent {only}'s private event '{e.Message}'.");
                     if (e.UnitId is { } actor && sim.State.FindUnit(actor) is { } a && !Theirs(a) && !shown.Contains(actor) && !before.Contains(actor))

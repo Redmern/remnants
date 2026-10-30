@@ -140,14 +140,14 @@ goes over the internet; the protocol version covers that change.
   - the turn order cut to known units, with `SideFog.HiddenUnitId` (-1) when an unseen unit is up;
   - its own explored tiles only, every party's done flag, no RNG state, no Network alarm counters;
   - events through Core's `FogLog`, like the single-player log: round/party bookkeeping, anything done by or to its own
-    units, anything on a tile it saw before or after; but an event whose actor it did not see (at the last snapshot or
-    now) comes only in its anonymous form with the actor removed ("Bob1 was ambushed from the fog (+20% hit)"), or not at
+    units, anything on a tile it saw before or after; but an event about a target it never saw is dropped, one whose actor it
+    did not see when the event happened (`SeenBy`, stamped by the sim, never sent) comes only in its anonymous form with the actor removed ("Bob1 was ambushed from the fog (+20% hit)"), or not at
     all, and side-private events (a motion sensor's alert) only to their side.
 - The terrain map is sent whole in `MissionStarted` (it is static and generated from the seed; single player keeps it
   in memory too). Fog hides units, caches and events, not walls.
 - Tests check every snapshot and turn message against the server's live visibility at the moment it is sent
   (`NetFixture.CheckFog`: unseen units, other sides' contacts / sensors / reveals, anonymous texts or private events
-  leaking, events naming a unit the player was never sent), across scripted multi-round games. `FogNetTests` stage a
+  leaking, events naming an actor or target the player was never sent), across scripted multi-round games. `FogNetTests` stage a
   cloaked sniper: the victim's client gets the hit, the "ambushed from the fog" line and an attack contact pointing back,
   never the sniper's id, name or position, unless the muzzle flash puts it in their sight.
 - The old soft spot (an event about one of your units naming an actor you could not see) is closed by `FogLog`.

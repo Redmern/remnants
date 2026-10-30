@@ -33,10 +33,11 @@ internal static class ScavengeCommandHandlers
     public static ScavengeResult Attack(ScavengeSim sim, Unit unit, Attack c)
     {
         var target = sim.State.FindUnit(c.TargetId);
-        if (target is not { OnMap: true } || !unit.HostileTo(target))
-            return ScavengeResult.Fail(ScavengeError.InvalidTarget, $"Unit {c.TargetId} is not a hostile target.");
-        if (!Detection.SideSees(sim.Data, sim.State, unit.Side, target))
-            return ScavengeResult.Fail(ScavengeError.NotVisible, $"{unit.Name}'s side cannot see unit {c.TargetId}.");
+        // Missing, off the map or unseen all answer alike, so ids cannot be probed for hidden units.
+        if (target is not { OnMap: true } || !Detection.SideSees(sim.Data, sim.State, unit.Side, target))
+            return ScavengeResult.Fail(ScavengeError.NotVisible, $"{unit.Name}'s side sees no unit {c.TargetId}.");
+        if (!unit.HostileTo(target))
+            return ScavengeResult.Fail(ScavengeError.InvalidTarget, $"{target.Name} is not a hostile target.");
         var action = sim.Profile(unit).Action(c.ActionId);
         if (action is null) return ScavengeResult.Fail(ScavengeError.UnknownAction, $"{unit.Name} cannot use '{c.ActionId}' now.");
         if (action.ApCost > unit.Ap) return NotEnoughAp(unit, action.ApCost);
