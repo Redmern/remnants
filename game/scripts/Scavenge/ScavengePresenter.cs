@@ -32,6 +32,7 @@ public sealed class ScavengePresenter
             Pushed?.Invoke();
         };
         driver.Noticed += text => Feedback?.Invoke(text, false);
+        driver.AllianceNews += text => AllianceNews?.Invoke(text);
         RefreshVisibility();
     }
 
@@ -63,6 +64,9 @@ public sealed class ScavengePresenter
     /// <summary>The game moved on without a local command (remote: another player acted, a turn timed out).</summary>
     public event Action? Pushed;
 
+    /// <summary>Alliance news for a banner (remote only).</summary>
+    public event Action<string>? AllianceNews;
+
     public async Task<ScavengeResult> Execute(IScavengeCommand command)
     {
         var result = await Driver.Execute(command);
@@ -90,6 +94,45 @@ public sealed class ScavengePresenter
     public bool IsRevealed(Unit u) => Detection.IsRevealed(State, u.Id, Side);
 
     public bool IsMine(Unit u) => u.PlayerId == PlayerId;
+
+    /// <summary>Another player's unit on the local team (co-op): shares sight, takes their orders.</summary>
+    public bool IsAlly(Unit u) => u.PlayerId is { } pid && pid != PlayerId && u.Side == Side && u.Side != Unit.NeutralSide;
+
+    public string PlayerName(int playerId) => Driver.PlayerName(playerId);
+
+    /// <summary>Players on the local team besides this one.</summary>
+    public IEnumerable<int> Allies => State.PlayersOn(Side).Where(id => id != PlayerId);
+
+    /// <summary>The local team's pings.</summary>
+    public IEnumerable<Ping> Pings => State.Pings.Where(p => p.Side == Side);
+
+    /// <summary>Alliance offers made to the local player that are still open.</summary>
+    public IEnumerable<AllianceProposal> OffersToMe => State.Proposals.Where(p => p.ToPlayerId == PlayerId);
+
+    /// <summary>Breaks announced on the local team (by anyone on it).</summary>
+    public IEnumerable<AllianceBreak> TeamBreaks => State.Breaks.Where(b => b.Side == Side);
+
+    /// <summary>Other players' parties still in the zone that are not on the local team.</summary>
+    public IEnumerable<Party> Rivals => State.Parties.Where(p => p.PlayerId != PlayerId && !p.Done && p.Side != Side);
+
+    /// <summary>Downed units on the local side next to <paramref name="unit"/> that it could lift.</summary>
+    public IEnumerable<Unit> CarryableNear(Unit unit) =>
+        State.Units.Where(u => u.Id != unit.Id && u.Status == UnitStatus.Downed && u.CarriedById is null && u.Side == Side && u.Pos.Chebyshev(unit.Pos) <= 1);
+
+    /// <summary>Conscious survivors on the local side next to <paramref name="unit"/> it could hand items to (allies first).</summary>
+    public IEnumerable<Unit> GiveTargetsNear(Unit unit) =>
+        State.Units.Where(u => u.Id != unit.Id && u.IsActive && u.Kind == UnitKind.Survivor && u.Side == Side && u.Pos.Chebyshev(unit.Pos) <= 1)
+            .OrderBy(u => IsAlly(u) ? 0 : 1).ThenBy(u => u.Id);
+
+    /// <summary>A free tile next to the unit to put a carried one down on, or null.</summary>
+    public Pos? PutDownSpot(Unit unit)
+    {
+        var map = State.Map;
+        foreach (var d in Pos.Neighbours8)
+            if (unit.Pos + d is var p && map.InBounds(p) && Sim.Data.Terrain(map[p]).Passable && !map.IsExit(p) && State.UnitAt(p) is null)
+                return p;
+        return null;
+    }
 
     /// <summary>Tiles <paramref name="unit"/> can move to with one move action, with AP cost (Core's movement rules).</summary>
     public Dictionary<Pos, int> Reachable(Unit unit) => unit.IsActive ? Sim.Reachable(unit) : new();

@@ -49,6 +49,12 @@ public partial class ScavengeLog : PanelContainer
             ScavengeEventType.Braced => ("stance_brace", Palette.Amber),
             ScavengeEventType.Lookout => ("stance_scan", Palette.Amber),
             ScavengeEventType.SensorTripped or ScavengeEventType.FlareLit or ScavengeEventType.SensorPlaced => ("stat_sight", Palette.Good),
+            ScavengeEventType.AllianceProposed or ScavengeEventType.AllianceAccepted => ("stat_ally", Palette.Ally),
+            ScavengeEventType.AllianceDeclined or ScavengeEventType.AllianceBreakWarning => ("stat_ally", Palette.Warn),
+            ScavengeEventType.AllianceBroken => ("stat_ally", Palette.Danger),
+            ScavengeEventType.Pinged => ("ui_ping", Palette.Ally),
+            ScavengeEventType.ItemGiven => ("stat_loot", Palette.Ally),
+            ScavengeEventType.PickedUpBody or ScavengeEventType.PutDown => ("stat_injured", Palette.Ally),
             _ => ("ui_info", Palette.Text),
         };
         Append($"R{e.Round}", icon, color, e.Message);

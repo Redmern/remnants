@@ -10,12 +10,14 @@ using Remnants.Net;
 namespace Remnants.Game.Multiplayer;
 
 /// <summary>
-/// Multiplayer menu: player name, server address, Host (runs a server in this game for LAN play, then joins it) or
-/// Join; then the lobby list with a Ready toggle. When the server starts the mission the scavenge screen takes over
+/// Multiplayer menu: player name, server address, mission mode for the host (Versus, or Co-op: everyone on one team,
+/// spawned together), Host (runs a server in this game for LAN play, then joins it) or Join; then the lobby list with
+/// each player's team and a Ready toggle, and in a versus lobby a team picker (players on the same team start allied). When the server starts the mission the scavenge screen takes over
 /// (<see cref="MultiplayerSession.BeginMission"/>).
 /// <para>
 /// Debug flags (after <c>--</c>): <c>--mp-host[=PORT]</c> or <c>--mp-join=ADDR</c>, <c>--mp-name=NAME</c>, <c>--mp-ready</c>,
-/// <c>--mp-zone=ID</c>, <c>--mp-seed=N</c>, <c>--mp-players=N</c>, <c>--mp-turn-seconds=S</c>; the scavenge screen's
+/// <c>--mp-zone=ID</c>, <c>--mp-seed=N</c>, <c>--mp-players=N</c>, <c>--mp-turn-seconds=S</c>, <c>--mp-coop</c> (host a
+/// co-op mission), <c>--mp-team=N</c> (versus lobby team); the scavenge screen's
 /// <c>--autoplay</c> / <c>--screenshot</c> work as usual.
 /// </para>
 /// </summary>
@@ -24,6 +26,9 @@ public partial class MultiplayerMenu : Control
     private LineEdit _name = null!;
     private LineEdit _address = null!;
     private OptionButton _zone = null!;
+    private OptionButton _mode = null!;
+    private OptionButton _team = null!;
+    private HBoxContainer _teamRow = null!;
     private Label _party = null!;
     private Label _status = null!;
     private RichTextLabel _lobby = null!;
@@ -100,6 +105,12 @@ public partial class MultiplayerMenu : Control
         grid.AddChild(_address);
         grid.AddChild(Ui.Label("Zone (host)"));
         grid.AddChild(_zone);
+        _mode = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = "Versus: every party for itself (alliances can form in the field). Co-op: everyone on one team, spawned together, shared sight; more enemies per player." };
+        _mode.AddIconItem(Icons.Get("ui_multiplayer", 16), "Versus");
+        _mode.AddIconItem(Icons.Get("stat_ally", 16), "Co-op");
+        if (DebugCapture.HasFlag("--mp-coop")) _mode.Select(1);
+        grid.AddChild(Ui.Label("Mode (host)"));
+        grid.AddChild(_mode);
 
         _party = Ui.Label("", 13, Ui.Muted);
         _party.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -120,6 +131,15 @@ public partial class MultiplayerMenu : Control
         _lobby = Ui.Rich();
         _lobby.CustomMinimumSize = new Vector2(0, 110);
         box.AddChild(_lobby);
+        _teamRow = Widgets.Row(8);
+        _teamRow.Visible = false;
+        _teamRow.AddChild(Ui.Label("Start on team"));
+        _team = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = "Players who pick the same team spawn together as allies" };
+        _team.AddItem("On my own");
+        for (var t = 1; t <= 4; t++) _team.AddIconItem(Icons.Get("stat_ally", 16), $"Team {t}");
+        _team.ItemSelected += i => _client?.SetTeam(i == 0 ? null : (int)i);
+        _teamRow.AddChild(_team);
+        box.AddChild(_teamRow);
         _ready = Widgets.IconButton("stat_check", "Ready", "Toggle ready: the mission starts when everyone is", () => _client?.SetReady(!IsReady()));
         _ready.Disabled = true;
         box.AddChild(_ready);
@@ -146,6 +166,7 @@ public partial class MultiplayerMenu : Control
             MinPlayers = int.TryParse(DebugCapture.Value("--mp-players"), out var players) ? players : 2,
             MaxPartySize = GameDataPaths.Load().Rules.Expedition.PartySizeByTownHallLevel.Max(),
             TurnSeconds = double.TryParse(DebugCapture.Value("--mp-turn-seconds"), out var turn) ? turn : 60,
+            Mode = _mode.Selected == 1 ? MissionMode.Coop : MissionMode.Versus,
         };
         try
         {
@@ -174,6 +195,11 @@ public partial class MultiplayerMenu : Control
         }
         _client = client;
         client.Changed += Refresh;
+        if (int.TryParse(DebugCapture.Value("--mp-team"), out var team) && team is >= 1 and <= 4)
+        {
+            _team.Select(team);
+            client.SetTeam(team);
+        }
         if (DebugCapture.HasFlag("--mp-ready")) client.SetReady(true);
         Refresh();
     }
@@ -204,10 +230,18 @@ public partial class MultiplayerMenu : Control
         if (client.Lobby is { } lobby)
         {
             var zone = GameDataPaths.LoadScavenge().Zones.TryGetValue(lobby.ZoneId, out var z) ? z.Name : lobby.ZoneId;
+            var myTeam = lobby.Players.Find(p => p.PlayerId == client.PlayerId)?.Team;
+            string Team(LobbyPlayer p) => p.Team is not { } t ? Palette.Paint("on their own", Palette.TextMuted)
+                : Palette.Paint($"team {t}{(t == myTeam && p.PlayerId != client.PlayerId ? " · ally" : "")}", t == myTeam ? Palette.Ally : SidePalette.OtherPlayer);
             var lines = lobby.Players.Select(p =>
-                $"{(p.PlayerId == client.PlayerId ? "[b]" : "")}{p.Name}{(p.PlayerId == client.PlayerId ? " (you)[/b]" : "")} — {p.PartySize} survivors — " +
+                $"{(p.PlayerId == client.PlayerId ? "[b]" : "")}{p.Name}{(p.PlayerId == client.PlayerId ? " (you)[/b]" : "")} — {p.PartySize} survivors — {Team(p)} — " +
                 (p.Ready ? $"[color=#{Ui.Hex(Ui.Good)}]ready[/color]" : "not ready") + (p.Connected ? "" : " (dropped)"));
-            _lobby.Text = $"{zone} · {lobby.Players.Count}/{lobby.MaxPlayers} players (starts with {lobby.MinPlayers}+ when all are ready)\n" + string.Join("\n", lines);
+            var mode = lobby.Mode == MissionMode.Coop
+                ? Palette.Paint("CO-OP", Palette.Ally) + " · everyone on one team, more enemies per player"
+                : "VERSUS · every party for itself unless it teams up";
+            _lobby.Text = $"{zone} · {mode}\n{lobby.Players.Count}/{lobby.MaxPlayers} players (starts with {lobby.MinPlayers}+ when all are ready)\n" + string.Join("\n", lines);
+            _teamRow.Visible = lobby.Mode == MissionMode.Versus && client.Phase == ClientPhase.Lobby;
+            _mode.Disabled = true;
             _ready.Disabled = client.Phase != ClientPhase.Lobby;
             _ready.Text = IsReady() ? "Not ready" : "Ready";
         }

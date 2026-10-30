@@ -237,6 +237,13 @@ public partial class ColonyScreen : Node3D
         _hud.TopBar.ExpeditionPressed += _hud.Expedition.Toggle;
         _hud.Expedition.WorldMapPressed += () => _hud.WorldMap.Open();
         _hud.WorldMap.PlanPressed += _hud.Expedition.PlanFor;
+        _hud.Expedition.OnlinePressed += () =>
+        {
+            // The multiplayer menu picks this expedition's party up (MultiplayerSession.PickParty) and brings the result back here.
+            ColonySession.Current = _session;
+            _session.Save();
+            GetTree().ChangeSceneToFile(Remnants.Game.Multiplayer.MultiplayerSession.MenuScene);
+        };
         _hud.Expedition.PlayPressed += () =>
         {
             _session.PlayExpedition(GetTree());

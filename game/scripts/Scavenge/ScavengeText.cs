@@ -88,6 +88,17 @@ public static class ScavengeText
         ScavengeError.CarryLimitExceeded => "Too heavy",
         ScavengeError.NotOnExit => "Not on an exit",
         ScavengeError.NotRecruitable => "Can't recruit",
+        ScavengeError.NotVisible => "Can't see that",
+        ScavengeError.FriendlyFire => "That's an ally",
+        ScavengeError.NotAPlayer => "No such player",
+        ScavengeError.AlreadyAllied => "Already allies",
+        ScavengeError.NoContact => "Not in contact",
+        ScavengeError.NoProposal => "No offer",
+        ScavengeError.ProposalPending => "Offer already open",
+        ScavengeError.NotAllied => "No alliance",
+        ScavengeError.BreakPending => "Already leaving",
+        ScavengeError.PingLimit => "No pings left",
+        ScavengeError.CannotCarry => "Can't carry",
         _ => error.ToString(),
     };
 }

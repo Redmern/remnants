@@ -28,12 +28,14 @@ public partial class ScavengeScreen : Node3D
     private UnitPanel _unitPanel = null!;
     private ActionPanel _actionPanel = null!;
     private StancePanel _stancePanel = null!;
+    private CoopPanel _coopPanel = null!;
     private ScavengeLog _log = null!;
     private ResultPanel _result = null!;
 
     private int? _selectedId;
     private int? _lastActingId;
     private string? _usingItem;
+    private PingKind? _pinging;
     private bool _busy;
     private bool _pushPending;
     private HashSet<int> _seen = [];
@@ -105,6 +107,7 @@ public partial class ScavengeScreen : Node3D
         _hud.Tags.Setup(_presenter, _units, _camera.Camera);
         (_turnBar, _unitPanel, _actionPanel, _stancePanel, _log, _result) =
             (_hud.TurnBar, _hud.UnitPanel, _hud.Actions, _hud.Stances, _hud.Log, _hud.Result);
+        _coopPanel = _hud.Coop;
     }
 
     private void Wire()
@@ -122,8 +125,9 @@ public partial class ScavengeScreen : Node3D
         };
         _hud.BackRequested += () =>
         {
-            if (_usingItem is null) return false;
+            if (_usingItem is null && _pinging is null) return false;
             _usingItem = null;
+            _pinging = null;
             RefreshHud();
             return true;
         };
@@ -143,6 +147,13 @@ public partial class ScavengeScreen : Node3D
         };
         _actionPanel.CommandRequested += command => _ = Run(command);
         _stancePanel.CommandRequested += command => _ = Run(command);
+        _coopPanel.CommandRequested += command => _ = Run(command);
+        _coopPanel.PingChosen += kind =>
+        {
+            _pinging = _pinging == kind ? null : kind;
+            _usingItem = null;
+            RefreshHud();
+        };
         _result.ContinuePressed += Finish;
     }
 
@@ -168,6 +179,7 @@ public partial class ScavengeScreen : Node3D
                 break;
             case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Right }:
                 _usingItem = null;
+                _pinging = null;
                 SelectActing();
                 RefreshHud();
                 break;
@@ -188,6 +200,13 @@ public partial class ScavengeScreen : Node3D
         var clicked = state.UnitAt(tile) is { } u && _presenter.CanSee(u) ? u : null;
         var acting = _presenter.ActingUnit;
         var pid = _presenter.PlayerId;
+
+        if (_pinging is { } ping && acting is not null)
+        {
+            _pinging = null;
+            _ = Run(new PingTile(pid, acting.Id, tile, ping));
+            return;
+        }
 
         if (_usingItem is { } item && acting is not null)
         {
@@ -238,6 +257,7 @@ public partial class ScavengeScreen : Node3D
         _busy = true;
         var result = await _presenter.Execute(command);
         if (result.Ok) _usingItem = null;
+        if (result.Ok && command is not PingTile) _pinging = null;
         await ReplayNew();
         return result.Ok;
     }
@@ -344,6 +364,8 @@ public partial class ScavengeScreen : Node3D
         _unitPanel.Present(selected);
         _actionPanel.Refresh(_busy, _usingItem);
         _stancePanel.Refresh(_busy);
+        _coopPanel.Refresh(_busy, selected, _pinging);
+        _hud.Banner.Refresh();
         RefreshHighlights(selected);
     }
 

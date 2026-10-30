@@ -33,6 +33,12 @@ public static class Palette
     public static readonly Color Danger = new("e0533f");
     public static readonly Color Warn = new("e8b44a");
 
+    /// <summary>
+    /// Allies (co-op): another player's party on the local team. A soft green, cooler than <see cref="Good"/> (your
+    /// recruits) and well clear of the Network's cyan and the hostile players' violet.
+    /// </summary>
+    public static readonly Color Ally = new("74c98a");
+
     /// <summary>The AI Network. Only the Linked, pylons and Network effects use it.</summary>
     public static readonly Color Network = new("3fd8e6");
 

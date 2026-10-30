@@ -44,6 +44,12 @@ public interface IScavengeDriver
 
     /// <summary>The player walks away mid-run (the screen's Leave).</summary>
     void Leave();
+
+    /// <summary>A player's name for labels ("Player 2" locally).</summary>
+    string PlayerName(int playerId);
+
+    /// <summary>Remote only: a line of alliance news for this player (offer, accepted, declined, break warning, broken), for banners.</summary>
+    event Action<string>? AllianceNews;
 }
 
 /// <summary>Single player: the sim lives here and every command runs synchronously.</summary>
@@ -70,6 +76,9 @@ public sealed class LocalDriver : IScavengeDriver
 
     public event Action? Pushed { add { } remove { } }
     public event Action<string>? Noticed { add { } remove { } }
+    public event Action<string>? AllianceNews { add { } remove { } }
+
+    public string PlayerName(int playerId) => $"Player {playerId}";
 
     public Task<ScavengeResult> Execute(IScavengeCommand command) => Task.FromResult(Sim.Execute(command));
 
@@ -112,7 +121,11 @@ public sealed class RemoteDriver : IScavengeDriver
         _client = client;
         client.Changed += () => Pushed?.Invoke();
         client.Noticed += text => Noticed?.Invoke(text);
+        client.AllianceNews += m => AllianceNews?.Invoke(client.Describe(m));
     }
+
+    public string PlayerName(int playerId) => _client.NameOf(playerId);
+    public event Action<string>? AllianceNews;
 
     public NetClient Client => _client;
     public ScavengeSim Sim => _client.View ?? throw new InvalidOperationException("No view from the server yet.");

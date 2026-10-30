@@ -15,7 +15,8 @@ namespace Remnants.Game.Colony.Ui;
 /// Linked presence / travel), a World map button, party picker for the adults at home with each one's gear from the
 /// colony inventory and the field profile that gear gives them (movement mode, AP, attacks). While a party is out it
 /// shows who and where they are (on the road, in the zone, heading home) and offers to play (or resume) the mission
-/// once they have arrived. Core validates the launch.
+/// once they have arrived, or to take the party online (Online / Co-op: the multiplayer menu brings exactly these
+/// survivors and their gear; launched under the same rules, rations included). Core validates the launch.
 /// </summary>
 public partial class ExpeditionPanel : PanelContainer
 {
@@ -36,6 +37,8 @@ public partial class ExpeditionPanel : PanelContainer
     private readonly RichTextLabel _away = Ui.Rich();
     private readonly Button _launch;
     private readonly Button _play;
+    private readonly Button _online;
+    private readonly Button _launchOnline;
     private readonly Control _planner = new VBoxContainer();
     private readonly List<string> _zoneIds = new();
     private readonly Dictionary<int, Loadout> _picked = new();
@@ -49,6 +52,9 @@ public partial class ExpeditionPanel : PanelContainer
     /// <summary>Asks the screen to open the world map.</summary>
     public event Action? WorldMapPressed;
 
+    /// <summary>Asks the screen to take the waiting party into an online (co-op or versus) mission.</summary>
+    public event Action? OnlinePressed;
+
     public ExpeditionPanel(ColonySession session)
     {
         _session = session;
@@ -60,7 +66,15 @@ public partial class ExpeditionPanel : PanelContainer
         box.AddChild(_away);
         _play = Widgets.IconButton("ui_play", "Play mission", "Go to the zone and play the run", () => PlayPressed?.Invoke(), variation: "Primary");
         _play.CustomMinimumSize = new Vector2(0, 38);
-        box.AddChild(_play);
+        _online = Widgets.IconButton("stat_ally", "Online / Co-op",
+            "Bring this party to a multiplayer mission (host or join a co-op or versus game); the result comes home here",
+            () => OnlinePressed?.Invoke());
+        _online.CustomMinimumSize = new Vector2(0, 38);
+        var playRow = Widgets.Row(6);
+        _play.SizeFlagsHorizontal = _online.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        playRow.AddChild(_play);
+        playRow.AddChild(_online);
+        box.AddChild(playRow);
 
         var planner = (VBoxContainer)_planner;
         planner.AddThemeConstantOverride("separation", 8);
@@ -81,9 +95,17 @@ public partial class ExpeditionPanel : PanelContainer
         planner.AddChild(scroll);
         planner.AddChild(Widgets.SectionHeader("Colony items", "ui_items"));
         planner.AddChild(_inventory);
-        _launch = Widgets.IconButton("ui_expedition", "Launch expedition", "Send the party out", Launch, variation: "Primary");
+        _launch = Widgets.IconButton("ui_expedition", "Launch expedition", "Send the party out", () => Launch(online: false), variation: "Primary");
         _launch.CustomMinimumSize = new Vector2(0, 38);
-        planner.AddChild(_launch);
+        _launchOnline = Widgets.IconButton("stat_ally", "Launch online / co-op",
+            "Send the party out as usual (adults only, Town Hall cap, gear and rations from the colony) and take it into a multiplayer mission",
+            () => Launch(online: true));
+        _launchOnline.CustomMinimumSize = new Vector2(0, 38);
+        var launchRow = Widgets.Row(6);
+        _launch.SizeFlagsHorizontal = _launchOnline.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        launchRow.AddChild(_launch);
+        launchRow.AddChild(_launchOnline);
+        planner.AddChild(launchRow);
 
         _zone.ItemSelected += _ => RefreshZone();
     }
@@ -124,7 +146,7 @@ public partial class ExpeditionPanel : PanelContainer
 
         var expedition = sim.State.Expedition;
         _planner.Visible = expedition is null;
-        _play.Visible = expedition is not null;
+        _play.Visible = _online.Visible = expedition is not null;
         if (expedition is not null)
         {
             var names = expedition.Members.Select(m => sim.State.FindSurvivor(m.SurvivorId)?.Name ?? "?");
@@ -138,6 +160,8 @@ public partial class ExpeditionPanel : PanelContainer
             _away.Text = $"[b]{data.Zones[expedition.ZoneId].Name}[/b]: {string.Join(", ", names)} ({state}).";
             _away.Visible = true;
             _play.Disabled = phase != ExpeditionPhase.InZone;
+            // A run already started locally stays local; a fresh one can go online instead.
+            _online.Disabled = phase != ExpeditionPhase.InZone || expedition.Scavenge is not null;
             return;
         }
         _away.Visible = false;
@@ -322,7 +346,7 @@ public partial class ExpeditionPanel : PanelContainer
         var food = perMember * _picked.Count;
         _partyInfo.Text = $"Party {_picked.Count}/{sim.MaxPartySize} (Town Hall L{sim.TownHallLevel}) · rations {food:0} food " +
                           $"(have {sim.State.Stockpile.Get(sim.Data.Rules.Food.ResourceId):0}) · away members don't eat at home";
-        _launch.Disabled = _picked.Count == 0;
+        _launch.Disabled = _launchOnline.Disabled = _picked.Count == 0;
         var data = sim.Scavenge!;
         var signature = string.Join(",", sim.State.Inventory.Counts.Select(kv => $"{kv.Key}:{kv.Value}"));
         if (signature == _inventoryShown) return;
@@ -340,7 +364,7 @@ public partial class ExpeditionPanel : PanelContainer
         _inventory.AddChild(flow);
     }
 
-    private void Launch()
+    private void Launch(bool online)
     {
         if (SelectedZone is not { } zoneId) return;
         var members = _picked.OrderBy(kv => kv.Key)
@@ -350,6 +374,8 @@ public partial class ExpeditionPanel : PanelContainer
         _picked.Clear();
         _signature = "";
         // A zone on the doorstep is played right away; a far one waits until the party has arrived.
-        if (_session.Sim.CurrentExpeditionPhase == ExpeditionPhase.InZone) PlayPressed?.Invoke();
+        if (_session.Sim.CurrentExpeditionPhase != ExpeditionPhase.InZone) return;
+        if (online) OnlinePressed?.Invoke();
+        else PlayPressed?.Invoke();
     }
 }

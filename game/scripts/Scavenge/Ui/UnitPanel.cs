@@ -13,7 +13,8 @@ namespace Remnants.Game.Scavenge.Ui;
 /// <summary>
 /// The selected unit as card sections: a header (portrait from the 3D model with its gear, name, kind, status, HP bar
 /// and AP pips, bleed-out), Body (each part with its icon and a bar, like the colony Body tab), Field profile (movement,
-/// initiative, sight, armor, dodge, attacks as chips) and Gear (slots, pack, load).
+/// initiative, sight, armor, dodge, attacks as chips) and Gear (slots, pack, load). An ally's unit (co-op) gets an
+/// Ally section on top: whose party it is and that its orders are theirs (the card is read-only), and who carries whom.
 /// </summary>
 public partial class UnitPanel : PanelContainer
 {
@@ -30,6 +31,8 @@ public partial class UnitPanel : PanelContainer
     private readonly MarginContainer _profile = new();
     private readonly VBoxContainer _gear = Widgets.Column(3);
     private readonly Label _empty = Widgets.Wrapped("Click a unit. Your units take orders on their turn.", "Muted");
+    private readonly Label _allyText = Widgets.Wrapped("", "Small");
+    private PanelContainer _allyCard = null!;
     private string _profileSignature = "";
 
     public UnitPanel(ScavengePresenter presenter)
@@ -63,6 +66,9 @@ public partial class UnitPanel : PanelContainer
         box.AddChild(_empty);
         box.AddChild(_sections);
 
+        _allyCard = Section("Ally", "stat_ally", _allyText);
+        _allyCard.AddThemeStyleboxOverride("panel", HudTheme.Box(Palette.Inset, Palette.Ally, 1, radius: 3, padX: 8, padY: 6));
+        _sections.AddChild(_allyCard);
         _sections.AddChild(Section("Body", "body_full", BodyRows()));
         _sections.AddChild(Section("Field profile", "ui_move", _profile));
         _sections.AddChild(Section("Gear", "item_tool", _gear));
@@ -133,6 +139,14 @@ public partial class UnitPanel : PanelContainer
             : $"Health {unit.Hp:0}/{unit.MaxHp:0}";
         _ap.Set(unit.Ap, profile.MaxAp, unit.Suppressed ? Palette.Warn : Palette.Amber);
         _ap.TooltipText = $"{unit.Ap} of {profile.MaxAp} action points" + (unit.Suppressed ? " · suppressed: fewer AP next turn" : "");
+
+        _allyCard.Visible = _presenter.IsAlly(unit) || unit.CarryingId is not null || unit.CarriedById is not null;
+        var owner = unit.PlayerId is { } pid ? _presenter.PlayerName(pid) : "";
+        var lines = new List<string>();
+        if (_presenter.IsAlly(unit)) lines.Add($"{owner}'s party: their orders, shared sight. Next to them you can hand items over, patch them up or carry them out.");
+        if (unit.CarryingId is { } c && _presenter.State.FindUnit(c) is { } carried) lines.Add($"Carrying {carried.Name} (slower).");
+        if (unit.CarriedById is { } by && _presenter.State.FindUnit(by) is { } carrier) lines.Add($"Carried by {carrier.Name}.");
+        _allyText.Text = string.Join("\n", lines);
 
         RefreshBody(unit);
         RefreshProfile(profile);

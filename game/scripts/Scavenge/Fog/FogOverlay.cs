@@ -108,6 +108,29 @@ public partial class FogOverlay : Node3D
             _markers.AddChild(Disc(at, (float)flare.Radius * TileGrid.TileSize, FlareColor with { A = 0.12f }));
         }
 
+        // Team pings: a coloured pin over the tile and a ring, fading as they age.
+        foreach (var ping in _presenter.Pings)
+        {
+            var at = TileGrid.ToWorld(ping.Pos);
+            var color = Ui.CoopPanel.PingColor(ping.Kind);
+            var fade = state.Round > ping.Round ? 0.55f : 1f;
+            _markers.AddChild(Ring(at, 0.7f, color with { A = 0.9f * fade }, 0.07f));
+            _markers.AddChild(new MeshInstance3D
+            {
+                Mesh = new CylinderMesh { TopRadius = 0.05f, BottomRadius = 0.05f, Height = 1.4f },
+                MaterialOverride = Material(color with { A = 0.8f * fade }),
+                Position = at + Vector3.Up * 0.7f,
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            });
+            _markers.AddChild(new MeshInstance3D
+            {
+                Mesh = new SphereMesh { Radius = 0.16f, Height = 0.32f },
+                MaterialOverride = Material(color with { A = fade }),
+                Position = at + Vector3.Up * 1.5f,
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            });
+        }
+
         foreach (var sensor in state.Sensors.Where(x => x.Side == _presenter.Side))
         {
             var at = TileGrid.ToWorld(sensor.Pos);

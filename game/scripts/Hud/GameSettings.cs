@@ -161,6 +161,13 @@ public static class Hotkeys
         new("scav_loot", "Take the first loot", "Scavenge", [Key.F]),
         new("scav_recruit", "Recruit", "Scavenge", [Key.T]),
         new("scav_extract", "Extract", "Scavenge", [Key.X]),
+        new("scav_give", "Give an item to an ally", "Scavenge", [Key.G]),
+        new("scav_carry", "Carry / put down a downed ally", "Scavenge", [Key.C]),
+        new("scav_ping_danger", "Ping: danger", "Scavenge", [Key.Z]),
+        new("scav_ping_go", "Ping: go here", "Scavenge", [Key.V]),
+        new("scav_ping_loot", "Ping: loot", "Scavenge", [Key.N]),
+        new("scav_ally", "Offer / accept an alliance", "Scavenge", [Key.Y]),
+        new("scav_decline", "Decline an alliance", "Scavenge", [Key.U]),
     ];
 
     /// <summary>Camera panning is not an action (it reads WASD and arrows directly); listed for the settings screen.</summary>
