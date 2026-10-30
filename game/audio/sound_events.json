@@ -170,6 +170,7 @@
     "scavenge.hack_failed": { "sounds": ["hack_fail_alarm"], "cue": "alarm" },
     "scavenge.alarm": { "sounds": ["hack_fail_alarm"], "cue": "alarm" },
     "scavenge.device_disabled": "linked_death",
+    "scavenge.relay_disrupted": [],
     "//drones": "The pipeline has no drone_deploy / drone_mark / drone_destroyed yet: stand-ins until it does. The hum is ambience.drone.",
     "scavenge.drone_deployed": "hack_start",
     "scavenge.drone_flown": [],
