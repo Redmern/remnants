@@ -3,6 +3,7 @@ using System.Linq;
 using Godot;
 using Remnants.Core.Scavenge;
 using Remnants.Core.Survivors;
+using Remnants.Game.Anim;
 using Remnants.Game.Colony;
 
 namespace Remnants.Game.Scavenge;
@@ -12,7 +13,8 @@ namespace Remnants.Game.Scavenge;
 /// enemies by definition (<c>enemy_{defId}</c>: husk, husk_crawler, linked, linked_drone, linked_warden), device units
 /// (<c>device_camera</c> / <c>device_turret</c>, <c>_hacked</c> once they work for a party), the scout drone (<c>scout_drone</c>,
 /// hovering), hackable devices (<see cref="DeviceViews"/>) and survivor
-/// bodies dressed by <see cref="SurvivorDressing"/> (prosthetics, missing limbs, worn gear).
+/// bodies dressed by <see cref="SurvivorDressing"/> (prosthetics, missing limbs, worn gear). Rigged models come with
+/// their <see cref="CharacterRig"/>.
 /// Every lookup falls back to a primitive so the mode runs with no generated assets.
 /// </summary>
 public sealed class ScavengeModels(ModelLibrary library)
@@ -82,7 +84,7 @@ public sealed class ScavengeModels(ModelLibrary library)
         if (unit.Kind == UnitKind.Drone)
         {
             // It hovers: lifted above the ground so it reads as flying.
-            var drone = library.TryInstance("scout_drone") ?? Capsule(0.4f, new Color(0.85f, 0.6f, 0.3f));
+            var drone = Rigged("scout_drone") ?? Capsule(0.4f, new Color(0.85f, 0.6f, 0.3f));
             var hover = new Node3D { Name = "Hover", Position = new Vector3(0, 1.3f, 0) };
             hover.AddChild(drone);
             return hover;
@@ -90,7 +92,7 @@ public sealed class ScavengeModels(ModelLibrary library)
         if (unit.Kind == UnitKind.Enemy)
         {
             var linked = unit.EnemyDefId?.StartsWith("linked") == true;
-            return library.TryInstance($"enemy_{unit.EnemyDefId}")
+            return Rigged($"enemy_{unit.EnemyDefId}")
                    ?? Capsule(linked ? 2.1f : 1.7f, linked ? new Color(0.3f, 0.75f, 0.85f) : new Color(0.55f, 0.45f, 0.3f));
         }
 
@@ -99,6 +101,15 @@ public sealed class ScavengeModels(ModelLibrary library)
         if (library.TryInstance(id) is not { } model) return Placeholders.Survivor(child);
         SurvivorDressing.FitLimbs(library, model, unit.Body, child);
         SurvivorDressing.AttachGear(library, model, id, unit.Equipment);
+        CharacterRig.Attach(library, model, id);
+        return model;
+    }
+
+    /// <summary>A model with its <see cref="CharacterRig"/> when the asset is rigged (manifest v2), else as it is.</summary>
+    private Node3D? Rigged(string id)
+    {
+        if (library.TryInstance(id) is not { } model) return null;
+        CharacterRig.Attach(library, model, id);
         return model;
     }
 

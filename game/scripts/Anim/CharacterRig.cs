@@ -98,8 +98,8 @@ public partial class CharacterRig : Node
         return rig;
     }
 
-    /// <summary>The rig on a model, if it has one.</summary>
-    public static CharacterRig? Of(Node3D? model) => model?.GetNodeOrNull<CharacterRig>("Rig");
+    /// <summary>The rig on a model (or a model wrapped in a node, like the lifted scout drone), if it has one.</summary>
+    public static CharacterRig? Of(Node3D? model) => model?.GetNodeOrNull<CharacterRig>("Rig") ?? model?.FindChild("Rig", true, false) as CharacterRig;
 
     private static AnimationPlayer? FindPlayer(Node3D model) =>
         model.GetNodeOrNull<AnimationPlayer>("AnimationPlayer") ?? model.FindChildren("*", nameof(AnimationPlayer), true, false).OfType<AnimationPlayer>().FirstOrDefault();

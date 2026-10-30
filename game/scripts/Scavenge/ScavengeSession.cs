@@ -85,6 +85,7 @@ public static class ScavengeSession
         var sim = NewScavenge.Create(GameDataPaths.LoadScavenge(), DebugZoneArg, DebugSeedArg, [new PartySetup(LocalPlayerId, DebugParty())], conditions);
         if (Fog.FogDemo.Requested) Fog.FogDemo.Stage(sim, LocalPlayerId);
         if (TechDemo.Requested) TechDemo.Stage(sim, LocalPlayerId);
+        if (AnimDemo.Requested) AnimDemo.Stage(sim, LocalPlayerId);
         return sim;
     }
 

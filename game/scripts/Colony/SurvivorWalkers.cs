@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using Remnants.Core.Survivors;
+using Remnants.Game.Anim;
 
 namespace Remnants.Game.Colony;
 
@@ -12,12 +13,19 @@ namespace Remnants.Game.Colony;
 /// follow the streets between plots. Figures keep a little apart. At night (Core's schedule) the sleepers walk home —
 /// or patients back to the Med Bay — and go inside; children's earlier bedtime sends them in first; night-shift workers
 /// stay at their lit workplace and the rest spend the evening round the campfire. Nothing here feeds back into the sim.
+/// Rigged figures (<see cref="CharacterRig"/>) walk (children run), work with their job's loop at the workplace
+/// (<see cref="ClipMap.Work"/>), sit at the fire and outside the Med Bay, and play by the Town Hall; footfalls near the
+/// camera sound (<c>colony.step</c>). Playback follows the colony's speed but caps at 2x like the walking, and figures
+/// far from the camera or off screen update their pose less often (animation LOD).
 /// </summary>
 public partial class SurvivorWalkers : Node3D
 {
     private const float WalkSpeed = 1.6f; // m per real second at 1x
     private const float Personal = 0.75f; // m figures keep between them
-    private const float SitDrop = 0.78f;  // how far a seated figure sinks (hips to the ground)
+    private const float SitDrop = 0.78f;  // how far a seated figure sinks (hips to the ground); rigless figures only
+    private const float WalkStride = 2f;  // m covered by one walk cycle at clip speed 1
+    private const float RunStride = 2.4f;
+    private const float NearLod = 28f, FarLod = 55f; // m from the camera: full rate, every 2nd frame, every 4th beyond
 
     private enum Role { Worker, Idle, Child, Patient, Infant, Asleep }
 
@@ -36,6 +44,9 @@ public partial class SurvivorWalkers : Node3D
         public bool Inside;
         public Vector3 Bed;
         public Vector3 Push;
+        public CharacterRig? Rig;
+        public string? Job;
+        public float Gait = 1f;
     }
 
     private readonly Dictionary<int, Walker> _walkers = new();
@@ -130,6 +141,15 @@ public partial class SurvivorWalkers : Node3D
                 w?.Node.QueueFree();
                 var rng = new RandomNumberGenerator { Seed = (ulong)s.Id * 7919 + 17 };
                 w = new Walker { Node = _models.Survivor(s), Look = look, Rng = rng };
+                w.Rig = CharacterRig.Attach(_models, w.Node, ModelLibrary.SurvivorId(s.IsChild, s.Sex));
+                if (w.Rig is { } rig)
+                {
+                    var node = w.Node;
+                    rig.ClipEvent += (_, evt) =>
+                    {
+                        if (evt == "step" && rig.UpdateEvery == 1 && node.IsVisibleInTree()) Audio.AudioManager.Fire("colony.step", node.GlobalPosition);
+                    };
+                }
                 if (s.IsInfant) w.Node.Scale = Vector3.One * 0.7f;
                 AddChild(w.Node);
                 _walkers[s.Id] = w;
@@ -146,6 +166,7 @@ public partial class SurvivorWalkers : Node3D
                 : s.IsChild ? Role.Child
                 : Role.Idle;
             var workplace = (s.PatientAtBuildingId ?? s.AssignedBuildingId) is { } bid ? sim.State.FindBuilding(bid) : null;
+            w.Job = workplace is not null && s.PatientAtBuildingId is null ? sim.Data.Buildings.GetValueOrDefault(workplace.DefId)?.Job : null;
             var center = workplace is null ? w.Home : _layout.Center(workplace.Plot);
             if (role != w.Role || center != w.WorkCenter || w.Node.Position == Vector3.Inf)
             {
@@ -206,12 +227,14 @@ public partial class SurvivorWalkers : Node3D
     {
         if (_session is null) return;
         // At 4x the town would scurry; figures go at most double speed (they are not tied to ticks anyway).
-        var dt = (float)delta * Mathf.Min(_session.Speed, 2);
+        var pace = Mathf.Min(_session.Speed, 2);
+        var dt = (float)delta * pace;
         if (dt > 0)
         {
             Separate(dt);
             foreach (var w in _walkers.Values) Step(w, dt);
         }
+        Animate(pace);
 
         if (SelectedSurvivorId is { } id && _walkers.TryGetValue(id, out var sel))
         {
@@ -263,6 +286,31 @@ public partial class SurvivorWalkers : Node3D
         var dir = to.Normalized();
         w.Node.Position += dir * step;
         Face(w, dir);
+        if (w.Rig is { } rig && rig.Pick(w.Role == Role.Child ? ["run", "walk"] : ["walk"]) is { } gait)
+        {
+            rig.Loop(gait);
+            w.Gait = speed * (rig.Info(gait)?.Length ?? 1f) / (gait == "run" ? RunStride : WalkStride);
+        }
+    }
+
+    /// <summary>
+    /// Clip speed and LOD per figure: the gait's own pace while walking (so feet do not skate), times the colony pace
+    /// (capped at 2x, paused at 0); figures beyond <see cref="NearLod"/> / <see cref="FarLod"/> or off screen update
+    /// their pose less often.
+    /// </summary>
+    private void Animate(float pace)
+    {
+        var camera = GetViewport().GetCamera3D();
+        foreach (var w in _walkers.Values)
+        {
+            if (w.Rig is not { } rig) continue;
+            rig.SpeedScale = pace * (w.Path.Count > 0 && w.Pause <= 0 ? w.Gait : 1f);
+            if (camera is null || w.Inside) continue;
+            var at = w.Node.GlobalPosition + Vector3.Up;
+            // The ortho camera sits far back; its zoom (Size) is what makes a figure big or small on screen.
+            var distance = camera.Projection == Camera3D.ProjectionType.Orthogonal ? camera.Size : camera.GlobalPosition.DistanceTo(at);
+            rig.UpdateEvery = !camera.IsPositionInFrustum(at) ? 8 : distance < NearLod ? 1 : distance < FarLod ? 2 : 4;
+        }
     }
 
     /// <summary>Plans the walk to the next spot for this figure's role.</summary>
@@ -321,12 +369,23 @@ public partial class SurvivorWalkers : Node3D
         w.Pause = w.Role switch
         {
             Role.Worker => w.FaceTo is null ? w.Rng.RandfRange(4f, 7f) : w.Rng.RandfRange(4f, 8f),
-            Role.Child => w.Rng.RandfRange(0.3f, 1.5f),
+            Role.Child => w.Rig is null ? w.Rng.RandfRange(0.3f, 1.5f) : w.Rng.RandfRange(2.5f, 5f),
             Role.Patient or Role.Infant => w.Rng.RandfRange(6f, 12f),
             Role.Asleep => 0.3f,
             _ => atFire ? w.Rng.RandfRange(10f, 18f) : w.Rng.RandfRange(2f, 5f),
         };
         if (atFire || w.Role == Role.Patient) Sit(w);
+        else if (w.Rig is { } rig)
+        {
+            // At the workplace: the job's loop facing the building; children play; everyone else stands about.
+            var clip = w.Role switch
+            {
+                Role.Worker when w.FaceTo is not null => ClipMap.Work(w.Job),
+                Role.Child => "child_play",
+                _ => "idle",
+            };
+            rig.Loop(rig.Pick(clip, "idle") ?? "idle");
+        }
     }
 
     /// <summary>A spot on one side of the workplace building, just outside its footprint (up to 6 m of the 8 m plot).</summary>
@@ -386,11 +445,16 @@ public partial class SurvivorWalkers : Node3D
         foreach (var w in list) w.Node.Position += w.Push.LimitLength(Mathf.Min(1f, 2f * dt));
     }
 
-    /// <summary>Seated: legs out in front, hips on the ground. Works on prosthetic legs too (they share the node names).</summary>
+    /// <summary>Seated: the sit clip; rigless figures get legs out in front, hips on the ground (prosthetic legs too).</summary>
     private static void Sit(Walker w)
     {
         if (w.Seated) return;
         w.Seated = true;
+        if (w.Rig is { } rig && rig.Pick("sit") is { } sit)
+        {
+            rig.Loop(sit);
+            return;
+        }
         foreach (var leg in Legs(w.Node)) leg.RotationDegrees = leg.RotationDegrees with { X = -90 };
         var drop = Legs(w.Node).Select(l => l.Position.Y).DefaultIfEmpty(0).Max() * (SitDrop / 0.9f);
         w.Node.Position = w.Node.Position with { Y = -drop * w.Node.Scale.Y };
@@ -400,6 +464,11 @@ public partial class SurvivorWalkers : Node3D
     {
         if (!w.Seated) return;
         w.Seated = false;
+        if (w.Rig is { } rig)
+        {
+            rig.Loop("idle");
+            return;
+        }
         foreach (var leg in Legs(w.Node)) leg.RotationDegrees = leg.RotationDegrees with { X = 0 };
         w.Node.Position = w.Node.Position with { Y = 0 };
     }

@@ -51,9 +51,9 @@ public partial class AudioSelfTest : Node
         Expect("scavenge.device.turret", "turret_activate");
         Expect("scavenge.device.door", "door_open");
         Expect("scavenge.hack_failed", "hack_fail_alarm");
-        Expect("scavenge.drone_deployed", "hack_start");
-        Expect("scavenge.marked", "scanner_sweep");
-        Expect("scavenge.died.drone", "linked_death");
+        Expect("scavenge.drone_deployed", "drone_deploy");
+        Expect("scavenge.marked", "drone_mark");
+        Expect("scavenge.died.drone", "drone_destroyed");
         if (map.Ambience.GetValueOrDefault("drone") != "drone_buzz_loop") Fail("the drone hum is not drone_buzz_loop");
 
         WeatherAudio.Set("heavy_rain", 0.7f);

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Godot;
 using Remnants.Core.Scavenge;
 using Remnants.Core.Survivors;
+using Remnants.Game.Anim;
 using Remnants.Game.Colony;
 
 namespace Remnants.Game.Scavenge;
@@ -12,33 +13,46 @@ namespace Remnants.Game.Scavenge;
 /// <summary>
 /// One node per unit (model, side ring). Names, HP bars and pop-ups are HUD chips (<see cref="Ui.WorldTags"/>, fed by
 /// <see cref="Floated"/>) so they stack instead of overlapping. <see cref="Sync"/> snaps everything to Core state;
-/// <see cref="Replay"/> plays a command's events step by step (moves tween, hits flash) so the player can follow
-/// enemy turns. Purely visual.
+/// <see cref="Replay"/> plays a command's events step by step so the player can follow enemy turns. Rigged models
+/// (<see cref="CharacterRig"/>) walk their tile path facing the way they go, attack with their weapon's clip and take the
+/// hit, pop-up and sound on its <c>impact</c> / <c>fire</c> event, react, go down, die, hold their stance loop
+/// (overwatch_aim, crouch_brace, downed_loop, hover), hack, throw flares, use items and carry the downed on their back.
+/// Static models fall back to tweens. Purely visual.
 /// </summary>
 public partial class UnitViews : Node3D
 {
     private const float MoveSeconds = 0.28f;
     private const float StrikeSeconds = 0.16f;
-
+    private const float TileSeconds = 0.42f;    // a walked tile; long paths jog
+    private const float RunTileSeconds = 0.3f;
+    private const float MaxWalkSeconds = 2.4f;  // long moves speed up so turns keep their pace
+    private const float WalkStride = 2f;        // m per walk cycle at speed 1 (two footfalls)
+    private const float RunStride = 2.4f;
 
     private static readonly Regex DamagePattern = new(@"for (\d+)", RegexOptions.Compiled);
 
     private sealed class View
     {
+        public int Id;
         public Node3D Root = null!;
         public Node3D Model = null!;
         public Node3D Pose = null!;
         public MeshInstance3D Ring = null!;
+        public CharacterRig? Rig;
+        public float Yaw = 45;
         public string BodyKey = "";
     }
 
     private ScavengePresenter _presenter = null!;
     private ScavengeModels _models = null!;
     private readonly Dictionary<int, View> _views = new();
-    private StandardMaterial3D _hitFlash = null!, _healFlash = null!;
+    private StandardMaterial3D _hitFlash = null!, _healFlash = null!, _networkFlash = null!;
 
     /// <summary>A pop-up for the HUD: where (unit position), what, which colour, and whether it is a big one.</summary>
     public event System.Action<Vector3, string, Color, bool>? Floated;
+
+    /// <summary>A footfall of a unit (from its walk clip, or one per tile without a rig), for the step sounds.</summary>
+    public event System.Action<int, Vector3>? Footstep;
 
     public void Setup(ScavengePresenter presenter, ScavengeModels models)
     {
@@ -46,11 +60,15 @@ public partial class UnitViews : Node3D
         _models = models;
         _hitFlash = Placeholders.Material(new Color(1f, 0.15f, 0.1f, 0.65f), unshaded: true);
         _healFlash = Placeholders.Material(new Color(0.4f, 1f, 0.45f, 0.55f), unshaded: true);
+        _networkFlash = Placeholders.Material(new Color(0.3f, 0.9f, 1f, 0.6f), unshaded: true);
     }
 
     public Vector3? WorldOf(int unitId) => _views.TryGetValue(unitId, out var v) ? v.Root.Position : null;
 
-    /// <summary>Snap every unit to the current state: position, pose, fog, ring colour, label, limbs.</summary>
+    /// <summary>The rig of a unit's model, if it is rigged (for debug captures).</summary>
+    public CharacterRig? RigOf(int unitId) => _views.GetValueOrDefault(unitId)?.Rig;
+
+    /// <summary>Snap every unit to the current state: position, hold pose, fog, ring colour, label, limbs.</summary>
     public void Sync()
     {
         // A remote view drops units the side no longer sees; their models stay hidden until they show up again.
@@ -62,19 +80,34 @@ public partial class UnitViews : Node3D
             var view = Ensure(unit);
             view.Root.Position = TileGrid.ToWorld(unit.Pos);
             view.Root.Visible = _presenter.CanSee(unit);
-            view.Pose.RotationDegrees = unit.Status == UnitStatus.Downed ? new Vector3(0, 0, 80) : Vector3.Zero;
-            view.Pose.Position = unit.Status == UnitStatus.Downed ? new Vector3(0, 0.3f, 0) : Vector3.Zero;
             ((StandardMaterial3D)view.Ring.MaterialOverride).AlbedoColor = SidePalette.For(_presenter, unit);
+            view.Ring.Visible = unit.CarriedById is null;
 
             var bodyKey = BodyKey(unit);
             if (bodyKey != view.BodyKey && unit.Kind != UnitKind.Enemy)
             {
                 view.Model.QueueFree();
-                view.Model = _models.Unit(unit, unit.Side != Unit.EnemySide);
-                view.Model.RotationDegrees = Facing(unit);
-                view.Pose.AddChild(view.Model);
+                Build(view, unit);
                 view.BodyKey = bodyKey;
             }
+            Hold(view, unit);
+        }
+    }
+
+    /// <summary>The pose a unit keeps between actions: its stance loop on a rig, else the old tipped-over capsule when downed.</summary>
+    private void Hold(View view, Unit unit)
+    {
+        var downed = unit.Status == UnitStatus.Downed;
+        if (view.Rig is { } rig)
+        {
+            view.Pose.RotationDegrees = Vector3.Zero;
+            view.Pose.Position = Vector3.Zero;
+            if (rig.Pick(ClipMap.Hold(unit)) is { } hold && (rig.Base != hold || rig.Current != "death")) rig.Loop(hold, interrupt: false);
+        }
+        else
+        {
+            view.Pose.RotationDegrees = downed ? new Vector3(0, 0, 80) : Vector3.Zero;
+            view.Pose.Position = downed ? new Vector3(0, 0.3f, 0) : Vector3.Zero;
         }
     }
 
@@ -84,9 +117,6 @@ public partial class UnitViews : Node3D
         var root = new Node3D { Name = $"Unit{unit.Id}" };
         var pose = new Node3D { Name = "Pose" };
         root.AddChild(pose);
-        var model = _models.Unit(unit, unit.Side != Unit.EnemySide);
-        model.RotationDegrees = Facing(unit);
-        pose.AddChild(model);
         var ring = new MeshInstance3D
         {
             Mesh = new TorusMesh { InnerRadius = 0.62f, OuterRadius = 0.78f, Rings = 24, RingSegments = 6 },
@@ -97,16 +127,30 @@ public partial class UnitViews : Node3D
         };
         root.AddChild(ring);
         AddChild(root);
-        var view = new View
-        {
-            Root = root, Model = model, Pose = pose, Ring = ring, BodyKey = BodyKey(unit),
-        };
+        var view = new View { Id = unit.Id, Root = root, Pose = pose, Ring = ring, BodyKey = BodyKey(unit) };
+        Build(view, unit);
         _views[unit.Id] = view;
         return view;
     }
 
-    /// <summary>Models face +Z; turn them toward the default iso camera (south-east) so faces read.</summary>
-    private static Vector3 Facing(Unit unit) => new(0, 45, 0);
+    /// <summary>(Re)builds the model and its rig; the facing carries over.</summary>
+    private void Build(View view, Unit unit)
+    {
+        view.Model = _models.Unit(unit, unit.Side != Unit.EnemySide);
+        view.Model.RotationDegrees = new Vector3(0, view.Yaw, 0);
+        view.Pose.AddChild(view.Model);
+        view.Rig = CharacterRig.Of(view.Model);
+        if (view.Rig is { } rig)
+        {
+            var id = view.Id;
+            rig.ClipEvent += (_, name) =>
+            {
+                if (name == "step" && _views.TryGetValue(id, out var v) && v.Root.Visible) Footstep?.Invoke(id, v.Root.GlobalPosition);
+                // Linked deaths: the cyan Network collapse flickers on the clip's flicker beats.
+                if (name == "flicker" && _views.TryGetValue(id, out var f)) Flash(f, _networkFlash, 0.08f);
+            };
+        }
+    }
 
     /// <summary>What the model shows: limb conditions (and prosthetic kind) plus worn gear; the model is rebuilt when it changes.</summary>
     private static string BodyKey(Unit unit) => unit.Side + "|" +
@@ -116,6 +160,7 @@ public partial class UnitViews : Node3D
     /// <summary>
     /// Plays events in order. Steps the local side cannot see (an enemy moving in the dark) are skipped
     /// without delay. <paramref name="visible"/> is what the side saw before or after the command.
+    /// <paramref name="onStep"/> runs at each event's beat: at the start of most, at the impact of an attack.
     /// </summary>
     public async Task Replay(IReadOnlyList<ScavengeEvent> events, IReadOnlySet<int> visible, System.Action<ScavengeEvent>? onStep = null)
     {
@@ -123,69 +168,82 @@ public partial class UnitViews : Node3D
         bool Seen(Pos? p) => p is { } at && map.InBounds(at) && visible.Contains(map.Index(at));
         bool Mine(int? id) => id is { } i && _presenter.State.FindUnit(i) is { } u && u.Side == _presenter.Side;
 
+        ScavengeEvent? previous = null;
         foreach (var e in events)
         {
-            onStep?.Invoke(e);
             var actor = e.UnitId is { } a && _views.TryGetValue(a, out var av) ? av : null;
             var target = e.TargetId is { } t && _views.TryGetValue(t, out var tv) ? tv : null;
+            var unit = e.UnitId is { } uid ? _presenter.State.FindUnit(uid) : null;
+            var stepped = false;
+            void Beat()
+            {
+                if (stepped) return;
+                stepped = true;
+                onStep?.Invoke(e);
+            }
+
             switch (e.Type)
             {
                 case ScavengeEventType.Moved or ScavengeEventType.DroneFlown when actor is not null && e.Pos is { } to:
+                    Beat();
                     var from = TileGrid.FromWorld(actor.Root.Position);
                     if (!Mine(e.UnitId) && !Seen(from) && !Seen(to))
                     {
                         actor.Root.Position = TileGrid.ToWorld(to);
+                        // Heard, not seen: one footfall where it went.
+                        if (e.Type == ScavengeEventType.Moved) Footstep?.Invoke(actor.Id, actor.Root.Position);
                         break;
                     }
                     actor.Root.Visible = true;
-                    await TweenTo(actor.Root, TileGrid.ToWorld(to), MoveSeconds);
+                    await Walk(actor, unit, from, to);
                     if (!Mine(e.UnitId) && !Seen(to)) actor.Root.Visible = false;
                     break;
 
                 case ScavengeEventType.Attacked or ScavengeEventType.Missed when actor is not null && target is not null:
-                    if (!Seen(TileGrid.FromWorld(actor.Root.Position)) && !Seen(e.Pos) && !Mine(e.TargetId)) break;
-                    var home = actor.Root.Position;
-                    // A shot from range lights up the shooter for a moment (it matters most at night).
-                    if (home.DistanceTo(target.Root.Position) > TileGrid.TileSize * 1.5f) MuzzleFlash(home);
-                    var lunge = home + (target.Root.Position - home).Normalized() * 0.6f;
-                    await TweenTo(actor.Root, lunge, StrikeSeconds);
-                    if (e.Type == ScavengeEventType.Attacked)
+                    if (!Seen(TileGrid.FromWorld(actor.Root.Position)) && !Seen(e.Pos) && !Mine(e.TargetId))
                     {
-                        Flash(target, _hitFlash);
-                        var damage = DamagePattern.Match(e.Message);
-                        FloatText(target.Root.Position, damage.Success ? $"-{damage.Groups[1].Value}" : "hit", Hud.Palette.Danger);
+                        Beat();
+                        break;
                     }
-                    else FloatText(target.Root.Position, "miss", Hud.Palette.TextMuted);
-                    await TweenTo(actor.Root, home, StrikeSeconds);
-                    await Wait(0.12f);
+                    // A splash or burst logs one event per target: the swing plays once, the others only land.
+                    var followUp = previous is { Type: ScavengeEventType.Attacked or ScavengeEventType.Missed } p && p.UnitId == e.UnitId;
+                    await Strike(actor, unit, target, e, followUp, Beat);
                     break;
 
                 // From the fog: no one to animate, only the victim's hit.
                 case ScavengeEventType.Attacked or ScavengeEventType.Missed when actor is null && target is not null && e.UnitId is null:
-                    if (e.Type == ScavengeEventType.Attacked)
-                    {
-                        Flash(target, _hitFlash);
-                        var hidden = DamagePattern.Match(e.Message);
-                        FloatText(target.Root.Position, hidden.Success ? $"-{hidden.Groups[1].Value}" : "hit", Hud.Palette.Danger);
-                    }
-                    else FloatText(target.Root.Position, "miss", Hud.Palette.TextMuted);
+                    Beat();
+                    Land(target, e);
                     await Wait(0.3f);
                     break;
 
                 case ScavengeEventType.LimbLost when actor is not null && Seen(e.Pos):
+                    Beat();
                     FloatText(actor.Root.Position + Vector3.Up * 0.5f, "limb lost!", Hud.Palette.Danger);
                     await Wait(0.3f);
                     break;
 
                 case ScavengeEventType.Downed when actor is not null && (Seen(e.Pos) || Mine(e.UnitId)):
-                    var tip = CreateTween();
-                    tip.TweenProperty(actor.Pose, "rotation_degrees", new Vector3(0, 0, 80), 0.25);
-                    await ToSignal(tip, Tween.SignalName.Finished);
+                    Beat();
+                    if (actor.Rig is { } downRig && downRig.Once("downed", then: downRig.Pick("downed_loop", "idle")))
+                        await Wait(downRig.EventDelay("downed", "ground") is > 0 and var ground ? ground : 0.5f);
+                    else
+                    {
+                        var tip = CreateTween();
+                        tip.TweenProperty(actor.Pose, "rotation_degrees", new Vector3(0, 0, 80), 0.25);
+                        await ToSignal(tip, Tween.SignalName.Finished);
+                    }
                     FloatText(actor.Root.Position, "DOWN", Hud.Palette.Danger);
                     break;
 
                 case ScavengeEventType.Died or ScavengeEventType.BledOut when actor is not null && (Seen(e.Pos) || Mine(e.UnitId)):
+                    Beat();
                     FloatText(actor.Root.Position, "dead", Hud.Palette.TextMuted);
+                    if (actor.Rig is { } deathRig && deathRig.Once("death", hold: true))
+                    {
+                        // The body falls, lies a moment, then sinks away.
+                        await Wait((deathRig.Info("death")?.Length ?? 1f) + 0.5f);
+                    }
                     var sink = CreateTween();
                     sink.TweenProperty(actor.Root, "scale", new Vector3(1, 0.05f, 1), 0.3);
                     await ToSignal(sink, Tween.SignalName.Finished);
@@ -194,38 +252,283 @@ public partial class UnitViews : Node3D
                     break;
 
                 case ScavengeEventType.Extracted or ScavengeEventType.Evacuated when actor is not null:
+                    Beat();
                     FloatText(actor.Root.Position, e.Type == ScavengeEventType.Extracted ? "extracted" : "evacuated", Hud.Palette.Good);
                     await TweenTo(actor.Root, actor.Root.Position + Vector3.Up * 3, 0.35f);
                     actor.Root.Visible = false;
                     break;
 
+                case ScavengeEventType.Overwatch or ScavengeEventType.Braced when actor is not null && e.TargetId is null && Seen(e.Pos):
+                    Beat();
+                    if (actor.Rig is { } stanceRig && stanceRig.Pick(e.Type == ScavengeEventType.Overwatch ? ["overwatch_aim"] : ["crouch_brace", "take_cover"]) is { } stance)
+                    {
+                        stanceRig.Loop(stance);
+                        await Wait(0.35f);
+                    }
+                    break;
+
+                case ScavengeEventType.Lookout when actor is not null && Seen(e.Pos):
+                    Beat();
+                    if (actor.Rig?.Once("lookout") == true) await Wait(0.8f);
+                    break;
+
+                case ScavengeEventType.HackProgress or ScavengeEventType.Hacked or ScavengeEventType.HackFailed or ScavengeEventType.Overridden
+                    when actor is not null && e.Side is null && (Seen(e.Pos) || Mine(e.UnitId)):
+                    // Kneel and type at the device, then the result.
+                    if (e.Pos is { } device) Face(actor, TileGrid.ToWorld(device));
+                    if (actor.Rig is { } hackRig && hackRig.Has("hack") && previous?.UnitId != e.UnitId)
+                    {
+                        hackRig.Loop("hack");
+                        await Wait(0.9f);
+                        if (unit is not null && hackRig.Pick(ClipMap.Hold(unit)) is { } after) hackRig.Loop(after);
+                    }
+                    Beat();
+                    if (e.Type is ScavengeEventType.Hacked or ScavengeEventType.Overridden && e.Pos is { } doneAt)
+                        FloatText(TileGrid.ToWorld(doneAt), e.Type == ScavengeEventType.Hacked ? "HACKED" : "OVERRIDDEN", Hud.Palette.Amber);
+                    else if (e.Type == ScavengeEventType.HackFailed && e.Pos is { } failedAt)
+                        FloatText(TileGrid.ToWorld(failedAt), "ALARM!", Hud.Palette.Danger);
+                    if (e.Type != ScavengeEventType.HackProgress) await Wait(0.3f);
+                    break;
+
                 case ScavengeEventType.Hacked or ScavengeEventType.Overridden when e.Side is null && e.Pos is { } hackedAt && (Seen(hackedAt) || Mine(e.UnitId)):
+                    Beat();
                     FloatText(TileGrid.ToWorld(hackedAt), e.Type == ScavengeEventType.Hacked ? "HACKED" : "OVERRIDDEN", Hud.Palette.Amber);
                     await Wait(0.3f);
                     break;
 
                 case ScavengeEventType.HackFailed when e.Pos is { } alarmAt && (Seen(alarmAt) || Mine(e.UnitId)):
+                    Beat();
                     FloatText(TileGrid.ToWorld(alarmAt), "ALARM!", Hud.Palette.Danger);
                     await Wait(0.3f);
                     break;
 
+                // Thrown onto a tile (a flare) or set down (a sensor, the scout drone).
+                case ScavengeEventType.FlareLit or ScavengeEventType.SensorPlaced or ScavengeEventType.DroneDeployed
+                    when actor is not null && (Seen(e.Pos) || Mine(e.UnitId)):
+                    if (e.Pos is { } placed) Face(actor, TileGrid.ToWorld(placed));
+                    var (clip, beat) = e.Type == ScavengeEventType.FlareLit ? ("throw", "release") : ("use_item", "apply");
+                    if (actor.Rig is { } useRig && useRig.Once(clip)) await Wait(useRig.EventDelay(clip, beat));
+                    Beat();
+                    break;
+
                 case ScavengeEventType.Healed or ScavengeEventType.Stabilized or ScavengeEventType.Revived when target is not null:
+                    if (actor is not null && actor != target)
+                    {
+                        Face(actor, target.Root.Position);
+                        if (actor.Rig is { } medRig && medRig.Once("use_item")) await Wait(medRig.EventDelay("use_item", "apply"));
+                    }
+                    else if (actor?.Rig is { } selfRig && selfRig.Once("use_item")) await Wait(selfRig.EventDelay("use_item", "apply"));
+                    Beat();
                     Flash(target, _healFlash);
                     FloatText(target.Root.Position, e.Type.ToString().ToLowerInvariant(), Hud.Palette.Good);
+                    if (e.Type == ScavengeEventType.Revived && target.Rig is { } upRig && upRig.Pick("idle") is { } idle) upRig.Loop(idle);
                     await Wait(0.3f);
                     break;
+
+                case ScavengeEventType.PickedUp when actor is not null && Seen(e.Pos):
+                    Beat();
+                    if (actor.Rig?.Once("use_item") == true) await Wait(0.4f);
+                    break;
+
+                case ScavengeEventType.PickedUpBody or ScavengeEventType.PutDown when actor is not null:
+                    Beat();
+                    if (target is not null) Face(actor, target.Root.Position);
+                    if (actor.Rig?.Once("use_item") == true) await Wait(0.5f);
+                    break;
+
+                default:
+                    Beat();
+                    break;
             }
+            previous = e;
         }
     }
 
-    private async Task TweenTo(Node3D node, Vector3 to, float seconds)
+    /// <summary>
+    /// Walks the unit tile by tile from <paramref name="from"/> to <paramref name="to"/> (a view-side path over the tiles the
+    /// unit can cross), turning toward each step; the walk clip (carry_walk when carrying, run on long paths) plays at the
+    /// pace the tween goes, and its footfalls make the step sounds. Rigless models glide.
+    /// </summary>
+    private async Task Walk(View view, Unit? unit, Pos from, Pos to)
     {
-        var tween = CreateTween().SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
+        var path = unit is null ? [to] : TilePath(unit, from, to);
+        var rig = view.Rig;
+        var gait = rig is null || unit is null ? null : rig.Pick(path.Count > 3 && unit.CarryingId is null ? ["run", "walk"] : ClipMap.Move(unit));
+        var perTile = gait == "run" ? RunTileSeconds : TileSeconds;
+        var seconds = Mathf.Min(perTile * path.Count, MaxWalkSeconds) / path.Count;
+        if (rig is null || gait is null || gait == "hover")
+        {
+            // Rigless (or flying): one glide, a footfall per tile.
+            var glide = Mathf.Max(MoveSeconds, seconds * path.Count * 0.6f);
+            Face(view, TileGrid.ToWorld(to));
+            if (rig is null && unit?.Kind != UnitKind.Drone) Footstep?.Invoke(view.Id, TileGrid.ToWorld(to));
+            await TweenTo(view.Root, TileGrid.ToWorld(to), glide);
+            return;
+        }
+
+        var stride = gait == "run" ? RunStride : WalkStride;
+        var length = rig.Info(gait)?.Length ?? 1f;
+        var cell = TileGrid.ToWorld(new Pos(1, 0)).DistanceTo(TileGrid.ToWorld(new Pos(0, 0)));
+        rig.Loop(gait);
+        foreach (var step in path)
+        {
+            var next = TileGrid.ToWorld(step);
+            var distance = view.Root.Position.DistanceTo(next);
+            // The clip's cycle covers `stride` metres at speed 1: match it to the tween so feet do not skate.
+            rig.SpeedScale = Mathf.Clamp(distance / Mathf.Max(0.01f, seconds) * length / stride, 0.6f, 3f);
+            Face(view, next, turnSeconds: 0.08f);
+            await TweenTo(view.Root, next, seconds * distance / Mathf.Max(0.01f, cell), linear: true);
+        }
+        rig.SpeedScale = 1f;
+        if (unit is not null && rig.Pick(ClipMap.Hold(unit)) is { } hold) rig.Loop(hold);
+    }
+
+    /// <summary>
+    /// The tiles walked from one tile to another: the cheapest 8-way path over what this unit can cross (no corner
+    /// cutting), which is what Core's walk allows; straight-line moves (and jumps) get a straight line. Purely visual.
+    /// </summary>
+    private List<Pos> TilePath(Unit unit, Pos from, Pos to)
+    {
+        var map = _presenter.State.Map;
+        var movement = _presenter.Sim.Profile(unit).Movement;
+        int? Cost(Pos p) => map.InBounds(p) ? movement.Cost(map[p]) : null;
+        var best = new Dictionary<Pos, int> { [from] = 0 };
+        var back = new Dictionary<Pos, Pos>();
+        var queue = new PriorityQueue<Pos, int>();
+        queue.Enqueue(from, 0);
+        var limit = from.Chebyshev(to) * 4 + 8;
+        while (queue.TryDequeue(out var p, out var cost))
+        {
+            if (p == to) break;
+            if (cost > best[p] || cost > limit) continue;
+            foreach (var d in Pos.Neighbours8)
+            {
+                var n = p + d;
+                if (Cost(n) is not { } step) continue;
+                if (d.X != 0 && d.Y != 0 && Cost(new Pos(p.X + d.X, p.Y)) is null && Cost(new Pos(p.X, p.Y + d.Y)) is null) continue;
+                var c = cost + step * 10 + (d.X != 0 && d.Y != 0 ? 4 : 0);
+                if (best.TryGetValue(n, out var b) && b <= c) continue;
+                best[n] = c;
+                back[n] = p;
+                queue.Enqueue(n, c);
+            }
+        }
+        if (!back.ContainsKey(to)) return Line(from, to);
+        var path = new List<Pos>();
+        for (var p = to; p != from; p = back[p]) path.Add(p);
+        path.Reverse();
+        return path.Count > from.Chebyshev(to) * 2 + 2 ? Line(from, to) : path;
+    }
+
+    private static List<Pos> Line(Pos from, Pos to)
+    {
+        var steps = Mathf.Max(1, from.Chebyshev(to));
+        var dx = (to.X - from.X) / (float)steps;
+        var dy = (to.Y - from.Y) / (float)steps;
+        return Enumerable.Range(1, steps).Select(i => new Pos(from.X + Mathf.RoundToInt(dx * i), from.Y + Mathf.RoundToInt(dy * i))).ToList();
+    }
+
+    /// <summary>
+    /// An attack: turn to the target, play the weapon's clip and, on its impact / fire event, land the hit (flash,
+    /// pop-up, hit_react, sound via <paramref name="beat"/>). Rigless attackers lunge as before.
+    /// </summary>
+    private async Task Strike(View actor, Unit? unit, View target, ScavengeEvent e, bool followUp, System.Action beat)
+    {
+        Face(actor, target.Root.Position);
+        // A shot from range lights up the shooter for a moment (it matters most at night), as the round leaves.
+        var ranged = actor.Root.Position.DistanceTo(target.Root.Position) > TileGrid.TileSize * 1.5f;
+        var inner = beat;
+        beat = () =>
+        {
+            if (ranged && !followUp) MuzzleFlash(actor.Root.Position);
+            inner();
+        };
+        var rig = actor.Rig;
+        var actionId = unit is null ? null : Audio.ScavengeAudio.ActionId(_presenter.Sim, unit, e.Message);
+        var action = unit is null || actionId is null ? null : _presenter.Sim.Profile(unit).Action(actionId);
+        var clip = rig?.Pick(ClipMap.Attack(actionId, action?.Pattern));
+        if (followUp && clip is not null)
+        {
+            beat();
+            Land(target, e);
+            await Wait(0.12f);
+            return;
+        }
+        if (rig is not null && clip is not null && rig.Once(clip))
+        {
+            var info = rig.Info(clip);
+            var hit = new[] { ClipMap.Impact, ClipMap.Fire, ClipMap.Pulse }.Select(evt => rig.EventDelay(clip, evt)).FirstOrDefault(d => d > 0);
+            if (hit <= 0) hit = (info?.Length ?? 0.6f) * 0.45f;
+            await Wait(hit);
+            beat();
+            Land(target, e);
+            // Let the follow-through play, but do not hold the turn for the whole recovery.
+            await Wait(Mathf.Clamp((info?.Length ?? 0.6f) - hit, 0.15f, 0.45f));
+            return;
+        }
+
+        var home = actor.Root.Position;
+        var lunge = home + (target.Root.Position - home).Normalized() * 0.6f;
+        await TweenTo(actor.Root, lunge, StrikeSeconds);
+        beat();
+        Land(target, e);
+        await TweenTo(actor.Root, home, StrikeSeconds);
+        await Wait(0.12f);
+    }
+
+    /// <summary>The blow lands: hit flash, damage pop-up and hit_react, or a "miss".</summary>
+    private void Land(View target, ScavengeEvent e)
+    {
+        if (e.Type == ScavengeEventType.Attacked)
+        {
+            Flash(target, _hitFlash);
+            var damage = DamagePattern.Match(e.Message);
+            FloatText(target.Root.Position, damage.Success ? $"-{damage.Groups[1].Value}" : "hit", Hud.Palette.Danger);
+            if (target.Rig is { } rig && rig.Current is not ("death" or "downed" or "downed_loop")) rig.Once("hit_react");
+        }
+        else FloatText(target.Root.Position, "miss", Hud.Palette.TextMuted);
+    }
+
+    /// <summary>Turns the model toward a world point (models face +Z).</summary>
+    private void Face(View view, Vector3 at, float turnSeconds = 0.12f)
+    {
+        var dir = at - view.Root.Position;
+        if (new Vector2(dir.X, dir.Z).LengthSquared() < 0.0001f) return;
+        var yaw = Mathf.RadToDeg(Mathf.Atan2(dir.X, dir.Z));
+        // The short way round.
+        var from = view.Model.RotationDegrees.Y;
+        yaw = from + Mathf.Wrap(yaw - from, -180f, 180f);
+        view.Yaw = yaw;
+        var tween = CreateTween();
+        tween.TweenProperty(view.Model, "rotation_degrees", new Vector3(0, yaw, 0), turnSeconds);
+    }
+
+    /// <summary>A carried unit rides on its carrier's back socket, lying across the shoulders.</summary>
+    public override void _Process(double delta)
+    {
+        if (_presenter is null) return;
+        foreach (var view in _views.Values)
+        {
+            if (_presenter.State.FindUnit(view.Id) is not { CarriedById: { } carrierId } ||
+                !_views.TryGetValue(carrierId, out var carrier) || carrier.Rig is null ||
+                SurvivorDressing.Skeleton(carrier.Model) is not { } skeleton || skeleton.FindBone("socket_back") < 0) continue;
+            var back = SurvivorDressing.SocketNode(skeleton, "socket_back");
+            if (!back.IsInsideTree()) continue;
+            // Turned onto its side across the shoulders: the hips (about 0.9 m up the body) on the socket.
+            view.Pose.GlobalTransform = back.GlobalTransform * new Transform3D(new Basis(Vector3.Back, Mathf.Pi / 2), new Vector3(0.9f, 0.12f, -0.12f));
+            view.Model.RotationDegrees = Vector3.Zero;
+            view.Ring.Visible = false;
+        }
+    }
+
+    private async Task TweenTo(Node3D node, Vector3 to, float seconds, bool linear = false)
+    {
+        var tween = CreateTween().SetTrans(linear ? Tween.TransitionType.Linear : Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
         tween.TweenProperty(node, "position", to, seconds);
         await ToSignal(tween, Tween.SignalName.Finished);
     }
 
-    private async Task Wait(float seconds) => await ToSignal(GetTree().CreateTimer(seconds), SceneTreeTimer.SignalName.Timeout);
+    private async Task Wait(float seconds) => await ToSignal(GetTree().CreateTimer(Mathf.Max(0.01f, seconds)), SceneTreeTimer.SignalName.Timeout);
 
     /// <summary>A short warm light at a shooter, fading out in a third of a second.</summary>
     private void MuzzleFlash(Vector3 at)
@@ -242,11 +545,11 @@ public partial class UnitViews : Node3D
     }
 
     /// <summary>Tints every mesh of the unit for a moment.</summary>
-    private void Flash(View view, Material overlay)
+    private void Flash(View view, Material overlay, float seconds = 0.25f)
     {
         var meshes = view.Model.FindChildren("*", nameof(MeshInstance3D), true, false).OfType<MeshInstance3D>().ToList();
         foreach (var m in meshes) m.MaterialOverlay = overlay;
-        GetTree().CreateTimer(0.25).Timeout += () =>
+        GetTree().CreateTimer(seconds).Timeout += () =>
         {
             foreach (var m in meshes.Where(GodotObject.IsInstanceValid)) m.MaterialOverlay = null;
         };

@@ -71,6 +71,13 @@ public partial class ColonyScreen : Node3D
         if (DebugCapture.HasFlag("--world-demo") && IsFreshGame) RunWorldDemo();
         if (DebugCapture.HasFlag("--night-demo") && IsFreshGame) RunNightDemo();
         if (int.TryParse(DebugCapture.Value("--hour"), out var hour)) JumpToHour(hour);
+        // `--anim-demo=colony` (with --demo): close on the Woodcutter and Farm so the work loops read (FrameRecorder).
+        if (DebugCapture.Value("--anim-demo") == "colony" && _session.Sim.State.Buildings.FirstOrDefault(b => b.DefId == "woodcutter") is { } cutter)
+        {
+            camera.Focus(layout.Center(cutter.Plot) + new Vector3(-TownLayout.PlotSize * 0.25f, 0, TownLayout.PlotSize * 0.25f));
+            camera.ZoomTo(20);
+            _session.SetSpeed(1);
+        }
         if (DebugCapture.HasFlag("--no-select"))
         {
             _hud.Roster.Select(null);

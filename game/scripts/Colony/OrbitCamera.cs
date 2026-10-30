@@ -34,6 +34,13 @@ public partial class OrbitCamera : Node3D
 
     public void Focus(Vector3 point) => Position = new Vector3(point.X, 0, point.Z);
 
+    /// <summary>Sets the zoom (camera distance, clamped); debug captures frame a few figures with it.</summary>
+    public void ZoomTo(float distance)
+    {
+        _distance = Mathf.Clamp(distance, MinDistance, MaxDistance);
+        Apply();
+    }
+
     public override void _Process(double delta)
     {
         var dt = (float)delta;

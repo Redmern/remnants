@@ -36,7 +36,7 @@
     "colony.expedition_heading_home": [],
     "colony.expedition_returned": "ui_expedition_return",
     "colony.drone_scouted": [],
-    "colony.drone_lost": [],
+    "colony.drone_lost": "drone_destroyed",
     "colony.drone_returned": "ui_expedition_return",
     "colony.night_shift": [],
     "colony.tired": [],
@@ -76,15 +76,21 @@
     "scavenge.party_done": [],
     "scavenge.finished": [],
 
-    "//moves": "scavenge.moved.{who} is the unit's own movement sound; walkers also fire scavenge.step.{terrain}.",
+    "//moves": "scavenge.moved.{who} is the unit's own movement sound, once per move. Footfalls come from the walk clips' step events (CharacterRig): scavenge.step.{who} when the unit kind has its own feet below, else scavenge.step.{terrain} for walkers.",
     "scavenge.moved": [],
     "scavenge.moved.linked": "linked_servo",
-    "scavenge.moved.linked_warden": "warden_stomp",
+    "scavenge.moved.linked_warden": [],
     "scavenge.step": "footstep_concrete",
     "scavenge.step.floor": "footstep_concrete",
     "scavenge.step.rubble": "footstep_rubble",
     "scavenge.step.cover": "footstep_gravel",
-    "scavenge.step.water": "footstep_puddle",
+    "scavenge.step.water": "footstep_water",
+    "scavenge.step.pylon": "footstep_metal",
+    "scavenge.step.husk": "footstep_husk",
+    "scavenge.step.husk_crawler": "footstep_husk",
+    "scavenge.step.linked": "footstep_linked",
+    "scavenge.step.linked_warden": "footstep_warden",
+    "colony.step": "footstep_dirt",
 
     "scavenge.attack": "wpn_punch",
     "scavenge.attack.unseen": [],
@@ -121,10 +127,10 @@
     "scavenge.died.survivor": "survivor_death",
     "scavenge.died.npc": "survivor_death",
     "scavenge.died.linked": "linked_death",
-    "scavenge.died.linked_drone": "linked_death",
+    "scavenge.died.linked_drone": "drone_destroyed",
     "scavenge.died.linked_warden": "linked_death",
     "scavenge.died.turret": "linked_death",
-    "scavenge.died.drone": "linked_death",
+    "scavenge.died.drone": "drone_destroyed",
 
     "scavenge.bark": "husk_groan",
     "scavenge.bark.linked": "linked_scan",
@@ -180,12 +186,12 @@
     "scavenge.device_disabled": "linked_death",
     "scavenge.relay_disrupted": [],
     "scavenge.limb_locked": "hack_fail_alarm",
-    "//drones": "The pipeline has no drone_deploy / drone_mark / drone_destroyed yet: stand-ins until it does. The hum is ambience.drone.",
-    "scavenge.drone_deployed": "hack_start",
+    "//drones": "The hum is ambience.drone.",
+    "scavenge.drone_deployed": "drone_deploy",
     "scavenge.drone_flown": [],
     "scavenge.drone_recalled": [],
     "scavenge.drone_landed": [],
-    "scavenge.marked": "scanner_sweep",
+    "scavenge.marked": "drone_mark",
 
     "music.extraction_sting": "sting_extraction",
 
@@ -228,6 +234,12 @@
     "footstep_rubble": { "cooldown": 0.12, "maxVoices": 2, "pitchJitter": 0.08, "volumeJitter": 2, "unitSize": 10, "maxDistance": 60 },
     "footstep_gravel": { "cooldown": 0.12, "maxVoices": 2, "pitchJitter": 0.08, "volumeJitter": 2, "unitSize": 10, "maxDistance": 60 },
     "footstep_puddle": { "cooldown": 0.12, "maxVoices": 2, "pitchJitter": 0.08, "volumeJitter": 2, "unitSize": 10, "maxDistance": 60 },
+    "footstep_water": { "cooldown": 0.12, "maxVoices": 2, "pitchJitter": 0.08, "volumeJitter": 2, "unitSize": 10, "maxDistance": 60 },
+    "footstep_metal": { "cooldown": 0.12, "maxVoices": 2, "pitchJitter": 0.08, "volumeJitter": 2, "unitSize": 10, "maxDistance": 60 },
+    "footstep_husk": { "cooldown": 0.1, "maxVoices": 2, "pitchJitter": 0.1, "volumeJitter": 2, "unitSize": 10, "maxDistance": 60 },
+    "footstep_linked": { "cooldown": 0.12, "maxVoices": 2, "pitchJitter": 0.06, "volumeJitter": 2, "unitSize": 10, "maxDistance": 60 },
+    "footstep_warden": { "cooldown": 0.2, "maxVoices": 1, "pitchJitter": 0.05, "unitSize": 14, "maxDistance": 80 },
+    "footstep_dirt": { "volumeDb": -8, "cooldown": 0.08, "maxVoices": 3, "pitchJitter": 0.1, "volumeJitter": 3, "unitSize": 6, "maxDistance": 30 },
     "linked_servo": { "cooldown": 0.15, "maxVoices": 2, "pitchJitter": 0.05, "unitSize": 10, "maxDistance": 60 },
     "warden_stomp": { "cooldown": 0.2, "maxVoices": 2, "pitchJitter": 0.04, "unitSize": 16, "maxDistance": 90 },
 
@@ -342,20 +354,23 @@
     "dust_storm": ["dust_storm_loop", "wind_loop"]
   },
 
-  "//zones": "The pipeline has no zone beds yet (amb_zone_*): wind stands in outdoors; the Network hum waits for its own loop.",
+  "//zones": "Zone -> tags -> one ambience bed per tag (ScavengeAudio); weather adds wind and rain on top.",
   "zones": {
     "outskirts": ["ruins"],
-    "scrapyard_flats": ["ruins"],
+    "scrapyard_flats": ["scrapyard"],
     "suburb_ruins": ["ruins"],
-    "flooded_mall": ["ruins"],
+    "flooded_mall": ["flooded"],
     "rail_depot": ["rail"],
     "network_relay": ["network", "ruins"],
-    "core_spire": ["network"]
+    "core_spire": ["spire", "network"]
   },
 
   "zoneAmbience": {
-    "ruins": "wind_loop",
-    "rail": "wind_loop",
-    "network": []
+    "ruins": "zone_ruins_loop",
+    "scrapyard": "zone_scrapyard_loop",
+    "flooded": "zone_flooded_loop",
+    "rail": "zone_rail_loop",
+    "network": "zone_network_loop",
+    "spire": "zone_spire_loop"
   }
 }

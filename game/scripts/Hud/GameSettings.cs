@@ -53,7 +53,7 @@ public static class GameSettings
         EnsureBuses();
         Hotkeys.Install();
         // A screenshot run (DebugCapture) keeps the window it was given, so captures match the asked size.
-        Apply(window: !DebugCapture.HasFlag("--keep-window") && Godot.OS.GetCmdlineUserArgs().All(a => !a.StartsWith("--screenshot")));
+        Apply(window: !DebugCapture.HasFlag("--keep-window") && Godot.OS.GetCmdlineUserArgs().All(a => !a.StartsWith("--screenshot") && !a.StartsWith("--record")));
         _root.SizeChanged += ApplyScale;
         DebugCapture.Attach(tree);
     }

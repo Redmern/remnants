@@ -10,7 +10,8 @@ namespace Remnants.Game.Audio;
 
 /// <summary>
 /// The scavenge screen's sound, added by <see cref="ScavengeScreen"/>, which hands it each event as the replay
-/// reaches it (<see cref="Step"/>), so sounds land with the animation. Events are already what the local side may
+/// reaches it (<see cref="Step"/>: an attack's at its clip's impact / fire event), so sounds land with the animation;
+/// footfalls come from the walk clips (<see cref="Footstep"/>). Events are already what the local side may
 /// hear (<see cref="FogLog"/>). Names: <c>scavenge.{event}</c>, qualified where it matters — moves and deaths by who
 /// (<c>scavenge.moved.husk</c>, <c>scavenge.died.survivor</c>), attacks by action (<c>scavenge.attack.aimed_shot</c>,
 /// then <c>scavenge.hit</c> / <c>scavenge.miss</c>), barks by enemy, overwatch shots apart from going on overwatch,
@@ -65,12 +66,29 @@ public partial class ScavengeAudio : Node3D
     public void Step(ScavengeEvent e)
     {
         var at = e.Pos is { } p ? TileGrid.ToWorld(p) + Vector3.Up : (Vector3?)null;
-        foreach (var name in EventNames(_presenter.Sim, e)) AudioManager.Fire(name, at);
+        // Moves keep the unit's own sound (servos); their footfalls come from the walk clips (Footstep).
+        foreach (var name in EventNames(_presenter.Sim, e))
+            if (e.Type != ScavengeEventType.Moved || !name.StartsWith("scavenge.step")) AudioManager.Fire(name, at);
         // The first work on a device starts the hack; later rounds tick.
         if (e.Type == ScavengeEventType.HackProgress && e.Pos is { } device && _hacking.Add(device)) AudioManager.Fire("scavenge.hack_start", at);
         if (e.Type is ScavengeEventType.Hacked or ScavengeEventType.HackFailed && e.Pos is { } done) _hacking.Remove(done);
         if (e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed or ScavengeEventType.Ambushed) _attackRound = e.Round;
         CheckContacts();
+    }
+
+    /// <summary>
+    /// A footfall (a walk clip's step event, or one per move for a rigless or unseen unit): the unit kind's own feet
+    /// (<c>scavenge.step.husk</c>) when the map has them, else the ground under it for walkers (<c>scavenge.step.rubble</c>).
+    /// </summary>
+    public void Footstep(int unitId, Vector3 at)
+    {
+        if (_presenter.State.FindUnit(unitId) is not { } unit || AudioManager.Instance?.Map is not { } map) return;
+        var own = $"scavenge.step.{Who(unit)}";
+        var tile = TileGrid.FromWorld(at);
+        var name = map.Events.ContainsKey(own) ? own
+            : Walks(unit) && _presenter.State.Map.InBounds(tile) ? $"scavenge.step.{AudioNames.Snake(_presenter.State.Map[tile].ToString())}"
+            : null;
+        if (name is not null) AudioManager.Fire(name, at + Vector3.Up * 0.2f);
     }
 
     /// <summary>The event names one scavenge event fires, most specific first in each name (see the class summary).</summary>

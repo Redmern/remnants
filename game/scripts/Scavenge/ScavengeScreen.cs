@@ -76,6 +76,7 @@ public partial class ScavengeScreen : Node3D
         _audio = new Audio.ScavengeAudio { Name = "Audio" };
         AddChild(_audio);
         _audio.Setup(_presenter, _camera, _hud);
+        _units.Footstep += _audio.Footstep;
         Wire();
         SelectActing();
         _camera.Focus(PartyCentre());
@@ -84,6 +85,7 @@ public partial class ScavengeScreen : Node3D
 
         if (Fog.FogDemo.Requested) _ = FogDemoScript();
         if (TechDemo.Requested) _ = TechDemoScript();
+        if (AnimDemo.Requested) _ = AnimDemoScript();
         if (float.TryParse(DebugValue("--zoom"), out var zoom)) _camera.Camera.Size = zoom;
         if (int.TryParse(DebugValue("--autoplay"), out var steps)) _ = Autoplay(steps);
         if (int.TryParse(DebugValue("--select-unit"), out var unitId)) CallDeferred(MethodName.SelectForCapture, unitId);
