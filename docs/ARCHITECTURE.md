@@ -43,16 +43,18 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
 - `Scavenge/` — the tactical mode (headless):
   - `ScavengeData` + loader (items, enemies, zones, scavenge rules), `ScavengeDefinitions`. It derives the quality
     variants of every equippable item (`QualityVariant`, `QualityOf`).
-  - `Devices` — field effects of equipped devices (signal jammer; scanner hook).
+  - `Devices` — field effects of equipped devices (signal jammer; scanner).
+  - `Detection` — who sees whom inside sight: stealth vs detection, flares, reveals, scanners, contacts (see "Fog of war").
+  - `FogLog` — which events a side hears and how (hidden actors become anonymous); shared by single player and `SideFog`.
   - `TileMap`/`Pos` (terrain grid, exits, symmetric Bresenham LOS), `MapGenerator` (zone template +
     seed → rooms, scatter, exits, carved route), `NewScavenge` (places parties, enemies, caches, NPCs).
   - `Unit` (party survivor, enemy or NPC: side, owner player, body, gear, pack, AI memory).
   - `ProfileDeriver` — **the core of the mode**: attributes + equipped gear + body state →
     `UnitProfile` (`MovementProfile` with chess-like modes King/Rook/Bishop/Queen/Knight and terrain
-    costs; `ActionProfile`s; AP; initiative; sight; carry; armor; dodge). Pure and never stored.
+    costs; `ActionProfile`s; AP; initiative; sight; carry; armor; dodge; stealth; detection; brace cover). Pure and never stored.
   - `Movement` (reachable tiles per mode, distance fields; the first step of a move always fits, so a range-1 unit can
     slog onto rubble or water), `Combat` (reach, cover, hit chance,
-    body-part injuries, limb loss, Downed → bleed-out → Dead), `Visibility` (per-side fog + explored).
+    body-part injuries, limb loss, Downed → bleed-out → Dead; ambushes), `Visibility` (per-side sight + explored, lit tiles).
   - `ScavengeSim` — `Execute(IScavengeCommand)`; initiative turn order across all units of all
     sides; AI turns (`ScavengeAi`: Husk, Linked squad, recruit followers) run inside it. See "Linked squad AI" below.
   - `Network` — the Linked relay graph (groups, shared knowledge, squad focus, pylon alarm and reinforcements).
@@ -140,6 +142,16 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   return after the server's snapshot), reports `ScavengeError`s as feedback, and
   answers UI questions by asking Core (`Reachable`, `Combat.CheckReach` / `HitChance`, `VisibleTo`, explored tiles).
   `TakeNewEvents` hands each command's events (including the AI turns it set off) to the views for replay.
+- `Scavenge/Fog/FogOverlay` — the fog's map layer (purely visual, rebuilt on sync): contact `?` markers
+  (`contact_marker`, tinted amber, `?!` red for where shots came from), overwatch eye rings (`overwatch_marker`) and the
+  covered radius for the local side's watchers, brace/lookout tags, a red ring on revealed hostiles, burning flares
+  (`item_flare_lit` + a light + the lit disc), the local side's motion sensors (`item_motion_sensor` + radius), and a
+  red incoming-fire streak from the source to the victim when one of ours is ambushed. `Scavenge/Ui/StancePanel` —
+  Overwatch / Brace / Lookout buttons for the acting unit. Both are separate from the other views so the HUD restyle can
+  take them on alone. Flares and sensors are "use" items that target a tile (highlighted in range); attack previews say
+  `AMBUSH 85% · 8–14` when the target's side cannot see the attacker. Units show only when the side sees them
+  (`IScavengeDriver.SeenUnits`), not merely their tile. `--fog-demo` stages an ambush with a unit on overwatch
+  (`Fog/FogDemo`, `ScavengeScreen.FogDemo`), with `--screenshot=PATH --quit` saving the moment.
 - `ScavengeScreen` builds the scene: `MapView` (models per tile, exits, fog: unexplored tiles hidden, remembered ones
   dimmed with a material overlay; framed move/attack/use highlights). Tile models are picked from manifest tags, so new
   variants drop in via `tools/sync-assets.sh`: ground = `tile`+`ground` (concrete base with patches of the others, picked by
@@ -174,7 +186,8 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   with a `CommandError` code. This is also the future client→server intent format.
 - **Tick order:** production (+training) → crafting → medical → food → relationships (mood, affinity, couples) →
   family (births, conception) → housing → growth (aging, growing up).
-- **Scavenge commands** (`Move`, `Attack`, `UseItem`, `PickUp`, `Recruit`, `EndTurn`, `Extract`) carry a
+- **Scavenge commands** (`Move`, `Attack`, `UseItem` (on a unit, or a tile with `At`), `PickUp`, `Recruit`, `SetStance`
+  (Overwatch / Brace), `Lookout`, `EndTurn`, `Extract`) carry a
   `PlayerId` + `UnitId`; Core checks ownership and whose turn it is and returns a `ScavengeResult`
   with a `ScavengeError`. Several players' parties can share one instance (each party is a side).
   A party is done when it has no conscious controllable unit left (its downed die, recruits stay);
@@ -286,11 +299,12 @@ All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `fo
 - **Gear in the field**: crafted gear is the same item data as loot, so it drives `ProfileDeriver` (riot armor sets King
   1, climbing gear cheapens rubble, a grappling hook adds the knight jump, quality scales the numbers). Devices: a
   **signal jammer** in the Tool slot jams Linked within its radius (they stop taking cover; M8's squad AI should also
-  lose reinforcements and shared targets there). A **scanner** gives sight; `Devices.ScannedBy` is the hook for seeing
-  caches/units through walls, not used by the scavenge view yet. Ammo is not modelled (guns do not use it).
+  lose reinforcements and shared targets there). A **scanner** gives sight and detection, and its side sees hostiles
+  within its radius through walls and stealth (see "Fog of war"). Ammo is not modelled (guns do not use it).
 - **Saves**: version 5 adds `ColonyState.Zones` and the expedition's road (`travelTicks`, `arrivalTick`, `depletion`,
   `pendingResult`, `returnTick`); version 4 and older load with zones as the data starts and an expedition already in
-  its zone. Scavenge saves are version 2 (alarm, reinforcement waves, suppression); version 1 loads.
+  its zone. Scavenge saves are version 2 (alarm, reinforcement waves, suppression); version 1 loads. Colony version 6 /
+  scavenge version 3 add the fog of war (see "Fog of war").
 - **Saves (v4)**: version 4 stores queues, `NextOrderId` and `KnownBlueprints`. Older saves migrate: a building's
   `recipeId`/`craftProgress`/`craftPaid` becomes one repeating order, and the old generic `blueprint` item becomes
   `bp_scanner` (`SaveGame.LegacyBlueprintItem`).
@@ -298,6 +312,56 @@ All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `fo
   ×1/×5/repeat, locked reasons, inputs, quality odds). The top bar's Items button opens `InventoryPanel` (items by kind
   and quality, studied blueprints, Study buttons). Buildings render `{type}_l{level}` models, falling back to the
   nearest lower level.
+
+## Fog of war
+
+Scavenging is played half-blind: you see tiles, not necessarily who stands on them. Everything is in Core
+(`Detection`, `Combat`, `ScavengeSim`, `FogLog`), tuned in `scavenge.json` `fog`, deterministic (no rolls: the same
+positions and gear always give the same answer), and per side.
+
+- **Stealth vs detection** (`ProfileDeriver`): stealth = `base + (Agility − 50)·perAgility − load·perKg + gear stealth +
+  enemy stealth + (leg efficiency − 1)·legEfficiency` (rag coat +3, scout jacket +4, camo cloak +15, riot armor −10; loot
+  is loud; hurt or peg legs are loud; the Linked +25, Husks −2). Detection = `(base + (Perception − 50)·perPerception +
+  gear detection + lookout/overwatch bonus) · head efficiency` (binoculars +10, scanner +15).
+- **Seen** (`Detection.SideSees`): a hostile in a side unit's sight (range + line of sight) is seen when
+  `detection − stealth − (distance − closeRange)·perTile ≥ 0`; within `closeRange` always. A side also sees everyone on a
+  tile a **flare** lights (every side does), a unit **revealed** to it (muzzle flash, motion sensor) while one of its
+  units has line of sight within `revealSightMultiplier` × its sight, and hostiles within a working **scanner**'s radius
+  (through walls and stealth). The AI uses the same rules (`Detection.Spots`; Network sharing; Husk spotting).
+- **Contacts** (`ScavengeState.Contacts`, per side, no identity, up to `contactFuzz` tiles off, gone after
+  `contactRounds`): gunfire heard within the action's `noise` (Noise), unseen hostiles moving within `hearMovement`
+  (Movement), where an attack on one of the side's units came from (Attack, with `Toward` = the victim), a motion sensor
+  going off (Sensor). Only party sides keep contacts; the AI hears through `MakeNoise` as before.
+- **Ambush** (`Combat.AmbushAgainst`): an attack whose target's side does not see the attacker as it resolves gets
+  `ambush.hitBonus`, ignores the target's (positive) dodge and multiplies damage by `damageMultiplier`. A **braced** target
+  gives no bonus; an ally next to the target ("watching each other's backs") removes `backsReduction` of it. Afterwards
+  the attacker is revealed to each side it hit at for the action's `reveal` rounds (guns 2, melee and zappers 1), those
+  sides get an Attack contact, other sides in earshot a Noise contact, and overwatch may react. Previews
+  (`Combat.ChanceToHit`) include it. Attacking a unit your side cannot see fails with `NotVisible`.
+- **Defenses**: `SetStance(Overwatch)` (1 AP; ends the turn; the AP left become reactions, max 2): a free reaction attack
+  (−`accuracyPenalty`) at each hostile that moves into, or reveals itself (by firing, or in a flare) within, its sight and
+  reach, until its next turn; reactions do not set off reactions; +10 detection meanwhile. `SetStance(Brace)` (1 AP; ends
+  the turn): no ambush bonus against it, +`coverBonus` cover, `nextTurnApPenalty` AP less next turn. `Lookout` (1 AP;
+  does not end the turn): +sight and +detection (`detectionBonus + Perception·detectionPerPerception`) until its next
+  turn. Stances and lookout end when the unit's next turn starts.
+- **Gear** (`items.json`): Flare (consumable, `UseItem` at a tile within 5: lights radius 3 for 3 rounds; Electronics
+  Lab L1, loot), Motion Sensor (placed on a tile within 1: reveals and privately alerts its side (`ScavengeEvent.Side`)
+  when a hostile moves into radius 3; Electronics Lab L1, loot tier 2), Camo Cloak (body, +15 stealth; Tailor L2, loot
+  tier 2), Scanner (sees hostiles within 6 through walls and stealth), Binoculars (+10 detection).
+- **The Linked** (`ScavengeAi`): a Linked that knows of nobody waits on overwatch (`fog.ai.linkedLurk`) instead of
+  wandering, and one with AP left after closing in does too; position scoring adds `fog.ai.hiddenWeight` for tiles no
+  known hostile would detect it on and scores shots with the ambush bonus, so they fire from the fog; drones (Perception
+  85) spot for the group; a signal jammer cuts a Linked off from that shared knowledge. Husks do not plan ambushes but
+  can still stumble out of the dark.
+- **Log** (`FogLog`): an event whose actor the side did not see (before or after) shows only in its `Anonymous` form
+  ("Ana was ambushed from the fog (+20% hit)", "Ana was hit in the Torso for 12 from the fog"), or not at all; side-only
+  events stay with their side. The local driver and the server's `SideFog` both use it.
+- **Saves**: scavenge save version 3 (stances, lookout, contacts, reveals, flares, sensors); colony save version 6 carries
+  it; older saves load with none of it.
+- Scenario tests: `FogTests` (stealth derivation, detection range, lookout, NotVisible, ambush + reveal + contact +
+  anonymous log, brace, backs, overwatch reactions incl. on a revealed ambusher, flares, sensors, scanner, noise
+  contacts, contact expiry, Linked lurking, drone spotting with and without a jammer, determinism, save migration);
+  `FogNetTests` (no-leak multiplayer cases).
 
 ## Linked squad AI
 
@@ -352,7 +416,8 @@ All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `fo
   meals, crafting (queue limits, quality roll), expedition (party size per Town Hall level, rations, recruit ages), medical (heal/worsen rates, medicine use),
   life (growth stages and rates), relationships (affinity), family (conception, pregnancy, baby names), mood,
   new-game setup (counts, age/stat ranges, stock, starting items, starting buildings, names).
-- `items.json` — weapons (actions), clothing/armor, tools (movement modifiers, carry, sight),
+- `items.json` — weapons (actions, with `noise` and `reveal`), clothing/armor (with `stealth`), tools (movement modifiers, carry, sight, `detection`),
+  flares and motion sensors (`use.lightRadius`/`lightRounds`, `use.sensorRadius`: used on a tile),
   consumables (med-kit, bandage, evac beacon), materials (with `salvage` into colony resources), prosthetics
   (region, quality, Med Bay level), devices (scanner, signal jammer), blueprints (study building and level);
   tier + loot weight for caches; `natural` for enemy body parts (never looted or crafted). Every other item has a
@@ -360,7 +425,7 @@ All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `fo
 - `enemies.json` — hp, AI kind, attributes, skills, equipment (a Husk's claws are an item too).
 - `zones.json` — size, threat, loot tier, terrain densities, spawn/exit edges, enemy count + mix,
   caches, NPC count.
-- `scavenge.json` — `network` (Linked squad tuning), `world.colonyPos`, terrain table, movement derivation (base pattern/range, Agility per range,
+- `scavenge.json` — `fog` (stealth, detection, contacts, ambush, overwatch, brace, lookout, Linked fog AI), `network` (Linked squad tuning), `world.colonyPos`, terrain table, movement derivation (base pattern/range, Agility per range,
   encumbrance steps, body rules such as "missing leg → King 1"), AP, sight, carry, combat numbers,
   AI, NPC names, escort radius, gear quality tiers.
 
@@ -386,7 +451,7 @@ the adults, `--loop-demo` sends the adults on an expedition to the outskirts (sc
 `--autopilot`) and builds a Med Bay and Workshop, `--family-demo` does `--demo`, encourages the first man and woman
 and fast-forwards until a baby is born (then selects the mother), `--crafting-demo` builds a grown town (Town Hall 3, every
 production building, some at level 2–3) with staffed, queued Armory and Tailor and opens the Armory and item panels, `--expedition` opens the expedition planner with two adults picked, `--world-map` opens the world map
-(`--zone=ID` selects a marker), `--world-demo` fakes a few weeks of scouting and sends a party on the road (for
+(`--zone=ID` selects a marker), `--fog-demo` (with `--scavenge`) stages a fog ambush, `--world-demo` fakes a few weeks of scouting and sends a party on the road (for
 screenshots); `--scavenge --zone=ID --seed=N` plays the debug mission in another zone, `--multiplayer` opens the multiplayer menu and
 `--mp-host[=PORT]` / `--mp-join=ADDR` with `--mp-name`, `--mp-ready`, … script it (see `MULTIPLAYER.md`), `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG (any scene). HUD shots: `--pause-menu`, `--settings`, `--build-menu`, `--select-survivor=ID`, `--survivor-tab=N` (colony), `--menu-settings` (main menu). Needs a display; on
 Wayland pass `--display-driver wayland --disable-vsync` so an unfocused window still renders:

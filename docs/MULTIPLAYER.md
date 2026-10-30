@@ -58,7 +58,7 @@ shoots what it sees, walks to the map centre, then after `--rounds` rounds to an
 ```
 
 - **Authoritative.** Clients send intents: Core's own scavenge commands (`Move`, `Attack`, `UseItem`, `PickUp`,
-  `Recruit`, `EndTurn`, `Extract`) wrapped in `Command(requestId, intent)`. The host rejects an intent whose
+  `Recruit`, `SetStance`, `Lookout`, `EndTurn`, `Extract`) wrapped in `Command(requestId, intent)`. The host rejects an intent whose
   `PlayerId` is not the sender's seat, then runs it through `ScavengeSim.Execute`, which checks ownership, turn and
   rules as in single player. The verdict comes back as `CommandAccepted` / `CommandRejected` (Core's `ScavengeError`).
 - **Determinism stays on the server.** The client's `NetClient.View` is a `ScavengeSim` built over the received
@@ -76,7 +76,8 @@ shoots what it sees, walks to the map centre, then after `--rounds` rounds to an
 
 One JSON object per frame (4-byte big-endian length + UTF-8 JSON, max 4 MB), `System.Text.Json` with Core's save
 options (camelCase, string enums), compact. Records have a `type` discriminator; the command inside `Command` has a
-`kind` discriminator (added by a resolver in `ProtocolJson`, so Core needs no attributes). `Protocol.Version` (1) is
+`kind` discriminator (added by a resolver in `ProtocolJson`, so Core needs no attributes). `Protocol.Version` (2: the
+fog of war's `setStance` / `lookout` commands, `UseItem.at`, and contacts, reveals, flares and sensors in views) is
 sent in `Join`; a mismatch is refused. Bump it for any incompatible record change.
 
 | Direction | Message | Meaning |
@@ -129,19 +130,27 @@ goes over the internet; the protocol version covers that change.
   they can be attacked, they block tiles and they shoot back. Items cannot target hostiles, as in single player.
   Other players' units get their own colour (`SidePalette.OtherPlayer`, violet) on rings, labels and turn chips.
 - `SideFog` decides what a seat may receive:
-  - units of its own side (any status); everyone else only while standing on a tile the side sees **now**, with AI
-    memory stripped and the colony record cut to name, sex and life stage (the model);
+  - units of its own side (any status); everyone else only while the side **sees them now** (Core's
+    `Detection.SideSees`: in sight and detected past their stealth, lit by a flare, revealed, or scanned — a stealthy
+    unit on a visible tile is not sent), with AI memory stripped and the colony record cut to name, sex and life stage
+    (the model);
+  - its own contacts and motion sensors, reveals only of units it is sent, and every burning flare (they light up for
+    everyone);
   - loot caches **as last seen** — a cache emptied out of sight still shows its old contents until seen again;
   - the turn order cut to known units, with `SideFog.HiddenUnitId` (-1) when an unseen unit is up;
   - its own explored tiles only, every party's done flag, no RNG state, no Network alarm counters;
-  - events judged like the single-player log: round/party bookkeeping, anything done by or to its own units, and
-    anything on a tile it saw before or after.
+  - events through Core's `FogLog`, like the single-player log: round/party bookkeeping, anything done by or to its own
+    units, anything on a tile it saw before or after; but an event whose actor it did not see (at the last snapshot or
+    now) comes only in its anonymous form with the actor removed ("Bob1 was ambushed from the fog (+20% hit)"), or not at
+    all, and side-private events (a motion sensor's alert) only to their side.
 - The terrain map is sent whole in `MissionStarted` (it is static and generated from the seed; single player keeps it
   in memory too). Fog hides units, caches and events, not walls.
 - Tests check every snapshot and turn message against the server's live visibility at the moment it is sent
-  (`NetFixture.CheckFog`), across scripted multi-round games.
-- Known soft spot: an event about one of your units names its actor even when you cannot see the actor (e.g. "Linked
-  2 learns of Ana through the Network", or a shot from the dark). Single player shows the same text.
+  (`NetFixture.CheckFog`: unseen units, other sides' contacts / sensors / reveals, anonymous texts or private events
+  leaking, events naming a unit the player was never sent), across scripted multi-round games. `FogNetTests` stage a
+  cloaked sniper: the victim's client gets the hit, the "ambushed from the fog" line and an attack contact pointing back,
+  never the sniper's id, name or position, unless the muzzle flash puts it in their sight.
+- The old soft spot (an event about one of your units naming an actor you could not see) is closed by `FogLog`.
 
 ## Parties and results — the trust gap
 
@@ -169,6 +178,8 @@ goes over the internet; the protocol version covers that change.
 `tests/Remnants.Net.Tests` (run by `./run-tests.sh`):
 
 - `ProtocolTests`: every message and command kind round-trips; garbage is rejected.
+- `FogNetTests`: a hidden attacker stays anonymous and unplaced for the victim; a revealed one shows up; sensors,
+  contacts and stances stay with their side over the wire.
 - `MultiplayerTests` (loopback, manual clock): lobby and start; refused joins (version, bad gear, party size, running
   mission); turn ownership and spoofed player ids; interleaving across both parties and the AI; PvP attack seen by both;
   fog filtering over several rounds and remembered caches; disconnect → auto-wait → reconnect with the token, also over

@@ -26,7 +26,7 @@ the targets below are in days.
 `dotnet run --project tools/Remnants.Playtest -- [--days=N] [--seeds=A..B | --seed=N] [--quiet] [--trace] [--no-expeditions] [--data=DIR]`
 plays a fresh colony per seed and prints a daily timeline (population adults/children/infants, beds, food and its
 change, stock, buildings, where people work, notable events) plus expedition outcomes and a summary table.
-`--zone=ID|all [--runs=N] [--party=N]` plays many runs of one zone with a fresh colony's first party (two adults,
+`--zone=ID|all [--runs=N] [--party=N] [--no-defenses] [--kit=fog|geared]` plays many runs of one zone with a fresh colony's first party (two adults,
 spear/pipe, padded vest/rag coat, a med-kit and bandages) to read off how deadly it is. Pass `--data=data` to read
 the repo's data folder directly instead of the copy made at build time.
 
@@ -112,10 +112,63 @@ Core fixes the bot surfaced:
 Feel / onboarding: first-time tips in the colony log (`Advice.Next`), minors' growth shown as
 "child · adult in 3d 17h", the Med Bay shows the medicine rate to three decimals.
 
+## Fog of war pass
+
+The fog of war (stealth vs detection, ambushes, Overwatch / Brace / Lookout, flares, motion sensors; see ARCHITECTURE.md
+"Fog of war") changes every fight, so the targets above were re-measured with the same seeds. The bot now only fights
+what its side sees, scans (Lookout) when it hears something it cannot see, throws a flare at where an ambush came from,
+keeps next to an ally, and ends idle turns braced (after being shot at from the fog, or with a Linked about) or on
+overwatch (with contacts around). `--no-defenses` turns that off; `--kit=fog` adds two flares each and a motion sensor;
+`--kit=geared` is a crafted kit (pistol / rifle, vest / camo cloak, binoculars, flares, sensor) whose bot stands and
+fights the Linked.
+
+Zone trials, 300 runs each, 2 adults with starting gear (before = `main` at pass 1):
+
+| zone | someone dies: before → fog, defenses (no defenses) | wipe | Linked seen | lose someone when a Linked shows | ambushed / run |
+|---|---|---|---|---|---|
+| Town Outskirts | 5% → **6%** (6%) | 1% → 1% | 0% | — | 0.00 |
+| Scrapyard Flats | 7% → **9%** (9%) | 1% → 1% | 0% | — | 0.00 |
+| Suburb Ruins | 30% → **32%** (34%) | 10% → 10% (13%) | 20% → 20% | 64% → **73%** (78%); with flares + sensor 74% | 0.61 |
+| Flooded Mall | 48% → **50%** (52%) | 20% → 22% | 75% → 74% | 55% → 57% (59%) | 1.80 |
+| Rail Depot | 89% → 88% (88%) | 52% → 56% | 98% → 97% | 90% → 90% | 5.05 |
+| Network Relay | 96% → 95% (97%) | 73% → 74% | 100% | 96% → 95% | 6.80 |
+| Core Spire | 99% → 99% (98%) | 91% → 93% | 100% | 99% → 99% | 7.51 |
+
+- Early zones hold their targets (≤ 10% deaths, ≤ 3% wipes): Husks are easy to see (low stealth, closeRange always
+  sees), so ambushes there are nearly zero and the fog mostly shows up as contacts.
+- Suburb Ruins with a Linked got scarier (64% → 73% lose someone): the Linked are the ones who hide (+25 stealth), lurk
+  on overwatch and open from the fog. The bot's defenses take 5 points off (78% → 73%) and the overall death rate 2
+  points; a starter party still mostly survives by running, which is the intended answer to a Linked at that stage.
+- "Linked seen" now counts Linked the side actually picked out (not just stood on a visible tile), so it is a little
+  stricter than before; the rate is unchanged.
+
+Geared trial (`--kit=geared`, standing and fighting the Linked; defenses on / off): Suburb Ruins 51% / 50% runs with a
+death, Flooded Mall 79% / 76%, Rail Depot 97% / 96%. A two-person party that trades fire with the Linked does worse than
+one that runs, with or without the fog defenses: their carbine (three 10–16 bursts a turn, armor 4, 70 HP) outclasses a
+pistol, so this is base combat balance, not the fog. Overwatch fires (~2.8 reactions per Flooded Mall run) but against
+a Linked that shoots from 8 tiles it rarely gets the chance before the damage is done.
+
+Colony sweep (20 seeds × 60 days, before → after): median population 7 → 7, starvation 0 → 0, expedition deaths 18 → 13
+over 319 → 323 runs, Town Hall 2 day 31 → 30.7, House affordable 47.5 → 50.5, Armory 49.7 → 49.7, Electronics Lab
+58.7 → 51.7, min food 4.9 → 4.5 days; births in the 60 days 34 → 24 (first birth median 43 → 39). Economy-only runs
+(`--no-expeditions`) are identical, so the drift comes from expedition outcomes (who comes home when).
+
+Changes made while tuning:
+
+- Overwatch costs 1 AP and keeps the AP left as reactions (max 2). At 2 AP for one reaction it was a bad trade against
+  any shooter.
+- A revealed unit is seen with line of sight out to 1.5× sight (`revealSightMultiplier`). Before, a Linked firing from
+  8 tiles at survivors who see 7 was never revealed, so every burst was an ambush (Suburb Ruins with a Linked hit 86%).
+- An ambush takes away positive dodge only (clumsiness still counts).
+- Flare / motion sensor / camo cloak loot weights 1 / 0.5 / 0.5 (from 2 / 1 / 1): at the higher weights they diluted
+  scrap and cloth drops enough to push Town Hall 2 to day 35.
+
 ## Watch next pass
 
 - Late food surplus: by day 60 the bot's colonies sit on 100–150 food; Kitchen meals and more mouths absorb some of it.
 - Outskirts wounds: ~5 per run. Fine with a Med Bay; before one exists, 30–60% wounds just sit there.
 - Children grow up in about two weeks of colony time (a few minutes at 1x); they reach expedition age very early.
-- The bot never uses Linked-tier zones; a geared-party trial (pistols, riot armor, jammer) would tell whether threat
-  3+ zones are beatable once crafted gear arrives.
+- Linked base combat: a geared party that fights them loses (see the fog pass). Their carbine's three bursts per turn are
+  the lever (AP cost 2, or fewer bursts), or a better party bot that breaks line of sight, flanks and uses the jammer.
+- Fog tuning knobs worth trying first: Linked `stealth` (25), `ambush.hitBonus` (0.2), `overwatch.reactions` (2) and
+  the Linked lurking on overwatch (`fog.ai.linkedLurk`).

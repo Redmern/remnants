@@ -46,7 +46,9 @@ a few people into dangerous zones (**Scavenge mode**). Every loss is permanent.
 
 ## Mode 2: Scavenge (turn-based, tile-grid tactics, "chess-like")
 
-- Top-down tile map (procedural, from zone templates). Fog of war.
+- Top-down tile map (procedural, from zone templates). Fog of war is the mode's identity: inside sight a unit is only
+  seen if detection beats its stealth; anything unseen can ambush; Overwatch, Brace, Lookout, flares, motion sensors and
+  scanners are the answers.
 - Party of 1–N survivors. N grows with the Town Hall level. A small population means
   every sortie is a real risk.
 - **Movement and attacks depend on the character plus what they carry**: attributes, gear
@@ -117,6 +119,7 @@ palette (rust, concrete, moss) with cold cyan accents for anything Network-conne
 | M7 | Crafting tiers | tailor, electronics lab, armory, blueprints, gear affects scavenge profiles |
 | M8 | Linked AI + zones | squad AI, threat/reward zones, world map (done: Network relay, flank/focus/suppress/retreat, pylon reinforcements, enemy variants, 7-zone world map with travel, intel, depletion) |
 | M9 | Multiplayer scavenge | headless server, shared instances, PvP (done for localhost/LAN: authoritative server, per-side fog, interleaved turns with AFK timer, disconnect/reconnect, per-player results; see MULTIPLAYER.md) |
+| — | Fog of war | stealth vs detection, contacts, ambushes from the fog, Overwatch / Brace / Lookout, flares, motion sensors, scanner, camo cloak, Linked lurking and drone spotting, no-leak multiplayer (done; see ARCHITECTURE.md "Fog of war") |
 
 Assets run in parallel: style guide → survivors (adult/child, m/f) → level-1 buildings →
 Husk → Linked → tiles/props → building upgrade levels → gear.
