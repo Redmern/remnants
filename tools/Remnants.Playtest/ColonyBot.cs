@@ -35,6 +35,7 @@ public sealed class ColonyBot
         ("farm", 1), ("woodcutter", 1), ("quarry", 1), ("workshop", 1), ("scrapyard", 1), ("med_bay", 1),
         ("farm", 2), ("woodcutter", 2), ("quarry", 2), ("kitchen", 1), ("tailor", 1), ("town_hall", 2),
         ("house", 1), ("armory", 1), ("scrapyard", 2), ("workshop", 2), ("farm", 3), ("electronics_lab", 1),
+        ("hunting_lodge", 1), ("smokehouse", 1), ("kitchen", 2),
         ("tailor", 2), ("med_bay", 2), ("armory", 2), ("woodcutter", 3), ("quarry", 3), ("town_hall", 3), ("house", 2), ("electronics_lab", 2),
     ];
 
@@ -135,25 +136,57 @@ public sealed class ColonyBot
         if (Find("workshop") is { } workshop && workshop.Queue.Count == 0)
         {
             var weapons = Count("pipe") + Count("spear") + Count("machete");
-            if (State.Stockpile.Get("medicine") < 3 && State.Stockpile.Get("food") > 25) Queue(workshop, "herbal_remedy");
+            if (State.Stockpile.Get("medicine") < 3 && _sim.FoodStock > 25) Queue(workshop, "herbal_remedy");
             else if (weapons < 3 && State.Stockpile.Get("scrap") >= 6) Queue(workshop, "spear");
             else if (workshop.Level >= 2 && Count("med_kit") < 2 && State.Stockpile.Get("cloth") >= 2 && State.Stockpile.Get("medicine") >= 3)
                 Queue(workshop, "med_kit");
         }
         if (Find("tailor") is { } tailor && tailor.Queue.Count == 0)
         {
-            if (State.Stockpile.Get("cloth") < 4 && State.Stockpile.Get("food") > 50) Queue(tailor, "fiber_cloth");
+            if (State.Stockpile.Get("cloth") < 4 && _sim.FoodStock > 50) Queue(tailor, "fiber_cloth");
             else if (Count("bandage") < 4 && State.Stockpile.Get("cloth") >= 1) Queue(tailor, "bandage");
             else if (Count("padded_vest") < 2 && State.Stockpile.Get("cloth") >= 5) Queue(tailor, "padded_vest");
         }
-        if (Find("kitchen") is { } kitchen && kitchen.Queue.Count == 0 && State.Stockpile.Get("food") > 30)
-            Queue(kitchen, "simple_meal");
+        Cook();
         if (Find("armory") is { } armory && armory.Queue.Count == 0 && Count("machete") < 2 && State.Stockpile.Get("scrap") >= 10)
             Queue(armory, "machete");
         if (Find("electronics_lab") is { } lab && lab.Queue.Count == 0 && State.Stockpile.Get("scrap") >= 20)
             Queue(lab, "salvage_circuits");
         foreach (var bp in State.Inventory.Counts.Keys.Where(id => _sim.Scavenge!.Items[id].Kind == ItemKind.Blueprint).ToList())
             _sim.Execute(new StudyBlueprint(bp));
+    }
+
+    // ---- food ---------------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Cooks and preserves sensibly: keeps about two days of cooked food on hand (not more, it spoils), water for the pot,
+    /// stew at a Kitchen L2 when the ingredients are there, otherwise roast, boiled potatoes or flatbread from what is in
+    /// stock; at the Campfire only until the Kitchen is up. The Smokehouse smokes meat and dries produce that would spoil
+    /// within three days. Fields stay on potatoes, the lodge on game.
+    /// </summary>
+    private void Cook()
+    {
+        if (Data.Food is not { } food) return;
+        var pot = Find("kitchen") ?? Find(food.Rules.CampfireBuilding);
+        var perDay = _sim.FoodPerDay;
+        var cooked = Pantry.Entries(_sim).Where(e => food.Items[e.ItemId].Meal is { Hot: true } || e.ItemId == "flatbread").Sum(e => e.FoodValue);
+        if (pot is not null && pot.Queue.Count == 0 && _sim.FoodDays > 3 && cooked < 2 * perDay)
+        {
+            var at = pot.DefId == "kitchen" ? "" : "campfire_";
+            bool Has(string key, int n) => Pantry.Available(State, Data, key) >= n;
+            if (!Has("water", 2)) Queue(pot, at == "" ? "purify_water" : "campfire_water");
+            else if (pot.DefId == "kitchen" && pot.Level >= 2 && Has("tag:veg", 2) && Has("tag:protein", 1)) Queue(pot, "stew");
+            else if (Has("tag:fresh_meat", 2)) Queue(pot, at + "roast");
+            else if (Has("potato", 6)) Queue(pot, at == "" ? "boiled_potatoes" : "campfire_potatoes");
+            else if (Has("corn", 3)) Queue(pot, at + "flatbread");
+        }
+        if (Find("smokehouse") is { } smoke && smoke.Queue.Count == 0)
+        {
+            var soon = State.Food.Lots.Where(kv => food.Matches(kv.Key, "tag:fresh_veg"))
+                .Sum(kv => kv.Value.Where(l => l.TicksLeft is { } t && t > 0 && t < 3 * TicksPerDay).Sum(l => l.Count));
+            if (Pantry.Available(State, Data, "tag:fresh_meat") >= 6) Queue(smoke, "smoke_meat");
+            else if (soon >= 6 && _sim.FoodDays > 6) Queue(smoke, "dry_food");
+        }
     }
 
     private int Count(string baseId) =>
@@ -229,7 +262,7 @@ public sealed class ColonyBot
     /// </summary>
     private void Explore(CyberneticsData cyber)
     {
-        if (State.Stockpile.Get("scrap") < 40 || State.Stockpile.Get("food") < 30) return;
+        if (State.Stockpile.Get("scrap") < 40 || _sim.FoodStock < 30) return;
         var next = cyber.Nodes.Values.Where(n => n.Slot != CyberSlot.Eye)
             .Select(n => Cybernetics.Status(_sim, n))
             .Where(st => st.State == CyberNodeState.Available && st.Recipe is not null && Find(st.Recipe.Building) is not null)
@@ -297,16 +330,21 @@ public sealed class ColonyBot
             LifeStage.Child => food.ChildPerTick,
             _ => food.AdultPerTick,
         });
-        var days = State.Stockpile.Get("food") / Math.Max(need * TicksPerDay, 1e-6);
+        var days = _sim.FoodStock / Math.Max(need * TicksPerDay, 1e-6);
         var margin = days < 3 ? 1.6 : days < 8 ? 1.25 : days > 25 ? 0.9 : 1.1;
         var produced = 0.0;
-        foreach (var farm in State.Buildings.Where(b => b.DefId == "farm").OrderByDescending(b => b.Level))
+        // Food value per worker: job output times what the harvest brings in (potatoes 1, beans less, meat 1.5 a piece).
+        double Food(Survivor s, Building b) =>
+            Output(s, b) * (Harvesting.Current(Data, b) is { } h ? Harvesting.FoodValuePerEffort(State, Data, b, h) : 0);
+        foreach (var farm in State.Buildings.Where(b => Harvesting.Current(Data, b) is not null)
+                     .OrderBy(b => b.DefId == "farm" ? 0 : 1).ThenByDescending(b => b.Level))
             while (produced < need * margin && free.Count > 0)
             {
                 // Children farm first (it is one of their jobs); adults fill the rest.
-                var best = free.OrderBy(s => s.IsChild ? 0 : 1).ThenByDescending(s => Output(s, farm)).FirstOrDefault(s => !s.IsChild || Data.Jobs["farming"].ChildrenAllowed);
+                var job = Data.Jobs[Data.Buildings[farm.DefId].Job!];
+                var best = free.OrderBy(s => s.IsChild ? 0 : 1).ThenByDescending(s => Food(s, farm)).FirstOrDefault(s => !s.IsChild || job.ChildrenAllowed);
                 if (best is null || !Take(best, farm)) break;
-                produced += Output(best, farm);
+                produced += Food(best, farm);
                 free.Remove(best);
             }
 
@@ -319,7 +357,7 @@ public sealed class ColonyBot
 
         var goal = GoalCost();
         double Short(string res) => Math.Max(0, goal.GetValueOrDefault(res) - State.Stockpile.Get(res)) + 5;
-        var gatherers = State.Buildings.Where(b => Data.Buildings[b.DefId] is { Produces: { } p } && p != "food").ToList();
+        var gatherers = State.Buildings.Where(b => Data.Buildings[b.DefId] is { Produces: not null }).ToList();
         while (free.Count > 0)
         {
             var target = gatherers.Where(b => plan.Values.Count(id => id == b.Id) < slots[b.Id])
@@ -395,12 +433,14 @@ public sealed class ColonyBot
         DayPhase? waitFor = _sim.PlanArrival(zone.Zone.Id).Phase == DayPhase.Night ? DayPhase.Dawn : null;
         var rations = (WorldMap.RationsPerMember(Data, zone.Zone) + _sim.PlanArrival(zone.Zone.Id, waitFor).WaitRationsPerMember) * size;
         var needPerDay = State.Survivors.Count(s => !s.Away) * Data.Rules.Food.AdultPerTick * TicksPerDay;
-        if (State.Stockpile.Get("food") < rations + needPerDay * (3 + 2 * zone.Zone.TravelDays)) return;
+        if (_sim.FoodStock < rations + needPerDay * (3 + 2 * zone.Zone.TravelDays)) return;
 
         var party = adults.OrderByDescending(s => s.Get(AttributeKind.Strength) + s.Get(AttributeKind.Agility) + s.Get(AttributeKind.Endurance))
             .Take(size).ToList();
         var members = Gear(party);
-        var launched = _sim.Execute(new LaunchExpedition(zone.Zone.Id, members, waitFor));
+        // Light, long-keeping field rations when there are any, else a good hot meal for the road.
+        var prefer = new[] { "field_rations", "stew", "pie", "preserved_rations" }.FirstOrDefault(id => State.Inventory.Count(id) >= size);
+        var launched = _sim.Execute(new LaunchExpedition(zone.Zone.Id, members, waitFor, new RationChoice(prefer)));
         if (!launched.Ok) Problems.Add($"day {Day:0.0}: launch {zone.Zone.Id}: {launched.Message}");
     }
 

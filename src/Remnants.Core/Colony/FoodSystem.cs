@@ -163,8 +163,13 @@ internal static class FoodSystem
     /// <summary>The open portion of an item, opening a unit (best lot: fresh and soonest to spoil) when none is.</summary>
     private static OpenPortion? Open(ColonyState state, GameData data, string id)
     {
-        if (state.Food.Open.Find(p => p.ItemId == id) is { } open) return open;
         var lot = Pantry.Candidates(state, data, i => i == id).Select(x => x.Lot).FirstOrDefault(l => l.Count > 0);
+        if (state.Food.Open.Find(p => p.ItemId == id) is { } open)
+        {
+            // A spoiled leftover is thrown out when there is a fresh unit of the same food to open instead.
+            if (!open.Spoiled || lot is not { Spoiled: false }) return open;
+            state.Food.Open.Remove(open);
+        }
         if (lot is null) return null;
         var portion = new OpenPortion { ItemId = id, Left = 1, Age = lot.Age, Shelf = lot.Shelf, Quality = lot.Quality, Tainted = lot.Tainted };
         Pantry.TakeFromLot(state, id, lot, 1);

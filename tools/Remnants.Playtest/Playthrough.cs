@@ -18,7 +18,10 @@ public sealed record PlaythroughSummary(
     double? TownHall2Day, double? FirstStarvingDay, double MinFoodDays, int Expeditions, int ExpeditionsWithDeaths,
     int LinkedEncountersEarly, double? WorkshopDay, double? ArmoryDay, double? LabDay, int CraftedItems, int Recruits,
     double? FirstPerkPointDay, int LevelUps, double SurvivorDays, int PerksLearned, double MeanLevel, int MaxLevel, int UnspentPoints,
-    CyberSummary? Cyber = null);
+    CyberSummary? Cyber = null, FoodSummary? Food = null);
+
+/// <summary>Food and cooking: units that rotted, food poisonings, batches cooked or preserved, mean nutrition at the end.</summary>
+public sealed record FoodSummary(int Rotted, int Poisonings, int Cooked, double MeanNutrition, double CookedShareEaten);
 
 /// <summary>
 /// Cybernetics: the first day a design of each tier could be queued (requirements met, building there), limbs lost,
@@ -50,6 +53,8 @@ public sealed class Playthrough
     private double _minFoodDays = double.MaxValue;
     private readonly double?[] _tierDay = new double?[5];
     private int _limbsLost, _surgeries, _complications;
+    private int _rotted, _poisonings, _cooked;
+    private double _cookedEaten, _eaten;
 
     public PlaythroughSummary Run(int days, int actEveryTicks = 4)
     {
@@ -57,7 +62,7 @@ public sealed class Playthrough
         for (var day = 0; day < days; day++)
         {
             var dayStart = _events.Count;
-            var foodStart = Sim.State.Stockpile.Get("food");
+            var foodStart = Sim.FoodStock;
             for (var t = 0; t < tpd; t++)
             {
                 if (t % actEveryTicks == 0)
@@ -73,7 +78,7 @@ public sealed class Playthrough
             var s = Sim.State;
             Timeline.Add(new DaySnapshot(day + 1,
                 s.Survivors.Count(x => !x.IsChild), s.Survivors.Count(x => x.LifeStage == LifeStage.Child), s.Survivors.Count(x => x.IsInfant),
-                Sim.BedCapacity, s.Stockpile.Get("food"), s.Stockpile.Get("food") - foodStart,
+                Sim.BedCapacity, Sim.FoodStock, Sim.FoodStock - foodStart,
                 new SortedDictionary<string, double>(s.Stockpile.Amounts.Where(kv => kv.Value > 0.05).ToDictionary(kv => kv.Key, kv => kv.Value)),
                 string.Join(" ", s.Buildings.OrderBy(b => b.Id).Select(b => $"{Short(b.DefId)}{b.Level}")),
                 Jobs(),
@@ -85,7 +90,9 @@ public sealed class Playthrough
             _departures, _births, _firstBirth, _firstPregnancy, _houseAffordable, _houseBuilt, _townHall2, _firstStarving,
             _minFoodDays, Bot.Expeditions.Count, Bot.Expeditions.Count(e => e.Dead > 0), linkedEarly, _workshop, _armory, _lab, _crafted, _recruits,
             _firstPerkPoint, _levelUps, _survivorTicks / tpd, _perks, grown.Count == 0 ? 0 : grown.Average(x => x.Level),
-            grown.Select(x => x.Level).DefaultIfEmpty(1).Max(), grown.Sum(x => x.PerkPoints), Cyber());
+            grown.Select(x => x.Level).DefaultIfEmpty(1).Max(), grown.Sum(x => x.PerkPoints), Cyber(),
+            new FoodSummary(_rotted, _poisonings, _cooked, Sim.State.Survivors.Select(x => x.Nutrition).DefaultIfEmpty(0).Average(),
+                _eaten <= 0 ? 0 : _cookedEaten / _eaten));
     }
 
     /// <summary>Where people are right now: workers per building, patients, away, idle.</summary>
@@ -124,7 +131,14 @@ public sealed class Playthrough
                 case ColonyEventType.Born: _births++; _firstBirth ??= Day; break;
                 case ColonyEventType.Pregnant: _firstPregnancy ??= Day; break;
                 case ColonyEventType.Starving: _firstStarving ??= Day; break;
-                case ColonyEventType.Crafted: _crafted++; break;
+                case ColonyEventType.Crafted:
+                    _crafted++;
+                    if (e.BuildingId is { } b && Sim.State.FindBuilding(b) is { } at && Sim.Data.Buildings[at.DefId].Job == "cooking") _cooked++;
+                    break;
+                case ColonyEventType.FoodRotted:
+                    _rotted += System.Text.RegularExpressions.Regex.Matches(e.Message, @"(\d+) ").Sum(m => int.Parse(m.Groups[1].Value));
+                    break;
+                case ColonyEventType.FoodPoisoning: _poisonings++; break;
                 case ColonyEventType.Recruited: _recruits++; break;
                 case ColonyEventType.LevelUp: _levelUps++; _firstPerkPoint ??= Day; break;
                 case ColonyEventType.PerkLearned: _perks++; break;
@@ -154,7 +168,15 @@ public sealed class Playthrough
         var food = Sim.Data.Rules.Food;
         var need = s.Survivors.Where(x => !x.Away).Sum(x => x.IsInfant ? food.InfantPerTick : x.IsChild ? food.ChildPerTick : food.AdultPerTick)
                    * Sim.Data.Rules.TicksPerDay;
-        if (Day >= 1 && need > 0) _minFoodDays = Math.Min(_minFoodDays, s.Stockpile.Get("food") / need);
+        if (Day >= 1 && need > 0) _minFoodDays = Math.Min(_minFoodDays, Sim.FoodStock / need);
+        // What people ate lately, by cooked vs raw (the diets' newest additions are this tick's meals).
+        foreach (var x in s.Survivors.Where(x => !x.Away))
+            foreach (var (id, v) in x.Diet)
+            {
+                var cooked = Sim.Data.Food?.Items.GetValueOrDefault(id)?.Meal is not null;
+                _eaten += v;
+                if (cooked) _cookedEaten += v;
+            }
     }
 
     /// <summary>Once a day: which tiers of the tree the colony could make now.</summary>
@@ -180,13 +202,15 @@ public sealed class Playthrough
         or ColonyEventType.Left or ColonyEventType.Born or ColonyEventType.Pregnant or ColonyEventType.NewCouple or ColonyEventType.Starving
         or ColonyEventType.ExpeditionLaunched or ColonyEventType.ExpeditionReturned or ColonyEventType.Recruited or ColonyEventType.BecameAdult
         or ColonyEventType.LimbLost or ColonyEventType.ProstheticFitted or ColonyEventType.SurgeryBooked or ColonyEventType.SurgeryDone
-        or ColonyEventType.SurgeryComplication or ColonyEventType.ProstheticNeedsService or ColonyEventType.BlueprintStudied or ColonyEventType.PerkLearned or ColonyEventType.ZoneRevealed or ColonyEventType.Homeless;
+        or ColonyEventType.SurgeryComplication or ColonyEventType.ProstheticNeedsService or ColonyEventType.BlueprintStudied or ColonyEventType.PerkLearned or ColonyEventType.ZoneRevealed or ColonyEventType.Homeless
+        or ColonyEventType.FoodRotted or ColonyEventType.FoodPoisoning;
 
     public static string Short(string defId) => defId switch
     {
         "town_hall" => "TH", "shelter" => "Sh", "woodcutter" => "Wc", "quarry" => "Qy", "scrapyard" => "Sy", "farm" => "Fm",
         "med_bay" => "Md", "workshop" => "Ws", "tailor" => "Tl", "kitchen" => "Kt", "armory" => "Ar", "electronics_lab" => "El",
-        "house" => "Ho", _ => defId,
+        "house" => "Ho", "campfire" => "Cf", "hunting_lodge" => "Hl", "smokehouse" => "Sm", "cold_cellar" => "Cc", "greenhouse" => "Gh",
+        _ => defId,
     };
 
     /// <summary>The day-by-day timeline plus expedition outcomes, as text.</summary>

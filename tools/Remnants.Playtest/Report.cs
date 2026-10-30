@@ -37,6 +37,11 @@ public static class Report
                           $"surgeries {runs.Sum(r => r.Cyber!.Surgeries)} ({runs.Sum(r => r.Cyber!.Complications)} complications), " +
                           $"limbs still missing {runs.Sum(r => r.Cyber!.MissingAtEnd)}, lowest humanity {runs.Min(r => r.Cyber!.MinHumanity):0}");
         }
+        if (runs.All(r => r.Food is not null))
+            sb.AppendLine($"food: rotted {runs.Sum(r => r.Food!.Rotted)} units ({(double)runs.Sum(r => r.Food!.Rotted) / runs.Count:0}/colony), " +
+                          $"food poisonings {runs.Sum(r => r.Food!.Poisonings)}, batches cooked/preserved {runs.Sum(r => r.Food!.Cooked)} " +
+                          $"({(double)runs.Sum(r => r.Food!.Cooked) / runs.Count:0}/colony), mean nutrition at the end {Median(r => r.Food!.MeanNutrition):0.00} (median), " +
+                          $"cooked share of the diet {Median(r => r.Food!.CookedShareEaten) * 100:0}% (median)");
         sb.AppendLine($"totals: starvation deaths {runs.Sum(r => r.StarvationDeaths)}, expedition deaths {runs.Sum(r => r.ExpeditionDeaths)} over {runs.Sum(r => r.Expeditions)} expeditions " +
                       $"({runs.Sum(r => r.ExpeditionsWithDeaths)} with deaths), departures {runs.Sum(r => r.Departures)}, births {runs.Sum(r => r.Births)}, " +
                       $"early Linked sightings {runs.Sum(r => r.LinkedEncountersEarly)}, recruits {runs.Sum(r => r.Recruits)}");
