@@ -1174,7 +1174,8 @@ effects, upgrade kits, headgear, zone biomes, extra enemy tags / drops / termina
   camo, weather protection, thermal mask, Network weave, a light. A mod's quality scales it: benefits × the tier's
   multiplier, drawbacks ÷ it (`ModEffect.AtQuality`). A Mk adds damage and accuracy to weapons, armor (base + bonus, × a
   multiplier) and coverage to worn gear, and a little weight, and stacks with quality.
-- **Coverage and the Head slot**: `EquipSlot.Head` (`ItemKind.Headgear`: scrap helmet, riot helmet, gas mask). Gear with
+- **Coverage and the Head slot**: `EquipSlot.Head` (`ItemKind.Headgear`: scrap helmet, riot helmet, gas mask, and the
+  weather's dust mask, which the colony still counts as a mask with the gas mask, `weather.json maskItems`). Gear with
   `coverage` counts its armor only on hits to those regions (`UnitProfile.RegionArmor`, `ArmorAgainst(region, melee)`);
   gear without it protects every part as before. `Combat.Strike` takes armor for the part hit (after the hit location
   roll, so the RNG stream is unchanged), less the attack's pierce; injury severity × the attack's injury multiplier ×
@@ -1188,7 +1189,8 @@ effects, upgrade kits, headgear, zone biomes, extra enemy tags / drops / termina
   **Network weave** adds stealth against the Linked's senses, takes its share off Network interference and EMP feedback,
   and Husks hear its wearer further (`HuskLure`); **plates** clank (`MoveNoise`: idle enemies in earshot of a move come
   looking, and parties hear it further; quiet fabric takes it off); **weather protection** keeps a weather's effects off the
-  wearer's senses (`FieldEnvironment.EffectsFor`; the ids wait for the weather pass); an **EMP shot** may lock up Network-grade
+  wearer's senses (`FieldEnvironment.EffectsFor`: waterproofing rain and thunderstorms, a dust filter, the dust mask and
+  the gas mask dust storms, the gas mask fog too); an **EMP shot** may lock up Network-grade
   parts of the shooter's side within 1 tile (`GearEffects.Feedback`, one roll per part).
 - **Gear Bench** (`GearBench`: pure; `InstallMod`, `RemoveMod`, `UpgradeGear` colony commands): mods go on and come off
   gear in the inventory (or a survivor's fitted gun arm: `SurvivorId` + `Part`) at an Armory, Workshop or Tailor; fitting
@@ -1201,16 +1203,16 @@ effects, upgrade kits, headgear, zone biomes, extra enemy tags / drops / termina
   coil, thermal masking, and the Network-grade EMP coil and weave from Linked cores). Crafted mods roll a quality from the
   crafter's skill like gear. Mods, kits and schematics are loot; the EMP coil, weave and carbine/plating kit schematics also
   drop from the Linked and come from terminals.
-- **Schematics** (`GearModSchematics`, the adapter): the default set (iron sights, wrapped grip, sharpened edge, padding,
-  webbing, scrap plates, visor, dust filter, helmets, gas mask, Mk II for sidearms, melee, clothing and armor) has no
-  schematic; every other recipe is unlocked by one entry of `schematics.gearmods.json`. Until the Schematics module is
-  merged, each entry is also a Blueprint item (its `lootWeight`, `studyAt`, `minLevel`) and the loader sets the recipes'
-  `blueprint` to it, so the existing blueprint gate and `StudyBlueprint` apply. When the module lands: `Has` /
-  `RecipeUnlocked` call `Schematics.Has` / `Schematics.RecipeUnlocked`, the module merges the catalogue file, and `Gate` /
-  `Items` go.
+- **Schematics** (`GearModSchematics`): the gear schematics are `data/schematics.gearmods.json`, merged into the catalogue
+  by the Schematics module (see "Schematics"); each unlocks the mod and kit recipes it names, so `CheckRecipe` gates them
+  like any other. The default set (iron sights, wrapped grip, sharpened edge, padding, webbing, scrap plates, visor, dust
+  filter, helmets, gas mask, Mk II for sidearms, melee, clothing and armor) has no entry. `GearModSchematics.Has` /
+  `RecipeUnlocked` are `Schematics.Has` / `Schematics.RecipeUnlocked`. Caches, lockers and terminals roll gear schematics
+  from the catalogue by their sources; the EMP coil, weave, shock coil and carbine / plating kit schematics also drop from
+  the Linked (`gear_mods.json drops`, kept in step with the `Kill` sources).
 - **Multiplayer**: the server's party check (`Items.TryGetValue` + slot) validates every build; `fieldMod` is an intent;
   views carry equipment as ids (a visible unit's mods are as visible as its weapon). Protocol 9.
-- **Saves**: colony 14, scavenge 8 (units' `Moved` and `Facing`); older saves load unchanged. Tests: `GearModsTests`,
+- **Saves**: colony 17, scavenge 10 (units' `Moved` and `Facing`); older saves load unchanged. Tests: `GearModsTests`,
   `GearModsNetTests`.
 
 ## Data files

@@ -584,7 +584,7 @@ public partial class GearBenchPanel : Overlay
 
     private void RefreshRecipes(ColonySim sim, ScavengeData data)
     {
-        var signature = string.Join(",", sim.State.Buildings.Select(b => $"{b.Id}{b.Level}")) + string.Join(",", sim.State.KnownBlueprints);
+        var signature = string.Join(",", sim.State.Buildings.Select(b => $"{b.Id}{b.Level}")) + string.Join(",", sim.State.Schematics.Known);
         if (signature == _recipeSignature) return;
         _recipeSignature = signature;
         var keep = _recipes.Selected >= 0 && _recipes.Selected < _recipeIds.Count ? _recipeIds[_recipes.Selected] : ((int, string)?)null;

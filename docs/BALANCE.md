@@ -975,5 +975,4 @@ days. The mods cost a few scrap and cloth once the colony is armed; nothing move
 Watch next: a fully modded mid-game party with two carbines makes Suburb Ruins and Flooded Mall routine (5%). That
 needs Armory 3, two carbines, Mk II kits and tier-2 schematics, so it is late by design, but if it feels too safe the
 levers are the slot counts (Mk II 2 → 1 for firearms) and the Mk II armor step. The weapon light is never turned off (no
-toggle yet). The bot does not use Jury-rig in the field. Weather protection waits for the weather pass to name its weather
-ids (rain, dust).
+toggle yet). The bot does not use Jury-rig in the field.

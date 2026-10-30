@@ -2,7 +2,7 @@
   "enabled": true,
   "colonyRegion": "Home Valley",
   "start": "clear",
-  "maskItems": ["dust_mask"],
+  "maskItems": ["dust_mask", "gas_mask"],
   "kinds": {
     "clear":    { "name": "Clear", "hours": [14, 40], "intensity": [0, 0] },
     "overcast": { "name": "Overcast", "hours": [6, 20], "intensity": [0.2, 0.5] },

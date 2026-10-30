@@ -60,7 +60,8 @@
     "linked_plating": { "type": "armor", "family": "plating" },
     "helmet_scrap": { "type": "helmet", "family": "armor" },
     "helmet_riot": { "type": "helmet", "family": "armor" },
-    "gas_mask": { "type": "mask" }
+    "gas_mask": { "type": "mask" },
+    "dust_mask": { "type": "mask" }
   },
 
   // Base stat steps of the Mk upgrades; they stack with quality. Weapons take the damage and accuracy, worn gear the
@@ -150,13 +151,13 @@
     { "id": "mod_camo_foliage", "name": "Foliage Camo", "slot": "outer", "types": ["armor", "clothing"], "weight": 0, "tier": 2, "lootWeight": 0.12,
       "model": "mod_cloth_camo_foliage", "effect": { "camo": { "biome": "foliage", "stealth": 8 } } },
     { "id": "mod_waterproofing", "name": "Waterproofing", "slot": "outer", "types": ["armor", "clothing"], "weight": 0.3, "tier": 1, "lootWeight": 0.15,
-      "model": "mod_cloth_waterproof", "effect": { "weatherProtection": ["rain", "storm"], "stealth": -1 } },
+      "model": "mod_cloth_waterproof", "effect": { "weatherProtection": ["rain", "thunderstorm"], "stealth": -1 } },
     { "id": "mod_network_weave", "name": "Network Weave", "slot": "outer", "types": ["armor", "clothing"], "weight": 0.4, "tier": 3, "lootWeight": 0, "network": true,
       "model": "mod_network_weave", "effect": { "networkWeave": { "interferenceReduction": 0.5, "linkedStealth": 6, "huskLure": 2 } } },
     { "id": "mod_helmet_visor", "name": "Visor", "slot": "visor", "types": ["helmet"], "weight": 0.6, "tier": 1, "lootWeight": 0.2,
       "model": "mod_helmet_visor", "effect": { "armor": 1, "sight": -0.5 } },
     { "id": "mod_dust_filter", "name": "Dust Filter", "slot": "visor", "types": ["helmet", "mask"], "weight": 0.3, "tier": 1, "lootWeight": 0.15,
-      "model": "mod_helmet_filter", "effect": { "weatherProtection": ["dust", "dust_storm"] } }
+      "model": "mod_helmet_filter", "effect": { "weatherProtection": ["dust_storm"] } }
   ],
 
   // Upgrade kits (kind Material): used up on a piece of their family at the mark below.
@@ -185,7 +186,7 @@
     { "id": "helmet_riot", "name": "Riot Helmet", "kind": "Headgear", "weight": 2.5, "tier": 2, "lootWeight": 0.25, "armor": 4,
       "coverage": { "Head": 1 }, "stealth": -3, "sightBonus": -0.5 },
     { "id": "gas_mask", "name": "Gas Mask", "kind": "Headgear", "weight": 0.8, "tier": 1, "lootWeight": 0.3,
-      "stealth": -1, "weatherProtection": ["dust", "dust_storm", "smoke"] }
+      "stealth": -1, "weatherProtection": ["dust_storm", "fog"] }
   ],
 
   // Zone biomes for camo patterns (a zone not listed has none).

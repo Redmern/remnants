@@ -86,7 +86,7 @@
     "use": { "range": 1, "apCost": 2, "evacuate": true } },
 
   { "id": "scrap", "name": "Scrap", "kind": "Material", "weight": 1, "tier": 1, "lootWeight": 10, "salvage": { "resource": "scrap", "amount": 3 } },
-  { "id": "dust_mask", "name": "Dust Mask & Goggles", "kind": "Material", "weight": 0.2, "tier": 1, "lootWeight": 1 },
+  { "id": "dust_mask", "name": "Dust Mask & Goggles", "kind": "Headgear", "weight": 0.2, "tier": 1, "lootWeight": 1, "weatherProtection": ["dust_storm"] },
   { "id": "cloth", "name": "Cloth", "kind": "Material", "weight": 0.5, "tier": 1, "lootWeight": 6, "salvage": { "resource": "cloth", "amount": 2 } },
   { "id": "canned_food", "name": "Canned Food", "kind": "Food", "weight": 0.5, "tier": 1, "lootWeight": 6 },
   { "id": "salt", "name": "Salt", "kind": "Food", "weight": 0.3, "tier": 1, "lootWeight": 3 },

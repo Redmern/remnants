@@ -448,4 +448,20 @@ public class GearModsTests
         Assert.False(loaded.State.Units[0].Moved);
         Assert.Null(loaded.State.Units[0].Facing);
     }
+
+    [Fact]
+    public void Masks_and_waterproofing_keep_the_weather_off_the_wearers_senses()
+    {
+        double Sight(string? head, string weather, string body = "rag_coat")
+        {
+            var u = SurvivorUnit(body: body);
+            if (head is not null) u.Equipment[EquipSlot.Head] = head;
+            var sim = Arena(6, 6, [u], setup: (_, s) => s.Environment = ScavengeEnvironment.At(12, DayPhase.Day, weather));
+            return sim.Profile(u).Sight;
+        }
+        Assert.Equal(EquipSlot.Head, Item("dust_mask").Slot);
+        Assert.True(Sight("dust_mask", "dust_storm") > Sight(null, "dust_storm"));
+        Assert.True(Sight("gas_mask", "dust_storm") > Sight(null, "dust_storm"));
+        Assert.Equal(Sight(null, "rain", "rag_coat+mod_waterproofing"), Sight(null, "clear"), 6);
+    }
 }
