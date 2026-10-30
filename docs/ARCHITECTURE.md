@@ -842,7 +842,7 @@ Colony and world in `data/weather.json`, field effects in `scavenge.json environ
   works), `relayRangeMultiplier` (`Network.Groups`), `thunderChance`, `lightningChance`. Rain: shorter hearing and flares,
   a little stealth; fog: sight much lower; dust: sight and aim down, drones grounded, the Linked's links halved, Husks unaffected
   (their sight stays, and they see through its stealth); thunderstorm: rain plus thunder, lightning and grounded drones.
-  Scavenge save 7, colony save 12.
+  Scavenge save 8, colony save 13.
 - **Presentation** (no rules): `WeatherView` (made by `ColonyScreen` and `ScavengeScreen`) keeps GPU particles (rain
   streaks, dust puffs, debris) over the ground point the camera looks at, grades the time of day's `SkyLook`
   (`DayNightLighting.Weather`: wet and dark under rain, grey overcast, a brown cast and haze in dust, ground mist

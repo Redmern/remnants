@@ -303,7 +303,7 @@ map), Accept (Y) / Decline (U) an offer, Offer an alliance (Y) to a rival you se
   `scavenge.json environment.weather`). A host playing from the colony's waiting party passes the weather over the zone
   at arrival and the changes due within the mission (`ColonySim.MissionEnvironment(tick, zone)`).
 - **Every view carries it**: weather, intensity, the changes still to come, and the rounds of the last thunder and
-  lightning (protocol version 6). The changes apply at round start on the server; `WeatherChanged`, `Thunder` and
+  lightning (protocol version 7). The changes apply at round start on the server; `WeatherChanged`, `Thunder` and
   `Lightning` events name no unit and go to every side (`FogLog`).
 - **Fog follows the weather on the server** through the same `Detection` / `Visibility`: dust or fog hides what clear
   weather shows; in a lightning round every unit on the map is seen by every side, and only in that round. Thunder
