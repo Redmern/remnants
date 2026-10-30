@@ -21,12 +21,17 @@ namespace Remnants.Core.Scavenge;
 /// (tags, character ids, patrols, raised tiles); older saves load as plain runs.
 /// Version 9 adds the weather's intensity, its changes still to come, and the rounds of the last thunder and lightning;
 /// older runs load with steady weather.
-/// Version 10 adds parked vehicles (<see cref="ScavengeState.Vehicles"/>, their stash, HP and upgrades) and stripped wrecks
+/// Version 10 adds electronics: holo-decoy units and their fade round, EMP stuns, charges spent per device and a party's
+/// secured cargo; an older run loads with none of them.
+/// Version 11 adds gear mods: modded gear ids in equipment, packs and caches, the Head slot, and per unit whether it moved
+/// this turn (<see cref="Unit.Moved"/>) and where it faces (<see cref="Unit.Facing"/>); older runs load with nobody moved
+/// and no facing (a weapon light shines all round until its carrier moves or shoots).
+/// Version 12 adds parked vehicles (<see cref="ScavengeState.Vehicles"/>, their stash, HP and upgrades) and stripped wrecks
 /// (<see cref="ScavengeState.SalvagedWrecks"/>); older runs have none.
 /// </summary>
 public static class ScavengeSave
 {
-    public const int Version = 10;
+    public const int Version = 12;
     private const int OldestVersion = 1;
 
     private sealed record Envelope(int Version, ScavengeState Scavenge);

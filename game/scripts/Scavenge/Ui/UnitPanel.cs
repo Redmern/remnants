@@ -28,6 +28,9 @@ public partial class UnitPanel : PanelContainer
     private readonly Label _apLabel = Widgets.Label("AP", "Heading");
     private readonly VBoxContainer _sections = Widgets.Column(8);
     private readonly Dictionary<BodyPart, (TextureRect Icon, Label Text, StatBar Bar)> _parts = new();
+
+    /// <summary>Conditions under the body rows: "Fracture (left leg) · Infected wound 40% · fever · in pain" (medicine.json).</summary>
+    private readonly Label _conditions = Widgets.Label("", "Small", Palette.Warn);
     private readonly MarginContainer _profile = new();
     private readonly VBoxContainer _gear = Widgets.Column(3);
     private readonly Label _empty = Widgets.Wrapped("Click a unit. Your units take orders on their turn.", "Muted");
@@ -38,6 +41,9 @@ public partial class UnitPanel : PanelContainer
     private PanelContainer _gearCard = null!;
     private readonly Pips _battery = new();
     private readonly Label _droneText = Widgets.Wrapped("", "Small");
+    private readonly HFlowContainer _cargoRow = new();
+    private Label _droneHeading = null!;
+    private string _cargoSignature = "";
     private string _profileSignature = "";
 
     public UnitPanel(ScavengePresenter presenter)
@@ -80,7 +86,9 @@ public partial class UnitPanel : PanelContainer
         batteryRow.AddChild(_battery);
         drone.AddChild(batteryRow);
         drone.AddChild(_droneText);
+        drone.AddChild(_cargoRow);
         _droneCard = Section("Scout drone", "skill_dronepiloting", drone);
+        _droneHeading = _droneCard.GetChild(0).GetChild(0).GetChild<Label>(1);
         _sections.AddChild(_droneCard);
         _bodyCard = Section("Body", "body_full", BodyRows());
         _sections.AddChild(_bodyCard);
@@ -117,6 +125,9 @@ public partial class UnitPanel : PanelContainer
             rows.AddChild(row);
             _parts[part] = (icon, text, bar);
         }
+        _conditions.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _conditions.MouseFilter = MouseFilterEnum.Stop;
+        rows.AddChild(_conditions);
         return rows;
     }
 
@@ -139,7 +150,7 @@ public partial class UnitPanel : PanelContainer
         _portrait.Alert = unit!.Status == UnitStatus.Downed;
         _title.Text = unit.Name;
         _title.AddThemeColorOverride("font_color", side.Lightened(0.2f));
-        _kind.Text = ScavengeText.Kind(unit);
+        _kind.Text = ScavengeText.Kind(data, unit);
         _status.Text = ScavengeText.Status(unit).ToUpperInvariant();
         _status.AddThemeColorOverride("font_color", unit.Status switch
         {
@@ -165,7 +176,7 @@ public partial class UnitPanel : PanelContainer
         _allyText.Text = string.Join("\n", lines);
         RefreshDrone(data, unit);
         // Machines have no limbs or pack worth a card.
-        _bodyCard.Visible = _gearCard.Visible = unit.Kind is not (UnitKind.Drone or UnitKind.Device);
+        _bodyCard.Visible = _gearCard.Visible = unit.Kind is not (UnitKind.Drone or UnitKind.Device or UnitKind.Decoy);
 
         RefreshBody(data, unit);
         RefreshProfile(profile);
@@ -182,7 +193,10 @@ public partial class UnitPanel : PanelContainer
         _droneCard.Visible = drone is not null || packed is not null;
         if (!_droneCard.Visible) return;
         var item = drone?.DroneItemId ?? packed!;
-        var max = op is not null && op.PlayerId == _presenter.PlayerId ? Drones.MaxBattery(data, op, item) : data.Items[item].Drone!.Battery;
+        var spec = data.Items[item].Drone!;
+        _droneHeading.Text = ScavengeText.Item(data, item).ToUpperInvariant();
+        RefreshCargo(data, drone, spec);
+        var max =op is not null && op.PlayerId == _presenter.PlayerId ? Drones.MaxBattery(data, op, item) : data.Items[item].Drone!.Battery;
         var charge = drone?.Battery ?? (op is not null ? Drones.PackedBattery(data, op, item) : max);
         var low = charge <= 1 ? Palette.Danger : charge < data.Rules.Drone.MinBattery ? Palette.Warn : Palette.Network.Lerp(Palette.Amber, 0.85f);
         _battery.Set(charge, Math.Max(max, charge), low);
@@ -196,12 +210,46 @@ public partial class UnitPanel : PanelContainer
             lines.Add(Drones.Jammed(_presenter.Sim, drone.Pos) ? "Jammed: 1 tile a flight, battery drains fast." : $"Flies {data.Items[item].Drone!.FlyRange} tiles over anything.");
             if (drone.Id == unit.Id) lines.Add("Flies on its operator's AP; melee cannot reach it, the Linked shoot it down.");
         }
+        lines.Add(spec.Role switch
+        {
+            DroneRole.Medic => "Medic: drops a bandage or med-kit from the operator's pack on someone next to it (R).",
+            DroneRole.Cargo => $"Cargo: loads up to {spec.Cargo} items from a cache next to it (R), ferries them out from an exit (I).",
+            DroneRole.Combat => "Combat: fires its gun at a hostile it sees (R), aimed with the operator's Drone Piloting.",
+            _ => "Scout: sees far and shares its sight with the team.",
+        });
         _droneText.Text = string.Join("\n", lines);
+    }
+
+    /// <summary>A cargo drone's hold: one chip per item and an empty slot per free place.</summary>
+    private void RefreshCargo(ScavengeData data, Unit? drone, DroneItemDef spec)
+    {
+        _cargoRow.Visible = spec.Role == DroneRole.Cargo;
+        if (!_cargoRow.Visible) return;
+        var hold = drone?.Pack ?? [];
+        var signature = string.Join(",", hold) + $"/{spec.Cargo}";
+        if (signature == _cargoSignature) return;
+        _cargoSignature = signature;
+        Widgets.Clear(_cargoRow);
+        _cargoRow.AddThemeConstantOverride("h_separation", 4);
+        _cargoRow.AddThemeConstantOverride("v_separation", 4);
+        _cargoRow.AddChild(Widgets.Label($"HOLD {hold.Count}/{spec.Cargo}", "Heading"));
+        foreach (var id in hold)
+            _cargoRow.AddChild(Widgets.Chip(Icons.Item(data.Items[id].DefinedId, data.Items[id].Kind.ToString(), 16), ScavengeText.Item(data, id),
+                tooltip: $"{ScavengeText.Item(data, id)} in the hold: ferried home from an exit, safe whatever happens."));
+        for (var i = hold.Count; i < spec.Cargo; i++)
+            _cargoRow.AddChild(Widgets.Chip(null, "empty", Palette.TextDim, "A free place in the hold."));
     }
 
     private void RefreshBody(ScavengeData data, Unit unit)
     {
         var cyber = data.Cybernetics;
+        var med = data.Medicine;
+        var tags = MedicalText.Tags(med, unit.Body);
+        if (unit.CalmUntilRound >= _presenter.Sim.State.Round) tags.Add("calm");
+        if (unit.CrashAp > 0) tags.Add($"stim crash −{unit.CrashAp} AP next turn");
+        _conditions.Text = tags.Count == 0 ? "" : "⚕ " + string.Join(" · ", tags);
+        _conditions.Visible = tags.Count > 0;
+        _conditions.TooltipText = med is null ? "" : string.Join("\n", unit.Body.Conditions.Select(c => MedicalText.Line(med, c, field: true)));
         foreach (var (part, (icon, text, bar)) in _parts)
         {
             var p = unit.Body[part];
@@ -214,7 +262,8 @@ public partial class UnitPanel : PanelContainer
                     icon.Modulate = Palette.TextMuted;
                     break;
                 case PartCondition.Injured:
-                    text.Text = $"{name} · hurt";
+                    var broken = med is not null && unit.Body.Find(med.Fracture.Condition, part) is { } f ? (f.Treated ? " · splint" : " · broken") : "";
+                    text.Text = $"{name} · hurt{broken}";
                     bar.Set(1 - p.Severity, Fmt.Percent(p.Severity), p.Severity >= 0.5 ? Palette.Danger : Palette.Warn);
                     icon.Modulate = Palette.Danger;
                     break;
@@ -258,24 +307,39 @@ public partial class UnitPanel : PanelContainer
         _profile.AddChild(ProfileChips.Build(profile));
     }
 
+    /// <summary>A Jury-rig order (fit a mod from the pack, or take one off): the screen runs it.</summary>
+    public event Action<IScavengeCommand>? CommandRequested;
+
+    private static readonly EquipSlot[] GearSlots = [EquipSlot.Weapon, EquipSlot.Body, EquipSlot.Head, EquipSlot.Tool];
+
     private void RefreshGear(ScavengeData data, Unit unit, UnitProfile profile)
     {
         Widgets.Clear(_gear);
-        foreach (var slot in new[] { EquipSlot.Weapon, EquipSlot.Body, EquipSlot.Tool })
+        foreach (var slot in GearSlots)
         {
-            var row = Widgets.Row(6);
             var has = unit.Equipment.TryGetValue(slot, out var id);
+            // An empty head slot stays out of the way (most survivors go bare-headed).
+            if (!has && slot == EquipSlot.Head) continue;
+            var row = Widgets.Row(6);
             var def = has ? data.Items.GetValueOrDefault(id!) : null;
-            var fallback = slot switch { EquipSlot.Weapon => "item_weapon", EquipSlot.Body => "item_armor", _ => "item_tool" };
-            row.AddChild(Icons.Rect(def is null ? Icons.Get(fallback, 18) : Icons.Item(def.DefinedId, def.Kind.ToString(), 18), 18,
+            row.AddChild(Icons.Rect(def is null ? Icons.Get(Colony.Ui.ExpeditionPanel.SlotIcon(slot), 18) : Icons.Item(def.DefinedId, def.Kind.ToString(), 18), 18,
                 has ? Palette.Text : Palette.TextDim));
             row.AddChild(Widgets.Label(slot.ToString().ToUpperInvariant(), "Heading"));
-            var name = Widgets.Label(has ? ScavengeText.Item(data, id!) : "—", "", has ? Palette.Text : Palette.TextDim, 14);
+            var name = Widgets.Label(def is not null ? GearText.Title(data, def) : has ? ScavengeText.Item(data, id!) : "—", "", has ? Palette.Text : Palette.TextDim, 14);
             name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             name.HorizontalAlignment = HorizontalAlignment.Right;
             name.ClipText = true;
+            name.MouseFilter = MouseFilterEnum.Stop;
+            name.TooltipText = def is null ? "" : GearText.Line(data, def);
             row.AddChild(name);
             _gear.AddChild(row);
+            if (def is { Mods.Count: > 0 })
+            {
+                var chips = GearText.ModChips(data, def, 12);
+                chips.Alignment = FlowContainer.AlignmentMode.End;
+                _gear.AddChild(chips);
+            }
+            if (def is not null) JuryRig(data, unit, slot, def);
         }
         if (unit.Pack.Count > 0)
         {
@@ -285,8 +349,11 @@ public partial class UnitPanel : PanelContainer
             foreach (var group in unit.Pack.GroupBy(p => p))
             {
                 var def = data.Items.GetValueOrDefault(group.Key);
+                var charges = def is null || !_presenter.IsMine(unit) ? null : ElectronicWarfare.ChargesLeft(data, unit, group.Key);
+                var text = $"{ScavengeText.Item(data, group.Key)}{(group.Count() > 1 ? $" ×{group.Count()}" : "")}" + (charges is { } c ? $" · {c} chg" : "");
+                var tip = def?.Use is not null ? ScavengeText.UseTip(data, def, charges) + "\nIn the pack" : "In the pack";
                 flow.AddChild(Widgets.Chip(def is null ? Icons.Get("item_generic", 14) : Icons.Item(def.DefinedId, def.Kind.ToString(), 14),
-                    $"{ScavengeText.Item(data, group.Key)}{(group.Count() > 1 ? $" ×{group.Count()}" : "")}", null, "In the pack"));
+                    text, charges is 0 ? Palette.Danger : null, tip, def?.NetworkGrade == true ? Palette.Network : null));
             }
             _gear.AddChild(flow);
         }
@@ -295,5 +362,48 @@ public partial class UnitPanel : PanelContainer
         load.Set(fraction, $"{profile.Load:0.#}/{profile.CarryCapacity:0} kg", fraction > 1 ? Palette.Danger : fraction > 0.85 ? Palette.Warn : Palette.Rust);
         load.TooltipText = "Load / carry capacity. Overloaded units move and fight worse.";
         _gear.AddChild(load);
+    }
+
+    /// <summary>
+    /// Jury-rig (the field_repair perk hook): on the unit's own turn, Fit buttons for the mods in its pack that fit this
+    /// piece and Remove buttons for the mods on it (FieldMod; Core checks the AP and the slots).
+    /// </summary>
+    private void JuryRig(ScavengeData data, Unit unit, EquipSlot slot, ItemDef item)
+    {
+        if (data.GearMods is not { } mods || unit.Hook(mods.Def.Rules.FieldHook) <= 0) return;
+        if (_presenter.ActingUnit?.Id != unit.Id || mods.Moddable(item.DefinedId) is null) return;
+        var fits = GearBench.FittingMods(data, item.Id, unit.Pack).ToList();
+        if (fits.Count == 0 && item.Mods.Count == 0) return;
+        var cost = mods.Def.Rules.FieldApCost;
+        var flow = new HFlowContainer { Alignment = FlowContainer.AlignmentMode.End };
+        flow.AddThemeConstantOverride("h_separation", 4);
+        flow.AddThemeConstantOverride("v_separation", 4);
+        var pid = _presenter.PlayerId;
+        var tag = Widgets.Label($"JURY-RIG {cost} AP", "Small", Palette.TextMuted);
+        tag.CustomMinimumSize = new Vector2(0, 22);
+        flow.AddChild(tag);
+        foreach (var mod in fits)
+        {
+            var outcome = GearBench.Install(data, item.Id, mod);
+            var b = Widgets.TextButton($"+ {ScavengeText.Item(data, mod)}",
+                () => CommandRequested?.Invoke(new FieldMod(pid, unit.Id, ModItemId: mod, Slot: slot)), $"Jury-rig ({cost} AP): {outcome.Message}", "Flat");
+            b.CustomMinimumSize = new Vector2(0, 22);
+            b.AddThemeFontSizeOverride("font_size", 12);
+            b.Disabled = !outcome.Ok || unit.Ap < cost;
+            b.AddThemeColorOverride("font_color", GearText.ModColor(data, mod, Palette.Amber));
+            flow.AddChild(b);
+        }
+        foreach (var mod in item.Mods)
+        {
+            var modSlot = mods.SlotOf(mod)!;
+            var b = Widgets.TextButton($"− {ScavengeText.Item(data, mod)}",
+                () => CommandRequested?.Invoke(new FieldMod(pid, unit.Id, RemoveSlot: modSlot, Slot: slot)), $"Jury-rig ({cost} AP): take it off into the pack", "Flat");
+            b.CustomMinimumSize = new Vector2(0, 22);
+            b.AddThemeFontSizeOverride("font_size", 12);
+            b.Disabled = unit.Ap < cost;
+            b.AddThemeColorOverride("font_color", Palette.TextMuted);
+            flow.AddChild(b);
+        }
+        _gear.AddChild(flow);
     }
 }

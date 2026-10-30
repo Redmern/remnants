@@ -62,6 +62,7 @@ public sealed record VehicleStats(
     public bool SmokeLauncher { get; init; }
     public bool Workbench { get; init; }
     public bool SolarCharger { get; init; }
+    public double ChargeRate { get; init; }
 }
 
 /// <summary>
@@ -131,6 +132,7 @@ public static class VehicleRules
             SmokeLauncher = Any(u => u.SmokeLauncher),
             Workbench = Any(u => u.Workbench),
             SolarCharger = Any(u => u.SolarCharger),
+            ChargeRate = Sum(u => u.ChargeRate),
         };
     }
 
@@ -156,6 +158,10 @@ public static class VehicleRules
     /// The Radio Mast range a radio booster adds while its vehicle is home. The Radio Mast (story-schematics) reads this
     /// one number; nothing else depends on it.
     /// </summary>
+    /// <summary>Charge work per tick the vehicles at home add to the charging bench (a solar charger), for electronics' power grid.</summary>
+    public static double ChargeRate(ColonyState state, GameData data) =>
+        data.Vehicles.Tiers.Count == 0 ? 0 : state.Vehicles.Where(v => !v.Away).Sum(v => Stats(data, v).ChargeRate);
+
     public static double RadioRangeBonus(ColonySim sim) =>
         sim.State.Vehicles.Where(v => !v.Away).Select(v => Stats(sim.Data, v).RadioRange).DefaultIfEmpty(0).Max();
 
@@ -271,6 +277,16 @@ public static class VehicleRules
 
     public static bool Broken(GameData data, Vehicle vehicle) =>
         vehicle.Condition < Stats(data, vehicle).MaxCondition * data.Vehicles.MinLaunchCondition - 1e-9;
+
+    /// <summary>
+    /// A party called home before it arrived (a raid): its vehicle turns round with it, home again, and the fuel for the
+    /// half of the trip it no longer drives goes back to the stores.
+    /// </summary>
+    public static void Recalled(ColonySim sim, Expedition expedition)
+    {
+        if (expedition.VehicleId is { } id && sim.FindVehicle(id) is { } vehicle) vehicle.Away = false;
+        if (expedition.Fuel > 0) sim.State.Stockpile.Add(sim.Data.Vehicles.FuelResource, Math.Floor(expedition.Fuel / 2));
+    }
 
     /// <summary>A new vehicle of a tier at full condition, named "{Tier} {n}".</summary>
     internal static Vehicle Add(ColonyState state, GameData data, string tierId)

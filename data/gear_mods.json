@@ -1,0 +1,282 @@
+{
+  // Gear mods and Mk upgrades for weapons, armor and clothing (ARCHITECTURE.md "Gear mods", BALANCE.md "Gear mods").
+  // A modded item is an ordinary item id: base[@quality][+mk2|+mk3][+mod[@quality]]..., mods in slot order, so it
+  // travels through inventories, expeditions, saves, trades and the wire as itself. Schematics that gate the recipes
+  // below are in schematics.gearmods.json.
+  "rules": {
+    // Buildings with a Gear Bench (install / remove mods) and those that fit Mk kits.
+    "benches": ["armory", "workshop", "tailor"],
+    "upgradeAt": ["armory", "tailor"],
+    // Fitting or removing a mod in the field needs this perk hook (Jury-rig) and costs AP.
+    "fieldHook": "field_repair",
+    "fieldApCost": 2,
+    // A ranged attack after moving this turn loses accuracy (a stock takes some of it away). The Linked and
+    // machines aim on the move.
+    "movedAccuracyPenalty": 0.06,
+    "movedPenaltyIgnoredBy": ["Linked", "Device"],
+    // The environment is dark for a weapon light or thermal masking when human sight is cut below this multiplier.
+    "darkBelowSight": 0.95
+  },
+
+  "slots": [
+    { "id": "sight", "name": "Sight" },
+    { "id": "muzzle", "name": "Barrel / muzzle" },
+    { "id": "stock", "name": "Stock / grip" },
+    { "id": "underbarrel", "name": "Underbarrel" },
+    { "id": "edge", "name": "Edge / head" },
+    { "id": "grip", "name": "Grip" },
+    { "id": "coil", "name": "Coil" },
+    { "id": "plating", "name": "Plating" },
+    { "id": "lining", "name": "Lining" },
+    { "id": "outer", "name": "Outer layer" },
+    { "id": "webbing", "name": "Webbing" },
+    { "id": "visor", "name": "Visor / filter" }
+  ],
+
+  // Slot kinds per gear type and how many may be filled at Mk I / II / III.
+  "types": {
+    "firearm": { "slots": ["sight", "muzzle", "stock", "underbarrel"], "slotsByMark": [1, 2, 3] },
+    "melee": { "slots": ["edge", "grip", "coil"], "slotsByMark": [1, 2, 3] },
+    "integrated": { "slots": ["sight", "muzzle", "underbarrel"], "slotsByMark": [1] },
+    "armor": { "slots": ["plating", "lining", "outer", "webbing"], "slotsByMark": [1, 2, 3] },
+    "clothing": { "slots": ["lining", "outer", "webbing"], "slotsByMark": [1, 2, 3] },
+    "helmet": { "slots": ["plating", "lining", "visor"], "slotsByMark": [1, 2, 3] },
+    "mask": { "slots": ["visor"], "slotsByMark": [1] }
+  },
+
+  "gear": {
+    "pistol": { "type": "firearm", "family": "sidearm" },
+    "rifle": { "type": "firearm", "family": "longarm" },
+    "linked_carbine": { "type": "firearm", "family": "carbine" },
+    "pipe": { "type": "melee", "family": "melee" },
+    "spear": { "type": "melee", "family": "melee" },
+    "machete": { "type": "melee", "family": "melee" },
+    "gun_arm": { "type": "integrated" },
+    "rag_coat": { "type": "clothing", "family": "clothing" },
+    "scout_jacket": { "type": "clothing", "family": "clothing" },
+    "camo_cloak": { "type": "clothing", "family": "clothing" },
+    "padded_vest": { "type": "armor", "family": "armor" },
+    "riot_armor": { "type": "armor", "family": "armor" },
+    "linked_plating": { "type": "armor", "family": "plating" },
+    "helmet_scrap": { "type": "helmet", "family": "armor" },
+    "helmet_riot": { "type": "helmet", "family": "armor" },
+    "gas_mask": { "type": "mask" },
+    "dust_mask": { "type": "mask" }
+  },
+
+  // Base stat steps of the Mk upgrades; they stack with quality. Weapons take the damage and accuracy, worn gear the
+  // armor (base + armorBonus, then × armorMultiplier) and coverage (added to each region it covers, up to 1).
+  "marks": [
+    { "mk": 2, "name": "Mk II", "damageMultiplier": 1.08, "accuracyBonus": 0.02, "armorBonus": 0.25, "armorMultiplier": 1.1,
+      "coverageBonus": 0.15, "weightMultiplier": 1.05 },
+    { "mk": 3, "name": "Mk III", "damageMultiplier": 1.16, "accuracyBonus": 0.04, "armorBonus": 0.5, "armorMultiplier": 1.2,
+      "coverageBonus": 0.3, "weightMultiplier": 1.1 }
+  ],
+
+  // Upgrade kit item per gear family and mark.
+  "families": {
+    "sidearm": { "name": "Sidearm", "kits": { "2": "kit_sidearm_mk2", "3": "kit_sidearm_mk3" } },
+    "longarm": { "name": "Long gun", "kits": { "2": "kit_longarm_mk2", "3": "kit_longarm_mk3" } },
+    "carbine": { "name": "Linked carbine", "kits": { "2": "kit_carbine_mk2", "3": "kit_carbine_mk3" } },
+    "melee": { "name": "Melee", "kits": { "2": "kit_melee_mk2", "3": "kit_melee_mk3" } },
+    "clothing": { "name": "Clothing", "kits": { "2": "kit_clothing_mk2", "3": "kit_clothing_mk3" } },
+    "armor": { "name": "Armor", "kits": { "2": "kit_armor_mk2", "3": "kit_armor_mk3" } },
+    "plating": { "name": "Linked plating", "kits": { "2": "kit_plating_mk2", "3": "kit_plating_mk3" } }
+  },
+
+  // Each mod is an item (kind Mod) with a slot, the gear types it fits and its effect. A crafted mod rolls a quality:
+  // benefits scale with the tier's multiplier, drawbacks shrink by it (Fine: more good, less bad).
+  // Weapon effects change the gear's attacks (ranged mods its ranged ones, melee mods its melee ones); worn-gear effects
+  // change the piece itself.
+  "mods": [
+    { "id": "mod_iron_sight", "name": "Iron Sights", "slot": "sight", "types": ["firearm", "integrated"], "weight": 0.1, "tier": 1, "lootWeight": 0.35,
+      "effect": { "accuracy": 0.03 } },
+    { "id": "mod_reflex_sight", "name": "Reflex Sight", "slot": "sight", "types": ["firearm", "integrated"], "weight": 0.2, "tier": 2, "lootWeight": 0.2,
+      "model": "mod_sight_reflex", "effect": { "accuracy": 0.04 } },
+    { "id": "mod_scope", "name": "Scope", "slot": "sight", "types": ["firearm"], "weight": 0.5, "tier": 2, "lootWeight": 0.15,
+      "model": "mod_scope", "effect": { "accuracy": 0.07, "reach": 2, "closeRange": 2, "closeApPenalty": 1 } },
+    { "id": "mod_suppressor", "name": "Suppressor", "slot": "muzzle", "types": ["firearm", "integrated"], "weight": 0.4, "tier": 2, "lootWeight": 0.15,
+      "model": "mod_suppressor", "effect": { "noiseMultiplier": 0.35, "reveal": -1, "damageMultiplier": 0.9 } },
+    { "id": "mod_compensator", "name": "Compensator", "slot": "muzzle", "types": ["firearm", "integrated"], "weight": 0.3, "tier": 1, "lootWeight": 0.25,
+      "model": "mod_compensator", "effect": { "accuracy": 0.02, "accuracyByAction": { "burst": 0.06 }, "noiseMultiplier": 1.15 } },
+    { "id": "mod_long_barrel", "name": "Long Barrel", "slot": "muzzle", "types": ["firearm"], "weight": 1.2, "tier": 2, "lootWeight": 0.15,
+      "model": "mod_long_barrel", "effect": { "reach": 2, "damageMultiplier": 1.08, "noiseMultiplier": 1.1 } },
+    { "id": "mod_incendiary", "name": "Incendiary Rounds", "slot": "muzzle", "types": ["firearm", "integrated"], "weight": 0.3, "tier": 2, "lootWeight": 0.12,
+      "effect": { "banes": [ { "tag": "husk", "hitBonus": 0.05, "damageMultiplier": 1.5 } ], "noiseMultiplier": 1.2, "reveal": 1 } },
+    { "id": "mod_stock", "name": "Padded Stock", "slot": "stock", "types": ["firearm"], "weight": 0.6, "tier": 1, "lootWeight": 0.25,
+      "model": "mod_stock", "effect": { "accuracy": 0.02, "movedPenaltyReduction": 0.7 } },
+    { "id": "mod_flashlight", "name": "Weapon Light", "slot": "underbarrel", "types": ["firearm", "integrated"], "weight": 0.3, "tier": 1, "lootWeight": 0.3,
+      "model": "mod_flashlight", "effect": { "light": { "range": 7, "coneDegrees": 100, "stealthPenalty": 20, "beacon": true } } },
+    { "id": "mod_laser", "name": "Laser Sight", "slot": "underbarrel", "types": ["firearm", "integrated"], "weight": 0.2, "tier": 2, "lootWeight": 0.15,
+      "model": "mod_laser", "effect": { "accuracy": 0.04, "stealth": -3 } },
+    { "id": "mod_emp_coil", "name": "EMP Coil", "slot": "underbarrel", "types": ["firearm", "integrated"], "weight": 0.5, "tier": 3, "lootWeight": 0, "network": true,
+      "model": "mod_emp_coil", "effect": {
+        "banes": [ { "tag": "network", "hitBonus": 0.1, "damageMultiplier": 1.4, "armorPierce": 2, "disruptRounds": 1 },
+                   { "tag": "device", "damageMultiplier": 1.5, "armorPierce": 2 } ],
+        "networkFeedback": 0.15 } },
+    { "id": "mod_sharpened_edge", "name": "Sharpened Edge", "slot": "edge", "types": ["melee"], "weight": 0, "tier": 1, "lootWeight": 0.35,
+      "model": "mod_melee_edge", "effect": { "damageMultiplier": 1.08, "injuryMultiplier": 1.2 } },
+    { "id": "mod_serrated_edge", "name": "Serrated Edge", "slot": "edge", "types": ["melee"], "weight": 0.2, "tier": 1, "lootWeight": 0.2,
+      "model": "mod_melee_edge", "effect": { "injuryMultiplier": 1.6, "accuracy": -0.02 } },
+    { "id": "mod_weighted_head", "name": "Weighted Head", "slot": "edge", "types": ["melee"], "weight": 1.5, "tier": 1, "lootWeight": 0.2,
+      "model": "mod_melee_weight", "effect": { "damageMultiplier": 1.6, "strengthScaling": 0.3, "apCost": 1 } },
+    { "id": "mod_spikes", "name": "Spikes", "slot": "edge", "types": ["melee"], "weight": 0.4, "tier": 1, "lootWeight": 0.2,
+      "model": "mod_melee_spikes", "effect": { "armorPierce": 3, "injuryMultiplier": 1.1 } },
+    { "id": "mod_wrapped_grip", "name": "Wrapped Grip", "slot": "grip", "types": ["melee"], "weight": 0, "tier": 1, "lootWeight": 0.35,
+      "effect": { "accuracy": 0.04 } },
+    { "id": "mod_shock_coil", "name": "Shock Coil", "slot": "coil", "types": ["melee"], "weight": 0.6, "tier": 2, "lootWeight": 0.12,
+      "model": "mod_melee_shock", "effect": {
+        "banes": [ { "tag": "network", "damageMultiplier": 1.15, "disruptRounds": 1, "stun": true },
+                   { "tag": "device", "damageMultiplier": 1.15, "stun": true } ],
+        "noiseMultiplier": 1.5 } },
+
+    { "id": "mod_armor_scrap_plates", "name": "Scrap Plates", "slot": "plating", "types": ["armor", "helmet"], "weight": 3, "tier": 1, "lootWeight": 0.3,
+      "model": "mod_armor_scrap_plates", "effect": { "armor": 0.75, "stealth": -4, "moveNoise": 1 } },
+    { "id": "mod_armor_ceramic_plates", "name": "Ceramic Plates", "slot": "plating", "types": ["armor", "helmet"], "weight": 2, "tier": 2, "lootWeight": 0.15,
+      "model": "mod_armor_ceramic_plates", "effect": { "armor": 1.5, "stealth": -2, "moveNoise": 1 } },
+    { "id": "mod_armor_padding", "name": "Padding", "slot": "lining", "types": ["armor", "clothing", "helmet"], "weight": 0.5, "tier": 1, "lootWeight": 0.35,
+      "model": "mod_armor_padding", "effect": { "injuryResist": 0.2 } },
+    { "id": "mod_stab_lining", "name": "Stab-proof Lining", "slot": "lining", "types": ["armor", "clothing"], "weight": 0.8, "tier": 1, "lootWeight": 0.2,
+      "effect": { "meleeArmor": 1.5 } },
+    { "id": "mod_thermal_masking", "name": "Thermal Masking", "slot": "lining", "types": ["armor", "clothing"], "weight": 0.5, "tier": 2, "lootWeight": 0.1,
+      "effect": { "thermalMask": 12 } },
+    { "id": "mod_armor_webbing", "name": "Webbing", "slot": "webbing", "types": ["armor", "clothing"], "weight": 0.5, "tier": 1, "lootWeight": 0.35,
+      "model": "mod_armor_webbing", "effect": { "carry": 6 } },
+    { "id": "mod_quiet_fabric", "name": "Quiet Fabric", "slot": "outer", "types": ["armor", "clothing"], "weight": 0.2, "tier": 1, "lootWeight": 0.2,
+      "effect": { "stealth": 4, "moveNoise": -1 } },
+    { "id": "mod_camo_urban", "name": "Urban Camo", "slot": "outer", "types": ["armor", "clothing"], "weight": 0, "tier": 1, "lootWeight": 0.15,
+      "model": "mod_cloth_camo_urban", "effect": { "camo": { "biome": "urban", "stealth": 8 } } },
+    { "id": "mod_camo_wasteland", "name": "Wasteland Camo", "slot": "outer", "types": ["armor", "clothing"], "weight": 0, "tier": 1, "lootWeight": 0.15,
+      "model": "mod_cloth_camo_wasteland", "effect": { "camo": { "biome": "wasteland", "stealth": 8 } } },
+    { "id": "mod_camo_foliage", "name": "Foliage Camo", "slot": "outer", "types": ["armor", "clothing"], "weight": 0, "tier": 2, "lootWeight": 0.12,
+      "model": "mod_cloth_camo_foliage", "effect": { "camo": { "biome": "foliage", "stealth": 8 } } },
+    { "id": "mod_waterproofing", "name": "Waterproofing", "slot": "outer", "types": ["armor", "clothing"], "weight": 0.3, "tier": 1, "lootWeight": 0.15,
+      "model": "mod_cloth_waterproof", "effect": { "weatherProtection": ["rain", "thunderstorm"], "stealth": -1 } },
+    { "id": "mod_network_weave", "name": "Network Weave", "slot": "outer", "types": ["armor", "clothing"], "weight": 0.4, "tier": 3, "lootWeight": 0, "network": true,
+      "model": "mod_network_weave", "effect": { "networkWeave": { "interferenceReduction": 0.5, "linkedStealth": 6, "huskLure": 2 } } },
+    { "id": "mod_helmet_visor", "name": "Visor", "slot": "visor", "types": ["helmet"], "weight": 0.6, "tier": 1, "lootWeight": 0.2,
+      "model": "mod_helmet_visor", "effect": { "armor": 1, "sight": -0.5 } },
+    { "id": "mod_dust_filter", "name": "Dust Filter", "slot": "visor", "types": ["helmet", "mask"], "weight": 0.3, "tier": 1, "lootWeight": 0.15,
+      "model": "mod_helmet_filter", "effect": { "weatherProtection": ["dust_storm"] } }
+  ],
+
+  // Upgrade kits (kind Material): used up on a piece of their family at the mark below.
+  "kits": [
+    { "id": "kit_sidearm_mk2", "name": "Sidearm Mk II Kit", "family": "sidearm", "mk": 2, "weight": 0.8, "tier": 2, "lootWeight": 0.12 },
+    { "id": "kit_sidearm_mk3", "name": "Sidearm Mk III Kit", "family": "sidearm", "mk": 3, "weight": 1, "tier": 3, "lootWeight": 0.06 },
+    { "id": "kit_longarm_mk2", "name": "Long Gun Mk II Kit", "family": "longarm", "mk": 2, "weight": 1.2, "tier": 2, "lootWeight": 0.08 },
+    { "id": "kit_longarm_mk3", "name": "Long Gun Mk III Kit", "family": "longarm", "mk": 3, "weight": 1.5, "tier": 3, "lootWeight": 0.04 },
+    { "id": "kit_carbine_mk2", "name": "Carbine Mk II Kit", "family": "carbine", "mk": 2, "weight": 1.2, "tier": 3, "lootWeight": 0.04 },
+    { "id": "kit_carbine_mk3", "name": "Carbine Mk III Kit", "family": "carbine", "mk": 3, "weight": 1.5, "tier": 3, "lootWeight": 0 },
+    { "id": "kit_melee_mk2", "name": "Melee Mk II Kit", "family": "melee", "mk": 2, "weight": 0.8, "tier": 1, "lootWeight": 0.12 },
+    { "id": "kit_melee_mk3", "name": "Melee Mk III Kit", "family": "melee", "mk": 3, "weight": 1, "tier": 2, "lootWeight": 0.06 },
+    { "id": "kit_clothing_mk2", "name": "Clothing Mk II Kit", "family": "clothing", "mk": 2, "weight": 0.5, "tier": 1, "lootWeight": 0.1 },
+    { "id": "kit_clothing_mk3", "name": "Clothing Mk III Kit", "family": "clothing", "mk": 3, "weight": 0.6, "tier": 2, "lootWeight": 0.05 },
+    { "id": "kit_armor_mk2", "name": "Armor Mk II Kit", "family": "armor", "mk": 2, "weight": 1.5, "tier": 1, "lootWeight": 0.1, "model": "item_armor_kit_mk2" },
+    { "id": "kit_armor_mk3", "name": "Armor Mk III Kit", "family": "armor", "mk": 3, "weight": 2, "tier": 2, "lootWeight": 0.05, "model": "item_armor_kit_mk3" },
+    { "id": "kit_plating_mk2", "name": "Plating Mk II Kit", "family": "plating", "mk": 2, "weight": 1.5, "tier": 3, "lootWeight": 0.03, "model": "item_armor_kit_mk2" },
+    { "id": "kit_plating_mk3", "name": "Plating Mk III Kit", "family": "plating", "mk": 3, "weight": 2, "tier": 3, "lootWeight": 0, "model": "item_armor_kit_mk3" }
+  ],
+
+  // Headgear (the Head slot). Coverage: armor counts only on hits to these regions (gear without coverage protects
+  // every part, as before).
+  "items": [
+    { "id": "helmet_scrap", "name": "Scrap Helmet", "kind": "Headgear", "weight": 1.5, "tier": 1, "lootWeight": 0.5, "armor": 2,
+      "coverage": { "Head": 1 }, "stealth": -2 },
+    { "id": "helmet_riot", "name": "Riot Helmet", "kind": "Headgear", "weight": 2.5, "tier": 2, "lootWeight": 0.25, "armor": 4,
+      "coverage": { "Head": 1 }, "stealth": -3, "sightBonus": -0.5 },
+    { "id": "gas_mask", "name": "Gas Mask", "kind": "Headgear", "weight": 0.8, "tier": 1, "lootWeight": 0.3,
+      "stealth": -1, "weatherProtection": ["dust_storm", "fog"] }
+  ],
+
+  // Zone biomes for camo patterns (a zone not listed has none).
+  "zoneBiomes": {
+    "outskirts": "wasteland",
+    "scrapyard_flats": "wasteland",
+    "suburb_ruins": "urban",
+    "flooded_mall": "urban",
+    "rail_depot": "urban",
+    "network_relay": "urban",
+    "core_spire": "urban"
+  },
+
+  // Bane tags added to enemies (merged into enemies.json tags): incendiary rounds burn Husks, EMP and shock hit machines.
+  "enemyTags": {
+    "husk": ["husk"],
+    "husk_crawler": ["husk"],
+    "turret": ["device"]
+  },
+
+  // Extra kill drops (merged into enemies.json drops): gear schematics the Linked carry. Terminals and caches roll the
+  // catalogue (schematics.gearmods.json sources).
+  "drops": {
+    "linked": [ { "item": "sch_mod_emp_coil", "chance": 0.03 }, { "item": "sch_mod_network_weave", "chance": 0.02 } ],
+    "linked_drone": [ { "item": "sch_mod_shock_coil", "chance": 0.03 } ],
+    "linked_warden": [ { "item": "sch_kit_carbine_mk2", "chance": 0.1 }, { "item": "sch_kit_carbine_mk3", "chance": 0.05 },
+                       { "item": "sch_kit_plating_mk2", "chance": 0.1 } ]
+  },
+
+  // Recipes (merged into recipes.json's). Gated ones are unlocked by a schematic in schematics.gearmods.json.
+  "recipes": [
+    { "id": "mod_iron_sight", "name": "Iron Sights", "building": "workshop", "minLevel": 1, "work": 4, "inputs": { "scrap": 2 }, "item": "mod_iron_sight" },
+    { "id": "mod_sharpened_edge", "name": "Sharpened Edge", "building": "workshop", "minLevel": 1, "work": 3, "inputs": { "scrap": 1 }, "item": "mod_sharpened_edge" },
+    { "id": "mod_wrapped_grip", "name": "Wrapped Grip", "building": "workshop", "minLevel": 1, "work": 3, "inputs": { "cloth": 2 }, "item": "mod_wrapped_grip" },
+    { "id": "mod_stock", "name": "Padded Stock", "building": "workshop", "minLevel": 1, "work": 6, "inputs": { "wood": 4, "cloth": 1, "scrap": 1 }, "item": "mod_stock" },
+    { "id": "mod_serrated_edge", "name": "Serrated Edge", "building": "workshop", "minLevel": 1, "work": 6, "inputs": { "scrap": 3 }, "item": "mod_serrated_edge", "minSkill": 10 },
+    { "id": "mod_weighted_head", "name": "Weighted Head", "building": "workshop", "minLevel": 1, "work": 5, "inputs": { "scrap": 5 }, "item": "mod_weighted_head" },
+    { "id": "mod_spikes", "name": "Spikes", "building": "workshop", "minLevel": 2, "work": 6, "inputs": { "scrap": 4 }, "item": "mod_spikes", "minSkill": 10 },
+    { "id": "helmet_scrap", "name": "Scrap Helmet", "building": "workshop", "minLevel": 1, "work": 8, "inputs": { "scrap": 5, "cloth": 1 }, "item": "helmet_scrap" },
+    { "id": "mod_compensator", "name": "Compensator", "building": "armory", "minLevel": 1, "work": 8, "inputs": { "scrap": 5 }, "item": "mod_compensator", "minSkill": 10 },
+    { "id": "mod_reflex_sight", "name": "Reflex Sight", "building": "armory", "minLevel": 2, "work": 10, "inputs": { "scrap": 3, "electronics": 2 },
+      "item": "mod_reflex_sight", "minSkill": 15 },
+    { "id": "mod_scope", "name": "Scope", "building": "armory", "minLevel": 2, "work": 12, "inputs": { "scrap": 4, "electronics": 2 }, "item": "mod_scope", "minSkill": 20 },
+    { "id": "mod_suppressor", "name": "Suppressor", "building": "armory", "minLevel": 2, "work": 12, "inputs": { "scrap": 8, "cloth": 2 }, "item": "mod_suppressor", "minSkill": 20 },
+    { "id": "mod_long_barrel", "name": "Long Barrel", "building": "armory", "minLevel": 2, "work": 12, "inputs": { "scrap": 10 }, "item": "mod_long_barrel", "minSkill": 15 },
+    { "id": "mod_incendiary", "name": "Incendiary Rounds", "building": "armory", "minLevel": 2, "work": 8, "inputs": { "scrap": 3, "wood": 3, "cloth": 1 },
+      "item": "mod_incendiary", "minSkill": 15 },
+    { "id": "mod_armor_scrap_plates", "name": "Scrap Plates", "building": "armory", "minLevel": 1, "work": 8, "inputs": { "scrap": 8 }, "item": "mod_armor_scrap_plates" },
+    { "id": "mod_armor_ceramic_plates", "name": "Ceramic Plates", "building": "armory", "minLevel": 2, "work": 14, "inputs": { "scrap": 6, "stone": 8, "electronics": 1 },
+      "item": "mod_armor_ceramic_plates", "minSkill": 20 },
+    { "id": "helmet_riot", "name": "Riot Helmet", "building": "armory", "minLevel": 2, "work": 12, "inputs": { "scrap": 10, "cloth": 3 }, "item": "helmet_riot", "minSkill": 15 },
+    { "id": "mod_armor_padding", "name": "Padding", "building": "tailor", "minLevel": 1, "work": 5, "inputs": { "cloth": 3 }, "item": "mod_armor_padding" },
+    { "id": "mod_armor_webbing", "name": "Webbing", "building": "tailor", "minLevel": 1, "work": 5, "inputs": { "cloth": 3, "scrap": 1 }, "item": "mod_armor_webbing" },
+    { "id": "mod_stab_lining", "name": "Stab-proof Lining", "building": "tailor", "minLevel": 1, "work": 8, "inputs": { "cloth": 4, "scrap": 2 },
+      "item": "mod_stab_lining", "minSkill": 10 },
+    { "id": "mod_quiet_fabric", "name": "Quiet Fabric", "building": "tailor", "minLevel": 1, "work": 8, "inputs": { "cloth": 5 }, "item": "mod_quiet_fabric", "minSkill": 10 },
+    { "id": "mod_camo_urban", "name": "Urban Camo", "building": "tailor", "minLevel": 1, "work": 6, "inputs": { "cloth": 3 }, "item": "mod_camo_urban" },
+    { "id": "mod_camo_wasteland", "name": "Wasteland Camo", "building": "tailor", "minLevel": 1, "work": 6, "inputs": { "cloth": 3 }, "item": "mod_camo_wasteland" },
+    { "id": "mod_camo_foliage", "name": "Foliage Camo", "building": "tailor", "minLevel": 2, "work": 6, "inputs": { "cloth": 3, "wood": 2 }, "item": "mod_camo_foliage" },
+    { "id": "mod_waterproofing", "name": "Waterproofing", "building": "tailor", "minLevel": 1, "work": 6, "inputs": { "cloth": 3, "wood": 2 }, "item": "mod_waterproofing" },
+    { "id": "mod_helmet_visor", "name": "Visor", "building": "armory", "minLevel": 1, "work": 6, "inputs": { "scrap": 4 }, "item": "mod_helmet_visor" },
+    { "id": "mod_dust_filter", "name": "Dust Filter", "building": "tailor", "minLevel": 1, "work": 5, "inputs": { "cloth": 2, "scrap": 1 }, "item": "mod_dust_filter" },
+    { "id": "gas_mask", "name": "Gas Mask", "building": "tailor", "minLevel": 1, "work": 8, "inputs": { "cloth": 3, "scrap": 2 }, "item": "gas_mask" },
+    { "id": "mod_flashlight", "name": "Weapon Light", "building": "electronics_lab", "minLevel": 1, "work": 6, "inputs": { "scrap": 2, "electronics": 1 }, "item": "mod_flashlight" },
+    { "id": "mod_laser", "name": "Laser Sight", "building": "electronics_lab", "minLevel": 1, "work": 8, "inputs": { "scrap": 1, "electronics": 2 }, "item": "mod_laser", "minSkill": 10 },
+    { "id": "mod_shock_coil", "name": "Shock Coil", "building": "electronics_lab", "minLevel": 2, "work": 12, "inputs": { "scrap": 2, "electronics": 2 },
+      "itemInputs": { "power_cell": 1 }, "item": "mod_shock_coil", "minSkill": 20 },
+    { "id": "mod_emp_coil", "name": "EMP Coil", "building": "electronics_lab", "minLevel": 2, "work": 18, "inputs": { "electronics": 3 },
+      "itemInputs": { "linked_core": 1, "power_cell": 1 }, "item": "mod_emp_coil", "minSkill": 25 },
+    { "id": "mod_thermal_masking", "name": "Thermal Masking", "building": "electronics_lab", "minLevel": 2, "work": 12, "inputs": { "cloth": 3, "electronics": 2 },
+      "item": "mod_thermal_masking", "minSkill": 20 },
+    { "id": "mod_network_weave", "name": "Network Weave", "building": "electronics_lab", "minLevel": 2, "work": 18, "inputs": { "cloth": 2, "electronics": 3 },
+      "itemInputs": { "linked_core": 1 }, "item": "mod_network_weave", "minSkill": 25 },
+    { "id": "kit_melee_mk2", "name": "Melee Mk II Kit", "building": "armory", "minLevel": 1, "work": 8, "inputs": { "scrap": 6, "wood": 2 }, "item": "kit_melee_mk2" },
+    { "id": "kit_melee_mk3", "name": "Melee Mk III Kit", "building": "armory", "minLevel": 2, "work": 14, "inputs": { "scrap": 12, "cloth": 2 }, "item": "kit_melee_mk3", "minSkill": 20 },
+    { "id": "kit_sidearm_mk2", "name": "Sidearm Mk II Kit", "building": "armory", "minLevel": 2, "work": 12, "inputs": { "scrap": 8, "electronics": 1 }, "item": "kit_sidearm_mk2", "minSkill": 15 },
+    { "id": "kit_sidearm_mk3", "name": "Sidearm Mk III Kit", "building": "armory", "minLevel": 3, "work": 18, "inputs": { "scrap": 14, "electronics": 3 }, "item": "kit_sidearm_mk3", "minSkill": 30 },
+    { "id": "kit_longarm_mk2", "name": "Long Gun Mk II Kit", "building": "armory", "minLevel": 3, "work": 16, "inputs": { "scrap": 12, "electronics": 2 }, "item": "kit_longarm_mk2", "minSkill": 25 },
+    { "id": "kit_longarm_mk3", "name": "Long Gun Mk III Kit", "building": "armory", "minLevel": 3, "work": 22, "inputs": { "scrap": 18, "electronics": 4 }, "item": "kit_longarm_mk3", "minSkill": 40 },
+    { "id": "kit_carbine_mk2", "name": "Carbine Mk II Kit", "building": "armory", "minLevel": 3, "work": 20, "inputs": { "scrap": 14, "electronics": 4 },
+      "itemInputs": { "linked_core": 1 }, "item": "kit_carbine_mk2", "minSkill": 30 },
+    { "id": "kit_carbine_mk3", "name": "Carbine Mk III Kit", "building": "armory", "minLevel": 3, "work": 28, "inputs": { "scrap": 18, "electronics": 6 },
+      "itemInputs": { "linked_core": 2 }, "item": "kit_carbine_mk3", "minSkill": 45 },
+    { "id": "kit_clothing_mk2", "name": "Clothing Mk II Kit", "building": "tailor", "minLevel": 1, "work": 8, "inputs": { "cloth": 5 }, "item": "kit_clothing_mk2" },
+    { "id": "kit_clothing_mk3", "name": "Clothing Mk III Kit", "building": "tailor", "minLevel": 2, "work": 14, "inputs": { "cloth": 8, "scrap": 2 }, "item": "kit_clothing_mk3", "minSkill": 20 },
+    { "id": "kit_armor_mk2", "name": "Armor Mk II Kit", "building": "armory", "minLevel": 1, "work": 10, "inputs": { "scrap": 8, "cloth": 2 }, "item": "kit_armor_mk2" },
+    { "id": "kit_armor_mk3", "name": "Armor Mk III Kit", "building": "armory", "minLevel": 2, "work": 16, "inputs": { "scrap": 14, "cloth": 3, "electronics": 1 }, "item": "kit_armor_mk3", "minSkill": 20 },
+    { "id": "kit_plating_mk2", "name": "Plating Mk II Kit", "building": "armory", "minLevel": 3, "work": 20, "inputs": { "scrap": 12, "electronics": 3 },
+      "itemInputs": { "linked_core": 1 }, "item": "kit_plating_mk2", "minSkill": 30 },
+    { "id": "kit_plating_mk3", "name": "Plating Mk III Kit", "building": "armory", "minLevel": 3, "work": 26, "inputs": { "scrap": 16, "electronics": 5 },
+      "itemInputs": { "linked_core": 2 }, "item": "kit_plating_mk3", "minSkill": 45 }
+  ]
+}

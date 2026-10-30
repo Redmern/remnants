@@ -130,8 +130,9 @@ public static class CoopActions
     public static ScavengeResult? CheckPing(ScavengeSim sim, Unit unit, Pos at)
     {
         if (!sim.State.Map.InBounds(at)) return ScavengeResult.Fail(ScavengeError.InvalidTile, "Pings go on a tile on the map.");
-        if (unit.PingsUsed >= sim.Data.Rules.Coop.PingsPerTurn)
-            return ScavengeResult.Fail(ScavengeError.PingLimit, $"{sim.Data.Rules.Coop.PingsPerTurn} pings a turn.");
+        var pings = sim.Data.Rules.Coop.PingsPerTurn + ElectronicWarfare.ExtraPings(sim.Data, unit);
+        if (unit.PingsUsed >= pings)
+            return ScavengeResult.Fail(ScavengeError.PingLimit, $"{pings} pings a turn.");
         return null;
     }
 

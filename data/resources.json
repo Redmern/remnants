@@ -6,6 +6,8 @@
   {"id": "electronics", "name": "Electronics"},
   {"id": "medicine", "name": "Medicine"},
   {"id": "research_data", "name": "Research Data"},
-  {"id": "fuel", "name": "Fuel"},
-  {"id": "alcohol", "name": "Alcohol"}
+  {"id": "alcohol", "name": "Alcohol"},
+  {"id": "chemicals", "name": "Chemicals"},
+  {"id": "pharma", "name": "Pharma"},
+  {"id": "fuel", "name": "Fuel"}
 ]

@@ -28,6 +28,8 @@ public sealed record BotOptions
 
     /// <summary>Climb threat after two runs without a death (default: two runs without a death or a new injury).</summary>
     public bool Bold { get; init; }
+    /// <summary>Craft and fit gear mods (off: <c>--no-mods</c>, to measure what they change).</summary>
+    public bool Mods { get; init; } = true;
     /// <summary>Story mode: which option the party bot picks on a field prompt (0 = the first, e.g. talk to the Tally).</summary>
     public int StoryPrompt { get; init; }
     /// <summary>Build vehicles at the Garage and drive them out (else every party walks).</summary>
@@ -35,6 +37,9 @@ public sealed record BotOptions
 
     /// <summary>Schematics the colony starts with (as if found or traded early), to sweep vehicle tiers.</summary>
     public IReadOnlyList<string> Schematics { get; init; } = [];
+
+    /// <summary>Fight every raid it can on the tactical map (StoryBot plays the defenders) instead of auto-resolving.</summary>
+    public bool FightRaids { get; init; }
 }
 
 /// <summary>
@@ -53,6 +58,8 @@ public sealed class ColonyBot
         ("hunting_lodge", 1), ("smokehouse", 1), ("kitchen", 2), ("garage", 1),
         ("tailor", 2), ("med_bay", 2), ("fuel_still", 1), ("garage", 2), ("armory", 2), ("woodcutter", 3), ("quarry", 3), ("town_hall", 3), ("garage", 3), ("house", 2),
         ("electronics_lab", 2),
+        // Power is a mid-game boost: a generator once the Lab is up and the town is grown, solar and a bank when their schematics turn up.
+        ("fuel_generator", 1), ("solar_array", 1), ("battery_bank", 1), ("electronics_lab", 3),
     ];
 
     private readonly ColonySim _sim;
@@ -67,7 +74,11 @@ public sealed class ColonyBot
         _sim = sim;
         _options = options ?? new BotOptions();
         foreach (var id in _options.Schematics) _sim.State.Schematics.Known.Add(id);
+        Defense = new DefenseBot(sim, this, _options.FightRaids);
     }
+
+    /// <summary>Defenses, guards and raid prep (does nothing without raid data).</summary>
+    public DefenseBot Defense { get; }
 
     public List<ExpeditionOutcome> Expeditions { get; } = [];
 
@@ -84,6 +95,7 @@ public sealed class ColonyBot
     {
         Repair();
         Story();
+        Defense.Act();
         Build();
         Craft();
         Care();
@@ -122,6 +134,7 @@ public sealed class ColonyBot
             if (have >= level) continue;
             var def = Data.Buildings[id];
             if (level == 1 && def.MinTownHallLevel > _sim.TownHallLevel) continue;
+            if (level == 1 && !Remnants.Core.Schematics.Schematics.LevelUnlocked(_sim, id, 1)) continue;
             if (level > 1 && level > _sim.MaxUpgradeLevel(def)) continue;
             // Vehicle buildings: only with vehicles on, and a level whose schematic is still missing waits.
             if (id is "garage" or "fuel_still" && !_options.Vehicles) continue;
@@ -174,6 +187,9 @@ public sealed class ColonyBot
             else if (weapons < 3 && State.Stockpile.Get("scrap") >= 6) Queue(workshop, "spear");
             else if (workshop.Level >= 2 && Count("med_kit") < 2 && State.Stockpile.Get("cloth") >= 2 && State.Stockpile.Get("medicine") >= 3)
                 Queue(workshop, "med_kit");
+            // Gear mods from the default set once the colony is armed and has scrap to spare: an edge for each blade, sights for guns.
+            else if (_options.Mods && weapons >= 3 && State.Stockpile.Get("scrap") >= 25 && ModsOnHand() < 2)
+                Queue(workshop, Count("pistol") + Count("rifle") > Count("mod_iron_sight") ? "mod_iron_sight" : "mod_sharpened_edge");
         }
         if (Find("tailor") is { } tailor && tailor.Queue.Count == 0)
         {
@@ -183,12 +199,15 @@ public sealed class ColonyBot
             // A couple of dust masks keep the woodcutter and quarry going (and healthy) in a dust storm.
             else if (Weather.Enabled(Data) && Count("dust_mask") < 2 && State.Stockpile.Get("cloth") >= 4 && State.Stockpile.Get("scrap") >= 3)
                 Queue(tailor, "dust_mask");
+            else if (_options.Mods && State.Stockpile.Get("cloth") >= 12 && ModsOnHand() < 2) Queue(tailor, Count("mod_armor_padding") <= Count("mod_armor_webbing") ? "mod_armor_padding" : "mod_armor_webbing");
         }
         Cook();
+        if (Find("kitchen") is { } kitchen && kitchen.Queue.Count == 0 && State.Stockpile.Get("alcohol") < 2 && Find("med_bay") is not null && _sim.FoodDays > 6)
+            Queue(kitchen, "spirits");
+        if (Find("med_bay") is { } bay && bay.Queue.Count == 0) CraftMedicine(bay);
         if (Find("armory") is { } armory && armory.Queue.Count == 0 && Count("machete") < 2 && State.Stockpile.Get("scrap") >= 10)
             Queue(armory, "machete");
-        if (Find("electronics_lab") is { } lab && lab.Queue.Count == 0 && State.Stockpile.Get("scrap") >= 20)
-            Queue(lab, "salvage_circuits");
+        if (Find("electronics_lab") is { } bench && bench.Queue.Count == 0) Bench(bench);
         HandleSchematics();
         if (_options.Vehicles) Garage();
     }
@@ -291,6 +310,24 @@ public sealed class ColonyBot
             .Select(x => x.Vehicle).FirstOrDefault();
     }
 
+    /// <summary>
+    /// The Med Bay's dispensary: antibiotics while anyone is infected, then a small stock of the basics (antiseptic,
+    /// splints, clean dressings), and blood bags for the party once there is a donor to spare. Only what it may make.
+    /// </summary>
+    private void CraftMedicine(Building bay)
+    {
+        bool Can(string recipe) => _sim.CanQueue(bay, Data.Recipes[recipe]).Ok && State.Stockpile.CanAfford(Data.Recipes[recipe].Inputs);
+        var infected = State.Survivors.Any(s => s.Body.Conditions.Any(c => Data.Medicine?.Condition(c.Id)?.Kind == ConditionKind.Infection));
+        string? pick = null;
+        if (infected && Count("antibiotics") < 1 && Can("antibiotics")) pick = "antibiotics";
+        else if (Count("antiseptic") < 3 && Can("antiseptic")) pick = "antiseptic";
+        else if (Count("splint") < 2 && Can("splint")) pick = "splint";
+        else if (Count("clean_dressing") < 3 && Can("clean_dressing")) pick = "clean_dressing";
+        else if (Count("antibiotics") < 2 && Can("antibiotics")) pick = "antibiotics";
+        else if (Count("blood_bag") < 1 && Can("blood_bag") && Medicine.Donor(State, Data, Data.Recipes["blood_bag"].DonorHealth) is not null) pick = "blood_bag";
+        if (pick is not null) Queue(bay, pick);
+    }
+
     // ---- food ---------------------------------------------------------------------------------------------------
 
     /// <summary>
@@ -324,6 +361,75 @@ public sealed class ColonyBot
         }
     }
 
+    /// <summary>
+    /// The Electronics Lab: strip found junk first (never Linked cores: the limbs want them), keep a few components in
+    /// stock, then the field devices a sensible player takes along (two radios, decoys, EMPs, a drone variant), else
+    /// circuits from scrap as before. One order at a time, so the old circuits work never starves.
+    /// </summary>
+    private void Bench(Building lab)
+    {
+        if (Data.Electronics is null)
+        {
+            if (State.Stockpile.Get("scrap") >= 20) Queue(lab, "salvage_circuits");
+            return;
+        }
+        bool Open(string recipe) => Data.Recipes.TryGetValue(recipe, out var r) && _sim.CanQueue(lab, r).Ok
+                                    && (!r.NeedsPower || _sim.IsPowered(lab) || State.Power.Capacity > 0)
+                                    && State.Stockpile.CanAfford(r.Inputs) && r.ItemInputs.All(kv => Count(kv.Key) >= kv.Value);
+        var junk = State.Inventory.Counts.Keys.Where(id => id != "linked_core" && Data.Recipes.ContainsKey(DisassemblyDef.RecipePrefix + id)
+                                                          && _sim.Scavenge!.Items[id].Kind == ItemKind.Material)
+            .OrderBy(id => id, StringComparer.Ordinal).FirstOrDefault();
+        if (junk is not null && Open(DisassemblyDef.RecipePrefix + junk)) { Queue(lab, DisassemblyDef.RecipePrefix + junk); return; }
+        var wants = new (string Recipe, string Item, int Keep)[]
+        {
+            ("wiring", "wiring", 4), ("circuit_board", "circuit_board", 2), ("antenna", "antenna", 1),
+            ("handheld_radio", "handheld_radio", 2), ("noise_decoy", "noise_decoy", 2), ("holo_decoy", "holo_decoy", 1),
+            ("emp_grenade", "emp_grenade", 2), ("medic_drone", "medic_drone", 1), ("cargo_drone", "cargo_drone", 1),
+            ("squad_radio", "squad_radio", 1), ("sensor_module", "sensor_module", 1),
+        };
+        foreach (var (recipe, item, keep) in wants)
+            if (Count(item) < keep && Open(recipe))
+            {
+                Queue(lab, recipe);
+                return;
+            }
+        if (State.Stockpile.Get("scrap") >= 20) Queue(lab, "salvage_circuits");
+    }
+
+    /// <summary>Spare mods in the stores (not fitted).</summary>
+    private int ModsOnHand() => State.Inventory.Counts.Where(kv => _sim.Scavenge!.Items.TryGetValue(kv.Key, out var d) && d.Kind == ItemKind.Mod).Sum(kv => kv.Value);
+
+    /// <summary>
+    /// At a bench, fit the mods and kits in the stores to the gear the next party will take (<see cref="GearModder"/>):
+    /// kits first, then per piece the best build from the spare mods, freed mods back to the stores.
+    /// </summary>
+    private void GearUp(bool night)
+    {
+        var data = _sim.Scavenge!;
+        if (!_options.Mods || data.GearMods is not { } mods || !State.Buildings.Any(b => mods.Def.Rules.Benches.Contains(b.DefId))) return;
+        var context = new ModContext(Night: night);
+        var moddable = State.Inventory.Counts.Keys.Where(id => mods.Moddable(data.Items[id].DefinedId) is not null && data.Items[id].Slot is not null)
+            .OrderByDescending(id => GearModder.Score(data, id, context)).ToList();
+        foreach (var gear in moddable)
+        {
+            var id = gear;
+            if (State.Inventory.Counts.Keys.FirstOrDefault(k => mods.KitFor(data.Items[id].DefinedId, data.Items[id].Mk) == k) is { } kit
+                && _sim.Execute(new UpgradeGear(id, kit)) is { Ok: true })
+                id = GearModsData.Parse(id) is var p ? mods.Canonical(p.BaseId, p.Mk + 1, p.Mods) : id;
+            var spare = State.Inventory.Counts.Where(kv => data.Items[kv.Key].Kind == ItemKind.Mod).SelectMany(kv => Enumerable.Repeat(kv.Key, kv.Value));
+            var (best, used, freed) = GearModder.Best(data, id, spare, context);
+            if (best == id) continue;
+            foreach (var m in freed)
+                if (_sim.Execute(new RemoveMod(id, mods.SlotOf(m)!)) is { Ok: true }) id = mods.Canonical(GearModsData.Parse(id).BaseId, GearModsData.Parse(id).Mk, GearModsData.Parse(id).Mods.Where(x => x != m));
+            foreach (var m in used)
+            {
+                var r = _sim.Execute(new InstallMod(id, m));
+                if (!r.Ok) { Problems.Add($"day {Day:0.0}: fit {m} to {id}: {r.Message}"); break; }
+                id = GearBench.Install(data, id, m) is { Ok: true } o ? o.ItemId! : id;
+            }
+        }
+    }
+
     private int Count(string baseId) =>
         State.Inventory.Counts.Where(kv => _sim.Scavenge!.Items.TryGetValue(kv.Key, out var d) && d.DefinedId == baseId).Sum(kv => kv.Value);
 
@@ -340,10 +446,17 @@ public sealed class ColonyBot
         if (!_sim.MedBays.Any()) return;
         // Light wounds heal on their own while people work; only the ones that would not (or would worsen) need a bed.
         var natural = Data.Rules.Medical.NaturalHealMaxSeverity;
+        var med = Data.Medicine;
         foreach (var s in State.Survivors.Where(s => !s.Away && s.PatientAtBuildingId is null
-                     && s.Body.Parts.Values.Any(p => p.Condition == PartCondition.Injured && p.Severity >= natural)).ToList())
+                     && (s.Body.Parts.Values.Any(p => p.Condition == PartCondition.Injured && p.Severity >= natural)
+                         || med is not null && s.Body.Conditions.Any(c => med.Condition(c.Id)?.Kind is ConditionKind.Infection or ConditionKind.Sickness))).ToList())
             if (_sim.MedBays.Any(b => _sim.FreePatientSlots(b) > 0))
                 _sim.Execute(new AdmitPatient(s.Id));
+        // Nobody in a bed: dress the wounds of those who work through them, so they do not go bad.
+        foreach (var s in State.Survivors.Where(s => !s.Away && s.PatientAtBuildingId is null && s.IsInjured).ToList())
+            if (State.Inventory.Counts.Keys.FirstOrDefault(id => _sim.Scavenge!.Items[id].DefinedId is "antiseptic" or "clean_dressing") is { } dressing
+                && Treatment.Helps(med, s.Body, _sim.Scavenge!.Items[dressing].Use!))
+                _sim.Execute(new TreatSurvivor(s.Id, dressing));
     }
 
     // ---- cybernetics -----------------------------------------------------------------------------------------
@@ -438,7 +551,7 @@ public sealed class ColonyBot
     /// </summary>
     private void Staff()
     {
-        var workers = State.Survivors.Where(s => !s.Away && !s.IsInfant && s.PatientAtBuildingId is null && !Research.IsResearching(State, s.Id)).ToList();
+        var workers = State.Survivors.Where(s => !s.Away && !s.IsInfant && s.PatientAtBuildingId is null && !Research.IsResearching(State, s.Id) && !State.Defense.Guards.ContainsKey(s.Id)).ToList();
         var slots = State.Buildings.Where(b => Data.Buildings[b.DefId].Job is not null)
             .ToDictionary(b => b.Id, b => Data.Buildings[b.DefId].Level(b.Level).WorkerSlots);
         var plan = new Dictionary<int, int>(); // survivor -> building
@@ -590,6 +703,7 @@ public sealed class ColonyBot
 
         var party = adults.OrderByDescending(s => s.Get(AttributeKind.Strength) + s.Get(AttributeKind.Agility) + s.Get(AttributeKind.Endurance))
             .Take(size).ToList();
+        GearUp(night: waitFor is null && _sim.Phase == Remnants.Core.Colony.DayPhase.Night);
         var members = Gear(party);
         // Light, long-keeping field rations when there are any, else a good hot meal for the road.
         var prefer = new[] { "field_rations", "stew", "pie", "preserved_rations" }.FirstOrDefault(id => State.Inventory.Count(id) >= size);
@@ -679,18 +793,39 @@ public sealed class ColonyBot
             if (Take(d => d.Slot == EquipSlot.Body && d.Kind == ItemKind.Armor, d => d.Armor) is { } a) equipment[EquipSlot.Body] = a;
             else if (Take(d => d.Slot == EquipSlot.Body, d => d.Armor) is { } c) equipment[EquipSlot.Body] = c;
             if (Take(d => d.Id == "backpack", _ => 1) is { } bag) equipment[EquipSlot.Tool] = bag;
+            if (Take(d => d.Slot == EquipSlot.Head, d => d.Armor) is { } head) equipment[EquipSlot.Head] = head;
             members.Add(new ExpeditionMember(s.Id, equipment, []));
         }
         // Tech: a hacking kit for the best hacker, a scout drone for the best pilot (pack: the Tool slot holds the backpack).
         if (Take(d => d.HackTool is not null, d => d.HackTool!.ChanceBonus) is { } kit)
             members[party.IndexOf(party.MaxBy(s => s.Get(Skill.Hacking) + s.Get(AttributeKind.Intellect) / 10)!)].Pack!.Add(kit);
-        if (Take(d => d.Drone is not null, _ => 1) is { } drone)
-            members[party.IndexOf(party.MaxBy(s => s.Get(Skill.DronePiloting) + s.Get(AttributeKind.Perception) / 10)!)].Pack!.Add(drone);
-        // Medical: one med-kit and bandages spread over the party.
+        var pilot = party.MaxBy(s => s.Get(Skill.DronePiloting) + s.Get(AttributeKind.Perception) / 10)!;
+        var pilotHooks = _sim.Scavenge!.HooksFor(pilot.Perks);
+        // A medic drone first (it keeps people up), then the longest battery; never one the pilot lacks the perk for.
+        if (Take(d => d.Drone is { } dr && (dr.RequiresHook is not { } hook || pilotHooks.GetValueOrDefault(hook) > 0),
+                d => (d.Drone!.Role == DroneRole.Medic ? 100 : 0) + d.Drone!.Battery) is { } drone)
+            members[party.IndexOf(pilot)].Pack!.Add(drone);
+        // Electronics: radios work in pairs, so two or none; EMPs and decoys spread over the party.
+        if (Take(d => d.Radio is not null, d => d.Radio!.AccuracyBonus) is { } radio1)
+        {
+            if (members.Count > 1 && Take(d => d.Radio is not null, d => d.Radio!.AccuracyBonus) is { } radio2)
+            {
+                members[0].Pack!.Add(radio1);
+                members[1].Pack!.Add(radio2);
+            }
+            else stock[radio1]++;
+        }
+        var spread = 0;
+        foreach (var kind in new Func<ItemDef, bool>[] { d => d.Use?.Emp is not null, d => d.Use?.Decoy is not null, d => d.Use is { NoiseRadius: > 0 } })
+            for (var n = 0; n < members.Count; n++)
+                if (Take(kind, _ => 1) is { } device) members[spread++ % members.Count].Pack!.Add(device);
+        // Medical: a blood bag or med-kit for the downed, then bandages, splints and painkillers spread over the party.
         for (var i = 0; ; i++)
         {
-            var id = Take(d => d.DefinedId == "med_kit", _ => 1) ?? Take(d => d.DefinedId == "bandage", _ => 1);
-            if (id is null || i >= party.Count * 2) break;
+            var id = Take(d => d.DefinedId is "trauma_kit" or "blood_bag" or "med_kit", d => d.Use?.ReviveHp ?? 0)
+                     ?? Take(d => d.DefinedId is "bandage" or "clean_dressing", d => d.Use?.Heal ?? 0)
+                     ?? Take(d => d.DefinedId is "splint" or "painkiller" or "antiseptic", _ => 1);
+            if (id is null || i >= party.Count * 3) break;
             members[i % members.Count].Pack!.Add(id);
         }
         return members;

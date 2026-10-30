@@ -91,13 +91,14 @@
   "devices": {
     "Terminal": { "work": 2, "difficulty": 0.05, "networked": true, "lootCount": [1, 2],
                   "loot": [ { "id": "manual_intrusion", "weight": 1.2 }, { "id": "manual_drone_ops", "weight": 1.2 }, { "id": "manual_electronics", "weight": 1.2 },
-                            { "id": "electronics", "weight": 2 } ] },
+                            { "id": "electronics", "weight": 2 }, { "id": "pharma_stash", "weight": 1.2 }, { "id": "chemical_jug", "weight": 0.8 } ] },
     "Camera":   { "work": 1, "difficulty": 0.0, "networked": true, "enemy": "camera", "radius": 10 },
     "Turret":   { "work": 3, "difficulty": 0.1, "networked": true, "enemy": "turret" },
     "Door":     { "work": 2, "difficulty": 0.0, "networked": true },
     "Locker":   { "work": 1, "difficulty": -0.1, "networked": false, "zoneLoot": true, "lootCount": [2, 4],
                   "loot": [ { "id": "med_kit", "weight": 1 }, { "id": "flare", "weight": 1 }, { "id": "electronics", "weight": 1 },
-                            { "id": "motion_sensor", "weight": 0.5 }, { "id": "drone_parts", "weight": 0.5 }, { "id": "hacking_kit", "weight": 0.3 } ] },
+                            { "id": "motion_sensor", "weight": 0.5 }, { "id": "drone_parts", "weight": 0.5 }, { "id": "hacking_kit", "weight": 0.3 },
+                            { "id": "chemical_jug", "weight": 0.6 }, { "id": "antiseptic", "weight": 0.5 }, { "id": "splint", "weight": 0.4 } ] },
     "Relay":    { "work": 3, "difficulty": 0.15, "networked": true, "radius": 5 }
   },
   "environment": {

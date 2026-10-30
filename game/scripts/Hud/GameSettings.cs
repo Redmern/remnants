@@ -163,10 +163,12 @@ public static class Hotkeys
         new("speed_2", "Fast (2×)", "Colony", [Key.Key2]),
         new("speed_3", "Fastest (4×)", "Colony", [Key.Key3]),
         new("open_build", "Build menu", "Colony", [Key.B]),
+        new("open_defend", "Defend: place defenses", "Colony", [Key.F]),
         new("open_expedition", "Expedition", "Colony", [Key.E]),
         new("open_items", "Items", "Colony", [Key.I]),
         new("open_log", "Event log filters", "Colony", [Key.L]),
         new("cycle_survivor", "Next survivor", "Colony", [Key.Tab]),
+        new("open_power", "Power grid overlay", "Colony", [Key.P]),
         new("camera_rotate_left", "Rotate camera left", "Colony", [Key.Q]),
         new("camera_rotate_right", "Rotate camera right", "Colony", [Key.R]),
         new("end_turn", "End turn", "Scavenge", [Key.Space, Key.Enter]),
@@ -176,6 +178,9 @@ public static class Hotkeys
         new("scav_item_1", "Use first item", "Scavenge", [Key.Key4]),
         new("scav_item_2", "Use second item", "Scavenge", [Key.Key5]),
         new("scav_item_3", "Use third item", "Scavenge", [Key.Key6]),
+        new("scav_item_4", "Use fourth item", "Scavenge", [Key.Key7]),
+        new("scav_item_5", "Use fifth item", "Scavenge", [Key.Key8]),
+        new("scav_item_6", "Use sixth item", "Scavenge", [Key.Key9]),
         new("scav_overwatch", "Overwatch", "Scavenge", [Key.O]),
         new("scav_brace", "Brace", "Scavenge", [Key.B]),
         new("scav_lookout", "Lookout", "Scavenge", [Key.L]),
@@ -196,6 +201,8 @@ public static class Hotkeys
         new("scav_fly", "Fly the scout drone", "Scavenge", [Key.J]),
         new("scav_mark", "Mark a target with the drone", "Scavenge", [Key.M]),
         new("scav_payload", "Drop a payload from the drone", "Scavenge", [Key.P]),
+        new("scav_drone_action", "Drone role: heal / load / fire", "Scavenge", [Key.R]),
+        new("scav_ferry", "Cargo drone: ferry the load out", "Scavenge", [Key.I]),
     ];
 
     /// <summary>Camera panning is not an action (it reads WASD and arrows directly); listed for the settings screen.</summary>
@@ -206,6 +213,7 @@ public static class Hotkeys
         ("Rotate camera (scavenge)", "Q / E"),
         ("Cancel aiming (scavenge)", "Right-click / Esc"),
         ("Orbit camera (colony)", "Right-drag"),
+        ("Turn the defense being placed", "R (while placing)"),
     ];
 
     public static void Install()

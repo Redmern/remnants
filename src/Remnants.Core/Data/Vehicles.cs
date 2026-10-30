@@ -165,8 +165,11 @@ public sealed record VehicleUpgradeDef
     /// <summary>Field repairs and gear swaps at the parked vehicle: it mends each round and items can come back out of the stash.</summary>
     public bool Workbench { get; init; }
 
-    /// <summary>Charges devices: units next to the parked vehicle get a full drone battery each round (see <c>VehiclePower</c>).</summary>
+    /// <summary>Charges devices: units next to the parked vehicle get a full drone battery and a device charge back each round (see <c>VehiclePower</c>).</summary>
     public bool SolarCharger { get; init; }
+
+    /// <summary>Charge work per tick the vehicle adds to the colony's charging bench while it is home (electronics' <c>Power.VehicleChargeRate</c>).</summary>
+    public double ChargeRate { get; init; }
 }
 
 /// <summary>

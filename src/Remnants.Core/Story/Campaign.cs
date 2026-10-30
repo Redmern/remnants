@@ -224,9 +224,16 @@ public static class Campaign
         var def = story.Mission(missionId) ?? throw new InvalidOperationException($"Unknown mission '{missionId}'.");
         var p = sim.State.Campaign!.Progress(missionId);
         var towers = sim.State.Buildings.Where(b => b.DefId == "watchtower").Sum(b => b.Level);
+        var map = story.MapFor(def, sim.TownHallLevel);
+        // A perimeter defense is fought on the real colony when it has what the script needs; the handmade map is the fallback.
+        if (def.Perimeter && sim.Raids is { } raids && Raids.RaidBattle.StoryMap(sim, raids, def.Field!) is { } colony)
+        {
+            map = colony;
+            towers = Raids.RaidBattle.TowerCount(colony);
+        }
         return new MissionSetup(
             def.Field!,
-            story.MapFor(def, sim.TownHallLevel),
+            map,
             def.Room is { } room ? story.Maps[room] : null,
             towers,
             p.Attempts > 1 ? def.Fail.ExtraEnemies : null);

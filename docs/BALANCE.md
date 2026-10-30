@@ -727,6 +727,55 @@ brackets): M1 20/20 day 7 (20, 7), M2 19 day 7.3 (18, 7), M3 19 day 11.4 (17, 11
 first tier-2 schematic comes by day 34 in 11 of 20 colonies.
 
 
+## Medicine
+
+The illness model and its supplies (ARCHITECTURE.md "Medicine", `data/medicine.json`). The aims: **the early game stays
+as it was** (herbal remedies and bandages cover the first days, and the defaults include antiseptic and splints);
+**infection is a real but manageable threat** (a dirty wound left alone goes bad in a few days, costs output and can
+kill, but a dressing prevents it and antibiotics or a patient bed on Medicine handle it); and **the advanced supplies are
+a field edge, not a crutch** (a blood bag gets the downed up with 45 HP instead of 15, a stim is one AP now and one
+less next turn).
+
+Key numbers (first pass):
+
+| what | number | why |
+|---|---|---|
+| infection chance | 0.005/h per dirty wound of severity ≥ 0.25; bandaged ×0.35, clean ×0, patient ×0.5 | ~1 in 8 untreated wounds goes bad in a day |
+| infection | starts at 0.15–0.3, grows 0.003/h (about a week to the 0.75 health drain); −0.35 output at full | slow enough to see coming |
+| on Medicine at the Med Bay | an infection fades at 0.003/h | herbal remedies hold it back without antibiotics |
+| fracture | 35% when a limb hit leaves it at ≥ 0.45; −0.25 efficiency, heals ×0.5; splinted −0.08, heals ×1.25 | a splint is worth 2 AP in the field |
+| pain | worst injury ≥ 0.55: −15% output; no field AP cost (see below) | |
+| fever in the field | infection ≥ 0.5, sickness ≥ 0.4–0.6: −1 AP (never more than 1, never below 2 AP) | sick people should stay home |
+| painkiller | ignores 60% of injury penalties for 4 rounds / 24 h; 3 doses close together start a dependency (−0.08 mood/h × severity, fades in ~4 days) | mild and self-limiting; the Med Bay never doses someone near it |
+| food / Husk sickness | −30% / −45% output; fade 0.012 / 0.003 per hour; Husk sickness drains health from 0.7 | Husk meat is a real gamble |
+| blood bag | revive with 45 HP (med-kit 15); the donor gives 20 health and needs 70+ | |
+| surgery kits | Surgical +0.12 (any tier), Suture +0.05 (T0–T2), × quality | a fresh medic's powered-part odds 76% → 88% |
+| quality | Crude ×0.8, Fine ×1.25 on heal, revive HP, cure strength, pain relief | Pharmacist adds +0.15 to the quality score |
+
+Pain in the field: the first pass took 1 AP from anyone with a wound of 0.55 or worse. Zone trials (300 runs, two
+adults, starting gear) put Suburb Ruins deaths at 31% (`main`) → 37%, Flooded Mall 50% → 59%: a hurt survivor got
+slower, got hit again and went down, a death spiral. At a threshold of 0.8 it was still +3/+4 points; without the AP
+cost Suburb Ruins is back at 30%. So pain costs output at home and nothing extra in the field (the wound itself already
+does); fevers keep their −1 AP, as a reason not to send the sick. Fractures (35%) changed nothing measurable (38% vs
+37%). With the shipped data, rebased on `main` (story and schematics in): Outskirts / Suburb Ruins / Flooded Mall runs with a
+death 4% / 31% / 52% (`main` before the rebase: 6% / 31% / 50%).
+
+Colony sweep, 8 seeds × 40 days (`--seeds=1..8 --days=40`, `main` → this branch, after the rebase): median population
+6 → 6, starvation 0 → 0, expedition deaths 3 over 76 runs → 2 over 88, births 2 → 6, departures 1 → 2, Town Hall 2 day
+30.0 → 31.5, min food 4.3 → 3.9 days. Medicine line: 7 infections over the 8 colonies (first on day 24, median), all
+cured, none fatal; 100 treatments given at home, 53 supplies crafted at the dispensary; no sicknesses (food-cooking is
+not merged); no blood donations (no bot colony reaches Med Bay 2 in 40 days). The bot crafts antiseptic, splints and dressings once the Med Bay stands, antibiotics while anyone is infected, distils
+spirits when alcohol runs low, admits the infected and sick, and dresses the wounds of those working through them; in the
+field it revives with the strongest kit, splints broken limbs and takes one painkiller when in pain.
+
+The fog-of-war checker in the multiplayer tests now accepts an actor its side saw when the event was logged (FogLog's
+`SeenBy` rule): the first pass's pain −1 AP changed a co-op fight so that a watcher went down in the middle of an AI batch, which the
+older, stricter check flagged though the server did what FogLog documents.
+
+Watch next pass: no bot colony reaches Med Bay 2 in 40 days, so antibiotics, blood bags and stims are covered by tests,
+not sweeps; the infection rate is tuned for a colony that keeps a Med Bay, and one without may want antiseptic earlier
+in the bot's build order; when food-cooking lands, Husk sickness odds need a pass of their own.
+
 ## Weather pass
 
 Weather is a seeded Markov chain of spells per region (`data/weather.json`, `Colony/Weather.cs`), on whenever the
@@ -884,3 +933,261 @@ food 4.1 → 3.7 days, starvation 0 → 0, departures 15 → 11, births 36 → 3
 (within the noise of 20 colonies; zone trials are the better read), food rotted 42 per colony, food poisonings 0. Weather
 now waters or buries the crops per harvest (`Crops.Multiplier` in `HarvestSystem`; the Greenhouse is indoors) instead of
 scaling every farming worker, and rain or storms skip the Campfire's supper bonus as they skip campfire evenings.
+
+## Electronics and power
+
+Bot changes: the colony bot builds a Fuel Generator after Electronics Lab 2 (solar and a bank once their schematics are
+known), runs the Lab as a bench (strip junk except Linked cores, keep a few wiring and boards, then two radios, noise and
+holo-decoys, EMPs and a drone variant), and sends radios in pairs, EMPs and decoys spread over the party, and a medic drone
+first (never a drone the pilot lacks the perk for). The party bot throws an EMP over two or more Network machines (or one
+Linked within 3), a holo-decoy between itself and a Linked when hurt, a noise decoy at full range away from the exit when
+two Husks close in, heals with a medic drone, fires a combat drone and ferries a full cargo hold. New measures: a `power:`
+line in the colony report, and `--kit=electronics` / `--kit=electronics-combat` zone trials.
+
+### Colony (`main` with schematics, story and weather → this branch, 90 days)
+
+| | seeds 1–20 | seeds 21–40 | all 40 |
+|---|---|---|---|
+| median pop | 14 → 11 | 12 → 14 | — |
+| TH2 / Armory / Lab day | 29.5 / 50.8 / 65.5 → 30.8 / 54.5 / 72.5 | 31.5 / 52.6 / 69.5 → 29.5 / 53.0 / 67.5 | — |
+| expedition deaths | 9 / 475 → 15 / 470 | 19 / 472 → 10 / 480 | 28 → 25 |
+
+- The early game does not move beyond seed noise: the two halves swing in opposite directions (the extra loot and drops
+  shift every RNG stream). Before the rebase (20 seeds × 60 days) it read TH2 31.0 → 30.6, Armory 51.8 → 49.8, Lab
+  57.6 → 56.6. No generator means no grid and nothing new in the log. The new tier-1 loot (broken gadgets, wiring,
+  boards, dead radios, noise decoys, radios) was halved after the rebase to about 6% of the tier-1 loot weight, so it
+  does not crowd out scrap and food.
+- Power is a mid-game boost: by day 90 no bot colony has a generator; over 150 days (before the rebase) 16/20 built one
+  (median day 117), with no brownouts or breaker trips, 7 064 powered Lab hours, 333 disassemblies and 220 devices made.
+
+### Zones (300 runs each, party of 2, starting gear; death rate / wipes; before the rebase)
+
+| Zone | plain | + electronics kit | + electronics-combat kit | kit carried, unused |
+|---|---|---|---|---|
+| Suburb Ruins | 33% / 11% | 30% / 12% | 35% / 12% | — |
+| Flooded Mall | 51% / 23% | 59% / 26% | 62% / 27% | 51% / 19% |
+| Rail Depot | 93% / 63% | 93% / 63% | 93% / 62% | — |
+
+Kit: two handheld radios, an EMP, a holo-decoy, a noise decoy and a medic (or combat) drone. Per run in the Flooded Mall:
+0.55 EMPs, 0.53 holo-decoys, 0.6 noise decoys, 0.5 drone heals (or 0.75 drone bursts).
+
+- **The noise decoy first made things worse** (Suburb wipes 11% → 19%): Husks only turned to it while idle, so it woke the
+  map around the party. Now Husks leave a hunt for it unless their prey is adjacent, and the bot throws it away from the
+  exit: Suburb Ruins is down to 30% / 12%.
+- In the Flooded Mall the kit brings home 21% more items (6.9 vs 5.7) and the runs last two rounds longer (the bot stays
+  while a drone keeps healing and a decoy covers it), which costs more lives than the devices save. Carried but unused, the
+  kit changes nothing (51%). This is mostly the bot staying too long; a player who leaves when the decoy goes up gets the
+  benefit. Watch next: a "decoy up → withdraw" rule for the bot before retuning device numbers.
+- After the rebase (schematics, weather on main): plain Suburb Ruins 32% / 10% → 32% / 9%, Flooded Mall 53% / 23% →
+  53% / 25%; with the electronics kit 38% / 12% and 55% / 27% — the same pattern (more loot, longer runs).
+- The Rail Depot is out of reach for a starting party with or without devices (as before: it needs carbines).
+
+### Watch next
+
+- The generator comes very late for the bot (day ~117); a player builds it right after Lab 2. If that is too late in
+  practice, move it before Town Hall 3 in the build order.
+- Once the weather branch feeds `Power.SolarWeatherFactor`, check solar arrays at dusk and in storms against the bank size.
+- With story-schematics merged, recheck the electronics drop odds against the "first tier-2 schematic by day ~35" target.
+## Gear mods
+
+Weapon, armor and clothing mods, Mk II / III kits and helmets (ARCHITECTURE.md "Gear mods"). The aims: **the early game
+and the Linked carbine pass stay where they were** (mods are something a colony grows into); **mods are the answer to
+the geared kit's known weakness, the Husk fights** (BALANCE.md "Linked carbine pass": a two-handed gun losing accuracy once
+claws injure an arm); **the stealth choices are real choices**, a weapon light or a suppressor each paying for itself
+and costing something; and a fully modded party still loses people in the Iron Corridor and the Black Grid.
+
+The bot (`GearModder`) fits mods the way a careful player would: per slot the mod that scores best for the run (expected
+damage per AP with banes where they bite, noise for a party trying to stay hidden, a light only at night and never
+for a stealthy party, worn gear by armor, padding, carry and stealth against plates' weight and noise). The colony bot
+crafts default-set mods (iron sights, sharpened edges, padding, webbing) once it is armed and has scrap and cloth to spare,
+fits them and any kits at a bench before each expedition, and takes a helmet when it has one. Zone trials take
+`--mods=basic` (the default set and a scrap helmet), `full` (Mk II where a kit exists, every survivor-made mod), `stealth`
+(the same chosen to stay hidden) or `network` (full plus the EMP coil and Network weave).
+
+Tuning on the way (300 runs, `--kit=geared --carbines=2 --mods=full`, runs with a death / wipes):
+
+| pass | Suburb Ruins | Flooded Mall | Rail Depot | Network Relay |
+|---|---|---|---|---|
+| unmodded (this branch) | 22% / 11% | 35% / 17% | 62% / 38% | 83% / 70% |
+| first numbers (2 / 3 / 4 slots, plates +1.5 / +3, reflex +0.08, Mk II +12%) | 1% / 0% | 2% / 0% | 26% / 6% | 47% / 26% |
+| plates halved, smaller accuracy and Mk steps | 3% / 0% | 4% / 0% | 35% / 15% | 60% / 41% |
+| **one slot at Mk I (firearm, armor, clothing 1 / 2 / 3)** | **5% / 0%** | **5% / 0%** | **37% / 15%** | **63% / 45%** |
+
+Ablations on the last line (200 runs, one effect switched off at a time: incendiary rounds, armor from plates / Mk /
+helmet, every accuracy bonus, reach, the Mk damage step, padding, camo, camo + quiet fabric) all land within 1–4 points of
+it; with every effect neutral (the same builds, no numbers) it is back at 26% / 35%. The mods overlap: armor, padding,
+accuracy and stealth each fix the same weakness (Husk fights: runs without a Linked go 21–31% → 0–4%), so no single
+number is the lever. The Linked are not overcome by mods alone (below).
+
+### Results (300 runs each; "before" = this branch without mods, which matches the carbine and night passes)
+
+**Starting kit** — unchanged by the branch (melee: the after-moving penalty is for ranged attacks):
+
+| zone | someone dies | wipe | with basic mods + scrap helmet |
+|---|---|---|---|
+| Town Outskirts | 6% | 2% | 4% / 1% |
+| Scrapyard Flats | 7% | 1% | 6% / 0% |
+| Suburb Ruins | 33% | 10% | 28% / 9% |
+| Flooded Mall | 51% | 22% | 46% / 19% |
+| Rail Depot | 93% | 65% | 92% / 62% |
+| Network Relay | 99% | 86% | — |
+| Core Spire | 100% | 97% | — |
+
+**Geared kit** (no carbine; before → full mods): Outskirts 5% → 0%, Scrapyard Flats 12% → 1%, Suburb Ruins 57% / 40% →
+22% / 12%, Flooded Mall 79% / 64% → 54% / 36%, Rail Depot 99% / 98% → 95% / 90%. Losing someone when a Linked shows stays
+73% (Suburb) and 64% (Mall): without a carbine the Linked still win.
+
+**2 carbines** (before → full → network):
+
+| zone | before | full mods | network mods (EMP coil, weave) |
+|---|---|---|---|
+| Suburb Ruins | 22% / 11% | 5% / 0% | 2% / 0% |
+| Flooded Mall | 35% / 17% | 5% / 0% | 8% / 0% |
+| Rail Depot | 62% / 38% | 37% / 15% | 30% / 9% |
+| Network Relay | 83% / 70% | 63% / 45% | 51% / 28% |
+| Core Spire | — | — | 76% / 62% |
+
+**2 carbines + Linked plating**: Rail Depot 48% / 22% → 14% / 6% with full mods, Network Relay 69% / 52% → 35% / 23%,
+Core Spire → 68% / 57%.
+
+**Stealth trade-offs** (geared kit, full mods vs stealth mods, which take a suppressor and quiet fabric and never a light):
+
+| | Suburb Ruins | Flooded Mall | ambushed / run (Suburb, Mall) |
+|---|---|---|---|
+| day, full | 22% / 12% | 54% / 36% | 0.22, 0.50 |
+| day, stealth | 23% / 13% | 56% / 40% | 0.20, 0.50 |
+| night, unmodded | 89% / 78% | 98% / 92% | 0.23, 0.89 |
+| night, full (weapon light) | 55% / 41% | 80% / 67% | 0.27, 0.81 |
+| night, stealth (no light) | 54% / 36% | 81% / 68% | 0.25, 0.98 |
+
+### Against the targets
+
+| target | result |
+|---|---|
+| Starting kit unchanged | **met**: within 1 point of the carbine pass in every zone (Outskirts 6% / 2%, Suburb 33% / 10%, Mall 51% / 22%) |
+| Carbine pass targets intact (the same kits without mods) | **met** within the noise: 2 carbines Suburb 22% / 11% (22% / 10%), Mall 35% / 17% (31% / 11%: the after-moving penalty costs a shooting party ~4 points), Rail Depot + plating 48% / 22% (45% / 27%) |
+| Default-set mods are a step, not a leap | **met**: Suburb 33% → 28%, Mall 51% → 46% |
+| Stealth trade-offs meaningful | **met**: a light and staying dark are level at night (55% vs 54%, 80% vs 81%), each by a different road (the light sees what comes; the dark is not seen, but is ambushed more in the Mall: 0.98 vs 0.81 a run); by day the suppressor build and the loud one are level |
+| Iron Corridor and Black Grid stay dangerous | **met**: fully modded 2-carbine parties lose someone in 37% of Rail Depot runs and 63% of Network Relay runs; with plating 14% / 35%; Core Spire 68–76% |
+
+Colony sweep after rebasing onto `main` (schematics, story, weather), 60 seeds × 60 days in three blocks of 20, the same
+data without the gear-mod files → with them (the bot crafting and fitting default-set mods; `--no-mods` turns that off):
+expedition deaths 32 over 977 runs → 34 over 966, departures 53 → 60, births 112 → 112, starvation 0 → 0; per block
+median population 8 / 7 / 8 → 7 / 8 / 8, Town Hall 2 day 29.5 / 31.5 / 28.6 → 32.5 / 31.8 / 27.8, Lab 59.0 / 57.5 / 58.6
+→ 60.1 / 59.0 / 59.3, min food 4.1 / 3.7 / 4.2 → 4.0 / 3.7 / 4.0 days. One block of 20 alone swings by more than this
+(expedition deaths 6–19 per block on the same data), so nothing moved outside the noise. The mods cost a few scrap and
+cloth once the colony is armed.
+
+Rerun after the rebase (300 runs): starting kit Outskirts 4% / 1%, Scrapyard Flats 10% / 2%, Suburb Ruins 34% / 11%, Flooded
+Mall 51% / 23%, Rail Depot 92% / 63%; basic mods 3% / 1%, 6% / 1%, 26% / 8%, 48% / 17%; 2 carbines 20% / 8%, 34% / 16%,
+63% / 41% → full mods 3% / 0%, 4% / 0%, 37% / 15% (Network Relay 57% / 39%); geared full mods Suburb 21% / 14%, Mall 54% /
+35%; at night full (light) 55% / 35% and 80% / 69% vs stealth (dark) 53% / 36% and 84% / 72%. All within a few points of the
+tables above.
+
+After the second rebase (food and cooking, electronics and power; 300 runs): starting kit Outskirts 4% / 1%, Scrapyard
+Flats 10% / 2%, Suburb Ruins 34% / 10%, Flooded Mall 50% / 23%; basic mods Suburb 27% / 9%, Mall 49% / 19%; 2 carbines 21% /
+8%, 37% / 17%, Rail Depot 64% / 37% → full mods 2% / 0%, 5% / 0%, 35% / 10%. Colony sweep (20 seeds × 60 days, `--no-mods`
+→ the bot modding): expedition deaths 12 over 331 → 9 over 330, departures 23 → 24, Town Hall 2 day 31.8 → 30.8, Lab 59.5 →
+58.1, min food 3.7 → 3.7 days, starvation 0 → 0.
+
+Watch next: a fully modded mid-game party with two carbines makes Suburb Ruins and Flooded Mall routine (5%). That
+needs Armory 3, two carbines, Mk II kits and tier-2 schematics, so it is late by design, but if it feels too safe the
+levers are the slot counts (Mk II 2 → 1 for firearms) and the Mk II armor step. The weapon light is never turned off (no
+toggle yet). The bot does not use Jury-rig in the field.
+
+
+## Raids
+
+Colony raids and crafted defenses (data/raids.json; design in ARCHITECTURE.md "Raids and defenses"). Raids auto-resolve
+from a strength calculation; the bot (`DefenseBot`) builds defenses, posts guards and preps every warned raid.
+`--no-raids` runs the same bot without raids for comparison.
+
+### Targets
+
+- The first raid comes after the basics are up (day 8+, five buildings) and is survivable with a few traps and a tower:
+  held in every seed.
+- After that, a raid every week or so, growing with the colony's noise, wealth and the raids it has survived.
+- A lost raid hurts (stock, injuries, the odd wrecked building), but rarely kills; a colony that invests holds most.
+- The early economy keeps its shape: Town Hall 2 a few days later at most.
+
+### The numbers
+
+| What | Value | Why |
+|---|---|---|
+| Grace | day 9 and five buildings | basics first; pressure builds meanwhile, so the first raid comes soon after |
+| Threshold / gap | 130 pressure, ≥ 6 days | one raid a week; the others' pressure ×0.25 after any raid |
+| Husk pressure/h | 0.2 + 0.1 · noise | noise ≈ 0.5 per survivor + night shifts + floodlights at night + returns (gunfire) − lures |
+| Raider pressure/h | 0.1 + 0.03 · wealth (stock/50 + items/5), from day 10 | rich colonies draw bands |
+| Linked pressure/h | 0.05 · Network presence (known Linked zones' threat × (1 + day/30)), from day 25 | grows with the Network's reach |
+| Size | min + pressure/100 · sizePerPressure, × (1 + 0.1/raid + 0.01/day past grace); first raid ≤ 3 | escalation |
+| Strength per attacker | Husk 5, raider 6, Linked 9 | ×1.25 Husks, ×1.1 raiders at night |
+| Defender | 8 · (0.5 + 0.5 · combat/50) · health · arms + weapon power · 0.6 + armor · 0.8 | gear from the inventory, best to the best |
+| Night | defenders ×0.75 (a lit approach recovers 75% of the loss); asleep ×0.5 unless an Alarm Bell | towers, bells and lights matter at night |
+| Guard at a post | ×(1.25 + post bonus + Sentry 0.25) | and +2 h warning per guard (max 6) |
+| Walls | soak share = min(0.6, soak / (soak + attack)); an open gate halves it | close the gates in prep |
+| Pressure p | attack / (attack + defense); held when p < 0.5 | spoils from p 0.4, injuries p² · 1.0 per defender, deaths above p 0.6 |
+
+### Results (20 seeds × 60 days, bot)
+
+    median: pop 7, first pregnancy day  34.0, first birth day  38.0, house affordable  51.8, TH2  37.0, armory  55.5, lab     -, min food days 3.8
+    raids: seed  raids held firstDay firstHeld dead taken hurt stolen wrecked defenses guards kinds
+             1      5    3  11.2       yes    0     0    2     10       0        6      0 HHHHR
+             2      5    5  11.3       yes    0     0    2      7       0        6      0 HHHHR
+             3      5    3  11.2       yes    0     0    1      8       0        6      1 HHHRL
+             4      6    5  10.8       yes    0     0    6     20       0        6      1 HHHRHR
+             5      6    5  10.8       yes    0     0    4     45       0        6      0 HHHRHR
+             6      3    1  11.2       yes    0     0    4     26       0        6      0 HHH
+             7      5    1  11.8       yes    2     2    3     14       1        6      0 HHHLL
+             8      6    6  10.8       yes    0     0    7     22       0        6      0 HHHRHR
+             9      5    2  11.8       yes    0     0    4     30       0        6      0 HHHHR
+            10      6    4  11.8       yes    0     0    5     23       0        6      1 HHHRHR
+            11      5    2  11.8       yes    1     0    5     70       1        6      0 HHHRH
+            12      6    6  11.2       yes    0     0    4     13       0        6      1 HHHRHR
+            13      6    3  10.8       yes    0     0    2     35       0        6      0 HHHRHR
+            14      6    6  11.8       yes    0     0    3     13       0        6      0 HHHRHR
+            15      5    3  11.2       yes    0     0    3     15       0        6      0 HHHRH
+            16      4    1  11.3       yes    0     2    2      4       2        6      0 HHLL
+            17      6    5  11.8       yes    0     0    6     22       0        6      0 HHHRHR
+            18      6    5  10.8       yes    0     0    7     35       0        6      0 HHHRHR
+            19      5    1  11.2       yes    2     1    1     16       2        6      0 HHHLL
+            20      6    6  11.8       yes    0     0    7     15       0        6      1 HHHRHR
+    raids: 107 in all, 73 held; first raid day 11.2 (median), first held 20/20; dead 5, taken 5, hurt 78, stolen 443, wrecked 6
+    totals: starvation deaths 0, expedition deaths 16 over 295 expeditions (16 with deaths), departures 19, births 30, early Linked sightings 0, recruits 38
+    
+
+Without raids (same bot): Town Hall 2 at day 31 (median); with raids at day 37. Every first raid was held; 68% of all raids
+were held; 10 survivors were lost to raids over 1,200 colony-days (5 killed, 5 taken by the Linked late on). Most of the
+economic cost is labour: a guard is a worker lost, so the bot posts guards only from 7 adults (posting one from 3 adults
+pushed Town Hall 2 to day 44, injuries mattered far less). Husks are most of the raids (night, from the north); raiders
+come up the road once the stock grows.
+
+### Fought raids (`--fight`: StoryBot plays every raid on the colony map)
+
+20 seeds × 60 days: 108 raids, 90 held (83%; auto-resolve 68%), first raid held 20/20, no raid deaths, population 120 at the
+end (auto-resolve 122), Town Hall 2 at day 35.6 (median). The first pass killed 86 survivors: defenders bled out or were
+finished where they fell, and field wounds came home above the worsen threshold and killed later (41 "untreated" deaths).
+Two rules fixed it: in a raid battle a downed defender is dragged to safety at once (`FieldMission.RescueDowned`), and
+wounds come home dressed (`battle.woundCap` 0.45, below `medical.worsenThreshold`). The report's "hurt" counts every injured
+part from the field, so it reads high next to auto-resolve's one line per survivor.
+
+### After the merge with schematics, weather, food, power, trading and gear mods (20 seeds × 60 days)
+
+| Run | Raids | Held | First held | Lost (dead + taken) | Population at the end | Town Hall 2 (median day) |
+|---|---|---|---|---|---|---|
+| auto-resolve | 108 | 79 (73%) | 18/20 | 3 | 131 | 36.6 |
+| `--fight` | 106 | 75 (71%) | 20/20 | 0 | 115 | 35.8 |
+| `--no-raids` | — | — | — | — | 163 | 30.8 |
+
+Raider wealth now counts the pantry's food value (as the stock it replaced) instead of food items, which had doubled
+raider pressure (131 raids, 54% held). The two first raids lost in auto-resolve broke through without deaths or losses
+(two of six adults were patients at night). Defense schematics now come from the catalogue (loot, trade, research and beaten
+raids); weather cuts warnings (rain ×0.8, fog ×0.6, thunderstorms ×0.7, dust storms ×0.5); powered turrets and floodlights
+get their bonus; Husks trample standing crops; modded gear and helmets count in a defender's strength.
+
+### Watch next pass
+
+- Population with fought raids (115) trails auto-resolve (131): field wounds keep defenders in the Med Bay longer.
+- Guards are strong but expensive for a small colony; a part-time watch (a rota) may be the better early choice.
+- The bot spends only on essentials before Town Hall 2; walls and turrets come late. Players who wall in early will find
+  raids easy — that is intended, but check the wall soak cap if raids feel toothless.
+- Raider bands field the Tally's `tally_scav` (pistol, padded vest) in fought battles; they may want a melee variant.

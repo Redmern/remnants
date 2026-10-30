@@ -7,7 +7,7 @@ using Remnants.Core.Survivors;
 namespace Remnants.Core.Colony;
 
 /// <summary>What a production building's queue is doing this tick.</summary>
-public enum CraftStatus { Idle, NoWorkers, NeedsSkill, WaitingForInputs, Working }
+public enum CraftStatus { Idle, NoWorkers, NeedsSkill, WaitingForInputs, Working, NeedsPower }
 
 /// <summary>
 /// The closest skill requirement the building's workers fall short of: which skill, the best worker's level, the level
@@ -44,16 +44,23 @@ internal static class CraftingSystem
                 continue;
             }
             var recipe = data.Recipes[order.RecipeId];
+            // A paid tier 3 batch waits out a power cut (its workers still practise).
+            if (recipe.NeedsPower && !Power.IsPowered(state, building))
+            {
+                foreach (var w in workers) Training.Work(state, data, job, w);
+                continue;
+            }
             if (!order.Paid) Pay(state, data, items, recipe, order);
 
+            var powered = 1 + Power.Bonus(state, data, building, PowerEffect.CraftSpeed);
             foreach (var (w, shift) in crew)
             {
-                order.Progress += JobOutput.PerTick(def, building.Level, job, w, data.Rules.Output, data) * shift;
+                order.Progress += JobOutput.PerTick(def, building.Level, job, w, data.Rules.Output, data) * shift * powered;
                 Training.Work(state, data, job, w);
             }
             if (order.Progress + 1e-9 < recipe.Work) continue;
             Finish(state, data, items, rng, building, def, recipe, order, BestSkill(workers, job), QualityBonus(data, workers, job),
-                workers.Max(w => PerkEffects.For(w, data).Hook(PerkHooks.ShelfLifeBonus)));
+                workers.Max(w => PerkEffects.For(w, data).Hook(PerkHooks.ShelfLifeBonus)), YieldBonus(data, workers, job));
             if (recipe.Learns is { } learns && sim is not null) Schematics.Schematics.Grant(sim, learns, SchematicSource.Terminal);
             foreach (var w in workers) Progression.GrantXp(state, data, w, data.Progression.Xp.PerCraft, XpSource.Crafting);
         }
@@ -66,8 +73,12 @@ internal static class CraftingSystem
         var workers = state.WorkersAt(building.Id).ToList();
         if (workers.Count == 0) return CraftStatus.NoWorkers;
         var job = data.Jobs[def.Job];
-        if (Pick(state, data, items, building, workers, job) is not null) return CraftStatus.Working;
+        if (Pick(state, data, items, building, workers, job) is { } picked)
+            return data.Recipes[picked.RecipeId].NeedsPower && !Power.IsPowered(state, building) ? CraftStatus.NeedsPower : CraftStatus.Working;
         var skill = BestSkill(workers, job);
+        if (!Power.IsPowered(state, building) && building.Queue.Any(o => data.Recipes[o.RecipeId] is { NeedsPower: true } r && r.MinSkill <= skill + 1e-9
+                && state.Stockpile.CanAfford(r.Inputs) && HasItemInputs(state, items, r)))
+            return CraftStatus.NeedsPower;
         return building.Queue.All(o => data.Recipes[o.RecipeId].MinSkill > skill + 1e-9) ? CraftStatus.NeedsSkill : CraftStatus.WaitingForInputs;
     }
 
@@ -103,7 +114,9 @@ internal static class CraftingSystem
         return building.Queue.FirstOrDefault(o =>
         {
             var r = data.Recipes[o.RecipeId];
-            return r.MinSkill <= skill + 1e-9 && state.Stockpile.CanAfford(r.Inputs) && HasItemInputs(state, items, r) && HasIngredients(state, data, r);
+            return r.MinSkill <= skill + 1e-9 && (!r.NeedsPower || Power.IsPowered(state, building))
+                   && state.Stockpile.CanAfford(r.Inputs) && HasItemInputs(state, items, r) && HasIngredients(state, data, r)
+                   && (r.DonorHealth <= 0 || Medicine.Donor(state, data, r.DonorHealth) is not null);
         });
     }
 
@@ -139,16 +152,22 @@ internal static class CraftingSystem
         return true;
     }
 
+    /// <summary>Disassembly: the best worker's (by skill, then id) extra-component chance (Circuit Tinkerer, skill).</summary>
+    private static double YieldBonus(GameData data, IEnumerable<Survivor> workers, JobDef job) =>
+        data.Electronics is { } e && workers.OrderByDescending(w => w.Get(job.Skill)).ThenBy(w => w.Id).FirstOrDefault() is { } best
+            ? PerkEffects.For(best, data).Hook(PerkHooks.DisassemblyYieldBonus) + best.Get(job.Skill) * e.Disassembly.SkillYieldPerPoint
+            : 0;
+
     public static bool HasItemInputs(ColonyState state, ScavengeData? items, RecipeDef recipe) =>
         recipe.ItemInputs.All(kv => Matching(state, items, kv.Key).Sum(id => state.Inventory.Count(id)) >= kv.Value);
 
-    /// <summary>Inventory ids that satisfy an item input: the item at any quality, worst quality first.</summary>
+    /// <summary>Inventory ids that satisfy an item input: the item at any quality, worst quality first (never modded gear).</summary>
     private static List<string> Matching(ColonyState state, ScavengeData? items, string itemId)
     {
         if (items is null) return [itemId];
         int Rank(string id) => items.Rules.Quality.FindIndex(q => q == items.QualityOf(items.Items[id]));
         return state.Inventory.Counts.Keys
-            .Where(id => items.Items.TryGetValue(id, out var def) && def.DefinedId == itemId)
+            .Where(id => items.Items.TryGetValue(id, out var def) && def.DefinedId == itemId && !def.IsModded)
             .OrderBy(Rank).ThenBy(id => id, StringComparer.Ordinal)
             .ToList();
     }
@@ -156,6 +175,11 @@ internal static class CraftingSystem
     private static void Pay(ColonyState state, GameData data, ScavengeData? items, RecipeDef recipe, CraftOrder order)
     {
         state.Stockpile.Spend(recipe.Inputs);
+        if (recipe.DonorHealth > 0 && Medicine.Donor(state, data, recipe.DonorHealth) is { } donor)
+        {
+            donor.Health -= recipe.DonorHealth;
+            state.Log(new(state.Tick, ColonyEventType.BloodDonated, $"{donor.Name} gave blood for a {recipe.Name}.", donor.Id));
+        }
         foreach (var (key, count) in recipe.Ingredients.OrderBy(kv => kv.Key.StartsWith(FoodData.TagPrefix, StringComparison.Ordinal) ? 1 : 0))
             foreach (var t in Pantry.TakeIngredient(state, data, key, count) ?? throw new InvalidOperationException($"Missing ingredient {key}."))
             {
@@ -190,9 +214,19 @@ internal static class CraftingSystem
     }
 
     private static void Finish(ColonyState state, GameData data, ScavengeData? items, DeterministicRng rng,
-        Building building, BuildingDef def, RecipeDef recipe, CraftOrder order, double skill, double qualityBonus, double preserver)
+        Building building, BuildingDef def, RecipeDef recipe, CraftOrder order, double skill, double qualityBonus, double preserver, double yieldBonus)
     {
         string made;
+        var disassembly = recipe.Group == "Disassembly";
+        // Stripping a device: each component has a chance of one more (skill and Circuit Tinkerer); nothing is drawn otherwise.
+        int Extra(int count)
+        {
+            if (!disassembly || yieldBonus <= 0) return count;
+            var more = 0;
+            for (var i = 0; i < count; i++)
+                if (rng.NextDouble() < yieldBonus) more++;
+            return count + more;
+        }
         if (recipe.Learns is { } learns)
         {
             made = $"a decrypted {data.Schematics.All[learns].Name} schematic";
@@ -210,12 +244,23 @@ internal static class CraftingSystem
         }
         else if (recipe.Item is { } item)
         {
-            var count = (int)Math.Round(recipe.Amount);
+            var count = Extra((int)Math.Round(recipe.Amount));
             var id = item;
             if (Tiers(data, items, item) is { } tiers)
                 id = items!.QualityVariant(item, Roll(tiers, Score(data, building, skill) + qualityBonus, data.Rules.Crafting.QualitySpread, rng));
             state.Inventory.Add(id, count);
             made = $"{count} {items?.Items.GetValueOrDefault(id)?.Name ?? recipe.Name}";
+            foreach (var (extra, n) in recipe.Byproducts)
+            {
+                var k = Extra(n);
+                state.Inventory.Add(extra, k);
+                made += $", {k} {items?.Items.GetValueOrDefault(extra)?.Name ?? extra}";
+            }
+            if (recipe.ResearchChance > 0 && rng.NextDouble() < recipe.ResearchChance)
+            {
+                state.Stockpile.Add(data.Schematics.Rules.ResearchDataResource, 1);
+                made += " and Research Data";
+            }
         }
         else if (recipe.Vehicle is { } tier)
         {
@@ -238,7 +283,8 @@ internal static class CraftingSystem
             building.Queue.Add(order);
         }
         else if (--order.Remaining <= 0) building.Queue.Remove(order);
-        state.Log(new(state.Tick, ColonyEventType.Crafted, $"{def.Name} made {made}.", BuildingId: building.Id));
+        state.Log(new(state.Tick, disassembly ? ColonyEventType.Disassembled : ColonyEventType.Crafted,
+            disassembly ? $"{def.Name} stripped {recipe.Name[6..]} into {made}." : $"{def.Name} made {made}.", BuildingId: building.Id));
     }
 
     /// <summary>Quality tiers (worst first) with their score thresholds, or null when the output has no quality.</summary>

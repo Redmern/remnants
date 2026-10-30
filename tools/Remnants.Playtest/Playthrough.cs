@@ -19,8 +19,8 @@ public sealed record PlaythroughSummary(
     int LinkedEncountersEarly, double? WorkshopDay, double? ArmoryDay, double? LabDay, int CraftedItems, int Recruits,
     double? FirstPerkPointDay, int LevelUps, double SurvivorDays, int PerksLearned, double MeanLevel, int MaxLevel, int UnspentPoints,
     IReadOnlyDictionary<string, int> WeatherHours, int LightningStrikes, int Repairs,
-    CyberSummary? Cyber = null, SchematicSummary? Schematics = null, FoodSummary? Food = null,
-    IReadOnlyList<ExpeditionOutcome>? Runs = null);
+    CyberSummary? Cyber = null, SchematicSummary? Schematics = null, FoodSummary? Food = null, PowerSummary? Power = null, RaidSummary? Raids = null,
+    MedicineSummary? Medicine = null, IReadOnlyList<ExpeditionOutcome>? Runs = null);
 
 /// <summary>Food and cooking: units that rotted, food poisonings, batches cooked or preserved, mean nutrition at the end.</summary>
 public sealed record FoodSummary(int Rotted, int Poisonings, int Cooked, double MeanNutrition, double CookedShareEaten);
@@ -35,6 +35,24 @@ public sealed record SchematicSummary(double? FirstDay, double? FirstTier2Day, i
     bool ArmoryAndLab2);
 
 /// <summary>
+/// Medicine: wounds that got infected, sicknesses, treatments given at home (Med Bay or by hand), blood donations, deaths
+/// to a condition, medical supplies crafted, and the first day infection and the dispensary were seen.
+/// </summary>
+public sealed record MedicineSummary(int Infections, int Sicknesses, int Treatments, int Donations, int ConditionDeaths, int SuppliesCrafted,
+    double? FirstInfectionDay, int InfectedAtEnd);
+
+/// <summary>
+/// Electronics and power: the first day a generator stood, components and devices made at the Lab, disassemblies,
+/// brownout and breaker events, ticks the Lab ran powered, and devices still charging at the end.
+/// </summary>
+public sealed record PowerSummary(double? GeneratorDay, int Components, int Devices, int Disassembled, int Brownouts, int Breakers,
+    int LabPoweredTicks, int Charging);
+
+/// <summary>Raids: how many came and were held, the first one's day and outcome, and what they cost.</summary>
+public sealed record RaidSummary(int Raids, int Repelled, double? FirstDay, bool? FirstHeld, int Dead, int Taken, int Injured,
+    double Stolen, int Wrecked, int Defenses, int Guards, string Kinds);
+
+/// <summary>
 /// Cybernetics: the first day a design of each tier could be queued (requirements met, building there), limbs lost,
 /// parts fitted by tier, surgeries and complications, and the lowest humanity at the end.
 /// </summary>
@@ -44,10 +62,12 @@ public sealed record CyberSummary(double?[] TierDay, int LimbsLost, int[] Fitted
 /// <summary>Runs <see cref="ColonyBot"/> on a fresh New Game and records a daily timeline.</summary>
 public sealed class Playthrough
 {
-    public Playthrough(GameData data, ScavengeData scavenge, ulong seed, BotOptions? options = null, Remnants.Core.Story.StoryData? story = null)
+    public Playthrough(GameData data, ScavengeData scavenge, ulong seed, BotOptions? options = null, Remnants.Core.Story.StoryData? story = null,
+        Remnants.Core.Raids.RaidData? raids = null)
     {
         Seed = seed;
         Sim = NewGame.Create(data, seed, scavenge);
+        Sim.Raids = raids;
         if (story is not null)
         {
             Sim.Story = story;
@@ -70,11 +90,13 @@ public sealed class Playthrough
     private double? _firstBirth, _firstPregnancy, _houseAffordable, _houseBuilt, _townHall2, _firstStarving, _workshop, _armory, _lab;
     private double _minFoodDays = double.MaxValue;
     private readonly double?[] _tierDay = new double?[5];
-    private int _limbsLost, _surgeries, _complications;
+    private int _limbsLost, _surgeries, _complications, _raidDeaths;
     private int _rotted, _poisonings, _cooked;
     private double _cookedEaten, _eaten;
     private readonly int?[] _knownAt = new int?[3];
     private double _researchData, _lastResearchData;
+    private int _infections, _sicknesses, _treatments, _donations, _conditionDeaths, _supplies;
+    private double? _firstInfection;
 
     public PlaythroughSummary Run(int days, int actEveryTicks = 4)
     {
@@ -113,7 +135,8 @@ public sealed class Playthrough
             _firstPerkPoint, _levelUps, _survivorTicks / tpd, _perks, grown.Count == 0 ? 0 : grown.Average(x => x.Level),
             grown.Select(x => x.Level).DefaultIfEmpty(1).Max(), grown.Sum(x => x.PerkPoints), _weatherHours, _lightning, _repairs, Cyber(), SchematicStats(),
             new FoodSummary(_rotted, _poisonings, _cooked, Sim.State.Survivors.Select(x => x.Nutrition).DefaultIfEmpty(0).Average(),
-                _eaten <= 0 ? 0 : _cookedEaten / _eaten), Bot.Expeditions.ToList());
+                _eaten <= 0 ? 0 : _cookedEaten / _eaten),
+            new PowerSummary(_generator, _components, _devices, _disassembled, _brownouts, _breakers, _labPowered, Sim.State.Charging.Count), RaidStats(), Medicine(), Bot.Expeditions.ToList());
     }
 
     /// <summary>Where people are right now: workers per building, patients, away, idle.</summary>
@@ -147,19 +170,32 @@ public sealed class Playthrough
             {
                 case ColonyEventType.Died when e.Message.Contains("starved"): _starvationDeaths++; break;
                 case ColonyEventType.Died when e.Message.Contains(" died in "): _expeditionDeaths++; break;
-                case ColonyEventType.Died: _otherDeaths++; break;
+                case ColonyEventType.Died when e.Message.Contains("defending") || e.Message.Contains("taken by the Linked"): _raidDeaths++; break;
+                case ColonyEventType.Died:
+                    _otherDeaths++;
+                    if (Sim.Data.Medicine is { } med && med.Conditions.Values.Any(c => e.Message.Contains(c.Name.ToLowerInvariant()))) _conditionDeaths++;
+                    break;
+                case ColonyEventType.Infected: _infections++; _firstInfection ??= Day; break;
+                case ColonyEventType.FellSick: _sicknesses++; break;
+                case ColonyEventType.Treated: _treatments++; break;
+                case ColonyEventType.BloodDonated: _donations++; break;
                 case ColonyEventType.Left: _departures++; break;
                 case ColonyEventType.Born: _births++; _firstBirth ??= Day; break;
                 case ColonyEventType.Pregnant: _firstPregnancy ??= Day; break;
                 case ColonyEventType.Starving: _firstStarving ??= Day; break;
                 case ColonyEventType.Crafted:
                     _crafted++;
+                    CountElectronics(e);
+                    if (e.BuildingId is { } mb && Sim.State.FindBuilding(mb)?.DefId == Sim.Data.Rules.Medical.BuildingId) _supplies++;
                     if (e.BuildingId is { } b && Sim.State.FindBuilding(b) is { } at && Sim.Data.Buildings[at.DefId].Job == "cooking") _cooked++;
                     break;
                 case ColonyEventType.FoodRotted:
                     _rotted += System.Text.RegularExpressions.Regex.Matches(e.Message, @"(\d+) ").Sum(m => int.Parse(m.Groups[1].Value));
                     break;
                 case ColonyEventType.FoodPoisoning: _poisonings++; break;
+                case ColonyEventType.Disassembled: _disassembled++; break;
+                case ColonyEventType.Brownout: _brownouts++; break;
+                case ColonyEventType.BreakerTripped: _breakers++; break;
                 case ColonyEventType.Recruited: _recruits++; break;
                 case ColonyEventType.LevelUp: _levelUps++; _firstPerkPoint ??= Day; break;
                 case ColonyEventType.PerkLearned: _perks++; break;
@@ -174,6 +210,21 @@ public sealed class Playthrough
     }
 
     private ColonyEvent? _last;
+    private double? _generator;
+    private int _components, _devices, _disassembled, _brownouts, _breakers, _labPowered;
+
+    /// <summary>A Lab batch by its recipe group (the log names the item: matched on the electronics recipes' item names).</summary>
+    private void CountElectronics(ColonyEvent e)
+    {
+        if (Sim.Data.Electronics is not { } el || e.BuildingId is not { } id || Sim.State.FindBuilding(id)?.DefId != "electronics_lab") return;
+        foreach (var r in el.Recipes)
+            if (Sim.Scavenge!.Items.TryGetValue(r.Item ?? "", out var item) && e.Message.Contains(item.Name))
+            {
+                if (r.Group == "Components") _components++;
+                else _devices++;
+                return;
+            }
+    }
 
     private void Track()
     {
@@ -190,6 +241,8 @@ public sealed class Playthrough
         if (_workshop is null && s.Buildings.Any(b => b.DefId == "workshop")) _workshop = Day;
         if (_armory is null && s.Buildings.Any(b => b.DefId == "armory")) _armory = Day;
         if (_lab is null && s.Buildings.Any(b => b.DefId == "electronics_lab")) _lab = Day;
+        if (_generator is null && s.Buildings.Any(b => b.DefId is "fuel_generator" or "solar_array")) _generator = Day;
+        if (s.Buildings.FirstOrDefault(b => b.DefId == "electronics_lab") is { } lab && Sim.IsPowered(lab)) _labPowered++;
         _survivorTicks += s.Survivors.Count(x => !x.IsInfant);
         if (Weather.Enabled(Sim.Data))
         {
@@ -218,6 +271,16 @@ public sealed class Playthrough
             if (Cybernetics.Status(Sim, node).State != CyberNodeState.Locked) _tierDay[node.Tier] = Day;
     }
 
+    private RaidSummary? RaidStats()
+    {
+        if (Sim.Raids is null) return null;
+        var r = Bot.Defense.Reports;
+        return new RaidSummary(r.Count, r.Count(x => x.Repelled), Bot.Defense.FirstRaidDay, r.Count == 0 ? null : r[0].Repelled,
+            r.Sum(x => x.Dead.Count), r.Sum(x => x.Taken.Count), r.Sum(x => x.Injured.Count), r.Sum(x => x.Stolen.Values.Sum()),
+            r.Sum(x => x.Damaged.Count(d => d.Destroyed)), Sim.State.Defense.Defenses.Count, Sim.State.Defense.Guards.Count,
+            string.Join("", r.Select(x => x.Kind.ToString()[0])));
+    }
+
     private SchematicSummary SchematicStats()
     {
         var s = Sim.State.Schematics;
@@ -229,6 +292,10 @@ public sealed class Playthrough
             Bot.Expeditions.Select(e => Sim.Scavenge!.Zones[e.Zone].Threat).DefaultIfEmpty(0).Max(),
             Sim.State.Buildings.Any(b => b.DefId == "armory" && b.Level >= 2) && Sim.State.Buildings.Any(b => b.DefId == "electronics_lab" && b.Level >= 2));
     }
+    private MedicineSummary? Medicine() =>
+        Sim.Data.Medicine is not { } med ? null
+            : new MedicineSummary(_infections, _sicknesses, _treatments, _donations, _conditionDeaths, _supplies, _firstInfection,
+                Sim.State.Survivors.Count(x => x.Body.Conditions.Any(c => med.Condition(c.Id)?.Kind == Remnants.Core.Data.ConditionKind.Infection)));
 
     private CyberSummary? Cyber()
     {
@@ -247,6 +314,7 @@ public sealed class Playthrough
         or ColonyEventType.LimbLost or ColonyEventType.ProstheticFitted or ColonyEventType.SurgeryBooked or ColonyEventType.SurgeryDone
         or ColonyEventType.SurgeryComplication or ColonyEventType.ProstheticNeedsService or ColonyEventType.SchematicLearned or ColonyEventType.PerkLearned or ColonyEventType.ZoneRevealed or ColonyEventType.Homeless
         or ColonyEventType.WeatherChanged or ColonyEventType.Storm or ColonyEventType.LightningStruck or ColonyEventType.Repaired
+        or ColonyEventType.RaidWarned or ColonyEventType.RaidRepelled or ColonyEventType.RaidBreached or ColonyEventType.BuildingWrecked
         or ColonyEventType.FoodRotted or ColonyEventType.FoodPoisoning;
 
     public static string Short(string defId) => defId switch

@@ -37,21 +37,67 @@ public sealed class BodyPartState
     /// </summary>
     public bool Interfered { get; set; }
 
+    /// <summary>How an injured part is dressed (see <c>data/medicine.json</c>): a dirty wound may get infected. A new injury undoes it.</summary>
+    public Dressing Dressing { get; set; }
+
+    /// <summary>
+    /// Efficiency lost on top of the injury to a condition on this part (a fracture: less once splinted). Kept in step by
+    /// the medicine rules, so the body needs no data to know how well the part works.
+    /// </summary>
+    public double ConditionPenalty { get; set; }
+
     /// <summary>How well this part works, as a multiplier (1 = healthy).</summary>
     public double Efficiency => Condition switch
     {
         PartCondition.Healthy => 1.0,
-        PartCondition.Injured => Math.Clamp(1.0 - Severity, 0.0, 1.0),
+        PartCondition.Injured => Math.Clamp(1.0 - Severity - ConditionPenalty, 0.0, 1.0),
         PartCondition.Missing => 0.0,
         PartCondition.Prosthetic => Interfered ? 0.0 : Math.Max(0.0, ProstheticQuality * Upkeep),
         _ => 1.0,
     };
 }
 
-/// <summary>Body-part model: head (with the eyes), torso, two arms, two legs. Data and modifiers only for now.</summary>
+/// <summary>How a wound is dressed: a bandage keeps most dirt out, a clean dressing or antiseptic all of it.</summary>
+public enum Dressing { None, Bandaged, Clean }
+
+/// <summary>
+/// A condition the body carries (data/medicine.json <c>conditions</c>): an infection, a fracture, a sickness, a dependency, or
+/// a passing effect (a painkiller). <see cref="Part"/> is set for conditions of one body part. <see cref="Severity"/> is
+/// 0..1 (for an effect, its strength); <see cref="Remaining"/> counts down for effects (colony ticks, or rounds in the
+/// field); <see cref="Treated"/> marks a fracture splinted or an infection under care.
+/// </summary>
+public sealed class BodyCondition
+{
+    public string Id { get; set; } = "";
+    public BodyPart? Part { get; set; }
+    public double Severity { get; set; }
+    public int Remaining { get; set; }
+    public bool Treated { get; set; }
+}
+
+/// <summary>Body-part model: head (with the eyes), torso, two arms, two legs, plus the conditions it carries.</summary>
 public sealed class Body
 {
     public const double MaxHumanity = 100;
+
+    /// <summary>Conditions (infections, fractures, sicknesses, effects), in the order they started. See <c>Medicine</c>.</summary>
+    public List<BodyCondition> Conditions { get; set; } = new();
+
+    /// <summary>Humanity lost to something other than a prosthetic (a Linked "Calm" injector), kept for good.</summary>
+    public double HumanityLoss { get; set; }
+
+    /// <summary>Painkiller doses taken recently; it decays, and too many at once grow a dependency.</summary>
+    public double Doses { get; set; }
+
+    /// <summary>Share of injury penalties ignored right now (the strongest painkiller effect; 0 without one).</summary>
+    public double PainRelief => Conditions.Where(c => c.Id == PainkillerConditionId).Select(c => c.Severity).DefaultIfEmpty(0).Max();
+
+    /// <summary>The condition id painkillers put on the body (see <c>medicine.json</c> <c>painkiller</c>).</summary>
+    public const string PainkillerConditionId = "painkilled";
+
+    public BodyCondition? Find(string id, BodyPart? part = null) => Conditions.Find(c => c.Id == id && (part is null || c.Part == part));
+
+    public bool Has(string id) => Conditions.Any(c => c.Id == id);
 
     private Dictionary<BodyPart, BodyPartState> _parts = Enum.GetValues<BodyPart>().ToDictionary(p => p, _ => new BodyPartState());
 
@@ -80,7 +126,7 @@ public sealed class Body
     /// 100 minus what the fitted prosthetics cost (<see cref="BodyPartState.HumanityCost"/>), never below 0. "Keep them
     /// human": low humanity costs mood and relationships in the colony.
     /// </summary>
-    public double Humanity => Math.Max(0, MaxHumanity - Parts.Values.Where(p => p.Condition == PartCondition.Prosthetic).Sum(p => p.HumanityCost));
+    public double Humanity => Math.Max(0, MaxHumanity - HumanityLoss - Parts.Values.Where(p => p.Condition == PartCondition.Prosthetic).Sum(p => p.HumanityCost));
 
     public void Injure(BodyPart part, double severity)
     {
@@ -88,14 +134,19 @@ public sealed class Body
         if (state.Condition is PartCondition.Missing or PartCondition.Prosthetic) return;
         state.Condition = PartCondition.Injured;
         state.Severity = Math.Clamp(Math.Max(state.Severity, severity), 0.0, 1.0);
+        state.Dressing = Dressing.None;
     }
 
+    /// <summary>The injury is gone; so are the conditions of the part that go with it (a fracture knits, a wound infection clears).</summary>
     public void Heal(BodyPart part)
     {
         var state = Parts[part];
         if (state.Condition != PartCondition.Injured) return;
         state.Condition = PartCondition.Healthy;
         state.Severity = 0;
+        state.Dressing = Dressing.None;
+        state.ConditionPenalty = 0;
+        Conditions.RemoveAll(c => c.Part == part);
     }
 
     public void Lose(BodyPart part)
@@ -103,6 +154,18 @@ public sealed class Body
         var state = Parts[part];
         state.Condition = PartCondition.Missing;
         ClearProsthetic(state);
+        Conditions.RemoveAll(c => c.Part == part);
+    }
+
+    /// <summary>
+    /// How well a part works with the body's state: the injury (and its condition penalty) counts for less under a
+    /// painkiller (<see cref="PainRelief"/>). Other conditions are the same as <see cref="BodyPartState.Efficiency"/>.
+    /// </summary>
+    public double PartEfficiency(BodyPart part)
+    {
+        var p = Parts[part];
+        if (p.Condition != PartCondition.Injured) return p.Efficiency;
+        return Math.Clamp(1.0 - (p.Severity + p.ConditionPenalty) * (1 - Math.Clamp(PainRelief, 0, 1)), 0.0, 1.0);
     }
 
     public void FitProsthetic(BodyPart part, double quality, string? itemId = null)
@@ -136,6 +199,8 @@ public sealed class Body
         state.Upkeep = 1;
         state.ServiceTicks = 0;
         state.Interfered = false;
+        state.Dressing = Dressing.None;
+        state.ConditionPenalty = 0;
     }
 
     /// <summary>
@@ -144,8 +209,8 @@ public sealed class Body
     /// </summary>
     public double RegionEfficiency(BodyRegion region)
     {
-        if (region == BodyRegion.Head) return Parts[BodyPart.Head].Efficiency * Parts[BodyPart.Eyes].Efficiency;
-        var parts = Parts.Where(kv => RegionOf(kv.Key) == region).Select(kv => kv.Value.Efficiency).ToList();
+        if (region == BodyRegion.Head) return PartEfficiency(BodyPart.Head) * PartEfficiency(BodyPart.Eyes);
+        var parts = Parts.Where(kv => RegionOf(kv.Key) == region).Select(kv => PartEfficiency(kv.Key)).ToList();
         return parts.Count == 0 ? 1.0 : parts.Average();
     }
 

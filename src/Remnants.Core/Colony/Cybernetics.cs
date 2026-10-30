@@ -82,7 +82,7 @@ public static class Cybernetics
         }
         else if (!IsKnown(state, node)) missing.Add("found as loot only");
         var owned = sim.Scavenge is null ? 0 : state.Inventory.Counts.Where(kv => sim.Scavenge.Items.TryGetValue(kv.Key, out var i) && i.DefinedId == node.Id).Sum(kv => kv.Value);
-        var fitted = state.Survivors.Sum(s => s.Body.Parts.Values.Count(p => p.Condition == PartCondition.Prosthetic && p.ProstheticItemId == node.Id));
+        var fitted = state.Survivors.Sum(s => s.Body.Parts.Values.Count(p => p.Condition == PartCondition.Prosthetic && (p.ProstheticItemId ?? "").Split(Items.ModdedId.Separator)[0] == node.Id));
         // Owning a part counts even when it could not be made here (loot, a recipe still locked).
         var nodeState = IsKnown(state, node) && (missing.Count == 0 || recipe is null) ? CyberNodeState.Known
             : missing.Count > 0 ? CyberNodeState.Locked : CyberNodeState.Available;
@@ -152,6 +152,7 @@ public static class Cybernetics
             * JobOutput.HealthFactor(job, medic, data.Rules.Output)
             * JobOutput.LifeFactor(medic, data.Rules.Output)
             * JobOutput.MoodFactor(medic, data.Rules.Output)
+            * JobOutput.ConditionFactor(medic, data)
             * JobOutput.PerkFactor(job, medic, data));
         return care * def.Level(bay.Level).OutputMultiplier * (1 + PerkEffects.For(lead, data).Hook(PerkHooks.SurgerySpeedBonus));
     }
@@ -166,14 +167,20 @@ public static class Cybernetics
         return null;
     }
 
-    /// <summary>The chance a surgery of this tier succeeds at this bay now (see <see cref="SurgeryRules"/>).</summary>
+    /// <summary>
+    /// The chance a surgery of this tier succeeds at this bay now (see <see cref="SurgeryRules"/>), with the surgery kit in
+    /// stock it would use (medicine.json <c>surgery.kits</c>).
+    /// </summary>
     public static double SuccessChance(ColonySim sim, Building bay, int tier, bool elective)
     {
         var rules = sim.Data.Cybernetics!.Surgery;
         var lead = LeadSurgeon(sim.State, bay);
+        var kit = sim.Scavenge is { } items ? Medicine.SurgeryKit(sim.State, sim.Data, items, tier) : null;
         var chance = rules.BaseChance
             + (lead?.Get(Skill.Medicine) ?? 0) * rules.PerMedicine
+            + (kit?.Bonus ?? 0)
             + (lead is null ? 0 : PerkEffects.For(lead, sim.Data).Hook(PerkHooks.SurgerySuccessBonus))
+            + Power.Bonus(sim.State, sim.Data, bay, PowerEffect.SurgeryBonus)
             - rules.TierPenalty[tier]
             - (elective ? rules.ElectivePenalty : 0);
         return Math.Clamp(chance, rules.MinChance, rules.MaxChance);
@@ -258,6 +265,7 @@ internal static class CyberneticsSystem
             if (op.Progress + 1e-9 < Cybernetics.Work(cyber, tier)) continue;
 
             var chance = Cybernetics.SuccessChance(sim, bay, tier, op.Elective);
+            if (Medicine.SurgeryKit(state, sim.Data, items, tier) is { } kit) state.Inventory.TryTake(kit.ItemId);
             var success = rng.NextDouble() < chance;
             state.Surgeries.Remove(op);
             if (Cybernetics.Fit(state, cyber, s, op.Part, item, op.Elective) is { } replaced) state.Inventory.Add(replaced);
@@ -268,10 +276,12 @@ internal static class CyberneticsSystem
             {
                 var range = cyber.Surgery.ComplicationSeverity;
                 s.Body.Injure(BodyPart.Torso, range[0] + rng.NextDouble() * (range[1] - range[0]));
+                if (sim.Data.Medicine is { } med)
+                    Treatment.Afflict(s.Body, med.Infection.SurgicalCondition, med.Def.Surgery.InfectionSeverity, op.Part);
                 state.Log(new(state.Tick, ColonyEventType.SurgeryComplication,
                     $"{s.Name}'s {item.Name} ({where}) is on, but the wound is infected. They stay in bed.", s.Id, bay.Id));
             }
-            if (!s.IsInjured && state.Surgeries.All(o => o.SurvivorId != s.Id)) s.PatientAtBuildingId = null;
+            if (!Medicine.NeedsCare(s, sim.Data) && state.Surgeries.All(o => o.SurvivorId != s.Id)) s.PatientAtBuildingId = null;
         }
     }
 

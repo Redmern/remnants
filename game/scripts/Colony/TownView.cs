@@ -20,7 +20,7 @@ public partial class TownView : Node3D
     /// <summary>Most lamp OmniLights the town runs at once; lamps past it glow without casting light.</summary>
     private const int MaxLampLights = 12;
 
-    private readonly Dictionary<int, (Node3D Node, string DefId, int Level, int Plot, Label3D Label, bool Lit, int Lights)> _buildings = new();
+    private readonly Dictionary<int, (Node3D Node, string DefId, int Level, int Plot, Label3D Label, bool Lit, int Lights, int Wreck)> _buildings = new();
     private readonly List<StandardMaterial3D> _plotMaterials = new();
 
     private ColonySession _session = null!;
@@ -90,8 +90,9 @@ public partial class TownView : Node3D
         foreach (var b in sim.State.Buildings)
         {
             alive.Add(b.Id);
+            var wreck = Wreck(sim, b);
             if (_buildings.TryGetValue(b.Id, out var known) && known.Level == b.Level && known.DefId == b.DefId && known.Plot == b.Plot
-                && known.Lit == b.Floodlight)
+                && known.Lit == b.Floodlight && known.Wreck == wreck)
                 continue;
             if (known.Node is not null) known.Node.QueueFree();
 
@@ -113,9 +114,10 @@ public partial class TownView : Node3D
             };
             node.AddChild(label);
             var budget = MaxLampLights - _buildings.Where(kv => kv.Key != b.Id).Sum(kv => kv.Value.Lights);
-            var lights = Lamps(node, b.Id, def, b, budget);
+            var lights = wreck == 2 ? 0 : Lamps(node, b.Id, def, b, budget);
+            ShowDamage(node, model, wreck);
             AddChild(node);
-            _buildings[b.Id] = (node, b.DefId, b.Level, b.Plot, label, b.Floodlight, lights);
+            _buildings[b.Id] = (node, b.DefId, b.Level, b.Plot, label, b.Floodlight, lights, wreck);
         }
 
         foreach (var gone in _buildings.Keys.Where(id => !alive.Contains(id)).ToList())
@@ -127,6 +129,30 @@ public partial class TownView : Node3D
         foreach (var b in sim.State.Buildings) SyncCrops(sim, b);
         if (SelectedBuildingId is { } sel && !alive.Contains(sel)) Select(null);
         RefreshPlots();
+    }
+
+    /// <summary>Raid damage as a look: 0 whole, 1 damaged, 2 wrecked (rubble, see <c>RaidSystem.IsRubble</c>).</summary>
+    private static int Wreck(Remnants.Core.Colony.ColonySim sim, Remnants.Core.Colony.Building b) =>
+        sim.Raids is null ? 0
+        : Remnants.Core.Raids.RaidSystem.IsRubble(sim, b) ? 2
+        : Remnants.Core.Raids.RaidSystem.Damage(sim.State, b) > 0 ? 1 : 0;
+
+    /// <summary>A damaged building is scorched a little; a wrecked one is slumped, dark and strewn with rubble.</summary>
+    private void ShowDamage(Node3D node, Node3D model, int wreck)
+    {
+        if (wreck == 0) return;
+        DefenseModels.Tint(model, wreck == 2 ? new Color(0.05f, 0.04f, 0.035f, 0.6f) : new Color(0.25f, 0.12f, 0.06f, 0.22f));
+        if (wreck != 2) return;
+        model.Scale *= new Vector3(1, 0.45f, 1);
+        model.Rotation += new Vector3(0.04f, 0, -0.05f);
+        var spots = new[] { new Vector3(-1.8f, 0, 1.6f), new Vector3(1.9f, 0, 1.2f), new Vector3(0.4f, 0, 2.3f), new Vector3(-1.2f, 0, -2f) };
+        for (var i = 0; i < spots.Length; i++)
+        {
+            if (_models.TryInstance("rubble") is not { } rubble) break;
+            rubble.Position = spots[i];
+            rubble.RotateY(i * 1.7f);
+            node.AddChild(rubble);
+        }
     }
 
     /// <summary>Crop rows on a Farm by what it grows and how far along it is (stage 1–3); the key they were built for.</summary>

@@ -297,10 +297,23 @@ public static class FoodEffects
 /// Food poisoning: the one place food makes someone sick. When the medicine-crafting illness model merges, this
 /// becomes its <c>Sickness.Apply(survivor, kind, severity)</c>; until then it is the Food Poisoning debuff.
 /// </summary>
+/// <summary>
+/// Food sickness (bad, spoiled, raw or tainted food, bad rations). With medicine loaded it is a medicine condition
+/// (<see cref="Sickness.Apply"/>: Husk sickness for tainted food, food sickness otherwise; an antidote cures it, the Med
+/// Bay treats it); without medicine, the food system's own "sick" buff. <paramref name="severity"/> is in food's scale
+/// (1 = an ordinary case), turned into a condition severity by medicine.json <c>foodSicknessScale</c>.
+/// </summary>
 public static class FoodSickness
 {
     public static void Apply(ColonyState state, GameData data, Survivor s, string kind, double severity)
     {
+        if (data.Medicine is { } med)
+        {
+            var hadCondition = s.Body.Conditions.Any(c => med.Condition(c.Id)?.Kind == ConditionKind.Sickness);
+            if (Sickness.Apply(state, data, s, kind, Math.Min(1, severity * med.Def.FoodSicknessScale), log: false) is not null && !hadCondition)
+                state.Log(new(state.Tick, ColonyEventType.FoodPoisoning, $"{s.Name} has food poisoning ({kind} food).", s.Id));
+            return;
+        }
         if (data.Food is not { } food) return;
         var had = s.Buffs.Any(b => b.Id == food.Rules.BuffIds.Sick);
         FoodEffects.Give(s, food.Rules.BuffIds.Sick, state.Tick + (long)Math.Round(food.Rules.Sickness.Hours * severity * data.Rules.TicksPerDay / 24.0), 1);

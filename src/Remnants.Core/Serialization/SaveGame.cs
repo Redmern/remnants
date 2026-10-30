@@ -52,19 +52,45 @@ namespace Remnants.Core.Serialization;
 /// are converted by <see cref="MigrateFood"/>: the single food pool becomes a mix of potatoes, beans, corn and canned
 /// food of the same food value, Simple Meals become Boiled Potatoes and Hearty Stew becomes Stew (by food value), their
 /// Kitchen orders follow (a paid batch gives its food back), and farms keep growing potatoes, already ripe.
-/// Version 18 adds vehicles (<see cref="ColonyState.Vehicles"/>; the expedition's vehicle, noise, fuel and way home) and
-/// carries the run's parked vehicles (<see cref="ScavengeSave"/> version 10). Older colonies get the starting vehicles
-/// (<c>vehicles.starting</c>: the handcart) and their party out on foot.
+/// Version <see cref="ElectronicsVersion"/> (18) adds electronics and power: the grid (<see cref="ColonyState.Power"/>: switched-off buildings, battery charge,
+/// the breaker) and the charging bench (<see cref="ColonyState.Charging"/>), and carries the scavenge run's decoys,
+/// EMP stuns, spent charges and secured cargo (<see cref="ScavengeSave"/> version 10). The migration is keyed on the data,
+/// not the number: a save without them loads with an empty grid (everything on, batteries empty) and nothing charging.
+/// Version 19 adds player trading (<see cref="ColonyState.Trade"/>: goods in escrow with their food lots, couriers on the
+/// road, settled transaction ids). Older saves load with none of it.
+/// Version <see cref="GearModsVersion"/> (20) adds gear mods: modded and upgraded gear as item ids
+/// (<c>base[@quality][+mkN][+mod]...</c>, see <see cref="Items.GearModsData"/>) in the inventory, on fitted gun arms and in
+/// the expedition, the Head equipment slot, and the run's <see cref="ScavengeSave"/> version 11. Nothing to migrate: older
+/// saves hold no modded ids and load unchanged; every modded id is checked against gear_mods.json like any item.
+/// Version <see cref="RaidsVersion"/> (21) adds colony defense and raids (<see cref="ColonyState.Defense"/>: placed defenses,
+/// guards, the raid on its way, repairs, building damage, raid reports). Older saves load with no defenses and no raid
+/// pressure, so the grace period applies from the day they are loaded on.
+/// Version <see cref="MedicineVersion"/> (22) adds medicine: bodies carry conditions, dressings and painkiller doses, the colony its
+/// Med Bay priorities (<see cref="ColonyState.MedicalCare"/>). Older saves load with no conditions and the default priorities,
+/// and <see cref="MigrateMedicine"/> turns part of the old medicine stock into antiseptic (medicine.json <c>migration</c>).
+/// Version <see cref="VehiclesVersion"/> (23) adds vehicles (<see cref="ColonyState.Vehicles"/>; the expedition's vehicle, noise,
+/// fuel and way home) and carries the run's parked vehicles (<see cref="ScavengeSave"/> version 12). Older colonies get the
+/// starting vehicles (<c>vehicles.starting</c>: the handcart) and their party out on foot.
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 18;
+    public const int Version = VehiclesVersion;
 
     /// <summary>The save version that brought food and cooking (one constant so a renumbering on merge is one edit).</summary>
     public const int FoodVersion = 17;
 
     /// <summary>The save version that brought vehicles.</summary>
-    public const int VehiclesVersion = 18;
+    public const int VehiclesVersion = 23;
+    /// <summary>The save version that brought electronics and power.</summary>
+    public const int ElectronicsVersion = 18;
+
+    /// <summary>The save version that brought gear mods (nothing to migrate; see the remarks).</summary>
+    public const int GearModsVersion = 20;
+    /// <summary>The save version that added raids (keyed, so a rebase only renumbers it).</summary>
+    public const int RaidsVersion = 21;
+
+    /// <summary>The version that added medicine (keyed so a merge renumbers it in one place).</summary>
+    public const int MedicineVersion = 22;
     private const int OldestVersion = 1;
 
     /// <summary>Old blueprint and datashard item ids and the schematics they became (version 13).</summary>
@@ -181,6 +207,9 @@ public static class SaveGame
         if (envelope.Version < VehiclesVersion && colony.Vehicles.Count == 0)
             foreach (var tier in data.Vehicles.Starting) VehicleRules.Add(colony, data, tier);
         if (envelope.Version < FoodVersion) MigrateFood(data, colony);
+        if (envelope.Version < RaidsVersion) MigrateRaids(colony);
+        RepairDefense(data, colony);
+        if (envelope.Version < MedicineVersion) MigrateMedicine(data, scavenge, colony);
         Validate(data, colony);
         if (scavenge is not null) Validate(scavenge, colony);
         var sim = new ColonySim(data, colony, scavenge);
@@ -274,6 +303,46 @@ public static class SaveGame
             foreach (var id in colony.Inventory.Counts.Keys.Where(id => cyber.Node(id) is not null))
                 colony.KnownCybernetics.Add(id);
         if (scavenge is not null && colony.Expedition?.Scavenge is { } run) ScavengeSave.MigrateCybernetics(scavenge, run);
+    }
+
+    /// <summary>
+    /// Before medicine: the old medicine stock was every kind of care at once. Part of it (<c>shareConverted</c>) becomes
+    /// antiseptic, <c>medicinePerAntiseptic</c> each, rounded down; the rest stays as medicine (herbal remedies).
+    /// </summary>
+    internal static void MigrateMedicine(GameData data, ScavengeData? scavenge, ColonyState colony)
+    {
+        if (data.Medicine is not { } med) return;
+        var rules = med.Def.Migration;
+        if (scavenge is not null && !scavenge.Items.ContainsKey(rules.AntisepticItem)) return;
+        var medicineId = data.Rules.Medical.MedicineResourceId;
+        var count = (int)Math.Floor(colony.Stockpile.Get(medicineId) * rules.ShareConverted / rules.MedicinePerAntiseptic + 1e-9);
+        if (count <= 0 || !colony.Stockpile.TryTake(medicineId, count * rules.MedicinePerAntiseptic)) return;
+        colony.Inventory.Add(rules.AntisepticItem, count);
+    }
+
+    /// <summary>Before raids: an empty defense layer; the grace period counts from the day the save was made.</summary>
+    private static void MigrateRaids(ColonyState colony)
+    {
+        colony.Defense = new Raids.DefenseState { LastRaidTick = colony.Tick };
+    }
+
+    /// <summary>
+    /// Guard posts of survivors who are gone, and repairs of things that are gone, are dropped. Defense schematics learned
+    /// before the schematics merge (kept in <c>Defense.KnownSchematics</c>) move into <see cref="ColonyState.Schematics"/>.
+    /// </summary>
+    private static void RepairDefense(GameData data, ColonyState colony)
+    {
+        colony.Defense ??= new();
+        foreach (var id in colony.Defense.KnownSchematics.Where(id => data.Schematics.Find(id) is not null))
+            if (colony.Schematics.Known.Add(id))
+            {
+                colony.Schematics.LearnedFrom[id] = Remnants.Core.Schematics.SchematicSource.Migration;
+                colony.Schematics.LearnedAt[id] = colony.Tick;
+            }
+        colony.Defense.KnownSchematics.Clear();
+        foreach (var (id, post) in colony.Defense.Guards.ToList())
+            if (colony.FindSurvivor(id) is null || colony.Defense.Find(post) is null) colony.Defense.Guards.Remove(id);
+        colony.Defense.Repairs.RemoveAll(r => r.Target == Raids.RepairTarget.Building ? colony.FindBuilding(r.TargetId) is null : colony.Defense.Find(r.TargetId) is null);
     }
 
     /// <summary>Before version 3 children grew up by age in years; put them at the same share of the growth track.</summary>
@@ -432,6 +501,7 @@ public static class SaveGame
         foreach (var part in colony.Survivors.SelectMany(s => s.Body.Parts.Values))
             if (part.ProstheticItemId is { } id) RequireItem(id);
         foreach (var op in colony.Surgeries) RequireItem(op.ItemId);
+        if (colony.Defense.Raid?.Battle is { } battle) ScavengeSave.Validate(data, battle);
         if (colony.Expedition is not { } expedition) return;
         if (!data.Zones.ContainsKey(expedition.ZoneId)) throw new JsonException($"Save references unknown zone '{expedition.ZoneId}'.");
         foreach (var id in expedition.Members.SelectMany(m => m.AllItems)) RequireItem(id);

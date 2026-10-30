@@ -215,14 +215,19 @@ public static class ParkedVehicles
 }
 
 /// <summary>
-/// Power from a parked vehicle's solar charger, for devices. Today it refills the packed drone batteries of the side's
-/// units next to the vehicle; when the electronics-devices feature brings a power hook, its devices draw from here too.
+/// Power from a parked vehicle's solar charger, for devices: each round the side's units next to the vehicle get their
+/// packed drone battery refilled and one charge back on every spent device (electronics' <see cref="Unit.ChargesUsed"/>).
 /// </summary>
 public static class VehiclePower
 {
     public static void Charge(ScavengeSim sim, ParkedVehicle vehicle, string side)
     {
-        foreach (var u in sim.State.Units.Where(u => u.IsActive && u.Side == side && u.Pos.Chebyshev(vehicle.Pos) <= 1 && u.DroneBattery is not null))
-            u.DroneBattery = null; // null = full (see Drones.PackedBattery)
+        foreach (var u in sim.State.Units.Where(u => u.IsActive && u.Side == side && u.Pos.Chebyshev(vehicle.Pos) <= 1))
+        {
+            if (u.DroneBattery is not null) u.DroneBattery = null; // null = full (see Drones.PackedBattery)
+            foreach (var id in u.ChargesUsed.Keys.ToList())
+                if (u.ChargesUsed[id] <= 1) u.ChargesUsed.Remove(id);
+                else u.ChargesUsed[id]--;
+        }
     }
 }

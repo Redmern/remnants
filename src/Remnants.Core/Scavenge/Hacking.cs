@@ -139,6 +139,7 @@ public static class Hacking
         var cost = ApCost(data, unit);
         if (cost > unit.Ap) return ScavengeResult.Fail(ScavengeError.NotEnoughAp, $"{unit.Name} needs {cost} AP (has {unit.Ap}).");
         unit.Ap -= cost;
+        ElectronicWarfare.TraceCheck(sim, unit, kit);
 
         if (device is null) return Override(sim, unit, target!, kit);
 

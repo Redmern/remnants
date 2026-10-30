@@ -12,7 +12,8 @@ namespace Remnants.Game.Colony.Ui;
 /// Care at the selected Med Bay: patients with their heal ETA (discharge), admitting the injured (worsening wounds
 /// marked), the surgery queue (progress, odds, ETA or what blocks it, cancel), and fitting a prosthetic from the
 /// inventory onto a limb: crude and mechanical parts strap on, the rest is booked as surgery, and a healthy part is an
-/// augmentation behind a confirm. The "Tree" button opens the cybernetics tree. Core decides what is allowed.
+/// augmentation behind a confirm. The "Tree" button opens the cybernetics tree. The dispensary (MedBayPanel.Dispensary.cs)
+/// shows the medical stock and the auto-treatment order. Core decides what is allowed.
 /// </summary>
 public partial class MedBayPanel : PanelContainer
 {
@@ -50,6 +51,7 @@ public partial class MedBayPanel : PanelContainer
         admit.AddChild(_admitPick);
         admit.AddChild(Widgets.IconButton("job_patient", "Admit", "Give them a Med Bay bed", Admit, variation: "Primary"));
         box.AddChild(admit);
+        BuildDispensary(box);
 
         var tree = Widgets.IconButton("body_prosthetic", "Tree", "The cybernetics tree: designs, components and a comparison with the picked limb",
             () => CyberneticsPressed?.Invoke(PickedLimb()?.SurvivorId, PickedLimb()?.Part), variation: "Flat");
@@ -93,7 +95,7 @@ public partial class MedBayPanel : PanelContainer
                      $"[color=#{medColor}]Medicine {medicine:0.#}[/color] ({rules.Medical.MedicinePerPatientTick:0.###}/patient/h; without it only natural healing)";
 
         var data = sim.Scavenge!;
-        var injured = sim.State.Present.Where(s => s.IsInjured && s.PatientAtBuildingId is null).OrderBy(s => s.Id).ToList();
+        var injured = sim.State.Present.Where(s => Medicine.NeedsCare(s, sim.Data) && s.PatientAtBuildingId is null).OrderBy(s => s.Id).ToList();
         // Missing limbs first, then prosthetics (upgrades), then healthy parts (augmentation); never a part already booked.
         var limbs = sim.State.Present.Where(s => !s.IsInfant).OrderBy(s => s.Id)
             .SelectMany(s => s.Body.Parts
@@ -116,7 +118,7 @@ public partial class MedBayPanel : PanelContainer
             _signature = signature;
             RebuildPatients(sim, patients);
             Fill(_admitPick, _admitIds, injured.Select(s => s.Id),
-                injured.Select(s => (sim.IsWorsening(s) ? "! " : "") + $"{s.Name}: {WoundSummary(s)}"));
+                injured.Select(s => (sim.IsWorsening(s) ? "! " : "") + $"{s.Name}: {WoundSummary(s)}{ConditionTags(sim, s)}"));
             _limbs.Clear();
             _limbs.AddRange(limbs);
             _limbPick.Clear();
@@ -134,6 +136,7 @@ public partial class MedBayPanel : PanelContainer
             if (row.GetMeta("survivor").AsInt32() is var sid && sim.State.FindSurvivor(sid) is { } p)
                 row.GetChild<Label>(1).Text = PatientLine(sim, p);
         RefreshSurgeries(sim, bay);
+        RefreshDispensary(sim);
         _admitPick.Disabled = _admitIds.Count == 0;
         _limbPick.Disabled = _limbs.Count == 0;
         _prostheticPick.Disabled = _prosthetics.Count == 0;
@@ -164,15 +167,16 @@ public partial class MedBayPanel : PanelContainer
     private static string PatientLine(ColonySim sim, Survivor s)
     {
         if (!s.IsInjured && sim.State.Surgeries.Any(o => o.SurvivorId == s.Id)) return $"{s.Name}: waiting for surgery, HP {s.Health:0}";
-        var eta = sim.HealEta(s) is { } ticks ? ColonyText.Duration(ticks, sim.Data.Rules) : "—";
+        var eta = s.IsInjured && sim.HealEta(s) is { } ticks ? ColonyText.Duration(ticks, sim.Data.Rules) : "—";
         var worst = s.Body.Parts.Where(kv => kv.Value.Condition == PartCondition.Injured).OrderByDescending(kv => kv.Value.Severity).FirstOrDefault();
-        var wound = worst.Value is null ? "healed" : $"{worst.Key} {ColonyText.Percent(worst.Value.Severity)}";
-        return $"{s.Name}: {wound}, HP {s.Health:0}, ETA {eta}";
+        var wound = worst.Value is null ? "no wounds" : $"{worst.Key} {ColonyText.Percent(worst.Value.Severity)}";
+        return $"{s.Name}: {wound}, HP {s.Health:0}, ETA {eta}{ConditionTags(sim, s)}";
     }
 
     private static string WoundSummary(Survivor s)
     {
         var wounds = s.Body.Parts.Values.Where(p => p.Condition == PartCondition.Injured).Select(p => p.Severity).ToList();
+        if (wounds.Count == 0) return "no wounds";
         return wounds.Count == 1 ? $"1 wound ({ColonyText.Percent(wounds[0])})" : $"{wounds.Count} wounds, worst {ColonyText.Percent(wounds.Max())}";
     }
 

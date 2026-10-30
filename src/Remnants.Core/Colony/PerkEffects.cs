@@ -16,6 +16,8 @@ public static class PerkHooks
     public const string CanHackLinked = "can_hack_linked";
     public const string FieldRepair = "field_repair";
     public const string HackApDiscount = "hack_ap_discount";
+    public const string PowerEfficiency = "power_efficiency";
+    public const string DisassemblyYieldBonus = "disassembly_yield_bonus";
 
     // Drones
     public const string DroneRangeBonus = "drone_range_bonus";
@@ -47,6 +49,7 @@ public static class PerkHooks
     public const string SurgerySuccessBonus = "surgery_success_bonus";
     public const string SurgerySpeedBonus = "surgery_speed_bonus";
     public const string CyberSurgery = "cyber_surgery";
+    public const string MedicalApDiscount = "medical_ap_discount";
 
     // Cybernetics (perks and fitted parts)
     public const string CyberInterferenceReduction = "cyber_interference_reduction";
@@ -54,6 +57,11 @@ public static class PerkHooks
     public const string ThermalRadius = "thermal_radius";
     public const string NightDetectionBonus = "night_detection_bonus";
 
+    // Defense (colony raids)
+    public const string TrapCostReduction = "trap_cost_reduction";
+    public const string RepairSpeedBonus = "repair_speed_bonus";
+    public const string PostDefenseBonus = "post_defense_bonus";
+    public const string SentryLeadHours = "sentry_lead_hours";
     // Food
     public const string ShelfLifeBonus = "shelf_life_bonus";
 
@@ -65,6 +73,8 @@ public static class PerkHooks
         [CanHackLinked] = "Flag: can hack Linked units, not only Husks and devices.",
         [FieldRepair] = "Flag/strength: can jury-rig gear and devices in the field (value = repair strength).",
         [HackApDiscount] = "AP taken off the cost of a hack.",
+        [PowerEfficiency] = "Colony: share taken off every consumer's power draw while this survivor is home (the best one counts; 0.15 = −15%).",
+        [DisassemblyYieldBonus] = "Colony: chance per component of one more when this survivor is the bench's best worker at a disassembly (0.25 = +25%).",
         [DroneRangeBonus] = "Tiles added to a scout drone's control range.",
         [DroneBatteryBonus] = "Rounds added to a scout drone's battery.",
         [DroneCanMark] = "Flag: the drone marks targets it sees for the whole party (revealed to the side).",
@@ -86,11 +96,16 @@ public static class PerkHooks
         [SurgerySuccessBonus] = "Colony: added to the success chance of a surgery this medic leads (0.1 = +10 points).",
         [SurgerySpeedBonus] = "Colony: surgery effort multiplier bonus when this medic leads it (0.25 = +25%).",
         [CyberSurgery] = "Colony flag: can lead surgery on cyborg-grade (tier 3+) prosthetics.",
+        [MedicalApDiscount] = "AP taken off the cost of a medical item in the field (never below 1).",
         [ShelfLifeBonus] = "Colony: preserved food this cook makes keeps this much longer (0.5 = +50% shelf life).",
         [CyberInterferenceReduction] = "Share of the Network interference chance on Network-grade parts that is removed (0.5 = half).",
         [ArmorBonus] = "Flat damage reduction added (armored legs).",
         [ThermalRadius] = "Hostiles within this many tiles are seen through walls and stealth, like a scanner (thermal eye).",
         [NightDetectionBonus] = "Detection added at night (hook for the day-night cycle; nothing reads it yet).",
+        [TrapCostReduction] = "Colony: share off the build and re-arm cost of traps while this survivor is home (best counts, at most 0.5).",
+        [RepairSpeedBonus] = "Colony: repairs go this much faster while this survivor is home (best counts; 0.3 = +30%).",
+        [PostDefenseBonus] = "Colony raids: a guard on duty at a post fights this much better (0.25 = +25%).",
+        [SentryLeadHours] = "Colony raids: hours of warning added while this survivor is on guard duty.",
     };
 }
 

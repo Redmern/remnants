@@ -2,7 +2,7 @@
 
 Shared scavenge instances for 2–4 players on localhost or a LAN: several players' parties on one zone map with the AI
 enemies, interleaved turns, PvP or co-op (teams with shared sight, see "Co-op and alliances"), and per-side fog of war. No matchmaking, accounts or cloud. The colony stays
-single-player.
+single-player; players barter with each other live or through the Trading Post (see "Trading").
 
 ## Running it
 
@@ -92,7 +92,8 @@ the discriminator), `giveItem`, `carry`, `putDown`, and pings, alliance offers a
 called this "v2"; 2 was already the fog of war, so co-op is 3.) **4: hacking and drones** — the command kinds `hack`,
 `deployDrone`, `flyDrone`, `recallDrone`, `markTarget`, `dropPayload`, and devices and drone marks in views. **6: cybernetics** — bodies carry the eyes and each
 part's humanity, upkeep and `interfered` flag, units carry `cyberHooks` (stripped from other players' views like perk
-hooks), and the `limbLocked` event. **7: schematics** — schematic items (`sch_*`, kind `Schematic`) in packs and caches; `MissionEnded.result` carries `sharedSchematics` (co-op: what allies on the side carried out, copied to each ally who got home; versus: none) and `heardOf` (schematics the side saw but left behind, or glimpsed on a terminal it failed to hack).
+hooks), and the `limbLocked` event. **7: schematics** — schematic items (`sch_*`, kind `Schematic`) in packs and caches; `MissionEnded.result` carries `sharedSchematics` (co-op: what allies on the side carried out, copied to each ally who got home; versus: none) and `heardOf` (schematics the side saw but left behind, or glimpsed on a terminal it failed to hack). **10: trading** — the live trade messages and the Trading Post's market messages (see
+"Trading").
 
 | Direction | Message | Meaning |
 |-----------|---------|---------|
@@ -302,7 +303,7 @@ map), Accept (Y) / Decline (U) an offer, Offer an alliance (Y) to a rival you se
   server parks it at that player's spawn point and refuses a party larger than its seats or a vehicle that does not add up
   (HP, cargo, turret over `scavenge.json vehicle` limits). Cargo is enforced by the sim: `stashItem` fails past the limit.
 - Commands `stashItem`, `takeFromStash`, `salvage`. Views carry the parked vehicles: the side's own in full, another
-  party's only once its tile is explored, never with its stash; stripped wrecks are public. Protocol version 9.
+  party's only once its tile is explored, never with its stash; stripped wrecks are public. Protocol version 13.
 - `VehicleNetTests`: two players with their own vehicles (stash hidden from the other), seat and stat refusals, stash over
   the wire.
 ## Weather over the wire
@@ -341,6 +342,141 @@ map), Accept (Y) / Decline (U) an offer, Offer an alliance (Y) to a rival you se
   party is done (the client only displays the report); the client's `ColonySim` becoming a read model like
   `NetClient.View`; and expedition state (`Expedition.Scavenge`) pointing at a server instance instead of a local run.
 
+## Trading
+
+Players barter: no currency, goods for goods. Two ways:
+
+- **Live trades** — a trade window between two connected players: in the lobby (colony goods, home by courier) and in a
+  mission between allies (items out of the parties' packs, home with the extraction).
+- **The Trading Post** — an asynchronous market on a persistent server: post "give X for Y", others browse and take it,
+  everything owed waits as a claim until you connect.
+
+**What trades:** resources (wood, stone, scrap, cloth, medicine, electronics, Research Data, …) and items. Quality is part
+of an item's id, so a Fine pistol stays Fine; `ItemExtras` carries weapon mods and the Mk level across the wire (the
+weapon-mods work fills them in; the colony inventory, which only counts ids, keeps them once it can). **Food** trades as
+Pantry items with their lots: fresh units only, soonest to spoil first, and they arrive with the same quality, taint and
+time left (`ItemExtras.Lots`; chips show "keeps 2.5d", the quality and "tainted"); spoiled food cannot be offered.
+**Devices** keep their charge: in the colony only fully charged devices are in the stores (spent ones wait at the
+charging bench), so lobby and market trades move full devices; in the field a traded device takes its spent charges
+(`Unit.ChargesUsed`) with it, the most-spent copy first, so a trade never recharges one.
+**Schematic copies** are items: a colony that knows a schematic makes a copy (Radio Mast or archive → Copy,
+`Schematics.MakeCopy`, Research Data) and keeps the knowledge; the buyer's copy is received the normal way on arrival
+(`Schematics.Receive`: learned, to decrypt, or Research Data when already known). Reference values are the trader's
+(`TradeValues`). **Survivors do not trade** in v1. A v2
+could hand a survivor over (a recruit hand-over at the Radio Mast): it would need the survivor record checked by the
+server, their bonds and family cut, and an arrival like a recruit's.
+
+### Live trades
+
+```
+ Alice                      server (GameHost → TradeDock)                 Bob
+ TradeRequest(Bob) ───────▶ session 7 ─── TradeInvite ───────────────────▶ accept: TradeRespond(7, yes)
+ TradeOffer(7, goods) ────▶ table changed: both unlocked ◀──────────────── TradeOffer(7, goods)
+                     ◀──── TradeUpdate(view) to both, after every change ────▶
+ TradeLock(7) ────────────▶ both locked ◀──────────────────────────────── TradeLock(7)
+ escrow; TradeConfirm(7) ─▶ both confirmed → commit once ◀──────────────── escrow; TradeConfirm(7)
+                     ◀──── TradeCommit(tx, give, get, legs) ──────────────────▶
+                     (or TradeCancelled(reason) to both → refund the escrow)
+```
+
+- The server holds the table (`TradeDesk`). Either side changing its offer **unlocks and un-confirms both**. Confirm
+  needs both locked; the second confirm commits, **atomically**: both get `TradeCommit` (same transaction id) or both
+  get `TradeCancelled`. Confirming twice is harmless. A drop or leave, an idle trade (`live.idleSeconds`, 180), the
+  mission starting (for lobby trades), an alliance breaking or a party leaving the zone (field trades), a decline or a
+  cancel: `TradeCancelled` to both, refunds on both sides. At most 3 open trades per player, one per pair.
+- **Lobby**: the goods are colony goods, so the client is trusted for them (see the trust notes below). On confirm the
+  client takes its offer out of the colony into escrow (`LiveTradeSync`), on commit settles it and sends what it got
+  home **by courier** over the Radio Mast: `baseDays + daysPerLeg × legs` (legs 1–4 from the two names, the same for
+  both), times modifiers (a Garage from data; `Courier.Modifiers` for weather and vehicles), at least `minDays`. The
+  courier shows on the world map and toasts on arrival. A colony without a Radio Mast (once the game has one) cannot
+  trade in the lobby. Escrow left by a crash is refunded when the colony screen opens.
+- **Field**: only allies, only items in the parties' packs; the server checks the packs at offer, lock and commit and
+  swaps them on its sim (`FieldTrade.Swap`: all or nothing, each item to the conscious survivor with the most room, carry
+  limits respected). The items go home with whoever extracts, like loot. Trading costs no AP and works off-turn.
+- **No leaks**: every trade message goes to its two traders only; a third player never hears of it. Offers from anyone
+  else are ignored.
+- UI: lobby → **Trade with** (pick a player) → **Trade**; in a mission the Team panel's **Trade with X** per ally. The
+  window shows both columns of chips (quality and mods tags, reference value in the tooltip), each side's state
+  (editing / locked / confirmed), a give/get summary with reference values, a fairness hint and the courier time, and
+  Lock / Confirm / Cancel. Esc or Cancel walks away (both sides refunded).
+
+### The Trading Post (market server)
+
+```sh
+# a Trading Post that keeps its listings, escrow and claims in market.json (default port 7780)
+dotnet run --project src/Remnants.Server -- --market market.json --port 7780
+# scripted traders: post a few listings; --take also takes the first one it can pay for (identity kept per name)
+dotnet run --project src/Remnants.Server -- --market-bot 127.0.0.1:7780 --name Juniper --listings 4 --seconds 5
+dotnet run --project src/Remnants.Server -- --market-bot 127.0.0.1:7780 --name Dee --listings 0 --take --seconds 5
+# the game: select the Radio Mast → Trading Post tab → Open → server address → Connect (or scripted:)
+godot-mono --path game -- --colony --trading-post=127.0.0.1:7780
+```
+
+- **Messages**: `MarketHello(name, key)` → `MarketWelcome(playerId)` and the player's `MarketClaims`; `MarketList(filter)` →
+  `MarketListings`; `MarketPost(tx, give, want, hours)`, `MarketAccept(tx, listing)`, `MarketCancel(listing)` →
+  `MarketResult(ok, message, listing, code)`; `MarketClaim` asks for claims again; `MarketClaimAck(ids)` lets the server
+  forget them.
+- **Escrow**: posting takes the goods out of the colony (client escrow under a fresh transaction id) and the server holds
+  them on the listing. Taking a listing escrows its Want the same way; the server closes the listing and makes two
+  **claims** (the seller gets the Want, the buyer the Give). Cancel and expiry (`market.listingHours`, 72; at most
+  `maxListingHours`) turn the listing back into a claim for the seller. A refused request (gone, own listing, caps, rate,
+  invalid) is refunded on the client.
+- **Idempotent, no dupes**: every post and accept carries a client transaction id; the server remembers which it has
+  done, so a retry is answered as the first time and does nothing more, and someone else's id is refused (and logged).
+  A request whose answer was lost stays in the colony's escrow and is sent again with the same id after the next hello.
+  Claims are applied to the colony by claim id (applied twice = once), the colony is saved, and only then acked; the
+  server keeps a claim until it is acked, so a crash in between just sends it again.
+- **Persistence**: one JSON file, rewritten atomically (temp file + rename) after every change: listings, claims,
+  transaction ids, names. A restart (or a kill) loses nothing that was answered. No database dependency.
+- **Identity**: a display name plus a secret key generated on the player's machine (`user://trade_identity.json`). The
+  server keeps only the key's SHA-256 prefix as the player's market id. No accounts: lose the file and the old listings and
+  claims cannot be reached. Listings show the seller's name only, never the id or key.
+- **Limits**: at most `maxOpenListings` (8) open listings each, `postsPerMinute` (4) posts and `requestsPerMinute` (120)
+  requests per connection, at most `maxListingsSent` (200) listings per page; per line the offer caps below.
+- UI: the Radio Mast's **Trading Post** tab (separate from the Trader tab, the NPC caravan) opens the Trading Post panel with **Browse** (filter, take
+  what the colony can pay for), **Post** (give / want pickers, lifetime, reference values), **My offers** (cancel) and
+  **Claims** (collected this session, waiting for the server, couriers on the road). Claims toast as "Goods received".
+
+### Trust, sanity checks and what would close the gap
+
+Colonies live on the clients, so what a client escrows (a lobby offer, a post, an accept) is **trusted**, as parties
+and results are (see "Parties and results — the trust gap"). The server narrows it:
+
+- **Schema and caps** on every offer (`TradeGoods.Validate`): known resource and item ids, no natural (body) items,
+  positive counts, at most `maxLines` (8) lines, `maxResourceAmount` (500) per resource line, `maxItemCount` (20) per item
+  line, plausible mods / Mk. Field offers are checked against the server's own packs.
+- **Suspicious amounts** (above `suspiciousResourceAmount` 200 / `suspiciousItemCount` 10) go through but are logged with
+  the player's name and market id; so are reused transaction ids.
+- **Rate limits and listing caps** (above) keep one client from flooding the market. A retry of a transaction the server
+  already carried out is always answered, never rate-limited.
+- **A lost commit**: the server commits a live trade and sends `TradeCommit` to both, with no acknowledgement. A client
+  that drops (or crashes) in that instant never sees it and refunds its escrow (on the lost connection, or when the colony
+  screen opens), while the other side's courier still delivers. The window is one message long; closing it needs the
+  server-saved colony below (or a commit ack plus a pending-commit claim, like the Trading Post's).
+
+A **server-saved colony** would close the gap: colonies stored per account on the server; the trade window's lobby goods
+and the market's escrow taken from the stored colony by the server (`ColonyTrade.Escrow` running there); couriers and
+claims applied to the stored colony by the server (`Dispatch` / `Receive`), so the client only displays them; and
+everything the colony gains elsewhere (expeditions: see the same note above) executed there too. The Core ledger is
+already transaction-id based, so it would move as is.
+
+### Running a trading session locally
+
+```sh
+# a lobby with a trading bot (it accepts invites, offers --trade-offer, locks after you lock, confirms after both lock)
+dotnet run --project src/Remnants.Server -- --port 7796 --players 2 --turn-seconds 0 &
+dotnet run --project src/Remnants.Server -- --bot 127.0.0.1:7796 --name Rook --trade --trade-offer "scrap:15,med_kit,bp_rifle" &
+godot-mono --path game -- --mp-join=127.0.0.1:7796 --mp-name=Alice     # Trade with → Rook → Trade
+# scripted: open, offer, lock and confirm without clicks (--no-save keeps your real colony save untouched)
+godot-mono --path game -- --mp-join=127.0.0.1:7796 --mp-name=Alice --mp-trade-colony --mp-trade-with=Rook \
+    --mp-trade-offer=wood:25,bandage:2 --mp-trade-lock --mp-trade-confirm --no-save
+# a courier on its way and arriving (toast), or on the world map
+godot-mono --path game -- --colony --no-save --courier-demo
+godot-mono --path game -- --colony --no-save --courier-demo --courier-days=1.5 --world-map
+```
+
+Allies trade in a mission the same way (`--coop` server, `--bot … --trade`: the bot offers an item from its packs).
+
 ## Tests
 
 `tests/Remnants.Net.Tests` (run by `./run-tests.sh`):
@@ -362,3 +498,16 @@ map), Accept (Y) / Decline (U) an offer, Offer an alliance (Y) to a rival you se
   formed in the field (offer and answer reach only the two, merged sight) and broken (warning to the team, a full
   round, then separate sight); a declined offer told to both and nobody else. `ProtocolTests` round-trip every new
   message, command kind and a co-op view.
+- `TradeNetTests` (loopback, real colonies): a lobby trade committed atomically with couriers home, nothing reaching a
+  third player; an offer change unlocking both and refunding a confirmed side; a double confirm committing once; a drop
+  mid-trade and an idle timeout cancelling with refunds; bad offers refused; a declined invite; lobby trades ending at
+  mission start; allies trading pack items in the field and rivals refused.
+- `MarketTests` (loopback): post / browse / accept / claim; listings never leak the seller's key or id; claims waiting
+  for an offline seller and applied once after a lost ack; retried posts and accepts happening once (and a stolen
+  transaction id refused); a lost answer resent under the same id on reconnect; a post the server never saw sent on
+  reconnect; expiry and cancel refunds; one buyer per listing; persistence across a server restart; rate limits and
+  caps; bad and suspicious posts, wrong version, bad keys; and the smoke script: two players trade live in a lobby, then
+  on the market.
+- Core `TradeTests`: escrow / refund / settle / receive once, quality variants, couriers and their modifiers, schematic
+  copies (seller keeps it, buyer studies it, Research Data first), offer validation, item extras on the wire, reference
+  values, the ledger in saves, stale live escrows, field swaps (atomic, allies only, carry limits).

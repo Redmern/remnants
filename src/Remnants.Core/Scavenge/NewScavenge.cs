@@ -255,9 +255,22 @@ public static class NewScavenge
                 if (cache is null) state.Caches.Add(cache = new LootCache { Id = state.NextCacheId++, Pos = p });
                 cache.Items.AddRange(c.Items);
             }
+        var host = state.Parties.Count > 0 ? state.Parties[0] : null;
         foreach (var d in def.Devices)
             if (FreeAt(d.Marker) is { } p)
-                Hacking.Place(data, state, d.Kind, p, d.Items).Tag = d.Tag;
+            {
+                var device = Hacking.Place(data, state, d.Kind, p, d.Items);
+                device.Tag = d.Tag;
+                if (!d.Party || host is null) continue;
+                device.Controller = host.Side;
+                device.ControllerPlayerId = host.PlayerId;
+                if (device.UnitId is { } uid && state.FindUnit(uid) is { } machine)
+                {
+                    machine.Side = host.Side;
+                    machine.PlayerId = host.PlayerId;
+                    machine.Ai = new AiMemory();
+                }
+            }
         foreach (var e in def.Enemies.Concat(setup.ExtraEnemies ?? []))
         {
             var tiles = At(e.Marker).Where(p => state.UnitAt(p) is null).ToList();

@@ -65,6 +65,15 @@ public sealed class ColonyState
     /// <summary>The weather's seed and the spells worked out so far (see <see cref="Colony.Weather"/>).</summary>
     public WeatherState Weather { get; set; } = new();
 
+    /// <summary>The power grid as of the last tick (see <see cref="Colony.Power"/>); empty in saves from before the grid.</summary>
+    public PowerState Power { get; set; } = new();
+
+    /// <summary>Devices home with spent charges, in arrival order, until the charging bench has them full again.</summary>
+    public List<ChargingItem> Charging { get; set; } = new();
+
+    /// <summary>The Med Bay's standing treatment orders (see <see cref="Medicine"/>).</summary>
+    public MedicalCare MedicalCare { get; set; } = new();
+
     /// <summary>The after-action report of the last expedition that came home (for the UI).</summary>
     public ExpeditionReport? LastReport { get; set; }
 
@@ -73,10 +82,15 @@ public sealed class ColonyState
 
     /// <summary>Story mode's campaign (missions, flags, the radio inbox); null in Sandbox.</summary>
     public Story.CampaignState? Campaign { get; set; }
+    /// <summary>Defenses, guards, raids and repairs (see <see cref="Raids.RaidSystem"/>).</summary>
+    public Raids.DefenseState Defense { get; set; } = new();
 
     /// <summary>Everyone who died, oldest first. Never trimmed.</summary>
     public List<MemorialEntry> Memorial { get; set; } = new();
     public List<ColonyEvent> Events { get; set; } = new();
+
+    /// <summary>Player trading: goods in escrow, couriers on the road, settled transactions (see <see cref="Trade.ColonyTrade"/>).</summary>
+    public Trade.TradeState Trade { get; set; } = new();
 
     public Survivor? FindSurvivor(int id) => Survivors.Find(s => s.Id == id);
     public Building? FindBuilding(int id) => Buildings.Find(b => b.Id == id);

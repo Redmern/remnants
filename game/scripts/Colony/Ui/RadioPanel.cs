@@ -24,6 +24,7 @@ public partial class RadioPanel : PanelContainer
         ("Calls", (s, p) => new CallsTab(s, p)),
         ("Trader", (s, p) => new TraderTab(s, p)),
         ("Contracts", (s, p) => new ContractsTab(s, p)),
+        ("Trading Post", (s, p) => new Trade.TradingPostTab(s, p)),
     ];
 
     private readonly ColonySession _session;

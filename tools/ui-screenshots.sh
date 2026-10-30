@@ -28,6 +28,9 @@ shot survivor_family   200 --colony --family-demo --survivor-tab=3
 shot crafting          250 --colony --crafting-demo
 shot perks             250 --colony --perks-demo --survivor-tab=4
 shot cybernetics_tree  250 --colony --cyber-demo --cyber-tree
+shot medbay_dispensary 250 --colony --medicine-demo --dispensary
+shot body_conditions   250 --colony --medicine-demo --survivor-tab=2
+shot field_blood_bag   200 --scavenge --medicine-demo
 shot cybernetics_body  250 --colony --cyber-demo --survivor-tab=2
 shot cybernetics_medbay 250 --colony --cyber-demo
 shot study             250 --colony --perks-demo

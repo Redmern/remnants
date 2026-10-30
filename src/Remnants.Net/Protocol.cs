@@ -18,10 +18,21 @@ public static class Protocol
     /// 6: cybernetics (eyes in bodies, units' cybernetic hooks, parts locked by interference, the limb-locked event).
     /// 7: schematics (schematic items; the result's co-op schematic copies and heard-of schematics).
     /// 8: weather: the environment's intensity, coming changes and the rounds of the last thunder and lightning.
-    /// 9: vehicles: a party's vehicle on <see cref="Join"/>, the stashItem / takeFromStash / salvage commands, parked
+    /// 9: electronics (droneHeal / droneLoad / droneFerry / droneFire commands, decoy units, device charges, secured
+    /// cargo in results, the new events).
+    /// 10: player trading (live trade messages in the lobby and between allies; the Trading Post's market messages).
+    /// 11: gear mods: the fieldMod command, modded gear ids and the Head slot in parties and views, units' moved flag and
+    /// facing, the gear-modded event.
+    /// 12 (<see cref="MedicineVersion"/>): medicine (conditions and dressings in bodies, stim crash and calm on units, medical
+    /// item effects decided by the server, the fractured / treated / crashed events).
+    /// 13: vehicles: a party's vehicle on <see cref="Join"/>, the stashItem / takeFromStash / salvage commands, parked
     /// vehicles and stripped wrecks in views.
     /// </summary>
-    public const int Version = 9;
+    public const int MedicineVersion = 12;
+
+    public const int VehiclesVersion = 13;
+
+    public const int Version = VehiclesVersion;
     public const int DefaultPort = 7777;
 }
 
@@ -47,6 +58,27 @@ public static class Protocol
 [JsonDerivedType(typeof(AllianceDeclined), "allianceDeclined")]
 [JsonDerivedType(typeof(AllianceBreakWarning), "allianceBreakWarning")]
 [JsonDerivedType(typeof(AllianceBroken), "allianceBroken")]
+[JsonDerivedType(typeof(TradeRequest), "tradeRequest")]
+[JsonDerivedType(typeof(TradeRespond), "tradeRespond")]
+[JsonDerivedType(typeof(TradeOffer), "tradeOffer")]
+[JsonDerivedType(typeof(TradeLock), "tradeLock")]
+[JsonDerivedType(typeof(TradeConfirm), "tradeConfirm")]
+[JsonDerivedType(typeof(TradeCancel), "tradeCancel")]
+[JsonDerivedType(typeof(TradeInvite), "tradeInvite")]
+[JsonDerivedType(typeof(TradeUpdate), "tradeUpdate")]
+[JsonDerivedType(typeof(TradeCommit), "tradeCommit")]
+[JsonDerivedType(typeof(TradeCancelled), "tradeCancelled")]
+[JsonDerivedType(typeof(MarketHello), "marketHello")]
+[JsonDerivedType(typeof(MarketPost), "marketPost")]
+[JsonDerivedType(typeof(MarketList), "marketList")]
+[JsonDerivedType(typeof(MarketAccept), "marketAccept")]
+[JsonDerivedType(typeof(MarketCancel), "marketCancel")]
+[JsonDerivedType(typeof(MarketClaim), "marketClaim")]
+[JsonDerivedType(typeof(MarketClaimAck), "marketClaimAck")]
+[JsonDerivedType(typeof(MarketWelcome), "marketWelcome")]
+[JsonDerivedType(typeof(MarketListings), "marketListings")]
+[JsonDerivedType(typeof(MarketResult), "marketResult")]
+[JsonDerivedType(typeof(MarketClaims), "marketClaims")]
 public abstract record Message;
 
 // ---- client → server ----

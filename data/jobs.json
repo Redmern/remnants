@@ -1,127 +1,16 @@
 [
-  {
-    "id": "woodcutting",
-    "name": "Woodcutting",
-    "skill": "Woodcutting",
-    "skillWeight": 1.0,
-    "attributes": { "Strength": 0.6, "Endurance": 0.4 },
-    "bodyParts": { "Arms": 0.6, "Legs": 0.2, "Torso": 0.2 },
-    "toolBonus": 0.5
-  },
-  {
-    "id": "mining",
-    "name": "Mining",
-    "skill": "Mining",
-    "skillWeight": 1.0,
-    "attributes": { "Strength": 0.5, "Endurance": 0.5 },
-    "bodyParts": { "Arms": 0.6, "Legs": 0.2, "Torso": 0.2 },
-    "toolBonus": 0.5
-  },
-  {
-    "id": "scavenging",
-    "childrenAllowed": true,
-    "name": "Scrap Sorting",
-    "skill": "Crafting",
-    "skillWeight": 0.8,
-    "attributes": { "Perception": 0.5, "Intellect": 0.3, "Strength": 0.2 },
-    "bodyParts": { "Arms": 0.5, "Head": 0.3, "Legs": 0.2 },
-    "toolBonus": 0.4
-  },
-  {
-    "id": "farming",
-    "childrenAllowed": true,
-    "name": "Farming",
-    "skill": "Farming",
-    "skillWeight": 1.0,
-    "attributes": { "Endurance": 0.5, "Perception": 0.3, "Intellect": 0.2 },
-    "bodyParts": { "Arms": 0.4, "Legs": 0.4, "Torso": 0.2 },
-    "toolBonus": 0.4
-  },
-  {
-    "id": "medicine",
-    "name": "Medicine",
-    "skill": "Medicine",
-    "skillWeight": 1.2,
-    "attributes": { "Intellect": 0.5, "Perception": 0.3, "Agility": 0.2 },
-    "bodyParts": { "Arms": 0.5, "Head": 0.5 },
-    "toolBonus": 0.3
-  },
-  {
-    "id": "crafting",
-    "childrenAllowed": true,
-    "name": "Crafting",
-    "skill": "Crafting",
-    "skillWeight": 1.0,
-    "attributes": { "Intellect": 0.5, "Creativity": 0.5 },
-    "bodyParts": { "Arms": 0.7, "Head": 0.3 },
-    "toolBonus": 0.5
-  },
-  {
-    "id": "tailoring",
-    "childrenAllowed": true,
-    "name": "Tailoring",
-    "skill": "Tailoring",
-    "skillWeight": 1.0,
-    "attributes": { "Creativity": 0.5, "Agility": 0.5 },
-    "bodyParts": { "Arms": 0.7, "Head": 0.3 },
-    "toolBonus": 0.4
-  },
-  {
-    "id": "electronics",
-    "name": "Electronics",
-    "skill": "Electronics",
-    "skillWeight": 1.2,
-    "trains": { "Hacking": 0.3, "DronePiloting": 0.15 },
-    "attributes": { "Intellect": 0.6, "Creativity": 0.4 },
-    "bodyParts": { "Arms": 0.5, "Head": 0.5 },
-    "toolBonus": 0.5
-  },
-  {
-    "id": "gunsmithing",
-    "name": "Gunsmithing",
-    "skill": "Firearms",
-    "skillWeight": 1.0,
-    "attributes": { "Intellect": 0.5, "Strength": 0.3, "Perception": 0.2 },
-    "bodyParts": { "Arms": 0.7, "Head": 0.3 },
-    "toolBonus": 0.5
-  },
-  {
-    "id": "cooking",
-    "childrenAllowed": true,
-    "name": "Cooking",
-    "skill": "Cooking",
-    "skillWeight": 1.0,
-    "attributes": { "Creativity": 0.5, "Perception": 0.5 },
-    "bodyParts": { "Arms": 0.6, "Head": 0.4 },
-    "toolBonus": 0.3
-  },
-  {
-    "id": "mechanics",
-    "name": "Mechanics",
-    "skill": "Mechanics",
-    "skillWeight": 1.0,
-    "attributes": { "Strength": 0.4, "Intellect": 0.3, "Agility": 0.3 },
-    "bodyParts": { "Arms": 0.7, "Head": 0.3 },
-    "toolBonus": 0.5
-  },
-  {
-    "id": "distilling",
-    "name": "Distilling",
-    "childrenAllowed": true,
-    "skill": "Cooking",
-    "skillWeight": 1.0,
-    "attributes": { "Intellect": 0.5, "Perception": 0.5 },
-    "bodyParts": { "Arms": 0.5, "Head": 0.5 },
-    "toolBonus": 0.2
-  },
-  {
-    "id": "hunting",
-    "name": "Hunting",
-    "skill": "Firearms",
-    "skillWeight": 0.6,
-    "trains": { "Farming": 0.3 },
-    "attributes": { "Perception": 0.5, "Agility": 0.3, "Endurance": 0.2 },
-    "bodyParts": { "Legs": 0.5, "Arms": 0.3, "Head": 0.2 },
-    "toolBonus": 0.5
-  }
+  {"id": "woodcutting", "name": "Woodcutting", "skill": "Woodcutting", "skillWeight": 1.0, "attributes": {"Strength": 0.6, "Endurance": 0.4}, "bodyParts": {"Arms": 0.6, "Legs": 0.2, "Torso": 0.2}, "toolBonus": 0.5},
+  {"id": "mining", "name": "Mining", "skill": "Mining", "skillWeight": 1.0, "attributes": {"Strength": 0.5, "Endurance": 0.5}, "bodyParts": {"Arms": 0.6, "Legs": 0.2, "Torso": 0.2}, "toolBonus": 0.5},
+  {"id": "scavenging", "childrenAllowed": true, "name": "Scrap Sorting", "skill": "Crafting", "skillWeight": 0.8, "attributes": {"Perception": 0.5, "Intellect": 0.3, "Strength": 0.2}, "bodyParts": {"Arms": 0.5, "Head": 0.3, "Legs": 0.2}, "toolBonus": 0.4},
+  {"id": "farming", "childrenAllowed": true, "name": "Farming", "skill": "Farming", "skillWeight": 1.0, "attributes": {"Endurance": 0.5, "Perception": 0.3, "Intellect": 0.2}, "bodyParts": {"Arms": 0.4, "Legs": 0.4, "Torso": 0.2}, "toolBonus": 0.4},
+  {"id": "medicine", "name": "Medicine", "skill": "Medicine", "skillWeight": 1.2, "attributes": {"Intellect": 0.5, "Perception": 0.3, "Agility": 0.2}, "bodyParts": {"Arms": 0.5, "Head": 0.5}, "toolBonus": 0.3},
+  {"id": "crafting", "childrenAllowed": true, "name": "Crafting", "skill": "Crafting", "skillWeight": 1.0, "attributes": {"Intellect": 0.5, "Creativity": 0.5}, "bodyParts": {"Arms": 0.7, "Head": 0.3}, "toolBonus": 0.5},
+  {"id": "tailoring", "childrenAllowed": true, "name": "Tailoring", "skill": "Tailoring", "skillWeight": 1.0, "attributes": {"Creativity": 0.5, "Agility": 0.5}, "bodyParts": {"Arms": 0.7, "Head": 0.3}, "toolBonus": 0.4},
+  {"id": "electronics", "name": "Electronics", "skill": "Electronics", "skillWeight": 1.2, "trains": {"Hacking": 0.3, "DronePiloting": 0.15}, "attributes": {"Intellect": 0.6, "Creativity": 0.4}, "bodyParts": {"Arms": 0.5, "Head": 0.5}, "toolBonus": 0.5},
+  {"id": "gunsmithing", "name": "Gunsmithing", "skill": "Firearms", "skillWeight": 1.0, "attributes": {"Intellect": 0.5, "Strength": 0.3, "Perception": 0.2}, "bodyParts": {"Arms": 0.7, "Head": 0.3}, "toolBonus": 0.5},
+  {"id": "cooking", "childrenAllowed": true, "name": "Cooking", "skill": "Cooking", "skillWeight": 1.0, "attributes": {"Creativity": 0.5, "Perception": 0.5}, "bodyParts": {"Arms": 0.6, "Head": 0.4}, "toolBonus": 0.3},
+  {"id": "guard", "name": "Guard", "skill": "Firearms", "skillWeight": 1.0, "attributes": {"Perception": 0.7, "Endurance": 0.3}, "bodyParts": {"Head": 0.4, "Arms": 0.3, "Legs": 0.3}, "trains": {"Melee": 0.3}},
+  {"id": "hunting", "name": "Hunting", "skill": "Firearms", "skillWeight": 0.6, "trains": {"Farming": 0.3}, "attributes": {"Perception": 0.5, "Agility": 0.3, "Endurance": 0.2}, "bodyParts": {"Legs": 0.5, "Arms": 0.3, "Head": 0.2}, "toolBonus": 0.5},
+  {"id": "mechanics", "name": "Mechanics", "skill": "Mechanics", "skillWeight": 1.0, "attributes": {"Strength": 0.4, "Intellect": 0.3, "Agility": 0.3}, "bodyParts": {"Arms": 0.7, "Head": 0.3}, "toolBonus": 0.5},
+  {"id": "distilling", "name": "Distilling", "childrenAllowed": true, "skill": "Cooking", "skillWeight": 1.0, "attributes": {"Intellect": 0.5, "Perception": 0.5}, "bodyParts": {"Arms": 0.5, "Head": 0.5}, "toolBonus": 0.2}
 ]

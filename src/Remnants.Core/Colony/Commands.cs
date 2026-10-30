@@ -53,6 +53,12 @@ public sealed record AdmitPatient(int SurvivorId, int? BuildingId = null) : ICol
 
 public sealed record Discharge(int SurvivorId) : IColonyCommand;
 
+/// <summary>Use a medical item from the inventory on a survivor at home: dress, cure, splint, numb or patch up (see <see cref="Medicine"/>).</summary>
+public sealed record TreatSurvivor(int SurvivorId, string ItemId) : IColonyCommand;
+
+/// <summary>The Med Bay's auto-treatment order; priorities left out are off. Null restores the default order.</summary>
+public sealed record SetCarePriorities(List<Data.TreatPriority>? Priorities) : IColonyCommand;
+
 /// <summary>
 /// Fit a crude or mechanical prosthetic item (below <c>surgery.fromTier</c>) from the inventory onto a missing limb, at a
 /// Med Bay of the item's level. It straps on at once; powered parts and up need <see cref="ScheduleSurgery"/>.
@@ -105,6 +111,19 @@ public sealed record SetNightShift(int BuildingId, bool On) : IColonyCommand;
 
 /// <summary>Fit a Floodlight (<c>dayNight.floodlightCost</c>) to an outdoor building so it can run a Night Shift at level 1.</summary>
 public sealed record InstallFloodlight(int BuildingId) : IColonyCommand;
+
+/// <summary>
+/// Gear Bench: fit a mod from the inventory to a piece of gear in the inventory, or to a survivor's fitted prosthetic
+/// (<paramref name="SurvivorId"/> + <paramref name="Part"/>: a gun arm). A mod already in that slot comes off into the
+/// inventory. Needs a bench building (<c>gear_mods.json rules.benches</c>).
+/// </summary>
+public sealed record InstallMod(string ItemId, string ModItemId, int? SurvivorId = null, BodyPart? Part = null) : IColonyCommand;
+
+/// <summary>Gear Bench: take the mod in a slot off (it goes back to the inventory intact).</summary>
+public sealed record RemoveMod(string ItemId, string Slot, int? SurvivorId = null, BodyPart? Part = null) : IColonyCommand;
+
+/// <summary>Fit an upgrade kit from the inventory to gear in the inventory: it goes up one Mk (<c>rules.upgradeAt</c>).</summary>
+public sealed record UpgradeGear(string ItemId, string KitItemId) : IColonyCommand;
 
 public enum CommandError
 {
@@ -228,11 +247,44 @@ public enum CommandError
     /// <summary>Every slot of the upgrade's kind on the vehicle is taken.</summary>
     SlotFull,
     /// <summary>Nothing to repair (a building or a vehicle).</summary>
+    /// <summary>Medicine: the item is not a treatment used at home, or would do nothing for them now.</summary>
+    NotATreatment,
+    NothingToTreat,
+    /// <summary>Raids and defenses (<c>Raids/</c>): no raids.json loaded; unknown placed defense; its schematic is not known.</summary>
+    NoRaidData,
+    UnknownDefense,
+    SchematicMissing,
+    InvalidCell,
+    CellOccupied,
+    NotATrap,
+    AlreadyArmed,
+    NoRaidWarning,
+    CannotRecall,
+    /// <summary>The building was wrecked in a raid: repair it first.</summary>
+    Wrecked,
+    /// <summary>The raid cannot be fought on the map (no field units, no Town Hall, nobody able).</summary>
+    CannotFight,
     NotDamaged,
     /// <summary>The road is closed: the weather over the zone, or the vehicle cannot make it (dust, range).</summary>
     RouteBlocked,
     DronesGrounded,
+    /// <summary>Power: the building neither makes, stores nor draws power.</summary>
+    NotOnGrid,
+    /// <summary>Gear mods: no bench (or upgrade) building; the gear or mod or kit does not work that way.</summary>
+    NoBench,
+    NotModdable,
+    ModDoesNotFit,
+    NoFreeModSlot,
+    EmptyModSlot,
+    WrongKit,
+    MaxMk,
 }
+
+/// <summary>
+/// Switch a building's power draw on or off (see <c>Power</c>): a switched-off consumer never draws (and gets no bonus);
+/// a switched-off generator stays cold (no fuel burnt).
+/// </summary>
+public sealed record SetPower(int BuildingId, bool On) : IColonyCommand;
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>
 public sealed record CommandResult(CommandError Error, string Message, int? EntityId = null)

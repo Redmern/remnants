@@ -640,6 +640,51 @@
       }
     },
     {
+      "id": "sentry",
+      "name": "Sentry",
+      "discipline": "combat",
+      "tier": 1,
+      "description": "Born for the watch: sees raiders coming sooner and holds a post better.",
+      "requires": {
+        "skills": {
+          "Firearms": 10
+        },
+        "attributes": {
+          "Perception": 40
+        }
+      },
+      "effects": {
+        "hooks": {
+          "post_defense_bonus": 0.25,
+          "sentry_lead_hours": 2
+        }
+      }
+    },
+    {
+      "id": "engineer",
+      "name": "Engineer",
+      "discipline": "survival",
+      "tier": 1,
+      "description": "Builds traps from less and patches walls fast.",
+      "requires": {
+        "skills": {
+          "Crafting": 15
+        },
+        "attributes": {
+          "Creativity": 35
+        }
+      },
+      "effects": {
+        "hooks": {
+          "trap_cost_reduction": 0.25,
+          "repair_speed_bonus": 0.3
+        },
+        "jobOutput": {
+          "crafting": 0.05
+        }
+      }
+    },
+    {
       "id": "forager",
       "name": "Forager",
       "discipline": "survival",
@@ -919,6 +964,59 @@
       }
     },
     {
+      "id": "pharmacist",
+      "name": "Pharmacist",
+      "discipline": "medic",
+      "tier": 2,
+      "description": "Mixes cleaner drugs and cuts better dressings at the Med Bay: finer supplies, made faster.",
+      "requires": {
+        "skills": {
+          "Medicine": 20
+        },
+        "attributes": {
+          "Intellect": 40
+        },
+        "perks": [
+          "field_medic"
+        ],
+        "level": 3,
+        "building": "med_bay"
+      },
+      "effects": {
+        "craftQuality": {
+          "medicine": 0.15
+        },
+        "jobOutput": {
+          "medicine": 0.1
+        }
+      }
+    },
+    {
+      "id": "combat_medic",
+      "name": "Combat Medic",
+      "discipline": "medic",
+      "tier": 2,
+      "description": "Patches people up under fire: medical items cost 1 AP less in the field.",
+      "requires": {
+        "skills": {
+          "Medicine": 20
+        },
+        "attributes": {
+          "Agility": 40
+        },
+        "perks": [
+          "field_medic"
+        ],
+        "level": 3
+      },
+      "effects": {
+        "hooks": {
+          "medical_ap_discount": 1,
+          "field_heal_bonus": 0.1
+        }
+      }
+    },
+    {
       "id": "surgeon",
       "name": "Chief Medic",
       "discipline": "medic",
@@ -1075,6 +1173,54 @@
       "effects": {
         "hooks": {
           "cyber_interference_reduction": 0.5
+        }
+      }
+    },
+    {
+      "id": "circuit_tinkerer",
+      "name": "Circuit Tinkerer",
+      "discipline": "tech",
+      "tier": 1,
+      "description": "Strips a dead gadget to the last good part: more components from every disassembly.",
+      "requires": {
+        "skills": {
+          "Electronics": 10
+        },
+        "attributes": {
+          "Creativity": 35
+        }
+      },
+      "effects": {
+        "hooks": {
+          "disassembly_yield_bonus": 0.25
+        },
+        "jobOutput": {
+          "electronics": 0.05
+        }
+      }
+    },
+    {
+      "id": "electrician",
+      "name": "Electrician",
+      "discipline": "tech",
+      "tier": 2,
+      "description": "Rewires the colony grid: every building on it draws less while they are home.",
+      "requires": {
+        "skills": {
+          "Electronics": 25
+        },
+        "perks": [
+          "circuit_tinkerer"
+        ],
+        "level": 3,
+        "building": "electronics_lab"
+      },
+      "effects": {
+        "hooks": {
+          "power_efficiency": 0.2
+        },
+        "craftQuality": {
+          "electronics": 0.05
         }
       }
     },

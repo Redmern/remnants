@@ -29,11 +29,17 @@ public sealed class GameData
     /// <summary>The schematics catalogue (data/schematics.json); empty = nothing is gated.</summary>
     public SchematicCatalog Schematics { get; }
 
+    /// <summary>The medicine system (data/medicine.json); null when not loaded (no conditions, no infections, no auto-treatment).</summary>
+    public MedicineData? Medicine { get; }
+
     /// <summary>Weather at home and over the world (data/weather.json); disabled when absent.</summary>
     public WeatherRules Weather { get; }
 
     /// <summary>Food and cooking (data/food.json); null when not loaded (nobody eats, nothing is harvested).</summary>
     public FoodData? Food { get; }
+
+    /// <summary>Electronics and power (data/electronics.json); null when not loaded (no grid, no charging bench).</summary>
+    public ElectronicsDef? Electronics { get; }
 
     private readonly Dictionary<string, List<RecipeDef>> _recipesByBuilding;
 
@@ -51,6 +57,8 @@ public sealed class GameData
         SchematicCatalog? schematics = null,
         WeatherRules? weather = null,
         FoodDef? food = null,
+        ElectronicsDef? electronics = null,
+        MedicineDef? medicine = null,
         VehicleData? vehicles = null)
     {
         Schematics = schematics ?? SchematicCatalog.Empty;
@@ -70,6 +78,8 @@ public sealed class GameData
         VehicleUpgrades = Index(Vehicles.Upgrades, u => u.Id, "vehicle upgrade");
         Weather = weather ?? new WeatherRules();
         Food = food is null ? null : new FoodData(food);
+        Electronics = electronics;
+        Medicine = medicine is null ? null : new MedicineData(medicine);
         Validate();
         ValidateWeather();
         Food?.Validate(this);
@@ -77,6 +87,7 @@ public sealed class GameData
         ValidateCybernetics();
         ValidateVehicles();
         Schematics.ValidateAgainst(this);
+        if (Electronics is not null) ElectronicsValidation.Validate(Electronics, this);
     }
 
     /// <summary>One Decrypt order per encrypted schematic, at the Decrypt building: its chip in, the schematic learned.</summary>

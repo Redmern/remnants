@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using Remnants.Core.Data;
 using Remnants.Core.Scavenge;
+using Remnants.Core.Trade;
 using Remnants.Net;
 
 namespace Remnants.Server;
@@ -12,12 +13,18 @@ namespace Remnants.Server;
 /// dotnet run --project src/Remnants.Server -- --port 7777 [--zone ID] [--seed N] [--players 2] [--max-players 4]
 ///     [--turn-seconds 60] [--reconnect-seconds 120] [--bind 0.0.0.0] [--data DIR] [--coop] [--hour 0-23] [--weather KIND[:INTENSITY]]
 /// dotnet run --project src/Remnants.Server -- --bot 127.0.0.1:7777 [--name Bot] [--rounds 30] [--team N] [--hostile] [--propose]
+///     [--trade [--trade-offer "scrap:20,bandage"]]
+/// dotnet run --project src/Remnants.Server -- --market market.json [--port 7780] [--bind 0.0.0.0]
+/// dotnet run --project src/Remnants.Server -- --market-bot 127.0.0.1:7780 [--name Trader] [--listings 3] [--take] [--seconds S]
 /// </code>
 /// The server runs one mission, then exits once every player's run is over. <c>--bot</c> instead joins a server
-/// as a scripted headless client (for smoke tests).
+/// as a scripted headless client (for smoke tests). <c>--market FILE</c> runs the persistent Trading Post (listings,
+/// escrow and claims in FILE) until Ctrl+C; <c>--market-bot</c> is a scripted trader for it.
 /// </summary>
 public static class Program
 {
+    public const int DefaultMarketPort = 7780;
+
     public static async Task<int> Main(string[] args)
     {
         try
@@ -26,8 +33,11 @@ public static class Program
             var dataDir = a.Value("--data") ?? FindDataDirectory();
             var scavenge = ScavengeDataLoader.LoadFromDirectory(dataDir);
             var game = GameDataLoader.LoadFromDirectory(dataDir);
+            var trade = TradeRules.Load(dataDir);
             if (a.Value("--bot") is { } target) return await Bot.Run(target, a, scavenge, game);
-            return await Serve(a, scavenge, game);
+            if (a.Value("--market-bot") is { } market) return await BotTrade.RunMarket(market, a, scavenge, game);
+            if (a.Value("--market") is { } file) return await ServeMarket(a, file, scavenge, game, trade);
+            return await Serve(a, scavenge, game, trade);
         }
         catch (Exception e) when (e is ArgumentException or FormatException or GameDataException or IOException)
         {
@@ -36,7 +46,25 @@ public static class Program
         }
     }
 
-    private static async Task<int> Serve(Args a, ScavengeData scavenge, GameData game)
+    private static async Task<int> ServeMarket(Args a, string file, ScavengeData scavenge, GameData game, TradeRules trade)
+    {
+        var store = new MarketStore(file);
+        var host = new MarketHost(store, trade, game.Resources.ContainsKey, scavenge);
+        using var server = HostedMarket.Start(host, IPAddress.Parse(a.Value("--bind") ?? "0.0.0.0"), a.Int("--port", DefaultMarketPort), Print);
+        Print($"Remnants Trading Post v{Protocol.Version} on port {server.Port}: {store.Data.Listings.Count} open listings, " +
+              $"{store.Data.Claims.Count} unclaimed, stored in {Path.GetFullPath(file)}");
+        var done = new TaskCompletionSource();
+        Console.CancelKeyPress += (_, e) =>
+        {
+            e.Cancel = true;
+            done.TrySetResult();
+        };
+        await done.Task;
+        Print("Trading Post stopped");
+        return 0;
+    }
+
+    private static async Task<int> Serve(Args a, ScavengeData scavenge, GameData game, TradeRules trade)
     {
         var options = new HostOptions
         {
@@ -51,6 +79,8 @@ public static class Program
             Hour = a.Value("--hour") is { } hour ? int.Parse(hour, CultureInfo.InvariantCulture) : null,
             Weather = a.Value("--weather") is { } w ? w.Split(':')[0] : null,
             WeatherIntensity = a.Value("--weather") is { } wi && wi.Split(':') is [_, var i] ? double.Parse(i, CultureInfo.InvariantCulture) : 0.7,
+            Trade = trade,
+            Resources = game.Resources.Keys.ToList(),
         };
         using var server = HostedServer.Start(scavenge, options, IPAddress.Parse(a.Value("--bind") ?? "0.0.0.0"), a.Int("--port", Protocol.DefaultPort), Print);
         var done = new TaskCompletionSource();

@@ -1,6 +1,7 @@
 using Remnants.Core.Colony;
 using Remnants.Core.Items;
 using Remnants.Core.Scavenge;
+using Remnants.Core.Survivors;
 
 namespace Remnants.Playtest;
 
@@ -8,7 +9,7 @@ namespace Remnants.Playtest;
 public sealed record RunStats(int Rounds, int Kills, int LinkedSeen, int LinkedKills, int ItemsLooted, int Reinforcements,
     int AmbushedTimes = 0, int OverwatchShots = 0, int DefensesUsed = 0,
     int Hacked = 0, int HackFailed = 0, int Overrides = 0, int DroneFlights = 0, int DronesLost = 0, int Marks = 0, int FromDevices = 0,
-    int LimbLocks = 0);
+    int LimbLocks = 0, int Emps = 0, int Decoys = 0, int NoiseDecoys = 0, int DroneHeals = 0, int Ferried = 0, int DroneShots = 0);
 
 /// <summary>
 /// Plays the colony's party in a scavenge run through Core commands only, roughly like a careful player:
@@ -102,7 +103,10 @@ public static class PartyBot
             state.Events.Count(e => e.Type == ScavengeEventType.DroneFlown && e.UnitId is { } d && state.FindUnit(d)?.PlayerId is { } p && playerIds.Contains(p)),
             dronesLost,
             state.Events.Count(e => e.Type == ScavengeEventType.Marked && e.UnitId is { } m && state.FindUnit(m)?.PlayerId is { } p && playerIds.Contains(p)),
-            fromDevices, Count(ScavengeEventType.LimbLocked)));
+            fromDevices, Count(ScavengeEventType.LimbLocked),
+            state.Events.Count(e => e.Type == ScavengeEventType.EmpBurst && e.Message.Contains(" goes off at ") && e.UnitId is { } t && mine.Contains(t)),
+            Count(ScavengeEventType.DecoyDeployed), Count(ScavengeEventType.NoiseDecoy), Count(ScavengeEventType.DroneHealed),
+            Count(ScavengeEventType.DroneFerried), Count(ScavengeEventType.DroneFired)));
     }
 
     private static bool IsLinked(ScavengeSim sim, Unit u) =>
@@ -152,15 +156,24 @@ public static class PartyBot
 
         // 1. A downed ally next to us gets the med-kit; a badly hurt one (or we) a bandage when nobody is adjacent.
         foreach (var ally in allies.Where(a => a.Status == UnitStatus.Downed && a.Pos.Chebyshev(unit.Pos) <= 1))
-            if (Usable(sim, unit, "med_kit", u => u.ReviveHp > 0 || u.Stabilize) is { } kit)
+            if (Best(sim, unit, u => u.ReviveHp > 0 || u.Stabilize, u => -u.ReviveHp) is { } kit)
                 return new UseItem(playerId, unit.Id, kit, ally.Id);
             // Co-op: no med-kit, so carry them out (Core says whether we can).
             else if (ally.PlayerId != playerId && CoopActions.CheckCarry(sim, unit, ally) is null)
                 return new Carry(playerId, unit.Id, ally.Id);
         var hurt = allies.Where(a => a.IsActive && a.Hp < a.MaxHp * 0.5 && a.Pos.Chebyshev(unit.Pos) <= 1).OrderBy(a => a.Hp).FirstOrDefault();
         if (hurt is not null && !hostiles.Any(h => h.Pos.Chebyshev(unit.Pos) <= 1)
-            && Usable(sim, unit, "bandage", u => u.Heal > 0) is { } bandage)
+            && Best(sim, unit, u => u.Heal > 0 && u.ReviveHp == 0 && u.HumanityCost == 0, u => -u.Heal) is { } bandage)
             return new UseItem(playerId, unit.Id, bandage, hurt.Id);
+        // A broken limb gets a splint when nothing is in reach; a survivor in pain takes a painkiller once.
+        if (!hostiles.Any(h => h.Pos.Chebyshev(unit.Pos) <= 2) && sim.Data.Medicine is { } med)
+        {
+            if (allies.FirstOrDefault(a => a.IsActive && a.Pos.Chebyshev(unit.Pos) <= 1 && Treatment.UnsplintedFracture(med, a.Body) is not null) is { } broken
+                && Best(sim, unit, u => u.Splint, _ => 0) is { } splint)
+                return new UseItem(playerId, unit.Id, splint, broken.Id);
+            if (Treatment.InPain(med, unit.Body) && unit.Body.Doses < 1 && Best(sim, unit, u => u.PainRelief > 0 && u.HumanityCost == 0, _ => 0) is { } pill)
+                return new UseItem(playerId, unit.Id, pill);
+        }
 
         // 1b. Against the fog: light up where an ambush came from; scan when something is heard but not seen.
         if (defenses && hostiles.Count == 0)
@@ -174,12 +187,18 @@ public static class PartyBot
                 return new Lookout(playerId, unit.Id);
         }
 
+        // 1c. Electronics: an EMP over two or more Network machines (never our own drone), a holo-decoy when a Linked
+        // closes on a hurt unit, a noise decoy to pull hunting Husks off the party.
+        if (tech && Electronics(sim, unit, playerId, hostiles) is { } device) return device;
+
         // 2. Hit what gives the most expected damage per AP.
-        var attack = profile.Actions.Where(a => a.ApCost <= unit.Ap)
+        // The true AP counts (a scope costs more up close).
+        var attack = profile.Actions
             .SelectMany(a => hostiles
-                .Where(t => Combat.CheckReach(sim.Data, map, unit.Pos, a, t.Pos) == ScavengeError.None)
+                .Where(t => Combat.ApCost(a, unit.Pos, t.Pos) <= unit.Ap && Combat.CheckReach(sim.Data, map, unit.Pos, a, t.Pos) == ScavengeError.None)
                 .Select(t => (Action: a, Target: t, Chance: Combat.ChanceToHit(sim, unit, a, t))))
-            .OrderByDescending(o => o.Chance * (o.Action.MinDamage + o.Action.MaxDamage) / 2 / o.Action.ApCost).ThenBy(o => o.Target.Hp).FirstOrDefault();
+            .OrderByDescending(o => o.Chance * (o.Action.MinDamage + o.Action.MaxDamage) / 2 / Combat.ApCost(o.Action, unit.Pos, o.Target.Pos))
+            .ThenBy(o => o.Target.Hp).FirstOrDefault();
         if (attack.Target is not null && attack.Chance >= 0.2 && (fightLinked || !(IsLinked(sim, attack.Target) && attack.Target.Hp > 25)))
             return new Attack(playerId, unit.Id, attack.Target.Id, attack.Action.Id);
 
@@ -309,6 +328,92 @@ public static class PartyBot
                || (state.Caches.Count == 0 && !(tech && Hackable(sim, unit, false).Any(d => d.Kind is DeviceKind.Locker or DeviceKind.Terminal)));
     }
 
+    private static IScavengeCommand? Electronics(ScavengeSim sim, Unit unit, int playerId, List<Unit> hostiles)
+    {
+        var state = sim.State;
+        if (unit.Pack.FirstOrDefault(id => sim.Data.Items[id].Use is { Emp: not null } u && u.ApCost <= unit.Ap) is { } emp)
+        {
+            var use = sim.Data.Items[emp].Use!;
+            var machines = hostiles.Where(h => IsLinked(sim, h) || h.Kind == UnitKind.Device).ToList();
+            var best = machines.Where(m => m.Pos.Chebyshev(unit.Pos) <= use.Range)
+                .Select(m => (At: m.Pos, Hits: machines.Count(o => o.Pos.Chebyshev(m.Pos) <= use.Emp!.Radius)))
+                .Where(t => !state.Units.Any(o => o.IsActive && o.Side == unit.Side && o.Kind == UnitKind.Drone && o.Pos.Chebyshev(t.At) <= use.Emp!.Radius))
+                .OrderByDescending(t => t.Hits).ThenBy(t => state.Map.Index(t.At)).FirstOrDefault();
+            if (best.Hits >= 2 || best.Hits == 1 && machines.Any(m => m.Pos.Chebyshev(unit.Pos) <= 3 && IsLinked(sim, m)))
+                return new UseItem(playerId, unit.Id, emp, At: best.At);
+        }
+        var linkedNear = hostiles.Where(h => IsLinked(sim, h) && h.Pos.Chebyshev(unit.Pos) <= 7).OrderBy(h => h.Pos.Chebyshev(unit.Pos)).FirstOrDefault();
+        if (linkedNear is not null && unit.Hp < unit.MaxHp * 0.7 && !state.Units.Any(u => u.Kind == UnitKind.Decoy && u.IsActive && u.Side == unit.Side)
+            && unit.Pack.FirstOrDefault(id => sim.Data.Items[id].Use is { Decoy: not null } u && u.ApCost <= unit.Ap) is { } holo)
+        {
+            var range = sim.Data.Items[holo].Use!.Range;
+            // Between us and them, a few tiles out: they turn to it and we slip away.
+            var spot = Enumerable.Range(-range, 2 * range + 1).SelectMany(dy => Enumerable.Range(-range, 2 * range + 1).Select(dx => unit.Pos + new Pos(dx, dy)))
+                .Where(p => state.Map.InBounds(p) && p.Chebyshev(unit.Pos) is >= 2 && p.Chebyshev(unit.Pos) <= range
+                            && sim.Data.Terrain(state.Map[p]).Passable && state.UnitAt(p) is null && state.DeviceAt(p) is null)
+                .OrderBy(p => p.Chebyshev(linkedNear.Pos)).ThenBy(state.Map.Index).Select(p => (Pos?)p).FirstOrDefault();
+            if (spot is { } at) return new UseItem(playerId, unit.Id, holo, At: at);
+        }
+        var husks = hostiles.Where(h => !IsLinked(sim, h) && h.Kind == UnitKind.Enemy && h.Pos.Chebyshev(unit.Pos) <= 6).ToList();
+        if (husks.Count >= 2 && unit.Pack.FirstOrDefault(id => sim.Data.Items[id].Use is { NoiseRadius: > 0 } u && u.ApCost <= unit.Ap) is { } noise)
+        {
+            var use = sim.Data.Items[noise].Use!;
+            // At full throw, as far from the way out as it goes: the Husks wander off from the route home.
+            var exit = state.Map.Exits.OrderBy(e => e.Chebyshev(unit.Pos)).First();
+            var r = use.Range;
+            var at = Enumerable.Range(-r, 2 * r + 1).SelectMany(dy => Enumerable.Range(-r, 2 * r + 1).Select(dx => unit.Pos + new Pos(dx, dy)))
+                .Where(p => state.Map.InBounds(p) && p.Chebyshev(unit.Pos) == r)
+                .OrderByDescending(p => p.Chebyshev(exit)).ThenBy(state.Map.Index).First();
+            if (at.Chebyshev(unit.Pos) >= 3) return new UseItem(playerId, unit.Id, noise, At: at);
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// A drone variant's job, before any scouting: the medic drone treats a hurt teammate next to it (or flies to one),
+    /// the combat drone fires at what it sees, the cargo drone loads from a cache next to it and ferries a full hold (or
+    /// anything when the party is leaving) from beside an exit.
+    /// </summary>
+    private static IScavengeCommand? DroneRole(ScavengeSim sim, Unit unit, int playerId, Unit drone, bool leaving)
+    {
+        var state = sim.State;
+        if (DroneRoles.Spec(sim.Data, drone) is not { } spec || spec.Role == Remnants.Core.Items.DroneRole.Scout) return null;
+        var flew = state.Events.Any(e => e.Round == state.Round && e.Type == ScavengeEventType.DroneFlown && e.UnitId == drone.Id);
+        IScavengeCommand? Toward(Pos goal)
+        {
+            if (flew || unit.Ap < sim.Data.Rules.Drone.FlyApCost) return null;
+            var best = Drones.FlightTargets(sim, unit).OrderBy(p => p.Chebyshev(goal)).ThenBy(state.Map.Index).Select(p => (Pos?)p).FirstOrDefault();
+            return best is { } to && to.Chebyshev(goal) < drone.Pos.Chebyshev(goal) ? new FlyDrone(playerId, unit.Id, to) : null;
+        }
+        switch (spec.Role)
+        {
+            case Remnants.Core.Items.DroneRole.Medic:
+            {
+                var hurt = state.Units.Where(t => t.Side == unit.Side && t.OnMap && t.Kind == UnitKind.Survivor
+                                                  && (t.Status == UnitStatus.Downed || t.Hp < t.MaxHp * 0.6) && DroneRoles.HealItem(sim.Data, unit, t) is not null)
+                    .OrderBy(t => t.Status == UnitStatus.Downed ? 0 : 1).ThenBy(t => t.Hp).FirstOrDefault();
+                if (hurt is null) return null;
+                if (hurt.Pos.Chebyshev(drone.Pos) <= 1 && unit.Ap >= spec.ActionApCost) return new DroneHeal(playerId, unit.Id, hurt.Id);
+                return Toward(hurt.Pos);
+            }
+            case Remnants.Core.Items.DroneRole.Combat:
+                return DroneRoles.FireTargets(sim, unit).OrderBy(t => t.Hp).FirstOrDefault() is { } target
+                       && sim.Profile(drone).Actions.FirstOrDefault() is { } gun && unit.Ap >= gun.ApCost
+                    ? new DroneFire(playerId, unit.Id, target.Id) : null;
+            case Remnants.Core.Items.DroneRole.Cargo:
+            {
+                if ((drone.Pack.Count >= spec.Cargo || leaving && drone.Pack.Count > 0) && DroneRoles.FerryPoint(sim, drone.Pos) && unit.Ap >= spec.ActionApCost)
+                    return new DroneFerry(playerId, unit.Id);
+                if (drone.Pack.Count >= spec.Cargo || leaving && drone.Pack.Count > 0)
+                    return Toward(state.Map.Exits.OrderBy(e => e.Chebyshev(drone.Pos)).First());
+                if (state.Caches.Where(c => c.Pos.Chebyshev(drone.Pos) <= 1 && c.Items.Count > 0).FirstOrDefault() is { } cache && unit.Ap >= spec.ActionApCost)
+                    return new DroneLoad(playerId, unit.Id, cache.Id, cache.Items.OrderByDescending(id => Value(sim.Data.Items[id])).ThenBy(id => id).First());
+                return null;
+            }
+        }
+        return null;
+    }
+
     /// <summary>
     /// The scout drone: recall it when leaving or nearly flat; mark a Linked it sees (Spotter); with the turn's last AP
     /// (<paramref name="lastAp"/>) fly it once ahead toward the nearest cache (else an exit), keeping out of reach of known
@@ -322,6 +427,7 @@ public static class PartyBot
         var leaving = Leaving(sim, unit, hostiles, allies, false, true);
         if (Drones.DroneOf(state, unit) is { } drone)
         {
+            if (DroneRole(sim, unit, playerId, drone, leaving) is { } job) return job;
             var range = Drones.ControlRange(sim.Data, unit, drone.DroneItemId!);
             if ((leaving || drone.Battery <= 1) && unit.Ap >= rules.RecallApCost && unit.Pos.Chebyshev(drone.Pos) <= range)
                 return new RecallDrone(playerId, unit.Id);
@@ -363,6 +469,11 @@ public static class PartyBot
 
     private static int ThrowRange(ScavengeSim sim, Unit unit, string baseId) =>
         unit.Pack.Select(id => sim.Data.Items[id]).Where(i => i.DefinedId == baseId && i.Use is not null).Select(i => i.Use!.Range).DefaultIfEmpty(0).Max();
+
+    /// <summary>The pack item that does this and fits the AP, lowest <paramref name="rank"/> first (then the pack order).</summary>
+    private static string? Best(ScavengeSim sim, Unit unit, Func<UseEffect, bool> does, Func<UseEffect, double> rank) =>
+        unit.Pack.Where(id => sim.Data.Items[id].Use is { } use && does(use) && use.ApCost <= unit.Ap)
+            .OrderBy(id => rank(sim.Data.Items[id].Use!)).FirstOrDefault();
 
     private static string? Usable(ScavengeSim sim, Unit unit, string baseId, Func<UseEffect, bool> does) =>
         unit.Pack.FirstOrDefault(id => sim.Data.Items[id] is { Use: { } use } item && item.DefinedId == baseId && does(use) && use.ApCost <= unit.Ap);

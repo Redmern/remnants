@@ -16,12 +16,15 @@ public sealed class Party
 
     /// <summary>The player is gone for good (multiplayer): their units hold position, and allies stop counting on them.</summary>
     public bool Left { get; set; }
+
+    /// <summary>Items a cargo drone ferried out of the zone (and the drone itself): home whatever happens to the party.</summary>
+    public List<string> Secured { get; set; } = new();
 }
 
 public enum ScavengeEventType
 {
     RoundStarted, Moved, Attacked, Missed, Injured, LimbLost, Downed, Died, BledOut,
-    Stabilized, Revived, Healed, Evacuated, Extracted, PickedUp, Recruited, Spotted, PartyDone, Finished,
+    Stabilized, Revived, Healed, Fractured, Treated, Crashed, Evacuated, Extracted, PickedUp, Recruited, Spotted, PartyDone, Finished,
     Suppressed, Flanked, Retreated, Reinforced,
     Ambushed, Overwatch, Braced, Lookout, Revealed, FlareLit, SensorPlaced, SensorTripped,
     AllianceProposed, AllianceAccepted, AllianceDeclined, AllianceBreakWarning, AllianceBroken,
@@ -33,6 +36,8 @@ public enum ScavengeEventType
     ObjectiveUpdated, Chatter, MissionPrompt, MissionEnded,
     Stashed, VehicleHit, VehicleWrecked, VehicleTurret, Salvaged,
     WeatherChanged, Thunder, Lightning,
+    EmpBurst, DecoyDeployed, DecoyGone, NoiseDecoy, DroneHealed, DroneLoaded, DroneFerried, DroneFired, Traced,
+    GearModded,
 }
 
 /// <summary>

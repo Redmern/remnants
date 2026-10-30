@@ -24,6 +24,9 @@ public enum UnlockKind
 
     /// <summary>A vehicle chassis, engine or upgrade (checked by a registered validator, see <see cref="SchematicCatalog.UnlockValidators"/>).</summary>
     Vehicle,
+
+    /// <summary>A colony defense or trap of data/raids.json (checked by <c>RaidData.Validate</c>, which owns that catalogue).</summary>
+    Defense,
 }
 
 /// <summary>Where a schematic can come from. Every schematic lists at least one source that is not <see cref="Story"/>.</summary>

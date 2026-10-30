@@ -25,6 +25,8 @@ public sealed class ModelLibrary
     private readonly Dictionary<string, Dictionary<string, string>> _params = new();
     private readonly Dictionary<string, Dictionary<string, AttachPoint>> _sockets = new();
     private readonly Dictionary<string, Dictionary<string, AttachPoint>> _attach = new();
+    private readonly Dictionary<string, Dictionary<string, AttachPoint>> _modSlots = new();
+    private readonly Dictionary<string, JsonElement> _rawParams = new();
     private readonly Dictionary<string, Dictionary<string, ClipInfo>> _clips = new();
     private readonly Dictionary<string, Dictionary<string, string[]>> _limbBones = new();
     private readonly Dictionary<string, Vector3> _dimensions = new();
@@ -79,6 +81,8 @@ public sealed class ModelLibrary
                 if (Points(entry, "sockets") is { } sockets) _sockets[key] = sockets;
                 if (UpgradeSlots(entry) is { } slots) _upgradeSlots[key] = slots;
                 if (Points(entry, "attach") is { } attach) _attach[key] = attach;
+                if (Points(entry, "mod_slots") is { } modSlots) _modSlots[key] = modSlots;
+                if (entry.TryGetProperty("params", out var raw) && raw.ValueKind == JsonValueKind.Object) _rawParams[key] = raw.Clone();
                 if (ReadClips(entry) is { Count: > 0 } clips) _clips[key] = clips;
                 if (entry.TryGetProperty("limb_bones", out var limbs) && limbs.ValueKind == JsonValueKind.Object)
                     _limbBones[key] = limbs.EnumerateObject().Where(kv => kv.Value.ValueKind == JsonValueKind.Array)
@@ -168,6 +172,13 @@ public sealed class ModelLibrary
     public IReadOnlyDictionary<string, AttachPoint> AttachPoints(string id) =>
         _attach.GetValueOrDefault(id) ?? new Dictionary<string, AttachPoint>();
 
+    /// <summary>A gear model's mod slot nodes (<c>mod_sight</c>, <c>mod_plating</c>, ...) by node name, in the item's own space.</summary>
+    public IReadOnlyDictionary<string, AttachPoint> ModSlots(string id) =>
+        _modSlots.GetValueOrDefault(id) ?? new Dictionary<string, AttachPoint>();
+
+    /// <summary>A model's whole manifest <c>params</c> object (arrays and objects too), or null.</summary>
+    public JsonElement? RawParams(string id) => _rawParams.TryGetValue(id, out var p) ? p : null;
+
     /// <summary>A rigged model's animation clips by name (manifest v2); empty for a static model.</summary>
     public IReadOnlyDictionary<string, ClipInfo> Clips(string id) =>
         _clips.GetValueOrDefault(id) ?? new Dictionary<string, ClipInfo>();
@@ -223,7 +234,7 @@ public sealed class ModelLibrary
             model.Scale = Vector3.One * (1 + 0.12f * (level - l));
             return model;
         }
-        return Placeholders.Building(def.Category, level);
+        return Placeholders.Building(def.Category, level, def.Id);
     }
 
     public static string SurvivorId(bool child, Sex sex) =>

@@ -25,6 +25,19 @@ public static class Report
                       $"{runs.Sum(r => r.SurvivorDays) / Math.Max(1, runs.Sum(r => r.LevelUps)):0.0}, perks learned {runs.Sum(r => r.PerksLearned)} " +
                       $"({(double)runs.Sum(r => r.PerksLearned) / runs.Count:0.0}/colony), mean level at the end {Median(r => r.MeanLevel):0.0} (median), " +
                       $"max level {runs.Max(r => r.MaxLevel)}, unspent points {runs.Sum(r => r.UnspentPoints)}");
+        if (runs.All(r => r.Medicine is not null))
+            sb.AppendLine($"medicine: infections {runs.Sum(r => r.Medicine!.Infections)} (first day {D(Median(r => r.Medicine!.FirstInfectionDay)).Trim()} median, " +
+                          $"{runs.Sum(r => r.Medicine!.InfectedAtEnd)} still infected at the end), sicknesses {runs.Sum(r => r.Medicine!.Sicknesses)}, " +
+                          $"treatments {runs.Sum(r => r.Medicine!.Treatments)}, supplies crafted {runs.Sum(r => r.Medicine!.SuppliesCrafted)}, " +
+                          $"blood donations {runs.Sum(r => r.Medicine!.Donations)}, deaths to a condition {runs.Sum(r => r.Medicine!.ConditionDeaths)}");
+        if (runs.All(r => r.Power is not null))
+        {
+            var withGen = runs.Where(r => r.Power!.GeneratorDay is not null).ToList();
+            sb.AppendLine($"power: generator built in {withGen.Count}/{runs.Count} (median day {D(Median(r => r.Power!.GeneratorDay)).Trim()}), " +
+                          $"components {runs.Sum(r => r.Power!.Components)}, devices {runs.Sum(r => r.Power!.Devices)}, disassembled {runs.Sum(r => r.Power!.Disassembled)}, " +
+                          $"brownouts {runs.Sum(r => r.Power!.Brownouts)}, breaker trips {runs.Sum(r => r.Power!.Breakers)}, " +
+                          $"lab powered hours {runs.Sum(r => r.Power!.LabPoweredTicks)}, still charging {runs.Sum(r => r.Power!.Charging)}");
+        }
         if (runs.All(r => r.Cyber is not null))
         {
             var tiers = string.Join(", ", Enumerable.Range(0, 5).Select(t =>
@@ -54,6 +67,19 @@ public static class Report
                           $"trader visits {runs.Sum(r => r.Schematics!.TraderVisits)}, contracts done {runs.Sum(r => r.Schematics!.ContractsDone)}, " +
                           $"Town Hall 3 reached {runs.Count(r => r.Schematics!.TownHallLevel >= 3)}/{runs.Count}, Armory + Lab L2 " +
                           $"{runs.Count(r => r.Schematics!.ArmoryAndLab2)}/{runs.Count}, ran a threat-2 zone {runs.Count(r => r.Schematics!.MaxThreatRun >= 2)}/{runs.Count}");
+        }
+        if (runs.All(r => r.Raids is not null))
+        {
+            sb.AppendLine("raids: seed  raids held firstDay firstHeld dead taken hurt stolen wrecked defenses guards kinds");
+            foreach (var r in runs)
+            {
+                var x = r.Raids!;
+                sb.AppendLine($"      {r.Seed,4} {x.Raids,6} {x.Repelled,4} {D(x.FirstDay)}  {(x.FirstHeld is null ? "-" : x.FirstHeld.Value ? "yes" : "NO"),8} {x.Dead,4} {x.Taken,5} {x.Injured,4} {x.Stolen,6:0} {x.Wrecked,7} {x.Defenses,8} {x.Guards,6} {x.Kinds}");
+            }
+            var all = runs.Select(r => r.Raids!).ToList();
+            sb.AppendLine($"raids: {all.Sum(x => x.Raids)} in all, {all.Sum(x => x.Repelled)} held; first raid day {D(Median(r => r.Raids!.FirstDay)).Trim()} (median), " +
+                          $"first held {all.Count(x => x.FirstHeld == true)}/{all.Count(x => x.FirstHeld is not null)}; dead {all.Sum(x => x.Dead)}, taken {all.Sum(x => x.Taken)}, " +
+                          $"hurt {all.Sum(x => x.Injured)}, stolen {all.Sum(x => x.Stolen):0}, wrecked {all.Sum(x => x.Wrecked)}");
         }
         sb.AppendLine($"totals: starvation deaths {runs.Sum(r => r.StarvationDeaths)}, expedition deaths {runs.Sum(r => r.ExpeditionDeaths)} over {runs.Sum(r => r.Expeditions)} expeditions " +
                       $"({runs.Sum(r => r.ExpeditionsWithDeaths)} with deaths), departures {runs.Sum(r => r.Departures)}, births {runs.Sum(r => r.Births)}, " +

@@ -1,4 +1,5 @@
 using Remnants.Core.Scavenge;
+using Remnants.Core.Trade;
 
 namespace Remnants.Net;
 
@@ -79,6 +80,26 @@ public sealed class NetClient
 
     /// <summary>The latest alliance message for this player (banners re-read it).</summary>
     public Message? LastAllianceNews { get; private set; }
+
+    /// <summary>Open live trades this player is in, by trade id (the latest table from the server).</summary>
+    public Dictionary<int, TradeView> Trades { get; } = new();
+
+    /// <summary>Unique per client session: tells this session's escrows apart from another server's equal trade ids.</summary>
+    public string SessionTag { get; } = Guid.NewGuid().ToString("N")[..12];
+
+    /// <summary>A trade message arrived (invite, update, commit, cancelled), after <see cref="Trades"/> was updated.</summary>
+    public event Action<Message>? TradeNews;
+
+    public void RequestTrade(int playerId) => _transport.Send(new TradeRequest(playerId));
+    public void RespondTrade(int tradeId, bool accept) => _transport.Send(new TradeRespond(tradeId, accept));
+    public void OfferTrade(int tradeId, List<TradeGood> goods) => _transport.Send(new TradeOffer(tradeId, goods));
+    public void LockTrade(int tradeId, bool locked) => _transport.Send(new TradeLock(tradeId, locked));
+    public void ConfirmTrade(int tradeId) => _transport.Send(new TradeConfirm(tradeId));
+    public void CancelTrade(int tradeId) => _transport.Send(new TradeCancel(tradeId));
+
+    /// <summary>My side and the other side of a trade.</summary>
+    public (TradeSideView Me, TradeSideView Them) SidesOf(TradeView trade) =>
+        trade.Sides[0].PlayerId == PlayerId ? (trade.Sides[0], trade.Sides[1]) : (trade.Sides[1], trade.Sides[0]);
 
     /// <summary>Lobby, versus missions: start on a team with whoever picks the same number (null = on your own).</summary>
     public void SetTeam(int? team) => _transport.Send(new SetTeam(team));
@@ -189,6 +210,24 @@ public sealed class NetClient
                 Noticed?.Invoke(Describe(message));
                 AllianceNews?.Invoke(message);
                 break;
+            case TradeInvite i:
+                Noticed?.Invoke($"{i.FromName} wants to trade.");
+                TradeNews?.Invoke(message);
+                break;
+            case TradeUpdate u:
+                Trades[u.Trade.TradeId] = u.Trade;
+                TradeNews?.Invoke(message);
+                break;
+            case TradeCommit c:
+                Trades.Remove(c.TradeId);
+                Noticed?.Invoke($"Trade with {c.PartnerName} done.");
+                TradeNews?.Invoke(message);
+                break;
+            case TradeCancelled c:
+                Trades.Remove(c.TradeId);
+                Noticed?.Invoke(c.Reason);
+                TradeNews?.Invoke(message);
+                break;
             case MissionEnded e:
                 Result ??= e.Result;
                 EndReason = e.Reason;
@@ -225,6 +264,12 @@ public sealed class NetClient
 
     private void OnClosed()
     {
+        // The server cancels every trade of a dropped player; the client does the same on its side.
+        foreach (var id in Trades.Keys.ToList())
+        {
+            Trades.Remove(id);
+            TradeNews?.Invoke(new TradeCancelled(id, "Connection lost."));
+        }
         if (Phase != ClientPhase.Ended) Phase = ClientPhase.Disconnected;
         foreach (var tcs in _pending.Values) tcs.TrySetResult(ScavengeResult.Fail(ScavengeError.Finished, "Connection lost."));
         _pending.Clear();

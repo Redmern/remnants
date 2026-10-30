@@ -135,9 +135,10 @@ public partial class ColonyAudio : Node3D
     /// </summary>
     public static bool IsNight(DayPhase phase) => phase == DayPhase.Night;
 
-    /// <summary>The colony is under pressure: beds or food are short, or someone is starving or sleeping rough.</summary>
+    /// <summary>The colony is under pressure: a raid is coming, beds or food are short, or someone is starving or sleeping rough.</summary>
     public static bool Tension(ColonySim sim) =>
-        sim.State.Present.Any(s => s.StarvingTicks > 0 || s.HomelessTicks > 0)
+        sim.State.Defense.Raid is { Stage: Remnants.Core.Raids.RaidStage.Warned }
+        || sim.State.Present.Any(s => s.StarvingTicks > 0 || s.HomelessTicks > 0)
         || Bonds.FreeBedsForBabies(sim.State, sim.Data) < 0
         || sim.FoodDays < 3;
 

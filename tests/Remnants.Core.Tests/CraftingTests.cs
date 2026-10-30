@@ -51,7 +51,8 @@ public class CraftingDataTests
         Assert.True(fine.Weight < items["riot_armor"].Weight);
         Assert.True(crude.Actions[0].MaxDamage < items["pipe"].Actions[0].MaxDamage);
         Assert.Equal(0, fine.LootWeight);
-        Assert.DoesNotContain("bandage@fine", items.Keys);  // only equippable gear has quality
+        Assert.DoesNotContain("flare@fine", items.Keys);  // only equippable gear and medical supplies have quality
+        Assert.Contains("bandage@fine", items.Keys);
         Assert.DoesNotContain("husk_claws@fine", items.Keys);
     }
 
@@ -102,6 +103,9 @@ public class ProductionQueueTests
         Assert.True(worker.Get(AttributeKind.Creativity) > 60);  // tailoring trains Creativity and Agility
     }
 
+    /// <summary>Crafted bandages at any quality.</summary>
+    private static int Bandages(ColonySim sim) => sim.State.Inventory.Counts.Where(kv => kv.Key.Split('@')[0] == "bandage").Sum(kv => kv.Value);
+
     [Fact]
     public void Orders_run_in_turn_and_skip_one_that_cannot_start()
     {
@@ -112,7 +116,7 @@ public class ProductionQueueTests
 
         RunUntilDone(sim, shop, 50);
 
-        Assert.Equal(2, sim.State.Inventory.Count("bandage"));
+        Assert.Equal(2, Bandages(sim));
         Assert.Equal("padded_vest", Assert.Single(shop.Queue).RecipeId);
         Assert.Equal(CraftStatus.WaitingForInputs, sim.CraftStatus(shop));
     }
@@ -125,7 +129,7 @@ public class ProductionQueueTests
         var repeat = sim.Execute(new QueueRecipe(shop.Id, "bandage", Repeat: true)).EntityId;
         var coat = sim.Execute(new QueueRecipe(shop.Id, "rag_coat")).EntityId;
 
-        for (var i = 0; i < 200 && sim.State.Inventory.Count("bandage") == 0; i++) sim.Tick();
+        for (var i = 0; i < 200 && Bandages(sim) == 0; i++) sim.Tick();
 
         Assert.Equal([coat!.Value, repeat!.Value], shop.Queue.Select(o => o.Id));
     }

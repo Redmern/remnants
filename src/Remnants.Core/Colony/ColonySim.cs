@@ -26,6 +26,8 @@ public sealed class ColonySim
 
     /// <summary>The story's missions, dialogue and maps (data/story). Optional; a colony with a campaign needs it to play the story.</summary>
     public Story.StoryData? Story { get; set; }
+    /// <summary>The raid model and defense catalogue (data/raids.json). Optional: without it no raids come and defenses cannot be built.</summary>
+    public Raids.RaidData? Raids { get; set; }
 
     public ColonySim(GameData data, ColonyState state, ScavengeData? scavenge = null)
     {
@@ -221,6 +223,15 @@ public sealed class ColonySim
     public IReadOnlyList<(string Tier, double Chance)> QualityChances(Building building, RecipeDef recipe) =>
         CraftingSystem.QualityChances(State, Data, Scavenge, building, recipe);
 
+    /// <summary>Whether a consumer building is fed by the grid now (the hook other features read; see <see cref="Colony.Power"/>).</summary>
+    public bool IsPowered(Building building) => Colony.Power.IsPowered(State, building);
+
+    /// <summary>The grid's generators, banks and consumers with what each did last tick (empty without electronics data).</summary>
+    public List<PowerNode> PowerNodes() => Colony.Power.Nodes(State, Data);
+
+    /// <summary>Total battery capacity on the grid.</summary>
+    public double PowerStorageCapacity => Colony.Power.StorageCapacity(State, Data);
+
     /// <summary>The scavenge party for the active expedition, from the members' current colony state.</summary>
     /// <summary>The active expedition's phase now, or null when no party is out.</summary>
     public ExpeditionPhase? CurrentExpeditionPhase => State.Expedition?.PhaseAt(State.Tick);
@@ -338,14 +349,21 @@ public sealed class ColonySim
     /// <summary>Unbuilt plots in ascending order.</summary>
     public IEnumerable<int> FreePlots() => Enumerable.Range(0, Data.Rules.Layout.PlotCount).Where(IsPlotFree);
 
+    /// <summary>A trade courier arrived and handed over its goods (for a toast).</summary>
+    public event Action<Trade.CourierDelivery>? CourierArrived;
+
+    internal void RaiseCourierArrived(Trade.CourierDelivery delivery) => CourierArrived?.Invoke(delivery);
+
     public void Tick()
     {
+        Colony.Power.Run(State, Data);
         ProductionSystem.Run(State, Data);
         HarvestSystem.Run(State, Data);
         CraftingSystem.Run(State, Data, Scavenge, _rng, this);
         StudySystem.Run(State, Data, Scavenge);
         Research.Run(this);
         MedicalSystem.Run(State, Data);
+        MedicineSystem.Run(this, _rng);
         FoodSystem.Run(State, Data, Scavenge, _rng);
         DayNightSystem.Run(State, Data);
         WeatherSystem.Run(State, Data, _rng);
@@ -358,6 +376,8 @@ public sealed class ColonySim
         WorldMap.Run(this);
         global::Remnants.Core.Story.Campaign.Tick(this);
         RadioMast.Run(this);
+        Trade.ColonyTrade.Run(this);
+        global::Remnants.Core.Raids.RaidSystem.Run(this);
         SyncRng();
     }
 
@@ -379,6 +399,8 @@ public sealed class ColonySim
             ApplyExtractionResult c => ExpeditionHandlers.Apply(this, c),
             AdmitPatient c => MedicalHandlers.Admit(this, c),
             Discharge c => MedicalHandlers.Discharge(this, c),
+            TreatSurvivor c => MedicineHandlers.Treat(this, c),
+            SetCarePriorities c => MedicineHandlers.SetPriorities(this, c),
             FitProsthetic c => MedicalHandlers.FitProsthetic(this, c),
             ScheduleSurgery c => CyberneticsHandlers.Schedule(this, c),
             CancelSurgery c => CyberneticsHandlers.Cancel(this, c),
@@ -392,12 +414,17 @@ public sealed class ColonySim
             SetNightShift c => DayNightHandlers.SetNightShift(this, c),
             SetHarvest c => HarvestHandlers.Set(this, c),
             InstallFloodlight c => DayNightHandlers.InstallFloodlight(this, c),
+            SetPower c => Colony.Power.SetPower(this, c),
             RepairBuilding c => WeatherHandlers.Repair(this, c),
+            InstallMod c => GearBenchHandlers.Install(this, c),
+            RemoveMod c => GearBenchHandlers.Remove(this, c),
+            UpgradeGear c => GearBenchHandlers.Upgrade(this, c),
             global::Remnants.Core.Story.TakeCall or global::Remnants.Core.Story.AdvanceDialogue or global::Remnants.Core.Story.ChooseDialogue
                 or global::Remnants.Core.Story.LaunchStoryMission => global::Remnants.Core.Story.Campaign.Execute(this, command),
             FitUpgrade c => VehicleRules.FitUpgrade(this, c),
             RepairVehicle c => VehicleRules.Repair(this, c),
             RemoveUpgrade c => VehicleRules.RemoveUpgrade(this, c),
+            global::Remnants.Core.Raids.IRaidCommand c => global::Remnants.Core.Raids.DefenseHandlers.Execute(this, c),
             _ => SchematicHandlers.Handle(this, command)
                  ?? CommandResult.Fail(CommandError.UnknownCommand, $"Unknown command {command.GetType().Name}."),
         };
@@ -417,6 +444,8 @@ public sealed class ColonySim
             if (r.Item is not null && !scavenge.Items.ContainsKey(r.Item)) throw new GameDataException($"Recipe '{r.Id}': unknown item '{r.Item}'.");
             foreach (var id in r.ItemInputs.Keys)
                 if (!scavenge.Items.ContainsKey(id)) throw new GameDataException($"Recipe '{r.Id}': unknown input item '{id}'.");
+            foreach (var id in r.Byproducts.Keys)
+                if (!scavenge.Items.ContainsKey(id)) throw new GameDataException($"Recipe '{r.Id}': unknown byproduct item '{id}'.");
         }
         if (data.Schematics.All.Keys.Where(id => !scavenge.Schematics.All.ContainsKey(id)).FirstOrDefault() is { } missing)
             throw new GameDataException($"Schematic '{missing}' is in the colony data but not in the scavenge data (load both from one schematics.json).");

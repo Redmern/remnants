@@ -140,7 +140,8 @@ internal static class ExpeditionHandlers
             || result.Returned.Concat(result.Recruits).Select(r => r.Survivor).Concat(result.Deaths).Any(s => s is null)
             || result.Returned.Select(r => r.Survivor.Id).Concat(result.Deaths.Select(d => d.Id)).Any(id => !memberIds.Contains(id)))
             return CommandResult.Fail(CommandError.ResultMismatch, "That result is not from this expedition.");
-        var allItems = result.Returned.Concat(result.Recruits).SelectMany(r => r.Equipment.Values.Concat(r.Pack)).Concat(result.Vehicle?.Stash ?? []);
+        var allItems = result.Returned.Concat(result.Recruits).SelectMany(r => r.Equipment.Values.Concat(r.Pack)).Concat(result.Secured ?? [])
+            .Concat(result.Vehicle?.Stash ?? []);
         if (allItems.FirstOrDefault(id => !data.Items.ContainsKey(id)) is { } unknown)
             return CommandResult.Fail(CommandError.UnknownItem, $"The result carries unknown item '{unknown}'.");
 
@@ -248,6 +249,14 @@ internal static class ExpeditionHandlers
         }
 
         VehicleHome(sim, expedition, result, report);
+        // What a cargo drone ferried out is home whatever became of the party.
+        foreach (var id in result.Secured ?? [])
+        {
+            if (data.Items[id].Schematic is { } schematic) ReceiveSchematic(sim, schematic, report);
+            else if (data.Items[id].Salvage is { } salvage) state.Stockpile.Add(salvage.Resource, salvage.Amount);
+            else state.Inventory.Add(id);
+            if (!expedition.Members.Any(m => m.AllItems.Contains(id))) report.Loot[id] = report.Loot.GetValueOrDefault(id) + 1;
+        }
         // Co-op: copies of what allies carried out; what the party saw but left behind becomes researchable.
         foreach (var id in result.SharedSchematics) ReceiveSchematic(sim, id, report);
         foreach (var (id, where) in result.HeardOf) Schematics.Schematics.HearOf(sim, id, where);
@@ -306,16 +315,36 @@ internal static class ExpeditionHandlers
     /// <summary>
     /// Worn gear goes back to the inventory; carried items too, except salvage, which becomes stockpile resources,
     /// schematics, which the colony learns (or queues for decrypting, or turns into Research Data when known), and food,
-    /// which goes into the pantry as a fresh lot.
+    /// which goes into the pantry as a fresh lot. Devices
+    /// with charges spent out there go on the charging bench instead (see <see cref="Power"/>), as many as the spent charges fill.
     /// </summary>
     private static void Stow(ColonySim sim, ReturnedSurvivor r, ExpeditionReport report)
     {
         var data = sim.Scavenge!;
-        foreach (var id in r.Equipment.Values) sim.State.Inventory.Add(id);
-        foreach (var id in r.Pack) StowItem(sim, id, report);
+        var spent = new Dictionary<string, int>(r.ChargesUsed ?? [], StringComparer.Ordinal);
+        void Put(string id)
+        {
+            var max = data.Items[id].Use?.Charges ?? 0;
+            if (max > 0 && spent.GetValueOrDefault(id) is var used and > 0)
+            {
+                var drained = Math.Min(max, used);
+                spent[id] = used - drained;
+                Power.Drained(sim.State, sim.Data, id, drained);
+                return;
+            }
+            sim.State.Inventory.Add(id);
+        }
+        foreach (var id in r.Equipment.Values) Put(id);
+        foreach (var id in r.Pack)
+        {
+            if (data.Items[id].Schematic is { } schematic) ReceiveSchematic(sim, schematic, report);
+            else if (data.Items[id].Salvage is { } salvage) sim.State.Stockpile.Add(salvage.Resource, salvage.Amount);
+            else if (sim.Data.Food?.IsFood(id) == true) Pantry.Add(sim.State, sim.Data, id, 1);
+            else Put(id);
+        }
     }
 
-    /// <summary>One carried item home: a schematic is learned, salvage becomes resources, food goes to the pantry, the rest to the inventory.</summary>
+    /// <summary>One item home from the vehicle's stash: a schematic is learned, salvage becomes resources, food goes to the pantry, the rest to the inventory.</summary>
     private static void StowItem(ColonySim sim, string id, ExpeditionReport report)
     {
         var data = sim.Scavenge!;

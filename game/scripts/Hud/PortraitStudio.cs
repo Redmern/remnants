@@ -20,7 +20,7 @@ public partial class PortraitStudio : Node
 
     private static PortraitStudio? _instance;
     private readonly Dictionary<string, ImageTexture> _cache = new();
-    private readonly Queue<(string Key, Func<ModelLibrary, Node3D> Build, ImageTexture Target)> _jobs = new();
+    private readonly Queue<(string Key, Func<ModelLibrary, Node3D> Build, ImageTexture Target, bool Whole)> _jobs = new();
     private ModelLibrary? _models;
     private SubViewport? _viewport;
     private Node3D? _stage;
@@ -56,6 +56,9 @@ public partial class PortraitStudio : Node
     /// <summary>Any model, cached under <paramref name="key"/> (which must change when the look does).</summary>
     public static Texture2D For(SceneTree tree, string key, Func<ModelLibrary, Node3D> build) => Instance(tree).Get(key, build);
 
+    /// <summary>A small object (a gear item with its mods) framed whole, side-on, cached under <paramref name="key"/>.</summary>
+    public static Texture2D Object(SceneTree tree, string key, Func<ModelLibrary, Node3D> build) => Instance(tree).Get(key, build, whole: true);
+
     /// <summary>A body's look for cache keys: life stage plus each part's condition and prosthetic kind.</summary>
     public static string LookOf(Body body) => Look("", body);
 
@@ -77,12 +80,12 @@ public partial class PortraitStudio : Node
         return stage + ":" + string.Join("", parts);
     }
 
-    private ImageTexture Get(string key, Func<ModelLibrary, Node3D> build)
+    private ImageTexture Get(string key, Func<ModelLibrary, Node3D> build, bool whole = false)
     {
         if (_cache.TryGetValue(key, out var texture)) return texture;
         texture = ImageTexture.CreateFromImage(Image.CreateEmpty(Pixels, Pixels, false, Image.Format.Rgba8));
         _cache[key] = texture;
-        _jobs.Enqueue((key, build, texture));
+        _jobs.Enqueue((key, build, texture, whole));
         return texture;
     }
 
@@ -130,16 +133,35 @@ public partial class PortraitStudio : Node
         }
         if (_jobs.Count == 0) return;
 
-        var (_, build, target) = _jobs.Dequeue();
+        var (_, build, target, whole) = _jobs.Dequeue();
         _models ??= ModelLibrary.Load();
         var model = build(_models);
-        model.RotationDegrees = new Vector3(0, -18, 0); // a three-quarter turn reads better than flat front-on
+        // A three-quarter turn reads better than flat front-on; an object is turned side-on, a little toward the camera.
+        model.RotationDegrees = whole ? new Vector3(12, -70, 0) : new Vector3(0, -18, 0);
         _stage.AddChild(model);
         // Rigged bodies stand in their idle pose (frame 0), so a portrait matches the figure on the map.
-        Anim.CharacterRig.PoseStill(model, "idle");
-        Frame(model);
+        if (!whole) Anim.CharacterRig.PoseStill(model, "idle");
+        if (whole) FrameWhole(model);
+        else Frame(model);
         _viewport.RenderTargetUpdateMode = SubViewport.UpdateMode.Once;
         _pending = (target, 2);
+    }
+
+    /// <summary>Points the camera at the whole model, sized to its larger side.</summary>
+    private void FrameWhole(Node3D model)
+    {
+        Aabb? bounds = null;
+        foreach (var mesh in model.FindChildren("*", "MeshInstance3D", true, false))
+            if (mesh is MeshInstance3D m && m.IsVisibleInTree())
+            {
+                var box = m.GlobalTransform * m.GetAabb();
+                bounds = bounds is { } b ? b.Merge(box) : box;
+            }
+        var aabb = bounds ?? new Aabb(new Vector3(-0.2f, 0, -0.2f), new Vector3(0.4f, 0.4f, 0.4f));
+        var center = aabb.GetCenter();
+        _camera!.Size = Mathf.Max(0.05f, Mathf.Max(aabb.Size.X, aabb.Size.Y) * 1.12f);
+        _camera.Position = center + new Vector3(0, 0, 6);
+        _camera.LookAt(center, Vector3.Up);
     }
 
     /// <summary>Points the camera at the top half of the model, sized to its height.</summary>

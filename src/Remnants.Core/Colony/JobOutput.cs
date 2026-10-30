@@ -38,6 +38,9 @@ public static class JobOutput
         return s.Body.WeightedEfficiency(job.BodyParts) * vitality;
     }
 
+    /// <summary>Conditions (fever, sickness) and pain from severe injuries (1 without medicine data).</summary>
+    public static double ConditionFactor(Survivor s, GameData? data) => Treatment.OutputFactor(data?.Medicine, s.Body);
+
     public static double LifeFactor(Survivor s, OutputRules rules) => s.IsChild ? rules.ChildOutputMultiplier : 1;
 
     public static double MoodFactor(Survivor s, OutputRules rules) =>
@@ -58,6 +61,7 @@ public static class JobOutput
         * HealthFactor(job, s, rules)
         * LifeFactor(s, rules)
         * MoodFactor(s, rules)
+        * ConditionFactor(s, data)
         * PerkFactor(job, s, data)
         * FoodEffects.OutputFactor(s, data);
 }
