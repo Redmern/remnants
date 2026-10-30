@@ -193,7 +193,7 @@ public static class RaidBattle
         }
         return new FieldMission
         {
-            Id = $"raid{raid.Id}", Name = $"{threat.Name} at the fence", AtHome = true,
+            Id = $"raid{raid.Id}", Name = $"{threat.Name} at the fence", AtHome = true, RescueDowned = true,
             Objectives =
             [
                 new ObjectiveDef { Id = "survive", Kind = ObjectiveKind.Survive, Text = $"Hold out {battle.Rounds} rounds", Count = battle.Rounds },
@@ -284,6 +284,8 @@ public static class RaidBattle
             var s = state.FindSurvivor(r.Survivor.Id)!;
             foreach (var line in BodyDiff.Describe(s.Body, r.Survivor.Body)) injured.Add(new(s.Name, line));
             s.Body = r.Survivor.Body;
+            foreach (var part in s.Body.Parts.Values.Where(p => p.Condition == PartCondition.Injured))
+                part.Severity = Math.Min(part.Severity, raids.Def.Battle.WoundCap);
             s.Health = Math.Clamp(r.Survivor.Health, 1, Survivor.MaxHealth);
             foreach (var (attribute, value) in r.Survivor.Attributes) s.Set(attribute, value);
             foreach (var (skill, value) in r.Survivor.Skills) s.Set(skill, Math.Max(s.Get(skill), value));

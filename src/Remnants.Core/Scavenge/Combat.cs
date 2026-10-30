@@ -229,6 +229,15 @@ public static class Combat
             sim.Kill(target, ScavengeEventType.Died, $"{target.Name} is dead.");
             return;
         }
+        if (state.Mission?.Def.RescueDowned == true && target.Kind == UnitKind.Survivor && target.PlayerId is not null)
+        {
+            target.Hp = 1;
+            target.Status = UnitStatus.Evacuated;
+            target.CarriedById = null;
+            state.Log(new(state.Round, ScavengeEventType.Downed, $"{target.Name} is down and dragged to safety.", target.Id, Pos: target.Pos));
+            sim.UpdateParties();
+            return;
+        }
         target.Status = UnitStatus.Downed;
         target.BleedOut = c.BleedOutRounds;
         target.Stabilized = false;

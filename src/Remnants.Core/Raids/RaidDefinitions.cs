@@ -291,6 +291,9 @@ public sealed record BattleRules
     public int Rounds { get; init; } = 8;
     public List<WaveRule> Waves { get; init; } = [new(1, 0.5), new(3, 0.3), new(5, 0.2)];
     public int MaxWaitHours { get; init; } = 6;
+
+    /// <summary>Wounds from a fight at home are dressed at once: no injury comes home worse than this severity.</summary>
+    public double WoundCap { get; init; } = 0.45;
 }
 
 public sealed record WaveRule(int Round, double Share);

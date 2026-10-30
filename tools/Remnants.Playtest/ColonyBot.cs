@@ -24,6 +24,9 @@ public sealed record BotOptions
 
     /// <summary>Story mode: which option the party bot picks on a field prompt (0 = the first, e.g. talk to the Tally).</summary>
     public int StoryPrompt { get; init; }
+
+    /// <summary>Fight every raid it can on the tactical map (StoryBot plays the defenders) instead of auto-resolving.</summary>
+    public bool FightRaids { get; init; }
 }
 
 /// <summary>
@@ -53,7 +56,7 @@ public sealed class ColonyBot
     {
         _sim = sim;
         _options = options ?? new BotOptions();
-        Defense = new DefenseBot(sim, this);
+        Defense = new DefenseBot(sim, this, _options.FightRaids);
     }
 
     /// <summary>Defenses, guards and raid prep (does nothing without raid data).</summary>

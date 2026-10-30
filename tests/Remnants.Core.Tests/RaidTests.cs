@@ -552,6 +552,10 @@ public class RaidBattleTests
         Assert.True(report.Fought);
         Assert.Null(sim.State.Defense.Raid);
         Assert.Equal(result.Mission!.Outcome == Remnants.Core.Scavenge.MissionOutcome.Done, report.Repelled);
+        // Downed defenders are dragged to safety, and their wounds come home dressed.
+        Assert.DoesNotContain(battle.State.Units, u => u.Kind == Remnants.Core.Scavenge.UnitKind.Survivor && u.Status == Remnants.Core.Scavenge.UnitStatus.Dead && u.Hp > -10);
+        Assert.All(sim.State.Survivors.SelectMany(s => s.Body.Parts.Values).Where(p => p.Condition == PartCondition.Injured),
+            p => Assert.True(p.Severity <= RaidTestData.Real.Def.Battle.WoundCap + 1e-9));
     }
 
     [Fact]

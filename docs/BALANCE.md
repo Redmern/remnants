@@ -712,6 +712,15 @@ economic cost is labour: a guard is a worker lost, so the bot posts guards only 
 pushed Town Hall 2 to day 44, injuries mattered far less). Husks are most of the raids (night, from the north); raiders
 come up the road once the stock grows.
 
+### Fought raids (`--fight`: StoryBot plays every raid on the colony map)
+
+20 seeds × 60 days: 108 raids, 90 held (83%; auto-resolve 68%), first raid held 20/20, no raid deaths, population 120 at the
+end (auto-resolve 122), Town Hall 2 at day 35.6 (median). The first pass killed 86 survivors: defenders bled out or were
+finished where they fell, and field wounds came home above the worsen threshold and killed later (41 "untreated" deaths).
+Two rules fixed it: in a raid battle a downed defender is dragged to safety at once (`FieldMission.RescueDowned`), and
+wounds come home dressed (`battle.woundCap` 0.45, below `medical.worsenThreshold`). The report's "hurt" counts every injured
+part from the field, so it reads high next to auto-resolve's one line per survivor.
+
 ### Watch next pass
 
 - Guards are strong but expensive for a small colony; a part-time watch (a rota) may be the better early choice.

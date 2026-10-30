@@ -127,7 +127,8 @@
     "zone": "outskirts",
     "rounds": 8,
     "waves": [ { "round": 1, "share": 0.5 }, { "round": 3, "share": 0.3 }, { "round": 5, "share": 0.2 } ],
-    "maxWaitHours": 6
+    "maxWaitHours": 6,
+    "woundCap": 0.45
   },
   "repair": { "hpPerWorkerTick": 4, "baseHpPerTick": 1, "buildingCostShare": 0.5, "removeRefund": 0.5 },
   "defenses": [
