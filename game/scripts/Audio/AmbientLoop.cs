@@ -72,7 +72,7 @@ public sealed class AmbientLoop
         AudioManager.EnsureLoop(stream, asset?.LoopStart ?? 0);
         var tuning = audio.Map.Tuning(SoundId);
         _baseDb = (asset?.VolumeDb ?? 0) + tuning.VolumeDb;
-        var bus = tuning.Bus ?? AudioBuses.Ambience;
+        var bus = tuning.Bus ?? AudioBuses.ForManifest(asset?.Bus ?? "") ?? AudioBuses.Ambience;
         if (_position is { } at)
         {
             var p = new AudioStreamPlayer3D

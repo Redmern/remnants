@@ -81,7 +81,7 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
 - `ModelLibrary` — reads `assets/generated/manifest.json`; buildings map to `{type}_l{level}` (nearest
   lower level, then a placeholder box), survivors to `survivor_adult_male|female` / `survivor_child`
   (placeholder capsule), dressed by `SurvivorDressing` (below). `tools/sync-assets.sh [EXPORT_DIR]` refreshes `assets/generated/` from the
-  remnants-assets `export/` (default `../../remnants-assets/main/export`).
+  remnants-assets `export/` (default `../../remnants-assets/main/export`), models and `audio/` alike.
 - `SurvivorDressing` (shared by both views, purely visual): missing limbs hidden; prosthetics swapped in at the joint,
   `prosthetic_*_hook|peg_*` below quality 1, `*_cyborg_*` from there; equipped gear hung on the body's manifest
   `sockets` (the `item_{baseId}` model's `attach` point lands on the socket, under the part it rides on, turned by its
@@ -189,19 +189,21 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   See `MULTIPLAYER.md`.
 
 - `scripts/Audio/` — presentation only, no rules. `AudioManager` is the one autoload (`project.godot`): it makes the
-  buses (`AudioBuses`: Master with compressor + limiter → Music, SFX (→ UI, World), Ambience; Music and Ambience duck
-  under stings), reads `assets/generated/audio/manifest.json` (`AudioManifest`: id, category, file, variants, loop
-  points, default volume, tags, bpm, stems; synced from remnants-assets `export/audio/`) and the event map
+  buses (`AudioBuses`: Master with compressor + limiter → Music, SFX (→ UI, World, SFXStereo), Ambience; Music and
+  Ambience duck under stings; per-bus trims from the map's `mix`, measured with `--audio-meter`), reads `assets/generated/audio/manifest.json` (`AudioManifest`: id, category, bus, file, variants, loop
+  points, default volume, tags, music bpm / sync group, stems; synced with the models from remnants-assets `export/` by
+  `tools/sync-assets.sh`, then imported by Godot) and the event map
   `game/audio/sound_events.json` (`SoundEventMap`: dotted event names → sound ids, falling back by dropping the last
   part; per-id tuning — bus, volume, pitch/volume jitter, cooldown, voice limit, 3D attenuation, duck; music states;
   ambience; zone → tags → loops; weather loops). `Fire(event, pos?)`, `Play(id)`, `PlayAt(id, pos)` play pooled
   voices with a random variant; an id the manifest lacks stays silent and is logged once (`PlaceholderSounds`
   synthesises a few UI blips and two stings until the files land). Retuning is a data edit.
   - `MusicDirector` — states menu, colony_day/night/tension, world_map, scavenge_explore/combat, after_action,
-    coop_lobby; crossfades on the next bar (bpm from the manifest), never restarts a state's track, stems by
-    `Intensity`, `linked_layer` on top, one-shot stings (`music.extraction_sting`).
+    coop_lobby; crossfades on the next bar (bpm from the manifest) or at once at the same position within a
+    sync group (scavenge explore / combat / layers), never restarts a state's track, stems by `Intensity`, layers on
+    top (`linked_layer`, `contact_layer` while something is heard but not seen), one-shot stings (`music.extraction_sting`).
   - Scene hooks, one node each: `ColonyAudio` (colony events at their buildings, day/night bed — the one day/night
-    decision is `ColonyAudio.IsNight` —, campfire, work loops at staffed buildings, listener height follows zoom,
+    decision is `ColonyAudio.IsNight`; the music holds day or night 90 s, since a day passes in seconds —, campfire, work loops at staffed buildings, listener height follows zoom,
     music state), `ScavengeAudio` (each replayed event via `ScavengeScreen`'s replay step, so sound lands with the
     animation: attacks by action, moves/deaths/hits by who, barks, overwatch shots, contacts, hacked devices by
     kind, drone hum; zone ambience; combat/explore music and the Linked layer), `UiAudio` (buttons, overlays, side
@@ -210,7 +212,8 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
     `Lightning(distance)`, `Gust()`; nothing drives it yet).
   - `--audio-trace` logs every fired event and its sound; `--audio-selftest` (run by `run-tests.sh --godot`) checks
     every Core event type is mapped and replays a scripted colony, an autopiloted scavenge run and the hack/drone
-    events, failing when key events pick the wrong id; `--weather=KIND[:INTENSITY]` sets the weather bed.
+    events, failing when key events pick the wrong id; `--weather=KIND[:INTENSITY]` sets the weather bed; `--audio-meter` prints each bus's peak every second. Once the
+    export is synced the self-test also fails on a mapped id the manifest lacks or a file that does not load.
 
 ## Rules of the road
 

@@ -14,7 +14,8 @@ namespace Remnants.Game.Audio;
 /// variant with pitch and volume jitter, and respects the id's cooldown and voice limit. A sound the manifest lacks
 /// stays silent (or uses a <see cref="PlaceholderSounds"/> stand-in) and is logged once.
 /// <para>Debug: <c>--audio-trace</c> prints every fired event and the sound it chose; <see cref="Fired"/> reports them
-/// to code (the self-test, the visual cues).</para>
+/// to code (the self-test, the visual cues). <c>--audio-meter</c> prints each bus's loudest peak (dBFS) every second,
+/// for checking the mix without ears.</para>
 /// </summary>
 public partial class AudioManager : Node
 {
@@ -31,7 +32,9 @@ public partial class AudioManager : Node
 
     private float _duckDb, _duckTarget;
     private double _duckHoldUntil, _duckRelease = 1.5;
-    private bool _trace;
+    private bool _trace, _meter;
+    private double _meterAt;
+    private readonly Dictionary<string, float> _peaks = new();
 
     public static AudioManager? Instance { get; private set; }
 
@@ -52,8 +55,10 @@ public partial class AudioManager : Node
         ProcessMode = ProcessModeEnum.Always;
         AudioBuses.Ensure();
         _trace = DebugCapture.HasFlag("--audio-trace") || DebugCapture.HasFlag("--audio-selftest");
+        _meter = DebugCapture.HasFlag("--audio-meter");
         Manifest = AudioManifest.Load();
         Map = SoundEventMap.Load();
+        AudioBuses.SetTrims(Map.Mix);
         GD.Print($"Audio: {Manifest.Count} sounds from {Manifest.Source ?? "(no manifest yet)"}, {Map.Events.Count} events mapped.");
 
         for (var i = 0; i < Pool2D; i++)
@@ -103,6 +108,22 @@ public partial class AudioManager : Node
         var step = (float)delta * (_duckTarget < _duckDb ? 60f : 9f / (float)Math.Max(_duckRelease, 0.1));
         var next = Mathf.MoveToward(_duckDb, _duckTarget, step);
         if (!Mathf.IsEqualApprox(next, _duckDb)) AudioBuses.Duck(_duckDb = next);
+        if (_meter) Meter(now);
+    }
+
+    private void Meter(double now)
+    {
+        for (var i = 0; i < AudioServer.BusCount; i++)
+        {
+            var peak = Mathf.Max(AudioServer.GetBusPeakVolumeLeftDb(i, 0), AudioServer.GetBusPeakVolumeRightDb(i, 0));
+            var name = AudioServer.GetBusName(i);
+            _peaks[name] = Mathf.Max(_peaks.GetValueOrDefault(name, -200), peak);
+        }
+        if (now < _meterAt) return;
+        _meterAt = now + 1;
+        GD.Print("[audio-meter] " + string.Join("  ", _peaks.Select(kv => $"{kv.Key} {(kv.Value < -80 ? "-" : kv.Value.ToString("0.0"))}"))
+                 + $"  duck {_duckDb:0.0}");
+        _peaks.Clear();
     }
 
     /// <summary>Fires a mapped event (<see cref="SoundEventMap"/>): 2D, or positional when <paramref name="at"/> is given.</summary>
@@ -147,7 +168,8 @@ public partial class AudioManager : Node
         _lastPlayed[soundId] = now;
         var volume = tuning.VolumeDb + (asset?.VolumeDb ?? 0) + _rng.RandfRange(-tuning.VolumeJitter, tuning.VolumeJitter);
         var pitch = 1 + _rng.RandfRange(-tuning.PitchJitter, tuning.PitchJitter);
-        var bus = tuning.Bus ?? AudioBuses.ForCategory(asset?.Category ?? (soundId.StartsWith("ui_") ? "ui" : "sfx"));
+        var bus = tuning.Bus ?? AudioBuses.ForManifest(asset?.Bus ?? "")
+            ?? AudioBuses.ForCategory(asset?.Category ?? (soundId.StartsWith("ui_") ? "ui" : "sfx"));
         if (at is { } pos)
         {
             var p = Take(_players3D);

@@ -18,6 +18,12 @@ public sealed record SoundAsset(
     string Id, string Category, IReadOnlyList<string> Files, double Duration, bool Loop, double LoopStart, double LoopEnd,
     float VolumeDb, IReadOnlyList<string> Tags, double Bpm, int BeatsPerBar, IReadOnlyList<SoundStem> Stems)
 {
+    /// <summary>The pipeline's mix bus (music, layer, ambience, sfx, sfx_stereo, ui, sting); see <see cref="AudioBuses.ForManifest"/>.</summary>
+    public string Bus { get; init; } = "";
+
+    /// <summary>Music that shares a sync group has the same tempo and length: switch between them at the same position.</summary>
+    public string? SyncGroup { get; init; }
+
     /// <summary>Seconds per bar, for crossfades on bar-ish boundaries (4/4 at 90 bpm when the manifest says nothing).</summary>
     public double BarSeconds => 60.0 / (Bpm > 0 ? Bpm : 90) * (BeatsPerBar > 0 ? BeatsPerBar : 4);
 }
@@ -25,8 +31,9 @@ public sealed record SoundAsset(
 /// <summary>
 /// Reads <c>res://assets/generated/audio/manifest.json</c>, synced from the remnants-assets <c>export/audio/</c> by
 /// <c>tools/sync-assets.sh</c>. Accepts <c>{ "sounds"|"assets": [...] }</c> or a bare array of
-/// <c>{id, category, file, duration?, loop?|loop_start?|loop_end?, volume?|volume_db?, tags?, variants?, bpm?,
-/// beats_per_bar?, stems?}</c>, in snake_case or camelCase; malformed entries are skipped. A missing manifest is an
+/// <c>{id, category, bus?, file, variants?, duration_s?, loop?: null|true|{start_s, end_s}, default_volume_db?|
+/// default_volume?, tags?, music?: {bpm, bars, sync_group}, stems?}</c> (camelCase spellings too, and the older
+/// <c>duration</c> / <c>loop_start</c> / <c>volume_db</c>); malformed entries are skipped. A missing manifest is an
 /// empty one: the game stays silent apart from <see cref="PlaceholderSounds"/>.
 /// </summary>
 public sealed class AudioManifest
@@ -91,15 +98,15 @@ public sealed class AudioManifest
             case { ValueKind: JsonValueKind.True }: loop = true; break;
             case { ValueKind: JsonValueKind.Object } points:
                 loop = true;
-                loopStart = Num(points, "start") ?? loopStart;
-                loopEnd = Num(points, "end") ?? loopEnd;
+                loopStart = Num(points, "start_s") ?? Num(points, "start") ?? loopStart;
+                loopEnd = Num(points, "end_s") ?? Num(points, "end") ?? loopEnd;
                 break;
         }
         loop |= Num(e, "loop_start") is not null || Num(e, "loop_end") is not null;
 
         // "volume" is linear 0..1 (the pipeline's "default volume"); "volume_db" wins when both are given.
         var linear = Num(e, "volume") ?? Num(e, "default_volume");
-        var volumeDb = Num(e, "volume_db") is { } db ? (float)db
+        var volumeDb = (Num(e, "default_volume_db") ?? Num(e, "volume_db")) is { } db ? (float)db
             : linear is { } lin ? Mathf.LinearToDb((float)Math.Max(lin, 0.0001)) : 0f;
 
         var stems = new List<SoundStem>();
@@ -111,8 +118,14 @@ public sealed class AudioManifest
         var tags = Prop(e, "tags") is { ValueKind: JsonValueKind.Array } t
             ? t.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()!).ToArray()
             : [];
-        return new SoundAsset(id, Str(e, "category") ?? "", files, Num(e, "duration") ?? 0, loop, loopStart, loopEnd, volumeDb,
-            tags, Num(e, "bpm") ?? 0, (int)(Num(e, "beats_per_bar") ?? 0), stems);
+        // Music metadata sits in a "music" object in the pipeline's manifest, or flat.
+        var music = Prop(e, "music") is { ValueKind: JsonValueKind.Object } m ? m : e;
+        return new SoundAsset(id, Str(e, "category") ?? "", files, Num(e, "duration_s") ?? Num(e, "duration") ?? 0, loop, loopStart,
+            loopEnd, volumeDb, tags, Num(music, "bpm") ?? 0, (int)(Num(music, "beats_per_bar") ?? 0), stems)
+        {
+            Bus = Str(e, "bus") ?? "",
+            SyncGroup = Str(music, "sync_group"),
+        };
     }
 
     /// <summary>A property by its snake_case name, or the camelCase spelling of it.</summary>

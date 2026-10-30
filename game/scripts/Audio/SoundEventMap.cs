@@ -50,6 +50,9 @@ public sealed class SoundEventMap
     public Dictionary<string, string> ZoneAmbience { get; } = new();
     public Dictionary<string, string[]> Weather { get; } = new();
 
+    /// <summary>"mix": dB trim per bus (Music, Ambience, UI, World, SFXStereo), see <see cref="AudioBuses.SetTrims"/>.</summary>
+    public Dictionary<string, float> Mix { get; } = new();
+
     public static SoundEventMap Load(string path = Path)
     {
         var map = new SoundEventMap();
@@ -85,6 +88,9 @@ public sealed class SoundEventMap
             foreach (var a in amb.EnumerateObject())
                 if (a.Value.ValueKind == JsonValueKind.String) Ambience[a.Name] = a.Value.GetString()!;
                 else if (a.Name == "work") Strings(amb, "work", WorkLoops);
+        if (root.TryGetProperty("mix", out var mix))
+            foreach (var m in mix.EnumerateObject())
+                if (m.Value.ValueKind == JsonValueKind.Number) Mix[m.Name] = m.Value.GetSingle();
         if (root.TryGetProperty("weather", out var weather))
             foreach (var w in weather.EnumerateObject()) Weather[w.Name] = Ids(w.Value);
         if (root.TryGetProperty("zones", out var zones))

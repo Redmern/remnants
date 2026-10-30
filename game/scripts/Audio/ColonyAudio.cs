@@ -13,7 +13,8 @@ namespace Remnants.Game.Audio;
 /// building when the event names one; <c>ui.error</c> for refused commands. Runs the ambience — a day / night bed
 /// following the in-game clock, the campfire on the commons, and a work loop at each building with workers present —
 /// and sets the music: world_map or after_action while those are open, colony_tension under pressure (people
-/// homeless, beds over capacity, someone starving, under three days of food), else colony_day / colony_night.
+/// homeless, beds over capacity, someone starving, under three days of food), else colony_day / colony_night (held at
+/// least <see cref="MusicDwellSeconds"/>, since a colony day passes in seconds; the beds follow the clock).
 /// The listener rides above the camera's focus at a height that grows with zoom, so zooming out quietens the town.
 /// </summary>
 public partial class ColonyAudio : Node3D
@@ -29,6 +30,12 @@ public partial class ColonyAudio : Node3D
     private AmbientLoop? _day, _night, _campfire;
     private readonly Dictionary<int, AmbientLoop> _work = new();
     private ColonyEvent? _lastSeen;
+
+    /// <summary>Real seconds the colony music keeps to day or night before following the clock again.</summary>
+    private const double MusicDwellSeconds = 90;
+
+    private bool _musicNight;
+    private double _musicFlippedAt = double.NegativeInfinity;
     private double _since;
 
     public void Setup(ColonySession session, TownLayout layout, OrbitCamera camera, ColonyHud hud)
@@ -108,11 +115,18 @@ public partial class ColonyAudio : Node3D
         var night = IsNight(sim);
         if (_day is not null) _day.Level = night ? 0 : 1;
         if (_night is not null) _night.Level = night ? 1 : 0;
+        // A colony day is a few real minutes at most (12 s at 1x), so the music only turns day/night after holding.
+        var now = Time.GetTicksMsec() / 1000.0;
+        if (night != _musicNight && now - _musicFlippedAt >= MusicDwellSeconds)
+        {
+            _musicNight = night;
+            _musicFlippedAt = now;
+        }
         AudioManager.Instance?.Music.SetState(
             _hud.WorldMap.Visible ? "world_map"
             : _hud.Report.Visible ? "after_action"
             : Tension(sim) ? "colony_tension"
-            : night ? "colony_night" : "colony_day");
+            : _musicNight ? "colony_night" : "colony_day");
         SyncWork();
     }
 

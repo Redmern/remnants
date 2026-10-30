@@ -76,7 +76,8 @@ public partial class MusicDirector : Node
         var track = AudioManager.Instance?.Map.Music.GetValueOrDefault(state);
         if (track == CurrentTrack) return;
         _pendingTrack = track;
-        _switchAt = Time.GetTicksMsec() / 1000.0 + UntilNextBar();
+        // Tracks in one sync group switch at the same position, so they can crossfade at once; others wait for the bar.
+        _switchAt = Time.GetTicksMsec() / 1000.0 + (SameGroup(_decks[_front].Asset, track) ? 0 : UntilNextBar());
         if (track is null) _pendingTrack = "";  // fade to silence on the next bar
     }
 
@@ -92,9 +93,10 @@ public partial class MusicDirector : Node
             _layers[layer] = deck;
             if (!Load(deck, id)) return;
             var front = _decks[_front];
-            deck.Player.Play(front.Player.Playing && front.Asset?.Duration == deck.Asset?.Duration ? front.Player.GetPlaybackPosition() : 0);
+            deck.Player.Play(SyncedWith(front, deck) ? front.Player.GetPlaybackPosition() : 0);
         }
-        else if (on && !deck.Player.Playing && deck.TrackId is not null) deck.Player.Play();
+        else if (on && !deck.Player.Playing && deck.TrackId is not null)
+            deck.Player.Play(SyncedWith(_decks[_front], deck) ? _decks[_front].Player.GetPlaybackPosition() : 0);
         deck.Target = on ? deck.Asset?.VolumeDb ?? 0 : Silent;
         deck.Speed = (60f) / LayerFadeSeconds;
     }
@@ -126,7 +128,7 @@ public partial class MusicDirector : Node
         deck.Target = deck.Asset?.VolumeDb ?? 0;
         deck.Speed = (deck.Target - Silent) / FadeSeconds;
         ApplyStems(deck);
-        deck.Player.Play();
+        deck.Player.Play(SyncedWith(old, deck) ? old.Player.GetPlaybackPosition() : 0);
     }
 
     private static bool Load(Deck deck, string id)
@@ -178,6 +180,14 @@ public partial class MusicDirector : Node
             player.VolumeDb = Mathf.MoveToward(player.VolumeDb, deck.Target, Mathf.Max(deck.Speed, 10f) * delta);
         if (deck.Target <= Silent && player.VolumeDb <= Silent + 0.5f) player.Stop();
     }
+
+    /// <summary>Whether <paramref name="to"/> should start where <paramref name="from"/> is: both in one sync group, and it is playing.</summary>
+    private static bool SyncedWith(Deck from, Deck to) =>
+        from.Player.Playing && from.Asset?.SyncGroup is { } group && group == to.Asset?.SyncGroup;
+
+    private static bool SameGroup(SoundAsset? current, string? track) =>
+        current?.SyncGroup is { } group && track is not null && AudioManager.Instance?.Manifest.TryGet(track, out var next) == true
+        && next.SyncGroup == group;
 
     /// <summary>Seconds to the current track's next bar line, capped; 0 when nothing plays.</summary>
     private double UntilNextBar()

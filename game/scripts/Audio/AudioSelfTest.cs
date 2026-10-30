@@ -40,21 +40,21 @@ public partial class AudioSelfTest : Node
         Scavenge();
         foreach (var ui in new[] { "ui.click", "ui.hover", "ui.confirm", "ui.error", "ui.panel_open", "ui.panel_close", "ui.toast" }) audio.FireEvent(ui);
 
-        Expect("colony.constructed", "sfx_build_done");
-        Expect("colony.upgraded", "sfx_build_upgrade");
-        Expect("colony.expedition_launched", "sfx_expedition_launch");
-        Expect("scavenge.moved.survivor", "sfx_step_survivor");
-        Expect("scavenge.extracted", "sfx_extract");
+        Expect("colony.constructed", "ui_build_complete");
+        Expect("colony.upgraded", "ui_upgrade");
+        Expect("colony.expedition_launched", "ui_expedition_launch");
+        Expect("scavenge.step.floor", "footstep_concrete");
+        Expect("scavenge.extracted", "extraction_marker");
         Expect("ui.click", "ui_click");
-        Expect("scavenge.hack_progress", "hack_start");
+        Expect("scavenge.hack_progress", "hack_progress_tick");
         Expect("scavenge.hacked", "hack_success");
         Expect("scavenge.device.turret", "turret_activate");
         Expect("scavenge.device.door", "door_open");
         Expect("scavenge.hack_failed", "hack_fail_alarm");
-        Expect("scavenge.drone_deployed", "drone_deploy");
-        Expect("scavenge.marked", "drone_mark");
-        Expect("scavenge.died.drone", "drone_destroyed");
-        if (map.Ambience.GetValueOrDefault("drone") != "drone_loop") Fail("the drone hum is not drone_loop");
+        Expect("scavenge.drone_deployed", "hack_start");
+        Expect("scavenge.marked", "scanner_sweep");
+        Expect("scavenge.died.drone", "linked_death");
+        if (map.Ambience.GetValueOrDefault("drone") != "drone_buzz_loop") Fail("the drone hum is not drone_buzz_loop");
 
         WeatherAudio.Set("heavy_rain", 0.7f);
         WeatherAudio.Lightning(0);
@@ -64,6 +64,17 @@ public partial class AudioSelfTest : Node
         if (!_fired.Any(f => f.Event == "ui.click" && f.Audible)) Fail("ui.click did not play (its placeholder should)");
 
         var missing = map.AllSoundIds().Where(id => !audio.Manifest.TryGet(id, out _) && !PlaceholderSounds.Has(id)).ToList();
+        // Once the export is synced every mapped id must be in it: a typo or a renamed sound fails here, not in silence.
+        if (audio.Manifest.Count > 0)
+            foreach (var id in missing) Fail($"'{id}' is mapped but not in the manifest");
+        if (audio.Manifest.Count > 0)
+        {
+            var used = map.AllSoundIds().ToHashSet();
+            var unused = audio.Manifest.All.Select(a => a.Id).Where(id => !used.Contains(id)).OrderBy(id => id).ToList();
+            GD.Print($"[audio-selftest] manifest sounds not mapped yet ({unused.Count}): {string.Join(", ", unused)}");
+            foreach (var asset in audio.Manifest.All)
+                if (audio.Stream(asset.Id, asset) is null) Fail($"'{asset.Id}' does not load ({asset.Files[0]})");
+        }
         GD.Print($"[audio-selftest] {_fired.Count} events fired, {_fired.Count(f => f.Audible)} audible; " +
                  $"{map.AllSoundIds().Count()} sound ids mapped, {missing.Count} not in the manifest yet.");
         foreach (var f in _failures) GD.PrintErr($"[audio-selftest] FAIL {f}");
