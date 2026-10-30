@@ -171,7 +171,7 @@ public sealed record WeaveDef
 /// <summary>
 /// A weapon light. In the dark the carrier sees hostiles within <see cref="Range"/> in a cone of <see cref="ConeDegrees"/>
 /// toward where it last faced, as by day; it loses <see cref="StealthPenalty"/> stealth, and with <see cref="Beacon"/> it is
-/// seen by anyone with line of sight in reach of the light, like a muzzle flash.
+/// seen by anyone with line of sight to it within their sight before the dark.
 /// </summary>
 public sealed record LightDef
 {

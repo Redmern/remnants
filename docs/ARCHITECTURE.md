@@ -1121,6 +1121,73 @@ buildings join the colony data (`GameData.Electronics`). Core: `Data/Electronics
 - **Saves**: colony 18 (`Power`, `Charging`), scavenge 10 (decoys, EMP stuns, charges, secured cargo); keyed on presence, so
   older saves load with an empty grid and nothing charging.
 - Tests: `ElectronicsTests.cs` (data, power, disassembly, field devices, drone roles, saves), `ElectronicsNetTests`.
+## Gear mods
+
+Weapon, armor and clothing mods and Mk II / III upgrades, one framework for all gear. Data: `gear_mods.json` (rules, slots,
+gear types with their slots and slot counts per Mk, the moddable gear and its upgrade family, the marks, the mods and their
+effects, upgrade kits, headgear, zone biomes, extra enemy tags / drops / terminal loot, recipes) and
+`schematics.gearmods.json` (the gated recipes' schematics, in the Schematics module's catalogue format). Core:
+`Items/GearMods.cs`, `Items/ItemCatalog.cs`, `Items/GearBench.cs`, `Items/GearModSchematics.cs`, `Scavenge/GearEffects.cs`,
+`Colony/GearBenchHandlers.cs`. Balance: BALANCE.md "Gear mods".
+
+- **A modded piece is an item id**: `base[@quality][+mk2|+mk3][+mod[@quality]]...`, mods in the type's slot order
+  (`GearModsData.Canonical`), so the same build always has the same id and stacks. `ScavengeData.Items` is an `ItemCatalog`:
+  defined items and quality variants as before, and any valid modded id resolved on demand (`GearModsData.Check` + `Build`;
+  cached, pure); enumerating it lists only the defined items, so modded gear is never loot. Everything that stores item ids —
+  the colony inventory, expeditions, units' equipment and packs, caches, fitted prosthetics, saves, the wire, trades between
+  players — carries the mods with no extra state, and `Items.ContainsKey` is the validation (a save or a joining party with a
+  build gear_mods.json does not allow is refused like an unknown item). `ItemDef` gains `Mk`, `Mods`, `UnmoddedId` /
+  `IsModded`; `DefinedId` stays the base item (models, icons, recipe inputs). Recipe item inputs never take modded gear.
+- **Types and slots**: firearm (sight, muzzle, stock, underbarrel: 2 / 3 / 4 at Mk I / II / III), melee (edge, grip, coil:
+  1 / 2 / 3), integrated (a fitted gun arm: one of sight, muzzle, underbarrel), armor (plating, lining, outer, webbing:
+  2 / 3 / 4), clothing (lining, outer, webbing: 2 / 3 / 3), helmet (plating, lining, visor: 1 / 2 / 3), mask (visor: 1).
+  Families (sidearm, long gun, carbine, melee, clothing, armor, plating) name the kit per Mk.
+- **Effects** (`ModEffect`): on attacks (ranged mods change ranged attacks, melee mods melee ones) accuracy (per action id
+  too: a compensator on bursts), damage, reach, noise, reveal, AP, strength scaling, armor pierce, injury multiplier, a
+  scope's close-range AP (`ActionDef.CloseRange` / `CloseApPenalty`, `Combat.ApCost`), a stock's share of the after-moving
+  penalty, extra banes (`ActionDef.ExtraBanes`: EMP coil vs `network` and `device`, incendiary rounds vs `husk`, a shock
+  coil's `stun`), EMP feedback; on the piece armor, melee armor, injury resist, stealth, carry, sight, detection, move noise,
+  camo, weather protection, thermal mask, Network weave, a light. A mod's quality scales it: benefits × the tier's
+  multiplier, drawbacks ÷ it (`ModEffect.AtQuality`). A Mk adds damage and accuracy to weapons, armor (base + bonus, × a
+  multiplier) and coverage to worn gear, and a little weight, and stacks with quality.
+- **Coverage and the Head slot**: `EquipSlot.Head` (`ItemKind.Headgear`: scrap helmet, riot helmet, gas mask). Gear with
+  `coverage` counts its armor only on hits to those regions (`UnitProfile.RegionArmor`, `ArmorAgainst(region, melee)`);
+  gear without it protects every part as before. `Combat.Strike` takes armor for the part hit (after the hit location
+  roll, so the RNG stream is unchanged), less the attack's pierce; injury severity × the attack's injury multiplier ×
+  (1 − the wearer's injury resist).
+- **In the field** (`GearEffects`): a ranged attack after moving this turn (`Unit.Moved`) loses
+  `rules.movedAccuracyPenalty` (the Linked and machines do not), less a stock's share; a **weapon light** in the dark (human
+  sight below `darkBelowSight`: night, or blinding weather) lets its carrier see in a cone toward `Unit.Facing` (set by
+  moves and attacks) as by day (`Detection.Spots`, `Visibility.SideVisible`), costs it stealth, and as a beacon shows it to
+  anyone with line of sight in their pre-dark sight; **camo** adds stealth in zones of its biome (`zoneBiomes`); **thermal
+  masking** adds stealth in the dark against the senses that see through it and hides from thermal eyes (not scanners);
+  **Network weave** adds stealth against the Linked's senses, takes its share off Network interference and EMP feedback,
+  and Husks hear its wearer further (`HuskLure`); **plates** clank (`MoveNoise`: idle enemies in earshot of a move come
+  looking, and parties hear it further; quiet fabric takes it off); **weather protection** keeps a weather's effects off the
+  wearer's senses (`FieldEnvironment.EffectsFor`; the ids wait for the weather pass); an **EMP shot** may lock up Network-grade
+  parts of the shooter's side within 1 tile (`GearEffects.Feedback`, one roll per part).
+- **Gear Bench** (`GearBench`: pure; `InstallMod`, `RemoveMod`, `UpgradeGear` colony commands): mods go on and come off
+  gear in the inventory (or a survivor's fitted gun arm: `SurvivorId` + `Part`) at an Armory, Workshop or Tailor; fitting
+  into a taken slot swaps the old mod out; removing returns it intact; kits are fitted at the Armory or Tailor, one Mk at a
+  time. Errors `NoBench`, `NotModdable`, `ModDoesNotFit`, `NoFreeModSlot`, `EmptyModSlot`, `WrongKit`, `MaxMk`; event
+  `GearModded`. In the field `FieldMod` (Jury-rig, `field_repair`; `rules.fieldApCost` AP) fits a mod from the pack to an
+  equipped piece or takes one off into the pack (scavenge event `GearModded`).
+- **Crafting**: mod and kit recipes at the Workshop (simple mods, scrap helmet), Tailor (clothing mods, gas mask, clothing
+  kits), Armory (firearm mods, plates, visor, riot helmet, weapon and armor kits) and Electronics Lab (light, laser, shock
+  coil, thermal masking, and the Network-grade EMP coil and weave from Linked cores). Crafted mods roll a quality from the
+  crafter's skill like gear. Mods, kits and schematics are loot; the EMP coil, weave and carbine/plating kit schematics also
+  drop from the Linked and come from terminals.
+- **Schematics** (`GearModSchematics`, the adapter): the default set (iron sights, wrapped grip, sharpened edge, padding,
+  webbing, scrap plates, visor, dust filter, helmets, gas mask, Mk II for sidearms, melee, clothing and armor) has no
+  schematic; every other recipe is unlocked by one entry of `schematics.gearmods.json`. Until the Schematics module is
+  merged, each entry is also a Blueprint item (its `lootWeight`, `studyAt`, `minLevel`) and the loader sets the recipes'
+  `blueprint` to it, so the existing blueprint gate and `StudyBlueprint` apply. When the module lands: `Has` /
+  `RecipeUnlocked` call `Schematics.Has` / `Schematics.RecipeUnlocked`, the module merges the catalogue file, and `Gate` /
+  `Items` go.
+- **Multiplayer**: the server's party check (`Items.TryGetValue` + slot) validates every build; `fieldMod` is an intent;
+  views carry equipment as ids (a visible unit's mods are as visible as its weapon). Protocol 9.
+- **Saves**: colony 14, scavenge 8 (units' `Moved` and `Facing`); older saves load unchanged. Tests: `GearModsTests`,
+  `GearModsNetTests`.
 
 ## Data files
 
@@ -1138,6 +1205,7 @@ buildings join the colony data (`GameData.Electronics`). Core: `Data/Electronics
   disciplines and the perk tree (see "Perks and study").
 - `electronics.json` / `schematics.electronics.json` — components, devices, drone variants, disassembly, power buildings,
   grid and charging rules; electronics schematics (see "Electronics and power").
+- `gear_mods.json`, `schematics.gearmods.json` — gear mods, Mk kits, headgear and their schematics (see "Gear mods").
 - `cybernetics.json` — tiers, specialisations, the tree's nodes (one per prosthetic item), paired sets, surgery, humanity,
   upkeep and interference (see "Cybernetics" and CYBERNETICS.md).
 - `trade.json` — player trading: offer caps and suspicious amounts, courier timing and building factors, market limits
