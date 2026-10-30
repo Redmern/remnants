@@ -17,7 +17,13 @@ public partial class ColonyScreen : Node3D
     private ColonySession _session = null!;
     private TownView _town = null!;
     private SurvivorWalkers _walkers = null!;
+    private DefenseView _defenses = null!;
     private ColonyHud _hud = null!;
+    private OrbitCamera _camera = null!;
+    private TownLayout _layout = null!;
+
+    /// <summary>The raid report last shown (or present at load), so only a new one pops up.</summary>
+    private Remnants.Core.Raids.RaidReport? _seenRaidReport;
 
     /// <summary>A new game nobody has played yet (debug demos only stage on one).</summary>
     private bool IsFreshGame => _session.Sim.State.Tick == _session.Sim.Data.Rules.NewGame.StartHour;
@@ -48,6 +54,15 @@ public partial class ColonyScreen : Node3D
         AddChild(_walkers);
         _walkers.Setup(_session, layout, models);
 
+        // After the town, so a click on a defense reaches it before the town's plot picking.
+        _defenses = new DefenseView { Name = "Defenses" };
+        AddChild(_defenses);
+        _defenses.Setup(_session, models, camera.Camera, _town.Lighting, _town.GetNodeOrNull<Node3D>("Dressing"));
+        camera.KeyRotationBlocked = () => _defenses.PlacingDefId is not null;
+        _camera = camera;
+        _layout = layout;
+        _seenRaidReport = _session.Sim.State.Defense.LastReport;
+
         BuildHud();
         Wire();
         RefreshAll();
@@ -72,6 +87,7 @@ public partial class ColonyScreen : Node3D
         if (DebugCapture.HasFlag("--cyber-demo") && IsFreshGame) RunCyberDemo();
         if (DebugCapture.HasFlag("--world-demo") && IsFreshGame) RunWorldDemo();
         if (DebugCapture.HasFlag("--night-demo") && IsFreshGame) RunNightDemo();
+        if (DebugCapture.Value("--raid-demo") is { } raidDemo && IsFreshGame) RunRaidDemo(raidDemo);
         if (int.TryParse(DebugCapture.Value("--hour"), out var hour)) JumpToHour(hour);
         // `--anim-demo=colony` (with --demo): close on the Woodcutter and Farm so the work loops read (FrameRecorder).
         if (DebugCapture.Value("--anim-demo") == "colony" && _session.Sim.State.Buildings.FirstOrDefault(b => b.DefId == "woodcutter") is { } cutter)
@@ -332,6 +348,99 @@ public partial class ColonyScreen : Node3D
     }
 
     /// <summary>
+    /// Debug (screenshots of raids and defenses, <c>--raid-demo=placement|warning|prep|report</c>): Town Hall 2, a few
+    /// buildings, a wooden wall along the south fence with a gate, a tower and a sandbag nest with guards (the tower on the
+    /// night watch), floodlights, a turret, an alarm bell, traps on the approach and a barricade line to the north; one
+    /// wall hurt, one barricade knocked down, a spike strip sprung, the Farm scuffed. Then: <c>placement</c> opens defend
+    /// mode placing a turret over a free cell (its fire arc showing) with the nest selected; <c>warning</c> sends a raider
+    /// band from the south that the watch has seen; <c>prep</c> also opens the prep screen; <c>report</c> lets it arrive
+    /// and shows the after-raid report.
+    /// </summary>
+    private void RunRaidDemo(string mode)
+    {
+        var sim = _session.Sim;
+        if (sim.Raids is not { } raids) return;
+        foreach (var res in sim.Data.Resources.Keys) sim.State.Stockpile.Add(res, 600);
+        var hall = sim.State.Buildings.First(b => b.DefId == sim.Data.Rules.TownHallBuildingId).Id;
+        _session.Execute(new Upgrade(hall));
+        var farm = _session.Execute(new Construct("farm", 20)).EntityId;
+        _session.Execute(new Construct("woodcutter", 21));
+        _session.Execute(new Construct("workshop", 14));
+        _session.Execute(new Construct("house", 15));
+        _session.Execute(new Construct("quarry", 8));
+        var adults = sim.State.Survivors.Where(s => !s.IsChild).ToList();
+        var jobs = sim.State.Buildings.Where(b => sim.Data.Buildings[b.DefId].Job is not null).ToList();
+        for (var i = 3; i < adults.Count && jobs.Count > 0; i++) _session.Execute(new AssignJob(adults[i].Id, jobs[i % jobs.Count].Id));
+        // Debug only: schematics a colony would find over a few raids.
+        foreach (var id in new[] { "sch_sandbag_nest", "sch_floodlight_post", "sch_defense_turret", "sch_pit_trap", "sch_snare", "sch_barricade", "sch_wall_scrap" })
+            sim.State.Defense.KnownSchematics.Add(id);
+
+        int? Place(string defId, int x, int y, Remnants.Core.Raids.Side facing = Remnants.Core.Raids.Side.South) =>
+            _session.Execute(new Remnants.Core.Raids.PlaceDefense(defId, x, y, facing)).EntityId;
+        for (var x = 6; x <= 25; x++)
+            if (x is not (15 or 16)) Place("wall_wood", x, 21);
+        Place("gate_wood", 15, 21);
+        Place("gate_wood", 16, 21);
+        var tower = Place("watchtower_1", 4, 20);
+        var nest = Place("sandbag_nest", 27, 20);
+        Place("floodlight_post", 11, 20);
+        Place("floodlight_post", 20, 20);
+        Place("defense_turret", 18, 20);
+        Place("alarm_bell", 2, 12, Remnants.Core.Raids.Side.West);
+        foreach (var x in new[] { 10, 11, 12, 13 }) Place("spike_strip", x, 23);
+        Place("pit_trap", 18, 23);
+        Place("snare", 20, 23);
+        for (var x = 12; x <= 18; x++) Place("barricade", x, 2, Remnants.Core.Raids.Side.North);
+        foreach (var d in sim.State.Defense.Defenses.Where(d => d.DefId == "wall_wood" && d.X is 22 or 23).ToList())
+            _session.Execute(new Remnants.Core.Raids.UpgradeDefense(d.Id));
+        if (adults.Count >= 3 && nest is { } n && tower is { } t)
+        {
+            _session.Execute(new Remnants.Core.Raids.AssignGuard(adults[0].Id, n));
+            _session.Execute(new Remnants.Core.Raids.AssignGuard(adults[1].Id, n));
+            _session.Execute(new Remnants.Core.Raids.AssignGuard(adults[2].Id, t));
+            _session.Execute(new Remnants.Core.Raids.SetNightWatch(t, true));
+        }
+
+        // Debug only: the marks of an earlier raid.
+        var state = sim.State.Defense;
+        if (state.Defenses.FirstOrDefault(d => d.DefId == "wall_wood" && d.X == 8) is { } hurt) hurt.Hp *= 0.4;
+        if (state.Defenses.FirstOrDefault(d => d.DefId == "barricade" && d.X == 14) is { } down) down.Hp = 0;
+        if (state.Defenses.FirstOrDefault(d => d.DefId == "spike_strip" && d.X == 13) is { } sprung) sprung.Sprung = true;
+        if (farm is { } f) state.BuildingDamage[f] = 25;
+
+        _camera.Focus(new Vector3(0, 0, _layout.Extent.Y / 2 - 2));
+        _camera.ZoomTo(58);
+        _session.SetSpeed(0);
+        switch (mode)
+        {
+            case "placement":
+                _defenses.SetActive(true);
+                _hud.Defend.ShowCategoryOf("defense_turret");
+                _defenses.BeginPlacing("defense_turret");
+                _defenses.DebugHover(14, 22);
+                if (nest is { } post) _defenses.Select(post);
+                break;
+            case "warning":
+            case "prep":
+            case "report":
+            {
+                state.Raid = new Remnants.Core.Raids.Raid
+                {
+                    Id = state.NextRaidId++, Kind = Remnants.Core.Raids.ThreatKind.Raider, Size = mode == "report" ? 9 : 7,
+                    Approach = Remnants.Core.Raids.Side.South, SetOutTick = sim.State.Tick, ArrivalTick = sim.State.Tick + (mode == "report" ? 3 : 9),
+                    Stage = Remnants.Core.Raids.RaidStage.Approaching,
+                };
+                state.Raid.WarnTick = state.Raid.ArrivalTick;
+                _session.FastForward(4, s => s.State.Defense.Raid is { Stage: Remnants.Core.Raids.RaidStage.Warned });
+                if (mode == "prep") _hud.CallDeferred(ColonyHud.MethodName.OpenPrep);
+                if (mode == "report") _session.FastForward(12, s => s.State.Defense.Raid is null);
+                _session.SetSpeed(0);
+                break;
+            }
+        }
+    }
+
+    /// <summary>
     /// Debug: a grown town for screenshots of crafting tiers. Stocks up, raises the Town Hall to level 3, builds every
     /// production building and a House, upgrades a few to level 2 and 3, studies a blueprint, staffs the Armory and
     /// Tailor, fills their queues and opens the Armory's production panel and the item list.
@@ -397,6 +506,8 @@ public partial class ColonyScreen : Node3D
         _session.Changed += RefreshAll;
         _session.Replaced += () =>
         {
+            _seenRaidReport = _session.Sim.State.Defense.LastReport;
+            _defenses.Reset();
             _town.Reset();
             _walkers.Reset();
             _hud.Roster.Select(null);
@@ -407,7 +518,10 @@ public partial class ColonyScreen : Node3D
         _hud.BackRequested += () =>
         {
             if (_town.PlacingDefId is not null) _town.CancelPlacing();
+            else if (_defenses.PlacingDefId is not null) _defenses.CancelPlacing();
+            else if (_defenses.SelectedDefenseId is not null) _defenses.Select(null);
             else if (_town.SelectedBuildingId is not null) _town.Select(null);
+            else if (_defenses.Active) _defenses.SetActive(false);
             else return false;
             return true;
         };
@@ -442,17 +556,50 @@ public partial class ColonyScreen : Node3D
 
         _town.SelectionChanged += id =>
         {
+            if (id is not null) _defenses.Select(null);
             _hud.Building.Show(id);
             _hud.MedBay.Show(id);
             _hud.Production.Show(id);
             _hud.Study.Show(id);
         };
         _hud.Building.Closed += () => _town.Select(null);
+
+        // Defend mode: catalogue ↔ the town's ghost; selecting a defense opens its panel.
+        _hud.TopBar.DefendPressed += () => _defenses.SetActive(!_defenses.Active);
+        _hud.Defend.Closed += () => _defenses.SetActive(false);
+        _hud.Defend.TypeChosen += defId => _defenses.BeginPlacing(defId);
+        _defenses.ModeChanged += SyncDefendUi;
+        _defenses.GhostChanged += SyncDefendUi;
+        _defenses.SelectionChanged += id =>
+        {
+            if (id is not null) _town.Select(null);
+            _hud.Defense.Show(id);
+        };
+        _hud.Defense.Closed += () => _defenses.Select(null);
+        _defenses.PlaceRequested += commands =>
+        {
+            if (commands.Count == 1) _session.Execute(commands[0]);
+            else _session.ExecuteAll(commands, $"Built {commands.Count} in a row.");
+        };
         _hud.Roster.SelectionChanged += id => _walkers.SelectedSurvivorId = id;
+    }
+
+    /// <summary>The catalogue follows defend mode; building placement and defend mode exclude each other.</summary>
+    private void SyncDefendUi()
+    {
+        if (_defenses.Active && !_hud.Defend.Visible)
+        {
+            if (_hud.BuildMenu.Visible) ToggleBuildMenu();
+            _town.CancelPlacing();
+            Hud.Motion.Reveal(_hud.Defend, new Vector2(12, 0));
+        }
+        else if (!_defenses.Active) _hud.Defend.Visible = false;
+        _hud.Defend.SetPlacing(_defenses.PlacingDefId, _defenses.Facing, _defenses.GhostResult);
     }
 
     private void ToggleBuildMenu()
     {
+        if (!_hud.BuildMenu.Visible) _defenses.SetActive(false);
         Hud.Motion.Toggle(_hud.BuildMenu, new Vector2(12, 0));
         if (!_hud.BuildMenu.Visible) _town.CancelPlacing();
         _hud.BuildMenu.SetPlacing(null);
@@ -463,6 +610,12 @@ public partial class ColonyScreen : Node3D
         if (_session.UnseenReport is not null) ShowUnseenReport();  // a party walked home from a far zone
         _town.Sync();
         _walkers.Sync();
+        _defenses.Sync();
         _hud.Refresh();
+        if (_session.Sim.State.Defense.LastReport is { } raid && !ReferenceEquals(raid, _seenRaidReport))
+        {
+            _seenRaidReport = raid;
+            _hud.RaidReport.ShowReport(raid);
+        }
     }
 }
