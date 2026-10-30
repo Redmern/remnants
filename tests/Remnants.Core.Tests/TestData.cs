@@ -14,7 +14,7 @@ public static class TestData
     {
         var d = RealNights.Value;
         var rules = d.Rules with { DayNight = d.Rules.DayNight with { Enabled = false } };
-        return new GameData(d.Resources.Values, d.Jobs.Values, d.Buildings.Values, rules, d.Recipes.Values, d.Progression, d.Cybernetics?.Def, d.Schematics);
+        return new GameData(d.Resources.Values, d.Jobs.Values, d.Buildings.Values, rules, d.Recipes.Values, d.Progression, d.Cybernetics?.Def, d.Schematics, d.Medicine?.Def);
     });
 
     /// <summary>

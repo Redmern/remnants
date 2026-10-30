@@ -30,15 +30,22 @@ public sealed class ScavengeData
     /// </summary>
     public CyberneticsData? Cybernetics { get; }
 
+    /// <summary>
+    /// The medicine system (medicine.json, when loaded with it): conditions' field penalties, fractures and pain, so a
+    /// survivor's conditions reach the field with them. Null without it (no fractures, conditions cost nothing in the field).
+    /// </summary>
+    public MedicineData? Medicine { get; }
+
     public ScavengeData(IEnumerable<ItemDef> items, IEnumerable<EnemyDef> enemies, IEnumerable<ZoneDef> zones, ScavengeRules rules,
         IReadOnlyDictionary<string, IReadOnlyDictionary<string, double>>? perkHooks = null, CyberneticsDef? cybernetics = null,
-        SchematicCatalog? schematics = null)
+        SchematicCatalog? schematics = null, MedicineDef? medicine = null)
     {
         Schematics = schematics ?? SchematicCatalog.Empty;
         // Schematic items come from the catalogue; without one, data built from another ScavengeData's items keeps them.
         if (schematics is not null) items = items.Where(i => i.Kind != ItemKind.Schematic).Concat(Schematics.All.Values.Select(SchematicItem));
         PerkHooks = perkHooks ?? new Dictionary<string, IReadOnlyDictionary<string, double>>();
         Cybernetics = cybernetics is null ? null : new CyberneticsData(cybernetics);
+        Medicine = medicine is null ? null : new MedicineData(medicine);
         // Variants are always derived (so data built from another ScavengeData's items gets them fresh).
         Items = Index(WithQualityVariants(items.Where(i => i.BaseId is null).ToList(), rules.Quality), i => i.Id, "item");
         Enemies = Index(enemies, e => e.Id, "enemy");
@@ -146,6 +153,13 @@ public sealed class ScavengeData
             CarryBonus = item.CarryBonus * m,
             Stealth = Bonus(item.Stealth),
             Detection = Bonus(item.Detection),
+            Use = item.Use is { } use ? use with
+            {
+                Heal = use.Heal * m,
+                ReviveHp = use.ReviveHp * m,
+                CureStrength = use.CureStrength * m,
+                PainRelief = Math.Min(1, use.PainRelief * m),
+            } : null,
             Actions = item.Actions.Select(a => a with
             {
                 MinDamage = (int)Math.Round(a.MinDamage * m),
@@ -324,13 +338,18 @@ public static class ScavengeDataLoader
         string? Optional(string file) => File.Exists(Path.Combine(directory, file)) ? File.ReadAllText(Path.Combine(directory, file)) : null;
 
         return LoadFromJson(Read("items.json"), Read("enemies.json"), Read("zones.json"), Read("scavenge.json"),
-            Optional("perks.json"), Optional("cybernetics.json"), SchematicCatalogLoader.Files(directory).Select(File.ReadAllText).ToArray());
+            Optional("perks.json"), Optional("cybernetics.json"), Optional("medicine.json"), SchematicCatalogLoader.Files(directory).Select(File.ReadAllText).ToArray());
     }
 
     /// <param name="perks">perks.json (optional): only each perk's scavenge hooks are read (see <see cref="ScavengeData.PerkHooks"/>).</param>
     /// <param name="cybernetics">cybernetics.json (optional; see <see cref="ScavengeData.Cybernetics"/>).</param>
     public static ScavengeData LoadFromJson(string items, string enemies, string zones, string rules, string? perks = null, string? cybernetics = null,
         params string[]? schematics) =>
+        LoadFromJson(items, enemies, zones, rules, perks, cybernetics, null, schematics ?? []);
+
+    /// <param name="medicine">medicine.json (optional; see <see cref="ScavengeData.Medicine"/>).</param>
+    public static ScavengeData LoadFromJson(string items, string enemies, string zones, string rules, string? perks, string? cybernetics,
+        string? medicine, string[] schematics) =>
         new(
             Parse<List<ItemDef>>(items, "items"),
             Parse<List<EnemyDef>>(enemies, "enemies"),
@@ -339,7 +358,8 @@ public static class ScavengeDataLoader
             perks is null ? null : Parse<ProgressionDef>(perks, "perks").Perks
                 .ToDictionary(p => p.Id, p => (IReadOnlyDictionary<string, double>)new Dictionary<string, double>(p.Effects.Hooks, StringComparer.Ordinal)),
             cybernetics is null ? null : Parse<CyberneticsDef>(cybernetics, "cybernetics"),
-            SchematicCatalogLoader.LoadFromJson(schematics ?? []));
+            SchematicCatalogLoader.LoadFromJson(schematics),
+            medicine is null ? null : Parse<MedicineDef>(medicine, "medicine"));
 
     private static T Parse<T>(string json, string name)
     {

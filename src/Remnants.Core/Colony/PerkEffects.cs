@@ -43,6 +43,7 @@ public static class PerkHooks
     public const string SurgerySuccessBonus = "surgery_success_bonus";
     public const string SurgerySpeedBonus = "surgery_speed_bonus";
     public const string CyberSurgery = "cyber_surgery";
+    public const string MedicalApDiscount = "medical_ap_discount";
 
     // Cybernetics (perks and fitted parts)
     public const string CyberInterferenceReduction = "cyber_interference_reduction";
@@ -77,6 +78,7 @@ public static class PerkHooks
         [SurgerySuccessBonus] = "Colony: added to the success chance of a surgery this medic leads (0.1 = +10 points).",
         [SurgerySpeedBonus] = "Colony: surgery effort multiplier bonus when this medic leads it (0.25 = +25%).",
         [CyberSurgery] = "Colony flag: can lead surgery on cyborg-grade (tier 3+) prosthetics.",
+        [MedicalApDiscount] = "AP taken off the cost of a medical item in the field (never below 1).",
         [CyberInterferenceReduction] = "Share of the Network interference chance on Network-grade parts that is removed (0.5 = half).",
         [ArmorBonus] = "Flat damage reduction added (armored legs).",
         [ThermalRadius] = "Hostiles within this many tiles are seen through walls and stealth, like a scanner (thermal eye).",

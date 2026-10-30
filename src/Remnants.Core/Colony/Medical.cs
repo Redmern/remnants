@@ -21,6 +21,7 @@ public static class Care
                     * JobOutput.HealthFactor(job, medic, data.Rules.Output)
                     * JobOutput.LifeFactor(medic, data.Rules.Output)
                     * JobOutput.MoodFactor(medic, data.Rules.Output)
+                    * JobOutput.ConditionFactor(medic, data)
                     * JobOutput.PerkFactor(job, medic, data);
         }
         return rules.HealPerTick * def.Level(medBay.Level).OutputMultiplier * care;
@@ -56,14 +57,14 @@ internal static class MedicalSystem
         {
             if (s.PatientAtBuildingId is { } id && state.FindBuilding(id) is { } medBay)
             {
-                if (s.IsInjured && state.Stockpile.TryTake(rules.MedicineResourceId, rules.MedicinePerPatientTick))
+                if (Medicine.NeedsCare(s, data) && state.Stockpile.TryTake(rules.MedicineResourceId, rules.MedicinePerPatientTick))
                 {
-                    HealAll(s, Care.HealPerTick(state, data, medBay));
+                    HealAll(s, data, Care.HealPerTick(state, data, medBay));
                     treatedAt.Add(medBay.Id);
                 }
-                else HealAll(s, rules.NaturalHealPerTick);
+                else HealAll(s, data, rules.NaturalHealPerTick);
                 s.Health = Math.Min(Survivor.MaxHealth, s.Health + rules.PatientHealthPerTick);
-                if (!s.IsInjured && state.Surgeries.All(o => o.SurvivorId != s.Id))
+                if (!Medicine.NeedsCare(s, data) && state.Surgeries.All(o => o.SurvivorId != s.Id))
                 {
                     s.PatientAtBuildingId = null;
                     state.Log(new(state.Tick, ColonyEventType.Discharged, $"{s.Name} has healed and left the {data.Buildings[medBay.DefId].Name}.", s.Id, medBay.Id));
@@ -76,7 +77,7 @@ internal static class MedicalSystem
             {
                 if (p.Severity < rules.NaturalHealMaxSeverity)
                 {
-                    p.Severity -= rules.NaturalHealPerTick;
+                    p.Severity -= rules.NaturalHealPerTick * Treatment.HealFactor(data.Medicine, s.Body, part);
                     if (p.Severity <= 1e-9)
                     {
                         s.Body.Heal(part);
@@ -113,11 +114,11 @@ internal static class MedicalSystem
         }
     }
 
-    private static void HealAll(Survivor s, double amount)
+    private static void HealAll(Survivor s, GameData data, double amount)
     {
         foreach (var (part, p) in s.Body.Parts.Where(kv => kv.Value.Condition == PartCondition.Injured).ToList())
         {
-            p.Severity -= amount;
+            p.Severity -= amount * Treatment.HealFactor(data.Medicine, s.Body, part);
             if (p.Severity <= 1e-9) s.Body.Heal(part);
         }
     }
@@ -153,7 +154,7 @@ internal static class MedicalHandlers
         var s = state.FindSurvivor(c.SurvivorId);
         if (s is null) return CommandResult.Fail(CommandError.UnknownSurvivor, $"No survivor {c.SurvivorId}.");
         if (s.Away) return CommandResult.Fail(CommandError.SurvivorAway, $"{s.Name} is away on an expedition.");
-        if (!s.IsInjured) return CommandResult.Fail(CommandError.NotInjured, $"{s.Name} has no injury to treat.");
+        if (!Medicine.NeedsCare(s, sim.Data)) return CommandResult.Fail(CommandError.NotInjured, $"{s.Name} has no injury or illness to treat.");
         if (s.PatientAtBuildingId is { } already)
             return CommandResult.Success($"{s.Name} is already a patient.", already);
 

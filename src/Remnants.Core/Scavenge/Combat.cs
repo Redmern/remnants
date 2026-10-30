@@ -1,3 +1,4 @@
+using Remnants.Core.Random;
 using Remnants.Core.Items;
 using Remnants.Core.Survivors;
 
@@ -114,7 +115,7 @@ public static class Combat
     {
         attacker.Ap -= action.ApCost;
         sim.MakeNoise(attacker, action.Noise);
-        target.Suppressed = true;
+        target.Suppressed = target.CalmUntilRound < sim.State.Round;
         sim.State.Log(new(sim.State.Round, ScavengeEventType.Suppressed,
             $"{attacker.Name} pins {target.Name} down with suppressing fire ({action.Name}).", attacker.Id, target.Id, target.Pos,
             Anonymous: $"{target.Name} is pinned down by fire from the fog."));
@@ -218,6 +219,9 @@ public static class Combat
                 target.Body.Lose(part);
                 state.Log(new(state.Round, ScavengeEventType.LimbLost, $"{target.Name} lost their {part}.", target.Id, Pos: target.Pos));
             }
+            else if (target.Kind == UnitKind.Survivor
+                     && Treatment.MaybeFracture(data.Medicine, target.Body, part, SideRoll.Next(sim.Rng, state.Round, target.Id, (long)part, (long)(damage * 1000))))
+                state.Log(new(state.Round, ScavengeEventType.Fractured, $"{target.Name}'s {part} is broken.", target.Id, Pos: target.Pos));
         }
 
         var wasDowned = target.Status == UnitStatus.Downed;

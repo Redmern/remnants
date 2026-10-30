@@ -70,6 +70,12 @@ public sealed record RecipeDef
 
     /// <summary>Decrypt orders: the schematic learned when the batch is done (its item is the one input).</summary>
     public string? Learns { get; init; }
+
+    /// <summary>
+    /// Health a donor at home gives when a batch starts (a blood bag); the batch waits for a donor (see
+    /// <c>Medicine.Donor</c>). 0 = none needed.
+    /// </summary>
+    public double DonorHealth { get; init; }
 }
 
 public sealed record BuildingDef

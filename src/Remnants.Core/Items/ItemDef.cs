@@ -156,8 +156,39 @@ public sealed record UseEffect
     /// <summary>Motion sensor: placed on a tile within <see cref="Range"/>; reveals hostiles that move within this radius (Chebyshev).</summary>
     public int SensorRadius { get; init; }
 
+    /// <summary>Dresses the worst undressed wound (a bandage) or every wound clean (antiseptic, a clean dressing): see <see cref="Dressing"/>.</summary>
+    public Dressing Dress { get; init; }
+
+    /// <summary>Dresses every injured part, not only the worst one.</summary>
+    public bool DressAll { get; init; }
+
+    /// <summary>Condition ids it cures (antibiotics: infections; antidote: sicknesses): their severity drops by <see cref="CureStrength"/>.</summary>
+    public List<string> Cures { get; init; } = new();
+    public double CureStrength { get; init; } = 1;
+
+    /// <summary>Splints a fracture (the worst unsplinted one).</summary>
+    public bool Splint { get; init; }
+
+    /// <summary>Painkiller: this share of injury penalties is ignored, for <see cref="PainRounds"/> rounds in the field or <see cref="PainTicks"/> at home.</summary>
+    public double PainRelief { get; init; }
+    public int PainRounds { get; init; }
+    public int PainTicks { get; init; }
+
+    /// <summary>Stim: AP added right now; the next turn starts <see cref="CrashAp"/> short.</summary>
+    public int StimAp { get; init; }
+    public int CrashAp { get; init; }
+
+    /// <summary>Linked "Calm" injector: immune to being pinned down for this many rounds (this one counts).</summary>
+    public int CalmRounds { get; init; }
+
+    /// <summary>Humanity it costs the one it is used on, for good (a Network-grade drug).</summary>
+    public double HumanityCost { get; init; }
+
     /// <summary>Used on a tile (<see cref="Remnants.Core.Scavenge.UseItem.At"/>) rather than on a unit.</summary>
     public bool TargetsTile => LightRadius > 0 || SensorRadius > 0;
+
+    /// <summary>Does something for a body (heals, dresses, cures, splints, numbs): a medical treatment the Med Bay can use too.</summary>
+    public bool Treats => Heal > 0 || Dress != Dressing.None || Cures.Count > 0 || Splint || PainRelief > 0;
 }
 
 /// <summary>A replacement limb fitted at the Med Bay. Quality is the part's efficiency (above 1 beats the original).</summary>
@@ -288,6 +319,9 @@ public sealed record ItemDef
     /// <summary>A story quest item (the relay antenna): placed by a mission's map, never looted or crafted.</summary>
     public bool Quest { get; init; }
 
+    /// <summary>A medical supply: crafted in quality tiers like gear (a Fine bandage heals more), see <c>medicine.json</c>.</summary>
+    public bool Medical { get; init; }
+
     /// <summary>Quality variants: the item they are a variant of (null for a defined item).</summary>
     public string? BaseId { get; init; }
 
@@ -298,7 +332,7 @@ public sealed record ItemDef
     public string DefinedId => BaseId ?? Id;
 
     /// <summary>Gear that comes in quality tiers when crafted.</summary>
-    public bool HasQuality => Slot is not null && !Natural;
+    public bool HasQuality => (Slot is not null || Medical) && !Natural;
 
     public EquipSlot? Slot => Kind switch
     {

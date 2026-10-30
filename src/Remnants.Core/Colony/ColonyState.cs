@@ -57,6 +57,9 @@ public sealed class ColonyState
     /// </summary>
     public SortedSet<string> KnownCybernetics { get; set; } = new(StringComparer.Ordinal);
 
+    /// <summary>The Med Bay's standing treatment orders (see <see cref="Medicine"/>).</summary>
+    public MedicalCare MedicalCare { get; set; } = new();
+
     /// <summary>The after-action report of the last expedition that came home (for the UI).</summary>
     public ExpeditionReport? LastReport { get; set; }
 

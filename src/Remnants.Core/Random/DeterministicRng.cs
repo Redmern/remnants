@@ -47,3 +47,17 @@ public sealed class DeterministicRng
 
     public T Pick<T>(IReadOnlyList<T> items) => items[Next(0, items.Count)];
 }
+
+/// <summary>
+/// A one-off roll derived from a stream's current state and some keys, without advancing the stream: systems added later
+/// (medicine) roll this way so they do not shift every other system's dice.
+/// </summary>
+public static class SideRoll
+{
+    public static double Next(DeterministicRng stream, params long[] keys)
+    {
+        var seed = stream.State;
+        foreach (var k in keys) seed = (seed ^ (ulong)k) * 0x9E3779B97F4A7C15UL + 0x632BE59BD9B4E019UL;
+        return new DeterministicRng(seed).NextDouble();
+    }
+}

@@ -68,7 +68,8 @@ internal static class ScavengeCommandHandlers
             return ScavengeResult.Fail(ScavengeError.InvalidTarget, $"Unit {c.TargetId} is not a valid target.");
         if (unit.Pos.Chebyshev(target.Pos) > use.Range)
             return ScavengeResult.Fail(ScavengeError.TooFar, $"{target.Name} is out of {item.Name}'s reach.");
-        if (use.ApCost > unit.Ap) return NotEnoughAp(unit, use.ApCost);
+        var apCost = FieldMedicine.ApCost(unit, use);
+        if (apCost > unit.Ap) return NotEnoughAp(unit, apCost);
 
         var downed = target.Status == UnitStatus.Downed;
         if (use.Evacuate)
@@ -90,18 +91,12 @@ internal static class ScavengeCommandHandlers
                 sim.Log(ScavengeEventType.Revived, $"{target.Name} is back on their feet.", unit, target);
             }
         }
-        else if (!downed && use.Heal > 0)
-        {
-            target.Hp = Math.Min(target.MaxHp, target.Hp + use.Heal * (1 + unit.Hook(PerkHooks.FieldHealBonus)));
-            MissionRules.Treated(sim, unit, target);
-            sim.Log(ScavengeEventType.Healed, $"{unit.Name} treated {target.Name} with {item.Name}.", unit, target);
-        }
-        else
+        else if (downed || !FieldMedicine.Use(sim, unit, target, item, use))
         {
             return ScavengeResult.Fail(ScavengeError.NotUsable, $"{item.Name} does nothing for {target.Name} ({target.Status}).");
         }
 
-        unit.Ap -= use.ApCost;
+        unit.Ap -= apCost;
         if (use.Consumed) unit.Pack.Remove(c.ItemId);
         return ScavengeResult.Success($"{unit.Name} used {item.Name} on {target.Name}.", target.Id);
     }

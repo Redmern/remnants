@@ -106,7 +106,7 @@ public static class ProfileDeriver
         return new UnitProfile(
             Movement: DeriveMovement(data, unit, active, capacity > 0 ? load / capacity : double.PositiveInfinity),
             Actions: DeriveActions(data, unit, working, fitted),
-            MaxAp: Math.Max(1, rules.Turn.BaseAp + equipped.Sum(i => i.ApBonus)),
+            MaxAp: MaxAp(rules.Turn.BaseAp + equipped.Sum(i => i.ApBonus), Treatment.FieldApPenalty(data.Medicine, unit.Body)),
             Initiative: agility * rules.Turn.InitiativePerAgility + equipped.Sum(i => i.Initiative) - load * rules.Turn.InitiativePerLoad,
             Sight: Math.Max(1, sight * head),
             CarryCapacity: capacity,
@@ -192,6 +192,12 @@ public static class ProfileDeriver
     }
 
     /// <summary>
+    /// AP a turn: the gear's, less what conditions and pain take (medicine.json), which never leaves fewer than 2 (a unit
+    /// in pain still crosses rubble and still acts); never below 1 at all.
+    /// </summary>
+    private static int MaxAp(int gear, int medical) => Math.Max(1, gear - Math.Min(medical, Math.Max(0, gear - 2)));
+
+    /// <summary>
     /// Weapon actions, attacks built into cybernetic arms, plus bare hands. Accuracy adds skill and Perception, then scales with the arms
     /// (best arm, or both arms for two-handed) and, for ranged attacks, the head (eyes).
     /// A two-handed action needs two working arms; any action needs at least one.
@@ -199,8 +205,8 @@ public static class ProfileDeriver
     private static List<ActionProfile> DeriveActions(ScavengeData data, Unit unit, List<ItemDef> working, List<(BodyPart Part, ItemDef Item)> fitted)
     {
         var combat = data.Rules.Combat;
-        var left = unit.Body[BodyPart.LeftArm].Efficiency;
-        var right = unit.Body[BodyPart.RightArm].Efficiency;
+        var left = unit.Body.PartEfficiency(BodyPart.LeftArm);
+        var right = unit.Body.PartEfficiency(BodyPart.RightArm);
         var result = new List<ActionProfile>();
 
         void Add(ActionDef a, string? itemId, double? arm = null)
@@ -230,7 +236,7 @@ public static class ProfileDeriver
         // A cybernetic arm's own attack (blade, gun) works at that arm's efficiency.
         foreach (var (part, item) in fitted)
             foreach (var a in item.Actions)
-                Add(a, item.Id, unit.Body[part].Efficiency);
+                Add(a, item.Id, unit.Body.PartEfficiency(part));
         // Drones and devices have no fists.
         if (result.All(r => r.Id != combat.Unarmed.Id) && unit.Kind is not (UnitKind.Drone or UnitKind.Device)) Add(combat.Unarmed, null);
         return result;

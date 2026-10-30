@@ -1,0 +1,84 @@
+{
+  "conditions": [
+    { "id": "infection", "name": "Infected wound", "kind": "Infection", "fever": true,
+      "description": "A dirty wound went bad: fever, and the wound will not close until it is treated.",
+      "treatment": "Antibiotics cure it. A patient at the Med Bay with medicine holds it back.",
+      "outputPenalty": 0.35, "growPerTick": 0.003, "treatedRecoverPerTick": 0.006,
+      "healthDrainFrom": 0.75, "healthDrainPerTick": 0.25, "fieldApPenalty": 1, "fieldApFrom": 0.5, "blocksHealing": true },
+    { "id": "surgical_infection", "name": "Surgical infection", "kind": "Infection", "fever": true,
+      "description": "The surgery site is infected.",
+      "treatment": "Antibiotics cure it. Keep them in bed at the Med Bay on medicine.",
+      "outputPenalty": 0.4, "growPerTick": 0.0025, "treatedRecoverPerTick": 0.006,
+      "healthDrainFrom": 0.75, "healthDrainPerTick": 0.25, "fieldApPenalty": 1, "fieldApFrom": 0.5 },
+    { "id": "fracture", "name": "Fracture", "kind": "Fracture",
+      "description": "A broken bone: the limb works worse and heals slowly.",
+      "treatment": "A splint: less penalty and faster healing." },
+    { "id": "food_sickness", "name": "Food sickness", "kind": "Sickness", "fever": true,
+      "description": "Something they ate. It passes in a day or two.",
+      "treatment": "An antidote cures it at once; rest at the Med Bay speeds it up.",
+      "outputPenalty": 0.3, "recoverPerTick": 0.012, "treatedRecoverPerTick": 0.03, "fieldApPenalty": 1, "fieldApFrom": 0.6 },
+    { "id": "husk_sickness", "name": "Husk sickness", "kind": "Sickness", "fever": true,
+      "description": "Husk meat carries the machine rot. It drags on, and it can kill.",
+      "treatment": "An antidote cures it. Without one, keep them at the Med Bay on medicine.",
+      "outputPenalty": 0.45, "recoverPerTick": 0.003, "treatedRecoverPerTick": 0.012,
+      "healthDrainFrom": 0.7, "healthDrainPerTick": 0.2, "fieldApPenalty": 1, "fieldApFrom": 0.4 },
+    { "id": "dependency", "name": "Painkiller dependency", "kind": "Dependency",
+      "description": "Took a few too many painkillers. Moody and restless for a while.",
+      "treatment": "Time. Fewer painkillers.",
+      "outputPenalty": 0.05, "recoverPerTick": 0.004, "moodPerTick": -0.08 },
+    { "id": "painkilled", "name": "Painkillers", "kind": "Effect",
+      "description": "Injuries hurt less for now.",
+      "treatment": "Wears off on its own." }
+  ],
+
+  "infection": {
+    "condition": "infection",
+    "surgicalCondition": "surgical_infection",
+    "minSeverity": 0.25,
+    "chancePerTick": 0.005,
+    "bandagedMultiplier": 0.35,
+    "cleanMultiplier": 0,
+    "patientMultiplier": 0.5,
+    "startSeverity": 0.15
+  },
+
+  "fracture": {
+    "condition": "fracture",
+    "chance": 0.35,
+    "minSeverity": 0.45,
+    "penalty": 0.25,
+    "splintedPenalty": 0.08,
+    "unsplintedHealMultiplier": 0.5,
+    "splintedHealMultiplier": 1.25
+  },
+
+  "pain": { "threshold": 0.55, "outputPenalty": 0.15, "fieldApPenalty": 0 },
+
+  "painkiller": { "doseDecayPerTick": 0.02, "dependencyDoses": 3, "dependencyCondition": "dependency", "dependencySeverity": 0.4 },
+
+  "sicknessKinds": { "food": "food_sickness", "spoiled": "food_sickness", "raw": "food_sickness", "husk": "husk_sickness" },
+
+  "medBay": {
+    "defaultPriorities": ["Bleeding", "Infection", "Fracture", "Sickness", "Pain"],
+    "treatmentsPerTick": 1,
+    "medicineEasesInfection": 0.5
+  },
+
+  "surgery": {
+    "kits": [
+      { "item": "surgical_kit", "successBonus": 0.12, "fromTier": 0 },
+      { "item": "suture_kit", "successBonus": 0.05, "fromTier": 0, "toTier": 2 }
+    ],
+    "infectionSeverity": 0.3
+  },
+
+  "donor": { "minHealth": 70 },
+
+  "field": { "maxApPenalty": 1, "skillPerTreatment": 0.3 },
+
+  "migration": { "antisepticItem": "antiseptic", "shareConverted": 0.5, "medicinePerAntiseptic": 2 },
+
+  "ingredients": [
+    { "id": "herbs", "fallback": "food", "ratio": 1.5 }
+  ]
+}

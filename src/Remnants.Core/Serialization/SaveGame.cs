@@ -44,10 +44,16 @@ namespace Remnants.Core.Serialization;
 /// (<see cref="ScavengeSave"/> version 8).
 /// Version 15 replaces blueprints with schematics (<see cref="ColonyState.Schematics"/>, <see cref="ColonyState.Radio"/>):
 /// see <see cref="MigrateSchematics"/>.
+/// Version <see cref="MedicineVersion"/> adds medicine: bodies carry conditions, dressings and painkiller doses, the colony its
+/// Med Bay priorities (<see cref="ColonyState.MedicalCare"/>). Older saves load with no conditions and the default priorities,
+/// and <see cref="MigrateMedicine"/> turns part of the old medicine stock into antiseptic (medicine.json <c>migration</c>).
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 15;
+    /// <summary>The version that added medicine (keyed so a merge renumbers it in one place).</summary>
+    public const int MedicineVersion = 16;
+
+    public const int Version = MedicineVersion;
     private const int OldestVersion = 1;
 
     /// <summary>Old blueprint and datashard item ids and the schematics they became (version 13).</summary>
@@ -161,6 +167,7 @@ public static class SaveGame
             else foreach (var skill in Enum.GetValues<Survivors.Skill>()) s.Skills.TryAdd(skill, 0);
         StudySystem.Repair(colony);
         if (envelope.Version < 12) MigrateCybernetics(data, scavenge, colony);
+        if (envelope.Version < MedicineVersion) MigrateMedicine(data, scavenge, colony);
         Validate(data, colony);
         if (scavenge is not null) Validate(scavenge, colony);
         var sim = new ColonySim(data, colony, scavenge);
@@ -254,6 +261,21 @@ public static class SaveGame
             foreach (var id in colony.Inventory.Counts.Keys.Where(id => cyber.Node(id) is not null))
                 colony.KnownCybernetics.Add(id);
         if (scavenge is not null && colony.Expedition?.Scavenge is { } run) ScavengeSave.MigrateCybernetics(scavenge, run);
+    }
+
+    /// <summary>
+    /// Before medicine: the old medicine stock was every kind of care at once. Part of it (<c>shareConverted</c>) becomes
+    /// antiseptic, <c>medicinePerAntiseptic</c> each, rounded down; the rest stays as medicine (herbal remedies).
+    /// </summary>
+    internal static void MigrateMedicine(GameData data, ScavengeData? scavenge, ColonyState colony)
+    {
+        if (data.Medicine is not { } med) return;
+        var rules = med.Def.Migration;
+        if (scavenge is not null && !scavenge.Items.ContainsKey(rules.AntisepticItem)) return;
+        var medicineId = data.Rules.Medical.MedicineResourceId;
+        var count = (int)Math.Floor(colony.Stockpile.Get(medicineId) * rules.ShareConverted / rules.MedicinePerAntiseptic + 1e-9);
+        if (count <= 0 || !colony.Stockpile.TryTake(medicineId, count * rules.MedicinePerAntiseptic)) return;
+        colony.Inventory.Add(rules.AntisepticItem, count);
     }
 
     /// <summary>Before version 3 children grew up by age in years; put them at the same share of the growth track.</summary>

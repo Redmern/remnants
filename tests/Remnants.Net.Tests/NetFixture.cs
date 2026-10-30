@@ -151,7 +151,11 @@ public sealed class NetFixture
                         FogViolations.Add($"{player.Name} heard '{e.Message}' about {tu.Name}, whom they never saw.");
                     if (e.Anonymous is not null) FogViolations.Add($"{player.Name} was sent the actor-less text of '{e.Message}'.");
                     if (e.Side is { } only && only != side) FogViolations.Add($"{player.Name} was sent {only}'s private event '{e.Message}'.");
-                    if (e.UnitId is { } actor && sim.State.FindUnit(actor) is { } a && !Theirs(a) && !shown.Contains(actor) && !before.Contains(actor))
+                    // FogLog names an actor the side saw when the event was logged (SeenBy), even if it is gone from sight by now.
+                    bool SeenWhenLogged(int actor) => sim.State.Events.Any(o =>
+                        o.UnitId == actor && o.Round == e.Round && o.Type == e.Type && o.Message == e.Message && o.SeenBy?.Contains(side) == true);
+                    if (e.UnitId is { } actor && sim.State.FindUnit(actor) is { } a && !Theirs(a) && !shown.Contains(actor) && !before.Contains(actor)
+                        && !SeenWhenLogged(actor))
                         FogViolations.Add($"{player.Name} heard '{e.Message}' naming {a.Name}, whom they never saw.");
                 }
                 _lastShown[player.Name] = shown;

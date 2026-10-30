@@ -8,5 +8,8 @@
   { "id": "medicine",    "name": "Medicine" },
   { "id": "meal",        "name": "Meals" },
   { "id": "stew",        "name": "Hearty Stew" },
-  { "id": "research_data", "name": "Research Data" }
+  { "id": "research_data", "name": "Research Data" },
+  { "id": "alcohol",     "name": "Alcohol" },
+  { "id": "chemicals",   "name": "Chemicals" },
+  { "id": "pharma",      "name": "Pharma" }
 ]

@@ -288,6 +288,7 @@ public sealed class ColonySim
         StudySystem.Run(State, Data, Scavenge);
         Research.Run(this);
         MedicalSystem.Run(State, Data);
+        MedicineSystem.Run(this, _rng);
         FoodSystem.Run(State, Data);
         DayNightSystem.Run(State, Data);
         RelationshipSystem.Run(State, Data);
@@ -320,6 +321,8 @@ public sealed class ColonySim
             ApplyExtractionResult c => ExpeditionHandlers.Apply(this, c),
             AdmitPatient c => MedicalHandlers.Admit(this, c),
             Discharge c => MedicalHandlers.Discharge(this, c),
+            TreatSurvivor c => MedicineHandlers.Treat(this, c),
+            SetCarePriorities c => MedicineHandlers.SetPriorities(this, c),
             FitProsthetic c => MedicalHandlers.FitProsthetic(this, c),
             ScheduleSurgery c => CyberneticsHandlers.Schedule(this, c),
             CancelSurgery c => CyberneticsHandlers.Cancel(this, c),

@@ -24,6 +24,9 @@ public sealed class GameData
     /// <summary>The schematics catalogue (data/schematics.json); empty = nothing is gated.</summary>
     public SchematicCatalog Schematics { get; }
 
+    /// <summary>The medicine system (data/medicine.json); null when not loaded (no conditions, no infections, no auto-treatment).</summary>
+    public MedicineData? Medicine { get; }
+
     private readonly Dictionary<string, List<RecipeDef>> _recipesByBuilding;
 
     public GameData(
@@ -34,13 +37,15 @@ public sealed class GameData
         IEnumerable<RecipeDef>? recipes = null,
         ProgressionDef? progression = null,
         CyberneticsDef? cybernetics = null,
-        SchematicCatalog? schematics = null)
+        SchematicCatalog? schematics = null,
+        MedicineDef? medicine = null)
     {
         Schematics = schematics ?? SchematicCatalog.Empty;
         Resources = Index(resources, r => r.Id, "resource");
         Jobs = Index(jobs, j => j.Id, "job");
         Buildings = Index(buildings, b => b.Id, "building");
-        var recipeList = (recipes ?? []).Where(r => r.Learns is null).Concat(DecryptRecipes(Schematics)).ToList();
+        var recipeList = Adapt((recipes ?? []).Where(r => r.Learns is null), medicine?.Ingredients ?? [.. MedicineDef.DefaultIngredients])
+            .Concat(DecryptRecipes(Schematics)).ToList();
         Recipes = Index(recipeList, r => r.Id, "recipe");
         _recipesByBuilding = recipeList.GroupBy(r => r.Building).ToDictionary(g => g.Key, g => g.ToList());
         Rules = rules;
@@ -48,6 +53,7 @@ public sealed class GameData
         Perks = Index(Progression.Perks, p => p.Id, "perk");
         Disciplines = Index(Progression.Disciplines, d => d.Id, "discipline");
         Cybernetics = cybernetics is null ? null : new CyberneticsData(cybernetics);
+        Medicine = medicine is null ? null : new MedicineData(medicine);
         Validate();
         ValidateProgression();
         ValidateCybernetics();
@@ -72,6 +78,27 @@ public sealed class GameData
     }
 
     public BuildingDef TownHall => Buildings[Rules.TownHallBuildingId];
+
+    /// <summary>
+    /// Recipe inputs that name an adapted ingredient (medicine.json <c>ingredients</c>) whose owner is not loaded use its
+    /// stand-in: herbs become food until food-cooking brings them.
+    /// </summary>
+    private IEnumerable<RecipeDef> Adapt(IEnumerable<RecipeDef> recipes, List<IngredientAdapter> adapters)
+    {
+        var missing = adapters.Where(a => !Resources.ContainsKey(a.Id)).ToList();
+        foreach (var r in recipes)
+        {
+            if (!missing.Any(a => r.Inputs.ContainsKey(a.Id))) { yield return r; continue; }
+            var inputs = new Dictionary<string, double>(r.Inputs);
+            foreach (var a in missing.Where(a => inputs.ContainsKey(a.Id)))
+            {
+                var amount = inputs[a.Id] * a.Ratio;
+                inputs.Remove(a.Id);
+                inputs[a.Fallback] = inputs.GetValueOrDefault(a.Fallback) + amount;
+            }
+            yield return r with { Inputs = inputs };
+        }
+    }
 
     /// <summary>The recipes a building type makes, in data order.</summary>
     public IReadOnlyList<RecipeDef> RecipesFor(string buildingDefId) =>

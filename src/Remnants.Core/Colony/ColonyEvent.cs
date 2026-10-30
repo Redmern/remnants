@@ -13,6 +13,7 @@ public enum ColonyEventType
     SchematicFound, SchematicLearned, SchematicHeardOf, ResearchStarted, ResearchFinished, ResearchEnded,
     TraderArrived, TraderLeft, Traded, ContractOffered, ContractAccepted, ContractDone, ContractFailed,
     StoryMission, RadioCall,
+    Infected, FellSick, Recovered, Treated, BloodDonated,
 }
 
 /// <summary>Something notable the UI can show in a log. Purely informational.</summary>

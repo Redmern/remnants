@@ -44,7 +44,7 @@ internal static class CraftingSystem
                 continue;
             }
             var recipe = data.Recipes[order.RecipeId];
-            if (!order.Paid) Pay(state, items, recipe, order);
+            if (!order.Paid) Pay(state, data, items, recipe, order);
 
             foreach (var (w, shift) in crew)
             {
@@ -102,7 +102,8 @@ internal static class CraftingSystem
         return building.Queue.FirstOrDefault(o =>
         {
             var r = data.Recipes[o.RecipeId];
-            return r.MinSkill <= skill + 1e-9 && state.Stockpile.CanAfford(r.Inputs) && HasItemInputs(state, items, r);
+            return r.MinSkill <= skill + 1e-9 && state.Stockpile.CanAfford(r.Inputs) && HasItemInputs(state, items, r)
+                && (r.DonorHealth <= 0 || Medicine.Donor(state, data, r.DonorHealth) is not null);
         });
     }
 
@@ -129,9 +130,14 @@ internal static class CraftingSystem
             .ToList();
     }
 
-    private static void Pay(ColonyState state, ScavengeData? items, RecipeDef recipe, CraftOrder order)
+    private static void Pay(ColonyState state, GameData data, ScavengeData? items, RecipeDef recipe, CraftOrder order)
     {
         state.Stockpile.Spend(recipe.Inputs);
+        if (recipe.DonorHealth > 0 && Medicine.Donor(state, data, recipe.DonorHealth) is { } donor)
+        {
+            donor.Health -= recipe.DonorHealth;
+            state.Log(new(state.Tick, ColonyEventType.BloodDonated, $"{donor.Name} gave blood for a {recipe.Name}.", donor.Id));
+        }
         foreach (var (itemId, count) in recipe.ItemInputs)
         {
             var left = count;

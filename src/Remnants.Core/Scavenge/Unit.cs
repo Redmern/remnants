@@ -89,6 +89,12 @@ public sealed class Unit
     /// <summary>Pinned by suppressing fire: loses AP at the start of its next turn.</summary>
     public bool Suppressed { get; set; }
 
+    /// <summary>A stim wears off: its next turn starts this many AP short.</summary>
+    public int CrashAp { get; set; }
+
+    /// <summary>Under a Linked "Calm" injector: cannot be pinned down through this round.</summary>
+    public int CalmUntilRound { get; set; }
+
     /// <summary>Held until this unit's next turn starts.</summary>
     public Stance Stance { get; set; }
 

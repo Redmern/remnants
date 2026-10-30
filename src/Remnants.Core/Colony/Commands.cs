@@ -36,6 +36,12 @@ public sealed record AdmitPatient(int SurvivorId, int? BuildingId = null) : ICol
 
 public sealed record Discharge(int SurvivorId) : IColonyCommand;
 
+/// <summary>Use a medical item from the inventory on a survivor at home: dress, cure, splint, numb or patch up (see <see cref="Medicine"/>).</summary>
+public sealed record TreatSurvivor(int SurvivorId, string ItemId) : IColonyCommand;
+
+/// <summary>The Med Bay's auto-treatment order; priorities left out are off. Null restores the default order.</summary>
+public sealed record SetCarePriorities(List<Data.TreatPriority>? Priorities) : IColonyCommand;
+
 /// <summary>
 /// Fit a crude or mechanical prosthetic item (below <c>surgery.fromTier</c>) from the inventory onto a missing limb, at a
 /// Med Bay of the item's level. It straps on at once; powered parts and up need <see cref="ScheduleSurgery"/>.
@@ -197,6 +203,9 @@ public enum CommandError
     MissionNotAvailable,
     NoDialogue,
     InvalidChoice,
+    /// <summary>Medicine: the item is not a treatment used at home, or would do nothing for them now.</summary>
+    NotATreatment,
+    NothingToTreat,
 }
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>

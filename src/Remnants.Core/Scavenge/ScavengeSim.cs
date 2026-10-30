@@ -1,5 +1,6 @@
 using Remnants.Core.Items;
 using Remnants.Core.Random;
+using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Scavenge;
 
@@ -149,6 +150,12 @@ public sealed class ScavengeSim
         unit.PingsUsed = 0;
         unit.Ap = Profile(unit).MaxAp;
         if (braced) unit.Ap = Math.Max(1, unit.Ap - Data.Rules.Fog.Brace.NextTurnApPenalty);
+        if (unit.CrashAp > 0)
+        {
+            unit.Ap = Math.Max(1, unit.Ap - unit.CrashAp);
+            unit.CrashAp = 0;
+            State.Log(new(State.Round, ScavengeEventType.Crashed, $"{unit.Name} crashes off the stim ({unit.Ap} AP).", unit.Id, Pos: unit.Pos));
+        }
     }
 
     /// <summary>Bleeding ticks down, then everyone conscious (except idle NPCs) is ordered by initiative.</summary>
@@ -161,6 +168,7 @@ public sealed class ScavengeSim
             u.BleedOut--;
             if (u.BleedOut <= 0) Kill(u, ScavengeEventType.BledOut, $"{u.Name} bled out.");
         }
+        foreach (var u in State.Units.Where(u => u.OnMap && u.Body.Conditions.Count > 0)) Treatment.CountDown(u.Body);
         UpdateParties();
         Detection.Expire(Data, State);
         Alliances.RoundStarted(this);
