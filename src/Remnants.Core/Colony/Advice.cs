@@ -19,10 +19,8 @@ public static class Advice
         var data = sim.Data;
         string Name(string id) => data.Buildings.TryGetValue(id, out var d) ? d.Name : id;
         bool Has(string id) => state.Buildings.Any(b => b.DefId == id);
-        var food = data.Rules.Food;
         var home = state.Survivors.Where(s => !s.Away).ToList();
-        var perDay = home.Sum(s => s.IsInfant ? food.InfantPerTick : s.IsChild ? food.ChildPerTick : food.AdultPerTick) * data.Rules.TicksPerDay;
-        var days = perDay <= 0 ? double.PositiveInfinity : state.Stockpile.Get(food.ResourceId) / perDay;
+        var days = sim.FoodDays;
 
         if (!Has("farm"))
             return new("farm", $"Food lasts about {days:0} days. Build a {Name("farm")} first and put people on it; children can farm too.");

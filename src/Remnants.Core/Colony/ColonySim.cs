@@ -45,6 +45,32 @@ public sealed class ColonySim
 
     public int BedCapacity => HousingSystem.Capacity(State, Data);
 
+    /// <summary>Food the people at home eat per day (infants, children and adults; a party away lives on its rations).</summary>
+    public double FoodPerDay
+    {
+        get
+        {
+            var food = Data.Rules.Food;
+            return State.Survivors.Where(s => !s.Away)
+                .Sum(s => s.IsInfant ? food.InfantPerTick : s.IsChild ? food.ChildPerTick : food.AdultPerTick) * Data.Rules.TicksPerDay;
+        }
+    }
+
+    /// <summary>Days the raw food in the stockpile lasts at <see cref="FoodPerDay"/> (infinity when nobody eats).</summary>
+    public double FoodDays => FoodPerDay <= 0 ? double.PositiveInfinity : State.Stockpile.Get(Data.Rules.Food.ResourceId) / FoodPerDay;
+
+    /// <summary>
+    /// Units of its resource a gathering building's current workers make per tick (0 for buildings that produce none):
+    /// the sum of <see cref="JobOutput.PerTick"/> over them, as <c>ProductionSystem</c> adds it.
+    /// </summary>
+    public double OutputPerTick(Building building)
+    {
+        var def = Data.Buildings[building.DefId];
+        if (def.Job is null || def.Produces is null) return 0;
+        var job = Data.Jobs[def.Job];
+        return State.WorkersAt(building.Id).Sum(w => JobOutput.PerTick(def, building.Level, job, w, Data.Rules.Output));
+    }
+
     public int FreeSlots(Building building) =>
         Data.Buildings[building.DefId].Level(building.Level).WorkerSlots - State.WorkersAt(building.Id).Count();
 
