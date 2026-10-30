@@ -981,6 +981,12 @@ Mall 51% / 23%, Rail Depot 92% / 63%; basic mods 3% / 1%, 6% / 1%, 26% / 8%, 48%
 35%; at night full (light) 55% / 35% and 80% / 69% vs stealth (dark) 53% / 36% and 84% / 72%. All within a few points of the
 tables above.
 
+After the second rebase (food and cooking, electronics and power; 300 runs): starting kit Outskirts 4% / 1%, Scrapyard
+Flats 10% / 2%, Suburb Ruins 34% / 10%, Flooded Mall 50% / 23%; basic mods Suburb 27% / 9%, Mall 49% / 19%; 2 carbines 21% /
+8%, 37% / 17%, Rail Depot 64% / 37% → full mods 2% / 0%, 5% / 0%, 35% / 10%. Colony sweep (20 seeds × 60 days, `--no-mods`
+→ the bot modding): expedition deaths 12 over 331 → 9 over 330, departures 23 → 24, Town Hall 2 day 31.8 → 30.8, Lab 59.5 →
+58.1, min food 3.7 → 3.7 days, starvation 0 → 0.
+
 Watch next: a fully modded mid-game party with two carbines makes Suburb Ruins and Flooded Mall routine (5%). That
 needs Armory 3, two carbines, Mk II kits and tier-2 schematics, so it is late by design, but if it feels too safe the
 levers are the slot counts (Mk II 2 → 1 for firearms) and the Mk II armor step. The weapon light is never turned off (no
