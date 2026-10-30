@@ -52,6 +52,12 @@ public partial class ColonyScreen : Node3D
         var audio = new Audio.ColonyAudio { Name = "Audio" };
         AddChild(audio);
         audio.Setup(_session, layout, camera, _hud);
+        var weatherView = new WeatherFx.WeatherView { Name = "WeatherView" };
+        AddChild(weatherView);
+        weatherView.Setup(camera.Camera, _town.Lighting, 28f);
+        var weather = new WeatherFx.ColonyWeather { Name = "Weather" };
+        AddChild(weather);
+        weather.Setup(_session, weatherView);
 
         if ((DebugCapture.HasFlag("--demo") || DebugCapture.HasFlag("--family-demo")) && IsFreshGame) RunDemo();
         if (DebugCapture.HasFlag("--family-demo")) RunFamilyDemo();

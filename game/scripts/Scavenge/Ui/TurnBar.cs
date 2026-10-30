@@ -52,6 +52,9 @@ public partial class TurnBar : PanelContainer
                 _ => "Half light: sight a little shorter.",
             }, color);
         row.AddChild(_time);
+        // The run's weather (it may change mid-run); its field effects in a tooltip.
+        _weather = Widgets.Chip(Icons.Get("weather_clear", 16), "", Palette.TextMuted);
+        row.AddChild(_weather);
         row.AddChild(new VSeparator());
         row.AddChild(Icons.Rect(Icons.Get("stat_initiative", 18), 18, Palette.TextMuted));
         var scroll = new ScrollContainer
@@ -75,8 +78,30 @@ public partial class TurnBar : PanelContainer
         row.AddChild(Widgets.IconButton("ui_menu", "", "Menu: settings, leave, quit", () => MenuPressed?.Invoke(), Hotkeys.KeyName("pause_menu")));
     }
 
+    private PanelContainer _weather = null!;
+    private string? _weatherShown;
+
+    private void RefreshWeather()
+    {
+        var env = _presenter.State.Environment;
+        var key = $"{env.Weather}|{env.Intensity}|{env.Shifts.Count}";
+        if (key == _weatherShown) return;
+        _weatherShown = key;
+        var kind = string.IsNullOrEmpty(env.Weather) ? "clear" : env.Weather;
+        var color = Colony.Ui.TopBar.WeatherColor(kind);
+        var row = _weather.GetChild(0);
+        var icon = row.GetChild<TextureRect>(0);
+        icon.Texture = Icons.Get($"weather_{kind}", 16, "weather_clear");
+        icon.Modulate = color;
+        var label = row.GetChild<Label>(1);
+        label.Text = ScavengeText.WeatherName(env.Weather, env.Intensity).ToUpperInvariant();
+        label.AddThemeColorOverride("font_color", color);
+        _weather.TooltipText = ScavengeText.WeatherTip(_presenter.Sim.Data, env);
+    }
+
     public void Refresh(bool busy)
     {
+        RefreshWeather();
         var state = _presenter.State;
         _zone.Text = _presenter.Sim.Data.Zones.TryGetValue(state.ZoneId, out var z) ? z.Name : state.ZoneId;
         _round.Text = $"ROUND {state.Round}";

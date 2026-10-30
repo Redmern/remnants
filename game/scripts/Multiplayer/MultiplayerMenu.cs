@@ -156,14 +156,16 @@ public partial class MultiplayerMenu : Control
         _party.Text = "Party: " + description;
     }
 
-    private static int? ColonyHour() =>
+    /// <summary>The colony's waiting party's mission environment (its hour and the weather over the zone), if hosting from one.</summary>
+    private static Remnants.Core.Scavenge.ScavengeEnvironment? ColonyEnvironment() =>
         Colony.ColonySession.Current is { } session && session.MultiplayerParty() is not null && session.Sim.State.Expedition is { } e
-            ? session.Sim.MissionEnvironment(e.ArrivalTick).Hour
+            ? session.Sim.MissionEnvironment(e.ArrivalTick, e.ZoneId)
             : null;
 
     private void OnHost()
     {
         var (_, port) = MultiplayerSession.ParseAddress(_address.Text);
+        var env = ColonyEnvironment();
         var options = new HostOptions
         {
             ZoneId = _zoneIds[_zone.Selected],
@@ -172,8 +174,12 @@ public partial class MultiplayerMenu : Control
             MaxPartySize = GameDataPaths.Load().Rules.Expedition.PartySizeByTownHallLevel.Max(),
             TurnSeconds = double.TryParse(DebugCapture.Value("--mp-turn-seconds"), out var turn) ? turn : 60,
             Mode = _mode.Selected == 1 ? MissionMode.Coop : MissionMode.Versus,
-            // Hosting from the colony's waiting party: the mission is at the hour it arrived (and maybe waited for).
-            Hour = ColonyHour(),
+            // Hosting from the colony's waiting party: the mission is at the hour it arrived (and maybe waited for), in the
+            // weather over the zone then; otherwise the server rolls the weather from the seed.
+            Hour = env?.Hour,
+            Weather = env?.Weather,
+            WeatherIntensity = env?.Intensity ?? 0.7,
+            WeatherShifts = env?.Shifts ?? new(),
         };
         try
         {

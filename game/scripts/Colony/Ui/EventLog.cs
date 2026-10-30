@@ -162,6 +162,8 @@ public partial class EventLog : PanelContainer
         ColonyEventType.SurgeryDone => ("Surgery done", true),
         ColonyEventType.SurgeryComplication => ("Surgery complication", true),
         ColonyEventType.ProstheticNeedsService => ("Prosthetic needs a service", true),
+        ColonyEventType.Storm => ("Weather", true),
+        ColonyEventType.LightningStruck => ("Lightning strike", true),
         _ => null,
     };
 
@@ -196,6 +198,10 @@ public partial class EventLog : PanelContainer
         ColonyEventType.SurgeryComplication => ("stat_injured", Palette.Warn, Kind.Alert),
         ColonyEventType.ProstheticNeedsService => ("body_prosthetic", Palette.Warn, Kind.Alert),
         ColonyEventType.Humanity => ("stat_mood", Palette.Network.Lerp(Palette.TextMuted, 0.4f), Kind.People),
+        ColonyEventType.WeatherChanged => ("weather_overcast", Palette.TextMuted, Kind.Colony),
+        ColonyEventType.Storm => ("weather_thunderstorm", Palette.Warn, Kind.Colony),
+        ColonyEventType.LightningStruck => ("weather_lightning", Palette.Danger, Kind.Alert),
+        ColonyEventType.Repaired => ("ui_build", Palette.Good, Kind.Colony),
         _ => ("ui_info", Palette.TextMuted, Kind.Colony),
     };
 

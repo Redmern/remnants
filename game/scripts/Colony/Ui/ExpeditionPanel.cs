@@ -367,7 +367,7 @@ public partial class ExpeditionPanel : PanelContainer
         var food = perMember * _picked.Count;
         _partyInfo.Text = $"Party {_picked.Count}/{sim.MaxPartySize} (Town Hall L{sim.TownHallLevel}) · rations {food:0} food " +
                           $"(have {sim.State.Stockpile.Get(sim.Data.Rules.Food.ResourceId):0}) · away members don't eat at home";
-        _launch.Disabled = _launchOnline.Disabled = _picked.Count == 0;
+        _launch.Disabled = _launchOnline.Disabled = _picked.Count == 0 || _blocked;
         var data = sim.Scavenge!;
         var signature = string.Join(",", sim.State.Inventory.Counts.Select(kv => $"{kv.Key}:{kv.Value}"));
         if (signature == _inventoryShown) return;
@@ -385,6 +385,9 @@ public partial class ExpeditionPanel : PanelContainer
         _inventory.AddChild(flow);
     }
 
+    /// <summary>The planned trip's route is closed by the weather (launching would fail).</summary>
+    private bool _blocked;
+
     private DayPhase? WaitFor => WaitChoices[Math.Clamp(_wait.Selected, 0, WaitChoices.Length - 1)];
 
     /// <summary>When the party would arrive and what that phase means in the field; returns the wait's extra food per member.</summary>
@@ -398,14 +401,21 @@ public partial class ExpeditionPanel : PanelContainer
         _arrival.Text = $"Arrives day {DayNight.Day(plan.ArrivalTick, rules)}, {DayNight.Hour(plan.ArrivalTick, rules):00}:00 · {plan.Phase.ToString().ToUpperInvariant()}";
         _arrival.AddThemeColorOverride("font_color", color);
         var wait = plan.WaitTicks > 0 ? $"Waits {plan.WaitTicks} h outside: +{plan.WaitRationsPerMember:0} food each. " : "";
+        // The travel planner's terms (weather; vehicles add theirs): delays, or a closed route.
+        _blocked = plan.Blocked;
+        foreach (var term in plan.Travel?.Modifiers ?? [])
+            wait += term.Blocks ? $"{term.Reason}: wait for it to pass. " : $"{term.Reason}" + (plan.DelayRationsPerMember > 0 ? $" (+{plan.DelayRationsPerMember:0} food each). " : ". ");
+        var there = Weather.SpellAt(sim.State, sim.Data, Weather.RegionOf(sim.Data, sim.Scavenge!.Zones[zoneId]), sim.State.Tick);
+        if (sim.Data.Weather.Enabled && there.Kind != "clear")
+            wait += $"{ColonyText.WeatherName(sim, there.Kind, there.Intensity)} over {sim.Scavenge!.Zones[zoneId].Region} right now. ";
         _arrivalNote.Text = wait + plan.Phase switch
         {
             DayPhase.Night => "Night: your people see much less and are harder to spot — but not by the Linked's sensors or cameras. More Husks, and they hear further. Flares light further; muzzle flashes give shooters away.",
             DayPhase.Dawn or DayPhase.Dusk => "Half light: sight a little shorter, a little easier to slip by Husks.",
             _ => "Daylight: everyone sees well.",
         };
-        _arrivalNote.AddThemeColorOverride("font_color", plan.Phase == DayPhase.Night ? Palette.Night : Ui.Muted);
-        return (float)plan.WaitRationsPerMember;
+        _arrivalNote.AddThemeColorOverride("font_color", plan.Blocked ? Palette.Danger : plan.Phase == DayPhase.Night ? Palette.Night : Ui.Muted);
+        return (float)plan.ExtraRationsPerMember;
     }
 
     private void Launch(bool online)
