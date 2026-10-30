@@ -287,21 +287,22 @@ sensors, cameras and turrets, ×1.25 Husks who hear ×1.5 further, flares ×1.25
 stealth. A first try at ×1.5 Husks made night Outskirts 12% deadly and Suburb Ruins 41%; ×1.25 keeps the early zones
 inside their targets while night stays the riskier hour for a party that fights its way to every cache.
 
-Zone trials, 300 runs each, two adults with starting gear (`--zone=… --runs=300 --hour=12` vs `--hour=23`):
+Zone trials, 300 runs each, two adults with starting gear (`--zone=… --runs=300 --hour=12` vs `--hour=23`; on `main`
+after the Linked carbine pass):
 
 | zone | someone dies: day → night | wipe | ambushed / run | lose someone when a Linked shows | ...when none does |
 |---|---|---|---|---|---|
 | Town Outskirts | 6% → 7% | 1% → 1% | 0.00 → 0.01 | — | 6% → 7% |
 | Scrapyard Flats | 8% → 10% | 2% → 3% | 0.00 → 0.00 | — | 8% → 10% |
 | Suburb Ruins | 33% → 37% | 12% → 16% | 0.36 → 0.44 | 82% → 68% | 21% → 30% |
-| Flooded Mall | 52% → 57% | 22% → 24% | 1.21 → 1.58 | 59% → 68% | 26% → 27% |
-| Rail Depot | 92% → 93% | 63% → 62% | 4.47 → 5.37 | 94% → 93% | — |
-| Network Relay | 99% → 99% | 86% → 85% | 6.35 → 8.10 | 99% → 99% | — |
-| Core Spire | 100% → 100% | 96% → 96% | 6.49 → 9.23 | 100% → 100% | — |
+| Flooded Mall | 52% → 58% | 22% → 25% | 1.22 → 1.58 | 60% → 69% | 26% → 27% |
+| Rail Depot | 92% → 93% | 64% → 62% | 4.47 → 5.44 | 94% → 93% | — |
+| Network Relay | 98% → 99% | 86% → 85% | 6.37 → 8.08 | 98% → 99% | — |
+| Core Spire | 100% → 100% | 97% → 97% | 6.49 → 9.13 | 100% → 100% | — |
 
 - Against the Linked the night shows as **ambushes**: their sensors still pick the party out while the party's own sight
   shrinks and the Linked's +15 night stealth hides them, so ambushes per run rise by 20–40% from Suburb Ruins up. Flooded
-  Mall with a Linked about goes 59% → 68%. Suburb Ruins with a Linked reads 82% → 68%, but that is ~60 runs out of 300 and
+  Mall with a Linked about goes 60% → 69%. Suburb Ruins with a Linked reads 82% → 68%, but that is ~60 runs out of 300 and
   within the noise; the overall Suburb figure (33% → 37%) and its ambushes go up.
 - Husk zones get a little worse for this bot (more Husks that hear further), which fights what it finds and walks to
   every cache. The night's upside, slipping past Husks (+15 stealth against them, Husk sight ×0.8), is only partly used:
