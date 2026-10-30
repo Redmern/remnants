@@ -265,7 +265,7 @@ models still load and fall back to tweens.
 - **Commands only.** The UI changes the sim only via `ColonySim.Execute(IColonyCommand)`
   (`AssignJob`, `Unassign`, `Construct`, `Upgrade`, `LaunchExpedition`, `ApplyExtractionResult`, `AdmitPatient`,
   `Discharge`, `FitProsthetic`, `SetRecipe`, `QueueRecipe`, `CancelOrder`, `StudyBlueprint`, `Matchmake`, `ChoosePerk`,
-  `StartStudy`, `CancelStudy`, `SetNightShift`, `InstallFloodlight`). Core validates and returns a `CommandResult`
+  `StartStudy`, `CancelStudy`, `SetNightShift`, `InstallFloodlight`, `FitUpgrade`, `RemoveUpgrade`, `RepairVehicle`). Core validates and returns a `CommandResult`
   with a `CommandError` code. This is also the future client→server intent format.
 - **Tick order:** production (+training) → crafting → study → medical → food → day/night (sleep, night work, evenings) →
   relationships (mood, affinity, couples) →
@@ -273,7 +273,7 @@ models still load and fall back to tweens.
 - **Scavenge commands** (`Move`, `Attack`, `UseItem` (on a unit, or a tile with `At`), `PickUp`, `Recruit`, `SetStance`
   (Overwatch / Brace), `Lookout`, `EndTurn`, `Extract`; co-op: `ProposeAlliance`, `RespondAlliance`, `BreakAlliance`,
   `PingTile`, `GiveItem`, `Carry`, `PutDown`; tech: `Hack`, `DeployDrone`, `FlyDrone`, `RecallDrone`, `MarkTarget`,
-  `DropPayload`) carry a
+  `DropPayload`; vehicles: `StashItem`, `TakeFromStash`, `Salvage`) carry a
   `PlayerId` + `UnitId`; Core checks ownership and whose turn it is and returns a `ScavengeResult`
   with a `ScavengeError`. Several players' parties can share one instance (each party is a side).
   A party is done when it has no conscious controllable unit left (its downed die, recruits stay or go over to an ally),
@@ -865,6 +865,63 @@ The spec is STORY.md. The data format, field by field, is docs/story/FORMAT.md. 
   through the adapter, leaving early, saves mid-campaign and mid-mission, perimeter variants and towers),
   `DialogueTests` (choices, effects, conditions, conditional lines, placeholders, Sandbox), `ObjectiveTests` (each kind
   passes and fails; triggers once; prompts block and branch; patrols; wipe; determinism).
+## Vehicles
+
+All numbers live in `data/vehicles.json` (tiers, upgrades, road rules, weather effects), the Garage / Biofuel Still in
+`buildings.json`, parts and vehicle builds in `recipes.json`, parts and schematic items in `items.json`, the field rules in
+`scavenge.json` (`vehicle`, `salvage`, terrains `Vehicle` / `ArmoredVehicle`), the Mechanics discipline in `perks.json`, and
+the schematic catalogue in `data/schematics.vehicles.json`. Core: `Data/Vehicles.cs`, `Colony/Vehicles.cs` (`VehicleRules`),
+`Colony/VehicleSchematics.cs`, `Scavenge/ParkedVehicles.cs`, `Scavenge/Salvaging.cs`.
+
+- **Tiers**: T0 Handcart (every colony starts with one), T1 Bicycle Cart, T2 Motorbike, T3 Buggy, T4 Truck, T5 Armored
+  Rig: speed, seats (null = any), cargo kg, fuel per travel day, range on a tank, noise, max condition (= HP when parked),
+  armor, slots. A vehicle is a `ColonyState.Vehicles` entry (tier, name, condition, fitted upgrades, `Away`).
+- **Building one** is a Garage recipe with `vehicle: TIER` (parts as `itemInputs`, schematic as `blueprint`), so it takes
+  workers, effort and the queue like any batch; the finished batch rolls the vehicle out (`VehicleBuilt`). Parts (wheel,
+  spare parts, chassis frame, fuel can, small engine, freight diesel, armor plate) are `vehiclePart` items: they get
+  Crude / Standard / Fine variants (`{id}@{tier}`) rolled from the crafter's **Mechanics** skill (new; the Garage job).
+  Fuel: the Biofuel Still turns food (L2: wood) into the `fuel` resource; it also distils `spirits` → alcohol.
+- **Slots and upgrades** (`FitUpgrade`, `RemoveUpgrade`, `RepairVehicle`; Garage level, schematic, tier, a free slot): Engine
+  (tuned engine, turbo, muffler, biofuel conversion), Tyres (off-road, run-flats, desert), Armor (plates, cage, ram) and
+  Utility (cargo rack, trailer, fuel cans, headlights, winch, roof turret, smoke launcher, radio booster, drone pad, medkit
+  locker, mobile workbench, solar charger). The handcart has one utility slot, the rig the most; Garage L3 adds a utility
+  slot to every vehicle. Parts are paid best quality first; their mean quality multiplier scales the effect (m → 1 + (m −
+  1)·q, a → a·q); a Tuner at the Garage adds `engine_tune_bonus` to engine upgrades. Taking one off returns half its parts at
+  its quality. `VehicleRules.Stats` sums a vehicle's working upgrades; `CanFit` says why not.
+- **Wear**: the road wears the vehicle and every fitted upgrade (`wearPerTravelDay` each way); HP lost in a mission wears the
+  upgrades too (`combatWearToParts`). An upgrade below `partBrokenBelow` stays fitted but does nothing; a vehicle below
+  `minLaunchCondition` cannot leave. `RepairVehicle` spends spare parts on the hull, then the most worn parts; a Grease Monkey
+  at the Garage needs fewer (`repair_parts_discount`). Nothing is ever deleted by wear: only a wreck (or a vehicle left in
+  the zone) is lost.
+- **Travel** (`VehicleRules.Plan`, `ColonySim.PlanTravel`): a list of `TravelTerm`s that multiply — the vehicle, its
+  upgrades, the weather (`ColonySim.WeatherAt(tick)`, a hook the weather feature fills; `vehicles.json weather` says what each
+  weather does: block some tiers, slow all, mud slows wheels unless all-terrain; desert tyres or a ram drive a blocked road
+  slowly instead), and the dark (a motor vehicle without headlights leaving or arriving at night). Range on a tank can
+  block a trip. On foot the zone's days stand. `LaunchExpedition(…, VehicleId)` checks seats (with the Town Hall cap,
+  `MaxPartySizeWith`), condition, the plan, fuel for the round trip and rations for the shorter trip; the way home is
+  planned when the run ends (`Expedition.ReturnTravelTicks`). The vehicle's noise (none under a smoke launcher) draws that
+  share more Husks on arrival (`ZoneConditions.HuskMultiplier`). A working vehicle at home extends drone scouting
+  (`WorldMap.DroneReachDays`); a radio booster adds `VehicleRules.RadioRangeBonus` for the Radio Mast.
+- **In the field** (`PartySetup.Vehicle` = `FieldVehicle`): the vehicle parks on the spawn edge next to the party, its tile
+  impassable cover (hard cover when armored). The side extracts from any tile next to it; `StashItem` loads carried items
+  into it within its cargo (`TakeFromStash` with a mobile workbench); at round start a workbench mends it, a solar charger
+  refills adjacent drone batteries (`VehiclePower`), a roof turret shoots the nearest hostile in range, and every adjacent
+  enemy hits it (armor, run-flats). At 0 HP it is wrecked: stash lost, no extraction. The result carries `VehicleResult`
+  (HP, wrecked, stash); the stash counts as loot when someone drove it home; a medkit locker heals the riders.
+- **Salvage** (`Salvage(at)`): a wreck is a pair of cover tiles (the map draws a wrecked car there; `Salvaging.Wrecks`), each
+  stripped once (`ScavengeState.SalvagedWrecks`) for `salvage.apCost` AP and a shot's worth of noise: `rollsByLootTier`
+  rolls on the table (big parts only with the party's vehicle parked; a winch adds a roll), at the zone tier's quality,
+  dropped as a cache.
+- **Schematics**: `VehicleSchematics.Has / LevelUnlocked` is the one adapter (today studied blueprints and
+  `BuildingLevelDef.Schematic`); defaults (cargo rack, fuel cans, spare parts, handcart) need none.
+- **Saves**: colony version 12 (vehicles; the expedition's vehicle, noise, fuel, return trip; older colonies get the
+  handcart), scavenge version 7 (parked vehicles, stripped wrecks).
+- **Game**: `GaragePanel` (opens with the Garage selected: vehicles, slot chips with quality and condition, fit preview with
+  before → after numbers, parts by quality, repairs), the expedition planner's vehicle picker (days, fuel, seats, cargo,
+  noise, terms), the vehicle token on the world map, `MapView` parks `vehicle_parked_extraction_t{tier}` (or the cart model)
+  on its tile, `ActionPanel` has the vehicle chip, Load (R), Take, Salvage (I) and Extract by the vehicle (X); the after-action
+  report says which vehicle came home or was lost. Audio: vehicle events, the Garage loop, parked engine idle.
+- Tests: `VehicleTests`, `VehicleUpgradeTests`, `VehicleNetTests`.
 
 ## Data files
 
@@ -873,7 +930,9 @@ The spec is STORY.md. The data format, field by field, is docs/story/FORMAT.md. 
 - `buildings.json` — category, job, produced resource, base output (per worker-hour on shift), `outdoor` (a Night Shift
   needs light), `minTownHallLevel`, and per-level
   cost / worker slots / output multiplier / beds / patients. Level 1 cost = construction cost.
-- `recipes.json` — what production buildings make (see "Crafting tiers").
+- `recipes.json` — what production buildings make (see "Crafting tiers"); `vehicle` recipes build vehicles at the Garage.
+- `vehicles.json` — vehicle tiers, slots, upgrades, wear and road rules, weather effects (see "Vehicles").
+- `schematics.vehicles.json` — the vehicle schematics in the schematics catalogue format (see "Vehicles").
 - `perks.json` — skills (names, learning attributes), XP sources and level curve, study buildings and rates,
   disciplines and the perk tree (see "Perks and study").
 - `cybernetics.json` — tiers, specialisations, the tree's nodes (one per prosthetic item), paired sets, surgery, humanity,
@@ -923,7 +982,9 @@ the adults, `--loop-demo` sends the adults on an expedition to the outskirts (sc
 `--autopilot`) and builds a Med Bay and Workshop, `--family-demo` does `--demo`, encourages the first man and woman
 and fast-forwards until a baby is born (then selects the mother), `--crafting-demo` builds a grown town (Town Hall 3, every
 production building, some at level 2–3) with staffed, queued Armory and Tailor and opens the Armory and item panels, `--expedition` opens the expedition planner with two adults picked, `--world-map` opens the world map
-(`--zone=ID` selects a marker), `--tech-demo=hack|turret|drone` (with `--scavenge`) stages a hack in progress, a hacked turret firing or a
+(`--zone=ID` selects a marker), `--garage-demo` (a Garage L3 with vehicles, upgrades and parts, selected; with `--expedition
+--zone=ID --vehicle=TIER` the planner picks that vehicle), `--world-demo --vehicle=TIER` (the party drives),
+`--scavenge --vehicle=TIER` (a parked vehicle in the debug mission), `--tech-demo=hack|turret|drone` (with `--scavenge`) stages a hack in progress, a hacked turret firing or a
 drone scouting (saves its own still with `--screenshot`), `--fog-demo` (with `--scavenge`) stages a fog ambush (`--select-unit=watcher` shows the unit on overwatch with its range;
 `--select-unit=ID` and `--pause-menu` work in any scavenge run), `--world-demo` fakes a few weeks of scouting and sends a party on the road (for
 screenshots); `--scavenge --zone=ID --seed=N` plays the debug mission in another zone, `--multiplayer` opens the multiplayer menu and

@@ -41,3 +41,7 @@ shot scavenge_autoplay 600 --scavenge --autoplay=6
 shot scavenge_pause    200 --scavenge --pause-menu
 shot fog_demo          3000 --scavenge --fog-demo
 shot fog_overwatch     3000 --scavenge --fog-demo --select-unit=watcher
+shot garage            250 --colony --garage-demo
+shot expedition_vehicle 250 --colony --garage-demo --expedition --zone=suburb_ruins --vehicle=buggy
+shot world_vehicle     250 --colony --world-demo --vehicle=buggy
+shot scavenge_vehicle  250 --scavenge --vehicle=truck --zone=suburb_ruins

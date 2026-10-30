@@ -84,6 +84,17 @@ public partial class AfterActionDialog : Overlay
             _content.AddChild(Widgets.SectionHeader("Gear lost", "stat_warning"));
             _content.AddChild(Items(sim, report.LostGear, Palette.Danger, ""));
         }
+        if (report.Vehicle is { } drove)
+        {
+            _content.AddChild(Widgets.SectionHeader("Vehicle", "ui_vehicle"));
+            var condition = sim.State.Vehicles.Find(v => v.Name == drove) is { } v ? $" ({v.Condition:0}/{sim.VehicleStats(v).MaxCondition:0}; repair at the Garage)" : "";
+            _content.AddChild(Widgets.Label($"The {drove} brought the party home{condition}.", color: Palette.Text));
+        }
+        if (report.LostVehicle is { } lost)
+        {
+            _content.AddChild(Widgets.SectionHeader("Vehicle lost", "stat_warning"));
+            _content.AddChild(Widgets.Label($"The {lost} did not come back, with everything in it.", color: Palette.Danger));
+        }
         Open();
     }
 

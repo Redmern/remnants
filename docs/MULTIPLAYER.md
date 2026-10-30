@@ -295,6 +295,16 @@ map), Accept (Y) / Decline (U) an offer, Offer an alliance (Y) to a rival you se
   and flares (which every side sees) show the same lit ground to all. `NightNetTests` stage it with `CheckFog` on every
   message: server-decided hour in both views, a day/night standoff (sent by day, not at night, nothing leaked), a flare.
 
+## Vehicles over the wire
+
+- **Each player brings their own vehicle**: `Join` carries the party's `FieldVehicle` (from the colony's chosen vehicle). The
+  server parks it at that player's spawn point and refuses a party larger than its seats or a vehicle that does not add up
+  (HP, cargo, turret over `scavenge.json vehicle` limits). Cargo is enforced by the sim: `stashItem` fails past the limit.
+- Commands `stashItem`, `takeFromStash`, `salvage`. Views carry the parked vehicles: the side's own in full, another
+  party's only once its tile is explored, never with its stash; stripped wrecks are public. Protocol version 6.
+- `VehicleNetTests`: two players with their own vehicles (stash hidden from the other), seat and stat refusals, stash over
+  the wire.
+
 ## Parties and results — the trust gap
 
 - **Party in.** `MultiplayerSession.PickParty` takes the party of the colony's expedition when one is in its zone and
