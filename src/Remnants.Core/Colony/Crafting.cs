@@ -1,6 +1,7 @@
 using Remnants.Core.Data;
 using Remnants.Core.Random;
 using Remnants.Core.Scavenge;
+using Remnants.Core.Schematics;
 using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Colony;
@@ -24,7 +25,7 @@ public sealed record SkillGap(Skill Skill, double Best, double Needed, int? Tick
 /// </summary>
 internal static class CraftingSystem
 {
-    public static void Run(ColonyState state, GameData data, ScavengeData? items, DeterministicRng rng)
+    public static void Run(ColonyState state, GameData data, ScavengeData? items, DeterministicRng rng, ColonySim? sim = null)
     {
         foreach (var building in state.Buildings.Where(b => b.Queue.Count > 0))
         {
@@ -52,6 +53,7 @@ internal static class CraftingSystem
             }
             if (order.Progress + 1e-9 < recipe.Work) continue;
             Finish(state, data, items, rng, building, def, recipe, order, BestSkill(workers, job), QualityBonus(data, workers, job));
+            if (recipe.Learns is { } learns && sim is not null) Schematics.Schematics.Grant(sim, learns, SchematicSource.Terminal);
             foreach (var w in workers) Progression.GrantXp(state, data, w, data.Progression.Xp.PerCraft, XpSource.Crafting);
         }
     }
@@ -158,7 +160,13 @@ internal static class CraftingSystem
         Building building, BuildingDef def, RecipeDef recipe, CraftOrder order, double skill, double qualityBonus)
     {
         string made;
-        if (recipe.Item is { } item)
+        if (recipe.Learns is { } learns)
+        {
+            made = $"a decrypted {data.Schematics.All[learns].Name} schematic";
+            order.Repeat = false;
+            order.Remaining = 1;
+        }
+        else if (recipe.Item is { } item)
         {
             var count = (int)Math.Round(recipe.Amount);
             var id = item;
@@ -289,37 +297,23 @@ internal static class CraftingHandlers
         return CommandResult.Success(message, building.Id);
     }
 
-    public static CommandResult Study(ColonySim sim, StudyBlueprint c)
-    {
-        var state = sim.State;
-        if (sim.Scavenge is null) return ExpeditionHandlers.NoData();
-        if (!sim.Scavenge.Items.TryGetValue(c.ItemId, out var item)) return CommandResult.Fail(CommandError.UnknownItem, $"No item '{c.ItemId}'.");
-        if (item.Blueprint is not { } bp) return CommandResult.Fail(CommandError.NotABlueprint, $"{item.Name} is not a blueprint.");
-        if (state.KnownBlueprints.Contains(item.Id)) return CommandResult.Fail(CommandError.AlreadyKnown, $"{item.Name} is already studied.");
-        if (!state.Inventory.Has(item.Id)) return CommandResult.Fail(CommandError.MissingItems, $"The colony has no {item.Name}.");
-        var at = sim.Data.Buildings[bp.StudyAt];
-        if (!state.Buildings.Any(b => b.DefId == at.Id && b.Level >= bp.MinLevel))
-            return CommandResult.Fail(CommandError.NoStudyBuilding, $"{item.Name} is studied at a {at.Name} of level {bp.MinLevel}.");
-
-        state.Inventory.TryTake(item.Id);
-        state.KnownBlueprints.Add(item.Id);
-        var unlocked = sim.Data.Recipes.Values.Where(r => r.Blueprint == item.Id).Select(r => r.Name)
-            .Concat(sim.Data.Cybernetics?.Nodes.Values.Where(n => n.Blueprint == item.Id).Select(n => sim.Scavenge.Items[n.Id].Name) ?? [])
-            .ToList();
-        var message = $"Studied {item.Name}: {(unlocked.Count == 0 ? "nothing new" : string.Join(", ", unlocked))} unlocked.";
-        state.Log(new(state.Tick, ColonyEventType.BlueprintStudied, message));
-        return CommandResult.Success(message);
-    }
-
-    /// <summary>Building level, blueprint, item data and (for cybernetics) the tree a recipe needs before it can be queued.</summary>
+    /// <summary>Building level, schematic, item data and (for cybernetics) the tree a recipe needs before it can be queued.</summary>
     public static CommandResult CheckRecipe(ColonySim sim, Building building, RecipeDef recipe)
     {
         var def = sim.Data.Buildings[building.DefId];
         if (recipe.MinLevel > building.Level)
             return CommandResult.Fail(CommandError.RecipeLevelTooLow, $"{recipe.Name} needs {def.Name} level {recipe.MinLevel}.");
-        if (recipe.Blueprint is { } bp && !sim.State.KnownBlueprints.Contains(bp))
-            return CommandResult.Fail(CommandError.RecipeLocked,
-                $"{recipe.Name} needs its blueprint ({sim.Scavenge?.Items.GetValueOrDefault(bp)?.Name ?? bp}) studied.");
+        if (sim.Data.Schematics.GateOfRecipe(recipe.Id) is { } gate && !Schematics.Schematics.Has(sim, gate))
+            return CommandResult.Fail(CommandError.RecipeLocked, $"{recipe.Name} needs the {sim.Data.Schematics.All[gate].Name} schematic.");
+        if (recipe.Learns is { } learns)
+        {
+            var name = sim.Data.Schematics.All[learns].Name;
+            if (Schematics.Schematics.Has(sim, learns)) return CommandResult.Fail(CommandError.AlreadyKnown, $"The {name} schematic is already known.");
+            var queued = sim.State.Buildings.SelectMany(b => b.Queue).Where(o => o.RecipeId == recipe.Id)
+                .Sum(o => o.Paid ? 0 : o.Repeat ? 1 : o.Remaining);
+            if (!sim.State.Inventory.Has(learns, queued + 1))
+                return CommandResult.Fail(CommandError.MissingItems, $"There is no {name} chip to decrypt.");
+        }
         if ((recipe.Item is not null || recipe.ItemInputs.Count > 0) && sim.Scavenge is null) return ExpeditionHandlers.NoData();
         if (Cybernetics.CraftGate(sim, recipe) is { } locked) return locked;
         return CommandResult.Success("");

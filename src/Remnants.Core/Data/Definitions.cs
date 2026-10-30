@@ -45,7 +45,8 @@ public sealed record BuildingLevelDef
 /// Something a production building makes (data/recipes.json). A batch's inputs (resources and items) are paid when
 /// it starts; the building's workers add their job output as effort each tick until it reaches <see cref="Work"/>,
 /// then the batch yields <see cref="Amount"/> of an item (into the colony inventory, at a rolled quality for gear) or
-/// of a resource (into the stockpile). Recipes naming a <see cref="Blueprint"/> stay locked until it is studied.
+/// of a resource (into the stockpile), or teaches a schematic (<see cref="Learns"/>: the synthesized Decrypt orders).
+/// Recipes a schematic unlocks (data/schematics.json) stay locked until the colony knows it.
 /// </summary>
 public sealed record RecipeDef
 {
@@ -67,8 +68,8 @@ public sealed record RecipeDef
     /// <summary>At least one worker needs this much of the job's skill, or the building idles.</summary>
     public double MinSkill { get; init; }
 
-    /// <summary>Blueprint item that must have been studied before the recipe can be queued.</summary>
-    public string? Blueprint { get; init; }
+    /// <summary>Decrypt orders: the schematic learned when the batch is done (its item is the one input).</summary>
+    public string? Learns { get; init; }
 }
 
 public sealed record BuildingDef

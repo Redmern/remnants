@@ -1,3 +1,5 @@
+using Remnants.Core.Schematics;
+
 namespace Remnants.Core.Data;
 
 public sealed class GameDataException(string message) : Exception(message);
@@ -19,6 +21,8 @@ public sealed class GameData
 
     /// <summary>The cybernetics tree (data/cybernetics.json); null when not loaded (no tree, no surgery, no humanity effects).</summary>
     public CyberneticsData? Cybernetics { get; }
+    /// <summary>The schematics catalogue (data/schematics.json); empty = nothing is gated.</summary>
+    public SchematicCatalog Schematics { get; }
 
     private readonly Dictionary<string, List<RecipeDef>> _recipesByBuilding;
 
@@ -29,12 +33,14 @@ public sealed class GameData
         RulesDef rules,
         IEnumerable<RecipeDef>? recipes = null,
         ProgressionDef? progression = null,
-        CyberneticsDef? cybernetics = null)
+        CyberneticsDef? cybernetics = null,
+        SchematicCatalog? schematics = null)
     {
+        Schematics = schematics ?? SchematicCatalog.Empty;
         Resources = Index(resources, r => r.Id, "resource");
         Jobs = Index(jobs, j => j.Id, "job");
         Buildings = Index(buildings, b => b.Id, "building");
-        var recipeList = (recipes ?? []).ToList();
+        var recipeList = (recipes ?? []).Concat(DecryptRecipes(Schematics)).ToList();
         Recipes = Index(recipeList, r => r.Id, "recipe");
         _recipesByBuilding = recipeList.GroupBy(r => r.Building).ToDictionary(g => g.Key, g => g.ToList());
         Rules = rules;
@@ -45,6 +51,24 @@ public sealed class GameData
         Validate();
         ValidateProgression();
         ValidateCybernetics();
+        Schematics.ValidateAgainst(this);
+    }
+
+    /// <summary>One Decrypt order per encrypted schematic, at the Decrypt building: its chip in, the schematic learned.</summary>
+    private static IEnumerable<RecipeDef> DecryptRecipes(SchematicCatalog catalog)
+    {
+        var d = catalog.Rules.Decrypt;
+        return catalog.All.Values.Where(s => s.Encrypted && s.Available).OrderBy(s => s.Id, StringComparer.Ordinal).Select(s => new RecipeDef
+        {
+            Id = Remnants.Core.Schematics.Schematics.DecryptRecipeId(s.Id),
+            Name = $"Decrypt: {s.Name}",
+            Building = d.Building,
+            MinLevel = SchematicCatalog.At(d.MinLevel, s.Tier),
+            Work = SchematicCatalog.At(d.Work, s.Tier),
+            ItemInputs = new() { [s.Id] = 1 },
+            MinSkill = d.MinSkill,
+            Learns = s.Id,
+        });
     }
 
     public BuildingDef TownHall => Buildings[Rules.TownHallBuildingId];
@@ -106,8 +130,10 @@ public sealed class GameData
             var where = $"Recipe '{r.Id}'";
             if (!Buildings.TryGetValue(r.Building, out var b)) throw new GameDataException($"{where}: unknown building '{r.Building}'.");
             if (b.Job is null) throw new GameDataException($"{where}: building '{b.Id}' has no job to work it.");
-            if ((r.Item is null) == (r.Resource is null))
-                throw new GameDataException($"{where} must yield exactly one of item or resource.");
+            if ((r.Item is null ? 0 : 1) + (r.Resource is null ? 0 : 1) + (r.Learns is null ? 0 : 1) != 1)
+                throw new GameDataException($"{where} must yield exactly one of item, resource or a schematic.");
+            if (r.Learns is not null && Schematics.Find(r.Learns) is null)
+                throw new GameDataException($"{where}: unknown schematic '{r.Learns}'.");
             if (r.Resource is not null) RequireResource(r.Resource, where);
             foreach (var res in r.Inputs.Keys) RequireResource(res, $"{where} input");
             if (r.Work <= 0 || r.Amount <= 0 || r.MinLevel < 1 || r.MinLevel > b.MaxLevel)

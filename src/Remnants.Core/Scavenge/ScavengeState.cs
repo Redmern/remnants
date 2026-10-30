@@ -163,6 +163,12 @@ public sealed class ScavengeState
     public List<Unit> Units { get; set; } = new();
     public List<LootCache> Caches { get; set; } = new();
 
+    /// <summary>Schematics a side learned of without getting them (a failed terminal hack): side → schematic ids.</summary>
+    public SortedDictionary<string, SortedSet<string>> HeardSchematics { get; set; } = new(StringComparer.Ordinal);
+
+    /// <summary>Schematics the colony running this instance already knows (picked at half weight by enemy drops).</summary>
+    public SortedSet<string> KnownSchematics { get; set; } = new(StringComparer.Ordinal);
+
     /// <summary>Tiles each side has ever seen (map index), for fog of war. Sorted so saves are stable.</summary>
     public Dictionary<string, SortedSet<int>> Explored { get; set; } = new();
 

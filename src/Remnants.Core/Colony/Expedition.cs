@@ -93,7 +93,11 @@ public sealed record ExpeditionReport(
     List<string> Dead,
     List<string> Recruits,
     SortedDictionary<string, int> Loot,
-    SortedDictionary<string, int> LostGear);
+    SortedDictionary<string, int> LostGear)
+{
+    /// <summary>Schematics that came home and what became of each (learned, to decrypt, Research Data).</summary>
+    public SortedDictionary<string, Schematics.ReceiveOutcome> Schematics { get; init; } = new(StringComparer.Ordinal);
+}
 
 public sealed record MemorialEntry(int SurvivorId, string Name, long Tick, string Cause);
 

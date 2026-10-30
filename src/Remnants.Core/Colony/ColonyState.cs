@@ -1,3 +1,4 @@
+using Remnants.Core.Schematics;
 using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Colony;
@@ -31,8 +32,11 @@ public sealed class ColonyState
 
     public int NextOrderId { get; set; } = 1;
 
-    /// <summary>Blueprint item ids the colony has studied; recipes that name them can be queued.</summary>
-    public SortedSet<string> KnownBlueprints { get; set; } = new(StringComparer.Ordinal);
+    /// <summary>Schematics known, heard of and being researched (see <see cref="Schematics.Schematics"/>).</summary>
+    public SchematicsState Schematics { get; set; } = new();
+
+    /// <summary>The Radio Mast: trader visits, contracts and the call queue (see <see cref="RadioMast"/>).</summary>
+    public RadioState Radio { get; set; } = new();
 
     /// <summary>Classes running at study buildings (see <see cref="StudySystem"/>).</summary>
     public List<StudyOrder> Studies { get; set; } = new();

@@ -159,6 +159,12 @@ public static class Hacking
             return ScavengeResult.Success($"{unit.Name} hacked the {name}.", device.Id);
         }
         Fail(sim, unit, device.Pos, device.Networked && !Devices.JamsTile(sim, device.Pos, Unit.EnemySide), $"the {name}", chance);
+        // A glimpse of what it held: schematics on it become "heard of" for the side.
+        foreach (var id in device.Items.Where(id => data.Items.GetValueOrDefault(id)?.Schematic is not null))
+        {
+            if (!state.HeardSchematics.TryGetValue(unit.Side, out var heard)) state.HeardSchematics[unit.Side] = heard = new(StringComparer.Ordinal);
+            heard.Add(id);
+        }
         device.Lockouts.RemoveAll(l => l.Side == unit.Side);
         device.Lockouts.Add(new Lockout(unit.Side, state.Round + data.Rules.Hacking.LockoutRounds));
         return ScavengeResult.Success($"{unit.Name} failed to hack the {name}.", device.Id);
