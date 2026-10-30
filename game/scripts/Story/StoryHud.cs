@@ -32,6 +32,9 @@ public partial class StoryHud : Control
     public BriefingPanel Briefing { get; }
     public DebriefPanel Debrief { get; }
     public DialoguePanel Dialogue { get; }
+    public CodexPanel Codex { get; }
+    public EpiloguePanel Epilogue { get; }
+    private string? _seenEnding;
 
     /// <summary>A briefing's Launch: open the expedition planner for this mission.</summary>
     public event Action<string>? PlanMission;
@@ -59,6 +62,7 @@ public partial class StoryHud : Control
         _journal = Widgets.IconButton("ui_journal", "Journal", "Missions and objectives", () => Journal!.Open());
         _strip.AddChild(_radio);
         _strip.AddChild(_journal);
+        _strip.AddChild(Widgets.IconButton("ui_journal", "Codex", "Characters, logs and the story so far", () => Codex!.Open()));
         _strip.AddChild(Icons.Rect(Icons.Get("story_objective", 16), 16, Palette.Amber));
         _strip.AddChild(_tracker);
 
@@ -69,7 +73,9 @@ public partial class StoryHud : Control
         Dialogue = new DialoguePanel(Line, () => Send(new AdvanceDialogue()),
             i => Send(new ChooseDialogue(Remnants.Core.Story.Dialogue.View(Sim)!.NodeId, i)),
             () => Sim.State.Campaign?.Log.Select(l => (l.Speaker, l.Text, l.Choice)) ?? []);
-        foreach (var o in new Control[] { Radio, Journal, Briefing, Debrief, Dialogue })
+        Codex = new CodexPanel(this);
+        Epilogue = new EpiloguePanel(this);
+        foreach (var o in new Control[] { Radio, Journal, Briefing, Debrief, Dialogue, Codex, Epilogue })
         {
             o.Visible = false;
             AddChild(o);
@@ -116,6 +122,13 @@ public partial class StoryHud : Control
             _seenDebrief = debrief.Tick;
             if (debrief.Tick >= Sim.State.Tick - 1) Debrief.Show(debrief);
         }
+        // The ending's epilogue, once its last scene has been played.
+        if (campaign.Ending is { } ending && ending != _seenEnding && !Dialogue.Visible && Campaign.Waiting(Sim).All(c => c.DialogueId != "m17_core_scene"))
+        {
+            _seenEnding = ending;
+            Debrief.Close();
+            Epilogue.Show();
+        }
         if (Radio.Visible) Radio.Refresh();
         if (Journal.Visible) Journal.Refresh();
     }
@@ -125,6 +138,7 @@ public partial class StoryHud : Control
     {
         _seenCalls = 0;
         _seenDebrief = Sim.State.Campaign?.LastDebrief?.Tick ?? -1;
+        _seenEnding = Sim.State.Campaign?.Ending;
     }
 
     /// <summary>The first open main mission and its next step, in a line.</summary>

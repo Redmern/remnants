@@ -398,8 +398,10 @@ public static class MissionRules
     public static void Say(ScavengeSim sim, string speaker, string text)
     {
         var state = sim.State;
+        // Stage directions have no speaker.
+        if (speaker == "narration") speaker = "";
         state.Mission?.Chatter.Add(new(state.Round, speaker, text));
-        state.Log(new(state.Round, ScavengeEventType.Chatter, $"{speaker}: {text}", Side: PartySide(state)));
+        state.Log(new(state.Round, ScavengeEventType.Chatter, speaker.Length > 0 ? $"{speaker}: {text}" : text, Side: PartySide(state)));
     }
 
     /// <summary>Puts <see cref="TriggerAction.Count"/> enemies on the marker's tiles (or the nearest free floor), hunting toward the goal if set.</summary>
