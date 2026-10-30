@@ -31,6 +31,7 @@ public sealed record RaidsDef
     public ConsequenceRules Consequences { get; init; } = new();
     public GuardRules Guard { get; init; } = new();
     public RepairRules Repair { get; init; } = new();
+    public BattleRules Battle { get; init; } = new();
     public List<DefenseDef> Defenses { get; init; } = new();
 }
 
@@ -278,6 +279,21 @@ public sealed record RepairRules
     /// <summary>Removing a defense refunds this share of its cost.</summary>
     public double RemoveRefund { get; init; } = 0.5;
 }
+
+/// <summary>
+/// The fought raid (<see cref="RaidBattle"/>): the zone whose terrain and rules the map borrows, how many rounds to hold,
+/// the waves (round, share of the attackers), and how long a raid waits at the fence for the player to open the fight
+/// before it auto-resolves after all.
+/// </summary>
+public sealed record BattleRules
+{
+    public string Zone { get; init; } = "outskirts";
+    public int Rounds { get; init; } = 8;
+    public List<WaveRule> Waves { get; init; } = [new(1, 0.5), new(3, 0.3), new(5, 0.2)];
+    public int MaxWaitHours { get; init; } = 6;
+}
+
+public sealed record WaveRule(int Round, double Share);
 
 /// <summary>
 /// One defense structure or trap (data/raids.json "defenses"). Walls, gates and barricades soak; posts and towers take

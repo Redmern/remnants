@@ -717,5 +717,4 @@ come up the road once the stock grows.
 - Guards are strong but expensive for a small colony; a part-time watch (a rota) may be the better early choice.
 - The bot spends only on essentials before Town Hall 2; walls and turrets come late. Players who wall in early will find
   raids easy — that is intended, but check the wall soak cap if raids feel toothless.
-- Raider bands have no field units yet (`enemies` is empty until story-campaign's Tally lands); stage 2's tactical battle
-  needs them.
+- Raider bands field the Tally's `tally_scav` (pistol, padded vest) in fought battles; they may want a melee variant.

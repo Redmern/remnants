@@ -282,6 +282,7 @@ public static class SaveGame
         foreach (var part in colony.Survivors.SelectMany(s => s.Body.Parts.Values))
             if (part.ProstheticItemId is { } id) RequireItem(id);
         foreach (var op in colony.Surgeries) RequireItem(op.ItemId);
+        if (colony.Defense.Raid?.Battle is { } battle) ScavengeSave.Validate(data, battle);
         if (colony.Expedition is not { } expedition) return;
         if (!data.Zones.ContainsKey(expedition.ZoneId)) throw new JsonException($"Save references unknown zone '{expedition.ZoneId}'.");
         foreach (var id in expedition.Members.SelectMany(m => m.AllItems)) RequireItem(id);

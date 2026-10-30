@@ -479,3 +479,133 @@ public class RaidSaveTests
         Assert.Equal(500, loaded.State.Defense.LastRaidTick);
     }
 }
+
+public class RaidBattleTests
+{
+    private static ColonySim Colony(int adults = 3)
+    {
+        var sim = RaidTestData.Colony();
+        for (var i = 0; i < adults; i++) sim.AddSurvivor().Set(Skill.Firearms, 30);
+        return sim;
+    }
+
+    /// <summary>Ends every turn of the party (and its turret) until the fight is over; the AI plays the attackers.</summary>
+    private static Remnants.Core.Scavenge.ExtractionResult Play(Remnants.Core.Scavenge.ScavengeSim battle)
+    {
+        for (var i = 0; i < 2000 && !battle.ResultFor(ColonySim.ExpeditionPlayerId).Complete; i++)
+        {
+            var u = battle.State.CurrentUnit;
+            if (u is null) break;
+            battle.Execute(new Remnants.Core.Scavenge.EndTurn(ColonySim.ExpeditionPlayerId, u.Id));
+        }
+        return battle.ResultFor(ColonySim.ExpeditionPlayerId);
+    }
+
+    [Fact]
+    public void The_colony_map_is_the_defense_grid_with_buildings_walls_towers_and_turrets()
+    {
+        var sim = Colony();
+        var g = DefenseGrid.Of(sim, RaidTestData.Real);
+        var wall = sim.Place("wall_wood", RaidTestData.Edge(sim, Side.North, 2));
+        var tower = sim.Place("watchtower_1", RaidTestData.Edge(sim, Side.North, 3, 3));
+        sim.State.Buildings[0].Level = 2;
+        DefenseSchematics.Grant(sim, "sch_defense_turret", "test");
+        var turret = sim.Place("defense_turret", RaidTestData.Edge(sim, Side.North, 3, -3), Side.North);
+        var map = RaidBattle.ColonyMap(sim, RaidTestData.Real, Side.North);
+        Assert.Equal(g.Width, map.Width);
+        Assert.Equal(g.Height, map.Height);
+        Assert.Equal('#', map.Rows[wall.Y][wall.X]);
+        Assert.Equal(1, RaidBattle.TowerCount(map));
+        var hall = Assert.Single(map.Structures);
+        Assert.Equal(RaidBattle.HallTag, hall.Tag);
+        Assert.Equal(100, hall.Hp);
+        Assert.True(Assert.Single(map.Devices).Party);
+        Assert.Equal(RaidBattle.ApproachMarker, map.Markers[map.Rows[0][0].ToString()]);
+        Assert.Contains('E', map.Rows[^1]);
+        _ = tower;
+        _ = turret;
+    }
+
+    [Fact]
+    public void A_fought_raid_spawns_its_waves_puts_guards_on_their_posts_and_feeds_the_consequences()
+    {
+        var sim = Colony();
+        sim.State.Inventory.Add("pistol", 3);
+        var tower = sim.Place("watchtower_1", RaidTestData.Edge(sim, Side.North, 3));
+        var guard = sim.State.Survivors[0];
+        sim.Execute(new AssignGuard(guard.Id, tower.Id));
+        var raid = RaidTestData.Raid(sim, ThreatKind.Husk, 4, Side.North, inTicks: 1);
+        Assert.True(sim.Execute(new ChooseFight(true)).Ok);
+        sim.Advance(1);
+        Assert.Equal(RaidStage.Battle, raid.Stage);
+        var battle = RaidBattle.Open(sim);
+        Assert.Same(battle.State, raid.Battle);
+        var unit = battle.State.Units.Single(u => u.Origin?.Id == guard.Id);
+        Assert.Equal((tower.X, tower.Y), (unit.Pos.X, unit.Pos.Y));
+        Assert.Contains(battle.State.Mission!.Raised, p => p.X == tower.X && p.Y == tower.Y);
+        Assert.All(battle.State.Units.Where(u => u.Kind == Remnants.Core.Scavenge.UnitKind.Survivor), u => Assert.Equal("pistol", u.Equipment[Items.EquipSlot.Weapon]));
+        var result = Play(battle);
+        Assert.True(result.Complete);
+        Assert.Contains(battle.State.Units, u => u.Tag == "raider");
+        Assert.True(sim.Execute(new ApplyRaidBattle(result)).Ok);
+        var report = sim.State.Defense.LastReport!;
+        Assert.True(report.Fought);
+        Assert.Null(sim.State.Defense.Raid);
+        Assert.Equal(result.Mission!.Outcome == Remnants.Core.Scavenge.MissionOutcome.Done, report.Repelled);
+    }
+
+    [Fact]
+    public void A_battle_survives_a_save_and_nobody_opening_it_falls_back_to_auto_resolve()
+    {
+        var sim = Colony();
+        var raid = RaidTestData.Raid(sim, ThreatKind.Raider, 3, Side.South, inTicks: 1);
+        sim.Execute(new ChooseFight(true));
+        sim.Advance(1);
+        var battle = RaidBattle.Open(sim);
+        var json = SaveGame.Save(sim.State);
+        var loaded = SaveGame.Load(sim.Data, json, ScavengeTestData.Real);
+        loaded.Raids = RaidTestData.Real;
+        Assert.Equal(json, SaveGame.Save(loaded.State));
+        Assert.Equal(battle.State.Units.Count, RaidBattle.Open(loaded).State.Units.Count);
+
+        var other = Colony();
+        RaidTestData.Raid(other, ThreatKind.Husk, 3, Side.North, inTicks: 1);
+        other.Execute(new ChooseFight(true));
+        other.Advance(1 + RaidTestData.Real.Def.Battle.MaxWaitHours);
+        Assert.Null(other.State.Defense.Raid);
+        Assert.False(other.State.Defense.LastReport!.Fought);
+        _ = raid;
+    }
+
+    [Fact]
+    public void A_raid_cannot_be_fought_without_a_town_hall()
+    {
+        var sim = Colony();
+        sim.State.Buildings.Clear();
+        RaidTestData.Raid(sim, ThreatKind.Husk, 3, Side.North);
+        Assert.Equal(CommandError.CannotFight, sim.Execute(new ChooseFight(true)).Error);
+    }
+
+    [Fact]
+    public void Story_perimeter_missions_fight_on_the_colony_when_it_has_the_mast_else_the_handmade_map()
+    {
+        var story = Remnants.Core.Story.StoryDataLoader.LoadFromDirectory(Path.Combine(AppContext.BaseDirectory, "data", "story"));
+        var sim = NewGame.Create(TestData.Real, 5, ScavengeTestData.Real);
+        sim.Story = story;
+        sim.Raids = RaidTestData.Real;
+        Remnants.Core.Story.Campaign.Start(sim);
+        sim.State.Buildings.Single(b => b.DefId == "town_hall").Level = 2;
+        sim.State.Campaign!.Progress("m5").Attempts = 1;
+        Assert.Equal("perimeter_th2", Remnants.Core.Story.Campaign.Setup(sim, "m5").Map!.Id);
+        sim.Build("radio_mast");
+        sim.Build("watchtower");
+        var setup = Remnants.Core.Story.Campaign.Setup(sim, "m5");
+        Assert.StartsWith("colony_", setup.Map!.Id);
+        Assert.Equal(1, setup.Towers);
+        var run = Remnants.Core.Scavenge.NewScavenge.Create(ScavengeTestData.Real, "outskirts", 1, [ScavengeTestData.Party(1, 4)], null, setup);
+        Assert.Contains(run.State.Units, u => u.Tag == "mast");
+        Assert.NotEmpty(run.State.Mission!.Marker("treeline"));
+        var result = Play(run);
+        Assert.True(result.Complete);
+    }
+}

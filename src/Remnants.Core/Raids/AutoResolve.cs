@@ -161,7 +161,9 @@ public static class AutoResolve
 /// </summary>
 public static class Consequences
 {
-    public static RaidReport Apply(ColonySim sim, RaidData raids, Raid raid, RaidAssessment a, DeterministicRng rng)
+    /// <param name="battle">A fought battle's casualties and kills, used instead of the dice; its buildings already took
+    /// their damage from the map's structures.</param>
+    public static RaidReport Apply(ColonySim sim, RaidData raids, Raid raid, RaidAssessment a, DeterministicRng rng, BattleOutcome? battle = null)
     {
         var state = sim.State;
         var rules = raids.Def.Consequences;
@@ -195,7 +197,7 @@ public static class Consequences
             damaged.Add(new(raids.Defense(w.DefId).Name, Math.Round(hit), w.Hp <= 0));
             if (w.Hp <= 0) state.Log(new(state.Tick, ColonyEventType.DefenseDestroyed, $"The {raids.Defense(w.DefId).Name} went down."));
         }
-        if (!holds && damage > 0)
+        if (!holds && damage > 0 && battle is null)
         {
             var targets = state.Buildings
                 .OrderBy(b => grid.DistanceToEdge(grid.PlotCenter(b.Plot).X, grid.PlotCenter(b.Plot).Y, raid.Approach)).ThenBy(b => b.Id)
@@ -241,8 +243,8 @@ public static class Consequences
         }
 
         // Casualties.
-        var injured = new List<RaidInjury>();
-        var dead = new List<string>();
+        var injured = new List<RaidInjury>(battle?.Injured ?? []);
+        var dead = new List<string>(battle?.Dead ?? []);
         var taken = new List<string>();
         var toTake = raid.Kind == ThreatKind.Linked && !holds ? (int)Math.Round(threat.MaxTaken * Math.Clamp((p - 0.5) * 2, 0, 1)) : 0;
         foreach (var d in a.Defenders.OrderBy(d => d.Strength).ThenBy(d => d.Survivor.Id).ToList())
@@ -279,7 +281,7 @@ public static class Consequences
             Progression.GrantXp(state, sim.Data, d.Survivor, sim.Data.Progression.Xp.PerMission * (holds ? 1 : 0.5), XpSource.Mission);
 
         // Loot and schematics from a beaten raid.
-        var killed = (int)Math.Round(raid.Size * Math.Clamp(holds ? 1 - p : (1 - p) * 0.5, 0, 1));
+        var killed = battle?.AttackersKilled ?? (int)Math.Round(raid.Size * Math.Clamp(holds ? 1 - p : (1 - p) * 0.5, 0, 1));
         var loot = new Dictionary<string, int>();
         string? schematic = null;
         if (holds)
@@ -303,9 +305,9 @@ public static class Consequences
 
         var report = new RaidReport
         {
-            RaidId = raid.Id, Tick = state.Tick, Kind = raid.Kind, Size = raid.Size, Approach = raid.Approach, Repelled = holds,
+            RaidId = raid.Id, Tick = state.Tick, Kind = raid.Kind, Size = raid.Size, Approach = raid.Approach, Repelled = holds, Fought = battle is not null,
             Attack = Math.Round(a.Attack, 1), Defense = Math.Round(a.Defense, 1), Pressure = Math.Round(p, 3), AttackersKilled = killed,
-            Defenders = a.Defenders.Select(d => d.Survivor.Name).ToList(), TrapsSprung = sprung, Damaged = damaged, Stolen = stolen,
+            Defenders = battle is null ? a.Defenders.Select(d => d.Survivor.Name).ToList() : AutoResolve.Defenders(sim, raid).Select(s => s.Name).Concat(battle.Dead).ToList(), TrapsSprung = sprung, Damaged = damaged, Stolen = stolen,
             Injured = injured, Dead = dead, Taken = taken, Loot = loot, Schematic = schematic, MoodChange = mood,
             Breakdown = a.Breakdown.Select(l => l with { Value = Math.Round(l.Value, 1) }).ToList(),
         };

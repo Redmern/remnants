@@ -234,8 +234,18 @@ public static class RaidSystem
             var lead = RaidWarning.LeadHours(sim, raids);
             if (state.Tick >= raid.ArrivalTick - lead) Warn(sim, raids, raid, (int)Math.Max(0, raid.ArrivalTick - state.Tick));
         }
-        if (state.Tick < raid.ArrivalTick || raid.Fight) return;
+        if (state.Tick < raid.ArrivalTick) return;
         if (raid.Stage == RaidStage.Approaching) Warn(sim, raids, raid, 0);
+        if (raid.Fight && RaidBattle.CannotFight(sim, raid) is null)
+        {
+            if (raid.Stage != RaidStage.Battle)
+            {
+                raid.Stage = RaidStage.Battle;
+                state.Log(new(state.Tick, ColonyEventType.RaidAtTheFence, $"{raids.Threat(raid.Kind).Name} at the fence. To arms!"));
+            }
+            // Fought on the map; if nobody opens the fight in time (the bot, a closed game), it settles itself.
+            if (raid.Battle is not null || state.Tick < raid.ArrivalTick + raids.Def.Battle.MaxWaitHours) return;
+        }
         Finish(sim, raids, raid, AutoResolve.Resolve(sim, raids, raid));
     }
 

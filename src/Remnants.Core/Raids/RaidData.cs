@@ -57,6 +57,11 @@ public sealed class RaidData
             foreach (var i in t.Loot.Keys)
                 if (!scavenge.Items.ContainsKey(i)) throw new GameDataException($"raids.json threat {kind}: unknown loot item '{i}'.");
         }
+        var battle = Def.Battle;
+        if (battle.Rounds < 1 || battle.Waves.Count == 0 || battle.Waves.Any(w => w.Round < 1 || w.Share <= 0))
+            throw new GameDataException("raids.json battle: at least a round and one wave (round ≥ 1, share > 0).");
+        if (scavenge is not null && !scavenge.Zones.ContainsKey(battle.Zone))
+            throw new GameDataException($"raids.json battle: unknown zone '{battle.Zone}'.");
         if (scavenge is not null)
             foreach (var i in Def.Noise.Items.Keys.Append(Def.Warning.DroneItem))
                 if (!scavenge.Items.ContainsKey(i)) throw new GameDataException($"raids.json: unknown item '{i}'.");

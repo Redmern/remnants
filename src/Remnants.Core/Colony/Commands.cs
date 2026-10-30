@@ -203,6 +203,8 @@ public enum CommandError
     CannotRecall,
     /// <summary>The building was wrecked in a raid: repair it first.</summary>
     Wrecked,
+    /// <summary>The raid cannot be fought on the map (no field units, no Town Hall, nobody able).</summary>
+    CannotFight,
 }
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>

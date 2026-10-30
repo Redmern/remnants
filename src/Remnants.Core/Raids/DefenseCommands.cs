@@ -44,7 +44,7 @@ public sealed record CloseGates(bool On) : IRaidCommand;
 /// <summary>Prep: call the party back while it is still on the road out and can make it home before the raid.</summary>
 public sealed record RecallExpedition : IRaidCommand;
 
-/// <summary>Prep (stage 2): fight the warned raid on the tactical map instead of auto-resolving it.</summary>
+/// <summary>Prep: fight the warned raid on the tactical map when it arrives (<see cref="RaidBattle"/>) instead of auto-resolving it.</summary>
 public sealed record ChooseFight(bool Fight) : IRaidCommand;
 
 /// <summary>Defense commands, and the queries the UI needs before sending one (cost, placement, guard slots, recall).</summary>
@@ -78,8 +78,10 @@ public static class DefenseHandlers
                 return CommandResult.Success(c.On ? "Gates shut." : "Gates open.");
             }),
             RecallExpedition => Prep(sim, raid => Recall(sim, raid)),
+            ApplyRaidBattle c => RaidBattle.Apply(sim, raids, c),
             ChooseFight c => Prep(sim, raid =>
             {
+                if (c.Fight && RaidBattle.CannotFight(sim, raid) is { } why) return CommandResult.Fail(CommandError.CannotFight, why);
                 raid.Fight = c.Fight;
                 return CommandResult.Success(c.Fight ? "We fight them at the fence." : "The defenders will handle it.");
             }),

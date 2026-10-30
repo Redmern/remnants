@@ -51,7 +51,7 @@
     },
     "Raider": {
       "name": "Raider band",
-      "enemies": [],
+      "enemies": ["tally_scav"],
       "basePerHour": 0.1,
       "perInputPerHour": 0.03,
       "minDay": 10,
@@ -123,6 +123,12 @@
     "buildingHp": [60, 100, 150]
   },
   "guard": { "job": "guard", "daySleepHours": [8, 16] },
+  "battle": {
+    "zone": "outskirts",
+    "rounds": 8,
+    "waves": [ { "round": 1, "share": 0.5 }, { "round": 3, "share": 0.3 }, { "round": 5, "share": 0.2 } ],
+    "maxWaitHours": 6
+  },
   "repair": { "hpPerWorkerTick": 4, "baseHpPerTick": 1, "buildingCostShare": 0.5, "removeRefund": 0.5 },
   "defenses": [
     { "id": "wall_wood", "name": "Wooden Wall", "kind": "Wall", "description": "Planks and posts. Slows anything that wants in.",

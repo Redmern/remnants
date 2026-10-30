@@ -10,8 +10,11 @@ namespace Remnants.Core.Scavenge;
 /// <summary>A loot cache at a marker (an always-there quest item, a toolbox by the gate).</summary>
 public sealed record MapCacheDef(string Marker, List<string> Items);
 
-/// <summary>A hackable device at a marker, tagged for objectives; <see cref="Items"/> replace its rolled contents.</summary>
-public sealed record MapDeviceDef(DeviceKind Kind, string Marker, string? Tag = null, List<string>? Items = null);
+/// <summary>
+/// A hackable device at a marker, tagged for objectives; <see cref="Items"/> replace its rolled contents. <see cref="Party"/>:
+/// it starts on the party's side, as if hacked (the colony's own turrets in a raid battle).
+/// </summary>
+public sealed record MapDeviceDef(DeviceKind Kind, string Marker, string? Tag = null, List<string>? Items = null, bool Party = false);
 
 /// <summary>
 /// A fixed enemy group: one <see cref="Enemy"/> per <see cref="Marker"/> tile (up to <see cref="Count"/>; 0 = all of

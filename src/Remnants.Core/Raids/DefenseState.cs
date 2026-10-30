@@ -74,7 +74,8 @@ public sealed class PlacedDefense
     public bool NightWatch { get; set; }
 }
 
-public enum RaidStage { Approaching, Warned }
+/// <summary>Approaching (unseen), Warned (prep), Battle (at the fence, to be fought on the tactical map).</summary>
+public enum RaidStage { Approaching, Warned, Battle }
 
 /// <summary>A raid on its way. Hidden until <see cref="WarnTick"/>; it arrives (and resolves) at <see cref="ArrivalTick"/>.</summary>
 public sealed class Raid
@@ -97,8 +98,13 @@ public sealed class Raid
     public bool ChildrenSheltered { get; set; }
     public bool GatesClosed { get; set; }
 
-    /// <summary>The player chose to fight it out (stage 2); otherwise it auto-resolves on arrival.</summary>
+    /// <summary>The player chose to fight it out; otherwise it auto-resolves on arrival.</summary>
     public bool Fight { get; set; }
+
+    /// <summary>The fight in progress (<see cref="RaidBattle.Open"/>), carried in the colony save; its seed; attackers in it.</summary>
+    public Scavenge.ScavengeState? Battle { get; set; }
+    public ulong BattleSeed { get; set; }
+    public int BattleAttackers { get; set; }
 }
 
 public enum RepairTarget { Building, Defense }
@@ -124,6 +130,9 @@ public sealed record RaidReport
     public int Size { get; init; }
     public Side Approach { get; init; }
     public bool Repelled { get; init; }
+
+    /// <summary>Fought on the tactical map (else auto-resolved).</summary>
+    public bool Fought { get; init; }
 
     /// <summary>Attack and defense strength after soak, traps and modifiers; Pressure = attack / (attack + defense).</summary>
     public double Attack { get; init; }
