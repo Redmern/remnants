@@ -89,7 +89,7 @@ sent in `Join`; a mismatch is refused. Bump it for any incompatible record chang
 command kinds `proposeAlliance`, `respondAlliance`, `breakAlliance`, `ping` (its tile kind is `mark`, since `kind` is
 the discriminator), `giveItem`, `carry`, `putDown`, and pings, alliance offers and breaks in views. (The co-op brief
 called this "v2"; 2 was already the fog of war, so co-op is 3.) **4: hacking and drones** — the command kinds `hack`,
-`deployDrone`, `flyDrone`, `recallDrone`, `markTarget`, `dropPayload`, and devices and drone marks in views. **5: cybernetics** — bodies carry the eyes and each
+`deployDrone`, `flyDrone`, `recallDrone`, `markTarget`, `dropPayload`, and devices and drone marks in views. **6: cybernetics** — bodies carry the eyes and each
 part's humanity, upkeep and `interfered` flag, units carry `cyberHooks` (stripped from other players' views like perk
 hooks), and the `limbLocked` event.
 

@@ -325,8 +325,8 @@ Each node is a prosthetic item of the same id (validated both ways) made by the 
   augmentation, humanity and next service. The scavenge unit card shows tier and effects and "LOCKED" while
   interfered. `SurvivorDressing` takes the node's model id and tints by tier (`CyberText` holds the shared strings).
   `--cyber-demo` (with `--cyber-tree` or `--survivor-tab=2`) stages it for screenshots.
-- **Saves**: colony 11 (`SaveGame.MigrateCybernetics`: legacy parts → hook / peg below quality 1, cybernetic arm / leg
-  from it, replacement humanity), scavenge 6 (survivors' cyber hooks resolved on load), protocol 5. Tests:
+- **Saves**: colony 12 (`SaveGame.MigrateCybernetics`: legacy parts → hook / peg below quality 1, cybernetic arm / leg
+  from it, replacement humanity), scavenge 7 (survivors' cyber hooks resolved on load), protocol 6. Tests:
   `CyberneticsTests`.
 
 ## Population life

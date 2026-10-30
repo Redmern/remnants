@@ -193,7 +193,7 @@ Fitted parts also give existing hooks (`accuracy_bonus`, `melee_damage_bonus`, `
 
 ## Saves
 
-Colony save 11 (scavenge save 6, protocol 5). Older prosthetics map into the tree: a part with an item outside the tree
+Colony save 12 (scavenge save 7, protocol 6). Older prosthetics map into the tree: a part with an item outside the tree
 (none before items existed) becomes the Hook Arm / Peg Leg below quality 1 and the Cybernetic Arm / Leg (T3) from there,
 keeping its quality, and pays its tier's replacement humanity (so old cyborg legs cost 15 each; crude ones nothing).
 Every body gains healthy eyes; upkeep starts full; the colony knows what it has fitted or owns.
