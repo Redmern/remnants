@@ -1,0 +1,141 @@
+[
+  {"id": "sd_debt_brief", "mode": "Radio", "caller": "marrow", "title": "Marrow's Debt",
+    "nodes": [
+      {"id": "a", "speaker": "marrow", "mood": "wry", "text": "I owe the Tally money. Not a lot. A lot.", "next": "b"},
+      {"id": "b", "speaker": "marrow", "mood": "ashamed", "text": "It's in my ledger. Along with who else I owe. Along with what I carry, and where, and when.", "next": "c"},
+      {"id": "c", "speaker": "marrow", "mood": "cold", "text": "If Cole reads that book, every road I run is his. Get it back before he does.", "next": "d"},
+      {"id": "d", "speaker": "player", "text": "", "choices": [{"text": "What's in it for us?", "next": "d1"}, {"text": "Why not just pay him?", "next": "d2"}]},
+      {"id": "d1", "speaker": "marrow", "mood": "warm", "text": "Mast plans. Make your radio shout twice as far. And a muffler, because you're loud."},
+      {"id": "d2", "speaker": "marrow", "mood": "tired", "text": "Because then he'd know I could."}
+    ]
+  },
+  {"id": "sd_debt_done", "mode": "InPerson", "caller": "marrow", "title": "Marrow's Debt",
+    "nodes": [
+      {"id": "a", "speaker": "narration", "text": "(The caravan is back at the gate. Marrow weighs the red book in his hand.)", "next": "b"},
+      {"id": "b", "speaker": "marrow", "mood": "warm", "text": "Didn't read it, did you? ...Page eleven's about you. It says \"good people, bad bandages\"."}
+    ]
+  },
+  {"id": "sd_rounds_call", "mode": "Radio", "caller": "hale", "title": "Doc's Rounds",
+    "nodes": [
+      {"id": "a", "speaker": "narration", "text": "(The Radio Mast picks up a call.)", "next": "b"},
+      {"id": "b", "speaker": "hale", "mood": "wry", "text": "Woman in the Ruins. Broken ankle, two kids, one bad tooth. Bring all three of them. Bring the tooth.", "when": {"flag": "rounds_done", "max": 0, "joined": "hale"}, "next": "c"},
+      {"id": "c", "speaker": "hale", "mood": "tired", "text": "Old man in the Mall. Says he's fine. He's not fine. Nobody who says they're fine is fine.", "when": {"flag": "rounds_done", "min": 1, "max": 1, "joined": "hale"}, "next": "d"},
+      {"id": "d", "speaker": "hale", "mood": "worried", "text": "Kid on the Flats. Fever. His mother's carrying him. Carry her too if you have to.", "when": {"flag": "rounds_done", "min": 2, "max": 2, "joined": "hale"}, "next": "e"},
+      {"id": "e", "speaker": "hale", "mood": "quiet", "text": "Someone on the old frequency. Won't say their name. Says they had a Link once. Says it's quiet now. — Go easy.", "when": {"flag": "rounds_done", "min": 3, "joined": "hale"}, "next": "f"},
+      {"id": "f", "speaker": "narration", "text": "(Static on {survivor:best_medic}'s handset, then a voice far too close to the mic: \"—please, anyone, she can't walk— we're near the— please—\" Then static again.)", "when": {"not": {"joined": "hale"}}}
+    ]
+  },
+  {"id": "sd_rounds_done", "mode": "InPerson", "caller": "hale", "title": "Doc's Rounds",
+    "nodes": [
+      {"id": "a", "speaker": "narration", "text": "(The patient is home, on a cot, under a blanket that smells of smoke.)", "next": "b"},
+      {"id": "b", "speaker": "hale", "mood": "tired", "text": "Clean, dry, fed. They'll limp for a month. Limping is something alive people do.", "when": {"joined": "hale"}, "next": "c"},
+      {"id": "c", "speaker": "hale", "mood": "wry", "text": "Same time in ten days. Somebody always needs fetching.", "when": {"joined": "hale"}, "next": "d"},
+      {"id": "d", "speaker": "narration", "text": "({survivor:best_medic} does what they can with what the Med Bay has. It's enough. This time.)", "when": {"not": {"joined": "hale"}}}
+    ]
+  },
+  {"id": "sd_seven_brief", "mode": "InPerson", "caller": "seven", "title": "Seven's Name",
+    "nodes": [
+      {"id": "a", "speaker": "seven", "mood": "neutral", "text": "I know where the kitchen is.", "next": "b"},
+      {"id": "b", "speaker": "player", "text": "Since when?", "next": "c"},
+      {"id": "c", "speaker": "seven", "mood": "neutral", "text": "Since this morning. A child sang a song. The song had a street in it. The street had a kitchen.", "next": "d"},
+      {"id": "d", "speaker": "pell", "mood": "afraid", "text": "It was just a song.", "when": {"alive": "pell"}, "next": "e"},
+      {"id": "e", "speaker": "seven", "mood": "warm", "text": "Yes. Thank you for it.", "when": {"alive": "pell"}}
+    ]
+  },
+  {"id": "sd_seven_name", "mode": "InPerson", "caller": "seven", "title": "Seven's Name",
+    "nodes": [
+      {"id": "a", "speaker": "narration", "text": "(Night. The fire is low. Seven sits with its back to the wall, where it can see the door.)", "next": "b"},
+      {"id": "b", "speaker": "seven", "mood": "neutral", "text": "I would like a name. Not a number. A number is what you call a thing you count.", "next": "c"},
+      {"id": "c", "speaker": "seven", "mood": "neutral", "text": "I do not want to be counted. I want to be called.", "next": "d"},
+      {"id": "d", "speaker": "player", "text": "", "choices": [{"text": "Pick one yourself.", "next": "d1", "effects": [{"kind": "Rename", "id": "seven", "text": "Tile"}, {"kind": "SetFlag", "id": "seven_named", "value": 1}, {"kind": "Humanity", "id": "seven", "value": 10}]}, {"text": "Ask Pell.", "next": "d2", "effects": [{"kind": "Rename", "id": "seven", "text": "Kit"}, {"kind": "SetFlag", "id": "seven_named", "value": 1}, {"kind": "Humanity", "id": "seven", "value": 10}], "requires": [{"alive": "pell"}]}, {"text": "Seven. It's yours now, not theirs.", "next": "d3", "effects": [{"kind": "Rename", "id": "seven", "text": "Seven"}, {"kind": "SetFlag", "id": "seven_named", "value": 1}, {"kind": "Humanity", "id": "seven", "value": 10}]}]},
+      {"id": "d1", "speaker": "seven", "mood": "warm", "text": "Then: Tile. Because I remember the tiles. Is that silly?", "next": "e"},
+      {"id": "d2", "speaker": "pell", "mood": "warm", "text": "What about Kit? Like a kitchen. Kind of.", "next": "d2b"},
+      {"id": "d2b", "speaker": "seven", "mood": "warm", "text": "Kit. Yes.", "next": "e"},
+      {"id": "d3", "speaker": "seven", "mood": "resolved", "text": "Seven. Then I keep it on purpose.", "next": "e"},
+      {"id": "e", "speaker": "seven", "mood": "neutral", "text": "And... you say \"it\". Some of you. Is that right?", "next": "f"},
+      {"id": "f", "speaker": "player", "text": "", "choices": [{"text": "We could say 'they'.", "next": "f1", "effects": [{"kind": "SetFlag", "id": "seven_pronoun", "value": 1}]}, {"text": "What do you want?", "next": "f2", "effects": [{"kind": "SetFlag", "id": "seven_pronoun", "value": 0}]}]},
+      {"id": "f1", "speaker": "seven", "mood": "warm", "text": "They. Yes. There are more than one of us in here. That is correct."},
+      {"id": "f2", "speaker": "seven", "mood": "neutral", "text": "I do not know. 'It' has been fine. 'It' has kept me safe. Ask me again later."}
+    ]
+  },
+  {"id": "sd_cole_ally_brief", "mode": "Radio", "caller": "cole", "title": "Cole's Last Job",
+    "nodes": [
+      {"id": "a", "speaker": "cole", "mood": "tired", "text": "Tally to colony. I'm calling in what you owe me. Then we're square.", "next": "b"},
+      {"id": "b", "speaker": "cole", "mood": "afraid", "text": "Linked found our camp. They're not shooting. They're picking up the kids.", "next": "c"},
+      {"id": "c", "speaker": "cole", "mood": "resolved", "text": "I'm moving everyone. Nineteen people. Walk us out."}
+    ]
+  },
+  {"id": "sd_cole_ally_done", "mode": "InPerson", "caller": "cole", "title": "Cole's Last Job",
+    "nodes": [
+      {"id": "a", "speaker": "cole", "mood": "wry", "text": "Here's the list. Nineteen names. Not all of them walked in... I'll fix the number.", "next": "b"},
+      {"id": "b", "speaker": "cole", "mood": "neutral", "text": "You build walls. We build lists. Turns out lists burn fine.", "next": "c"},
+      {"id": "c", "speaker": "cole", "mood": "warm", "text": "So. You have room? I count, I carry, I complain. Ask anyone.", "next": "d"},
+      {"id": "d", "speaker": "player", "text": "", "choices": [{"text": "There's room.", "next": "d1"}, {"text": "Room for everyone.", "next": "d2", "hint": "Cole will remember this.", "effects": [{"kind": "Mood", "id": "cole", "value": 10}]}]},
+      {"id": "d1", "speaker": "cole", "mood": "neutral", "text": "Good. New page, then."},
+      {"id": "d2", "speaker": "cole", "mood": "warm", "text": "Everyone. ...I'm writing that down."}
+    ]
+  },
+  {"id": "sd_cole_enemy_brief", "mode": "Radio", "caller": "cole", "title": "Cole's Last Job",
+    "nodes": [
+      {"id": "a", "speaker": "cole", "mood": "cold", "text": "Colony. This is Cole. I'm going to read you some names.", "next": "b"},
+      {"id": "b", "speaker": "cole", "mood": "cold", "text": "Marta Kell.", "next": "c"},
+      {"id": "c", "speaker": "cole", "mood": "cold", "text": "Jonah.", "next": "d"},
+      {"id": "d", "speaker": "cole", "mood": "cold", "text": "Little Ben.", "next": "e"},
+      {"id": "e", "speaker": "cole", "mood": "cold", "text": "Rosa Okafor.", "next": "f"},
+      {"id": "f", "speaker": "cole", "mood": "cold", "text": "Tomas.", "next": "g"},
+      {"id": "g", "speaker": "cole", "mood": "cold", "text": "Wren.", "next": "h"},
+      {"id": "h", "speaker": "cole", "mood": "cold", "text": "Old Sam Dyer.", "next": "i"},
+      {"id": "i", "speaker": "cole", "mood": "cold", "text": "Those are mine. Tonight I come and get some of yours."}
+    ]
+  },
+  {"id": "sd_cole_enemy_done", "mode": "InPerson", "caller": "iris", "title": "Cole's Last Job",
+    "nodes": [
+      {"id": "a", "speaker": "narration", "text": "(The gate. Smoke still lifting off the barricade.)", "next": "b"},
+      {"id": "b", "speaker": "iris", "mood": "tired", "text": "He was you. A year down a worse road. That's what scares me.", "when": {"dead": "cole"}, "next": "c"},
+      {"id": "c", "speaker": "pell", "mood": "afraid", "text": "Did he have kids?", "when": {"dead": "cole", "alive": "pell"}, "next": "d"},
+      {"id": "d", "speaker": "player", "mood": "grief", "text": "He had a list.", "when": {"dead": "cole"}, "next": "e"},
+      {"id": "e", "speaker": "iris", "mood": "tired", "text": "The Tally pulled back past the Flats. They've left the valley. Cole's still out there, with his list.", "when": {"not": {"dead": "cole"}}}
+    ]
+  },
+  {"id": "sd_raid_brief", "mode": "Radio", "caller": "cole", "title": "The Tally Comes",
+    "nodes": [
+      {"id": "a", "speaker": "cole", "mood": "cold", "text": "Food, fuel, medicine. In that order.", "next": "b"},
+      {"id": "b", "speaker": "cole", "mood": "wry", "text": "I heard that's how you count.", "next": "c"},
+      {"id": "c", "speaker": "cole", "mood": "cold", "text": "We're coming for all three. Leave the gate open and nobody has to bleed for it."}
+    ]
+  },
+  {"id": "sd_raid_done", "mode": "Radio", "caller": "iris", "title": "The Tally Comes",
+    "nodes": [
+      {"id": "a", "speaker": "iris", "mood": "tired", "text": "They've pulled out. Cole was the last to go, walking backwards.", "next": "b"},
+      {"id": "b", "speaker": "iris", "mood": "worried", "text": "He'll be back. Men with lists always come back."}
+    ]
+  },
+  {"id": "sd_choir_brief", "mode": "InPerson", "caller": "pell", "title": "Children of the Choir",
+    "nodes": [
+      {"id": "a", "speaker": "pell", "mood": "resolved", "text": "I used to listen to channel nine. Every night. You know that.", "next": "b"},
+      {"id": "b", "speaker": "pell", "mood": "resolved", "text": "Some of the voices are kids. Iris says they keep kids at the Relay. In a room. Singing.", "next": "c"},
+      {"id": "c", "speaker": "iris", "mood": "cold", "text": "He's right. I didn't want him to be right.", "next": "d"},
+      {"id": "d", "speaker": "pell", "mood": "resolved", "text": "I'm going. I'm not asking. I'm grown now. You said."}
+    ]
+  },
+  {"id": "sd_choir_done", "mode": "InPerson", "caller": "pell", "title": "Children of the Choir",
+    "nodes": [
+      {"id": "a", "speaker": "narration", "text": "(The children sleep by the stove, wrapped up to the chin.)", "next": "b"},
+      {"id": "b", "speaker": "hale", "mood": "warm", "text": "Warm blankets. Soup. No questions until tomorrow. That's the treatment.", "when": {"joined": "hale"}, "next": "c"},
+      {"id": "c", "speaker": "pell", "mood": "tired", "text": "One of them asked me what my name was. I told her. She said it back. That's all. She just said it back."}
+    ]
+  },
+  {"id": "sd_drop_call", "mode": "Radio", "caller": "marrow", "title": "Dead Drop",
+    "nodes": [
+      {"id": "a", "speaker": "narration", "text": "(The caravan band. A pickup, and a place to find it.)", "next": "b"},
+      {"id": "b", "speaker": "marrow", "mood": "wry", "text": "Box in a shed. Don't open it. You'll open it.", "when": {"alive": "marrow", "not": {"flag": "tally_trader"}}, "next": "c"},
+      {"id": "c", "speaker": "dee", "mood": "cold", "text": "Pickup. In and out.", "when": {"dead": "marrow", "not": {"flag": "tally_trader"}}, "next": "d"},
+      {"id": "d", "speaker": "cole", "mood": "cold", "text": "It's counted. I'll know.", "when": {"flag": "tally_trader"}}
+    ]
+  },
+  {"id": "sd_drop_done", "mode": "Radio", "caller": "marrow", "title": "Dead Drop",
+    "nodes": [
+      {"id": "a", "speaker": "narration", "text": "({name:marrow}'s people take the crate at the gate and pay in trade goods. Nobody says what was in it.)"}
+    ]
+  }
+]

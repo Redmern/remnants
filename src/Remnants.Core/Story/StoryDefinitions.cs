@@ -28,6 +28,8 @@ public sealed record CharacterDef
 /// </summary>
 public sealed record UniqueSurvivorDef
 {
+    /// <summary>The name on the roster ("Doc Hale"); the character's name when unset.</summary>
+    public string? Name { get; init; }
     public string Sex { get; init; } = "Female";
     public int AgeYears { get; init; } = 30;
     public Dictionary<string, double> Attributes { get; init; } = new();

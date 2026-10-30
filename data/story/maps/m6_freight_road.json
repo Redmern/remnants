@@ -1,0 +1,60 @@
+{
+  "id": "m6_freight_road",
+  "zone": "scrapyard_flats",
+  "room": false,
+  "rows": [
+    "########################################",
+    "#..%....=......nnn.......%.....=.....%.#",
+    "#......................................#",
+    "#....%%.......=......%.........=.......E",
+    "S.........................h............E",
+    "S..mpc.................................E",
+    "S..........=..........=.......=........E",
+    "S......................................E",
+    "S.....%............h...................E",
+    "#..........................%...........E",
+    "#....=.........%........sss......=.....#",
+    "#......%...............................#",
+    "#..=.......h........=..........%.......#",
+    "########################################"
+  ],
+  "markers": {
+    "n": "ambush_n",
+    "s": "ambush_s",
+    "m": "marrow",
+    "p": "truck_people",
+    "c": "truck_cargo",
+    "h": "verge"
+  },
+  "enemies": [
+    {
+      "enemy": "husk",
+      "marker": "verge",
+      "tag": "verge"
+    }
+  ],
+  "npcs": [
+    {
+      "name": "Abel Marrow",
+      "marker": "marrow",
+      "tag": "marrow",
+      "character": "marrow",
+      "noRecruit": true,
+      "sex": "Male"
+    },
+    {
+      "name": "People truck",
+      "marker": "truck_people",
+      "tag": "truck_people",
+      "noRecruit": true,
+      "sex": "Male"
+    },
+    {
+      "name": "Cargo truck",
+      "marker": "truck_cargo",
+      "tag": "truck_cargo",
+      "noRecruit": true,
+      "sex": "Male"
+    }
+  ]
+}

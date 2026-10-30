@@ -312,6 +312,15 @@ public static class MissionRules
                     d.Lockouts.Add(new Lockout(side, int.MaxValue));
                 }
                 break;
+            case TriggerActionKind.Open:
+                foreach (var d in state.Devices.Where(d => d.Tag == a.Tag))
+                {
+                    d.Controller = side;
+                    d.ControllerPlayerId = HostPlayerId(state);
+                    d.Lockouts.Clear();
+                    state.Log(new(state.Round, ScavengeEventType.Hacked, $"The {d.Kind.ToString().ToLowerInvariant()} opens.", Pos: d.Pos, Side: side));
+                }
+                break;
             case TriggerActionKind.Wake:
                 var goal = run.Marker(a.Goal).Cast<Pos?>().FirstOrDefault();
                 foreach (var u in Tagged().Where(u => u.Ai.Mode == AiMode.Idle))

@@ -1,0 +1,65 @@
+{
+  "id": "m13_uplink",
+  "zone": "network_relay",
+  "room": true,
+  "rows": [
+    "######dd##########",
+    "#.......h........#",
+    "#.Pa.........cP..#",
+    "#................#",
+    "#=.....DDDD.....=#",
+    "#......DDDD......#",
+    "#......Du.D......#",
+    "#................#",
+    "#.....Pb.....C...#",
+    "#.......h........#",
+    "####..############"
+  ],
+  "markers": {
+    "d": "dish_door",
+    "h": "hall",
+    "a": "node_a",
+    "b": "node_b",
+    "c": "node_c",
+    "D": "dish",
+    "u": "uplink_term",
+    "C": "cam"
+  },
+  "devices": [
+    {
+      "kind": "Relay",
+      "marker": "node_a",
+      "tag": "node_a"
+    },
+    {
+      "kind": "Relay",
+      "marker": "node_b",
+      "tag": "node_b"
+    },
+    {
+      "kind": "Relay",
+      "marker": "node_c",
+      "tag": "node_c"
+    },
+    {
+      "kind": "Terminal",
+      "marker": "uplink_term",
+      "tag": "log_uplink",
+      "items": [
+        "electronics"
+      ]
+    },
+    {
+      "kind": "Camera",
+      "marker": "cam",
+      "tag": "cam"
+    }
+  ],
+  "enemies": [
+    {
+      "enemy": "linked",
+      "marker": "hall",
+      "tag": "hall"
+    }
+  ]
+}

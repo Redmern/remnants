@@ -1,0 +1,27 @@
+{
+  "id": "side_yellow_kitchen",
+  "zone": "suburb_ruins",
+  "room": true,
+  "rows": [
+    "####..####",
+    "#........#",
+    "#.=kkkk=.#",
+    "#..kck...w",
+    "#.=kkkk=.#",
+    "#........#",
+    "####..####"
+  ],
+  "markers": {
+    "k": "kitchen",
+    "c": "chair",
+    "w": "window"
+  },
+  "enemies": [
+    {
+      "enemy": "husk",
+      "marker": "chair",
+      "tag": "still",
+      "side": "neutral"
+    }
+  ]
+}

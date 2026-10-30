@@ -21,8 +21,11 @@ public static class StoryCharacters
     public const double UneasyBelow = 30;
 
     /// <summary>The colony survivor a character became, if they are in the colony now.</summary>
+    /// <summary>"key" names the key-carrier (Iris, Seven, or the survivor who took the port).</summary>
     public static Survivor? SurvivorOf(ColonySim sim, string characterId) =>
-        sim.State.Survivors.Find(s => s.UniqueId == characterId);
+        characterId == Key ? Campaign.KeyCarrierSurvivor(sim) : sim.State.Survivors.Find(s => s.UniqueId == characterId);
+
+    public const string Key = "key";
 
     /// <summary>
     /// The character joins: a new adult survivor built from their <see cref="UniqueSurvivorDef"/> (a character without
@@ -42,7 +45,7 @@ public static class StoryCharacters
         var s = new Survivor
         {
             Id = state.NextSurvivorId++,
-            Name = character.Name,
+            Name = def.Name ?? character.Name,
             UniqueId = characterId,
             Sex = Enum.Parse<Sex>(def.Sex),
             LifeStage = LifeStage.Adult,
@@ -72,6 +75,19 @@ public static class StoryCharacters
     public static void Leave(ColonySim sim, string characterId, string? line)
     {
         var state = sim.State;
+        if (characterId == Key)
+        {
+            if (Campaign.KeyCarrierSurvivor(sim) is not { } carrier) return;
+            if (carrier.UniqueId is { } unique) characterId = unique;
+            else
+            {
+                state.Survivors.Remove(carrier);
+                state.Memorial.Add(new(carrier.Id, carrier.Name, state.Tick, line ?? "In the Spire"));
+                state.Log(new(state.Tick, ColonyEventType.StoryMission, $"{carrier.Name} stayed in the Spire.", carrier.Id));
+                Bonds.OnGone(state, sim.Data, carrier, died: false);
+                return;
+            }
+        }
         var c = state.Campaign!.Character(characterId);
         if (!c.Joined) return;
         c.Joined = false;

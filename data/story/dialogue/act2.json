@@ -1,0 +1,225 @@
+[
+  {
+    "id": "m6_open", "mode": "InPerson", "caller": "marrow", "title": "The Long Haul",
+    "nodes": [
+      { "id": "a", "speaker": "narration", "text": "(The Long Haul idles outside the gate: three trucks, patched, one with a bedframe welded on as a plough.)", "next": "b" },
+      { "id": "b", "speaker": "marrow", "mood": "warm", "text": "Morning. Don't get up. I mean that, I'm selling, not asking.", "next": "c" },
+      { "id": "c", "speaker": "marrow", "mood": "wry", "text": "Actually I'm asking. Road through the Ruins. I need guns on the wheels.", "next": "d" },
+      { "id": "d", "speaker": "dee", "mood": "cold", "text": "We lost two outriders this month. Juniper's still limping.", "next": "e" },
+      { "id": "e", "speaker": "marrow", "mood": "warm", "text": "Dee thinks I'm too nice. Dee's right. Pay's good though.", "next": "f" },
+      { "id": "f", "speaker": "pell", "mood": "neutral", "text": "Is that a bed on the front?", "next": "g" },
+      { "id": "g", "speaker": "marrow", "mood": "wry", "text": "Plough, kid. Bed was its first job. Everything has a second job now.", "next": "h" },
+      { "id": "h", "speaker": "player", "text": "", "choices": [
+        { "text": "What's the cargo?", "next": "h1" },
+        { "text": "What's in it for us?", "next": "h2" },
+        { "text": "Why not go around?", "next": "h3" }
+      ] },
+      { "id": "h1", "speaker": "marrow", "mood": "wry", "text": "Fuel, seed, a crate of medicine for a place that's still there. And people. Six of them.", "next": "i" },
+      { "id": "h2", "speaker": "marrow", "mood": "warm", "text": "Something you can't buy. I'll teach you to build a bike. Two wheels, a prayer and a muffler.", "next": "i" },
+      { "id": "h3", "speaker": "dee", "mood": "cold", "text": "There is no around.", "next": "i" },
+      { "id": "i", "speaker": "marrow", "mood": "resolved", "text": "We roll at noon. Stay near the wheels. Wheels are cover. Hoods are targets.",
+        "effects": [ { "kind": "Character", "id": "marrow", "value": 1 }, { "kind": "Character", "id": "dee", "value": 1 } ] }
+    ]
+  },
+  {
+    "id": "m6_close", "mode": "InPerson", "caller": "marrow", "title": "In That Order",
+    "nodes": [
+      { "id": "a", "speaker": "narration", "text": "(Evening. The Long Haul's trucks tick and cool inside the fence.)", "next": "d1" },
+      { "id": "d1", "speaker": "dee", "mood": "cold", "text": "He was in the cab. He said he'd get out. He always gets out.", "next": "d2", "when": { "dead": "marrow" } },
+      { "id": "d2", "speaker": "dee", "mood": "grief", "text": "...", "next": "d3", "when": { "dead": "marrow" } },
+      { "id": "d3", "speaker": "dee", "mood": "cold", "text": "Long Haul's mine now. Prices go up. The road doesn't care, so I won't either.", "next": "d4", "when": { "dead": "marrow" } },
+      { "id": "d4", "speaker": "dee", "mood": "resolved", "text": "He wanted you to have the bike plans. Here. He drew the muffler himself. Badly.", "next": "p1", "when": { "dead": "marrow" } },
+      { "id": "p1", "speaker": "marrow", "mood": "tired", "text": "Six people. Six. You know what they're worth on the market? Nothing. Good.", "next": "p2", "when": { "alive": "marrow", "flag": "m6_saved", "min": 1, "max": 1 } },
+      { "id": "p2", "speaker": "marrow", "mood": "warm", "text": "Lost the fuel. Lost the seed. I'll find more. I can't find more of them.", "next": "p3", "when": { "alive": "marrow", "flag": "m6_saved", "min": 1, "max": 1 } },
+      { "id": "p3", "speaker": "marrow", "mood": "resolved", "text": "You get Long Haul prices from now on. Family prices. Don't tell anyone, they'll all want to be family.", "next": "p4", "when": { "alive": "marrow", "flag": "m6_saved", "min": 1, "max": 1 } },
+      { "id": "p4", "speaker": "marrow", "mood": "wry", "text": "And the bike. Sit down. Two wheels, a prayer and a muffler.", "next": "c1", "when": { "alive": "marrow", "flag": "m6_saved", "min": 1, "max": 1 } },
+      { "id": "c1", "speaker": "marrow", "mood": "cold", "text": "We got the fuel through.", "next": "c2", "when": { "alive": "marrow", "flag": "m6_saved", "min": 2, "max": 2 } },
+      { "id": "c2", "speaker": "marrow", "mood": "grief", "text": "Two of the six didn't. Hannah and the boy.", "next": "c3", "when": { "alive": "marrow", "flag": "m6_saved", "min": 2, "max": 2 } },
+      { "id": "c3", "speaker": "marrow", "mood": "cold", "text": "You did what I asked. I asked wrong.", "next": "c4", "when": { "alive": "marrow", "flag": "m6_saved", "min": 2, "max": 2 } },
+      { "id": "c4", "speaker": "marrow", "mood": "tired", "text": "Count the people. Then count the cargo. In that order. ...I'll be saying that to myself for a while.", "next": "b1", "when": { "alive": "marrow", "flag": "m6_saved", "min": 2, "max": 2 } },
+      { "id": "b1", "speaker": "marrow", "mood": "warm", "text": "Everybody. Every crate. You know how often that happens? I'll tell you. Today. Once.", "next": "b2", "when": { "alive": "marrow", "flag": "m6_saved", "min": 3, "max": 3 } },
+      { "id": "b2", "speaker": "dee", "mood": "wry", "text": "Don't let it go to his head. It's already gone to his head.", "when": { "alive": "marrow", "flag": "m6_saved", "min": 3, "max": 3 } }
+    ]
+  },
+  {
+    "id": "m6_retry", "mode": "Radio", "caller": "marrow", "title": "The Long Haul, Again",
+    "nodes": [
+      { "id": "a", "speaker": "marrow", "mood": "tired", "text": "You're breathing. Good. The trucks are still sitting at the Flats. Nobody rolls without you.", "next": "b" },
+      { "id": "b", "speaker": "marrow", "mood": "worried", "text": "Road's worse, though. Two more Husks out on the verge since you went down.", "next": "c" },
+      { "id": "c", "speaker": "marrow", "mood": "wry", "text": "Come when you can walk. Stay near the wheels this time. Wheels are cover." }
+    ]
+  },
+  {
+    "id": "m7_open", "mode": "Radio", "caller": "iris", "title": "Clinic's Open",
+    "nodes": [
+      { "id": "a", "speaker": "iris", "mood": "neutral", "text": "I've got someone. Mall frequency. They've been on loop for three days.", "next": "b" },
+      { "id": "b", "speaker": "narration", "text": "(A recording. Crackle.)", "next": "c" },
+      { "id": "c", "speaker": "hale", "mood": "tired", "text": "—clinic's open. Mall, pharmacy wing, south stairs. Bring your own bandages, we're out. Clinic's open—", "next": "d" },
+      { "id": "d", "speaker": "iris", "mood": "wry", "text": "Loop's changed today. Listen.", "next": "e" },
+      { "id": "e", "speaker": "narration", "text": "(Live.)", "next": "f" },
+      { "id": "f", "speaker": "hale", "mood": "afraid", "text": "—water's up to the second shelf. If anyone's out there I have a man on the table and I am NOT stopping.", "next": "g" },
+      { "id": "g", "speaker": "iris", "mood": "resolved", "text": "That's live. That's now.", "next": "h" },
+      { "id": "h", "speaker": "player", "text": "", "choices": [
+        { "text": "We're going.", "next": "h1" },
+        { "text": "Is the Mall safe?", "next": "h2" }
+      ] },
+      { "id": "h1", "speaker": "iris", "mood": "warm", "text": "Of course you are. Pharmacy wing. Bring a med-kit for him and patience for her." },
+      { "id": "h2", "speaker": "iris", "mood": "wry", "text": "It's a mall full of water and dead people. Define safe." }
+    ]
+  },
+  {
+    "id": "m7_close", "mode": "InPerson", "caller": "hale", "title": "A Leg Is a Leg",
+    "nodes": [
+      { "id": "a", "speaker": "hale", "mood": "tired", "text": "Nice Med Bay. Who built it, a carpenter?", "next": "b" },
+      { "id": "b", "speaker": "player", "text": "Yes.", "next": "c" },
+      { "id": "c", "speaker": "hale", "mood": "wry", "text": "Shows. I'll fix it.", "next": "d" },
+      { "id": "d", "speaker": "pell", "mood": "afraid", "text": "Is his leg gone?", "next": "e" },
+      { "id": "e", "speaker": "hale", "mood": "warm", "text": "Half of it. The other half's wood now. Wood's fine. Wood doesn't get infected.", "next": "f" },
+      { "id": "f", "speaker": "hale", "mood": "cold", "text": "You asked if he was worth it. Don't ever ask me that about anyone in this colony.", "next": "g", "when": { "flag": "doc_cold" } },
+      { "id": "g", "speaker": "hale", "mood": "resolved", "text": "Here's my rule, so nobody's surprised. A leg is a leg. Wood, steel, carbon, I don't care.", "next": "h" },
+      { "id": "h", "speaker": "hale", "mood": "cold", "text": "The head is where the person is. Nobody touches the head. Not you. Not them. Not me.", "next": "i" },
+      { "id": "i", "speaker": "player", "text": "", "choices": [
+        { "text": "Stay with us.", "next": "i1" },
+        { "text": "What do you need?", "next": "i2" }
+      ] },
+      { "id": "i1", "speaker": "hale", "mood": "tired", "text": "I wasn't asking. I'm staying. Your bandages are a disgrace." },
+      { "id": "i2", "speaker": "hale", "mood": "neutral", "text": "Sleep. Then a better Med Bay. Then a hospital, but let's not get ahead of ourselves." }
+    ]
+  },
+  {
+    "id": "m7_home", "mode": "InPerson", "caller": "hale", "title": "First Fitting",
+    "nodes": [
+      { "id": "a", "speaker": "hale", "mood": "neutral", "text": "{survivor:most_injured}. Sit. You've been walking on that like it owes you money.", "next": "b" },
+      { "id": "b", "speaker": "hale", "mood": "warm", "text": "Mechanical. Springs and a socket. No power, no upkeep, no nonsense.", "next": "c" },
+      { "id": "c", "speaker": "hale", "mood": "wry", "text": "That arm's better than the one you were born with. Don't tell your mother." }
+    ]
+  },
+  {
+    "id": "m7_lost", "mode": "Radio", "caller": "iris", "title": "The Drowned Clinic",
+    "nodes": [
+      { "id": "a", "speaker": "iris", "mood": "quiet", "text": "The clinic band's gone quiet. No loop. Nothing.", "next": "b" },
+      { "id": "b", "speaker": "iris", "mood": "grief", "text": "She didn't stop. Right to the end, she didn't stop. That was the whole point of her, I think.", "next": "c" },
+      { "id": "c", "speaker": "iris", "mood": "tired", "text": "Her notes came home with you. Limb plans, every spring drawn by hand. Somebody read them properly.", "next": "d" },
+      { "id": "d", "speaker": "iris", "mood": "quiet", "text": "...Sorry. I'm going off-air for a minute." }
+    ]
+  },
+  {
+    "id": "m7_retry", "mode": "Radio", "caller": "iris", "title": "The Clinic, Again",
+    "nodes": [
+      { "id": "a", "speaker": "iris", "mood": "worried", "text": "You made it out. Good. She didn't. Not yet. She's still in there.", "next": "b" },
+      { "id": "b", "speaker": "iris", "mood": "neutral", "text": "She sealed the clinic herself. Shelves against the doors. She's been holding out alone, and she's hurt.", "next": "c" },
+      { "id": "c", "speaker": "iris", "mood": "resolved", "text": "She's still on the band, swearing at the water. Go back for her." }
+    ]
+  },
+  {
+    "id": "m8_open", "mode": "Radio", "caller": "iris", "title": "Eyes on the Depot",
+    "nodes": [
+      { "id": "a", "speaker": "iris", "mood": "neutral", "text": "I want to see the Rail Depot. I can't. Nobody's been in or out for two years.", "next": "b" },
+      { "id": "b", "speaker": "pell", "mood": "neutral", "text": "Can't you just look?", "next": "c" },
+      { "id": "c", "speaker": "iris", "mood": "wry", "text": "With what, kid, my eyes? I live in a hole.", "next": "d" },
+      { "id": "d", "speaker": "iris", "mood": "neutral", "text": "I had a drone. It went down in the Mall atrium. Bring me its core and I'll give you its brothers.", "next": "e" },
+      { "id": "e", "speaker": "pell", "mood": "warm", "text": "Drones! Can I fly one?", "next": "f" },
+      { "id": "f", "speaker": "iris", "mood": "warm", "text": "...If your people say yes. And if you don't crash it into a Husk on purpose." }
+    ]
+  },
+  {
+    "id": "m8_flight", "mode": "Radio", "caller": "iris", "title": "Look Down",
+    "nodes": [
+      { "id": "a", "speaker": "iris", "mood": "neutral", "text": "Core's talking. Sending her up. Watch the map.", "next": "b" },
+      { "id": "b", "speaker": "narration", "text": "(The scout drone crosses the Ruins and the Mall. The Rail Depot fogs out of the dark: sheds, a yard, a pylon blinking cyan.)", "next": "c",
+        "effects": [ { "kind": "RevealZone", "id": "rail_depot", "value": 2 }, { "kind": "SetFlag", "id": "depot_seen", "value": 1 } ] },
+      { "id": "c", "speaker": "pell", "mood": "afraid", "text": "The pylon's on. Iris, the pylon's on.", "next": "c2", "when": { "alive": "pell" } },
+      { "id": "c2", "speaker": "player", "text": "That pylon's on.", "next": "d", "when": { "not": { "alive": "pell" } } },
+      { "id": "d", "speaker": "iris", "mood": "cold", "text": "...Yeah. I see it.", "next": "e" },
+      { "id": "e", "speaker": "iris", "mood": "quiet", "text": "That's my yard, kid. I'm under it.", "next": "f" },
+      { "id": "f", "speaker": "player", "text": "", "choices": [
+        { "text": "You live under the Depot?", "next": "f1" },
+        { "text": "Then we come get you.", "next": "f2" }
+      ] },
+      { "id": "f1", "speaker": "iris", "mood": "ashamed", "text": "Long story. Short version: yes. Shorter version: later." },
+      { "id": "f2", "speaker": "iris", "mood": "wry", "text": "Let's not get sentimental. Get the decrypt queue going first. I'll walk you through it." }
+    ]
+  },
+  {
+    "id": "m8_retry", "mode": "Radio", "caller": "iris", "title": "Eyes Up, Again",
+    "nodes": [
+      { "id": "a", "speaker": "iris", "mood": "tired", "text": "She's slag. My baby. ...Fine. Fine. I'm fine.", "next": "b" },
+      { "id": "b", "speaker": "iris", "mood": "neutral", "text": "Good news: the wreck had a second core. Smaller, ruder. It rolled down into the parking deck.", "next": "c" },
+      { "id": "c", "speaker": "iris", "mood": "wry", "text": "Go get it. And this time, nobody stands next to anything that explodes." }
+    ]
+  },
+  {
+    "id": "m9_open", "mode": "Radio", "caller": "iris", "title": "The Door's Open",
+    "nodes": [
+      { "id": "a", "speaker": "iris", "mood": "neutral", "text": "Something popped in the Ruins last night. Old civil-defence armoury. Thirty years sealed.", "next": "b" },
+      { "id": "b", "speaker": "iris", "mood": "wry", "text": "Somebody had a code. Or a crowbar and a lot of patience.", "next": "c" },
+      { "id": "c", "speaker": "iris", "mood": "cold", "text": "Tally colours on the door already. Your friend Cole.", "next": "d" },
+      { "id": "d", "speaker": "player", "text": "He's not our friend.", "next": "e" },
+      { "id": "e", "speaker": "iris", "mood": "neutral", "text": "Then he's your neighbour. Worse." }
+    ]
+  },
+  {
+    "id": "m9_close", "mode": "Radio", "caller": "cole", "title": "The Tally",
+    "nodes": [
+      { "id": "a", "speaker": "narration", "text": "(The Radio Mast crackles.)", "next": "s1" },
+      { "id": "s1", "speaker": "cole", "mood": "wry", "text": "Tally here. First time I've called anyone. Don't make it weird.", "next": "s2", "when": { "flag": "m9_share" } },
+      { "id": "s2", "speaker": "cole", "mood": "neutral", "text": "I've got a spare chassis plan. Buggy. You've got a Garage, or you will. Trade?", "next": "s3", "when": { "flag": "m9_share" } },
+      { "id": "s3", "speaker": "cole", "mood": "warm", "text": "We'll come by. We trade fair. I write everything down, so you'll know it's fair.", "next": "t1", "when": { "flag": "m9_share" } },
+      { "id": "t1", "speaker": "iris", "mood": "tired", "text": "Tally's moved camp. Further from you. I heard a man on their band reading out names.", "next": "t2", "when": { "flag": "m9_take", "not": { "flag": "m9_share" } } },
+      { "id": "t2", "speaker": "iris", "mood": "quiet", "text": "Twelve names. He paused after each one.", "next": "l1", "when": { "flag": "m9_take", "not": { "flag": "m9_share" } } },
+      { "id": "l1", "speaker": "cole", "mood": "cold", "text": "Vent was a nice touch. The half you took was the half I'd have given you.", "next": "l2", "when": { "flag": "m9_slip", "not": { "any": [ { "flag": "m9_take" }, { "flag": "m9_share" } ] } } },
+      { "id": "l2", "speaker": "cole", "mood": "cold", "text": "Next time, ask. That's all. You'd be amazed what people give you if you ask.", "when": { "flag": "m9_slip", "not": { "any": [ { "flag": "m9_take" }, { "flag": "m9_share" } ] } } }
+    ]
+  },
+  {
+    "id": "m9_retry", "mode": "Radio", "caller": "iris", "title": "The Tally, Again",
+    "nodes": [
+      { "id": "a", "speaker": "iris", "mood": "cold", "text": "The Tally hold the bunker now. Cole's people are dug in behind that door.", "next": "b" },
+      { "id": "b", "speaker": "iris", "mood": "neutral", "text": "No more offers at the door. No splitting it down the middle. Cole's not counting for you anymore.", "next": "c" },
+      { "id": "c", "speaker": "iris", "mood": "resolved", "text": "If you want what's in that vault, you take it. Your call. It's always your call." }
+    ]
+  },
+  {
+    "id": "m10_open", "mode": "Radio", "caller": "iris", "title": "Nothing on the Line",
+    "nodes": [
+      { "id": "a", "speaker": "iris", "mood": "neutral", "text": "This is going to sound strange.", "next": "b" },
+      { "id": "b", "speaker": "iris", "mood": "neutral", "text": "There's a Linked transponder in the Mall. It's on. It's broadcasting. It's broadcasting nothing.", "next": "c" },
+      { "id": "c", "speaker": "pell", "mood": "neutral", "text": "Nothing like quiet?", "next": "d" },
+      { "id": "d", "speaker": "iris", "mood": "afraid", "text": "Nothing like an empty room. Linked don't do empty. They're never alone in there.", "next": "e" },
+      { "id": "e", "speaker": "iris", "mood": "resolved", "text": "Go look. Don't shoot first. ...I can't believe I'm saying that." }
+    ]
+  },
+  {
+    "id": "m10_close", "mode": "InPerson", "caller": "seven", "title": "Ghost Signal",
+    "nodes": [
+      { "id": "a", "speaker": "narration", "text": "(Night. The Radio Mast crackles.)", "next": "c1" },
+      { "id": "c1", "speaker": "iris", "mood": "neutral", "text": "Lock the Lab. Not because it'll hurt anyone. Because I don't know that it won't.", "next": "c2", "when": { "flag": "seven_fate", "min": 1, "max": 1 } },
+      { "id": "c2", "speaker": "seven", "mood": "neutral", "text": "There is a window. There is a child at the window.", "next": "c3", "when": { "flag": "seven_fate", "min": 1, "max": 1 } },
+      { "id": "c3", "speaker": "pell", "mood": "afraid", "text": "It's looking at me.", "next": "c4", "when": { "flag": "seven_fate", "min": 1, "max": 1 } },
+      { "id": "c4", "speaker": "seven", "mood": "warm", "text": "Hello. You are small. I was small. I think. One of me was.", "next": "f1", "when": { "flag": "seven_fate", "min": 1, "max": 1 } },
+      { "id": "f1", "speaker": "iris", "mood": "tired", "text": "It walked out the north side. Didn't hurry. Stopped once to look at a bird.", "next": "f2", "when": { "flag": "seven_fate", "min": 2, "max": 2 } },
+      { "id": "f2", "speaker": "iris", "mood": "quiet", "text": "I don't know if we did a good thing. I think we did a thing it asked for. That's rarer.", "next": "x1", "when": { "flag": "seven_fate", "min": 2, "max": 2 } },
+      { "id": "x1", "speaker": "iris", "mood": "cold", "text": "Transponder's off. Room's empty now. Properly empty.", "next": "x2", "when": { "flag": "seven_fate", "min": 3, "max": 3 } },
+      { "id": "x2", "speaker": "iris", "mood": "tired", "text": "Bring the plating home. It's good plating. ...I'm going off-air for a bit.", "when": { "flag": "seven_fate", "min": 3, "max": 3 } }
+    ]
+  },
+  {
+    "id": "seven_joins", "mode": "InPerson", "caller": "seven", "title": "Out of the Lab",
+    "nodes": [
+      { "id": "a", "speaker": "narration", "text": "(A week to the hour. The Lab door opens from the inside. Seven steps out slowly, one cyan light still lit behind the cracked faceplate.)", "next": "b" },
+      { "id": "b", "speaker": "seven", "mood": "neutral", "text": "Seven days. I counted them. I did not lose count. That is new.", "next": "c" },
+      { "id": "c", "speaker": "seven", "mood": "neutral", "text": "You locked the door. That was correct. I would have locked it too.", "next": "d" },
+      { "id": "d", "speaker": "seven", "mood": "dark", "text": "The children step back when I pass. I will walk slowly. I will stand where they can see me.", "next": "e" },
+      { "id": "e", "speaker": "seven", "mood": "warm", "text": "Where do I sleep? Do I sleep? You will have to tell me. I am asking.",
+        "effects": [ { "kind": "Character", "id": "seven", "value": 2 }, { "kind": "SetFlag", "id": "seven_joined", "value": 1 } ] }
+    ]
+  },
+  {
+    "id": "act2_end", "mode": "InPerson", "caller": "iris", "title": "End of Act 2",
+    "nodes": [
+      { "id": "a", "speaker": "narration", "text": "END OF ACT 2", "next": "b" },
+      { "id": "b", "speaker": "narration", "text": "{colony.population} people. {name:marrow}'s convoy on the road. A doctor who will not touch the head.", "next": "c" },
+      { "id": "c", "speaker": "narration", "text": "Somewhere under the Rail Depot, a voice you trust is hiding something." }
+    ]
+  }
+]

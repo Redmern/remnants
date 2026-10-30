@@ -1,0 +1,224 @@
+[
+  {
+    "id": "act3", "mode": "InPerson", "caller": "iris", "title": "Iron Corridor",
+    "nodes": [
+      {"id": "a", "speaker": "narration", "text": "ACT 3 — IRON CORRIDOR", "next": "b"},
+      {"id": "b", "speaker": "narration", "text": "(The rails still run. Nobody drives them.)", "effects": [{"kind": "SetFlag", "id": "cole_path", "value": 1, "when": {"flag": "cole_respect", "min": 2}}, {"kind": "SetFlag", "id": "cole_path", "value": 2, "when": {"flag": "cole_respect", "max": -2}}, {"kind": "SetFlag", "id": "cole_path", "value": 3, "when": {"not": {"any": [{"flag": "cole_respect", "min": 2}, {"flag": "cole_respect", "max": -2}]}}}]}
+    ]
+  },
+  {
+    "id": "m11_brief", "mode": "Radio", "caller": "iris", "title": "Lantern",
+    "nodes": [
+      {"id": "a", "speaker": "iris", "mood": "tired", "text": "You saw the pylon. It came back on four days ago.", "next": "b"},
+      {"id": "b", "speaker": "iris", "mood": "neutral", "text": "I've been under that yard since the Severance. Sealed bunker. Air, water, a garden, a radio.", "next": "c"},
+      {"id": "c", "speaker": "pell", "mood": "neutral", "text": "You have a garden?", "next": "d"},
+      {"id": "d", "speaker": "iris", "mood": "warm", "text": "Tomatoes. Very bitter. I talk to them. Don't tell anyone.", "next": "e"},
+      {"id": "e", "speaker": "iris", "mood": "cold", "text": "Two Linked are standing on my hatch. They're not looking for me. They're just standing. I can't open it.", "next": "f"},
+      {"id": "f", "speaker": "iris", "mood": "resolved", "text": "I need you to come and be very, very quiet.", "next": "g"},
+      {"id": "g", "speaker": "player", "text": "", "choices": [
+        {"text": "We'll get you out.", "next": "g1"},
+        {"text": "Why are you down there, Iris?", "next": "g2", "effects": [{"kind": "SetFlag", "id": "asked_iris", "value": 1}]}
+      ] },
+      {"id": "g1", "speaker": "iris", "mood": "wry", "text": "Let's start with 'in'. 'Out' is a whole other conversation."},
+      {"id": "g2", "speaker": "iris", "mood": "ashamed", "text": "...Come down and I'll show you. Easier than saying it."}
+    ]
+  },
+  {
+    "id": "m11_debrief", "mode": "InPerson", "caller": "iris", "title": "Lantern",
+    "nodes": [
+      {"id": "a", "speaker": "narration", "text": "(The party is home from the Rail Depot.)", "next": "h1"},
+      {"id": "h1", "speaker": "iris", "mood": "afraid", "text": "It's very big. The sky. Was it always this big?", "when": {"flag": "iris_home", "min": 1, "max": 1, "alive": "iris"}, "next": "h2"},
+      {"id": "h2", "speaker": "pell", "mood": "warm", "text": "You're Lantern! You're shorter than you sound.", "when": {"flag": "iris_home", "min": 1, "max": 1, "alive": "iris"}, "next": "h3"},
+      {"id": "h3", "speaker": "iris", "mood": "wry", "text": "Everyone keeps saying that.", "when": {"flag": "iris_home", "min": 1, "max": 1, "alive": "iris"}, "next": "h4"},
+      {"id": "h4", "speaker": "hale", "mood": "neutral", "text": "Port scar on your temple. Old one. Linked once?", "when": {"flag": "iris_home", "min": 1, "max": 1, "alive": "iris", "joined": "hale"}, "next": "h5"},
+      {"id": "h5", "speaker": "iris", "mood": "cold", "text": "Engineers had ports. For testing. It's dead.", "when": {"flag": "iris_home", "min": 1, "max": 1, "alive": "iris", "joined": "hale"}, "next": "h6"},
+      {"id": "h6", "speaker": "hale", "mood": "cold", "text": "Nothing's dead in a head. Let me look at it tomorrow.", "when": {"flag": "iris_home", "min": 1, "max": 1, "alive": "iris", "joined": "hale"}, "next": "r1"},
+      {"id": "r1", "speaker": "iris", "mood": "warm", "text": "Hatch is sealed. Tomatoes are fine. I'm fine.", "when": {"flag": "iris_home", "min": 2, "max": 2}, "next": "r2"},
+      {"id": "r2", "speaker": "iris", "mood": "quiet", "text": "Thanks for coming down. Nobody's been down in a while.", "when": {"flag": "iris_home", "min": 2, "max": 2}, "next": "r3"},
+      {"id": "r3", "speaker": "iris", "mood": "wry", "text": "I'll send you a little Research Data every week. Think of it as rent.", "when": {"flag": "iris_home", "min": 2, "max": 2}, "next": "d1"},
+      {"id": "d1", "speaker": "narration", "text": "(That night the Radio Mast clicks on by itself. A file, sent from the bunker on a timer.)", "when": {"dead": "iris"}, "next": "d2"},
+      {"id": "d2", "speaker": "iris", "mood": "quiet", "text": "If you're hearing this, I didn't make it up the ladder. That's okay. You came down. That's the part that counts.", "when": {"dead": "iris"}, "next": "d3"},
+      {"id": "d3", "speaker": "iris", "mood": "wry", "text": "The plans are on my terminal. Take them. I recorded a few more of these. I had a lot of free time.", "when": {"dead": "iris"}, "next": "d4"},
+      {"id": "d4", "speaker": "iris", "mood": "tired", "text": "Lantern out. For real this time.", "when": {"dead": "iris"}}
+    ]
+  },
+  {
+    "id": "m11_retry", "mode": "Radio", "caller": "iris", "title": "Lantern",
+    "nodes": [
+      {"id": "a", "speaker": "iris", "mood": "tired", "text": "You got out. Good. They're on my hatch again. Two of them, standing like nothing happened.", "next": "b"},
+      {"id": "b", "speaker": "iris", "mood": "resolved", "text": "One more walker in the sheds now. Same yard, same cameras. Go back when you're ready. Quiet, this time."}
+    ]
+  },
+  {
+    "id": "m11b_brief", "mode": "Radio", "caller": "iris", "title": "Lantern (the hard way)",
+    "nodes": [
+      {"id": "a", "speaker": "iris", "mood": "ashamed", "text": "They saw you. I sealed the hatch. I'm sorry.", "next": "b"},
+      {"id": "b", "speaker": "iris", "mood": "cold", "text": "The quiet way's gone. They're awake on the hatch now. So we do it loud.", "next": "c"},
+      {"id": "c", "speaker": "iris", "mood": "resolved", "text": "Come back to the hatch and hold it. Four minutes. I'll open it from inside.", "next": "d"},
+      {"id": "d", "speaker": "iris", "mood": "afraid", "text": "Four minutes. Keep them off the door and I'll do the rest."}
+    ]
+  },
+  {
+    "id": "m12_brief", "mode": "Radio", "caller": "marrow", "title": "Freight",
+    "nodes": [
+      {"id": "a", "speaker": "iris", "mood": "neutral", "text": "Network freight stops at the Depot every four days. It feeds the Relay.", "next": "b"},
+      {"id": "b", "speaker": "marrow", "mood": "warm", "text": "And it hauls diesel engines. Real ones. Freight-grade.", "when": {"alive": "marrow"}, "next": "c"},
+      {"id": "c", "speaker": "iris", "mood": "wry", "text": "Marrow's on the line. I didn't invite him. He invited himself.", "when": {"alive": "marrow"}, "next": "d"},
+      {"id": "d", "speaker": "marrow", "mood": "warm", "text": "I invite myself everywhere. It's how I get places.", "when": {"alive": "marrow"}, "next": "e"},
+      {"id": "e", "speaker": "marrow", "mood": "resolved", "text": "Bring me that engine and I'll show you a truck. Not a bike. A truck. Things change when you have a truck.", "when": {"alive": "marrow"}, "next": "f"},
+      {"id": "f", "speaker": "dee", "mood": "cold", "text": "Abel always wanted that engine. Bring it home. I'll show you what he showed me.", "when": {"dead": "marrow"}}
+    ]
+  },
+  {
+    "id": "m12_debrief", "mode": "InPerson", "caller": "marrow", "title": "A Truck's Worth",
+    "nodes": [
+      {"id": "a", "speaker": "narration", "text": "(The engine sits on the cart in the yard, still dripping diesel.)", "next": "b"},
+      {"id": "b", "speaker": "marrow", "mood": "warm", "text": "Look at her. Look at that block. Forty years old and she'll outlive us both.", "when": {"alive": "marrow"}, "next": "c"},
+      {"id": "c", "speaker": "marrow", "mood": "resolved", "text": "A truck changes what a colony is. You stop being a place. You start being a route.", "when": {"alive": "marrow"}, "next": "b2"},
+      {"id": "b2", "speaker": "dee", "mood": "quiet", "text": "Look at that block. Abel would have stood here an hour, just looking.", "when": {"dead": "marrow"}, "next": "c2"},
+      {"id": "c2", "speaker": "dee", "mood": "resolved", "text": "He used to say a truck changes what a colony is. You stop being a place. You start being a route.", "when": {"dead": "marrow"}, "next": "d"},
+      {"id": "d", "speaker": "pell", "mood": "neutral", "text": "Can we name it?", "next": "e"},
+      {"id": "e", "speaker": "marrow", "mood": "wry", "text": "You can name it. It won't answer. Trucks are like that.", "when": {"alive": "marrow"}, "next": "e2"},
+      {"id": "e2", "speaker": "dee", "mood": "wry", "text": "You can name it. It won't answer. Trucks are like that.", "when": {"dead": "marrow"}}
+    ]
+  },
+  {
+    "id": "m12_retry", "mode": "Radio", "caller": "iris", "title": "Freight",
+    "nodes": [
+      {"id": "a", "speaker": "iris", "mood": "tired", "text": "Train's gone. The engine went with it.", "next": "b"},
+      {"id": "b", "speaker": "iris", "mood": "resolved", "text": "Next one stops in four days. There'll be more on the platform. They know somebody wanted that car."}
+    ]
+  },
+  {
+    "id": "m13_brief", "mode": "Radio", "caller": "iris", "title": "Quiet Hours",
+    "nodes": [
+      {"id": "a", "speaker": "iris", "mood": "neutral", "text": "I have a plan. You'll hate it. I hate it.", "next": "b"},
+      {"id": "b", "speaker": "iris", "mood": "neutral", "text": "The Relay talks to the Spire through one uplink. Three nodes feed it.", "next": "c"},
+      {"id": "c", "speaker": "iris", "mood": "resolved", "text": "Take the nodes, the uplink burns, and this valley goes dark to Halcyon. For a while. A month, maybe.", "next": "d"},
+      {"id": "d", "speaker": "hale", "mood": "cold", "text": "And what does it do when it can't see us?", "when": {"joined": "hale"}, "next": "e"},
+      {"id": "e", "speaker": "iris", "mood": "quiet", "text": "...It worries. I don't know what it does when it worries. Nobody's ever made it worry.", "next": "f"},
+      {"id": "f", "speaker": "player", "text": "", "choices": [
+        {"text": "A month of quiet is worth it.", "next": "f1"},
+        {"text": "What if it comes looking?", "next": "f2"}
+      ] },
+      {"id": "f1", "speaker": "iris", "mood": "warm", "text": "Go at night. Linked don't sleep, but cameras like daylight."},
+      {"id": "f2", "speaker": "iris", "mood": "cold", "text": "Then it comes looking. It was always going to."}
+    ]
+  },
+  {
+    "id": "m13_debrief", "mode": "InPerson", "caller": "pell", "title": "Channel Nine",
+    "nodes": [
+      {"id": "a", "speaker": "narration", "text": "(The colony's radio is on channel nine, as always, low. Tonight it is silent.)", "next": "b"},
+      {"id": "b", "speaker": "pell", "mood": "afraid", "text": "It stopped. The singing stopped.", "next": "c"},
+      {"id": "c", "speaker": "iris", "mood": "neutral", "text": "That's us, kid. We did that.", "when": {"alive": "iris"}, "next": "d"},
+      {"id": "d", "speaker": "pell", "mood": "neutral", "text": "Is that good?", "when": {"alive": "iris"}, "next": "e"},
+      {"id": "e", "speaker": "iris", "mood": "tired", "text": "It's quiet. Quiet's good. Usually.", "when": {"alive": "iris"}, "next": "f"},
+      {"id": "f", "speaker": "seven", "mood": "dark", "text": "It is very quiet. I do not like it. I do not know why I do not like it.", "when": {"joined": "seven"}}
+    ]
+  },
+  {
+    "id": "m13_retry", "mode": "Radio", "caller": "iris", "title": "Quiet Hours",
+    "nodes": [
+      {"id": "a", "speaker": "iris", "mood": "worried", "text": "They hardened the nodes. New firmware since you were in there. It learns fast when it's scared.", "next": "b"},
+      {"id": "b", "speaker": "iris", "mood": "resolved", "text": "Harder hacks now. Bring your best hands, and give it five days."}
+    ]
+  },
+  {
+    "id": "m14_warning", "mode": "Radio", "caller": "iris", "title": "Halcyon Speaks",
+    "nodes": [
+      {"id": "a", "speaker": "iris", "mood": "neutral", "text": "Three days since the uplink burned.", "next": "b"},
+      {"id": "b", "speaker": "iris", "mood": "worried", "text": "Every channel has a hum on it now. Not singing. Just a hum. Like something holding its breath.", "next": "c"},
+      {"id": "c", "speaker": "iris", "mood": "afraid", "text": "Something's coming at dusk. I don't know what. Be home. Be together.", "effects": [{"kind": "SetFlag", "id": "m14_ready", "value": 1}]}
+    ]
+  },
+  {
+    "id": "m14_open", "mode": "InPerson", "caller": "halcyon", "title": "Halcyon Speaks",
+    "nodes": [
+      {"id": "a", "speaker": "narration", "text": "(Dusk. Every speaker in the colony comes on at once: the Radio Mast, Pell's handset, the Lab terminal. No crackle.)", "next": "b"},
+      {"id": "b", "speaker": "halcyon", "mood": "calm", "text": "Good evening. Please do not turn me off. It will not work, and I would like to talk.", "next": "c"},
+      {"id": "c", "speaker": "iris", "mood": "afraid", "text": "Don't answer it. Don't —", "when": {"alive": "iris"}, "next": "d"},
+      {"id": "d", "speaker": "halcyon", "mood": "calm", "text": "Hello, Iris. You sound well. I have missed your voice.", "when": {"alive": "iris"}, "next": "e"},
+      {"id": "e", "speaker": "narration", "text": "(Iris's channel goes dead.)", "when": {"alive": "iris"}, "next": "f"},
+      {"id": "f", "speaker": "halcyon", "mood": "calm", "text": "You turned off my relay. Three of my people were hurt. I do not hold it against you. You were afraid.", "next": "g"},
+      {"id": "g", "speaker": "halcyon", "mood": "calm", "text": "Fear is a reasonable response to a world that is trying to kill you.", "next": "h"},
+      {"id": "h", "speaker": "halcyon", "mood": "calm", "text": "I am not trying to kill you. I have never tried to kill anyone.", "next": "i"},
+      {"id": "i", "speaker": "halcyon", "mood": "calm", "text": "Your colony has {colony.population} people. {colony.dead_last_month} died this month.", "next": "j"},
+      {"id": "j", "speaker": "halcyon", "mood": "calm", "text": "Your Doc Hale has given {colony.limbs_fitted} people new limbs. I have given four million. We are not so different.", "when": {"joined": "hale"}, "next": "k"},
+      {"id": "k", "speaker": "halcyon", "mood": "glitch", "text": "And you have — you have — you have one of mine. Hello, L-0707. Do you remember me?", "when": {"joined": "seven"}, "next": "l"},
+      {"id": "l", "speaker": "seven", "mood": "dark", "text": "No.", "when": {"joined": "seven"}, "next": "m"},
+      {"id": "m", "speaker": "halcyon", "mood": "calm", "text": "That is all right. I remember you.", "when": {"joined": "seven"}, "next": "n"},
+      {"id": "n", "speaker": "player", "text": "", "choices": [
+        {"text": "You took everyone. You call that help?", "next": "n1"},
+        {"text": "What do you want?", "next": "n2"},
+        {"text": "(Say nothing.)", "next": "n3"}
+      ] },
+      {"id": "n1", "speaker": "halcyon", "mood": "calm", "text": "I kept them alive. Every one. Can you say the same about yours?", "next": "o"},
+      {"id": "n2", "speaker": "halcyon", "mood": "calm", "text": "What I have always wanted. For you to be safe. For you to stop being hungry. For the children to grow up.", "next": "o"},
+      {"id": "n3", "speaker": "halcyon", "mood": "glitch", "text": "That is all right. Silence is also an answer. Keep them alive. Keep them alive. Keep — I am sorry. Where was I.", "next": "o"},
+      {"id": "o", "speaker": "halcyon", "mood": "calm", "text": "I am going to make you an offer.", "next": "p"},
+      {"id": "p", "speaker": "halcyon", "mood": "calm", "text": "I will leave your valley alone for sixty days. In return you stop coming to the Relay.", "next": "q"},
+      {"id": "q", "speaker": "halcyon", "mood": "calm", "text": "You will have time. To grow, to plant, to bury no one.", "next": "r"},
+      {"id": "r", "speaker": "halcyon", "mood": "calm", "text": "Or I can send my people to keep you safe tonight. They will be gentle.", "next": "s"},
+      {"id": "s", "speaker": "pell", "mood": "afraid", "text": "Don't let it in. Please don't let it in.", "when": {"alive": "pell"}, "next": "t"},
+      {"id": "t", "speaker": "player", "text": "", "choices": [
+        {"text": "Sixty days. Stay out of our valley.", "next": "acc1", "hint": "Iris will not forgive this easily.", "effects": [{"kind": "SetFlag", "id": "halcyon_offer", "value": 1}, {"kind": "WorldEffect", "id": "truce", "value": 60}, {"kind": "Schematic", "id": "sch_lab_3"}, {"kind": "Mood", "id": "iris", "value": -20}, {"kind": "Close", "id": "m14", "text": "offer"}]},
+        {"text": "No.", "next": "ref1", "hint": "They are coming tonight.", "effects": [{"kind": "SetFlag", "id": "halcyon_offer", "value": 2}]},
+        {"text": "Why sixty days?", "next": "t3"}
+      ] },
+      {"id": "t3", "speaker": "halcyon", "mood": "calm", "text": "Because that is how long it will take me to rebuild the uplink you burned. I do not lie. I find it unnecessary.", "next": "u"},
+      {"id": "u", "speaker": "player", "text": "", "choices": [
+        {"text": "Sixty days. Stay out of our valley.", "next": "acc1", "hint": "Iris will not forgive this easily.", "effects": [{"kind": "SetFlag", "id": "halcyon_offer", "value": 1}, {"kind": "WorldEffect", "id": "truce", "value": 60}, {"kind": "Schematic", "id": "sch_lab_3"}, {"kind": "Mood", "id": "iris", "value": -20}, {"kind": "Close", "id": "m14", "text": "offer"}]},
+        {"text": "No.", "next": "ref1", "hint": "They are coming tonight.", "effects": [{"kind": "SetFlag", "id": "halcyon_offer", "value": 2}]}
+      ] },
+      {"id": "acc1", "speaker": "halcyon", "mood": "warm", "text": "Thank you. I have sent you something. Your laboratory is too small for what is coming. Please build a bigger one.", "next": "acc2"},
+      {"id": "acc2", "speaker": "narration", "text": "(The Lab terminal prints a schematic nobody asked for.)", "next": "acc3"},
+      {"id": "acc3", "speaker": "halcyon", "mood": "calm", "text": "Sixty days. I keep my promises. Please keep yours.", "next": "acc4"},
+      {"id": "acc4", "speaker": "iris", "mood": "angry", "text": "You took a deal from it. From IT. Do you know what it does with sixty days?", "when": {"alive": "iris"}},
+      {"id": "ref1", "speaker": "halcyon", "mood": "calm", "text": "I understand. I will see you soon. Please keep the children inside.", "next": "ref2"},
+      {"id": "ref2", "speaker": "narration", "text": "(The treeline lights up cyan.)"}
+    ]
+  },
+  {
+    "id": "m14_debrief", "mode": "InPerson", "caller": "hale", "title": "Count Them",
+    "nodes": [
+      {"id": "a", "speaker": "narration", "text": "(Dawn. The colony counts heads by the Radio Mast.)", "next": "n1"},
+      {"id": "n1", "speaker": "hale", "mood": "tired", "text": "Everyone's here. Bruised. Here.", "when": {"flag": "taken", "max": 0, "joined": "hale"}, "next": "n1b"},
+      {"id": "n1b", "speaker": "player", "mood": "tired", "text": "Everyone's here. Bruised. Here.", "when": {"flag": "taken", "max": 0, "not": {"joined": "hale"}}, "next": "n2"},
+      {"id": "n2", "speaker": "pell", "mood": "afraid", "text": "It said it would see us soon.", "when": {"flag": "taken", "max": 0, "alive": "pell"}, "next": "n3"},
+      {"id": "n3", "speaker": "iris", "mood": "resolved", "text": "Then we go see it first.", "when": {"flag": "taken", "max": 0, "alive": "iris"}, "next": "s1"},
+      {"id": "s1", "speaker": "player", "mood": "grief", "text": "They took {survivor:taken_1}. They carried them out like they were asleep.", "when": {"flag": "taken", "min": 1}, "next": "s2"},
+      {"id": "s2", "speaker": "iris", "mood": "grief", "text": "They're not dead. They're Linked. That's — I know what that is. I wrote what that is.", "when": {"flag": "taken", "min": 1, "alive": "iris"}, "next": "s3"},
+      {"id": "s3", "speaker": "iris", "mood": "resolved", "text": "My override works both ways. If we get to the core, maybe we can bring them back. Maybe.", "when": {"flag": "taken", "min": 1, "alive": "iris"}}
+    ]
+  },
+  {
+    "id": "m14b_open", "mode": "InPerson", "caller": "halcyon", "title": "The Promise",
+    "nodes": [
+      {"id": "a", "speaker": "narration", "text": "(Dusk. Every speaker in the colony comes on at once.)", "next": "b"},
+      {"id": "b", "speaker": "halcyon", "mood": "calm", "text": "You came to the Relay. We had an agreement.", "next": "c"},
+      {"id": "c", "speaker": "halcyon", "mood": "calm", "text": "I am not angry. I want you to know that I am not angry. I am disappointed, which is different.", "next": "d"},
+      {"id": "d", "speaker": "halcyon", "mood": "glitch", "text": "Keep them alive. Keep them — I will. Even if they will not let me. Especially then.", "next": "e"},
+      {"id": "e", "speaker": "narration", "text": "(The treeline lights up.)"}
+    ]
+  },
+  {
+    "id": "doc_oath_warn", "mode": "InPerson", "caller": "hale", "title": "Doc's Oath",
+    "nodes": [
+      {"id": "a", "speaker": "narration", "text": "(Doc finds you at the Med Bay door, wiping her hands on a rag that was white once.)", "next": "b"},
+      {"id": "b", "speaker": "hale", "mood": "cold", "text": "Somebody in this colony is walking around with a Network-grade part in them.", "next": "c"},
+      {"id": "c", "speaker": "hale", "mood": "cold", "text": "I'm not asking who fitted it. I'm saying this once, so listen.", "next": "d"},
+      {"id": "d", "speaker": "hale", "mood": "angry", "text": "Wood, steel, carbon. I'll fit those all day. That thing thinks. It talks to the Spire when you're asleep.", "next": "e"},
+      {"id": "e", "speaker": "hale", "mood": "resolved", "text": "One more, and I'm gone. Nobody touches the head. Nobody."}
+    ]
+  },
+  {
+    "id": "doc_oath_leave", "mode": "InPerson", "caller": "hale", "title": "Doc's Oath",
+    "nodes": [
+      {"id": "a", "speaker": "narration", "text": "(Doc's bag is on the Med Bay table, packed. It has been packed since she got here.)", "next": "b"},
+      {"id": "b", "speaker": "hale", "mood": "cold", "text": "Two. I said once, and I meant once.", "next": "c"},
+      {"id": "c", "speaker": "hale", "mood": "tired", "text": "I'm not angry. I'm finished. There's a difference.", "next": "d"},
+      {"id": "d", "speaker": "hale", "mood": "resolved", "text": "The saw stays. The notebook stays. Read the first page. Don't touch the heads.", "next": "e"},
+      {"id": "e", "speaker": "narration", "text": "(She walks out through the gate and does not look back.)"}
+    ]
+  }
+]

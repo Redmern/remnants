@@ -1,0 +1,20 @@
+[
+  { "id": "network_engineer", "name": "Network Engineer", "text": "Decrypt orders take half the work while she is home.",
+    "hooks": { "decrypt_work_mult": 0.5, "hack_chance_bonus": 0.05 } },
+  { "id": "guilt", "name": "Guilt", "text": "Her mood drops when her party kills Linked.", "hooks": { "mood_on_linked_killed": -8 } },
+  { "id": "shut_in", "name": "Shut-in", "text": "Never goes on scavenges unless the mission needs her.", "hooks": { "no_scavenge": 1 } },
+  { "id": "link_port", "name": "Link Port", "text": "Can carry the key.", "hooks": { "link_port": 1 } },
+  { "id": "field_surgeon", "name": "Field Surgeon", "text": "Fittings she leads succeed 20% more often.", "hooks": { "surgery_success_bonus": 0.2 } },
+  { "id": "oath", "name": "Oath", "text": "Will not fit Network-grade limbs. If the colony fits one anyway, she warns you; after a second, she leaves.",
+    "hooks": { "refuses_tier": 4 } },
+  { "id": "teacher", "name": "Teacher", "text": "Teaches Medicine up to 45.", "hooks": { "mentor": 45 } },
+  { "id": "quartermaster", "name": "Quartermaster", "text": "His party carries 15% more.", "hooks": { "party_carry_mult": 0.15, "carry_bonus": 5 } },
+  { "id": "keeps_score", "name": "Keeps Score", "text": "Happier while there is more food than mouths, unhappier when not.", "hooks": { "mood_food_surplus": 10 } },
+  { "id": "ghost_in_the_wire", "name": "Ghost in the Wire", "text": "Hacks from two tiles away without a kit. The Linked cannot Override it.",
+    "hooks": { "hack_range": 2, "hack_without_kit": 1, "override_immune": 1 } },
+  { "id": "not_human", "name": "Not Human?", "text": "Humanity starts at 0 and grows back in the colony, up to 60. Others are uneasy near it until 30.",
+    "hooks": { "humanity_growth_per_day": 0.5, "nearby_mood": -5 } },
+  { "id": "network_echo", "name": "Network Echo", "text": "Sometimes the Linked notice it: an extra Linked patrol.", "hooks": { "network_echo_chance": 0.15 } },
+  { "id": "radio_kid", "name": "Radio Kid", "text": "Hears new contacts first.", "hooks": {} },
+  { "id": "grew_up_here", "name": "Grew Up Here", "text": "His mood follows the colony's humanity.", "hooks": { "mood_follows_humanity": 1 } }
+]

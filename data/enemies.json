@@ -67,6 +67,13 @@
     "equipment": ["pistol", "padded_vest"]
   },
   {
+    "id": "tally_blade", "name": "Tally Cutter", "hp": 60, "ai": "Husk",
+    "attributes": { "Strength": 60, "Agility": 55, "Endurance": 55, "Perception": 50 },
+    "skills": { "Firearms": 20, "Melee": 45 },
+    "equipment": ["machete", "padded_vest"],
+    "drops": [ { "item": "scrap", "chance": 0.5 } ]
+  },
+  {
     "id": "cole", "name": "Cole Brannigan", "hp": 90, "ai": "Husk",
     "attributes": { "Strength": 55, "Agility": 60, "Endurance": 60, "Perception": 65 },
     "skills": { "Firearms": 50, "Melee": 45 },

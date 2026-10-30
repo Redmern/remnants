@@ -76,8 +76,8 @@ public sealed class StoryData
                     EffectKind.Resource => e.Id != Colony.Pantry.FoodKey && !game.Resources.ContainsKey(e.Id),
                     EffectKind.RevealZone => !scavenge.Zones.ContainsKey(e.Id),
                     EffectKind.Call => !Dialogues.ContainsKey(e.Id),
-                    EffectKind.Character or EffectKind.Mood or EffectKind.Humanity or EffectKind.Leaves or EffectKind.Dies or EffectKind.Rename
-                        => !Characters.ContainsKey(e.Id),
+                    EffectKind.Mood or EffectKind.Humanity or EffectKind.Leaves => e.Id != "key" && !Characters.ContainsKey(e.Id),
+                    EffectKind.Character or EffectKind.Dies or EffectKind.Rename => !Characters.ContainsKey(e.Id),
                     EffectKind.Close => !missionIds.Contains(e.Id),
                     EffectKind.Ending => !Endings.ContainsKey(e.Id),
                     EffectKind.WorldEffect or EffectKind.EndWorldEffect => !StoryWorld.Known.Contains(e.Id),
@@ -93,7 +93,7 @@ public sealed class StoryData
             if (c.Mission is { } m && !missionIds.Contains(m)) errors.Add($"{where}: requires unknown mission '{m}'.");
             if (c.Building is { } b && !game.Buildings.ContainsKey(b)) errors.Add($"{where}: requires unknown building '{b}'.");
             if (c.Item is { } i && !scavenge.Items.ContainsKey(i)) errors.Add($"{where}: requires unknown item '{i}'.");
-            foreach (var who in new[] { c.Alive, c.Dead, c.Joined, c.Adult, c.Of }.OfType<string>().Where(w => !Characters.ContainsKey(w)))
+            foreach (var who in new[] { c.Alive, c.Dead, c.Joined, c.Adult, c.Of }.OfType<string>().Where(w => w != "key" && !Characters.ContainsKey(w)))
                 errors.Add($"{where}: requires unknown character '{who}'.");
             if (c.Skill is { } sk && !Enum.TryParse<Survivors.Skill>(sk, out _)) errors.Add($"{where}: requires unknown skill '{sk}'.");
             foreach (var any in c.Any ?? []) Condition(where, any);

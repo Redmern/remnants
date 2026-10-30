@@ -42,6 +42,12 @@ public static class Campaign
             pell.GrowthTicks = sim.Data.Rules.Life.InfantTicks;
             pell.LifeStage = Bonds.StageAt(pell.GrowthTicks, sim.Data.Rules.Life);
             pell.AgeTicks = Bonds.AgeTicksAt(pell.GrowthTicks, sim.Data.Rules);
+            foreach (var trait in new[] { "radio_kid", "grew_up_here" })
+                if (sim.Story?.Traits.GetValueOrDefault(trait) is { } t)
+                {
+                    pell.Traits.Add(t.Id);
+                    foreach (var (k, v) in t.Hooks) pell.TraitHooks[k] = pell.TraitHooks.GetValueOrDefault(k) + v;
+                }
         }
         foreach (var m in sim.Story?.Missions ?? []) state.Campaign.Progress(m.Id);
         Tick(sim);
@@ -139,7 +145,7 @@ public static class Campaign
             if (c.Min is null && c.Max is null && v == 0) return false;
         }
         if (c.Item is { } item && state.Inventory.Count(item) < c.Count) return false;
-        if (c.Alive is { } who && campaign?.Characters.GetValueOrDefault(who)?.Dead == true) return false;
+        if (c.Alive is { } who && (campaign?.Characters.GetValueOrDefault(who)?.Dead == true || who == PellId && StoryCharacters.SurvivorOf(sim, PellId) is null)) return false;
         if (c.Dead is { } dead && campaign?.Characters.GetValueOrDefault(dead)?.Dead != true) return false;
         if (c.Joined is { } joined && (campaign?.Characters.GetValueOrDefault(joined) is not { Joined: true, Dead: false } || StoryCharacters.SurvivorOf(sim, joined) is null)) return false;
         if (c.Adult is { } adult && StoryCharacters.SurvivorOf(sim, adult) is not { IsChild: false }) return false;
@@ -276,6 +282,9 @@ public static class Campaign
         var result = ExpeditionHandlers.Launch(sim, new LaunchExpedition(def.Zone!, c.Members, wait), def.MaxParty);
         if (!result.Ok) return result;
         sim.State.Expedition!.MissionId = def.Id;
+        // One of our own takes the port (M16): the first in the party, unless Iris or Seven carries the key.
+        if (def.MustBring.Contains(StoryCharacters.Key) && sim.State.Campaign.Flag("key_carrier") == 3 && sim.State.Campaign.Flag("key_survivor") == 0)
+            sim.State.Campaign.Flags["key_survivor"] = c.Members[0].SurvivorId;
         var p = sim.State.Campaign.Progress(def.Id);
         p.Status = MissionStatus.Active;
         p.Attempts++;
@@ -325,6 +334,9 @@ public static class Campaign
         if (sim.State.Campaign is not { } campaign || sim.Story?.Mission(missionId) is not { } def) return;
         var p = campaign.Progress(missionId);
         foreach (var (flag, value) in result?.Flags ?? new()) campaign.Flags[flag] = campaign.Flag(flag) + value;
+        // Each objective that came off is a flag "<mission>_<objective>" (rewards and later missions read them).
+        foreach (var (objective, status) in result?.Objectives ?? new())
+            if (status == ObjectiveStatus.Done) campaign.Flags[$"{missionId}_{objective}"] = 1;
         foreach (var who in result?.Escorted ?? []) campaign.Character(who).Met = true;
         // A chain floor: who came out may go on to the next floor (and only they).
         if (result?.Outcome == MissionOutcome.Done && sim.Story!.Missions.Any(m => m.ChainFrom == missionId))
@@ -363,7 +375,9 @@ public static class Campaign
         else
         {
             foreach (var e in def.Fail.Effects) Apply(sim, e, $"{def.Name}", lines);
-            if (def.Fail.RetryDays is { } days)
+            // A fail effect may close the mission for good (the person it was about is dead): no retry then.
+            if (p.Status == MissionStatus.Done) { }
+            else if (def.Fail.RetryDays is { } days)
             {
                 p.Status = MissionStatus.Failed;
                 p.RetryTick = sim.State.Tick + days * sim.Data.Rules.TicksPerDay;

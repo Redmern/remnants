@@ -128,6 +128,8 @@ public enum TriggerActionKind
     Leave,
     /// <summary>The device tagged <see cref="TriggerAction.Tag"/> is locked for good (a sealed hatch).</summary>
     Lock,
+    /// <summary>The device tagged <see cref="TriggerAction.Tag"/> opens for the party (Iris opens the hatch; the convoy rams the gate).</summary>
+    Open,
 }
 
 public sealed record TriggerAction

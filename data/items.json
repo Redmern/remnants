@@ -245,5 +245,11 @@
   { "id": "fuel_can", "name": "Fuel Can", "kind": "Material", "vehiclePart": true, "weight": 3, "tier": 1, "lootWeight": 1 },
   { "id": "engine_small", "name": "Small Engine", "kind": "Material", "vehiclePart": true, "weight": 15, "tier": 2, "lootWeight": 0.2 },
   { "id": "engine_v8", "name": "Freight Diesel", "kind": "Material", "vehiclePart": true, "weight": 40, "tier": 3, "lootWeight": 0.1 },
-  { "id": "armor_plate", "name": "Armor Plate", "kind": "Material", "vehiclePart": true, "weight": 8, "tier": 3, "lootWeight": 0.3 }
+  { "id": "armor_plate", "name": "Armor Plate", "kind": "Material", "vehiclePart": true, "weight": 8, "tier": 3, "lootWeight": 0.3 },
+  { "id": "drone_core", "name": "Drone Core", "kind": "Material", "weight": 3, "tier": 2, "quest": true },
+  { "id": "diesel_engine", "name": "Freight Diesel Engine", "kind": "Material", "weight": 12, "tier": 3, "quest": true },
+  { "id": "surgical_kit", "name": "Surgical Kit", "kind": "Material", "weight": 2, "tier": 3, "quest": true },
+  { "id": "marrow_ledger", "name": "Marrow's Ledger", "kind": "Material", "weight": 0.5, "tier": 1, "quest": true },
+  { "id": "cole_ledger", "name": "The Tally's List", "kind": "Material", "weight": 0.5, "tier": 2, "quest": true },
+  { "id": "trade_crate", "name": "Trade Crate", "kind": "Material", "weight": 3, "tier": 1, "quest": true }
 ]

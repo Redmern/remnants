@@ -13,7 +13,8 @@ public class StoryDataTests
     {
         var errors = Real.Validate(TestData.Real, ScavengeTestData.Real);
         Assert.Empty(errors);
-        Assert.Equal(["m1", "m2", "m3", "m4", "m5"], Real.Missions.Where(m => m.Main).Select(m => m.Id));
+        Assert.Equal(["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15", "m16",
+            "m17_gate", "m17_choir", "m17_core"], Real.Missions.Where(m => m.Main).Select(m => m.Id));
     }
 
     [Fact]

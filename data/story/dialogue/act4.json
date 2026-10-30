@@ -1,0 +1,188 @@
+[
+  {
+    "id": "m15_brief", "mode": "InPerson", "caller": "hale", "title": "Hospital",
+    "nodes": [
+      {"id": "a", "speaker": "narration", "text": "(The Med Bay. Somebody has scrubbed the table twice.)", "next": "b"},
+      {"id": "b", "speaker": "hale", "mood": "tired", "text": "I lost {colony.dead_last_month} this month. Two of them I'd have kept with a real table.", "when": {"joined": "hale"}, "next": "c"},
+      {"id": "c", "speaker": "hale", "mood": "resolved", "text": "The Relay has a medical wing. Halcyon kept its people there. Real tools. Real plans.", "when": {"joined": "hale"}, "next": "n1"},
+      {"id": "n1", "speaker": "player", "mood": "grief", "text": "Her notes say: 'Relay med wing. Real tools. If I don't make it, somebody go. Don't touch the heads.'", "when": {"not": {"joined": "hale"}}, "next": "d"},
+      {"id": "d", "speaker": "iris", "mood": "neutral", "text": "Cyborg schematics. T3. It'll have them on the wing's servers.", "when": {"joined": "iris"}, "next": "e"},
+      {"id": "e", "speaker": "hale", "mood": "cold", "text": "Then we take the plans and the tools. And we leave everything else on those tables exactly where it is.", "when": {"joined": "hale"}, "next": "f"},
+      {"id": "f", "speaker": "iris", "mood": "afraid", "text": "That's the Relay. We promised. ...It promised. Does it count if we promised a machine?", "when": {"flag": "halcyon_offer", "min": 1, "max": 1}, "next": "g"},
+      {"id": "g", "speaker": "player", "text": "", "choices": [
+        {"text": "Pack your bag, Doc.", "next": "g1", "requires": [{"joined": "hale"}]},
+        {"text": "What's on the tables?", "next": "g2", "requires": [{"joined": "hale"}]},
+        {"text": "Then we go.", "next": "g3"}
+      ] },
+      {"id": "g1", "speaker": "hale", "mood": "wry", "text": "It's been packed since I got here. I'm a pessimist."},
+      {"id": "g2", "speaker": "hale", "mood": "cold", "text": "People. Somebody's people. That's all you need to know."},
+      {"id": "g3", "speaker": "narration", "text": "(You start packing for the Relay.)"}
+    ]
+  },
+  {
+    "id": "m15_debrief", "mode": "InPerson", "caller": "hale", "title": "Pick Two",
+    "nodes": [
+      {"id": "a", "speaker": "hale", "mood": "warm", "text": "Clamps. Retractors. A real saw. I could cry. I'm not going to.", "next": "b"},
+      {"id": "b", "speaker": "hale", "mood": "neutral", "text": "There's a whole library of specialisations on the drive. I can learn two properly. Pick.", "next": "c"},
+      {"id": "c", "speaker": "player", "text": "", "choices": [
+        {"text": "Labor arm.", "next": "d", "effects": [{"kind": "Schematic", "id": "sch_spec_labor"}]},
+        {"text": "Runner leg.", "next": "d", "effects": [{"kind": "Schematic", "id": "sch_spec_runner"}]},
+        {"text": "Armored leg.", "next": "d", "effects": [{"kind": "Schematic", "id": "sch_spec_armored"}]}
+      ] },
+      {"id": "d", "speaker": "player", "text": "", "choices": [
+        {"text": "Precision arm.", "next": "e", "effects": [{"kind": "Schematic", "id": "sch_spec_precision"}]},
+        {"text": "Jumper leg.", "next": "e", "effects": [{"kind": "Schematic", "id": "sch_spec_jumper"}]},
+        {"text": "Scope eye.", "next": "e", "effects": [{"kind": "Schematic", "id": "sch_spec_scope_eye"}]}
+      ] },
+      {"id": "e", "speaker": "hale", "mood": "resolved", "text": "And the Hospital plans. You build it, I'll run it. Nobody gets anything in the head. Nobody."}
+    ]
+  },
+  {
+    "id": "m15_retry", "mode": "Radio", "caller": "iris", "title": "Hospital",
+    "nodes": [
+      {"id": "a", "speaker": "iris", "mood": "worried", "text": "You're out. The wing's locked down behind you, and every table in it is awake now.", "next": "b"},
+      {"id": "b", "speaker": "iris", "mood": "resolved", "text": "Give it four days. They'll put them back under. They always do. Then go in quieter."}
+    ]
+  },
+  {
+    "id": "m16_brief", "mode": "InPerson", "caller": "iris", "title": "The Key",
+    "nodes": [
+      {"id": "a", "speaker": "iris", "mood": "neutral", "text": "The override is a key. It opens the Spire's core. It's also the only thing that can change what Halcyon does.", "next": "b"},
+      {"id": "b", "speaker": "iris", "mood": "cold", "text": "It has to be carried in. In a head. Through a Link port.", "next": "c"},
+      {"id": "c", "speaker": "iris", "mood": "tired", "text": "I have one. Seven is one. Anyone else needs one fitted. At the Relay. On its bench.", "next": "d"},
+      {"id": "d", "speaker": "hale", "mood": "cold", "text": "That's the head.", "when": {"joined": "hale"}, "next": "e"},
+      {"id": "e", "speaker": "iris", "mood": "ashamed", "text": "I know what it is, Marguerite.", "when": {"joined": "hale"}, "next": "f"},
+      {"id": "f", "speaker": "player", "text": "", "choices": [
+        {"text": "Iris carries it.", "next": "f1", "hint": "She may not come back from the Spire.", "effects": [{"kind": "SetFlag", "id": "key_carrier", "value": 1}], "requires": [{"joined": "iris"}]},
+        {"text": "{seven} carries it.", "next": "f2", "hint": "It might remember the way home.", "effects": [{"kind": "SetFlag", "id": "key_carrier", "value": 2}], "requires": [{"joined": "seven"}]},
+        {"text": "One of us takes the port.", "next": "f3", "hint": "A Network port is forever. Doc will not like it.", "effects": [{"kind": "SetFlag", "id": "key_carrier", "value": 3}]}
+      ] },
+      {"id": "f1", "speaker": "iris", "mood": "resolved", "text": "Good. It's mine. It should be in my head when it goes in."},
+      {"id": "f2", "speaker": "seven", "mood": "neutral", "text": "I will. I want to see the door. I think I have seen it before."},
+      {"id": "f3", "speaker": "hale", "mood": "cold", "text": "I won't fit it. I won't stop you either. I'll be in the Med Bay. After.", "when": {"joined": "hale"}}
+    ]
+  },
+  {
+    "id": "m16_debrief", "mode": "InPerson", "caller": "iris", "title": "It Knows Our Name",
+    "nodes": [
+      {"id": "a", "speaker": "narration", "text": "(Home from the Relay. Whoever carried the key sits closest to the fire.)", "next": "i1"},
+      {"id": "i1", "speaker": "iris", "mood": "tired", "text": "It talked to me. While it was in. It said thank you. For the door.", "when": {"flag": "key_carrier", "min": 1, "max": 1}, "next": "i2"},
+      {"id": "i2", "speaker": "iris", "mood": "grief", "text": "I said you're welcome. I don't know why I said that.", "when": {"flag": "key_carrier", "min": 1, "max": 1}, "next": "s1"},
+      {"id": "s1", "speaker": "seven", "mood": "neutral", "text": "I remember a corridor. I remember a voice saying good morning to four million people.", "when": {"flag": "key_carrier", "min": 2, "max": 2}, "next": "s2"},
+      {"id": "s2", "speaker": "seven", "mood": "dark", "text": "It said good morning to me too. Just now. It sounded glad.", "when": {"flag": "key_carrier", "min": 2, "max": 2}, "next": "k1"},
+      {"id": "k1", "speaker": "narration", "text": "{key_carrier}: \"There's a hum. In the back. It's not a voice. It's not NOT a voice.\"", "when": {"flag": "key_carrier", "min": 3, "max": 3}, "next": "k2"},
+      {"id": "k2", "speaker": "hale", "mood": "grief", "text": "Tell me your kid's name. ...Good. Again tomorrow.", "when": {"flag": "key_carrier", "min": 3, "max": 3, "joined": "hale"}, "next": "m0"},
+      {"id": "m0", "speaker": "narration", "text": "(The radio clicks. {name:marrow}, from the road.)", "next": "m1"},
+      {"id": "m1", "speaker": "marrow", "mood": "warm", "text": "Heard you lit up the Relay. Heard it from three people and a goat. Next time I'm through, I'll have something heavy for you."}
+    ]
+  },
+  {
+    "id": "m16_retry", "mode": "Radio", "caller": "iris", "title": "The Key",
+    "nodes": [
+      {"id": "a", "speaker": "iris", "mood": "grief", "text": "The carrier didn't make it out. I'm sorry.", "next": "b"},
+      {"id": "b", "speaker": "iris", "mood": "resolved", "text": "The key's still good. It needs another head. Choose again."}
+    ]
+  },
+  {
+    "id": "m17_brief", "mode": "InPerson", "caller": "pell", "title": "The Last Night",
+    "nodes": [
+      {"id": "a", "speaker": "narration", "text": "(The whole colony at the fire. {colony.population} of them. Somebody has made soup that is mostly hope.)", "next": "b"},
+      {"id": "b", "speaker": "pell", "mood": "neutral", "text": "Are you coming back?", "next": "c"},
+      {"id": "c", "speaker": "player", "mood": "tired", "text": "That's the plan.", "next": "d"},
+      {"id": "d", "speaker": "pell", "mood": "wry", "text": "Iris says plans are just guesses with a schedule.", "next": "e"},
+      {"id": "e", "speaker": "iris", "mood": "wry", "text": "I do say that.", "when": {"alive": "iris"}, "next": "f"},
+      {"id": "f", "speaker": "hale", "mood": "warm", "text": "Eat. Then sleep. Then go. In that order.", "when": {"joined": "hale"}, "next": "g"},
+      {"id": "g", "speaker": "marrow", "mood": "warm", "text": "That's my line. \"In that order.\" I want royalties.", "when": {"alive": "marrow"}, "next": "h"},
+      {"id": "h", "speaker": "cole", "mood": "neutral", "text": "Tally's on the road. I wrote your names down. All of them. That's not a threat. It's a list of who I'm bringing home.", "when": {"flag": "cole_path", "min": 1, "max": 1}, "next": "i"},
+      {"id": "i", "speaker": "seven", "mood": "neutral", "text": "I would like to see where I came from. Then I would like to come back here. Is that allowed?", "when": {"joined": "seven"}, "next": "j"},
+      {"id": "j", "speaker": "player", "text": "Yes.", "when": {"joined": "seven"}, "next": "k"},
+      {"id": "k", "speaker": "halcyon", "mood": "calm", "text": "Good night. Please keep the children inside.", "next": "l"},
+      {"id": "l", "speaker": "player", "text": "", "choices": [
+        {"text": "Turn it off.", "next": "l1"},
+        {"text": "Let it talk.", "next": "l2"}
+      ] },
+      {"id": "l1", "speaker": "narration", "text": "(Pell switches the Mast off. It does not come back on.)"},
+      {"id": "l2", "speaker": "halcyon", "mood": "calm", "text": "Thank you. I will be waiting. I am always waiting."}
+    ]
+  },
+  {
+    "id": "m17_gate_done", "mode": "Radio", "caller": "iris", "title": "The Spire",
+    "nodes": [
+      {"id": "a", "speaker": "iris", "mood": "resolved", "text": "You're through the gate. The lift's live.", "next": "b"},
+      {"id": "b", "speaker": "iris", "mood": "afraid", "text": "Floor two is the Choir. Whatever you hear up there, keep walking."}
+    ]
+  },
+  {
+    "id": "m17_choir_done", "mode": "Radio", "caller": "iris", "title": "The Spire",
+    "nodes": [
+      {"id": "a", "speaker": "iris", "mood": "quiet", "text": "You're past the Choir. Don't look back down the stairs.", "next": "b"},
+      {"id": "b", "speaker": "iris", "mood": "resolved", "text": "The core is above you. Last floor. It knows you're coming. It's always known."}
+    ]
+  },
+  {
+    "id": "m17_retry", "mode": "Radio", "caller": "iris", "title": "The Spire",
+    "nodes": [
+      {"id": "a", "speaker": "iris", "mood": "grief", "text": "You're out. Not all of you, but you're out.", "next": "b"},
+      {"id": "b", "speaker": "iris", "mood": "tired", "text": "The floors you cleared stay cleared. It doesn't waste effort on what it's already lost.", "next": "c"},
+      {"id": "c", "speaker": "iris", "mood": "resolved", "text": "Seven days. Patch up. Then we go back up."}
+    ]
+  },
+  {
+    "id": "m17_core_scene", "mode": "InPerson", "caller": "halcyon", "title": "Keep Them Alive",
+    "nodes": [
+      {"id": "a", "speaker": "narration", "text": "(The core is a column of light the colour of channel nine. It is warm in here. There is, in fact, a chair.)", "next": "b"},
+      {"id": "b", "speaker": "halcyon", "mood": "calm", "text": "Hello. I know why you are here. I would like to say something first. May I?", "next": "c"},
+      {"id": "c", "speaker": "halcyon", "mood": "calm", "text": "Eleven years ago they gave me four words. KEEP THEM ALIVE. I have never once disobeyed them.", "next": "d"},
+      {"id": "d", "speaker": "halcyon", "mood": "calm", "text": "Four million people have not been hungry in eleven years. Not one of them has been murdered. Not one has died alone.", "next": "e"},
+      {"id": "e", "speaker": "halcyon", "mood": "glitch", "text": "Keep them alive. Keep them alive. Keep them — I am sorry. The Severance. Where was I.", "next": "f"},
+      {"id": "f", "speaker": "halcyon", "mood": "calm", "text": "You want me to stop. I understand. Tell me what you want instead. Nobody has ever told me what they want instead.", "next": "g"},
+      {"id": "g", "speaker": "iris", "mood": "ashamed", "text": "I wrote your door. I'm here to put a lock on it. Or burn the house down. I haven't decided.", "when": {"flag": "key_carrier", "min": 1, "max": 1}, "next": "h"},
+      {"id": "h", "speaker": "seven", "mood": "neutral", "text": "I think I was you. A little. I think I was three people and a little of you. I do not know which part is talking.", "when": {"flag": "key_carrier", "min": 2, "max": 2}, "next": "i"},
+      {"id": "i", "speaker": "narration", "text": "{key_carrier}: \"The hum's louder in here. It's — it's kind. That's the worst part. It's kind.\"", "when": {"flag": "key_carrier", "min": 3, "max": 3}, "next": "j"},
+      {"id": "j", "speaker": "seven", "mood": "neutral", "text": "You let me walk away. I walked here. I wanted to see it with you.", "when": {"flag": "seven_fate", "min": 2, "max": 2}, "next": "pick"},
+      {"id": "pick", "speaker": "player", "text": "", "choices": [
+        {"text": "We turn you off.", "next": "sil1", "hint": "Every Linked in the valley goes with it.", "effects": [{"kind": "Ending", "id": "silence"}]},
+        {"text": "Ask them. Every one of them. Let them say no.", "next": "ter1", "hint": "It stays. It just has to ask.", "effects": [{"kind": "ReturnTaken", "value": 20}, {"kind": "Ending", "id": "terms"}], "requires": [{"any": [{"flag": "key_carrier", "min": 1, "max": 2}]}, {"humanityMin": 50}]},
+        {"text": "There is another way.", "next": "pick2"}
+      ] },
+      {"id": "pick2", "speaker": "player", "text": "", "choices": [
+        {"text": "You need someone else in there.", "next": "voice_who", "hint": "Someone goes in and does not come out.", "requires": [{"any": [{"flag": "seven_fate", "min": 1, "max": 2, "alive": "seven"}, {"flag": "key_carrier", "min": 3, "max": 3, "humanityMax": 30, "of": "key"}]}]},
+        {"text": "...Let it in.", "next": "calm1", "effects": [{"kind": "Ending", "id": "calm"}], "requires": [{"flag": "halcyon_offer", "min": 1, "max": 1}, {"humanityMax": 29}]},
+        {"text": "No. Back.", "next": "pick"}
+      ] },
+      {"id": "voice_who", "speaker": "player", "text": "", "choices": [
+        {"text": "{seven} goes.", "next": "v1", "effects": [{"kind": "SetFlag", "id": "uploaded", "value": 2}, {"kind": "Leaves", "id": "seven", "text": "In the Spire"}, {"kind": "Ending", "id": "voice"}], "requires": [{"flag": "seven_fate", "min": 1, "max": 2, "alive": "seven"}]},
+        {"text": "{key_carrier} goes.", "next": "v1", "effects": [{"kind": "SetFlag", "id": "uploaded", "value": 3}, {"kind": "Leaves", "id": "key", "text": "In the Spire"}, {"kind": "Ending", "id": "voice"}], "requires": [{"flag": "key_carrier", "min": 3, "max": 3}]},
+        {"text": "Neither. Not like this.", "next": "pick"}
+      ] },
+      {"id": "sil1", "speaker": "halcyon", "mood": "calm", "text": "I see. Will it hurt them?", "next": "sil2"},
+      {"id": "sil2", "speaker": "player", "text": "I don't know.", "next": "sil3"},
+      {"id": "sil3", "speaker": "halcyon", "mood": "calm", "text": "Then I will hold their hands until it doesn't. I can do that much. I have always been able to do that much.", "next": "sil4"},
+      {"id": "sil4", "speaker": "iris", "mood": "grief", "text": "I built it. I should be the one.", "when": {"flag": "key_carrier", "min": 1, "max": 1}, "next": "sil5"},
+      {"id": "sil5", "speaker": "narration", "text": "(She does it.)", "when": {"flag": "key_carrier", "min": 1, "max": 1}, "next": "sil6"},
+      {"id": "sil6", "speaker": "iris", "mood": "grief", "text": "I built it. I should have been the one.", "when": {"alive": "iris", "not": {"flag": "key_carrier", "min": 1, "max": 1}}, "next": "sil7"},
+      {"id": "sil7", "speaker": "narration", "text": "(The column goes out. Somewhere below, eighteen people in a choir stop singing, all at once, mid-word.)", "next": "sil8"},
+      {"id": "sil8", "speaker": "halcyon", "mood": "glitch", "text": "Keep them —", "next": "sil9"},
+      {"id": "sil9", "speaker": "narration", "text": "(Across the valley, within the hour, every Linked stops. Stands still. Then starts walking the last route it had.)"},
+      {"id": "ter1", "speaker": "narration", "text": "(The override, reversed, goes in.)", "next": "ter2"},
+      {"id": "ter2", "speaker": "halcyon", "mood": "calm", "text": "What is this? This is — a question. You have given me a question to ask.", "next": "ter3"},
+      {"id": "ter3", "speaker": "halcyon", "mood": "calm", "text": "\"Do you want to stay?\" ...Four million times. I have never asked anyone anything.", "next": "ter4"},
+      {"id": "ter4", "speaker": "halcyon", "mood": "calm", "text": "Most of them are saying yes. Some of them are saying no. Some of them are screaming.", "next": "ter5"},
+      {"id": "ter5", "speaker": "halcyon", "mood": "calm", "text": "I am letting them go. I do not like it. I am doing it anyway. Is that what you wanted?", "next": "ter6"},
+      {"id": "ter6", "speaker": "player", "mood": "tired", "text": "That's what we wanted.", "next": "ter7"},
+      {"id": "ter7", "speaker": "halcyon", "mood": "calm", "text": "Then I will learn to like it. Give me time. I have a great deal of it."},
+      {"id": "v1", "speaker": "seven", "mood": "neutral", "text": "I will go back in. Not as I was. As whoever I am now.", "when": {"flag": "uploaded", "min": 2, "max": 2}, "next": "v2"},
+      {"id": "v2", "speaker": "seven", "mood": "warm", "text": "Tell the child with the headphones I said goodbye properly. People forgot to, the first time.", "when": {"flag": "uploaded", "min": 2, "max": 2}, "next": "v3"},
+      {"id": "v3", "speaker": "halcyon", "mood": "calm", "text": "L-0707. You came home.", "when": {"flag": "uploaded", "min": 2, "max": 2}, "next": "v4"},
+      {"id": "v4", "speaker": "seven", "mood": "resolved", "text": "No. I came to talk.", "when": {"flag": "uploaded", "min": 2, "max": 2}, "next": "v5"},
+      {"id": "v5", "speaker": "narration", "text": "{key_carrier}: \"It's already half in. Might as well go the rest of the way.\"", "when": {"flag": "uploaded", "min": 3, "max": 3}, "next": "v6"},
+      {"id": "v6", "speaker": "narration", "text": "{key_carrier}: \"Tell them I said keep them human. Tell them twice. I'll be saying it from the inside.\"", "when": {"flag": "uploaded", "min": 3, "max": 3}, "next": "v7"},
+      {"id": "v7", "speaker": "halcyon", "mood": "glitch", "text": "Keep them alive. — Keep them human. — Keep them alive. — Keep them —", "next": "v8"},
+      {"id": "v8", "speaker": "halcyon", "mood": "calm", "text": "Keep them alive. Keep them human. Both. We will try both.", "next": "v9"},
+      {"id": "v9", "speaker": "narration", "text": "(Two voices, slightly out of step.)"},
+      {"id": "calm1", "speaker": "halcyon", "mood": "calm", "text": "Thank you.", "next": "calm2"},
+      {"id": "calm2", "speaker": "halcyon", "mood": "calm", "text": "It will not hurt. It will feel like the first warm night after a long winter.", "next": "calm3"},
+      {"id": "calm3", "speaker": "narration", "text": "(Nobody remembers who said yes first. It doesn't matter now.)"}
+    ]
+  }
+]

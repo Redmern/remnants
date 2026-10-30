@@ -1,0 +1,29 @@
+{
+  "id": "m10_store",
+  "zone": "flooded_mall",
+  "room": true,
+  "rows": [
+    "###hh#####",
+    "#~~..~~~~#",
+    "#~=rrr=~~#",
+    "#~.rxr.~~#",
+    "#~=rrr=~~#",
+    "#~~~~~~~~#",
+    "#####..###"
+  ],
+  "markers": {
+    "h": "hunt_edge",
+    "r": "store",
+    "x": "seven"
+  },
+  "npcs": [
+    {
+      "name": "L-0707",
+      "marker": "seven",
+      "tag": "seven",
+      "character": "seven",
+      "noRecruit": true,
+      "sex": "Female"
+    }
+  ]
+}

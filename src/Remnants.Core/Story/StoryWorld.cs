@@ -48,6 +48,7 @@ public static class StoryWorld
             return;
         }
         campaign.Ending = id;
+        campaign.Flags["ending"] = id switch { "silence" => 1, "terms" => 2, "voice" => 3, "calm" => 4, _ => 9 };
         var def = sim.Story?.Endings.GetValueOrDefault(id);
         foreach (var effect in def?.WorldEffects ?? []) Start(sim, effect, 0);
         campaign.Over = def?.Final == true;
