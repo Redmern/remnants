@@ -1067,8 +1067,23 @@ Two rules fixed it: in a raid battle a downed defender is dragged to safety at o
 wounds come home dressed (`battle.woundCap` 0.45, below `medical.worsenThreshold`). The report's "hurt" counts every injured
 part from the field, so it reads high next to auto-resolve's one line per survivor.
 
+### After the merge with schematics, weather, food, power, trading and gear mods (20 seeds × 60 days)
+
+| Run | Raids | Held | First held | Lost (dead + taken) | Population at the end | Town Hall 2 (median day) |
+|---|---|---|---|---|---|---|
+| auto-resolve | 108 | 79 (73%) | 18/20 | 3 | 131 | 36.6 |
+| `--fight` | 106 | 75 (71%) | 20/20 | 0 | 115 | 35.8 |
+| `--no-raids` | — | — | — | — | 163 | 30.8 |
+
+Raider wealth now counts the pantry's food value (as the stock it replaced) instead of food items, which had doubled
+raider pressure (131 raids, 54% held). The two first raids lost in auto-resolve broke through without deaths or losses
+(two of six adults were patients at night). Defense schematics now come from the catalogue (loot, trade, research and beaten
+raids); weather cuts warnings (rain ×0.8, fog ×0.6, thunderstorms ×0.7, dust storms ×0.5); powered turrets and floodlights
+get their bonus; Husks trample standing crops; modded gear and helmets count in a defender's strength.
+
 ### Watch next pass
 
+- Population with fought raids (115) trails auto-resolve (131): field wounds keep defenders in the Med Bay longer.
 - Guards are strong but expensive for a small colony; a part-time watch (a rota) may be the better early choice.
 - The bot spends only on essentials before Town Hall 2; walls and turrets come late. Players who wall in early will find
   raids easy — that is intended, but check the wall soak cap if raids feel toothless.
