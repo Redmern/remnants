@@ -293,6 +293,9 @@ public sealed record ItemDef
     /// <summary>Part of an enemy (claws): never looted or crafted.</summary>
     public bool Natural { get; init; }
 
+    /// <summary>A story quest item (the relay antenna): placed by a mission's map, never looted or crafted.</summary>
+    public bool Quest { get; init; }
+
     /// <summary>Quality variants: the item they are a variant of (null for a defined item).</summary>
     public string? BaseId { get; init; }
 

@@ -47,5 +47,18 @@
     "attributes": { "Strength": 50, "Agility": 30, "Endurance": 80, "Perception": 60 },
     "skills": { "Firearms": 40 },
     "equipment": ["turret_gun", "turret_mount"]
+  },
+  {
+    "id": "tally_scav", "name": "Tally Scavenger", "hp": 60, "ai": "Husk",
+    "attributes": { "Strength": 50, "Agility": 55, "Endurance": 55, "Perception": 55 },
+    "skills": { "Firearms": 35, "Melee": 35 },
+    "equipment": ["pistol", "padded_vest"],
+    "drops": [ { "item": "scrap", "chance": 0.5 } ]
+  },
+  {
+    "id": "cole", "name": "Cole Brannigan", "hp": 90, "ai": "Husk",
+    "attributes": { "Strength": 55, "Agility": 60, "Endurance": 60, "Perception": 65 },
+    "skills": { "Firearms": 50, "Melee": 45 },
+    "equipment": ["pistol", "scout_jacket"]
   }
 ]
