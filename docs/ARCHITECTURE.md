@@ -59,6 +59,7 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
     body-part injuries, limb loss, Downed → bleed-out → Dead; ambushes), `Visibility` (per-side sight + explored, lit tiles).
   - `ScavengeSim` — `Execute(IScavengeCommand)`; initiative turn order across all units of all
     sides; AI turns (`ScavengeAi`: Husk, Linked squad, recruit followers) run inside it. See "Linked squad AI" below.
+  - `Hacking` (devices, the Hack action, Override, placement) and `Drones` (scout drones) — see "Hacking and scout drones".
   - `Network` — the Linked relay graph (groups, shared knowledge, squad focus, pylon alarm and reinforcements).
   - `ExtractionResult` per player — returned survivors (with injuries/health), recruits, deaths, loot.
   - `ScavengeSave` — versioned save/load with validation against `data/`.
@@ -200,7 +201,8 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   family (births, conception) → housing → growth (aging, growing up).
 - **Scavenge commands** (`Move`, `Attack`, `UseItem` (on a unit, or a tile with `At`), `PickUp`, `Recruit`, `SetStance`
   (Overwatch / Brace), `Lookout`, `EndTurn`, `Extract`; co-op: `ProposeAlliance`, `RespondAlliance`, `BreakAlliance`,
-  `PingTile`, `GiveItem`, `Carry`, `PutDown`) carry a
+  `PingTile`, `GiveItem`, `Carry`, `PutDown`; tech: `Hack`, `DeployDrone`, `FlyDrone`, `RecallDrone`, `MarkTarget`,
+  `DropPayload`) carry a
   `PlayerId` + `UnitId`; Core checks ownership and whose turn it is and returns a `ScavengeResult`
   with a `ScavengeError`. Several players' parties can share one instance (each party is a side).
   A party is done when it has no conscious controllable unit left (its downed die, recruits stay or go over to an ally),
@@ -412,6 +414,67 @@ Players scavenge together as teams (details, protocol and how to run it: MULTIPL
   lapse, break timing and split sight, carry out and per-player results, put down / let go, left behind, give, heal an
   ally, per-player extraction and recruit hand-over, pings, co-op spawn and enemy scaling, saves); Net: `CoopNetTests`.
 
+## Hacking and scout drones
+
+Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), items (`hackTool`, `drone`), zones
+(`devices`: [min, max] per kind) and two device enemies (`camera`, `turret`). Core: `Scavenge/Hacking.cs`, `Scavenge/Drones.cs`.
+
+- **Devices** (`ScavengeState.Devices`, `ZoneDevice`): terminal, camera, turret, blast door, locker, relay node, placed by
+  `Hacking.PlaceZoneDevices` with their own RNG after everything else (doors in room doorways, cameras in walls next to
+  floor, the rest on floor; nothing that blocks a tile may cut off part of the map). A camera or turret is also a unit
+  (`UnitKind.Device`, `Unit.DeviceId`): sight, fire, fog and being shot work as for anyone, its side is its controller,
+  shot down the device is `Disabled`. Cameras are Linked-kind (they relay on the Network and are jammed like the Linked)
+  and take no turns; turrets take turns and shoot the nearest hostile they see (`ScavengeAi.Machine`). Other devices block
+  their tile (`Hacking.Blocks`, used by `Movement` and the AI's distance field); a door lets its controller's side through.
+- **Hack** (`Hack(deviceId | targetId)`): a hacking tool carried anywhere (kit: adjacent; cyberdeck: 3 tiles with line
+  of sight, +15%, 2 progress per action), `hacking.apCost` less `hack_ap_discount`. Each action adds progress for the
+  side; the one that completes the kind's `work` rolls `Hacking.Chance` = base + Hacking·perSkill + (Intellect−50)·perIntellect
+  + tool + `hack_chance_bonus` − difficulty − the Network penalty (unless a jammer hostile to the Network covers it).
+  Success: terminal → its items into the pack, every tile explored for the side, sensor contacts on every unseen enemy;
+  camera → sees for the side; turret → fires for it; door → the side passes, others are locked out; locker → its loot as a
+  cache on its tile; relay → a jam field (`devices.Relay.radius`) against the Network (`Devices.JamsTile`) and no more
+  reinforcements anywhere (`Hacking.UplinkDown`). Failure: noise in `alarmRadius` (less `hack_alarm_reduction`) with noise
+  contacts for parties in earshot; for a device on the Network (not jammed) every Linked hunts the hacker and the
+  Network's alarm counter rises; a feedback shock (`shockDamage`, halved by `field_repair`) to the right arm; progress lost
+  and a `lockoutRounds` lockout for the side. Hacking trains the Hacking skill and adds `Unit.FieldXp`.
+- **Override** (`can_hack_linked`): `Hack(targetId)` on a Linked enemy (not a Husk: disconnected) rolls once with
+  `overrideDifficulty`; success puts it on the hacker's side for `overrideRounds` (it fights for them, off the Network,
+  `Unit.OverrideUntilRound`), failure is an alarm with the Linked turning on the hacker.
+- **Cameras spot**: an enemy camera that picks out a hostile after a move logs it and points every Linked within its
+  radius at it (`Hacking.CameraCheck`).
+- **Scout drone** (`UnitKind.Drone`): `DeployDrone(at)` on a free tile next to the operator (the item leaves the pack or
+  Tool slot); the drone is a unit of the operator's side with the `drone` frame (sight ~12, dodge, low HP), takes no turns
+  and is not player-controlled. `FlyDrone(to)` (operator's AP): up to the item's `flyRange` over any terrain, ending on a
+  passable free tile, within the control range (item + Drone Piloting·`controlPerSkill` + `drone_range_bonus`) of the
+  operator. Battery (item + `drone_battery_bonus`) drops 1 per round (`jammedDrain` in any jammer's field, where it flies
+  1 tile); flat, or with its operator down or gone, it lands and is left as an item. `RecallDrone` within control range puts
+  it back (it recharges `rechargePerRound`; `minBattery` to take off again); extracting brings it home. Melee cannot reach
+  it, Husks ignore it, the Linked focus it; destroyed it is lost. `MarkTarget` (`drone_can_mark`): a hostile the drone sees is
+  seen by the side through walls and stealth and hit at +`markHitBonus` for `markRounds` (`ScavengeState.Marks`).
+  `DropPayload` (`drone_payload`): a carried flare or motion sensor is set off on the drone's tile. Drone sight is side
+  sight, so allies share it.
+- **Field XP**: `ReturnedSurvivor.FieldXp` (hacks, flights) is paid out on top of the mission XP when the party is home.
+- **World map** (`SendScoutDrone(zone, pilot?)`, `WorldMap.SendDrone`): a drone from the inventory flies to a rumored zone
+  within `maxTravelDays` (its battery), reports in after `travelDays · daysPerTravelDay` (at least 6 h): the zone is scouted and
+  its neighbours rumored, as after a visit but with no depletion; over the zone it may be shot down
+  (`lossByThreat[threat]`, less `lossReductionPerSkill` per pilot Drone Piloting point, relative); otherwise it is back in the
+  inventory after the flight home plus `rechargeDays`. The pilot trains Drone Piloting and earns XP.
+  `ColonyState.DroneFlights`.
+- **Saves**: scavenge save version 5 (devices, marks, hooks, field XP, drones, batteries, overrides) and colony version 9
+  (drone flights; carries scavenge v5); older saves load with no devices, no drones out and no perks in the field.
+- **Game**: `TechPanel` (Hack H per device in reach with chance and progress, Deploy / Recall K, Fly J, Mark M, Payload P;
+  Deploy and Fly arm a click on a highlighted tile), `DeviceViews` (`device_{kind}` with `_hacked` / `_open` /
+  `_hacked_open` / `_disabled`, a `hack_marker` and progress arc for the side's hack, `drone_mark_marker` on marked targets),
+  `DeviceTip` (hover: state, owner, what a hack does), the drone card with battery pips on `UnitPanel`, camera / turret /
+  `scout_drone` unit models, log icons, and Send scout drone on the world-map card. `--tech-demo=hack|turret|drone` (with
+  `--scavenge`) stages each for screenshots.
+- Tests: `HackingTests` (tool / reach / AP, terminal over two actions, failure alarm + Network + shock + lockout, Network
+  Ghost, jammers, chance factors and perks, camera spotting and team sight, turret for each side, shot-down turret, doors,
+  lockers, relay, Override, field XP, zone placement never cutting the map, perks into the field, the other hooks, saves),
+  `DroneTests` (deploy, flight over walls revealing fog, control range and perks, battery and landing, recall and recharge,
+  extraction, shot down, the Linked vs Husks, melee, Spotter, Payload, jammer, allies, saves), `WorldMapTests` (scouting
+  flights), `HackNetTests` (no leaks of devices, hacks or drones; team camera sight; drone sight shared; perks over the wire).
+
 ## Linked squad AI
 
 - **Network** (`Scavenge/Network.cs`): nodes are active, unjammed Linked units and online `Pylon` tiles (a terrain:
@@ -507,7 +570,10 @@ All numbers live in `data/perks.json` (`skills`, `xp`, `study`, `disciplines`, `
   | `revive_hp_bonus` | HP added when reviving a downed ally | Triage |
   | `bleedout_rounds_bonus` | rounds added to a stabilized ally's bleed-out | Triage |
 
-  Core does not apply the hooks yet; the scavenge hacking/drone work reads them.
+  `NewScavenge` resolves each survivor's perks into `Unit.Hooks` (`ScavengeData.HooksFor`, from perks.json loaded with the
+  scavenge data), so the field needs no colony data and a server resolves them from the joined party. Every hook is
+  applied: the profile ones in `ProfileDeriver`, the medic ones in `UseItem`, `loot_bonus` in `PickUp`, overwatch in
+  `SetStance`, the hacking and drone ones in `Hacking` / `Drones` (see "Hacking and scout drones").
 - **Study** (`StudyOrder` in `ColonyState.Studies`; `StartStudy(student, building, skill | perk, mentor?, manual?)`,
   `CancelStudy`): `study.buildings` says what each study building teaches and how many students per level (Town Hall:
   the colony skills; Electronics Lab: Electronics, Hacking, Drone Piloting, and the Tech and Drones perks). Student and
@@ -524,10 +590,8 @@ All numbers live in `data/perks.json` (`skills`, `xp`, `study`, `disciplines`, `
   `ColonySim.PlanStudy` previews cap, rate and ETA (or the error); `StudyEta`, `StudySlots`, `ClassOf` serve the UI.
   Errors: `NotAStudyBuilding`, `InvalidStudy`, `StudyFull`, `CannotStudyHere`, `InClass`, `NeedsMentor`, `MentorNotAhead`,
   `MentorBusy`, `AlreadyAtCap`, `NotAManual`, `WrongManual`, `UnknownStudy`.
-- **Gear for later**: Hacking Kit (Lab L1) and Cyberdeck (Lab L3, `bp_cyberdeck`, uses a kit), Drone Parts (Lab L1) and
-  Scout Drone (Lab L2, `bp_scout_drone`, 2 parts) are Tool/Material items with recipes and no field behaviour yet. Models
-  `item_hacking_kit`, `item_cyberdeck`, `scout_drone` come from remnants-assets; until synced the usual placeholders and
-  kind icons show.
+- **Gear**: Hacking Kit (Lab L1) and Cyberdeck (Lab L3, `bp_cyberdeck`, uses a kit), Drone Parts (Lab L1) and Scout Drone
+  (Lab L2, `bp_scout_drone`, 2 parts); their field behaviour is in "Hacking and scout drones".
 - **UI**: the survivor panel's Perks tab (`PerksTab`: level, XP, points, discipline switcher, `PerkTree` with
   prerequisite lines, detail with ✓/✗ requirements and Learn), XP bar + level and perk-point / in-class badges on
   `SurvivorCard`, `StudyPanel` on study buildings, toasts for level-ups, perks and finished classes. `--perks-demo`
@@ -557,8 +621,8 @@ All numbers live in `data/perks.json` (`skills`, `xp`, `study`, `disciplines`, `
   recipe or a loot weight (tested).
 - `enemies.json` — hp, AI kind, attributes, skills, equipment (a Husk's claws are an item too).
 - `zones.json` — size, threat, loot tier, terrain densities, spawn/exit edges, enemy count + mix,
-  caches, NPC count.
-- `scavenge.json` — `coop` (alliance offer / break-warning rounds, pings, give and carry costs, carry movement penalty,
+  caches, NPC count, hackable devices per kind.
+- `scavenge.json` — `hacking`, `devices`, `drone`, `world.droneScout` (see "Hacking and scout drones"), `coop` (alliance offer / break-warning rounds, pings, give and carry costs, carry movement penalty,
   enemies per extra player), `fog` (stealth, detection, contacts, ambush, overwatch, brace, lookout, Linked fog AI), `network` (Linked squad tuning), `world.colonyPos`, terrain table, movement derivation (base pattern/range, Agility per range,
   encumbrance steps, body rules such as "missing leg → King 1"), AP, sight, carry, combat numbers,
   AI, NPC names, escort radius, gear quality tiers.
@@ -586,7 +650,8 @@ the adults, `--loop-demo` sends the adults on an expedition to the outskirts (sc
 `--autopilot`) and builds a Med Bay and Workshop, `--family-demo` does `--demo`, encourages the first man and woman
 and fast-forwards until a baby is born (then selects the mother), `--crafting-demo` builds a grown town (Town Hall 3, every
 production building, some at level 2–3) with staffed, queued Armory and Tailor and opens the Armory and item panels, `--expedition` opens the expedition planner with two adults picked, `--world-map` opens the world map
-(`--zone=ID` selects a marker), `--fog-demo` (with `--scavenge`) stages a fog ambush (`--select-unit=watcher` shows the unit on overwatch with its range;
+(`--zone=ID` selects a marker), `--tech-demo=hack|turret|drone` (with `--scavenge`) stages a hack in progress, a hacked turret firing or a
+drone scouting (saves its own still with `--screenshot`), `--fog-demo` (with `--scavenge`) stages a fog ambush (`--select-unit=watcher` shows the unit on overwatch with its range;
 `--select-unit=ID` and `--pause-menu` work in any scavenge run), `--world-demo` fakes a few weeks of scouting and sends a party on the road (for
 screenshots); `--scavenge --zone=ID --seed=N` plays the debug mission in another zone, `--multiplayer` opens the multiplayer menu and
 `--mp-host[=PORT]` / `--mp-join=ADDR` with `--mp-name`, `--mp-ready`, `--mp-coop`, `--mp-team=N`, … script it (see `MULTIPLAYER.md`), `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG (any scene). HUD shots: `--pause-menu`, `--settings`, `--build-menu`, `--select-survivor=ID`, `--survivor-tab=N` (colony), `--menu-settings` (main menu). Needs a display; on

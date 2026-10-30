@@ -240,3 +240,77 @@ cap of 20 in about 10 days (practising at a job takes ~19); with a mentor about 
   the lever (AP cost 2, or fewer bursts), or a better party bot that breaks line of sight, flanks and uses the jammer.
 - Fog tuning knobs worth trying first: Linked `stealth` (25), `ambush.hitBonus` (0.2), `overwatch.reactions` (2) and
   the Linked lurking on overwatch (`fog.ai.linkedLurk`).
+
+## Hacking and drones pass
+
+Hackable devices, Override and scout drones (ARCHITECTURE.md "Hacking and scout drones"). The aim: **hacking is a real
+choice** — a hacked locker or terminal is worth a cache or more, a camera or turret turned around changes a fight, a relay
+stops reinforcements — but a failed hack is loud (alarm, the Linked told where you are on a Network device), hurts
+(4–10 shock to the arm) and locks the device for 3 rounds. A drone is information: it pays when the player acts on what it
+sees, and draws Linked fire.
+
+Knobs (`scavenge.json`): `hacking.baseChance` 0.55, `perSkill` 0.005, `perIntellect` 0.004, `networkPenalty` 0.15 (so a
+fresh hacker with a kit has ~65% on a locker, ~40% on a camera, ~35% on a terminal; Hacking 35 + Hacking I ~80% / ~68%),
+`apCost` 2, `alarmRadius` 8, `lockoutRounds` 3, `shockDamage` [4, 10]; per device `work` (locker 1, camera 1, terminal 2,
+door 2, turret 3, relay 3) and `difficulty`; drone battery 6 rounds, flight 4 tiles, control range 6 (+1 per 25 Drone
+Piloting), Linked shoot it on sight (14 HP). Devices per zone: Outskirts 1–2 lockers and maybe a terminal; Suburb Ruins adds a
+terminal, maybe a camera and a door; Rail Depot and up add cameras, turrets and relay nodes.
+
+The party bot (`PartyBot`) hacks lockers and terminals in reach when nothing hostile is in sight and the chance is at least
+45% (cameras 40%, relay nodes 50% once the Linked are about), walks to devices worth hacking, overrides an adjacent Linked
+with the perk at ≥ 40%, and spends the last AP of a turn flying the drone ahead (recalling it before it runs flat). An
+earlier version flew the drone first thing every turn: Suburb Ruins deaths went 33% → 43%, because the operator fell behind
+the party. Kits for trials: `--kit=hack` (a hacking kit), `--kit=drone` (a scout drone), `--kit=tech` (both), `--kit=hacker`
+(both, with Hacking 35 + Hacking I and Drone Piloting 25 + Drone Operator I + Spotter); `--no-tech` carries them unused.
+
+Zone trials, 300 runs, two adults with starting gear, `main` before this branch → with devices in the zones (no tech):
+
+| zone | someone dies | wipe | items / run |
+|---|---|---|---|
+| Town Outskirts | 6% → 6% | 1% → 1% | 10.6 → 10.6 |
+| Scrapyard Flats | 9% → 8% | 1% → 2% | — |
+| Suburb Ruins | 34% → 33% | 9% → 12% | 8.7 |
+| Flooded Mall | 49% → 52% | 22% → 22% | 5.6 |
+| Rail Depot | 88% → 92% | 58% → 63% | 1.7 |
+| Network Relay | 96% → 99% | 74% → 86% | — |
+| Core Spire | 98% → 100% | 92% → 96% | — |
+
+Early zones keep their targets (lockers block a tile, nothing more without a kit). From Rail Depot up the cameras call the
+Linked in and turrets cover approaches, so the zones that were already not for a starting party got a little worse.
+
+With tech (same 300 seeds; "unused" = the same kit carried with `--no-tech`):
+
+| zone | kit | someone dies | items / run | hacks (failed) / run | devices opened / run | drone lost |
+|---|---|---|---|---|---|---|
+| Outskirts | unused | 6% | 10.6 | — | — | — |
+| Outskirts | hack | 6% | **13.4** | 0.71 (0.47) | 0.7 | — |
+| Outskirts | drone | 7% | 11.2 | — | — | 0% |
+| Outskirts | tech | 7% | 14.0 | 0.67 (0.36) | 0.7 | 0% |
+| Outskirts | hacker | 9% | 14.5 | 1.03 (0.27) | 1.0 | 0% |
+| Suburb Ruins | unused | 33% | 8.7 | — | — | — |
+| Suburb Ruins | hack | 36% | 9.7 | 0.37 (0.21) | 0.4 | — |
+| Suburb Ruins | drone | 32% | 8.4 | — | — | 2% |
+| Suburb Ruins | tech | 36% | 9.3 | 0.25 (0.18) | 0.3 | 2% |
+| Suburb Ruins | hacker | 41% | 9.6 | 0.45 (0.12) | 0.4 | 1% |
+| Flooded Mall | unused | 52% | 5.6 | — | — | — |
+| Flooded Mall | hack | 54% | 6.1 | 0.12 (0.07) | 0.1 | — |
+| Flooded Mall | drone | 57% | 5.1 | — | — | 6% |
+| Flooded Mall | tech | 57% | 5.9 | 0.09 (0.06) | 0.1 | 6% |
+
+- **Hacking pays**: a kit is +25% loot in the Outskirts (a hacked locker spills 2–4 items) at no extra risk there, and +10% in
+  Suburb Ruins for ~3 points more deaths — the alarms (about one failed hack every five runs) bring Husks and, on a
+  Network device, the Linked. A trained hacker fails far less (27% of tries vs 40%) and opens more, and so stays longer and
+  meets more trouble (Suburb Ruins 41%): the payoff is real, and so is the exposure.
+- **The drone** in Suburb Ruins cuts deaths in runs that meet a Linked (82% → 67%: the bot sees it coming and leaves) for
+  about the same overall rate; in Flooded Mall it draws the Linked (they focus the drone and the squad hunts toward it) and
+  is shot down in 6% of runs. The bot does not use what it sees beyond that, so this is a floor on its value.
+- **Marks** never fired in these trials (Spotter only marks Linked the drone sees, which the bot then flees); covered by tests.
+
+Colony sweep (20 seeds × 60 days, before → after): median population 7 → 8, starvation 0 → 0, expedition deaths 13 over
+325 runs → 11 over 335, births 30 → 33, departures 9 → 14, Town Hall 2 day 30.4 → 32.4, House affordable 44.7 → 51.2,
+Armory 48.9 → 53.0, Lab 58.4 → 58.5, min food 4.8 → 4.9 days. The colony bot packs any hacking kit / drone it finds and
+sends a spare drone over rumored zones, but rarely has either before day 60; the drift comes from different expedition
+outcomes (lockers block tiles, so runs differ), as in the fog pass.
+
+Watch next pass: Rail Depot and up are harder with cameras and turrets; the hack AP cost (2) against the per-device work;
+whether a novice should get lockers at 65% (they are not on the Network) or terminals higher than ~35%.

@@ -146,4 +146,21 @@ public class HackNetTests
         Assert.Contains(b.View.Units, u => u.Id == alice.DroneId);
         f.AssertNoLeaks();
     }
+
+    [Fact]
+    public void Perks_reach_the_server_with_the_party_and_stay_private()
+    {
+        var f = new NetFixture(new HostOptions { TurnSeconds = 0 });
+        var party = NetFixture.Party("A");
+        party[0].Survivor.Perks.UnionWith(["hacking_1", "spotter"]);
+        var a = f.Join("Alice", party);
+        var b = f.Join("Bob");
+        a.Client.SetReady(true);
+        b.Client.SetReady(true);
+        var unit = f.Sim.State.Units.First(u => u.PlayerId == a.Id && u.Origin!.Perks.Contains("hacking_1"));
+        Assert.Equal(0.1, unit.Hook(Remnants.Core.Colony.PerkHooks.HackChanceBonus), 6);
+        Assert.Equal(1, unit.Hook(Remnants.Core.Colony.PerkHooks.DroneCanMark), 6);
+        Assert.Equal(0.1, a.View.FindUnit(unit.Id)!.Hook(Remnants.Core.Colony.PerkHooks.HackChanceBonus), 6);
+        f.AssertNoLeaks();
+    }
 }

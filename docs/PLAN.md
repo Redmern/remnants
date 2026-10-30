@@ -125,6 +125,7 @@ palette (rust, concrete, moss) with cold cyan accents for anything Network-conne
 | M8 | Linked AI + zones | squad AI, threat/reward zones, world map (done: Network relay, flank/focus/suppress/retreat, pylon reinforcements, enemy variants, 7-zone world map with travel, intel, depletion) |
 | M9 | Multiplayer scavenge | headless server, shared instances, PvP (done for localhost/LAN: authoritative server, per-side fog, interleaved turns with AFK timer, disconnect/reconnect, per-player results; see MULTIPLAYER.md) |
 | — | Co-op | teams of players as one side (shared sight, no friendly fire), co-op lobby and alliances in the field with a warning round to break, give / carry / heal / ping between allies, per-player results, enemies scale with players, real colony parties online (done; see MULTIPLAYER.md "Co-op and alliances") |
+| — | Hacking + drones | hackable terminals, cameras, turrets, blast doors, lockers and relay nodes; Override on the Linked; scout drones in the field and over the world map; every perk hook applied in the field; no-leak multiplayer (done; see ARCHITECTURE.md "Hacking and scout drones") |
 | — | Fog of war | stealth vs detection, contacts, ambushes from the fog, Overwatch / Brace / Lookout, flares, motion sensors, scanner, camo cloak, Linked lurking and drone spotting, no-leak multiplayer (done; see ARCHITECTURE.md "Fog of war") |
 
 Assets run in parallel: style guide → survivors (adult/child, m/f) → level-1 buildings →

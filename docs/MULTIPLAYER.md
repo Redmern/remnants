@@ -88,7 +88,8 @@ sent in `Join`; a mismatch is refused. Bump it for any incompatible record chang
 `mode` and each player's `team` (`LobbyState`, `PlayerInfo`, `MissionStarted.mode`), the five alliance messages, the
 command kinds `proposeAlliance`, `respondAlliance`, `breakAlliance`, `ping` (its tile kind is `mark`, since `kind` is
 the discriminator), `giveItem`, `carry`, `putDown`, and pings, alliance offers and breaks in views. (The co-op brief
-called this "v2"; 2 was already the fog of war, so co-op is 3.)
+called this "v2"; 2 was already the fog of war, so co-op is 3.) **4: hacking and drones** — the command kinds `hack`,
+`deployDrone`, `flyDrone`, `recallDrone`, `markTarget`, `dropPayload`, and devices and drone marks in views.
 
 | Direction | Message | Meaning |
 |-----------|---------|---------|
@@ -259,6 +260,22 @@ Network's, violet the hostile players'). Selecting an ally's unit shows a read-o
 **Team** panel has Give (G), Carry / Put down (C), pings (Z danger, V go here, N loot, then click a tile; pins on the
 map), Accept (Y) / Decline (U) an offer, Offer an alliance (Y) to a rival you see, and Leave the alliance; the
 **alliance banner** under the turn bar shows an open offer, a coming break with its round, and alliance news.
+
+## Hacking and drones over the wire
+
+- **Devices** reach a client like caches: only once its side has seen the tile (or explored it through a hacked
+  terminal's map), as last seen, current while in sight or while the side controls the device. Never their contents
+  (locker / terminal items), never another side's hack in progress or lockout, and control by another team shows as the
+  owner's own side (as with parties). A camera's or turret's unit is a unit like any other: sent only while seen, and a
+  device record names it only then.
+- **Hacked cameras and turrets** are on the hacker's side, so they see and fight for the whole team (team fog needs
+  nothing extra); a rival learns of the change only by seeing the device again.
+- **Drones** are units of their operator's side: allies get them and their sight; rivals only while they see the drone,
+  and then without the operator's id when the operator is unseen (and an operator's unseen drone id is cut). Other
+  players' perks (`Unit.Hooks`), field XP and packed drone battery are stripped from views.
+- **Perks** travel with the party: the survivors in `Join` carry their perk ids, and the server resolves the hooks from its
+  own data (perks.json next to the other data files). The usual trust gap applies (a modified client can claim perks).
+- `NetFixture.CheckFog` checks all of it on every message; `HackNetTests` stage the cases.
 
 ## Parties and results — the trust gap
 
