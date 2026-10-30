@@ -3,6 +3,7 @@ using System.Linq;
 using Godot;
 using Remnants.Core.Scavenge;
 using Remnants.Game.Colony.Ui;
+using Remnants.Game.Hud;
 using Remnants.Game.Scavenge;
 using Remnants.Net;
 
@@ -54,6 +55,11 @@ public partial class MultiplayerMenu : Control
         }
     }
 
+    public override void _UnhandledInput(InputEvent e)
+    {
+        if (Hotkeys.Pressed(e, "pause_menu")) OnBack();
+    }
+
     public override void _ExitTree()
     {
         if (_client is not null) _client.Changed -= Refresh;
@@ -61,14 +67,18 @@ public partial class MultiplayerMenu : Control
 
     private void Build()
     {
-        AddChild(new ColorRect { Color = new Color(0.11f, 0.1f, 0.09f), AnchorRight = 1, AnchorBottom = 1 });
+        TextureFilter = TextureFilterEnum.LinearWithMipmaps;
+        AddChild(new MenuBackdrop { Name = "Backdrop" });
+        AddChild(new ColorRect { Color = new Color(0.03f, 0.028f, 0.025f, 0.7f), AnchorRight = 1, AnchorBottom = 1, MouseFilter = MouseFilterEnum.Ignore });
         var center = new CenterContainer { AnchorRight = 1, AnchorBottom = 1 };
         AddChild(center);
-        var panel = new PanelContainer { CustomMinimumSize = new Vector2(560, 0) };
+        var panel = new PanelContainer { CustomMinimumSize = new Vector2(580, 0) };
+        panel.AddThemeStyleboxOverride("panel",
+            PanelArt.Box(new(Palette.Panel, Palette.EdgeDark, 0.05f, Rivets: true, Strip: Palette.Rust, StripHeight: 3), 22, 18));
         center.AddChild(panel);
         var box = Ui.Panel(panel, 10);
 
-        var title = Ui.Label("MULTIPLAYER", 34);
+        var title = Widgets.Label("MULTIPLAYER", "Title");
         title.HorizontalAlignment = HorizontalAlignment.Center;
         box.AddChild(title);
 
@@ -98,18 +108,19 @@ public partial class MultiplayerMenu : Control
         var buttons = new HBoxContainer();
         buttons.AddThemeConstantOverride("separation", 8);
         box.AddChild(buttons);
-        _host = Ui.Button("Host", OnHost, 110);
-        _join = Ui.Button("Join", OnJoin, 110);
+        _host = Widgets.IconButton("ui_multiplayer", "Host", "Run a server in this game for LAN play, then join it", OnHost, variation: "Primary");
+        _join = Widgets.IconButton("ui_continue", "Join", "Join the server at the address", OnJoin, variation: "Primary");
+        _host.CustomMinimumSize = _join.CustomMinimumSize = new Vector2(120, 38);
         buttons.AddChild(_host);
         buttons.AddChild(_join);
         buttons.AddChild(new Control { SizeFlagsHorizontal = SizeFlags.ExpandFill });
-        buttons.AddChild(Ui.Button("Back", OnBack, 90));
+        buttons.AddChild(Widgets.IconButton("ui_chevron_left", "Back", "Back to the main menu", OnBack, Hotkeys.KeyName("pause_menu")));
 
-        box.AddChild(Ui.Heading("Lobby"));
+        box.AddChild(Ui.Heading("Lobby", "stat_pop"));
         _lobby = Ui.Rich();
         _lobby.CustomMinimumSize = new Vector2(0, 110);
         box.AddChild(_lobby);
-        _ready = Ui.Button("Ready", () => _client?.SetReady(!IsReady()), 110);
+        _ready = Widgets.IconButton("stat_check", "Ready", "Toggle ready: the mission starts when everyone is", () => _client?.SetReady(!IsReady()));
         _ready.Disabled = true;
         box.AddChild(_ready);
 
