@@ -93,6 +93,12 @@ public sealed class Unit
     /// <summary>Pinned by suppressing fire: loses AP at the start of its next turn.</summary>
     public bool Suppressed { get; set; }
 
+    /// <summary>Moved this turn (a ranged attack after it loses accuracy, see <see cref="GearEffects.MovedPenalty"/>).</summary>
+    public bool Moved { get; set; }
+
+    /// <summary>The direction it last moved or attacked in (sign per axis; a weapon light points there). Null until then.</summary>
+    public Pos? Facing { get; set; }
+
     /// <summary>Held until this unit's next turn starts.</summary>
     public Stance Stance { get; set; }
 

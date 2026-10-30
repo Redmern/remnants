@@ -56,6 +56,7 @@ public static class ProtocolJson
                     new JsonDerivedType(typeof(DroneLoad), "droneLoad"),
                     new JsonDerivedType(typeof(DroneFerry), "droneFerry"),
                     new JsonDerivedType(typeof(DroneFire), "droneFire"),
+                    new JsonDerivedType(typeof(FieldMod), "fieldMod"),
                 },
             };
         });

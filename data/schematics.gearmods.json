@@ -1,0 +1,40 @@
+{
+  // Gear mod schematics (SCHEMATICS.md rules), merged into the catalogue after schematics.json. Each unlocks the mod and
+  // kit recipes it names (gear_mods.json). The default set (iron sights, wrapped grip, sharpened edge, padding, webbing,
+  // scrap plates, visor, dust filter, helmets, gas mask, Mk II for basic weapons, clothing and armor) has no entry.
+  "traders": [],
+  "schematics": [
+    {"id": "sch_mod_compensator", "name": "Compensator", "tier": 1, "unlocks": [{"kind": "Recipe", "id": "mod_compensator"}], "sources": ["Loot", "Trade", "Research"], "description": "A muzzle brake that keeps bursts on target."},
+    {"id": "sch_mod_stock", "name": "Padded Stock", "tier": 1, "unlocks": [{"kind": "Recipe", "id": "mod_stock"}], "sources": ["Loot", "Trade", "Research"], "description": "A shoulder stock: steadier shots on the move."},
+    {"id": "sch_mod_serrated_edge", "name": "Serrated Edge", "tier": 1, "unlocks": [{"kind": "Recipe", "id": "mod_serrated_edge"}], "sources": ["Loot", "Trade", "Research"], "description": "Teeth on a blade: wounds that do not close."},
+    {"id": "sch_mod_weighted_head", "name": "Weighted Head", "tier": 1, "unlocks": [{"kind": "Recipe", "id": "mod_weighted_head"}], "sources": ["Loot", "Trade", "Research"], "description": "A heavier head: slower swings, harder hits."},
+    {"id": "sch_mod_spikes", "name": "Spikes", "tier": 1, "unlocks": [{"kind": "Recipe", "id": "mod_spikes"}], "sources": ["Loot", "Trade", "Research"], "description": "Spikes that go through plating."},
+    {"id": "sch_mod_flashlight", "name": "Weapon Light", "tier": 1, "unlocks": [{"kind": "Recipe", "id": "mod_flashlight"}], "sources": ["Loot", "Trade", "Research"], "description": "A light under the barrel: you see in the dark, and the dark sees you."},
+    {"id": "sch_mod_stab_lining", "name": "Stab-proof Lining", "tier": 1, "unlocks": [{"kind": "Recipe", "id": "mod_stab_lining"}], "sources": ["Loot", "Trade", "Research"], "description": "A lining that stops claws and blades."},
+    {"id": "sch_mod_quiet_fabric", "name": "Quiet Fabric", "tier": 1, "unlocks": [{"kind": "Recipe", "id": "mod_quiet_fabric"}], "sources": ["Loot", "Trade", "Research"], "description": "Cloth that does not rustle."},
+    {"id": "sch_mod_camo", "name": "Camo Patterns", "tier": 1, "unlocks": [{"kind": "Recipe", "id": "mod_camo_urban"}, {"kind": "Recipe", "id": "mod_camo_wasteland"}, {"kind": "Recipe", "id": "mod_camo_foliage"}], "sources": ["Loot", "Trade", "Research"], "description": "Urban, wasteland and foliage patterns."},
+    {"id": "sch_mod_waterproofing", "name": "Waterproofing", "tier": 1, "unlocks": [{"kind": "Recipe", "id": "mod_waterproofing"}], "sources": ["Loot", "Trade", "Research"], "description": "Waxed outer layers for the rain."},
+    {"id": "sch_mod_reflex_sight", "name": "Reflex Sight", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "mod_reflex_sight"}], "sources": ["Loot", "Terminal", "Trade", "Research"], "description": "A red-dot sight from the old world."},
+    {"id": "sch_mod_laser", "name": "Laser Sight", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "mod_laser"}], "sources": ["Loot", "Terminal", "Trade", "Research"], "description": "A laser dot: you hit what it touches."},
+    {"id": "sch_mod_scope", "name": "Scope", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "mod_scope"}], "sources": ["Loot", "Trade", "Research"], "description": "Long-range glass; clumsy up close."},
+    {"id": "sch_mod_suppressor", "name": "Suppressor", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "mod_suppressor"}], "sources": ["Loot", "Trade", "Research"], "description": "Gunfire that does not carry."},
+    {"id": "sch_mod_long_barrel", "name": "Long Barrel", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "mod_long_barrel"}], "sources": ["Loot", "Trade", "Research"], "description": "More barrel: more reach, more weight."},
+    {"id": "sch_mod_incendiary", "name": "Incendiary Rounds", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "mod_incendiary"}], "sources": ["Loot", "Trade", "Research"], "description": "Rounds that set Husks alight."},
+    {"id": "sch_mod_shock_coil", "name": "Shock Coil", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "mod_shock_coil"}], "sources": ["Loot", "Terminal", "Kill", "Research"], "description": "A coil that stuns Network machines."},
+    {"id": "sch_mod_ceramic_plates", "name": "Ceramic Plates", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "mod_armor_ceramic_plates"}], "sources": ["Loot", "Trade", "Research"], "description": "Light plates that stop more."},
+    {"id": "sch_mod_thermal_masking", "name": "Thermal Masking", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "mod_thermal_masking"}], "sources": ["Loot", "Terminal", "Research"], "description": "A lining that hides body heat."},
+    {"id": "sch_helmet_riot", "name": "Riot Helmet", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "helmet_riot"}], "sources": ["Loot", "Trade", "Research"], "description": "A riot helmet with a face guard."},
+    {"id": "sch_kit_sidearm_mk3", "name": "Sidearm Mk III", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "kit_sidearm_mk3"}], "sources": ["Loot", "Trade", "Research"], "description": "The last word in sidearm upgrades."},
+    {"id": "sch_kit_longarm_mk2", "name": "Long Gun Mk II", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "kit_longarm_mk2"}], "sources": ["Loot", "Trade", "Research"], "description": "Rebuilds a rifle to a better spec."},
+    {"id": "sch_kit_melee_mk3", "name": "Melee Mk III", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "kit_melee_mk3"}], "sources": ["Loot", "Trade", "Research"], "description": "Hardened steel for melee weapons."},
+    {"id": "sch_kit_clothing_mk3", "name": "Clothing Mk III", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "kit_clothing_mk3"}], "sources": ["Loot", "Trade", "Research"], "description": "Reinforced seams and extra layers."},
+    {"id": "sch_kit_armor_mk3", "name": "Armor Mk III", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "kit_armor_mk3"}], "sources": ["Loot", "Trade", "Research"], "description": "Rebuilds armor to its best."},
+    {"id": "sch_kit_longarm_mk3", "name": "Long Gun Mk III", "tier": 3, "unlocks": [{"kind": "Recipe", "id": "kit_longarm_mk3"}], "sources": ["Loot", "Trade", "Research"], "description": "A match-grade long gun rebuild."},
+    {"id": "sch_mod_emp_coil", "name": "EMP Coil", "tier": 3, "encrypted": true, "unlocks": [{"kind": "Recipe", "id": "mod_emp_coil"}], "sources": ["Loot", "Terminal", "Kill", "Research"], "description": "A Network-grade coil built round a Linked core."},
+    {"id": "sch_mod_network_weave", "name": "Network Weave", "tier": 3, "encrypted": true, "unlocks": [{"kind": "Recipe", "id": "mod_network_weave"}], "sources": ["Loot", "Terminal", "Kill", "Research"], "description": "Cloth woven with Linked fibre: it shields implants."},
+    {"id": "sch_kit_carbine_mk2", "name": "Carbine Mk II", "tier": 3, "encrypted": true, "unlocks": [{"kind": "Recipe", "id": "kit_carbine_mk2"}], "sources": ["Loot", "Terminal", "Kill", "Research"], "description": "A Network rebuild of the Linked carbine."},
+    {"id": "sch_kit_carbine_mk3", "name": "Carbine Mk III", "tier": 3, "encrypted": true, "unlocks": [{"kind": "Recipe", "id": "kit_carbine_mk3"}], "sources": ["Loot", "Kill", "Research"], "description": "The Wardens' own carbine spec."},
+    {"id": "sch_kit_plating_mk2", "name": "Plating Mk II", "tier": 3, "encrypted": true, "unlocks": [{"kind": "Recipe", "id": "kit_plating_mk2"}], "sources": ["Loot", "Kill", "Research"], "description": "Linked plating, layered."},
+    {"id": "sch_kit_plating_mk3", "name": "Plating Mk III", "tier": 3, "encrypted": true, "unlocks": [{"kind": "Recipe", "id": "kit_plating_mk3"}], "sources": ["Loot", "Kill", "Research"], "description": "Linked plating as the Wardens wear it."}
+  ]
+}

@@ -383,6 +383,9 @@ public sealed class ColonySim
             InstallFloodlight c => DayNightHandlers.InstallFloodlight(this, c),
             SetPower c => Colony.Power.SetPower(this, c),
             RepairBuilding c => WeatherHandlers.Repair(this, c),
+            InstallMod c => GearBenchHandlers.Install(this, c),
+            RemoveMod c => GearBenchHandlers.Remove(this, c),
+            UpgradeGear c => GearBenchHandlers.Upgrade(this, c),
             global::Remnants.Core.Story.TakeCall or global::Remnants.Core.Story.AdvanceDialogue or global::Remnants.Core.Story.ChooseDialogue
                 or global::Remnants.Core.Story.LaunchStoryMission => global::Remnants.Core.Story.Campaign.Execute(this, command),
             _ => SchematicHandlers.Handle(this, command)

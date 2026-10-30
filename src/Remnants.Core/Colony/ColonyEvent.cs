@@ -17,6 +17,7 @@ public enum ColonyEventType
     HarvestChanged, FoodRotted, FoodPoisoning,
     Brownout, PowerRestored, BreakerTripped, PowerSwitched, DeviceCharged, Disassembled,
     TradeReceived, CourierDispatched, CourierArrived,
+    GearModded,
 }
 
 /// <summary>Something notable the UI can show in a log. Purely informational.</summary>

@@ -67,6 +67,7 @@ public sealed class ScavengeSim
             Recruit c => ScavengeCommandHandlers.Recruit(this, unit!, c),
             SetStance c => ScavengeCommandHandlers.SetStance(this, unit!, c),
             Lookout c => ScavengeCommandHandlers.Lookout(this, unit!, c),
+            FieldMod c => ScavengeCommandHandlers.FieldMod(this, unit!, c),
             EndTurn => ScavengeResult.Success($"{unit!.Name} ends their turn."),
             Extract => ScavengeCommandHandlers.Extract(this, unit!),
             ProposeAlliance c => Alliances.Propose(this, unit!, c),
@@ -151,6 +152,7 @@ public sealed class ScavengeSim
         unit.Reactions = 0;
         unit.Lookout = false;
         unit.PingsUsed = 0;
+        unit.Moved = false;
         unit.Ap = Profile(unit).MaxAp;
         if (State.Round == 1 && unit.FirstRoundAp != 0) unit.Ap = Math.Max(1, unit.Ap + unit.FirstRoundAp);
         if (braced) unit.Ap = Math.Max(1, unit.Ap - Data.Rules.Fog.Brace.NextTurnApPenalty);
@@ -293,10 +295,12 @@ public sealed class ScavengeSim
     {
         foreach (var u in State.Units.Where(u => u.IsActive && u.Kind == UnitKind.Enemy && u.Ai.Mode == AiMode.Idle))
         {
-            // Husks hear further in the dark; rain drowns noise out for everyone (FieldEnvironment).
+            // Husks hear further in the dark, and a Network weave further still (GearEffects.HuskLure); rain drowns noise out
+            // for everyone (FieldEnvironment).
             var effects = FieldEnvironment.Effects(Data, State);
-            var heard = radius * effects.HearingMultiplier
-                        * (FieldEnvironment.SenseOf(Data, State, u) == SenseKind.Husk ? effects.HuskHearingMultiplier : 1);
+            var husk = FieldEnvironment.SenseOf(Data, State, u) == SenseKind.Husk;
+            var heard = radius * effects.HearingMultiplier * (husk ? effects.HuskHearingMultiplier : 1)
+                        + (husk ? GearEffects.HuskLure(Data, source) : 0);
             if (!u.HostileTo(source) || u.Pos.Chebyshev(source.Pos) > heard + 1e-9) continue;
             u.Ai.Mode = AiMode.Hunting;
             u.Ai.TargetId = null;
@@ -326,8 +330,11 @@ public sealed class ScavengeSim
             if (unit.Pos.Chebyshev(sensor.Pos) > sensor.Radius || from.Chebyshev(sensor.Pos) <= sensor.Radius) continue;
             Trip(sensor, unit);
         }
-        // Thunder drowns out footsteps; rain shortens how far they carry.
-        var hear = FieldEnvironment.ThunderNow(State) ? -1 : fog.HearMovement * FieldEnvironment.Effects(Data, State).HearingMultiplier;
+        // Thunder drowns out footsteps; rain shortens how far they carry. Plates clank (and a weave draws Husks): idle enemies
+        // in earshot of the move come looking, and parties hear it further.
+        var clank = GearEffects.MoveNoise(Data, unit);
+        if (clank > 0 || GearEffects.HuskLure(Data, unit) > 0) MakeNoise(unit, Math.Max(0, clank));
+        var hear = FieldEnvironment.ThunderNow(State) ? -1 : fog.HearMovement * FieldEnvironment.Effects(Data, State).HearingMultiplier + clank;
         foreach (var side in Detection.PartySides(State).Where(s => s != unit.Side && unit.Side != Unit.NeutralSide))
             if (State.Units.Any(u => u.Side == side && u.IsActive && u.Pos.Chebyshev(unit.Pos) <= hear + 1e-9)
                 && !Detection.SideSees(Data, State, side, unit))
