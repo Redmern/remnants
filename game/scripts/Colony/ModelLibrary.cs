@@ -25,6 +25,8 @@ public sealed class ModelLibrary
     private readonly Dictionary<string, Dictionary<string, string>> _params = new();
     private readonly Dictionary<string, Dictionary<string, AttachPoint>> _sockets = new();
     private readonly Dictionary<string, Dictionary<string, AttachPoint>> _attach = new();
+    private readonly Dictionary<string, Dictionary<string, ClipInfo>> _clips = new();
+    private readonly Dictionary<string, Dictionary<string, string[]>> _limbBones = new();
     private readonly Dictionary<string, PackedScene?> _scenes = new();
     private readonly Dictionary<string, GltfState?> _gltf = new();
 
@@ -42,7 +44,11 @@ public sealed class ModelLibrary
         return library;
     }
 
-    /// <summary>Accepts <c>{ "assets": [ {id, category, file, tags?, params?}, ... ] }</c> or a bare array; skips malformed entries.</summary>
+    /// <summary>
+    /// Accepts <c>{ "assets": [ {id, category, file, tags?, params?}, ... ] }</c> or a bare array; skips malformed entries.
+    /// Version 2 (rigs) adds <c>clips</c>, <c>limb_bones</c> and <c>sockets[slot].bone</c>; a v1 manifest has none of
+    /// them and its models stay static.
+    /// </summary>
     private void ReadManifest(string path)
     {
         var dir = path.GetBaseDir();
@@ -66,6 +72,10 @@ public sealed class ModelLibrary
                         .ToDictionary(kv => kv.Name, kv => kv.Value.GetString()!);
                 if (Points(entry, "sockets") is { } sockets) _sockets[key] = sockets;
                 if (Points(entry, "attach") is { } attach) _attach[key] = attach;
+                if (ReadClips(entry) is { Count: > 0 } clips) _clips[key] = clips;
+                if (entry.TryGetProperty("limb_bones", out var limbs) && limbs.ValueKind == JsonValueKind.Object)
+                    _limbBones[key] = limbs.EnumerateObject().Where(kv => kv.Value.ValueKind == JsonValueKind.Array)
+                        .ToDictionary(kv => kv.Name, kv => kv.Value.EnumerateArray().Where(b => b.ValueKind == JsonValueKind.String).Select(b => b.GetString()!).ToArray());
             }
         }
         catch (JsonException e)
@@ -83,7 +93,27 @@ public sealed class ModelLibrary
         {
             if (slot.Value.ValueKind != JsonValueKind.Object || Vector(slot.Value, "point") is not { } point) continue;
             var part = slot.Value.TryGetProperty("part", out var p) && p.ValueKind == JsonValueKind.String ? p.GetString() : null;
-            result[slot.Name] = new AttachPoint(point, Vector(slot.Value, "rot_deg") ?? Vector3.Zero, part);
+            var bone = slot.Value.TryGetProperty("bone", out var b) && b.ValueKind == JsonValueKind.String ? b.GetString() : null;
+            result[slot.Name] = new AttachPoint(point, Vector(slot.Value, "rot_deg") ?? Vector3.Zero, part, bone);
+        }
+        return result;
+    }
+
+    /// <summary><c>clips: [ { name, length_s, loop, events: { impact: [0.38] } } ]</c>; malformed clips are skipped.</summary>
+    private static Dictionary<string, ClipInfo>? ReadClips(JsonElement entry)
+    {
+        if (!entry.TryGetProperty("clips", out var clips) || clips.ValueKind != JsonValueKind.Array) return null;
+        var result = new Dictionary<string, ClipInfo>();
+        foreach (var clip in clips.EnumerateArray())
+        {
+            if (clip.ValueKind != JsonValueKind.Object || !clip.TryGetProperty("name", out var n) || n.GetString() is not { Length: > 0 } name) continue;
+            var length = clip.TryGetProperty("length_s", out var l) && l.ValueKind == JsonValueKind.Number ? l.GetSingle() : 0f;
+            var loop = clip.TryGetProperty("loop", out var lp) && lp.ValueKind == JsonValueKind.True;
+            var events = new Dictionary<string, float[]>();
+            if (clip.TryGetProperty("events", out var ev) && ev.ValueKind == JsonValueKind.Object)
+                foreach (var e in ev.EnumerateObject().Where(e => e.Value.ValueKind == JsonValueKind.Array))
+                    events[e.Name] = e.Value.EnumerateArray().Where(t => t.ValueKind == JsonValueKind.Number).Select(t => t.GetSingle()).Order().ToArray();
+            result[name] = new ClipInfo(name, length, loop, events);
         }
         return result;
     }
@@ -102,6 +132,17 @@ public sealed class ModelLibrary
     /// <summary>A gear item's attach points by socket slot, in the item's own space.</summary>
     public IReadOnlyDictionary<string, AttachPoint> AttachPoints(string id) =>
         _attach.GetValueOrDefault(id) ?? new Dictionary<string, AttachPoint>();
+
+    /// <summary>A rigged model's animation clips by name (manifest v2); empty for a static model.</summary>
+    public IReadOnlyDictionary<string, ClipInfo> Clips(string id) =>
+        _clips.GetValueOrDefault(id) ?? new Dictionary<string, ClipInfo>();
+
+    /// <summary>The bones each body part (or the prosthetic replacing it) is skinned to (manifest v2 <c>limb_bones</c>).</summary>
+    public IReadOnlyDictionary<string, string[]> LimbBones(string id) =>
+        _limbBones.GetValueOrDefault(id) ?? new Dictionary<string, string[]>();
+
+    /// <summary>Whether the model has a manifest entry (so a variant id can be probed before instancing it).</summary>
+    public bool Has(string id) => _files.ContainsKey(id);
 
     /// <summary>Ids of the models carrying every one of these manifest tags, sorted so picks are stable.</summary>
     public IReadOnlyList<string> Tagged(params string[] tags) =>
@@ -159,5 +200,11 @@ public sealed class ModelLibrary
     }
 }
 
-/// <summary>A socket on a body or an attach point on an item (manifest <c>sockets</c> / <c>attach</c>).</summary>
-public readonly record struct AttachPoint(Vector3 Point, Vector3 RotationDegrees, string? Part);
+/// <summary>
+/// A socket on a body or an attach point on an item (manifest <c>sockets</c> / <c>attach</c>). <see cref="Bone"/> is the
+/// socket bone of a rigged body (v2), identity at rest at <see cref="Point"/>.
+/// </summary>
+public readonly record struct AttachPoint(Vector3 Point, Vector3 RotationDegrees, string? Part, string? Bone = null);
+
+/// <summary>An animation clip of a rigged model: length, whether it loops, and its events in seconds from the start.</summary>
+public sealed record ClipInfo(string Name, float Length, bool Loop, IReadOnlyDictionary<string, float[]> Events);
