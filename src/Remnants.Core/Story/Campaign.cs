@@ -207,7 +207,10 @@ public static class Campaign
         if (sim.State.Campaign is null || sim.Story is null) return CommandResult.Fail(CommandError.NoCampaign, "This is a Sandbox colony.");
         if (sim.Story.Mission(c.MissionId) is not { Type: MissionType.Field } def) return CommandResult.Fail(CommandError.UnknownMission, $"No mission '{c.MissionId}'.");
         if (CannotLaunch(sim, c.MissionId) is { } why) return CommandResult.Fail(CommandError.MissionNotAvailable, why);
-        var result = ExpeditionHandlers.Launch(sim, new LaunchExpedition(def.Zone!, c.Members), def.MaxParty);
+        // A mission in a generated zone goes in by daylight (the party waits for it), since night fills those zones with
+        // more Husks; a handmade place keeps its fixed cast, and a defense is fought when it comes.
+        var wait = def.HandmadeId is not null || def.Perimeter || sim.Phase == DayPhase.Day ? (DayPhase?)null : DayPhase.Day;
+        var result = ExpeditionHandlers.Launch(sim, new LaunchExpedition(def.Zone!, c.Members, wait), def.MaxParty);
         if (!result.Ok) return result;
         sim.State.Expedition!.MissionId = def.Id;
         var p = sim.State.Campaign.Progress(def.Id);

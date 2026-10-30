@@ -170,6 +170,9 @@ public static class NewScavenge
                 state.Units.RemoveAll(u => u.Kind != UnitKind.Survivor && r.Tiles.Contains(u.Pos));
                 state.Caches.RemoveAll(c => r.Tiles.Contains(c.Pos));
             }
+            if (mission.Mission.ExcludeEnemyTags.Count > 0)
+                state.Units.RemoveAll(u => u.Kind == UnitKind.Enemy && u.EnemyDefId is { } e
+                                           && data.Enemies[e].Tags.Any(mission.Mission.ExcludeEnemyTags.Contains));
             var markers = fixedRoom?.Markers ?? new(StringComparer.Ordinal);
             markers[HandmadeMaps.SpawnMarker] = anchors.ToList();
             AddMission(data, state, mission, mission.Room, markers);

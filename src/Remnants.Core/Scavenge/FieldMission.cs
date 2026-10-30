@@ -143,6 +143,9 @@ public sealed record FieldMission
     public List<TriggerDef> Triggers { get; init; } = new();
     public bool AtHome { get; init; }
     public bool FailOnWipe { get; init; } = true;
+
+    /// <summary>A generated zone's own enemies with any of these tags are left out ("network": no Linked in M4).</summary>
+    public List<string> ExcludeEnemyTags { get; init; } = new();
 }
 
 /// <summary>A chatter line said in the field (radio, or someone on the map).</summary>

@@ -142,6 +142,7 @@ Every field that is set must hold:
 - **`atHome`:** the fight is at the colony (a defense). The run ends when the mission is done or failed, and everyone
   still on the map is home, downed included.
 - **`failOnWipe`:** a party that gets nobody home fails the mission.
+- **`excludeEnemyTags`:** a generated zone's own enemies with any of these tags are left out (`["network"]`: no Linked).
 
 Objectives: `{ id, kind, text, marker, radius, tag, item, count, optional, failsMission, hidden }`
 

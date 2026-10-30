@@ -62,6 +62,18 @@ public class StoryDataTests
     }
 
     [Fact]
+    public void The_Stranger_has_no_Linked_in_the_Ruins()
+    {
+        foreach (var seed in new ulong[] { 1, 2, 3, 4, 5, 6 })
+        {
+            var sim = NewScavenge.Create(ScavengeTestData.Real, "suburb_ruins", seed, [ScavengeTestData.Party(1)], null,
+                new MissionSetup(Real.Mission("m4")!.Field!, Room: Real.Maps["ruins_house"]));
+            Assert.DoesNotContain(sim.State.Units, u => u.Kind == UnitKind.Enemy && u.EnemyDefId is { } e
+                                                        && ScavengeTestData.Real.Enemies[e].Tags.Contains("network"));
+        }
+    }
+
+    [Fact]
     public void A_fixed_room_is_stamped_whole_and_reachable_from_the_spawn_and_exits()
     {
         foreach (var seed in new ulong[] { 1, 2, 3, 4, 5 })

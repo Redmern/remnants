@@ -163,7 +163,7 @@
     "requires": [ { "mission": "m3" }, { "townHall": 1 }, { "building": "med_bay" } ],
     "briefing": "m4_brief", "debrief": "m4_debrief",
     "field": {
-      "id": "m4", "name": "The Stranger",
+      "id": "m4", "name": "The Stranger", "excludeEnemyTags": ["network"],
       "objectives": [
         { "id": "find", "kind": "Reach", "text": "Find the scout", "marker": "scout", "radius": 2 },
         { "id": "aid", "kind": "Aid", "text": "Stabilise her (bandage or med-kit)", "tag": "juniper", "failsMission": true },
