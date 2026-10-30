@@ -79,6 +79,7 @@ internal static class ScavengeCommandHandlers
         else if (downed && use.Stabilize)
         {
             target.Stabilized = true;
+            MissionRules.Treated(sim, unit, target);
             target.BleedOut += (int)Math.Round(unit.Hook(PerkHooks.BleedoutRoundsBonus));
             sim.Log(ScavengeEventType.Stabilized, $"{unit.Name} stabilized {target.Name}.", unit, target);
             if (use.ReviveHp > 0)
@@ -92,6 +93,7 @@ internal static class ScavengeCommandHandlers
         else if (!downed && use.Heal > 0)
         {
             target.Hp = Math.Min(target.MaxHp, target.Hp + use.Heal * (1 + unit.Hook(PerkHooks.FieldHealBonus)));
+            MissionRules.Treated(sim, unit, target);
             sim.Log(ScavengeEventType.Healed, $"{unit.Name} treated {target.Name} with {item.Name}.", unit, target);
         }
         else
@@ -210,6 +212,7 @@ internal static class ScavengeCommandHandlers
         unit.Pack.Add(c.ItemId);
         if (cache.Items.Count == 0) sim.State.Caches.Remove(cache);
         sim.Log(ScavengeEventType.PickedUp, $"{unit.Name} picked up {item.Name}.", unit);
+        MissionRules.PickedUp(sim, unit, c.ItemId);
         // Scavenger: a sharp eye turns up a second lot of a material.
         if (item.Kind == ItemKind.Material && unit.Hook(PerkHooks.LootBonus) is var bonus and > 0
             && profile.Load + 2 * item.Weight <= profile.CarryCapacity + 1e-9 && sim.Rng.NextDouble() < bonus)
@@ -223,7 +226,7 @@ internal static class ScavengeCommandHandlers
     public static ScavengeResult Recruit(ScavengeSim sim, Unit unit, Recruit c)
     {
         var npc = sim.State.FindUnit(c.NpcId);
-        if (npc is not { Kind: UnitKind.Npc, IsActive: true, Side: Unit.NeutralSide })
+        if (npc is not { Kind: UnitKind.Npc, IsActive: true, Side: Unit.NeutralSide, NoRecruit: false })
             return ScavengeResult.Fail(ScavengeError.NotRecruitable, $"Unit {c.NpcId} cannot be recruited.");
         if (unit.Pos.Chebyshev(npc.Pos) > 1) return ScavengeResult.Fail(ScavengeError.TooFar, $"{unit.Name} must stand next to {npc.Name}.");
         var cost = sim.Data.Rules.Turn.RecruitApCost;

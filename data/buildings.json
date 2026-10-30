@@ -168,23 +168,17 @@
     ]
   },
   {
-    "id": "radio_mast",
-    "name": "Radio Mast",
-    "category": "Core",
-    "unique": true,
+    "id": "radio_mast", "name": "Radio Mast", "category": "Core", "unique": true, "outdoor": true,
     "levels": [
-      { "cost": { "wood": 15, "scrap": 10 } },
-      { "cost": { "wood": 40, "scrap": 25, "electronics": 6 } }
+      { "cost": { "wood": 15, "scrap": 10 }, "workerSlots": 0 },
+      { "cost": { "wood": 40, "scrap": 25, "electronics": 5 }, "workerSlots": 0 }
     ]
   },
   {
-    "id": "watchtower",
-    "name": "Watchtower",
-    "category": "Core",
-    "outdoor": true,
+    "id": "watchtower", "name": "Watchtower", "category": "Core", "outdoor": true,
     "levels": [
-      { "cost": { "wood": 40, "stone": 10 } },
-      { "cost": { "wood": 60, "stone": 30, "scrap": 10 } }
+      { "cost": { "wood": 25, "stone": 10 }, "workerSlots": 0 },
+      { "cost": { "wood": 40, "stone": 30, "scrap": 10 }, "workerSlots": 0 }
     ]
   },
   {

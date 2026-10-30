@@ -28,6 +28,9 @@ public sealed class Expedition
     public long LaunchedTick { get; set; }
     public List<ExpeditionMember> Members { get; set; } = new();
 
+    /// <summary>Story mode: the field mission this party is on (null for a plain scavenge run).</summary>
+    public string? MissionId { get; set; }
+
     /// <summary>One-way travel time in ticks (0 for a zone on the doorstep).</summary>
     public long TravelTicks { get; set; }
 

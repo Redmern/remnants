@@ -17,7 +17,8 @@ public sealed record ExtractionResult(
     List<ReturnedSurvivor> Returned,
     List<ReturnedSurvivor> Recruits,
     List<Survivor> Deaths,
-    SortedDictionary<string, int> Loot)
+    SortedDictionary<string, int> Loot,
+    ObjectiveResult? Mission = null)
 {
     /// <summary>
     /// Co-op: schematics allied players carried out; every ally who got home receives a copy (knowledge copies).
@@ -36,7 +37,8 @@ public sealed record ExtractionResult(
         bool Out(Unit u) => u.Status is UnitStatus.Extracted or UnitStatus.Evacuated;
 
         var returned = mine.Where(u => u.Kind == UnitKind.Survivor && Out(u)).Select(ToReturned).ToList();
-        var recruits = mine.Where(u => u.Kind == UnitKind.Npc && Out(u)).Select(ToReturned).ToList();
+        // A story character who walks out with the party (an escort) goes home to the story, not into the colony.
+        var recruits = mine.Where(u => u.Kind == UnitKind.Npc && u.CharacterId is null && Out(u)).Select(ToReturned).ToList();
         var deaths = mine.Where(u => u.Kind == UnitKind.Survivor && u.Status == UnitStatus.Dead).Select(u => Snapshot(u, 0)).ToList();
 
         var loot = new SortedDictionary<string, int>(StringComparer.Ordinal);
@@ -58,7 +60,7 @@ public sealed record ExtractionResult(
             foreach (var id in state.HeardSchematics.GetValueOrDefault(party.Side) ?? [])
                 heard.TryAdd(id, $"on a terminal in {zone}");
         }
-        return new ExtractionResult(playerId, party.Done, returned, recruits, deaths, loot) { SharedSchematics = shared, HeardOf = heard };
+        return new ExtractionResult(playerId, party.Done, returned, recruits, deaths, loot, MissionRules.Result(state, playerId)) { SharedSchematics = shared, HeardOf = heard };
     }
 
     private static ReturnedSurvivor ToReturned(Unit u) =>

@@ -30,6 +30,7 @@ public enum ScavengeEventType
     DroneDeployed, DroneFlown, DroneRecalled, DroneLanded, Marked, PayloadDropped,
     RelayDisrupted,
     LimbLocked,
+    ObjectiveUpdated, Chatter, MissionPrompt, MissionEnded,
 }
 
 /// <summary>
@@ -117,6 +118,9 @@ public sealed class ZoneDevice
     public List<HackProgress> Progress { get; set; } = new();
     public List<Lockout> Lockouts { get; set; } = new();
 
+    /// <summary>Story missions: a script tag objectives point at ("terminal", "locker").</summary>
+    public string? Tag { get; set; }
+
     /// <summary>Whether a side other than the Network controls it.</summary>
     public bool Hacked => Controller != Unit.EnemySide;
 }
@@ -197,6 +201,9 @@ public sealed class ScavengeState
     public List<ZoneDevice> Devices { get; set; } = new();
     public int NextDeviceId { get; set; } = 1;
     public List<Mark> Marks { get; set; } = new();
+
+    /// <summary>A story mission's objectives, triggers and chatter (<see cref="MissionRules"/>); null on a plain run.</summary>
+    public MissionRun? Mission { get; set; }
 
     public List<ScavengeEvent> Events { get; set; } = new();
 

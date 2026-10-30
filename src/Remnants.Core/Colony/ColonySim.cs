@@ -24,6 +24,9 @@ public sealed class ColonySim
     /// <summary>Items, zones and scavenge rules. Needed for expeditions, prosthetics and item recipes; optional otherwise.</summary>
     public ScavengeData? Scavenge { get; }
 
+    /// <summary>The story's missions, dialogue and maps (data/story). Optional; a colony with a campaign needs it to play the story.</summary>
+    public Story.StoryData? Story { get; set; }
+
     public ColonySim(GameData data, ColonyState state, ScavengeData? scavenge = null)
     {
         Data = data;
@@ -31,6 +34,8 @@ public sealed class ColonySim
         Scavenge = scavenge;
         if (scavenge is not null) ValidateLinks(data, scavenge);
         _rng = new DeterministicRng { State = state.RngState == 0 ? new DeterministicRng(0).State : state.RngState };
+        // Story calls ring on the Radio Mast; answering one there opens its dialogue.
+        RadioCallAnswered += call => global::Remnants.Core.Story.Campaign.Answered(this, call);
         SyncRng();
     }
 
@@ -232,8 +237,9 @@ public sealed class ColonySim
         if (expedition.PhaseAt(State.Tick) != ExpeditionPhase.InZone)
             throw new InvalidOperationException("The party is not in the zone (still on the road, or heading home).");
         if (expedition.Scavenge is { } running) return new ScavengeSim(data, running);
+        var mission = expedition.MissionId is { } missionId ? global::Remnants.Core.Story.Campaign.Setup(this, missionId) : null;
         var sim = NewScavenge.Create(data, expedition.ZoneId, expedition.Seed, [ExpeditionParty()],
-            new ZoneConditions(expedition.Depletion, MissionEnvironment(expedition.ArrivalTick), State.Schematics.Known));
+            new ZoneConditions(expedition.Depletion, MissionEnvironment(expedition.ArrivalTick), State.Schematics.Known), mission);
         expedition.Scavenge = sim.State;
         return sim;
     }
@@ -291,6 +297,7 @@ public sealed class ColonySim
         GrowthSystem.Run(State, Data);
         State.Tick++;
         WorldMap.Run(this);
+        global::Remnants.Core.Story.Campaign.Tick(this);
         RadioMast.Run(this);
         SyncRng();
     }
@@ -325,6 +332,8 @@ public sealed class ColonySim
             CancelStudy c => StudyHandlers.Cancel(this, c),
             SetNightShift c => DayNightHandlers.SetNightShift(this, c),
             InstallFloodlight c => DayNightHandlers.InstallFloodlight(this, c),
+            global::Remnants.Core.Story.TakeCall or global::Remnants.Core.Story.AdvanceDialogue or global::Remnants.Core.Story.ChooseDialogue
+                or global::Remnants.Core.Story.LaunchStoryMission => global::Remnants.Core.Story.Campaign.Execute(this, command),
             _ => SchematicHandlers.Handle(this, command)
                  ?? CommandResult.Fail(CommandError.UnknownCommand, $"Unknown command {command.GetType().Name}."),
         };

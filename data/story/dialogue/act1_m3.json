@@ -1,0 +1,37 @@
+[
+  {
+    "id": "m3_brief", "mode": "Radio", "caller": "iris", "title": "Signal in the Rust",
+    "nodes": [
+      { "id": "a", "speaker": "iris", "text": "Something's pinging out in the Scrapyard Flats. A terminal. Old Network kit, still on.", "next": "b" },
+      { "id": "b", "speaker": "iris", "text": "Terminals remember things. Maps, plans, who went where. I want what's on it.", "next": "c" },
+      { "id": "c", "speaker": "player", "text": "", "choices": [
+        { "text": "We don't know how to hack anything.", "next": "c1" },
+        { "text": "Why don't you get it yourself?", "next": "c2" },
+        { "text": "What's in it for us?", "next": "c3" }
+      ] },
+      { "id": "c1", "speaker": "iris", "text": "You will by tonight. There's a toolbox in the terminal room. Kit inside. I'll talk you through it.", "next": "d" },
+      { "id": "c2", "speaker": "iris", "text": "Because I don't go outside. That's a whole conversation. Not this one.", "next": "d" },
+      { "id": "c3", "speaker": "iris", "text": "Half of it's plans. Cloaks, mostly. Things that keep you from being seen. You'll want those.", "next": "d" },
+      { "id": "d", "speaker": "iris", "text": "One more thing. Don't hack the camera. Hack the thing the camera reports to. Always go one step up.", "next": "e" },
+      { "id": "e", "speaker": "pell", "text": "There aren't any cameras though.", "next": "f" },
+      { "id": "f", "speaker": "iris", "text": "Not yet, kid. Not yet." }
+    ]
+  },
+  {
+    "id": "m3_debrief", "mode": "Radio", "caller": "iris", "title": "What the Terminal Knew",
+    "nodes": [
+      { "id": "a", "speaker": "iris", "text": "Okay, I'm reading it. Patrol logs. Crop yields. A list of names with ticks next to them. Not ours. Not... anyone's anymore.", "next": "b" },
+      { "id": "b", "speaker": "iris", "text": "And a cloak pattern. Camo, the good kind. Your Tailor can make it now.", "next": "fought" },
+      { "id": "fought", "speaker": "iris", "text": "And you shot at the Tally. Cole keeps lists. You're on one now.", "next": "talked", "when": { "flag": "cole_respect", "max": -1 } },
+      { "id": "talked", "speaker": "iris", "text": "You split it with the Tally? Cole Brannigan doesn't split anything. He must like you. Or he's counting.", "next": "end", "when": { "flag": "cole_respect", "min": 1 } },
+      { "id": "end", "speaker": "iris", "text": "Keep the kit. You'll be hacking a lot more than lockers before this is over." }
+    ]
+  },
+  {
+    "id": "m3_retry", "mode": "Radio", "caller": "iris", "title": "The Terminal, Again",
+    "nodes": [
+      { "id": "a", "speaker": "iris", "text": "The terminal's still pinging. Somebody'll get to it eventually. Better it's you.", "next": "b" },
+      { "id": "b", "speaker": "iris", "text": "This time, bring bandages. Hacks bite." }
+    ]
+  }
+]

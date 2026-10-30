@@ -176,5 +176,6 @@
   { "id": "network_leg", "name": "Network-grade Leg", "kind": "Prosthetic", "weight": 3, "tier": 3, "lootWeight": 0.05,
     "prosthetic": { "region": "Legs", "quality": 1.6, "minMedBayLevel": 3 }, "initiative": 4, "stealth": 6 },
   { "id": "network_eye", "name": "Network-grade Eye", "kind": "Prosthetic", "weight": 0.2, "tier": 3, "lootWeight": 0.05,
-    "prosthetic": { "region": "Head", "quality": 1.3, "minMedBayLevel": 3 }, "sightBonus": 2, "detection": 10 }
+    "prosthetic": { "region": "Head", "quality": 1.3, "minMedBayLevel": 3 }, "sightBonus": 2, "detection": 10 },
+  { "id": "relay_antenna", "name": "Relay Antenna", "kind": "Material", "weight": 4, "tier": 1, "quest": true }
 ]

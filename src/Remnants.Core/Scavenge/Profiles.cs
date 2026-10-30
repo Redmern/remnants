@@ -90,6 +90,11 @@ public static class ProfileDeriver
             detection += fog.Lookout.DetectionBonus + unit.Get(AttributeKind.Perception) * fog.Lookout.DetectionPerPerception;
         }
         if (unit.Stance == Stance.Overwatch) detection += fog.Overwatch.DetectionBonus;
+        if (unit.Raised)
+        {
+            sight += rules.Story.RaisedSight;
+            detection += rules.Story.RaisedDetection;
+        }
         var stealth = fog.Stealth.Base
             + (agility - 50) * fog.Stealth.PerAgility
             - load * fog.Stealth.PerKg

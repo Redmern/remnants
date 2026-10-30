@@ -21,6 +21,7 @@ public static class GameDataPaths
 
     private static GameData? _data;
     private static ScavengeData? _scavenge;
+    private static Remnants.Core.Story.StoryData? _story;
 
     /// <summary>Where the loaded data came from, for diagnostics.</summary>
     public static string Source { get; private set; } = "";
@@ -29,6 +30,29 @@ public static class GameDataPaths
 
     /// <summary>Scavenge definitions (items, enemies, zones, rules), found the same way as the colony data.</summary>
     public static ScavengeData LoadScavenge() => _scavenge ??= LoadScavengeFresh();
+
+    /// <summary>The story (data/story): missions, dialogue, maps. A Sandbox colony carries it too and simply never uses it.</summary>
+    public static Remnants.Core.Story.StoryData LoadStory() => _story ??= LoadStoryFresh();
+
+    private static Remnants.Core.Story.StoryData LoadStoryFresh()
+    {
+        foreach (var dir in CandidateDirectories())
+            if (File.Exists(Path.Combine(dir, "story", "characters.json")))
+                return Remnants.Core.Story.StoryDataLoader.LoadFromDirectory(Path.Combine(dir, "story"));
+        const string prefix = "Remnants.Story.";
+        var names = typeof(GameDataPaths).Assembly.GetManifestResourceNames().Where(n => n.StartsWith(prefix, StringComparison.Ordinal)).ToList();
+        string Read(string name)
+        {
+            using var stream = typeof(GameDataPaths).Assembly.GetManifestResourceStream(name)!;
+            using var reader = new StreamReader(stream);
+            return reader.ReadToEnd();
+        }
+        // RecursiveDir keeps the folder ("missions/", or "missions\" built on Windows).
+        IEnumerable<(string, string)> In(string folder) => names
+            .Where(n => n[prefix.Length..].Replace('\\', '/').StartsWith(folder + "/", StringComparison.Ordinal))
+            .Select(n => (n, Read(n)));
+        return Remnants.Core.Story.StoryDataLoader.LoadFromJson(Read(prefix + "characters.json"), In("missions"), In("dialogue"), In("maps"));
+    }
 
     private static ScavengeData LoadScavengeFresh()
     {

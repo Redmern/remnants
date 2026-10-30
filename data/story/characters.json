@@ -1,0 +1,11 @@
+[
+  { "id": "iris", "name": "Iris Vahn", "callSign": "Lantern", "pronouns": "she/her", "role": "The radio voice. Former Halcyon link-protocol engineer." },
+  { "id": "marrow", "name": "Abel Marrow", "pronouns": "he/him", "role": "Leader of the Long Haul caravan." },
+  { "id": "dee", "name": "Dee", "pronouns": "she/her", "role": "Marrow's second-in-command." },
+  { "id": "juniper", "name": "Juniper", "pronouns": "she/her", "role": "Marrow's outrider." },
+  { "id": "hale", "name": "Dr. Marguerite Hale", "callSign": "Doc", "pronouns": "she/her", "role": "Field surgeon." },
+  { "id": "cole", "name": "Cole Brannigan", "pronouns": "he/him", "role": "Leader of the Tally." },
+  { "id": "seven", "name": "Seven", "pronouns": "it", "role": "A disconnected Linked unit, L-0707." },
+  { "id": "halcyon", "name": "Halcyon", "pronouns": "it", "role": "The AI." },
+  { "id": "pell", "name": "Pell", "pronouns": "he/him", "role": "The colony's kid. Hears the radio first." }
+]

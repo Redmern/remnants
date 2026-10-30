@@ -3,6 +3,7 @@ using Remnants.Core.Data;
 using Remnants.Core.Items;
 using Remnants.Core.Scavenge;
 using Remnants.Core.Schematics;
+using Remnants.Core.Story;
 using Remnants.Core.Survivors;
 
 namespace Remnants.Playtest;
@@ -27,6 +28,8 @@ public sealed record BotOptions
 
     /// <summary>Climb threat after two runs without a death (default: two runs without a death or a new injury).</summary>
     public bool Bold { get; init; }
+    /// <summary>Story mode: which option the party bot picks on a field prompt (0 = the first, e.g. talk to the Tally).</summary>
+    public int StoryPrompt { get; init; }
 }
 
 /// <summary>
@@ -71,6 +74,7 @@ public sealed class ColonyBot
     /// <summary>One decision pass. Call it every few ticks.</summary>
     public void Act()
     {
+        Story();
         Build();
         Craft();
         Care();
@@ -317,7 +321,7 @@ public sealed class ColonyBot
     /// </summary>
     private void Staff()
     {
-        var workers = State.Survivors.Where(s => !s.Away && !s.IsInfant && s.PatientAtBuildingId is null).ToList();
+        var workers = State.Survivors.Where(s => !s.Away && !s.IsInfant && s.PatientAtBuildingId is null && !Research.IsResearching(State, s.Id)).ToList();
         var slots = State.Buildings.Where(b => Data.Buildings[b.DefId].Job is not null)
             .ToDictionary(b => b.Id, b => Data.Buildings[b.DefId].Level(b.Level).WorkerSlots);
         var plan = new Dictionary<int, int>(); // survivor -> building
@@ -402,7 +406,10 @@ public sealed class ColonyBot
                 var run = _sim.OpenExpeditionScavenge();
                 var before = State.Survivors.ToDictionary(s => s.Id, s => s.Name);
                 if (_stuck) return;
-                var (result, stats) = PartyBot.Play(run, ColonySim.ExpeditionPlayerId, Trace);
+                var (result, stats) = out_.MissionId is not null
+                    ? (StoryBot.Play(run, ColonySim.ExpeditionPlayerId, _options.StoryPrompt, Trace).Result, new RunStats(run.State.Round, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+                    : PartyBot.Play(run, ColonySim.ExpeditionPlayerId, Trace);
+                if (out_.MissionId is { } mid) StoryRuns.Add((Day, mid, result.Mission?.Outcome.ToString() ?? "?", result.Returned.Count, result.Deaths.Count, run.State.Round));
                 if (!result.Complete)
                 {
                     // The bot could not finish the run; leave the party out rather than replaying it every pass.
@@ -425,6 +432,7 @@ public sealed class ColonyBot
         }
 
         ScoutAhead();
+        if (StoryLaunch()) return;
         if (Day < _options.FirstExpeditionDay || State.Tick < _lastReturnTick + _options.ExpeditionCooldownDays * TicksPerDay) return;
         var adults = State.Survivors.Where(s => !s.IsChild && !s.Away && s.PatientAtBuildingId is null && s.Pregnancy is null
                                                 && !s.IsInjured && s.Health >= 80).ToList();
@@ -451,6 +459,52 @@ public sealed class ColonyBot
         var members = Gear(party);
         var launched = _sim.Execute(new LaunchExpedition(zone.Zone.Id, members, waitFor));
         if (!launched.Ok) Problems.Add($"day {Day:0.0}: launch {zone.Zone.Id}: {launched.Message}");
+    }
+
+    // ---- story --------------------------------------------------------------------------------------------------
+
+    /// <summary>Story runs: day, mission, outcome, back, dead, rounds.</summary>
+    public List<(double Day, string Mission, string Outcome, int Back, int Dead, int Rounds)> StoryRuns { get; } = [];
+
+    /// <summary>
+    /// Story mode: take every waiting call and play it through (first choice), put up the Radio Mast once the Workshop
+    /// stands, and a Watchtower once the Town Hall is level 2.
+    /// </summary>
+    private void Story()
+    {
+        if (State.Campaign is null || _sim.Story is null) return;
+        foreach (var call in Campaign.Waiting(_sim).ToList())
+        {
+            _sim.Execute(new TakeCall(call.Id));
+            for (var i = 0; i < 100 && Dialogue.View(_sim) is { } view; i++)
+                _sim.Execute(view.Choices.Count > 0 ? new ChooseDialogue(view.NodeId, view.Choices[0].Index) : new AdvanceDialogue());
+        }
+        foreach (var (id, after) in new[] { ("radio_mast", (Func<bool>)(() => Find("workshop") is not null)), ("watchtower", () => _sim.TownHallLevel >= 2) })
+        {
+            if (Find(id) is not null || !after()) continue;
+            var cost = Data.Buildings[id].Level(1).Cost;
+            if (State.Stockpile.CanAfford(cost)) _sim.Execute(new Construct(id));
+        }
+    }
+
+    /// <summary>Sends the strongest healthy adults on the first available story mission (it waits for its own party size).</summary>
+    private bool StoryLaunch()
+    {
+        if (State.Campaign is null || _sim.Story is null || State.Expedition is not null) return false;
+        var mission = Campaign.Visible(_sim).Where(m => m.Def.Type == MissionType.Field && m.Progress.Status == MissionStatus.Available)
+            .Select(m => m.Def).FirstOrDefault();
+        if (mission is null) return false;
+        var adults = State.Survivors.Where(s => !s.IsChild && !s.Away && s.PatientAtBuildingId is null && s.Pregnancy is null && s.Health >= 70).ToList();
+        var size = Math.Min(Math.Max(_sim.MaxPartySize, mission.MaxParty ?? 0), adults.Count);
+        if (size < 2) return false;
+        // A mission that needs someone treated waits for something to treat them with.
+        if (mission.Field!.Objectives.Any(o => o.Kind == ObjectiveKind.Aid) && Count("bandage") + Count("med_kit") == 0) return false;
+        var zone = _sim.Scavenge!.Zones[mission.Zone!];
+        if (State.Stockpile.Get("food") < WorldMap.RationsPerMember(Data, zone) * size + 5) return false;
+        var party = adults.OrderByDescending(s => s.Get(AttributeKind.Strength) + s.Get(AttributeKind.Agility) + s.Get(AttributeKind.Endurance)).Take(size).ToList();
+        var launched = _sim.Execute(new LaunchStoryMission(mission.Id, Gear(party)));
+        if (!launched.Ok) Problems.Add($"day {Day:0.0}: launch {mission.Id}: {launched.Message}");
+        return launched.Ok;
     }
 
     /// <summary>A scout drone in the stores flies over the nearest rumored zone in reach (flown by the best pilot at home).</summary>

@@ -16,7 +16,7 @@ public class CraftingDataTests
         var made = TestData.Real.Recipes.Values.Where(r => r.Item is not null).Select(r => r.Item!)
             .Concat(ScavengeTestData.Real.Enemies.Values.SelectMany(e => e.Drops).Select(d => d.Item)).ToHashSet();
         var orphans = ScavengeTestData.Real.Items.Values
-            .Where(i => i.BaseId is null && !i.Natural && i.Kind != ItemKind.Schematic && i.LootWeight <= 0 && !made.Contains(i.Id))
+            .Where(i => i.BaseId is null && !i.Natural && !i.Quest && i.Kind != ItemKind.Schematic && i.LootWeight <= 0 && !made.Contains(i.Id))
             .Select(i => i.Id).ToList();
         Assert.Empty(orphans);
     }

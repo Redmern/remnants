@@ -191,6 +191,12 @@ public enum CommandError
     NotInStock,
     UnknownCall,
     NoContract,
+    /// <summary>Story commands in a Sandbox colony (or without story data).</summary>
+    NoCampaign,
+    UnknownMission,
+    MissionNotAvailable,
+    NoDialogue,
+    InvalidChoice,
 }
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>

@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using Remnants.Core.Scavenge;
 using Godot;
 using Remnants.Game.Hud;
 
@@ -20,6 +22,11 @@ public partial class ScavengeHud : CanvasLayer
     public TurnBar TurnBar { get; }
     public UnitPanel UnitPanel { get; }
     public ActionPanel Actions { get; }
+
+    /// <summary>Story missions: objectives, chatter, and the field prompt (hidden on a plain run).</summary>
+    public MissionPanel Mission { get; }
+    public ChatterStrip Chatter { get; }
+    public Remnants.Game.Story.DialoguePanel Prompt { get; }
     public StancePanel Stances { get; }
     public TechPanel Tech { get; }
 
@@ -69,6 +76,8 @@ public partial class ScavengeHud : CanvasLayer
         var right = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         right.AddThemeConstantOverride("separation", 8);
         middle.AddChild(right);
+        Mission = new MissionPanel(presenter);
+        right.AddChild(Mission);
         Actions = new ActionPanel(presenter) { SizeFlagsVertical = Control.SizeFlags.ShrinkBegin };
         right.AddChild(Actions);
         Stances = new StancePanel(presenter) { SizeFlagsVertical = Control.SizeFlags.ShrinkBegin };
@@ -89,10 +98,15 @@ public partial class ScavengeHud : CanvasLayer
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
         Toasts.SizeFlagsVertical = Control.SizeFlags.ShrinkEnd;
+        Chatter = new ChatterStrip(presenter);
+        bottom.AddChild(Chatter);
         toastBox.AddChild(Toasts);
         bottom.AddChild(toastBox);
         bottom.AddChild(Log);
 
+        Prompt = new Remnants.Game.Story.DialoguePanel(() => PromptLine(presenter), () => { },
+            i => Choose(presenter, i), () => presenter.State.Mission?.Chatter.Select(c => (c.Speaker, c.Text, false)) ?? []);
+        AddChild(Prompt);
         DeviceTip.Theme = HudTheme.Shared;
         AddChild(DeviceTip);
         AddChild(Result);
@@ -110,6 +124,30 @@ public partial class ScavengeHud : CanvasLayer
         TurnBar.MenuPressed += () => Pause.Open();
         TurnBar.EndTurnPressed += () => EndTurnRequested?.Invoke();
         TurnBar.LeavePressed += () => LeaveRequested?.Invoke();
+    }
+
+    /// <summary>A field prompt (the Tally at the terminal) as a dialogue line; it pauses the turn until answered.</summary>
+    private static Remnants.Game.Story.DialogueLine? PromptLine(ScavengePresenter presenter)
+    {
+        if (presenter.State.Mission?.Pending is not { } p) return null;
+        var speaker = p.Speaker.StartsWith("Cole") ? "cole" : p.Speaker == "Lantern" ? "iris" : "narration";
+        var choices = p.Options.Select((o, i) => (i, o.Text, o.Hint)).ToList();
+        return new Remnants.Game.Story.DialogueLine(speaker, p.Speaker, p.Text, "neutral", speaker == "iris",
+            Remnants.Game.Story.StoryArt.Portrait(speaker, speaker == "cole" ? "angry" : "neutral", speaker == "iris"), choices, presenter.State.Mission.Def.Name);
+    }
+
+    private static async void Choose(ScavengePresenter presenter, int index)
+    {
+        if (presenter.State.Mission?.Pending is not { } p || presenter.ActingUnit is not { } u) return;
+        await presenter.Execute(new ChooseOption(presenter.PlayerId, u.Id, p.Id, p.Options[index].Id));
+    }
+
+    /// <summary>The story parts of the HUD, from the presenter's state.</summary>
+    public void RefreshStory()
+    {
+        Mission.Refresh();
+        Chatter.Refresh();
+        Prompt.Refresh();
     }
 
     public override void _UnhandledInput(InputEvent e)

@@ -36,6 +36,8 @@ public partial class ColonyHud : CanvasLayer
 
     /// <summary>The cybernetics tree (from the Med Bay, Workshop and Electronics Lab).</summary>
     public CyberneticsPanel Cybernetics { get; }
+    /// <summary>Story mode: radio, journal, briefings, dialogue (hidden in Sandbox).</summary>
+    public Remnants.Game.Story.StoryHud Story { get; }
 
     /// <summary>Esc with nothing else to close; the screen may cancel placement or deselect first.</summary>
     public event Func<bool>? BackRequested;
@@ -146,6 +148,8 @@ public partial class ColonyHud : CanvasLayer
         Toasts.GrowVertical = Control.GrowDirection.Begin;
         toastArea.AddChild(Toasts);
 
+        Story = new Remnants.Game.Story.StoryHud(session);
+        AddChild(Story);
         WorldMap = new WorldMapPanel(session) { Theme = HudTheme.Shared };
         AddChild(WorldMap);
         Report = new AfterActionDialog(session);
@@ -177,6 +181,10 @@ public partial class ColonyHud : CanvasLayer
         TopBar.MenuPressed += OpenPause;
         TopBar.ItemsPressed += () => Inventory.Toggle();
         TopBar.WorldMapPressed += () => WorldMap.Open();
+        Story.PlanMission += id => Expedition.PlanForMission(id);
+        Story.CallArrived += caller => Toasts.Show("Incoming call", $"{caller} is on the radio.", "ui_radio", Palette.Amber, "story_call");
+        WorldMap.MissionPressed += id => { WorldMap.Close(); Story.OpenBriefing(id); };
+        session.Replaced += () => Story.Reset();
         Survivor.Closed += () => Roster.Select(null);
         Roster.SelectionChanged += Survivor.Show;
     }
@@ -196,6 +204,7 @@ public partial class ColonyHud : CanvasLayer
         Inventory.Refresh();
         Expedition.Refresh();
         WorldMap.Refresh();
+        Story.Refresh();
         if (BuildMenu.Visible) BuildMenu.Refresh();
         Log.Refresh();
     }
@@ -242,7 +251,8 @@ public partial class ColonyHud : CanvasLayer
     /// <summary>Esc: close the topmost thing that is open, else open the pause menu.</summary>
     private void Back()
     {
-        if (WorldMap.Visible) WorldMap.Close();
+        if (Story.Back()) { }
+        else if (WorldMap.Visible) WorldMap.Close();
         else if (Report.Visible) Report.Hide();
         else if (BackRequested?.Invoke() == true) { }
         else if (Expedition.Visible) Expedition.Toggle();

@@ -11,7 +11,8 @@ public enum ColonyEventType
     NightShift, Tired, FloodlightFitted,
     SurgeryBooked, SurgeryDone, SurgeryComplication, SurgeryCancelled, ProstheticServiced, ProstheticNeedsService, Humanity,
     SchematicFound, SchematicLearned, SchematicHeardOf, ResearchStarted, ResearchFinished, ResearchEnded,
-    RadioCall, TraderArrived, TraderLeft, Traded, ContractOffered, ContractAccepted, ContractDone, ContractFailed,
+    TraderArrived, TraderLeft, Traded, ContractOffered, ContractAccepted, ContractDone, ContractFailed,
+    StoryMission, RadioCall,
 }
 
 /// <summary>Something notable the UI can show in a log. Purely informational.</summary>

@@ -398,6 +398,31 @@ outcomes (lockers block tiles, so runs differ), as in the fog pass.
 Watch next pass: Rail Depot and up are harder with cameras and turrets; the hack AP cost (2) against the per-device work;
 whether a novice should get lockers at 65% (they are not on the Network) or terminals higher than ~35%.
 
+## Story Act 1 pass
+
+`dotnet run --project tools/Remnants.Playtest -- --story --seeds=1..20 --days=50` (the story bot: two strongest adults,
+the colony's gear, the first choice in every dialogue, "talk" to the Tally).
+
+| Mission | Closed in 50 days | Median day | STORY.md target | Notes |
+|---|---|---|---|---|
+| M1 Home | 20/20 | 7 | early Act 1 | needs Farm, Woodcutter, Workshop, Radio Mast, then the dusk scene |
+| M2 First Light | 18/20 | 7 | ~day 7–12 | 5 of 23 runs failed (party wipe), retried 3 days later |
+| M3 Signal in the Rust | 17/20 | 11 | — | 6 of 23 runs failed; the Tally arrive on round 4; hack lockouts are the main delay |
+| M4 The Stranger | 16/20 (4 closed as failed) | 18 | — | Juniper dies in about one run in four; the caravan opens either way |
+| M5 Hold the Line | 8/20 | 44 | ~day 30 | gated by Town Hall 2, which the bot reaches late (day 30–48); every run held |
+
+This table is after the rebase onto night missions and cybernetics. Changes from the first sweep, in which M2 failed
+16 of 35 runs with 43 deaths and M4 timed out 12 times:
+- M2: the antenna wakes one Husk in the shed. It no longer also sends the patrol at the party.
+- M4: one crawler ambushes when Juniper moves, not two. Juniper starts at 30 HP, not 18. There are no Linked in the
+  Ruins for it (`excludeEnemyTags`, as STORY.md says), which took M4 from 9 failed runs of 18 back to 4.
+- Missions in generated zones wait for daylight, since night adds Husks there. Handmade maps and the defense go when
+  they go.
+- The bot: it no longer walks out on a teammate who is fighting, and it waits for a bandage before an Aid mission.
+
+Act 1 lands on the doc's timeline up to M4. M5 waits on Town Hall 2, which the bot reaches late, as in the plain
+sweeps.
+
 ## Linked carbine pass
 
 The fog pass found that a geared party which fights the Linked still loses, and named the Linked carbine as the lever.
@@ -641,3 +666,9 @@ plating) 0.36 (0.8), Network Relay 0.31 (1.0). Deeper zones fall short mostly be
 tier 1–2 cache odds 2% / 4% → 3% / 5%, locker odds 3% / 5% / 6% → 4% / 6% / 7%.
 Watch next: Research Data piles up (374 gained over 150 days, little researched) because the heard-of list stays
 short without trader visits. A heard-of source for tier-1 zones may be needed.
+
+Story sweep after merging schematics into Story mode (`--story --seeds=1..20 --days=50`; Act 1 pass above in
+brackets): M1 20/20 day 7 (20, 7), M2 19 day 7.3 (18, 7), M3 19 day 11.4 (17, 11), M4 17 closed, 5 as failed, day 17.4
+(16, 18), M5 7 day 37.8 (8, 44). Story rewards are the main schematic source in Story mode (53 of 96 learned), and the
+first tier-2 schematic comes by day 34 in 11 of 20 colonies.
+

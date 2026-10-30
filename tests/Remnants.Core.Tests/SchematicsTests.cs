@@ -368,6 +368,25 @@ public class SchematicDropTests
 public class SchematicMigrationTests
 {
     [Fact]
+    public void Version_14_story_saves_hand_the_campaign_s_schematics_to_the_module()
+    {
+        var sim = StoryTestData.NewStory();
+        var node = JsonNode.Parse(SaveGame.Save(sim.State))!;
+        node["version"] = 14;
+        var colony = node["colony"]!.AsObject();
+        colony.Remove("schematics");
+        colony.Remove("radio");
+        colony["campaign"]!["schematics"] = new JsonArray("sch_watchtower");
+        colony["campaign"]!["flags"]!.AsObject()["research_data"] = 3;
+
+        var loaded = SaveGame.Load(sim.Data, node.ToJsonString(), sim.Scavenge);
+
+        Assert.Equal(SchematicSource.Story, loaded.State.Schematics.LearnedFrom["sch_watchtower"]);
+        Assert.Equal(3, loaded.State.Stockpile.Get("research_data"));
+        Assert.Equal(0, loaded.State.Campaign!.Flag("research_data"));
+    }
+
+    [Fact]
     public void Version_12_saves_keep_what_they_could_do_and_rename_blueprints()
     {
         var sim = LoopTestData.Colony(townHallLevel: 3);

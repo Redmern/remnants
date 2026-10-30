@@ -21,6 +21,7 @@ public partial class ScavengeScreen : Node3D
     private MapView _map = null!;
     private UnitViews _units = null!;
     private FogOverlay _fog = null!;
+    private Ui.ObjectiveMarkers _objectives = null!;
     private DeviceViews _devices = null!;
     private TacticalCamera _camera = null!;
 
@@ -71,6 +72,9 @@ public partial class ScavengeScreen : Node3D
         _devices = new DeviceViews { Name = "Devices" };
         AddChild(_devices);
         _devices.Setup(_presenter, models);
+        _objectives = new Ui.ObjectiveMarkers { Name = "Objectives" };
+        AddChild(_objectives);
+        _objectives.Setup(_presenter, models);
 
         BuildHud();
         _audio = new Audio.ScavengeAudio { Name = "Audio" };
@@ -365,6 +369,7 @@ public partial class ScavengeScreen : Node3D
         _units.Sync();
         _fog.Sync();
         _devices.Sync();
+        _objectives.Sync();
         RefreshHud();
         _seen = new HashSet<int>(_presenter.Visible);
         if (_presenter.Done && !_result.Visible && _presenter.Result() is { } result)
@@ -397,6 +402,7 @@ public partial class ScavengeScreen : Node3D
         _techPanel.Refresh(_busy, _aim);
         _coopPanel.Refresh(_busy, selected, _pinging);
         _hud.Banner.Refresh();
+        _hud.RefreshStory();
         RefreshHighlights(selected);
     }
 

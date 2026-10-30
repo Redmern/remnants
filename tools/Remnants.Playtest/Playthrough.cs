@@ -39,10 +39,15 @@ public sealed record CyberSummary(double?[] TierDay, int LimbsLost, int[] Fitted
 /// <summary>Runs <see cref="ColonyBot"/> on a fresh New Game and records a daily timeline.</summary>
 public sealed class Playthrough
 {
-    public Playthrough(GameData data, ScavengeData scavenge, ulong seed, BotOptions? options = null)
+    public Playthrough(GameData data, ScavengeData scavenge, ulong seed, BotOptions? options = null, Remnants.Core.Story.StoryData? story = null)
     {
         Seed = seed;
         Sim = NewGame.Create(data, seed, scavenge);
+        if (story is not null)
+        {
+            Sim.Story = story;
+            Remnants.Core.Story.Campaign.Start(Sim);
+        }
         Bot = new ColonyBot(Sim, options);
     }
 
@@ -240,6 +245,13 @@ public sealed class Playthrough
                 var closest = cyber.Nodes.Values.Where(n => n.Tier == tier).Select(n => Cybernetics.Status(Sim, n)).MinBy(st => st.Missing.Count)!;
                 sb.AppendLine($"cybernetics T{tier} not reached; closest {closest.Node.Id} misses: {string.Join("; ", closest.Missing)}");
             }
+        if (Sim.State.Campaign is { } campaign)
+        {
+            sb.AppendLine("story:");
+            foreach (var r in Bot.StoryRuns) sb.AppendLine($"  day {r.Day,5:0.0} {r.Mission,-4} {r.Outcome,-10} back {r.Back}, dead {r.Dead}, rounds {r.Rounds}");
+            foreach (var (id, p) in campaign.Missions.Where(m => m.Value.DoneTick is not null))
+                sb.AppendLine($"  {id,-12} {p.Outcome,-7} day {p.DoneTick!.Value / (double)Sim.Data.Rules.TicksPerDay:0.0}");
+        }
         if (Bot.Problems.Count > 0)
         {
             sb.AppendLine("bot problems:");

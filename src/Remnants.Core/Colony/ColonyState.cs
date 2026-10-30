@@ -63,6 +63,9 @@ public sealed class ColonyState
     /// <summary>Affinity between pairs of adults (and the player's stance on them). See <see cref="Bonds"/>.</summary>
     public List<Relationship> Relationships { get; set; } = new();
 
+    /// <summary>Story mode's campaign (missions, flags, the radio inbox); null in Sandbox.</summary>
+    public Story.CampaignState? Campaign { get; set; }
+
     /// <summary>Everyone who died, oldest first. Never trimmed.</summary>
     public List<MemorialEntry> Memorial { get; set; } = new();
     public List<ColonyEvent> Events { get; set; } = new();

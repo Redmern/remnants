@@ -39,12 +39,15 @@ namespace Remnants.Core.Serialization;
 /// the scavenge run carries the units' cybernetic hooks (<see cref="ScavengeSave"/> version 7). Older prosthetics are
 /// mapped into the tree by <see cref="MigrateCybernetics"/>: an item outside the tree (none before items existed) becomes the
 /// crude part below quality 1 and the standard cyborg part from there, and pays its tier's replacement humanity.
-/// Version 13 replaces blueprints with schematics (<see cref="ColonyState.Schematics"/>, <see cref="ColonyState.Radio"/>):
+/// Version 14 adds Story mode: <see cref="ColonyState.Campaign"/> (null = Sandbox, so every older save loads as Sandbox),
+/// survivors' <c>UniqueId</c> (Pell), the expedition's story mission, and carries the scavenge run's mission
+/// (<see cref="ScavengeSave"/> version 8).
+/// Version 15 replaces blueprints with schematics (<see cref="ColonyState.Schematics"/>, <see cref="ColonyState.Radio"/>):
 /// see <see cref="MigrateSchematics"/>.
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 13;
+    public const int Version = 15;
     private const int OldestVersion = 1;
 
     /// <summary>Old blueprint and datashard item ids and the schematics they became (version 13).</summary>
@@ -58,13 +61,14 @@ public static class SaveGame
     ];
 
     /// <summary>
-    /// Before version 13: the studied blueprints become known schematics, and nobody loses anything they could do
+    /// Before version 15: the studied blueprints become known schematics, and nobody loses anything they could do
     /// before — the colony is granted every newly gated schematic it was already using: the levels its buildings have
     /// (and the buildings themselves), the recipes in its queues, Camo Cloak and Grappling Hook with a Tailor / Workshop at
     /// L2, and the cybernetics tiers and specialisations of every design it knows, owns or has fitted. Plain schematic
-    /// items in the inventory are learned; copies of known ones become Research Data.
+    /// items in the inventory are learned; copies of known ones become Research Data. Story saves (14) hand over the
+    /// schematics and Research Data the campaign kept for itself.
     /// </summary>
-    private static void MigrateSchematics(ColonySim sim, List<string> oldKnown)
+    private static void MigrateSchematics(ColonySim sim, List<string> oldKnown, List<string> storyGranted, int storyResearchData)
     {
         var state = sim.State;
         var catalog = sim.Data.Schematics;
@@ -76,6 +80,10 @@ public static class SaveGame
             Remnants.Core.Schematics.Schematics.Grant(sim, id, Remnants.Core.Schematics.SchematicSource.Migration);
         }
         foreach (var id in oldKnown) Grant(id);
+        foreach (var id in storyGranted)
+            if (catalog.Find(id) is not null && !state.Schematics.Known.Contains(id))
+                Remnants.Core.Schematics.Schematics.Grant(sim, id, Remnants.Core.Schematics.SchematicSource.Story);
+        if (storyResearchData > 0) state.Stockpile.Add(catalog.Rules.ResearchDataResource, storyResearchData);
         foreach (var b in state.Buildings)
             for (var level = 1; level <= b.Level; level++) Grant(catalog.GateOfBuildingLevel(b.DefId, level));
         foreach (var order in state.Buildings.SelectMany(b => b.Queue)) Grant(catalog.GateOfRecipe(order.RecipeId));
@@ -123,11 +131,24 @@ public static class SaveGame
             ?? throw new JsonException("Save file is empty.");
         if (node["version"]?.GetValue<int>() is < 4 and >= OldestVersion && node["colony"] is JsonObject old) MigrateCrafting(old);
         var oldKnown = new List<string>();
-        if (node["version"]?.GetValue<int>() is < 13 and >= OldestVersion && node["colony"] is JsonObject pre13)
+        var storyGranted = new List<string>();
+        var storyResearchData = 0;
+        if (node["version"]?.GetValue<int>() is < 15 and >= OldestVersion && node["colony"] is JsonObject pre15)
         {
-            foreach (var (from, to) in SchematicRenames) RenameItem(pre13, from, to);
-            oldKnown = pre13["knownBlueprints"]?.AsArray().Select(v => v!.GetValue<string>()).ToList() ?? [];
-            pre13.Remove("knownBlueprints");
+            foreach (var (from, to) in SchematicRenames) RenameItem(pre15, from, to);
+            oldKnown = pre15["knownBlueprints"]?.AsArray().Select(v => v!.GetValue<string>()).ToList() ?? [];
+            pre15.Remove("knownBlueprints");
+            // Story saves (14) kept the story's schematics and Research Data in the campaign until this module existed.
+            if (pre15["campaign"] is JsonObject campaign)
+            {
+                storyGranted = campaign["schematics"]?.AsArray().Select(v => v!.GetValue<string>()).ToList() ?? [];
+                campaign.Remove("schematics");
+                if (campaign["flags"] is JsonObject flags && flags["research_data"] is { } rd)
+                {
+                    storyResearchData = rd.GetValue<int>();
+                    flags.Remove("research_data");
+                }
+            }
         }
         var envelope = node.Deserialize<Envelope>(Json.Options)
             ?? throw new JsonException("Save file is empty.");
@@ -143,7 +164,7 @@ public static class SaveGame
         Validate(data, colony);
         if (scavenge is not null) Validate(scavenge, colony);
         var sim = new ColonySim(data, colony, scavenge);
-        if (envelope.Version < 13) MigrateSchematics(sim, oldKnown);
+        if (envelope.Version < 15) MigrateSchematics(sim, oldKnown, storyGranted, storyResearchData);
         return sim;
     }
 

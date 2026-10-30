@@ -394,6 +394,6 @@ differs from the design above:
 - **Copies.** `CopySchematic` makes a tradeable item copy of a known schematic for Research Data (`copyCost` 1 / 2 / 3 /
   5), for trade between players; the receiving colony learns it the usual way. `TradeValues` gives reference values in
   scrap from the price table.
-- **Saves:** colony version 13 (`ColonyState.Schematics`, `ColonyState.Radio`); protocol 7 (the extraction result's
+- **Saves:** colony version 15 (`ColonyState.Schematics`, `ColonyState.Radio`); protocol 7 (the extraction result's
   co-op copies and heard-of list).
 

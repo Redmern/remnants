@@ -546,6 +546,13 @@ public sealed record NpcRules
     public List<string> Names { get; init; } = new();
 }
 
+/// <summary>A raised tile (a watchtower on the colony perimeter) adds this much sight and detection to whoever stands on it.</summary>
+public sealed record StoryFieldRules
+{
+    public double RaisedSight { get; init; } = 3;
+    public double RaisedDetection { get; init; } = 10;
+}
+
 public sealed record ScavengeRules
 {
     public Dictionary<Terrain, TerrainDef> Terrain { get; init; } = new();
@@ -571,6 +578,9 @@ public sealed record ScavengeRules
 
     /// <summary>Followers within this many tiles leave with the unit that extracts.</summary>
     public int EscortRadius { get; init; } = 2;
+
+    /// <summary>Story missions in the field (raised watchtower tiles).</summary>
+    public StoryFieldRules Story { get; init; } = new();
 
     /// <summary>Quality tiers of crafted gear, worst first. The <c>base</c> tier is the item as defined.</summary>
     public List<QualityTierDef> Quality { get; init; } = new();
