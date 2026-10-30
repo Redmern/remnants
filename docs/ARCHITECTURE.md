@@ -1211,8 +1211,8 @@ effects, upgrade kits, headgear, zone biomes, extra enemy tags / drops / termina
   from the catalogue by their sources; the EMP coil, weave, shock coil and carbine / plating kit schematics also drop from
   the Linked (`gear_mods.json drops`, kept in step with the `Kill` sources).
 - **Multiplayer**: the server's party check (`Items.TryGetValue` + slot) validates every build; `fieldMod` is an intent;
-  views carry equipment as ids (a visible unit's mods are as visible as its weapon). Protocol 10.
-- **Saves**: colony 19 (`SaveGame.GearModsVersion`), scavenge 11 (units' `Moved` and `Facing`); older saves load unchanged. Tests: `GearModsTests`,
+  views carry equipment as ids (a visible unit's mods are as visible as its weapon). Protocol 11.
+- **Saves**: colony 20 (`SaveGame.GearModsVersion`), scavenge 11 (units' `Moved` and `Facing`); older saves load unchanged. Tests: `GearModsTests`,
   `GearModsNetTests`.
 
 ## Data files
