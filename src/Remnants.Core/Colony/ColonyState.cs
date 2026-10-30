@@ -61,6 +61,8 @@ public sealed class ColonyState
 
     /// <summary>Story mode's campaign (missions, flags, the radio inbox); null in Sandbox.</summary>
     public Story.CampaignState? Campaign { get; set; }
+    /// <summary>Defenses, guards, raids and repairs (see <see cref="Raids.RaidSystem"/>).</summary>
+    public Raids.DefenseState Defense { get; set; } = new();
 
     /// <summary>Everyone who died, oldest first. Never trimmed.</summary>
     public List<MemorialEntry> Memorial { get; set; } = new();

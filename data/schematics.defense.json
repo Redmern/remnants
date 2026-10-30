@@ -1,0 +1,355 @@
+{
+  "schematics": [
+    {
+      "id": "sch_wall_wood",
+      "name": "Wooden Wall",
+      "tier": 1,
+      "default": true,
+      "unlocks": [
+        {
+          "kind": "Defense",
+          "id": "wall_wood"
+        }
+      ],
+      "sources": [
+        "Default"
+      ],
+      "description": "Planks and posts. Slows anything that wants in."
+    },
+    {
+      "id": "sch_wall_scrap",
+      "name": "Scrap Wall",
+      "tier": 2,
+      "unlocks": [
+        {
+          "kind": "Defense",
+          "id": "wall_scrap"
+        }
+      ],
+      "sources": [
+        "Loot",
+        "Kill",
+        "Trade",
+        "Research"
+      ],
+      "description": "Car doors and sheet metal over the planks."
+    },
+    {
+      "id": "sch_wall_concrete",
+      "name": "Concrete Wall",
+      "tier": 3,
+      "unlocks": [
+        {
+          "kind": "Defense",
+          "id": "wall_concrete"
+        }
+      ],
+      "sources": [
+        "Loot",
+        "Kill",
+        "Trade",
+        "Research"
+      ],
+      "description": "Rubble and cement. It holds."
+    },
+    {
+      "id": "sch_gate_wood",
+      "name": "Gate",
+      "tier": 1,
+      "default": true,
+      "unlocks": [
+        {
+          "kind": "Defense",
+          "id": "gate_wood"
+        }
+      ],
+      "sources": [
+        "Default"
+      ],
+      "description": "A wall that opens. Shut it when they come."
+    },
+    {
+      "id": "sch_barricade",
+      "name": "Barricade",
+      "tier": 1,
+      "unlocks": [
+        {
+          "kind": "Defense",
+          "id": "barricade"
+        }
+      ],
+      "sources": [
+        "Loot",
+        "Kill",
+        "Trade",
+        "Research"
+      ],
+      "description": "Junk piled high. Cheap, quick, and it buys a moment."
+    },
+    {
+      "id": "sch_sandbag_nest",
+      "name": "Sandbag Nest",
+      "tier": 1,
+      "unlocks": [
+        {
+          "kind": "Defense",
+          "id": "sandbag_nest"
+        }
+      ],
+      "sources": [
+        "Loot",
+        "Kill",
+        "Trade",
+        "Research"
+      ],
+      "description": "A ring of sandbags for two guards."
+    },
+    {
+      "id": "sch_watchtower_1",
+      "name": "Lookout Tower",
+      "tier": 1,
+      "default": true,
+      "unlocks": [
+        {
+          "kind": "Defense",
+          "id": "watchtower_1"
+        }
+      ],
+      "sources": [
+        "Default"
+      ],
+      "description": "A ladder and a platform. Sees them coming."
+    },
+    {
+      "id": "sch_watchtower_2",
+      "name": "Watchtower",
+      "tier": 2,
+      "unlocks": [
+        {
+          "kind": "Defense",
+          "id": "watchtower_2"
+        }
+      ],
+      "sources": [
+        "Loot",
+        "Kill",
+        "Trade",
+        "Research"
+      ],
+      "description": "A roofed tower with room for two."
+    },
+    {
+      "id": "sch_watchtower_3",
+      "name": "Fortified Tower",
+      "tier": 3,
+      "unlocks": [
+        {
+          "kind": "Defense",
+          "id": "watchtower_3"
+        }
+      ],
+      "sources": [
+        "Loot",
+        "Kill",
+        "Trade",
+        "Research"
+      ],
+      "description": "Plated and tall: the whole valley in view."
+    },
+    {
+      "id": "sch_floodlight_post",
+      "name": "Floodlight",
+      "tier": 1,
+      "unlocks": [
+        {
+          "kind": "Defense",
+          "id": "floodlight_post"
+        }
+      ],
+      "sources": [
+        "Loot",
+        "Kill",
+        "Trade",
+        "Research"
+      ],
+      "description": "Lights the approach at night. Husks hear the hum."
+    },
+    {
+      "id": "sch_defense_turret",
+      "name": "Scrap Turret",
+      "tier": 2,
+      "unlocks": [
+        {
+          "kind": "Defense",
+          "id": "defense_turret"
+        }
+      ],
+      "sources": [
+        "Loot",
+        "Kill",
+        "Trade",
+        "Research"
+      ],
+      "description": "A survivor-made gun on a swivel. Eats scrap for ammo."
+    },
+    {
+      "id": "sch_alarm_bell",
+      "name": "Alarm Bell",
+      "tier": 1,
+      "default": true,
+      "unlocks": [
+        {
+          "kind": "Defense",
+          "id": "alarm_bell"
+        }
+      ],
+      "sources": [
+        "Default"
+      ],
+      "description": "Nobody sleeps through it."
+    },
+    {
+      "id": "sch_spike_strip",
+      "name": "Spike Strip",
+      "tier": 1,
+      "default": true,
+      "unlocks": [
+        {
+          "kind": "Defense",
+          "id": "spike_strip"
+        }
+      ],
+      "sources": [
+        "Default"
+      ],
+      "description": "Sharpened stakes in the grass. Reset them after."
+    },
+    {
+      "id": "sch_snare",
+      "name": "Snare",
+      "tier": 1,
+      "unlocks": [
+        {
+          "kind": "Defense",
+          "id": "snare"
+        }
+      ],
+      "sources": [
+        "Loot",
+        "Kill",
+        "Trade",
+        "Research"
+      ],
+      "description": "A noose on a sapling. Holds a leg long enough."
+    },
+    {
+      "id": "sch_pit_trap",
+      "name": "Pit Trap",
+      "tier": 1,
+      "unlocks": [
+        {
+          "kind": "Defense",
+          "id": "pit_trap"
+        }
+      ],
+      "sources": [
+        "Loot",
+        "Kill",
+        "Trade",
+        "Research"
+      ],
+      "description": "A covered pit with stakes. Even a Linked falls in."
+    },
+    {
+      "id": "sch_tripwire_alarm",
+      "name": "Tripwire Alarm",
+      "tier": 1,
+      "unlocks": [
+        {
+          "kind": "Defense",
+          "id": "tripwire_alarm"
+        }
+      ],
+      "sources": [
+        "Loot",
+        "Kill",
+        "Trade",
+        "Research"
+      ],
+      "description": "Cans on a wire. An hour's warning, if you are lucky."
+    },
+    {
+      "id": "sch_noise_maker",
+      "name": "Noise-maker",
+      "tier": 1,
+      "unlocks": [
+        {
+          "kind": "Defense",
+          "id": "noise_maker"
+        }
+      ],
+      "sources": [
+        "Loot",
+        "Kill",
+        "Trade",
+        "Research"
+      ],
+      "description": "A clockwork rattle that draws Husks away from the walls."
+    },
+    {
+      "id": "sch_fire_trap",
+      "name": "Fire Trap",
+      "tier": 2,
+      "unlocks": [
+        {
+          "kind": "Defense",
+          "id": "fire_trap"
+        }
+      ],
+      "sources": [
+        "Loot",
+        "Kill",
+        "Trade",
+        "Research"
+      ],
+      "description": "Fuel-soaked brush and a spark. Once."
+    },
+    {
+      "id": "sch_emp_mine",
+      "name": "EMP Mine",
+      "tier": 3,
+      "unlocks": [
+        {
+          "kind": "Defense",
+          "id": "emp_mine"
+        }
+      ],
+      "sources": [
+        "Loot",
+        "Kill",
+        "Trade",
+        "Research"
+      ],
+      "description": "Fries Linked implants and drones in a burst."
+    },
+    {
+      "id": "sch_scrap_mine",
+      "name": "Scrap Mine",
+      "tier": 2,
+      "unlocks": [
+        {
+          "kind": "Defense",
+          "id": "scrap_mine"
+        }
+      ],
+      "sources": [
+        "Loot",
+        "Kill",
+        "Trade",
+        "Research"
+      ],
+      "description": "Nails and a pressure plate. Claymore-style."
+    }
+  ],
+  "traders": []
+}

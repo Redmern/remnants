@@ -42,10 +42,16 @@ namespace Remnants.Core.Serialization;
 /// Version 14 adds Story mode (13 is held by the schematics branch): <see cref="ColonyState.Campaign"/> (null = Sandbox, so every older save loads as Sandbox),
 /// survivors' <c>UniqueId</c> (Pell), the expedition's story mission, and carries the scavenge run's mission
 /// (<see cref="ScavengeSave"/> version 8).
+/// Version <see cref="RaidsVersion"/> adds colony defense and raids (<see cref="ColonyState.Defense"/>: placed defenses,
+/// guards, the raid on its way, repairs, building damage, raid reports). Older saves load with no defenses and no raid
+/// pressure, so the grace period applies from the day they are loaded on.
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 14;
+    public const int Version = 15;
+
+    /// <summary>The save version that added raids (keyed, so a rebase only renumbers it).</summary>
+    public const int RaidsVersion = 15;
     private const int OldestVersion = 1;
 
     /// <summary>What a pre-version-4 generic "blueprint" item becomes.</summary>
@@ -75,6 +81,8 @@ public static class SaveGame
             else foreach (var skill in Enum.GetValues<Survivors.Skill>()) s.Skills.TryAdd(skill, 0);
         StudySystem.Repair(colony);
         if (envelope.Version < 12) MigrateCybernetics(data, scavenge, colony);
+        if (envelope.Version < RaidsVersion) MigrateRaids(colony);
+        RepairDefense(colony);
         Validate(data, colony);
         if (scavenge is not null) Validate(scavenge, colony);
         return new ColonySim(data, colony, scavenge);
@@ -166,6 +174,21 @@ public static class SaveGame
             foreach (var id in colony.Inventory.Counts.Keys.Where(id => cyber.Node(id) is not null))
                 colony.KnownCybernetics.Add(id);
         if (scavenge is not null && colony.Expedition?.Scavenge is { } run) ScavengeSave.MigrateCybernetics(scavenge, run);
+    }
+
+    /// <summary>Before raids: an empty defense layer; the grace period counts from the day the save was made.</summary>
+    private static void MigrateRaids(ColonyState colony)
+    {
+        colony.Defense = new Raids.DefenseState { LastRaidTick = colony.Tick };
+    }
+
+    /// <summary>Guard posts of survivors who are gone, and repairs of things that are gone, are dropped.</summary>
+    private static void RepairDefense(ColonyState colony)
+    {
+        colony.Defense ??= new();
+        foreach (var (id, post) in colony.Defense.Guards.ToList())
+            if (colony.FindSurvivor(id) is null || colony.Defense.Find(post) is null) colony.Defense.Guards.Remove(id);
+        colony.Defense.Repairs.RemoveAll(r => r.Target == Raids.RepairTarget.Building ? colony.FindBuilding(r.TargetId) is null : colony.Defense.Find(r.TargetId) is null);
     }
 
     /// <summary>Before version 3 children grew up by age in years; put them at the same share of the growth track.</summary>

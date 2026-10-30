@@ -11,6 +11,8 @@ public enum ColonyEventType
     NightShift, Tired, FloodlightFitted,
     SurgeryBooked, SurgeryDone, SurgeryComplication, SurgeryCancelled, ProstheticServiced, ProstheticNeedsService, Humanity,
     StoryMission, RadioCall, SchematicLearned,
+    RaidWarned, RaidRepelled, RaidBreached, DefenseBuilt, DefenseDestroyed, DefenseUnpaid, BuildingWrecked, Repaired, GuardPosted,
+    DefenseSchematicLearned, ExpeditionRecalled,
 }
 
 /// <summary>Something notable the UI can show in a log. Purely informational.</summary>

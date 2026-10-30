@@ -50,6 +50,12 @@ public static class PerkHooks
     public const string ThermalRadius = "thermal_radius";
     public const string NightDetectionBonus = "night_detection_bonus";
 
+    // Defense (colony raids)
+    public const string TrapCostReduction = "trap_cost_reduction";
+    public const string RepairSpeedBonus = "repair_speed_bonus";
+    public const string PostDefenseBonus = "post_defense_bonus";
+    public const string SentryLeadHours = "sentry_lead_hours";
+
     /// <summary>Every hook id with what it means; perks.json may only name these.</summary>
     public static readonly IReadOnlyDictionary<string, string> All = new Dictionary<string, string>(StringComparer.Ordinal)
     {
@@ -81,6 +87,10 @@ public static class PerkHooks
         [ArmorBonus] = "Flat damage reduction added (armored legs).",
         [ThermalRadius] = "Hostiles within this many tiles are seen through walls and stealth, like a scanner (thermal eye).",
         [NightDetectionBonus] = "Detection added at night (hook for the day-night cycle; nothing reads it yet).",
+        [TrapCostReduction] = "Colony: share off the build and re-arm cost of traps while this survivor is home (best counts, at most 0.5).",
+        [RepairSpeedBonus] = "Colony: repairs go this much faster while this survivor is home (best counts; 0.3 = +30%).",
+        [PostDefenseBonus] = "Colony raids: a guard on duty at a post fights this much better (0.25 = +25%).",
+        [SentryLeadHours] = "Colony raids: hours of warning added while this survivor is on guard duty.",
     };
 }
 

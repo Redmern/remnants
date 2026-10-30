@@ -94,5 +94,14 @@
     "attributes": { "Creativity": 0.5, "Perception": 0.5 },
     "bodyParts": { "Arms": 0.6, "Head": 0.4 },
     "toolBonus": 0.3
+  },
+  {
+    "id": "guard",
+    "name": "Guard",
+    "skill": "Firearms",
+    "skillWeight": 1.0,
+    "attributes": { "Perception": 0.7, "Endurance": 0.3 },
+    "bodyParts": { "Head": 0.4, "Arms": 0.3, "Legs": 0.3 },
+    "trains": { "Melee": 0.3 }
   }
 ]

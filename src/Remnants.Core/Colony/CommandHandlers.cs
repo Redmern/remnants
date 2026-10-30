@@ -20,12 +20,15 @@ internal static class CommandHandlers
             return CommandResult.Fail(CommandError.InClass, $"{survivor.Name} is in class; end the study first.");
         if (survivor.IsChild && !sim.Data.Jobs[def.Job].ChildrenAllowed)
             return CommandResult.Fail(CommandError.NotForChildren, $"{sim.Data.Jobs[def.Job].Name} is too hard for a child.");
+        if (Raids.RaidSystem.IsRubble(sim, building))
+            return CommandResult.Fail(CommandError.Wrecked, $"{def.Name} was wrecked in a raid; repair it first.");
         if (survivor.AssignedBuildingId == building.Id)
             return CommandResult.Success($"{survivor.Name} already works at {def.Name}.", building.Id);
         if (sim.FreeSlots(building) <= 0)
             return CommandResult.Fail(CommandError.NoFreeSlot, $"{def.Name} has no free worker slot.");
 
         survivor.AssignedBuildingId = building.Id;
+        Raids.Guards.Release(sim.State, survivor.Id);
         return CommandResult.Success($"{survivor.Name} now works at {def.Name}.", building.Id);
     }
 

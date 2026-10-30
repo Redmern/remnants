@@ -1,0 +1,481 @@
+using Remnants.Core.Colony;
+using Remnants.Core.Data;
+using Remnants.Core.Raids;
+using Remnants.Core.Serialization;
+using Remnants.Core.Survivors;
+
+namespace Remnants.Core.Tests;
+
+public static class RaidTestData
+{
+    private static readonly Lazy<RaidData> RealData = new(() =>
+        RaidDataLoader.LoadFromDirectory(Path.Combine(AppContext.BaseDirectory, "data")) ?? throw new InvalidOperationException("no raids.json"));
+
+    public static RaidData Real => RealData.Value;
+
+    /// <summary>An empty colony (Town Hall 1, plenty of stock) with raids on.</summary>
+    public static ColonySim Colony(int townHallLevel = 1, GameData? data = null)
+    {
+        var sim = TestData.EmptyColony(townHallLevel, new() { ["wood"] = 500, ["stone"] = 500, ["scrap"] = 500, ["cloth"] = 100, ["electronics"] = 100, ["food"] = 200 });
+        if (data is not null) sim = new ColonySim(data, sim.State, ScavengeTestData.Real);
+        else sim = new ColonySim(sim.Data, sim.State, ScavengeTestData.Real);
+        sim.Raids = Real;
+        return sim;
+    }
+
+    /// <summary>A free margin cell on the given side (in the middle of that edge band).</summary>
+    public static (int X, int Y) Edge(ColonySim sim, Side side, int inset = 1, int offset = 0)
+    {
+        var g = DefenseGrid.Of(sim, Real);
+        return side switch
+        {
+            Side.North => (g.Width / 2 + offset, inset),
+            Side.South => (g.Width / 2 + offset, g.Height - 1 - inset),
+            Side.West => (inset, g.Height / 2 + offset),
+            _ => (g.Width - 1 - inset, g.Height / 2 + offset),
+        };
+    }
+
+    public static PlacedDefense Place(this ColonySim sim, string id, (int X, int Y) at, Side facing = Side.South)
+    {
+        var r = sim.Execute(new PlaceDefense(id, at.X, at.Y, facing));
+        Assert.True(r.Ok, r.Message);
+        return sim.State.Defense.Find(r.EntityId!.Value)!;
+    }
+
+    public static Raid Raid(ColonySim sim, ThreatKind kind, int size, Side side, long inTicks = 10)
+    {
+        var raid = new Raid
+        {
+            Id = sim.State.Defense.NextRaidId++, Kind = kind, Size = size, Approach = side, SetOutTick = sim.State.Tick,
+            ArrivalTick = sim.State.Tick + inTicks, WarnTick = sim.State.Tick, Stage = RaidStage.Warned, EstimateMin = size, EstimateMax = size,
+        };
+        sim.State.Defense.Raid = raid;
+        return raid;
+    }
+}
+
+public class RaidDataTests
+{
+    [Fact]
+    public void Real_raid_data_validates_against_the_colony_and_scavenge_data()
+    {
+        RaidTestData.Real.Validate(TestData.Real, ScavengeTestData.Real);
+        Assert.Equal(3, RaidTestData.Real.Def.Threats.Count);
+        Assert.All(RaidTestData.Real.Defenses.Values, d => Assert.NotNull(DefenseSchematics.GateOf(RaidTestData.Real, d.Id)));
+    }
+
+    [Fact]
+    public void Defaults_are_wood_walls_a_gate_spike_strips_an_alarm_bell_and_a_basic_watchtower()
+    {
+        var defaults = RaidTestData.Real.Schematics.Where(s => s.Default).SelectMany(s => s.Unlocks).Select(u => u.Id).Order().ToList();
+        Assert.Equal(["alarm_bell", "gate_wood", "spike_strip", "wall_wood", "watchtower_1"], defaults);
+    }
+
+    [Fact]
+    public void A_schematic_for_an_unknown_defense_is_an_error()
+    {
+        var bad = RaidDataLoader.LoadFromJson(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "raids.json")),
+            """{ "schematics": [ { "id": "sch_x", "name": "X", "default": true, "unlocks": [ { "kind": "Defense", "id": "nope" } ] } ] }""");
+        Assert.Throws<GameDataException>(() => bad.Validate(TestData.Real));
+    }
+
+    [Fact]
+    public void Engineer_and_Sentry_perks_load_with_their_hooks()
+    {
+        Assert.Equal(0.25, TestData.Real.Perks["engineer"].Effects.Hooks[PerkHooks.TrapCostReduction]);
+        Assert.Equal(0.25, TestData.Real.Perks["sentry"].Effects.Hooks[PerkHooks.PostDefenseBonus]);
+        Assert.Equal(Skill.Firearms, TestData.Real.Jobs["guard"].Skill);
+    }
+}
+
+public class DefenseGridTests
+{
+    [Fact]
+    public void Plots_map_onto_blocks_inside_the_margin()
+    {
+        var sim = RaidTestData.Colony();
+        var g = DefenseGrid.Of(sim, RaidTestData.Real);
+        Assert.Equal(6 * 4 + 8, g.Width);
+        Assert.Equal(4 * 4 + 8, g.Height);
+        Assert.Equal(-1, g.PlotAt(0, 0));
+        Assert.Equal(0, g.PlotAt(4, 4));
+        Assert.Equal(7, g.PlotAt(4 + 4, 4 + 4));
+        Assert.All(g.PlotCells(7), c => Assert.Equal(7, g.PlotAt(c.X, c.Y)));
+        Assert.Equal(Side.North, g.SideOf(g.Width / 2, 0));
+        Assert.Equal(Side.South, g.SideOf(g.Width / 2, g.Height - 1));
+        Assert.Equal(Side.East, g.SideOf(g.Width - 1, g.Height / 2));
+    }
+
+    [Fact]
+    public void A_turret_covers_its_arc_only()
+    {
+        var def = RaidTestData.Real.Defense("defense_turret");
+        var t = new PlacedDefense { X = 10, Y = 10, Facing = Side.North };
+        Assert.True(DefenseGrid.Covers(t, def, 10, 5));
+        Assert.False(DefenseGrid.Covers(t, def, 10, 14));
+        Assert.False(DefenseGrid.Covers(t, def, 10, 3));
+    }
+}
+
+public class DefensePlacementTests
+{
+    [Fact]
+    public void Placing_pays_the_cost_and_refuses_built_plots_taken_cells_and_locked_defenses()
+    {
+        var sim = RaidTestData.Colony();
+        var wood = sim.State.Stockpile.Get("wood");
+        var at = RaidTestData.Edge(sim, Side.North);
+        var wall = sim.Place("wall_wood", at);
+        Assert.Equal(60, wall.Hp);
+        Assert.Equal(wood - 6, sim.State.Stockpile.Get("wood"));
+        Assert.Equal(CommandError.CellOccupied, sim.Execute(new PlaceDefense("spike_strip", at.X, at.Y)).Error);
+        var hall = DefenseGrid.Of(sim, RaidTestData.Real).PlotCenter(0);
+        Assert.Equal(CommandError.CellOccupied, sim.Execute(new PlaceDefense("spike_strip", hall.X, hall.Y)).Error);
+        Assert.Equal(CommandError.InvalidCell, sim.Execute(new PlaceDefense("spike_strip", -1, 0)).Error);
+        Assert.Equal(CommandError.SchematicMissing, sim.Execute(new PlaceDefense("barricade", 1, 1)).Error);
+        Assert.True(DefenseSchematics.Grant(sim, "sch_barricade", "test"));
+        Assert.True(sim.Execute(new PlaceDefense("barricade", 1, 1)).Ok);
+        Assert.Equal(CommandError.TownHallLevelTooLow, sim.ExecuteGranted("sch_defense_turret", new PlaceDefense("defense_turret", 2, 2)).Error);
+    }
+
+    [Fact]
+    public void An_Engineer_at_home_makes_traps_cheaper()
+    {
+        var sim = RaidTestData.Colony();
+        var s = sim.AddSurvivor();
+        var def = RaidTestData.Real.Defense("spike_strip");
+        Assert.Equal(4, DefenseHandlers.Cost(sim, def, def.Cost)["wood"]);
+        s.Perks.Add("engineer");
+        Assert.Equal(3, DefenseHandlers.Cost(sim, def, def.Cost)["wood"]);
+        Assert.Equal(6, DefenseHandlers.Cost(sim, RaidTestData.Real.Defense("wall_wood"), RaidTestData.Real.Defense("wall_wood").Cost)["wood"]);
+    }
+
+    [Fact]
+    public void Upgrade_pays_the_difference_and_remove_refunds_half()
+    {
+        var sim = RaidTestData.Colony(townHallLevel: 2);
+        DefenseSchematics.Grant(sim, "sch_wall_scrap", "test");
+        var wall = sim.Place("wall_wood", (1, 1));
+        var scrap = sim.State.Stockpile.Get("scrap");
+        Assert.True(sim.Execute(new UpgradeDefense(wall.Id)).Ok);
+        Assert.Equal("wall_scrap", wall.DefId);
+        Assert.Equal(120, wall.Hp);
+        Assert.Equal(scrap - 8, sim.State.Stockpile.Get("scrap"));
+        Assert.Equal(CommandError.SchematicMissing, sim.Execute(new UpgradeDefense(wall.Id)).Error);
+        var wood = sim.State.Stockpile.Get("wood");
+        Assert.True(sim.Execute(new RemoveDefense(wall.Id)).Ok);
+        Assert.Equal(wood + 3, sim.State.Stockpile.Get("wood"));
+        Assert.Empty(sim.State.Defense.Defenses);
+    }
+}
+
+file static class GrantExtensions
+{
+    public static CommandResult ExecuteGranted(this ColonySim sim, string schematic, IColonyCommand c)
+    {
+        DefenseSchematics.Grant(sim, schematic, "test");
+        return sim.Execute(c);
+    }
+}
+
+public class GuardTests
+{
+    [Fact]
+    public void A_guard_leaves_their_job_and_a_job_ends_guard_duty()
+    {
+        var sim = RaidTestData.Colony();
+        var farm = sim.Build("farm");
+        var s = sim.AddSurvivor();
+        Assert.True(sim.Execute(new AssignJob(s.Id, farm.Id)).Ok);
+        var tower = sim.Place("watchtower_1", (2, 2));
+        Assert.True(sim.Execute(new AssignGuard(s.Id, tower.Id)).Ok);
+        Assert.Null(s.AssignedBuildingId);
+        Assert.Equal(CommandError.NoFreeSlot, sim.Execute(new AssignGuard(sim.AddSurvivor().Id, tower.Id)).Error);
+        Assert.True(sim.Execute(new AssignJob(s.Id, farm.Id)).Ok);
+        Assert.Null(Guards.PostOf(sim.State, s.Id));
+    }
+
+    [Fact]
+    public void Guards_on_duty_train_Firearms_and_Perception_and_earn_xp()
+    {
+        var sim = RaidTestData.Colony();
+        var s = sim.AddSurvivor();
+        var tower = sim.Place("watchtower_1", (2, 2));
+        sim.Execute(new AssignGuard(s.Id, tower.Id));
+        var perception = s.Get(AttributeKind.Perception);
+        sim.Advance(10);
+        Assert.True(s.Get(Skill.Firearms) > 0);
+        Assert.True(s.Get(AttributeKind.Perception) > perception);
+        Assert.True(s.Xp > 0);
+    }
+
+    [Fact]
+    public void Night_watch_is_night_work_slept_off_in_the_day()
+    {
+        var state = new ColonyState { Tick = 20 };
+        state.Buildings.Add(new Building { Id = state.NextBuildingId++, DefId = "town_hall" });
+        var sim = new ColonySim(TestData.RealWithNights, state, ScavengeTestData.Real) { Raids = RaidTestData.Real };
+        state.Stockpile.Add("wood", 100);
+        state.Stockpile.Add("stone", 100);
+        var s = sim.AddSurvivor();
+        var tower = sim.Place("watchtower_1", (2, 2));
+        sim.Execute(new AssignGuard(s.Id, tower.Id));
+        sim.Execute(new SetNightWatch(tower.Id, true));
+        Assert.True(sim.OnShift(s));
+        sim.Advance(10); // 20:00 → 06:00
+        Assert.True(sim.IsTired(s));
+        var debt = s.SleepDebt;
+        Assert.False(sim.OnShift(s));
+        sim.Advance(12); // 06:00 → 18:00, sleeps 08–16
+        Assert.True(s.SleepDebt < debt);
+    }
+}
+
+public class RaidSchedulerTests
+{
+    [Fact]
+    public void No_raid_comes_in_the_grace_period_and_the_first_is_small()
+    {
+        var sim = RaidTestData.Colony();
+        for (var i = 0; i < 3; i++) sim.AddSurvivor();
+        var t = RaidTestData.Real.Def.Scheduler;
+        sim.Advance(t.GraceDays * 24 - 1);
+        Assert.Null(sim.State.Defense.Raid);
+        Assert.True(sim.State.Defense.Pressure[ThreatKind.Husk] > 0);
+        foreach (var b in new[] { "farm", "woodcutter", "quarry", "shelter" }) sim.Build(b);
+        for (var i = 0; i < 24 * 10 && sim.State.Defense.Raid is null; i++) sim.Tick();
+        var raid = Assert.IsType<Raid>(sim.State.Defense.Raid);
+        Assert.True(raid.Size <= t.FirstRaidMaxSize);
+        Assert.True(raid.ArrivalTick >= sim.State.Tick + t.TravelHours - 1);
+    }
+
+    [Fact]
+    public void A_tower_warns_earlier_and_narrows_the_estimate()
+    {
+        var sim = RaidTestData.Colony();
+        var raids = RaidTestData.Real;
+        var bare = RaidWarning.LeadHours(sim, raids);
+        var tower = sim.Place("watchtower_1", (2, 2));
+        var s = sim.AddSurvivor();
+        sim.Execute(new AssignGuard(s.Id, tower.Id));
+        Assert.Equal(bare + 6 + 2, RaidWarning.LeadHours(sim, raids));
+        var (min0, max0) = RaidWarning.Estimate(raids, 8, bare);
+        var (min1, max1) = RaidWarning.Estimate(raids, 8, RaidWarning.LeadHours(sim, raids));
+        Assert.True(max1 - min1 < max0 - min0);
+    }
+
+    [Fact]
+    public void A_raid_is_seen_within_the_lead_time_and_resolves_on_arrival()
+    {
+        var sim = RaidTestData.Colony();
+        for (var i = 0; i < 3; i++) sim.AddSurvivor();
+        var raid = RaidSystem.Draw(sim, RaidTestData.Real, ThreatKind.Husk, 100);
+        raid.Stage = RaidStage.Approaching;
+        sim.State.Defense.Raid = raid;
+        sim.Advance((int)(raid.ArrivalTick - sim.State.Tick - 3));
+        Assert.Equal(RaidStage.Approaching, raid.Stage);
+        sim.Advance(2);
+        Assert.Equal(RaidStage.Warned, raid.Stage);
+        Assert.Contains(sim.State.Events, e => e.Type == ColonyEventType.RaidWarned);
+        sim.Advance(3);
+        Assert.Null(sim.State.Defense.Raid);
+        Assert.Equal(raid.Id, sim.State.Defense.LastReport!.RaidId);
+        Assert.Equal(1, sim.State.Defense.RaidsSurvived);
+    }
+
+    [Fact]
+    public void Raids_are_deterministic()
+    {
+        string Run()
+        {
+            var sim = NewGame.Create(TestData.RealWithNights, 7, ScavengeTestData.Real);
+            sim.Raids = RaidTestData.Real;
+            foreach (var b in new[] { "farm", "woodcutter", "quarry" })
+            {
+                foreach (var (r, a) in sim.Data.Buildings[b].Level(1).Cost) sim.State.Stockpile.Add(r, a);
+                sim.Execute(new Construct(b));
+            }
+            sim.Advance(24 * 14);
+            return SaveGame.Save(sim.State);
+        }
+        var a = Run();
+        Assert.Equal(a, Run());
+        Assert.Contains("\"raidsSurvived\"", a);
+    }
+}
+
+public class AutoResolveTests
+{
+    private static ColonySim Defended(int adults = 3)
+    {
+        var sim = RaidTestData.Colony();
+        for (var i = 0; i < adults; i++) sim.AddSurvivor().Set(Skill.Firearms, 20);
+        return sim;
+    }
+
+    [Fact]
+    public void Traps_on_the_approach_spring_and_walls_soak()
+    {
+        var sim = Defended();
+        var raid = RaidTestData.Raid(sim, ThreatKind.Husk, 6, Side.North);
+        var before = AutoResolve.Assess(sim, RaidTestData.Real, raid);
+        var strip = sim.Place("spike_strip", RaidTestData.Edge(sim, Side.North, 1));
+        sim.Place("spike_strip", RaidTestData.Edge(sim, Side.South, 1)); // wrong side: does not spring
+        var traps = AutoResolve.Assess(sim, RaidTestData.Real, raid);
+        Assert.Equal(5, traps.TrapDamage);
+        Assert.Equal([strip], traps.Traps);
+        for (var x = 0; x < 4; x++) sim.Place("wall_wood", RaidTestData.Edge(sim, Side.North, 2, x));
+        var walls = AutoResolve.Assess(sim, RaidTestData.Real, raid);
+        Assert.True(walls.Soak > 0);
+        Assert.True(walls.Attack < traps.Attack && traps.Attack < before.Attack);
+    }
+
+    [Fact]
+    public void An_open_gate_lets_them_past_the_walls()
+    {
+        var sim = Defended();
+        var raid = RaidTestData.Raid(sim, ThreatKind.Raider, 6, Side.South);
+        for (var x = 0; x < 4; x++) sim.Place("wall_wood", RaidTestData.Edge(sim, Side.South, 2, x));
+        sim.Place("gate_wood", RaidTestData.Edge(sim, Side.South, 2, 4));
+        var open = AutoResolve.Assess(sim, RaidTestData.Real, raid);
+        Assert.True(sim.Execute(new CloseGates(true)).Ok);
+        var shut = AutoResolve.Assess(sim, RaidTestData.Real, raid);
+        Assert.True(shut.Soak > open.Soak);
+    }
+
+    [Fact]
+    public void Gear_from_the_inventory_and_guard_posts_make_defenders_stronger()
+    {
+        var sim = Defended(1);
+        var raid = RaidTestData.Raid(sim, ThreatKind.Husk, 4, Side.North);
+        var bare = AutoResolve.Assess(sim, RaidTestData.Real, raid).Defense;
+        sim.State.Inventory.Add("pistol");
+        var armed = AutoResolve.Assess(sim, RaidTestData.Real, raid);
+        Assert.Equal("pistol", armed.Defenders[0].Weapon);
+        Assert.True(armed.Defense > bare);
+        var tower = sim.Place("watchtower_1", RaidTestData.Edge(sim, Side.North, 3));
+        sim.Execute(new AssignGuard(sim.State.Survivors[0].Id, tower.Id));
+        Assert.True(AutoResolve.Assess(sim, RaidTestData.Real, raid).Defense > armed.Defense);
+    }
+
+    [Fact]
+    public void A_repelled_raid_leaves_loot_and_rearmable_traps_wait_to_be_reset()
+    {
+        var sim = Defended(4);
+        sim.State.Tick = 12;
+        var raid = RaidTestData.Raid(sim, ThreatKind.Raider, 2, Side.South, inTicks: 1);
+        var strip = sim.Place("spike_strip", RaidTestData.Edge(sim, Side.South, 1));
+        sim.Advance(2);
+        var report = sim.State.Defense.LastReport!;
+        Assert.True(report.Repelled, string.Join("; ", report.Breakdown));
+        Assert.True(report.Stolen.Count == 0, $"p={report.Pressure} a={report.Attack} d={report.Defense} " + string.Join("; ", report.Breakdown));
+        Assert.True(strip.Sprung);
+        Assert.Contains("Spike Strip", report.TrapsSprung);
+        Assert.True(sim.Execute(new RearmTrap(strip.Id)).Ok);
+        Assert.False(strip.Sprung);
+    }
+
+    [Fact]
+    public void An_overwhelming_raid_steals_hurts_and_wrecks_and_repairs_bring_it_back()
+    {
+        var sim = Defended(1);
+        var farm = sim.Build("farm");
+        var raid = RaidTestData.Raid(sim, ThreatKind.Raider, 10, Side.North, inTicks: 1);
+        sim.Advance(2);
+        var report = sim.State.Defense.LastReport!;
+        Assert.False(report.Repelled);
+        Assert.NotEmpty(report.Stolen);
+        Assert.NotEmpty(report.Damaged);
+        var wrecked = sim.State.Buildings.FirstOrDefault(b => RaidSystem.IsRubble(sim, b));
+        Assert.NotNull(wrecked);
+        if (wrecked!.DefId == "farm")
+            Assert.Equal(CommandError.Wrecked, sim.Execute(new AssignJob(sim.AddSurvivor().Id, farm.Id)).Error);
+        Assert.True(sim.Execute(new QueueRepair(RepairTarget.Building, wrecked.Id)).Ok);
+        sim.Advance(200);
+        Assert.False(RaidSystem.IsRubble(sim, wrecked));
+        Assert.Equal(0, RaidSystem.Damage(sim.State, wrecked));
+    }
+
+    [Fact]
+    public void Linked_carry_off_defenders_when_they_win()
+    {
+        var sim = Defended(3);
+        RaidTestData.Raid(sim, ThreatKind.Linked, 10, Side.North, inTicks: 1);
+        sim.Advance(2);
+        var report = sim.State.Defense.LastReport!;
+        Assert.False(report.Repelled);
+        Assert.NotEmpty(report.Taken);
+        Assert.Contains(sim.State.Memorial, m => m.Cause.Contains("Linked"));
+    }
+
+    [Fact]
+    public void Sheltered_children_are_never_hurt()
+    {
+        var sim = Defended(1);
+        var kids = Enumerable.Range(0, 4).Select(_ => sim.AddSurvivor(LifeStage.Child)).ToList();
+        RaidTestData.Raid(sim, ThreatKind.Raider, 10, Side.North, inTicks: 1);
+        Assert.True(sim.Execute(new ShelterChildren(true)).Ok);
+        sim.Advance(2);
+        Assert.All(kids, k => Assert.False(k.IsInjured));
+    }
+}
+
+public class EarlyRaidTests
+{
+    [Fact]
+    public void A_fresh_colony_with_a_few_traps_and_a_guard_holds_its_first_raid()
+    {
+        var holds = 0;
+        for (ulong seed = 1; seed <= 10; seed++)
+        {
+            var sim = NewGame.Create(TestData.RealWithNights, seed, ScavengeTestData.Real);
+            sim.Raids = RaidTestData.Real;
+            var raids = RaidTestData.Real;
+            sim.State.Stockpile.Add("wood", 60);
+            sim.State.Stockpile.Add("scrap", 10);
+            var tower = sim.Place("watchtower_1", RaidTestData.Edge(sim, Side.North, 3));
+            var guard = sim.State.Survivors.First(s => !s.IsChild);
+            sim.Execute(new AssignGuard(guard.Id, tower.Id));
+            foreach (var side in Enum.GetValues<Side>()) sim.Place("spike_strip", RaidTestData.Edge(sim, side, 1));
+            sim.Place("alarm_bell", RaidTestData.Edge(sim, Side.South, 3));
+            var raid = RaidSystem.Draw(sim, raids, ThreatKind.Husk, 150);
+            sim.State.Defense.Raid = raid;
+            sim.Advance((int)(raid.ArrivalTick - sim.State.Tick) + 1);
+            var report = sim.State.Defense.LastReport!;
+            Assert.Empty(report.Dead);
+            if (report.Repelled) holds++;
+        }
+        Assert.True(holds >= 9, $"held {holds}/10");
+    }
+}
+
+public class RaidSaveTests
+{
+    [Fact]
+    public void Defenses_guards_and_a_raid_on_its_way_survive_a_save()
+    {
+        var sim = RaidTestData.Colony();
+        var s = sim.AddSurvivor();
+        var tower = sim.Place("watchtower_1", (2, 2));
+        sim.Execute(new AssignGuard(s.Id, tower.Id));
+        RaidTestData.Raid(sim, ThreatKind.Raider, 4, Side.East);
+        sim.State.Defense.BuildingDamage[1] = 12;
+        var json = SaveGame.Save(sim.State);
+        var loaded = SaveGame.Load(sim.Data, json, ScavengeTestData.Real);
+        Assert.Equal(json, SaveGame.Save(loaded.State));
+        Assert.Equal(tower.Id, loaded.State.Defense.Guards[s.Id]);
+        Assert.Equal(ThreatKind.Raider, loaded.State.Defense.Raid!.Kind);
+    }
+
+    [Fact]
+    public void An_older_save_loads_with_no_defenses_and_a_fresh_gap()
+    {
+        var sim = RaidTestData.Colony();
+        sim.State.Tick = 500;
+        var json = SaveGame.Save(sim.State).Replace($"\"version\": {SaveGame.Version}", $"\"version\": {SaveGame.RaidsVersion - 1}");
+        var loaded = SaveGame.Load(sim.Data, json);
+        Assert.Empty(loaded.State.Defense.Defenses);
+        Assert.Equal(500, loaded.State.Defense.LastRaidTick);
+    }
+}

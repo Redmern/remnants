@@ -25,6 +25,8 @@ public sealed class ColonySim
 
     /// <summary>The story's missions, dialogue and maps (data/story). Optional; a colony with a campaign needs it to play the story.</summary>
     public Story.StoryData? Story { get; set; }
+    /// <summary>The raid model and defense catalogue (data/raids.json). Optional: without it no raids come and defenses cannot be built.</summary>
+    public Raids.RaidData? Raids { get; set; }
 
     public ColonySim(GameData data, ColonyState state, ScavengeData? scavenge = null)
     {
@@ -281,6 +283,7 @@ public sealed class ColonySim
         State.Tick++;
         WorldMap.Run(this);
         global::Remnants.Core.Story.Campaign.Tick(this);
+        global::Remnants.Core.Raids.RaidSystem.Run(this);
         SyncRng();
     }
 
@@ -317,6 +320,7 @@ public sealed class ColonySim
             InstallFloodlight c => DayNightHandlers.InstallFloodlight(this, c),
             global::Remnants.Core.Story.TakeCall or global::Remnants.Core.Story.AdvanceDialogue or global::Remnants.Core.Story.ChooseDialogue
                 or global::Remnants.Core.Story.LaunchStoryMission => global::Remnants.Core.Story.Campaign.Execute(this, command),
+            global::Remnants.Core.Raids.IRaidCommand c => global::Remnants.Core.Raids.DefenseHandlers.Execute(this, c),
             _ => CommandResult.Fail(CommandError.UnknownCommand, $"Unknown command {command.GetType().Name}."),
         };
         SyncRng();

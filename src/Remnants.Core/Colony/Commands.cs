@@ -190,6 +190,19 @@ public enum CommandError
     UnknownCall,
     NoDialogue,
     InvalidChoice,
+    /// <summary>Raids and defenses (<c>Raids/</c>): no raids.json loaded; unknown placed defense; its schematic is not known.</summary>
+    NoRaidData,
+    UnknownDefense,
+    SchematicMissing,
+    InvalidCell,
+    CellOccupied,
+    NotATrap,
+    AlreadyArmed,
+    NotDamaged,
+    NoRaidWarning,
+    CannotRecall,
+    /// <summary>The building was wrecked in a raid: repair it first.</summary>
+    Wrecked,
 }
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>

@@ -90,9 +90,10 @@ public static class Schedule
         rules.Enabled && building.NightShift && !s.IsChild && !DayNight.InWindow(hour, rules.WorkHours)
         && CanRunNightShift(building, def, rules);
 
-    /// <summary>Whether a survivor is working right now (assigned, home, not a patient, and on shift).</summary>
+    /// <summary>Whether a survivor is working right now (assigned, home, not a patient, and on shift; or a guard on duty).</summary>
     public static bool OnShift(ColonyState state, GameData data, Survivor s)
     {
+        if (s.AssignedBuildingId is null) return Raids.Guards.OnShift(state, data, s);
         if (s.AssignedBuildingId is not { } id || s.Away || s.PatientAtBuildingId is not null) return false;
         if (state.FindBuilding(id) is not { } b) return false;
         return Factor(s, b, data.Buildings[b.DefId], DayNight.Hour(state.Tick, data.Rules), data.Rules.DayNight) > 0;
