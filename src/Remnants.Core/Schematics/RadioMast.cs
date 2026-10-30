@@ -128,7 +128,7 @@ public static class RadioMast
     {
         var state = colony.State;
         if (state.Radio.Contract is not { Accepted: true } c || c.ZoneId != zoneId) return;
-        foreach (var (res, amount) in c.Reward) state.Stockpile.Add(res, amount);
+        Payment.Receive(colony, c.Reward);
         state.Radio.Contract = null;
         state.Radio.ContractsDone++;
         state.Log(new(state.Tick, ColonyEventType.ContractDone,

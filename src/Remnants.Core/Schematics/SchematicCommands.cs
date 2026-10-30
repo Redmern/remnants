@@ -64,9 +64,9 @@ internal static class SchematicHandlers
         var prices = RadioMast.Prices(sim, def);
         if (c.Option < 0 || c.Option >= prices.Count) return Fail(CommandError.InvalidCount, "No such price.");
         var cost = prices[c.Option].Cost;
-        if (!state.Stockpile.CanAfford(cost))
-            return Fail(CommandError.CannotAfford, $"Cannot afford the {def.Name} schematic: {CommandHandlers.Describe(state.Stockpile.Shortfall(cost))}.");
-        state.Stockpile.Spend(cost);
+        if (!Payment.CanAfford(sim, cost))
+            return Fail(CommandError.CannotAfford, $"Cannot afford the {def.Name} schematic: {Payment.Shortfall(sim, cost)}.");
+        Payment.Spend(sim, cost);
         state.Radio.Stock.Remove(def.Id);
         var trader = RadioMast.Trader(sim)?.Name ?? "the trader";
         var message = $"Bought the {def.Name} schematic from {trader} for {RadioMast.Describe(sim, cost)}.";
@@ -98,7 +98,7 @@ internal static class SchematicHandlers
             pay = rules.Radio.ResearchDataPrice.ToDictionary(kv => kv.Key, kv => kv.Value * c.ResearchData);
             what = $"{c.ResearchData} Research Data";
         }
-        foreach (var (res, amount) in pay) state.Stockpile.Add(res, amount);
+        Payment.Receive(sim, pay);
         var message = $"Sold {what} for {RadioMast.Describe(sim, pay)}.";
         state.Log(new(state.Tick, ColonyEventType.Traded, message));
         return CommandResult.Success(message);
@@ -240,4 +240,23 @@ public static class Research
     }
 
     private static CommandResult Fail(CommandError error, string message) => CommandResult.Fail(error, message);
+}
+
+/// <summary>
+/// Every price the schematics module charges or pays (trader, research, copies, contracts) goes through here, so a change
+/// to how goods are kept (e.g. food as items) is one swap.
+/// </summary>
+public static class Payment
+{
+    public static bool CanAfford(ColonySim sim, IReadOnlyDictionary<string, double> cost) => sim.State.Stockpile.CanAfford(new Dictionary<string, double>(cost));
+
+    public static void Spend(ColonySim sim, IReadOnlyDictionary<string, double> cost) => sim.State.Stockpile.Spend(new Dictionary<string, double>(cost));
+
+    public static void Receive(ColonySim sim, IReadOnlyDictionary<string, double> amounts)
+    {
+        foreach (var (res, amount) in amounts) sim.State.Stockpile.Add(res, amount);
+    }
+
+    public static string Shortfall(ColonySim sim, IReadOnlyDictionary<string, double> cost) =>
+        CommandHandlers.Describe(sim.State.Stockpile.Shortfall(new Dictionary<string, double>(cost)));
 }

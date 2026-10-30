@@ -24,6 +24,9 @@ public sealed record BotOptions
 
     /// <summary>Every other run goes to the hardest zone the threat cap allows (off = always the easiest).</summary>
     public bool Stretch { get; init; } = true;
+
+    /// <summary>Climb threat after two runs without a death (default: two runs without a death or a new injury).</summary>
+    public bool Bold { get; init; }
 }
 
 /// <summary>
@@ -503,10 +506,10 @@ public sealed class ColonyBot
         return members;
     }
 
-    /// <summary>The bot climbs threat only after two clean runs (nobody hurt or dead) at the current cap.</summary>
+    /// <summary>The bot climbs threat only after two clean runs in a row at the current cap (nobody dead, and unless bold, nobody hurt).</summary>
     private void OnReturn(ExpeditionOutcome o)
     {
-        if (o.Dead == 0 && o.NewInjuries == 0) _cleanRunsAtThreat++;
+        if (o.Dead == 0 && (_options.Bold || o.NewInjuries == 0)) _cleanRunsAtThreat++;
         else _cleanRunsAtThreat = 0;
         if (_cleanRunsAtThreat >= 2 && _threatCap < _options.MaxThreat)
         {

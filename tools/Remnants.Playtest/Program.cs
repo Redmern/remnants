@@ -2,7 +2,7 @@ using Remnants.Core.Data;
 using Remnants.Core.Scavenge;
 using Remnants.Playtest;
 
-// Usage: dotnet run --project tools/Remnants.Playtest -- [--days=N] [--seeds=A..B | --seed=N] [--quiet] [--trace] [--no-expeditions] [--data=DIR]
+// Usage: dotnet run --project tools/Remnants.Playtest -- [--days=N] [--seeds=A..B | --seed=N] [--quiet] [--trace] [--no-expeditions] [--bold] [--data=DIR]
 //        dotnet run --project tools/Remnants.Playtest -- --zone=outskirts|all [--runs=N] [--party=N] [--trace] [--no-defenses] [--kit=fog|geared|tech|hack|drone|hacker|peg|mech|powered|cyborg|network] [--carbines=N] [--carbine-quality=fine|crude] [--armor] [--no-tech] [--coop=N] [--hour=0..23]
 var options = args.Where(a => a.StartsWith("--")).Select(a => a[2..].Split('=', 2)).ToDictionary(p => p[0], p => p.Length > 1 ? p[1] : "");
 var days = int.Parse(options.GetValueOrDefault("days", "40"));
@@ -11,7 +11,7 @@ var seeds = options.TryGetValue("seed", out var one) ? [ulong.Parse(one)]
     : options.GetValueOrDefault("seeds", "1..1").Split("..") is [var a, var b] ? Enumerable.Range(int.Parse(a), int.Parse(b) - int.Parse(a) + 1).Select(i => (ulong)i).ToList()
     : [1UL];
 var quiet = options.ContainsKey("quiet");
-var bot = new BotOptions { Expeditions = !options.ContainsKey("no-expeditions") };
+var bot = new BotOptions { Expeditions = !options.ContainsKey("no-expeditions"), Bold = options.ContainsKey("bold") };
 
 var data = GameDataLoader.LoadFromDirectory(dataDir);
 var scavenge = ScavengeDataLoader.LoadFromDirectory(dataDir);
