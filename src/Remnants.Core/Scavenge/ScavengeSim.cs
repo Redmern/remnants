@@ -160,6 +160,7 @@ public sealed class ScavengeSim
         Hacking.RoundStarted(this);
         Drones.RoundStarted(this);
         Network.RoundStarted(this);
+        Interference.RoundStarted(this);
 
         // Drones fly on their operator's AP and cameras only watch: neither takes turns.
         State.TurnOrder = State.Units

@@ -63,7 +63,7 @@ internal static class MedicalSystem
                 }
                 else HealAll(s, rules.NaturalHealPerTick);
                 s.Health = Math.Min(Survivor.MaxHealth, s.Health + rules.PatientHealthPerTick);
-                if (!s.IsInjured)
+                if (!s.IsInjured && state.Surgeries.All(o => o.SurvivorId != s.Id))
                 {
                     s.PatientAtBuildingId = null;
                     state.Log(new(state.Tick, ColonyEventType.Discharged, $"{s.Name} has healed and left the {data.Buildings[medBay.DefId].Name}.", s.Id, medBay.Id));
@@ -197,15 +197,17 @@ internal static class MedicalHandlers
         if (item.Prosthetic is not { } prosthetic) return CommandResult.Fail(CommandError.NotAProsthetic, $"{item.Name} is not a prosthetic.");
         if (s.Body[c.Part].Condition != PartCondition.Missing)
             return CommandResult.Fail(CommandError.PartNotMissing, $"{s.Name}'s {MedicalSystem.Describe(c.Part)} is not missing.");
-        if (Body.RegionOf(c.Part) != prosthetic.Region)
+        if (c.Part == BodyPart.Head || Body.RegionOf(c.Part) != prosthetic.Region)
             return CommandResult.Fail(CommandError.WrongLimb, $"{item.Name} replaces {prosthetic.Region.ToString().ToLowerInvariant()}, not a {MedicalSystem.Describe(c.Part)}.");
         var level = sim.MedBays.Select(b => b.Level).DefaultIfEmpty(0).Max();
         if (level == 0) return CommandResult.Fail(CommandError.NoMedBay, "Build a Med Bay first.");
         if (level < prosthetic.MinMedBayLevel)
             return CommandResult.Fail(CommandError.MedBayLevelTooLow, $"Fitting a {item.Name} needs Med Bay level {prosthetic.MinMedBayLevel} (have {level}).");
+        if (sim.Data.Cybernetics is { } cyber && cyber.Node(item.DefinedId) is { } node && node.Tier >= cyber.Surgery.FromTier)
+            return CommandResult.Fail(CommandError.NeedsSurgery, $"A {item.Name} is {cyber.Tier(node.Tier).Name}: book it as surgery.");
         if (!state.Inventory.TryTake(item.Id)) return CommandResult.Fail(CommandError.MissingItems, $"No {item.Name} in the inventory.");
 
-        s.Body.FitProsthetic(c.Part, prosthetic.Quality, item.Id);
+        Cybernetics.Fit(state, sim.Data.Cybernetics, s, c.Part, item, elective: false);
         var message = $"{s.Name} was fitted with a {item.Name} ({MedicalSystem.Describe(c.Part)}).";
         state.Log(new(state.Tick, ColonyEventType.ProstheticFitted, message, s.Id));
         return CommandResult.Success(message);

@@ -34,10 +34,15 @@ namespace Remnants.Core.Serialization;
 /// says (version 9 and older games started at midnight).
 /// Version 11 adds night missions: the expedition's wait for a better hour (<see cref="Expedition.WaitTicks"/>) and the run's
 /// environment (<see cref="ScavengeSave"/> version 6); older runs in progress load at midday.
+/// Version 12 adds cybernetics: the eyes as a body part, each prosthetic's humanity cost, elective flag and upkeep, booked
+/// surgeries (<see cref="ColonyState.Surgeries"/>) and the designs the colony knows (<see cref="ColonyState.KnownCybernetics"/>);
+/// the scavenge run carries the units' cybernetic hooks (<see cref="ScavengeSave"/> version 7). Older prosthetics are
+/// mapped into the tree by <see cref="MigrateCybernetics"/>: an item outside the tree (none before items existed) becomes the
+/// crude part below quality 1 and the standard cyborg part from there, and pays its tier's replacement humanity.
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 11;
+    public const int Version = 12;
     private const int OldestVersion = 1;
 
     /// <summary>What a pre-version-4 generic "blueprint" item becomes.</summary>
@@ -66,6 +71,7 @@ public static class SaveGame
             if (envelope.Version < 8) Progression.Migrate(data, s);
             else foreach (var skill in Enum.GetValues<Survivors.Skill>()) s.Skills.TryAdd(skill, 0);
         StudySystem.Repair(colony);
+        if (envelope.Version < 12) MigrateCybernetics(data, scavenge, colony);
         Validate(data, colony);
         if (scavenge is not null) Validate(scavenge, colony);
         return new ColonySim(data, colony, scavenge);
@@ -126,6 +132,39 @@ public static class SaveGame
         }
     }
 
+    /// <summary>Crude parts the tree maps legacy prosthetics to (below quality 1), and the standard cyborg parts (from 1).</summary>
+    public static readonly IReadOnlyDictionary<Survivors.BodyRegion, (string Crude, string Cyborg)> LegacyProsthetics =
+        new Dictionary<Survivors.BodyRegion, (string, string)>
+        {
+            [Survivors.BodyRegion.Arms] = ("hook_arm", "cyber_arm"),
+            [Survivors.BodyRegion.Legs] = ("peg_leg", "cyber_leg"),
+        };
+
+    /// <summary>
+    /// Before version 12: prosthetics join the cybernetics tree (see the class remarks) and pay humanity as replacements,
+    /// the colony knows what it has fitted or owns, and a run in progress gets its units' cybernetic hooks.
+    /// </summary>
+    private static void MigrateCybernetics(GameData data, ScavengeData? scavenge, ColonyState colony)
+    {
+        var cyber = data.Cybernetics;
+        foreach (var s in colony.Survivors)
+            foreach (var (part, state) in s.Body.Parts)
+            {
+                if (state.Condition != Survivors.PartCondition.Prosthetic) continue;
+                if (cyber?.Node(state.ProstheticItemId) is null && LegacyProsthetics.TryGetValue(Survivors.Body.RegionOf(part), out var legacy))
+                    state.ProstheticItemId = state.ProstheticQuality < 1 ? legacy.Crude : legacy.Cyborg;
+                state.Upkeep = 1;
+                state.ServiceTicks = 0;
+                if (cyber is null) continue;
+                state.HumanityCost = cyber.Tier(cyber.TierOf(state)).Humanity;
+                colony.KnownCybernetics.Add(state.ProstheticItemId!);
+            }
+        if (cyber is not null)
+            foreach (var id in colony.Inventory.Counts.Keys.Where(id => cyber.Node(id) is not null))
+                colony.KnownCybernetics.Add(id);
+        if (scavenge is not null && colony.Expedition?.Scavenge is { } run) ScavengeSave.MigrateCybernetics(scavenge, run);
+    }
+
     /// <summary>Before version 3 children grew up by age in years; put them at the same share of the growth track.</summary>
     private static void MigrateGrowth(GameData data, ColonyState colony)
     {
@@ -163,6 +202,11 @@ public static class SaveGame
                 throw new JsonException($"Save has {s.Name} admitted to building {s.PatientAtBuildingId}, which is not a Med Bay.");
 
         var ids = colony.Survivors.Select(s => s.Id).ToHashSet();
+        foreach (var op in colony.Surgeries)
+            if (!ids.Contains(op.SurvivorId) || colony.FindBuilding(op.BuildingId)?.DefId != data.Rules.Medical.BuildingId)
+                throw new JsonException($"Save has surgery {op.Id} for a survivor or at a building that does not fit.");
+        foreach (var id in colony.KnownCybernetics)
+            if (data.Cybernetics is { } cyber && cyber.Node(id) is null) throw new JsonException($"Save knows unknown cybernetics design '{id}'.");
         foreach (var s in colony.Survivors)
             foreach (var perk in s.Perks)
                 if (!data.Perks.ContainsKey(perk)) throw new JsonException($"Save has {s.Name} with unknown perk '{perk}'.");
@@ -211,6 +255,7 @@ public static class SaveGame
         foreach (var id in colony.Buildings.SelectMany(b => b.Queue).SelectMany(o => o.PaidItems)) RequireItem(id);
         foreach (var part in colony.Survivors.SelectMany(s => s.Body.Parts.Values))
             if (part.ProstheticItemId is { } id) RequireItem(id);
+        foreach (var op in colony.Surgeries) RequireItem(op.ItemId);
         if (colony.Expedition is not { } expedition) return;
         if (!data.Zones.ContainsKey(expedition.ZoneId)) throw new JsonException($"Save references unknown zone '{expedition.ZoneId}'.");
         foreach (var id in expedition.Members.SelectMany(m => m.AllItems)) RequireItem(id);

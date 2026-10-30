@@ -11,9 +11,10 @@ namespace Remnants.Core.Tests;
 public class CraftingDataTests
 {
     [Fact]
-    public void Every_item_has_a_source_in_a_recipe_or_loot()
+    public void Every_item_has_a_source_in_a_recipe_loot_or_enemy_drops()
     {
-        var made = TestData.Real.Recipes.Values.Where(r => r.Item is not null).Select(r => r.Item!).ToHashSet();
+        var made = TestData.Real.Recipes.Values.Where(r => r.Item is not null).Select(r => r.Item!)
+            .Concat(ScavengeTestData.Real.Enemies.Values.SelectMany(e => e.Drops).Select(d => d.Item)).ToHashSet();
         var orphans = ScavengeTestData.Real.Items.Values
             .Where(i => i.BaseId is null && !i.Natural && i.LootWeight <= 0 && !made.Contains(i.Id))
             .Select(i => i.Id).ToList();

@@ -12,7 +12,7 @@ namespace Remnants.Core.Scavenge;
 /// <item>everyone on a tile lit by a <see cref="Flare"/> (every side sees lit tiles);</item>
 /// <item>a unit <see cref="Reveal"/>ed to it (muzzle flash, motion sensor) while one of its units has line of sight to it
 /// within <see cref="FogRules.RevealSightMultiplier"/> times its sight;</item>
-/// <item>hostiles within a working scanner's radius of one of its units, through walls and stealth;</item>
+/// <item>hostiles within a working scanner's (or thermal eye's) radius of one of its units, through walls and stealth;</item>
 /// <item>a hostile its scout drone marked (<see cref="Drones"/>), wherever it is, while the mark lasts.</item>
 /// </list>
 /// Contacts ("?" markers) are the middle state: the side knows something is near a tile, not what.
@@ -85,9 +85,10 @@ public static class Detection
         }
     }
 
-    /// <summary>Radius of the unit's working scanner (0 without one).</summary>
+    /// <summary>Radius of the unit's working scanner or thermal eye (<c>thermal_radius</c>), 0 without either.</summary>
     public static int ScanRadius(ScavengeData data, Unit unit) =>
-        Devices.Working(data, unit).Where(d => d.Effect == DeviceEffect.Scanner).Select(d => d.Radius).DefaultIfEmpty(0).Max();
+        Devices.Working(data, unit).Where(d => d.Effect == DeviceEffect.Scanner).Select(d => d.Radius)
+            .Append(unit.IsActive ? (int)unit.Hook(Colony.PerkHooks.ThermalRadius) : 0).Max();
 
     /// <summary>Reveals a unit to a side through <paramref name="untilRound"/> (keeps the later of two reveals).</summary>
     internal static void Reveal(ScavengeState state, Unit unit, string side, int untilRound)

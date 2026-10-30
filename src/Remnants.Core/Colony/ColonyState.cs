@@ -43,6 +43,16 @@ public sealed class ColonyState
 
     public int NextStudyId { get; set; } = 1;
 
+    /// <summary>Booked surgeries, in booking order; each Med Bay works its first (see <see cref="CyberneticsSystem"/>).</summary>
+    public List<Surgery> Surgeries { get; set; } = new();
+    public int NextSurgeryId { get; set; } = 1;
+
+    /// <summary>
+    /// Cybernetics node ids the colony knows: crafted, fitted or owned at some point (tier 0 is always known). A node of the
+    /// next tier needs one of its requirements in here.
+    /// </summary>
+    public SortedSet<string> KnownCybernetics { get; set; } = new(StringComparer.Ordinal);
+
     /// <summary>The after-action report of the last expedition that came home (for the UI).</summary>
     public ExpeditionReport? LastReport { get; set; }
 

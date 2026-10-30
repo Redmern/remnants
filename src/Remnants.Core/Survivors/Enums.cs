@@ -20,6 +20,10 @@ public enum XpSource { Work, Crafting, Study, Teaching, Mission, Field, Manual }
 /// <summary>Coarse body areas that jobs and modifiers care about.</summary>
 public enum BodyRegion { Head, Torso, Arms, Legs }
 
-public enum BodyPart { Head, Torso, LeftArm, RightArm, LeftLeg, RightLeg }
+/// <summary>
+/// Body parts. <see cref="Eyes"/> sit in the head region: they are never hit or lost in the field, only replaced by an
+/// elective eye implant (see <c>data/cybernetics.json</c>).
+/// </summary>
+public enum BodyPart { Head, Torso, LeftArm, RightArm, LeftLeg, RightLeg, Eyes }
 
 public enum PartCondition { Healthy, Injured, Missing, Prosthetic }

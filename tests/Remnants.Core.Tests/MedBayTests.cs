@@ -196,6 +196,8 @@ public class ProstheticTests
         Assert.Equal(CommandError.WrongLimb, Fit(BodyPart.LeftLeg, "hook_arm"));
         Assert.Equal(CommandError.NotAProsthetic, Fit(BodyPart.LeftLeg, "pipe"));
         Assert.Equal(CommandError.MedBayLevelTooLow, Fit(BodyPart.LeftLeg, "cyber_leg"));
+        sim.MedBays.First().Level = 3;
+        Assert.Equal(CommandError.NeedsSurgery, Fit(BodyPart.LeftLeg, "cyber_leg"));
         Assert.Equal(CommandError.UnknownItem, Fit(BodyPart.LeftLeg, "wooden_spoon"));
 
         var (bare, t) = Amputee(BodyPart.LeftLeg, 1);
@@ -208,7 +210,7 @@ public class ProstheticTests
     [Fact]
     public void Cybernetic_legs_beat_the_original_in_colony_jobs_and_in_the_field()
     {
-        var sim = LoopTestData.Colony(townHallLevel: 3, food: 1000, items: new() { ["cyber_leg"] = 2 });
+        var sim = LoopTestData.Colony(townHallLevel: 3, food: 1000);
         sim.Build("med_bay").Level = 2;
         var farm = sim.Data.Buildings["farm"];
         var farming = sim.Data.Jobs["farming"];
@@ -218,7 +220,7 @@ public class ProstheticTests
         foreach (var part in new[] { BodyPart.LeftLeg, BodyPart.RightLeg })
         {
             cyborg.Body.Lose(part);
-            Assert.True(sim.Execute(new FitProsthetic(cyborg.Id, part, "cyber_leg")).Ok);
+            cyborg.Body.FitProsthetic(part, 1.3, "cyber_leg"); // cyborg parts go on by surgery (CyberneticsTests)
         }
         amputee.Body.Lose(BodyPart.LeftLeg);
 

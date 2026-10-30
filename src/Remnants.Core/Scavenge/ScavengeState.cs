@@ -29,6 +29,7 @@ public enum ScavengeEventType
     HackProgress, Hacked, HackFailed, Alarm, Overridden, OverrideEnded, DeviceDisabled,
     DroneDeployed, DroneFlown, DroneRecalled, DroneLanded, Marked, PayloadDropped,
     RelayDisrupted,
+    LimbLocked,
 }
 
 /// <summary>

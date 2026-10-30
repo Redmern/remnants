@@ -309,7 +309,7 @@ internal static class CraftingHandlers
         return CommandResult.Success(message);
     }
 
-    /// <summary>Building level, blueprint and item data a recipe needs before it can be queued.</summary>
+    /// <summary>Building level, blueprint, item data and (for cybernetics) the tree a recipe needs before it can be queued.</summary>
     public static CommandResult CheckRecipe(ColonySim sim, Building building, RecipeDef recipe)
     {
         var def = sim.Data.Buildings[building.DefId];
@@ -319,6 +319,7 @@ internal static class CraftingHandlers
             return CommandResult.Fail(CommandError.RecipeLocked,
                 $"{recipe.Name} needs its blueprint ({sim.Scavenge?.Items.GetValueOrDefault(bp)?.Name ?? bp}) studied.");
         if ((recipe.Item is not null || recipe.ItemInputs.Count > 0) && sim.Scavenge is null) return ExpeditionHandlers.NoData();
+        if (Cybernetics.CraftGate(sim, recipe) is { } locked) return locked;
         return CommandResult.Success("");
     }
 

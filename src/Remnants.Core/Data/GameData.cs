@@ -17,6 +17,9 @@ public sealed class GameData
     public IReadOnlyDictionary<string, PerkDef> Perks { get; }
     public IReadOnlyDictionary<string, DisciplineDef> Disciplines { get; }
 
+    /// <summary>The cybernetics tree (data/cybernetics.json); null when not loaded (no tree, no surgery, no humanity effects).</summary>
+    public CyberneticsData? Cybernetics { get; }
+
     private readonly Dictionary<string, List<RecipeDef>> _recipesByBuilding;
 
     public GameData(
@@ -25,7 +28,8 @@ public sealed class GameData
         IEnumerable<BuildingDef> buildings,
         RulesDef rules,
         IEnumerable<RecipeDef>? recipes = null,
-        ProgressionDef? progression = null)
+        ProgressionDef? progression = null,
+        CyberneticsDef? cybernetics = null)
     {
         Resources = Index(resources, r => r.Id, "resource");
         Jobs = Index(jobs, j => j.Id, "job");
@@ -37,8 +41,10 @@ public sealed class GameData
         Progression = progression ?? new ProgressionDef();
         Perks = Index(Progression.Perks, p => p.Id, "perk");
         Disciplines = Index(Progression.Disciplines, d => d.Id, "discipline");
+        Cybernetics = cybernetics is null ? null : new CyberneticsData(cybernetics);
         Validate();
         ValidateProgression();
+        ValidateCybernetics();
     }
 
     public BuildingDef TownHall => Buildings[Rules.TownHallBuildingId];
@@ -215,6 +221,28 @@ public sealed class GameData
         foreach (var job in Jobs.Values)
             if (job.Trains.Keys.Contains(job.Skill) || job.Trains.Values.Any(v => v < 0))
                 throw new GameDataException($"Job '{job.Id}': trains lists other skills, with non-negative shares.");
+    }
+
+    /// <summary>Node perks, effect jobs and hooks, resources a service takes (items, blueprints and recipes: <c>ColonySim.ValidateLinks</c>).</summary>
+    private void ValidateCybernetics()
+    {
+        if (Cybernetics is not { } cyber) return;
+        void Effects(CyberEffectsDef e, string where)
+        {
+            foreach (var job in e.JobOutput.Keys.Concat(e.CraftQuality.Keys))
+                if (!Jobs.ContainsKey(job)) throw new GameDataException($"{where}: effect names unknown job '{job}'.");
+            foreach (var hook in e.Hooks.Keys)
+                if (!Colony.PerkHooks.All.ContainsKey(hook)) throw new GameDataException($"{where}: unknown hook '{hook}' (see PerkHooks).");
+        }
+        foreach (var n in cyber.Nodes.Values)
+        {
+            if (n.Perk is { } perk && !Perks.ContainsKey(perk)) throw new GameDataException($"Cybernetics node '{n.Id}': unknown perk '{perk}'.");
+            Effects(n.Effects, $"Cybernetics node '{n.Id}'");
+        }
+        foreach (var set in cyber.Def.Sets) Effects(set.Effects, $"Cybernetics set '{set.Id}'");
+        foreach (var tier in cyber.Def.Tiers)
+            foreach (var res in tier.ServiceCost.Keys)
+                if (!Resources.ContainsKey(res)) throw new GameDataException($"Cybernetics tier {tier.Tier}: unknown resource '{res}'.");
     }
 
     private int TownHallMaxLevel() => Buildings.TryGetValue(Rules.TownHallBuildingId, out var th) ? th.MaxLevel : 0;

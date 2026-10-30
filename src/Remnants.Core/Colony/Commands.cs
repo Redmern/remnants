@@ -36,8 +36,22 @@ public sealed record AdmitPatient(int SurvivorId, int? BuildingId = null) : ICol
 
 public sealed record Discharge(int SurvivorId) : IColonyCommand;
 
-/// <summary>Fit a prosthetic item from the inventory onto a missing limb, at a Med Bay of the item's level.</summary>
+/// <summary>
+/// Fit a crude or mechanical prosthetic item (below <c>surgery.fromTier</c>) from the inventory onto a missing limb, at a
+/// Med Bay of the item's level. It straps on at once; powered parts and up need <see cref="ScheduleSurgery"/>.
+/// </summary>
 public sealed record FitProsthetic(int SurvivorId, BodyPart Part, string ItemId) : IColonyCommand;
+
+/// <summary>
+/// Book surgery at a Med Bay (the first with a free bed when <paramref name="BuildingId"/> is null): fit this prosthetic
+/// onto a missing limb, in place of an older prosthetic (which goes back to the inventory), or, with
+/// <paramref name="Elective"/> confirmed, onto a healthy part (augmentation, tier 3+, adults only, a big humanity hit).
+/// The item is set aside at once; the patient takes a bed until the surgery is done. See <c>Cybernetics</c>.
+/// </summary>
+public sealed record ScheduleSurgery(int SurvivorId, BodyPart Part, string ItemId, bool Elective = false, int? BuildingId = null) : IColonyCommand;
+
+/// <summary>Call off a booked surgery: the item goes back to the inventory and the patient is discharged.</summary>
+public sealed record CancelSurgery(int SurgeryId) : IColonyCommand;
 
 /// <summary>
 /// Shortcut: replace a production building's queue with one repeating order of this recipe; null clears the queue.
@@ -161,6 +175,14 @@ public enum CommandError
     NeedsLight,
     AlreadyLit,
     NotOutdoor,
+    /// <summary>Cybernetics: this tier is fitted by surgery (<see cref="ScheduleSurgery"/>), not strapped on.</summary>
+    NeedsSurgery,
+    /// <summary>Surgery on a healthy part without the elective confirmation, below the elective tier, or on a child.</summary>
+    ElectiveNotAllowed,
+    PartInjured,
+    AlreadyBooked,
+    UnknownSurgery,
+    NoCybernetics,
 }
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>

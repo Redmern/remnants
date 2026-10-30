@@ -175,6 +175,7 @@ public sealed class SideFog(int playerId, string side)
         copy.Side = Shown(u.Side, u.PlayerId);
         copy.Ai = new AiMemory();
         copy.Hooks = new(StringComparer.Ordinal);
+        copy.CyberHooks = new();
         copy.FieldXp = 0;
         copy.DroneBattery = null;
         copy.Origin = u.Origin is { } o ? new Survivor { Name = o.Name, Sex = o.Sex, LifeStage = o.LifeStage } : null;

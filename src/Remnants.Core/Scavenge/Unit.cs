@@ -113,6 +113,12 @@ public sealed class Unit
     /// </summary>
     public Dictionary<string, double> Hooks { get; set; } = new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// Hooks from fitted cybernetics (each node, and each paired set, with the parts it needs), resolved when the party
+    /// enters the zone. They count in <see cref="Hook"/> only while all their parts work (not locked by interference).
+    /// </summary>
+    public List<CyberHookSource> CyberHooks { get; set; } = new();
+
     /// <summary>XP earned in the field beyond skill gains (hacks, drone flights); paid out when the survivor gets home.</summary>
     public double FieldXp { get; set; }
 
@@ -168,8 +174,14 @@ public sealed class Unit
     public double Get(AttributeKind attribute) => Attributes.GetValueOrDefault(attribute, 50);
     public double Get(Skill skill) => Skills.GetValueOrDefault(skill);
 
-    /// <summary>A perk hook's value (0 without the perk).</summary>
-    public double Hook(string id) => Hooks.GetValueOrDefault(id);
+    /// <summary>A hook's value: perks plus working cybernetics (0 without either).</summary>
+    public double Hook(string id)
+    {
+        var value = Hooks.GetValueOrDefault(id);
+        foreach (var source in CyberHooks)
+            if (source.Hooks.TryGetValue(id, out var v) && source.Parts.All(p => !Body[p].Interfered)) value += v;
+        return value;
+    }
 
     /// <summary>Field practice, diminishing like <see cref="Survivor.GainSkill"/>; returns the gain.</summary>
     public double GainSkill(Skill skill, double amount)
@@ -184,6 +196,13 @@ public sealed class Unit
         Side != other.Side && Side != NeutralSide && other.Side != NeutralSide;
 
     public IEnumerable<string> AllItems => Equipment.Values.Concat(Pack);
+}
+
+/// <summary>Scavenge hooks that a fitted prosthetic (or a paired set of them) gives while its parts work.</summary>
+public sealed class CyberHookSource
+{
+    public List<BodyPart> Parts { get; set; } = new();
+    public Dictionary<string, double> Hooks { get; set; } = new(StringComparer.Ordinal);
 }
 
 /// <summary>A pile of items on a tile: a loot cache, or what a dead unit dropped.</summary>

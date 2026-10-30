@@ -45,6 +45,7 @@ public sealed record ExtractionResult(
     {
         var s = NewScavenge.Clone(u.Origin!);
         s.Body = NewScavenge.Clone(u.Body);
+        foreach (var part in s.Body.Parts.Values) part.Interfered = false;
         foreach (var (attribute, value) in u.Attributes) s.Set(attribute, value);
         foreach (var (skill, value) in u.Skills) s.Set(skill, value);
         s.Health = health;

@@ -20,19 +20,41 @@ public sealed class ScavengeData
     /// </summary>
     public IReadOnlyDictionary<string, IReadOnlyDictionary<string, double>> PerkHooks { get; }
 
+    /// <summary>
+    /// The cybernetics tree (cybernetics.json, when loaded with it): tiers, specialisations, sets and interference, so a
+    /// fitted part's hooks and set bonuses reach the field with the survivor alone. Null without it.
+    /// </summary>
+    public CyberneticsData? Cybernetics { get; }
+
     public ScavengeData(IEnumerable<ItemDef> items, IEnumerable<EnemyDef> enemies, IEnumerable<ZoneDef> zones, ScavengeRules rules,
-        IReadOnlyDictionary<string, IReadOnlyDictionary<string, double>>? perkHooks = null)
+        IReadOnlyDictionary<string, IReadOnlyDictionary<string, double>>? perkHooks = null, CyberneticsDef? cybernetics = null)
     {
         PerkHooks = perkHooks ?? new Dictionary<string, IReadOnlyDictionary<string, double>>();
+        Cybernetics = cybernetics is null ? null : new CyberneticsData(cybernetics);
         // Variants are always derived (so data built from another ScavengeData's items gets them fresh).
         Items = Index(WithQualityVariants(items.Where(i => i.BaseId is null).ToList(), rules.Quality), i => i.Id, "item");
         Enemies = Index(enemies, e => e.Id, "enemy");
         Zones = Index(zones, z => z.Id, "zone");
         Rules = rules;
         Validate();
+        ValidateCybernetics();
     }
 
     public TerrainDef Terrain(Terrain terrain) => Rules.Terrain[terrain];
+
+    /// <summary>Every node is a prosthetic item of its slot's region, and every prosthetic item a node.</summary>
+    private void ValidateCybernetics()
+    {
+        if (Cybernetics is not { } cyber) return;
+        foreach (var n in cyber.Nodes.Values)
+        {
+            var region = n.Slot switch { CyberSlot.Arm => BodyRegion.Arms, CyberSlot.Leg => BodyRegion.Legs, _ => BodyRegion.Head };
+            if (!Items.TryGetValue(n.Id, out var item) || item.Prosthetic?.Region != region)
+                throw new GameDataException($"Cybernetics node '{n.Id}': needs a prosthetic item of the same id for the {region}.");
+        }
+        foreach (var item in Items.Values.Where(i => i.Prosthetic is not null && cyber.Node(i.Id) is null))
+            throw new GameDataException($"Item '{item.Id}': every prosthetic needs a node in cybernetics.json.");
+    }
 
     /// <summary>The summed hooks of these perks (unknown perk ids are ignored).</summary>
     public Dictionary<string, double> HooksFor(IEnumerable<string> perkIds)
@@ -43,6 +65,30 @@ public sealed class ScavengeData
                 foreach (var (k, v) in hooks) result[k] = result.GetValueOrDefault(k) + v;
         return result;
     }
+
+    /// <summary>The hooks of a body's fitted cybernetics and its paired sets, each with the parts it needs (empty without the tree).</summary>
+    public List<CyberHookSource> CyberHooksFor(Body body)
+    {
+        var result = new List<CyberHookSource>();
+        if (Cybernetics is not { } cyber) return result;
+        foreach (var (part, state) in body.Parts.OrderBy(kv => kv.Key))
+            if (state.Condition == PartCondition.Prosthetic && cyber.Node(state.ProstheticItemId) is { Effects.Hooks.Count: > 0 } node)
+                result.Add(new CyberHookSource { Parts = [part], Hooks = new(node.Effects.Hooks, StringComparer.Ordinal) });
+        foreach (var (set, parts) in cyber.ActiveSets(body))
+            if (set.Effects.Hooks.Count > 0)
+                result.Add(new CyberHookSource { Parts = parts, Hooks = new(set.Effects.Hooks, StringComparer.Ordinal) });
+        return result;
+    }
+
+    /// <summary>
+    /// The prosthetic items a unit has fitted and working (not missing, not locked by interference), with their part.
+    /// Their item stats (armor, stealth, sight, attacks, move modes, a hacking tool) count as if equipped.
+    /// </summary>
+    public IEnumerable<(BodyPart Part, ItemDef Item)> FittedParts(Body body) =>
+        body.Parts.OrderBy(kv => kv.Key)
+            .Where(kv => kv.Value.Condition == PartCondition.Prosthetic && kv.Value.Efficiency > 0
+                         && kv.Value.ProstheticItemId is { } id && Items.ContainsKey(id))
+            .Select(kv => (kv.Key, Items[kv.Value.ProstheticItemId!]));
 
     public DeviceKindDef Device(DeviceKind kind) => Rules.Devices.TryGetValue(kind, out var def) ? def : new DeviceKindDef();
 
@@ -155,8 +201,8 @@ public sealed class ScavengeData
                 throw new GameDataException($"Item '{item.Id}': items used on a tile need a range of at least 1.");
             if (item.Kind == ItemKind.Prosthetic && item.Prosthetic is null)
                 throw new GameDataException($"Item '{item.Id}' is a prosthetic without a prosthetic definition.");
-            if (item.Prosthetic is { } p && (p.Quality <= 0 || p.MinMedBayLevel < 1 || p.Region is BodyRegion.Head or BodyRegion.Torso))
-                throw new GameDataException($"Item '{item.Id}': prosthetics replace an arm or leg, with positive quality and Med Bay level of at least 1.");
+            if (item.Prosthetic is { } p && (p.Quality <= 0 || p.MinMedBayLevel < 1 || p.Region is BodyRegion.Torso))
+                throw new GameDataException($"Item '{item.Id}': prosthetics replace an arm, a leg or the eyes (Head), with positive quality and Med Bay level of at least 1.");
             if (item.Salvage is { } salvage && (string.IsNullOrWhiteSpace(salvage.Resource) || salvage.Amount <= 0))
                 throw new GameDataException($"Item '{item.Id}': salvage needs a resource and a positive amount.");
             foreach (var mode in item.Movement?.AddModes ?? [])
@@ -250,7 +296,7 @@ public sealed class ScavengeData
     }
 }
 
-/// <summary>Loads items.json, enemies.json, zones.json and scavenge.json from the data/ folder.</summary>
+/// <summary>Loads items.json, enemies.json, zones.json and scavenge.json (plus perks.json and cybernetics.json if there) from the data/ folder.</summary>
 public static class ScavengeDataLoader
 {
     public static ScavengeData LoadFromDirectory(string directory)
@@ -262,20 +308,23 @@ public static class ScavengeDataLoader
             return File.ReadAllText(path);
         }
 
-        var perks = Path.Combine(directory, "perks.json");
+        string? Optional(string file) => File.Exists(Path.Combine(directory, file)) ? File.ReadAllText(Path.Combine(directory, file)) : null;
+
         return LoadFromJson(Read("items.json"), Read("enemies.json"), Read("zones.json"), Read("scavenge.json"),
-            File.Exists(perks) ? File.ReadAllText(perks) : null);
+            Optional("perks.json"), Optional("cybernetics.json"));
     }
 
     /// <param name="perks">perks.json (optional): only each perk's scavenge hooks are read (see <see cref="ScavengeData.PerkHooks"/>).</param>
-    public static ScavengeData LoadFromJson(string items, string enemies, string zones, string rules, string? perks = null) =>
+    /// <param name="cybernetics">cybernetics.json (optional; see <see cref="ScavengeData.Cybernetics"/>).</param>
+    public static ScavengeData LoadFromJson(string items, string enemies, string zones, string rules, string? perks = null, string? cybernetics = null) =>
         new(
             Parse<List<ItemDef>>(items, "items"),
             Parse<List<EnemyDef>>(enemies, "enemies"),
             Parse<List<ZoneDef>>(zones, "zones"),
             Parse<ScavengeRules>(rules, "scavenge"),
             perks is null ? null : Parse<ProgressionDef>(perks, "perks").Perks
-                .ToDictionary(p => p.Id, p => (IReadOnlyDictionary<string, double>)new Dictionary<string, double>(p.Effects.Hooks, StringComparer.Ordinal)));
+                .ToDictionary(p => p.Id, p => (IReadOnlyDictionary<string, double>)new Dictionary<string, double>(p.Effects.Hooks, StringComparer.Ordinal)),
+            cybernetics is null ? null : Parse<CyberneticsDef>(cybernetics, "cybernetics"));
 
     private static T Parse<T>(string json, string name)
     {

@@ -197,6 +197,7 @@ public static class NewScavenge
             Pack = new(member.Pack ?? []),
             Origin = origin,
             Hooks = data.HooksFor(origin.Perks),
+            CyberHooks = data.CyberHooksFor(origin.Body),
         };
     }
 

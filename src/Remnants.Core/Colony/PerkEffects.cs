@@ -40,6 +40,15 @@ public static class PerkHooks
     public const string FieldHealBonus = "field_heal_bonus";
     public const string ReviveHpBonus = "revive_hp_bonus";
     public const string BleedoutRoundsBonus = "bleedout_rounds_bonus";
+    public const string SurgerySuccessBonus = "surgery_success_bonus";
+    public const string SurgerySpeedBonus = "surgery_speed_bonus";
+    public const string CyberSurgery = "cyber_surgery";
+
+    // Cybernetics (perks and fitted parts)
+    public const string CyberInterferenceReduction = "cyber_interference_reduction";
+    public const string ArmorBonus = "armor_bonus";
+    public const string ThermalRadius = "thermal_radius";
+    public const string NightDetectionBonus = "night_detection_bonus";
 
     /// <summary>Every hook id with what it means; perks.json may only name these.</summary>
     public static readonly IReadOnlyDictionary<string, string> All = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -65,11 +74,18 @@ public static class PerkHooks
         [FieldHealBonus] = "Healing items restore this much more (0.25 = +25%).",
         [ReviveHpBonus] = "HP added when reviving a downed ally.",
         [BleedoutRoundsBonus] = "Rounds added to a downed unit's bleed-out timer when this survivor stabilizes them.",
+        [SurgerySuccessBonus] = "Colony: added to the success chance of a surgery this medic leads (0.1 = +10 points).",
+        [SurgerySpeedBonus] = "Colony: surgery effort multiplier bonus when this medic leads it (0.25 = +25%).",
+        [CyberSurgery] = "Colony flag: can lead surgery on cyborg-grade (tier 3+) prosthetics.",
+        [CyberInterferenceReduction] = "Share of the Network interference chance on Network-grade parts that is removed (0.5 = half).",
+        [ArmorBonus] = "Flat damage reduction added (armored legs).",
+        [ThermalRadius] = "Hostiles within this many tiles are seen through walls and stealth, like a scanner (thermal eye).",
+        [NightDetectionBonus] = "Detection added at night (hook for the day-night cycle; nothing reads it yet).",
     };
 }
 
 /// <summary>
-/// The summed effects of a survivor's perks: colony modifiers (job output, crafting quality, study speed, XP) and the
+/// The summed effects of a survivor's perks and fitted cybernetics: colony modifiers (job output, crafting quality, study speed, XP) and the
 /// scavenge hooks (<see cref="PerkHooks"/>). Pure; build one whenever needed.
 /// </summary>
 public sealed class PerkEffects
@@ -91,9 +107,13 @@ public sealed class PerkEffects
     }
 
     /// <summary>The effects of every perk this survivor has (perks missing from the data are ignored).</summary>
-    public static PerkEffects For(Survivor s, GameData data) => For(s.Perks, data);
+    public static PerkEffects For(Survivor s, GameData data) => For(s.Perks, data, s.Body);
 
-    public static PerkEffects For(IEnumerable<string> perkIds, GameData data)
+    /// <summary>
+    /// The effects of these perks, plus (with a <paramref name="body"/> and the cybernetics tree loaded) those of the
+    /// body's working prosthetics and paired-limb sets (<c>cybernetics.json</c> node and set effects).
+    /// </summary>
+    public static PerkEffects For(IEnumerable<string> perkIds, GameData data, Body? body = null)
     {
         var jobOutput = new Dictionary<string, double>(StringComparer.Ordinal);
         var craftQuality = new Dictionary<string, double>(StringComparer.Ordinal);
@@ -109,6 +129,13 @@ public sealed class PerkEffects
             study += e.StudySpeed;
             xp += e.XpBonus;
         }
+        if (body is not null && data.Cybernetics is { } cyber)
+            foreach (var e in Cybernetics.WorkingEffects(cyber, body))
+            {
+                foreach (var (k, v) in e.JobOutput) jobOutput[k] = jobOutput.GetValueOrDefault(k) + v;
+                foreach (var (k, v) in e.CraftQuality) craftQuality[k] = craftQuality.GetValueOrDefault(k) + v;
+                foreach (var (k, v) in e.Hooks) hooks[k] = hooks.GetValueOrDefault(k) + v;
+            }
         return new PerkEffects(jobOutput, craftQuality, hooks, study, xp);
     }
 

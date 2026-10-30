@@ -66,8 +66,11 @@ public static class ProfileDeriver
     public static UnitProfile Derive(ScavengeData data, Unit unit)
     {
         var rules = data.Rules;
-        var equipped = Equipped(data, unit).ToList();
-        var working = equipped.Where(i => MeetsRequirement(unit.Body, i.Requires)).ToList();
+        var fitted = data.FittedParts(unit.Body).ToList();
+        // Fitted prosthetics count like worn gear: their stats always, their moves and attacks (they are the body).
+        var equipped = Equipped(data, unit).Concat(fitted.Select(f => f.Item)).ToList();
+        var working = Equipped(data, unit).Where(i => MeetsRequirement(unit.Body, i.Requires)).ToList();
+        var active = working.Concat(fitted.Select(f => f.Item)).ToList();
 
         var load = unit.AllItems.Sum(id => data.Items[id].Weight);
         var capacity = rules.Carry.Base + unit.Get(AttributeKind.Strength) * rules.Carry.PerStrength + equipped.Sum(i => i.CarryBonus)
@@ -79,7 +82,7 @@ public static class ProfileDeriver
 
         var sight = rules.Sight.Base + unit.Get(AttributeKind.Perception) * rules.Sight.PerPerception + equipped.Sum(i => i.SightBonus)
             + unit.Hook(PerkHooks.SightBonus);
-        var detection = fog.Detection.Base + (unit.Get(AttributeKind.Perception) - 50) * fog.Detection.PerPerception + working.Sum(i => i.Detection)
+        var detection = fog.Detection.Base + (unit.Get(AttributeKind.Perception) - 50) * fog.Detection.PerPerception + active.Sum(i => i.Detection)
             + unit.Hook(PerkHooks.DetectionBonus);
         if (unit.Lookout)
         {
@@ -96,14 +99,14 @@ public static class ProfileDeriver
             + unit.Hook(PerkHooks.StealthBonus);
 
         return new UnitProfile(
-            Movement: DeriveMovement(data, unit, working, capacity > 0 ? load / capacity : double.PositiveInfinity),
-            Actions: DeriveActions(data, unit, working),
+            Movement: DeriveMovement(data, unit, active, capacity > 0 ? load / capacity : double.PositiveInfinity),
+            Actions: DeriveActions(data, unit, working, fitted),
             MaxAp: Math.Max(1, rules.Turn.BaseAp + equipped.Sum(i => i.ApBonus)),
             Initiative: agility * rules.Turn.InitiativePerAgility + equipped.Sum(i => i.Initiative) - load * rules.Turn.InitiativePerLoad,
             Sight: Math.Max(1, sight * head),
             CarryCapacity: capacity,
             Load: load,
-            Armor: equipped.Sum(i => i.Armor),
+            Armor: equipped.Sum(i => i.Armor) + unit.Hook(PerkHooks.ArmorBonus),
             Dodge: (agility - 50) * rules.Combat.DodgePerAgility + equipped.Sum(i => i.Dodge),
             Stealth: stealth,
             Detection: detection * head,
@@ -146,6 +149,9 @@ public static class ProfileDeriver
         }
 
         foreach (var item in working) Apply(item.Movement, item.Name);
+        if (data.Cybernetics is { } cyber)
+            foreach (var (set, parts) in cyber.ActiveSets(unit.Body))
+                if (parts.All(p => unit.Body[p].Efficiency > 0)) Apply(set.Effects.Movement, set.Name);
 
         range -= rules.Encumbrance.Where(s => loadRatio + 1e-9 >= s.Load).Select(s => s.RangePenalty).DefaultIfEmpty(0).Max();
         var carrying = unit.CarryingId is not null;
@@ -163,7 +169,11 @@ public static class ProfileDeriver
         if (caps.Count > 0) primary = Math.Min(primary, caps.Min());
 
         var modes = new List<MoveMode> { new(pattern, primary, rules.ApCost, false, carrying ? "carrying" : patternSource) };
-        modes.AddRange(extraModes.Select(m => new MoveMode(m.Mode.Pattern, m.Mode.Range, m.Mode.ApCost, m.Mode.IgnoresTerrain, m.Source)));
+        // The same move from two sources (a jumper leg and the jumper pair) is listed once, at its cheapest.
+        modes.AddRange(extraModes
+            .GroupBy(m => (m.Mode.Pattern, m.Mode.Range, m.Mode.IgnoresTerrain))
+            .Select(g => g.OrderBy(m => m.Mode.ApCost).First())
+            .Select(m => new MoveMode(m.Mode.Pattern, m.Mode.Range, m.Mode.ApCost, m.Mode.IgnoresTerrain, m.Source)));
         return new MovementProfile(modes, costs);
     }
 
@@ -177,21 +187,21 @@ public static class ProfileDeriver
     }
 
     /// <summary>
-    /// Weapon actions plus bare hands. Accuracy adds skill and Perception, then scales with the arms
+    /// Weapon actions, attacks built into cybernetic arms, plus bare hands. Accuracy adds skill and Perception, then scales with the arms
     /// (best arm, or both arms for two-handed) and, for ranged attacks, the head (eyes).
     /// A two-handed action needs two working arms; any action needs at least one.
     /// </summary>
-    private static List<ActionProfile> DeriveActions(ScavengeData data, Unit unit, List<ItemDef> working)
+    private static List<ActionProfile> DeriveActions(ScavengeData data, Unit unit, List<ItemDef> working, List<(BodyPart Part, ItemDef Item)> fitted)
     {
         var combat = data.Rules.Combat;
         var left = unit.Body[BodyPart.LeftArm].Efficiency;
         var right = unit.Body[BodyPart.RightArm].Efficiency;
         var result = new List<ActionProfile>();
 
-        void Add(ActionDef a, string? itemId)
+        void Add(ActionDef a, string? itemId, double? arm = null)
         {
             if (a.TwoHanded && (left <= 0 || right <= 0)) return;
-            var arms = a.TwoHanded ? (left + right) / 2 : Math.Max(left, right);
+            var arms = arm ?? (a.TwoHanded ? (left + right) / 2 : Math.Max(left, right));
             if (arms <= 0) return;
 
             var accuracy = a.Accuracy
@@ -212,6 +222,10 @@ public static class ProfileDeriver
         foreach (var item in working)
             foreach (var a in item.Actions)
                 Add(a, item.Id);
+        // A cybernetic arm's own attack (blade, gun) works at that arm's efficiency.
+        foreach (var (part, item) in fitted)
+            foreach (var a in item.Actions)
+                Add(a, item.Id, unit.Body[part].Efficiency);
         // Drones and devices have no fists.
         if (result.All(r => r.Id != combat.Unarmed.Id) && unit.Kind is not (UnitKind.Drone or UnitKind.Device)) Add(combat.Unarmed, null);
         return result;

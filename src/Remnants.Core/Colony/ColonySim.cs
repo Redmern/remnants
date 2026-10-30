@@ -270,6 +270,7 @@ public sealed class ColonySim
         FoodSystem.Run(State, Data);
         DayNightSystem.Run(State, Data);
         RelationshipSystem.Run(State, Data);
+        CyberneticsSystem.Run(this, _rng);
         FamilySystem.Run(State, Data, _rng);
         HousingSystem.Run(State, Data);
         GrowthSystem.Run(State, Data);
@@ -297,6 +298,8 @@ public sealed class ColonySim
             AdmitPatient c => MedicalHandlers.Admit(this, c),
             Discharge c => MedicalHandlers.Discharge(this, c),
             FitProsthetic c => MedicalHandlers.FitProsthetic(this, c),
+            ScheduleSurgery c => CyberneticsHandlers.Schedule(this, c),
+            CancelSurgery c => CyberneticsHandlers.Cancel(this, c),
             SetRecipe c => CraftingHandlers.SetRecipe(this, c),
             QueueRecipe c => CraftingHandlers.Queue(this, c),
             CancelOrder c => CraftingHandlers.Cancel(this, c),
@@ -342,5 +345,12 @@ public sealed class ColonySim
         foreach (var item in scavenge.Items.Values)
             if (item.Salvage is { } salvage && !data.Resources.ContainsKey(salvage.Resource))
                 throw new GameDataException($"Item '{item.Id}' salvages into unknown resource '{salvage.Resource}'.");
+        if (data.Cybernetics is { } cyber)
+            foreach (var node in cyber.Nodes.Values)
+            {
+                if (!scavenge.Items.ContainsKey(node.Id)) throw new GameDataException($"Cybernetics node '{node.Id}': no item of that id.");
+                if (node.Blueprint is { } bp && scavenge.Items.GetValueOrDefault(bp)?.Kind != ItemKind.Blueprint)
+                    throw new GameDataException($"Cybernetics node '{node.Id}': '{bp}' is not a blueprint item.");
+            }
     }
 }

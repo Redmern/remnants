@@ -17,7 +17,7 @@
     "skills": { "Firearms": 50, "Melee": 40 },
     "equipment": ["linked_carbine", "linked_plating"],
     "tags": ["network"],
-    "drops": [ { "item": "linked_carbine", "chance": 0.15 }, { "item": "bp_linked_carbine", "chance": 0.05 } ]
+    "drops": [ { "item": "linked_carbine", "chance": 0.15 }, { "item": "bp_linked_carbine", "chance": 0.05 }, { "item": "linked_core", "chance": 1 } ]
   },
   {
     "id": "linked_drone", "name": "Linked Drone", "hp": 20, "ai": "Linked", "relayRange": 10,
@@ -33,7 +33,8 @@
     "skills": { "Firearms": 45, "Melee": 50 },
     "equipment": ["warden_pulse", "warden_shell"],
     "tags": ["network"],
-    "drops": [ { "item": "linked_carbine", "chance": 0.6 }, { "item": "bp_linked_carbine", "chance": 0.25 }, { "item": "electronics", "chance": 1 } ]
+    "drops": [ { "item": "linked_carbine", "chance": 0.6 }, { "item": "bp_linked_carbine", "chance": 0.25 }, { "item": "electronics", "chance": 1 },
+              { "item": "linked_core", "chance": 1 }, { "item": "linked_core", "chance": 1 }, { "item": "linked_core", "chance": 1 } ]
   },
   {
     "id": "camera", "name": "Camera", "hp": 12, "ai": "Linked", "relayRange": 6, "stealth": -15,

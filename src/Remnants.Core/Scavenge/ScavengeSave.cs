@@ -14,10 +14,12 @@ namespace Remnants.Core.Scavenge;
 /// hooks, field XP, drones and their operators' batteries, overridden Linked; older saves load with no devices, no drones
 /// and no perks in the field.
 /// Version 6 adds the run's environment (hour, day phase, weather slot); older saves load at midday in clear weather.
+/// Version 7 adds cybernetics: survivor units' cybernetic hooks (<see cref="Unit.CyberHooks"/>) and parts locked by
+/// interference; an older run gets its survivors' hooks resolved from their bodies on load, with nothing locked.
 /// </summary>
 public static class ScavengeSave
 {
-    public const int Version = 6;
+    public const int Version = 7;
     private const int OldestVersion = 1;
 
     private sealed record Envelope(int Version, ScavengeState Scavenge);
@@ -31,8 +33,16 @@ public static class ScavengeSave
         if (envelope.Version < OldestVersion || envelope.Version > Version)
             throw new JsonException($"Unsupported scavenge save version {envelope.Version} (expected {OldestVersion}..{Version}).");
         var state = envelope.Scavenge ?? throw new JsonException("Save file has no scavenge state.");
+        if (envelope.Version < 7) MigrateCybernetics(data, state);
         Validate(data, state);
         return new ScavengeSim(data, state);
+    }
+
+    /// <summary>Before version 7 the field knew nothing of cybernetics: resolve survivors' hooks from their bodies.</summary>
+    internal static void MigrateCybernetics(ScavengeData data, ScavengeState state)
+    {
+        foreach (var u in state.Units.Where(u => u.Kind == UnitKind.Survivor && u.CyberHooks.Count == 0))
+            u.CyberHooks = data.CyberHooksFor(u.Body);
     }
 
     /// <summary>A save must still fit the current data/ (an item or enemy may have been renamed by a balancing edit).</summary>

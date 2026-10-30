@@ -27,9 +27,11 @@ namespace Remnants.Core.Scavenge;
 /// </summary>
 public static class Hacking
 {
-    /// <summary>The unit's best hacking tool (pack or equipped), or null.</summary>
+    /// <summary>The unit's best hacking tool (pack or equipped, or built into a working cybernetic arm), or null.</summary>
     public static ItemDef? Tool(ScavengeData data, Unit unit) =>
-        unit.AllItems.Select(id => data.Items[id]).Where(i => i.HackTool is not null)
+        unit.AllItems.Select(id => data.Items[id]).Where(i => i.Prosthetic is null)
+            .Concat(data.FittedParts(unit.Body).Select(f => f.Item))
+            .Where(i => i.HackTool is not null)
             .OrderByDescending(i => i.HackTool!.ChanceBonus).ThenByDescending(i => i.HackTool!.Range).ThenBy(i => i.Id, StringComparer.Ordinal)
             .FirstOrDefault();
 
