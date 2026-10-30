@@ -244,6 +244,7 @@ public static class Hacking
     /// </summary>
     private static void Fail(ScavengeSim sim, Unit unit, Pos at, bool network, string what, double chance)
     {
+        MissionRules.Alarm(sim);
         var state = sim.State;
         var data = sim.Data;
         var rules = data.Rules.Hacking;
