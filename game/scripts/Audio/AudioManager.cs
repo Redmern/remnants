@@ -74,6 +74,7 @@ public partial class AudioManager : Node
         AddChild(Music);
         AddChild(new UiAudio { Name = "UiAudio" });
         AddChild(new SoundCues { Name = "SoundCues" });
+        if (DebugCapture.HasFlag("--audio-selftest")) AddChild(new AudioSelfTest { Name = "AudioSelfTest" });
     }
 
     public override void _ExitTree()

@@ -1,0 +1,109 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Godot;
+using Remnants.Core.Colony;
+using Remnants.Core.Scavenge;
+using Remnants.Game.Scavenge;
+
+namespace Remnants.Game.Audio;
+
+/// <summary>
+/// Debug: <c>godot-mono --headless --path game -- --audio-selftest</c> checks the event map headless and quits with
+/// 0 (pass) or 1 (fail). It checks that every Core colony and scavenge event type maps to something (a sound or a
+/// deliberate []), and that every sound id is well formed. Then it plays a scripted colony (build, upgrade, work,
+/// an expedition) and an autopiloted scavenge run through the same naming the screens use, logging each fired
+/// event and its sound, and checks the key events chose the expected ids. Missing manifest files are reported but
+/// do not fail: the game is meant to stay silent until the assets land.
+/// </summary>
+public partial class AudioSelfTest : Node
+{
+    private readonly List<(string Event, string? Sound, bool Audible)> _fired = [];
+    private readonly List<string> _failures = [];
+
+    public override void _Ready() => CallDeferred(MethodName.Run);
+
+    private void Run()
+    {
+        var audio = AudioManager.Instance!;
+        audio.Fired += (name, sound, audible) => _fired.Add((name, sound, audible));
+        var map = audio.Map;
+
+        foreach (var type in Enum.GetValues<ColonyEventType>())
+            if (map.Resolve(ColonyAudio.EventName(type)) is null) Fail($"colony event {type} ({ColonyAudio.EventName(type)}) is not mapped");
+        foreach (var state in MusicDirector.States)
+            if (!map.Music.ContainsKey(state)) Fail($"music state {state} has no track");
+        foreach (var id in map.AllSoundIds())
+            if (id.Any(c => !(char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c == '_'))) Fail($"sound id '{id}' is not snake_case");
+        foreach (var id in new[] { "hack_start", "hack_success", "hack_fail_alarm", "turret_activate", "door_open", "drone_deploy", "drone_loop", "drone_destroyed", "drone_mark" })
+            if (!map.AllSoundIds().Contains(id)) Fail($"hacking / drone sound '{id}' is not used by any event");
+
+        Colony();
+        Scavenge();
+        foreach (var ui in new[] { "ui.click", "ui.hover", "ui.confirm", "ui.error", "ui.panel_open", "ui.panel_close", "ui.toast" }) audio.FireEvent(ui);
+
+        Expect("colony.constructed", "sfx_build_done");
+        Expect("colony.upgraded", "sfx_build_upgrade");
+        Expect("colony.expedition_launched", "sfx_expedition_launch");
+        Expect("scavenge.moved.survivor", "sfx_step_survivor");
+        Expect("scavenge.extracted", "sfx_extract");
+        Expect("ui.click", "ui_click");
+        if (!_fired.Any(f => f.Event == "ui.click" && f.Audible)) Fail("ui.click did not play (its placeholder should)");
+
+        var missing = map.AllSoundIds().Where(id => !audio.Manifest.TryGet(id, out _) && !PlaceholderSounds.Has(id)).ToList();
+        GD.Print($"[audio-selftest] {_fired.Count} events fired, {_fired.Count(f => f.Audible)} audible; " +
+                 $"{map.AllSoundIds().Count()} sound ids mapped, {missing.Count} not in the manifest yet.");
+        foreach (var f in _failures) GD.PrintErr($"[audio-selftest] FAIL {f}");
+        GD.Print(_failures.Count == 0 ? "[audio-selftest] PASS" : $"[audio-selftest] FAILED ({_failures.Count})");
+        GetTree().Quit(_failures.Count == 0 ? 0 : 1);
+    }
+
+    /// <summary>A short scripted colony: build a farm, upgrade it, put everyone to work, send two adults out, run a day.</summary>
+    private void Colony()
+    {
+        var sim = NewGame.Create(GameDataPaths.Load(), 1, GameDataPaths.LoadScavenge());
+        var seen = sim.State.Events.Count > 0 ? sim.State.Events[^1] : null;
+        void Flush()
+        {
+            var events = sim.State.Events;
+            var start = seen is null ? 0 : events.LastIndexOf(seen) + 1;
+            foreach (var e in events.Skip(start)) AudioManager.Fire(ColonyAudio.EventName(e.Type));
+            if (events.Count > 0) seen = events[^1];
+        }
+        foreach (var res in sim.Data.Resources.Keys) sim.State.Stockpile.Add(res, 500);
+        var farm = sim.Execute(new Construct("farm", 8)).EntityId;
+        Flush();
+        sim.Execute(new Upgrade(sim.State.Buildings.First(b => b.DefId == sim.Data.Rules.TownHallBuildingId).Id));
+        Flush();
+        var adults = sim.State.Survivors.Where(s => !s.IsChild).ToList();
+        foreach (var s in adults.Skip(2))
+            if (farm is { } at) sim.Execute(new AssignJob(s.Id, at));
+        sim.Execute(new LaunchExpedition("outskirts", adults.Take(2).Select(s => new ExpeditionMember(s.Id, new())).ToList()));
+        Flush();
+        for (var i = 0; i < sim.Data.Rules.TicksPerDay; i++) sim.Tick();
+        Flush();
+        GD.Print($"[audio-selftest] colony: night at 23h = {ColonyAudio.IsNight(sim)}, tension = {ColonyAudio.Tension(sim)}");
+    }
+
+    /// <summary>The debug party walks the outskirts to an exit (autopilot); enemy turns happen as they come.</summary>
+    private void Scavenge()
+    {
+        var sim = NewScavenge.Create(GameDataPaths.LoadScavenge(), "outskirts", 7, [new PartySetup(1, ScavengeSession.DebugParty())]);
+        // Every event type, as the screen would name it (no actor: what a side hears from the fog).
+        foreach (var type in Enum.GetValues<ScavengeEventType>())
+            foreach (var name in ScavengeAudio.EventNames(sim, new ScavengeEvent(1, type, "")))
+                if (AudioManager.Instance!.Map.Resolve(name) is null) Fail($"scavenge event {type} ({name}) is not mapped");
+        Autopilot.Play(sim, 1);
+        foreach (var e in sim.State.Events)
+            foreach (var name in ScavengeAudio.EventNames(sim, e))
+                AudioManager.Fire(name);
+    }
+
+    private void Expect(string evt, string sound)
+    {
+        if (!_fired.Any(f => f.Event == evt)) Fail($"{evt} never fired");
+        else if (!_fired.Any(f => f.Event == evt && f.Sound == sound)) Fail($"{evt} chose {_fired.First(f => f.Event == evt).Sound ?? "nothing"}, expected {sound}");
+    }
+
+    private void Fail(string message) => _failures.Add(message);
+}
