@@ -44,10 +44,18 @@ public sealed class SideFog(int playerId, string side)
     {
         var before = Visible;
         var state = sim.State;
-        Side = state.FindParty(PlayerId)?.Side ?? Side;
+        var side = state.FindParty(PlayerId)?.Side ?? Side;
+        var switched = side != Side;
+        Side = side;
         Visible = Visibility.SideVisible(sim.Data, state, Side);
         SeenBefore = Seen;
         Seen = Detection.SeenBy(sim.Data, state, Side);
+        // The team changed (an alliance formed or broke): what the old team saw no longer counts as "before".
+        if (switched)
+        {
+            SeenBefore = new HashSet<int>(Seen);
+            before = new HashSet<int>(Visible);
+        }
         foreach (var id in _knownCaches.Where(kv => Visible.Contains(state.Map.Index(kv.Value.Pos))).Select(kv => kv.Key).ToList())
             _knownCaches.Remove(id);
         foreach (var cache in state.Caches.Where(c => Visible.Contains(state.Map.Index(c.Pos))))
@@ -85,7 +93,8 @@ public sealed class SideFog(int playerId, string side)
             TurnIndex = index,
             Finished = state.Finished,
             Map = new TileMap(),
-            Parties = state.Parties.Select(p => new Party { PlayerId = p.PlayerId, Side = p.Side, Done = p.Done }).ToList(),
+            // Other teams' alliances are none of this player's business: their parties show as on their own.
+            Parties = state.Parties.Select(p => new Party { PlayerId = p.PlayerId, Side = Shown(p.Side, p.PlayerId), Done = p.Done, Left = p.Left }).ToList(),
             Units = units,
             Caches = _knownCaches.Values.OrderBy(c => c.Id).Select(c => new LootCache { Id = c.Id, Pos = c.Pos, Items = new(c.Items) }).ToList(),
             Explored = state.Explored.TryGetValue(Side, out var explored)
@@ -114,9 +123,14 @@ public sealed class SideFog(int playerId, string side)
 
     private static Unit Copy(Unit u) => ProtocolCopy.Clone(u);
 
-    private static Unit Redacted(Unit u)
+    /// <summary>A side as this player may know it: their own team's as is, another team's as the owner's own side.</summary>
+    private string Shown(string side, int? owner) =>
+        side == Side || side is Unit.EnemySide or Unit.NeutralSide || owner is null ? side : Unit.PlayerSide(owner.Value);
+
+    private Unit Redacted(Unit u)
     {
         var copy = ProtocolCopy.Clone(u);
+        copy.Side = Shown(u.Side, u.PlayerId);
         copy.Ai = new AiMemory();
         copy.Origin = u.Origin is { } o ? new Survivor { Name = o.Name, Sex = o.Sex, LifeStage = o.LifeStage } : null;
         return copy;

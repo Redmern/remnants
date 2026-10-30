@@ -213,8 +213,11 @@ so single player, the server and the bots share them.
 - **Fog over the wire.** `SideFog` follows the party's *current* side at every update, so allies get the team's view
   (their ally's units with the colony record cut to name, sex and life stage, like anyone else's; the whole team's
   contacts, sensors and explored tiles; the team's pings) and the moment an alliance breaks each gets only their own
-  again. Alliance offers are sent only to the two players, breaks only to the team, alliance events in the log are
-  addressed (`ScavengeEvent.Sides`) to the sides involved, and a third player hears none of it. `NetFixture.CheckFog`
+  again. Alliance offers (in views and `AllianceProposed`) go only to the two players, breaks only to the team, alliance
+  log lines are addressed (`ScavengeEvent.Sides`) to the two teams involved and carry no unit or position (an offer must
+  not give away a hidden scout), and a third player hears none of it: other teams' parties and units show up in a view on
+  their owner's own side (`player:N`), so who is allied with whom stays private. A seat gone for good is
+  `ScavengeSim.Abandon`ed: its party holds position and allies all downed waiting on it are left behind. `NetFixture.CheckFog`
   judges every message against the receiver's live side.
 
 ### Real parties for online play

@@ -396,7 +396,8 @@ Players scavenge together as teams (details, protocol and how to run it: MULTIPL
   `CarriedById`: the carried unit shares the carrier's tile, `UnitAt` skips it, `ProfileDeriver` takes
   `carryRangePenalty` off the carrier's move and drops special moves; `Sync` keeps it on the carrier and lets go when the
   carrier falls), pings (`ScavengeState.Pings`, per side, limited per turn by `Unit.PingsUsed`).
-- `ScavengeSim.UpdateParties` keeps an all-downed party in play while an ally is up; `Extract` takes the carried unit
+- `ScavengeSim.UpdateParties` keeps an all-downed party in play while an ally is up (not one whose player has left for
+  good: `ScavengeSim.Abandon`, called by the host, sets `Party.Left`); `Extract` takes the carried unit
   (home to its own player) and every follower on the side within the escort radius, re-owned to the extractor.
 - `NewScavenge`: `PartySetup.Team` starts parties allied and spawned together; `EnemyScale` multiplies the enemy count
   and per-type caps by `1 + enemiesPerExtraPlayer × (players − 1)`.
@@ -404,7 +405,7 @@ Players scavenge together as teams (details, protocol and how to run it: MULTIPL
   `GameHost` has `MissionMode` (Versus / Coop) and `SetTeam`, and turns alliance changes into the alliance messages for
   the players involved. Game: `Palette.Ally` / `SidePalette.Ally`, `CoopPanel` (Team), `AllianceBanner`, the Ally card
   section, ping pins in `FogOverlay`, lobby mode / team, Expedition → Online / Co-op.
-- **Saves**: scavenge save version 4 (offers, breaks, pings, next team id, carrying, pings used, sensor owner) and colony
+- **Saves**: scavenge save version 4 (offers, breaks, pings, next team id, carrying, pings used, sensor owner, party left) and colony
   save version 7 carry it; older saves load with everyone on their own side and nobody carried.
 - Tests: `CoopTests` (no friendly fire and overwatch, team fog and contacts, backs, offers and answers, decline and
   lapse, break timing and split sight, carry out and per-player results, put down / let go, left behind, give, heal an

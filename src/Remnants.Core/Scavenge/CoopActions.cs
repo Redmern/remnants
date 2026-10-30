@@ -75,7 +75,8 @@ public static class CoopActions
 
     /// <summary>
     /// The carrier lets go (it went down, died, left the map, or the alliance broke): the carried unit is put on the
-    /// nearest free tile, or stays on the carrier's tile when there is none.
+    /// nearest free floor tile (not an exit) next to it, else one two tiles off in a straight open line, or stays on the
+    /// carrier's tile when there is none (both then stand there; very rare in practice).
     /// </summary>
     internal static void Release(ScavengeState state, Unit carrier)
     {
@@ -89,8 +90,8 @@ public static class CoopActions
         {
             var spot = Enumerable.Range(-r, 2 * r + 1)
                 .SelectMany(dy => Enumerable.Range(-r, 2 * r + 1).Select(dx => new Pos(carrier.Pos.X + dx, carrier.Pos.Y + dy)))
-                .Where(p => map.InBounds(p) && p.Chebyshev(carrier.Pos) == r && map[p] != Terrain.Wall && map[p] != Terrain.Pylon
-                            && state.UnitAt(p) is null)
+                .Where(p => map.InBounds(p) && p.Chebyshev(carrier.Pos) == r && Passable(map[p]) && !map.IsExit(p)
+                            && state.UnitAt(p) is null && (r == 1 || TileMap.Line(carrier.Pos, p).All(q => Passable(map[q]))))
                 .OrderBy(map.Index)
                 .Cast<Pos?>()
                 .FirstOrDefault();
@@ -102,6 +103,9 @@ public static class CoopActions
         }
         carried.Pos = carrier.Pos;
     }
+
+    /// <summary>Tiles a body can be set on without data at hand: everything but walls and pylons (as scavenge.json has it).</summary>
+    private static bool Passable(Terrain t) => t is not (Terrain.Wall or Terrain.Pylon);
 
     /// <summary>Keeps every carried unit on its carrier's tile, and lets go of it when the carrier cannot carry any more.</summary>
     internal static void Sync(ScavengeState state)

@@ -171,6 +171,12 @@ public sealed class NetFixture
                     FogViolations.Add($"{player.Name} was sent {b.Side}'s break.");
                 foreach (var u in s.View.Units.Where(u => u.PlayerId != me && u.Origin is { } o && o.Attributes.Values.Any(v => v > 0)))
                     FogViolations.Add($"{player.Name} was sent {u.Name}'s colony record.");
+                foreach (var p in s.View.Parties.Where(p => p.Side != side && p.Side != Unit.PlayerSide(p.PlayerId)))
+                    FogViolations.Add($"{player.Name} was told player {p.PlayerId} is on {p.Side}.");
+                foreach (var u in s.View.Units.Where(u => u.PlayerId is { } o && u.Side != side && u.Side != Unit.PlayerSide(o) && u.Side != Unit.NeutralSide))
+                    FogViolations.Add($"{player.Name} was told {u.Name} is on {u.Side}.");
+                foreach (var e in s.Events.Where(e => e.Type.ToString().StartsWith("Alliance") && (e.UnitId is not null || e.Pos is not null)))
+                    FogViolations.Add($"{player.Name} got an alliance event placing a unit: '{e.Message}'.");
                 if (s.View.RngState != 0) FogViolations.Add($"{player.Name} was sent the RNG state.");
                 if (s.View.Explored.Keys.Any(k => k != side)) FogViolations.Add($"{player.Name} was sent another side's explored tiles.");
                 foreach (var c in s.View.Caches)

@@ -10,6 +10,9 @@ public sealed class Party
 
     /// <summary>No controllable unit left on the map: the party's run is over and its result is final.</summary>
     public bool Done { get; set; }
+
+    /// <summary>The player is gone for good (multiplayer): their units hold position, and allies stop counting on them.</summary>
+    public bool Left { get; set; }
 }
 
 public enum ScavengeEventType

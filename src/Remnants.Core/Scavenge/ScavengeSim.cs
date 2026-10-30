@@ -175,7 +175,8 @@ public sealed class ScavengeSim
             {
                 var mine = State.Units.Where(u => u.PlayerId == party.PlayerId).ToList();
                 if (mine.Any(u => u.PlayerControlled && u.IsActive)) continue;
-                var allies = State.Units.Where(u => u.Side == party.Side && u.PlayerId != party.PlayerId && u.PlayerControlled && u.IsActive).ToList();
+                var allies = State.Units.Where(u => u.Side == party.Side && u.PlayerId != party.PlayerId && u.PlayerControlled && u.IsActive
+                                                    && State.FindParty(u.PlayerId!.Value) is { Left: false }).ToList();
                 if (allies.Count > 0 && mine.Any(u => u.Status == UnitStatus.Downed && u.Kind == UnitKind.Survivor)) continue;
 
                 party.Done = true;
@@ -198,6 +199,24 @@ public sealed class ScavengeSim
             State.Finished = true;
             State.Log(new(State.Round, ScavengeEventType.Finished, "Everyone has left the zone."));
         }
+    }
+
+    /// <summary>
+    /// A player is gone for good (the multiplayer host decides; like a timeout it is outside input, not a rule): their
+    /// party holds position, and an all-downed ally waiting for them to carry or revive it is left behind.
+    /// </summary>
+    public void Abandon(int playerId)
+    {
+        if (State.FindParty(playerId) is not { Left: false } party) return;
+        party.Left = true;
+        UpdateParties();
+        if (State.CurrentUnit is not { IsActive: true })
+        {
+            State.TurnIndex++;
+            AdvanceTurns();
+        }
+        Visibility.UpdateExplored(Data, State);
+        SyncRng();
     }
 
     /// <summary>Dead units drop what is worth taking into a cache on their tile.</summary>

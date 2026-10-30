@@ -136,7 +136,8 @@ public partial class CoopPanel : PanelContainer
             var seen = _presenter.State.Units.Any(u => u.PlayerId == to && u.IsActive && _presenter.CanSee(u));
             if (!seen && !pending) continue;
             var button = Add(new ActionButton("stat_ally", pending ? $"Offer sent to {_presenter.PlayerName(to)}" : $"Offer {_presenter.PlayerName(to)} an alliance",
-                pending ? "they answer on their turn" : "both parties must see each other", 0, pending ? null : "scav_ally"),
+                pending ? "they answer on their turn" : "both parties must see each other", 0,
+                    pending || _presenter.OffersToMe.Any() ? null : "scav_ally"), // Y accepts an open offer first
                 () => CommandRequested?.Invoke(new ProposeAlliance(pid, unit.Id, to)));
             button.SetBlocked(pending);
         }

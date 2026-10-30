@@ -212,4 +212,27 @@ public class CoopNetTests
         Assert.Empty(c.Link.Inbox.OfType<AllianceDeclined>());
         f.AssertNoLeaks();
     }
+
+    [Fact]
+    public void A_downed_party_whose_ally_leaves_for_good_gets_its_result_and_the_mission_ends()
+    {
+        var f = new NetFixture(Coop());
+        var a = f.Join("Alice");
+        var b = f.Join("Bob");
+        a.Client.SetReady(true);
+        b.Client.SetReady(true);
+        foreach (var u in UnitsOf(f, b))
+        {
+            u.Status = UnitStatus.Downed;
+            u.Stabilized = true;
+        }
+        f.Sim.UpdateParties();
+        Assert.False(f.Sim.State.FindParty(b.Id)!.Done, "waiting for Alice to carry them out");
+
+        a.Client.Leave();
+        Assert.True(f.Sim.State.FindParty(a.Id)!.Left);
+        Assert.False(b.Last<MissionEnded>().Result.Returned.Any());
+        Assert.Equal(HostPhase.Ended, f.Host.Phase);
+        f.AssertNoLeaks();
+    }
 }

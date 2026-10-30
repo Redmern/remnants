@@ -423,4 +423,39 @@ public class CoopTests
         Assert.Empty(old.State.Pings);
         Assert.Equal(Unit.PlayerSide(1), old.State.FindParty(1)!.Side);
     }
+
+    [Fact]
+    public void Joining_a_bigger_team_keeps_a_pending_break_and_drops_moot_offers()
+    {
+        var a = SurvivorUnit(1, new(1, 1));
+        var b = SurvivorUnit(2, new(2, 1));
+        var c = SurvivorUnit(3, new(3, 1));
+        var sim = Arena(8, 4, [a, b, c]);
+        Alliances.Merge(sim.State, 1, 2);
+        Assert.True(sim.Execute(new BreakAlliance(1, a.Id)).Ok);
+        sim.State.Proposals.Add(new AllianceProposal(3, 1, sim.State.Round));
+        sim.State.Proposals.Add(new AllianceProposal(3, 2, sim.State.Round));
+        var team = Alliances.Merge(sim.State, 2, 3);
+        Assert.Equal(team, sim.State.Breaks.Single().Side);
+        Assert.Empty(sim.State.Proposals);
+        Assert.All(sim.State.Events.Where(e => e.Type.ToString().StartsWith("Alliance")), e => Assert.True(e.UnitId is null && e.Pos is null));
+    }
+
+    [Fact]
+    public void An_all_downed_party_stops_waiting_for_an_ally_who_left()
+    {
+        var a = SurvivorUnit(1, new(1, 1));
+        var b = SurvivorUnit(2, new(3, 1));
+        var sim = Arena(8, 4, [a, b]);
+        Alliances.Merge(sim.State, 1, 2);
+        b.Status = UnitStatus.Downed;
+        b.Stabilized = true;
+        sim.UpdateParties();
+        Assert.False(PartyOf(sim, 2).Done);
+        sim.Abandon(1);
+        Assert.True(PartyOf(sim, 1).Left);
+        Assert.True(PartyOf(sim, 2).Done);
+        Assert.Equal(UnitStatus.Dead, b.Status);
+        Assert.False(PartyOf(sim, 1).Done, "the one who left holds position");
+    }
 }

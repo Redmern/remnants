@@ -25,6 +25,8 @@ internal static class ScavengeCommandHandlers
         var from = unit.Pos;
         unit.Pos = c.To;
         unit.Ap -= cost;
+        // The carried unit moves along before anything reacts to the move.
+        if (unit.CarryingId is { } carried && sim.State.FindUnit(carried) is { } load) load.Pos = c.To;
         sim.State.Log(new(sim.State.Round, ScavengeEventType.Moved, $"{unit.Name} moved {from} -> {c.To}.", unit.Id, Pos: c.To));
         sim.Moved(unit, from);
         return ScavengeResult.Success($"{unit.Name} moved to {c.To}.");

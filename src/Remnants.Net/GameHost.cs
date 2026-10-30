@@ -136,6 +136,7 @@ public sealed class GameHost : IHostSink
             seat.Gone = true;
             Log?.Invoke($"{seat.Name} did not come back; seat given up");
             Broadcast(new PlayerLeft(seat.PlayerId, seat.Name, 0));
+            Abandon(seat);
         }
         if (_deadline is { } deadline && now >= deadline && Sim.State.CurrentUnit is { PlayerControlled: true } unit)
         {
@@ -310,10 +311,18 @@ public sealed class GameHost : IHostSink
         foreach (var b in state.Breaks.Except(breaks)) SendTo(Team(b.PlayerId), new AllianceBreakWarning(b.PlayerId, b.EffectiveRound));
         foreach (var b in breaks.Except(state.Breaks).Where(b => b.EffectiveRound <= state.Round))
         {
-            var former = sides.Where(kv => kv.Value == b.Side && kv.Key != b.PlayerId).Select(kv => kv.Key).ToList();
+            var former = sides.Where(kv => kv.Value == sides[b.PlayerId] && kv.Key != b.PlayerId).Select(kv => kv.Key).ToList();
             SendTo([b.PlayerId, .. former], new AllianceBroken(b.PlayerId, former));
         }
         return result;
+    }
+
+    /// <summary>A seat gone for good: allies stop waiting for it (Core's <see cref="ScavengeSim.Abandon"/>), everyone sees the effect.</summary>
+    private void Abandon(Seat seat)
+    {
+        if (Sim is null || Phase != HostPhase.Playing) return;
+        Sim.Abandon(seat.PlayerId);
+        Publish();
     }
 
     private void SendTo(IEnumerable<int> playerIds, Message message)
@@ -357,7 +366,9 @@ public sealed class GameHost : IHostSink
         var state = Sim.State;
         // Dropped seats wait out their turns, but only while someone connected is still playing: with nobody
         // there to play against, the instance holds still instead of running the AI against the absent.
-        bool SomeonePlaying() => _seats.Any(s => s.Connection is not null && state.FindParty(s.PlayerId) is { Done: false });
+        // (A connected player whose people are all downed, waiting on an ally, is not playing.)
+        bool SomeonePlaying() => _seats.Any(s => s.Connection is not null && state.FindParty(s.PlayerId) is { Done: false }
+                                                 && state.Units.Any(u => u.PlayerId == s.PlayerId && u.PlayerControlled && u.IsActive));
         for (var guard = 0; guard < 10000 && !state.Finished && state.CurrentUnit is { PlayerControlled: true } unit
                             && SeatOf(unit.PlayerId) is { Connection: null } && SomeonePlaying(); guard++)
             Act(new EndTurn(unit.PlayerId!.Value, unit.Id));
@@ -423,6 +434,7 @@ public sealed class GameHost : IHostSink
         seat.Gone = forGood || seat.ResultSent;
         Log?.Invoke($"{seat.Name} {(seat.Gone ? "left" : "dropped")}");
         Broadcast(new PlayerLeft(seat.PlayerId, seat.Name, seat.Gone ? 0 : Options.ReconnectSeconds));
+        if (seat.Gone) Abandon(seat);
         AfterChange();
     }
 
