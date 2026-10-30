@@ -231,6 +231,54 @@ Study (not used by the bot): `skillPerTick` 0.12. Alone, a 50-attribute adult ge
 cap of 20 in about 10 days (practising at a job takes ~19); with a mentor about 5 days, and on up to the mentor's level. A tier-1 perk from a mentor takes ~3 days, tier 3
 ~8. Both cost two people's work, so study is for catching someone up (a child, a recruit) rather than for everyone.
 
+## Day and night pass
+
+The colony now keeps hours (ARCHITECTURE.md "Day and night"): a 14-hour day shift (06–20), adults asleep 22–06 and
+children 19–07, an evening off in between. Before this pass everyone worked all 24 ticks of a day, so every work rate
+was rescaled by 24/14 ≈ 1.71 and then the gatherers and the Med Bay were retuned with the bot (20 seeds × 60 days, same
+bot; its farm staffing now counts output per day on the schedule, `Schedule.ShiftHoursPerDay`). The bot never turns a
+Night Shift on, so these numbers are the plain day/night economy.
+
+Data changes (before → after):
+
+- Base output: Woodcutter 0.55 → 0.96, Quarry 0.5 → 0.88, Scrapyard 0.25 → 0.43, Farm 0.6 → 1.03; Workshop, Tailor,
+  Kitchen, Armory, Electronics Lab 1.0 → 1.7 (crafting effort per worker-hour).
+- Training `skillPerTick` 0.05 → 0.085, `attributePerTick` 0.01 → 0.017; XP `perWorkTick` 1 → 1.7, `perStudyTick` 1 → 1.7,
+  `perTeachTick` 0.5 → 0.85; study `skillPerTick` 0.12 → 0.2, `perkWorkPerTier` 96 → 56 (classes keep the day shift).
+- Medical `healPerTick` 0.012 → 0.0155: medics now only work days, so nights are unstaffed care (`unstaffedCare` 0.4) while
+  patients still use medicine every tick. At 0.012 two long-term patients ran the medicine out and sat in bed for 30 days
+  (seed 2), which pushed Town Hall 2 past day 55 in four seeds.
+- Children: they work 12 h (07–19) and keep `childOutputMultiplier` 0.5, so a farming child gives 0.86 of what it did.
+- New: `dayNight` in rules.json (hours, sleep, campfire, hot supper, Night Shift −30% output and 0.5 mood/h, sleep debt
+  and tiredness −15% output, Floodlight 10 wood + 5 scrap, lit at level 2); `newGame.startHour` 6 (games start at dawn).
+
+20 seeds × 60 days, `main` before → after:
+
+| | before | after |
+|---|---|---|
+| median population at day 60 | 8 | 8 |
+| starvation deaths / departures | 0 / 14 | 0 / 17 |
+| expedition deaths | 11 over 335 runs | 7 over 337 runs |
+| births | 33 | 37 |
+| min food stock (days of need, median) | 4.9 | 4.2 |
+| Town Hall 2 / House affordable (median day) | 32.4 / 51.2 | 32.0 / 48.5 |
+| Armory / Electronics Lab (median day) | 53.0 / 58.5 | 51.0 / 58.8 |
+| first pregnancy / first birth (median day) | 38 / 42 | 36 / 40 |
+| first perk point (median day) / survivor-days per level-up | 2.7 / 10.6 | 3.4 / 11.1 |
+
+Economy only (`--no-expeditions`): Town Hall 2 day 20.7 → 21.0, House affordable 33.7 → 33.8, Armory 40.0 → 40.5, Lab
+54.0 → 54.5, min food 5.3 → 5.5 days, median population 8 → 9.
+
+- Target 1 holds, a little tighter: the first week now dips to ~21–28 food (seeds 2 and 7; it was ~27–36), with the
+  day-2 drop of −6.6 coming from the first night, when nobody farms. Min food 4.2 days is at the low end of 4–6.
+- The first night costs a few hours of production, which is why the first perk point slips from day 2.7 to 3.4; the
+  level pace after that is unchanged (11 survivor-days per level).
+- The Night Shift is the player's lever for a crunch: +7 worker-hours a night at 70%, for ~5 mood a night and a tired,
+  15%-slower day. Kept on every night, mood drifts to 0 over a couple of weeks (output ×0.8), so it does not pay for
+  itself long-term; a night or two before a build does. Untested by the bot.
+- Sleep restores 0.2 mood and 0.3 health per hour in a bed; evenings at the campfire 0.15 mood per hour; a cooked meal
+  between dusk and dawn +0.1. Mood only falls from grief and night work, so these mostly speed up recovery after a loss.
+
 ## Watch next pass
 
 - Late food surplus: by day 60 the bot's colonies sit on 100–150 food; Kitchen meals and more mouths absorb some of it.

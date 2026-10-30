@@ -67,7 +67,8 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
 ## Game layout (`game/`)
 
 - `scripts/Colony/ColonySession` — presenter: owns the `ColonySim`, runs fixed ticks at pause/1x/2x/4x
-  (`SecondsPerTick` real seconds per tick at 1x), sends every command, saves/loads `user://colony.json`.
+  (`SecondsPerTick` real seconds per tick at 1x), sends every command, saves/loads `user://colony.json`. `Phase` +
+  `PhaseChanged` and `TickProgress` serve the day/night presentation (see "Day and night").
 - `scripts/Colony/ColonyScreen` — builds the scene in code and wires views to the session.
 - `TownView` (plot grid as kerbed packed-earth lots, building nodes, plot picking; building names only for the hovered
   and selected building), `TownDressing` (purely visual scenery from the kit: noise-varied earth, a campfire on the
@@ -220,9 +221,10 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
 - **Commands only.** The UI changes the sim only via `ColonySim.Execute(IColonyCommand)`
   (`AssignJob`, `Unassign`, `Construct`, `Upgrade`, `LaunchExpedition`, `ApplyExtractionResult`, `AdmitPatient`,
   `Discharge`, `FitProsthetic`, `SetRecipe`, `QueueRecipe`, `CancelOrder`, `StudyBlueprint`, `Matchmake`, `ChoosePerk`,
-  `StartStudy`, `CancelStudy`). Core validates and returns a `CommandResult`
+  `StartStudy`, `CancelStudy`, `SetNightShift`, `InstallFloodlight`). Core validates and returns a `CommandResult`
   with a `CommandError` code. This is also the future client→server intent format.
-- **Tick order:** production (+training) → crafting → study → medical → food → relationships (mood, affinity, couples) →
+- **Tick order:** production (+training) → crafting → study → medical → food → day/night (sleep, night work, evenings) →
+  relationships (mood, affinity, couples) →
   family (births, conception) → housing → growth (aging, growing up).
 - **Scavenge commands** (`Move`, `Attack`, `UseItem` (on a unit, or a tile with `At`), `PickUp`, `Recruit`, `SetStance`
   (Overwatch / Brace), `Lookout`, `EndTurn`, `Extract`; co-op: `ProposeAlliance`, `RespondAlliance`, `BreakAlliance`,
@@ -625,11 +627,53 @@ All numbers live in `data/perks.json` (`skills`, `xp`, `study`, `disciplines`, `
   `xp.migrationPerSkillPoint` XP per skill point they already have (veterans arrive with levels and unspent points);
   unknown perk ids in a save are an error. Tests: `ProgressionTests`, `StudyTests`.
 
+## Day and night
+
+An hour is a tick (`hour = tick % ticksPerDay`); a new game starts at `newGame.startHour` (06:00). Everything is in
+`rules.json` `dayNight`; Core is `Colony/DayNight.cs`, game-side `Colony/DayNightLighting.cs`.
+
+- **Clock** (`DayNight`, pure): `Hour`, `Day`, `HourOf(double tick)` for smooth presentation, `PhaseAt(tick)` →
+  `DayPhase` Dawn (05) / Day (07) / Dusk (18) / Night (20). `ColonySim.Hour` and `ColonySim.Phase` are the queries.
+  `dayNight.enabled` false (the code default, so hand-built test rules keep the old math) means everyone works every
+  tick and nobody sleeps; tests use `TestData.Real` with it off and `TestData.RealWithNights` for the cycle itself.
+- **Schedule** (`Schedule`): the day shift is `workHours` [06, 20); adults sleep `adultSleep` [22, 06), children
+  `childSleep` [19, 07) (children work 07–19 and go to bed first). A worker's `Factor` this hour: 1 on the day shift;
+  `nightShift.outputMultiplier` (0.7) outside it if their building has `NightShift` on, they are an adult and the
+  building is lit (indoors, level ≥ `litMinLevel`, or a Floodlight); else 0; times `tired.outputMultiplier` (0.85) while
+  tired. Production, crafting effort, Med Bay staffing and training/XP all go through `Schedule.Crew`; classes keep the
+  student's day shift. Queries: `OnShift`, `IsAsleep`, `IsTired`, `CanRunNightShift`, `OutputPerDay` (per-day output on
+  the schedule; `OutputPerTick` stays the on-shift rate), `Schedule.ShiftHoursPerDay`.
+- **Sleep and mood** (`DayNightSystem`, after food): asleep in their window (a bed or a Med Bay cot) gives
+  `sleepMoodPerTick` / `sleepHealthPerTick` and pays back sleep debt; working the window adds `Survivor.SleepDebt`; at
+  `tired.threshold` they are tired (−mood per tick, −15% output) until slept off. Night work costs
+  `nightShift.moodPerTick`. Off work from dusk to bedtime: `campfireMoodPerTick`. A cooked meal from dusk to dawn adds
+  `nightMealMoodPerTick`. Logged only when relevant: `NightShift` at the end of the day shift per building with a night
+  crew ("Night shift at Woodcutter: −30% output." or "Too dark …"), `Tired` at the start of the day shift.
+- **Commands**: `SetNightShift(building, on)` (errors `NoJobAtBuilding`, `NeedsLight`), `InstallFloodlight(building)`
+  (`dayNight.floodlightCost`; errors `NotOutdoor`, `AlreadyLit`, `CannotAfford`).
+- **Save** version 10 adds `Building.NightShift`, `Building.Floodlight`, `Survivor.SleepDebt`; older saves load with none
+  on and everyone rested.
+- **Presentation** (no rules): `DayNightLighting` (made by `TownView`, so the menu backdrop has it too) eases a shown time
+  toward `Tick + session.TickProgress` and samples keyframes for the sun (east to west, warm low light at dawn and dusk),
+  moonlight, sky colour, ambient and fog; whole days skipped are dropped, so fast-forward and loads never flash, and a
+  paused game holds still. Lights register with `AddLight` / `AddGlow` and fade with `Night`: a lantern per building,
+  an inside glow in homes and the Town Hall, a floodlight mast on lit outdoor workplaces that burns while the Night Shift
+  is on, the campfire (flickers, brighter at night) and six perimeter torches; at most 12 lamp OmniLights, the rest only
+  glow. `SurvivorWalkers` send sleepers home (patients to the Med Bay door) and in, children first by their bedtime;
+  night-shift workers stay at their site; the awake evening crowd sits at the campfire. `MenuBackdrop` holds the light
+  at dusk. HUD: phase icon and name in the `TopBar` (tooltip: hours, who works or sleeps, night shifts), Night Shift
+  toggle with its penalty and the Floodlight on the `BuildingPanel`, asleep / night shift / tired badges on survivor
+  cards, a toast on a shift's first night (later nights only log).
+- **For audio**: switch on `ColonySession.Phase` / `PhaseChanged(DayPhase)` (raised after the tick that crossed into a
+  phase, after a fast-forward and after a load), or `DayNight.PhaseAt(tick, rules)` in Core — not on raw hours.
+  `ColonyAudio.IsNight` still reads the clock with its own 20–06 window until it is switched over.
+
 ## Data files
 
 - `resources.json` — resource ids and names.
 - `jobs.json` — per job: skill + weight, attribute weights, body-region weights, tool bonus, `childrenAllowed`.
-- `buildings.json` — category, job, produced resource, base output, `minTownHallLevel`, and per-level
+- `buildings.json` — category, job, produced resource, base output (per worker-hour on shift), `outdoor` (a Night Shift
+  needs light), `minTownHallLevel`, and per-level
   cost / worker slots / output multiplier / beds / patients. Level 1 cost = construction cost.
 - `recipes.json` — what production buildings make (see "Crafting tiers").
 - `perks.json` — skills (names, learning attributes), XP sources and level curve, study buildings and rates,
@@ -637,7 +681,8 @@ All numbers live in `data/perks.json` (`skills`, `xp`, `study`, `disciplines`, `
 - `rules.json` — tick/time scale, output formula constants, training rates, food, housing grace,
   meals, crafting (queue limits, quality roll), expedition (party size per Town Hall level, rations, recruit ages), medical (heal/worsen rates, medicine use),
   life (growth stages and rates), relationships (affinity), family (conception, pregnancy, baby names), mood,
-  new-game setup (counts, age/stat ranges, stock, starting items, starting buildings, names).
+  new-game setup (counts, age/stat ranges, stock, starting items, starting buildings, names, start hour), `dayNight`
+  (phase hours, work and sleep windows, sleep / campfire / supper mood, Night Shift, sleep debt, light, Floodlight cost).
 - `items.json` — weapons (actions, with `noise` and `reveal`), clothing/armor (with `stealth`), tools (movement modifiers, carry, sight, `detection`),
   flares and motion sensors (`use.lightRadius`/`lightRounds`, `use.sensorRadius`: used on a tile),
   consumables (med-kit, bandage, evac beacon), materials (with `salvage` into colony resources), prosthetics
@@ -679,7 +724,9 @@ production building, some at level 2–3) with staffed, queued Armory and Tailor
 drone scouting (saves its own still with `--screenshot`), `--fog-demo` (with `--scavenge`) stages a fog ambush (`--select-unit=watcher` shows the unit on overwatch with its range;
 `--select-unit=ID` and `--pause-menu` work in any scavenge run), `--world-demo` fakes a few weeks of scouting and sends a party on the road (for
 screenshots); `--scavenge --zone=ID --seed=N` plays the debug mission in another zone, `--multiplayer` opens the multiplayer menu and
-`--mp-host[=PORT]` / `--mp-join=ADDR` with `--mp-name`, `--mp-ready`, `--mp-coop`, `--mp-team=N`, … script it (see `MULTIPLAYER.md`), `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG (any scene). HUD shots: `--pause-menu`, `--settings`, `--build-menu`, `--select-survivor=ID`, `--survivor-tab=N` (colony), `--menu-settings` (main menu). Needs a display; on
+`--mp-host[=PORT]` / `--mp-join=ADDR` with `--mp-name`, `--mp-ready`, `--mp-coop`, `--mp-team=N`, … script it (see `MULTIPLAYER.md`), `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG (any scene). Day and night: `--night-demo` (the demo town two days on, a Floodlight and the Night Shift on the Woodcutter,
+selected), `--hour=H` runs to the next H:00, pauses and puts sleepers indoors, `--no-select` clears the selection for
+scenery shots. HUD shots: `--pause-menu`, `--settings`, `--build-menu`, `--select-survivor=ID`, `--survivor-tab=N` (colony), `--menu-settings` (main menu). Needs a display; on
 Wayland pass `--display-driver wayland --disable-vsync` so an unfocused window still renders:
 
 ```sh

@@ -44,6 +44,9 @@ a few people into dangerous zones (**Scavenge mode**). Every loss is permanent.
     permanent loss (for example a leg) leaves a debuff until a **prosthetic** is fitted at the
     Med Bay. Cybernetics can end up **better** than the original limb.
   - Needs: food and housing. Starvation causes damage and then death.
+  - **Day and night**: survivors work a day shift and sleep at night (children go to bed earlier); a building can run
+    a Night Shift at reduced output and a mood and sleep cost, outdoor sites only when lit (level 2 or a Floodlight).
+    Sleep, campfire evenings and hot suppers lift mood. The town's light, lamps and people follow the clock.
 - **Population growth**: adults form relationships, couples have children, children need
   food and care and grow into adults over time. Recruits come from scavenging.
 - **Housing pressure**: anyone without a bed (newborns, recruits) has a grace timer. If no
