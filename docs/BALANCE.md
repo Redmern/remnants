@@ -793,7 +793,7 @@ Building materials are heavy on purpose: Salvaged Wood 2.5 kg → 2 wood, Stone 
 | Scrapyard Flats | 10% / 11.7 / 5.4, 2.2, 3.3 | 15% / 15.7 | 8.6, 4.0, 3.7, 0.9, 0.8, 0.7 | 2.9 |
 | Suburb Ruins | 32% / 8.4 / 2.6, 1.2, 1.7 | 35% / 14.1 | 5.3, 4.5, 3.1, 1.4, 0.3, 2.0 | 1.2 |
 | Flooded Mall | 55% / 5.5 / 1.8, 0.8, 0.9 | 56% / 9.6 | 4.2, 2.9, 1.6, 0.5, 0.2, 1.8 | 0.6 |
-| Rail Depot | — | 94% / 2.1 | 0.9, 0.5, 0.4, 0, 0.1, 0.3 | 0.2 |
+| Rail Depot | 94% / 1.6 / 0.4, 0.1, 0.4 | 94% / 2.1 | 0.9, 0.5, 0.4, 0, 0.1, 0.3 | 0.2 |
 
 Enemy loot alone (`--no-salvage`): Outskirts 5% deaths, 13.6 items, scrap 5.4 cloth 3.3 food 3.3; Scrapyard 16%, 14.1
 items, scrap 6.9. So kills add ~2.5 items per early run and salvage another ~3 (mostly wood and stone), at the price of
