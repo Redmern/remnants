@@ -101,6 +101,28 @@ public sealed record ActionDef
     /// it there, but it still has to be in the side's sight. Melee reveals less than gunfire.
     /// </summary>
     public int Reveal { get; init; } = 1;
+
+    /// <summary>Extra punch against enemies with a tag (a Linked carbine against the Network).</summary>
+    public BaneDef? Bane { get; init; }
+
+    /// <summary>
+    /// Accuracy a quality tier adds per point of its stat multiplier above 1 (Fine +0.25 × this; Crude loses it the
+    /// same way). Gear whose handling depends on the build: a fine Linked carbine shoots straighter, not just harder.
+    /// </summary>
+    public double QualityAccuracy { get; init; }
+}
+
+/// <summary>
+/// An attack's edge against enemies carrying <see cref="Tag"/> (<see cref="Remnants.Core.Scavenge.EnemyDef.Tags"/>):
+/// <see cref="HitBonus"/> is added to the hit chance, the damage roll is multiplied, then the target's armor counts for
+/// <see cref="ArmorPierce"/> less (not below 0).
+/// </summary>
+public sealed record BaneDef
+{
+    public string Tag { get; init; } = "";
+    public double HitBonus { get; init; }
+    public double DamageMultiplier { get; init; } = 1;
+    public double ArmorPierce { get; init; }
 }
 
 /// <summary>What using a consumable does.</summary>

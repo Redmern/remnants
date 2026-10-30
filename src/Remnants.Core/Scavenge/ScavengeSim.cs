@@ -229,7 +229,11 @@ public sealed class ScavengeSim
         SyncRng();
     }
 
-    /// <summary>Dead units drop what is worth taking into a cache on their tile.</summary>
+    /// <summary>
+    /// Dead units drop what is worth taking into a cache on their tile: a survivor or stranger everything they carry,
+    /// an enemy whatever its <see cref="EnemyDef.Drops"/> roll (each in order, never its own equipment), a device only
+    /// lootable gear.
+    /// </summary>
     internal void Kill(Unit unit, ScavengeEventType type, string message)
     {
         unit.Status = UnitStatus.Dead;
@@ -243,7 +247,9 @@ public sealed class ScavengeSim
         }
         if (unit.Kind == UnitKind.Device) Hacking.UnitKilled(this, unit);
 
-        var drops = unit.AllItems.Where(id => unit.Kind is not (UnitKind.Enemy or UnitKind.Device) || Data.Items[id].LootWeight > 0).ToList();
+        var drops = unit.Kind == UnitKind.Enemy && unit.EnemyDefId is { } enemyId
+            ? Data.Enemies[enemyId].Drops.Where(d => Rng.NextDouble() < d.Chance).Select(d => d.Item).ToList()
+            : unit.AllItems.Where(id => unit.Kind != UnitKind.Device || Data.Items[id].LootWeight > 0).ToList();
         if (drops.Count == 0) return;
         var cache = State.Caches.Find(c => c.Pos == unit.Pos);
         if (cache is null)

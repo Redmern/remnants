@@ -91,6 +91,8 @@ public sealed class ScavengeData
             {
                 MinDamage = (int)Math.Round(a.MinDamage * m),
                 MaxDamage = (int)Math.Round(a.MaxDamage * m),
+                Accuracy = a.Accuracy + (m - 1) * a.QualityAccuracy,
+                Bane = a.Bane is { } b ? b with { DamageMultiplier = 1 + (b.DamageMultiplier - 1) * m, ArmorPierce = b.ArmorPierce * m } : null,
             }).ToList(),
         };
     }
@@ -193,6 +195,9 @@ public sealed class ScavengeData
             foreach (var item in enemy.Equipment)
                 if (!Items.TryGetValue(item, out var def) || def.Slot is null)
                     throw new GameDataException($"Enemy '{enemy.Id}': '{item}' is not an equippable item.");
+            foreach (var drop in enemy.Drops)
+                if (!Items.ContainsKey(drop.Item) || Items[drop.Item].Natural || drop.Chance is <= 0 or > 1)
+                    throw new GameDataException($"Enemy '{enemy.Id}': drop '{drop.Item}' needs a known, non-natural item and a chance in (0, 1].");
         }
 
         foreach (var zone in Zones.Values)
@@ -234,6 +239,8 @@ public sealed class ScavengeData
         if (a.Reach < 1 || a.ApCost < 1) throw new GameDataException($"{where}: action '{a.Id}' needs reach and AP cost of at least 1.");
         if (a.MinDamage < 0 || a.MaxDamage < a.MinDamage)
             throw new GameDataException($"{where}: action '{a.Id}' needs 0 <= minDamage <= maxDamage.");
+        if (a.Bane is { } bane && (string.IsNullOrWhiteSpace(bane.Tag) || bane.DamageMultiplier < 0 || bane.ArmorPierce < 0))
+            throw new GameDataException($"{where}: action '{a.Id}' bane needs a tag and non-negative numbers.");
     }
 
     private static void RequireRange(int[] range, string name)

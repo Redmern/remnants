@@ -32,7 +32,8 @@ public sealed record ActionProfile(
     double Accuracy,
     int Noise,
     int Area = 0,
-    int Reveal = 1);
+    int Reveal = 1,
+    BaneDef? Bane = null);
 
 /// <summary>
 /// Everything the rules need about a unit, derived from attributes + carried gear + body state + stance.
@@ -205,7 +206,7 @@ public static class ProfileDeriver
             damageScale = Math.Max(0, damageScale);
 
             result.Add(new ActionProfile(a.Id, a.Name, itemId, a.Pattern, a.Reach,
-                a.MinDamage * damageScale, a.MaxDamage * damageScale, a.ApCost, Math.Max(0, accuracy), a.Noise, a.Area, a.Reveal));
+                a.MinDamage * damageScale, a.MaxDamage * damageScale, a.ApCost, Math.Max(0, accuracy), a.Noise, a.Area, a.Reveal, a.Bane));
         }
 
         foreach (var item in working)

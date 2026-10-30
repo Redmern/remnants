@@ -46,6 +46,19 @@ public sealed record EnemyDef
 
     /// <summary>Item ids it fights with (claws are an item too), so enemy profiles derive like ours.</summary>
     public List<string> Equipment { get; init; } = new();
+
+    /// <summary>What it is ("network"), for weapons with a <see cref="Remnants.Core.Items.BaneDef"/> against it.</summary>
+    public List<string> Tags { get; init; } = new();
+
+    /// <summary>What it may leave behind when killed, each rolled on its own. Its equipment never drops.</summary>
+    public List<EnemyDropDef> Drops { get; init; } = new();
+}
+
+/// <summary>An item an enemy drops on death with this chance (0..1).</summary>
+public sealed record EnemyDropDef
+{
+    public string Item { get; init; } = "";
+    public double Chance { get; init; }
 }
 
 public sealed record WeightedId

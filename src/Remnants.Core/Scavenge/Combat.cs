@@ -32,10 +32,10 @@ public static class Combat
 
     /// <summary>
     /// Action accuracy minus the target's dodge and cover (plus its brace bonus), minus range falloff past the first tile,
-    /// plus an ambush bonus, clamped to the rules' min/max. An ambush may also take the dodge away.
+    /// plus an ambush bonus and a bane's hit bonus, clamped to the rules' min/max. An ambush may also take the dodge away.
     /// </summary>
     public static double HitChance(ScavengeData data, TileMap map, Pos from, ActionProfile action, Pos target, UnitProfile targetProfile,
-        AmbushInfo? ambush = null)
+        AmbushInfo? ambush = null, BaneDef? bane = null)
     {
         var c = data.Rules.Combat;
         var chance = action.Accuracy
@@ -43,14 +43,15 @@ public static class Combat
             - CoverAgainst(data, map, target, from)
             - targetProfile.CoverBonus
             - Math.Max(0, Math.Sqrt(from.DistanceSquared(target)) - 1) * c.RangeFalloff
-            + (ambush?.HitBonus ?? 0);
+            + (ambush?.HitBonus ?? 0)
+            + (bane?.HitBonus ?? 0);
         return Math.Clamp(chance, c.MinHitChance, c.MaxHitChance);
     }
 
     /// <summary>The hit chance of this attack as it would resolve now, ambush included (for previews and the AI).</summary>
     public static double ChanceToHit(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, Pos? from = null) =>
         HitChance(sim.Data, sim.State.Map, from ?? attacker.Pos, action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) },
-            target.Pos, sim.Profile(target), AmbushAgainst(sim.Data, sim.State, attacker, target, from));
+            target.Pos, sim.Profile(target), AmbushAgainst(sim.Data, sim.State, attacker, target, from), Bane(sim.Data, action, target));
 
     /// <summary>What a drone's mark on the target adds to the attacker's side's hit chance.</summary>
     public static double MarkBonus(ScavengeSim sim, Unit attacker, Unit target) =>
@@ -142,8 +143,9 @@ public static class Combat
     {
         var data = sim.Data;
         var state = sim.State;
+        var bane = Bane(data, action, target);
         var chance = HitChance(data, state.Map, attacker.Pos, action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) },
-            target.Pos, sim.Profile(target), ambush);
+            target.Pos, sim.Profile(target), ambush, bane);
         if (ambush is { } a)
             state.Log(new(state.Round, ScavengeEventType.Ambushed,
                 $"{attacker.Name} ambushes {target.Name} from the fog{a.Describe()}.", attacker.Id, target.Id, target.Pos,
@@ -158,13 +160,23 @@ public static class Combat
         }
 
         var raw = (action.MinDamage + (action.MaxDamage - action.MinDamage) * sim.Rng.NextDouble()) * (ambush?.DamageMultiplier ?? 1);
-        var damage = Math.Max(1, raw - sim.Profile(target).Armor);
+        var armor = sim.Profile(target).Armor;
+        if (bane is not null)
+        {
+            raw *= bane.DamageMultiplier;
+            armor = Math.Max(0, armor - bane.ArmorPierce);
+        }
+        var damage = Math.Max(1, raw - armor);
         var part = PickHitLocation(sim, target);
         state.Log(new(state.Round, ScavengeEventType.Attacked,
             $"{attacker.Name} hit {target.Name}'s {part} for {damage:0} ({action.Name}).", attacker.Id, target.Id, target.Pos,
             Anonymous: $"{target.Name} was hit in the {part} for {damage:0} from the fog."));
         ApplyDamage(sim, target, part, damage);
     }
+
+    /// <summary>The action's bane when the target is an enemy carrying its tag, else null.</summary>
+    public static BaneDef? Bane(ScavengeData data, ActionProfile action, Unit target) =>
+        action.Bane is { } bane && target.EnemyDefId is { } id && data.Enemies[id].Tags.Contains(bane.Tag) ? bane : null;
 
     /// <summary>Weighted by rules.combat.hitLocations; a hit on a missing limb lands on the torso.</summary>
     private static BodyPart PickHitLocation(ScavengeSim sim, Unit target)
