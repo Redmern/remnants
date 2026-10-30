@@ -135,6 +135,8 @@ public partial class PortraitStudio : Node
         var model = build(_models);
         model.RotationDegrees = new Vector3(0, -18, 0); // a three-quarter turn reads better than flat front-on
         _stage.AddChild(model);
+        // Rigged bodies stand in their idle pose (frame 0), so a portrait matches the figure on the map.
+        Anim.CharacterRig.PoseStill(model, "idle");
         Frame(model);
         _viewport.RenderTargetUpdateMode = SubViewport.UpdateMode.Once;
         _pending = (target, 2);

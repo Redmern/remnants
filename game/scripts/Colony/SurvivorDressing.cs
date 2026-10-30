@@ -8,9 +8,8 @@ namespace Remnants.Game.Colony;
 
 /// <summary>
 /// Purely visual body dressing shared by the colony and scavenge views: missing limbs hidden, prosthetics swapped in
-/// at the joint (the model the part's cybernetics node names, tinted by its tier; see <see cref="ProstheticModel"/>), and
-/// equipped gear hung on the body's sockets
-/// (manifest <c>sockets</c> on bodies, <c>attach</c> on <c>item_*</c> models: the item's attach point lands on the
+/// (the model the part's cybernetics node names, tinted by its tier; see <see cref="ProstheticModel"/>), and equipped
+/// gear hung on the body's sockets (manifest <c>sockets</c> on bodies, <c>attach</c> on <c>item_*</c> models: the item's attach point lands on the
 /// socket, parented under the part it rides on).
 /// </summary>
 public static class SurvivorDressing
@@ -25,21 +24,25 @@ public static class SurvivorDressing
 
     /// <summary>
     /// Sockets each slot may use, best first. Clothing and armor go on the torso; a weapon in the hand, else slung on
-    /// the back; a tool on the back, else hung on the chest (over any garment), else in the hand.
+    /// the back (the left hand when only that arm is left); a tool on the back, else hung on the chest (over any garment),
+    /// else in the hand.
     /// </summary>
     private static readonly (EquipSlot Slot, string[] Sockets)[] GearSockets =
     [
         (EquipSlot.Body, ["torso"]),
-        (EquipSlot.Weapon, ["hand_r", "back"]),
+        (EquipSlot.Weapon, ["hand_r", "hand_l", "back"]),
         (EquipSlot.Tool, ["back", "torso", "hand_r"]),
     ];
 
     /// <summary>
-    /// Hides missing limbs and swaps prosthetic ones in at the same joint. The prosthetic models are built for the
-    /// adult male; they are moved to this body's joint and scaled down for a child.
+    /// Hides missing limbs and fits prosthetic ones. On a rigged body (manifest v2) the prosthetic's skinned mesh moves
+    /// under the body's <c>Skeleton3D</c> (its skin binds by bone name to the bones in <c>limb_bones</c>), so it follows
+    /// every clip. A static body (v1) gets the old swap: the prosthetic model placed at the limb's joint, scaled down for
+    /// a child.
     /// </summary>
     public static void FitLimbs(ModelLibrary library, Node3D model, Body body, bool child)
     {
+        var skeleton = Skeleton(model);
         foreach (var (part, nodeName) in LimbNodes)
         {
             var state = body[part];
@@ -51,9 +54,24 @@ public static class SurvivorDressing
             var kind = Body.RegionOf(part) == BodyRegion.Arms ? "arm" : "leg";
             var side = nodeName[^1];
             var (variant, tint) = ProstheticModel(state, kind);
-            if ((library.TryInstance($"prosthetic_{kind}_{variant}_{side}") ?? library.TryInstance($"prosthetic_{kind}_cyborg_{side}"))
-                is not { } prosthetic) continue;
+            var id = new[] { $"prosthetic_{kind}_{variant}_{side}", variant, $"prosthetic_{kind}_cyborg_{side}" }.FirstOrDefault(library.Has);
+            if (id is null || library.TryInstance(id) is not { } prosthetic) continue;
             if (tint is { } t) Tint(prosthetic, t);
+            if (skeleton is not null && Skinned(prosthetic, nodeName) is { } mesh)
+            {
+                var bones = library.LimbBones(id).GetValueOrDefault(nodeName) ?? [];
+                if (bones.All(b => skeleton.FindBone(b) >= 0))
+                {
+                    mesh.GetParent().RemoveChild(mesh);
+                    mesh.Owner = null;
+                    mesh.Name = nodeName + ProstheticSuffix;
+                    mesh.Transform = Transform3D.Identity;
+                    skeleton.AddChild(mesh);
+                    mesh.Skeleton = mesh.GetPathTo(skeleton);
+                }
+                prosthetic.Free();
+                continue;
+            }
             var joint = prosthetic.FindChild(nodeName, true, false) as Node3D;
             var scale = child && joint is not null && joint.Position.Y > 0 ? limb.Position.Y / joint.Position.Y : 1f;
             prosthetic.Scale = Vector3.One * scale;
@@ -61,6 +79,9 @@ public static class SurvivorDressing
             limb.GetParent().AddChild(prosthetic);
         }
     }
+
+    /// <summary>A prosthetic mesh moved onto a rigged body is named <c>{part}_prosthetic</c> (e.g. <c>leg_l_prosthetic</c>).</summary>
+    public const string ProstheticSuffix = "_prosthetic";
 
     /// <summary>
     /// The model variant for a fitted part (<c>prosthetic_{kind}_{variant}_{side}</c>) and the tint it wears: the node's
@@ -101,6 +122,15 @@ public static class SurvivorDressing
         foreach (var child in node.GetChildren()) Tint(child, tint);
     }
 
+    /// <summary>The body's skeleton on a rigged model; null on a static one.</summary>
+    public static Skeleton3D? Skeleton(Node3D model) =>
+        model.FindChildren("*", nameof(Skeleton3D), true, false).OfType<Skeleton3D>().FirstOrDefault();
+
+    /// <summary>A prosthetic model's skinned limb mesh (named after the part it replaces).</summary>
+    private static MeshInstance3D? Skinned(Node3D prosthetic, string part) =>
+        prosthetic.FindChildren("*", nameof(MeshInstance3D), true, false).OfType<MeshInstance3D>()
+            .Where(m => m.Skin is not null).OrderBy(m => m.Name == part ? 0 : 1).FirstOrDefault();
+
     /// <summary>
     /// Hangs the equipped items (by slot, item ids may carry an <c>@quality</c> suffix) on a body model built from
     /// <paramref name="bodyId"/>. Call after <see cref="FitLimbs"/> so a hand item rides on a prosthetic arm and a
@@ -111,6 +141,7 @@ public static class SurvivorDressing
         var sockets = library.Sockets(bodyId);
         if (sockets.Count == 0) return;
         var scale = GearScale(library, bodyId);
+        var skeleton = Skeleton(model);
         var taken = new HashSet<string>();
         foreach (var (slot, preferred) in GearSockets)
         {
@@ -119,20 +150,48 @@ public static class SurvivorDressing
             var attach = library.AttachPoints(modelId);
             foreach (var name in preferred)
             {
-                if (taken.Contains(name) || !attach.TryGetValue(name, out var at) || !sockets.TryGetValue(name, out var socket)) continue;
-                if (VisiblePart(model, socket.Part) is not { } part || library.TryInstance(modelId) is not { } item) continue;
-                // Model space: the item's attach point on the socket, turned by its rot_deg, scaled to the body.
+                // Gear has no hand_l attach point: the left hand holds it as the right one would.
+                var atName = name == "hand_l" && !attach.ContainsKey(name) ? "hand_r" : name;
+                if (taken.Contains(name) || !attach.TryGetValue(atName, out var at) || !sockets.TryGetValue(name, out var socket)) continue;
                 var basis = Basis.FromEuler(at.RotationDegrees * Mathf.Pi / 180f) * Basis.FromScale(Vector3.One * scale);
-                var inModel = new Transform3D(basis, socket.Point - basis * at.Point);
-                item.Transform = RelativeTo(model, part).AffineInverse() * inModel;
-                item.Name = $"Gear_{slot}";
-                part.AddChild(item);
+                if (skeleton is not null && socket.Bone is { } bone && skeleton.FindBone(bone) >= 0)
+                {
+                    // Rigged: under a BoneAttachment3D on the socket bone (identity at rest at the socket point).
+                    if (!PartShown(model, skeleton, socket.Part) || library.TryInstance(modelId) is not { } held) continue;
+                    held.Transform = new Transform3D(basis, -(basis * at.Point));
+                    held.Name = $"Gear_{slot}";
+                    SocketNode(skeleton, bone).AddChild(held);
+                }
+                else
+                {
+                    if (VisiblePart(model, socket.Part) is not { } part || library.TryInstance(modelId) is not { } item) continue;
+                    // Model space: the item's attach point on the socket, turned by its rot_deg, scaled to the body.
+                    var inModel = new Transform3D(basis, socket.Point - basis * at.Point);
+                    item.Transform = RelativeTo(model, part).AffineInverse() * inModel;
+                    item.Name = $"Gear_{slot}";
+                    part.AddChild(item);
+                }
                 // A garment shares the chest with a hung tool (binoculars over a jacket); everything else is exclusive.
                 if (slot != EquipSlot.Body) taken.Add(name);
                 break;
             }
         }
     }
+
+    /// <summary>The body's <see cref="BoneAttachment3D"/> on a socket bone, made on first use.</summary>
+    public static BoneAttachment3D SocketNode(Skeleton3D skeleton, string bone)
+    {
+        var name = $"Socket_{bone}";
+        if (skeleton.GetNodeOrNull<BoneAttachment3D>(name) is { } existing) return existing;
+        var socket = new BoneAttachment3D { Name = name, BoneName = bone };
+        skeleton.AddChild(socket);
+        return socket;
+    }
+
+    /// <summary>On a rigged body: the part is there (its own mesh shown, or a prosthetic fitted in its place).</summary>
+    private static bool PartShown(Node3D model, Skeleton3D skeleton, string? part) =>
+        part is null || skeleton.GetNodeOrNull(part + ProstheticSuffix) is not null
+                     || model.FindChild(part, true, false) is not Node3D node || ShownWithin(model, node);
 
     /// <summary>Gear is modelled for the adult male; other bodies scale it by their chest height.</summary>
     private static float GearScale(ModelLibrary library, string bodyId)
