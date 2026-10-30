@@ -18,6 +18,16 @@ public partial class DebugCapture : Node
     public static string? Value(string name) =>
         OS.GetCmdlineUserArgs().FirstOrDefault(a => a.StartsWith($"{name}="))?[(name.Length + 1)..];
 
+    private static bool _attached;
+
+    /// <summary>Once per run: puts the capture (if asked for) on the tree root, so it survives scene changes.</summary>
+    public static void Attach(SceneTree tree)
+    {
+        if (_attached) return;
+        _attached = true;
+        if (FromCommandLine() is { } capture) tree.Root.CallDeferred(Node.MethodName.AddChild, capture);
+    }
+
     public static DebugCapture? FromCommandLine()
     {
         if (Value("--screenshot") is not { Length: > 0 } path) return null;

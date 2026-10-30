@@ -39,6 +39,7 @@ public partial class ScavengeScreen : Node3D
 
     public override void _Ready()
     {
+        Hud.GameSettings.Boot(GetTree());
         _mission = ScavengeSession.TakeMission();
         _presenter = new ScavengePresenter(_mission.Driver);
         var models = new ScavengeModels(ModelLibrary.Load());
@@ -64,7 +65,6 @@ public partial class ScavengeScreen : Node3D
         SyncAll();
         foreach (var e in _presenter.State.Events.Where(Shown).TakeLast(8)) _log.Event(e);
 
-        if (DebugCapture.FromCommandLine() is { } capture) AddChild(capture);
         if (float.TryParse(DebugValue("--zoom"), out var zoom)) _camera.Camera.Size = zoom;
         if (int.TryParse(DebugValue("--autoplay"), out var steps)) _ = Autoplay(steps);
     }

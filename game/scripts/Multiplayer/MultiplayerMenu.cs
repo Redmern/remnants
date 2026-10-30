@@ -34,6 +34,7 @@ public partial class MultiplayerMenu : Control
 
     public override void _Ready()
     {
+        Hud.GameSettings.Boot(GetTree());
         Theme = HudTheme.Shared;
         NetPump.Ensure(GetTree());
         Build();

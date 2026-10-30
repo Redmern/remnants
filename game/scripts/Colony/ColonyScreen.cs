@@ -31,6 +31,7 @@ public partial class ColonyScreen : Node3D
 
     public override void _Ready()
     {
+        Hud.GameSettings.Boot(GetTree());
         var data = GameDataPaths.Load();
         // The session outlives this scene so a party can leave for the scavenge scene and come back to it.
         _session = ColonySession.Current ??= new ColonySession(NewGame.Create(data, NewGameSeed, GameDataPaths.LoadScavenge()));
@@ -71,7 +72,6 @@ public partial class ColonyScreen : Node3D
         }
         if (DebugCapture.HasFlag("--world-demo") && _session.Sim.State.Tick == 0) RunWorldDemo();
         if (DebugCapture.HasFlag("--world-map") || DebugCapture.HasFlag("--world-demo")) _worldMap.Open(DebugCapture.Value("--zone"));
-        if (DebugCapture.FromCommandLine() is { } capture) AddChild(capture);
         CallDeferred(MethodName.ShowUnseenReport);
     }
 
