@@ -22,7 +22,7 @@ public enum UnlockKind
     /// <summary>A cybernetics tier (<c>tier:N</c>) or specialisation (<c>spec:ID</c>) of data/cybernetics.json.</summary>
     Prosthetic,
 
-    /// <summary>A vehicle chassis, engine or upgrade (not built yet: always <c>planned</c>).</summary>
+    /// <summary>A vehicle chassis, engine or upgrade (checked by a registered validator, see <see cref="SchematicCatalog.UnlockValidators"/>).</summary>
     Vehicle,
 }
 
@@ -290,6 +290,13 @@ public sealed class SchematicCatalog
 
     public SchematicDef? Find(string id) => All.GetValueOrDefault(id);
 
+    /// <summary>
+    /// Extra unlock checks per kind, for features whose data Core's own checks do not know (vehicles): given the colony
+    /// data and an unlock id, an error message or null. Kinds without a validator here and without a built-in check
+    /// (<see cref="UnlockKind.Vehicle"/> by default) are not checked. Register at startup, before data loads.
+    /// </summary>
+    public static readonly Dictionary<UnlockKind, Func<GameData, string, string?>> UnlockValidators = new();
+
     /// <summary>The schematic that gates this unlock, or null when it is free (in the default set).</summary>
     public string? GateOf(UnlockKind kind, string id, int level = 0) => _gates.GetValueOrDefault((kind, id, level));
 
@@ -325,8 +332,6 @@ public sealed class SchematicCatalog
                     throw new GameDataException($"{where}: a level is given for (and only for) buildingLevel unlocks.");
                 if (u.Kind == UnlockKind.BuildingLevel && u.Level < 2)
                     throw new GameDataException($"{where}: buildingLevel unlocks start at level 2 (level 1 is the building unlock).");
-                if (u.Kind is UnlockKind.Vehicle && !s.Planned)
-                    throw new GameDataException($"{where}: {u.Kind} content is not in the game yet, so the schematic must be planned.");
             }
             if (s.Has(SchematicSource.Research) && At(Rules.Research.Cost, s.Tier) <= 0)
                 throw new GameDataException($"{where}: tier {s.Tier} cannot be researched (rules.research.cost is 0).");
@@ -368,6 +373,8 @@ public sealed class SchematicCatalog
                     case UnlockKind.Prosthetic when !ProstheticKnown(data, u.Id):
                         throw new GameDataException($"{where}: '{u.Id}' is not a cybernetics tier:N or spec:ID (or cybernetics.json is not loaded).");
                 }
+                if (UnlockValidators.TryGetValue(u.Kind, out var check) && check(data, u.Id) is { } error)
+                    throw new GameDataException($"{where}: {error}");
             }
         foreach (var id in new[] { Rules.Decrypt.Building, Rules.Research.Building, Rules.Radio.Building })
             if (!data.Buildings.ContainsKey(id)) throw new GameDataException($"Schematics rules: unknown building '{id}'.");

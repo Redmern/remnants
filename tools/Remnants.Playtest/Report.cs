@@ -47,7 +47,8 @@ public static class Report
                           $"known at day 30/60/90 {known} (median), by source [{string.Join(", ", sources)}], found {runs.Sum(r => r.Schematics!.Found)}, " +
                           $"duplicates {runs.Sum(r => r.Schematics!.Duplicates)}, Research Data gained {runs.Sum(r => r.Schematics!.ResearchDataGained):0}, " +
                           $"trader visits {runs.Sum(r => r.Schematics!.TraderVisits)}, contracts done {runs.Sum(r => r.Schematics!.ContractsDone)}, " +
-                          $"Town Hall 3 reached {runs.Count(r => r.Schematics!.TownHallLevel >= 3)}/{runs.Count}");
+                          $"Town Hall 3 reached {runs.Count(r => r.Schematics!.TownHallLevel >= 3)}/{runs.Count}, Armory + Lab L2 " +
+                          $"{runs.Count(r => r.Schematics!.ArmoryAndLab2)}/{runs.Count}, ran a threat-2 zone {runs.Count(r => r.Schematics!.MaxThreatRun >= 2)}/{runs.Count}");
         }
         sb.AppendLine($"totals: starvation deaths {runs.Sum(r => r.StarvationDeaths)}, expedition deaths {runs.Sum(r => r.ExpeditionDeaths)} over {runs.Sum(r => r.Expeditions)} expeditions " +
                       $"({runs.Sum(r => r.ExpeditionsWithDeaths)} with deaths), departures {runs.Sum(r => r.Departures)}, births {runs.Sum(r => r.Births)}, " +

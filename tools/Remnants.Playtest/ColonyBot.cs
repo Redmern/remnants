@@ -21,6 +21,9 @@ public sealed record BotOptions
 
     /// <summary>Highest zone threat the bot will risk (it climbs only after a clean run at the level below).</summary>
     public int MaxThreat { get; init; } = 2;
+
+    /// <summary>Every other run goes to the hardest zone the threat cap allows (off = always the easiest).</summary>
+    public bool Stretch { get; init; } = true;
 }
 
 /// <summary>
@@ -427,9 +430,11 @@ public sealed class ColonyBot
         // Never alone: a lone survivor who goes down has nobody to patch them up.
         if (size < Math.Min(2, _sim.MaxPartySize)) return;
 
-        // Easiest known zone up to the current threat cap; prefer close and fresh ones.
+        // Easiest known zone up to the current threat cap, prefer close and fresh ones; every other run (once the cap has
+        // climbed) the hardest zone the cap allows, so the bot sees the next region (and its schematics and trader).
+        var stretch = _options.Stretch && Expeditions.Count % 2 == 1 && _threatCap > 1;
         var zone = _sim.WorldZones().Where(z => z.Intel != ZoneIntel.Unknown && z.Zone.Threat <= _threatCap)
-            .OrderBy(z => z.Zone.Threat).ThenBy(z => z.Depletion > 0.5 ? 1 : 0).ThenBy(z => z.Zone.TravelDays).ThenBy(z => z.Zone.Id)
+            .OrderBy(z => stretch ? -z.Zone.Threat : z.Zone.Threat).ThenBy(z => z.Depletion > 0.5 ? 1 : 0).ThenBy(z => z.Zone.TravelDays).ThenBy(z => z.Zone.Id)
             .FirstOrDefault();
         if (zone is null) return;
         // A party that would arrive in the dark waits outside for dawn (it costs rations, see PlanArrival).

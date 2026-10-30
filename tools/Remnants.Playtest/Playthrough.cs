@@ -26,7 +26,8 @@ public sealed record PlaythroughSummary(
 /// Research Data, Research Data gained in all, trader visits, and the highest Town Hall level reached.
 /// </summary>
 public sealed record SchematicSummary(double? FirstDay, double? FirstTier2Day, int?[] KnownAt, SortedDictionary<string, int> BySource,
-    int Found, int Duplicates, double ResearchDataGained, int TraderVisits, int ContractsDone, int TownHallLevel);
+    int Found, int Duplicates, double ResearchDataGained, int TraderVisits, int ContractsDone, int TownHallLevel, int MaxThreatRun,
+    bool ArmoryAndLab2);
 
 /// <summary>
 /// Cybernetics: the first day a design of each tier could be queued (requirements met, building there), limbs lost,
@@ -186,7 +187,9 @@ public sealed class Playthrough
             ids.Select(id => s.LearnedAt.TryGetValue(id, out var t) ? t / (double)Sim.Data.Rules.TicksPerDay : (double?)null).Where(d => d is not null).Min();
         var bySource = new SortedDictionary<string, int>(s.LearnedFrom.GroupBy(kv => kv.Value.ToString()).ToDictionary(g => g.Key, g => g.Count()));
         return new SchematicSummary(DayOf(s.Known), DayOf(s.Known.Where(id => Sim.Data.Schematics.All[id].Tier >= 2)), _knownAt, bySource,
-            s.Found, s.Duplicates, _researchData, Sim.State.Radio.Visits, Sim.State.Radio.ContractsDone, Sim.TownHallLevel);
+            s.Found, s.Duplicates, _researchData, Sim.State.Radio.Visits, Sim.State.Radio.ContractsDone, Sim.TownHallLevel,
+            Bot.Expeditions.Select(e => Sim.Scavenge!.Zones[e.Zone].Threat).DefaultIfEmpty(0).Max(),
+            Sim.State.Buildings.Any(b => b.DefId == "armory" && b.Level >= 2) && Sim.State.Buildings.Any(b => b.DefId == "electronics_lab" && b.Level >= 2));
     }
 
     private CyberSummary? Cyber()
