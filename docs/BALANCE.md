@@ -398,6 +398,27 @@ outcomes (lockers block tiles, so runs differ), as in the fog pass.
 Watch next pass: Rail Depot and up are harder with cameras and turrets; the hack AP cost (2) against the per-device work;
 whether a novice should get lockers at 65% (they are not on the Network) or terminals higher than ~35%.
 
+## Story Act 1 pass
+
+`dotnet run --project tools/Remnants.Playtest -- --story --seeds=1..20 --days=50` (the story bot: two strongest adults,
+the colony's gear, the first choice in every dialogue, "talk" to the Tally).
+
+| Mission | Closed in 50 days | Median day | STORY.md target | Notes |
+|---|---|---|---|---|
+| M1 Home | 20/20 | 8 | early Act 1 | needs Farm, Woodcutter, Workshop, Radio Mast, then the dusk scene |
+| M2 First Light | 17/20 | 9 | ~day 7–12 | 5 of 22 runs failed (party wipe), retried 3 days later |
+| M3 Signal in the Rust | 17/20 | 15 | — | the Tally arrive on round 4; hack lockouts are the main delay |
+| M4 The Stranger | 16/20 (4 closed as failed) | 18 | — | Juniper dies in about one run in four; the caravan opens either way |
+| M5 Hold the Line | 10/20 | 39 | ~day 30 | gated by Town Hall 2, which the bot reaches late (day 30–47); every run held |
+
+Changes from the first sweep, in which M2 failed 16 of 35 runs with 43 deaths and M4 timed out 12 times:
+- M2: the antenna wakes one Husk in the shed. It no longer also sends the patrol at the party.
+- M4: one crawler ambushes when Juniper moves, not two. Juniper starts at 30 HP, not 18.
+- The bot: it no longer walks out on a teammate who is fighting, and it waits for a bandage before an Aid mission.
+
+Act 1 lands on the doc's timeline up to M4. M5 waits on Town Hall 2, which the bot reaches late, as in the plain
+sweeps.
+
 ## Linked carbine pass
 
 The fog pass found that a geared party which fights the Linked still loses, and named the Linked carbine as the lever.

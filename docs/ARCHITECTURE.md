@@ -63,6 +63,9 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   - `Network` — the Linked relay graph (groups, shared knowledge, squad focus, pylon alarm and reinforcements).
   - `ExtractionResult` per player — returned survivors (with injuries/health), recruits, deaths, loot.
   - `ScavengeSave` — versioned save/load with validation against `data/`.
+  - Story missions in the field: `FieldMission` (objectives, triggers, prompts), `MissionRules` (the rules over
+    `ScavengeState.Mission`), `HandmadeMaps` (handmade maps and fixed rooms). See "Story mode".
+- `Story/` — Story mode's campaign (see "Story mode"): `CampaignState`, `Campaign`, `Dialogue`, `StoryData` + loader.
 
 ## Game layout (`game/`)
 
@@ -795,6 +798,73 @@ An hour is a tick (`hour = tick % ticksPerDay`); a new game starts at `newGame.s
 - **For audio**: switch on `ColonySession.Phase` / `PhaseChanged(DayPhase)` (raised after the tick that crossed into a
   phase, after a fast-forward and after a load), or `DayNight.PhaseAt(tick, rules)` in Core — not on raw hours.
   `ColonyAudio.IsNight(DayPhase)` does: the night bed and music for Night, the day ones for Dawn, Day and Dusk.
+
+## Story mode
+
+The spec is STORY.md. The data format, field by field, is docs/story/FORMAT.md. Core: `Story/` (campaign) and
+`Scavenge/FieldMission.cs`, `MissionRules.cs`, `HandmadeMaps.cs` (the field side, which runs without the Story module).
+
+- **Data** (`data/story/`, `StoryDataLoader`, `StoryData.Validate`): `characters.json`, `missions/*.json` (campaign
+  order), `dialogue/*.json`, `maps/*.json`. `ColonySim.Story` holds it; the game sets it on every colony, a Sandbox one
+  never uses it.
+- **Campaign** (`ColonyState.Campaign`, null = Sandbox): mission progress (Locked / Available / Active / Done(outcome) /
+  Failed(retry tick)), flags, characters, the radio inbox, the open dialogue, the dialogue log, the last debrief.
+  `Campaign.Start` makes a fresh colony a Story game: one starting child becomes Pell (`Survivor.UniqueId`).
+  `Campaign.Tick` runs after the colony tick and the world map: retries come back, missions whose `requires` hold
+  unlock in data order and queue their briefing call, and colony missions (M1, the colony tasks) check their
+  objectives. A scene objective calls once the others are done, at its time of day.
+- **Field missions**: `LaunchStoryMission(mission, members)` launches through the expedition rules (a mission may allow
+  a bigger party) and tags `Expedition.MissionId`. `OpenExpeditionScavenge` builds the run from `Campaign.Setup`: the
+  script, the handmade map (perimeter variant by Town Hall level), the fixed room, the watchtower posts, a retry's
+  extra enemies. `ApplyNow` hands the `ObjectiveResult` to `Campaign.Returned`, which adds the field flags and then
+  pays rewards (done), applies the fail branch (failed), or leaves the mission open (left early).
+- **Rewards** go through `ISchematicGrants` (`Campaign.Schematics`). `CampaignLedger` keeps schematics in the campaign
+  until the schematics module lands; the switch is one line to an adapter onto `Schematics.Grant(colony, id,
+  SchematicSource.Story)`. Features not built yet (vehicles) grant the schematic and a `Fallback` reward.
+- **Dialogue** (`Dialogue`): graphs of lines with up to three choices. Node effects apply when a line is shown, choice
+  effects when it is picked; conditional lines and choices use `ConditionDef`. Placeholders are resolved in Core.
+  Commands: `TakeCall`, `AdvanceDialogue`, `ChooseDialogue`; the UI only renders `Dialogue.View`.
+- **In the field** (`MissionRules`, `ScavengeState.Mission`): objectives (reach, hack, retrieve, escort, aid,
+  survive, defend, kill tag, undetected) are re-checked after every command and AI turn. Triggers fire once each: on
+  start, round, area entered, objective done or failed, item picked up, a tagged unit seen, alarm, prompt chosen.
+  Their actions are spawn, chatter, activate / complete / fail, field flags, change sides, follow, prompt, split the
+  loot and wake. A prompt blocks every command but `ChooseOption`. A mission at home (`AtHome`, the perimeter defense)
+  ends the run when it is done or failed, with everyone still standing home. Story units carry `Unit.Tag`,
+  `CharacterId` (never a colony recruit; they come back in `ObjectiveResult.Escorted`), `NoRecruit`, `Patrol` and
+  `Raised` (a watchtower post: + sight and detection, `scavenge.json` `story`). Structures (the Radio Mast) are units
+  on the party's side that take no turns. Neutral bands (the Tally) take no turns until a trigger makes them hostile
+  (`band:<tag>`, a foe to everyone).
+- **Maps** (`HandmadeMaps`): an ASCII grid plus a legend of named markers. Fixtures sit at markers: caches, devices,
+  enemies with patrols, NPCs, structures, towers. `Validate` checks the grid, the fixtures and that every tile can be
+  reached (doors count as passable). `Stamp` puts a fixed room into a generated map: a ring of floor round it, paths cut
+  to the spawn and every exit, and no random fixtures inside. `NewScavenge.Create(..., MissionSetup)` takes either a
+  handmade map or a generated map with a room. A raid system can pass its own `HandmadeMapDef` built from the colony
+  layout.
+- **Saves**: colony version 11 (`Campaign`, `Survivor.UniqueId`, `Expedition.MissionId`), scavenge version 6
+  (`Mission`: the whole field script is copied in, plus the map id and `HandmadeMaps.Hash`; units' and devices' story
+  fields). Older saves load as Sandbox and as plain runs. Day-night, prosthetics and schematics take versions too;
+  whichever merges later renumbers.
+- **Game** (`game/scripts/Story/`):
+  - `StoryHud` in the colony HUD: a strip under the top bar (radio with waiting calls, journal, next objective),
+    `RadioPanel`, `JournalPanel`, `BriefingPanel` (Plan the party → the expedition planner in mission mode),
+    `DebriefPanel`, and `DialoguePanel` (portrait by character id and mood, radio frame variant, typewriter, choices
+    1–3 with hints, Skip, log). Colony time pauses while a dialogue is open.
+  - `StoryArt` resolves portraits, markers and frames from `assets/generated`.
+  - `WorldMapPanel` draws gold / hollow diamonds on zone edges (pulsing while new), radio waves at the colony, Marrow's
+    truck on its road, and a story section on the zone card.
+  - In the scavenge HUD: `MissionPanel` (objectives with progress), `ChatterStrip`, the prompt as a `DialoguePanel`,
+    and `ObjectiveMarkers` (beams on objective tiles, watchtower posts).
+  - New Game asks Story or Sandbox (`NewGameChoice`).
+  - Debug: `--story` (with `--colony`), `--story-demo=radio|dialogue|worldmap|briefing|journal`,
+    `--scavenge --story-mission=ID [--th=N] [--rounds=N]`.
+- **Playtest**: `--story [--prompt=N]` plays a Story game. The colony bot takes calls (first choice), builds the Radio
+  Mast and a Watchtower, and launches open story missions; `StoryBot` plays them by their objectives. See BALANCE.md
+  "Story Act 1 pass".
+- **Tests**: `StoryDataTests` (data valid, rewards are catalogue schematics, maps connected, door passable, room
+  stamping), `CampaignTests` (Pell, M1 → M2 with the dusk scene, unlock order, fail and retry, failed-for-good, rewards
+  through the adapter, leaving early, saves mid-campaign and mid-mission, perimeter variants and towers),
+  `DialogueTests` (choices, effects, conditions, conditional lines, placeholders, Sandbox), `ObjectiveTests` (each kind
+  passes and fails; triggers once; prompts block and branch; patrols; wipe; determinism).
 
 ## Data files
 

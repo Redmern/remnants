@@ -73,6 +73,9 @@ public sealed class ScavengeModels(ModelLibrary library)
         return root;
     }
 
+    /// <summary>A generated model by id, or null (set pieces such as the watchtower).</summary>
+    public Node3D? Instance(string id) => library.TryInstance(id);
+
     public Node3D Crate() => library.TryInstance("loot_crate") ?? Box(new Vector3(1.1f, 0.65f, 0.65f), new Color(0.6f, 0.5f, 0.25f));
 
     /// <param name="hacked">Device units: whether it works for a party (the <c>_hacked</c> variant).</param>
@@ -89,6 +92,7 @@ public sealed class ScavengeModels(ModelLibrary library)
             hover.AddChild(drone);
             return hover;
         }
+        if (Story(unit) is { } storyModel) return storyModel;
         if (unit.Kind == UnitKind.Enemy)
         {
             var linked = unit.EnemyDefId?.StartsWith("linked") == true;
@@ -111,6 +115,23 @@ public sealed class ScavengeModels(ModelLibrary library)
         if (library.TryInstance(id) is not { } model) return null;
         CharacterRig.Attach(library, model, id);
         return model;
+    }
+
+    /// <summary>
+    /// Story units with art of their own: named characters (Juniper bandaged once treated), the Tally band (a member
+    /// variant by unit id, Cole himself), and structures to defend (the Radio Mast).
+    /// </summary>
+    private Node3D? Story(Unit unit)
+    {
+        if (unit.Tag == "mast") return library.TryInstance("radio_mast_l1");
+        if (unit.CharacterId == "juniper") return library.TryInstance(unit.FollowingId is null ? "story_juniper" : "story_juniper_bandaged");
+        if (unit.CharacterId is { } character) return library.TryInstance($"story_{character}");
+        return unit.EnemyDefId switch
+        {
+            "cole" => library.TryInstance("story_cole_brannigan"),
+            "tally_scav" => library.TryInstance($"story_tally_member_{unit.Id % 5 + 1}"),
+            _ => null,
+        };
     }
 
     private static Node3D Box(Vector3 size, Color color)
