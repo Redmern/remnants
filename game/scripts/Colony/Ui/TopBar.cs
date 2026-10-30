@@ -20,6 +20,9 @@ public partial class TopBar : PanelContainer
     private readonly ColonySession _session;
     private readonly Label _day = Widgets.Label("", "Display");
     private readonly Label _hour = Widgets.Label("", "Number");
+    private readonly TextureRect _phaseIcon = new() { StretchMode = TextureRect.StretchModeEnum.KeepCentered, CustomMinimumSize = new Vector2(26, 26) };
+    private readonly Label _phase = Widgets.Label("", "Small");
+    private DayPhase? _shownPhase;
     private readonly Dictionary<int, Button> _speedButtons = new();
     private readonly Dictionary<string, ResourceChip> _chips = new();
     private readonly PanelContainer _pop;
@@ -39,6 +42,15 @@ public partial class TopBar : PanelContainer
         AddThemeStyleboxOverride("panel", PanelArt.Box(new(Palette.Panel, Palette.EdgeDark, 0.05f, Rivets: true, Strip: Palette.RustDark), 10, 4));
         var row = Widgets.Row(10);
         AddChild(row);
+
+        // Sun / moon and the phase, then day and hour; the tooltip says what the hour means for the colony.
+        var phaseBox = Widgets.Column(-2);
+        phaseBox.MouseFilter = MouseFilterEnum.Pass;
+        phaseBox.AddChild(_phaseIcon);
+        _phase.HorizontalAlignment = HorizontalAlignment.Center;
+        _phase.AddThemeFontSizeOverride("font_size", 11);
+        phaseBox.AddChild(_phase);
+        row.AddChild(phaseBox);
 
         var clock = Widgets.Column(-4);
         _day.AddThemeFontSizeOverride("font_size", 18);
@@ -95,12 +107,37 @@ public partial class TopBar : PanelContainer
     /// <summary>The Build hotkey does what the button does.</summary>
     public void EmitBuild() => BuildPressed?.Invoke();
 
+    private void RefreshPhase(ColonySim sim)
+    {
+        var phase = sim.Phase;
+        if (phase != _shownPhase)
+        {
+            _shownPhase = phase;
+            var (icon, color) = PhaseLook(phase);
+            _phaseIcon.Texture = Icons.Get(icon, 22, "stat_day");
+            _phaseIcon.Modulate = color;
+            _phase.Text = phase.ToString().ToUpperInvariant();
+            _phase.AddThemeColorOverride("font_color", color);
+        }
+        var tip = ColonyText.PhaseTip(sim);
+        _phaseIcon.TooltipText = _phase.TooltipText = _day.TooltipText = _hour.TooltipText = tip;
+    }
+
+    public static (string Icon, Color Color) PhaseLook(DayPhase phase) => phase switch
+    {
+        DayPhase.Dawn => ("phase_dawn", Palette.Rust),
+        DayPhase.Day => ("phase_day", Palette.Warn),
+        DayPhase.Dusk => ("phase_dusk", Palette.Amber),
+        _ => ("phase_night", Palette.Night),
+    };
+
     public void Refresh()
     {
         var sim = _session.Sim;
         var rules = sim.Data.Rules;
         _day.Text = $"DAY {sim.State.Tick / rules.TicksPerDay + 1}";
         _hour.Text = $"{sim.State.Tick % rules.TicksPerDay:00}:00";
+        RefreshPhase(sim);
         foreach (var (speed, button) in _speedButtons) button.SetPressedNoSignal(speed == _session.Speed);
 
         _history.Record(sim);
@@ -163,7 +200,7 @@ public partial class TopBar : PanelContainer
         foreach (var b in makers)
         {
             var workers = sim.State.WorkersAt(b.Id).Count();
-            lines.Add($"Made by {ColonyText.BuildingName(sim, b)}: {workers} worker{(workers == 1 ? "" : "s")}, about {sim.OutputPerTick(b) * sim.Data.Rules.TicksPerDay:0.#}/day");
+            lines.Add($"Made by {ColonyText.BuildingName(sim, b)}: {workers} worker{(workers == 1 ? "" : "s")}, about {sim.OutputPerDay(b):0.#}/day");
         }
         if (id == sim.Data.Rules.Food.ResourceId) lines.Add($"Eaten: about {sim.FoodPerDay:0.#}/day by the people at home");
         if (makers.Count == 0 && id != sim.Data.Rules.Food.ResourceId)

@@ -19,6 +19,9 @@ public partial class ColonyScreen : Node3D
     private SurvivorWalkers _walkers = null!;
     private ColonyHud _hud = null!;
 
+    /// <summary>A new game nobody has played yet (debug demos only stage on one).</summary>
+    private bool IsFreshGame => _session.Sim.State.Tick == _session.Sim.Data.Rules.NewGame.StartHour;
+
     public override void _Ready()
     {
         Hud.GameSettings.Boot(GetTree());
@@ -50,10 +53,10 @@ public partial class ColonyScreen : Node3D
         AddChild(audio);
         audio.Setup(_session, layout, camera, _hud);
 
-        if ((DebugCapture.HasFlag("--demo") || DebugCapture.HasFlag("--family-demo")) && _session.Sim.State.Tick == 0) RunDemo();
+        if ((DebugCapture.HasFlag("--demo") || DebugCapture.HasFlag("--family-demo")) && IsFreshGame) RunDemo();
         if (DebugCapture.HasFlag("--family-demo")) RunFamilyDemo();
-        if (DebugCapture.HasFlag("--crafting-demo") && _session.Sim.State.Tick == 0) RunCraftingDemo();
-        if (DebugCapture.HasFlag("--perks-demo") && _session.Sim.State.Tick == 0) RunPerksDemo();
+        if (DebugCapture.HasFlag("--crafting-demo") && IsFreshGame) RunCraftingDemo();
+        if (DebugCapture.HasFlag("--perks-demo") && IsFreshGame) RunPerksDemo();
         if (DebugCapture.HasFlag("--loop-demo") && _session.Sim.State.NextExpeditionId == 1)
         {
             ScavengeHandoff.UseAutopilot = DebugCapture.HasFlag("--autopilot");
@@ -64,7 +67,14 @@ public partial class ColonyScreen : Node3D
             _hud.Expedition.Toggle();
             _hud.Expedition.Pick(_session.Sim.State.Survivors.Where(s => !s.IsChild).Select(s => s.Id).Take(2));
         }
-        if (DebugCapture.HasFlag("--world-demo") && _session.Sim.State.Tick == 0) RunWorldDemo();
+        if (DebugCapture.HasFlag("--world-demo") && IsFreshGame) RunWorldDemo();
+        if (DebugCapture.HasFlag("--night-demo") && IsFreshGame) RunNightDemo();
+        if (int.TryParse(DebugCapture.Value("--hour"), out var hour)) JumpToHour(hour);
+        if (DebugCapture.HasFlag("--no-select"))
+        {
+            _hud.Roster.Select(null);
+            _town.Select(null);
+        }
         if (DebugCapture.HasFlag("--world-map") || DebugCapture.HasFlag("--world-demo")) _hud.WorldMap.Open(DebugCapture.Value("--zone"));
         if (DebugCapture.HasFlag("--pause-menu")) _hud.CallDeferred(ColonyHud.MethodName.OpenPause);
         if (DebugCapture.HasFlag("--settings")) _hud.Settings.CallDeferred(Hud.Overlay.MethodName.Open);
@@ -138,6 +148,35 @@ public partial class ColonyScreen : Node3D
         _hud.Roster.Select(adults.FirstOrDefault());
         if (farm is { } f) _town.Select(f);
         _session.SetSpeed(4);
+    }
+
+    /// <summary>
+    /// Debug: the demo town plus a Quarry and Workshop, a Floodlight and the Night Shift on the Woodcutter (selected),
+    /// two days in so people have homes (for screenshots of the night).
+    /// </summary>
+    private void RunNightDemo()
+    {
+        RunDemo();
+        var sim = _session.Sim;
+        foreach (var (res, amount) in new[] { ("wood", 200.0), ("stone", 100.0), ("scrap", 40.0) }) sim.State.Stockpile.Add(res, amount);
+        _session.Execute(new Construct("quarry", 10));
+        _session.Execute(new Construct("workshop", 14));
+        _session.Execute(new Construct("kitchen", 15));
+        if (sim.State.Buildings.FirstOrDefault(b => b.DefId == "woodcutter") is { } cutter)
+        {
+            _session.Execute(new InstallFloodlight(cutter.Id));
+            _session.Execute(new SetNightShift(cutter.Id, true));
+            _town.Select(cutter.Id);
+        }
+        _session.FastForward(2 * sim.Data.Rules.TicksPerDay, _ => false);
+    }
+
+    /// <summary>Debug: run to the next <paramref name="hour"/>:00, pause there and put everyone where that hour has them.</summary>
+    private void JumpToHour(int hour)
+    {
+        _session.FastForward(_session.Sim.Data.Rules.TicksPerDay, s => s.Hour == hour);
+        _session.SetSpeed(0);
+        _walkers.Settle();
     }
 
     /// <summary>

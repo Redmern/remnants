@@ -39,6 +39,12 @@ public static class Palette
     /// </summary>
     public static readonly Color Ally = new("74c98a");
 
+    /// <summary>
+    /// Night: the moon, sleep and the Night Shift. A muted blue-grey, far from the Network's saturated cyan. Dawn and
+    /// dusk use <see cref="Rust"/> / <see cref="Amber"/>, the day <see cref="Warn"/>'s sunny yellow.
+    /// </summary>
+    public static readonly Color Night = new("8fa0bf");
+
     /// <summary>The AI Network. Only the Linked, pylons and Network effects use it.</summary>
     public static readonly Color Network = new("3fd8e6");
 

@@ -106,11 +106,26 @@ public partial class EventLog : PanelContainer
             var e = events[i];
             var (icon, color, kind) = Style(e.Type);
             Add($"D{e.Tick / rules.TicksPerDay + 1} {e.Tick % rules.TicksPerDay:00}h", icon, color, e.Message, kind);
-            if (ToastFor(e.Type) is { } toast) Important?.Invoke(NoticeFor(e, toast.Title, icon, color));
+            if (ToastFor(e.Type) is { } toast && !RepeatNightShift(events, i)) Important?.Invoke(NoticeFor(e, toast.Title, icon, color));
         }
         if (events.Count > 0) _lastSeen = events[^1];
         if (Advice.Next(_session.Sim) is { } tip && _tipsShown.Add(tip.Id))
             Add("Tip", "ui_info", Palette.Amber, tip.Text, Kind.Tip);
+    }
+
+    /// <summary>
+    /// A night shift that already ran the night before only gets a log line: the toast is for its first night (or a
+    /// building that turns out too dark), not every dusk.
+    /// </summary>
+    private bool RepeatNightShift(System.Collections.Generic.List<ColonyEvent> events, int index)
+    {
+        var e = events[index];
+        if (e.Type != ColonyEventType.NightShift) return false;
+        var day = _session.Sim.Data.Rules.TicksPerDay;
+        for (var j = index - 1; j >= 0 && events[j].Tick >= e.Tick - day; j--)
+            if (events[j].Type == ColonyEventType.NightShift && events[j].BuildingId == e.BuildingId && events[j].Message == e.Message
+                && events[j].Tick < e.Tick) return true;
+        return false;
     }
 
     /// <summary>
@@ -143,6 +158,7 @@ public partial class EventLog : PanelContainer
         ColonyEventType.LevelUp => ("Level up", true),
         ColonyEventType.PerkLearned => ("Perk learned", true),
         ColonyEventType.StudyFinished => ("Class finished", true),
+        ColonyEventType.NightShift => ("Night shift", true),
         _ => null,
     };
 
@@ -169,6 +185,9 @@ public partial class EventLog : PanelContainer
         ColonyEventType.PerkLearned => ("stat_perk", Palette.Good, Kind.People),
         ColonyEventType.StudyStarted or ColonyEventType.StudyFinished => ("ui_study", Palette.Amber, Kind.People),
         ColonyEventType.StudyEnded => ("ui_study", Palette.TextMuted, Kind.People),
+        ColonyEventType.NightShift => ("ui_night_shift", Palette.Night, Kind.Colony),
+        ColonyEventType.Tired => ("stat_tired", Palette.Warn, Kind.People),
+        ColonyEventType.FloodlightFitted => ("bld_floodlight", Palette.Good, Kind.Colony),
         _ => ("ui_info", Palette.TextMuted, Kind.Colony),
     };
 

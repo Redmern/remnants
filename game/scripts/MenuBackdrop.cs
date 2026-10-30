@@ -7,11 +7,15 @@ namespace Remnants.Game;
 
 /// <summary>
 /// The main menu's background: a small grown colony (its own throwaway sim, never <see cref="ColonySession.Current"/>)
-/// with survivors walking about, seen by a camera that circles it slowly. Purely visual; it takes no input.
+/// with survivors walking about at dusk (lamps and campfire lit), seen by a camera that circles it slowly. Purely
+/// visual; it takes no input.
 /// </summary>
 public partial class MenuBackdrop : Node3D
 {
     private const float DegreesPerSecond = 2.2f;
+
+    /// <summary>The light is held here; the town's own clock runs from late afternoon until people go to bed.</summary>
+    private const double DuskHour = 18.7;
 
     private Camera3D _camera = null!;
     private ColonySession _session = null!;
@@ -33,6 +37,7 @@ public partial class MenuBackdrop : Node3D
         town.Setup(_session, layout, models, _camera);
         town.SetProcessUnhandledInput(false);
         town.SetProcessInput(false);
+        town.Lighting.FixedHour = DuskHour;
         var walkers = new SurvivorWalkers { Name = "Survivors" };
         AddChild(walkers);
         walkers.Setup(_session, layout, models);
@@ -58,12 +63,14 @@ public partial class MenuBackdrop : Node3D
         var i = 0;
         foreach (var s in sim.State.Survivors.Where(s => !s.IsInfant))
             sim.Execute(new AssignJob(s.Id, jobs[i++ % jobs.Count].Id));
+        while (sim.Hour != 17) sim.Tick();
     }
 
     public override void _Process(double delta)
     {
         _yaw += (float)delta * DegreesPerSecond;
-        _session.Advance(delta * 0.5); // life goes on, slowly
+        // Life goes on, slowly, until the evening: past bedtime the figures would all go in.
+        if (_session.Sim.Hour < 20) _session.Advance(delta * 0.5);
         Place();
     }
 

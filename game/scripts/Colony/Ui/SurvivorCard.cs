@@ -10,7 +10,7 @@ namespace Remnants.Game.Colony.Ui;
 /// <summary>
 /// One survivor in the roster: portrait, name, life stage, job (icon and name), health and mood bars, an XP bar with the
 /// level, and status badges (injured / worsening, patient, pregnant, away, homeless with its timer, starving, in class,
-/// perk points to spend), each with a tooltip.
+/// asleep / on the night shift / tired, perk points to spend), each with a tooltip.
 /// Compact mode shows only the portrait (the collapsed roster).
 /// </summary>
 public partial class SurvivorCard : PanelContainer
@@ -137,6 +137,12 @@ public partial class SurvivorCard : PanelContainer
         if (s.Away) badges.Add(("job_away", Palette.TextMuted, "Away on an expedition"));
         if (s.StarvingTicks > 0) badges.Add(("stat_starving", Palette.Danger, "Starving"));
         if (sim.ClassOf(s) is { } study) badges.Add(("ui_study", Palette.Amber, study.StudentId == s.Id ? "In class (studying)" : "Teaching a class"));
+        if (sim.IsAsleep(s)) badges.Add(("stat_sleep", Palette.Night, "Asleep"));
+        else if (sim.OnShift(s) && !Schedule.IsDayShiftHour(s, sim.Hour, rules.DayNight)
+                 && s.AssignedBuildingId is { } at && sim.State.FindBuilding(at) is { } shift)
+            badges.Add(("ui_night_shift", Palette.Night, $"On the night shift at {sim.Data.Buildings[shift.DefId].Name}: losing sleep"));
+        if (sim.IsTired(s))
+            badges.Add(("stat_tired", Palette.Warn, $"Tired: missed sleep ({s.SleepDebt:0} h to make up). −{(int)Math.Round((1 - rules.DayNight.Tired.OutputMultiplier) * 100)}% output and a slow mood drain until they sleep."));
         if (s.PerkPoints > 0)
             badges.Add(("stat_perk", Palette.Amber, $"{s.PerkPoints} perk point{(s.PerkPoints == 1 ? "" : "s")} to spend: open Perks"));
         var left = Math.Max(0, rules.Housing.HomelessGraceTicks - s.HomelessTicks);

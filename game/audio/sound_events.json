@@ -50,6 +50,9 @@
     "colony.drone_scouted": "sfx_map_reveal",
     "colony.drone_lost": "drone_destroyed",
     "colony.drone_returned": "drone_deploy",
+    "colony.night_shift": [],
+    "colony.tired": [],
+    "colony.floodlight_fitted": "sfx_build_done",
 
     "scavenge.round_started": [],
     "scavenge.party_done": [],

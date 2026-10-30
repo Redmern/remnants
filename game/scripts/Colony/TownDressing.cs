@@ -18,12 +18,16 @@ public static class TownDressing
     private const float Tile = 2f;
     private const ulong Seed = 0x5EED_70A1;
 
-    public static void Build(Node3D parent, TownLayout layout, ModelLibrary models, Vector3 campfire, Vector3 playground)
+    /// <summary>Builds the scenery; returns its flames' lights with their night energy, for <see cref="DayNightLighting"/> to run.</summary>
+    public static List<(OmniLight3D Light, float NightEnergy)> Build(Node3D parent, TownLayout layout, ModelLibrary models, Vector3 campfire, Vector3 playground)
     {
+        var fires = new List<(OmniLight3D, float)>();
         var root = new Node3D { Name = "Dressing" };
         parent.AddChild(root);
         root.AddChild(Ground(layout));
-        root.AddChild(Campfire(campfire));
+        var fire = Campfire(campfire);
+        root.AddChild(fire);
+        fires.Add((fire.GetNode<OmniLight3D>("FireLight"), 2.4f));
 
         var half = layout.Extent / 2 + new Vector2(PerimeterGap, PerimeterGap);
         // The gate is on the front edge (+Z, toward the default camera), in the middle; the road runs out from it.
@@ -31,6 +35,46 @@ public static class TownDressing
         Perimeter(root, models, half, gateX);
         Road(root, models, half, gateX);
         Outskirts(root, models, half, gateX, campfire, playground);
+        fires.AddRange(Torches(root, half, gateX));
+        return fires;
+    }
+
+    /// <summary>
+    /// A few torches on poles along the perimeter: both sides of the gate and the four corners. Six lights in all, so the
+    /// edge of the town reads at night without costing much.
+    /// </summary>
+    private static IEnumerable<(OmniLight3D, float)> Torches(Node3D root, Vector2 half, float gateX)
+    {
+        var pole = Placeholders.Material(new Color(0.3f, 0.22f, 0.15f));
+        var flame = Placeholders.Material(new Color(1f, 0.6f, 0.2f), unshaded: true);
+        Vector3[] spots =
+        [
+            new(gateX - 2.6f, 0, half.Y - 0.9f), new(gateX + 2.6f, 0, half.Y - 0.9f),
+            new(-half.X + 0.9f, 0, -half.Y + 0.9f), new(half.X - 0.9f, 0, -half.Y + 0.9f),
+            new(-half.X + 0.9f, 0, half.Y - 0.9f), new(half.X - 0.9f, 0, half.Y - 0.9f),
+        ];
+        for (var i = 0; i < spots.Length; i++)
+        {
+            var torch = new Node3D { Name = $"Torch{i}", Position = spots[i] };
+            torch.AddChild(new MeshInstance3D
+            {
+                Mesh = new CylinderMesh { TopRadius = 0.05f, BottomRadius = 0.07f, Height = 2f, RadialSegments = 6 },
+                MaterialOverride = pole, Position = new Vector3(0, 1f, 0),
+            });
+            torch.AddChild(new MeshInstance3D
+            {
+                Mesh = new CylinderMesh { TopRadius = 0, BottomRadius = 0.12f, Height = 0.3f, RadialSegments = 6 },
+                MaterialOverride = flame, Position = new Vector3(0, 2.15f, 0), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            });
+            var light = new OmniLight3D
+            {
+                Name = "TorchLight", Position = new Vector3(0, 2.3f, 0), LightColor = new Color(1f, 0.6f, 0.3f), OmniRange = 6f,
+                LightEnergy = 0,
+            };
+            torch.AddChild(light);
+            root.AddChild(torch);
+            yield return (light, 1.6f);
+        }
     }
 
     /// <summary>One big plane in earth tones; low-frequency noise gives patches of dry grass and bare dirt.</summary>
@@ -89,7 +133,7 @@ public static class TownDressing
         });
         fire.AddChild(new OmniLight3D
         {
-            Position = new Vector3(0, 0.9f, 0), LightColor = new Color(1f, 0.6f, 0.3f), LightEnergy = 1.4f, OmniRange = 4.5f,
+            Name = "FireLight", Position = new Vector3(0, 0.9f, 0), LightColor = new Color(1f, 0.6f, 0.3f), LightEnergy = 1.4f, OmniRange = 4.5f,
         });
         return fire;
     }

@@ -9,7 +9,8 @@ namespace Remnants.Game.Colony.Ui;
 /// <summary>
 /// The selected building: icon, name, category and level pips; its workers as portraits (empty slots shown);
 /// what it makes per day (tooltip: per worker); beds or patient beds; and the next upgrade as cost chips (missing
-/// resources marked) with the Town Hall cap. Core decides whether an upgrade goes through.
+/// resources marked) with the Town Hall cap; for workplaces the Night Shift toggle with its penalty, and for an unlit
+/// outdoor one the Floodlight that lets it run. Core decides whether an upgrade, a night shift or a Floodlight goes through.
 /// </summary>
 public partial class BuildingPanel : PanelContainer
 {
@@ -26,6 +27,13 @@ public partial class BuildingPanel : PanelContainer
     private readonly MarginContainer _costs = new();
     private readonly Label _cap = Widgets.Wrapped("", "Small");
     private readonly Button _upgrade;
+    private readonly VBoxContainer _nightBox = Widgets.Column(4);
+    private readonly Button _nightShift;
+    private readonly Label _nightNote = Widgets.Wrapped("", "Small");
+    private readonly HBoxContainer _floodRow = Widgets.Row(6);
+    private readonly MarginContainer _floodCost = new();
+    private readonly Button _flood;
+    private string _floodSignature = "";
     private string _workerSignature = "";
     private string _costSignature = "";
 
@@ -61,6 +69,17 @@ public partial class BuildingPanel : PanelContainer
         _output.MouseFilter = MouseFilterEnum.Stop;
         _output.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         box.AddChild(_output);
+
+        _nightBox.AddChild(Widgets.SectionHeader("Night", "phase_night"));
+        _nightShift = Widgets.IconButton("ui_night_shift", "Night shift", "", ToggleNightShift);
+        _nightShift.ToggleMode = true;
+        _nightBox.AddChild(_nightShift);
+        _nightBox.AddChild(_nightNote);
+        _flood = Widgets.IconButton("bld_floodlight", "Fit Floodlight", "", FitFloodlight);
+        _floodRow.AddChild(_flood);
+        _floodRow.AddChild(_floodCost);
+        _nightBox.AddChild(_floodRow);
+        box.AddChild(_nightBox);
 
         _upgradeBox.AddChild(Widgets.SectionHeader("Upgrade", "ui_chevron_up"));
         _upgradeBox.AddChild(_upgradeTitle);
@@ -103,7 +122,47 @@ public partial class BuildingPanel : PanelContainer
         _output.Text = OutputText(sim, building, def, level, out var tip);
         _output.TooltipText = tip;
         _output.Visible = _output.Text.Length > 0;
+        RefreshNight(sim, building, def);
         RefreshUpgrade(sim, building, def);
+    }
+
+    private void RefreshNight(ColonySim sim, Building building, Remnants.Core.Data.BuildingDef def)
+    {
+        var rules = sim.Data.Rules.DayNight;
+        _nightBox.Visible = rules.Enabled && def.Job is not null;
+        if (!_nightBox.Visible) return;
+        var lit = sim.CanRunNightShift(building);
+        var cut = (int)Math.Round((1 - rules.NightShift.OutputMultiplier) * 100);
+        _nightShift.SetPressedNoSignal(building.NightShift);
+        _nightShift.Text = building.NightShift ? "Night shift: ON" : "Night shift: off";
+        _nightShift.Disabled = !lit && !building.NightShift;
+        _nightShift.TooltipText = ColonyText.NightShiftTip(sim, building);
+        _nightNote.Text = !lit ? $"Too dark at night: {def.Name} works outdoors. Fit a Floodlight or reach level {rules.LitMinLevel}."
+            : building.NightShift ? $"Adults work on after {rules.WorkHours[1]:00}:00 at −{cut}% output; they lose sleep and mood."
+            : $"Off: workers sleep. On: −{cut}% output at night, costs mood and sleep.";
+        _nightNote.AddThemeColorOverride("font_color", !lit ? Palette.Warn : building.NightShift ? Palette.Night : Palette.TextMuted);
+
+        _floodRow.Visible = def.Outdoor && !lit;
+        if (!_floodRow.Visible) return;
+        var cost = rules.FloodlightCost;
+        var signature = string.Join(",", cost.Select(kv => $"{kv.Key}:{sim.State.Stockpile.Get(kv.Key) >= kv.Value}"));
+        if (signature != _floodSignature)
+        {
+            _floodSignature = signature;
+            Widgets.Clear(_floodCost);
+            _floodCost.AddChild(Widgets.CostChips(cost.Select(kv => (kv.Key, sim.Data.Resources[kv.Key].Name, kv.Value, sim.State.Stockpile.Get(kv.Key)))));
+        }
+        _flood.TooltipText = $"A lamp mast that lights {def.Name} for a night shift ({ColonyText.Cost(cost, sim.Data)}).";
+    }
+
+    private void ToggleNightShift()
+    {
+        if (BuildingId is { } id && _session.Sim.State.FindBuilding(id) is { } b) _session.Execute(new SetNightShift(id, !b.NightShift));
+    }
+
+    private void FitFloodlight()
+    {
+        if (BuildingId is { } id) _session.Execute(new InstallFloodlight(id));
     }
 
     private void RefreshWorkers(ColonySim sim, Building building, Remnants.Core.Data.BuildingDef def, int slots)
@@ -130,15 +189,14 @@ public partial class BuildingPanel : PanelContainer
     private static string OutputText(ColonySim sim, Building building, Remnants.Core.Data.BuildingDef def, Remnants.Core.Data.BuildingLevelDef level, out string tip)
     {
         tip = "";
-        var perDay = sim.Data.Rules.TicksPerDay;
         if (def.Produces is { } res)
         {
             var name = sim.Data.Resources[res].Name;
-            var total = sim.OutputPerTick(building) * perDay;
-            tip = $"{def.BaseOutput:0.##} {name}/h per worker at full skill × level {Fmt.Factor(level.OutputMultiplier)}\n" +
+            var total = sim.OutputPerDay(building);
+            tip = $"{def.BaseOutput:0.##} {name}/h per worker at full skill × level {Fmt.Factor(level.OutputMultiplier)}, on shift\n" +
                   string.Join("\n", sim.State.WorkersAt(building.Id).Select(w =>
-                      $"  {w.Name}: {JobOutput.PerTick(def, building.Level, sim.Data.Jobs[def.Job!], w, sim.Data.Rules.Output, sim.Data) * perDay:0.#}/day")) +
-                  "\nOpen a worker's Overview for the full formula.";
+                      $"  {w.Name}: {JobOutput.PerTick(def, building.Level, sim.Data.Jobs[def.Job!], w, sim.Data.Rules.Output, sim.Data) * Schedule.ShiftHoursPerDay(w, building, def, sim.Data.Rules):0.#}/day")) +
+                  "\nPer day counts the shift hours (and the Night Shift at its rate). Open a worker's Overview for the full formula.";
             return $"Makes about {total:0.#} {name} per day";
         }
         if (level.Beds > 0) return $"Sleeps {level.Beds}";

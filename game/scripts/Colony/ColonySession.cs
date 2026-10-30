@@ -27,7 +27,11 @@ public sealed class ColonySession
 
     private double _accumulator;
 
-    public ColonySession(ColonySim sim) => Sim = sim;
+    public ColonySession(ColonySim sim)
+    {
+        Sim = sim;
+        Phase = sim.Phase;
+    }
 
     /// <summary>The running colony for this game session; survives scene changes.</summary>
     public static ColonySession? Current { get; set; }
@@ -43,6 +47,18 @@ public sealed class ColonySession
     /// <summary>Fired after ticks, commands, speed changes and loads. Views re-read Core state.</summary>
     public event Action? Changed;
 
+    /// <summary>
+    /// The colony's day phase (dawn / day / dusk / night) as of the last tick; see Core <c>DayNight</c>. Audio and views
+    /// switch on this rather than on raw hours.
+    /// </summary>
+    public DayPhase Phase { get; private set; }
+
+    /// <summary>Fired when <see cref="Phase"/> changes (after the tick that crossed into it, or a load), with the new phase.</summary>
+    public event Action<DayPhase>? PhaseChanged;
+
+    /// <summary>How far real time has run into the next tick (0..1), for smooth presentation between ticks.</summary>
+    public double TickProgress => Math.Clamp(_accumulator / SecondsPerTick, 0, 1);
+
     /// <summary>Fired when a whole new sim replaced the old one (load); views drop cached ids.</summary>
     public event Action? Replaced;
 
@@ -54,6 +70,7 @@ public sealed class ColonySession
     {
         Changed = null;
         Replaced = null;
+        PhaseChanged = null;
         Feedback = null;
     }
 
@@ -145,6 +162,7 @@ public sealed class ColonySession
         if (!ReferenceEquals(report, Sim.State.LastReport)) UnseenReport = Sim.State.LastReport;
         if (ticks == MaxTicksPerFrame) _accumulator = 0;
         if (ticks > 0) Changed?.Invoke();
+        SyncPhase();
     }
 
     /// <summary>Debug: run up to <paramref name="maxTicks"/> ticks at once, stopping early when <paramref name="until"/> holds.</summary>
@@ -154,6 +172,7 @@ public sealed class ColonySession
         for (var i = 0; i < maxTicks && !until(Sim); i++) Sim.Tick();
         if (!ReferenceEquals(report, Sim.State.LastReport)) UnseenReport = Sim.State.LastReport;
         Changed?.Invoke();
+        SyncPhase();
     }
 
     public CommandResult Execute(IColonyCommand command)
@@ -200,5 +219,13 @@ public sealed class ColonySession
         Replaced?.Invoke();
         Feedback?.Invoke("Loaded save game.", false);
         Changed?.Invoke();
+        SyncPhase();
+    }
+
+    private void SyncPhase()
+    {
+        if (Sim.Phase == Phase) return;
+        Phase = Sim.Phase;
+        PhaseChanged?.Invoke(Phase);
     }
 }

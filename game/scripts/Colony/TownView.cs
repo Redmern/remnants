@@ -16,7 +16,10 @@ public partial class TownView : Node3D
     private static readonly Color BlockedHover = new(0.65f, 0.25f, 0.2f);
     private static readonly Color SelectedColor = new(0.85f, 0.65f, 0.25f);
 
-    private readonly Dictionary<int, (Node3D Node, string DefId, int Level, int Plot, Label3D Label)> _buildings = new();
+    /// <summary>Most lamp OmniLights the town runs at once; lamps past it glow without casting light.</summary>
+    private const int MaxLampLights = 12;
+
+    private readonly Dictionary<int, (Node3D Node, string DefId, int Level, int Plot, Label3D Label, bool Lit, int Lights)> _buildings = new();
     private readonly List<StandardMaterial3D> _plotMaterials = new();
 
     private ColonySession _session = null!;
@@ -26,6 +29,9 @@ public partial class TownView : Node3D
     private int _hoverPlot = -1;
 
     public int? SelectedBuildingId { get; private set; }
+
+    /// <summary>Sun, moon, sky and the night lights, following the colony clock.</summary>
+    public DayNightLighting Lighting { get; private set; } = null!;
 
     /// <summary>Building def being placed, or null. While set, clicking a plot raises <see cref="PlotChosen"/>.</summary>
     public string? PlacingDefId { get; private set; }
@@ -83,7 +89,8 @@ public partial class TownView : Node3D
         foreach (var b in sim.State.Buildings)
         {
             alive.Add(b.Id);
-            if (_buildings.TryGetValue(b.Id, out var known) && known.Level == b.Level && known.DefId == b.DefId && known.Plot == b.Plot)
+            if (_buildings.TryGetValue(b.Id, out var known) && known.Level == b.Level && known.DefId == b.DefId && known.Plot == b.Plot
+                && known.Lit == b.Floodlight)
                 continue;
             if (known.Node is not null) known.Node.QueueFree();
 
@@ -104,8 +111,10 @@ public partial class TownView : Node3D
                 Visible = false,
             };
             node.AddChild(label);
+            var budget = MaxLampLights - _buildings.Where(kv => kv.Key != b.Id).Sum(kv => kv.Value.Lights);
+            var lights = Lamps(node, b.Id, def, b, budget);
             AddChild(node);
-            _buildings[b.Id] = (node, b.DefId, b.Level, b.Plot, label);
+            _buildings[b.Id] = (node, b.DefId, b.Level, b.Plot, label, b.Floodlight, lights);
         }
 
         foreach (var gone in _buildings.Keys.Where(id => !alive.Contains(id)).ToList())
@@ -150,6 +159,74 @@ public partial class TownView : Node3D
         }
         var building = plot < 0 ? null : _session.Sim.State.Buildings.FirstOrDefault(b => b.Plot == plot);
         Select(building?.Id);
+    }
+
+    /// <summary>
+    /// Night lights for a building: a lantern on a post by the front of the plot; homes and the Town Hall also glow from
+    /// inside; a lit outdoor workplace (level 2+, or a Floodlight) gets a floodlight on a mast that burns while its
+    /// Night Shift is on. Returns the OmniLights used (at most <paramref name="budget"/>; the rest only glow).
+    /// </summary>
+    private int Lamps(Node3D node, int id, Remnants.Core.Data.BuildingDef def, Remnants.Core.Colony.Building b, int budget)
+    {
+        var used = 0;
+        var post = Placeholders.Material(new Color(0.28f, 0.26f, 0.24f));
+        OmniLight3D? Light(Vector3 at, float range, Color color)
+        {
+            if (used >= budget) return null;
+            used++;
+            var light = new OmniLight3D { Position = at, OmniRange = range, LightColor = color, LightEnergy = 0, ShadowEnabled = false };
+            node.AddChild(light);
+            return light;
+        }
+        StandardMaterial3D Glass(Color color)
+        {
+            var m = Placeholders.Material(color);
+            m.EmissionEnabled = true;
+            m.Emission = color;
+            m.EmissionEnergyMultiplier = 0;
+            return m;
+        }
+
+        var warm = new Color(1f, 0.72f, 0.4f);
+        var lantern = new Vector3(TownLayout.PlotSize * 0.36f, 0, TownLayout.PlotSize * 0.38f);
+        node.AddChild(new MeshInstance3D
+        {
+            Mesh = new CylinderMesh { TopRadius = 0.04f, BottomRadius = 0.05f, Height = 1.5f, RadialSegments = 6 },
+            MaterialOverride = post, Position = lantern + new Vector3(0, 0.75f, 0),
+        });
+        var lanternGlass = Glass(warm);
+        node.AddChild(new MeshInstance3D
+        {
+            Mesh = new BoxMesh { Size = new Vector3(0.2f, 0.26f, 0.2f) }, MaterialOverride = lanternGlass,
+            Position = lantern + new Vector3(0, 1.6f, 0), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+        });
+        Lighting.AddGlow(lanternGlass, 4f);
+        if (Light(lantern + new Vector3(0, 1.7f, 0), 4.5f, warm) is { } l) Lighting.AddLight(l, 1.1f);
+
+        var home = def.Levels.Any(x => x.Beds > 0) || def.Id == _session.Sim.Data.Rules.TownHallBuildingId;
+        if (home && Light(new Vector3(0, 1.4f, 0.6f), 7f, new Color(1f, 0.68f, 0.38f)) is { } inside) Lighting.AddLight(inside, 1.4f);
+
+        if (def.Outdoor && def.Job is not null && (b.Floodlight || b.Level >= _session.Sim.Data.Rules.DayNight.LitMinLevel))
+        {
+            var mast = new Vector3(-TownLayout.PlotSize * 0.38f, 0, TownLayout.PlotSize * 0.38f);
+            node.AddChild(new MeshInstance3D
+            {
+                Mesh = new CylinderMesh { TopRadius = 0.05f, BottomRadius = 0.08f, Height = 3.6f, RadialSegments = 6 },
+                MaterialOverride = post, Position = mast + new Vector3(0, 1.8f, 0),
+            });
+            var cold = new Color(0.95f, 0.95f, 0.85f);
+            var head = Glass(cold);
+            node.AddChild(new MeshInstance3D
+            {
+                Mesh = new BoxMesh { Size = new Vector3(0.5f, 0.3f, 0.25f) }, MaterialOverride = head,
+                Position = mast + new Vector3(0.15f, 3.6f, -0.15f), Rotation = new Vector3(-0.5f, Mathf.Pi / 4, 0),
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            });
+            bool On() => _session.Sim.State.FindBuilding(id) is { NightShift: true };
+            Lighting.AddGlow(head, 5f, on: On);
+            if (Light(new Vector3(-1.2f, 3.4f, 1.2f), 10f, cold) is { } flood) Lighting.AddLight(flood, 2.6f, on: On);
+        }
+        return used;
     }
 
     /// <summary>Top of a model's meshes in its parent's space (works before the node enters the tree).</summary>
@@ -212,7 +289,7 @@ public partial class TownView : Node3D
         var sim = _session.Sim;
         var hall = sim.State.Buildings.FirstOrDefault(b => b.DefId == sim.Data.Rules.TownHallBuildingId);
         var (campfire, playground) = hall is null ? (new Vector3(0, 0, -_layout.Extent.Y / 2 - 4), Vector3.Zero) : _layout.Commons(hall.Plot);
-        TownDressing.Build(this, _layout, _models, campfire, playground);
+        var fires = TownDressing.Build(this, _layout, _models, campfire, playground);
 
         // Plots are cleared, packed-earth lots with a pale kerb, a step lighter than the ground around them.
         var frame = PlotFrame();
@@ -231,24 +308,9 @@ public partial class TownView : Node3D
             });
         }
 
-        AddChild(new DirectionalLight3D
-        {
-            RotationDegrees = new Vector3(-55, -35, 0),
-            ShadowEnabled = true,
-            LightEnergy = 1.1f,
-            LightColor = new Color(1f, 0.95f, 0.85f),
-        });
-        AddChild(new WorldEnvironment
-        {
-            Environment = new Godot.Environment
-            {
-                BackgroundMode = Godot.Environment.BGMode.Color,
-                BackgroundColor = new Color(0.15f, 0.16f, 0.17f),
-                AmbientLightSource = Godot.Environment.AmbientSource.Color,
-                AmbientLightColor = new Color(0.55f, 0.6f, 0.65f),
-                AmbientLightEnergy = 0.6f,
-                TonemapMode = Godot.Environment.ToneMapper.Filmic,
-            },
-        });
+        Lighting = new DayNightLighting { Name = "Lighting" };
+        AddChild(Lighting);
+        Lighting.Setup(_session);
+        foreach (var (light, energy) in fires) Lighting.AddLight(light, energy, dayEnergy: energy * 0.35f, flicker: true);
     }
 }

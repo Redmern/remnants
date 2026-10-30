@@ -9,7 +9,9 @@ namespace Remnants.Game.Colony;
 /// Purely visual: one figure per survivor going about the day. Workers circle their workplace (a spot on each side
 /// of the building, a pause, the next spot) with the odd break at home; idle adults potter about near home or sit at
 /// the campfire; children play by the Town Hall; patients sit outside the Med Bay; infants stay at home. Long walks
-/// follow the streets between plots. Figures keep a little apart. Nothing here feeds back into the sim.
+/// follow the streets between plots. Figures keep a little apart. At night (Core's schedule) the sleepers walk home —
+/// or patients back to the Med Bay — and go inside; children's earlier bedtime sends them in first; night-shift workers
+/// stay at their lit workplace and the rest spend the evening round the campfire. Nothing here feeds back into the sim.
 /// </summary>
 public partial class SurvivorWalkers : Node3D
 {
@@ -17,7 +19,7 @@ public partial class SurvivorWalkers : Node3D
     private const float Personal = 0.75f; // m figures keep between them
     private const float SitDrop = 0.78f;  // how far a seated figure sinks (hips to the ground)
 
-    private enum Role { Worker, Idle, Child, Patient, Infant }
+    private enum Role { Worker, Idle, Child, Patient, Infant, Asleep }
 
     private sealed class Walker
     {
@@ -31,6 +33,8 @@ public partial class SurvivorWalkers : Node3D
         public float Pause;
         public int SpotsUntilBreak;
         public bool Seated;
+        public bool Inside;
+        public Vector3 Bed;
         public Vector3 Push;
     }
 
@@ -88,6 +92,7 @@ public partial class SurvivorWalkers : Node3D
         var bestDistance = 28f;
         foreach (var (id, w) in _walkers)
         {
+            if (w.Inside) continue;
             var chest = w.Node.GlobalPosition + new Vector3(0, 0.9f, 0);
             if (camera.IsPositionBehind(chest)) continue;
             var distance = camera.UnprojectPosition(chest).DistanceTo(mouse);
@@ -133,7 +138,8 @@ public partial class SurvivorWalkers : Node3D
 
             var homeBuilding = s.HomeBuildingId is { } hid ? sim.State.FindBuilding(hid) : null;
             w.Home = Doorstep(homeBuilding is null ? camp : _layout.Center(homeBuilding.Plot), s.Id);
-            var role = s.PatientAtBuildingId is not null ? Role.Patient
+            var role = sim.IsAsleep(s) ? Role.Asleep
+                : s.PatientAtBuildingId is not null ? Role.Patient
                 : s.IsInfant ? Role.Infant
                 : s.AssignedBuildingId is not null ? Role.Worker
                 : s.IsChild ? Role.Child
@@ -145,7 +151,9 @@ public partial class SurvivorWalkers : Node3D
                 w.Role = role;
                 w.WorkCenter = center;
                 w.Work = role == Role.Patient ? Doorstep(center, s.Id * 7 + 3) : center;
-                if (w.Node.Position == Vector3.Inf) w.Node.Position = role is Role.Worker or Role.Patient ? Spot(w) : w.Home;
+                w.Bed = s.PatientAtBuildingId is not null ? Doorstep(center, s.Id * 7 + 3) : w.Home;
+                if (w.Inside && role != Role.Asleep) WakeUp(w);
+                if (w.Node.Position == Vector3.Inf) w.Node.Position = role is Role.Worker or Role.Patient ? Spot(w) : role == Role.Asleep ? w.Bed : w.Home;
                 Restart(w);
             }
         }
@@ -161,6 +169,28 @@ public partial class SurvivorWalkers : Node3D
     private static string Look(Survivor s) =>
         $"{s.LifeStage}|" + string.Join(",", s.Body.Parts.OrderBy(kv => kv.Key)
             .Select(kv => $"{(int)kv.Value.Condition}{(kv.Value.ProstheticQuality < 1 ? "" : "+")}"));
+
+    /// <summary>Puts sleepers inside at once instead of walking them home (after a jump in time, e.g. debug captures).</summary>
+    public void Settle()
+    {
+        foreach (var w in _walkers.Values.Where(w => w.Role == Role.Asleep && !w.Inside))
+        {
+            w.Path.Clear();
+            Stand(w);
+            w.Node.Position = w.Bed;
+            w.Inside = true;
+            w.Node.Visible = false;
+            w.Pause = float.MaxValue;
+        }
+    }
+
+    /// <summary>Out of the door again where they went in.</summary>
+    private static void WakeUp(Walker w)
+    {
+        w.Inside = false;
+        w.Node.Visible = true;
+        w.Node.Position = w.Bed;
+    }
 
     /// <summary>Drop the current errand and pick the next one right away.</summary>
     private void Restart(Walker w)
@@ -257,6 +287,15 @@ public partial class SurvivorWalkers : Node3D
             case Role.Infant:
                 goal = w.Home + Scatter(w, 0.6f);
                 break;
+            case Role.Asleep when w.Node.Position.DistanceTo(w.Bed) < 0.4f:
+                // At the door: in they go, until the schedule wakes them (see Sync).
+                w.Inside = true;
+                w.Node.Visible = false;
+                w.Pause = float.MaxValue;
+                return;
+            case Role.Asleep:
+                goal = w.Bed;
+                break;
             case Role.Child:
                 goal = _playground + Scatter(w, 3f);
                 break;
@@ -283,6 +322,7 @@ public partial class SurvivorWalkers : Node3D
             Role.Worker => w.FaceTo is null ? w.Rng.RandfRange(4f, 7f) : w.Rng.RandfRange(4f, 8f),
             Role.Child => w.Rng.RandfRange(0.3f, 1.5f),
             Role.Patient or Role.Infant => w.Rng.RandfRange(6f, 12f),
+            Role.Asleep => 0.3f,
             _ => atFire ? w.Rng.RandfRange(10f, 18f) : w.Rng.RandfRange(2f, 5f),
         };
         if (atFire || w.Role == Role.Patient) Sit(w);
@@ -328,7 +368,7 @@ public partial class SurvivorWalkers : Node3D
     /// <summary>Figures closer than <see cref="Personal"/> drift apart (paused ones too, so groups spread into rings).</summary>
     private void Separate(float dt)
     {
-        var list = _walkers.Values.ToList();
+        var list = _walkers.Values.Where(w => !w.Inside).ToList();
         foreach (var w in list) w.Push = Vector3.Zero;
         for (var i = 0; i < list.Count; i++)
         for (var j = i + 1; j < list.Count; j++)

@@ -294,6 +294,8 @@ public partial class SurvivorPanel : PanelContainer
         var level = def.Level(b.Level).OutputMultiplier;
         var perTick = JobOutput.PerTick(def, b.Level, job, s, rules, sim.Data);
         var unit = def.Produces is { } res ? sim.Data.Resources[res].Name : "work";
+        var hours = Schedule.ShiftHoursPerDay(s, b, def, sim.Data.Rules);
+        var tired = sim.IsTired(s) ? $"\n  tired: {Fmt.Factor(sim.Data.Rules.DayNight.Tired.OutputMultiplier)} until they sleep" : "";
         var attrs = string.Join(", ", job.Attributes.Select(kv => $"{kv.Key} {s.Get(kv.Key):0}"));
         breakdown = $"Output per hour = base × level × performance × tool × health × life × mood × perks\n" +
                     $"  base {def.BaseOutput:0.##}\n" +
@@ -304,8 +306,8 @@ public partial class SurvivorPanel : PanelContainer
                     $"  life stage {Fmt.Factor(life)}\n" +
                     $"  mood {Fmt.Factor(mood)}  (mood {s.Mood:0})\n" +
                     $"  perks {Fmt.Factor(perks)}\n" +
-                    $"= {perTick:0.###} {unit}/h · {perTick * sim.Data.Rules.TicksPerDay:0.#}/day\nWorking trains {job.Skill}.";
-        return $"Makes {perTick:0.##} {unit}/h ({perTick * sim.Data.Rules.TicksPerDay:0.#}/day). Hover for the breakdown.";
+                    $"= {perTick:0.###} {unit}/h on shift · {hours:0.#} shift hours a day = {perTick * hours:0.#}/day{tired}\nWorking trains {job.Skill}.";
+        return $"Makes {perTick:0.##} {unit}/h on shift ({perTick * hours:0.#}/day). Hover for the breakdown.";
     }
 
     private void RefreshBody(ColonySim sim, Survivor s)

@@ -21,6 +21,39 @@ public static class ColonyText
         return $"Day {day}, {hour:00}:00";
     }
 
+    /// <summary>The top bar's clock tooltip: the phase, the colony's hours and who is working or asleep now.</summary>
+    public static string PhaseTip(ColonySim sim)
+    {
+        var r = sim.Data.Rules.DayNight;
+        var phase = sim.Phase;
+        var next = (DayPhase)(((int)phase + 1) % 4);
+        var lines = new List<string>
+        {
+            $"{phase} until {DayNight.StartHour(next, r):00}:00.",
+            $"Day shift {r.WorkHours[0]:00}–{r.WorkHours[1]:00}. Adults sleep {r.AdultSleep[0]:00}–{r.AdultSleep[1]:00}, children {r.ChildSleep[0]:00}–{r.ChildSleep[1]:00}.",
+        };
+        if (!r.Enabled) return string.Join("\n", lines);
+        var home = sim.State.Present.ToList();
+        lines.Add($"Now: {home.Count(sim.OnShift)} working, {home.Count(sim.IsAsleep)} asleep.");
+        var shifts = sim.State.Buildings.Where(b => b.NightShift).Select(b => sim.Data.Buildings[b.DefId].Name).ToList();
+        if (shifts.Count > 0) lines.Add($"Night shift: {string.Join(", ", shifts)}.");
+        if (home.Count(sim.IsTired) is var tired and > 0) lines.Add($"{tired} tired after a night's work.");
+        return string.Join("\n", lines);
+    }
+
+    /// <summary>What a Night Shift does here, for the building panel (or why it cannot run).</summary>
+    public static string NightShiftTip(ColonySim sim, Building b)
+    {
+        var r = sim.Data.Rules.DayNight;
+        var def = sim.Data.Buildings[b.DefId];
+        var cut = (int)System.Math.Round((1 - r.NightShift.OutputMultiplier) * 100);
+        var tip = $"Adults keep working after {r.WorkHours[1]:00}:00 until {r.WorkHours[0]:00}:00 at −{cut}% output. " +
+                  $"They lose sleep: mood falls while they work and they wake tired (−{(int)System.Math.Round((1 - r.Tired.OutputMultiplier) * 100)}% output until they sleep it off). Children never work nights.";
+        if (!sim.CanRunNightShift(b))
+            tip += $"\n{def.Name} works outdoors: it needs light — a Floodlight or level {r.LitMinLevel}.";
+        return tip;
+    }
+
     public static string Travel(double days) => days <= 0 ? "on the doorstep" : days == 1 ? "1 day away" : $"{days:0.#} days away";
 
     public static Godot.Color ThreatColor(int threat) => threat switch
