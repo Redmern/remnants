@@ -258,6 +258,7 @@ public partial class MapView : Node3D
             {
                 crate = Pile(cache);
                 AddChild(crate);
+                Glint(crate);
                 _crates[cache.Id] = crate;
             }
             crate.Visible = _presenter.IsExplored(cache.Pos) || _presenter.IsVisible(cache.Pos);
@@ -278,7 +279,7 @@ public partial class MapView : Node3D
         crate.RotationDegrees = new Vector3(0, cache.Id * 47 % 90 - 45, 0);
         root.AddChild(crate);
         if (cache.Kind == LootPileKind.Cache) return root;
-        crate.Scale = Vector3.One * (cache.Kind == LootPileKind.Stash ? 0.8f : 0.5f);
+        crate.Scale = Vector3.One * (cache.Kind == LootPileKind.Stash ? 0.8f : 0.65f);
         crate.Position = cache.Kind == LootPileKind.Stash ? Vector3.Zero : new Vector3(0.45f, 0, 0.35f);
         if (cache.Kind == LootPileKind.Stash)
             foreach (var mesh in Meshes(crate)) mesh.MaterialOverride = Placeholders.Material(Hud.Palette.Amber);
@@ -286,7 +287,7 @@ public partial class MapView : Node3D
         var top = crate.Position + new Vector3(0, 1.0f, 0);
         var glint = new MeshInstance3D
         {
-            Name = "Glint", Mesh = new SphereMesh { Radius = 0.14f, Height = 0.34f, RadialSegments = 4, Rings = 1 },
+            Name = "Glint", Mesh = new SphereMesh { Radius = 0.2f, Height = 0.48f, RadialSegments = 4, Rings = 1 },
             MaterialOverride = new StandardMaterial3D
             {
                 AlbedoColor = Hud.Palette.Amber, ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
@@ -295,12 +296,19 @@ public partial class MapView : Node3D
             CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Position = top,
         };
         root.AddChild(glint);
+        return root;
+    }
+
+    /// <summary>Starts a pile's glint bobbing and turning (tweens need the node in the tree).</summary>
+    private static void Glint(Node3D pile)
+    {
+        if (pile.GetNodeOrNull<MeshInstance3D>("Glint") is not { } glint) return;
+        var top = glint.Position;
         var bob = glint.CreateTween().SetLoops();
         bob.TweenProperty(glint, "position:y", top.Y + 0.25f, 0.9f).SetTrans(Tween.TransitionType.Sine);
         bob.TweenProperty(glint, "position:y", top.Y, 0.9f).SetTrans(Tween.TransitionType.Sine);
         var spin = glint.CreateTween().SetLoops();
         spin.TweenProperty(glint, "rotation:y", Mathf.Tau, 2.4f).From(0f);
-        return root;
     }
 
     private static MeshInstance3D[] Meshes(Node node) =>

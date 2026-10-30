@@ -5,7 +5,7 @@ namespace Remnants.Game.Scavenge;
 
 /// <summary>
 /// Debug: <c>--loot-demo=pile|salvage</c> stages the debug mission for field loot, everything hostile gone, so
-/// <see cref="ScavengeScreen"/> can play the moment for a screenshot: a 1 HP Husk next to the first survivor up whose
+/// <see cref="ScavengeScreen"/> can play the moment for a screenshot: a 1 HP Husk two tiles from the first survivor up whose
 /// loot roll is a good one (<c>pile</c>: the kill, its pile, the pickup panel), or a dead tree next to a survivor whose
 /// pack is already heavy with stone (<c>salvage</c>: one Salvage action, the progress ring and the carry warning).
 /// </summary>
@@ -29,7 +29,10 @@ public static class LootDemo
         switch (Mode)
         {
             case "pile":
-                var husk = NewScavenge.EnemyUnit(sim.Data, state, sim.Data.Enemies["husk"], Near(acting.Pos, 1, 1));
+                // Two tiles straight out with the tile between free, so the survivor can step up to the pile afterwards.
+                var spot = Pos.Orthogonal.Select(d => (Between: acting.Pos + d, At: acting.Pos + d + d))
+                    .Where(t => Free(t.Between) && Free(t.At)).Select(t => (Pos?)t.At).FirstOrDefault() ?? Near(acting.Pos, 2, 2);
+                var husk = NewScavenge.EnemyUnit(sim.Data, state, sim.Data.Enemies["husk"], spot);
                 husk.Hp = 1;
                 state.Units.Add(husk);
                 state.TurnOrder.Add(husk.Id);

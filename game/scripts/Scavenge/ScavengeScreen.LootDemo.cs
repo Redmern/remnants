@@ -9,7 +9,7 @@ namespace Remnants.Game.Scavenge;
 public partial class ScavengeScreen
 {
     /// <summary>
-    /// <c>pile</c>: attack the Husk until it drops, then frame its pile with the pickup panel up and the pile's tooltip.
+    /// <c>pile</c>: shoot the Husk until it drops, step next to its pile, then frame it with the pickup panel up and the pile's tooltip.
     /// <c>salvage</c>: one Salvage action on the tree (the ring shows 1/2), its tooltip up, the carry bar warning. Then (with
     /// <c>--screenshot=PATH</c>) the frame is saved.
     /// </summary>
@@ -26,14 +26,22 @@ public partial class ScavengeScreen
         {
             case "pile" when _presenter.ActingUnit is { } u:
                 var husk = _presenter.State.Units.Last(x => x.Kind == UnitKind.Enemy && x.OnMap);
-                var action = _presenter.Sim.Profile(u).Actions.First();
+                var action = _presenter.AttackOptions(u, _presenter.Sim.Profile(u).Actions.First()).Count > 0
+                    ? _presenter.Sim.Profile(u).Actions.First() : _presenter.Sim.Profile(u).Actions.Last();
                 for (var i = 0; i < 3 && husk.OnMap && husk.Status != UnitStatus.Dead && u.Ap >= action.ApCost; i++)
                 {
                     await Run(new Attack(pid, u.Id, husk.Id, action.Id));
                     await Settle();
                 }
                 focus = husk.Pos;
-                GD.Print($"[loot-demo] {u.Name} at {u.Pos}, {husk.Name} {husk.Status} at {husk.Pos}, piles: {string.Join("; ", _presenter.State.Caches.Select(c => $"{c.Id} {c.Kind} {c.Pos} [{string.Join(",", c.Items)}]"))}");
+                // Step next to the pile so the pickup panel opens.
+                if (_presenter.ActingUnit?.Id == u.Id
+                    && _presenter.Sim.Reachable(u).Where(kv => kv.Value < u.Ap && kv.Key.Chebyshev(husk.Pos) == 1).OrderBy(kv => kv.Value)
+                        .Select(kv => (Pos?)kv.Key).FirstOrDefault() is { } next)
+                {
+                    await Run(new Move(pid, u.Id, next));
+                    await Settle();
+                }
                 Select(u.Id);
                 break;
             case "salvage" when _presenter.ActingUnit is { } w:
