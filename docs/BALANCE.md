@@ -599,8 +599,8 @@ so this is the most a party could carry, not what a colony has):
   little more and leave later). That is the intent: crude parts restore a survivor, they do not make one.
 - **Powered parts halve the deaths** (Suburb Ruins 31% → 16%, Flooded Mall 50% → 31%): mostly the runner pair's extra
   tile (the bot survives by leaving) and the blade's silent attack. **Cyborg** parts make the mid zones routine and Rail
-  Depot survivable (92% → 60%). This is a lot, but it costs a whole body: the cyborg kit electively is 105+35 humanity
-  (0, detached), and as replacements it needs four lost limbs. A colony gets there around day 130+.
+  Depot survivable (92% → 60%). This is a lot, but it costs a whole body: fitted electively the cyborg kit is 105–140
+  humanity (0: detached), and as replacements it needs three or four lost limbs. A colony gets there around day 130+.
 - **Network interference** at the first guess (`perLinked` 0.08, max 0.4) locked ~2–3 limbs a run in Linked zones and
   Network-grade still beat cyborg everywhere (Flooded Mall 15% vs 18%, Rail Depot 49% vs 60%). At `perLinked` 0.15,
   `overrider` 0.15, `jammer` 0.2, max 0.6 it is the trade-off it should be: better where the Linked are few (Outskirts
