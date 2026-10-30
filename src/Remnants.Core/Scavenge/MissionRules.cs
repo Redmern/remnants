@@ -34,7 +34,8 @@ public static class MissionRules
         Fire(sim, t => t.When.Kind == TriggerKind.Start);
     }
 
-    internal static void RoundStarted(ScavengeSim sim)
+    /// <summary>At the start of each round: round triggers, the Linked carrying off the downed, heavy work, survive counts.</summary>
+    public static void RoundStarted(ScavengeSim sim)
     {
         if (sim.State.Mission is not { } run) return;
         var round = sim.State.Round;

@@ -211,8 +211,8 @@ public static class StoryCharacters
     {
         if (sim.Data.Cybernetics is not { } cyber) return;
         var campaign = sim.State.Campaign!;
-        foreach (var s in sim.State.Survivors)
-            foreach (var (part, p) in s.Body.Parts.OrderBy(kv => kv.Key))
+        foreach (var s in sim.State.Survivors.ToList())
+            foreach (var (part, p) in s.Body.Parts.OrderBy(kv => kv.Key).ToList())
             {
                 if (p.Condition != PartCondition.Prosthetic || cyber.Node(p.ProstheticItemId) is not { Tier: >= 4 }) continue;
                 if (!campaign.T4Seen.Add($"{s.Id}:{part}")) continue;

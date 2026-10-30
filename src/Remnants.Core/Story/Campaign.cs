@@ -334,7 +334,7 @@ public static class Campaign
         def.Rewards.Where(e => e.Kind == EffectKind.Schematic).Select(e => e.Id).Distinct().ToList();
 
     /// <summary>The party is home from a story mission: rewards on success, the fail branch on failure, else it stays open.</summary>
-    internal static void Returned(ColonySim sim, string missionId, ObjectiveResult? result, IReadOnlyList<int>? party = null)
+    public static void Returned(ColonySim sim, string missionId, ObjectiveResult? result, IReadOnlyList<int>? party = null)
     {
         if (sim.State.Campaign is not { } campaign || sim.Story?.Mission(missionId) is not { } def) return;
         var p = campaign.Progress(missionId);
