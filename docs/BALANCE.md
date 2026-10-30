@@ -612,6 +612,11 @@ a cyborg part at 97%; T2 surgery is 24 effort (~1–2 days at a Med Bay 2), T3 4
 Failures leave an infection (torso 0.30–0.55), never a death; at 0 Medicine skill a powered part fails ~30% of the
 time.
 
+Rerun after rebasing onto `main` (day-night, Linked carbine pass): 60-day sweep `main` → branch: population 8 → 8,
+expedition deaths 7 → 9 over 337/338 runs, births 37 → 36, Town Hall 2 day 32.0 → 32.0, Lab 58.8 → 60.0, min food
+4.2 → 4.2 days. 150 days: T1 day 78 (19/20), T2 109 (16/20), T3 137 (10/20). Zone trials match the table above
+within 2 points (no kit: Outskirts 6%, Suburb 31%, Mall 50%, Rail Depot 92%; network kit: Mall 21%, Rail Depot 57%).
+
 Watch next pass: T1 at day ~80 feels late for the first amputee (Workshop 2 waits behind the House and Armory in the
 bot's order); the runner pair dominates every kit because the bot's answer to danger is running; humanity strain on
 couples is unmeasured in sweeps (no bot augments), so its rates (`partnerStrainPerTick` 0.05, breakup below 40) are a
