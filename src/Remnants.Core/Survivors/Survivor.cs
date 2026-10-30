@@ -8,6 +8,9 @@ public sealed class Survivor
 
     public int Id { get; set; }
     public string Name { get; set; } = "";
+
+    /// <summary>Story mode: the named character this survivor is ("pell"); null for everyone else.</summary>
+    public string? UniqueId { get; set; }
     public Sex Sex { get; set; }
 
     /// <summary>Age in sim ticks; years and life stage derive from it plus the rules.</summary>

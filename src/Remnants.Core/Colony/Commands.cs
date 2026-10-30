@@ -183,6 +183,13 @@ public enum CommandError
     AlreadyBooked,
     UnknownSurgery,
     NoCybernetics,
+    /// <summary>Story commands in a Sandbox colony (or without story data).</summary>
+    NoCampaign,
+    UnknownMission,
+    MissionNotAvailable,
+    UnknownCall,
+    NoDialogue,
+    InvalidChoice,
 }
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>

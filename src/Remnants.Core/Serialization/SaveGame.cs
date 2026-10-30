@@ -39,10 +39,13 @@ namespace Remnants.Core.Serialization;
 /// the scavenge run carries the units' cybernetic hooks (<see cref="ScavengeSave"/> version 7). Older prosthetics are
 /// mapped into the tree by <see cref="MigrateCybernetics"/>: an item outside the tree (none before items existed) becomes the
 /// crude part below quality 1 and the standard cyborg part from there, and pays its tier's replacement humanity.
+/// Version 14 adds Story mode (13 is held by the schematics branch): <see cref="ColonyState.Campaign"/> (null = Sandbox, so every older save loads as Sandbox),
+/// survivors' <c>UniqueId</c> (Pell), the expedition's story mission, and carries the scavenge run's mission
+/// (<see cref="ScavengeSave"/> version 8).
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 12;
+    public const int Version = 14;
     private const int OldestVersion = 1;
 
     /// <summary>What a pre-version-4 generic "blueprint" item becomes.</summary>
