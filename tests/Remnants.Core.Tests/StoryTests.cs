@@ -286,7 +286,7 @@ public class CampaignTests
     public void An_old_save_loads_as_sandbox()
     {
         var sim = NewGame.Create(TestData.Real, 3, ScavengeTestData.Real);
-        var json = SaveGame.Save(sim.State).Replace("\"version\": 11", "\"version\": 10");
+        var json = SaveGame.Save(sim.State).Replace("\"version\": 14", "\"version\": 12");
         Assert.Null(SaveGame.Load(TestData.Real, json, ScavengeTestData.Real).State.Campaign);
     }
 

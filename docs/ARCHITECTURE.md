@@ -840,7 +840,7 @@ The spec is STORY.md. The data format, field by field, is docs/story/FORMAT.md. 
   to the spawn and every exit, and no random fixtures inside. `NewScavenge.Create(..., MissionSetup)` takes either a
   handmade map or a generated map with a room. A raid system can pass its own `HandmadeMapDef` built from the colony
   layout.
-- **Saves**: colony version 11 (`Campaign`, `Survivor.UniqueId`, `Expedition.MissionId`), scavenge version 6
+- **Saves**: colony version 14 (13 is held by the schematics branch; `Campaign`, `Survivor.UniqueId`, `Expedition.MissionId`), scavenge version 8
   (`Mission`: the whole field script is copied in, plus the map id and `HandmadeMaps.Hash`; units' and devices' story
   fields). Older saves load as Sandbox and as plain runs. Day-night, prosthetics and schematics take versions too;
   whichever merges later renumbers.
