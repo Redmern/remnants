@@ -25,7 +25,8 @@ public class CraftingDataTests
     public void Every_blueprint_unlocks_a_recipe_or_perk_and_new_buildings_have_recipes()
     {
         foreach (var bp in ScavengeTestData.Real.Items.Values.Where(i => i.Kind == ItemKind.Blueprint))
-            Assert.True(TestData.Real.Recipes.Values.Any(r => r.Blueprint == bp.Id) || TestData.Real.Perks.Values.Any(p => p.Requires.Blueprint == bp.Id),
+            Assert.True(TestData.Real.Recipes.Values.Any(r => r.Blueprint == bp.Id) || TestData.Real.Perks.Values.Any(p => p.Requires.Blueprint == bp.Id)
+                        || TestData.Real.Cybernetics!.Nodes.Values.Any(n => n.Blueprint == bp.Id),
                 $"{bp.Id} unlocks nothing");
         foreach (var id in new[] { "workshop", "tailor", "electronics_lab", "armory", "kitchen" })
             Assert.NotEmpty(TestData.Real.RecipesFor(id));

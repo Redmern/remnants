@@ -202,7 +202,7 @@
 
     { "id": "biomech", "name": "Biomech", "discipline": "tech", "tier": 2,
       "description": "Builds powered limbs: servos, power cells and the specialised arms and legs that use them.",
-      "requires": { "skills": { "Crafting": 20, "Electronics": 15 }, "perks": ["tinkerer"], "level": 3 },
+      "requires": { "skills": { "Electronics": 15 }, "attributes": { "Intellect": 35 }, "level": 3, "building": "electronics_lab" },
       "effects": { "craftQuality": { "electronics": 0.05 } } },
     { "id": "neural_interface", "name": "Neural Interface", "discipline": "tech", "tier": 3,
       "description": "Understands how a neural link talks to a nerve. Unlocks cyborg-grade designs.",

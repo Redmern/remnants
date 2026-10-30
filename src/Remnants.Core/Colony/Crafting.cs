@@ -303,7 +303,9 @@ internal static class CraftingHandlers
 
         state.Inventory.TryTake(item.Id);
         state.KnownBlueprints.Add(item.Id);
-        var unlocked = sim.Data.Recipes.Values.Where(r => r.Blueprint == item.Id).Select(r => r.Name).ToList();
+        var unlocked = sim.Data.Recipes.Values.Where(r => r.Blueprint == item.Id).Select(r => r.Name)
+            .Concat(sim.Data.Cybernetics?.Nodes.Values.Where(n => n.Blueprint == item.Id).Select(n => sim.Scavenge.Items[n.Id].Name) ?? [])
+            .ToList();
         var message = $"Studied {item.Name}: {(unlocked.Count == 0 ? "nothing new" : string.Join(", ", unlocked))} unlocked.";
         state.Log(new(state.Tick, ColonyEventType.BlueprintStudied, message));
         return CommandResult.Success(message);

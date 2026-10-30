@@ -81,10 +81,10 @@ public sealed record CyberEffectsDef
 }
 
 /// <summary>
-/// One design in the tree. Its id is the prosthetic item's id. <see cref="Requires"/> lists nodes of the tier below, any
-/// one of which the colony must know (have crafted, fitted or owned; tier 0 is known from the start); plus the perk
-/// someone at home must have and an optional blueprint the colony must have studied. Building and level come from the
-/// recipe that makes it; components are that recipe's item inputs.
+/// One design in the tree. Its id is the prosthetic item's id. The way in is one of <see cref="Requires"/> (nodes of a
+/// lower tier) known to the colony — crafted, fitted or owned; tier 0 is known from the start — or, instead, its
+/// <see cref="Blueprint"/> studied (a blueprint skips the tier below). On top: the perk someone at home must have.
+/// Building and level come from the recipe that makes it; components are that recipe's item inputs.
 /// </summary>
 public sealed record CyberNodeDef
 {
@@ -97,6 +97,8 @@ public sealed record CyberNodeDef
 
     public List<string> Requires { get; init; } = new();
     public string? Perk { get; init; }
+
+    /// <summary>A blueprint that opens this design without knowing the tier below.</summary>
     public string? Blueprint { get; init; }
 
     /// <summary>

@@ -112,6 +112,12 @@ public class CyberneticsTreeTests
         Assert.Equal(["know Mechanical Leg"], runner.Missing);
         Assert.Equal(CommandError.RecipeLocked, sim.Execute(new QueueRecipe(lab.Id, "runner_leg")).Error);
 
+        // A blueprint skips a tier: Cybernetics opens cyborg designs without a powered one known.
+        crafter.Perks.Add("neural_interface");
+        Assert.Contains(Status(sim, "cyber_leg").Missing, m => m.StartsWith("know Runner Leg or Silent Leg or Armored Leg, or study Blueprint: Cybernetics"));
+        sim.State.KnownBlueprints.Add("bp_cybernetics");
+        Assert.DoesNotContain(Status(sim, "cyber_leg").Missing, m => m.StartsWith("know"));
+
         sim.State.Inventory.Add("mech_leg");
         sim.Tick();
         Assert.Equal(CyberNodeState.Known, Status(sim, "mech_leg").State);

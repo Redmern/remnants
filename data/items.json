@@ -100,7 +100,7 @@
     "blueprint": { "studyAt": "electronics_lab", "minLevel": 2 } },
   { "id": "bp_signal_jammer", "name": "Blueprint: Signal Jammer", "kind": "Blueprint", "weight": 0.1, "tier": 3, "lootWeight": 0.4,
     "blueprint": { "studyAt": "electronics_lab", "minLevel": 2 } },
-  { "id": "bp_cybernetics", "name": "Blueprint: Cybernetics", "kind": "Blueprint", "weight": 0.1, "tier": 3, "lootWeight": 0.3,
+  { "id": "bp_cybernetics", "name": "Blueprint: Cybernetics", "kind": "Blueprint", "weight": 0.1, "tier": 2, "lootWeight": 0.3,
     "blueprint": { "studyAt": "electronics_lab", "minLevel": 2 } },
 
   { "id": "ds_network_ghost", "name": "Datashard: Network Ghost", "kind": "Blueprint", "weight": 0.1, "tier": 2, "lootWeight": 0.3,

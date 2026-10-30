@@ -76,6 +76,8 @@ public static class Cybernetics
         {
             var at = sim.Data.Buildings[recipe.Building];
             if (!state.Buildings.Any(b => b.DefId == at.Id && b.Level >= recipe.MinLevel)) missing.Add($"{at.Name} level {recipe.MinLevel}");
+            if (recipe.Blueprint is { } bp && !state.KnownBlueprints.Contains(bp))
+                missing.Add($"{sim.Scavenge?.Items.GetValueOrDefault(bp)?.Name ?? bp} studied");
         }
         else if (!IsKnown(state, node)) missing.Add("found as loot only");
         var owned = sim.Scavenge is null ? 0 : state.Inventory.Counts.Where(kv => sim.Scavenge.Items.TryGetValue(kv.Key, out var i) && i.DefinedId == node.Id).Sum(kv => kv.Value);
@@ -86,18 +88,27 @@ public static class Cybernetics
         return new CyberNodeStatus(node, nodeState, missing, recipe, owned, fitted);
     }
 
-    /// <summary>Tree requirements only (lower tier known, perk, blueprint): what crafting checks.</summary>
+    /// <summary>
+    /// The way into a design: one of its lower-tier requirements known, or its blueprint studied (a blueprint skips the
+    /// tier below). Tier 0 has no requirement.
+    /// </summary>
+    public static bool WayIn(ColonyState state, CyberneticsData cyber, CyberNodeDef node) =>
+        node.Requires.Count == 0 || node.Requires.Any(r => IsKnown(state, cyber.Nodes[r]))
+        || node.Blueprint is { } bp && state.KnownBlueprints.Contains(bp);
+
+    /// <summary>Tree requirements only (a way in, the perk): what crafting checks on top of the recipe.</summary>
     private static List<string> Missing(ColonySim sim, CyberNodeDef node)
     {
         var state = sim.State;
         var cyber = sim.Data.Cybernetics!;
         var missing = new List<string>();
-        if (node.Requires.Count > 0 && !node.Requires.Any(r => IsKnown(state, cyber.Nodes[r])))
-            missing.Add($"know {string.Join(" or ", node.Requires.Select(r => sim.Scavenge?.Items.GetValueOrDefault(r)?.Name ?? r))}");
+        if (!WayIn(state, cyber, node))
+        {
+            var know = $"know {string.Join(" or ", node.Requires.Select(r => sim.Scavenge?.Items.GetValueOrDefault(r)?.Name ?? r))}";
+            missing.Add(node.Blueprint is { } bp ? $"{know}, or study {sim.Scavenge?.Items.GetValueOrDefault(bp)?.Name ?? bp}" : know);
+        }
         if (node.Perk is { } perk && !ColonyHasPerk(state, perk))
             missing.Add($"someone with {sim.Data.Perks.GetValueOrDefault(perk)?.Name ?? perk}");
-        if (node.Blueprint is { } bp && !state.KnownBlueprints.Contains(bp))
-            missing.Add($"{sim.Scavenge?.Items.GetValueOrDefault(bp)?.Name ?? bp} studied");
         return missing;
     }
 
