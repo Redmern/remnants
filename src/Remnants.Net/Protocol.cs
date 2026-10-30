@@ -16,7 +16,8 @@ public static class Protocol
     /// drone marks in views).
     /// 5: day and night: the run's environment (hour, phase, weather) in views; the server decides it.
     /// 6: cybernetics (eyes in bodies, units' cybernetic hooks, parts locked by interference, the limb-locked event).
-    /// 7: vehicles: a party's vehicle on <see cref="Join"/>, the stashItem command, parked vehicles in views.
+    /// 7: vehicles: a party's vehicle on <see cref="Join"/>, the stashItem / takeFromStash / salvage commands, parked
+    /// vehicles and stripped wrecks in views.
     /// </summary>
     public const int Version = 7;
     public const int DefaultPort = 7777;

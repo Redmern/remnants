@@ -36,6 +36,10 @@ public static class PerkHooks
     public const string CarryBonus = "carry_bonus";
     public const string LootBonus = "loot_bonus";
 
+    // Mechanics (colony side: the Garage's best mechanic)
+    public const string RepairPartsDiscount = "repair_parts_discount";
+    public const string EngineTuneBonus = "engine_tune_bonus";
+
     // Medic
     public const string FieldHealBonus = "field_heal_bonus";
     public const string ReviveHpBonus = "revive_hp_bonus";
@@ -73,6 +77,8 @@ public static class PerkHooks
         [LootBonus] = "Extra share of items found in caches (0.2 = +20%).",
         [FieldHealBonus] = "Healing items restore this much more (0.25 = +25%).",
         [ReviveHpBonus] = "HP added when reviving a downed ally.",
+        [RepairPartsDiscount] = "Share of spare parts saved on vehicle repairs at the Garage where this survivor works (0.3 = 30% fewer).",
+        [EngineTuneBonus] = "Added to the quality scale of engine upgrades fitted at the Garage where this survivor works (0.15 = +15%).",
         [BleedoutRoundsBonus] = "Rounds added to a downed unit's bleed-out timer when this survivor stabilizes them.",
         [SurgerySuccessBonus] = "Colony: added to the success chance of a surgery this medic leads (0.1 = +10 points).",
         [SurgerySpeedBonus] = "Colony: surgery effort multiplier bonus when this medic leads it (0.25 = +25%).",

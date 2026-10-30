@@ -98,7 +98,7 @@
   {
     "id": "mechanics",
     "name": "Mechanics",
-    "skill": "Crafting",
+    "skill": "Mechanics",
     "skillWeight": 1.0,
     "attributes": { "Strength": 0.4, "Intellect": 0.3, "Agility": 0.3 },
     "bodyParts": { "Arms": 0.7, "Head": 0.3 },

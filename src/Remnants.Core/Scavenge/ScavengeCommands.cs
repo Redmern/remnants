@@ -41,6 +41,12 @@ public sealed record Extract(int PlayerId, int UnitId) : IScavengeCommand;
 /// <summary>Load a carried item into the party's parked vehicle next to the unit; it goes home with the vehicle.</summary>
 public sealed record StashItem(int PlayerId, int UnitId, string ItemId) : IScavengeCommand;
 
+/// <summary>Take an item back out of the party's vehicle next to the unit (needs a mobile workbench on it).</summary>
+public sealed record TakeFromStash(int PlayerId, int UnitId, string ItemId) : IScavengeCommand;
+
+/// <summary>Strip a wrecked car next to the unit for vehicle parts (AP, and it is loud). The parts drop on the wreck's tile.</summary>
+public sealed record Salvage(int PlayerId, int UnitId, Pos At) : IScavengeCommand;
+
 /// <summary>Co-op: offer an alliance to another player whose party and yours can see each other. Free; on your turn.</summary>
 public sealed record ProposeAlliance(int PlayerId, int UnitId, int ToPlayerId) : IScavengeCommand;
 
@@ -147,6 +153,8 @@ public enum ScavengeError
     NoPrompt,
     /// <summary>The parked vehicle's stash is at its cargo limit.</summary>
     CargoFull,
+    /// <summary>Salvage: no wreck there, or it was stripped already.</summary>
+    NothingToSalvage,
 }
 
 /// <summary>Outcome of a scavenge command. <see cref="EntityId"/> carries e.g. the attacked unit.</summary>

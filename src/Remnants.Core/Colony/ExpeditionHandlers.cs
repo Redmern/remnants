@@ -83,7 +83,7 @@ internal static class ExpeditionHandlers
         if (vehicle is not null)
         {
             vehicle.Away = true;
-            vehicle.Condition = Math.Max(1, vehicle.Condition - VehicleRules.Wear(sim.Data, vehicle, travel.Days));
+            VehicleRules.WearOut(sim.Data, vehicle, travel.Days);
         }
         var expedition = new Expedition
         {
@@ -93,7 +93,7 @@ internal static class ExpeditionHandlers
             LaunchedTick = state.Tick,
             TravelTicks = travel.Ticks,
             VehicleId = vehicle?.Id,
-            VehicleNoise = vehicle is null ? 0 : sim.VehicleStats(vehicle).Noise,
+            VehicleNoise = vehicle is null ? 0 : VehicleRules.ArrivalNoise(sim.Data, vehicle),
             Fuel = travel.FuelRoundTrip,
             WaitTicks = plan.WaitTicks,
             ArrivalTick = plan.ArrivalTick,
@@ -267,8 +267,10 @@ internal static class ExpeditionHandlers
             return;
         }
         vehicle.Away = false;
+        var stats = sim.VehicleStats(vehicle);
         if (result.Vehicle is { } field)
         {
+            if (field.Hp < vehicle.Condition) VehicleRules.CombatWear(sim.Data, vehicle, (vehicle.Condition - field.Hp) / Math.Max(1, field.MaxHp));
             vehicle.Condition = Math.Min(vehicle.Condition, field.Hp);
             foreach (var item in field.Stash)
                 if (data.Items[item].Salvage is { } salvage) state.Stockpile.Add(salvage.Resource, salvage.Amount);
@@ -277,7 +279,11 @@ internal static class ExpeditionHandlers
                 state.Log(new(state.Tick, ColonyEventType.VehicleDamaged, $"The {vehicle.Name} came back damaged ({field.Hp:0}/{field.MaxHp:0})."));
         }
         var backDays = WorldMap.TravelTicks(sim.Data, data.Zones[expedition.ZoneId]) > 0 ? expedition.TravelTicks / (double)sim.Data.Rules.TicksPerDay : 0;
-        vehicle.Condition = Math.Max(1, vehicle.Condition - VehicleRules.Wear(sim.Data, vehicle, backDays));
+        VehicleRules.WearOut(sim.Data, vehicle, backDays);
+        // A field medkit locker patches everyone up before the road.
+        if (stats.HealOnReturn > 0)
+            foreach (var r in result.Returned)
+                if (state.FindSurvivor(r.Survivor.Id) is { } s) s.Health = Math.Min(Survivors.Survivor.MaxHealth, s.Health + stats.HealOnReturn);
         report.Vehicle = vehicle.Name;
     }
 

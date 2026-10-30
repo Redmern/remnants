@@ -229,6 +229,11 @@ public static class PartyBot
         var leaving = Leaving(sim, unit, hostiles, allies, fightLinked, tech, unload);
         if (leaving && (map.IsExit(unit.Pos) || ParkedVehicles.Beside(state, unit) is not null)) return new Extract(playerId, unit.Id);
 
+        // A wreck beside us: strip it for parts while nothing hostile is in sight (it is loud).
+        if (!leaving && hostiles.Count == 0 && unit.Ap >= sim.Data.Rules.Salvage.ApCost
+            && Salvaging.Beside(state, unit).Select(w => (Pos?)w.A).FirstOrDefault() is { } wreck)
+            return new Salvage(playerId, unit.Id, wreck);
+
         var strangers = recruit
             ? state.Units.Where(u => u.Kind == UnitKind.Npc && u.IsActive && u.Side == Unit.NeutralSide && visible.Contains(map.Index(u.Pos))).ToList()
             : [];

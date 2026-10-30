@@ -305,8 +305,11 @@ public sealed record ItemDef
     /// <summary>The defined item this is or is a variant of.</summary>
     public string DefinedId => BaseId ?? Id;
 
-    /// <summary>Gear that comes in quality tiers when crafted.</summary>
-    public bool HasQuality => Slot is not null && !Natural;
+    /// <summary>A vehicle part (wheel, engine, armor plate...): it comes in quality tiers, which scale the upgrade built from it.</summary>
+    public bool VehiclePart { get; init; }
+
+    /// <summary>Gear and vehicle parts come in quality tiers when crafted.</summary>
+    public bool HasQuality => (Slot is not null || VehiclePart) && !Natural;
 
     public EquipSlot? Slot => Kind switch
     {

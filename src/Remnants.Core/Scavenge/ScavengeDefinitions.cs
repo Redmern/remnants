@@ -587,6 +587,9 @@ public sealed record ScavengeRules
     /// <summary>Parked vehicles in the field (see <see cref="ParkedVehicles"/>).</summary>
     public VehicleFieldRules Vehicle { get; init; } = new();
 
+    /// <summary>Stripping wrecked cars for vehicle parts (see <see cref="Salvaging"/>).</summary>
+    public SalvageRules Salvage { get; init; } = new();
+
     /// <summary>Quality tiers of crafted gear, worst first. The <c>base</c> tier is the item as defined.</summary>
     public List<QualityTierDef> Quality { get; init; } = new();
 }
@@ -614,7 +617,11 @@ public sealed record VehicleFieldRules
     public double DamagePerEnemy { get; init; } = 6;
     public double MinDamage { get; init; } = 1;
 
+    /// <summary>HP a parked vehicle with a mobile workbench mends each round.</summary>
+    public double WorkbenchRepairPerRound { get; init; } = 2;
+
     /// <summary>A multiplayer server refuses a joining vehicle with more HP or cargo than any tier can have.</summary>
     public double MaxHp { get; init; } = 250;
     public double MaxCargoKg { get; init; } = 300;
+    public double MaxTurretDamage { get; init; } = 15;
 }

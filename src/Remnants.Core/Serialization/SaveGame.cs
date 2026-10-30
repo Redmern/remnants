@@ -237,8 +237,8 @@ public static class SaveGame
         foreach (var v in colony.Vehicles)
         {
             if (!data.VehicleTiers.ContainsKey(v.TierId)) throw new JsonException($"Save has {v.Name} of unknown vehicle tier '{v.TierId}'.");
-            if (v.Upgrades.FirstOrDefault(u => !data.VehicleUpgrades.ContainsKey(u)) is { } upgrade)
-                throw new JsonException($"Save has {v.Name} with unknown upgrade '{upgrade}'.");
+            if (v.Upgrades.FirstOrDefault(u => !data.VehicleUpgrades.ContainsKey(u.UpgradeId)) is { } upgrade)
+                throw new JsonException($"Save has {v.Name} with unknown upgrade '{upgrade.UpgradeId}'.");
         }
         if (colony.Vehicles.Select(v => v.Id).Distinct().Count() != colony.Vehicles.Count) throw new JsonException("Save has two vehicles with one id.");
         var driven = colony.Expedition?.VehicleId;

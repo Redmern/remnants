@@ -70,7 +70,7 @@ public static class ZoneTrial
         if (vehicle is { Length: > 0 })
         {
             var tier = data.VehicleTiers[vehicle];
-            var stats = VehicleRules.Stats(data, tier, []);
+            var stats = VehicleRules.Stats(data, tier, Array.Empty<string>());
             field = new FieldVehicle(tier.Id, tier.Name, tier.Tier, stats.MaxCondition, stats.MaxCondition, stats.Armor, stats.CargoKg, stats.Armored, stats.Seats);
             conditions = (conditions ?? new ZoneConditions()) with { HuskMultiplier = 1 + stats.Noise };
         }

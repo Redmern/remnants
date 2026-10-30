@@ -186,8 +186,12 @@ public sealed class ColonyBot
         foreach (var v in State.Vehicles.Where(v => !v.Away && v.Condition < _sim.VehicleStats(v).MaxCondition * 0.6))
             if (State.Inventory.Has("spare_parts")) _sim.Execute(new RepairVehicle(v.Id));
             else if (garage.Queue.Count == 0 && State.Stockpile.Get("scrap") >= 5) Queue(garage, "spare_parts");
-        foreach (var v in State.Vehicles.Where(v => !v.Away && Data.VehicleTiers[v.TierId].Motorized && !v.Upgrades.Contains("headlights")))
-            if (State.Stockpile.Get("electronics") >= 3 && State.Stockpile.Get("scrap") >= 10) _sim.Execute(new FitUpgrade(v.Id, "headlights"));
+        // Upgrades, in the bot's order of preference, while the stores can spare it (it never takes anything off).
+        foreach (var v in State.Vehicles.Where(v => !v.Away))
+            foreach (var id in UpgradeOrder)
+                if (Data.VehicleUpgrades.TryGetValue(id, out var up) && VehicleRules.CanFit(_sim, v, up) is null
+                    && up.Cost.All(kv => State.Stockpile.Get(kv.Key) >= kv.Value + GoalCost().GetValueOrDefault(kv.Key) + 10))
+                    _sim.Execute(new FitUpgrade(v.Id, id));
         // Vehicles are a luxury: the Garage only builds while the stores have scrap to spare for the build order.
         if (garage.Queue.Count > 0 || State.Stockpile.Get("scrap") < GoalCost().GetValueOrDefault("scrap") + 30) return;
 
@@ -204,6 +208,12 @@ public sealed class ColonyBot
             }
         if (State.Stockpile.CanAfford(next.Inputs)) Queue(garage, next.Id);
     }
+
+    private static readonly string[] UpgradeOrder =
+    [
+        "headlights", "cargo_rack", "fuel_cans", "muffler", "offroad_tyres", "tuned_engine", "medkit_locker", "winch", "armor_plates", "cage",
+        "trailer", "roof_turret",
+    ];
 
     /// <summary>
     /// The vehicle a party of <paramref name="size"/> takes to a zone: the fastest working one whose trip is not blocked and

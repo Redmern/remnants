@@ -19,7 +19,8 @@ namespace Remnants.Core.Scavenge;
 /// Version 8 adds story missions: <see cref="ScavengeState.Mission"/> (the field script, objectives, triggers fired,
 /// chatter, the pending prompt, field flags, markers, the handmade map id and hash) and units' and devices' story fields
 /// (tags, character ids, patrols, raised tiles); older saves load as plain runs.
-/// Version 9 adds parked vehicles (<see cref="ScavengeState.Vehicles"/>, their stash and HP); older runs have none.
+/// Version 9 adds parked vehicles (<see cref="ScavengeState.Vehicles"/>, their stash, HP and upgrades) and stripped wrecks
+/// (<see cref="ScavengeState.SalvagedWrecks"/>); older runs have none.
 /// </summary>
 public static class ScavengeSave
 {

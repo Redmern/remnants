@@ -19,7 +19,7 @@ public class VehicleTests
     {
         var tierDef = sim.Data.VehicleTiers[tier];
         var v = new Vehicle { Id = sim.State.NextVehicleId++, TierId = tier, Name = tierDef.Name, Condition = tierDef.MaxCondition };
-        foreach (var u in upgrades) v.Upgrades.Add(u);
+        foreach (var u in upgrades) v.Upgrades.Add(FittedUpgrade.Standard(u));
         v.Condition = sim.VehicleStats(v).MaxCondition;
         sim.State.Vehicles.Add(v);
         return v;
@@ -201,6 +201,8 @@ public class VehicleTests
         var buggy = Give(sim, "buggy");
         Assert.Equal(CommandError.NoGarage, sim.Execute(new FitUpgrade(buggy.Id, "headlights")).Error);
         var garage = Garage(sim);
+        Assert.Equal(CommandError.RecipeLocked, sim.Execute(new FitUpgrade(buggy.Id, "headlights")).Error);
+        sim.State.KnownBlueprints.Add("sch_headlights");
         Assert.Equal(CommandError.CannotAfford, sim.Execute(new FitUpgrade(buggy.Id, "headlights")).Error);
         sim.State.Stockpile.Add("electronics", 3);
         sim.State.Stockpile.Add("scrap", 2);
@@ -229,7 +231,7 @@ public class VehicleTests
         Assert.Equal(CommandError.NotDamaged, sim.Execute(new RepairVehicle(truck.Id)).Error);
         truck.Condition = 10;
         Assert.True(VehicleRules.Broken(sim.Data, truck));
-        var needed = VehicleRules.PartsToRepair(sim.Data, truck);
+        var needed = VehicleRules.PartsToRepair(sim, truck);
         Assert.Equal(4, needed);
         Assert.True(sim.Execute(new RepairVehicle(truck.Id)).Ok);
         Assert.Equal(sim.VehicleStats(truck).MaxCondition, truck.Condition, 6);

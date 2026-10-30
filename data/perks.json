@@ -13,7 +13,8 @@
     { "skill": "Hacking",       "name": "Hacking",        "attributes": { "Intellect": 0.6, "Perception": 0.4 },
       "description": "Breaking into Network devices and machines. Grows at the Electronics Lab and from field hacks." },
     { "skill": "DronePiloting", "name": "Drone Piloting", "attributes": { "Perception": 0.6, "Agility": 0.4 },
-      "description": "Flying scout drones: range, battery and what they can spot. Grows at the Electronics Lab and in the field." }
+      "description": "Flying scout drones: range, battery and what they can spot. Grows at the Electronics Lab and in the field." },
+    { "skill": "Mechanics",     "name": "Mechanics",      "attributes": { "Strength": 0.4, "Intellect": 0.6 } }
   ],
 
   "xp": {
@@ -34,6 +35,7 @@
 
   "study": {
     "buildings": {
+      "garage": { "skills": ["Mechanics"], "slots": [1, 2, 2] },
       "electronics_lab": { "skills": ["Electronics", "Hacking", "DronePiloting"], "slots": [1, 2, 3] },
       "town_hall": { "skills": ["Woodcutting", "Mining", "Crafting", "Tailoring", "Medicine", "Firearms", "Melee", "Cooking", "Farming"], "slots": [1, 2, 3] }
     },
@@ -51,7 +53,8 @@
     { "id": "drones",   "name": "Drones",   "icon": "drone",   "studyAt": "electronics_lab", "description": "Scout drones: range, battery, marking targets, payloads." },
     { "id": "combat",   "name": "Combat",   "icon": "combat",  "studyAt": "town_hall",       "description": "Shooting, close quarters and holding a position." },
     { "id": "survival", "name": "Survival", "icon": "scout",   "studyAt": "town_hall",       "description": "Scouting, moving unseen, carrying and finding more." },
-    { "id": "medic",    "name": "Medic",    "icon": "medic",   "studyAt": "town_hall",       "description": "Patching people up in the field and at the Med Bay." }
+    { "id": "medic",    "name": "Medic",    "icon": "medic",   "studyAt": "town_hall",       "description": "Patching people up in the field and at the Med Bay." },
+    { "id": "mechanics", "name": "Mechanics", "icon": "craft", "studyAt": "garage", "description": "Vehicles: cheaper repairs, tuned engines." }
   ],
 
   "perks": [
@@ -211,6 +214,18 @@
     { "id": "linked_salvage", "name": "Linked Salvage", "discipline": "tech", "tier": 3,
       "description": "Strips Linked cores into Network-grade limbs, and shields their own from the Network's reach.",
       "requires": { "skills": { "Electronics": 40, "Hacking": 20 }, "perks": ["neural_interface"], "level": 7, "blueprint": "bp_network_grade" },
-      "effects": { "hooks": { "cyber_interference_reduction": 0.5 } } }
+      "effects": { "hooks": { "cyber_interference_reduction": 0.5 } } },
+    {
+      "id": "grease_monkey", "name": "Grease Monkey", "discipline": "mechanics", "tier": 1,
+      "description": "Knows which bolt matters. Garage repairs need 30% fewer spare parts.",
+      "requires": { "skills": { "Mechanics": 10 } },
+      "effects": { "hooks": { "repair_parts_discount": 0.3 }, "jobOutput": { "mechanics": 0.05 } }
+    },
+    {
+      "id": "tuner", "name": "Tuner", "discipline": "mechanics", "tier": 2,
+      "description": "Engines run sweeter: engine upgrades fitted at their Garage work 15% better; finer parts.",
+      "requires": { "skills": { "Mechanics": 25 }, "perks": ["grease_monkey"], "level": 3 },
+      "effects": { "hooks": { "engine_tune_bonus": 0.15 }, "craftQuality": { "mechanics": 0.1 } }
+    }
   ]
 }

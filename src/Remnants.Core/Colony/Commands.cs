@@ -26,6 +26,9 @@ public sealed record LaunchExpedition(string ZoneId, List<ExpeditionMember> Memb
 /// <summary>Fit an upgrade (data/vehicles.json) to a vehicle at the Garage, paying its resources and parts.</summary>
 public sealed record FitUpgrade(int VehicleId, string UpgradeId) : IColonyCommand;
 
+/// <summary>Take an upgrade off a vehicle at the Garage; some of its parts come back.</summary>
+public sealed record RemoveUpgrade(int VehicleId, string UpgradeId) : IColonyCommand;
+
 /// <summary>Repair a vehicle at the Garage with spare parts from the stores (as many as it needs, or as there are).</summary>
 public sealed record RepairVehicle(int VehicleId) : IColonyCommand;
 
@@ -208,6 +211,8 @@ public enum CommandError
     AlreadyFitted,
     UpgradeDoesNotFit,
     NotDamaged,
+    /// <summary>Every slot of the upgrade's kind on the vehicle is taken.</summary>
+    SlotFull,
 }
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>

@@ -70,6 +70,8 @@ public sealed class ScavengeSim
             EndTurn => ScavengeResult.Success($"{unit!.Name} ends their turn."),
             Extract => ScavengeCommandHandlers.Extract(this, unit!),
             StashItem c => ParkedVehicles.Stash(this, unit!, c),
+            TakeFromStash c => ParkedVehicles.Unstash(this, unit!, c),
+            Salvage c => Salvaging.Salvage(this, unit!, c),
             ProposeAlliance c => Alliances.Propose(this, unit!, c),
             RespondAlliance c => Alliances.Respond(this, unit!, c),
             BreakAlliance c => Alliances.Break(this, unit!, c),

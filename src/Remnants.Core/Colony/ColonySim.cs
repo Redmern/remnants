@@ -343,6 +343,7 @@ public sealed class ColonySim
                 or global::Remnants.Core.Story.LaunchStoryMission => global::Remnants.Core.Story.Campaign.Execute(this, command),
             FitUpgrade c => VehicleRules.FitUpgrade(this, c),
             RepairVehicle c => VehicleRules.Repair(this, c),
+            RemoveUpgrade c => VehicleRules.RemoveUpgrade(this, c),
             _ => CommandResult.Fail(CommandError.UnknownCommand, $"Unknown command {command.GetType().Name}."),
         };
         SyncRng();

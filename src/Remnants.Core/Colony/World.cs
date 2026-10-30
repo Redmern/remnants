@@ -99,7 +99,7 @@ public static class WorldMap
     public static double DroneReachDays(ColonySim sim) =>
         sim.Scavenge!.Rules.World.DroneScout.MaxTravelDays
         + sim.State.Vehicles.Where(v => !v.Away && !VehicleRules.Broken(sim.Data, v))
-            .Select(v => sim.Data.VehicleTiers[v.TierId].DroneRangeDays).DefaultIfEmpty(0).Max();
+            .Select(v => VehicleRules.Stats(sim.Data, v).DroneRangeDays).DefaultIfEmpty(0).Max();
 
     /// <summary>Ticks out to the zone (one way) for a scouting drone: at least a few hours even next door.</summary>
     public static long DroneLegTicks(GameData data, ScavengeData scavenge, ZoneDef zone) =>

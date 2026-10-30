@@ -232,7 +232,8 @@ public sealed class GameHost : IHostSink
         {
             var limits = _data.Rules.Vehicle;
             if (v.Seats is { } seats && join.Party.Count > seats) return $"The {v.Name} seats {seats}, not {join.Party.Count}.";
-            if (v.MaxHp is <= 0 || v.MaxHp > limits.MaxHp || v.Hp > v.MaxHp || v.CargoKg is < 0 || v.CargoKg > limits.MaxCargoKg || v.Armor < 0)
+            if (v.MaxHp is <= 0 || v.MaxHp > limits.MaxHp || v.Hp > v.MaxHp || v.CargoKg is < 0 || v.CargoKg > limits.MaxCargoKg || v.Armor < 0
+                || v.DamageMultiplier is < 0 or > 1 || v.TurretDamage < 0 || v.TurretDamage > limits.MaxTurretDamage || v.TurretRange is < 0 or > 12)
                 return $"The {v.Name} does not add up (HP, cargo or armor out of range).";
         }
         return null;

@@ -15,7 +15,7 @@ public static class TravelTable
         {
             // Motor vehicles with headlights, so the hour of departure does not matter (without: ÷ nightSpeedMultiplier at night).
             var v = new Vehicle { Id = sim.State.NextVehicleId++, TierId = tier.Id, Name = tier.Name, Condition = tier.MaxCondition };
-            if (tier.Motorized) v.Upgrades.Add("headlights");
+            if (tier.Motorized) v.Upgrades.Add(FittedUpgrade.Standard("headlights"));
             sim.State.Vehicles.Add(v);
         }
         var sb = new StringBuilder();
