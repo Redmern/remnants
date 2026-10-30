@@ -26,7 +26,7 @@ public partial class ExpeditionPanel : PanelContainer
         public List<string> Pack { get; } = new();
     }
 
-    private static readonly EquipSlot[] Slots = [EquipSlot.Weapon, EquipSlot.Body, EquipSlot.Tool];
+    private static readonly EquipSlot[] Slots = [EquipSlot.Weapon, EquipSlot.Body, EquipSlot.Head, EquipSlot.Tool];
 
     private readonly ColonySession _session;
     private readonly OptionButton _zone = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None };
@@ -321,7 +321,7 @@ public partial class ExpeditionPanel : PanelContainer
         var data = sim.Scavenge!;
         var picker = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, ClipText = true, FitToLongestItem = false };
         var ids = new List<string?> { null };
-        picker.AddIconItem(Icons.Get(slot switch { EquipSlot.Weapon => "item_weapon", EquipSlot.Body => "item_armor", _ => "item_tool" }, 16), $"no {slot.ToString().ToLowerInvariant()}");
+        picker.AddIconItem(Icons.Get(SlotIcon(slot), 16), $"no {slot.ToString().ToLowerInvariant()}");
         var current = loadout.Equipment.GetValueOrDefault(slot);
         foreach (var (itemId, _) in sim.State.Inventory.Counts.Where(kv => data.Items[kv.Key].Slot == slot))
         {
@@ -342,6 +342,15 @@ public partial class ExpeditionPanel : PanelContainer
         };
         return picker;
     }
+
+    /// <summary>The line icon for an empty equipment slot.</summary>
+    public static string SlotIcon(EquipSlot slot) => slot switch
+    {
+        EquipSlot.Weapon => "item_weapon",
+        EquipSlot.Body => "item_armor",
+        EquipSlot.Head => "body_head",
+        _ => "item_tool",
+    };
 
     private Control PackPicker(ColonySim sim, Loadout loadout)
     {

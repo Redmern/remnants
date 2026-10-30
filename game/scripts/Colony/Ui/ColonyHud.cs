@@ -43,6 +43,8 @@ public partial class ColonyHud : CanvasLayer
 
     /// <summary>The Trading Post (async market with other players) at the Radio Mast.</summary>
     public Trade.TradingPostPanel TradingPost { get; }
+    /// <summary>The Gear Bench (from the Armory, Workshop and Tailor).</summary>
+    public GearBenchPanel GearBench { get; }
 
     /// <summary>Esc with nothing else to close; the screen may cancel placement or deselect first.</summary>
     public event Func<bool>? BackRequested;
@@ -180,11 +182,14 @@ public partial class ColonyHud : CanvasLayer
         AddChild(Cybernetics);
         TradingPost = new Trade.TradingPostPanel(session);
         AddChild(TradingPost);
+        GearBench = new GearBenchPanel(session);
+        AddChild(GearBench);
         AddChild(Pause);
         AddChild(Settings);
         MedBay.CyberneticsPressed += (who, part) =>
             Cybernetics.Open(part is { } p ? Remnants.Core.Data.CyberneticsData.SlotOf(p) : null, who, part);
         Production.CyberneticsPressed += () => Cybernetics.Open();
+        Production.GearBenchPressed += () => GearBench.Open();
 
         Log.Important += n => Toasts.Show(n.Title, n.Text, n.Icon, n.Color, n.Key, n.Merged);
         Inventory.Archive.ResearchRequested += () => ResearchRequested?.Invoke();
@@ -216,6 +221,7 @@ public partial class ColonyHud : CanvasLayer
         Research.Refresh();
         Radio.Refresh();
         Cybernetics.Refresh();
+        GearBench.Refresh();
         Inventory.Refresh();
         Pantry.Refresh();
         Harvest.Refresh();
@@ -265,7 +271,7 @@ public partial class ColonyHud : CanvasLayer
     public override void _UnhandledInput(InputEvent e)
     {
         if (e is not InputEventKey { Pressed: true, Echo: false }) return;
-        if (Pause.Visible || Settings.Visible || Cybernetics.Visible) return; // the overlays handle their own Esc
+        if (Pause.Visible || Settings.Visible || Cybernetics.Visible || GearBench.Visible) return; // the overlays handle their own Esc
         if (Hotkeys.Pressed(e, "pause_menu")) Back();
         else if (Hotkeys.Pressed(e, "toggle_pause")) _session.SetSpeed(_session.Speed == 0 ? Math.Max(1, _speedBeforePause) : Remember());
         else if (Hotkeys.Pressed(e, "speed_1")) _session.SetSpeed(1);
