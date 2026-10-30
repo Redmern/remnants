@@ -27,6 +27,8 @@ public partial class ColonyHud : CanvasLayer
     public ProductionPanel Production { get; }
     public StudyPanel Study { get; }
     public InventoryPanel Inventory { get; }
+    public PantryPanel Pantry { get; }
+    public HarvestPanel Harvest { get; }
     public AfterActionDialog Report { get; }
     public Toasts Toasts { get; } = new();
     public PauseMenu Pause { get; }
@@ -73,6 +75,8 @@ public partial class ColonyHud : CanvasLayer
         Inventory = new InventoryPanel(session);
         Expedition = new ExpeditionPanel(session);
         floating.AddChild(Inventory);
+        Pantry = new PantryPanel(session);
+        floating.AddChild(Pantry);
         floating.AddChild(Expedition);
         center.AddChild(floating);
 
@@ -86,6 +90,7 @@ public partial class ColonyHud : CanvasLayer
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
         right.AddChild(scroll);
+        _rightScroll = scroll;
         var stack = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
         stack.AddThemeConstantOverride("separation", 8);
         scroll.AddChild(stack);
@@ -94,8 +99,10 @@ public partial class ColonyHud : CanvasLayer
         MedBay = new MedBayPanel(session);
         Production = new ProductionPanel(session);
         Study = new StudyPanel(session);
+        Harvest = new HarvestPanel(session);
         stack.AddChild(BuildMenu);
         stack.AddChild(Building);
+        stack.AddChild(Harvest);
         stack.AddChild(MedBay);
         stack.AddChild(Study);
         stack.AddChild(Production);
@@ -138,6 +145,7 @@ public partial class ColonyHud : CanvasLayer
         Log.Important += n => Toasts.Show(n.Title, n.Text, n.Icon, n.Color, n.Key, n.Merged);
         TopBar.MenuPressed += OpenPause;
         TopBar.ItemsPressed += () => Inventory.Toggle();
+        TopBar.PantryPressed += () => Pantry.Toggle();
         TopBar.WorldMapPressed += () => WorldMap.Open();
         Survivor.Closed += () => Roster.Select(null);
         Roster.SelectionChanged += Survivor.Show;
@@ -154,11 +162,18 @@ public partial class ColonyHud : CanvasLayer
         Study.Refresh();
         Cybernetics.Refresh();
         Inventory.Refresh();
+        Pantry.Refresh();
+        Harvest.Refresh();
         Expedition.Refresh();
         WorldMap.Refresh();
         if (BuildMenu.Visible) BuildMenu.Refresh();
         Log.Refresh();
     }
+
+    private readonly ScrollContainer _rightScroll;
+
+    /// <summary>Scrolls the right-hand panel column so <paramref name="control"/> is in view (after layout).</summary>
+    public void ScrollRightTo(Control control) => _rightScroll.CallDeferred(ScrollContainer.MethodName.EnsureControlVisible, control);
 
     public void OpenPause()
     {
@@ -207,6 +222,7 @@ public partial class ColonyHud : CanvasLayer
         else if (BackRequested?.Invoke() == true) { }
         else if (Expedition.Visible) Expedition.Toggle();
         else if (Inventory.Visible) Inventory.Toggle();
+        else if (Pantry.Visible) Pantry.Toggle();
         else if (BuildMenu.Visible) TopBar.EmitBuild();
         else if (Survivor.Visible) Roster.Select(null);
         else OpenPause();

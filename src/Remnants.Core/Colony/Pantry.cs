@@ -63,6 +63,9 @@ public sealed record TakenFood(string ItemId, int Count, string Quality, bool Ta
 /// <summary>Queries and changes on the pantry. Everything here is deterministic and keeps lots and inventory counts in step.</summary>
 public static class Pantry
 {
+    /// <summary>How fast produce and meat age now (1 = full speed; a Cold Cellar slows it).</summary>
+    public static double CellarRate(ColonyState state, GameData data) => FoodSystem.CellarRate(state, data);
+
     /// <summary>Food value in stock that is fit to eat (not spoiled), in the old food units.</summary>
     public static double FoodValue(ColonySim sim) => FoodValue(sim.State, sim.Data);
 

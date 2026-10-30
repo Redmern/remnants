@@ -162,6 +162,8 @@ public partial class EventLog : PanelContainer
         ColonyEventType.SurgeryDone => ("Surgery done", true),
         ColonyEventType.SurgeryComplication => ("Surgery complication", true),
         ColonyEventType.ProstheticNeedsService => ("Prosthetic needs a service", true),
+        ColonyEventType.FoodPoisoning => ("Food poisoning", true),
+        ColonyEventType.FoodRotted => ("Food rotted", true),
         _ => null,
     };
 
@@ -195,6 +197,9 @@ public partial class EventLog : PanelContainer
         ColonyEventType.SurgeryCancelled => ("body_prosthetic", Palette.TextMuted, Kind.People),
         ColonyEventType.SurgeryComplication => ("stat_injured", Palette.Warn, Kind.Alert),
         ColonyEventType.ProstheticNeedsService => ("body_prosthetic", Palette.Warn, Kind.Alert),
+        ColonyEventType.HarvestChanged => ("skill_farming", Palette.Amber, Kind.Colony),
+        ColonyEventType.FoodRotted => ("stat_warning", Palette.Warn, Kind.Alert),
+        ColonyEventType.FoodPoisoning => ("buff_sick", Palette.Danger, Kind.Alert),
         ColonyEventType.Humanity => ("stat_mood", Palette.Network.Lerp(Palette.TextMuted, 0.4f), Kind.People),
         _ => ("ui_info", Palette.TextMuted, Kind.Colony),
     };

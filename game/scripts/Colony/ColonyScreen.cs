@@ -56,6 +56,7 @@ public partial class ColonyScreen : Node3D
         if ((DebugCapture.HasFlag("--demo") || DebugCapture.HasFlag("--family-demo")) && IsFreshGame) RunDemo();
         if (DebugCapture.HasFlag("--family-demo")) RunFamilyDemo();
         if (DebugCapture.HasFlag("--crafting-demo") && IsFreshGame) RunCraftingDemo();
+        if (DebugCapture.HasFlag("--food-demo") && IsFreshGame) RunFoodDemo(DebugCapture.Value("--food-view") ?? "kitchen");
         if (DebugCapture.HasFlag("--perks-demo") && IsFreshGame) RunPerksDemo();
         if (DebugCapture.HasFlag("--loop-demo") && _session.Sim.State.NextExpeditionId == 1)
         {
@@ -329,6 +330,109 @@ public partial class ColonyScreen : Node3D
     }
 
     /// <summary>
+    /// Debug: a fed town for screenshots of food and cooking. A Kitchen L3 with a Campfire, Smokehouse, Cold Cellar,
+    /// Hunting Lodge, a Farm on beans and a Greenhouse; a few food schematics studied (not all, so the recipe book shows
+    /// locked dishes); a pantry of mixed lots, some close to spoiling, one spoiled and one tainted; cooks at work; then a
+    /// few hours so people eat and carry their buffs. <paramref name="view"/>: kitchen (the recipe book), pantry, farm
+    /// (the crop picker) or roster (nothing open, the buff badges).
+    /// </summary>
+    private void RunFoodDemo(string view)
+    {
+        var sim = _session.Sim;
+        var state = sim.State;
+        foreach (var res in sim.Data.Resources.Keys) state.Stockpile.Add(res, 2000);
+        foreach (var sch in new[] { "sch_feast", "sch_medicinal_broth", "sch_cold_cellar", "sch_greenhouse", "sch_pickling" }) state.KnownBlueprints.Add(sch);
+        var hall = state.Buildings.First(b => b.DefId == sim.Data.Rules.TownHallBuildingId).Id;
+        _session.Execute(new Upgrade(hall));
+        _session.Execute(new Upgrade(hall));
+        int? Build(string defId, int plot, int level)
+        {
+            if (_session.Execute(new Construct(defId, plot)).EntityId is not { } id) return null;
+            for (var l = 1; l < level; l++) _session.Execute(new Upgrade(id));
+            return id;
+        }
+        var kitchen = Build("kitchen", 8, 3);
+        var farm = Build("farm", 2, 2);
+        Build("campfire", 9, 1);
+        var smoke = Build("smokehouse", 10, 2);
+        Build("cold_cellar", 14, 1);
+        var lodge = Build("hunting_lodge", 3, 1);
+        Build("greenhouse", 15, 1);
+        if (farm is { } f) _session.Execute(new SetHarvest(f, "beans"));
+
+        void Add(string item, int n, double ageDays = 0, string? quality = null, bool? tainted = null)
+        {
+            Pantry.Add(state, sim.Data, item, n, quality, tainted);
+            if (ageDays > 0) state.Food.Lots[item].Last().Age = ageDays * sim.Data.Rules.TicksPerDay;
+        }
+        Add("potato", 24, 3);
+        Add("potato", 10, 12.6);
+        Add("beans", 18);
+        Add("corn", 12, 2);
+        Add("herbs", 8, 4.5);
+        Add("meat", 6, 2.2);
+        Add("husk_meat", 4, 0.5);
+        Add("mushrooms", 5, 5);
+        Add("water", 10);
+        Add("salt", 3);
+        Add("spices", 2);
+        Add("stew", 6, 0.3, "fine");
+        Add("stew", 3, 0.5, "standard");
+        Add("pie", 4, 1, "standard");
+        Add("flatbread", 6, 2, "crude");
+        Add("smoked_meat", 6, 4, "standard");
+        Add("roast", 2, 0.2, "standard", tainted: true);
+        Add("canned_food", 4);
+
+        var adults = state.Survivors.Where(s => !s.IsChild).ToList();
+        if (kitchen is { } k && adults.Count > 0)
+        {
+            adults[0].Set(Remnants.Core.Survivors.Skill.Cooking, 35);
+            _session.Execute(new AssignJob(adults[0].Id, k));
+            _session.Execute(new QueueRecipe(k, "stew", 2));
+            _session.Execute(new QueueRecipe(k, "medicinal_broth"));
+            _session.Execute(new QueueRecipe(k, "boiled_potatoes", 1, Repeat: true));
+        }
+        if (smoke is { } sm && adults.Count > 1)
+        {
+            _session.Execute(new AssignJob(adults[1].Id, sm));
+            _session.Execute(new QueueRecipe(sm, "smoke_meat"));
+        }
+        if (lodge is { } l && adults.Count > 2) _session.Execute(new AssignJob(adults[2].Id, l));
+        foreach (var child in state.Survivors.Where(s => s.IsChild && !s.IsInfant).Take(1))
+            if (farm is { } fa) _session.Execute(new AssignJob(child.Id, fa));
+        _session.FastForward(6, _ => false);
+        // A colony a while in: one ate the tainted roast, one had stim tea, the youngest lived on roots for a while.
+        var tick = state.Tick;
+        if (adults.Count > 1) FoodEffects.Give(adults[1], "sick", tick + 18, 1);
+        if (adults.Count > 2) FoodEffects.Give(adults[2], "energised", tick + 7, 1);
+        if (state.Survivors.FirstOrDefault(s => s.IsChild) is { } kid)
+        {
+            kid.Nutrition = 0.4;
+            FoodEffects.Give(kid, "malnourished", tick + 1, 1);
+        }
+        if (adults.Count > 0) FoodEffects.Give(adults[0], "comfort", tick + 10, 1);
+        _session.SetSpeed(0);
+        switch (view)
+        {
+            case "pantry":
+                _hud.Pantry.Toggle();
+                break;
+            case "farm":
+                if (farm is { } farmId) _town.Select(farmId);
+                break;
+            case "roster":
+                break;
+            default:
+                if (kitchen is { } kitchenId) _town.Select(kitchenId);
+                _hud.Log.ToggleCollapsed();
+                GetTree().CreateTimer(0.6).Timeout += () => _hud.ScrollRightTo(_hud.Production.Book);
+                break;
+        }
+        if (adults.Count > 0) _hud.Roster.Select(view == "roster" ? adults[1].Id : null);
+    }
+
+    /// <summary>
     /// Debug: a grown town for screenshots of crafting tiers. Stocks up, raises the Town Hall to level 3, builds every
     /// production building and a House, upgrades a few to level 2 and 3, studies a blueprint, staffs the Armory and
     /// Tailor, fills their queues and opens the Armory's production panel and the item list.
@@ -443,6 +547,7 @@ public partial class ColonyScreen : Node3D
             _hud.MedBay.Show(id);
             _hud.Production.Show(id);
             _hud.Study.Show(id);
+            _hud.Harvest.Show(id);
         };
         _hud.Building.Closed += () => _town.Select(null);
         _hud.Roster.SelectionChanged += id => _walkers.SelectedSurvivorId = id;

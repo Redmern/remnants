@@ -33,6 +33,9 @@ public partial class TopBar : PanelContainer
     public event Action? BuildPressed;
     public event Action? ExpeditionPressed;
     public event Action? ItemsPressed;
+
+    /// <summary>The food-days chip or the pantry button was pressed.</summary>
+    public event Action? PantryPressed;
     public event Action? WorldMapPressed;
     public event Action? MenuPressed;
 
@@ -95,10 +98,16 @@ public partial class TopBar : PanelContainer
         row.AddChild(_pop);
         row.AddChild(_beds);
         row.AddChild(_food);
+        _food.MouseFilter = MouseFilterEnum.Stop;
+        _food.GuiInput += e =>
+        {
+            if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) PantryPressed?.Invoke();
+        };
         row.AddChild(new VSeparator());
 
         row.AddChild(Widgets.IconButton("ui_build", "", "Build", () => BuildPressed?.Invoke(), Hotkeys.KeyName("open_build")));
         row.AddChild(Widgets.IconButton("ui_items", "", "Items and blueprints", () => ItemsPressed?.Invoke(), Hotkeys.KeyName("open_items")));
+        row.AddChild(Widgets.IconButton("res_food", "", "Pantry: food, spoilage and food days", () => PantryPressed?.Invoke()));
         row.AddChild(Widgets.IconButton("ui_expedition", "", "Expedition", () => ExpeditionPressed?.Invoke(), Hotkeys.KeyName("open_expedition")));
         row.AddChild(Widgets.IconButton("ui_world_map", "", "World map", () => WorldMapPressed?.Invoke()));
         row.AddChild(Widgets.IconButton("ui_menu", "", "Menu: save, load, settings", () => MenuPressed?.Invoke(), Hotkeys.KeyName("pause_menu")));
@@ -175,7 +184,8 @@ public partial class TopBar : PanelContainer
         var foodColor = days < 3 ? Palette.Danger : days < 7 ? Palette.Warn : Palette.Good;
         var daysText = double.IsInfinity(days) ? "∞" : days >= 99 ? "99+d" : $"{days:0.#}d";
         SetChip(_food, daysText + (days < 3 ? " !" : ""), foodColor,
-            $"Food lasts about {daysText} at {sim.FoodPerDay:0.#} eaten per day.\nInfants and children are fed first; the hungry lose health.",
+            $"Food lasts about {daysText} at {sim.FoodPerDay:0.#} eaten per day ({sim.FoodStock:0} food in the pantry).\n" +
+            "Infants and children are fed first; the hungry lose health. Click for the pantry.",
             days < 3 ? "stat_starving" : "res_food");
     }
 
