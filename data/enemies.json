@@ -15,24 +15,31 @@
     "id": "linked", "name": "Linked", "hp": 70, "ai": "Linked", "relayRange": 6, "stealth": 25,
     "attributes": { "Strength": 55, "Agility": 55, "Endurance": 60, "Perception": 65 },
     "skills": { "Firearms": 50, "Melee": 40 },
-    "equipment": ["linked_carbine", "linked_plating"]
+    "equipment": ["linked_carbine", "linked_plating"],
+    "tags": ["network"],
+    "drops": [ { "item": "linked_carbine", "chance": 0.2 }, { "item": "bp_linked_carbine", "chance": 0.05 } ]
   },
   {
     "id": "linked_drone", "name": "Linked Drone", "hp": 20, "ai": "Linked", "relayRange": 10,
     "attributes": { "Strength": 20, "Agility": 70, "Endurance": 30, "Perception": 85 },
     "skills": { "Firearms": 30 },
-    "equipment": ["drone_zapper", "drone_rotors"]
+    "equipment": ["drone_zapper", "drone_rotors"],
+    "tags": ["network"],
+    "drops": [ { "item": "electronics", "chance": 0.5 } ]
   },
   {
     "id": "linked_warden", "name": "Linked Warden", "hp": 140, "ai": "Linked", "relayRange": 6,
     "attributes": { "Strength": 85, "Agility": 20, "Endurance": 90, "Perception": 55 },
     "skills": { "Firearms": 45, "Melee": 50 },
-    "equipment": ["warden_pulse", "warden_shell"]
+    "equipment": ["warden_pulse", "warden_shell"],
+    "tags": ["network"],
+    "drops": [ { "item": "linked_carbine", "chance": 0.6 }, { "item": "bp_linked_carbine", "chance": 0.25 }, { "item": "electronics", "chance": 1 } ]
   },
   {
     "id": "camera", "name": "Camera", "hp": 12, "ai": "Linked", "relayRange": 6, "stealth": -15,
     "attributes": { "Strength": 10, "Agility": 10, "Endurance": 30, "Perception": 70 },
-    "equipment": ["camera_lens"]
+    "equipment": ["camera_lens"],
+    "tags": ["network"]
   },
   {
     "id": "turret", "name": "Turret", "hp": 45, "ai": "Device", "stealth": -15,

@@ -34,7 +34,8 @@
         "apCost": 1, "accuracy": 0.7, "skill": "Melee", "strengthScaling": 0.5, "noise": 4 } ] },
   { "id": "linked_carbine", "name": "Linked Carbine", "kind": "Weapon", "weight": 3, "tier": 3, "lootWeight": 0.5,
     "actions": [ { "id": "burst", "name": "Burst", "pattern": "Ranged", "reach": 8, "minDamage": 10, "maxDamage": 16,
-                   "apCost": 1, "accuracy": 0.65, "skill": "Firearms", "noise": 10, "twoHanded": true, "reveal": 2 } ] },
+                   "apCost": 1, "accuracy": 0.65, "skill": "Firearms", "noise": 10, "twoHanded": true, "reveal": 2, "qualityAccuracy": 0.4,
+                   "bane": { "tag": "network", "hitBonus": 0.15, "damageMultiplier": 1.5, "armorPierce": 4 } } ] },
 
   { "id": "rag_coat", "name": "Rag Coat", "kind": "Clothing", "weight": 1, "tier": 1, "lootWeight": 3, "armor": 0.5, "stealth": 3 },
   { "id": "camo_cloak", "name": "Camo Cloak", "kind": "Clothing", "weight": 1, "tier": 2, "lootWeight": 0.5, "armor": 0.5, "stealth": 15 },
