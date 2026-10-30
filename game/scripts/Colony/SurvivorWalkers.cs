@@ -40,6 +40,9 @@ public partial class SurvivorWalkers : Node3D
     private ModelLibrary _models = null!;
     private MeshInstance3D _marker = null!;
     private Label3D _name = null!;
+    private Label3D _hoverName = null!;
+    private int? _hoverId;
+    private Vector2? _mouse;
     private Vector3 _campfire, _playground;
 
     public int? SelectedSurvivorId { get; set; }
@@ -56,13 +59,45 @@ public partial class SurvivorWalkers : Node3D
             Visible = false,
         };
         AddChild(_marker);
-        _name = new Label3D
-        {
-            FontSize = 32, PixelSize = 0.01f, OutlineSize = 10, NoDepthTest = true, Visible = false,
-            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Modulate = new Color(1f, 0.9f, 0.65f),
-        };
+        _name = NameLabel(Hud.Palette.Amber);
+        _hoverName = NameLabel(Hud.Palette.Text);
+        AddChild(_hoverName);
         AddChild(_name);
         Sync();
+    }
+
+    /// <summary>A name tag that keeps one size on screen whatever the zoom, outlined so it reads over any ground.</summary>
+    private static Label3D NameLabel(Color color) => new()
+    {
+        Font = Hud.Fonts.BodyBold, FontSize = 30, OutlineSize = 12, OutlineModulate = new Color(0.05f, 0.045f, 0.04f, 0.9f),
+        FixedSize = true, PixelSize = 0.00038f, NoDepthTest = true, Visible = false, RenderPriority = 10, OutlineRenderPriority = 9,
+        Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Modulate = color,
+    };
+
+    /// <summary>Tracks the mouse to name the figure under it (the HUD gets first pick of the event).</summary>
+    public override void _UnhandledInput(InputEvent e)
+    {
+        if (e is InputEventMouseMotion m) _mouse = m.Position;
+    }
+
+    /// <summary>The walker nearest the mouse on screen, if one is close enough to be meant.</summary>
+    private int? Hovered()
+    {
+        if (_mouse is not { } mouse || GetViewport().GetCamera3D() is not { } camera) return null;
+        int? best = null;
+        var bestDistance = 28f;
+        foreach (var (id, w) in _walkers)
+        {
+            var chest = w.Node.GlobalPosition + new Vector3(0, 0.9f, 0);
+            if (camera.IsPositionBehind(chest)) continue;
+            var distance = camera.UnprojectPosition(chest).DistanceTo(mouse);
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                best = id;
+            }
+        }
+        return best;
     }
 
     public void Reset()
@@ -157,6 +192,15 @@ public partial class SurvivorWalkers : Node3D
             _name.Position = ground + new Vector3(0, 2.3f, 0);
         }
         else _marker.Visible = _name.Visible = false;
+
+        _hoverId = Hovered();
+        if (_hoverId is { } hover && hover != SelectedSurvivorId && _walkers.TryGetValue(hover, out var h))
+        {
+            _hoverName.Visible = true;
+            _hoverName.Text = _session.Sim.State.FindSurvivor(hover)?.Name ?? "";
+            _hoverName.Position = (h.Node.Position with { Y = 0 }) + new Vector3(0, 2.3f, 0);
+        }
+        else _hoverName.Visible = false;
     }
 
     private void Step(Walker w, float dt)

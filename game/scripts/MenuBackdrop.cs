@@ -36,6 +36,7 @@ public partial class MenuBackdrop : Node3D
         var walkers = new SurvivorWalkers { Name = "Survivors" };
         AddChild(walkers);
         walkers.Setup(_session, layout, models);
+        walkers.SetProcessUnhandledInput(false);
         town.Sync();
         walkers.Sync();
 
