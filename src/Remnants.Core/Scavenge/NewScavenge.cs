@@ -8,8 +8,11 @@ namespace Remnants.Core.Scavenge;
 /// <summary>A survivor sent on a run, with the gear they wear and carry.</summary>
 public sealed record PartyMember(Survivor Survivor, Dictionary<EquipSlot, string>? Equipment = null, List<string>? Pack = null);
 
-/// <summary>One player's party entering a zone.</summary>
-public sealed record PartySetup(int PlayerId, List<PartyMember> Members);
+/// <summary>
+/// One player's party entering a zone. Parties with the same <see cref="Team"/> start allied (one side, see
+/// <see cref="Alliances"/>) and spawn next to each other; null = on its own.
+/// </summary>
+public sealed record PartySetup(int PlayerId, List<PartyMember> Members, int? Team = null);
 
 /// <summary>How the zone is right now: <see cref="Depletion"/> (0..1) thins out the loot caches of a picked-over zone.</summary>
 public sealed record ZoneConditions(double Depletion = 0);
@@ -34,32 +37,49 @@ public static class NewScavenge
         bool Free(Pos p) => state.UnitAt(p) is null;
 
         var spawnEdge = MapGenerator.EdgeTiles(map, zone.SpawnEdge);
+        // One spawn point per group: a team spawns together, everyone else on their own.
+        string Group(int i) => parties[i].Team is { } t ? $"t{t}" : $"p{i}";
+        var groups = Enumerable.Range(0, parties.Count).Select(Group).Distinct().ToList();
         var anchors = new List<Pos>();
+        var teamSides = new Dictionary<int, string>();
         for (var i = 0; i < parties.Count; i++)
         {
             var party = parties[i];
-            var anchor = spawnEdge[(int)((i + 1) * (long)spawnEdge.Count / (parties.Count + 1))];
+            var g = groups.IndexOf(Group(i));
+            var anchor = spawnEdge[(int)((g + 1) * (long)spawnEdge.Count / (groups.Count + 1))];
             anchors.Add(anchor);
-            state.Parties.Add(new Party { PlayerId = party.PlayerId, Side = Unit.PlayerSide(party.PlayerId) });
+            var side = Unit.PlayerSide(party.PlayerId);
+            if (party.Team is { } team && parties.Count(p => p.Team == team) > 1)
+            {
+                if (!teamSides.TryGetValue(team, out var shared)) teamSides[team] = shared = Unit.TeamSide(state.NextTeamId++);
+                side = shared;
+            }
+            state.Parties.Add(new Party { PlayerId = party.PlayerId, Side = side });
             var spots = open
                 .Where(p => MapGenerator.Depth(map, zone.SpawnEdge, p) <= 2 && Free(p))
                 .OrderBy(p => p.DistanceSquared(anchor)).ThenBy(map.Index)
                 .ToList();
             if (spots.Count < party.Members.Count) throw new ArgumentException($"Zone '{zone.Id}' has no room for player {party.PlayerId}'s party.");
             for (var m = 0; m < party.Members.Count; m++)
-                state.Units.Add(SurvivorUnit(data, state, party.PlayerId, party.Members[m], spots[m]));
+            {
+                var unit = SurvivorUnit(data, state, party.PlayerId, party.Members[m], spots[m]);
+                unit.Side = side;
+                state.Units.Add(unit);
+            }
         }
 
         bool FarFromSpawn(Pos p, int distance) => anchors.All(a => a.Chebyshev(p) >= distance);
 
         var enemySpots = open.Where(p => map[p] == Terrain.Floor && FarFromSpawn(p, data.Rules.Ai.MinSpawnDistance)).ToList();
         var mix = zone.EnemyMix.OrderBy(e => e.Id, StringComparer.Ordinal).ToList();
-        var enemyCount = rng.NextInclusive(zone.Enemies[0], zone.Enemies[1]);
+        // More players, more enemies (and higher caps), so a shared zone is not just easier.
+        var scale = EnemyScale(data, parties.Count);
+        var enemyCount = (int)Math.Round(rng.NextInclusive(zone.Enemies[0], zone.Enemies[1]) * scale);
         var spawned = new Dictionary<string, int>();
         for (var i = 0; i < enemyCount; i++)
         {
             // A capped entry (max) drops out of the mix once it is full.
-            var allowed = mix.Where(e => e.Max is not { } max || spawned.GetValueOrDefault(e.Id) < max).ToList();
+            var allowed = mix.Where(e => e.Max is not { } max || spawned.GetValueOrDefault(e.Id) < (int)Math.Ceiling(max * scale - 1e-9)).ToList();
             if (allowed.Count == 0) break;
             var spot = TakeRandom(rng, enemySpots, Free);
             if (spot is null) break;
@@ -97,6 +117,10 @@ public static class NewScavenge
         sim.Start();
         return sim;
     }
+
+    /// <summary>How many times the zone's enemies a mission with <paramref name="players"/> parties gets (1 for one).</summary>
+    public static double EnemyScale(ScavengeData data, int players) =>
+        1 + data.Rules.Coop.EnemiesPerExtraPlayer * Math.Max(0, players - 1);
 
     /// <summary>
     /// The profile a colony survivor would have in the field with this gear (movement mode, AP, actions...),

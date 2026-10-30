@@ -286,18 +286,19 @@ internal static class ScavengeAi
         MoveTo(sim, unit, pick.Key, pick.Value);
     }
 
-    /// <summary>Recruits trail their leader; if the leader is gone they pick the nearest controllable ally.</summary>
+    /// <summary>Recruits trail their leader; if the leader is gone they pick the nearest controllable unit of their side (their own player's first; an ally's takes them over).</summary>
     private static void Follow(ScavengeSim sim, Unit unit)
     {
         var leader = sim.State.FindUnit(unit.FollowingId!.Value);
         if (leader is not { IsActive: true })
         {
             leader = sim.State.Units
-                .Where(u => u.IsActive && u.PlayerControlled && u.PlayerId == unit.PlayerId)
-                .OrderBy(u => u.Pos.Chebyshev(unit.Pos)).ThenBy(u => u.Id)
+                .Where(u => u.IsActive && u.PlayerControlled && u.Side == unit.Side)
+                .OrderBy(u => u.PlayerId == unit.PlayerId ? 0 : 1).ThenBy(u => u.Pos.Chebyshev(unit.Pos)).ThenBy(u => u.Id)
                 .FirstOrDefault();
             if (leader is null) return;
             unit.FollowingId = leader.Id;
+            unit.PlayerId = leader.PlayerId;
         }
         for (var step = 0; step < MaxStepsPerTurn && unit.Ap > 0 && unit.Pos.Chebyshev(leader.Pos) > 1; step++)
             if (!StepToward(sim, unit, leader.Pos)) return;

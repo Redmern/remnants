@@ -5,7 +5,8 @@ namespace Remnants.Core.Scavenge;
 /// <c>SideFog</c>, so both say the same thing:
 /// <list type="bullet">
 /// <item>round and party bookkeeping always;</item>
-/// <item>an event limited to one side (<see cref="ScavengeEvent.Side"/>) only there;</item>
+/// <item>an event limited to one side (<see cref="ScavengeEvent.Side"/>) only there; one addressed to some sides
+///   (<see cref="ScavengeEvent.Sides"/>: alliance news) to exactly those;</item>
 /// <item>an event about someone else's unit the side does not know (the target unseen before and after, or the actor
 ///   not seen when the event was logged, <see cref="ScavengeEvent.SeenBy"/>): a target it does not know drops the event;
 ///   an actor it did not see leaves only its
@@ -28,6 +29,11 @@ public static class FogLog
             if (e.Type is ScavengeEventType.RoundStarted or ScavengeEventType.PartyDone or ScavengeEventType.Finished)
             {
                 result.Add(e);
+                continue;
+            }
+            if (e.Sides is { } to)
+            {
+                if (to.Contains(side)) result.Add(e with { Anonymous = null, SeenBy = null, Sides = null });
                 continue;
             }
             if (e.Side is { } only && only != side) continue;

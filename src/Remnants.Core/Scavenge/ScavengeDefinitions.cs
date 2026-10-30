@@ -355,6 +355,35 @@ public sealed record FogAiRules
     public bool LinkedLurk { get; init; } = true;
 }
 
+/// <summary>
+/// Co-op between players (scavenge.json <c>coop</c>): alliances, team pings, handing items over, carrying the downed,
+/// and how the zone scales with the number of players.
+/// </summary>
+public sealed record CoopRules
+{
+    /// <summary>Rounds an alliance offer stays open.</summary>
+    public int ProposalRounds { get; init; } = 2;
+
+    /// <summary>Full rounds of warning between announcing a break and the teams splitting.</summary>
+    public int BreakWarningRounds { get; init; } = 1;
+
+    public int PingsPerTurn { get; init; } = 2;
+
+    /// <summary>Rounds a ping stays on the team's maps (the round it was made counts).</summary>
+    public int PingRounds { get; init; } = 2;
+
+    public int GiveApCost { get; init; } = 1;
+
+    /// <summary>AP to lift an adjacent downed unit; putting it down is free.</summary>
+    public int CarryApCost { get; init; } = 1;
+
+    /// <summary>Movement range lost while carrying (never below 1), and no special moves (jumps, grapples).</summary>
+    public int CarryRangePenalty { get; init; } = 1;
+
+    /// <summary>Enemies in a zone × (1 + this × (players − 1)); per-type caps scale the same (rounded up).</summary>
+    public double EnemiesPerExtraPlayer { get; init; } = 0.5;
+}
+
 public sealed record AiRules
 {
     public double WanderChance { get; init; } = 0.5;
@@ -379,6 +408,7 @@ public sealed record ScavengeRules
     public NpcRules Npc { get; init; } = new();
     public NetworkRules Network { get; init; } = new();
     public FogRules Fog { get; init; } = new();
+    public CoopRules Coop { get; init; } = new();
     public WorldRules World { get; init; } = new();
 
     /// <summary>Followers within this many tiles leave with the unit that extracts.</summary>

@@ -59,6 +59,13 @@ public sealed class ScavengeSim
             Lookout c => ScavengeCommandHandlers.Lookout(this, unit!, c),
             EndTurn => ScavengeResult.Success($"{unit!.Name} ends their turn."),
             Extract => ScavengeCommandHandlers.Extract(this, unit!),
+            ProposeAlliance c => Alliances.Propose(this, unit!, c),
+            RespondAlliance c => Alliances.Respond(this, unit!, c),
+            BreakAlliance c => Alliances.Break(this, unit!, c),
+            PingTile c => CoopActions.Ping(this, unit!, c),
+            GiveItem c => CoopActions.Give(this, unit!, c),
+            Carry c => CoopActions.Carry(this, unit!, c),
+            PutDown c => CoopActions.PutDown(this, unit!, c),
             _ => ScavengeResult.Fail(ScavengeError.UnknownCommand, $"Unknown command {command.GetType().Name}."),
         };
 
@@ -121,6 +128,7 @@ public sealed class ScavengeSim
         unit.Stance = Stance.None;
         unit.Reactions = 0;
         unit.Lookout = false;
+        unit.PingsUsed = 0;
         unit.Ap = Profile(unit).MaxAp;
         if (braced) unit.Ap = Math.Max(1, unit.Ap - Data.Rules.Fog.Brace.NextTurnApPenalty);
     }
@@ -137,6 +145,7 @@ public sealed class ScavengeSim
         }
         UpdateParties();
         Detection.Expire(Data, State);
+        Alliances.RoundStarted(this);
         Network.RoundStarted(this);
 
         State.TurnOrder = State.Units
@@ -150,27 +159,40 @@ public sealed class ScavengeSim
     }
 
     /// <summary>
-    /// A party with no conscious player-controlled unit left is done: its downed are left behind and die,
-    /// its recruits stay behind as strangers. When every party is done the instance is finished.
+    /// A party with no conscious player-controlled unit left is done: its downed are left behind and die, its recruits
+    /// go over to an ally still in the zone or stay behind as strangers. While an ally is still up, a party whose people
+    /// are all downed is not done yet: the ally may stabilize them and carry them out (they still bleed). When every
+    /// party is done the instance is finished.
     /// </summary>
-    internal void UpdateParties()
+    public void UpdateParties()
     {
-        foreach (var party in State.Parties.Where(p => !p.Done))
+        CoopActions.Sync(State);
+        bool changed;
+        do
         {
-            var mine = State.Units.Where(u => u.PlayerId == party.PlayerId).ToList();
-            if (mine.Any(u => u.PlayerControlled && u.IsActive)) continue;
-
-            party.Done = true;
-            foreach (var u in mine.Where(u => u.Status == UnitStatus.Downed && u.Kind == UnitKind.Survivor))
-                Kill(u, ScavengeEventType.Died, $"{u.Name} was left behind.");
-            foreach (var u in mine.Where(u => u.OnMap && u.Kind == UnitKind.Npc))
+            changed = false;
+            foreach (var party in State.Parties.Where(p => !p.Done))
             {
-                u.Side = Unit.NeutralSide;
-                u.PlayerId = null;
-                u.FollowingId = null;
+                var mine = State.Units.Where(u => u.PlayerId == party.PlayerId).ToList();
+                if (mine.Any(u => u.PlayerControlled && u.IsActive)) continue;
+                var allies = State.Units.Where(u => u.Side == party.Side && u.PlayerId != party.PlayerId && u.PlayerControlled && u.IsActive).ToList();
+                if (allies.Count > 0 && mine.Any(u => u.Status == UnitStatus.Downed && u.Kind == UnitKind.Survivor)) continue;
+
+                party.Done = true;
+                changed = true;
+                foreach (var u in mine.Where(u => u.Status == UnitStatus.Downed && u.Kind == UnitKind.Survivor))
+                    Kill(u, ScavengeEventType.Died, $"{u.Name} was left behind.");
+                foreach (var u in mine.Where(u => u.OnMap && u.Kind == UnitKind.Npc))
+                {
+                    var leader = allies.OrderBy(a => a.Pos.Chebyshev(u.Pos)).ThenBy(a => a.Id).FirstOrDefault();
+                    u.Side = leader?.Side ?? Unit.NeutralSide;
+                    u.PlayerId = leader?.PlayerId;
+                    u.FollowingId = leader?.Id;
+                }
+                State.Log(new(State.Round, ScavengeEventType.PartyDone, $"Player {party.PlayerId}'s run is over."));
             }
-            State.Log(new(State.Round, ScavengeEventType.PartyDone, $"Player {party.PlayerId}'s run is over."));
-        }
+            CoopActions.Sync(State);
+        } while (changed);
         if (!State.Finished && State.Parties.All(p => p.Done))
         {
             State.Finished = true;

@@ -47,6 +47,16 @@
     "coverWeight": 10,
     "apWeight": 0.5
   },
+  "coop": {
+    "proposalRounds": 2,
+    "breakWarningRounds": 1,
+    "pingsPerTurn": 2,
+    "pingRounds": 2,
+    "giveApCost": 1,
+    "carryApCost": 1,
+    "carryRangePenalty": 1,
+    "enemiesPerExtraPlayer": 0.5
+  },
   "fog": {
     "stealth": { "base": 10, "perAgility": 0.3, "perKg": 1.0, "legEfficiency": 20 },
     "detection": { "base": 30, "perPerception": 0.5 },

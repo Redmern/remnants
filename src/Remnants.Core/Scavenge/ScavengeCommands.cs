@@ -38,6 +38,27 @@ public sealed record EndTurn(int PlayerId, int UnitId) : IScavengeCommand;
 /// <summary>Leave the map from an exit tile, taking nearby followers along.</summary>
 public sealed record Extract(int PlayerId, int UnitId) : IScavengeCommand;
 
+/// <summary>Co-op: offer an alliance to another player whose party and yours can see each other. Free; on your turn.</summary>
+public sealed record ProposeAlliance(int PlayerId, int UnitId, int ToPlayerId) : IScavengeCommand;
+
+/// <summary>Co-op: accept or decline an open offer from <see cref="FromPlayerId"/>, on your turn. Accepting merges the teams.</summary>
+public sealed record RespondAlliance(int PlayerId, int UnitId, int FromPlayerId, bool Accept) : IScavengeCommand;
+
+/// <summary>Co-op: leave your team. It takes effect after a warning round both sides see (<see cref="AllianceBreak"/>).</summary>
+public sealed record BreakAlliance(int PlayerId, int UnitId) : IScavengeCommand;
+
+/// <summary>Co-op: mark a tile for your team only (danger / go here / loot). Free, a few per turn.</summary>
+public sealed record PingTile(int PlayerId, int UnitId, Pos At, PingKind Kind) : IScavengeCommand;
+
+/// <summary>Hand a carried item to an adjacent unit on your side (an ally's goes into their party, and home with them).</summary>
+public sealed record GiveItem(int PlayerId, int UnitId, int TargetId, string ItemId) : IScavengeCommand;
+
+/// <summary>Pick up an adjacent downed unit on your side and carry it (it moves and extracts with you; you move slower).</summary>
+public sealed record Carry(int PlayerId, int UnitId, int TargetId) : IScavengeCommand;
+
+/// <summary>Put the carried unit down on a free tile next to you.</summary>
+public sealed record PutDown(int PlayerId, int UnitId, Pos At) : IScavengeCommand;
+
 public enum ScavengeError
 {
     None,
@@ -66,6 +87,20 @@ public enum ScavengeError
     InvalidStance,
     AlreadyOnLookout,
     InvalidTile,
+    /// <summary>The target is an ally's unit: allies never shoot each other.</summary>
+    FriendlyFire,
+    /// <summary>Alliance offers go to another player's party that is hostile now.</summary>
+    NotAPlayer,
+    AlreadyAllied,
+    /// <summary>The two parties do not see each other.</summary>
+    NoContact,
+    NoProposal,
+    ProposalPending,
+    NotAllied,
+    BreakPending,
+    PingLimit,
+    /// <summary>Carry: the target is not a downed unit on your side, or the carrier's hands are full / empty.</summary>
+    CannotCarry,
 }
 
 /// <summary>Outcome of a scavenge command. <see cref="EntityId"/> carries e.g. the attacked unit.</summary>

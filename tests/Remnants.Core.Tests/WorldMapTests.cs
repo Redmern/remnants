@@ -171,7 +171,7 @@ public class WorldMapTests
         var scavenge = loaded.OpenExpeditionScavenge();
         Assert.Empty(scavenge.State.Contacts);
         Assert.All(scavenge.State.Units, u => Assert.Equal(Remnants.Core.Scavenge.Stance.None, u.Stance));
-        Assert.Equal(6, SaveGame.Version);
+        Assert.True(SaveGame.Version >= 6);
     }
 
     [Fact]

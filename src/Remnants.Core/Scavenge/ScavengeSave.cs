@@ -8,10 +8,12 @@ namespace Remnants.Core.Scavenge;
 /// Version 2 adds the Network alarm (<see cref="ScavengeState.AlarmRounds"/>, reinforcement waves), suppression and
 /// pylon tiles; version 1 saves load with those at their defaults. Version 3 adds the fog of war: stances, lookout,
 /// contacts, reveals, flares and motion sensors; older saves load with none (everyone out of stance, nothing placed).
+/// Version 4 adds co-op: alliance offers and breaks, team pings, the next team id, carried units and pings used, and who
+/// placed a motion sensor; older saves load with every player on their own side and nobody carried.
 /// </summary>
 public static class ScavengeSave
 {
-    public const int Version = 3;
+    public const int Version = 4;
     private const int OldestVersion = 1;
 
     private sealed record Envelope(int Version, ScavengeState Scavenge);

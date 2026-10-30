@@ -21,10 +21,12 @@ namespace Remnants.Core.Serialization;
 /// Version 6 carries the scavenge run's fog of war (stances, lookout, contacts, reveals, flares, motion sensors; see
 /// <see cref="ScavengeSave"/> version 3). A version 5 run in progress loads with none of it: nobody in a stance, nothing
 /// placed, no contacts.
+/// Version 7 carries the run's co-op state (<see cref="ScavengeSave"/> version 4: alliances, pings, carrying); older runs
+/// load with nobody allied or carried.
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 6;
+    public const int Version = 7;
     private const int OldestVersion = 1;
 
     /// <summary>What a pre-version-4 generic "blueprint" item becomes.</summary>

@@ -36,6 +36,8 @@ internal static class ScavengeCommandHandlers
         // Missing, off the map or unseen all answer alike, so ids cannot be probed for hidden units.
         if (target is not { OnMap: true } || !Detection.SideSees(sim.Data, sim.State, unit.Side, target))
             return ScavengeResult.Fail(ScavengeError.NotVisible, $"{unit.Name}'s side sees no unit {c.TargetId}.");
+        if (target.Side == unit.Side && target.PlayerId is { } owner && owner != unit.PlayerId)
+            return ScavengeResult.Fail(ScavengeError.FriendlyFire, $"{target.Name} is an ally.");
         if (!unit.HostileTo(target))
             return ScavengeResult.Fail(ScavengeError.InvalidTarget, $"{target.Name} is not a hostile target.");
         var action = sim.Profile(unit).Action(c.ActionId);
@@ -118,7 +120,7 @@ internal static class ScavengeCommandHandlers
         }
         if (use.SensorRadius > 0)
         {
-            var sensor = new Sensor(state.NextSensorId++, unit.Side, at, use.SensorRadius, item.Id);
+            var sensor = new Sensor(state.NextSensorId++, unit.Side, at, use.SensorRadius, item.Id, unit.PlayerId);
             state.Sensors.Add(sensor);
             state.Log(new(state.Round, ScavengeEventType.SensorPlaced, $"{unit.Name} sets up a {item.Name} at {at}.", unit.Id, Pos: at,
                 Side: unit.Side));
@@ -214,18 +216,30 @@ internal static class ScavengeCommandHandlers
         return ScavengeResult.Success($"{npc.Name} joined {unit.Name}.", npc.Id);
     }
 
-    /// <summary>Leaves from an exit tile; followers of this player within the escort radius leave too.</summary>
+    /// <summary>
+    /// Leaves from an exit tile with the unit it carries (who goes home to their own player). Followers on the unit's
+    /// side within the escort radius leave too, and a recruit joins whoever escorts it out, an ally's included.
+    /// </summary>
     public static ScavengeResult Extract(ScavengeSim sim, Unit unit)
     {
         if (!sim.State.Map.IsExit(unit.Pos)) return ScavengeResult.Fail(ScavengeError.NotOnExit, $"{unit.Name} is not on an exit tile.");
 
         unit.Status = UnitStatus.Extracted;
         sim.Log(ScavengeEventType.Extracted, $"{unit.Name} extracted.", unit);
+        if (unit.CarryingId is { } carriedId && sim.State.FindUnit(carriedId) is { Status: UnitStatus.Downed } carried)
+        {
+            carried.Status = UnitStatus.Extracted;
+            carried.CarriedById = null;
+            unit.CarryingId = null;
+            sim.Log(ScavengeEventType.Extracted, $"{carried.Name} was carried out by {unit.Name}.", carried, unit);
+        }
         var radius = sim.Data.Rules.EscortRadius;
         foreach (var f in sim.State.Units.Where(u =>
-                     u.IsActive && u.FollowingId is not null && u.PlayerId == unit.PlayerId && u.Pos.Chebyshev(unit.Pos) <= radius))
+                     u.IsActive && u.FollowingId is not null && u.Side == unit.Side && u.Pos.Chebyshev(unit.Pos) <= radius))
         {
             f.Status = UnitStatus.Extracted;
+            f.PlayerId = unit.PlayerId;
+            f.FollowingId = unit.Id;
             sim.Log(ScavengeEventType.Extracted, $"{f.Name} extracted with {unit.Name}.", f);
         }
         return ScavengeResult.Success($"{unit.Name} extracted.", unit.Id);

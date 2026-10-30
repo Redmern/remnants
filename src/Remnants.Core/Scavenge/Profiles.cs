@@ -142,6 +142,12 @@ public static class ProfileDeriver
         foreach (var item in working) Apply(item.Movement, item.Name);
 
         range -= rules.Encumbrance.Where(s => loadRatio + 1e-9 >= s.Load).Select(s => s.RangePenalty).DefaultIfEmpty(0).Max();
+        var carrying = unit.CarryingId is not null;
+        if (carrying)
+        {
+            range -= data.Rules.Coop.CarryRangePenalty;
+            extraModes.Clear();
+        }
         range = Math.Floor(range * unit.Body.RegionEfficiency(BodyRegion.Legs) + 1e-9);
 
         foreach (var rule in rules.Body.Where(r => BodyMatches(unit.Body, r)))
@@ -150,7 +156,7 @@ public static class ProfileDeriver
         var primary = Math.Max(rules.MinRange, (int)range);
         if (caps.Count > 0) primary = Math.Min(primary, caps.Min());
 
-        var modes = new List<MoveMode> { new(pattern, primary, rules.ApCost, false, patternSource) };
+        var modes = new List<MoveMode> { new(pattern, primary, rules.ApCost, false, carrying ? "carrying" : patternSource) };
         modes.AddRange(extraModes.Select(m => new MoveMode(m.Mode.Pattern, m.Mode.Range, m.Mode.ApCost, m.Mode.IgnoresTerrain, m.Source)));
         return new MovementProfile(modes, costs);
     }

@@ -52,7 +52,11 @@ public sealed class Unit
     public string Name { get; set; } = "";
     public UnitKind Kind { get; set; }
 
-    /// <summary>Faction. Player parties use <see cref="PlayerSide"/>; units on different sides are hostile, neutral is nobody's foe.</summary>
+    /// <summary>
+    /// Faction. A player's party uses <see cref="PlayerSide"/>, or the team's <see cref="TeamSide"/> while allied (allies
+    /// share one side, so they never shoot each other and see as one); units on different sides are hostile, neutral is
+    /// nobody's foe.
+    /// </summary>
     public string Side { get; set; } = "";
 
     /// <summary>Owning player for party units and recruits; null for enemies and unrecruited NPCs.</summary>
@@ -87,6 +91,15 @@ public sealed class Unit
     /// <summary>On lookout (scanning) until its next turn: more sight and detection.</summary>
     public bool Lookout { get; set; }
 
+    /// <summary>The downed unit this one carries (co-op): it moves along and leaves with it; moving costs range.</summary>
+    public int? CarryingId { get; set; }
+
+    /// <summary>Set on a downed unit while someone carries it: it shares the carrier's tile and does not block it.</summary>
+    public int? CarriedById { get; set; }
+
+    /// <summary>Team pings used this turn (see <see cref="CoopRules.PingsPerTurn"/>).</summary>
+    public int PingsUsed { get; set; }
+
     public Dictionary<AttributeKind, double> Attributes { get; set; } = new();
     public Dictionary<Skill, double> Skills { get; set; } = new();
     public Body Body { get; set; } = new();
@@ -102,6 +115,9 @@ public sealed class Unit
     public Survivor? Origin { get; set; }
 
     public static string PlayerSide(int playerId) => $"player:{playerId}";
+
+    /// <summary>The shared side of an alliance of players (see <see cref="Alliances"/>).</summary>
+    public static string TeamSide(int teamId) => $"team:{teamId}";
 
     public bool IsActive => Status == UnitStatus.Active;
 
