@@ -26,7 +26,6 @@ if (options.TryGetValue("zone", out var zoneArg))
             carbines: int.Parse(options.GetValueOrDefault("carbines", "0")), armor: options.ContainsKey("armor"),
             carbineQuality: options.GetValueOrDefault("carbine-quality", ""),
             hour: options.TryGetValue("hour", out var hour) ? int.Parse(hour) : null));
-
     return;
 }
 
