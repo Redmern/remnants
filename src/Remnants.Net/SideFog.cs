@@ -32,6 +32,7 @@ public sealed class SideFog(int playerId, string side)
 
     private readonly Dictionary<int, LootCache> _knownCaches = new();
     private readonly Dictionary<int, ZoneDevice> _knownDevices = new();
+    private readonly Dictionary<int, SalvageNode> _knownNodes = new();
 
     public int PlayerId { get; } = playerId;
     public string Side { get; private set; } = side;
@@ -65,8 +66,15 @@ public sealed class SideFog(int playerId, string side)
         foreach (var id in _knownCaches.Where(kv => Visible.Contains(state.Map.Index(kv.Value.Pos))).Select(kv => kv.Key).ToList())
             _knownCaches.Remove(id);
         foreach (var cache in state.Caches.Where(c => Visible.Contains(state.Map.Index(c.Pos))))
-            _knownCaches[cache.Id] = new LootCache { Id = cache.Id, Pos = cache.Pos, Items = new(cache.Items) };
+            _knownCaches[cache.Id] = CopyPile(cache);
         var explored = state.Explored.GetValueOrDefault(Side);
+        // Salvage nodes are known once their tile was seen; how far along one is only while it is in sight.
+        foreach (var node in state.SalvageNodes)
+        {
+            var tile = state.Map.Index(node.Pos);
+            if (Visible.Contains(tile) || (!_knownNodes.ContainsKey(node.Id) && explored?.Contains(tile) == true))
+                _knownNodes[node.Id] = new SalvageNode { Id = node.Id, Kind = node.Kind, Pos = node.Pos, LotsLeft = node.LotsLeft, Progress = node.Progress };
+        }
         foreach (var device in state.Devices)
         {
             var tile = state.Map.Index(device.Pos);
@@ -76,6 +84,9 @@ public sealed class SideFog(int playerId, string side)
         }
         return before;
     }
+
+    private static LootCache CopyPile(LootCache c) =>
+        new() { Id = c.Id, Pos = c.Pos, Items = new(c.Items), Kind = c.Kind, Source = c.Source, PlayerId = c.PlayerId };
 
     /// <summary>Whether this side may know of a unit right now.</summary>
     public bool Knows(ScavengeState state, Unit u) => Owns(u) || (u.OnMap && Seen.Contains(u.Id));
@@ -111,7 +122,9 @@ public sealed class SideFog(int playerId, string side)
             // Other teams' alliances are none of this player's business: their parties show as on their own.
             Parties = state.Parties.Select(p => new Party { PlayerId = p.PlayerId, Name = p.Name, Side = Shown(p.Side, p.PlayerId), Done = p.Done, Left = p.Left }).ToList(),
             Units = units,
-            Caches = _knownCaches.Values.OrderBy(c => c.Id).Select(c => new LootCache { Id = c.Id, Pos = c.Pos, Items = new(c.Items) }).ToList(),
+            Caches = _knownCaches.Values.OrderBy(c => c.Id).Select(CopyPile).ToList(),
+            SalvageNodes = _knownNodes.Values.OrderBy(n => n.Id)
+                .Select(n => new SalvageNode { Id = n.Id, Kind = n.Kind, Pos = n.Pos, LotsLeft = n.LotsLeft, Progress = n.Progress }).ToList(),
             Explored = state.Explored.TryGetValue(Side, out var explored)
                 ? new() { [Side] = new SortedSet<int>(explored) }
                 : new(),

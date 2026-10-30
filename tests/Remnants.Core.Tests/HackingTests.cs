@@ -239,7 +239,9 @@ public class HackingTests
         Combat.ApplyDamage(sim, gun, BodyPart.Torso, 999);
         Assert.Equal(UnitStatus.Dead, gun.Status);
         Assert.True(turret.Disabled);
-        Assert.Empty(sim.State.Caches);
+        // What is left is salvage from its loot table (never its own gun), on its tile.
+        Assert.All(sim.State.Caches.SelectMany(c => c.Items), id => Assert.Contains(sim.Data.Loot.Tables["turret"].Entries.Concat(sim.Data.Loot.Tables["turret"].Guaranteed).Select(e => e.Item).Append("motion_sensor"), x => x == id));
+        Assert.All(sim.State.Caches, c => Assert.Equal(new Pos(4, 1), c.Pos));
         Assert.Equal(ScavengeError.AlreadyHacked, sim.Execute(new Hack(1, shooter.Id, turret.Id)).Error);
     }
 

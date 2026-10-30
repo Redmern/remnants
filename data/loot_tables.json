@@ -1,0 +1,195 @@
+{
+  "//": "Loot tables: what kills, salvage nodes and raiders leave (ARCHITECTURE.md 'Field loot and salvage'). Per table: nothing = chance of no random loot (guaranteed still drops), rolls = weighted picks from entries, rare = each rolled on its own, guaranteed = always. qty is per pick; quality picks a gear tier by weight. Tiers are the zone's find tier (threat 1..4); see rules. Features add entries in loot_tables.<feature>.json ('tables' for new ones, 'extend' to add to these); unknown items are skipped with a warning.",
+  "rules": {
+    "extraRollsPerTier": 0.35,
+    "quantityPerTier": 0.15,
+    "nothingPerTier": 0.03,
+    "rarePerTier": 0.25,
+    "nightRolls": { "Dusk": 0.15, "Night": 0.3 },
+    "weatherRolls": { "thunderstorm": 0.2, "dust_storm": 0.2, "fog": 0.1 },
+    "lootBonusRolls": 1.0,
+    "difficulty": { "remnant": 1.0 }
+  },
+  "tables": [
+    {
+      "id": "husk", "nothing": 0.2, "rolls": [1, 2],
+      "entries": [
+        { "item": "scrap", "weight": 5 },
+        { "item": "cloth", "weight": 4 },
+        { "item": "canned_food", "weight": 3 },
+        { "item": "bandage", "weight": 3 },
+        { "item": "flare", "weight": 1.5 },
+        { "item": "electronics", "weight": 0.8 },
+        { "item": "servo", "weight": 0.4 },
+        { "item": "pipe", "weight": 0.6, "quality": { "crude": 3, "standard": 1 } },
+        { "item": "machete", "weight": 0.3, "quality": { "crude": 3, "standard": 1 } }
+      ],
+      "rare": [
+        { "item": "data_shard", "chance": 0.03 },
+        { "item": "med_supplies", "chance": 0.04 }
+      ]
+    },
+    {
+      "id": "husk_crawler", "nothing": 0.3, "rolls": [1, 1],
+      "entries": [
+        { "item": "scrap", "weight": 4 },
+        { "item": "cloth", "weight": 3 },
+        { "item": "bandage", "weight": 1 },
+        { "item": "electronics", "weight": 0.6 },
+        { "item": "servo", "weight": 0.3 }
+      ],
+      "rare": [ { "item": "data_shard", "chance": 0.015 } ]
+    },
+    {
+      "id": "tally_scav", "nothing": 0.1, "rolls": [1, 3],
+      "entries": [
+        { "item": "canned_food", "weight": 4 },
+        { "item": "bandage", "weight": 3 },
+        { "item": "scrap", "weight": 3 },
+        { "item": "med_supplies", "weight": 2 },
+        { "item": "med_kit", "weight": 0.8 },
+        { "item": "electronics", "weight": 1 },
+        { "item": "flare", "weight": 1 }
+      ],
+      "rare": [
+        { "item": "pistol", "chance": 0.3, "quality": { "crude": 2, "standard": 1 } },
+        { "item": "padded_vest", "chance": 0.1, "quality": { "crude": 2, "standard": 1 } }
+      ]
+    },
+    {
+      "id": "cole", "nothing": 0, "rolls": [2, 3],
+      "guaranteed": [
+        { "item": "pistol", "quality": { "standard": 2, "fine": 1 } },
+        { "item": "med_kit" },
+        { "item": "canned_food", "qty": [2, 2] },
+        { "item": "scrap", "qty": [2, 3] }
+      ],
+      "entries": [
+        { "item": "med_supplies", "weight": 2 },
+        { "item": "electronics", "weight": 2 },
+        { "item": "bandage", "weight": 2 },
+        { "item": "flare", "weight": 1 }
+      ],
+      "rare": [
+        { "item": "scout_jacket", "chance": 0.5, "quality": { "standard": 2, "fine": 1 } },
+        { "item": "data_shard", "chance": 0.5, "qty": [1, 2] }
+      ]
+    },
+    {
+      "id": "camera", "nothing": 0.2, "rolls": [1, 1],
+      "entries": [
+        { "item": "electronics", "weight": 4, "qty": [1, 2] },
+        { "item": "scrap", "weight": 2 }
+      ],
+      "rare": [ { "item": "motion_sensor", "chance": 0.15 } ]
+    },
+    {
+      "id": "turret", "nothing": 0.05, "rolls": [1, 2],
+      "entries": [
+        { "item": "scrap", "weight": 4, "qty": [1, 2] },
+        { "item": "electronics", "weight": 4 },
+        { "item": "servo", "weight": 1 },
+        { "item": "power_cell", "weight": 0.8 }
+      ],
+      "rare": [ { "item": "motion_sensor", "chance": 0.1 } ]
+    },
+    {
+      "id": "linked", "nothing": 0, "rolls": [1, 1],
+      "entries": [
+        { "item": "electronics", "weight": 3 },
+        { "item": "scrap", "weight": 3 },
+        { "item": "power_cell", "weight": 0.6 },
+        { "item": "myomer_bundle", "weight": 0.3 },
+        { "item": "neural_link", "weight": 0.1 }
+      ]
+    },
+    {
+      "id": "linked_drone", "nothing": 0.15, "rolls": [1, 1],
+      "entries": [
+        { "item": "electronics", "weight": 3 },
+        { "item": "drone_parts", "weight": 2 },
+        { "item": "power_cell", "weight": 1 }
+      ]
+    },
+    {
+      "id": "linked_warden", "nothing": 0, "rolls": [2, 3],
+      "entries": [
+        { "item": "scrap", "weight": 3, "qty": [1, 3] },
+        { "item": "electronics", "weight": 3 },
+        { "item": "power_cell", "weight": 2 },
+        { "item": "myomer_bundle", "weight": 1 },
+        { "item": "neural_link", "weight": 0.5 }
+      ]
+    },
+    {
+      "id": "salvage_rubble", "nothing": 0.1, "rolls": [1, 2],
+      "entries": [
+        { "item": "stone", "weight": 5 },
+        { "item": "concrete_chunk", "weight": 3 },
+        { "item": "scrap", "weight": 1 }
+      ],
+      "rare": [ { "item": "pipe", "chance": 0.04, "quality": { "crude": 3, "standard": 1 } } ]
+    },
+    {
+      "id": "salvage_tree", "nothing": 0, "rolls": [1, 1],
+      "entries": [ { "item": "wood", "qty": [1, 2] } ]
+    },
+    {
+      "id": "salvage_furniture", "nothing": 0.05, "rolls": [1, 2],
+      "entries": [
+        { "item": "wood", "weight": 5 },
+        { "item": "cloth", "weight": 2 },
+        { "item": "scrap", "weight": 1 }
+      ],
+      "rare": [
+        { "item": "canned_food", "chance": 0.1 },
+        { "item": "bandage", "chance": 0.08 },
+        { "item": "hand_saw", "chance": 0.03 }
+      ]
+    },
+    {
+      "id": "salvage_bedding", "nothing": 0.05, "rolls": [1, 2],
+      "entries": [
+        { "item": "cloth", "weight": 5 },
+        { "item": "wood", "weight": 1 }
+      ],
+      "rare": [ { "item": "rag_coat", "chance": 0.05, "quality": { "crude": 3, "standard": 1 } } ]
+    },
+    {
+      "id": "salvage_car", "nothing": 0.05, "rolls": [1, 2],
+      "entries": [
+        { "item": "scrap", "weight": 6, "qty": [1, 2] },
+        { "item": "electronics", "weight": 1.5 },
+        { "item": "cloth", "weight": 1 },
+        { "item": "servo", "weight": 0.3 },
+        { "item": "power_cell", "weight": 0.3 }
+      ],
+      "rare": [
+        { "item": "flare", "chance": 0.1 },
+        { "item": "crowbar", "chance": 0.03 }
+      ]
+    },
+    {
+      "id": "salvage_shell", "nothing": 0, "rolls": [2, 3],
+      "entries": [
+        { "item": "scrap", "weight": 3 },
+        { "item": "wood", "weight": 3 },
+        { "item": "stone", "weight": 3 },
+        { "item": "concrete_chunk", "weight": 1 }
+      ],
+      "rare": [ { "item": "pickaxe", "chance": 0.03 } ]
+    },
+    {
+      "id": "salvage_electronics", "nothing": 0.1, "rolls": [1, 2],
+      "entries": [
+        { "item": "electronics", "weight": 5 },
+        { "item": "scrap", "weight": 2 },
+        { "item": "power_cell", "weight": 1, "minTier": 2 }
+      ],
+      "rare": [
+        { "item": "data_shard", "chance": 0.08 },
+        { "item": "manual_electronics", "chance": 0.03 }
+      ]
+    }
+  ]
+}

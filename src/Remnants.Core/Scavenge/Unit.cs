@@ -222,9 +222,20 @@ public sealed class CyberHookSource
 }
 
 /// <summary>A pile of items on a tile: a loot cache, or what a dead unit dropped.</summary>
+/// <summary>What a pile of loot is: a zone cache, a body's remains, items someone dropped, a side's stash at an exit.</summary>
+public enum LootPileKind { Cache, Remains, Dropped, Stash }
+
+/// <summary>
+/// Items on a tile anyone next to it can take (first come, first served). <see cref="Source"/> names whose remains or
+/// what was salvaged ("Husk 3"); a <see cref="LootPileKind.Stash"/> belongs to <see cref="PlayerId"/> and what is left in
+/// it waits for them at the zone's exit next time (<see cref="ExtractionResult.Stash"/>).
+/// </summary>
 public sealed class LootCache
 {
     public int Id { get; set; }
     public Pos Pos { get; set; }
     public List<string> Items { get; set; } = new();
+    public LootPileKind Kind { get; set; }
+    public string? Source { get; set; }
+    public int? PlayerId { get; set; }
 }

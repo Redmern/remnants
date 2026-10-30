@@ -29,6 +29,18 @@ public sealed record Lookout(int PlayerId, int UnitId) : IScavengeCommand;
 /// <summary>Take one item from a cache on or next to the unit's tile.</summary>
 public sealed record PickUp(int PlayerId, int UnitId, int CacheId, string ItemId) : IScavengeCommand;
 
+/// <summary>Take everything that fits from a pile on or next to the unit's tile, for one pick-up's AP.</summary>
+public sealed record TakeAll(int PlayerId, int UnitId, int CacheId) : IScavengeCommand;
+
+/// <summary>Drop a carried item on the unit's tile.</summary>
+public sealed record DropItem(int PlayerId, int UnitId, string ItemId) : IScavengeCommand;
+
+/// <summary>Stash a carried item in the parked vehicle, or on the exit tile the unit stands on (it waits there for the next run).</summary>
+public sealed record StashItem(int PlayerId, int UnitId, string ItemId) : IScavengeCommand;
+
+/// <summary>Work an adjacent salvage node: AP and noise; every few actions a lot comes off into the pack.</summary>
+public sealed record Salvage(int PlayerId, int UnitId, int NodeId) : IScavengeCommand;
+
 /// <summary>Talk an adjacent NPC survivor into following the unit to the exit.</summary>
 public sealed record Recruit(int PlayerId, int UnitId, int NpcId) : IScavengeCommand;
 
@@ -143,6 +155,9 @@ public enum ScavengeError
     /// <summary>No such prompt is waiting.</summary>
     NoPrompt,
     DroneGrounded,
+    /// <summary>Salvage: no such node, or nothing left on it.</summary>
+    UnknownNode,
+    NodeDepleted,
 }
 
 /// <summary>Outcome of a scavenge command. <see cref="EntityId"/> carries e.g. the attacked unit.</summary>

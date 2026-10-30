@@ -66,6 +66,9 @@ public sealed class ZoneStatus
     public double Depletion { get; set; }
     public int Visits { get; set; }
     public long? LastVisitTick { get; set; }
+
+    /// <summary>What the colony's last party stashed at the zone's exit (item ids): it is there again on the next run.</summary>
+    public List<string> Stash { get; set; } = new();
 }
 
 /// <summary>

@@ -240,7 +240,8 @@ public sealed class ColonySim
         if (expedition.Scavenge is { } running) return new ScavengeSim(data, running);
         var mission = expedition.MissionId is { } missionId ? global::Remnants.Core.Story.Campaign.Setup(this, missionId) : null;
         var sim = NewScavenge.Create(data, expedition.ZoneId, expedition.Seed, [ExpeditionParty()],
-            new ZoneConditions(expedition.Depletion, MissionEnvironment(expedition.ArrivalTick, expedition.ZoneId), State.Schematics.Known), mission);
+            new ZoneConditions(expedition.Depletion, MissionEnvironment(expedition.ArrivalTick, expedition.ZoneId), State.Schematics.Known,
+                expedition.MissionId is null ? State.Zones.GetValueOrDefault(expedition.ZoneId)?.Stash : null, State.Campaign?.Difficulty), mission);
         expedition.Scavenge = sim.State;
         return sim;
     }

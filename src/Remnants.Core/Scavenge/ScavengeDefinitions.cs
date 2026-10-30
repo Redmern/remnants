@@ -50,8 +50,11 @@ public sealed record EnemyDef
     /// <summary>What it is ("network"), for weapons with a <see cref="Remnants.Core.Items.BaneDef"/> against it.</summary>
     public List<string> Tags { get; init; } = new();
 
-    /// <summary>What it may leave behind when killed, each rolled on its own. Its equipment never drops.</summary>
+    /// <summary>Schematics (and a few fixed items) it may leave when killed, each rolled on its own. Its equipment never drops.</summary>
     public List<EnemyDropDef> Drops { get; init; } = new();
+
+    /// <summary>The loot table (data/loot_tables.json) a kill rolls; null = only <see cref="Drops"/>.</summary>
+    public string? Loot { get; init; }
 }
 
 /// <summary>An item an enemy drops on death with this chance (0..1).</summary>

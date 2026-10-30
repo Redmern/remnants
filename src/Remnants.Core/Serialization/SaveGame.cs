@@ -47,10 +47,14 @@ namespace Remnants.Core.Serialization;
 /// Version 16 adds the weather (<see cref="ColonyState.Weather"/>: its seed and spells) and lightning damage
 /// (<see cref="Building.Damaged"/>), and carries the run's changing weather (<see cref="ScavengeSave"/> version 9). Older
 /// saves get a weather seed from their RNG state and nothing damaged.
+/// <see cref="LootVersion"/> adds each zone's exit stash (<see cref="ZoneStatus.Stash"/>) and carries the run's field loot
+/// and salvage (<see cref="ScavengeSave.LootVersion"/>); older saves load with no stash.
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 16;
+    /// <summary>Field loot and salvage (keyed: renumber to the next free version at merge).</summary>
+    public const int LootVersion = 17;
+    public const int Version = LootVersion;
     private const int OldestVersion = 1;
 
     /// <summary>Old blueprint and datashard item ids and the schematics they became (version 13).</summary>
@@ -339,6 +343,7 @@ public static class SaveGame
         foreach (var id in colony.Inventory.Counts.Keys) RequireItem(id);
         foreach (var zoneId in colony.Zones.Keys)
             if (!data.Zones.ContainsKey(zoneId)) throw new JsonException($"Save references unknown zone '{zoneId}'.");
+        foreach (var id in colony.Zones.Values.SelectMany(z => z.Stash)) RequireItem(id);
         foreach (var f in colony.DroneFlights)
         {
             RequireItem(f.ItemId);

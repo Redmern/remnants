@@ -10,6 +10,9 @@ namespace Remnants.Core.Scavenge;
 /// <summary>A loot cache at a marker (an always-there quest item, a toolbox by the gate).</summary>
 public sealed record MapCacheDef(string Marker, List<string> Items);
 
+/// <summary>Salvage nodes of a kind (salvage.json) on every tile of a marker.</summary>
+public sealed record MapSalvageDef(string Kind, string Marker);
+
 /// <summary>A hackable device at a marker, tagged for objectives; <see cref="Items"/> replace its rolled contents.</summary>
 public sealed record MapDeviceDef(DeviceKind Kind, string Marker, string? Tag = null, List<string>? Items = null);
 
@@ -47,6 +50,10 @@ public sealed record HandmadeMapDef
     public List<MapEnemyDef> Enemies { get; init; } = new();
     public List<MapNpcDef> Npcs { get; init; } = new();
     public List<MapStructureDef> Structures { get; init; } = new();
+
+    /// <summary>Salvage nodes at markers (null = none; left out of the map's hash then, so older saves still match).</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public List<MapSalvageDef>? Salvage { get; init; }
     public string? Towers { get; init; }
 
     public int Width => Rows.Count == 0 ? 0 : Rows[0].Length;
@@ -137,6 +144,11 @@ public static class HandmadeMaps
         {
             if (!Known(c.Marker)) errors.Add($"{def.Id}: cache at unknown marker '{c.Marker}'.");
             errors.AddRange(c.Items.Where(i => !data.Items.ContainsKey(i)).Select(i => $"{def.Id}: cache holds unknown item '{i}'."));
+        }
+        foreach (var s in def.Salvage ?? [])
+        {
+            if (!Known(s.Marker)) errors.Add($"{def.Id}: salvage at unknown marker '{s.Marker}'.");
+            if (data.Salvage.Node(s.Kind) is null) errors.Add($"{def.Id}: unknown salvage node '{s.Kind}'.");
         }
         foreach (var d in def.Devices)
         {

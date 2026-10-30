@@ -32,6 +32,7 @@ public enum ScavengeEventType
     LimbLocked,
     ObjectiveUpdated, Chatter, MissionPrompt, MissionEnded,
     WeatherChanged, Thunder, Lightning,
+    LootDropped, ItemDropped, Stashed, SalvageProgress, Salvaged,
 }
 
 /// <summary>
@@ -167,6 +168,16 @@ public sealed class ScavengeState
     public List<Party> Parties { get; set; } = new();
     public List<Unit> Units { get; set; } = new();
     public List<LootCache> Caches { get; set; } = new();
+
+    /// <summary>Salvage nodes (<see cref="FieldSalvage"/>): shared by every side, worked down lot by lot.</summary>
+    public List<SalvageNode> SalvageNodes { get; set; } = new();
+    public int NextSalvageId { get; set; } = 1;
+
+    /// <summary>Seeds the per-kill and per-lot loot rolls (<see cref="FieldLoot.Rng"/>). Never sent to clients.</summary>
+    public ulong LootSeed { get; set; }
+
+    /// <summary>The Story difficulty the run is played at (loot quantities, <see cref="LootRules.Difficulty"/>); null in Sandbox.</summary>
+    public string? Difficulty { get; set; }
 
     /// <summary>Schematics a side learned of without getting them (a failed terminal hack): side → schematic ids.</summary>
     public SortedDictionary<string, SortedSet<string>> HeardSchematics { get; set; } = new(StringComparer.Ordinal);

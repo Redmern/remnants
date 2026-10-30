@@ -206,6 +206,12 @@ internal static class ExpeditionHandlers
         foreach (var id in result.SharedSchematics) ReceiveSchematic(sim, id, report);
         foreach (var (id, where) in result.HeardOf) Schematics.Schematics.HearOf(sim, id, where);
         RadioMast.PartyHome(sim, expedition.ZoneId);
+        // A plain run's exit stash stays in the zone for next time (a story map is not the zone's usual ground).
+        if (expedition.MissionId is null && result.Complete)
+        {
+            if (!state.Zones.TryGetValue(expedition.ZoneId, out var status)) state.Zones[expedition.ZoneId] = status = new ZoneStatus();
+            status.Stash = result.Stash.ToList();
+        }
 
         state.Expedition = null;
         state.LastReport = report;
@@ -224,12 +230,27 @@ internal static class ExpeditionHandlers
     {
         var data = sim.Scavenge!;
         foreach (var id in r.Equipment.Values) sim.State.Inventory.Add(id);
-        foreach (var id in r.Pack)
+        foreach (var id in r.Pack) Deposit(sim, id, report);
+    }
+
+    /// <summary>
+    /// One item reaching the colony (a pack, raid spoils): salvage becomes stockpile resources, a schematic is received,
+    /// anything else goes into the inventory.
+    /// </summary>
+    internal static void Deposit(ColonySim sim, string id, ExpeditionReport? report = null)
+    {
+        var data = sim.Scavenge!;
+        if (data.Items[id].Schematic is { } schematic)
         {
-            if (data.Items[id].Schematic is { } schematic) ReceiveSchematic(sim, schematic, report);
-            else if (data.Items[id].Salvage is { } salvage) sim.State.Stockpile.Add(salvage.Resource, salvage.Amount);
-            else sim.State.Inventory.Add(id);
+            if (report is not null) ReceiveSchematic(sim, schematic, report);
+            else if (sim.Data.Schematics.Find(schematic) is not null)
+            {
+                sim.State.Schematics.Found++;
+                Schematics.Schematics.Receive(sim, schematic, SchematicSource.Kill);
+            }
         }
+        else if (data.Items[id].Salvage is { } salvage) sim.State.Stockpile.Add(salvage.Resource, salvage.Amount);
+        else sim.State.Inventory.Add(id);
     }
 
     private static void ReceiveSchematic(ColonySim sim, string id, ExpeditionReport report)

@@ -64,6 +64,10 @@ public sealed class ScavengeSim
             Attack c => ScavengeCommandHandlers.Attack(this, unit!, c),
             UseItem c => ScavengeCommandHandlers.UseItem(this, unit!, c),
             PickUp c => ScavengeCommandHandlers.PickUp(this, unit!, c),
+            TakeAll c => FieldLoot.TakeAll(this, unit!, c),
+            DropItem c => FieldLoot.Drop(this, unit!, c),
+            StashItem c => FieldLoot.Stash(this, unit!, c),
+            Salvage c => FieldSalvage.Salvage(this, unit!, c),
             Recruit c => ScavengeCommandHandlers.Recruit(this, unit!, c),
             SetStance c => ScavengeCommandHandlers.SetStance(this, unit!, c),
             Lookout c => ScavengeCommandHandlers.Lookout(this, unit!, c),
@@ -246,11 +250,11 @@ public sealed class ScavengeSim
     }
 
     /// <summary>
-    /// Dead units drop what is worth taking into a cache on their tile: a survivor or stranger everything they carry,
-    /// an enemy whatever its <see cref="EnemyDef.Drops"/> roll (each in order, never its own equipment), a device only
-    /// lootable gear.
+    /// Dead units drop what is worth taking into a pile on their tile: a survivor or stranger everything they carry,
+    /// an enemy or a device its loot table and schematic drops (<see cref="FieldLoot.Drops"/>; never its own
+    /// equipment). <paramref name="killer"/>'s perks can add to the loot.
     /// </summary>
-    internal void Kill(Unit unit, ScavengeEventType type, string message)
+    internal void Kill(Unit unit, ScavengeEventType type, string message, Unit? killer = null)
     {
         unit.Status = UnitStatus.Dead;
         unit.Hp = Math.Min(unit.Hp, 0);
@@ -263,17 +267,14 @@ public sealed class ScavengeSim
         }
         if (unit.Kind == UnitKind.Device) Hacking.UnitKilled(this, unit);
 
-        var drops = unit.Kind == UnitKind.Enemy && unit.EnemyDefId is { } enemyId
-            ? Schematics.SchematicDrops.EnemyDrops(Data, Data.Enemies[enemyId], Rng, State.KnownSchematics)
-            : unit.AllItems.Where(id => unit.Kind != UnitKind.Device || Data.Items[id].LootWeight > 0).ToList();
-        if (drops.Count == 0) return;
-        var cache = State.Caches.Find(c => c.Pos == unit.Pos);
-        if (cache is null)
+        if (unit.Kind is UnitKind.Enemy or UnitKind.Device && unit.EnemyDefId is not null)
         {
-            cache = new LootCache { Id = State.NextCacheId++, Pos = unit.Pos };
-            State.Caches.Add(cache);
+            FieldLoot.Dropped(this, unit, FieldLoot.Drops(this, unit, killer), unit.Name);
+            return;
         }
-        cache.Items.AddRange(drops);
+        var drops = unit.AllItems.Where(id => unit.Kind != UnitKind.Device || Data.Items[id].LootWeight > 0).ToList();
+        if (drops.Count == 0) return;
+        FieldLoot.Pile(State, unit.Pos, LootPileKind.Remains, unit.Name).Items.AddRange(drops);
     }
 
     /// <summary>Idle AI enemies within the radius that are hostile to the source start hunting toward it.</summary>

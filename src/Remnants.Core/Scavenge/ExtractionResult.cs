@@ -26,6 +26,9 @@ public sealed record ExtractionResult(
     /// </summary>
     public List<string> SharedSchematics { get; init; } = new();
 
+    /// <summary>What the player left in their stash at the exit: it waits there for the next run to this zone.</summary>
+    public List<string> Stash { get; init; } = new();
+
     /// <summary>Schematics the side saw but did not bring home (left in a cache, on a terminal it failed to hack): id → where.</summary>
     public SortedDictionary<string, string> HeardOf { get; init; } = new(StringComparer.Ordinal);
 
@@ -60,7 +63,7 @@ public sealed record ExtractionResult(
             foreach (var id in state.HeardSchematics.GetValueOrDefault(party.Side) ?? [])
                 heard.TryAdd(id, $"on a terminal in {zone}");
         }
-        return new ExtractionResult(playerId, party.Done, returned, recruits, deaths, loot, MissionRules.Result(state, playerId)) { SharedSchematics = shared, HeardOf = heard };
+        return new ExtractionResult(playerId, party.Done, returned, recruits, deaths, loot, MissionRules.Result(state, playerId)) { SharedSchematics = shared, HeardOf = heard, Stash = FieldLoot.StashOf(state, playerId) };
     }
 
     private static ReturnedSurvivor ToReturned(Unit u) =>

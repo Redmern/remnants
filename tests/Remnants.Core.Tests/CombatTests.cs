@@ -110,7 +110,7 @@ public class CombatTests
     }
 
     [Fact]
-    public void Enemies_die_at_zero_and_drop_from_their_drop_table_only()
+    public void Enemies_die_at_zero_and_drop_from_their_drops_and_loot_table_only()
     {
         var chance = Real.Enemies["linked"].Drops.Single(d => d.Item == "linked_carbine").Chance;
         var carbines = 0;
@@ -123,15 +123,18 @@ public class CombatTests
             Assert.Equal(UnitStatus.Dead, linked.Status);
             var dropped = sim.State.Caches.SelectMany(c => c.Items).ToList();
             Assert.DoesNotContain("linked_plating", dropped); // its own gear never drops
-            Assert.All(dropped, id => Assert.Contains(Real.Enemies["linked"].Drops, d => d.Item == id));
+            var table = Real.Loot.Tables["linked"];
+            Assert.All(dropped, id => Assert.True(Real.Enemies["linked"].Drops.Any(d => d.Item == id) || table.Entries.Any(e => e.Item == id), id));
             carbines += dropped.Count(id => id == "linked_carbine");
         }
         Assert.InRange(carbines, kills * chance * 0.6, kills * chance * 1.4);
 
+        // Without a loot table a Husk leaves nothing (it carries no schematics).
+        var bare = ScavengeTestData.WithLoot(Real, "{\"tables\": []}");
         var husk = EnemyUnit("husk", new(1, 1));
-        var huskSim = Arena(3, 3, [SurvivorUnit(pos: new(0, 0)), husk]);
+        var huskSim = Arena(3, 3, [SurvivorUnit(pos: new(0, 0)), husk], data: bare);
         Combat.ApplyDamage(huskSim, husk, BodyPart.Torso, 999);
-        Assert.Empty(huskSim.State.Caches); // no drop table, nothing left behind
+        Assert.Empty(huskSim.State.Caches);
     }
 
     [Fact]

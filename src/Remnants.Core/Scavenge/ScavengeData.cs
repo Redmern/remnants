@@ -30,9 +30,24 @@ public sealed class ScavengeData
     /// </summary>
     public CyberneticsData? Cybernetics { get; }
 
+    /// <summary>Loot tables (loot_tables*.json): what kills, salvage and raiders leave. Empty without the file.</summary>
+    public LootCatalog Loot { get; }
+
+    /// <summary>The loot files <see cref="Loot"/> was built from, so data rebuilt from this one (tests, tools) keeps them.</summary>
+    public IReadOnlyList<LootTableFile> LootFiles { get; }
+
+    /// <summary>Salvage nodes and zone densities (salvage.json); none without the file.</summary>
+    public SalvageRules Salvage { get; }
+
+    /// <summary>
+    /// Loot entries skipped on load (items or tables another branch has not shipped yet) and enemies naming a missing
+    /// table. Never fatal; the game logs them.
+    /// </summary>
+    public IReadOnlyList<string> LootWarnings { get; }
+
     public ScavengeData(IEnumerable<ItemDef> items, IEnumerable<EnemyDef> enemies, IEnumerable<ZoneDef> zones, ScavengeRules rules,
         IReadOnlyDictionary<string, IReadOnlyDictionary<string, double>>? perkHooks = null, CyberneticsDef? cybernetics = null,
-        SchematicCatalog? schematics = null)
+        SchematicCatalog? schematics = null, IReadOnlyList<LootTableFile>? loot = null, SalvageRules? salvage = null)
     {
         Schematics = schematics ?? SchematicCatalog.Empty;
         // Schematic items come from the catalogue; without one, data built from another ScavengeData's items keeps them.
@@ -44,8 +59,16 @@ public sealed class ScavengeData
         Enemies = Index(enemies, e => e.Id, "enemy");
         Zones = Index(zones, z => z.Id, "zone");
         Rules = rules;
+        LootFiles = loot ?? [];
+        Loot = LootCatalog.Build(LootFiles, Items, rules.Quality.Select(q => q.Id).ToList());
+        Salvage = salvage ?? new SalvageRules();
+        var warnings = Loot.Warnings.ToList();
+        foreach (var e in Enemies.Values.Where(e => e.Loot is not null && Loot.Find(e.Loot) is null).OrderBy(e => e.Id, StringComparer.Ordinal))
+            warnings.Add($"Enemy '{e.Id}': unknown loot table '{e.Loot}' (it drops only its schematics).");
+        LootWarnings = warnings;
         Validate();
         ValidateCybernetics();
+        FieldSalvage.Validate(this);
     }
 
     public TerrainDef Terrain(Terrain terrain) => Rules.Terrain[terrain];
@@ -323,9 +346,18 @@ public static class ScavengeDataLoader
 
         string? Optional(string file) => File.Exists(Path.Combine(directory, file)) ? File.ReadAllText(Path.Combine(directory, file)) : null;
 
-        return LoadFromJson(Read("items.json"), Read("enemies.json"), Read("zones.json"), Read("scavenge.json"),
+        var data = LoadFromJson(Read("items.json"), Read("enemies.json"), Read("zones.json"), Read("scavenge.json"),
             Optional("perks.json"), Optional("cybernetics.json"), SchematicCatalogLoader.Files(directory).Select(File.ReadAllText).ToArray());
+        return WithLoot(data, LootTableLoader.Files(directory).Select(File.ReadAllText), Optional(FieldSalvage.FileName));
     }
+
+    /// <summary>
+    /// The same data with loot tables (main file first, then <c>loot_tables.&lt;feature&gt;.json</c>) and salvage rules
+    /// (salvage.json) added.
+    /// </summary>
+    public static ScavengeData WithLoot(ScavengeData data, IEnumerable<string> lootTables, string? salvage) =>
+        new(data.Items.Values.Where(i => i.BaseId is null), data.Enemies.Values, data.Zones.Values, data.Rules, data.PerkHooks, data.Cybernetics?.Def,
+            data.Schematics, LootTableLoader.Parse(lootTables), FieldSalvage.Parse(salvage));
 
     /// <param name="perks">perks.json (optional): only each perk's scavenge hooks are read (see <see cref="ScavengeData.PerkHooks"/>).</param>
     /// <param name="cybernetics">cybernetics.json (optional; see <see cref="ScavengeData.Cybernetics"/>).</param>

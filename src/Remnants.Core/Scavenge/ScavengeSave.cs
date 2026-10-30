@@ -21,10 +21,14 @@ namespace Remnants.Core.Scavenge;
 /// (tags, character ids, patrols, raised tiles); older saves load as plain runs.
 /// Version 9 adds the weather's intensity, its changes still to come, and the rounds of the last thunder and lightning;
 /// older runs load with steady weather.
+/// <see cref="LootVersion"/> adds field loot and salvage: pile kinds, sources and stash owners, salvage nodes, the loot
+/// seed and the difficulty; older runs load with plain caches, no nodes and a loot seed from their RNG state.
 /// </summary>
 public static class ScavengeSave
 {
-    public const int Version = 8;
+    /// <summary>Field loot and salvage (keyed: renumber to the next free version at merge).</summary>
+    public const int LootVersion = 10;
+    public const int Version = LootVersion;
     private const int OldestVersion = 1;
 
     private sealed record Envelope(int Version, ScavengeState Scavenge);
@@ -39,6 +43,7 @@ public static class ScavengeSave
             throw new JsonException($"Unsupported scavenge save version {envelope.Version} (expected {OldestVersion}..{Version}).");
         var state = envelope.Scavenge ?? throw new JsonException("Save file has no scavenge state.");
         if (envelope.Version < 7) MigrateCybernetics(data, state);
+        if (envelope.Version < LootVersion) MigrateLoot(state);
         Validate(data, state);
         return new ScavengeSim(data, state);
     }
@@ -48,6 +53,12 @@ public static class ScavengeSave
     {
         foreach (var u in state.Units.Where(u => u.Kind == UnitKind.Survivor && u.CyberHooks.Count == 0))
             u.CyberHooks = data.CyberHooksFor(u.Body);
+    }
+
+    /// <summary>Before field loot the run had no loot seed: derive one from the RNG state, so kills still roll their loot.</summary>
+    internal static void MigrateLoot(ScavengeState state)
+    {
+        if (state.LootSeed == 0) state.LootSeed = state.RngState ^ 0x100D_5EED_0000_0001UL;
     }
 
     /// <summary>A save must still fit the current data/ (an item or enemy may have been renamed by a balancing edit).</summary>
@@ -71,6 +82,11 @@ public static class ScavengeSave
                 if (data.Items[id].Slot != slot) throw new JsonException($"Unit {u.Id} has '{id}' in the {slot} slot.");
         }
         foreach (var id in state.Caches.SelectMany(c => c.Items)) RequireItem(id);
+        foreach (var n in state.SalvageNodes)
+        {
+            if (data.Salvage.Node(n.Kind) is null) throw new JsonException($"Save references unknown salvage node '{n.Kind}'.");
+            if (!state.Map.InBounds(n.Pos)) throw new JsonException($"Salvage node {n.Id} is off the map at {n.Pos}.");
+        }
         foreach (var sensor in state.Sensors)
         {
             RequireItem(sensor.ItemId);

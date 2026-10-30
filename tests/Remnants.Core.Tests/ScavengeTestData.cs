@@ -81,7 +81,12 @@ public static class ScavengeTestData
     /// </summary>
     /// <summary>The real data with scavenge rules changed (e.g. a fixed hack chance).</summary>
     public static ScavengeData With(Func<ScavengeRules, ScavengeRules> change) =>
-        new(Real.Items.Values.Where(i => i.BaseId is null), Real.Enemies.Values, Real.Zones.Values, change(Real.Rules), Real.PerkHooks, Real.Cybernetics?.Def);
+        new(Real.Items.Values.Where(i => i.BaseId is null), Real.Enemies.Values, Real.Zones.Values, change(Real.Rules), Real.PerkHooks, Real.Cybernetics?.Def,
+            loot: Real.LootFiles, salvage: Real.Salvage);
+
+    /// <summary>The data with other loot tables (and optionally salvage rules) in place of the real ones.</summary>
+    public static ScavengeData WithLoot(ScavengeData data, string lootJson, string? salvageJson = null) =>
+        ScavengeDataLoader.WithLoot(data, [lootJson], salvageJson);
 
     /// <param name="setup">Runs on the state before the turn order is made (place devices, ...).</param>
     /// <param name="data">Data to run on (default <see cref="Real"/>).</param>

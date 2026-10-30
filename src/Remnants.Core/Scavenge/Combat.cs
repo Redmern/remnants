@@ -176,7 +176,7 @@ public static class Combat
         state.Log(new(state.Round, ScavengeEventType.Attacked,
             $"{attacker.Name} hit {target.Name}'s {part} for {damage:0} ({action.Name}).", attacker.Id, target.Id, target.Pos,
             Anonymous: $"{target.Name} was hit in the {part} for {damage:0} from the fog."));
-        ApplyDamage(sim, target, part, damage);
+        ApplyDamage(sim, target, part, damage, attacker);
         if (bane is { DisruptRounds: > 0 } && target.IsActive && Network.IsLinked(data, target))
         {
             target.OffRelayUntilRound = Math.Max(target.OffRelayUntilRound, state.Round + bane.DisruptRounds - 1);
@@ -203,8 +203,8 @@ public static class Combat
         return target.Body[part].Condition == PartCondition.Missing ? BodyPart.Torso : part;
     }
 
-    /// <summary>Damage to one body part: injury severity, possible limb loss, then HP and Downed/Dead.</summary>
-    public static void ApplyDamage(ScavengeSim sim, Unit target, BodyPart part, double damage)
+    /// <summary>Damage to one body part: injury severity, possible limb loss, then HP and Downed/Dead (by <paramref name="attacker"/>, for loot perks).</summary>
+    public static void ApplyDamage(ScavengeSim sim, Unit target, BodyPart part, double damage, Unit? attacker = null)
     {
         var data = sim.Data;
         var state = sim.State;
@@ -231,7 +231,7 @@ public static class Combat
 
         if (wasDowned || !target.CanBeDowned || target.Hp <= c.InstantDeathHp)
         {
-            sim.Kill(target, ScavengeEventType.Died, $"{target.Name} is dead.");
+            sim.Kill(target, ScavengeEventType.Died, $"{target.Name} is dead.", attacker);
             return;
         }
         target.Status = UnitStatus.Downed;

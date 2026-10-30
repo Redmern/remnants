@@ -28,7 +28,10 @@ public sealed record MissionSetup(FieldMission Mission, HandmadeMapDef? Map = nu
 /// <summary>How the zone is right now: <see cref="Depletion"/> (0..1) thins out the loot caches of a picked-over zone.</summary>
 /// <summary>How a zone is found: its depletion, and the time of day and weather the run is played in (midday, clear, if null).</summary>
 /// <see cref="KnownSchematics"/>: what the colony already knows (picked at half weight, so duplicates do not dominate).
-public sealed record ZoneConditions(double Depletion = 0, ScavengeEnvironment? Environment = null, IReadOnlyCollection<string>? KnownSchematics = null);
+/// <see cref="Stash"/>: what the first party stashed at this zone's exit last time (back on an exit tile).
+/// <see cref="Difficulty"/>: the Story difficulty id (loot quantities); null in Sandbox.
+public sealed record ZoneConditions(double Depletion = 0, ScavengeEnvironment? Environment = null, IReadOnlyCollection<string>? KnownSchematics = null,
+    IReadOnlyCollection<string>? Stash = null, string? Difficulty = null);
 
 /// <summary>
 /// Builds a scavenge instance: generates the zone map from its template and a seed, places every party
@@ -59,6 +62,7 @@ public static class NewScavenge
             ZoneId = zone.Id, Map = generated.Map,
             Environment = env is null ? new ScavengeEnvironment() : env.Copy(),
             KnownSchematics = new(conditions?.KnownSchematics ?? [], StringComparer.Ordinal),
+            LootSeed = seed ^ 0x100D_5EED_0000_0001UL, Difficulty = conditions?.Difficulty,
         };
         var map = state.Map;
         var open = generated.Reachable.Where(p => !map.IsExit(p)).OrderBy(map.Index).ToList();
@@ -161,6 +165,8 @@ public static class NewScavenge
         }
 
         Hacking.PlaceZoneDevices(data, state, zone, seed, anchors, generated.Reachable);
+        FieldSalvage.Place(data, state, zone, seed, generated.Reachable, anchors);
+        FieldLoot.PlaceStash(state, parties[0].PlayerId, conditions?.Stash);
         if (mission is not null)
         {
             if (fixedRoom is { } r)
@@ -173,6 +179,7 @@ public static class NewScavenge
                 }
                 state.Units.RemoveAll(u => u.Kind != UnitKind.Survivor && r.Tiles.Contains(u.Pos));
                 state.Caches.RemoveAll(c => r.Tiles.Contains(c.Pos));
+                state.SalvageNodes.RemoveAll(n => r.Tiles.Contains(n.Pos));
             }
             if (mission.Mission.ExcludeEnemyTags.Count > 0)
                 state.Units.RemoveAll(u => u.Kind == UnitKind.Enemy && u.EnemyDefId is { } e
@@ -198,6 +205,7 @@ public static class NewScavenge
         {
             ZoneId = zone.Id, Map = built.Map,
             Environment = env is null ? new ScavengeEnvironment() : ScavengeEnvironment.At(env.Hour, env.Phase, env.Weather),
+            LootSeed = seed ^ 0x100D_5EED_0000_0001UL, Difficulty = conditions?.Difficulty,
         };
         var map = state.Map;
         var spawn = built.Spawns.Count > 0 ? built.Spawns[0] : map.AllPositions.First(p => data.Terrain(map[p]).Passable);
@@ -248,6 +256,11 @@ public static class NewScavenge
         foreach (var d in def.Devices)
             if (FreeAt(d.Marker) is { } p)
                 Hacking.Place(data, state, d.Kind, p, d.Items).Tag = d.Tag;
+        var lots = FieldLoot.Rng(state, -1);
+        foreach (var s in def.Salvage ?? [])
+            if (data.Salvage.Node(s.Kind) is { } node)
+                foreach (var p in At(s.Marker))
+                    FieldSalvage.Add(data, state, node, p, lots);
         foreach (var e in def.Enemies.Concat(setup.ExtraEnemies ?? []))
         {
             var tiles = At(e.Marker).Where(p => state.UnitAt(p) is null).ToList();
