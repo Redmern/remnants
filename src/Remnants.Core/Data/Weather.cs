@@ -33,6 +33,9 @@ public sealed record WeatherRules
     /// <summary>Lightning damage to buildings and its repair.</summary>
     public RepairRules Repair { get; init; } = new();
 
+    /// <summary>Jobs that grow crops (their output takes the crop modifiers, <c>Crops.Modifiers</c>).</summary>
+    public List<string> CropJobs { get; init; } = new();
+
     /// <summary>Items in the stores that count as dust masks for outdoor workers (one each).</summary>
     public List<string> MaskItems { get; init; } = new();
 
@@ -76,8 +79,8 @@ public sealed record ColonyWeatherEffects
     /// <summary>Output of workers at outdoor buildings (rain slows them, a storm more).</summary>
     public double OutdoorOutput { get; init; } = 1;
 
-    /// <summary>Job id → output multiplier on top (rain waters the farm, dust buries the crop).</summary>
-    public Dictionary<string, double> JobOutput { get; init; } = new();
+    /// <summary>Crop yield multiplier (rain waters the fields, dust buries them); applied through <c>Crops.Modifiers</c>.</summary>
+    public double CropOutput { get; init; } = 1;
 
     /// <summary>
     /// Outdoor workers with a dust mask work at this instead of <see cref="OutdoorOutput"/> (null: masks make no

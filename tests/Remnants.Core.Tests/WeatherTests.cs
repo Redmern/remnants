@@ -177,8 +177,10 @@ public class WeatherTests
         var clear = Always("clear");
         var rain = Always("rain");
         var kind = rain.Weather.Kind("rain").Colony;
-        Assert.Equal(Produced(clear, "farm") * kind.OutdoorOutput * kind.JobOutput["farming"], Produced(rain, "farm"), 6);
+        Assert.Equal(Produced(clear, "farm") * kind.OutdoorOutput * kind.CropOutput, Produced(rain, "farm"), 6);
         Assert.Equal(Produced(clear, "woodcutter") * kind.OutdoorOutput, Produced(rain, "woodcutter"), 6);
+        var crop = Assert.Single(Crops.Modifiers(rain, Weather.SpellAt(new ColonyState(), rain, "Home Valley", 0)));
+        Assert.Equal(("weather", kind.CropOutput), (crop.Source, crop.Multiplier));
     }
 
     [Fact]
@@ -276,7 +278,7 @@ public class WeatherTests
     {
         var sim = Colony(Shipped);
         sim.Advance(24 * 10);
-        Assert.Contains(sim.State.Events, e => e.Type == ColonyEventType.WeatherChanged);
+        Assert.Contains(sim.State.Events, e => e.Type is ColonyEventType.WeatherChanged or ColonyEventType.Storm);
     }
 
     // ---- on the road ----

@@ -272,8 +272,6 @@ public sealed class GameData
                 throw new GameDataException($"weather.kinds.{id}.intensity: [min, max] within 0..1.");
             if (kind.ConfusedWith is { } c && !w.Kinds.ContainsKey(c))
                 throw new GameDataException($"weather.kinds.{id}.confusedWith: unknown kind '{c}'.");
-            foreach (var job in kind.Colony.JobOutput.Keys)
-                if (!Jobs.ContainsKey(job)) throw new GameDataException($"weather.kinds.{id}.colony.jobOutput: unknown job '{job}'.");
             if (!w.Next.TryGetValue(id, out var next) || next.Count == 0 || next.Values.Sum() <= 0)
                 throw new GameDataException($"weather.next.{id}: every kind needs somewhere to go.");
         }
@@ -287,6 +285,8 @@ public sealed class GameData
         foreach (var (region, mults) in w.Regions)
             foreach (var (kind, m) in mults)
                 if (!w.Kinds.ContainsKey(kind) || m < 0) throw new GameDataException($"weather.regions.{region}.{kind}: a known kind with a multiplier ≥ 0.");
+        foreach (var job in w.CropJobs)
+            if (!Jobs.ContainsKey(job)) throw new GameDataException($"weather.cropJobs: unknown job '{job}'.");
         if (w.Forecast.DaysByTownHallLevel.Count == 0) throw new GameDataException("weather.forecast.daysByTownHallLevel is empty.");
         if (w.Field.RoundsPerHour < 1) throw new GameDataException("weather.field.roundsPerHour must be at least 1.");
         foreach (var res in w.Repair.Cost.Keys)

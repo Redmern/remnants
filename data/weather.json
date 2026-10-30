@@ -3,16 +3,17 @@
   "colonyRegion": "Home Valley",
   "start": "clear",
   "maskItems": ["dust_mask"],
+  "cropJobs": ["farming"],
   "kinds": {
     "clear":    { "name": "Clear", "hours": [14, 40], "intensity": [0, 0] },
     "overcast": { "name": "Overcast", "hours": [6, 20], "intensity": [0.2, 0.5] },
     "rain": {
       "name": "Rain", "hours": [4, 14], "intensity": [0.3, 1], "groundsDronesFrom": 0.75, "confusedWith": "overcast",
-      "colony": { "outdoorOutput": 0.9, "jobOutput": { "farming": 1.3 }, "noCampfire": true }
+      "colony": { "outdoorOutput": 0.9, "cropOutput": 1.3, "noCampfire": true }
     },
     "thunderstorm": {
       "name": "Thunderstorm", "hours": [2, 7], "intensity": [0.6, 1], "groundsDrones": true, "severe": true, "confusedWith": "rain",
-      "colony": { "outdoorOutput": 0.7, "jobOutput": { "farming": 1.1 }, "moodPerTick": 0.08, "noCampfire": true, "lightningChancePerTick": 0.03 },
+      "colony": { "outdoorOutput": 0.7, "cropOutput": 1.1, "moodPerTick": 0.08, "noCampfire": true, "lightningChancePerTick": 0.03 },
       "travel": { "extraDays": 0.5 }
     },
     "fog": {
@@ -23,7 +24,7 @@
       "name": "Dust storm", "hours": [5, 20], "intensity": [0.5, 1], "groundsDrones": true, "severe": true, "confusedWith": "overcast",
       "colony": {
         "outdoorOutput": 0.3, "maskedOutput": 0.65, "unmaskedHealthPerTick": 0.4, "childrenStayIn": true,
-        "jobOutput": { "farming": 0.6 }, "moodPerTick": 0.06, "noCampfire": true
+        "cropOutput": 0.6, "moodPerTick": 0.06, "noCampfire": true
       },
       "travel": { "extraDays": 1, "blocksFromDays": 2 }
     }

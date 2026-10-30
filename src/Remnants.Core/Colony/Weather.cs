@@ -136,8 +136,8 @@ public static class Weather
 
     /// <summary>
     /// The weather's share of a worker's output this tick at a building: outdoor work slows or stops (a mask lets it go on
-    /// in a dust storm), children stay in when the kind says so, the job's own multiplier (rain on the farm), and a
-    /// building struck by lightning works at <see cref="RepairRules.DamagedOutput"/> until repaired.
+    /// in a dust storm), children stay in when the kind says so, crops take <see cref="Crops.Modifiers"/> (rain on the
+    /// farm), and a building struck by lightning works at <see cref="RepairRules.DamagedOutput"/> until repaired.
     /// </summary>
     public static double WorkFactor(GameData data, WeatherSpell spell, Building building, BuildingDef def, Survivor worker, bool masked)
     {
@@ -148,7 +148,7 @@ public static class Weather
             if (colony.ChildrenStayIn && worker.IsChild) return 0;
             f *= masked && colony.MaskedOutput is { } m ? m : colony.OutdoorOutput;
         }
-        if (def.Job is { } job && colony.JobOutput.TryGetValue(job, out var j)) f *= j;
+        if (def.Job is { } job && data.Weather.CropJobs.Contains(job)) f *= Crops.Multiplier(Crops.Modifiers(data, spell));
         return f;
     }
 
@@ -280,6 +280,28 @@ public static class Weather
     internal static ulong SeedFrom(ulong rngState) => Mix(rngState, "weather", 0, 0xC0FFEE);
 }
 
+/// <summary>One term on crop yield: who adds it (<c>weather</c>), why, and the multiplier.</summary>
+public sealed record CropModifier(string Source, string Reason, double Multiplier);
+
+/// <summary>
+/// The one hook for what changes crop yield (rain waters the fields, a dust storm buries them). Today it is applied to the
+/// output of <see cref="WeatherRules.CropJobs"/> workers in <see cref="Weather.WorkFactor"/>; a per-crop food system
+/// applies the same terms per crop instead. Terms multiply.
+/// </summary>
+public static class Crops
+{
+    public static IReadOnlyList<CropModifier> Modifiers(GameData data, WeatherSpell spell)
+    {
+        var kind = Weather.KindOf(data, spell);
+        return Math.Abs(kind.Colony.CropOutput - 1) < 1e-9 ? [] : [new CropModifier("weather", kind.Name, kind.Colony.CropOutput)];
+    }
+
+    /// <summary>Crop modifiers at home now.</summary>
+    public static IReadOnlyList<CropModifier> Modifiers(ColonyState state, GameData data) => Modifiers(data, Weather.Current(state, data));
+
+    public static double Multiplier(IEnumerable<CropModifier> modifiers) => modifiers.Aggregate(1.0, (m, t) => m * t.Multiplier);
+}
+
 /// <summary>
 /// Weather at home each tick (after day and night): a log line when the weather at home turns, the mood it costs,
 /// health lost by outdoor workers without a mask in a dust storm, lightning striking a building, and the spell cache
@@ -343,7 +365,8 @@ internal static class WeatherSystem
             _ when kind.Severe => $"A {kind.Name.ToLowerInvariant()} rolls in ({spell.Hours} h).",
             _ => $"{kind.Name} sets in.",
         };
-        state.Log(new(state.Tick, ColonyEventType.WeatherChanged, message));
+        // A storm starting or ending is worth a toast (Storm); milder turns only log.
+        state.Log(new(state.Tick, kind.Severe || was.Severe ? ColonyEventType.Storm : ColonyEventType.WeatherChanged, message));
     }
 }
 
