@@ -18,6 +18,9 @@ public sealed record BuyFromTrader(string SchematicId, int Option = 0) : IColony
 /// <summary>Sell to the trader: a schematic item from the inventory, or <paramref name="ResearchData"/> units of Research Data.</summary>
 public sealed record SellToTrader(string? ItemId = null, int ResearchData = 0) : IColonyCommand;
 
+/// <summary>Make a copy (the item) of a known schematic, to trade or give away; it costs Research Data (<c>rules.copyCost</c>).</summary>
+public sealed record CopySchematic(string SchematicId) : IColonyCommand;
+
 /// <summary>Answer a radio call: it leaves the queue and <see cref="ColonySim.RadioCallAnswered"/> is raised.</summary>
 public sealed record AnswerCall(int CallId) : IColonyCommand;
 
@@ -36,6 +39,7 @@ internal static class SchematicHandlers
         SellToTrader c => Sell(sim, c),
         AnswerCall c => Answer(sim, c),
         AcceptContract c => Accept(sim, c),
+        CopySchematic c => Schematics.MakeCopy(sim, c.SchematicId),
         _ => null,
     };
 
@@ -139,9 +143,9 @@ public static class Research
         if (Schematics.Has(sim, def.Id)) return Fail(CommandError.AlreadyKnown, $"The {def.Name} schematic is already known.");
         if (!def.Available || !def.Has(SchematicSource.Research) || SchematicCatalog.At(rules.Cost, def.Tier) <= 0)
             return Fail(CommandError.NotResearchable, $"The {def.Name} schematic cannot be researched.");
+        if (state.Schematics.Research is not null) return Fail(CommandError.ResearchBusy, "The Town Hall is already researching.");
         if (!state.Schematics.HeardOf.ContainsKey(def.Id))
             return Fail(CommandError.NotHeardOf, $"Nobody has heard of a {def.Name} schematic yet.");
-        if (state.Schematics.Research is not null) return Fail(CommandError.ResearchBusy, "The Town Hall is already researching.");
         var hallLevel = state.Buildings.Where(b => b.DefId == rules.Building).Select(b => b.Level).DefaultIfEmpty(0).Max();
         var needHall = SchematicCatalog.At(rules.TownHallLevel, def.Tier);
         if (hallLevel < needHall)

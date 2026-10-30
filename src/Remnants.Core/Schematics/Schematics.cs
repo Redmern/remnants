@@ -149,6 +149,28 @@ public static class Schematics
         _ => Humanize(u.Id),
     });
 
+    /// <summary>Research Data a copy of this schematic costs (<see cref="MakeCopy"/>).</summary>
+    public static double CopyCost(ColonySim colony, SchematicDef def) => SchematicCatalog.At(colony.Data.Schematics.Rules.CopyCost, def.Tier);
+
+    /// <summary>
+    /// Make a tradeable copy of a known schematic: its item goes into the inventory (to give, sell or trade; whoever
+    /// brings it home learns it the usual way). Costs <see cref="CopyCost"/> Research Data. Also the
+    /// <see cref="CopySchematic"/> command.
+    /// </summary>
+    public static CommandResult MakeCopy(ColonySim colony, string schematicId)
+    {
+        var state = colony.State;
+        if (colony.Data.Schematics.Find(schematicId) is not { } def) return CommandResult.Fail(CommandError.NotASchematic, $"'{schematicId}' is not a schematic.");
+        if (!Has(colony, def.Id)) return CommandResult.Fail(CommandError.SchematicNeeded, $"The colony does not know the {def.Name} schematic.");
+        var cost = new Dictionary<string, double> { [colony.Data.Schematics.Rules.ResearchDataResource] = CopyCost(colony, def) };
+        if (!state.Stockpile.CanAfford(cost)) return CommandResult.Fail(CommandError.CannotAfford, $"A copy takes {cost.Values.Single():0} Research Data.");
+        state.Stockpile.Spend(cost);
+        state.Inventory.Add(def.Id);
+        var message = $"Made a copy of the {def.Name} schematic.";
+        state.Log(new(state.Tick, ColonyEventType.SchematicFound, message));
+        return CommandResult.Success(message);
+    }
+
     /// <summary>Decrypt level needed at the Electronics Lab for this schematic.</summary>
     public static int DecryptLevel(ColonySim colony, SchematicDef def) => SchematicCatalog.At(colony.Data.Schematics.Rules.Decrypt.MinLevel, def.Tier);
 

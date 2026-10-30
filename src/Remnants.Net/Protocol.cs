@@ -16,8 +16,9 @@ public static class Protocol
     /// drone marks in views).
     /// 5: day and night: the run's environment (hour, phase, weather) in views; the server decides it.
     /// 6: cybernetics (eyes in bodies, units' cybernetic hooks, parts locked by interference, the limb-locked event).
+    /// 7: schematics (schematic items; the result's co-op schematic copies and heard-of schematics).
     /// </summary>
-    public const int Version = 6;
+    public const int Version = 7;
     public const int DefaultPort = 7777;
 }
 

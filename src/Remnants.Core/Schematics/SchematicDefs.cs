@@ -233,6 +233,12 @@ public sealed record SchematicRules
     public DecryptRules Decrypt { get; init; } = new();
     public ResearchRules Research { get; init; } = new();
     public RadioRules Radio { get; init; } = new();
+
+    /// <summary>Research Data a copy of a known schematic costs, per tier (index 0 = tier 1).</summary>
+    public double[] CopyCost { get; init; } = [1, 2, 3, 5];
+
+    /// <summary>Reference value of one unit of each resource, in scrap (for trade values; see <see cref="TradeValues"/>).</summary>
+    public Dictionary<string, double> ResourceValues { get; init; } = new();
 }
 
 /// <summary>The schematics.json file: rules, traders and the catalogue.</summary>
