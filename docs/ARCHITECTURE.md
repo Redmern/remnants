@@ -878,8 +878,7 @@ their RNG draws), so the game, the playtest bot and raid tests set it after `New
 `ColonyState.Defense` (`DefenseState`). `RaidSystem.Run` is the last step of `ColonySim.Tick` (after `WorldMap`).
 
 - **Grid** (`DefenseGrid`): the plot grid at `grid.cellsPerPlot` (4) cells per plot inside a `grid.margin` (4) of cells; a
-  cell is one 2 m scavenge tile, so the grid maps 1:1 onto a tactical map (stage 2 builds a `HandmadeMapDef` from it: built
-  plots → their buildings' blocks as cover with HP, defenses where they stand, guards at their posts). Cell (0, 0) is the
+  cell is one 2 m scavenge tile, so the grid maps 1:1 onto the battle map (see "Fought raids" below). Cell (0, 0) is the
   north-west corner; South (+y, +Z in the town) is the road and the main gate. `SideOf`, `DistanceToEdge`, `Coverage` and
   `Covers` (range, turret arcs around the facing) serve the rules and the overlays.
 - **Defenses** (`DefenseDef`, kinds Wall / Gate / Barricade / Post / Tower / Light / Turret / Alarm / Trap): cost, upkeep (paid
@@ -908,7 +907,24 @@ their RNG draws), so the game, the playtest bot and raid tests set it after `New
   patrol (a scout drone and a pilot at home), × weather, capped. The raid is seen once its arrival is within the lead; the size
   estimate's error shrinks with the lead. Logged as `RaidWarned`.
 - **Prep** (only while a raid is warned): `SetDefenders`, `ShelterChildren`, `CloseGates`, `RecallExpedition` (a party still
-  walking out that can make it home), `ChooseFight` (stage 2: the tactical battle).
+  walking out that can make it home), `ChooseFight` (fight it on the map; `RaidBattle.CannotFight` says why not).
+- **Fought raids** (`RaidBattle`): a fought raid reaches `RaidStage.Battle` on arrival (`RaidAtTheFence`) and waits up to
+  `battle.maxWaitHours` for the player to open it, then settles itself by auto-resolve. `RaidBattle.Open` builds (or resumes
+  `Raid.Battle`, carried in the colony save) a scavenge run on `ColonyMap`: the grid as a `HandmadeMapDef`, with built plots
+  as 3×3 wall blocks whose door tile holds the building as a structure unit (HP = `consequences.buildingHp` minus damage;
+  Town Hall tagged `hall`, Radio Mast `mast`, others `b{id}`), wrecked ones as rubble; walls and shut gates as wall, barricades
+  and nests as cover, destroyed defenses as rubble, towers (and Watchtower buildings) as raised posts, turrets as party-owned
+  turret devices (`MapDeviceDef.Party`); the approach band as the spawn marker; exits on the far side; the party by the Town
+  Hall. The script (`Script`): Survive `battle.rounds` + Defend `hall` (fails the mission), attackers in `battle.waves` from
+  the approach toward the hall, tagged `raider`, minus those the traps take out first (`TrapKills`). Defenders take their
+  auto-resolve gear; guards start on their posts; lit floodlights become lights at dusk and night; the hour is the arrival's.
+  `ApplyRaidBattle(result)` brings everyone home as they are (injuries, deaths, field skill), puts each structure's lost HP on
+  its building (a destroyed one is wrecked), and calls `Consequences.Apply` with a `BattleOutcome` (the battle's dead, hurt
+  and kills replace the dice) and a pressure from how it went (held: ½ · attackers left standing; lost or abandoned: ½ + ½ ·
+  that), so traps, walls, spoils, mood, loot and schematics follow as in auto-resolve; the report has `Fought`.
+- **Story**: `Campaign.Setup` fights a perimeter mission (M5, M14) on `RaidBattle.StoryMap` — the colony map with the
+  approach from the north named after the script's spawn marker (`treeline`) — when it has every marker the script names and
+  every structure a Defend objective needs (M5: a built Radio Mast); otherwise on the handmade `perimeter_thN`.
 - **Auto-resolve** (`AutoResolve.Assess` → `RaidAssessment`, `Consequences.Apply`): the formula is in the class remarks and
   BALANCE.md; gear is handed out from the inventory best-first (`AutoResolve.GearModPower` adds weapon-mod power once that
   lands). Consequences, from the pressure p: traps spring (re-armable ones wait, used-up ones go), walls on the approach take
@@ -917,7 +933,7 @@ their RNG draws), so the game, the playtest bot and raid tests set it after `New
   `CropDamage` adapter, which will call the Pantry once food-cooking lands), injuries (p² per defender) and deaths, the Linked
   carry people off, mood for everyone, XP for the defenders, loot and a schematic from a beaten raid. `RaidReport` goes to
   `DefenseState.LastReport` (history kept) and the log (`RaidRepelled` / `RaidBreached`). `RaidSystem.Finish` is shared with
-  stage 2's battle.
+  the fought battle.
 - **Repairs**: `QueueRepair` books a building or defense; materials are paid when the repair starts; it progresses on the day
   shift at `repair.baseHpPerTick` plus idle adults by Crafting (+ the Engineer's `repair_speed_bonus`).
 - **Adapters for parallel branches** (`Raids/Adapters.cs`): `RaidWeather.Provider` (weather id at a tick; `weather` modifiers),
