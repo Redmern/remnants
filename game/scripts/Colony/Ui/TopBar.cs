@@ -26,6 +26,8 @@ public partial class TopBar : PanelContainer
     private readonly TextureRect _weatherIcon = new() { StretchMode = TextureRect.StretchModeEnum.KeepCentered, CustomMinimumSize = new Vector2(26, 26) };
     private readonly Label _weather = Widgets.Label("", "Small");
     private readonly Control _weatherBox;
+    private readonly HBoxContainer _forecast = Widgets.Row(2);
+    private string _forecastShown = "";
     private (string Kind, double Intensity)? _shownWeather;
     private readonly Dictionary<int, Button> _speedButtons = new();
     private readonly Dictionary<string, ResourceChip> _chips = new();
@@ -65,8 +67,22 @@ public partial class TopBar : PanelContainer
         _weather.HorizontalAlignment = HorizontalAlignment.Center;
         _weather.AddThemeFontSizeOverride("font_size", 11);
         _weatherBox.AddChild(_weather);
-        _weatherBox.Visible = session.Sim.Data.Weather.Enabled;
-        row.AddChild(_weatherBox);
+        // The forecast as small icons beside it (what the colony expects next, as far as it sees).
+        var weatherRow = Widgets.Row(6);
+        weatherRow.MouseFilter = MouseFilterEnum.Pass;
+        weatherRow.AddChild(_weatherBox);
+        var next = Widgets.Column(0);
+        next.MouseFilter = MouseFilterEnum.Ignore;
+        var nextLabel = Widgets.Label("NEXT", "Small");
+        nextLabel.AddThemeFontSizeOverride("font_size", 10);
+        nextLabel.AddThemeColorOverride("font_color", Palette.TextMuted);
+        next.AddChild(nextLabel);
+        _forecast.MouseFilter = MouseFilterEnum.Ignore;
+        next.AddChild(_forecast);
+        weatherRow.AddChild(next);
+        weatherRow.Visible = session.Sim.Data.Weather.Enabled;
+        _weatherBox.Visible = weatherRow.Visible;
+        row.AddChild(weatherRow);
 
         var clock = Widgets.Column(-4);
         _day.AddThemeFontSizeOverride("font_size", 18);
@@ -154,6 +170,20 @@ public partial class TopBar : PanelContainer
         }
         // Rebuilt hourly: the forecast and hours left move with the clock.
         _weatherBox.TooltipText = ColonyText.WeatherTip(sim);
+        var forecast = Weather.Forecast(sim.State, sim.Data).Entries.Where(e => !e.Current).Take(4).ToList();
+        var signature = string.Join(",", forecast.Select(e => $"{e.Start}:{e.Called}"));
+        if (signature == _forecastShown) return;
+        _forecastShown = signature;
+        Widgets.Clear(_forecast);
+        foreach (var e in forecast)
+        {
+            var rules = sim.Data.Rules;
+            var icon = Icons.Rect(Icons.Get($"weather_{e.Called}", 14, "weather_clear"), 14, WeatherColor(e.Called));
+            icon.TooltipText = $"Day {DayNight.Day(e.Start, rules)} {DayNight.Hour(e.Start, rules):00}:00: {ColonyText.WeatherName(sim, e.Called, e.Intensity)}";
+            icon.MouseFilter = MouseFilterEnum.Pass;
+            _forecast.AddChild(icon);
+        }
+        if (forecast.Count == 0) _forecast.AddChild(Widgets.Label("—", "Small"));
     }
 
     /// <summary>Calm weather muted, wet weather cool, storms in warning colours.</summary>

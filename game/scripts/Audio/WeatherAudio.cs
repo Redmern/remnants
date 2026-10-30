@@ -31,7 +31,8 @@ public partial class WeatherAudio : Node
     public override void _Ready()
     {
         ProcessMode = ProcessModeEnum.Always;
-        if (DebugCapture.Value("--weather") is { Length: > 0 } arg)
+        // A bed id here (heavy_rain, wind); Core's weather ids are the colony's and the mission's to set (WeatherFx).
+        if (DebugCapture.Value("--weather") is { Length: > 0 } arg && AudioManager.Instance?.Map.Weather.ContainsKey(arg.Split(':')[0]) == true)
         {
             var parts = arg.Split(':');
             Set(parts[0], parts.Length > 1 && float.TryParse(parts[1], System.Globalization.CultureInfo.InvariantCulture, out var i) ? i : 1);

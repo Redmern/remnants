@@ -12,7 +12,8 @@ namespace Remnants.Game.WeatherFx;
 /// <see cref="DayNightLighting.Weather"/>: darker and wetter under rain, a brown cast in a dust storm, ground mist in
 /// fog), and lightning flashes. <see cref="Set"/> crossfades to a weather id from Core over a few seconds.
 /// <see cref="GameSettings.WeatherEffects"/> scales it: Reduced draws a third of the particles and never flashes
-/// (thunder still sounds), Off keeps only the tint. Nothing here decides the weather.
+/// (thunder still sounds), Off keeps only the tint. Nothing here decides the weather. Debug: <c>--lightning</c> holds a
+/// flash in a thunderstorm, for a still.
 /// </summary>
 public partial class WeatherView : Node3D
 {
@@ -79,7 +80,7 @@ public partial class WeatherView : Node3D
     {
         var dt = (float)delta;
         _blend = Mathf.Min(1, _blend + dt / FadeSeconds);
-        _flash = Mathf.Max(0, _flash - dt * 4f);
+        _flash = Mathf.Max(DebugCapture.HasFlag("--lightning") && Kind == "thunderstorm" ? 0.55f : 0, _flash - dt * 4f);
         Follow();
 
         var scale = GameSettings.WeatherEffects switch { WeatherEffects.Full => 1f, WeatherEffects.Reduced => 0.35f, _ => 0f };
@@ -112,8 +113,8 @@ public partial class WeatherView : Node3D
         return look with
         {
             Ambient = look.Ambient.Lerp(new Color(0.85f, 0.9f, 1f), _flash),
-            AmbientEnergy = look.AmbientEnergy + 2.6f * _flash,
-            Sky = look.Sky.Lerp(new Color(0.75f, 0.8f, 0.95f), _flash * 0.8f),
+            AmbientEnergy = look.AmbientEnergy + 1.8f * _flash,
+            Sky = look.Sky.Lerp(new Color(0.75f, 0.8f, 0.95f), _flash * 0.5f),
         };
     }
 
@@ -140,7 +141,7 @@ public partial class WeatherView : Node3D
                 return k with
                 {
                     SunEnergy = k.SunEnergy * (1 - 0.55f * i), Sky = k.Sky.Lerp(new Color(0.55f, 0.58f, 0.6f) * Mathf.Max(0.25f, k.AmbientEnergy), 0.7f * i),
-                    Ambient = Grey(k.Ambient, 0.5f * i), Fog = k.Fog + 0.035f * i, GroundFog = k.GroundFog + 0.22f * i,
+                    Ambient = Grey(k.Ambient, 0.5f * i), Fog = k.Fog + 0.012f * i, GroundFog = k.GroundFog + 0.12f * i,
                 };
             case "dust_storm":
                 var brown = new Color(0.72f, 0.5f, 0.3f);
@@ -148,7 +149,7 @@ public partial class WeatherView : Node3D
                 {
                     Sun = k.Sun.Lerp(new Color(1f, 0.62f, 0.32f), 0.7f * i), SunEnergy = k.SunEnergy * (1 - 0.55f * i),
                     Sky = k.Sky.Lerp(brown * Mathf.Max(0.3f, k.AmbientEnergy), 0.8f * i),
-                    Ambient = k.Ambient.Lerp(brown, 0.55f * i), Fog = k.Fog + 0.025f * i, GroundFog = k.GroundFog + 0.1f * i,
+                    Ambient = k.Ambient.Lerp(brown, 0.5f * i), Fog = k.Fog + 0.007f * i, GroundFog = k.GroundFog + 0.035f * i,
                 };
             default:
                 return k;
@@ -215,11 +216,11 @@ public partial class WeatherView : Node3D
 
     private static QuadMesh Streak() => new()
     {
-        Size = new Vector2(0.025f, 0.7f),
+        Size = new Vector2(0.07f, 1.5f),
         Material = new StandardMaterial3D
         {
             ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-            AlbedoColor = new Color(0.72f, 0.78f, 0.88f, 0.38f), BillboardMode = BaseMaterial3D.BillboardModeEnum.FixedY,
+            AlbedoColor = new Color(0.8f, 0.86f, 0.96f, 0.55f), BillboardMode = BaseMaterial3D.BillboardModeEnum.FixedY,
             BillboardKeepScale = true,
         },
     };
@@ -230,7 +231,7 @@ public partial class WeatherView : Node3D
         Material = new StandardMaterial3D
         {
             ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-            AlbedoColor = new Color(0.66f, 0.48f, 0.3f, 0.22f), AlbedoTexture = SoftDot(),
+            AlbedoColor = new Color(0.66f, 0.48f, 0.3f, 0.12f), AlbedoTexture = SoftDot(),
             BillboardMode = BaseMaterial3D.BillboardModeEnum.Particles, BillboardKeepScale = true,
         },
     };

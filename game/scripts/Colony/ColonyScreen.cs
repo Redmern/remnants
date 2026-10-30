@@ -192,6 +192,8 @@ public partial class ColonyScreen : Node3D
     {
         _session.FastForward(_session.Sim.Data.Rules.TicksPerDay, s => s.Hour == hour);
         _session.SetSpeed(0);
+        // A demo's speed can come back once the HUD settles; hold the hour for the capture.
+        GetTree().CreateTimer(0.25).Timeout += () => _session.SetSpeed(0);
         _walkers.Settle();
     }
 
