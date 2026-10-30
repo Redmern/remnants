@@ -75,8 +75,10 @@ public partial class ColonyScreen : Node3D
         if (DebugCapture.Value("--anim-demo") == "colony" && _session.Sim.State.Buildings.FirstOrDefault(b => b.DefId == "woodcutter") is { } cutter)
         {
             camera.Focus(layout.Center(cutter.Plot) + new Vector3(-TownLayout.PlotSize * 0.25f, 0, TownLayout.PlotSize * 0.25f));
-            camera.ZoomTo(20);
+            camera.ZoomTo(24);
             _session.SetSpeed(1);
+            _walkers.Sync();
+            _walkers.PlaceAtWork();
         }
         if (DebugCapture.HasFlag("--no-select"))
         {

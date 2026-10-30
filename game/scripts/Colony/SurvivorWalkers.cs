@@ -206,6 +206,20 @@ public partial class SurvivorWalkers : Node3D
         }
     }
 
+    /// <summary>Debug (captures): on-shift workers start at a spot by their workplace, already at work.</summary>
+    public void PlaceAtWork()
+    {
+        foreach (var w in _walkers.Values.Where(w => w.Role == Role.Worker))
+        {
+            w.Path.Clear();
+            Stand(w);
+            w.Node.Position = Spot(w);
+            w.FaceTo = w.WorkCenter;
+            Face(w, w.WorkCenter - w.Node.Position);
+            Arrive(w);
+        }
+    }
+
     /// <summary>Out of the door again where they went in.</summary>
     private static void WakeUp(Walker w)
     {
