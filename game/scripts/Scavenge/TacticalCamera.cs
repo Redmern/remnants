@@ -1,4 +1,5 @@
 using Godot;
+using Remnants.Game.Hud;
 
 namespace Remnants.Game.Scavenge;
 
@@ -55,7 +56,7 @@ public partial class TacticalCamera : Node3D
         if (Input.IsKeyPressed(Key.S) || Input.IsKeyPressed(Key.Down)) move.Y += 1;
         if (Input.IsKeyPressed(Key.A) || Input.IsKeyPressed(Key.Left)) move.X -= 1;
         if (Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right)) move.X += 1;
-        if (move != Vector2.Zero) Pan(move.Normalized() * PanSpeed * Camera.Size * dt);
+        if (move != Vector2.Zero) Pan(move.Normalized() * PanSpeed * GameSettings.CameraPanSpeed * Camera.Size * dt);
         _yaw = Mathf.Lerp(_yaw, _targetYaw, Mathf.Min(1, dt * 10));
         Apply();
     }
@@ -65,10 +66,10 @@ public partial class TacticalCamera : Node3D
         switch (e)
         {
             case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.WheelUp }:
-                Camera.Size = Mathf.Max(MinSize, Camera.Size * 0.9f);
+                Camera.Size = Mathf.Max(MinSize, Camera.Size * Mathf.Pow(0.9f, GameSettings.CameraZoomSpeed));
                 break;
             case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.WheelDown }:
-                Camera.Size = Mathf.Min(MaxSize, Camera.Size * 1.1f);
+                Camera.Size = Mathf.Min(MaxSize, Camera.Size * Mathf.Pow(1.1f, GameSettings.CameraZoomSpeed));
                 break;
             case InputEventMouseMotion m when (m.ButtonMask & MouseButtonMask.Middle) != 0:
                 Pan(-m.Relative * Camera.Size / GetViewport().GetVisibleRect().Size.Y);

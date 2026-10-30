@@ -3,6 +3,7 @@ using System.Linq;
 using Godot;
 using Remnants.Core.Colony;
 using Remnants.Core.Data;
+using Remnants.Game.Hud;
 
 namespace Remnants.Game.Colony.Ui;
 
@@ -18,7 +19,7 @@ public partial class ProductionPanel : PanelContainer
     private readonly ColonySession _session;
     private readonly RichTextLabel _status = Ui.Rich();
     private readonly VBoxContainer _orders = new();
-    private readonly OptionButton _recipes = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, ClipText = true };
+    private readonly OptionButton _recipes = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, ClipText = true, FitToLongestItem = false };
     private readonly OptionButton _amount = new() { FocusMode = FocusModeEnum.None };
     private readonly RichTextLabel _recipeInfo = Ui.Rich();
     private readonly List<string> _ids = new();
@@ -34,16 +35,16 @@ public partial class ProductionPanel : PanelContainer
         CustomMinimumSize = new Vector2(320, 0);
         Visible = false;
         var box = Ui.Panel(this);
-        box.AddChild(Ui.Heading("Production"));
+        box.AddChild(Ui.Heading("Production", "skill_crafting"));
         box.AddChild(_status);
         box.AddChild(_orders);
 
-        box.AddChild(Ui.Heading("Queue a recipe"));
+        box.AddChild(Ui.Heading("Queue a recipe", "ui_plus"));
         var row = new HBoxContainer();
         row.AddChild(_recipes);
         foreach (var (label, _, _) in Amounts) _amount.AddItem(label);
         row.AddChild(_amount);
-        row.AddChild(Ui.Button("Queue", Queue, 60));
+        row.AddChild(Widgets.IconButton("ui_plus", "Queue", "Add to the queue", Queue, variation: "Primary"));
         box.AddChild(row);
         box.AddChild(_recipeInfo);
         _recipes.ItemSelected += _ => Refresh();
@@ -88,7 +89,7 @@ public partial class ProductionPanel : PanelContainer
                 CommandError.RecipeLocked => "  [blueprint]",
                 _ => "",
             };
-            _recipes.AddItem($"{r.Name} → {Output(sim, r)}{lockNote}");
+            _recipes.AddIconItem(OutputIcon(sim, r), $"{r.Name} → {Output(sim, r)}{lockNote}");
             _recipes.SetItemDisabled(_recipes.ItemCount - 1, !check.Ok);
         }
         var index = selected is null ? -1 : _ids.IndexOf(selected);
@@ -109,16 +110,20 @@ public partial class ProductionPanel : PanelContainer
             foreach (var order in building.Queue)
             {
                 var orderId = order.Id;
-                var line = new HBoxContainer();
+                var line = new PanelContainer { ThemeTypeVariation = order.Paid ? "CardSelected" : "Card" };
+                var inner = Widgets.Row(8);
+                line.AddChild(inner);
+                inner.AddChild(Icons.Rect(OutputIcon(sim, sim.Data.Recipes[order.RecipeId]), 22, order.Paid ? Palette.Amber : Palette.TextMuted));
                 var column = new VBoxContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
-                var text = Ui.Label(size: 13);
+                var text = Ui.Label(size: 14);
                 var bar = new ProgressBar { ShowPercentage = false, CustomMinimumSize = new Vector2(0, 6), MaxValue = 1 };
+                bar.AddThemeStyleboxOverride("fill", HudTheme.Box(Palette.Amber, radius: 2, padX: 0, padY: 0));
                 column.AddChild(text);
                 column.AddChild(bar);
-                line.AddChild(column);
-                var cancel = Ui.Button("✕", () => _session.Execute(new CancelOrder(building.Id, orderId)), 30);
-                cancel.TooltipText = "Cancel (a batch in progress gives its inputs back)";
-                line.AddChild(cancel);
+                inner.AddChild(column);
+                var cancel = Widgets.IconButton("ui_close", "", "Cancel (a batch in progress gives its inputs back)",
+                    () => _session.Execute(new CancelOrder(building.Id, orderId)), variation: "Flat");
+                inner.AddChild(cancel);
                 _orders.AddChild(line);
                 _rows.Add((bar, text, orderId));
             }
@@ -189,4 +194,9 @@ public partial class ProductionPanel : PanelContainer
         var (_, count, repeat) = Amounts[System.Math.Max(0, _amount.Selected)];
         _session.Execute(new QueueRecipe(id, _ids[_recipes.Selected], count, repeat));
     }
+
+    private static Texture2D OutputIcon(ColonySim sim, RecipeDef r) =>
+        r.Item is { } item && sim.Scavenge?.Items.GetValueOrDefault(item) is { } def
+            ? Icons.Item(def.DefinedId, def.Kind.ToString(), 18)
+            : Icons.Resource(r.Resource ?? "", 18);
 }

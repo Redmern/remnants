@@ -17,17 +17,7 @@ public partial class ColonyScreen : Node3D
     private ColonySession _session = null!;
     private TownView _town = null!;
     private SurvivorWalkers _walkers = null!;
-    private TopBar _topBar = null!;
-    private RosterPanel _roster = null!;
-    private BuildingPanel _buildingPanel = null!;
-    private BuildMenu _buildMenu = null!;
-    private EventLog _log = null!;
-    private ExpeditionPanel _expedition = null!;
-    private WorldMapPanel _worldMap = null!;
-    private MedBayPanel _medBay = null!;
-    private ProductionPanel _production = null!;
-    private InventoryPanel _inventory = null!;
-    private AfterActionDialog _report = null!;
+    private ColonyHud _hud = null!;
 
     public override void _Ready()
     {
@@ -67,11 +57,15 @@ public partial class ColonyScreen : Node3D
         }
         if (DebugCapture.HasFlag("--expedition"))
         {
-            _expedition.Toggle();
-            _expedition.Pick(_session.Sim.State.Survivors.Where(s => !s.IsChild).Select(s => s.Id).Take(2));
+            _hud.Expedition.Toggle();
+            _hud.Expedition.Pick(_session.Sim.State.Survivors.Where(s => !s.IsChild).Select(s => s.Id).Take(2));
         }
         if (DebugCapture.HasFlag("--world-demo") && _session.Sim.State.Tick == 0) RunWorldDemo();
-        if (DebugCapture.HasFlag("--world-map") || DebugCapture.HasFlag("--world-demo")) _worldMap.Open(DebugCapture.Value("--zone"));
+        if (DebugCapture.HasFlag("--world-map") || DebugCapture.HasFlag("--world-demo")) _hud.WorldMap.Open(DebugCapture.Value("--zone"));
+        if (DebugCapture.HasFlag("--pause-menu")) _hud.CallDeferred(ColonyHud.MethodName.OpenPause);
+        if (DebugCapture.HasFlag("--settings")) _hud.Settings.CallDeferred(Hud.Overlay.MethodName.Open);
+        if (DebugCapture.HasFlag("--build-menu")) CallDeferred(MethodName.ToggleBuildMenu);
+        if (int.TryParse(DebugCapture.Value("--select-survivor"), out var who)) _hud.Roster.Select(who);
         CallDeferred(MethodName.ShowUnseenReport);
     }
 
@@ -86,7 +80,7 @@ public partial class ColonyScreen : Node3D
         }
         if (_session.UnseenReport is not { } report) return;
         _session.UnseenReport = null;
-        _report.ShowReport(_session.Sim, report);
+        _hud.Report.ShowReport(report);
     }
 
     /// <summary>
@@ -136,7 +130,7 @@ public partial class ColonyScreen : Node3D
         var adults = sim.State.Survivors.Where(s => !s.IsChild).Select(s => s.Id).ToList();
         for (var i = 0; i < adults.Count; i++)
             if ((i % 2 == 0 ? farm : woodcutter) is { } at) _session.Execute(new AssignJob(adults[i], at));
-        _roster.Select(adults.FirstOrDefault());
+        _hud.Roster.Select(adults.FirstOrDefault());
         if (farm is { } f) _town.Select(f);
         _session.SetSpeed(4);
     }
@@ -155,7 +149,7 @@ public partial class ColonyScreen : Node3D
         sim.State.Stockpile.Add(sim.Data.Rules.Food.ResourceId, 200);  // so the colony can afford a family right away
         _session.FastForward(20_000, s => s.State.Events.Any(e => e.Type == ColonyEventType.Born));
         _session.FastForward(30, _ => false);
-        _roster.Select(woman.Id);
+        _hud.Roster.Select(woman.Id);
         _session.SetSpeed(1);
     }
 
@@ -206,7 +200,7 @@ public partial class ColonyScreen : Node3D
         _session.FastForward(30, _ => false);
         if (armory is { } busy && sim.State.FindBuilding(busy) is { } shop)
             _session.FastForward(300, s => shop.Queue.FirstOrDefault(o => o.Paid) is { } o && o.Progress > s.Data.Recipes[o.RecipeId].Work * 0.4);
-        _inventory.Toggle();
+        _hud.Inventory.Toggle();
         if (armory is { } sel) _town.Select(sel);
         _session.SetSpeed(1);
     }
@@ -215,51 +209,9 @@ public partial class ColonyScreen : Node3D
 
     private void BuildHud()
     {
-        var layer = new CanvasLayer { Name = "Hud" };
-        AddChild(layer);
-        var root = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Theme = HudTheme.Shared };
-        root.SetAnchorsPreset(Control.LayoutPreset.FullRect);
-        foreach (var side in new[] { "left", "right", "top", "bottom" }) root.AddThemeConstantOverride($"margin_{side}", 8);
-        layer.AddChild(root);
-
-        var column = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        root.AddChild(column);
-
-        _topBar = new TopBar(_session);
-        column.AddChild(_topBar);
-
-        var middle = new HBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
-        column.AddChild(middle);
-
-        _roster = new RosterPanel(_session);
-        middle.AddChild(_roster);
-        middle.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore });
-
-        _inventory = new InventoryPanel(_session);
-        middle.AddChild(_inventory);
-        _expedition = new ExpeditionPanel(_session);
-        middle.AddChild(_expedition);
-
-        var right = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        middle.AddChild(right);
-        _buildMenu = new BuildMenu(_session);
-        _buildingPanel = new BuildingPanel(_session);
-        _medBay = new MedBayPanel(_session);
-        _production = new ProductionPanel(_session);
-        right.AddChild(_buildMenu);
-        right.AddChild(_buildingPanel);
-        right.AddChild(_medBay);
-        right.AddChild(_production);
-
-        _worldMap = new WorldMapPanel(_session) { Theme = HudTheme.Shared };
-        layer.AddChild(_worldMap);
-
-        _report = new AfterActionDialog { Theme = HudTheme.Shared };
-        layer.AddChild(_report);
-
-        _log = new EventLog(_session);
-        column.AddChild(_log);
-        _log.Reset();
+        _hud = new ColonyHud(_session);
+        AddChild(_hud);
+        _hud.Log.Reset();
     }
 
     private void Wire()
@@ -269,30 +221,31 @@ public partial class ColonyScreen : Node3D
         {
             _town.Reset();
             _walkers.Reset();
-            _roster.Select(null);
-            _log.Reset();
+            _hud.Roster.Select(null);
+            _hud.Log.Reset();
         };
 
-        _topBar.MenuPressed += () => GetTree().ChangeSceneToFile("res://scenes/MainMenu.tscn");
-        _topBar.ExpeditionPressed += _expedition.Toggle;
-        _topBar.ItemsPressed += _inventory.Toggle;
-        _expedition.WorldMapPressed += () => _worldMap.Open();
-        _worldMap.PlanPressed += _expedition.PlanFor;
-        _expedition.PlayPressed += () =>
+        _hud.MainMenuRequested += () => GetTree().ChangeSceneToFile("res://scenes/MainMenu.tscn");
+        _hud.BackRequested += () =>
+        {
+            if (_town.PlacingDefId is not null) _town.CancelPlacing();
+            else if (_town.SelectedBuildingId is not null) _town.Select(null);
+            else return false;
+            return true;
+        };
+        _hud.TopBar.ExpeditionPressed += _hud.Expedition.Toggle;
+        _hud.Expedition.WorldMapPressed += () => _hud.WorldMap.Open();
+        _hud.WorldMap.PlanPressed += _hud.Expedition.PlanFor;
+        _hud.Expedition.PlayPressed += () =>
         {
             _session.PlayExpedition(GetTree());
             CallDeferred(MethodName.ShowUnseenReport); // the autopilot resolves in place; the scavenge screen comes back through _Ready
         };
-        _topBar.BuildPressed += () =>
-        {
-            _buildMenu.Visible = !_buildMenu.Visible;
-            if (!_buildMenu.Visible) _town.CancelPlacing();
-            _buildMenu.SetPlacing(null);
-        };
-
-        _buildMenu.TypeChosen += defId => _town.BeginPlacing(defId);
+        _hud.TopBar.BuildPressed += ToggleBuildMenu;
+        _hud.BuildMenu.Closed += ToggleBuildMenu;
+        _hud.BuildMenu.TypeChosen += defId => _town.BeginPlacing(defId);
         _town.PlacingChanged += () =>
-            _buildMenu.SetPlacing(_town.PlacingDefId is { } id ? _session.Sim.Data.Buildings[id] : null);
+            _hud.BuildMenu.SetPlacing(_town.PlacingDefId is { } id ? _session.Sim.Data.Buildings[id] : null);
         _town.PlotChosen += (defId, plot) =>
         {
             if (_session.Execute(new Construct(defId, plot)) is { Ok: true, EntityId: { } built })
@@ -304,11 +257,19 @@ public partial class ColonyScreen : Node3D
 
         _town.SelectionChanged += id =>
         {
-            _buildingPanel.Show(id);
-            _medBay.Show(id);
-            _production.Show(id);
+            _hud.Building.Show(id);
+            _hud.MedBay.Show(id);
+            _hud.Production.Show(id);
         };
-        _roster.SelectionChanged += id => _walkers.SelectedSurvivorId = id;
+        _hud.Building.Closed += () => _town.Select(null);
+        _hud.Roster.SelectionChanged += id => _walkers.SelectedSurvivorId = id;
+    }
+
+    private void ToggleBuildMenu()
+    {
+        Hud.Motion.Toggle(_hud.BuildMenu, new Vector2(12, 0));
+        if (!_hud.BuildMenu.Visible) _town.CancelPlacing();
+        _hud.BuildMenu.SetPlacing(null);
     }
 
     private void RefreshAll()
@@ -316,15 +277,6 @@ public partial class ColonyScreen : Node3D
         if (_session.UnseenReport is not null) ShowUnseenReport();  // a party walked home from a far zone
         _town.Sync();
         _walkers.Sync();
-        _topBar.Refresh();
-        _roster.Refresh();
-        _buildingPanel.Refresh();
-        _medBay.Refresh();
-        _production.Refresh();
-        _inventory.Refresh();
-        _expedition.Refresh();
-        _worldMap.Refresh();
-        if (_buildMenu.Visible) _buildMenu.Refresh();
-        _log.Refresh();
+        _hud.Refresh();
     }
 }

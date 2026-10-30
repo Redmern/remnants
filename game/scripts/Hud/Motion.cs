@@ -14,12 +14,19 @@ public static class Motion
         var wasVisible = control.Visible;
         control.Visible = true;
         if (wasVisible || !control.IsInsideTree()) return;
-        var offset = from ?? new Vector2(0, 8);
         control.Modulate = new Color(1, 1, 1, 0);
-        var target = control.Position;
-        control.Position = target + offset;
         var tween = control.CreateTween().SetParallel().SetEase(Tween.EaseType.Out).SetTrans(Tween.TransitionType.Cubic);
         tween.TweenProperty(control, "modulate:a", 1f, Normal);
+        // A container owns its children's positions: slide with the pivot-free scale trick instead of moving it.
+        if (control.GetParent() is Container)
+        {
+            control.PivotOffset = from is { X: < 0 } ? new Vector2(0, 0) : new Vector2(control.Size.X, 0);
+            control.Scale = new Vector2(0.98f, 0.98f);
+            tween.TweenProperty(control, "scale", Vector2.One, Normal);
+            return;
+        }
+        var target = control.Position;
+        control.Position = target + (from ?? new Vector2(0, 8));
         tween.TweenProperty(control, "position", target, Normal);
     }
 

@@ -1,13 +1,14 @@
 using Godot;
+using Remnants.Game.Hud;
 
 namespace Remnants.Game.Colony.Ui;
 
-/// <summary>Small builders so the HUD panels can be laid out in code without scene boilerplate.</summary>
+/// <summary>Small builders so the HUD panels can be laid out in code without scene boilerplate. Colours and looks come from <see cref="Palette"/> and <see cref="HudTheme"/>.</summary>
 public static class Ui
 {
-    public static readonly Color Muted = new(0.7f, 0.68f, 0.62f);
-    public static readonly Color Bad = new(0.9f, 0.45f, 0.35f);
-    public static readonly Color Good = new(0.6f, 0.85f, 0.55f);
+    public static readonly Color Muted = Palette.TextMuted;
+    public static readonly Color Bad = Palette.Danger;
+    public static readonly Color Good = Palette.Good;
 
     public static Label Label(string text = "", int size = 14, Color? color = null)
     {
@@ -17,37 +18,43 @@ public static class Ui
         return label;
     }
 
-    public static Label Heading(string text) => Label(text.ToUpperInvariant(), 13, Muted);
+    /// <summary>A section header: condensed caps and a rule, optionally with an icon.</summary>
+    public static Control Heading(string text, string? icon = null) => Widgets.SectionHeader(text, icon);
 
-    public static Button Button(string text, System.Action onPressed, int minWidth = 0)
-    {
-        var button = new Button { Text = text, CustomMinimumSize = new Vector2(minWidth, 30), FocusMode = Control.FocusModeEnum.None };
-        button.Pressed += onPressed;
-        return button;
-    }
+    public static Button Button(string text, System.Action onPressed, int minWidth = 0) =>
+        Widgets.TextButton(text, onPressed, minWidth: minWidth);
 
-    public static RichTextLabel Rich(bool scroll = false)
+    public static RichTextLabel Rich(bool scroll = false) => new()
     {
-        var rich = new RichTextLabel
-        {
-            BbcodeEnabled = true,
-            FitContent = !scroll,
-            ScrollActive = scroll,
-            SizeFlagsVertical = Control.SizeFlags.ExpandFill,
-            SelectionEnabled = false,
-        };
-        rich.AddThemeFontSizeOverride("normal_font_size", 14);
-        rich.AddThemeFontSizeOverride("bold_font_size", 14);
-        return rich;
-    }
+        BbcodeEnabled = true,
+        FitContent = !scroll,
+        ScrollActive = scroll,
+        SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+        SelectionEnabled = false,
+        MouseFilter = Control.MouseFilterEnum.Pass,
+    };
 
     /// <summary>A HUD panel (styled by <see cref="HudTheme"/>) with a VBox inside; returns the VBox to fill.</summary>
-    public static VBoxContainer Panel(PanelContainer panel, int separation = 6)
+    public static VBoxContainer Panel(PanelContainer panel, int separation = 8)
     {
         var box = new VBoxContainer();
         box.AddThemeConstantOverride("separation", separation);
         panel.AddChild(box);
         return box;
+    }
+
+    /// <summary>A panel title row: icon, display-font title, filler, an optional close button.</summary>
+    public static HBoxContainer TitleRow(string title, string icon, System.Action? onClose = null, string? closeHotkey = null)
+    {
+        var row = Widgets.Row(8);
+        row.AddChild(Icons.Rect(Icons.Get(icon, 20), 20, Palette.Rust));
+        var label = Widgets.Label(title, "Display");
+        label.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+        label.ClipText = true;
+        row.AddChild(label);
+        if (onClose is not null)
+            row.AddChild(Widgets.IconButton("ui_close", "", "Close", onClose, closeHotkey, "Flat"));
+        return row;
     }
 
     public static string Hex(Color c) => c.ToHtml(false);

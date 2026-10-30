@@ -220,6 +220,7 @@ public static class HudTheme
             theme.SetColor("font_unselected_color", type, Palette.TextMuted);
             theme.SetColor("font_hovered_color", type, Colors.White);
             theme.SetConstant("h_separation", type, 4);
+            theme.SetConstant("icon_max_width", type, 16);
         }
         theme.SetStylebox("panel", "TabContainer", PanelArt.Box(new(Palette.Raised.Darkened(0.2f), Palette.EdgeDark, 0.03f), 10, 8));
         theme.SetStylebox("tabbar_background", "TabContainer", new StyleBoxEmpty());

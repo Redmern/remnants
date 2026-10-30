@@ -4,6 +4,7 @@ using Godot;
 using Remnants.Core.Colony;
 using Remnants.Core.Items;
 using Remnants.Core.Survivors;
+using Remnants.Game.Hud;
 
 namespace Remnants.Game.Colony.Ui;
 
@@ -16,9 +17,9 @@ public partial class MedBayPanel : PanelContainer
     private readonly ColonySession _session;
     private readonly RichTextLabel _info = Ui.Rich();
     private readonly VBoxContainer _patients = new();
-    private readonly OptionButton _admitPick = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, ClipText = true };
-    private readonly OptionButton _limbPick = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, ClipText = true };
-    private readonly OptionButton _prostheticPick = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, ClipText = true };
+    private readonly OptionButton _admitPick = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, ClipText = true, FitToLongestItem = false };
+    private readonly OptionButton _limbPick = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, ClipText = true, FitToLongestItem = false };
+    private readonly OptionButton _prostheticPick = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, ClipText = true, FitToLongestItem = false };
     private readonly List<int> _admitIds = new();
     private readonly List<(int SurvivorId, BodyPart Part)> _limbs = new();
     private readonly List<string> _prosthetics = new();
@@ -32,21 +33,21 @@ public partial class MedBayPanel : PanelContainer
         CustomMinimumSize = new Vector2(300, 0);
         Visible = false;
         var box = Ui.Panel(this);
-        box.AddChild(Ui.Heading("Patients"));
+        box.AddChild(Ui.Heading("Patients", "job_patient"));
         box.AddChild(_info);
         box.AddChild(_patients);
 
-        box.AddChild(Ui.Heading("Admit"));
+        box.AddChild(Ui.Heading("Admit", "ui_plus"));
         var admit = new HBoxContainer();
         admit.AddChild(_admitPick);
-        admit.AddChild(Ui.Button("Admit", Admit, 64));
+        admit.AddChild(Widgets.IconButton("job_patient", "Admit", "Give them a Med Bay bed", Admit, variation: "Primary"));
         box.AddChild(admit);
 
-        box.AddChild(Ui.Heading("Fit prosthetic"));
+        box.AddChild(Ui.Heading("Fit prosthetic", "body_prosthetic"));
         box.AddChild(_limbPick);
         var fit = new HBoxContainer();
         fit.AddChild(_prostheticPick);
-        fit.AddChild(Ui.Button("Fit", Fit, 48));
+        fit.AddChild(Widgets.IconButton("body_prosthetic", "Fit", "Fit the prosthetic on the missing limb", Fit, variation: "Primary"));
         box.AddChild(fit);
     }
 
@@ -99,7 +100,7 @@ public partial class MedBayPanel : PanelContainer
         }
         foreach (var row in _patients.GetChildren().OfType<HBoxContainer>())
             if (row.GetMeta("survivor").AsInt32() is var sid && sim.State.FindSurvivor(sid) is { } p)
-                row.GetChild<Label>(0).Text = PatientLine(sim, p);
+                row.GetChild<Label>(1).Text = PatientLine(sim, p);
         _admitPick.Disabled = _admitIds.Count == 0;
         _limbPick.Disabled = _limbs.Count == 0;
         _prostheticPick.Disabled = _prosthetics.Count == 0;
@@ -115,9 +116,14 @@ public partial class MedBayPanel : PanelContainer
             row.SetMeta("survivor", p.Id);
             var label = Ui.Label(PatientLine(sim, p), 13);
             label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            label.AutowrapMode = TextServer.AutowrapMode.WordSmart;
             row.AddChild(label);
+            var portrait = new Portrait(34);
+            portrait.Set(PortraitStudio.For(GetTree(), p), PortraitStudio.Backdrop(p.Id));
+            row.AddChild(portrait);
+            row.MoveChild(portrait, 0);
             var id = p.Id;
-            row.AddChild(Ui.Button("Discharge", () => _session.Execute(new Discharge(id)), 80));
+            row.AddChild(Widgets.IconButton("ui_quit", "", "Discharge", () => _session.Execute(new Discharge(id)), variation: "Flat"));
             _patients.AddChild(row);
         }
     }

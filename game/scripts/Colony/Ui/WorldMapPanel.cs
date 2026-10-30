@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using Remnants.Game.Hud;
 using Remnants.Core.Colony;
 using Remnants.Core.Scavenge;
 
@@ -21,7 +22,7 @@ public partial class WorldMapPanel : Control
     private readonly ColonySession _session;
     private readonly WorldMapCanvas _canvas;
     private readonly PanelContainer _card = new() { CustomMinimumSize = new Vector2(380, 0) };
-    private readonly Label _cardTitle = Ui.Label(size: 22);
+    private readonly Label _cardTitle = Widgets.Label("", "Display", size: 24);
     private readonly Label _cardRegion = Ui.Label(size: 13, color: Ui.Muted);
     private readonly RichTextLabel _cardBody = Ui.Rich();
     private readonly Button _plan;
@@ -42,11 +43,11 @@ public partial class WorldMapPanel : Control
         AddChild(_canvas);
 
         var header = new HBoxContainer { Position = new Vector2(24, 18) };
-        var title = Ui.Label("WORLD MAP", 26, Ink);
+        var title = Widgets.Label("WORLD MAP", "Title", Ink);
         header.AddChild(title);
         AddChild(header);
 
-        var close = Ui.Button("Close  ✕", Close, 110);
+        var close = Widgets.IconButton("ui_close", "Close", "Close the map", Close, Hotkeys.KeyName("pause_menu"));
         close.SetAnchorsPreset(LayoutPreset.TopRight);
         close.Position = new Vector2(-134, 18);
         AddChild(close);
@@ -62,12 +63,13 @@ public partial class WorldMapPanel : Control
         box.AddChild(_cardRegion);
         _cardBody.CustomMinimumSize = new Vector2(340, 0);
         box.AddChild(_cardBody);
-        _plan = Ui.Button("Plan expedition", () =>
+        _plan = Widgets.IconButton("ui_expedition", "Plan expedition", "Open the expedition planner on this zone", () =>
         {
             if (_selected is not { } id) return;
             Close();
             PlanPressed?.Invoke(id);
         });
+        _plan.ThemeTypeVariation = "Primary";
         box.AddChild(_plan);
         box.AddChild(Legend());
     }
@@ -143,12 +145,12 @@ public partial class WorldMapCanvas : Control
 
     public WorldMapCanvas(WorldMapPanel owner) => _owner = owner;
 
-    private static readonly Color Sea = new(0.07f, 0.09f, 0.1f);
-    private static readonly Color Land = new(0.16f, 0.17f, 0.15f);
-    private static readonly Color LandEdge = new(0.24f, 0.25f, 0.21f);
-    private static readonly Color River = new(0.16f, 0.27f, 0.32f);
+    private static readonly Color Sea = new(0.06f, 0.06f, 0.055f);
+    private static readonly Color Land = new(0.15f, 0.14f, 0.12f);
+    private static readonly Color LandEdge = new(0.3f, 0.26f, 0.2f);
+    private static readonly Color River = new(0.17f, 0.21f, 0.22f);
     private static readonly Color Ink = new(0.82f, 0.78f, 0.68f);
-    private static readonly Color Network = new(0.3f, 0.85f, 0.95f);
+    private static readonly Color Network = Palette.Network;
 
     private const float MarkerBase = 11f;
 

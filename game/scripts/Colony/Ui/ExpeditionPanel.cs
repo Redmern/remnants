@@ -6,6 +6,7 @@ using Remnants.Core.Colony;
 using Remnants.Core.Items;
 using Remnants.Core.Scavenge;
 using Remnants.Core.Survivors;
+using Remnants.Game.Hud;
 
 namespace Remnants.Game.Colony.Ui;
 
@@ -31,15 +32,16 @@ public partial class ExpeditionPanel : PanelContainer
     private readonly RichTextLabel _zoneInfo = Ui.Rich();
     private readonly Label _partyInfo = Ui.Label(color: Ui.Muted);
     private readonly VBoxContainer _rows = new();
-    private readonly RichTextLabel _inventory = Ui.Rich();
+    private readonly MarginContainer _inventory = new();
     private readonly RichTextLabel _away = Ui.Rich();
     private readonly Button _launch;
     private readonly Button _play;
     private readonly Control _planner = new VBoxContainer();
     private readonly List<string> _zoneIds = new();
     private readonly Dictionary<int, Loadout> _picked = new();
-    private readonly Dictionary<int, Label> _previews = new();
+    private readonly Dictionary<int, MarginContainer> _previews = new();
     private string _signature = "";
+    private string _inventoryShown = "";
 
     /// <summary>Asks the screen to switch to the scavenge run.</summary>
     public event Action? PlayPressed;
@@ -50,32 +52,37 @@ public partial class ExpeditionPanel : PanelContainer
     public ExpeditionPanel(ColonySession session)
     {
         _session = session;
-        CustomMinimumSize = new Vector2(440, 0);
+        CustomMinimumSize = new Vector2(560, 0);
+        SizeFlagsVertical = SizeFlags.ShrinkBegin;
         Visible = false;
-        var box = Ui.Panel(this);
-        box.AddChild(Ui.Heading("Expedition"));
+        var box = Ui.Panel(this, 8);
+        box.AddChild(Ui.TitleRow("Expedition", "ui_expedition", Toggle, Hotkeys.KeyName("open_expedition")));
         box.AddChild(_away);
-        _play = Ui.Button("Play mission", () => PlayPressed?.Invoke());
+        _play = Widgets.IconButton("ui_play", "Play mission", "Go to the zone and play the run", () => PlayPressed?.Invoke(), variation: "Primary");
+        _play.CustomMinimumSize = new Vector2(0, 38);
         box.AddChild(_play);
 
         var planner = (VBoxContainer)_planner;
-        planner.AddThemeConstantOverride("separation", 6);
+        planner.AddThemeConstantOverride("separation", 8);
         box.AddChild(planner);
-        var zoneRow = new HBoxContainer();
-        zoneRow.AddChild(Ui.Label("Zone"));
+        planner.AddChild(Widgets.SectionHeader("Destination", "ui_world_map"));
+        var zoneRow = Widgets.Row(6);
         zoneRow.AddChild(_zone);
-        zoneRow.AddChild(Ui.Button("World map", () => WorldMapPressed?.Invoke()));
+        zoneRow.AddChild(Widgets.IconButton("ui_world_map", "World map", "Open the world map", () => WorldMapPressed?.Invoke()));
         planner.AddChild(zoneRow);
         planner.AddChild(_zoneInfo);
+        planner.AddChild(Widgets.SectionHeader("Party", "stat_pop"));
+        _partyInfo.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         planner.AddChild(_partyInfo);
-        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 260), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 300), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         _rows.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _rows.AddThemeConstantOverride("separation", 4);
+        _rows.AddThemeConstantOverride("separation", 6);
         scroll.AddChild(_rows);
         planner.AddChild(scroll);
-        planner.AddChild(Ui.Heading("Inventory"));
+        planner.AddChild(Widgets.SectionHeader("Colony items", "ui_items"));
         planner.AddChild(_inventory);
-        _launch = Ui.Button("Launch expedition", Launch);
+        _launch = Widgets.IconButton("ui_expedition", "Launch expedition", "Send the party out", Launch, variation: "Primary");
+        _launch.CustomMinimumSize = new Vector2(0, 38);
         planner.AddChild(_launch);
 
         _zone.ItemSelected += _ => RefreshZone();
@@ -83,7 +90,7 @@ public partial class ExpeditionPanel : PanelContainer
 
     public void Toggle()
     {
-        Visible = !Visible;
+        Motion.Toggle(this);
         _signature = "";
         Refresh();
     }
@@ -183,15 +190,23 @@ public partial class ExpeditionPanel : PanelContainer
 
         foreach (var s in candidates)
         {
-            var row = new VBoxContainer();
-            row.AddThemeConstantOverride("separation", 2);
-            _rows.AddChild(row);
+            var picked = _picked.TryGetValue(s.Id, out var loadout);
+            var card = new PanelContainer { ThemeTypeVariation = picked ? "CardSelected" : "Card" };
+            var row = Widgets.Column(4);
+            card.AddChild(row);
+            _rows.AddChild(card);
 
+            var head = Widgets.Row(8);
+            var portrait = new Portrait(40) { Selected = picked };
+            portrait.Set(PortraitStudio.For(GetTree(), s), PortraitStudio.Backdrop(s.Id));
+            head.AddChild(portrait);
             var pick = new CheckBox
             {
-                Text = $"{s.Name}  ·  HP {s.Health:0}  ·  {ColonyText.Body(s.Body, sim.Scavenge).Replace("\n", ", ")}",
-                ButtonPressed = _picked.ContainsKey(s.Id),
+                Text = s.Name,
+                ButtonPressed = picked,
                 FocusMode = FocusModeEnum.None,
+                SizeFlagsHorizontal = SizeFlags.ExpandFill,
+                TooltipText = picked ? "Leave at home" : "Take on the expedition",
             };
             var id = s.Id;
             pick.Toggled += on =>
@@ -201,19 +216,28 @@ public partial class ExpeditionPanel : PanelContainer
                 _signature = "";
                 Refresh();
             };
-            row.AddChild(pick);
-            if (!_picked.TryGetValue(s.Id, out var loadout)) continue;
+            head.AddChild(pick);
+            var hp = new StatBar("stat_hp", 90);
+            hp.Set(s.Health / Survivor.MaxHealth, $"{s.Health:0}");
+            hp.TooltipText = $"Health {s.Health:0}/{Survivor.MaxHealth:0}";
+            head.AddChild(hp);
+            var body = ColonyText.Body(s.Body, sim.Scavenge);
+            var bodyIcon = Icons.Rect(Icons.Get(body == "Healthy" ? "body_full" : "stat_injured", 18), 18, body == "Healthy" ? Palette.Good : Palette.Warn);
+            bodyIcon.TooltipText = body;
+            bodyIcon.MouseFilter = MouseFilterEnum.Stop;
+            head.AddChild(bodyIcon);
+            row.AddChild(head);
+            if (!picked) continue;
 
-            var gear = new HBoxContainer();
-            foreach (var slot in Slots) gear.AddChild(SlotPicker(sim, loadout, slot));
+            var gear = Widgets.Row(4);
+            foreach (var slot in Slots) gear.AddChild(SlotPicker(sim, loadout!, slot));
             row.AddChild(gear);
-            row.AddChild(PackPicker(sim, loadout));
+            row.AddChild(PackPicker(sim, loadout!));
 
-            var preview = Ui.Label(size: 13, color: Ui.Muted);
-            preview.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            var preview = new MarginContainer();
             _previews[s.Id] = preview;
             row.AddChild(preview);
-            UpdatePreview(sim, s, loadout);
+            UpdatePreview(sim, s, loadout!);
         }
     }
 
@@ -225,9 +249,9 @@ public partial class ExpeditionPanel : PanelContainer
     private OptionButton SlotPicker(ColonySim sim, Loadout loadout, EquipSlot slot)
     {
         var data = sim.Scavenge!;
-        var picker = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, ClipText = true };
+        var picker = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, ClipText = true, FitToLongestItem = false };
         var ids = new List<string?> { null };
-        picker.AddItem($"no {slot.ToString().ToLowerInvariant()}");
+        picker.AddIconItem(Icons.Get(slot switch { EquipSlot.Weapon => "item_weapon", EquipSlot.Body => "item_armor", _ => "item_tool" }, 16), $"no {slot.ToString().ToLowerInvariant()}");
         var current = loadout.Equipment.GetValueOrDefault(slot);
         foreach (var (itemId, _) in sim.State.Inventory.Counts.Where(kv => data.Items[kv.Key].Slot == slot))
         {
@@ -236,7 +260,7 @@ public partial class ExpeditionPanel : PanelContainer
                             - loadout.Equipment.Count(kv => kv.Key != slot && kv.Value == itemId);
             if (available <= 0) continue;
             ids.Add(itemId);
-            picker.AddItem($"{data.Items[itemId].Name} ({available - (current == itemId ? 1 : 0)} left)");
+            picker.AddIconItem(Icons.Item(data.Items[itemId].DefinedId, data.Items[itemId].Kind.ToString(), 16), $"{data.Items[itemId].Name} ({available - (current == itemId ? 1 : 0)} left)");
         }
         picker.Select(Math.Max(0, ids.IndexOf(current)));
         picker.ItemSelected += index =>
@@ -253,25 +277,25 @@ public partial class ExpeditionPanel : PanelContainer
     {
         var data = sim.Scavenge!;
         var row = new HBoxContainer();
-        var picker = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, ClipText = true };
+        var picker = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, ClipText = true, FitToLongestItem = false };
         var ids = new List<string>();
         foreach (var (itemId, _) in sim.State.Inventory.Counts)
         {
             var free = Free(sim, itemId, loadout) - loadout.Equipment.Values.Count(v => v == itemId) - loadout.Pack.Count(v => v == itemId);
             if (free <= 0) continue;
             ids.Add(itemId);
-            picker.AddItem($"{data.Items[itemId].Name} ({free} left)");
+            picker.AddIconItem(Icons.Item(data.Items[itemId].DefinedId, data.Items[itemId].Kind.ToString(), 16), $"{data.Items[itemId].Name} ({free} left)");
         }
         picker.Disabled = ids.Count == 0;
         row.AddChild(Ui.Label("Pack", 13, Ui.Muted));
         row.AddChild(picker);
-        row.AddChild(Ui.Button("+", () =>
+        row.AddChild(Widgets.IconButton("ui_plus", "", "Put one in the pack", () =>
         {
             if (picker.Selected < 0) return;
             loadout.Pack.Add(ids[picker.Selected]);
             _signature = "";
             Refresh();
-        }, 30));
+        }));
         var contents = loadout.Pack.Count == 0 ? "empty" : string.Join(", ", loadout.Pack.GroupBy(p => p).Select(g => $"{data.Items[g.Key].Name}×{g.Count()}"));
         row.AddChild(Ui.Label(contents, 13));
         if (loadout.Pack.Count > 0)
@@ -286,8 +310,9 @@ public partial class ExpeditionPanel : PanelContainer
 
     private void UpdatePreview(ColonySim sim, Survivor s, Loadout loadout)
     {
-        if (!_previews.TryGetValue(s.Id, out var label)) return;
-        label.Text = ColonyText.Profile(sim.PreviewProfile(s, new(loadout.Equipment), new(loadout.Pack)));
+        if (!_previews.TryGetValue(s.Id, out var box)) return;
+        Widgets.Clear(box);
+        box.AddChild(ProfileChips.Build(sim.PreviewProfile(s, new(loadout.Equipment), new(loadout.Pack))));
     }
 
     private void RefreshSummary()
@@ -299,9 +324,20 @@ public partial class ExpeditionPanel : PanelContainer
                           $"(have {sim.State.Stockpile.Get(sim.Data.Rules.Food.ResourceId):0}) · away members don't eat at home";
         _launch.Disabled = _picked.Count == 0;
         var data = sim.Scavenge!;
-        _inventory.Text = sim.State.Inventory.Counts.Count == 0
-            ? "[color=#999]empty[/color]"
-            : string.Join(", ", sim.State.Inventory.Counts.Select(kv => $"{data.Items[kv.Key].Name} {kv.Value}"));
+        var signature = string.Join(",", sim.State.Inventory.Counts.Select(kv => $"{kv.Key}:{kv.Value}"));
+        if (signature == _inventoryShown) return;
+        _inventoryShown = signature;
+        Widgets.Clear(_inventory);
+        var flow = new HFlowContainer();
+        flow.AddThemeConstantOverride("h_separation", 4);
+        flow.AddThemeConstantOverride("v_separation", 4);
+        if (sim.State.Inventory.Counts.Count == 0) flow.AddChild(Widgets.Label("No items.", "Muted"));
+        foreach (var (itemId, count) in sim.State.Inventory.Counts)
+        {
+            var def = data.Items[itemId];
+            flow.AddChild(Widgets.Chip(Icons.Item(def.DefinedId, def.Kind.ToString(), 14), $"{def.Name} {count}", null, def.Kind.ToString()));
+        }
+        _inventory.AddChild(flow);
     }
 
     private void Launch()

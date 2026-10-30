@@ -1,10 +1,12 @@
 using Godot;
+using Remnants.Game.Hud;
 
 namespace Remnants.Game.Colony;
 
 /// <summary>
 /// Isometric-style orbit camera around a ground focus point.
-/// Pan: WASD / arrows / middle-drag. Zoom: wheel. Rotate: Q/E / right-drag.
+/// Pan: WASD / arrows / middle-drag. Zoom: wheel. Rotate: Q/R (E opens the expedition) / right-drag.
+/// Pan and zoom speed scale with <see cref="GameSettings"/>.
 /// </summary>
 public partial class OrbitCamera : Node3D
 {
@@ -40,10 +42,10 @@ public partial class OrbitCamera : Node3D
         if (Input.IsKeyPressed(Key.S) || Input.IsKeyPressed(Key.Down)) move.Y += 1;
         if (Input.IsKeyPressed(Key.A) || Input.IsKeyPressed(Key.Left)) move.X -= 1;
         if (Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right)) move.X += 1;
-        if (move != Vector2.Zero) Pan(move.Normalized() * PanSpeed * _distance * dt);
+        if (move != Vector2.Zero) Pan(move.Normalized() * PanSpeed * GameSettings.CameraPanSpeed * _distance * dt);
 
-        if (Input.IsKeyPressed(Key.Q)) _yaw -= RotateSpeed * dt;
-        if (Input.IsKeyPressed(Key.E)) _yaw += RotateSpeed * dt;
+        if (Input.IsActionPressed("camera_rotate_left")) _yaw -= RotateSpeed * dt;
+        if (Input.IsActionPressed("camera_rotate_right")) _yaw += RotateSpeed * dt;
         Apply();
     }
 
@@ -52,10 +54,10 @@ public partial class OrbitCamera : Node3D
         switch (e)
         {
             case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.WheelUp }:
-                _distance = Mathf.Max(MinDistance, _distance * 0.9f);
+                _distance = Mathf.Max(MinDistance, _distance * Mathf.Pow(0.9f, GameSettings.CameraZoomSpeed));
                 break;
             case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.WheelDown }:
-                _distance = Mathf.Min(MaxDistance, _distance * 1.1f);
+                _distance = Mathf.Min(MaxDistance, _distance * Mathf.Pow(1.1f, GameSettings.CameraZoomSpeed));
                 break;
             case InputEventMouseMotion m when (m.ButtonMask & MouseButtonMask.Middle) != 0:
                 Pan(-m.Relative * _distance * 0.0016f);

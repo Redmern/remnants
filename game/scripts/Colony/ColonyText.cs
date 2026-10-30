@@ -25,9 +25,9 @@ public static class ColonyText
 
     public static Godot.Color ThreatColor(int threat) => threat switch
     {
-        <= 1 => new Godot.Color(0.6f, 0.85f, 0.55f),
-        2 => new Godot.Color(0.95f, 0.75f, 0.4f),
-        3 => new Godot.Color(0.9f, 0.45f, 0.35f),
+        <= 1 => Hud.Palette.Good,
+        2 => Hud.Palette.Warn,
+        3 => Hud.Palette.Danger,
         _ => new Godot.Color(0.85f, 0.35f, 0.75f),
     };
 
