@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "style_revision": "584dd6a2",
+  "style_revision": "21f952e3",
   "conventions": {
     "up": "+Y",
     "units": "meters",
@@ -50,7 +50,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Bunker back-left with striped door, sandbag U in front, gun rack under an overhang on the right, ammo crates front-right.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "electronics_lab_l1",
@@ -75,7 +75,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Container lab along the back with a dish on the roof, antenna mast back-right, screen bench under a tarp front, spools/batteries front-right.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "farm_l1",
@@ -100,7 +100,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles (6x6 m). Crop field front, shed back-left, water tank back-right.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "farm_l2",
@@ -125,7 +125,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles. Brick shed with a metal roof, second field under a canvas hoop tunnel, metal-banded tank, taller fence on concrete posts.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "farm_l3",
@@ -150,7 +150,116 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles. Glass greenhouse with Network grow light, solar shed roof, steel tank with Network pump, irrigation line, concrete front wall with floodlit gate.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
+    },
+    {
+      "id": "fuel_still_l1",
+      "category": "building",
+      "file": "building/fuel_still_l1.glb",
+      "tags": [
+        "colony",
+        "production",
+        "vehicles",
+        "fuel",
+        "survivor_tech",
+        "emissive",
+        "level1"
+      ],
+      "params": {
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 2.041,
+        "y": 2.641,
+        "z": 2.0
+      },
+      "tris": 1080,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 1x1 tile (2x2 m). Firebox + boiler front-left, column ~2.6 m, condenser coil barrel back-right, collection drum front-right, mash barrels back-left. Fire mouth faces -Y (emissive).",
+      "style_revision": "21f952e3"
+    },
+    {
+      "id": "garage_l1",
+      "category": "building",
+      "file": "building/garage_l1.glb",
+      "tags": [
+        "colony",
+        "production",
+        "crafting",
+        "vehicles",
+        "survivor_tech",
+        "level1"
+      ],
+      "params": {
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 6.06,
+        "y": 3.679,
+        "z": 6.05
+      },
+      "tris": 1712,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 3x3 tiles (6x6 m). Open-sided scrap bay (front -Y) left/back with plank ramps and an A-frame chain hoist holding an engine; fuel drums + hand pump front-right; tyre stack front-left.",
+      "style_revision": "21f952e3"
+    },
+    {
+      "id": "garage_l2",
+      "category": "building",
+      "file": "building/garage_l2.glb",
+      "tags": [
+        "colony",
+        "production",
+        "crafting",
+        "vehicles",
+        "survivor_tech",
+        "level2"
+      ],
+      "params": {
+        "level": 2
+      },
+      "dimensions_m": {
+        "x": 6.06,
+        "y": 3.875,
+        "z": 6.05
+      },
+      "tris": 2468,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 3x3 tiles. Sheet-metal walls, half-raised roller door, hazard-yellow two-post lift over the ramps, lean-to roof over a bigger fuel-drum stack, workbench, amber bay lamp.",
+      "style_revision": "21f952e3"
+    },
+    {
+      "id": "garage_l3",
+      "category": "building",
+      "file": "building/garage_l3.glb",
+      "tags": [
+        "colony",
+        "production",
+        "crafting",
+        "vehicles",
+        "survivor_tech",
+        "level3"
+      ],
+      "params": {
+        "level": 3
+      },
+      "dimensions_m": {
+        "x": 6.065,
+        "y": 4.353,
+        "z": 6.16
+      },
+      "tris": 3020,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 3x3 tiles. Concrete base + plated walls, armoured gate half raised with hazard stripes, sandbagged fuel depot with floodlight, solar on the roof, amber beacons. No cyan: survivor tech.",
+      "style_revision": "21f952e3"
     },
     {
       "id": "house_l1",
@@ -175,7 +284,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x2 tiles (6x4 m, wide along X). Main house left/center (two rooms) with cross gable + porch at the front, chimney left, bunk lean-to right, yard with fence front.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "kitchen_l1",
@@ -201,7 +310,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Open cook shelter back with range + stovepipe, table and benches under it, cauldron on a tripod front-right, smoke rack front-left.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "med_bay_l1",
@@ -226,7 +335,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Container clinic back-left, triage tent right, awning front.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "med_bay_l2",
@@ -251,7 +360,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Clean container on a concrete foundation, metal canopy, the tent replaced by a gabled brick ward with a red-cross gable.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "med_bay_l3",
@@ -276,7 +385,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Second container module stacked on top (roof cross moves up), roof terrace with floodlight, concrete ward with solar, sandbags, Network diagnostic beacon.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "quarry_l1",
@@ -301,7 +410,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x2 tiles (6x4 m, wide along X). Rock face back-left, derrick right, blocks front.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "quarry_l2",
@@ -326,7 +435,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x2 tiles. Iron-banded derrick on a concrete footing, second (tripod) hoist over the pallet, mine-cart rails along the face, plank fence.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "quarry_l3",
@@ -351,7 +460,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x2 tiles. Steel derrick with a motor winch house (Network core), steel tripod hoist, ore cart on rails, floodlight mast, concrete jersey barriers.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "scrapyard_l1",
@@ -376,7 +485,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles (6x6 m). Heaps left/back, crane back-right, bales front-right.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "scrapyard_l2",
@@ -401,7 +510,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles. Straight metal fence, taller crane, bigger heap, sorting bins under a lean-to, more bales.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "scrapyard_l3",
@@ -426,7 +535,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles. Concrete perimeter wall, crane with floodlights and a Network-charged magnet, hydraulic baler press, solar on the sorting shed.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "shelter_l1",
@@ -451,7 +560,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Hut back-left, tarp lean-to with cots on the right.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "shelter_l2",
@@ -476,7 +585,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Brick hut with a gabled metal roof, tarp on a metal frame over a bunk + cot, brick fire pit, plank fence.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "shelter_l3",
@@ -501,7 +610,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Two-storey concrete bunkhouse, flat roof with solar, two bunks under a framed tarp, sandbags, floodlight, Network heater.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "tailor_l1",
@@ -526,7 +635,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Shack back-left, awning + cutting table front-left, mannequin by the door, drying frame with hanging cloth down the right side.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "town_hall_l1",
@@ -551,7 +660,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles (6x6 m). Hall + porch at front (-Y), bell tower back-right.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "town_hall_l2",
@@ -576,7 +685,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles. Two-storey brick hall, gabled porch, planked bell tower, brick yard wall.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "town_hall_l3",
@@ -601,7 +710,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles. Concrete HQ with plated walls, roof solar, steel watchtower with floodlights + Network relay, sandbagged concrete perimeter.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "woodcutter_l1",
@@ -626,7 +735,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Open shed at the back, log pile front-right, saw bench left.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "woodcutter_l2",
@@ -651,7 +760,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Gabled timber shed on a brick base with a closed side, taller firewood stacks, bigger trunk pyramid, steel saw table.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "woodcutter_l3",
@@ -676,7 +785,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Steel-framed mill shed with plated walls, roof solar, sawdust cyclone + duct, trunks in a steel rack, guarded powered saw with a Network core, floodlight.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "workshop_l1",
@@ -701,7 +810,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Open-front shop back-left, chimney back-right, anvil yard right.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "workshop_l2",
@@ -726,7 +835,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. All-brick shop, taller banded chimney, half-open roller door, steel hoist beam, metal lean-to over the anvil yard.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "workshop_l3",
@@ -751,7 +860,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Concrete shop with plated walls, chimney with a steel scrubber, hazard-yellow gantry hoist, solar yard roof over a lathe, Network-fed forge, floodlight.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "enemy_husk",
@@ -773,7 +882,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "~1.7 m hunched. Dull amber eye, no cyan. Parts: head/torso/arm_l/arm_r/leg_l/leg_r.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "head": {
           "joint": [
@@ -1189,7 +1298,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Legless Husk crawling prone, ~0.85 m tall, ~1.6 m long (head -Y). Dull amber eye, no cyan. Parts: head/torso/arm_l/arm_r/leg_l/leg_r (legs are stumps).",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "head": {
           "joint": [
@@ -1605,7 +1714,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "~2.1 m. Glowing cyan (emissive) visor, chest core and seams. Parts: head/torso/arm_l/arm_r/leg_l/leg_r.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "head": {
           "joint": [
@@ -2035,7 +2144,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Hovering scout, body ~1.3 m up, ~1.2 m across the rotors. Parts: body, eye, rotor_fl/rotor_fr/rotor_bl/rotor_br (pivot at the rotor hub), hover_field (on the ground, pivot at the origin). Eye faces -Y. Bob the body/eye/rotors, not the field.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "body": {
           "joint": [
@@ -2203,7 +2312,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "~2.4 m heavy Linked. Tower shield on arm_l, cannon gauntlet on arm_r. Cyan (emissive) visor, chest core, seams. Parts: head/torso/arm_l/arm_r/leg_l/leg_r.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "head": {
           "joint": [
@@ -2603,6 +2712,50 @@
       }
     },
     {
+      "id": "item_armor_plate",
+      "category": "gear",
+      "file": "gear/item_armor_plate.glb",
+      "tags": [
+        "gear",
+        "item",
+        "material",
+        "vehicle_part",
+        "tier2"
+      ],
+      "params": {
+        "item": "armor_plate"
+      },
+      "dimensions_m": {
+        "x": 0.72,
+        "y": 0.52,
+        "z": 0.12
+      },
+      "tris": 168,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Welded steel plate with a hazard-striped edge and a grab handle, standing on edge. ~0.72 x 0.12 x 0.52 m (w x d x h). Attach: hand_r (grab handle), back (flat on the back).",
+      "style_revision": "21f952e3",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.42,
+            -0.05
+          ],
+          "note": "fist round the welded grab handle"
+        },
+        "back": {
+          "point": [
+            0.0,
+            0.26,
+            0.04
+          ],
+          "note": "plate flat against the back, handle outward"
+        }
+      }
+    },
+    {
       "id": "item_backpack",
       "category": "gear",
       "file": "gear/item_backpack.glb",
@@ -2625,7 +2778,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Canvas pack with bedroll; shoulder straps on its -Y face (the wearer's back). 0.42 x 0.35 x 0.56 m (w x d x h). Attach: back (strap face), hand_r (top grab loop).",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "back": {
           "point": [
@@ -2668,7 +2821,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Gauze roll with a loose tail, roll 11 cm wide x 10 cm tall, tail out to 18 cm deep. Attach: hand_r, torso (tucked in a chest pouch).",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -2711,7 +2864,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Chunky field binoculars, lenses toward -Y. 0.23 x 0.2 x 0.1 m (w x d x h). Attach: hand_r (bridge), torso (hung on the chest, eyepieces to the body).",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -2754,7 +2907,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Rolled tube of blue paper with leather ties, 0.45 x 0.17 x 0.11 m (w x d x h, with the loose sheet). Attach: hand_r, back (slung across).",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -2800,7 +2953,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Camo Cloak. Ragged ghillie cloak in moss and concrete tones: shoulder mantle, lowered hood, long back drape hung with strips and tufts, open front. Sized for adult_male, worn shape. Attach: torso (chest-centre socket) or back (back socket); both land it in the same place.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "torso": {
           "point": [
@@ -2843,7 +2996,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Three labelled cans, one lying on two, 0.19 x 0.1 x 0.21 m (w x d x h). Attach: hand_r.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -2852,6 +3005,50 @@
             0.0016
           ],
           "note": "cans scooped up under one arm / in the fist"
+        }
+      }
+    },
+    {
+      "id": "item_chassis_frame",
+      "category": "gear",
+      "file": "gear/item_chassis_frame.glb",
+      "tags": [
+        "gear",
+        "item",
+        "material",
+        "vehicle_part",
+        "tier3"
+      ],
+      "params": {
+        "item": "chassis_frame"
+      },
+      "dimensions_m": {
+        "x": 0.71,
+        "y": 0.2,
+        "z": 1.4
+      },
+      "tris": 120,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Cut-down ladder frame: two box rails along Y, three crossmembers, spring hangers. ~0.71 x 1.4 x 0.2 m (w x d x h) lying flat. Attach: hand_r (middle crossmember), back (slung upright).",
+      "style_revision": "21f952e3",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.005,
+            0.11,
+            0.0
+          ],
+          "note": "fist round the middle crossmember"
+        },
+        "back": {
+          "point": [
+            0.005,
+            0.0,
+            0.0
+          ],
+          "note": "frame slung against the back (underside toward it)"
         }
       }
     },
@@ -2878,7 +3075,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Upright rope coil standing in a harness loop, carabiners clipped on. 0.38 x 0.27 x 0.42 m (w x d x h). Attach: hand_r (lashing on top of the coil), back.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -2921,7 +3118,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Folded bolt of three cloth layers tied with a cord, 0.37 x 0.28 x 0.21 m (w x d x h). Attach: hand_r (cord on top), back.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -2967,7 +3164,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Better hacking rig: a chest-worn deck \u2014 keyboard slab with a flip-up screen, a salvaged battery pack, twin antennas, amber LED row (emissive), webbing straps. ~0.47 x 0.31 x 0.29 m. Attach: torso (worn on the chest, screen up), hand_r (side grip).",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "torso": {
           "point": [
@@ -3011,7 +3208,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Learning item for perks: a chunky data chip with gold contacts clipped to a dog-eared field manual. Oversized to read (~0.2 x 0.16 x 0.07 m). Attach: hand_r.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -3047,7 +3244,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Crafting/loot bundle of drone parts: a motor with a two-blade prop, a green circuit board and a coil of red wire, lashed together. ~0.39 x 0.24 x 0.11 m. Attach: hand_r (the lashing).",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -3082,7 +3279,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Salvaged circuit board with chips and coiled wires, 0.26 x 0.19 x 0.1 m (w x d x h). Dead human tech, no cyan. Attach: hand_r.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -3091,6 +3288,94 @@
             0.0
           ],
           "note": "board held flat in the fist"
+        }
+      }
+    },
+    {
+      "id": "item_engine_small",
+      "category": "gear",
+      "file": "gear/item_engine_small.glb",
+      "tags": [
+        "gear",
+        "item",
+        "material",
+        "vehicle_part",
+        "tier2"
+      ],
+      "params": {
+        "item": "engine_small"
+      },
+      "dimensions_m": {
+        "x": 0.505,
+        "y": 0.502,
+        "z": 0.402
+      },
+      "tris": 276,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Single-cylinder engine: finned cylinder, pull-start drum, fuel tank, carry frame. ~0.5 x 0.4 x 0.5 m (w x d x h). Attach: hand_r (carry bar on top), back.",
+      "style_revision": "21f952e3",
+      "attach": {
+        "hand_r": {
+          "point": [
+            -0.0175,
+            0.48,
+            -0.179
+          ],
+          "note": "fist round the carry bar"
+        },
+        "back": {
+          "point": [
+            -0.0175,
+            0.25,
+            -0.199
+          ],
+          "note": "carry frame against the back"
+        }
+      }
+    },
+    {
+      "id": "item_engine_v8",
+      "category": "gear",
+      "file": "gear/item_engine_v8.glb",
+      "tags": [
+        "gear",
+        "item",
+        "material",
+        "vehicle_part",
+        "tier4"
+      ],
+      "params": {
+        "item": "engine_v8"
+      },
+      "dimensions_m": {
+        "x": 0.747,
+        "y": 0.79,
+        "z": 0.94
+      },
+      "tris": 268,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "V8 block on a plank skid: two banks of rocker covers, air filter, belt pulleys at the front (-Y). ~0.75 x 0.94 x 0.79 m (w x d x h). Attach: hand_r (lifting chain loop on top), back (strapped).",
+      "style_revision": "21f952e3",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.76,
+            0.0
+          ],
+          "note": "fist round the lifting-chain shackle (dragged, it is heavy)"
+        },
+        "back": {
+          "point": [
+            0.0,
+            0.35,
+            -0.47
+          ],
+          "note": "skid strapped against the back"
         }
       }
     },
@@ -3117,7 +3402,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Chunky handheld flare/radio beacon: yellow body, red strobe, stub antenna, 0.13 x 0.14 x 0.42 m (w x d x h). Attach: hand_r (rubber grip), torso (belt clip).",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -3161,7 +3446,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Red road flare lying on its side, striker cap toward -Y (the lit end), wire stand folded under the back. ~0.07 x 0.31 x 0.05 m. Attach: hand_r (middle of the tube, cap forward), torso (tucked in a chest strap).",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -3199,7 +3484,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "The same flare burning: cap off, emissive flare_glow head and flame at -Y, propped on its wire stand. Drop it on a tile as the placed/burning flare (the game adds the light), or hold it via hand_r.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -3208,6 +3493,51 @@
             -0.081
           ],
           "note": "fist round the tube, burning end forward"
+        }
+      }
+    },
+    {
+      "id": "item_fuel_can",
+      "category": "gear",
+      "file": "gear/item_fuel_can.glb",
+      "tags": [
+        "gear",
+        "item",
+        "material",
+        "vehicle_part",
+        "consumable",
+        "tier1"
+      ],
+      "params": {
+        "item": "fuel_can"
+      },
+      "dimensions_m": {
+        "x": 0.184,
+        "y": 0.5,
+        "z": 0.383
+      },
+      "tris": 136,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Rusty jerry can of biofuel, broad side to +-X, triple handle on top, spout toward -Y. ~0.18 x 0.38 x 0.5 m (w x d x h). Attach: hand_r (handle), back.",
+      "style_revision": "21f952e3",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.49,
+            -0.0217
+          ],
+          "note": "fist round the triple handle"
+        },
+        "back": {
+          "point": [
+            -0.085,
+            0.22,
+            -0.0217
+          ],
+          "note": "broad side strapped against the back"
         }
       }
     },
@@ -3234,7 +3564,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Three-prong grapnel standing on its prongs, rope coiled round the shaft. 0.38 x 0.34 x 0.57 m (w x d x h). Attach: hand_r (leather grip on the shaft), back.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -3280,7 +3610,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Cracked rugged tablet (dark screen, amber status LED) on a coiled wire bundle with alligator clips and a jack. ~0.34 x 0.3 x 0.07 m. Attach: hand_r (tablet edge).",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -3316,7 +3646,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Husk Claws. ~0.5 m: scrap gauntlet with three hooked blades, dull amber (husk_eye) node, no cyan. Attach: hand_r (inside the gauntlet).",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -3355,7 +3685,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Linked Carbine. ~0.85 m sleek dark Network gun, cyan (emissive) seams, cell and muzzle. Attach: hand_r (pistol grip), back (mid-length).",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -3406,7 +3736,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Linked Plating. Near-black Network chest plating with cyan (emissive) seams, sized for adult_male. Attach: torso.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "torso": {
           "point": [
@@ -3442,7 +3772,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Machete. ~0.6 m, blade upright edge-down, leather-wrapped handle. Attach: hand_r.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -3477,7 +3807,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "White case with red crosses and a top handle, 0.35 x 0.16 x 0.32 m (w x d x h). Attach: hand_r (handle), back (strapped on).",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -3523,7 +3853,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Survivor-made motion sensor: a taped tin-can head with a dark PIR lens toward -Y and a small amber (emissive) LED on a scrap tripod, battery taped to the mast. Stands on its own, so the same mesh is the placed ground prop. ~0.3 x 0.26 x 0.55 m (antenna tip). Attach: hand_r (mast under the head), back (strapped upright).",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -3567,7 +3897,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Padded Vest. Sleeveless quilted vest with tape patches, sized for adult_male. Attach: torso.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "torso": {
           "point": [
@@ -3603,7 +3933,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Lead Pipe. ~0.8 m length of rusty pipe, taped grip, T-fitting head. Attach: hand_r (taped grip), back (mid-length).",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -3652,7 +3982,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Pistol. ~0.28 m, upright (grip down), taped grip. Attach: hand_r (grip).",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -3688,7 +4018,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Rag Coat. Knee-length patched coat sized for adult_male, worn shape. Attach: torso (body chest-centre socket).",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "torso": {
           "point": [
@@ -3725,7 +4055,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Hunting Rifle. ~1.1 m bolt rifle, wood stock, scope. Attach: hand_r (stock wrist), back (mid-length).",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -3775,7 +4105,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Riot Armor. Plate vest + layered shoulder plates + neck guard, sized for adult_male (no helmet: torso only). Attach: torso.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "torso": {
           "point": [
@@ -3813,7 +4143,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "The scout drone folded for carrying (gear lists, loot): arms swung back along the body, props folded, leather carry band. ~0.42 x 0.88 x 0.47 m (w x d x h). Attach: back (nose against the back), hand_r (carry band).",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -3857,7 +4187,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Scout Jacket. Hip-length olive field jacket, hood, pockets, bandolier strap. Sized for adult_male. Attach: torso.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "torso": {
           "point": [
@@ -3892,7 +4222,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Lashed stack of rusty scrap plates and a pipe, 0.47 x 0.34 x 0.23 m (w x d x h). Attach: hand_r (lashing on top), back.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -3909,6 +4239,50 @@
             0.162
           ],
           "note": "bundle strapped flat on the back"
+        }
+      }
+    },
+    {
+      "id": "item_spare_parts",
+      "category": "gear",
+      "file": "gear/item_spare_parts.glb",
+      "tags": [
+        "gear",
+        "item",
+        "material",
+        "vehicle_part",
+        "tier1"
+      ],
+      "params": {
+        "item": "spare_parts"
+      },
+      "dimensions_m": {
+        "x": 0.5,
+        "y": 0.364,
+        "z": 0.281
+      },
+      "tris": 468,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Open ammo crate of spare parts: coil spring, gear, spark plugs, a hose loop, rope handles. ~0.5 x 0.28 x 0.36 m (w x d x h). Attach: hand_r (rope handle), back.",
+      "style_revision": "21f952e3",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.24,
+            0.15,
+            -0.0003
+          ],
+          "note": "fist round the right rope handle"
+        },
+        "back": {
+          "point": [
+            0.0,
+            0.12,
+            -0.1303
+          ],
+          "note": "crate strapped against the back"
         }
       }
     },
@@ -3937,7 +4311,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Rebar Spear (reach 2). ~1.8 m rebar shaft, lashed scrap blade, two cloth grips. Attach: hand_r (rear grip), back (mid-length).",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "attach": {
         "hand_r": {
           "point": [
@@ -3963,6 +4337,50 @@
       }
     },
     {
+      "id": "item_wheel",
+      "category": "gear",
+      "file": "gear/item_wheel.glb",
+      "tags": [
+        "gear",
+        "item",
+        "material",
+        "vehicle_part",
+        "tier1"
+      ],
+      "params": {
+        "item": "wheel"
+      },
+      "dimensions_m": {
+        "x": 0.26,
+        "y": 0.631,
+        "z": 0.631
+      },
+      "tris": 188,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Knobbly tyre on a rusty steel rim, standing on its tread, axle along X. ~0.26 x 0.63 x 0.63 m (w x d x h). Attach: hand_r (fist round the top of the tyre), back (rolled flat against the back).",
+      "style_revision": "21f952e3",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.6256,
+            0.0
+          ],
+          "note": "fist round the top of the tyre"
+        },
+        "back": {
+          "point": [
+            0.0,
+            0.3156,
+            0.31
+          ],
+          "note": "tyre slung flat against the back"
+        }
+      }
+    },
+    {
       "id": "building_shell",
       "category": "prop",
       "file": "prop/building_shell.glb",
@@ -3982,7 +4400,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "3x3 tiles (6x6 m). Walls (0.3 m thick) hug the outer edge of the 8 perimeter tiles; tiles (col,row) from -X/-Y corner. Wall cells: all perimeter tiles except (1,0) front doorway (-Y) and (2,1) east breach (+X); centre (1,1) open floor. Walls 1.2-3.1 m tall with window holes; roof gone.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "contact_marker",
@@ -4006,7 +4424,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Flat ripple ring (1.6 m across) around a '?' glyph, 2.5 cm thick, marker_neutral only: tint it in the game. Readable top-down; '?' top toward +Y.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "cover_high_container",
@@ -4031,7 +4449,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "High cover (terrain Wall, blocks sight). Rusted cargo container cut down to one tile, ~1.9x1.9 m, ~2.3 m tall; doors face -Y.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "cover_high_wall",
@@ -4056,7 +4474,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "High cover (terrain Wall, blocks sight). Makeshift scrap barricade: corrugated sheets on posts, 2.0 m along X, ~2.3 m tall.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "cover_low_barrier",
@@ -4081,7 +4499,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Low cover (terrain Cover). Chipped concrete road barrier, 2.0 m along X, ~0.85 m tall.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "cover_low_sandbags",
@@ -4106,7 +4524,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Low cover (terrain Cover). Sandbag wall ~1.9 m along X, ~0.9 m tall, one tile.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "dead_tree",
@@ -4128,7 +4546,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "One tile, ~3.6 m tall. Trunk at the origin; crown fits in ~1.9x1.9 m. Blocks movement (terrain Wall or Cover, game's choice).",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "device_camera",
@@ -4154,7 +4572,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Live Network camera on a 2.4 m pole, footprint 0.7 x 0.7 m. Parts mount / head (pan pivot on the pole top) / lens (sight-cone mount, looks -Y = glTF +Z). Cyan lens + status lamp (emissive). Hang the vision cone off `lens`.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "mount": {
           "joint": [
@@ -4206,7 +4624,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Knocked-out camera: dead dark lens, head drooped 30 deg on its tilt. No sight cone. Same parts as device_camera.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "mount": {
           "joint": [
@@ -4259,7 +4677,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Hacked camera (looping footage for the player): amber lens + lamp (emissive; flicker in the game), hack box clamped on the housing. Same parts as device_camera.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "mount": {
           "joint": [
@@ -4315,7 +4733,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Closed, Network-locked blast door. Exactly 2.0 m along X (one tile), 0.5 m deep, 2.7 m tall; chains with wall_segment. Cyan header strip + lock panels (emissive). Blocks movement and sight.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "device_door_hacked",
@@ -4346,7 +4764,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Closed door after a hack (unlocked for the survivors): amber header strip + lock panels (emissive; flicker in the game), hack box on the header. Blocks until opened.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "device_door_hacked_open",
@@ -4376,7 +4794,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Hacked door forced open: slab in the floor slot, amber lights, hack box on the header. 1.24 m passage.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "device_door_open",
@@ -4405,7 +4823,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Same door opened by the Network: header strip split at the middle (top-down read), slab sunk into the floor slot, 1.24 m passage over a hazard-striped threshold. Cyan lights still live.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "device_locker",
@@ -4433,7 +4851,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Sealed Network supply locker, 1.1 x 0.7 x 0.95 m, inside one tile. Cyan seal band round the lid + lock plate on the -Y face (emissive). Hack it to open.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "device_locker_hacked",
@@ -4462,7 +4880,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Unsealed locker: lid stands open (hinged at the back), supplies visible inside, seal dead, amber lock plate (emissive), hack box on the front. Same footprint.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "device_relay_node",
@@ -4489,7 +4907,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Live Network relay node, 0.8 x 0.7 m footing, ~1.2 m to the antenna tip. Cyan core window on the sloped top + antenna tip (emissive). Hack it to cut the devices it links (game logic).",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "device_relay_node_hacked",
@@ -4517,7 +4935,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Hacked relay node: amber core window + tip (emissive; flicker in the game), dead seams, hack box with red leads clamped on top. Same footprint.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "device_terminal",
@@ -4544,7 +4962,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Live Network console, ~1.0 x 0.8 x 1.35 m, inside one tile. Screen faces -Y and tilts up; cyan screen + top status bar (emissive). Interact from the -Y side.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "device_terminal_hacked",
@@ -4572,7 +4990,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Same console after a hack: glitched amber screen bands and status bar (emissive; flicker in the game), dead seams, survivor hack box clamped on top. Same footprint.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "device_turret",
@@ -4599,7 +5017,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Live Network auto-turret, ~1.4 x 1.4 m base (one tile), 1.25 m tall, barrels toward -Y (glTF +Z). Parts base / head (yaw pivot at z=0.75). Cyan eye + seams (emissive). Blocks movement.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "base": {
           "joint": [
@@ -4644,7 +5062,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Shut-down turret: dead dark eye, barrels slumped 18 deg toward the ground. Same parts and footprint as device_turret.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "base": {
           "joint": [
@@ -4690,7 +5108,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Turret turned to the player's side: head rotated 180 deg (barrels toward +Y in the model; aim it with the `head` yaw), amber eye + lamp (emissive), hack box with red leads clamped on the head. Same parts and footprint as device_turret.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "base": {
           "joint": [
@@ -4732,7 +5150,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Flat target reticle (1.6 m across): four corner brackets, four inward ticks and a centre dot, 2 cm thick, marker_neutral only. Put it on a unit the drone has marked; tint it in the game.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "exit_marker",
@@ -4755,7 +5173,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "One tile (1.9x1.9 m deck, top z~0.1). Chevrons point -Y = the way out; rotate so -Y faces the map edge. Flare pole ~3.2 m at the back (+Y).",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "ground_tile",
@@ -4779,7 +5197,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "2x2 m floor tile for the scavenge map, cracked asphalt. Top z~0.07.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "ground_tile_concrete",
@@ -4804,7 +5222,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "2x2 m floor tile, cracked concrete yard / pavement. Top z~0.07.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "ground_tile_dirt",
@@ -4829,7 +5247,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "2x2 m floor tile, packed earth with cart ruts (along Y), stones and weeds. Top z~0.07.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "ground_tile_overgrown",
@@ -4854,7 +5272,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "2x2 m floor tile, broken paving slabs swallowed by moss and grass clumps. Top z~0.07.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "hack_marker",
@@ -4878,7 +5296,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Flat progress ring (1.7 m across) of 12 ticks, tick 0 at the top (+Y in Blender, -Z in glTF) going clockwise seen from above, around a circuit glyph, 2.5 cm thick, marker_neutral only. Tint it in the game; fake progress by tinting / masking ticks by angle.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "loot_crate",
@@ -4900,7 +5318,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Pickup marker on the tactical map. ~1 m long, sits inside one tile.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "network_pylon",
@@ -4923,7 +5341,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "One tile (1.8x1.8 m plinth), ~5 m tall. Emissive cyan rings/core: give the environment glow. Blocks movement and sight (terrain Wall).",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "overwatch_marker",
@@ -4947,7 +5365,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Flat thin ring (1.8 m across) with a bold 90-degree watch arc toward -Y (the facing) and an eye glyph at the center, 2 cm thick, marker_neutral only. Origin = the unit; rotate it to the unit's overwatch direction and tint it in the game.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "rubble",
@@ -4969,7 +5387,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Half cover. Fits one tile (~1.8 m footprint), ~0.8 m tall.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "scout_drone",
@@ -4995,7 +5413,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Deployed survivor scout drone, landed: ~0.95 x 0.95 m across the rotor guards, 0.42 m tall, camera toward -Y (glTF +Z). Parts body (pivot at its centre, z=0.24) and rotor_fl/rotor_fr/rotor_bl/rotor_br (pivot at the hub; spin about Z). Lift the whole model to fly; amber LEDs (emissive), no cyan.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "rotor_fl": {
           "joint": [
@@ -5116,6 +5534,162 @@
       ]
     },
     {
+      "id": "vehicle_token_t0",
+      "category": "prop",
+      "file": "prop/vehicle_token_t0.glb",
+      "tags": [
+        "map_token",
+        "world_map",
+        "vehicle",
+        "survivor_tech",
+        "tier0"
+      ],
+      "params": {
+        "tier": 0
+      },
+      "dimensions_m": {
+        "x": 1.0,
+        "y": 0.29,
+        "z": 1.0
+      },
+      "tris": 160,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "World-map party token, T0 (handcart). 1.0 m disc, nose toward glTF +Z: rotate to the travel heading. Outer ring marker_neutral (tint per party); no tier pips (T0).",
+      "style_revision": "21f952e3"
+    },
+    {
+      "id": "vehicle_token_t1",
+      "category": "prop",
+      "file": "prop/vehicle_token_t1.glb",
+      "tags": [
+        "map_token",
+        "world_map",
+        "vehicle",
+        "survivor_tech",
+        "tier1"
+      ],
+      "params": {
+        "tier": 1
+      },
+      "dimensions_m": {
+        "x": 1.0,
+        "y": 0.27,
+        "z": 1.005
+      },
+      "tris": 196,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "World-map party token, T1 (bicycle cart). 1.0 m disc, nose toward glTF +Z: rotate to the travel heading. Outer ring marker_neutral (tint per party); 1 hazard-yellow tier pip at the back.",
+      "style_revision": "21f952e3"
+    },
+    {
+      "id": "vehicle_token_t2",
+      "category": "prop",
+      "file": "prop/vehicle_token_t2.glb",
+      "tags": [
+        "map_token",
+        "world_map",
+        "vehicle",
+        "survivor_tech",
+        "tier2"
+      ],
+      "params": {
+        "tier": 2
+      },
+      "dimensions_m": {
+        "x": 1.0,
+        "y": 0.31,
+        "z": 1.005
+      },
+      "tris": 208,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "World-map party token, T2 (motorbike + sidecar). 1.0 m disc, nose toward glTF +Z: rotate to the travel heading. Outer ring marker_neutral (tint per party); 2 hazard-yellow tier pips at the back.",
+      "style_revision": "21f952e3"
+    },
+    {
+      "id": "vehicle_token_t3",
+      "category": "prop",
+      "file": "prop/vehicle_token_t3.glb",
+      "tags": [
+        "map_token",
+        "world_map",
+        "vehicle",
+        "survivor_tech",
+        "tier3"
+      ],
+      "params": {
+        "tier": 3
+      },
+      "dimensions_m": {
+        "x": 1.0,
+        "y": 0.35,
+        "z": 1.005
+      },
+      "tris": 256,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "World-map party token, T3 (buggy). 1.0 m disc, nose toward glTF +Z: rotate to the travel heading. Outer ring marker_neutral (tint per party); 3 hazard-yellow tier pips at the back.",
+      "style_revision": "21f952e3"
+    },
+    {
+      "id": "vehicle_token_t4",
+      "category": "prop",
+      "file": "prop/vehicle_token_t4.glb",
+      "tags": [
+        "map_token",
+        "world_map",
+        "vehicle",
+        "survivor_tech",
+        "tier4"
+      ],
+      "params": {
+        "tier": 4
+      },
+      "dimensions_m": {
+        "x": 1.0,
+        "y": 0.38,
+        "z": 1.005
+      },
+      "tris": 256,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "World-map party token, T4 (truck). 1.0 m disc, nose toward glTF +Z: rotate to the travel heading. Outer ring marker_neutral (tint per party); 4 hazard-yellow tier pips at the back.",
+      "style_revision": "21f952e3"
+    },
+    {
+      "id": "vehicle_token_t5",
+      "category": "prop",
+      "file": "prop/vehicle_token_t5.glb",
+      "tags": [
+        "map_token",
+        "world_map",
+        "vehicle",
+        "survivor_tech",
+        "tier5"
+      ],
+      "params": {
+        "tier": 5
+      },
+      "dimensions_m": {
+        "x": 1.0,
+        "y": 0.44,
+        "z": 1.005
+      },
+      "tris": 292,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "World-map party token, T5 (war-rig). 1.0 m disc, nose toward glTF +Z: rotate to the travel heading. Outer ring marker_neutral (tint per party); 5 hazard-yellow tier pips at the back.",
+      "style_revision": "21f952e3"
+    },
+    {
       "id": "wall_segment",
       "category": "prop",
       "file": "prop/wall_segment.glb",
@@ -5136,7 +5710,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Full cover. Exactly 2.0 m along X, 0.3 m thick; chain along X for cover lines.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "wrecked_car",
@@ -5159,7 +5733,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Full cover. 2x1 tiles (~4 m along X), ~1.3 m tall. Nose points +X.",
-      "style_revision": "584dd6a2"
+      "style_revision": "21f952e3"
     },
     {
       "id": "prosthetic_arm_cyborg_l",
@@ -5187,7 +5761,7 @@
       "pivot_note": "positioned as on the adult body it fits (parts[].joint is its rest joint); the mesh is skinned to the body's bones (limb_bones) \u2014 move it under the body's Skeleton3D",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Replaces arm_l on adult bodies; skinned to upperarm/forearm/hand; joint = shoulder.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "arm_l": {
           "joint": [
@@ -5450,7 +6024,7 @@
       "pivot_note": "positioned as on the adult body it fits (parts[].joint is its rest joint); the mesh is skinned to the body's bones (limb_bones) \u2014 move it under the body's Skeleton3D",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Replaces arm_r on adult bodies; skinned to upperarm/forearm/hand; joint = shoulder.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "arm_r": {
           "joint": [
@@ -5712,7 +6286,7 @@
       "pivot_note": "positioned as on the adult body it fits (parts[].joint is its rest joint); the mesh is skinned to the body's bones (limb_bones) \u2014 move it under the body's Skeleton3D",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Leather upper-arm socket, metal rod forearm and a chunky hook. Replaces arm_l on adult bodies; skinned to upperarm/forearm/hand; joint = shoulder.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "arm_l": {
           "joint": [
@@ -5974,7 +6548,7 @@
       "pivot_note": "positioned as on the adult body it fits (parts[].joint is its rest joint); the mesh is skinned to the body's bones (limb_bones) \u2014 move it under the body's Skeleton3D",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Leather upper-arm socket, metal rod forearm and a chunky hook. Replaces arm_r on adult bodies; skinned to upperarm/forearm/hand; joint = shoulder.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "arm_r": {
           "joint": [
@@ -6237,7 +6811,7 @@
       "pivot_note": "positioned as on the adult body it fits (parts[].joint is its rest joint); the mesh is skinned to the body's bones (limb_bones) \u2014 move it under the body's Skeleton3D",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Replaces leg_l on adult bodies; skinned to thigh/shin/foot; joint = hip.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "leg_l": {
           "joint": [
@@ -6500,7 +7074,7 @@
       "pivot_note": "positioned as on the adult body it fits (parts[].joint is its rest joint); the mesh is skinned to the body's bones (limb_bones) \u2014 move it under the body's Skeleton3D",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Replaces leg_r on adult bodies; skinned to thigh/shin/foot; joint = hip.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "leg_r": {
           "joint": [
@@ -6762,7 +7336,7 @@
       "pivot_note": "positioned as on the adult body it fits (parts[].joint is its rest joint); the mesh is skinned to the body's bones (limb_bones) \u2014 move it under the body's Skeleton3D",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Strapped leather socket on a wooden peg with a rubber foot. Replaces leg_l on adult bodies; skinned to thigh/shin/foot; joint = hip.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "leg_l": {
           "joint": [
@@ -7024,7 +7598,7 @@
       "pivot_note": "positioned as on the adult body it fits (parts[].joint is its rest joint); the mesh is skinned to the body's bones (limb_bones) \u2014 move it under the body's Skeleton3D",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Strapped leather socket on a wooden peg with a rubber foot. Replaces leg_r on adult bodies; skinned to thigh/shin/foot; joint = hip.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "leg_r": {
           "joint": [
@@ -7283,7 +7857,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "1.68 m. Rust-red jacket, scarf, ponytail. Swappable limbs: see parts.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "head": {
           "joint": [
@@ -7907,7 +8481,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "1.80 m. Olive field jacket, backpack, beard. Swappable limbs: see parts.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "head": {
           "joint": [
@@ -8537,7 +9111,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Fit check: adult male with prosthetic_leg_cyborg_l + prosthetic_arm_cyborg_r swapped in at the same joints. Reference for the in-game part swap.",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "head": {
           "joint": [
@@ -9160,7 +9734,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "1.15 m. Oversized hoodie. Grows into an adult body (separate asset).",
-      "style_revision": "584dd6a2",
+      "style_revision": "21f952e3",
       "parts": {
         "head": {
           "joint": [
@@ -9760,6 +10334,1422 @@
           "shin_r",
           "foot_r"
         ]
+      }
+    },
+    {
+      "id": "vehicle_bicycle_cart",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_bicycle_cart.glb",
+      "tags": [
+        "vehicle",
+        "survivor_tech",
+        "tier1",
+        "emissive"
+      ],
+      "params": {
+        "model": "bicycle_cart",
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 1.13,
+        "y": 1.122,
+        "z": 2.94
+      },
+      "tris": 656,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "T1. Bicycle on its kickstand towing a two-wheeled plank trailer behind (+Y). Level 1: bare bike, trailer with crate + sack. Parts: body + wheel_f, wheel_r, wheel_tl, wheel_tr (pivot at the hub, spin about X). Parked, nose toward -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "body": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "chassis and bodywork, origin on the ground at the centre"
+        },
+        "wheel_f": {
+          "joint": [
+            0.0,
+            0.3483,
+            1.13
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_r": {
+          "joint": [
+            0.0,
+            0.3483,
+            0.08
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_tl": {
+          "joint": [
+            0.5,
+            0.2683,
+            -0.92
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_tr": {
+          "joint": [
+            -0.5,
+            0.2683,
+            -0.92
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      }
+    },
+    {
+      "id": "vehicle_bicycle_cart_l2",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_bicycle_cart_l2.glb",
+      "tags": [
+        "vehicle",
+        "survivor_tech",
+        "tier1",
+        "emissive"
+      ],
+      "params": {
+        "model": "bicycle_cart",
+        "level": 2
+      },
+      "dimensions_m": {
+        "x": 1.13,
+        "y": 1.168,
+        "z": 2.94
+      },
+      "tris": 740,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "T1. Bicycle on its kickstand towing a two-wheeled plank trailer behind (+Y). Level 2: front basket, panniers, can in the trailer. Parts: body + wheel_f, wheel_r, wheel_tl, wheel_tr (pivot at the hub, spin about X). Parked, nose toward -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "body": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "chassis and bodywork, origin on the ground at the centre"
+        },
+        "wheel_f": {
+          "joint": [
+            0.0,
+            0.3483,
+            1.13
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_r": {
+          "joint": [
+            0.0,
+            0.3483,
+            0.08
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_tl": {
+          "joint": [
+            0.5,
+            0.2683,
+            -0.92
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_tr": {
+          "joint": [
+            -0.5,
+            0.2683,
+            -0.92
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      }
+    },
+    {
+      "id": "vehicle_bicycle_cart_l3",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_bicycle_cart_l3.glb",
+      "tags": [
+        "vehicle",
+        "survivor_tech",
+        "tier1",
+        "emissive"
+      ],
+      "params": {
+        "model": "bicycle_cart",
+        "level": 3
+      },
+      "dimensions_m": {
+        "x": 1.13,
+        "y": 1.168,
+        "z": 2.99
+      },
+      "tris": 860,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "T1. Bicycle on its kickstand towing a two-wheeled plank trailer behind (+Y). Level 3: hazard-yellow frame, hooped tarp canopy, front plate, amber lamps. Parts: body + wheel_f, wheel_r, wheel_tl, wheel_tr (pivot at the hub, spin about X). Parked, nose toward -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "body": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "chassis and bodywork, origin on the ground at the centre"
+        },
+        "wheel_f": {
+          "joint": [
+            0.0,
+            0.3483,
+            1.155
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_r": {
+          "joint": [
+            0.0,
+            0.3483,
+            0.105
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_tl": {
+          "joint": [
+            0.5,
+            0.2683,
+            -0.895
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_tr": {
+          "joint": [
+            -0.5,
+            0.2683,
+            -0.895
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      }
+    },
+    {
+      "id": "vehicle_buggy",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_buggy.glb",
+      "tags": [
+        "vehicle",
+        "survivor_tech",
+        "tier3",
+        "emissive"
+      ],
+      "params": {
+        "model": "buggy",
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 2.29,
+        "y": 1.558,
+        "z": 3.245
+      },
+      "tris": 1400,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "T3. Open tube-frame dune buggy: roll cage, two seats, engine out back, fat knobbly tyres. Level 1: bare cage + engine. Parts: body + wheel_fl, wheel_fr, wheel_rl, wheel_rr (pivot at the hub, spin about X). Parked, nose toward -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "body": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "chassis and bodywork, origin on the ground at the centre"
+        },
+        "wheel_fl": {
+          "joint": [
+            0.9,
+            0.435,
+            0.9725
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_fr": {
+          "joint": [
+            -0.9,
+            0.435,
+            0.9725
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_rl": {
+          "joint": [
+            0.94,
+            0.495,
+            -1.1275
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_rr": {
+          "joint": [
+            -0.94,
+            0.495,
+            -1.1275
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      }
+    },
+    {
+      "id": "vehicle_buggy_l2",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_buggy_l2.glb",
+      "tags": [
+        "vehicle",
+        "survivor_tech",
+        "tier3",
+        "emissive"
+      ],
+      "params": {
+        "model": "buggy",
+        "level": 2
+      },
+      "dimensions_m": {
+        "x": 2.29,
+        "y": 1.595,
+        "z": 3.33
+      },
+      "tris": 1544,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "T3. Open tube-frame dune buggy: roll cage, two seats, engine out back, fat knobbly tyres. Level 2: mismatched side plates, two fuel cans on the tail, amber cage lamps. Parts: body + wheel_fl, wheel_fr, wheel_rl, wheel_rr (pivot at the hub, spin about X). Parked, nose toward -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "body": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "chassis and bodywork, origin on the ground at the centre"
+        },
+        "wheel_fl": {
+          "joint": [
+            0.9,
+            0.435,
+            1.015
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_fr": {
+          "joint": [
+            -0.9,
+            0.435,
+            1.015
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_rl": {
+          "joint": [
+            0.94,
+            0.495,
+            -1.085
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_rr": {
+          "joint": [
+            -0.94,
+            0.495,
+            -1.085
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      }
+    },
+    {
+      "id": "vehicle_buggy_l3",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_buggy_l3.glb",
+      "tags": [
+        "vehicle",
+        "survivor_tech",
+        "tier3",
+        "emissive"
+      ],
+      "params": {
+        "model": "buggy",
+        "level": 3
+      },
+      "dimensions_m": {
+        "x": 2.29,
+        "y": 1.923,
+        "z": 3.55
+      },
+      "tris": 1836,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "T3. Open tube-frame dune buggy: roll cage, two seats, engine out back, fat knobbly tyres. Level 3: roof rack with cargo, striped front ram, spare wheel on the engine deck. Parts: body + wheel_fl, wheel_fr, wheel_rl, wheel_rr (pivot at the hub, spin about X). Parked, nose toward -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "body": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "chassis and bodywork, origin on the ground at the centre"
+        },
+        "wheel_fl": {
+          "joint": [
+            0.9,
+            0.435,
+            0.905
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_fr": {
+          "joint": [
+            -0.9,
+            0.435,
+            0.905
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_rl": {
+          "joint": [
+            0.94,
+            0.495,
+            -1.195
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_rr": {
+          "joint": [
+            -0.94,
+            0.495,
+            -1.195
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      }
+    },
+    {
+      "id": "vehicle_handcart",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_handcart.glb",
+      "tags": [
+        "vehicle",
+        "survivor_tech",
+        "tier0",
+        "emissive"
+      ],
+      "params": {
+        "model": "handcart",
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 1.28,
+        "y": 0.913,
+        "z": 2.182
+      },
+      "tris": 364,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "T0. Plank pull cart on two big wheels, resting forward on its prop leg; handles toward -Y. Level 1: wooden wheels, plank sides, sack + crate. Parts: body + wheel_l, wheel_r (pivot at the hub, spin about X). Parked, nose toward -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "body": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "chassis and bodywork, origin on the ground at the centre"
+        },
+        "wheel_l": {
+          "joint": [
+            0.56,
+            0.3904,
+            -0.4212
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_r": {
+          "joint": [
+            -0.56,
+            0.3904,
+            -0.4212
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      }
+    },
+    {
+      "id": "vehicle_handcart_l2",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_handcart_l2.glb",
+      "tags": [
+        "vehicle",
+        "survivor_tech",
+        "tier0",
+        "emissive"
+      ],
+      "params": {
+        "model": "handcart",
+        "level": 2
+      },
+      "dimensions_m": {
+        "x": 1.28,
+        "y": 0.913,
+        "z": 2.182
+      },
+      "tris": 412,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "T0. Plank pull cart on two big wheels, resting forward on its prop leg; handles toward -Y. Level 2: rust sheet sides, blue water/fuel can, patch. Parts: body + wheel_l, wheel_r (pivot at the hub, spin about X). Parked, nose toward -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "body": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "chassis and bodywork, origin on the ground at the centre"
+        },
+        "wheel_l": {
+          "joint": [
+            0.56,
+            0.3904,
+            -0.4212
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_r": {
+          "joint": [
+            -0.56,
+            0.3904,
+            -0.4212
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      }
+    },
+    {
+      "id": "vehicle_handcart_l3",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_handcart_l3.glb",
+      "tags": [
+        "vehicle",
+        "survivor_tech",
+        "tier0",
+        "emissive"
+      ],
+      "params": {
+        "model": "handcart",
+        "level": 3
+      },
+      "dimensions_m": {
+        "x": 1.28,
+        "y": 1.67,
+        "z": 2.192
+      },
+      "tris": 484,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "T0. Plank pull cart on two big wheels, resting forward on its prop leg; handles toward -Y. Level 3: rubber tyres, metal sides, tarp-lashed load, amber lantern pole, bumper. Parts: body + wheel_l, wheel_r (pivot at the hub, spin about X). Parked, nose toward -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "body": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "chassis and bodywork, origin on the ground at the centre"
+        },
+        "wheel_l": {
+          "joint": [
+            0.56,
+            0.3904,
+            -0.4162
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_r": {
+          "joint": [
+            -0.56,
+            0.3904,
+            -0.4162
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      }
+    },
+    {
+      "id": "vehicle_motorbike",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_motorbike.glb",
+      "tags": [
+        "vehicle",
+        "survivor_tech",
+        "tier2",
+        "emissive"
+      ],
+      "params": {
+        "model": "motorbike",
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 1.79,
+        "y": 1.173,
+        "z": 2.195
+      },
+      "tris": 908,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "T2. Knobbly dirt bike with a welded sidecar on its right (-X). Level 1: bare bike + sidecar, amber tail/sidecar lights. Parts: body + wheel_f, wheel_r, wheel_s (pivot at the hub, spin about X). Parked, nose toward -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "body": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "chassis and bodywork, origin on the ground at the centre"
+        },
+        "wheel_f": {
+          "joint": [
+            0.495,
+            0.375,
+            0.7225
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_r": {
+          "joint": [
+            0.495,
+            0.375,
+            -0.6975
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_s": {
+          "joint": [
+            -0.805,
+            0.315,
+            -0.2275
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      }
+    },
+    {
+      "id": "vehicle_motorbike_l2",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_motorbike_l2.glb",
+      "tags": [
+        "vehicle",
+        "survivor_tech",
+        "tier2",
+        "emissive"
+      ],
+      "params": {
+        "model": "motorbike",
+        "level": 2
+      },
+      "dimensions_m": {
+        "x": 1.79,
+        "y": 1.217,
+        "z": 2.195
+      },
+      "tris": 1028,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "T2. Knobbly dirt bike with a welded sidecar on its right (-X). Level 2: striped armour fairing, sidecar side plate, fuel can rack. Parts: body + wheel_f, wheel_r, wheel_s (pivot at the hub, spin about X). Parked, nose toward -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "body": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "chassis and bodywork, origin on the ground at the centre"
+        },
+        "wheel_f": {
+          "joint": [
+            0.495,
+            0.375,
+            0.7225
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_r": {
+          "joint": [
+            0.495,
+            0.375,
+            -0.6975
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_s": {
+          "joint": [
+            -0.805,
+            0.315,
+            -0.2275
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      }
+    },
+    {
+      "id": "vehicle_motorbike_l3",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_motorbike_l3.glb",
+      "tags": [
+        "vehicle",
+        "survivor_tech",
+        "tier2",
+        "emissive"
+      ],
+      "params": {
+        "model": "motorbike",
+        "level": 3
+      },
+      "dimensions_m": {
+        "x": 1.79,
+        "y": 1.295,
+        "z": 2.265
+      },
+      "tris": 1296,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "T2. Knobbly dirt bike with a welded sidecar on its right (-X). Level 3: cargo rack + bundle, spare wheel in the tub, nose plate, second headlamp. Parts: body + wheel_f, wheel_r, wheel_s (pivot at the hub, spin about X). Parked, nose toward -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "body": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "chassis and bodywork, origin on the ground at the centre"
+        },
+        "wheel_f": {
+          "joint": [
+            0.495,
+            0.375,
+            0.7575
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_r": {
+          "joint": [
+            0.495,
+            0.375,
+            -0.6625
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_s": {
+          "joint": [
+            -0.805,
+            0.315,
+            -0.1925
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      }
+    },
+    {
+      "id": "vehicle_parked_extraction_t2",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_parked_extraction_t2.glb",
+      "tags": [
+        "vehicle",
+        "scavenge",
+        "extraction",
+        "stash",
+        "survivor_tech",
+        "tier2",
+        "emissive"
+      ],
+      "params": {
+        "model": "motorbike"
+      },
+      "dimensions_m": {
+        "x": 2.85,
+        "y": 2.875,
+        "z": 2.36
+      },
+      "tris": 1208,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Extraction point / loot stash, T2: parked motorbike + sidecar with chocks, stash on its +X flank, amber beacon pole. Parts vehicle, stash, beacon. Nose toward glTF +Z = the map edge.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "vehicle": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "the parked vehicle, wheels included; origin on the ground"
+        },
+        "stash": {
+          "joint": [
+            0.915,
+            0.015,
+            0.0
+          ],
+          "note": "loot stash; pivot on the ground at its centre"
+        },
+        "beacon": {
+          "joint": [
+            1.265,
+            0.015,
+            -0.55
+          ],
+          "note": "beacon pole, amber lamp on top (z ~2.7 m); blink it in the game"
+        }
+      }
+    },
+    {
+      "id": "vehicle_parked_extraction_t3",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_parked_extraction_t3.glb",
+      "tags": [
+        "vehicle",
+        "scavenge",
+        "extraction",
+        "stash",
+        "survivor_tech",
+        "tier3",
+        "emissive"
+      ],
+      "params": {
+        "model": "buggy"
+      },
+      "dimensions_m": {
+        "x": 3.35,
+        "y": 2.875,
+        "z": 3.245
+      },
+      "tris": 1700,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Extraction point / loot stash, T3: parked dune buggy with chocks, stash on its +X flank, amber beacon pole. Parts vehicle, stash, beacon. Nose toward glTF +Z = the map edge.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "vehicle": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "the parked vehicle, wheels included; origin on the ground"
+        },
+        "stash": {
+          "joint": [
+            1.165,
+            0.015,
+            0.0
+          ],
+          "note": "loot stash; pivot on the ground at its centre"
+        },
+        "beacon": {
+          "joint": [
+            1.515,
+            0.015,
+            -0.55
+          ],
+          "note": "beacon pole, amber lamp on top (z ~2.7 m); blink it in the game"
+        }
+      }
+    },
+    {
+      "id": "vehicle_parked_extraction_t4",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_parked_extraction_t4.glb",
+      "tags": [
+        "vehicle",
+        "scavenge",
+        "extraction",
+        "stash",
+        "survivor_tech",
+        "tier4",
+        "emissive"
+      ],
+      "params": {
+        "model": "truck"
+      },
+      "dimensions_m": {
+        "x": 3.28,
+        "y": 2.86,
+        "z": 5.2
+      },
+      "tris": 1160,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Extraction point / loot stash, T4: parked pickup with chocks, stash on its +X flank, amber beacon pole. Parts vehicle, stash, beacon. Nose toward glTF +Z = the map edge.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "vehicle": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "the parked vehicle, wheels included; origin on the ground"
+        },
+        "stash": {
+          "joint": [
+            1.13,
+            0.0,
+            0.0
+          ],
+          "note": "loot stash; pivot on the ground at its centre"
+        },
+        "beacon": {
+          "joint": [
+            1.48,
+            0.0,
+            -0.55
+          ],
+          "note": "beacon pole, amber lamp on top (z ~2.7 m); blink it in the game"
+        }
+      }
+    },
+    {
+      "id": "vehicle_parked_extraction_t5",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_parked_extraction_t5.glb",
+      "tags": [
+        "vehicle",
+        "scavenge",
+        "extraction",
+        "stash",
+        "survivor_tech",
+        "tier5",
+        "emissive"
+      ],
+      "params": {
+        "model": "rig"
+      },
+      "dimensions_m": {
+        "x": 3.7,
+        "y": 3.295,
+        "z": 7.205
+      },
+      "tris": 2292,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Extraction point / loot stash, T5: parked war-rig with chocks, stash on its +X flank, amber beacon pole. Parts vehicle, stash, beacon. Nose toward glTF +Z = the map edge.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "vehicle": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "the parked vehicle, wheels included; origin on the ground"
+        },
+        "stash": {
+          "joint": [
+            1.34,
+            0.015,
+            0.0
+          ],
+          "note": "loot stash; pivot on the ground at its centre"
+        },
+        "beacon": {
+          "joint": [
+            1.69,
+            0.015,
+            -0.55
+          ],
+          "note": "beacon pole, amber lamp on top (z ~2.7 m); blink it in the game"
+        }
+      }
+    },
+    {
+      "id": "vehicle_rig",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_rig.glb",
+      "tags": [
+        "vehicle",
+        "survivor_tech",
+        "tier5",
+        "emissive"
+      ],
+      "params": {
+        "model": "rig",
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 2.64,
+        "y": 3.295,
+        "z": 7.205
+      },
+      "tris": 1992,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "T5. Armoured war-rig: wedge plow, plated cab with slit windows, twin stacks, six wheels, welded cargo cage. Level 1: plated cab + cage, crates and drums. Parts: body + wheel_fl, wheel_fr, wheel_ml, wheel_mr, wheel_rl, wheel_rr (pivot at the hub, spin about X). Parked, nose toward -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "body": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "chassis and bodywork, origin on the ground at the centre"
+        },
+        "wheel_fl": {
+          "joint": [
+            1.08,
+            0.575,
+            2.1775
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_fr": {
+          "joint": [
+            -1.08,
+            0.575,
+            2.1775
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_ml": {
+          "joint": [
+            1.08,
+            0.575,
+            -1.4225
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_mr": {
+          "joint": [
+            -1.08,
+            0.575,
+            -1.4225
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_rl": {
+          "joint": [
+            1.08,
+            0.575,
+            -2.6725
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_rr": {
+          "joint": [
+            -1.08,
+            0.575,
+            -2.6725
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      }
+    },
+    {
+      "id": "vehicle_rig_l2",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_rig_l2.glb",
+      "tags": [
+        "vehicle",
+        "survivor_tech",
+        "tier5",
+        "emissive"
+      ],
+      "params": {
+        "model": "rig",
+        "level": 2
+      },
+      "dimensions_m": {
+        "x": 2.64,
+        "y": 3.295,
+        "z": 7.38
+      },
+      "tris": 2208,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "T5. Armoured war-rig: wedge plow, plated cab with slit windows, twin stacks, six wheels, welded cargo cage. Level 2: cage skirt plates, three fuel cans behind the cab, plow spikes. Parts: body + wheel_fl, wheel_fr, wheel_ml, wheel_mr, wheel_rl, wheel_rr (pivot at the hub, spin about X). Parked, nose toward -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "body": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "chassis and bodywork, origin on the ground at the centre"
+        },
+        "wheel_fl": {
+          "joint": [
+            1.08,
+            0.575,
+            2.09
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_fr": {
+          "joint": [
+            -1.08,
+            0.575,
+            2.09
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_ml": {
+          "joint": [
+            1.08,
+            0.575,
+            -1.51
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_mr": {
+          "joint": [
+            -1.08,
+            0.575,
+            -1.51
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_rl": {
+          "joint": [
+            1.08,
+            0.575,
+            -2.76
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_rr": {
+          "joint": [
+            -1.08,
+            0.575,
+            -2.76
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      }
+    },
+    {
+      "id": "vehicle_rig_l3",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_rig_l3.glb",
+      "tags": [
+        "vehicle",
+        "survivor_tech",
+        "tier5",
+        "emissive"
+      ],
+      "params": {
+        "model": "rig",
+        "level": 3
+      },
+      "dimensions_m": {
+        "x": 2.72,
+        "y": 3.365,
+        "z": 7.38
+      },
+      "tris": 2488,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "T5. Armoured war-rig: wedge plow, plated cab with slit windows, twin stacks, six wheels, welded cargo cage. Level 3: gunner's nest on the cab, cargo on the cage roof, two spare wheels, extra cab plate. Parts: body + wheel_fl, wheel_fr, wheel_ml, wheel_mr, wheel_rl, wheel_rr (pivot at the hub, spin about X). Parked, nose toward -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "body": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "chassis and bodywork, origin on the ground at the centre"
+        },
+        "wheel_fl": {
+          "joint": [
+            1.08,
+            0.575,
+            2.09
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_fr": {
+          "joint": [
+            -1.08,
+            0.575,
+            2.09
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_ml": {
+          "joint": [
+            1.08,
+            0.575,
+            -1.51
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_mr": {
+          "joint": [
+            -1.08,
+            0.575,
+            -1.51
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_rl": {
+          "joint": [
+            1.08,
+            0.575,
+            -2.76
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_rr": {
+          "joint": [
+            -1.08,
+            0.575,
+            -2.76
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      }
+    },
+    {
+      "id": "vehicle_truck",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_truck.glb",
+      "tags": [
+        "vehicle",
+        "survivor_tech",
+        "tier4",
+        "emissive"
+      ],
+      "params": {
+        "model": "truck",
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 2.22,
+        "y": 2.127,
+        "z": 5.2
+      },
+      "tris": 860,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "T4. Patched pickup: long cargo bed, mismatched door panels, amber roof lamps. Level 1: bare truck, crate + sacks in the bed. Parts: body + wheel_fl, wheel_fr, wheel_rl, wheel_rr (pivot at the hub, spin about X). Parked, nose toward -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "body": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "chassis and bodywork, origin on the ground at the centre"
+        },
+        "wheel_fl": {
+          "joint": [
+            0.92,
+            0.4375,
+            1.52
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_fr": {
+          "joint": [
+            -0.92,
+            0.4375,
+            1.52
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_rl": {
+          "joint": [
+            0.92,
+            0.4375,
+            -1.43
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_rr": {
+          "joint": [
+            -0.92,
+            0.4375,
+            -1.43
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      }
+    },
+    {
+      "id": "vehicle_truck_l2",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_truck_l2.glb",
+      "tags": [
+        "vehicle",
+        "survivor_tech",
+        "tier4",
+        "emissive"
+      ],
+      "params": {
+        "model": "truck",
+        "level": 2
+      },
+      "dimensions_m": {
+        "x": 2.22,
+        "y": 2.127,
+        "z": 5.2
+      },
+      "tris": 1044,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "T4. Patched pickup: long cargo bed, mismatched door panels, amber roof lamps. Level 2: door and grille plates, two fuel drums + can in the bed. Parts: body + wheel_fl, wheel_fr, wheel_rl, wheel_rr (pivot at the hub, spin about X). Parked, nose toward -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "body": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "chassis and bodywork, origin on the ground at the centre"
+        },
+        "wheel_fl": {
+          "joint": [
+            0.92,
+            0.4375,
+            1.52
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_fr": {
+          "joint": [
+            -0.92,
+            0.4375,
+            1.52
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_rl": {
+          "joint": [
+            0.92,
+            0.4375,
+            -1.43
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_rr": {
+          "joint": [
+            -0.92,
+            0.4375,
+            -1.43
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
+      }
+    },
+    {
+      "id": "vehicle_truck_l3",
+      "category": "vehicle",
+      "file": "vehicle/vehicle_truck_l3.glb",
+      "tags": [
+        "vehicle",
+        "survivor_tech",
+        "tier4",
+        "emissive"
+      ],
+      "params": {
+        "model": "truck",
+        "level": 3
+      },
+      "dimensions_m": {
+        "x": 2.22,
+        "y": 2.377,
+        "z": 5.52
+      },
+      "tris": 1416,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "T4. Patched pickup: long cargo bed, mismatched door panels, amber roof lamps. Level 3: roof rack + cargo, windscreen cage, tarp over the bed, striped ram, spare wheel on the tailgate. Parts: body + wheel_fl, wheel_fr, wheel_rl, wheel_rr (pivot at the hub, spin about X). Parked, nose toward -Y (glTF +Z). Survivor tech, no cyan.",
+      "style_revision": "21f952e3",
+      "parts": {
+        "body": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "chassis and bodywork, origin on the ground at the centre"
+        },
+        "wheel_fl": {
+          "joint": [
+            0.92,
+            0.4375,
+            1.49
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_fr": {
+          "joint": [
+            -0.92,
+            0.4375,
+            1.49
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_rl": {
+          "joint": [
+            0.92,
+            0.4375,
+            -1.46
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        },
+        "wheel_rr": {
+          "joint": [
+            -0.92,
+            0.4375,
+            -1.46
+          ],
+          "note": "wheel, pivot at the hub; spin about X (glTF X) to roll"
+        }
       }
     }
   ]
