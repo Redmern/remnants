@@ -31,6 +31,7 @@ public enum ScavengeEventType
     RelayDisrupted,
     LimbLocked,
     ObjectiveUpdated, Chatter, MissionPrompt, MissionEnded,
+    Stashed, VehicleHit, VehicleWrecked,
 }
 
 /// <summary>
@@ -198,6 +199,8 @@ public sealed class ScavengeState
 
     /// <summary>A story mission's objectives, triggers and chatter (<see cref="MissionRules"/>); null on a plain run.</summary>
     public MissionRun? Mission { get; set; }
+    /// <summary>Parties' parked vehicles: extraction points and loot stashes (<see cref="ParkedVehicles"/>).</summary>
+    public List<ParkedVehicle> Vehicles { get; set; } = new();
 
     public List<ScavengeEvent> Events { get; set; } = new();
 

@@ -1,0 +1,47 @@
+{
+  "garageBuilding": "garage",
+  "fuelResource": "fuel",
+  "repairItem": "spare_parts",
+  "repairPerPart": 0.25,
+  "wearPerTravelDay": 0.03,
+  "minLaunchCondition": 0.25,
+  "nightSpeedMultiplier": 0.75,
+  "starting": ["handcart"],
+  "tiers": [
+    { "id": "handcart", "name": "Handcart", "tier": 0, "model": "handcart",
+      "speed": 1.0, "cargoKg": 30, "fuelPerDay": 0, "noise": 0, "maxCondition": 25, "wheeled": true },
+    { "id": "bicycle_cart", "name": "Bicycle Cart", "tier": 1, "model": "bicycle_cart",
+      "speed": 1.5, "seats": 3, "cargoKg": 45, "fuelPerDay": 0, "noise": 0, "maxCondition": 30, "wheeled": true },
+    { "id": "motorbike", "name": "Motorbike", "tier": 2, "model": "motorbike", "motorized": true,
+      "speed": 2.5, "seats": 2, "cargoKg": 25, "fuelPerDay": 2, "rangeDays": 2, "noise": 0.25, "maxCondition": 40,
+      "droneRangeDays": 0.5, "wheeled": true },
+    { "id": "buggy", "name": "Buggy", "tier": 3, "model": "buggy", "motorized": true,
+      "speed": 3.0, "seats": 4, "cargoKg": 80, "fuelPerDay": 4, "rangeDays": 3, "noise": 0.35, "maxCondition": 60, "armor": 1,
+      "droneRangeDays": 1, "wheeled": true },
+    { "id": "truck", "name": "Truck", "tier": 4, "model": "truck", "motorized": true,
+      "speed": 2.0, "seats": 6, "cargoKg": 200, "fuelPerDay": 6, "rangeDays": 4, "noise": 0.5, "maxCondition": 90, "armor": 2,
+      "droneRangeDays": 1, "wheeled": true },
+    { "id": "armored_rig", "name": "Armored Rig", "tier": 5, "model": "rig", "motorized": true, "armored": true,
+      "speed": 1.75, "seats": 6, "cargoKg": 150, "fuelPerDay": 8, "rangeDays": 5, "noise": 0.6, "maxCondition": 160, "armor": 5,
+      "droneRangeDays": 1.5, "wheeled": true }
+  ],
+  "upgrades": [
+    { "id": "headlights", "name": "Headlights", "description": "Drives at full speed in the dark.",
+      "garageLevel": 1, "minTier": 2, "cost": { "electronics": 3, "scrap": 2 }, "headlights": true },
+    { "id": "cargo_rack", "name": "Cargo Rack", "description": "+40 kg of cargo home.", "schematic": "sch_cargo_rack",
+      "garageLevel": 1, "minTier": 0, "cost": { "wood": 10, "scrap": 8 }, "cargoKg": 40 },
+    { "id": "fuel_cans", "name": "Extra Fuel Cans", "description": "+1 day of range on a tank.",
+      "garageLevel": 1, "minTier": 2, "parts": { "fuel_can": 2 }, "rangeDays": 1 },
+    { "id": "muffler", "name": "Muffler", "description": "Half the noise: fewer Husks drawn when the party arrives.", "schematic": "sch_muffler",
+      "garageLevel": 2, "minTier": 2, "cost": { "scrap": 10 }, "parts": { "spare_parts": 1 }, "noiseMultiplier": 0.5 },
+    { "id": "offroad_tyres", "name": "Off-road Tyres", "description": "Mud no longer slows it; ×1.1 speed.", "schematic": "sch_offroad_tyres",
+      "garageLevel": 2, "minTier": 1, "parts": { "wheel": 4 }, "cost": { "scrap": 6 }, "speedMultiplier": 1.1, "allTerrain": true },
+    { "id": "armor_plates", "name": "Armor Plates", "description": "+40 condition, +3 armor; parks as hard cover. ×0.9 speed.", "schematic": "sch_armor_plates",
+      "garageLevel": 3, "minTier": 3, "parts": { "armor_plate": 4 }, "speedMultiplier": 0.9, "maxCondition": 40, "armor": 3, "armored": true }
+  ],
+  "weather": {
+    "dust_storm": { "name": "Dust storm", "blocks": ["bicycle_cart", "motorbike"], "speedMultiplier": 0.5 },
+    "rain": { "name": "Rain", "wheeledSpeedMultiplier": 0.8 },
+    "storm": { "name": "Storm", "speedMultiplier": 0.8, "wheeledSpeedMultiplier": 0.75 }
+  }
+}

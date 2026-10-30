@@ -69,6 +69,7 @@ public sealed class ScavengeSim
             Lookout c => ScavengeCommandHandlers.Lookout(this, unit!, c),
             EndTurn => ScavengeResult.Success($"{unit!.Name} ends their turn."),
             Extract => ScavengeCommandHandlers.Extract(this, unit!),
+            StashItem c => ParkedVehicles.Stash(this, unit!, c),
             ProposeAlliance c => Alliances.Propose(this, unit!, c),
             RespondAlliance c => Alliances.Respond(this, unit!, c),
             BreakAlliance c => Alliances.Break(this, unit!, c),
@@ -170,6 +171,7 @@ public sealed class ScavengeSim
         Interference.RoundStarted(this);
         MissionRules.RoundStarted(this);
         if (State.Finished) return;
+        ParkedVehicles.RoundStarted(this);
 
         // Drones fly on their operator's AP and cameras only watch: neither takes turns.
         State.TurnOrder = State.Units

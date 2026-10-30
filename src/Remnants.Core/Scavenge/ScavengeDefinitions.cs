@@ -3,8 +3,11 @@ using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Scavenge;
 
-/// <summary>Pylon: a Network relay mast (impassable, gives cover); see <see cref="Network"/>.</summary>
-public enum Terrain { Floor, Rubble, Cover, Water, Wall, Pylon }
+/// <summary>
+/// Pylon: a Network relay mast (impassable, gives cover); see <see cref="Network"/>. Vehicle / ArmoredVehicle: a party's
+/// parked vehicle (impassable; light or hard cover); see <see cref="ParkedVehicles"/>.
+/// </summary>
+public enum Terrain { Floor, Rubble, Cover, Water, Wall, Pylon, Vehicle, ArmoredVehicle }
 
 public enum MapEdge { North, South, East, West }
 
@@ -581,6 +584,8 @@ public sealed record ScavengeRules
 
     /// <summary>Story missions in the field (raised watchtower tiles).</summary>
     public StoryFieldRules Story { get; init; } = new();
+    /// <summary>Parked vehicles in the field (see <see cref="ParkedVehicles"/>).</summary>
+    public VehicleFieldRules Vehicle { get; init; } = new();
 
     /// <summary>Quality tiers of crafted gear, worst first. The <c>base</c> tier is the item as defined.</summary>
     public List<QualityTierDef> Quality { get; init; } = new();
@@ -598,4 +603,14 @@ public sealed record QualityTierDef
     public double StatMultiplier { get; init; } = 1;
     public double WeightMultiplier { get; init; } = 1;
     public bool Base { get; init; }
+}
+
+/// <summary>
+/// A parked vehicle under attack: each hostile enemy next to it at the start of a round deals
+/// <see cref="DamagePerEnemy"/> less the vehicle's armor, but at least <see cref="MinDamage"/>.
+/// </summary>
+public sealed record VehicleFieldRules
+{
+    public double DamagePerEnemy { get; init; } = 6;
+    public double MinDamage { get; init; } = 1;
 }

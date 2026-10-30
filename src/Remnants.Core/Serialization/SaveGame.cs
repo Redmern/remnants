@@ -42,10 +42,13 @@ namespace Remnants.Core.Serialization;
 /// Version 14 adds Story mode (13 is held by the schematics branch): <see cref="ColonyState.Campaign"/> (null = Sandbox, so every older save loads as Sandbox),
 /// survivors' <c>UniqueId</c> (Pell), the expedition's story mission, and carries the scavenge run's mission
 /// (<see cref="ScavengeSave"/> version 8).
+/// Version 15 adds vehicles (<see cref="ColonyState.Vehicles"/>; the expedition's vehicle, noise and fuel) and carries
+/// the run's parked vehicles (<see cref="ScavengeSave"/> version 9). Older colonies get the starting vehicles
+/// (<c>vehicles.starting</c>: the handcart) and their party out on foot.
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 14;
+    public const int Version = 15;
     private const int OldestVersion = 1;
 
     /// <summary>What a pre-version-4 generic "blueprint" item becomes.</summary>
@@ -75,6 +78,8 @@ public static class SaveGame
             else foreach (var skill in Enum.GetValues<Survivors.Skill>()) s.Skills.TryAdd(skill, 0);
         StudySystem.Repair(colony);
         if (envelope.Version < 12) MigrateCybernetics(data, scavenge, colony);
+        if (envelope.Version < 15 && colony.Vehicles.Count == 0)
+            foreach (var tier in data.Vehicles.Starting) VehicleRules.Add(colony, data, tier);
         Validate(data, colony);
         if (scavenge is not null) Validate(scavenge, colony);
         return new ColonySim(data, colony, scavenge);
@@ -229,6 +234,19 @@ public static class SaveGame
             if (r.A >= r.B || !ids.Contains(r.A) || !ids.Contains(r.B))
                 throw new JsonException($"Save has a relationship between {r.A} and {r.B} that does not fit the survivors.");
 
+        foreach (var v in colony.Vehicles)
+        {
+            if (!data.VehicleTiers.ContainsKey(v.TierId)) throw new JsonException($"Save has {v.Name} of unknown vehicle tier '{v.TierId}'.");
+            if (v.Upgrades.FirstOrDefault(u => !data.VehicleUpgrades.ContainsKey(u)) is { } upgrade)
+                throw new JsonException($"Save has {v.Name} with unknown upgrade '{upgrade}'.");
+        }
+        if (colony.Vehicles.Select(v => v.Id).Distinct().Count() != colony.Vehicles.Count) throw new JsonException("Save has two vehicles with one id.");
+        var driven = colony.Expedition?.VehicleId;
+        if (driven is { } vid && colony.Vehicles.Find(v => v.Id == vid) is not { Away: true })
+            throw new JsonException($"Save has the expedition in vehicle {vid}, which is not out with it.");
+        if (colony.Vehicles.FirstOrDefault(v => v.Away && v.Id != driven) is { } strayVehicle)
+            throw new JsonException($"Save has {strayVehicle.Name} away without an expedition.");
+
         var members = colony.Expedition?.Members.Select(m => m.SurvivorId).ToHashSet() ?? [];
         foreach (var id in members)
             if (colony.FindSurvivor(id) is not { Away: true })
@@ -264,6 +282,7 @@ public static class SaveGame
         foreach (var id in expedition.Members.SelectMany(m => m.AllItems)) RequireItem(id);
         if (expedition.Scavenge is { } run) ScavengeSave.Validate(data, run);
         if (expedition.PendingResult is { } result)
-            foreach (var id in result.Returned.Concat(result.Recruits).SelectMany(r => r.Equipment.Values.Concat(r.Pack))) RequireItem(id);
+            foreach (var id in result.Returned.Concat(result.Recruits).SelectMany(r => r.Equipment.Values.Concat(r.Pack))
+                         .Concat(result.Vehicle?.Stash ?? [])) RequireItem(id);
     }
 }

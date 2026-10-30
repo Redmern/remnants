@@ -39,6 +39,9 @@ public sealed record BuildingLevelDef
 
     /// <summary>Care buildings: how many patients can be admitted at once.</summary>
     public int Patients { get; init; }
+
+    /// <summary>A schematic (blueprint item) the colony must have studied to build or reach this level.</summary>
+    public string? Schematic { get; init; }
 }
 
 /// <summary>
@@ -62,6 +65,9 @@ public sealed record RecipeDef
     public Dictionary<string, int> ItemInputs { get; init; } = new();
     public string? Item { get; init; }
     public string? Resource { get; init; }
+
+    /// <summary>A vehicle tier id (data/vehicles.json): a finished batch rolls a new vehicle out of the Garage.</summary>
+    public string? Vehicle { get; init; }
     public double Amount { get; init; } = 1;
 
     /// <summary>At least one worker needs this much of the job's skill, or the building idles.</summary>

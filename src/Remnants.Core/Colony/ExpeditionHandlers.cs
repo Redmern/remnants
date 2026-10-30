@@ -21,6 +21,17 @@ internal static class ExpeditionHandlers
         if (WorldMap.IntelOf(state, zone) == ZoneIntel.Unknown)
             return CommandResult.Fail(CommandError.ZoneUnknown, "Nobody knows the way there yet: scout nearby zones first.");
         if (c.Members.Count == 0) return CommandResult.Fail(CommandError.EmptyParty, "Pick at least one survivor.");
+        Vehicle? vehicle = null;
+        if (c.VehicleId is { } vid)
+        {
+            vehicle = state.Vehicles.Find(v => v.Id == vid);
+            if (vehicle is null) return CommandResult.Fail(CommandError.UnknownVehicle, $"No vehicle {vid}.");
+            if (vehicle.Away) return CommandResult.Fail(CommandError.VehicleAway, $"{vehicle.Name} is already out.");
+            if (VehicleRules.Broken(sim.Data, vehicle))
+                return CommandResult.Fail(CommandError.VehicleBroken, $"{vehicle.Name} has broken down; repair it at the Garage first.");
+            if (sim.VehicleStats(vehicle).Seats is { } seats && c.Members.Count > seats)
+                return CommandResult.Fail(CommandError.NotEnoughSeats, $"The {vehicle.Name} seats {seats} (picked {c.Members.Count}).");
+        }
         var maxParty = Math.Max(sim.MaxPartySize, partyCap ?? 0);
         if (c.Members.Count > maxParty)
             return CommandResult.Fail(CommandError.PartyTooLarge, $"The Town Hall allows a party of {maxParty} (picked {c.Members.Count}).");
@@ -48,13 +59,16 @@ internal static class ExpeditionHandlers
         var gear = c.Members.SelectMany(m => m.AllItems).ToList();
         if (!state.Inventory.HasAll(gear))
             return CommandResult.Fail(CommandError.MissingItems, $"Not enough gear in the inventory: {DescribeMissing(state.Inventory, gear, data)}.");
-        var plan = sim.PlanArrival(zone.Id, c.WaitFor);
+        var travel = VehicleRules.Plan(sim, zone, vehicle, state.Tick);
+        if (travel.Blocked is { } why) return CommandResult.Fail(CommandError.RoadBlocked, why);
+        var plan = sim.PlanArrival(zone.Id, c.WaitFor, vehicle?.Id);
         var rations = new Dictionary<string, double>
         {
-            [sim.Data.Rules.Food.ResourceId] = (WorldMap.RationsPerMember(sim.Data, zone) + plan.WaitRationsPerMember) * c.Members.Count,
+            [sim.Data.Rules.Food.ResourceId] = (WorldMap.RationsPerMember(sim.Data, travel.Days) + plan.WaitRationsPerMember) * c.Members.Count,
         };
+        if (travel.FuelRoundTrip > 0) rations[sim.Data.Vehicles.FuelResource] = travel.FuelRoundTrip;
         if (!state.Stockpile.CanAfford(rations))
-            return CommandResult.Fail(CommandError.CannotAfford, $"Not enough rations: {CommandHandlers.Describe(state.Stockpile.Shortfall(rations))}.");
+            return CommandResult.Fail(CommandError.CannotAfford, $"Not enough rations or fuel: {CommandHandlers.Describe(state.Stockpile.Shortfall(rations))}.");
 
         state.Stockpile.Spend(rations);
         foreach (var id in gear) state.Inventory.TryTake(id);
@@ -65,14 +79,21 @@ internal static class ExpeditionHandlers
             s.Away = true;
         }
 
-        var travel = WorldMap.TravelTicks(sim.Data, zone);
+        if (vehicle is not null)
+        {
+            vehicle.Away = true;
+            vehicle.Condition = Math.Max(1, vehicle.Condition - VehicleRules.Wear(sim.Data, vehicle, travel.Days));
+        }
         var expedition = new Expedition
         {
             Id = state.NextExpeditionId++,
             ZoneId = zone.Id,
             Seed = sim.Rng.NextULong(),
             LaunchedTick = state.Tick,
-            TravelTicks = travel,
+            TravelTicks = travel.Ticks,
+            VehicleId = vehicle?.Id,
+            VehicleNoise = vehicle is null ? 0 : sim.VehicleStats(vehicle).Noise,
+            Fuel = travel.FuelRoundTrip,
             WaitTicks = plan.WaitTicks,
             ArrivalTick = plan.ArrivalTick,
             Depletion = state.Zones.GetValueOrDefault(zone.Id)?.Depletion ?? 0,
@@ -80,7 +101,8 @@ internal static class ExpeditionHandlers
         };
         state.Expedition = expedition;
         var names = string.Join(", ", c.Members.Select(m => state.FindSurvivor(m.SurvivorId)!.Name));
-        var road = travel > 0 ? $" ({zone.TravelDays:0.#} days on the road)" : "";
+        var by = vehicle is null ? "" : $" by {vehicle.Name}";
+        var road = travel.Ticks > 0 ? $"{by} ({travel.Days:0.#} days on the road)" : by;
         if (plan.WaitTicks > 0) road += $", waiting {plan.WaitTicks} h for {plan.Phase.ToString().ToLowerInvariant()}";
         state.Log(new(state.Tick, ColonyEventType.ExpeditionLaunched, $"{names} set out for {zone.Name}{road}."));
         return CommandResult.Success($"{names} set out for {zone.Name}{road}.", expedition.Id);
@@ -91,7 +113,10 @@ internal static class ExpeditionHandlers
         new(ColonySim.ExpeditionPlayerId, expedition.Members.Select(m => new PartyMember(
             sim.State.FindSurvivor(m.SurvivorId) ?? throw new InvalidOperationException($"Expedition member {m.SurvivorId} is gone."),
             new(m.Equipment ?? new()),
-            new(m.Pack ?? []))).ToList());
+            new(m.Pack ?? []))).ToList())
+        {
+            Vehicle = expedition.VehicleId is { } id && sim.FindVehicle(id) is { } v ? VehicleRules.Field(sim.Data, v) : null,
+        };
 
     public static CommandResult Apply(ColonySim sim, ApplyExtractionResult c)
     {
@@ -110,17 +135,33 @@ internal static class ExpeditionHandlers
         if (allItems.FirstOrDefault(id => !data.Items.ContainsKey(id)) is { } unknown)
             return CommandResult.Fail(CommandError.UnknownItem, $"The result carries unknown item '{unknown}'.");
 
-        if (expedition.TravelTicks > 0)
+        var home = ReturnTrip(sim, expedition, result);
+        if (home.Ticks > 0)
         {
             expedition.PendingResult = result;
-            expedition.ReturnTick = state.Tick + expedition.TravelTicks;
+            expedition.ReturnTick = state.Tick + home.Ticks;
             expedition.Scavenge = null;
-            var days = expedition.TravelTicks / (double)sim.Data.Rules.TicksPerDay;
+            var days = home.Ticks / (double)sim.Data.Rules.TicksPerDay;
             var message = $"The run is over; the party is heading home ({days:0.#} days).";
             state.Log(new(state.Tick, ColonyEventType.ExpeditionHeadingHome, message));
             return CommandResult.Success(message, expedition.Id);
         }
         return ApplyNow(sim, expedition, result);
+    }
+
+    /// <summary>
+    /// The way home, leaving now: by the vehicle when it survived the run and someone drives it, else on foot. A zone the
+    /// party walked to takes as long back as out.
+    /// </summary>
+    private static TravelPlan ReturnTrip(ColonySim sim, Expedition expedition, ExtractionResult result)
+    {
+        var zone = sim.Scavenge!.Zones[expedition.ZoneId];
+        var vehicle = expedition.VehicleId is { } id ? sim.FindVehicle(id) : null;
+        var drives = vehicle is not null && result.Returned.Count > 0 && result.Vehicle is not { Wrecked: true };
+        if (!drives) return new TravelPlan(zone.TravelDays, [], zone.TravelDays, expedition.VehicleId is null ? expedition.TravelTicks : WorldMap.TravelTicks(sim.Data, zone), 0, null);
+        var plan = VehicleRules.Plan(sim, zone, vehicle, sim.State.Tick);
+        // Fuel for the way home was paid at launch and a storm cannot strand them: it only slows them down.
+        return plan with { Blocked = null };
     }
 
     /// <summary>The party is home: survivors, the dead, recruits and loot are applied and the zone counts as visited.</summary>
@@ -196,6 +237,7 @@ internal static class ExpeditionHandlers
             report.Recruits.Add(s.Name);
         }
 
+        VehicleHome(sim, expedition, result, report);
         state.Expedition = null;
         state.LastReport = report;
         if (expedition.MissionId is { } missionId) global::Remnants.Core.Story.Campaign.Returned(sim, missionId, result.Mission);
@@ -203,6 +245,39 @@ internal static class ExpeditionHandlers
         var summary = $"The party is back from {zoneName}: {report.Returned.Count} returned, {report.Dead.Count} dead, {report.Recruits.Count} recruited.";
         state.Log(new(state.Tick, ColonyEventType.ExpeditionReturned, summary));
         return CommandResult.Success(summary, expedition.Id);
+    }
+
+    /// <summary>
+    /// The party's vehicle after the run: wrecked in the field, or left behind when nobody came back, it is lost; otherwise
+    /// it is home with the condition it had at the end of the run less the wear of the road back, and its stash is
+    /// unloaded like the packs (counted in <see cref="ExtractionResult.Loot"/>).
+    /// </summary>
+    private static void VehicleHome(ColonySim sim, Expedition expedition, ExtractionResult result, ExpeditionReport report)
+    {
+        var state = sim.State;
+        if (expedition.VehicleId is not { } id || sim.FindVehicle(id) is not { } vehicle) return;
+        var data = sim.Scavenge!;
+        if (result.Vehicle is { Wrecked: true } || result.Returned.Count == 0)
+        {
+            state.Vehicles.Remove(vehicle);
+            var how = result.Vehicle is { Wrecked: true } ? "was wrecked" : "was left behind";
+            report.LostVehicle = vehicle.Name;
+            state.Log(new(state.Tick, ColonyEventType.VehicleLost, $"The {vehicle.Name} {how} in {data.Zones.GetValueOrDefault(expedition.ZoneId)?.Name ?? expedition.ZoneId}."));
+            return;
+        }
+        vehicle.Away = false;
+        if (result.Vehicle is { } field)
+        {
+            vehicle.Condition = Math.Min(vehicle.Condition, field.Hp);
+            foreach (var item in field.Stash)
+                if (data.Items[item].Salvage is { } salvage) state.Stockpile.Add(salvage.Resource, salvage.Amount);
+                else state.Inventory.Add(item);
+            if (field.Hp < field.MaxHp - 1e-9)
+                state.Log(new(state.Tick, ColonyEventType.VehicleDamaged, $"The {vehicle.Name} came back damaged ({field.Hp:0}/{field.MaxHp:0})."));
+        }
+        var backDays = WorldMap.TravelTicks(sim.Data, data.Zones[expedition.ZoneId]) > 0 ? expedition.TravelTicks / (double)sim.Data.Rules.TicksPerDay : 0;
+        vehicle.Condition = Math.Max(1, vehicle.Condition - VehicleRules.Wear(sim.Data, vehicle, backDays));
+        report.Vehicle = vehicle.Name;
     }
 
     /// <summary>Worn gear goes back to the inventory; carried items too, except salvage, which becomes stockpile resources.</summary>

@@ -167,6 +167,11 @@ internal static class CraftingSystem
             state.Inventory.Add(id, count);
             made = $"{count} {items?.Items.GetValueOrDefault(id)?.Name ?? recipe.Name}";
         }
+        else if (recipe.Vehicle is { } tier)
+        {
+            VehicleRules.Built(state, data, tier, building.Id);
+            made = $"a {data.VehicleTiers[tier].Name}";
+        }
         else
         {
             state.Stockpile.Add(recipe.Resource!, recipe.Amount);
@@ -305,6 +310,9 @@ internal static class CraftingHandlers
         state.KnownBlueprints.Add(item.Id);
         var unlocked = sim.Data.Recipes.Values.Where(r => r.Blueprint == item.Id).Select(r => r.Name)
             .Concat(sim.Data.Cybernetics?.Nodes.Values.Where(n => n.Blueprint == item.Id).Select(n => sim.Scavenge.Items[n.Id].Name) ?? [])
+            .Concat(sim.Data.Buildings.Values.SelectMany(b => b.Levels.Select((l, i) => (b, l, i)))
+                .Where(x => x.l.Schematic == item.Id).Select(x => x.i == 0 ? x.b.Name : $"{x.b.Name} level {x.i + 1}"))
+            .Concat(sim.Data.Vehicles.Upgrades.Where(u => u.Schematic == item.Id).Select(u => u.Name))
             .ToList();
         var message = $"Studied {item.Name}: {(unlocked.Count == 0 ? "nothing new" : string.Join(", ", unlocked))} unlocked.";
         state.Log(new(state.Tick, ColonyEventType.BlueprintStudied, message));

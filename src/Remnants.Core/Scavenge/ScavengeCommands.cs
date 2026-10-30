@@ -35,8 +35,11 @@ public sealed record Recruit(int PlayerId, int UnitId, int NpcId) : IScavengeCom
 /// <summary>Wait: end this unit's turn, forfeiting remaining AP.</summary>
 public sealed record EndTurn(int PlayerId, int UnitId) : IScavengeCommand;
 
-/// <summary>Leave the map from an exit tile, taking nearby followers along.</summary>
+/// <summary>Leave the map from an exit tile or next to the side's parked vehicle, taking nearby followers along.</summary>
 public sealed record Extract(int PlayerId, int UnitId) : IScavengeCommand;
+
+/// <summary>Load a carried item into the party's parked vehicle next to the unit; it goes home with the vehicle.</summary>
+public sealed record StashItem(int PlayerId, int UnitId, string ItemId) : IScavengeCommand;
 
 /// <summary>Co-op: offer an alliance to another player whose party and yours can see each other. Free; on your turn.</summary>
 public sealed record ProposeAlliance(int PlayerId, int UnitId, int ToPlayerId) : IScavengeCommand;
@@ -142,6 +145,8 @@ public enum ScavengeError
     ChoicePending,
     /// <summary>No such prompt is waiting.</summary>
     NoPrompt,
+    /// <summary>The parked vehicle's stash is at its cargo limit.</summary>
+    CargoFull,
 }
 
 /// <summary>Outcome of a scavenge command. <see cref="EntityId"/> carries e.g. the attacked unit.</summary>

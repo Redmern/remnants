@@ -105,7 +105,7 @@ public static class CoopActions
     }
 
     /// <summary>Tiles a body can be set on without data at hand: everything but walls and pylons (as scavenge.json has it).</summary>
-    private static bool Passable(Terrain t) => t is not (Terrain.Wall or Terrain.Pylon);
+    private static bool Passable(Terrain t) => t is not (Terrain.Wall or Terrain.Pylon or Terrain.Vehicle or Terrain.ArmoredVehicle);
 
     /// <summary>Keeps every carried unit on its carrier's tile, and lets go of it when the carrier cannot carry any more.</summary>
     internal static void Sync(ScavengeState state)

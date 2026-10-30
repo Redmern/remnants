@@ -13,7 +13,11 @@ public sealed record PartyMember(Survivor Survivor, Dictionary<EquipSlot, string
 /// <see cref="Alliances"/>) and spawn next to each other; null = on its own. <see cref="Name"/> is the player's name
 /// for log lines (null = "Player N").
 /// </summary>
-public sealed record PartySetup(int PlayerId, List<PartyMember> Members, int? Team = null, string? Name = null);
+/// <see cref="Vehicle"/>: the vehicle the party drove in (parked on the spawn edge; its seats cap the party).
+public sealed record PartySetup(int PlayerId, List<PartyMember> Members, int? Team = null, string? Name = null)
+{
+    public FieldVehicle? Vehicle { get; init; }
+}
 
 /// <summary>
 /// A story mission's setup for <see cref="NewScavenge.Create"/>: the field script, and either a handmade
@@ -24,9 +28,11 @@ public sealed record PartySetup(int PlayerId, List<PartyMember> Members, int? Te
 public sealed record MissionSetup(FieldMission Mission, HandmadeMapDef? Map = null, HandmadeMapDef? Room = null, int Towers = 0,
     List<MapEnemyDef>? ExtraEnemies = null);
 
-/// <summary>How the zone is right now: <see cref="Depletion"/> (0..1) thins out the loot caches of a picked-over zone.</summary>
-/// <summary>How a zone is found: its depletion, and the time of day and weather the run is played in (midday, clear, if null).</summary>
-public sealed record ZoneConditions(double Depletion = 0, ScavengeEnvironment? Environment = null);
+/// <summary>
+/// How a zone is found: its depletion (0..1 thins out the loot caches), the time of day and weather the run is played in
+/// (midday, clear, if null), and <see cref="HuskMultiplier"/>: more Husks drawn by an arriving vehicle's noise (1 = none).
+/// </summary>
+public sealed record ZoneConditions(double Depletion = 0, ScavengeEnvironment? Environment = null, double HuskMultiplier = 1);
 
 /// <summary>
 /// Builds a scavenge instance: generates the zone map from its template and a seed, places every party
@@ -80,8 +86,10 @@ public static class NewScavenge
                 side = shared;
             }
             state.Parties.Add(new Party { PlayerId = party.PlayerId, Name = party.Name ?? "", Side = side });
+            if (party.Vehicle is { } vehicle && ParkedVehicles.Park(state, party.PlayerId, vehicle, spawnEdge, anchor) is null)
+                throw new ArgumentException($"Zone '{zone.Id}' has no room to park player {party.PlayerId}'s vehicle.");
             var spots = open
-                .Where(p => MapGenerator.Depth(map, zone.SpawnEdge, p) <= 2 && Free(p))
+                .Where(p => MapGenerator.Depth(map, zone.SpawnEdge, p) <= 2 && Free(p) && data.Terrain(map[p]).Passable)
                 .OrderBy(p => p.DistanceSquared(anchor)).ThenBy(map.Index)
                 .ToList();
             if (spots.Count < party.Members.Count) throw new ArgumentException($"Zone '{zone.Id}' has no room for player {party.PlayerId}'s party.");
@@ -115,7 +123,7 @@ public static class NewScavenge
 
         // The dark brings out more Husks: extra ones from the Husk part of the mix (none by day, so day runs are as before).
         var huskMix = mix.Where(e => data.Enemies[e.Id].Ai == AiKind.Husk).ToList();
-        var huskMult = FieldEnvironment.Effects(data, state).HuskCountMultiplier;
+        var huskMult = FieldEnvironment.Effects(data, state).HuskCountMultiplier * Math.Max(1, conditions?.HuskMultiplier ?? 1);
         if (huskMult > 1 && huskMix.Count > 0)
         {
             var husks = spawned.Where(kv => data.Enemies[kv.Key].Ai == AiKind.Husk).Sum(kv => kv.Value);
@@ -290,6 +298,10 @@ public static class NewScavenge
         foreach (var party in parties)
         {
             if (party.Members.Count == 0) throw new ArgumentException($"Player {party.PlayerId}'s party is empty.");
+            if (party.Vehicle is { Seats: { } seats } v && party.Members.Count > seats)
+                throw new ArgumentException($"Player {party.PlayerId}'s {v.Name} seats {seats}, not {party.Members.Count}.");
+            if (party.Vehicle is { } pv && (pv.MaxHp <= 0 || pv.CargoKg < 0 || pv.Armor < 0))
+                throw new ArgumentException($"Player {party.PlayerId}'s vehicle has impossible stats.");
             foreach (var m in party.Members)
             {
                 if (m.Survivor.IsChild) throw new ArgumentException($"{m.Survivor.Name} is a child; children never go on a run.");

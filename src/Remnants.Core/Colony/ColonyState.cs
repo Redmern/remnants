@@ -52,6 +52,9 @@ public sealed class ColonyState
     /// next tier needs one of its requirements in here.
     /// </summary>
     public SortedSet<string> KnownCybernetics { get; set; } = new(StringComparer.Ordinal);
+    /// <summary>The colony's vehicles (see <see cref="VehicleRules"/>), at home or out with the party.</summary>
+    public List<Vehicle> Vehicles { get; set; } = new();
+    public int NextVehicleId { get; set; } = 1;
 
     /// <summary>The after-action report of the last expedition that came home (for the UI).</summary>
     public ExpeditionReport? LastReport { get; set; }

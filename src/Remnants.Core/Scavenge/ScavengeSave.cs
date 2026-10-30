@@ -19,10 +19,11 @@ namespace Remnants.Core.Scavenge;
 /// Version 8 adds story missions: <see cref="ScavengeState.Mission"/> (the field script, objectives, triggers fired,
 /// chatter, the pending prompt, field flags, markers, the handmade map id and hash) and units' and devices' story fields
 /// (tags, character ids, patrols, raised tiles); older saves load as plain runs.
+/// Version 9 adds parked vehicles (<see cref="ScavengeState.Vehicles"/>, their stash and HP); older runs have none.
 /// </summary>
 public static class ScavengeSave
 {
-    public const int Version = 8;
+    public const int Version = 9;
     private const int OldestVersion = 1;
 
     private sealed record Envelope(int Version, ScavengeState Scavenge);
@@ -88,6 +89,11 @@ public static class ScavengeSave
             foreach (var o in mission.Def.Objectives.Where(o => o.Item is not null)) RequireItem(o.Item!);
             foreach (var p in mission.Markers.Values.SelectMany(t => t).Concat(mission.Raised))
                 if (!state.Map.InBounds(p)) throw new JsonException($"Save's mission marks {p}, off the map.");
+        }
+        foreach (var v in state.Vehicles)
+        {
+            if (!state.Map.InBounds(v.Pos)) throw new JsonException($"The {v.Name} is parked off the map at {v.Pos}.");
+            foreach (var id in v.Stash) RequireItem(id);
         }
         foreach (var id in state.TurnOrder)
             if (state.FindUnit(id) is null) throw new JsonException($"Turn order references unknown unit {id}.");

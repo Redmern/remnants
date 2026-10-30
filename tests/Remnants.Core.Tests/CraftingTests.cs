@@ -26,7 +26,9 @@ public class CraftingDataTests
     {
         foreach (var bp in ScavengeTestData.Real.Items.Values.Where(i => i.Kind == ItemKind.Blueprint))
             Assert.True(TestData.Real.Recipes.Values.Any(r => r.Blueprint == bp.Id) || TestData.Real.Perks.Values.Any(p => p.Requires.Blueprint == bp.Id)
-                        || TestData.Real.Cybernetics!.Nodes.Values.Any(n => n.Blueprint == bp.Id),
+                        || TestData.Real.Cybernetics!.Nodes.Values.Any(n => n.Blueprint == bp.Id)
+                        || TestData.Real.Buildings.Values.Any(b => b.Levels.Any(l => l.Schematic == bp.Id))
+                        || TestData.Real.Vehicles.Upgrades.Any(u => u.Schematic == bp.Id),
                 $"{bp.Id} unlocks nothing");
         foreach (var id in new[] { "workshop", "tailor", "electronics_lab", "armory", "kitchen" })
             Assert.NotEmpty(TestData.Real.RecipesFor(id));
@@ -325,7 +327,9 @@ public class BlueprintTests
     public void Blueprints_turn_up_in_higher_tier_zone_loot()
     {
         var items = ScavengeTestData.Real.Items.Values;
-        Assert.DoesNotContain(items, i => i.Kind == ItemKind.Blueprint && i.LootWeight > 0 && i.Tier <= ScavengeTestData.Real.Zones["outskirts"].LootTier);
+        // Gear blueprints start in tier 2 zones; vehicle schematics follow SCHEMATICS.md, where the first ones are Home Valley finds.
+        Assert.DoesNotContain(items, i => i.Kind == ItemKind.Blueprint && !i.Id.StartsWith("sch_") && i.LootWeight > 0
+                                          && i.Tier <= ScavengeTestData.Real.Zones["outskirts"].LootTier);
         Assert.Contains(items, i => i.Kind == ItemKind.Blueprint && i.LootWeight > 0 && i.Tier <= ScavengeTestData.Real.Zones["suburb_ruins"].LootTier);
     }
 }

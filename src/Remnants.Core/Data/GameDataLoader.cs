@@ -3,7 +3,7 @@ using Remnants.Core.Serialization;
 
 namespace Remnants.Core.Data;
 
-/// <summary>Loads definitions from the data/ folder (resources.json, jobs.json, buildings.json, rules.json, recipes.json, perks.json, cybernetics.json).</summary>
+/// <summary>Loads definitions from the data/ folder (resources.json, jobs.json, buildings.json, rules.json, recipes.json, perks.json, cybernetics.json, vehicles.json).</summary>
 public static class GameDataLoader
 {
     public static GameData LoadFromDirectory(string directory)
@@ -18,15 +18,16 @@ public static class GameDataLoader
         string? Optional(string file) => File.Exists(Path.Combine(directory, file)) ? File.ReadAllText(Path.Combine(directory, file)) : null;
 
         return LoadFromJson(Read("resources.json"), Read("jobs.json"), Read("buildings.json"), Read("rules.json"), Read("recipes.json"),
-            Optional("perks.json"), Optional("cybernetics.json"));
+            Optional("perks.json"), Optional("cybernetics.json"), Optional("vehicles.json"));
     }
 
     /// <summary>
     /// Without <paramref name="perks"/> there is no perk tree and no study (XP still counts levels); without
-    /// <paramref name="cybernetics"/> no cybernetics tree (prosthetics only strap on).
+    /// <paramref name="cybernetics"/> no cybernetics tree (prosthetics only strap on); without <paramref name="vehicles"/> no
+    /// vehicles (every party walks).
     /// </summary>
     public static GameData LoadFromJson(string resources, string jobs, string buildings, string rules, string recipes = "[]", string? perks = null,
-        string? cybernetics = null) =>
+        string? cybernetics = null, string? vehicles = null) =>
         new(
             Parse<List<ResourceDef>>(resources, "resources"),
             Parse<List<JobDef>>(jobs, "jobs"),
@@ -34,7 +35,8 @@ public static class GameDataLoader
             Parse<RulesDef>(rules, "rules"),
             Parse<List<RecipeDef>>(recipes, "recipes"),
             perks is null ? null : Parse<ProgressionDef>(perks, "perks"),
-            cybernetics is null ? null : Parse<CyberneticsDef>(cybernetics, "cybernetics"));
+            cybernetics is null ? null : Parse<CyberneticsDef>(cybernetics, "cybernetics"),
+            vehicles is null ? null : Parse<VehicleData>(vehicles, "vehicles"));
 
     private static T Parse<T>(string json, string name)
     {

@@ -190,7 +190,7 @@ public class ProgressionTests
         string Read(string f) => File.ReadAllText(Path.Combine(dir, f));
         var perks = Read("perks.json").Replace("\"hack_alarm_reduction\"", "\"hack_alarm_reductoin\"");
         var ex = Assert.Throws<GameDataException>(() => GameDataLoader.LoadFromJson(
-            Read("resources.json"), Read("jobs.json"), Read("buildings.json"), Read("rules.json"), Read("recipes.json"), perks));
+            Read("resources.json"), Read("jobs.json"), Read("buildings.json"), Read("rules.json"), Read("recipes.json"), perks, vehicles: Read("vehicles.json")));
         Assert.Contains("hack_alarm_reductoin", ex.Message);
     }
 

@@ -5,7 +5,9 @@
     "Cover":  { "moveCost": 2, "cover": 0.3 },
     "Water":  { "moveCost": 3 },
     "Wall":   { "passable": false, "blocksSight": true, "cover": 0.4 },
-    "Pylon":  { "passable": false, "cover": 0.3 }
+    "Pylon":  { "passable": false, "cover": 0.3 },
+    "Vehicle": { "passable": false, "cover": 0.25 },
+    "ArmoredVehicle": { "passable": false, "cover": 0.45 }
   },
   "movement": {
     "basePattern": "King",
@@ -123,6 +125,7 @@
     "attributeRange": [20, 55],
     "names": ["Wren", "Odile", "Caspar", "Hana", "Milo", "Yara", "Dov", "Tamsin", "Ezra", "Rosa"]
   },
+  "vehicle": { "damagePerEnemy": 6, "minDamage": 1 },
   "escortRadius": 2,
   "quality": [
     { "id": "crude",    "name": "Crude",    "statMultiplier": 0.8,  "weightMultiplier": 1.15 },

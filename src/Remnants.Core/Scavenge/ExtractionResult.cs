@@ -20,6 +20,9 @@ public sealed record ExtractionResult(
     SortedDictionary<string, int> Loot,
     ObjectiveResult? Mission = null)
 {
+    /// <summary>The party's parked vehicle at the end (null when it came on foot). Its stash is in <see cref="Loot"/> unless it was lost.</summary>
+    public VehicleResult? Vehicle { get; init; }
+
     internal static ExtractionResult Build(ScavengeSim sim, int playerId)
     {
         var state = sim.State;
@@ -35,8 +38,12 @@ public sealed record ExtractionResult(
         var loot = new SortedDictionary<string, int>(StringComparer.Ordinal);
         foreach (var id in returned.Concat(recruits).SelectMany(r => r.Pack))
             loot[id] = loot.GetValueOrDefault(id) + 1;
+        // The vehicle drives home with its stash when someone made it out to drive it.
+        var vehicle = ParkedVehicles.Result(state, playerId);
+        if (vehicle is { Wrecked: false } && returned.Count > 0)
+            foreach (var id in vehicle.Stash) loot[id] = loot.GetValueOrDefault(id) + 1;
 
-        return new ExtractionResult(playerId, party.Done, returned, recruits, deaths, loot, MissionRules.Result(state, playerId));
+        return new ExtractionResult(playerId, party.Done, returned, recruits, deaths, loot, MissionRules.Result(state, playerId)) { Vehicle = vehicle };
     }
 
     private static ReturnedSurvivor ToReturned(Unit u) =>

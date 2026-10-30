@@ -71,5 +71,20 @@
 
   { "id": "network_arm",       "name": "Network-grade Arm",    "building": "electronics_lab", "minLevel": 3, "work": 40, "inputs": { "electronics": 6 }, "itemInputs": { "linked_core": 2, "neural_link": 1, "myomer_bundle": 2, "power_cell": 2 }, "item": "network_arm", "minSkill": 40 },
   { "id": "network_leg",       "name": "Network-grade Leg",    "building": "electronics_lab", "minLevel": 3, "work": 40, "inputs": { "electronics": 6 }, "itemInputs": { "linked_core": 2, "neural_link": 1, "myomer_bundle": 2, "power_cell": 2 }, "item": "network_leg", "minSkill": 40 },
-  { "id": "network_eye",       "name": "Network-grade Eye",    "building": "electronics_lab", "minLevel": 3, "work": 34, "inputs": { "electronics": 5 }, "itemInputs": { "linked_core": 1, "neural_link": 1, "power_cell": 1 }, "item": "network_eye", "minSkill": 40 }
+  { "id": "network_eye",       "name": "Network-grade Eye",    "building": "electronics_lab", "minLevel": 3, "work": 34, "inputs": { "electronics": 5 }, "itemInputs": { "linked_core": 1, "neural_link": 1, "power_cell": 1 }, "item": "network_eye", "minSkill": 40 },
+  { "id": "biofuel",        "name": "Biofuel",         "building": "fuel_still", "minLevel": 1, "work": 6,  "inputs": { "food": 5 },  "resource": "fuel", "amount": 3 },
+  { "id": "wood_gas",       "name": "Wood Gas Fuel",   "building": "fuel_still", "minLevel": 2, "work": 8,  "inputs": { "wood": 8 },  "resource": "fuel", "amount": 3 },
+  { "id": "wheel",          "name": "Wheel",           "building": "garage", "minLevel": 1, "work": 6,  "inputs": { "wood": 4, "scrap": 4 },  "item": "wheel" },
+  { "id": "spare_parts",    "name": "Spare Parts",     "building": "garage", "minLevel": 1, "work": 5,  "inputs": { "scrap": 5 },             "item": "spare_parts" },
+  { "id": "chassis_frame",  "name": "Chassis Frame",   "building": "garage", "minLevel": 1, "work": 12, "inputs": { "wood": 8, "scrap": 16 }, "item": "chassis_frame" },
+  { "id": "fuel_can",       "name": "Fuel Can",        "building": "garage", "minLevel": 1, "work": 4,  "inputs": { "scrap": 4 },             "item": "fuel_can" },
+  { "id": "engine_small",   "name": "Small Engine",    "building": "garage", "minLevel": 2, "work": 24, "inputs": { "scrap": 18, "electronics": 4 }, "item": "engine_small", "blueprint": "sch_small_engine" },
+  { "id": "engine_v8",      "name": "Freight Diesel",  "building": "garage", "minLevel": 3, "work": 40, "inputs": { "scrap": 35, "electronics": 8 }, "item": "engine_v8", "blueprint": "sch_diesel_engine", "minSkill": 20 },
+  { "id": "armor_plate",    "name": "Armor Plate",     "building": "garage", "minLevel": 2, "work": 10, "inputs": { "scrap": 14 },            "item": "armor_plate", "blueprint": "sch_armor_plates" },
+  { "id": "build_handcart",     "name": "Handcart",     "building": "garage", "minLevel": 1, "work": 16,  "inputs": { "wood": 15 },            "itemInputs": { "wheel": 2 },                                  "vehicle": "handcart" },
+  { "id": "build_bicycle_cart", "name": "Bicycle Cart", "building": "garage", "minLevel": 1, "work": 28,  "inputs": { "wood": 10, "scrap": 10 }, "itemInputs": { "wheel": 3, "chassis_frame": 1 },            "vehicle": "bicycle_cart", "blueprint": "sch_bicycle_cart" },
+  { "id": "build_motorbike",    "name": "Motorbike",    "building": "garage", "minLevel": 2, "work": 45,  "inputs": { "scrap": 15 },            "itemInputs": { "wheel": 2, "chassis_frame": 1, "engine_small": 1 }, "vehicle": "motorbike", "blueprint": "sch_motorbike" },
+  { "id": "build_buggy",        "name": "Buggy",        "building": "garage", "minLevel": 2, "work": 65,  "inputs": { "scrap": 25 },            "itemInputs": { "wheel": 4, "chassis_frame": 2, "engine_small": 1 }, "vehicle": "buggy", "blueprint": "sch_buggy", "minSkill": 15 },
+  { "id": "build_truck",        "name": "Truck",        "building": "garage", "minLevel": 3, "work": 90,  "inputs": { "scrap": 40, "wood": 20 }, "itemInputs": { "wheel": 6, "chassis_frame": 3, "engine_v8": 1 },   "vehicle": "truck", "blueprint": "sch_truck", "minSkill": 25 },
+  { "id": "build_armored_rig",  "name": "Armored Rig",  "building": "garage", "minLevel": 3, "work": 130, "inputs": { "scrap": 50 },            "itemInputs": { "wheel": 6, "chassis_frame": 3, "engine_v8": 1, "armor_plate": 6 }, "vehicle": "armored_rig", "blueprint": "sch_armored_rig", "minSkill": 35 }
 ]

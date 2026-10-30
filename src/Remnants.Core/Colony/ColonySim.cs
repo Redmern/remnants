@@ -36,6 +36,12 @@ public sealed class ColonySim
         SyncRng();
     }
 
+    /// <summary>
+    /// The weather at a tick (a <see cref="VehicleData.Weather"/> / <c>scavenge.json environment.weather</c> id), or null for
+    /// clear skies. Clear until the weather feature fills it in; travel planning asks it at departure.
+    /// </summary>
+    public Func<long, string?> WeatherAt { get; set; } = _ => null;
+
     /// <summary>Sim-owned randomness. Always draw through this so the state stays in the save.</summary>
     public DeterministicRng Rng => _rng;
 
@@ -206,6 +212,25 @@ public sealed class ColonySim
         return WorldMap.Info(State, Data, scavenge, scavenge.Zones[zoneId]);
     }
 
+    /// <summary>A vehicle's numbers with its upgrades.</summary>
+    public VehicleStats VehicleStats(Vehicle vehicle) => VehicleRules.Stats(Data, vehicle);
+
+    public Vehicle? FindVehicle(int id) => State.Vehicles.Find(v => v.Id == id);
+
+    /// <summary>
+    /// A one-way trip to a zone leaving now, with a colony vehicle or on foot (null): the terms that set its speed, days,
+    /// round-trip fuel and whether it is blocked (see <see cref="VehicleRules.Plan"/>).
+    /// </summary>
+    public TravelPlan PlanTravel(string zoneId, int? vehicleId = null, long? departTick = null)
+    {
+        var scavenge = Scavenge ?? throw new InvalidOperationException("Scavenge data is not loaded.");
+        return VehicleRules.Plan(this, scavenge.Zones[zoneId], vehicleId is { } id ? FindVehicle(id) : null, departTick ?? State.Tick);
+    }
+
+    /// <summary>The largest party that can go: the Town Hall's cap, and the vehicle's seats when one is taken.</summary>
+    public int MaxPartySizeWith(int? vehicleId) =>
+        vehicleId is { } id && FindVehicle(id) is { } v && VehicleStats(v).Seats is { } seats ? Math.Min(MaxPartySize, seats) : MaxPartySize;
+
     public PartySetup ExpeditionParty() =>
         ExpeditionHandlers.Party(this, State.Expedition ?? throw new InvalidOperationException("No expedition is out."));
 
@@ -223,7 +248,7 @@ public sealed class ColonySim
         if (expedition.Scavenge is { } running) return new ScavengeSim(data, running);
         var mission = expedition.MissionId is { } missionId ? global::Remnants.Core.Story.Campaign.Setup(this, missionId) : null;
         var sim = NewScavenge.Create(data, expedition.ZoneId, expedition.Seed, [ExpeditionParty()],
-            new ZoneConditions(expedition.Depletion, MissionEnvironment(expedition.ArrivalTick)), mission);
+            new ZoneConditions(expedition.Depletion, MissionEnvironment(expedition.ArrivalTick), 1 + expedition.VehicleNoise), mission);
         expedition.Scavenge = sim.State;
         return sim;
     }
@@ -240,10 +265,9 @@ public sealed class ColonySim
     /// waited, rounded up to whole units). No wait when they would arrive in that phase anyway, or with day/night off
     /// (every mission is then at midday).
     /// </summary>
-    public ArrivalPlan PlanArrival(string zoneId, DayPhase? waitFor = null)
+    public ArrivalPlan PlanArrival(string zoneId, DayPhase? waitFor = null, int? vehicleId = null)
     {
-        var scavenge = Scavenge ?? throw new InvalidOperationException("Scavenge data is not loaded.");
-        var arrival = State.Tick + WorldMap.TravelTicks(Data, scavenge.Zones[zoneId]);
+        var arrival = State.Tick + PlanTravel(zoneId, vehicleId).Ticks;
         if (!Data.Rules.DayNight.Enabled) return new ArrivalPlan(arrival, DayPhase.Day, 0, 0);
         long wait = 0;
         if (waitFor is { } want && DayNight.PhaseAt(arrival, Data.Rules) != want)
@@ -317,6 +341,8 @@ public sealed class ColonySim
             InstallFloodlight c => DayNightHandlers.InstallFloodlight(this, c),
             global::Remnants.Core.Story.TakeCall or global::Remnants.Core.Story.AdvanceDialogue or global::Remnants.Core.Story.ChooseDialogue
                 or global::Remnants.Core.Story.LaunchStoryMission => global::Remnants.Core.Story.Campaign.Execute(this, command),
+            FitUpgrade c => VehicleRules.FitUpgrade(this, c),
+            RepairVehicle c => VehicleRules.Repair(this, c),
             _ => CommandResult.Fail(CommandError.UnknownCommand, $"Unknown command {command.GetType().Name}."),
         };
         SyncRng();
@@ -349,6 +375,22 @@ public sealed class ColonySim
         foreach (var item in scavenge.Items.Values)
             if (item.Manual is { } manual && (item.Kind != ItemKind.Material || item.Salvage is not null || manual.StudyBonus < 0))
                 throw new GameDataException($"Item '{item.Id}': manuals are Material items without salvage and with a non-negative study bonus.");
+        void RequireBlueprint(string? id, string where)
+        {
+            if (id is not null && scavenge.Items.GetValueOrDefault(id)?.Kind != ItemKind.Blueprint)
+                throw new GameDataException($"{where}: schematic '{id}' is not a blueprint item.");
+        }
+        foreach (var b in data.Buildings.Values)
+            for (var i = 0; i < b.Levels.Count; i++) RequireBlueprint(b.Levels[i].Schematic, $"Building '{b.Id}' level {i + 1}");
+        var vehicles = data.Vehicles;
+        if (vehicles.Tiers.Count > 0 && !scavenge.Items.ContainsKey(vehicles.RepairItem))
+            throw new GameDataException($"Vehicles: unknown repair item '{vehicles.RepairItem}'.");
+        foreach (var u in vehicles.Upgrades)
+        {
+            RequireBlueprint(u.Schematic, $"Vehicle upgrade '{u.Id}'");
+            foreach (var id in u.Parts.Keys)
+                if (!scavenge.Items.ContainsKey(id)) throw new GameDataException($"Vehicle upgrade '{u.Id}': unknown part '{id}'.");
+        }
         foreach (var item in scavenge.Items.Values)
             if (item.Salvage is { } salvage && !data.Resources.ContainsKey(salvage.Resource))
                 throw new GameDataException($"Item '{item.Id}' salvages into unknown resource '{salvage.Resource}'.");

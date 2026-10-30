@@ -18,9 +18,16 @@ public sealed record Upgrade(int BuildingId) : IColonyCommand;
 /// <summary>
 /// Send adults into a zone with gear from the colony inventory. They are away until the result is applied. With
 /// <paramref name="WaitFor"/> the party waits outside the zone until that phase starts (if they would arrive in another),
-/// taking extra rations for the wait (see <see cref="ColonySim.PlanArrival"/>).
+/// taking extra rations for the wait (see <see cref="ColonySim.PlanArrival"/>). With <paramref name="VehicleId"/> the party
+/// drives a colony vehicle: faster on the road, its seats cap the party, it burns fuel and parks at the zone's edge.
 /// </summary>
-public sealed record LaunchExpedition(string ZoneId, List<ExpeditionMember> Members, DayPhase? WaitFor = null) : IColonyCommand;
+public sealed record LaunchExpedition(string ZoneId, List<ExpeditionMember> Members, DayPhase? WaitFor = null, int? VehicleId = null) : IColonyCommand;
+
+/// <summary>Fit an upgrade (data/vehicles.json) to a vehicle at the Garage, paying its resources and parts.</summary>
+public sealed record FitUpgrade(int VehicleId, string UpgradeId) : IColonyCommand;
+
+/// <summary>Repair a vehicle at the Garage with spare parts from the stores (as many as it needs, or as there are).</summary>
+public sealed record RepairVehicle(int VehicleId) : IColonyCommand;
 
 /// <summary>
 /// Fly a scout drone from the inventory over a rumored zone: it reveals the zone's intel without anyone going (see
@@ -190,6 +197,17 @@ public enum CommandError
     UnknownCall,
     NoDialogue,
     InvalidChoice,
+    /// <summary>Vehicles: unknown, out with a party, broken down, too few seats, blocked by weather or range, no Garage.</summary>
+    UnknownVehicle,
+    UnknownUpgrade,
+    VehicleAway,
+    VehicleBroken,
+    NotEnoughSeats,
+    RoadBlocked,
+    NoGarage,
+    AlreadyFitted,
+    UpgradeDoesNotFit,
+    NotDamaged,
 }
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>

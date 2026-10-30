@@ -19,6 +19,11 @@ public sealed class GameData
 
     /// <summary>The cybernetics tree (data/cybernetics.json); null when not loaded (no tree, no surgery, no humanity effects).</summary>
     public CyberneticsData? Cybernetics { get; }
+    /// <summary>Vehicle tiers, upgrades and road rules (data/vehicles.json; empty without it).</summary>
+    public VehicleData Vehicles { get; }
+
+    public IReadOnlyDictionary<string, VehicleTierDef> VehicleTiers { get; }
+    public IReadOnlyDictionary<string, VehicleUpgradeDef> VehicleUpgrades { get; }
 
     private readonly Dictionary<string, List<RecipeDef>> _recipesByBuilding;
 
@@ -29,7 +34,8 @@ public sealed class GameData
         RulesDef rules,
         IEnumerable<RecipeDef>? recipes = null,
         ProgressionDef? progression = null,
-        CyberneticsDef? cybernetics = null)
+        CyberneticsDef? cybernetics = null,
+        VehicleData? vehicles = null)
     {
         Resources = Index(resources, r => r.Id, "resource");
         Jobs = Index(jobs, j => j.Id, "job");
@@ -42,9 +48,13 @@ public sealed class GameData
         Perks = Index(Progression.Perks, p => p.Id, "perk");
         Disciplines = Index(Progression.Disciplines, d => d.Id, "discipline");
         Cybernetics = cybernetics is null ? null : new CyberneticsData(cybernetics);
+        Vehicles = vehicles ?? new VehicleData { Starting = [] };
+        VehicleTiers = Index(Vehicles.Tiers, t => t.Id, "vehicle tier");
+        VehicleUpgrades = Index(Vehicles.Upgrades, u => u.Id, "vehicle upgrade");
         Validate();
         ValidateProgression();
         ValidateCybernetics();
+        ValidateVehicles();
     }
 
     public BuildingDef TownHall => Buildings[Rules.TownHallBuildingId];
@@ -106,8 +116,10 @@ public sealed class GameData
             var where = $"Recipe '{r.Id}'";
             if (!Buildings.TryGetValue(r.Building, out var b)) throw new GameDataException($"{where}: unknown building '{r.Building}'.");
             if (b.Job is null) throw new GameDataException($"{where}: building '{b.Id}' has no job to work it.");
-            if ((r.Item is null) == (r.Resource is null))
-                throw new GameDataException($"{where} must yield exactly one of item or resource.");
+            if (new[] { r.Item, r.Resource, r.Vehicle }.Count(o => o is not null) != 1)
+                throw new GameDataException($"{where} must yield exactly one of item, resource or vehicle.");
+            if (r.Vehicle is not null && (!VehicleTiers.ContainsKey(r.Vehicle) || r.Amount != 1 || r.Building != Vehicles.GarageBuilding))
+                throw new GameDataException($"{where}: a vehicle recipe names a known tier, yields one, and is built at the Garage.");
             if (r.Resource is not null) RequireResource(r.Resource, where);
             foreach (var res in r.Inputs.Keys) RequireResource(res, $"{where} input");
             if (r.Work <= 0 || r.Amount <= 0 || r.MinLevel < 1 || r.MinLevel > b.MaxLevel)
@@ -163,6 +175,34 @@ public sealed class GameData
         if (family.ConceptionChance is < 0 or > 1) throw new GameDataException("Rules.family.conceptionChance must be in 0..1.");
         if (family.MaleNames.Count == 0 || family.FemaleNames.Count == 0)
             throw new GameDataException("Rules.family needs male and female names for newborns.");
+    }
+
+    private void ValidateVehicles()
+    {
+        var v = Vehicles;
+        if (v.Tiers.Count == 0) return;
+        if (!Buildings.TryGetValue(v.GarageBuilding, out var garage)) throw new GameDataException($"Vehicles: unknown garage building '{v.GarageBuilding}'.");
+        if (!Resources.ContainsKey(v.FuelResource)) throw new GameDataException($"Vehicles: unknown fuel resource '{v.FuelResource}'.");
+        if (v.RepairPerPart <= 0 || v.WearPerTravelDay < 0 || v.MinLaunchCondition is < 0 or > 1 || v.NightSpeedMultiplier <= 0)
+            throw new GameDataException("Vehicles: repairPerPart > 0, wearPerTravelDay ≥ 0, minLaunchCondition in 0..1, nightSpeedMultiplier > 0.");
+        foreach (var id in v.Starting)
+            if (!VehicleTiers.ContainsKey(id)) throw new GameDataException($"Vehicles.starting: unknown tier '{id}'.");
+        foreach (var t in v.Tiers)
+            if (t.Speed <= 0 || t.Seats is < 1 || t.CargoKg < 0 || t.FuelPerDay < 0 || t.RangeDays <= 0 || t.Noise < 0 || t.MaxCondition <= 0 || t.Armor < 0)
+                throw new GameDataException($"Vehicle tier '{t.Id}': speed, range and max condition positive, seats at least 1, the rest not negative.");
+        foreach (var u in v.Upgrades)
+        {
+            if (u.GarageLevel < 1 || u.GarageLevel > garage.MaxLevel || u.SpeedMultiplier <= 0 || u.NoiseMultiplier < 0)
+                throw new GameDataException($"Vehicle upgrade '{u.Id}': a Garage level it has, positive speed multiplier, noise multiplier not negative.");
+            foreach (var res in u.Cost.Keys)
+                if (!Resources.ContainsKey(res)) throw new GameDataException($"Vehicle upgrade '{u.Id}': unknown resource '{res}'.");
+        }
+        foreach (var (id, w) in v.Weather)
+        {
+            if (w.SpeedMultiplier <= 0 || w.WheeledSpeedMultiplier <= 0) throw new GameDataException($"Vehicles.weather '{id}': speed multipliers must be positive.");
+            foreach (var t in w.Blocks)
+                if (!VehicleTiers.ContainsKey(t)) throw new GameDataException($"Vehicles.weather '{id}': unknown tier '{t}'.");
+        }
     }
 
     /// <summary>A skill's display name and learning attributes (a bare definition when perks.json does not list it).</summary>

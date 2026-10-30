@@ -180,5 +180,30 @@
       { "cost": { "wood": 25, "stone": 10 }, "workerSlots": 0 },
       { "cost": { "wood": 40, "stone": 30, "scrap": 10 }, "workerSlots": 0 }
     ]
+  },
+  {
+    "id": "garage",
+    "name": "Garage",
+    "category": "Production",
+    "unique": true,
+    "job": "mechanics",
+    "baseOutput": 1.7,
+    "levels": [
+      { "cost": { "wood": 30, "stone": 15, "scrap": 10 },                    "workerSlots": 2, "outputMultiplier": 1.0 },
+      { "cost": { "wood": 50, "stone": 30, "scrap": 40 },                    "workerSlots": 3, "outputMultiplier": 1.25, "schematic": "sch_garage_2" },
+      { "cost": { "wood": 80, "stone": 60, "scrap": 80, "electronics": 15 }, "workerSlots": 4, "outputMultiplier": 1.5,  "schematic": "sch_garage_3" }
+    ]
+  },
+  {
+    "id": "fuel_still",
+    "name": "Biofuel Still",
+    "category": "Production",
+    "unique": true,
+    "job": "distilling",
+    "baseOutput": 1.7,
+    "levels": [
+      { "cost": { "wood": 25, "stone": 10, "scrap": 15 }, "workerSlots": 1, "outputMultiplier": 1.0, "schematic": "sch_biofuel_still" },
+      { "cost": { "wood": 40, "stone": 20, "scrap": 30 }, "workerSlots": 2, "outputMultiplier": 1.3 }
+    ]
   }
 ]

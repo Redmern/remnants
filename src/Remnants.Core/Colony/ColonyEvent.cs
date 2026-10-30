@@ -11,6 +11,7 @@ public enum ColonyEventType
     NightShift, Tired, FloodlightFitted,
     SurgeryBooked, SurgeryDone, SurgeryComplication, SurgeryCancelled, ProstheticServiced, ProstheticNeedsService, Humanity,
     StoryMission, RadioCall, SchematicLearned,
+    VehicleBuilt, VehicleUpgraded, VehicleRepaired, VehicleDamaged, VehicleLost,
 }
 
 /// <summary>Something notable the UI can show in a log. Purely informational.</summary>

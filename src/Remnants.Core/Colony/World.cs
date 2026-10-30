@@ -32,11 +32,14 @@ public static class WorldMap
 
     public static long TravelTicks(GameData data, ZoneDef zone) => (long)Math.Round(zone.TravelDays * data.Rules.TicksPerDay);
 
-    /// <summary>Food per member: the base ration plus the per-day ration for the trip out and back.</summary>
-    public static double RationsPerMember(GameData data, ZoneDef zone)
+    /// <summary>Food per member: the base ration plus the per-day ration for the trip out and back (on foot).</summary>
+    public static double RationsPerMember(GameData data, ZoneDef zone) => RationsPerMember(data, zone.TravelDays);
+
+    /// <summary>Food per member for a trip of <paramref name="oneWayDays"/> each way (a vehicle makes it shorter).</summary>
+    public static double RationsPerMember(GameData data, double oneWayDays)
     {
         var rules = data.Rules.Expedition;
-        return rules.RationFoodPerMember + rules.RationFoodPerMemberPerDay * zone.TravelDays * 2;
+        return rules.RationFoodPerMember + rules.RationFoodPerMemberPerDay * oneWayDays * 2;
     }
 
     public static LinkedPresence Presence(ScavengeData data, ZoneDef zone)
@@ -89,6 +92,15 @@ public static class WorldMap
         scavenge.Items.Values.Where(i => i.Drone is not null && state.Inventory.Has(i.Id)).Select(i => i.Id)
             .OrderBy(id => id, StringComparer.Ordinal).FirstOrDefault();
 
+    /// <summary>
+    /// How far out a scouting drone reaches: its battery (<see cref="DroneScoutRules.MaxTravelDays"/>), plus the best
+    /// <see cref="Data.VehicleTierDef.DroneRangeDays"/> of a working vehicle at home, which drives it out to launch.
+    /// </summary>
+    public static double DroneReachDays(ColonySim sim) =>
+        sim.Scavenge!.Rules.World.DroneScout.MaxTravelDays
+        + sim.State.Vehicles.Where(v => !v.Away && !VehicleRules.Broken(sim.Data, v))
+            .Select(v => sim.Data.VehicleTiers[v.TierId].DroneRangeDays).DefaultIfEmpty(0).Max();
+
     /// <summary>Ticks out to the zone (one way) for a scouting drone: at least a few hours even next door.</summary>
     public static long DroneLegTicks(GameData data, ScavengeData scavenge, ZoneDef zone) =>
         Math.Max(data.Rules.TicksPerDay / 4, (long)Math.Round(zone.TravelDays * scavenge.Rules.World.DroneScout.DaysPerTravelDay * data.Rules.TicksPerDay));
@@ -118,8 +130,9 @@ public static class WorldMap
         if (intel == ZoneIntel.Unknown) return CommandResult.Fail(CommandError.ZoneUnknown, "Nobody knows where that is to send a drone.");
         if (intel == ZoneIntel.Scouted || state.DroneFlights.Any(f => f.ZoneId == zone.Id && !f.Arrived))
             return CommandResult.Fail(CommandError.AlreadyScouted, $"{zone.Name} is already scouted.");
-        if (zone.TravelDays > rules.MaxTravelDays + 1e-9)
-            return CommandResult.Fail(CommandError.OutOfDroneRange, $"{zone.Name} is beyond a drone's battery ({rules.MaxTravelDays:0.#} days out).");
+        var reach = DroneReachDays(sim);
+        if (zone.TravelDays > reach + 1e-9)
+            return CommandResult.Fail(CommandError.OutOfDroneRange, $"{zone.Name} is beyond a drone's battery ({reach:0.#} days out).");
         if (DroneItem(state, scavenge) is not { } item) return CommandResult.Fail(CommandError.NoDrone, "There is no scout drone in the stores.");
         Survivor? pilot = null;
         if (c.PilotId is { } pid)

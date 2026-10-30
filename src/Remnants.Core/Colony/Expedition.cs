@@ -40,6 +40,15 @@ public sealed class Expedition
     /// <summary>Hours the party waits outside the zone for a better time (included in <see cref="ArrivalTick"/>).</summary>
     public long WaitTicks { get; set; }
 
+    /// <summary>The colony vehicle the party drives (null = on foot). It is away until the party is home.</summary>
+    public int? VehicleId { get; set; }
+
+    /// <summary>The vehicle's noise at launch: that share more Husks come to the zone when it arrives.</summary>
+    public double VehicleNoise { get; set; }
+
+    /// <summary>Fuel taken for the round trip.</summary>
+    public double Fuel { get; set; }
+
     /// <summary>The zone's depletion at launch; the run is generated with it.</summary>
     public double Depletion { get; set; }
 
@@ -96,7 +105,14 @@ public sealed record ExpeditionReport(
     List<string> Dead,
     List<string> Recruits,
     SortedDictionary<string, int> Loot,
-    SortedDictionary<string, int> LostGear);
+    SortedDictionary<string, int> LostGear)
+{
+    /// <summary>The vehicle that came home with the party, if one went.</summary>
+    public string? Vehicle { get; set; }
+
+    /// <summary>The vehicle that was wrecked or left behind, if one was.</summary>
+    public string? LostVehicle { get; set; }
+}
 
 public sealed record MemorialEntry(int SurvivorId, string Name, long Tick, string Cause);
 
