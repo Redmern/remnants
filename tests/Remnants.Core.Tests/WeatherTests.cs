@@ -23,7 +23,7 @@ public class WeatherTests
         var only = w.Kind(kind) with { Hours = [10_000, 10_000], Intensity = [1, 1] };
         var kinds = new Dictionary<string, WeatherKindDef>(w.Kinds) { [kind] = only };
         var rules = d.Rules with { DayNight = d.Rules.DayNight with { Enabled = nights } };
-        return new GameData(d.Resources.Values, d.Jobs.Values, d.Buildings.Values, rules, d.Recipes.Values, d.Progression, d.Cybernetics?.Def,
+        return new GameData(d.Resources.Values, d.Jobs.Values, d.Buildings.Values, rules, d.Recipes.Values, d.Progression, d.Cybernetics?.Def, d.Schematics,
             w with { Start = kind, Kinds = kinds });
     }
 
@@ -54,7 +54,8 @@ public class WeatherTests
         foreach (var id in Shipped.Weather.MaskItems) Assert.True(Real.Items.ContainsKey(id), id);
         var recipe = Shipped.Recipes.Values.Single(r => r.Item == "dust_mask");
         Assert.Equal("tailor", recipe.Building);
-        Assert.Null(recipe.Blueprint);
+        // Default-known: no schematic gates it (SCHEMATICS.md "The default set").
+        Assert.Null(Shipped.Schematics.GateOf(Schematics.UnlockKind.Recipe, recipe.Id));
     }
 
     // ---- the chain ----

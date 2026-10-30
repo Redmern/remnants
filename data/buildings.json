@@ -166,5 +166,32 @@
       { "cost": { "wood": 80, "stone": 60, "scrap": 10 },   "beds": 14 },
       { "cost": { "wood": 120, "stone": 90, "scrap": 30 },  "beds": 20 }
     ]
+  },
+  {
+    "id": "radio_mast", "name": "Radio Mast", "category": "Core", "unique": true, "outdoor": true,
+    "levels": [
+      { "cost": { "wood": 15, "scrap": 10 }, "workerSlots": 0 },
+      { "cost": { "wood": 40, "scrap": 25, "electronics": 5 }, "workerSlots": 0 }
+    ]
+  },
+  {
+    "id": "watchtower", "name": "Watchtower", "category": "Core", "outdoor": true,
+    "levels": [
+      { "cost": { "wood": 25, "stone": 10 }, "workerSlots": 0 },
+      { "cost": { "wood": 40, "stone": 30, "scrap": 10 }, "workerSlots": 0 }
+    ]
+  },
+  {
+    "id": "greenhouse",
+    "name": "Greenhouse",
+    "category": "Gathering",
+    "job": "farming",
+    "produces": "food",
+    "baseOutput": 0.9,
+    "minTownHallLevel": 2,
+    "levels": [
+      { "cost": { "wood": 40, "stone": 20, "scrap": 15 }, "workerSlots": 2, "outputMultiplier": 1.0 },
+      { "cost": { "wood": 70, "stone": 40, "scrap": 30 }, "workerSlots": 3, "outputMultiplier": 1.3 }
+    ]
   }
 ]

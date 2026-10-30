@@ -266,14 +266,18 @@ public partial class BuildingPanel : PanelContainer
 
         var cap = sim.MaxUpgradeLevel(def);
         var capped = def.Id != sim.Data.Rules.TownHallBuildingId && next > cap;
-        _cap.Visible = def.Id != sim.Data.Rules.TownHallBuildingId;
-        _cap.Text = capped ? $"⚠ Town Hall level {sim.TownHallLevel} allows up to level {cap}: upgrade the Town Hall first."
+        var gate = Remnants.Core.Schematics.Schematics.LevelUnlocked(sim, def.Id, next) ? null : sim.Data.Schematics.GateOfBuildingLevel(def.Id, next);
+        var gateName = gate is null ? null : sim.Data.Schematics.All[gate].Name;
+        _cap.Visible = def.Id != sim.Data.Rules.TownHallBuildingId || gate is not null;
+        _cap.Text = gateName is not null ? $"⚠ Level {next} needs the {gateName} schematic (see Items → Schematics)."
+            : capped ? $"⚠ Town Hall level {sim.TownHallLevel} allows up to level {cap}: upgrade the Town Hall first."
             : $"Town Hall level {sim.TownHallLevel} allows up to level {cap}.";
-        _cap.AddThemeColorOverride("font_color", capped ? Palette.Danger : Palette.TextMuted);
+        _cap.AddThemeColorOverride("font_color", capped || gate is not null ? Palette.Danger : Palette.TextMuted);
         var affordable = sim.State.Stockpile.CanAfford(cost);
         // Core decides; a refused upgrade explains itself in the log. The button only signals what is likely.
-        _upgrade.Disabled = capped;
-        _upgrade.TooltipText = capped ? "Needs a higher Town Hall level." : affordable ? $"Upgrade to level {next}." : "Not enough resources yet (marked with !).";
+        _upgrade.Disabled = capped || gate is not null;
+        _upgrade.TooltipText = gateName is not null ? $"Needs the {gateName} schematic."
+            : capped ? "Needs a higher Town Hall level." : affordable ? $"Upgrade to level {next}." : "Not enough resources yet (marked with !).";
     }
 
     private void Upgrade()

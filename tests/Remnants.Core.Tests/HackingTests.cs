@@ -62,7 +62,7 @@ public class HackingTests
         var hacker = Hacker(new Pos(1, 1));
         var husk = EnemyUnit("husk", new Pos(12, 12));
         var sim = Arena(14, 14, [hacker, husk], data: Rolls(1),
-            setup: (d, s) => terminal = Hacking.Place(d, s, DeviceKind.Terminal, new Pos(2, 1), ["ds_override", "manual_intrusion"]));
+            setup: (d, s) => terminal = Hacking.Place(d, s, DeviceKind.Terminal, new Pos(2, 1), ["sch_override", "manual_intrusion"]));
 
         Assert.True(Hack(sim, hacker, terminal).Ok);
         Assert.Equal(1, Hacking.ProgressOf(terminal, P1)!.Done);
@@ -71,7 +71,7 @@ public class HackingTests
         Assert.True(Hack(sim, hacker, terminal).Ok);
 
         Assert.True(terminal.Hacked && terminal.Used);
-        Assert.Contains("ds_override", hacker.Pack);
+        Assert.Contains("sch_override", hacker.Pack);
         Assert.Contains("manual_intrusion", hacker.Pack);
         Assert.Equal(14 * 14, sim.State.Explored[P1].Count);
         Assert.Contains(sim.State.Contacts, c => c.Side == P1 && c.Pos.Chebyshev(husk.Pos) <= 1);

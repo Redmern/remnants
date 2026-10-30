@@ -68,9 +68,6 @@ public sealed record QueueRecipe(int BuildingId, string RecipeId, int Count = 1,
 /// <summary>Remove an order from a building's queue; a batch in progress refunds its inputs.</summary>
 public sealed record CancelOrder(int BuildingId, int OrderId) : IColonyCommand;
 
-/// <summary>Study (use up) a blueprint item at its study building, unlocking the recipes that name it.</summary>
-public sealed record StudyBlueprint(string ItemId) : IColonyCommand;
-
 /// <summary>
 /// Nudge two adults: encourage (they bond faster), discourage (they stop bonding; a couple splits up) or neutral.
 /// </summary>
@@ -142,7 +139,7 @@ public enum CommandError
     InvalidCount,
     QueueFull,
     UnknownOrder,
-    NotABlueprint,
+    NotASchematic,
     AlreadyKnown,
     NoStudyBuilding,
     TooYoung,
@@ -186,6 +183,23 @@ public enum CommandError
     AlreadyBooked,
     UnknownSurgery,
     NoCybernetics,
+    /// <summary>Building or level gated by a schematic the colony does not know.</summary>
+    SchematicNeeded,
+    NotResearchable,
+    NotHeardOf,
+    ResearchBusy,
+    NoResearch,
+    IsResearching,
+    NoTrader,
+    NotInStock,
+    UnknownCall,
+    NoContract,
+    /// <summary>Story commands in a Sandbox colony (or without story data).</summary>
+    NoCampaign,
+    UnknownMission,
+    MissionNotAvailable,
+    NoDialogue,
+    InvalidChoice,
     NotDamaged,
     RouteBlocked,
     DronesGrounded,

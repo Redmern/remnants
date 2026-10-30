@@ -34,7 +34,7 @@ public partial class MainMenu : Control
         AddChild(_settings);
 
         // `-- --colony` skips the menu (handy with DebugCapture's --screenshot).
-        if (DebugCapture.HasFlag("--colony")) CallDeferred(MethodName.NewGame);
+        if (DebugCapture.HasFlag("--colony")) { ColonySession.Current = null; GetTree().CallDeferred(SceneTree.MethodName.ChangeSceneToFile, ColonyScene); }
         // `-- --scavenge` starts the debug mission (see ScavengeSession.DebugParty).
         else if (DebugCapture.HasFlag("--scavenge")) CallDeferred(MethodName.OnScavengePressed);
         // `-- --multiplayer` (or any --mp-host / --mp-join) opens the multiplayer menu (see MultiplayerMenu).
@@ -143,9 +143,15 @@ public partial class MainMenu : Control
         ConfirmDialog.Ask(this, "New game", "Start a new colony? The one in progress is lost unless you saved it.", "New game", NewGame);
     }
 
-    private void NewGame()
+    /// <summary>New Game asks first: Story (Pell, the radio, the missions) or Sandbox (a random colony, as before).</summary>
+    private void NewGame() => AddChild(new NewGameChoice(StartColony));
+
+    private void StartColony(bool story)
     {
-        ColonySession.Current = null; // the colony screen founds a new one
+        var session = new ColonySession(Remnants.Core.Colony.NewGame.Create(GameDataPaths.Load(), NewGameSeed, GameDataPaths.LoadScavenge()));
+        if (story) Remnants.Core.Story.Campaign.Start(session.Sim);
+        session.DetachViews();
+        ColonySession.Current = session;
         GetTree().ChangeSceneToFile(ColonyScene);
     }
 

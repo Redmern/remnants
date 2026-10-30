@@ -8,33 +8,52 @@ using Remnants.Game.Hud;
 namespace Remnants.Game.Colony.Ui;
 
 /// <summary>
-/// The colony's items by kind (with their quality), and blueprints: those studied, and those in stock with a Study
-/// button (Core checks the study building). Toggled from the top bar.
+/// The colony's items by kind (with their quality), and on a second tab the Schematics archive
+/// (<see cref="SchematicsArchive"/>). Toggled from the top bar (Items, <c>I</c>).
 /// </summary>
 public partial class InventoryPanel : PanelContainer
 {
+    private const float ItemsWidth = 340, ArchiveWidth = 580;
+
     private readonly ColonySession _session;
     private readonly VBoxContainer _items = Widgets.Column(4);
+    private readonly ScrollContainer _itemsScroll;
     private string _itemsShown = "";
-    private readonly RichTextLabel _known = Ui.Rich();
-    private readonly VBoxContainer _study = new();
-    private string _studyShown = "";
+    private readonly Button _itemsTab;
+    private readonly Button _archiveTab;
+
+    public SchematicsArchive Archive { get; }
 
     public InventoryPanel(ColonySession session)
     {
         _session = session;
-        CustomMinimumSize = new Vector2(340, 0);
+        CustomMinimumSize = new Vector2(ItemsWidth, 0);
         SizeFlagsVertical = SizeFlags.ShrinkBegin;
         Visible = false;
         var box = Ui.Panel(this);
         box.AddChild(Ui.TitleRow("Items", "ui_items", Toggle, Hotkeys.KeyName("open_items")));
-        var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, CustomMinimumSize = new Vector2(0, 320) };
+
+        var tabs = Widgets.Row(3);
+        var group = new ButtonGroup();
+        _itemsTab = Widgets.IconButton("ui_items", "Items", "The colony's stores", () => ShowArchive(false), variation: "Tab");
+        _archiveTab = Widgets.IconButton("item_schematic", "Schematics", "The Schematics archive: what the colony knows, can decrypt, has heard of",
+            () => ShowArchive(true), variation: "Tab");
+        foreach (var tab in new[] { _itemsTab, _archiveTab })
+        {
+            tab.ToggleMode = true;
+            tab.ButtonGroup = group;
+            tab.CustomMinimumSize = new Vector2(0, 28);
+            tabs.AddChild(tab);
+        }
+        _itemsTab.ButtonPressed = true;
+        box.AddChild(tabs);
+
+        _itemsScroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, CustomMinimumSize = new Vector2(0, 320) };
         _items.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        scroll.AddChild(_items);
-        box.AddChild(scroll);
-        box.AddChild(Ui.Heading("Blueprints", "item_blueprint"));
-        box.AddChild(_known);
-        box.AddChild(_study);
+        _itemsScroll.AddChild(_items);
+        box.AddChild(_itemsScroll);
+        Archive = new SchematicsArchive(session) { Visible = false };
+        box.AddChild(Archive);
     }
 
     public void Toggle()
@@ -43,37 +62,29 @@ public partial class InventoryPanel : PanelContainer
         Refresh();
     }
 
+    /// <summary>Opens the panel (if closed) on the Items or the Schematics tab.</summary>
+    public void Open(bool archive)
+    {
+        if (!Visible) Motion.Toggle(this);
+        ShowArchive(archive);
+    }
+
+    private void ShowArchive(bool archive)
+    {
+        _itemsTab.SetPressedNoSignal(!archive);
+        _archiveTab.SetPressedNoSignal(archive);
+        _itemsScroll.Visible = !archive;
+        Archive.Visible = archive;
+        CustomMinimumSize = new Vector2(archive ? ArchiveWidth : ItemsWidth, 0);
+        Size = Vector2.Zero;
+        Refresh();
+    }
+
     public void Refresh()
     {
         if (!Visible || _session.Sim.Scavenge is not { } data) return;
-        var state = _session.Sim.State;
-
-        RefreshItems(data, state.Inventory);
-
-        var unlocks = _session.Sim.Data.Recipes.Values.Where(r => r.Blueprint is not null).ToLookup(r => r.Blueprint!);
-        string Unlocks(string bp) => string.Join(", ", unlocks[bp].Select(r => r.Name));
-        _known.Text = state.KnownBlueprints.Count == 0
-            ? "[color=#999]None studied. Find them in caches in riskier zones.[/color]"
-            : string.Join("\n", state.KnownBlueprints.Select(bp => $"{Palette.Paint("✓", Palette.Good)} {data.Items[bp].Name} → {Unlocks(bp)}"));
-
-        var unstudied = state.Inventory.Counts.Keys.Where(id => data.Items[id].Kind == ItemKind.Blueprint).ToList();
-        var signature = string.Join(",", unstudied.Select(id => $"{id}:{state.Inventory.Count(id)}"));
-        if (signature == _studyShown) return;
-        _studyShown = signature;
-        foreach (var child in _study.GetChildren()) child.QueueFree();
-        foreach (var id in unstudied)
-        {
-            var bp = data.Items[id];
-            var row = new HBoxContainer();
-            var at = _session.Sim.Data.Buildings[bp.Blueprint!.StudyAt].Name;
-            var label = Ui.Label($"{bp.Name} ×{state.Inventory.Count(id)}", 13);
-            label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            label.TooltipText = $"Studied at {at} L{bp.Blueprint.MinLevel}; unlocks {Unlocks(id)}.";
-            label.MouseFilter = MouseFilterEnum.Pass;
-            row.AddChild(label);
-            row.AddChild(Widgets.IconButton("attr_intellect", "Study", $"Study at the {at} (level {bp.Blueprint.MinLevel}+)", () => _session.Execute(new StudyBlueprint(id))));
-            _study.AddChild(row);
-        }
+        if (Archive.Visible) Archive.Refresh();
+        else RefreshItems(data, _session.Sim.State.Inventory);
     }
 
     /// <summary>Items grouped by kind: icon, name, quality (stars and colour) and count.</summary>
@@ -85,11 +96,13 @@ public partial class InventoryPanel : PanelContainer
         Widgets.Clear(_items);
         var groups = inventory.Counts
             .Select(kv => (Def: data.Items[kv.Key], Count: kv.Value))
-            .Where(e => e.Def.Kind != ItemKind.Blueprint)
+            .Where(e => e.Def.Kind != ItemKind.Schematic)
             .GroupBy(e => e.Def.Kind)
             .OrderBy(g => g.Key)
             .ToList();
         if (groups.Count == 0) _items.AddChild(Widgets.Label("No items yet. Craft them or bring them back from expeditions.", "Muted"));
+        if (inventory.Counts.Keys.Any(id => data.Items.GetValueOrDefault(id)?.Kind == ItemKind.Schematic))
+            _items.AddChild(Widgets.Label("Schematic copies and chips are on the Schematics tab.", "Small"));
         foreach (var group in groups)
         {
             _items.AddChild(Widgets.SectionHeader(group.Key.ToString(), $"item_{group.Key.ToString().ToLowerInvariant()}"));

@@ -30,6 +30,7 @@ public enum ScavengeEventType
     DroneDeployed, DroneFlown, DroneRecalled, DroneLanded, Marked, PayloadDropped,
     RelayDisrupted,
     LimbLocked,
+    ObjectiveUpdated, Chatter, MissionPrompt, MissionEnded,
     WeatherChanged, Thunder, Lightning,
 }
 
@@ -118,6 +119,9 @@ public sealed class ZoneDevice
     public List<HackProgress> Progress { get; set; } = new();
     public List<Lockout> Lockouts { get; set; } = new();
 
+    /// <summary>Story missions: a script tag objectives point at ("terminal", "locker").</summary>
+    public string? Tag { get; set; }
+
     /// <summary>Whether a side other than the Network controls it.</summary>
     public bool Hacked => Controller != Unit.EnemySide;
 }
@@ -164,6 +168,12 @@ public sealed class ScavengeState
     public List<Unit> Units { get; set; } = new();
     public List<LootCache> Caches { get; set; } = new();
 
+    /// <summary>Schematics a side learned of without getting them (a failed terminal hack): side → schematic ids.</summary>
+    public SortedDictionary<string, SortedSet<string>> HeardSchematics { get; set; } = new(StringComparer.Ordinal);
+
+    /// <summary>Schematics the colony running this instance already knows (picked at half weight by enemy drops).</summary>
+    public SortedSet<string> KnownSchematics { get; set; } = new(StringComparer.Ordinal);
+
     /// <summary>Tiles each side has ever seen (map index), for fog of war. Sorted so saves are stable.</summary>
     public Dictionary<string, SortedSet<int>> Explored { get; set; } = new();
 
@@ -192,6 +202,9 @@ public sealed class ScavengeState
     public List<ZoneDevice> Devices { get; set; } = new();
     public int NextDeviceId { get; set; } = 1;
     public List<Mark> Marks { get; set; } = new();
+
+    /// <summary>A story mission's objectives, triggers and chatter (<see cref="MissionRules"/>); null on a plain run.</summary>
+    public MissionRun? Mission { get; set; }
 
     public List<ScavengeEvent> Events { get; set; } = new();
 

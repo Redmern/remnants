@@ -79,6 +79,7 @@ public static class ScavengeSession
     /// </summary>
     private static ScavengeSim DebugSim()
     {
+        if (DebugCapture.Value("--story-mission") is { Length: > 0 } missionId) return StoryMissionSim(missionId);
         ZoneConditions? conditions = null;
         if (int.TryParse(DebugCapture.Value("--hour"), out var hour))
             conditions = new ZoneConditions(Environment: ScavengeEnvironment.At(hour, Remnants.Core.Colony.DayNight.PhaseAtHour(hour, GameDataPaths.Load().Rules.DayNight)));
@@ -94,6 +95,32 @@ public static class ScavengeSession
         if (Fog.FogDemo.Requested) Fog.FogDemo.Stage(sim, LocalPlayerId);
         if (TechDemo.Requested) TechDemo.Stage(sim, LocalPlayerId);
         if (AnimDemo.Requested) AnimDemo.Stage(sim, LocalPlayerId);
+        return sim;
+    }
+
+    /// <summary>
+    /// Debug: <c>--story-mission=ID</c> plays a story mission's field script with the debug party (four for the perimeter
+    /// defense; <c>--th=N</c> picks the perimeter variant, two watchtowers built).
+    /// </summary>
+    private static ScavengeSim StoryMissionSim(string missionId)
+    {
+        var story = GameDataPaths.LoadStory();
+        var def = story.Mission(missionId) ?? throw new ArgumentException($"No story mission '{missionId}'.");
+        var th = int.TryParse(DebugCapture.Value("--th"), out var level) ? level : 2;
+        var setup = new MissionSetup(def.Field!, story.MapFor(def, th), def.Room is { } room ? story.Maps[room] : null, Towers: 2);
+        var party = DebugParty();
+        if (def.MaxParty is > 3)
+        {
+            var extra = DebugParty(colonySeed: 2)[0];
+            extra.Survivor.Id = 99;
+            party.Add(extra);
+        }
+        var sim = NewScavenge.Create(GameDataPaths.LoadScavenge(), def.Zone!, DebugSeedArg, [new PartySetup(LocalPlayerId, party)], null, setup);
+        // --rounds=N: everyone holds until round N (the wave is in sight), for screenshots.
+        if (int.TryParse(DebugCapture.Value("--rounds"), out var rounds))
+            for (var i = 0; i < 200 && sim.State.Round < rounds && sim.State.CurrentUnit is { } u && !sim.State.Finished; i++)
+                sim.Execute(sim.State.Mission?.Pending is { } p ? new ChooseOption(u.PlayerId!.Value, u.Id, p.Id, p.Options[0].Id)
+                    : u.Ap >= 1 && i % 2 == 0 ? new SetStance(u.PlayerId!.Value, u.Id, Stance.Overwatch) : new EndTurn(u.PlayerId!.Value, u.Id));
         return sim;
     }
 

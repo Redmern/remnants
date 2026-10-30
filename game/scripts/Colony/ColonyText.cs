@@ -149,6 +149,8 @@ public static class ColonyText
         : s.PatientAtBuildingId is not null ? "Patient"
         : sim.ClassOf(s) is { } study ? (study.StudentId == s.Id ? "In class: " : "Teaching: ")
             + (study.Skill is { } k ? sim.Data.SkillInfo(k).Name : sim.Data.Perks[study.PerkId!].Name)
+        : sim.State.Schematics.Research is { } r && r.ResearcherId == s.Id
+            ? $"Researching: {sim.Data.Schematics.Find(r.SchematicId)?.Name ?? r.SchematicId}"
         : s.AssignedBuildingId is { } id && sim.State.FindBuilding(id) is { } b ? sim.Data.Buildings[b.DefId].Name : "Idle";
 
     public static string BuildingName(ColonySim sim, Building b) => $"{sim.Data.Buildings[b.DefId].Name} L{b.Level}";

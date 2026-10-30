@@ -1,5 +1,6 @@
 using Remnants.Core.Items;
 using Remnants.Core.Random;
+using Remnants.Core.Schematics;
 using Remnants.Core.Serialization;
 using Remnants.Core.Survivors;
 
@@ -15,9 +16,19 @@ public sealed record PartyMember(Survivor Survivor, Dictionary<EquipSlot, string
 /// </summary>
 public sealed record PartySetup(int PlayerId, List<PartyMember> Members, int? Team = null, string? Name = null);
 
+/// <summary>
+/// A story mission's setup for <see cref="NewScavenge.Create"/>: the field script, and either a handmade
+/// <see cref="Map"/> (fixtures only, nothing random) or a fixed <see cref="Room"/> stamped into the generated zone map.
+/// <see cref="Towers"/>: how many of the map's watchtower posts are built (the colony's Watchtowers).
+/// <see cref="ExtraEnemies"/>: more fixed enemies (a retry's harder variant).
+/// </summary>
+public sealed record MissionSetup(FieldMission Mission, HandmadeMapDef? Map = null, HandmadeMapDef? Room = null, int Towers = 0,
+    List<MapEnemyDef>? ExtraEnemies = null);
+
 /// <summary>How the zone is right now: <see cref="Depletion"/> (0..1) thins out the loot caches of a picked-over zone.</summary>
 /// <summary>How a zone is found: its depletion, and the time of day and weather the run is played in (midday, clear, if null).</summary>
-public sealed record ZoneConditions(double Depletion = 0, ScavengeEnvironment? Environment = null);
+/// <see cref="KnownSchematics"/>: what the colony already knows (picked at half weight, so duplicates do not dominate).
+public sealed record ZoneConditions(double Depletion = 0, ScavengeEnvironment? Environment = null, IReadOnlyCollection<string>? KnownSchematics = null);
 
 /// <summary>
 /// Builds a scavenge instance: generates the zone map from its template and a seed, places every party
@@ -27,18 +38,27 @@ public sealed record ZoneConditions(double Depletion = 0, ScavengeEnvironment? E
 /// </summary>
 public static class NewScavenge
 {
-    public static ScavengeSim Create(ScavengeData data, string zoneId, ulong seed, IReadOnlyList<PartySetup> parties, ZoneConditions? conditions = null)
+    public static ScavengeSim Create(ScavengeData data, string zoneId, ulong seed, IReadOnlyList<PartySetup> parties, ZoneConditions? conditions = null,
+        MissionSetup? mission = null)
     {
         if (!data.Zones.TryGetValue(zoneId, out var zone)) throw new ArgumentException($"Unknown zone '{zoneId}'.", nameof(zoneId));
         ValidateParties(data, parties);
+        if (mission?.Map is { } handmade) return CreateHandmade(data, zone, seed, parties, mission, handmade, conditions);
 
         var rng = new DeterministicRng(seed);
         var generated = MapGenerator.Generate(data, zone, rng);
+        (SortedDictionary<string, List<Pos>> Markers, HashSet<Pos> Tiles)? fixedRoom = null;
+        if (mission?.Room is { } roomDef)
+        {
+            fixedRoom = HandmadeMaps.Stamp(data, generated.Map, zone, generated.SpawnAnchor, roomDef);
+            generated = generated with { Reachable = MapGenerator.Flood(data, generated.Map, generated.SpawnAnchor) };
+        }
         var env = conditions?.Environment;
         var state = new ScavengeState
         {
             ZoneId = zone.Id, Map = generated.Map,
             Environment = env is null ? new ScavengeEnvironment() : env.Copy(),
+            KnownSchematics = new(conditions?.KnownSchematics ?? [], StringComparer.Ordinal),
         };
         var map = state.Map;
         var open = generated.Reachable.Where(p => !map.IsExit(p)).OrderBy(map.Index).ToList();
@@ -125,7 +145,8 @@ public static class NewScavenge
             if (spot is null) break;
             var cache = new LootCache { Id = state.NextCacheId++, Pos = spot.Value };
             var items = rng.NextInclusive(zone.ItemsPerCache[0], zone.ItemsPerCache[1]);
-            for (var k = 0; k < items; k++) cache.Items.Add(PickWeighted(rng, lootTable, it => it.LootWeight).Id);
+            for (var k = 0; k < items; k++)
+                cache.Items.Add(SchematicDrops.Roll(data, zone, DropSite.Cache, rng, state.KnownSchematics) ?? PickWeighted(rng, lootTable, it => it.LootWeight).Id);
             state.Caches.Add(cache);
         }
 
@@ -140,11 +161,119 @@ public static class NewScavenge
         }
 
         Hacking.PlaceZoneDevices(data, state, zone, seed, anchors, generated.Reachable);
+        if (mission is not null)
+        {
+            if (fixedRoom is { } r)
+            {
+                // The fixed room holds only what the mission puts there.
+                foreach (var d in state.Devices.Where(d => r.Tiles.Contains(d.Pos)).ToList())
+                {
+                    state.Devices.Remove(d);
+                    if (d.UnitId is { } uid) state.Units.RemoveAll(u => u.Id == uid);
+                }
+                state.Units.RemoveAll(u => u.Kind != UnitKind.Survivor && r.Tiles.Contains(u.Pos));
+                state.Caches.RemoveAll(c => r.Tiles.Contains(c.Pos));
+            }
+            if (mission.Mission.ExcludeEnemyTags.Count > 0)
+                state.Units.RemoveAll(u => u.Kind == UnitKind.Enemy && u.EnemyDefId is { } e
+                                           && data.Enemies[e].Tags.Any(mission.Mission.ExcludeEnemyTags.Contains));
+            var markers = fixedRoom?.Markers ?? new(StringComparer.Ordinal);
+            markers[HandmadeMaps.SpawnMarker] = anchors.ToList();
+            AddMission(data, state, mission, mission.Room, markers);
+        }
 
         state.RngState = rng.State;
         var sim = new ScavengeSim(data, state);
         sim.Start();
         return sim;
+    }
+
+    /// <summary>A handmade map: the parties on its spawn tiles, then only the map's own fixtures.</summary>
+    private static ScavengeSim CreateHandmade(ScavengeData data, ZoneDef zone, ulong seed, IReadOnlyList<PartySetup> parties, MissionSetup mission, HandmadeMapDef def,
+        ZoneConditions? conditions)
+    {
+        var built = HandmadeMaps.Build(def);
+        var env = conditions?.Environment;
+        var state = new ScavengeState
+        {
+            ZoneId = zone.Id, Map = built.Map,
+            Environment = env is null ? new ScavengeEnvironment() : ScavengeEnvironment.At(env.Hour, env.Phase, env.Weather),
+        };
+        var map = state.Map;
+        var spawn = built.Spawns.Count > 0 ? built.Spawns[0] : map.AllPositions.First(p => data.Terrain(map[p]).Passable);
+        for (var i = 0; i < parties.Count; i++)
+        {
+            var party = parties[i];
+            // A second party (co-op) starts at the last spawn tile.
+            var anchor = i == 0 ? spawn : built.Spawns[^1];
+            var side = Unit.PlayerSide(party.PlayerId);
+            state.Parties.Add(new Party { PlayerId = party.PlayerId, Name = party.Name ?? "", Side = side });
+            var spots = map.AllPositions
+                .Where(p => data.Terrain(map[p]).Passable && !map.IsExit(p) && state.UnitAt(p) is null)
+                .OrderBy(p => built.Spawns.Contains(p) ? 0 : 1).ThenBy(p => p.DistanceSquared(anchor)).ThenBy(map.Index)
+                .ToList();
+            if (spots.Count < party.Members.Count) throw new ArgumentException($"Map '{def.Id}' has no room for player {party.PlayerId}'s party.");
+            for (var m = 0; m < party.Members.Count; m++)
+            {
+                var unit = SurvivorUnit(data, state, party.PlayerId, party.Members[m], spots[m]);
+                unit.Side = side;
+                state.Units.Add(unit);
+            }
+        }
+        AddMission(data, state, mission, def, built.Markers);
+        state.RngState = new DeterministicRng(seed).State;
+        var sim = new ScavengeSim(data, state);
+        sim.Start();
+        return sim;
+    }
+
+    /// <summary>The mission's run state, and the fixtures of its map or room at their markers.</summary>
+    private static void AddMission(ScavengeData data, ScavengeState state, MissionSetup setup, HandmadeMapDef? def, SortedDictionary<string, List<Pos>> markers)
+    {
+        var run = new MissionRun { Def = setup.Mission, MapId = def?.Id, MapHash = def is null ? null : HandmadeMaps.Hash(def), Markers = markers };
+        state.Mission = run;
+        MissionRules.Init(run);
+        List<Pos> At(string marker) => markers.TryGetValue(marker, out var tiles) ? tiles : [];
+        Pos? FreeAt(string marker) => At(marker).Where(p => state.UnitAt(p) is null && state.DeviceAt(p) is null).Cast<Pos?>().FirstOrDefault();
+        if (def is null) return;
+
+        if (def.Towers is { } towers) run.Raised = At(towers).Take(Math.Max(0, setup.Towers)).ToList();
+        foreach (var c in def.Caches)
+            if (At(c.Marker).FirstOrDefault() is var p && At(c.Marker).Count > 0)
+            {
+                var cache = state.Caches.Find(x => x.Pos == p);
+                if (cache is null) state.Caches.Add(cache = new LootCache { Id = state.NextCacheId++, Pos = p });
+                cache.Items.AddRange(c.Items);
+            }
+        foreach (var d in def.Devices)
+            if (FreeAt(d.Marker) is { } p)
+                Hacking.Place(data, state, d.Kind, p, d.Items).Tag = d.Tag;
+        foreach (var e in def.Enemies.Concat(setup.ExtraEnemies ?? []))
+        {
+            var tiles = At(e.Marker).Where(p => state.UnitAt(p) is null).ToList();
+            var patrol = (e.Patrol ?? []).Select(m => At(m).FirstOrDefault()).ToList();
+            foreach (var p in tiles.Take(e.Count > 0 ? e.Count : tiles.Count))
+            {
+                var unit = EnemyUnit(data, state, data.Enemies[e.Enemy], p);
+                unit.Tag = e.Tag;
+                if (e.Name is { } name) unit.Name = name;
+                if (e.Side is { } side) unit.Side = side == "neutral" ? Unit.NeutralSide : side;
+                unit.Patrol = patrol.ToList();
+                state.Units.Add(unit);
+            }
+        }
+        foreach (var n in def.Npcs)
+            if (FreeAt(n.Marker) is { } p)
+                state.Units.Add(HandmadeMaps.NpcUnit(state, n, p));
+        var partySide = state.Parties.Count > 0 ? state.Parties[0].Side : Unit.NeutralSide;
+        foreach (var s in def.Structures)
+            if (FreeAt(s.Marker) is { } p)
+                state.Units.Add(new Unit
+                {
+                    Id = state.NextUnitId++, Name = s.Name, Kind = UnitKind.Npc, Side = partySide, Pos = p, Hp = s.Hp, MaxHp = s.Hp,
+                    CanBeDowned = false, Tag = s.Tag, NoRecruit = true,
+                    Attributes = Enum.GetValues<AttributeKind>().ToDictionary(a => a, _ => 10.0),
+                });
     }
 
     /// <summary>How many times the zone's enemies a mission with <paramref name="players"/> parties gets (1 for one).</summary>

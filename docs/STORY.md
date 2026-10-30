@@ -596,6 +596,28 @@ keeps everything, the Radio Mast keeps giving contracts, and Marrow (or Dee) kee
 
 # Implementation outline
 
+> **Built (phases 3–4, Act 1).** Where the build differs from the outline below:
+> - **Saves:** a scavenge save keeps a copy of the whole field script, plus the map id and hash, and does not reload
+>   the map from data. A changed map in data cannot break a run in progress.
+> - **Schematic rewards** go to the schematics module (`Schematics.Grant`, source Story); story calls ring on the Radio
+>   Mast's call queue (SCHEMATICS.md "As built").
+> - **Radio Mast and Watchtower:** the Radio Mast is in the default set; the Watchtower needs `sch_watchtower` (M2's reward).
+> - **Pell:** he starts at the beginning of his childhood, so he grows up during Act 1. A starting age of 9 would make
+>   him an adult within the first week.
+> - **Colony tasks:** they are small task missions in the journal: Med Bay, bandages, a patient, Tailor, Town Hall 2,
+>   a child on the Farm.
+> - **M3:** a toolbox in the terminal room holds a hacking kit, so a first-time party can hack.
+> - **M4:** a crawler ambushes once Juniper is moved.
+> - **M5:** waves come on rounds 1, 4 and 6. Each built Watchtower level is one raised post. Up to 4 survivors may go.
+> - **Not built yet:**
+>   - the Remnant / Survivor difficulty presets;
+>   - the Codex;
+>   - co-op story missions (v1 is single-player);
+>   - the dot on the Radio Mast in the colony view (the strip under the top bar shows waiting calls instead).
+>
+> The data format is docs/story/FORMAT.md.
+
+
 For the engineers. Same rules as everywhere: all game rules in `Remnants.Core`, data-driven, deterministic, serializable,
 tested headless. Godot only shows and sends commands.
 

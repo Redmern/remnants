@@ -138,6 +138,10 @@ public enum ScavengeError
     LowBattery,
     /// <summary>The action needs a perk the unit does not have (Spotter, Payload).</summary>
     MissingPerk,
+    /// <summary>A story mission's prompt is waiting for an answer (<see cref="ChooseOption"/>).</summary>
+    ChoicePending,
+    /// <summary>No such prompt is waiting.</summary>
+    NoPrompt,
     DroneGrounded,
 }
 

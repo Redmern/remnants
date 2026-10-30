@@ -1,9 +1,10 @@
 using System.Text.Json;
+using Remnants.Core.Schematics;
 using Remnants.Core.Serialization;
 
 namespace Remnants.Core.Data;
 
-/// <summary>Loads definitions from the data/ folder (resources.json, jobs.json, buildings.json, rules.json, recipes.json, perks.json, cybernetics.json, weather.json).</summary>
+/// <summary>Loads definitions from the data/ folder (resources.json, jobs.json, buildings.json, rules.json, recipes.json, perks.json, cybernetics.json, schematics.json, weather.json).</summary>
 public static class GameDataLoader
 {
     public static GameData LoadFromDirectory(string directory)
@@ -18,7 +19,7 @@ public static class GameDataLoader
         string? Optional(string file) => File.Exists(Path.Combine(directory, file)) ? File.ReadAllText(Path.Combine(directory, file)) : null;
 
         return LoadFromJson(Read("resources.json"), Read("jobs.json"), Read("buildings.json"), Read("rules.json"), Read("recipes.json"),
-            Optional("perks.json"), Optional("cybernetics.json"), Optional("weather.json"));
+            Optional("perks.json"), Optional("cybernetics.json"), Optional("weather.json"), SchematicCatalogLoader.Files(directory).Select(File.ReadAllText).ToArray());
     }
 
     /// <summary>
@@ -27,7 +28,7 @@ public static class GameDataLoader
     /// always clear.
     /// </summary>
     public static GameData LoadFromJson(string resources, string jobs, string buildings, string rules, string recipes = "[]", string? perks = null,
-        string? cybernetics = null, string? weather = null) =>
+        string? cybernetics = null, string? weather = null, params string[]? schematics) =>
         new(
             Parse<List<ResourceDef>>(resources, "resources"),
             Parse<List<JobDef>>(jobs, "jobs"),
@@ -36,6 +37,7 @@ public static class GameDataLoader
             Parse<List<RecipeDef>>(recipes, "recipes"),
             perks is null ? null : Parse<ProgressionDef>(perks, "perks"),
             cybernetics is null ? null : Parse<CyberneticsDef>(cybernetics, "cybernetics"),
+            SchematicCatalogLoader.LoadFromJson(schematics ?? []),
             weather is null ? null : Parse<WeatherRules>(weather, "weather"));
 
     private static T Parse<T>(string json, string name)

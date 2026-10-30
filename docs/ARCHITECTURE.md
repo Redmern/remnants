@@ -31,14 +31,14 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   - `ItemInventory` — whole items the colony owns (gear, consumables, prosthetics) by item id.
   - `Expedition` + `ExpeditionHandlers` — the loop with scavenge mode (see "Colony ↔ scavenge loop" below).
   - `Medical` (`Care` formulas, `MedicalSystem`, admit/discharge/fit-prosthetic handlers) and `Crafting`
-    (`CraftingSystem`: production queues and quality rolls; queue/cancel/set-recipe/study-blueprint handlers) — see
+    (`CraftingSystem`: production queues and quality rolls; queue/cancel/set-recipe handlers) — see
     "Crafting tiers" below.
   - `Life` (`Bonds` formulas and queries, `RelationshipSystem`, `FamilySystem`, `GrowthSystem`, `Matchmake`) and
     `Relationship` (pair affinity + the player's `PairStance`) — see "Population life" below.
 - `Random/DeterministicRng` — seeded xorshift64*; its state lives in `ColonyState` / `ScavengeState`.
 - `Serialization/` — shared `System.Text.Json` options and `SaveGame` (versioned envelope).
 - `Items/ItemDef` — item definitions: kind/slot, weight, armor/dodge/initiative/AP/sight/carry
-  modifiers, a `MovementModifier`, attack `ActionDef`s, consumable `UseEffect`, `DeviceDef`, `BlueprintDef`, and for
+  modifiers, a `MovementModifier`, attack `ActionDef`s, consumable `UseEffect`, `DeviceDef`, a `Schematic` id on schematic items, and for
   quality variants `BaseId`/`Quality`.
 - `Scavenge/` — the tactical mode (headless):
   - `ScavengeData` + loader (items, enemies, zones, scavenge rules), `ScavengeDefinitions`. It derives the quality
@@ -63,6 +63,9 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   - `Network` — the Linked relay graph (groups, shared knowledge, squad focus, pylon alarm and reinforcements).
   - `ExtractionResult` per player — returned survivors (with injuries/health), recruits, deaths, loot.
   - `ScavengeSave` — versioned save/load with validation against `data/`.
+  - Story missions in the field: `FieldMission` (objectives, triggers, prompts), `MissionRules` (the rules over
+    `ScavengeState.Mission`), `HandmadeMaps` (handmade maps and fixed rooms). See "Story mode".
+- `Story/` — Story mode's campaign (see "Story mode"): `CampaignState`, `Campaign`, `Dialogue`, `StoryData` + loader.
 
 ## Game layout (`game/`)
 
@@ -261,10 +264,10 @@ models still load and fall back to tweens.
   `ColonySim.Rng`. Same seed + same commands = identical save JSON (tested).
 - **Commands only.** The UI changes the sim only via `ColonySim.Execute(IColonyCommand)`
   (`AssignJob`, `Unassign`, `Construct`, `Upgrade`, `LaunchExpedition`, `ApplyExtractionResult`, `AdmitPatient`,
-  `Discharge`, `FitProsthetic`, `SetRecipe`, `QueueRecipe`, `CancelOrder`, `StudyBlueprint`, `Matchmake`, `ChoosePerk`,
-  `StartStudy`, `CancelStudy`, `SetNightShift`, `InstallFloodlight`, `RepairBuilding`). Core validates and returns a `CommandResult`
+  `Discharge`, `FitProsthetic`, `SetRecipe`, `QueueRecipe`, `CancelOrder`, `Matchmake`, `ChoosePerk`,
+  `StartStudy`, `CancelStudy`, `SetNightShift`, `InstallFloodlight`, `RepairBuilding`; schematics: `StartResearch`, `CancelResearch`, `SalvageSchematic`, `CopySchematic`, `BuyFromTrader`, `SellToTrader`, `AnswerCall`, `AcceptContract`). Core validates and returns a `CommandResult`
   with a `CommandError` code. This is also the future client→server intent format.
-- **Tick order:** production (+training) → crafting → study → medical → food → day/night (sleep, night work, evenings) → weather (mood, dust, lightning) →
+- **Tick order:** production (+training) → crafting → study → research → medical → food → day/night (sleep, night work, evenings) → weather (mood, dust, lightning) →
   relationships (mood, affinity, couples) →
   family (births, conception) → housing → growth (aging, growing up).
 - **Scavenge commands** (`Move`, `Attack`, `UseItem` (on a unit, or a tile with `At`), `PickUp`, `Recruit`, `SetStance`
@@ -332,7 +335,7 @@ Each node is a prosthetic item of the same id (validated both ways) made by the 
   missing parts on load, so older bodies gain healthy eyes.
 - **Tree** (`Cybernetics.Status(sim, node)` → Locked / Available / Known with the missing lines, recipe, owned and fitted
   counts): a way in (one requirement known — `ColonyState.KnownCybernetics`, filled from crafted, owned, fitted and booked
-  parts each tick; tier 0 always — or the node's blueprint studied), the node's perk on someone at home, and the recipe's
+  parts each tick; tier 0 always — or, for tiers with `schematicSkips`, the tier schematic known), its tier and spec schematics known, the node's perk on someone at home, and the recipe's
   building level. `Cybernetics.CraftGate` makes `QueueRecipe` / `SetRecipe` answer `RecipeLocked` until then.
 - **Surgery** (`ScheduleSurgery`, `CancelSurgery`; `ColonyState.Surgeries`): the patient holds a bed; each Med Bay works
   its first booking with `Cybernetics.EffortPerTick` and medicine; `Blocked` says why not (no medic, no Cyber-Surgeon for
@@ -410,7 +413,7 @@ All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `fo
   electronics (Intellect+Creativity). Effort per tick is the usual job output formula, and working trains the job.
 - **Recipes** (`data/recipes.json`): building, min level, work, resource `inputs` and item `itemInputs` (any quality of
   that item counts, worst first), one item or resource output with an amount, optional `minSkill` (some worker needs
-  that much of the job's skill) and optional `blueprint`.
+  that much of the job's skill); a schematic in `schematics.json` may gate it, and `learns` marks the synthesized Decrypt orders.
 - **Queue**: each production building holds up to `crafting.maxQueue` orders (`QueueRecipe(building, recipe, count |
   repeat)`). Each tick it works one order: the first already paid, else the first that can start (skill + inputs), which
   is then paid. A finished batch decrements a counted order (removed at zero); a repeating order goes to the back, so it
@@ -425,9 +428,7 @@ All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `fo
   carry bonuses, plus an action's `bane` (its damage bonus and armor pierce) and `qualityAccuracy` (accuracy per point
   of multiplier: the Linked carbine's 0.4 makes Fine +0.10, Crude −0.08). Variants are ordinary item ids, so
   inventory, expeditions, profiles and saves need nothing special.
-- **Blueprints**: `Blueprint` items (`blueprint.studyAt` + `minLevel`) drop from caches in tier 2–3 zones (the zone
-  loot table is every item with a loot weight at or below the zone's loot tier). `StudyBlueprint(item)` uses one up at
-  a study building of that level and adds it to `ColonyState.KnownBlueprints`; recipes naming it can then be queued.
+- **Schematics** replaced blueprints (see "Schematics" below and SCHEMATICS.md).
 - **Kitchen meals**: `food.meals` (best first) are eaten before raw food; one unit covers `foodValue` food of the need
   and adds `moodPerTick` / `healthPerTick`. Simple Meals turn 4 food into 6 food's worth; Hearty Stew (L2) adds more
   mood and healing.
@@ -440,12 +441,15 @@ All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `fo
   `pendingResult`, `returnTick`); version 4 and older load with zones as the data starts and an expedition already in
   its zone. Scavenge saves are version 2 (alarm, reinforcement waves, suppression); version 1 loads. Colony version 6 /
   scavenge version 3 add the fog of war (see "Fog of war").
-- **Saves (v4)**: version 4 stores queues, `NextOrderId` and `KnownBlueprints`. Older saves migrate: a building's
+- **Saves (v4)**: version 4 stores queues, `NextOrderId` and the studied blueprints (version 15 turns them into schematics). Older saves migrate: a building's
   `recipeId`/`craftProgress`/`craftPaid` becomes one repeating order, and the old generic `blueprint` item becomes
   `bp_scanner` (`SaveGame.LegacyBlueprintItem`).
 - **UI**: selecting a production building shows `ProductionPanel` (queue with progress and cancel, recipe picker with
-  ×1/×5/repeat, locked reasons, inputs, quality odds). The top bar's Items button opens `InventoryPanel` (items by kind
-  and quality, studied blueprints, Study buttons). Buildings render `{type}_l{level}` models, falling back to the
+  ×1/×5/repeat, locked reasons, inputs, quality odds; Decrypt orders while their chip is in the stores). The top bar's
+  Items button opens `InventoryPanel`: items by kind and quality, and the Schematics tab (`SchematicsArchive`: every
+  schematic by category with Known / To decrypt / Heard of / Unknown / Coming, Copy, Decrypt, Salvage; see SCHEMATICS.md).
+  The Town Hall shows `ResearchPanel` (running research, researcher picker, heard-of schematics with Start), the Radio
+  Mast `RadioPanel` (tabs from `RadioPanel.Tabs`: Calls, Trader, Contracts). Buildings render `{type}_l{level}` models, falling back to the
   nearest lower level.
 
 ## Fog of war
@@ -618,7 +622,7 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
   jammed) for that many rounds. The Linked carbine carries one against `network`; the Linked themselves carry the same
   carbine, but nothing they shoot is tagged, so it does not make them stronger.
 - **Drops**: a killed enemy leaves only what its `enemies[].drops` roll (each `{item, chance}` on its own, from the sim
-  RNG), never its equipment: a Linked sometimes its carbine or the carbine blueprint, a Warden more often.
+  RNG), never its equipment: a Linked sometimes its carbine or a schematic, a Warden more often (at most one schematic per kill).
 - **Signal jammer** (Tool device): a Linked inside a hostile jammer's radius is off the Network — no sharing, no
   coordination, fights like a Husk — and pylons inside it go offline (no relay, no reinforcements).
 - **Enemy variants** are data (`enemies.json` + `natural` items): Husk; Husk Crawler (fast, low HP, dodgy "low profile"
@@ -661,11 +665,11 @@ All numbers live in `data/perks.json` (`skills`, `xp`, `study`, `disciplines`, `
   `perLevel·(L−1) + perLevelStep·(L−1)(L−2)/2` XP; each level gives `pointsPerLevel` points and logs `LevelUp`.
   `ColonySim.GrantXp(survivorId, amount, source)` is the entry point for XP from outside the tick (the scavenge side).
 - **Perks** (`PerkDef`): discipline, tier, cost, `requires` (skills, attributes, perks, survivor level, a building at a
-  level, a studied blueprint/**datashard** item, adults only) and `effects`. `ColonySim.PerkStatus(s, perk)` says
-  Owned / Locked (datashard not studied) / MissingPrerequisites (with lines for the tooltip) / NoPoints / Ok.
+  level, adults only; a schematic in `schematics.json` may gate it — the old datashards are technique schematics) and `effects`. `ColonySim.PerkStatus(s, perk)` says
+  Owned / Locked (its schematic unknown) / MissingPrerequisites (with lines for the tooltip) / NoPoints / Ok.
   `ChoosePerk(survivor, perk)` spends points; errors `UnknownPerk`, `AlreadyHasPerk`, `PerkLocked`,
-  `PerkRequirementsNotMet`, `NoPerkPoints`. Datashards (`ds_network_ghost`, `ds_override`, `ds_drone_payload`) are
-  Blueprint items: studied with `StudyBlueprint` at the Electronics Lab like any blueprint, they unlock perks.
+  `PerkRequirementsNotMet`, `NoPerkPoints`.
+  Technique schematics (`sch_network_ghost`, `sch_override`, `sch_drone_payload`) unlock perks.
 - **Effects**: `jobOutput` (job id → bonus; a `perks` factor in `JobOutput.PerTick` and Med Bay care), `craftQuality`
   (job id → added to the quality score when this survivor is the building's best worker), `studySpeed`, `xpBonus`, and
   `hooks` for the scavenge mode. `PerkEffects.For(survivor, data)` (or `ColonySim.PerkEffects(s)`) sums a survivor's
@@ -796,6 +800,113 @@ An hour is a tick (`hour = tick % ticksPerDay`); a new game starts at `newGame.s
   phase, after a fast-forward and after a load), or `DayNight.PhaseAt(tick, rules)` in Core — not on raw hours.
   `ColonyAudio.IsNight(DayPhase)` does: the night bed and music for Night, the day ones for Dawn, Day and Dusk.
 
+## Schematics
+
+Design and numbers: SCHEMATICS.md (its "As built" lists where the build differs). Core: `src/Remnants.Core/Schematics/`,
+self-contained; data: `data/schematics.json` (+ `schematics.<feature>.json` extensions).
+
+- **Catalogue** (`SchematicDefs.cs`): `SchematicDef` (id, name, find tier 1–4, `encrypted`, `default`, `planned`,
+  `unlocks` of kind Building / BuildingLevel / Recipe / Perk / Prosthetic `tier:N`|`spec:ID` / Vehicle, `sources`,
+  `storyMissions`), `SchematicRules`, `TraderDef`. `SchematicCatalog` indexes it both ways (`GateOfRecipe`,
+  `GateOfBuildingLevel`, `GateOfPerk`, `GateOf(kind, id)`) and is shared by `GameData.Schematics` and
+  `ScavengeData.Schematics`; `ScavengeData` makes one `ItemKind.Schematic` item per schematic (same id), and
+  `GameData` one Decrypt recipe (`decrypt:<id>`, `RecipeDef.Learns`) per encrypted one. Nothing gated = default set.
+- **API** (`Schematics.cs`, for the story campaign and others): `Grant(colony, id, source)` (learn now; known → its
+  duplicate value in Research Data), `Receive` (a copy reached home: plain → learned, encrypted → a chip in the inventory
+  for a Decrypt order, known → Research Data), `Has`, `HearOf(colony, id, where)`, `Status`, `RecipeUnlocked`,
+  `PerkUnlocked`, `LevelUnlocked`, `MakeCopy`. `ColonySim.SchematicUnlocked` fires on every learn (also logged).
+- **Gates**: `Construct` / `Upgrade` fail with `SchematicNeeded`; `CraftingHandlers.CheckRecipe` with `RecipeLocked`;
+  `Progression.Status` locks perks; `Cybernetics.Missing` adds the tier and spec schematics (`TierGate`, `SpecGate`).
+- **Field** (`SchematicDrops.cs`): each cache / locker / terminal item first rolls the site's chance at the zone's
+  find tier (its threat) and picks from the `Loot` (or `Terminal`) pool: tier ≤ zone, own tier ×2, known ×½
+  (`ScavengeState.KnownSchematics`, from `ZoneConditions`). Enemy drops: first schematic hit only. A failed terminal hack
+  records its schematics in `ScavengeState.HeardSchematics`. `ExtractionResult.HeardOf` (seen but left behind) and
+  `SharedSchematics` (co-op: allies on the side who got out share their copies) go home; `ExpeditionHandlers.Stow`
+  calls `Receive` for each schematic item in the packs; the report lists `Schematics` (id → outcome).
+- **Research** (`SchematicCommands.cs`, `Research`): `StartResearch(id, researcher)` / `CancelResearch`; one order at a
+  time in `SchematicsState.Research`, run after study in the tick. `SalvageSchematic` turns a chip into Research Data.
+- **Radio Mast** (`RadioMast.cs`, run after the world map each tick): the call queue (`Enqueue`, `Calls`, the
+  `AnswerCall` command → `ColonySim.RadioCallAnswered`, `RadioCallReceived`), trader visits (`TraderAvailable`, stock
+  rolled from unknown `Trade` schematics, `BuyFromTrader`, `SellToTrader`, `SetTrader` for Story mode) and contracts
+  (`AcceptContract`; paid by `RadioMast.PartyHome`). `TradeValues` gives reference values in scrap.
+- **Saves**: colony version 15 (`ColonyState.Schematics`, `ColonyState.Radio`); `SaveGame.MigrateSchematics` renames
+  `bp_*`/`ds_*` to `sch_*`, grants every newly gated schematic the colony was already using (levels it has, queued
+  recipes, Camo Cloak / Grappling Hook with Tailor / Workshop L2, the tiers and specs of cybernetics designs it knows,
+  owns or has fitted), learns plain schematic items in stock, turns known copies into Research Data, sets `Migrated`.
+- Tests: `SchematicsTests.cs` (data rules incl. no story-only schematic, the default set, learning and decrypting,
+  gates, research, trader and calls, contracts, drops, migration, copies and trade values).
+## Story mode
+
+The spec is STORY.md. The data format, field by field, is docs/story/FORMAT.md. Core: `Story/` (campaign) and
+`Scavenge/FieldMission.cs`, `MissionRules.cs`, `HandmadeMaps.cs` (the field side, which runs without the Story module).
+
+- **Data** (`data/story/`, `StoryDataLoader`, `StoryData.Validate`): `characters.json`, `missions/*.json` (campaign
+  order), `dialogue/*.json`, `maps/*.json`. `ColonySim.Story` holds it; the game sets it on every colony, a Sandbox one
+  never uses it.
+- **Campaign** (`ColonyState.Campaign`, null = Sandbox): mission progress (Locked / Available / Active / Done(outcome) /
+  Failed(retry tick)), flags, characters, the radio inbox, the open dialogue, the dialogue log, the last debrief.
+  `Campaign.Start` makes a fresh colony a Story game: one starting child becomes Pell (`Survivor.UniqueId`).
+  `Campaign.Tick` runs after the colony tick and the world map: retries come back, missions whose `requires` hold
+  unlock in data order and queue their briefing call, and colony missions (M1, the colony tasks) check their
+  objectives. A scene objective calls once the others are done, at its time of day.
+- **Field missions**: `LaunchStoryMission(mission, members)` launches through the expedition rules (a mission may allow
+  a bigger party) and tags `Expedition.MissionId`. `OpenExpeditionScavenge` builds the run from `Campaign.Setup`: the
+  script, the handmade map (perimeter variant by Town Hall level), the fixed room, the watchtower posts, a retry's
+  extra enemies. `ApplyNow` hands the `ObjectiveResult` to `Campaign.Returned`, which adds the field flags and then
+  pays rewards (done), applies the fail branch (failed), or leaves the mission open (left early).
+- **Rewards**: schematics through `Campaign.GrantSchematic` → `Schematics.Grant(colony, id, SchematicSource.Story)` (a
+  known one pays its duplicate value in Research Data, the `research_data` resource; `ResearchData` effects add to it
+  too). Features not built yet (vehicles) grant the schematic and a `Fallback` reward. Story saves before colony
+  version 15 hand the campaign's own schematics and Research Data flag to the module on load.
+- **Calls ring on the Radio Mast**: `Campaign.QueueCall` records the call in the campaign (`Inbox`: which dialogue it
+  opens, when) and, once its time comes, `RadioMast.Enqueue`s it (kind Story, tag `story:<callId>`, `RadioCall.Rung`).
+  Answering it there (`AnswerCall` → `ColonySim.RadioCallAnswered` → `Campaign.Answered`) opens the dialogue like
+  `TakeCall`; taking it from the story HUD clears it from the mast's queue.
+- **Dialogue** (`Dialogue`): graphs of lines with up to three choices. Node effects apply when a line is shown, choice
+  effects when it is picked; conditional lines and choices use `ConditionDef`. Placeholders are resolved in Core.
+  Commands: `TakeCall`, `AdvanceDialogue`, `ChooseDialogue`; the UI only renders `Dialogue.View`.
+- **In the field** (`MissionRules`, `ScavengeState.Mission`): objectives (reach, hack, retrieve, escort, aid,
+  survive, defend, kill tag, undetected) are re-checked after every command and AI turn. Triggers fire once each: on
+  start, round, area entered, objective done or failed, item picked up, a tagged unit seen, alarm, prompt chosen.
+  Their actions are spawn, chatter, activate / complete / fail, field flags, change sides, follow, prompt, split the
+  loot and wake. A prompt blocks every command but `ChooseOption`. A mission at home (`AtHome`, the perimeter defense)
+  ends the run when it is done or failed, with everyone still standing home. Story units carry `Unit.Tag`,
+  `CharacterId` (never a colony recruit; they come back in `ObjectiveResult.Escorted`), `NoRecruit`, `Patrol` and
+  `Raised` (a watchtower post: + sight and detection, `scavenge.json` `story`). Structures (the Radio Mast) are units
+  on the party's side that take no turns. Neutral bands (the Tally) take no turns until a trigger makes them hostile
+  (`band:<tag>`, a foe to everyone).
+- **Maps** (`HandmadeMaps`): an ASCII grid plus a legend of named markers. Fixtures sit at markers: caches, devices,
+  enemies with patrols, NPCs, structures, towers. `Validate` checks the grid, the fixtures and that every tile can be
+  reached (doors count as passable). `Stamp` puts a fixed room into a generated map: a ring of floor round it, paths cut
+  to the spawn and every exit, and no random fixtures inside. `NewScavenge.Create(..., MissionSetup)` takes either a
+  handmade map or a generated map with a room. A raid system can pass its own `HandmadeMapDef` built from the colony
+  layout.
+- **Saves**: colony version 14 (13 is held by the schematics branch; `Campaign`, `Survivor.UniqueId`, `Expedition.MissionId`), scavenge version 8
+  (`Mission`: the whole field script is copied in, plus the map id and `HandmadeMaps.Hash`; units' and devices' story
+  fields). Older saves load as Sandbox and as plain runs. Day-night, prosthetics and schematics take versions too;
+  whichever merges later renumbers.
+- **Game** (`game/scripts/Story/`):
+  - `StoryHud` in the colony HUD: a strip under the top bar (radio with waiting calls, journal, next objective),
+    `RadioPanel`, `JournalPanel`, `BriefingPanel` (Plan the party → the expedition planner in mission mode),
+    `DebriefPanel`, and `DialoguePanel` (portrait by character id and mood, radio frame variant, typewriter, choices
+    1–3 with hints, Skip, log). Colony time pauses while a dialogue is open.
+  - `StoryArt` resolves portraits, markers and frames from `assets/generated`.
+  - `WorldMapPanel` draws gold / hollow diamonds on zone edges (pulsing while new), radio waves at the colony, Marrow's
+    truck on its road, and a story section on the zone card.
+  - In the scavenge HUD: `MissionPanel` (objectives with progress), `ChatterStrip`, the prompt as a `DialoguePanel`,
+    and `ObjectiveMarkers` (beams on objective tiles, watchtower posts).
+  - New Game asks Story or Sandbox (`NewGameChoice`).
+  - Debug: `--story` (with `--colony`), `--story-demo=radio|dialogue|worldmap|briefing|journal`,
+    `--scavenge --story-mission=ID [--th=N] [--rounds=N]`.
+- **Playtest**: `--story [--prompt=N]` plays a Story game. The colony bot takes calls (first choice), builds the Radio
+  Mast and a Watchtower, and launches open story missions; `StoryBot` plays them by their objectives. See BALANCE.md
+  "Story Act 1 pass".
+- **Tests**: `StoryDataTests` (data valid, rewards are catalogue schematics, maps connected, door passable, room
+  stamping), `CampaignTests` (Pell, M1 → M2 with the dusk scene, unlock order, fail and retry, failed-for-good, rewards
+  through the schematics module, calls on the Radio Mast, leaving early, saves mid-campaign and mid-mission, perimeter variants and towers),
+  `DialogueTests` (choices, effects, conditions, conditional lines, placeholders, Sandbox), `ObjectiveTests` (each kind
+  passes and fails; triggers once; prompts block and branch; patrols; wipe; determinism).
+
 ## Weather
 
 Colony and world in `data/weather.json`, field effects in `scavenge.json environment.weather` (same ids); Core is
@@ -842,7 +953,7 @@ Colony and world in `data/weather.json`, field effects in `scavenge.json environ
   works), `relayRangeMultiplier` (`Network.Groups`), `thunderChance`, `lightningChance`. Rain: shorter hearing and flares,
   a little stealth; fog: sight much lower; dust: sight and aim down, drones grounded, the Linked's links halved, Husks unaffected
   (their sight stays, and they see through its stealth); thunderstorm: rain plus thunder, lightning and grounded drones.
-  Scavenge save 8, colony save 13.
+  Scavenge save 9, colony save 16.
 - **Presentation** (no rules): `WeatherView` (made by `ColonyScreen` and `ScavengeScreen`) keeps GPU particles (rain
   streaks, dust puffs, debris) over the ground point the camera looks at, grades the time of day's `SkyLook`
   (`DayNightLighting.Weather`: wet and dark under rain, grey overcast, a brown cast and haze in dust, ground mist
@@ -859,6 +970,8 @@ Colony and world in `data/weather.json`, field effects in `scavenge.json environ
 ## Data files
 
 - `resources.json` — resource ids and names.
+- `schematics.json` — the schematics catalogue, traders and the rules of drops, decrypting, research, the radio,
+  copies and trade values; `schematics.<feature>.json` add entries (see "Schematics").
 - `jobs.json` — per job: skill + weight, attribute weights, body-region weights, tool bonus, `childrenAllowed`.
 - `buildings.json` — category, job, produced resource, base output (per worker-hour on shift), `outdoor` (a Night Shift
   needs light), `minTownHallLevel`, and per-level
@@ -877,7 +990,7 @@ Colony and world in `data/weather.json`, field effects in `scavenge.json environ
   flares and motion sensors (`use.lightRadius`/`lightRounds`, `use.sensorRadius`: used on a tile),
   consumables (med-kit, bandage, evac beacon), materials (with `salvage` into colony resources; cybernetic components),
   prosthetics (region — `Head` for eye implants — quality, Med Bay level; the field stats, attacks, move modes or hacking
-  tool of a fitted part), devices (scanner, signal jammer), blueprints (study building and level);
+  tool of a fitted part), devices (scanner, signal jammer);
   tier + loot weight for caches; `natural` for enemy body parts (never looted or crafted). Every other item has a
   recipe or a loot weight (tested).
 - `enemies.json` — hp, AI kind, attributes, skills, equipment (a Husk's claws are an item too), `tags` (for weapon
@@ -922,7 +1035,10 @@ drone scouting (saves its own still with `--screenshot`), `--fog-demo` (with `--
 screenshots); `--scavenge --zone=ID --seed=N` plays the debug mission in another zone, `--multiplayer` opens the multiplayer menu and
 `--mp-host[=PORT]` / `--mp-join=ADDR` with `--mp-name`, `--mp-ready`, `--mp-coop`, `--mp-team=N`, … script it (see `MULTIPLAYER.md`), `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG (any scene). Day and night: `--night-demo` (the demo town two days on, a Floodlight and the Night Shift on the Woodcutter,
 selected), `--hour=H` runs to the next H:00, pauses and puts sleepers indoors, `--no-select` clears the selection for
-scenery shots. HUD shots: `--pause-menu`, `--settings`, `--build-menu`, `--select-survivor=ID`, `--survivor-tab=N` (colony), `--menu-settings` (main menu). Needs a display; on
+scenery shots. Schematics: `--schematics-demo` (the crafting town plus a Radio Mast, a Lab L2, known / heard-of / encrypted
+schematics, a research running and the trader parked) with `--archive [--archive-filter=known|todecrypt|heard|unknown]`,
+`--research` (selects the Town Hall), `--radio=calls|trader|contracts` (selects the Radio Mast) and `--collapse-log`.
+HUD shots: `--pause-menu`, `--settings`, `--build-menu`, `--select-survivor=ID`, `--survivor-tab=N` (colony), `--menu-settings` (main menu). Needs a display; on
 Wayland pass `--display-driver wayland --disable-vsync` so an unfocused window still renders:
 
 ```sh

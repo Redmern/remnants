@@ -1,0 +1,28 @@
+{
+  "id": "ruins_house",
+  "zone": "suburb_ruins",
+  "room": true,
+  "rows": [
+    "###.####",
+    "#....=.#",
+    "#.=..j.#",
+    "#......#",
+    "#..%...#",
+    "#.....=#",
+    "##.#####"
+  ],
+  "markers": {
+    "j": "scout"
+  },
+  "npcs": [
+    {
+      "name": "Juniper",
+      "marker": "scout",
+      "tag": "juniper",
+      "character": "juniper",
+      "hp": 30,
+      "noRecruit": true,
+      "sex": "Female"
+    }
+  ]
+}

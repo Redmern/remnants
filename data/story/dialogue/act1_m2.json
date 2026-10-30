@@ -1,0 +1,48 @@
+[
+  {
+    "id": "m2_first_light", "mode": "Radio", "caller": "iris", "title": "First Light",
+    "nodes": [
+      { "id": "a", "speaker": "narration", "text": "(The Radio Mast crackles. Pell is on the stool beneath it, headphones far too big.)", "next": "b" },
+      { "id": "b", "speaker": "pell", "text": "It's doing the thing again. The hissing thing.", "next": "c" },
+      { "id": "c", "speaker": "iris", "text": "—anyone on this band, this is Lantern. If you can hear me, don't answer on this channel. Switch to four-four.", "next": "d" },
+      { "id": "d", "speaker": "pell", "text": "She said four-four. Is that a number or a — okay, okay, I got it.", "next": "e" },
+      { "id": "e", "speaker": "iris", "text": "...Huh. Okay. Hi. You're the first voice I've heard in two years that wasn't singing.", "next": "f" },
+      { "id": "f", "speaker": "player", "text": "", "choices": [
+        { "text": "Who are you?", "next": "f1" },
+        { "text": "Who's singing?", "next": "f2" },
+        { "text": "We don't have time for this. What do you want?", "next": "f3" }
+      ] },
+      { "id": "f1", "speaker": "iris", "text": "Someone with a radio and a lot of free time. Call me Lantern.", "next": "g" },
+      { "id": "f2", "speaker": "iris", "text": "Channel nine. The Linked. They do it when the Network is thinking. Don't listen to it for long.", "next": "g" },
+      { "id": "f3", "speaker": "iris", "text": "Fair. Straight to business. I like you already.", "next": "g" },
+      { "id": "g", "speaker": "iris", "text": "Your signal's weak. There's a relay shed on your doorstep, north of the gardens. Dead Network hardware, but the antenna's good.", "next": "h" },
+      { "id": "h", "speaker": "iris", "text": "Bring it home and I can reach you anywhere in the valley. And I can send you things.", "next": "i" },
+      { "id": "i", "speaker": "pell", "text": "What kind of things?", "next": "j" },
+      { "id": "j", "speaker": "iris", "text": "Plans, kid. How to build stuff. First lesson's free.", "next": "k" },
+      { "id": "k", "speaker": "iris", "text": "Take two people. Weapons. Pick up the antenna, walk out the way you came. That's the whole job." }
+    ]
+  },
+  {
+    "id": "m2_debrief", "mode": "Radio", "caller": "iris", "title": "Antenna's Up",
+    "nodes": [
+      { "id": "a", "speaker": "iris", "text": "Okay. Antenna's up. Oh, that's clean. I can hear your mast hum.", "next": "b" },
+      { "id": "b", "speaker": "iris", "text": "I put a little extra on the line for you. Watchtower plans. If the shed heard you, something else did too.", "next": "c" },
+      { "id": "c", "speaker": "pell", "text": "Is that the free lesson?", "next": "d" },
+      { "id": "d", "speaker": "iris", "text": "That's the free lesson. Next ones cost you a favour.", "next": "e" },
+      { "id": "e", "speaker": "player", "text": "", "choices": [
+        { "text": "What kind of favour?", "next": "e1" },
+        { "text": "Where are you, Lantern?", "next": "e2" }
+      ] },
+      { "id": "e1", "speaker": "iris", "text": "The kind where you go places I can't. Not today. Build yourselves a Med Bay. Somebody's going to need it.", "next": "f" },
+      { "id": "e2", "speaker": "iris", "text": "Underground. Safe. Bored. Next question.", "next": "f" },
+      { "id": "f", "speaker": "iris", "text": "And put a kid on the farm. Small hands, big harvest. That's not a saying. I just made it up. Lantern out." }
+    ]
+  },
+  {
+    "id": "m2_retry", "mode": "Radio", "caller": "iris", "title": "The Shed, Again",
+    "nodes": [
+      { "id": "a", "speaker": "iris", "text": "You alive? ...Good. The antenna's still there. Problem is, so is everything that heard you.", "next": "b" },
+      { "id": "b", "speaker": "iris", "text": "The shed's full now. More Husks inside. Go slower this time. Watch the loop." }
+    ]
+  }
+]
