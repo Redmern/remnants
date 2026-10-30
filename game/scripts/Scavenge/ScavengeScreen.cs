@@ -34,6 +34,7 @@ public partial class ScavengeScreen : Node3D
     private CoopPanel _coopPanel = null!;
     private ScavengeLog _log = null!;
     private ResultPanel _result = null!;
+    private Audio.ScavengeAudio _audio = null!;
 
     private int? _selectedId;
     private int? _lastActingId;
@@ -72,6 +73,9 @@ public partial class ScavengeScreen : Node3D
         _devices.Setup(_presenter, models);
 
         BuildHud();
+        _audio = new Audio.ScavengeAudio { Name = "Audio" };
+        AddChild(_audio);
+        _audio.Setup(_presenter, _camera, _hud);
         Wire();
         SelectActing();
         _camera.Focus(PartyCentre());
@@ -324,6 +328,7 @@ public partial class ScavengeScreen : Node3D
                 {
                     _log.Event(e);
                     _fog.Incoming(e);
+                    _audio.Step(e);
                     // Follow what others do in sight (enemy turns, recruits) so it never happens off screen.
                     if (e.Type is ScavengeEventType.Moved or ScavengeEventType.Attacked or ScavengeEventType.Missed
                         && e.UnitId is { } actor && _presenter.State.FindUnit(actor) is { } u && u.PlayerId != _presenter.PlayerId

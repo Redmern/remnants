@@ -46,6 +46,9 @@ public partial class ColonyScreen : Node3D
         BuildHud();
         Wire();
         RefreshAll();
+        var audio = new Audio.ColonyAudio { Name = "Audio" };
+        AddChild(audio);
+        audio.Setup(_session, layout, camera, _hud);
 
         if ((DebugCapture.HasFlag("--demo") || DebugCapture.HasFlag("--family-demo")) && _session.Sim.State.Tick == 0) RunDemo();
         if (DebugCapture.HasFlag("--family-demo")) RunFamilyDemo();
