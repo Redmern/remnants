@@ -621,3 +621,99 @@ Watch next pass: T1 at day ~80 feels late for the first amputee (Workshop 2 wait
 bot's order); the runner pair dominates every kit because the bot's answer to danger is running; humanity strain on
 couples is unmeasured in sweeps (no bot augments), so its rates (`partnerStrainPerTick` 0.05, breakup below 40) are a
 first guess.
+
+## Weather pass
+
+Weather is a seeded Markov chain of spells per region (`data/weather.json`, `Colony/Weather.cs`), on whenever the
+file is present, so every colony sweep now runs with it. At home: rain slows outdoor work ×0.9 and waters the farm ×1.3;
+a thunderstorm ×0.7 outdoors, costs mood and can strike a building with lightning (half output until repaired for 6
+wood + 3 scrap); fog costs a little mood; a dust storm ×0.3 outdoors (×0.65 with a dust mask), keeps children in, burns
+unmasked outdoor workers' health and the crop ×0.6. On the road: storms add days, a dust storm closes routes two days or
+more out. In the field (`scavenge.json environment.weather`): rain and storms cut hearing (×0.6 / ×0.5) and flare time,
+storms add thunder (no footsteps) and lightning (everyone seen); fog halves people's sight and gives +10 stealth; a dust
+storm cuts sight hard (people ×0.45, Linked ×0.6), +10 stealth except to Husks, −15% ranged hit chance, grounds drones
+and halves relay range.
+
+The bot now copes with it: it waits when a dust storm closes the route (`RouteBlocked`) rather than picking another zone,
+packs `ArrivalPlan.ExtraRationsPerMember` (the wait for dawn plus weather delays), repairs struck buildings as soon as
+it can afford to, and has the Tailor make two dust masks. The colony report adds a line for the weather at home,
+lightning strikes and repairs. Zone trials take `--weather=KIND[,KIND...]|all` (held for the whole run at intensity
+0.8, no changes mid-run), and `--hour` takes a list too; the two sweep every combination.
+
+```sh
+dotnet run --project tools/Remnants.Playtest -- --data=data --seeds=1..40 --days=60 --quiet                    # weather on
+dotnet run --project tools/Remnants.Playtest -- --data=NOWEATHER --seeds=1..40 --days=60 --quiet               # data/ copy, weather.json "enabled": false
+dotnet run --project tools/Remnants.Playtest -- --data=data --zone=suburb_ruins --runs=300 --hour=12,23 --weather=all
+```
+
+### Colony sweep
+
+40 seeds × 60 days, weather off → on (same bot, same Core; days are medians over the colonies that got there):
+
+| | weather off | weather on |
+|---|---|---|
+| median population at day 60 | 7 | 7 |
+| starvation deaths / departures | 0 / 36 | 0 / 36 |
+| expedition deaths | 22 over 671 runs | 23 over 660 runs |
+| births | 76 | 74 |
+| min food stock (days of need, median) | 3.8 | 3.8 |
+| Town Hall 2 / House affordable (median day) | 31.5 / 48.4 | 32.6 / 49.3 |
+| Armory / Electronics Lab (median day) | 51.5 / 59.3 | 50.5 / 59.0 |
+| first pregnancy / first birth (median day) | 35 / 39 | 31 / 34 |
+| weather at home | — | clear 47%, overcast 31%, rain 15%, fog 4%, thunderstorm 3%, dust storm 1% |
+| lightning strikes / repairs | — | 37 / 36 (0.9 per colony) |
+
+Economy only (`--no-expeditions`, 20 seeds): Town Hall 2 day 21.0 → 22.5, House affordable 33.8 → 35.5, Armory 40.5 →
+42.5, Lab 54.5 → 56.8, min food 5.5 → 5.6 days, births 74 → 63, median population 9 → 8.
+
+| target | with weather |
+|---|---|
+| 1 First days tight but survivable | **holds**: no starvation, min food 3.8 days as before (the low end, as since the night pass) |
+| 3 Outskirts usually survivable | **holds**: a death in 4–7% of runs in any weather by day, 2–7% at night (below) |
+| 4 Linked rare in early zones | **holds**: none in Outskirts; Suburb Ruins sees one in 17–21% of runs (27–29% in a storm) |
+| 5 First births near House affordable | **holds**, about as loosely as before (births still come before the House) |
+| 6 Crafting tiers unlock progressively | **holds**: Town Hall 2 ~day 33, Armory ~50, Lab ~59 |
+
+Weather costs the economy one to two days on every milestone (outdoor work lost to storms and lightning at half pace
+until repaired), which the expedition colonies hide in their own noise. No `weather.json` numbers were changed. Dust
+storms are rare at home (1% of hours, Home Valley ×0.6), so masks and the dust's health loss barely show here.
+
+### Missions in weather
+
+Zone trials, 300 runs per cell, two adults with starting gear, `--hour=12,23 --weather=all` (one weather for the whole
+run at intensity 0.8). Someone dies, day → night; wipes and items per run in brackets:
+
+| weather | Town Outskirts | Suburb Ruins | Rail Depot |
+|---|---|---|---|
+| clear | 6% → 7% (2% → 1%; 10.6 → 10.6) | 33% → 40% (12% → 17%; 8.6 → 7.8) | 92% → 92% (64% → 62%; 1.6 → 1.6) |
+| overcast | 5% → 6% | 34% → 39% | 92% → 92% |
+| rain | 4% → 5% (1% → 1%; 10.8 → 11.2) | 31% → **26%** (12% → 9%; 8.7 → 9.7) | 93% → 93% (63% → 58%; 1.6 → 1.8) |
+| thunderstorm | 6% → **2%** (1% → 0%; 10.7 → 11.4) | 38% → **22%** (10% → 4%; 8.0 → 10.0) | 91% → 89% (59% → 52%; 1.6 → 2.1) |
+| fog | 4% → **3%** (0% → 0%; 11.1 → 11.5) | **20% → 17%** (5% → 6%; 10.4 → 10.6) | 85% → 83% (49% → 46%; 3.0 → 3.4) |
+| dust storm | 7% → 6% (1% → 1%; 10.8 → 10.8) | 28% → 33% (9% → 11%; 9.3 → 8.7) | **74% → 72%** (**39% → 37%**; 3.9 → 4.5) |
+
+Rail Depot, ambushes per run day → night: clear 4.52 → 5.42, rain 4.89 → 5.55, storm 4.31 → 4.67, fog 4.45 → 4.81, dust
+3.36 → 3.41. Suburb Ruins, losing someone when a Linked shows (day): clear 80%, rain 72%, storm 58%, fog 63%, dust 62%.
+
+The same Rail Depot trial with the geared kit and two Linked carbines (`--kit=geared --carbines=2`), someone dies day →
+night (Linked kills per run): clear 63% → 84% (2.94 → 2.23), rain 59% → 79% (2.69 → 2.43), thunderstorm 54% → 75%
+(2.90 → 2.55), fog 67% → 87% (2.62 → 2.21), dust storm 62% → 83% (2.52 → 2.18).
+
+- **Dust storms are an opening against the Linked for a party that runs.** In Rail Depot a starting party dies in 74%
+  of dust-storm runs (92% clear), wipes 39% (64%) and brings back 2.4× the loot: the Linked's sight ×0.6, +10 stealth
+  and halved relay range cut ambushes by a quarter. It does nothing for Husks (they smell through it): Suburb Ruins in a
+  dust storm is about as deadly as clear, and at night a little worse.
+- **For a party that fights the Linked, dust and fog are no help**: the −15% ranged hit chance and the shorter sight
+  cost as much as the stealth gains (Linked kills down 10–15%); rain and storms help a little (deaths −4 to −9 points).
+- **Fog is the safest weather against Husks**: Suburb Ruins 33% → 20% by day, 17% at night, with more loot (+20%), as
+  the party slips past what it cannot see either. It also blunts Rail Depot (85%).
+- **Rain and storms turn the night around.** Hearing ×0.6 / ×0.5 and thunder hide the party's footsteps from Husks that
+  hear ×1.5 further at night, so a stormy night in Suburb Ruins (22%) is safer than a clear day (33%), and the Outskirts
+  at night drop from 7% to 2%. By day rain changes little, and a thunderstorm in Suburb Ruins reads a little worse
+  (38%), with a Linked seen in 29% of runs instead of 20% (lightning shows everyone to everyone).
+- Overcast is clear for every purpose (within a point).
+- The early-zone targets hold in every weather: Outskirts deaths stay at 2–7%, wipes ≤ 2%.
+
+Watch next: the bot does not use the forecast (it never times a run for fog or a storm, nor holds back from one); dust
+masks and the dust's health loss barely show at 1% dust hours at home; a geared party might want to hold its fire in
+dust (−15%) rather than trade shots.

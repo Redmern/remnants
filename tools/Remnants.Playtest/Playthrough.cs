@@ -18,6 +18,7 @@ public sealed record PlaythroughSummary(
     double? TownHall2Day, double? FirstStarvingDay, double MinFoodDays, int Expeditions, int ExpeditionsWithDeaths,
     int LinkedEncountersEarly, double? WorkshopDay, double? ArmoryDay, double? LabDay, int CraftedItems, int Recruits,
     double? FirstPerkPointDay, int LevelUps, double SurvivorDays, int PerksLearned, double MeanLevel, int MaxLevel, int UnspentPoints,
+    IReadOnlyDictionary<string, int> WeatherHours, int LightningStrikes, int Repairs,
     CyberSummary? Cyber = null);
 
 /// <summary>
@@ -44,6 +45,8 @@ public sealed class Playthrough
 
     private readonly List<ColonyEvent> _events = [];
     private int _starvationDeaths, _expeditionDeaths, _otherDeaths, _departures, _births, _crafted, _recruits, _levelUps, _perks;
+    private int _lightning, _repairs;
+    private readonly SortedDictionary<string, int> _weatherHours = new(StringComparer.Ordinal);
     private double? _firstPerkPoint;
     private double _survivorTicks;
     private double? _firstBirth, _firstPregnancy, _houseAffordable, _houseBuilt, _townHall2, _firstStarving, _workshop, _armory, _lab;
@@ -85,7 +88,7 @@ public sealed class Playthrough
             _departures, _births, _firstBirth, _firstPregnancy, _houseAffordable, _houseBuilt, _townHall2, _firstStarving,
             _minFoodDays, Bot.Expeditions.Count, Bot.Expeditions.Count(e => e.Dead > 0), linkedEarly, _workshop, _armory, _lab, _crafted, _recruits,
             _firstPerkPoint, _levelUps, _survivorTicks / tpd, _perks, grown.Count == 0 ? 0 : grown.Average(x => x.Level),
-            grown.Select(x => x.Level).DefaultIfEmpty(1).Max(), grown.Sum(x => x.PerkPoints), Cyber());
+            grown.Select(x => x.Level).DefaultIfEmpty(1).Max(), grown.Sum(x => x.PerkPoints), _weatherHours, _lightning, _repairs, Cyber());
     }
 
     /// <summary>Where people are right now: workers per building, patients, away, idle.</summary>
@@ -131,6 +134,8 @@ public sealed class Playthrough
                 case ColonyEventType.LimbLost: _limbsLost++; break;
                 case ColonyEventType.SurgeryDone: _surgeries++; break;
                 case ColonyEventType.SurgeryComplication: _surgeries++; _complications++; break;
+                case ColonyEventType.LightningStruck: _lightning++; break;
+                case ColonyEventType.Repaired: _repairs++; break;
             }
         }
         if (log.Count > 0) _last = log[^1];
@@ -151,6 +156,11 @@ public sealed class Playthrough
         if (_armory is null && s.Buildings.Any(b => b.DefId == "armory")) _armory = Day;
         if (_lab is null && s.Buildings.Any(b => b.DefId == "electronics_lab")) _lab = Day;
         _survivorTicks += s.Survivors.Count(x => !x.IsInfant);
+        if (Weather.Enabled(Sim.Data))
+        {
+            var kind = Weather.Current(s, Sim.Data).Kind;
+            _weatherHours[kind] = _weatherHours.GetValueOrDefault(kind) + 1;
+        }
         var food = Sim.Data.Rules.Food;
         var need = s.Survivors.Where(x => !x.Away).Sum(x => x.IsInfant ? food.InfantPerTick : x.IsChild ? food.ChildPerTick : food.AdultPerTick)
                    * Sim.Data.Rules.TicksPerDay;
@@ -180,7 +190,8 @@ public sealed class Playthrough
         or ColonyEventType.Left or ColonyEventType.Born or ColonyEventType.Pregnant or ColonyEventType.NewCouple or ColonyEventType.Starving
         or ColonyEventType.ExpeditionLaunched or ColonyEventType.ExpeditionReturned or ColonyEventType.Recruited or ColonyEventType.BecameAdult
         or ColonyEventType.LimbLost or ColonyEventType.ProstheticFitted or ColonyEventType.SurgeryBooked or ColonyEventType.SurgeryDone
-        or ColonyEventType.SurgeryComplication or ColonyEventType.ProstheticNeedsService or ColonyEventType.BlueprintStudied or ColonyEventType.PerkLearned or ColonyEventType.ZoneRevealed or ColonyEventType.Homeless;
+        or ColonyEventType.SurgeryComplication or ColonyEventType.ProstheticNeedsService or ColonyEventType.BlueprintStudied or ColonyEventType.PerkLearned or ColonyEventType.ZoneRevealed or ColonyEventType.Homeless
+        or ColonyEventType.WeatherChanged or ColonyEventType.Storm or ColonyEventType.LightningStruck or ColonyEventType.Repaired;
 
     public static string Short(string defId) => defId switch
     {

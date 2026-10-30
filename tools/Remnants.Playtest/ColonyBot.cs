@@ -64,6 +64,7 @@ public sealed class ColonyBot
     /// <summary>One decision pass. Call it every few ticks.</summary>
     public void Act()
     {
+        Repair();
         Build();
         Craft();
         Care();
@@ -126,6 +127,17 @@ public sealed class ColonyBot
 
     public List<string> Problems { get; } = [];
 
+    /// <summary>Buildings struck by lightning are repaired as soon as the repair is affordable, before any new build.</summary>
+    private void Repair()
+    {
+        foreach (var b in State.Buildings.Where(b => b.Damaged).OrderBy(b => b.Id).ToList())
+        {
+            if (!State.Stockpile.CanAfford(Data.Weather.Repair.Cost)) return;
+            var r = _sim.Execute(new RepairBuilding(b.Id));
+            if (!r.Ok) Problems.Add($"day {Day:0.0}: repair {b.DefId}: {r.Message}");
+        }
+    }
+
     // ---- crafting -------------------------------------------------------------------------------------------
 
     private Building? Find(string defId) => State.Buildings.FirstOrDefault(b => b.DefId == defId);
@@ -145,6 +157,9 @@ public sealed class ColonyBot
             if (State.Stockpile.Get("cloth") < 4 && State.Stockpile.Get("food") > 50) Queue(tailor, "fiber_cloth");
             else if (Count("bandage") < 4 && State.Stockpile.Get("cloth") >= 1) Queue(tailor, "bandage");
             else if (Count("padded_vest") < 2 && State.Stockpile.Get("cloth") >= 5) Queue(tailor, "padded_vest");
+            // A couple of dust masks keep the woodcutter and quarry going (and healthy) in a dust storm.
+            else if (Weather.Enabled(Data) && Count("dust_mask") < 2 && State.Stockpile.Get("cloth") >= 4 && State.Stockpile.Get("scrap") >= 3)
+                Queue(tailor, "dust_mask");
         }
         if (Find("kitchen") is { } kitchen && kitchen.Queue.Count == 0 && State.Stockpile.Get("food") > 30)
             Queue(kitchen, "simple_meal");
@@ -393,7 +408,10 @@ public sealed class ColonyBot
         if (zone is null) return;
         // A party that would arrive in the dark waits outside for dawn (it costs rations, see PlanArrival).
         DayPhase? waitFor = _sim.PlanArrival(zone.Zone.Id).Phase == DayPhase.Night ? DayPhase.Dawn : null;
-        var rations = (WorldMap.RationsPerMember(Data, zone.Zone) + _sim.PlanArrival(zone.Zone.Id, waitFor).WaitRationsPerMember) * size;
+        var plan = _sim.PlanArrival(zone.Zone.Id, waitFor);
+        // A dust storm over the zone closes the route: wait for it to pass rather than pick another zone.
+        if (plan.Blocked) return;
+        var rations = (WorldMap.RationsPerMember(Data, zone.Zone) + plan.ExtraRationsPerMember) * size;
         var needPerDay = State.Survivors.Count(s => !s.Away) * Data.Rules.Food.AdultPerTick * TicksPerDay;
         if (State.Stockpile.Get("food") < rations + needPerDay * (3 + 2 * zone.Zone.TravelDays)) return;
 

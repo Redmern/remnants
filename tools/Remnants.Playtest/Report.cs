@@ -40,6 +40,13 @@ public static class Report
         sb.AppendLine($"totals: starvation deaths {runs.Sum(r => r.StarvationDeaths)}, expedition deaths {runs.Sum(r => r.ExpeditionDeaths)} over {runs.Sum(r => r.Expeditions)} expeditions " +
                       $"({runs.Sum(r => r.ExpeditionsWithDeaths)} with deaths), departures {runs.Sum(r => r.Departures)}, births {runs.Sum(r => r.Births)}, " +
                       $"early Linked sightings {runs.Sum(r => r.LinkedEncountersEarly)}, recruits {runs.Sum(r => r.Recruits)}");
+        var hours = runs.SelectMany(r => r.WeatherHours).GroupBy(kv => kv.Key).ToDictionary(g => g.Key, g => g.Sum(kv => kv.Value));
+        if (hours.Count > 0)
+        {
+            var total = (double)Math.Max(1, hours.Values.Sum());
+            sb.AppendLine($"weather at home: {string.Join(", ", hours.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} {100 * kv.Value / total:0}%"))}; " +
+                          $"lightning strikes {runs.Sum(r => r.LightningStrikes)} ({(double)runs.Sum(r => r.LightningStrikes) / runs.Count:0.0}/colony), repairs {runs.Sum(r => r.Repairs)}");
+        }
         return sb.ToString();
     }
 }
