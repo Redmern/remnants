@@ -102,6 +102,9 @@ public sealed record DialogueNode
     public List<EffectDef> Effects { get; init; } = new();
     public List<ChoiceDef> Choices { get; init; } = new();
 
+    /// <summary>The speaker's portrait mood ("neutral", "worried", "angry"); null = neutral.</summary>
+    public string? Mood { get; init; }
+
     /// <summary>A conditional line: skipped (straight on to <see cref="Next"/>) unless this holds.</summary>
     public ConditionDef? When { get; init; }
 }

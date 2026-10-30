@@ -286,7 +286,8 @@ public static class Campaign
             if (def.Fail.Call is { } call) QueueCall(sim, call);
             Log(sim, $"Mission failed: {def.Name}.");
         }
-        if (def.Type == MissionType.Field || lines.Count > 0)
+        // Colony missions close with a log line and a toast; a field mission gets the debrief panel.
+        if (def.Type == MissionType.Field)
             campaign.LastDebrief = new(def.Id, done ? "done" : "failed", sim.State.Tick, lines, objectives ?? []);
     }
 

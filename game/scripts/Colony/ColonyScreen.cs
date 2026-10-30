@@ -28,6 +28,8 @@ public partial class ColonyScreen : Node3D
         var data = GameDataPaths.Load();
         // The session outlives this scene so a party can leave for the scavenge scene and come back to it.
         _session = ColonySession.Current ??= new ColonySession(NewGame.Create(data, NewGameSeed, GameDataPaths.LoadScavenge()));
+        // `--story` (with --colony) founds a Story colony.
+        if (DebugCapture.HasFlag("--story") && _session.Sim.State.Campaign is null && IsFreshGame) Remnants.Core.Story.Campaign.Start(_session.Sim);
         var layout = new TownLayout(data.Rules.Layout);
         var models = ModelLibrary.Load();
         GD.Print($"Colony: data from {GameDataPaths.Source}, {models.ModelCount} generated models.");
@@ -85,6 +87,7 @@ public partial class ColonyScreen : Node3D
             _hud.Roster.Select(null);
             _town.Select(null);
         }
+        if (DebugCapture.Value("--story-demo") is { Length: > 0 } storyStage && IsFreshGame) RunStoryDemo(storyStage);
         if (DebugCapture.HasFlag("--world-map") || DebugCapture.HasFlag("--world-demo")) _hud.WorldMap.Open(DebugCapture.Value("--zone"));
         if (DebugCapture.HasFlag("--pause-menu")) _hud.CallDeferred(ColonyHud.MethodName.OpenPause);
         if (DebugCapture.HasFlag("--settings")) _hud.Settings.CallDeferred(Hud.Overlay.MethodName.Open);

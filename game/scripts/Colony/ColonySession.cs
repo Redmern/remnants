@@ -30,6 +30,7 @@ public sealed class ColonySession
     public ColonySession(ColonySim sim)
     {
         Sim = sim;
+        Sim.Story ??= GameDataPaths.LoadStory();
         Phase = sim.Phase;
     }
 
@@ -182,7 +183,9 @@ public sealed class ColonySession
         var result = Sim.Execute(command);
         // Core already logged an event for this (e.g. "Built Farm."); don't say it twice.
         var logged = Sim.State.Events.Count != events || (events > 0 && !ReferenceEquals(Sim.State.Events[^1], last));
-        if (!result.Ok || !logged) Feedback?.Invoke(result.Message, !result.Ok);
+        // Dialogue steps speak in the dialogue panel, not the log.
+        var dialogue = command is Remnants.Core.Story.AdvanceDialogue or Remnants.Core.Story.ChooseDialogue or Remnants.Core.Story.TakeCall;
+        if (!result.Ok || (!logged && !dialogue)) Feedback?.Invoke(result.Message, !result.Ok);
         Changed?.Invoke();
         return result;
     }
@@ -209,6 +212,7 @@ public sealed class ColonySession
         try
         {
             Sim = SaveGame.Load(Sim.Data, FileAccess.GetFileAsString(SavePath), Sim.Scavenge);
+            Sim.Story = GameDataPaths.LoadStory();
         }
         catch (Exception e) when (e is System.Text.Json.JsonException or InvalidOperationException or ArgumentException)
         {

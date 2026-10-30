@@ -3,7 +3,7 @@
     "id": "m5_brief", "mode": "Radio", "caller": "iris", "title": "Hold the Line",
     "nodes": [
       { "id": "a", "speaker": "narration", "text": "(Dusk. The mast hums. Out past the fence, the treeline is moving.)", "next": "b" },
-      { "id": "b", "speaker": "iris", "text": "Listen to me. Your mast is loud. Something heard it. Husks, a lot of them, walking straight at you.", "next": "c" },
+      { "id": "b", "speaker": "iris", "mood": "worried", "text": "Listen to me. Your mast is loud. Something heard it. Husks, a lot of them, walking straight at you.", "next": "c" },
       { "id": "c", "speaker": "pell", "text": "How many is a lot?", "next": "d" },
       { "id": "d", "speaker": "iris", "text": "Enough. Get the kids inside. Get your best four on the line.", "next": "e" },
       { "id": "e", "speaker": "player", "text": "", "choices": [

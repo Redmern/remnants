@@ -7,7 +7,7 @@ namespace Remnants.Core.Story;
 /// <summary>A line as the UI shows it: speaker id and display name, resolved text, and the choices open now.</summary>
 public sealed record DialogueView(
     string DialogueId, string NodeId, DialogueMode Mode, string Speaker, string SpeakerName, int? SurvivorId, string Text,
-    List<(int Index, string Text, string? Hint)> Choices, string Title);
+    List<(int Index, string Text, string? Hint)> Choices, string Title, string Mood = "neutral");
 
 /// <summary>
 /// Plays dialogue graphs over the campaign's <see cref="CampaignState.Active"/> session: take a call, go on, choose.
@@ -63,7 +63,7 @@ public static class Dialogue
             .Where(t => t.c.Requires.All(r => Campaign.Holds(sim, r)))
             .Select(t => (t.i, Resolve(sim, t.c.Text), t.c.Hint)).ToList();
         return new DialogueView(def.Id, node.Id, def.Mode, node.Speaker, SpeakerName(sim, node.Speaker), SurvivorOf(sim, node.Speaker)?.Id,
-            Resolve(sim, node.Text), choices, def.Title);
+            Resolve(sim, node.Text), choices, def.Title, node.Mood ?? "neutral");
     }
 
     private static (DialogueDef, DialogueNode)? Current(ColonySim sim)
