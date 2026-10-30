@@ -796,6 +796,57 @@ An hour is a tick (`hour = tick % ticksPerDay`); a new game starts at `newGame.s
   phase, after a fast-forward and after a load), or `DayNight.PhaseAt(tick, rules)` in Core — not on raw hours.
   `ColonyAudio.IsNight(DayPhase)` does: the night bed and music for Night, the day ones for Dawn, Day and Dusk.
 
+## Food and cooking
+
+Food is ordinary inventory items (`items.json` kind `Food`); `data/food.json` says what each does. Core is
+`Colony/Pantry.cs`, `Colony/FoodSystem.cs`, `Colony/Harvest.cs`, `Colony/Rations.cs`, `Data/Food.cs`; tests are
+`FoodCookingTests.cs`.
+
+- **Pantry** (`Pantry`, `ColonyState.Food`): per food item a list of lots (count, age, shelf, quality tier, tainted)
+  plus the opened portions being eaten. Lots are the items' instance data and follow `Inventory.Counts`:
+  `Pantry.Reconcile` turns items added by anything (loot, trade, crafting) into a fresh lot and takes missing ones from
+  the oldest lots, so other branches can move food as plain items. Queries: `FoodValue` (fresh food in the old food
+  units, what `ColonySim.FoodStock` / `FoodDays` read), `TakeFoodValue` (for food-priced costs elsewhere), `Entries` (the
+  pantry view), `Available` / `TakeIngredient` (recipe inputs by item id or `tag:x`, soonest to spoil first).
+- **Spoilage**: lots age a tick per tick (Cold Cellar `cellarRateByLevel` for `cellar` items; a powered cellar
+  `poweredCellarMultiplier` again through the `FoodPower` adapter, false until the power grid merges). Past its shelf a lot
+  is spoiled (no longer food value, eaten only when nothing else is left, with a sickness chance) and rots away after
+  `spoilage.spoiledDays` (`FoodRotted`).
+- **Eating** (`FoodSystem`, same rates as before: adult 0.05/h): children first, each picks by a score (cooked first,
+  quality, mood, health, buffs; minus their recent share of that dish; +0.3 for what spoils within a day; −1 for
+  long-keeping food, kept for the road). A dish adds mood and health (× quality effect), its buffs, the hot-supper bonus
+  between dusk and dawn (×`campfireSupperMultiplier` with a Campfire), and moves `Survivor.Nutrition` towards its
+  nutrition. Starving gives Hungry; Bland (no cooked meal for `blandAfterHours`), Malnourished (nutrition under
+  `malnourishedBelow`) and Same Again (one dish over `variety.share` of a fading diet) follow the diet.
+- **Buffs** (`FoodEffects`, `Survivor.Buffs`): output (in `JobOutput.PerTick`), healing (Med Bay care and natural healing),
+  mood and health per tick, sleep debt when a stim wears off, AP on the first field round. Sickness goes through one
+  function, `FoodSickness.Apply` (the Food Poisoning debuff; the medicine-crafting illness hook replaces its body).
+- **Children**: a malnourished tick counts as hungry growth; attribute growth runs at `lerp(growthAtLow, growthAtHigh,
+  nutrition)` of the base rate.
+- **Harvests** (`HarvestSystem`, `SetHarvest`, `Building.Harvest`/`HarvestProgress`/`HarvestReadyTick`): Farm crops
+  (potatoes, beans, corn, herbs), Greenhouse (vegetables, herbs; indoors, no weather), Hunting Lodge (game with hides →
+  cloth, Husk-zone game that is tainted, forage). Effort = job output × yield (× `Crops.Multiplier` for weather-sensitive
+  harvests outdoors) accrues per output item; whole items come in once `growDays` have passed since planting or
+  switching (switching loses the standing crop). `Crops` in `CropModifiers.cs` is a stub of the weather branch's hook.
+  `ColonySim.OutputPerTick/PerDay` give a harvest building's food value.
+- **Cooking** (Campfire, Kitchen L1–3, Smokehouse): ordinary recipes with `ingredients` (item ids or `tag:x`). A food
+  output is rolled like gear quality (cook's Cooking skill, level, `craftQuality.cooking` perks: Camp Cook, Chef) and
+  becomes a lot; tainted inputs stay tainted at `quality.taintKept`; preserved output keeps longer by the cook's
+  `shelf_life_bonus` hook (Preserver).
+- **Rations** (`Rations`, `LaunchExpedition.Rations`): the need stays a food-value number (`WorldMap.RationsPerMember`
+  plus the wait), so vehicles can price days on the road; `RationChoice.Prefer` packs one item first, the rest is food
+  that keeps until the party is home. Risky food (spoiled, tainted, spoiling on the road) may sicken members at launch;
+  a dish with a `fieldBuff` (one per member, standard quality or better) gives Fed for the Road, read into
+  `PartyMember.FirstRoundAp` → `Unit.FirstRoundAp`. `Expedition.Rations` keeps what was packed.
+- **Schematics** (`FoodSchematics` adapter, `data/schematics.food.json` in the story-schematics format): Cold Cellar,
+  Greenhouse, Pickling, Medicinal Broth, Feast, Stim Tea, Field Rations. Until that branch merges a schematic is known
+  through its `sch_*` Blueprint item (studied like any blueprint); then `Has` becomes `Schematics.Has` and the items go.
+- **Save**: `SaveGame.FoodVersion` converts the old pool (potatoes 50%, beans 25%, corn 15%, canned 10% of its food
+  value), Simple Meals → Boiled Potatoes, Hearty Stew → Stew, their Kitchen orders, and leaves farms on ripe potatoes.
+- **UI**: the production panel is a recipe book at cooking buildings; `HarvestPanel` (crop picker), `PantryPanel` (top
+  bar), buff badges on `SurvivorCard` and lines in the survivor overview, the ration picker in `ExpeditionPanel`;
+  `--colony --food-demo --food-view=kitchen|pantry|farm|roster` sets up screenshots.
+
 ## Data files
 
 - `resources.json` — resource ids and names.
@@ -803,13 +854,15 @@ An hour is a tick (`hour = tick % ticksPerDay`); a new game starts at `newGame.s
 - `buildings.json` — category, job, produced resource, base output (per worker-hour on shift), `outdoor` (a Night Shift
   needs light), `minTownHallLevel`, and per-level
   cost / worker slots / output multiplier / beds / patients. Level 1 cost = construction cost.
-- `recipes.json` — what production buildings make (see "Crafting tiers").
+- `recipes.json` — what production buildings make (see "Crafting tiers"); food recipes take `ingredients`.
+- `food.json` — food items (food value, nutrition, shelf, tags, meal effects and buffs), harvests, buffs and the food
+  rules (see "Food and cooking"); `schematics.food.json` — the food schematics.
 - `perks.json` — skills (names, learning attributes), XP sources and level curve, study buildings and rates,
   disciplines and the perk tree (see "Perks and study").
 - `cybernetics.json` — tiers, specialisations, the tree's nodes (one per prosthetic item), paired sets, surgery, humanity,
   upkeep and interference (see "Cybernetics" and CYBERNETICS.md).
-- `rules.json` — tick/time scale, output formula constants, training rates, food, housing grace,
-  meals, crafting (queue limits, quality roll), expedition (party size per Town Hall level, rations, recruit ages), medical (heal/worsen rates, medicine use),
+- `rules.json` — tick/time scale, output formula constants, training rates, food (how much is eaten), housing grace,
+  crafting (queue limits, quality roll), expedition (party size per Town Hall level, rations, recruit ages), medical (heal/worsen rates, medicine use),
   life (growth stages and rates), relationships (affinity), family (conception, pregnancy, baby names), mood,
   new-game setup (counts, age/stat ranges, stock, starting items, starting buildings, names, start hour), `dayNight`
   (phase hours, work and sleep windows, sleep / campfire / supper mood, Night Shift, sleep debt, light, Floodlight cost).

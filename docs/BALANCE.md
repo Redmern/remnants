@@ -621,3 +621,57 @@ Watch next pass: T1 at day ~80 feels late for the first amputee (Workshop 2 wait
 bot's order); the runner pair dominates every kit because the bot's answer to danger is running; humanity strain on
 couples is unmeasured in sweeps (no bot augments), so its rates (`partnerStrainPerTick` 0.05, breakup below 40) are a
 first guess.
+
+## Food and cooking
+
+Food is now ingredients in a pantry (ARCHITECTURE.md "Food and cooking"). The aim: the early game stays as tight as
+before, and the late surplus the day/night pass flagged gets something to do (it spoils, unless it is cooked,
+preserved or kept cold). Consumption rates are unchanged; potatoes are 1 food each and the Farm's potatoes yield what
+it made before, so the economy's base is the same.
+
+Data (food.json, recipes.json, buildings.json):
+
+- New game: 40 food → 26 potatoes, 8 beans, 3 canned food (40 food value). Potatoes keep 14 days, beans 30, corn 20,
+  meat 3, Husk meat 2, dishes 2–5, preserved food 30–180.
+- The Farm's first harvest comes in `growDays` after it is built or switched (potatoes 1, herbs 1, beans 3, corn 4);
+  the effort meanwhile is not lost (it is the standing crop). Beans yield ×0.85, herbs ×1.6 (0.2 food each).
+- Cooking stretches food: Boiled Potatoes 3 potatoes + water → 4.2 food (×1.4), Stew ~4 food → 6.4, Roast 3 → 4.
+- Herbal Remedy and Plant-fiber Cloth take `tag:plant` (any crop) in place of the old food pool, same amounts.
+- Buffs: Well Fed ×1.08 output and ×1.25 healing (8–24 h), Comfort +0.1 mood/h, Energised ×1.15 then 4 h sleep debt,
+  Soothed ×1.5 healing; Hungry ×0.85 output and ×0.75 healing for 12 h after starving, Malnourished ×0.9.
+- Bot: food staffing counts each harvest's food value; it cooks while food lasts over 3 days and keeps about two days
+  of dishes, smokes meat and dries produce about to spoil, packs field rations or a good meal for expeditions, and builds
+  the Hunting Lodge, Smokehouse and Kitchen L2 after the Lab. A first try with an early Campfire (and its cook) and
+  the food buildings before the Armory pushed Town Hall 2 from day 31 to 34; the bot now leaves them later.
+
+20 seeds × 60 days, before (`main`) → after:
+
+| | before | after |
+|---|---|---|
+| median population at day 60 | 7 | 7 |
+| starvation deaths | 0 | 0 |
+| min food stock (days of need, median) | 3.8 | 3.6 |
+| Town Hall 2 / House affordable (median day) | 31.0 / 48.4 | 31.8 / 48.4 |
+| Armory / Electronics Lab (median day) | 51.8 / 57.6 | 49.6 / 56.8 |
+| first pregnancy / first birth (median day) | 40 / 44 | 31 / 35 |
+| births / departures | 37 / 13 | 35 / 22 |
+| expedition deaths | 9 over 324 runs | 2 over 320 runs |
+| food rotted / food poisonings / batches cooked per colony | — | 58 / 0 / 103 |
+| cooked share of the diet / mean nutrition at the end | — | 82% / 0.58 |
+
+Economy only (`--no-expeditions`): Town Hall 2 day 21.0 → 19.6, House affordable 33.8 → 31.5, Armory 40.5 → 36.6, Lab
+54.5 → 51.5, min food 5.5 → 5.4 days, median population 9 → 8, 109 food rotted per colony.
+
+- Target 1 holds: seed 2's first week dips from 40 to 17.1 (was 19.2) on day 6, then recovers; nobody starves in any
+  seed. The day-1 drop is larger (−9.5 vs −5.2) because the new farm's potatoes come in on day 2.
+- Town Hall 2 timing is within a day; the cooked food's mood and Well Fed output make up for the cook's hours.
+- More departures (13 → 22): homeless recruits and newborns. Recruits went 39 → 43 and the colonies conceive earlier
+  (food value in dishes counts for the "enough food for babies" check); housing, not food, is the wall there.
+- Expedition deaths fell (9 → 2): good meals for the road give +1 AP on the first round. Watch it in zone trials
+  before reading too much into 20 colonies.
+- Rot: a bot that over-farms loses ~1 food a day per colony late on. A player has the Smokehouse, Cold Cellar
+  (schematic), beans/corn and the Night Shift-free answer of farming less.
+
+Watch next: the Hunting Lodge and Husk-zone game (the bot never hunts Husk game, so taint is untested in the sweep),
+the Greenhouse and the Cold Cellar (both behind schematics the bot does not find pre-merge), and variety (the bot
+cooks two or three dishes; Same Again rarely triggers).
