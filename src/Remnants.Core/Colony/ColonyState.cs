@@ -34,6 +34,11 @@ public sealed class ColonyState
     /// <summary>Blueprint item ids the colony has studied; recipes that name them can be queued.</summary>
     public SortedSet<string> KnownBlueprints { get; set; } = new(StringComparer.Ordinal);
 
+    /// <summary>Classes running at study buildings (see <see cref="StudySystem"/>).</summary>
+    public List<StudyOrder> Studies { get; set; } = new();
+
+    public int NextStudyId { get; set; } = 1;
+
     /// <summary>The after-action report of the last expedition that came home (for the UI).</summary>
     public ExpeditionReport? LastReport { get; set; }
 

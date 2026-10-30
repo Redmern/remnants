@@ -21,10 +21,11 @@ public class CraftingDataTests
     }
 
     [Fact]
-    public void Every_blueprint_unlocks_a_recipe_and_new_buildings_have_recipes()
+    public void Every_blueprint_unlocks_a_recipe_or_perk_and_new_buildings_have_recipes()
     {
         foreach (var bp in ScavengeTestData.Real.Items.Values.Where(i => i.Kind == ItemKind.Blueprint))
-            Assert.Contains(TestData.Real.Recipes.Values, r => r.Blueprint == bp.Id);
+            Assert.True(TestData.Real.Recipes.Values.Any(r => r.Blueprint == bp.Id) || TestData.Real.Perks.Values.Any(p => p.Requires.Blueprint == bp.Id),
+                $"{bp.Id} unlocks nothing");
         foreach (var id in new[] { "workshop", "tailor", "electronics_lab", "armory", "kitchen" })
             Assert.NotEmpty(TestData.Real.RecipesFor(id));
         Assert.Equal(3, TestData.Real.Buildings["house"].MaxLevel);

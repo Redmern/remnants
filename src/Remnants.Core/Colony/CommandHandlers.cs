@@ -16,6 +16,8 @@ internal static class CommandHandlers
         if (survivor.PatientAtBuildingId is not null)
             return CommandResult.Fail(CommandError.IsPatient, $"{survivor.Name} is a patient; discharge them first.");
         if (survivor.IsInfant) return CommandResult.Fail(CommandError.TooYoung, $"{survivor.Name} is a baby.");
+        if (StudySystem.ClassOf(sim.State, survivor.Id) is not null)
+            return CommandResult.Fail(CommandError.InClass, $"{survivor.Name} is in class; end the study first.");
         if (survivor.IsChild && !sim.Data.Jobs[def.Job].ChildrenAllowed)
             return CommandResult.Fail(CommandError.NotForChildren, $"{sim.Data.Jobs[def.Job].Name} is too hard for a child.");
         if (survivor.AssignedBuildingId == building.Id)

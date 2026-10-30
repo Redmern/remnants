@@ -23,10 +23,13 @@ namespace Remnants.Core.Serialization;
 /// placed, no contacts.
 /// Version 7 carries the run's co-op state (<see cref="ScavengeSave"/> version 4: alliances, pings, carrying); older runs
 /// load with nobody allied or carried.
+/// Version 8 adds experience and perks (survivors' XP, level, perk points, perks) and classes at study buildings
+/// (<see cref="ColonyState.Studies"/>), plus the Hacking and Drone Piloting skills. Older survivors get XP for the skills
+/// they already have (<c>xp.migrationPerSkillPoint</c>), so veterans arrive with levels and points to spend.
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 7;
+    public const int Version = 8;
     private const int OldestVersion = 1;
 
     /// <summary>What a pre-version-4 generic "blueprint" item becomes.</summary>
@@ -51,6 +54,9 @@ public static class SaveGame
             throw new JsonException($"Unsupported save version {envelope.Version} (expected {OldestVersion}..{Version}).");
         var colony = envelope.Colony ?? throw new JsonException("Save file has no colony.");
         if (envelope.Version < 3) MigrateGrowth(data, colony);
+        foreach (var s in colony.Survivors)
+            if (envelope.Version < 8) Progression.Migrate(data, s);
+            else foreach (var skill in Enum.GetValues<Survivors.Skill>()) s.Skills.TryAdd(skill, 0);
         Validate(data, colony);
         if (scavenge is not null) Validate(scavenge, colony);
         return new ColonySim(data, colony, scavenge);
@@ -148,6 +154,18 @@ public static class SaveGame
                 throw new JsonException($"Save has {s.Name} admitted to building {s.PatientAtBuildingId}, which is not a Med Bay.");
 
         var ids = colony.Survivors.Select(s => s.Id).ToHashSet();
+        foreach (var s in colony.Survivors)
+            foreach (var perk in s.Perks)
+                if (!data.Perks.ContainsKey(perk)) throw new JsonException($"Save has {s.Name} with unknown perk '{perk}'.");
+        foreach (var o in colony.Studies)
+        {
+            if (colony.FindBuilding(o.BuildingId) is not { } at || !data.Progression.Study.Buildings.ContainsKey(at.DefId))
+                throw new JsonException($"Save has a class at building {o.BuildingId}, which is not a study building.");
+            if (!ids.Contains(o.StudentId) || o.MentorId is { } m && !ids.Contains(m))
+                throw new JsonException($"Save has class {o.Id} with a student or mentor who is not in the colony.");
+            if ((o.Skill is null) == (o.PerkId is null) || o.PerkId is { } p && !data.Perks.ContainsKey(p))
+                throw new JsonException($"Save has class {o.Id} studying an unknown subject.");
+        }
         foreach (var s in colony.Survivors.Where(s => s.PartnerId is not null))
             if (colony.FindSurvivor(s.PartnerId!.Value)?.PartnerId != s.Id)
                 throw new JsonException($"Save has {s.Name} partnered with {s.PartnerId}, who is not partnered back.");
@@ -175,6 +193,7 @@ public static class SaveGame
         foreach (var zoneId in colony.Zones.Keys)
             if (!data.Zones.ContainsKey(zoneId)) throw new JsonException($"Save references unknown zone '{zoneId}'.");
         foreach (var id in colony.KnownBlueprints) RequireItem(id);
+        foreach (var id in colony.Studies.Select(o => o.ManualItemId).OfType<string>()) RequireItem(id);
         foreach (var id in colony.Buildings.SelectMany(b => b.Queue).SelectMany(o => o.PaidItems)) RequireItem(id);
         foreach (var part in colony.Survivors.SelectMany(s => s.Body.Parts.Values))
             if (part.ProstheticItemId is { } id) RequireItem(id);

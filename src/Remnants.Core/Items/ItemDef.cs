@@ -174,6 +174,17 @@ public sealed record BlueprintDef
     public int MinLevel { get; init; } = 1;
 }
 
+/// <summary>
+/// A field manual (a Material item): used up when a skill study starts with it. It speeds the study up and lets a
+/// student without a mentor go past the self-study cap, up to <see cref="Cap"/>.
+/// </summary>
+public sealed record ManualDef
+{
+    public Skill Skill { get; init; }
+    public double StudyBonus { get; init; } = 0.5;
+    public double Cap { get; init; } = 35;
+}
+
 public sealed record ItemDef
 {
     public string Id { get; init; } = "";
@@ -222,6 +233,9 @@ public sealed record ItemDef
 
     /// <summary>Blueprint items: where they are studied.</summary>
     public BlueprintDef? Blueprint { get; init; }
+
+    /// <summary>Manuals: the skill they teach (see <see cref="ManualDef"/>).</summary>
+    public ManualDef? Manual { get; init; }
 
     /// <summary>Part of an enemy (claws): never looted or crafted.</summary>
     public bool Natural { get; init; }

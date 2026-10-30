@@ -12,7 +12,8 @@ namespace Remnants.Core.Colony;
 /// health        = bodyEfficiency(job regions) · lerp(lowHealthMultiplier, 1, hp/100)
 /// life          = child ? childOutputMultiplier : 1
 /// mood          = lerp(lowMoodMultiplier, 1, mood/100)
-/// output/tick   = building.baseOutput · level.outputMultiplier · performance · tool · health · life · mood
+/// perks         = 1 + Σ perk jobOutput[job]
+/// output/tick   = building.baseOutput · level.outputMultiplier · performance · tool · health · life · mood · perks
 /// </code>
 /// </summary>
 public static class JobOutput
@@ -41,13 +42,18 @@ public static class JobOutput
     public static double MoodFactor(Survivor s, OutputRules rules) =>
         rules.LowMoodMultiplier + (1 - rules.LowMoodMultiplier) * Math.Clamp(s.Mood / Survivor.MaxMood, 0, 1);
 
-    /// <summary>Units of the building's resource this survivor produces in one tick.</summary>
-    public static double PerTick(BuildingDef building, int level, JobDef job, Survivor s, OutputRules rules) =>
+    /// <summary>Output bonus from the survivor's perks at this job (1 without perk data).</summary>
+    public static double PerkFactor(JobDef job, Survivor s, GameData? data) =>
+        data is null || s.Perks.Count == 0 ? 1 : 1 + PerkEffects.For(s, data).JobOutputBonus(job.Id);
+
+    /// <summary>Units of the building's resource this survivor produces in one tick (perks count when <paramref name="data"/> is given).</summary>
+    public static double PerTick(BuildingDef building, int level, JobDef job, Survivor s, OutputRules rules, GameData? data = null) =>
         building.BaseOutput
         * building.Level(level).OutputMultiplier
         * Performance(job, s, rules)
         * ToolFactor(job, s)
         * HealthFactor(job, s, rules)
         * LifeFactor(s, rules)
-        * MoodFactor(s, rules);
+        * MoodFactor(s, rules)
+        * PerkFactor(job, s, data);
 }

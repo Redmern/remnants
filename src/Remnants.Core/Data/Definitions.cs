@@ -21,6 +21,9 @@ public sealed record JobDef
     /// <summary>Output bonus at tool quality 1 (0.5 = +50%).</summary>
     public double ToolBonus { get; init; }
 
+    /// <summary>Other skills this job trains on the side, as a share of the main skill's gain (electronics → Hacking 0.3).</summary>
+    public Dictionary<Skill, double> Trains { get; init; } = new();
+
     /// <summary>Light work children may do as apprentices (at <c>output.childOutputMultiplier</c>; they train faster).</summary>
     public bool ChildrenAllowed { get; init; }
 }

@@ -68,8 +68,32 @@ public sealed class ColonySim
         var def = Data.Buildings[building.DefId];
         if (def.Job is null || def.Produces is null) return 0;
         var job = Data.Jobs[def.Job];
-        return State.WorkersAt(building.Id).Sum(w => JobOutput.PerTick(def, building.Level, job, w, Data.Rules.Output));
+        return State.WorkersAt(building.Id).Sum(w => JobOutput.PerTick(def, building.Level, job, w, Data.Rules.Output, Data));
     }
+
+    /// <summary>The summed effects of a survivor's perks, incl. the scavenge hooks (<see cref="PerkHooks"/>).</summary>
+    public PerkEffects PerkEffects(Survivor s) => Colony.PerkEffects.For(s, Data);
+
+    /// <summary>A perk's state for this survivor (owned / locked / missing requirements / open) with what is missing.</summary>
+    public PerkStatus PerkStatus(Survivor s, PerkDef perk) => Progression.Status(this, s, perk);
+
+    /// <summary>Whether a study can start, and its cap, rate and ETA (for the study panel).</summary>
+    public StudyPlan PlanStudy(StartStudy study) => StudySystem.Plan(this, study);
+
+    /// <summary>Ticks until a running class finishes at today's rate.</summary>
+    public int? StudyEta(StudyOrder order) => StudySystem.Eta(this, order);
+
+    /// <summary>Students this building can take at once (0 when it teaches nothing).</summary>
+    public int StudySlots(Building building) => StudySystem.Slots(Data, building);
+
+    /// <summary>The class a survivor is in as student or mentor, if any.</summary>
+    public StudyOrder? ClassOf(Survivor s) => StudySystem.ClassOf(State, s.Id);
+
+    /// <summary>
+    /// XP for a survivor from outside the colony tick (the scavenge side's missions and field actions). Logs level-ups.
+    /// </summary>
+    public int GrantXp(int survivorId, double amount, XpSource source) =>
+        State.FindSurvivor(survivorId) is { } s ? Progression.GrantXp(State, Data, s, amount, source) : 0;
 
     public int FreeSlots(Building building) =>
         Data.Buildings[building.DefId].Level(building.Level).WorkerSlots - State.WorkersAt(building.Id).Count();
@@ -172,6 +196,7 @@ public sealed class ColonySim
     {
         ProductionSystem.Run(State, Data);
         CraftingSystem.Run(State, Data, Scavenge, _rng);
+        StudySystem.Run(State, Data, Scavenge);
         MedicalSystem.Run(State, Data);
         FoodSystem.Run(State, Data);
         RelationshipSystem.Run(State, Data);
@@ -206,6 +231,9 @@ public sealed class ColonySim
             CancelOrder c => CraftingHandlers.Cancel(this, c),
             StudyBlueprint c => CraftingHandlers.Study(this, c),
             Matchmake c => LifeHandlers.Matchmake(this, c),
+            ChoosePerk c => ProgressionHandlers.ChoosePerk(this, c),
+            StartStudy c => StudyHandlers.Start(this, c),
+            CancelStudy c => StudyHandlers.Cancel(this, c),
             _ => CommandResult.Fail(CommandError.UnknownCommand, $"Unknown command {command.GetType().Name}."),
         };
         SyncRng();
@@ -232,6 +260,12 @@ public sealed class ColonySim
                 throw new GameDataException($"Item '{item.Id}': blueprints are studied at a known building, at a level it has.");
         foreach (var tier in data.Rules.Crafting.QualityThresholds.Keys)
             if (scavenge.Rules.Quality.All(q => q.Id != tier)) throw new GameDataException($"Rules.crafting.qualityThresholds: unknown quality tier '{tier}'.");
+        foreach (var perk in data.Perks.Values)
+            if (perk.Requires.Blueprint is { } bp && scavenge.Items.GetValueOrDefault(bp)?.Kind != ItemKind.Blueprint)
+                throw new GameDataException($"Perk '{perk.Id}': '{bp}' is not a blueprint/datashard item.");
+        foreach (var item in scavenge.Items.Values)
+            if (item.Manual is { } manual && (item.Kind != ItemKind.Material || item.Salvage is not null || manual.StudyBonus < 0))
+                throw new GameDataException($"Item '{item.Id}': manuals are Material items without salvage and with a non-negative study bonus.");
         foreach (var item in scavenge.Items.Values)
             if (item.Salvage is { } salvage && !data.Resources.ContainsKey(salvage.Resource))
                 throw new GameDataException($"Item '{item.Id}' salvages into unknown resource '{salvage.Resource}'.");

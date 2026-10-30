@@ -68,6 +68,18 @@ public sealed class Survivor
     /// <summary>The housing building this survivor sleeps in, while they have a bed.</summary>
     public int? HomeBuildingId { get; set; }
 
+    /// <summary>Experience from work, crafting, study and missions. Level and perk points follow from it.</summary>
+    public double Xp { get; set; }
+
+    /// <summary>Level reached (1 at the start); kept in step with <see cref="Xp"/> by <c>Progression.GrantXp</c>.</summary>
+    public int Level { get; set; } = 1;
+
+    /// <summary>Perk points earned on level-ups and not yet spent.</summary>
+    public int PerkPoints { get; set; }
+
+    /// <summary>Perk ids this survivor has learned (data/perks.json).</summary>
+    public SortedSet<string> Perks { get; set; } = new(StringComparer.Ordinal);
+
     /// <summary>Not an adult yet: an infant or a child. Children stay home from expeditions and eat first.</summary>
     public bool IsChild => LifeStage != LifeStage.Adult;
 
@@ -80,4 +92,21 @@ public sealed class Survivor
 
     public void Set(AttributeKind attribute, double value) => Attributes[attribute] = Math.Clamp(value, 0, MaxStat);
     public void Set(Skill skill, double value) => Skills[skill] = Math.Clamp(value, 0, MaxStat);
+
+    public bool HasPerk(string perkId) => Perks.Contains(perkId);
+
+    /// <summary>
+    /// Practice or study raises a skill: <paramref name="amount"/> shrinks as the skill nears 100
+    /// (amount · (1 − skill/100)). Returns the points actually gained. This is the one entry point for skill growth
+    /// (colony training, study, and the scavenge mode's field practice); XP is granted separately by the colony
+    /// (<c>Progression.GrantXp</c>), or for field gains when the party comes home.
+    /// </summary>
+    public double GainSkill(Skill skill, double amount, XpSource source = XpSource.Work)
+    {
+        _ = source;
+        if (amount <= 0) return 0;
+        var before = Get(skill);
+        Set(skill, before + amount * (1 - before / MaxStat));
+        return Get(skill) - before;
+    }
 }

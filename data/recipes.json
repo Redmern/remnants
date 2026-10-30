@@ -35,6 +35,10 @@
   { "id": "scanner",        "name": "Scanner",         "building": "electronics_lab", "minLevel": 2, "work": 16, "inputs": { "electronics": 3 }, "itemInputs": { "binoculars": 1 }, "item": "scanner", "blueprint": "bp_scanner" },
   { "id": "evac_beacon",    "name": "Evac Beacon",     "building": "electronics_lab", "minLevel": 2, "work": 14, "inputs": { "electronics": 4, "scrap": 4 }, "item": "evac_beacon", "blueprint": "bp_evac_beacon" },
   { "id": "signal_jammer",  "name": "Signal Jammer",   "building": "electronics_lab", "minLevel": 3, "work": 24, "inputs": { "electronics": 6, "scrap": 4 }, "item": "signal_jammer", "blueprint": "bp_signal_jammer", "minSkill": 25 },
+  { "id": "drone_parts",    "name": "Drone Parts",     "building": "electronics_lab", "minLevel": 1, "work": 8,  "inputs": { "scrap": 4, "electronics": 1 }, "item": "drone_parts", "minSkill": 10 },
+  { "id": "hacking_kit",    "name": "Hacking Kit",     "building": "electronics_lab", "minLevel": 1, "work": 12, "inputs": { "scrap": 3, "electronics": 2 }, "item": "hacking_kit", "minSkill": 10 },
+  { "id": "scout_drone",    "name": "Scout Drone",     "building": "electronics_lab", "minLevel": 2, "work": 20, "inputs": { "electronics": 3 }, "itemInputs": { "drone_parts": 2 }, "item": "scout_drone", "blueprint": "bp_scout_drone", "minSkill": 20 },
+  { "id": "cyberdeck",      "name": "Cyberdeck",       "building": "electronics_lab", "minLevel": 3, "work": 28, "inputs": { "electronics": 6, "scrap": 4 }, "itemInputs": { "hacking_kit": 1 }, "item": "cyberdeck", "blueprint": "bp_cyberdeck", "minSkill": 30 },
   { "id": "cyber_leg",      "name": "Cybernetic Leg",  "building": "electronics_lab", "minLevel": 3, "work": 30, "inputs": { "electronics": 8, "scrap": 12 }, "item": "cyber_leg", "blueprint": "bp_cybernetics", "minSkill": 30 },
   { "id": "cyber_arm",      "name": "Cybernetic Arm",  "building": "electronics_lab", "minLevel": 3, "work": 30, "inputs": { "electronics": 8, "scrap": 12 }, "item": "cyber_arm", "blueprint": "bp_cybernetics", "minSkill": 30 }
 ]

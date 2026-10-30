@@ -5,15 +5,24 @@ namespace Remnants.Core.Colony;
 
 /// <summary>
 /// One tick of work trains the job's skill and its weighted attributes. Gains shrink as a stat
-/// approaches 100 (gain · (1 − value/100)); children learn faster.
+/// approaches 100 (gain · (1 − value/100)); children learn faster. Skills the job <c>trains</c> on the side grow at
+/// their share of the main skill's base gain.
 /// </summary>
 public static class Training
 {
+    /// <summary>One tick of work in the colony: train, and earn the work XP.</summary>
+    internal static void Work(ColonyState state, GameData data, JobDef job, Survivor s)
+    {
+        TrainTick(job, s, data.Rules.Training);
+        Progression.GrantXp(state, data, s, data.Progression.Xp.PerWorkTick, XpSource.Work);
+    }
+
     public static void TrainTick(JobDef job, Survivor s, TrainingRules rules)
     {
         var mult = s.IsChild ? rules.ChildMultiplier : 1.0;
 
-        s.Set(job.Skill, s.Get(job.Skill) + Gain(rules.SkillPerTick * mult, s.Get(job.Skill)));
+        s.GainSkill(job.Skill, rules.SkillPerTick * mult);
+        foreach (var (skill, share) in job.Trains) s.GainSkill(skill, rules.SkillPerTick * mult * share);
 
         var totalWeight = job.Attributes.Values.Sum();
         if (totalWeight <= 0) return;

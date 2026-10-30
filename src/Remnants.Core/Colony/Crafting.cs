@@ -38,7 +38,7 @@ internal static class CraftingSystem
             {
                 var skill = BestSkill(workers, job);
                 if (building.Queue.Any(o => data.Recipes[o.RecipeId].MinSkill > skill + 1e-9))
-                    foreach (var w in workers) Training.TrainTick(job, w, data.Rules.Training);
+                    foreach (var w in workers) Training.Work(state, data, job, w);
                 continue;
             }
             var recipe = data.Recipes[order.RecipeId];
@@ -46,11 +46,12 @@ internal static class CraftingSystem
 
             foreach (var w in workers)
             {
-                order.Progress += JobOutput.PerTick(def, building.Level, job, w, data.Rules.Output);
-                Training.TrainTick(job, w, data.Rules.Training);
+                order.Progress += JobOutput.PerTick(def, building.Level, job, w, data.Rules.Output, data);
+                Training.Work(state, data, job, w);
             }
             if (order.Progress + 1e-9 < recipe.Work) continue;
-            Finish(state, data, items, rng, building, def, recipe, order, BestSkill(workers, job));
+            Finish(state, data, items, rng, building, def, recipe, order, BestSkill(workers, job), QualityBonus(data, workers, job));
+            foreach (var w in workers) Progression.GrantXp(state, data, w, data.Progression.Xp.PerCraft, XpSource.Crafting);
         }
     }
 
@@ -87,7 +88,7 @@ internal static class CraftingSystem
         var def = data.Buildings[building.DefId];
         if (def.Job is null) return 0;
         var job = data.Jobs[def.Job];
-        return state.WorkersAt(building.Id).Sum(w => JobOutput.PerTick(def, building.Level, job, w, data.Rules.Output));
+        return state.WorkersAt(building.Id).Sum(w => JobOutput.PerTick(def, building.Level, job, w, data.Rules.Output, data));
     }
 
     /// <summary>The order worked this tick, or null when nothing can go.</summary>
@@ -104,6 +105,12 @@ internal static class CraftingSystem
 
     private static double BestSkill(IEnumerable<Survivor> workers, JobDef job) =>
         workers.Select(w => w.Get(job.Skill)).DefaultIfEmpty(0).Max();
+
+    /// <summary>Perk bonus to the quality score: the best worker's (by skill, then id) crafting-quality perks at this job.</summary>
+    private static double QualityBonus(GameData data, IEnumerable<Survivor> workers, JobDef job) =>
+        workers.OrderByDescending(w => w.Get(job.Skill)).ThenBy(w => w.Id).FirstOrDefault() is { } best
+            ? PerkEffects.For(best, data).CraftQualityBonus(job.Id)
+            : 0;
 
     public static bool HasItemInputs(ColonyState state, ScavengeData? items, RecipeDef recipe) =>
         recipe.ItemInputs.All(kv => Matching(state, items, kv.Key).Sum(id => state.Inventory.Count(id)) >= kv.Value);
@@ -147,7 +154,7 @@ internal static class CraftingSystem
     }
 
     private static void Finish(ColonyState state, GameData data, ScavengeData? items, DeterministicRng rng,
-        Building building, BuildingDef def, RecipeDef recipe, CraftOrder order, double skill)
+        Building building, BuildingDef def, RecipeDef recipe, CraftOrder order, double skill, double qualityBonus)
     {
         string made;
         if (recipe.Item is { } item)
@@ -155,7 +162,7 @@ internal static class CraftingSystem
             var count = (int)Math.Round(recipe.Amount);
             var id = item;
             if (Tiers(data, items, item) is { } tiers)
-                id = items!.QualityVariant(item, Roll(tiers, Score(data, building, skill), data.Rules.Crafting.QualitySpread, rng));
+                id = items!.QualityVariant(item, Roll(tiers, Score(data, building, skill) + qualityBonus, data.Rules.Crafting.QualitySpread, rng));
             state.Inventory.Add(id, count);
             made = $"{count} {items?.Items.GetValueOrDefault(id)?.Name ?? recipe.Name}";
         }
@@ -202,8 +209,9 @@ internal static class CraftingSystem
     {
         if (recipe.Item is null || Tiers(data, items, recipe.Item) is not { } tiers) return [];
         var def = data.Buildings[building.DefId];
-        var skill = def.Job is null ? 0 : BestSkill(state.WorkersAt(building.Id), data.Jobs[def.Job]);
-        var score = Score(data, building, skill);
+        var workers = state.WorkersAt(building.Id).ToList();
+        var skill = def.Job is null ? 0 : BestSkill(workers, data.Jobs[def.Job]);
+        var score = Score(data, building, skill) + (def.Job is null ? 0 : QualityBonus(data, workers, data.Jobs[def.Job]));
         var spread = data.Rules.Crafting.QualitySpread;
 
         double AtLeast(double t) => double.IsNegativeInfinity(t) ? 1 : double.IsPositiveInfinity(t) ? 0

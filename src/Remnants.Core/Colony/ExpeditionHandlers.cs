@@ -139,8 +139,11 @@ internal static class ExpeditionHandlers
             s.Body = r.Survivor.Body;
             s.Health = Math.Clamp(r.Survivor.Health, 1, Survivor.MaxHealth);
             foreach (var (attribute, value) in r.Survivor.Attributes) s.Set(attribute, value);
+            var fieldGain = r.Survivor.Skills.Sum(kv => Math.Max(0, kv.Value - s.Get(kv.Key)));
             foreach (var (skill, value) in r.Survivor.Skills) s.Set(skill, value);
             s.Away = false;
+            var xp = sim.Data.Progression.Xp;
+            Progression.GrantXp(state, sim.Data, s, xp.PerMission + xp.PerMissionThreat * (zone?.Threat ?? 0) + xp.PerFieldSkillPoint * fieldGain, XpSource.Mission);
             Stow(sim, r);
             report.Returned.Add(new(s.Id, s.Name, r.Evacuated, s.Health, injuries));
         }

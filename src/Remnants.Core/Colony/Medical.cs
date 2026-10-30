@@ -20,7 +20,8 @@ public static class Care
                     * JobOutput.ToolFactor(job, medic)
                     * JobOutput.HealthFactor(job, medic, data.Rules.Output)
                     * JobOutput.LifeFactor(medic, data.Rules.Output)
-                    * JobOutput.MoodFactor(medic, data.Rules.Output);
+                    * JobOutput.MoodFactor(medic, data.Rules.Output)
+                    * JobOutput.PerkFactor(job, medic, data);
         }
         return rules.HealPerTick * def.Level(medBay.Level).OutputMultiplier * care;
     }
@@ -108,7 +109,7 @@ internal static class MedicalSystem
         {
             if (data.Buildings[medBay.DefId].Job is not { } jobId) continue;
             foreach (var medic in state.WorkersAt(medBay.Id).OrderBy(w => w.Id))
-                Training.TrainTick(data.Jobs[jobId], medic, data.Rules.Training);
+                Training.Work(state, data, data.Jobs[jobId], medic);
         }
     }
 

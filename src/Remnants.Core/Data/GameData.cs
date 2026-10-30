@@ -11,6 +11,12 @@ public sealed class GameData
     public IReadOnlyDictionary<string, RecipeDef> Recipes { get; }
     public RulesDef Rules { get; }
 
+    /// <summary>Skills, XP, study and the perk tree (data/perks.json).</summary>
+    public ProgressionDef Progression { get; }
+
+    public IReadOnlyDictionary<string, PerkDef> Perks { get; }
+    public IReadOnlyDictionary<string, DisciplineDef> Disciplines { get; }
+
     private readonly Dictionary<string, List<RecipeDef>> _recipesByBuilding;
 
     public GameData(
@@ -18,7 +24,8 @@ public sealed class GameData
         IEnumerable<JobDef> jobs,
         IEnumerable<BuildingDef> buildings,
         RulesDef rules,
-        IEnumerable<RecipeDef>? recipes = null)
+        IEnumerable<RecipeDef>? recipes = null,
+        ProgressionDef? progression = null)
     {
         Resources = Index(resources, r => r.Id, "resource");
         Jobs = Index(jobs, j => j.Id, "job");
@@ -27,7 +34,11 @@ public sealed class GameData
         Recipes = Index(recipeList, r => r.Id, "recipe");
         _recipesByBuilding = recipeList.GroupBy(r => r.Building).ToDictionary(g => g.Key, g => g.ToList());
         Rules = rules;
+        Progression = progression ?? new ProgressionDef();
+        Perks = Index(Progression.Perks, p => p.Id, "perk");
+        Disciplines = Index(Progression.Disciplines, d => d.Id, "discipline");
         Validate();
+        ValidateProgression();
     }
 
     public BuildingDef TownHall => Buildings[Rules.TownHallBuildingId];
@@ -135,6 +146,64 @@ public sealed class GameData
         if (family.ConceptionChance is < 0 or > 1) throw new GameDataException("Rules.family.conceptionChance must be in 0..1.");
         if (family.MaleNames.Count == 0 || family.FemaleNames.Count == 0)
             throw new GameDataException("Rules.family needs male and female names for newborns.");
+    }
+
+    /// <summary>A skill's display name and learning attributes (a bare definition when perks.json does not list it).</summary>
+    public SkillDef SkillInfo(Survivors.Skill skill) =>
+        Progression.Skills.Find(d => d.Skill == skill) ?? new SkillDef { Skill = skill, Name = skill.ToString() };
+
+    /// <summary>The perks of a discipline, by tier then data order.</summary>
+    public IEnumerable<PerkDef> PerksOf(string disciplineId) =>
+        Progression.Perks.Where(p => p.Discipline == disciplineId).OrderBy(p => p.Tier);
+
+    private void ValidateProgression()
+    {
+        var p = Progression;
+        if (p.Skills.GroupBy(d => d.Skill).FirstOrDefault(g => g.Count() > 1) is { } twice)
+            throw new GameDataException($"Perks: skill {twice.Key} is listed twice.");
+        var xp = p.Xp;
+        if (xp.PerLevel <= 0 || xp.PerLevelStep < 0 || xp.MaxLevel < 1 || xp.PointsPerLevel < 0)
+            throw new GameDataException("Perks.xp needs a positive perLevel, non-negative perLevelStep and pointsPerLevel, and maxLevel of at least 1.");
+        var study = p.Study;
+        if (study.SkillPerTick < 0 || study.AptitudeFloor is < 0 or > 1 || study.MentorMultiplier < 1 || study.MaxStudentsPerMentor < 1 || study.PerkWorkPerTier <= 0)
+            throw new GameDataException("Perks.study: skillPerTick ≥ 0, aptitudeFloor in 0..1, mentorMultiplier ≥ 1, maxStudentsPerMentor ≥ 1, perkWorkPerTier > 0.");
+        foreach (var (building, rules) in study.Buildings)
+        {
+            if (!Buildings.ContainsKey(building)) throw new GameDataException($"Perks.study: unknown building '{building}'.");
+            if (rules.Slots.Count == 0 || rules.Slots.Any(n => n < 0)) throw new GameDataException($"Perks.study '{building}' needs slots per level.");
+        }
+        foreach (var d in Disciplines.Values)
+            if (!study.Buildings.ContainsKey(d.StudyAt))
+                throw new GameDataException($"Discipline '{d.Id}': studyAt '{d.StudyAt}' is not a study building.");
+        foreach (var perk in Perks.Values)
+        {
+            var where = $"Perk '{perk.Id}'";
+            if (!Disciplines.ContainsKey(perk.Discipline)) throw new GameDataException($"{where}: unknown discipline '{perk.Discipline}'.");
+            if (perk.Tier < 1 || perk.Cost < 0) throw new GameDataException($"{where}: tier must be at least 1 and cost not negative.");
+            foreach (var other in perk.Requires.Perks)
+                if (!Perks.ContainsKey(other) || other == perk.Id) throw new GameDataException($"{where}: requires unknown perk '{other}'.");
+            if (perk.Requires.Building is { } b && (!Buildings.TryGetValue(b, out var bd) || perk.Requires.BuildingLevel < 1 || perk.Requires.BuildingLevel > bd.MaxLevel))
+                throw new GameDataException($"{where}: requires building '{b}' at a level it has.");
+            if (perk.Requires.Level < 1 || perk.Requires.Level > xp.MaxLevel) throw new GameDataException($"{where}: required level out of range.");
+            foreach (var job in perk.Effects.JobOutput.Keys.Concat(perk.Effects.CraftQuality.Keys))
+                if (!Jobs.ContainsKey(job)) throw new GameDataException($"{where}: effect names unknown job '{job}'.");
+            foreach (var hook in perk.Effects.Hooks.Keys)
+                if (!Colony.PerkHooks.All.ContainsKey(hook)) throw new GameDataException($"{where}: unknown hook '{hook}' (see PerkHooks).");
+        }
+        // Prerequisite chains must end: no perk can (indirectly) require itself.
+        foreach (var perk in Perks.Values)
+        {
+            var seen = new HashSet<string>();
+            var open = new Stack<string>(perk.Requires.Perks);
+            while (open.TryPop(out var id))
+            {
+                if (id == perk.Id) throw new GameDataException($"Perk '{perk.Id}' requires itself through other perks.");
+                if (seen.Add(id)) foreach (var next in Perks[id].Requires.Perks) open.Push(next);
+            }
+        }
+        foreach (var job in Jobs.Values)
+            if (job.Trains.Keys.Contains(job.Skill) || job.Trains.Values.Any(v => v < 0))
+                throw new GameDataException($"Job '{job.Id}': trains lists other skills, with non-negative shares.");
     }
 
     private int TownHallMaxLevel() => Buildings.TryGetValue(Rules.TownHallBuildingId, out var th) ? th.MaxLevel : 0;

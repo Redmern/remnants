@@ -49,6 +49,19 @@ public sealed record StudyBlueprint(string ItemId) : IColonyCommand;
 /// </summary>
 public sealed record Matchmake(int SurvivorId, int OtherId, PairStance Stance) : IColonyCommand;
 
+/// <summary>Spend perk points on a perk whose requirements the survivor meets.</summary>
+public sealed record ChoosePerk(int SurvivorId, string PerkId) : IColonyCommand;
+
+/// <summary>
+/// Put a survivor in class at a study building: a <paramref name="Skill"/> (up to the mentor's level, or the self-study
+/// cap) or a <paramref name="PerkId"/> (needs a mentor who has it). An optional manual from the inventory is used up.
+/// Student and mentor leave their jobs.
+/// </summary>
+public sealed record StartStudy(int StudentId, int BuildingId, Skill? Skill = null, string? PerkId = null, int? MentorId = null,
+    string? ManualItemId = null) : IColonyCommand;
+
+public sealed record CancelStudy(int StudyId) : IColonyCommand;
+
 public enum CommandError
 {
     None,
@@ -107,6 +120,23 @@ public enum CommandError
     ZoneUnknown,
     NotArrived,
     PartyReturning,
+    UnknownPerk,
+    AlreadyHasPerk,
+    PerkLocked,
+    PerkRequirementsNotMet,
+    NoPerkPoints,
+    NotAStudyBuilding,
+    InvalidStudy,
+    StudyFull,
+    CannotStudyHere,
+    InClass,
+    NeedsMentor,
+    MentorNotAhead,
+    MentorBusy,
+    AlreadyAtCap,
+    NotAManual,
+    WrongManual,
+    UnknownStudy,
 }
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>

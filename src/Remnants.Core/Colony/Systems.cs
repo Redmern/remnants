@@ -15,8 +15,8 @@ internal static class ProductionSystem
             var job = data.Jobs[def.Job];
             foreach (var worker in state.WorkersAt(building.Id).OrderBy(w => w.Id))
             {
-                state.Stockpile.Add(def.Produces, JobOutput.PerTick(def, building.Level, job, worker, data.Rules.Output));
-                Training.TrainTick(job, worker, data.Rules.Training);
+                state.Stockpile.Add(def.Produces, JobOutput.PerTick(def, building.Level, job, worker, data.Rules.Output, data));
+                Training.Work(state, data, job, worker);
             }
         }
     }

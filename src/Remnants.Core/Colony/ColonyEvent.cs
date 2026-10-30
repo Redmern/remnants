@@ -7,6 +7,7 @@ public enum ColonyEventType
     ProstheticFitted, Crafted, RecipeChanged, OrderQueued, OrderCancelled, BlueprintStudied,
     NewCouple, BrokeUp, Pregnant, Born, BecameChild, Grieving, Miscarried,
     ExpeditionArrived, ExpeditionHeadingHome, ZoneRevealed,
+    LevelUp, PerkLearned, StudyStarted, StudyFinished, StudyEnded,
 }
 
 /// <summary>Something notable the UI can show in a log. Purely informational.</summary>
