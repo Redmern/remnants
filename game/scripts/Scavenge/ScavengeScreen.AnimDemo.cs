@@ -11,6 +11,7 @@ public partial class ScavengeScreen
 {
     /// <summary>
     /// <c>survivor</c>: walk up to the Husk, butt strike, aimed shot, then the survivor's death (replayed, not ruled).
+    /// <c>cyborg</c>: two arm-gun shots at the Husk from where the survivor stands.
     /// <c>enemy</c>: end the party's turns until the hunting Husk and Linked have walked up and attacked.
     /// </summary>
     private async Task AnimDemoScript()
@@ -64,6 +65,23 @@ public partial class ScavengeScreen
                 await Pause(0.4);
                 await _units.Replay([new ScavengeEvent(_presenter.State.Round, ScavengeEventType.Died, $"{u.Name} died.", u.Id, Pos: u.Pos)],
                     _presenter.Visible);
+                break;
+            case "cyborg" when _presenter.ActingUnit is { } c:
+                var mark = _presenter.State.Units.First(x => x.Kind == UnitKind.Enemy && x.OnMap);
+                c.Ap = 30;
+                Select(c.Id);
+                _camera.GlideTo((TileGrid.ToWorld(c.Pos) * 2 + TileGrid.ToWorld(mark.Pos)) / 3);
+                // Close in so the gun arm, jumper legs and thermal eye read.
+                _camera.Camera.Size = 10;
+                await Pause(0.6);
+                FrameRecorder.Begin();
+                await Pause(0.3);
+                for (var shot = 0; shot < 2; shot++)
+                {
+                    await Run(new Attack(pid, c.Id, mark.Id, "arm_gun"));
+                    await Settle();
+                    await Pause(0.3);
+                }
                 break;
             case "enemy" when _presenter.ActingUnit is not null:
                 FrameRecorder.Begin();

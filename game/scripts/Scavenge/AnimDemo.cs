@@ -8,7 +8,8 @@ namespace Remnants.Game.Scavenge;
 /// Debug: <c>--anim-demo=survivor|enemy</c> stages the debug mission for the animation captures (with
 /// <see cref="Anim.FrameRecorder"/>'s <c>--record</c>). Everything hostile goes; then <c>survivor</c>: the first survivor up
 /// carries a hunting rifle and walks on a peg leg, a sturdy Husk waits a few tiles off for a butt strike and an aimed
-/// shot; <c>enemy</c>: a Husk and a Linked hunt the party from just inside its sight, so ending the turn shows them
+/// shot; <c>cyborg</c>: the same Husk, faced by a survivor on jumper legs with a gun arm and a thermal eye (one mesh per
+/// part from the cybernetics data); <c>enemy</c>: a Husk and a Linked hunt the party from just inside its sight, so ending the turn shows them
 /// walk up and attack.
 /// </summary>
 public static class AnimDemo
@@ -37,6 +38,15 @@ public static class AnimDemo
                 husk.Hp = husk.MaxHp = 999;
                 husk.CanBeDowned = false;
                 state.Units.Add(husk);
+                break;
+            case "cyborg":
+                acting.Equipment.Remove(Remnants.Core.Items.EquipSlot.Weapon);
+                foreach (var (part, item) in new[] { (BodyPart.RightArm, "gun_arm"), (BodyPart.LeftLeg, "jumper_leg"), (BodyPart.RightLeg, "jumper_leg"), (BodyPart.Eyes, "thermal_eye") })
+                    acting.Body.Fit(part, 1.2, item);
+                var target = NewScavenge.EnemyUnit(sim.Data, state, sim.Data.Enemies["husk"], Near(acting.Pos, 3, 3));
+                target.Hp = target.MaxHp = 999;
+                target.CanBeDowned = false;
+                state.Units.Add(target);
                 break;
             case "enemy":
                 var sight = (int)sim.Profile(acting).Sight;

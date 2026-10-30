@@ -261,8 +261,9 @@ public partial class ColonyScreen : Node3D
     /// <summary>
     /// Debug (screenshots of cybernetics, <c>--cyber-demo</c>): Town Hall 3 with a Med Bay, Workshop and Electronics Lab
     /// at level 2; a Cyber-Surgeon at the Med Bay and a Biomech / Neural Interface engineer; Blueprint: Cybernetics
-    /// studied and a few designs and components in the stores; a veteran wearing T3 limbs (a pair of runner legs and a
-    /// hacker arm as replacements, a scope eye as an augmentation, so humanity is low); and the engineer booked for
+    /// studied and a few designs and components in the stores; a veteran wearing mixed tiers (a mechanical leg, a cyborg
+    /// runner leg, a blade arm and a Network-grade arm as replacements, a scope eye as an augmentation, so humanity is
+    /// low); and the engineer booked for
     /// surgery on a lost leg. Selects the Med Bay and the veteran; <c>--cyber-tree</c> opens the tree on the legs.
     /// </summary>
     private void RunCyberDemo()
@@ -303,9 +304,10 @@ public partial class ColonyScreen : Node3D
         var veteran = adults[2];
         foreach (var (part, item, elective) in new[]
                  {
-                     (Remnants.Core.Survivors.BodyPart.LeftLeg, "runner_leg_mk2", false),
+                     (Remnants.Core.Survivors.BodyPart.LeftLeg, "mech_leg", false),
                      (Remnants.Core.Survivors.BodyPart.RightLeg, "runner_leg_mk2", false),
-                     (Remnants.Core.Survivors.BodyPart.LeftArm, "hacker_arm", false),
+                     (Remnants.Core.Survivors.BodyPart.LeftArm, "network_arm", false),
+                     (Remnants.Core.Survivors.BodyPart.RightArm, "blade_arm", false),
                      (Remnants.Core.Survivors.BodyPart.Eyes, "scope_eye", true),
                  })
         {
