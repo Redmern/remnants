@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "style_revision": "9652bb8d",
+  "style_revision": "8dcd2465",
   "conventions": {
     "up": "+Y",
     "units": "meters",
@@ -42,7 +42,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Bunker back-left with striped door, sandbag U in front, gun rack under an overhang on the right, ammo crates front-right.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "electronics_lab_l1",
@@ -67,7 +67,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Container lab along the back with a dish on the roof, antenna mast back-right, screen bench under a tarp front, spools/batteries front-right.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "farm_l1",
@@ -92,7 +92,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles (6x6 m). Crop field front, shed back-left, water tank back-right.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "farm_l2",
@@ -117,7 +117,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles. Brick shed with a metal roof, second field under a canvas hoop tunnel, metal-banded tank, taller fence on concrete posts.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "farm_l3",
@@ -142,7 +142,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles. Glass greenhouse with Network grow light, solar shed roof, steel tank with Network pump, irrigation line, concrete front wall with floodlit gate.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "house_l1",
@@ -167,7 +167,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x2 tiles (6x4 m, wide along X). Main house left/center (two rooms) with cross gable + porch at the front, chimney left, bunk lean-to right, yard with fence front.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "kitchen_l1",
@@ -193,7 +193,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Open cook shelter back with range + stovepipe, table and benches under it, cauldron on a tripod front-right, smoke rack front-left.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "med_bay_l1",
@@ -218,7 +218,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Container clinic back-left, triage tent right, awning front.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "med_bay_l2",
@@ -243,7 +243,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Clean container on a concrete foundation, metal canopy, the tent replaced by a gabled brick ward with a red-cross gable.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "med_bay_l3",
@@ -268,7 +268,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Second container module stacked on top (roof cross moves up), roof terrace with floodlight, concrete ward with solar, sandbags, Network diagnostic beacon.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "quarry_l1",
@@ -293,7 +293,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x2 tiles (6x4 m, wide along X). Rock face back-left, derrick right, blocks front.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "quarry_l2",
@@ -318,7 +318,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x2 tiles. Iron-banded derrick on a concrete footing, second (tripod) hoist over the pallet, mine-cart rails along the face, plank fence.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "quarry_l3",
@@ -343,7 +343,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x2 tiles. Steel derrick with a motor winch house (Network core), steel tripod hoist, ore cart on rails, floodlight mast, concrete jersey barriers.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "scrapyard_l1",
@@ -368,7 +368,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles (6x6 m). Heaps left/back, crane back-right, bales front-right.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "scrapyard_l2",
@@ -393,7 +393,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles. Straight metal fence, taller crane, bigger heap, sorting bins under a lean-to, more bales.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "scrapyard_l3",
@@ -418,7 +418,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles. Concrete perimeter wall, crane with floodlights and a Network-charged magnet, hydraulic baler press, solar on the sorting shed.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "shelter_l1",
@@ -443,7 +443,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Hut back-left, tarp lean-to with cots on the right.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "shelter_l2",
@@ -468,7 +468,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Brick hut with a gabled metal roof, tarp on a metal frame over a bunk + cot, brick fire pit, plank fence.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "shelter_l3",
@@ -493,7 +493,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Two-storey concrete bunkhouse, flat roof with solar, two bunks under a framed tarp, sandbags, floodlight, Network heater.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "tailor_l1",
@@ -518,7 +518,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Shack back-left, awning + cutting table front-left, mannequin by the door, drying frame with hanging cloth down the right side.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "town_hall_l1",
@@ -543,7 +543,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles (6x6 m). Hall + porch at front (-Y), bell tower back-right.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "town_hall_l2",
@@ -568,7 +568,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles. Two-storey brick hall, gabled porch, planked bell tower, brick yard wall.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "town_hall_l3",
@@ -593,7 +593,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles. Concrete HQ with plated walls, roof solar, steel watchtower with floodlights + Network relay, sandbagged concrete perimeter.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "woodcutter_l1",
@@ -618,7 +618,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Open shed at the back, log pile front-right, saw bench left.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "woodcutter_l2",
@@ -643,7 +643,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Gabled timber shed on a brick base with a closed side, taller firewood stacks, bigger trunk pyramid, steel saw table.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "woodcutter_l3",
@@ -668,7 +668,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Steel-framed mill shed with plated walls, roof solar, sawdust cyclone + duct, trunks in a steel rack, guarded powered saw with a Network core, floodlight.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "workshop_l1",
@@ -693,7 +693,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Open-front shop back-left, chimney back-right, anvil yard right.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "workshop_l2",
@@ -718,7 +718,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. All-brick shop, taller banded chimney, half-open roller door, steel hoist beam, metal lean-to over the anvil yard.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "workshop_l3",
@@ -743,7 +743,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Concrete shop with plated walls, chimney with a steel scrubber, hazard-yellow gantry hoist, solar yard roof over a lathe, Network-fed forge, floodlight.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "enemy_husk",
@@ -765,7 +765,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "~1.7 m hunched. Dull amber eye, no cyan. Parts: head/torso/arm_l/arm_r/leg_l/leg_r.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "parts": {
         "head": {
           "joint": [
@@ -838,7 +838,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Legless Husk crawling prone, ~0.85 m tall, ~1.6 m long (head -Y). Dull amber eye, no cyan. Parts: head/torso/arm_l/arm_r/leg_l/leg_r (legs are stumps).",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "parts": {
         "head": {
           "joint": [
@@ -911,7 +911,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "~2.1 m. Glowing cyan (emissive) visor, chest core and seams. Parts: head/torso/arm_l/arm_r/leg_l/leg_r.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "parts": {
         "head": {
           "joint": [
@@ -1023,7 +1023,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Hovering scout, body ~1.3 m up, ~1.2 m across the rotors. Parts: body, eye, rotor_fl/rotor_fr/rotor_bl/rotor_br (pivot at the rotor hub), hover_field (on the ground, pivot at the origin). Eye faces -Y. Bob the body/eye/rotors, not the field.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "parts": {
         "body": {
           "joint": [
@@ -1106,7 +1106,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "~2.4 m heavy Linked. Tower shield on arm_l, cannon gauntlet on arm_r. Cyan (emissive) visor, chest core, seams. Parts: head/torso/arm_l/arm_r/leg_l/leg_r.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "parts": {
         "head": {
           "joint": [
@@ -1219,7 +1219,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Canvas pack with bedroll; shoulder straps on its -Y face (the wearer's back). 0.42 x 0.35 x 0.56 m (w x d x h). Attach: back (strap face), hand_r (top grab loop).",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "back": {
           "point": [
@@ -1262,7 +1262,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Gauze roll with a loose tail, roll 11 cm wide x 10 cm tall, tail out to 18 cm deep. Attach: hand_r, torso (tucked in a chest pouch).",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "hand_r": {
           "point": [
@@ -1305,7 +1305,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Chunky field binoculars, lenses toward -Y. 0.23 x 0.2 x 0.1 m (w x d x h). Attach: hand_r (bridge), torso (hung on the chest, eyepieces to the body).",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "hand_r": {
           "point": [
@@ -1348,7 +1348,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Rolled tube of blue paper with leather ties, 0.45 x 0.17 x 0.11 m (w x d x h, with the loose sheet). Attach: hand_r, back (slung across).",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "hand_r": {
           "point": [
@@ -1394,7 +1394,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Camo Cloak. Ragged ghillie cloak in moss and concrete tones: shoulder mantle, lowered hood, long back drape hung with strips and tufts, open front. Sized for adult_male, worn shape. Attach: torso (chest-centre socket) or back (back socket); both land it in the same place.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "torso": {
           "point": [
@@ -1437,7 +1437,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Three labelled cans, one lying on two, 0.19 x 0.1 x 0.21 m (w x d x h). Attach: hand_r.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "hand_r": {
           "point": [
@@ -1472,7 +1472,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Upright rope coil standing in a harness loop, carabiners clipped on. 0.38 x 0.27 x 0.42 m (w x d x h). Attach: hand_r (lashing on top of the coil), back.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "hand_r": {
           "point": [
@@ -1515,7 +1515,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Folded bolt of three cloth layers tied with a cord, 0.37 x 0.28 x 0.21 m (w x d x h). Attach: hand_r (cord on top), back.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "hand_r": {
           "point": [
@@ -1532,6 +1532,124 @@
             0.1304
           ],
           "note": "bolt strapped flat on the back"
+        }
+      }
+    },
+    {
+      "id": "item_cyberdeck",
+      "category": "gear",
+      "file": "gear/item_cyberdeck.glb",
+      "tags": [
+        "gear",
+        "item",
+        "tool",
+        "tier3",
+        "hacking",
+        "survivor_tech",
+        "emissive"
+      ],
+      "params": {
+        "item": "cyberdeck"
+      },
+      "dimensions_m": {
+        "x": 0.465,
+        "y": 0.285,
+        "z": 0.313
+      },
+      "tris": 300,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Better hacking rig: a chest-worn deck \u2014 keyboard slab with a flip-up screen, a salvaged battery pack, twin antennas, amber LED row (emissive), webbing straps. ~0.47 x 0.31 x 0.29 m. Attach: torso (worn on the chest, screen up), hand_r (side grip).",
+      "style_revision": "8dcd2465",
+      "attach": {
+        "torso": {
+          "point": [
+            -0.0075,
+            0.034,
+            -0.3134
+          ],
+          "note": "worn on the chest as a tray: screen back 0.15 m in front of the chest centre"
+        },
+        "hand_r": {
+          "point": [
+            0.2125,
+            0.034,
+            0.0266
+          ],
+          "note": "fist round the side grip"
+        }
+      }
+    },
+    {
+      "id": "item_datashard",
+      "category": "gear",
+      "file": "gear/item_datashard.glb",
+      "tags": [
+        "gear",
+        "item",
+        "consumable",
+        "perk",
+        "survivor_tech"
+      ],
+      "params": {
+        "item": "datashard"
+      },
+      "dimensions_m": {
+        "x": 0.195,
+        "y": 0.066,
+        "z": 0.163
+      },
+      "tris": 148,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Learning item for perks: a chunky data chip with gold contacts clipped to a dog-eared field manual. Oversized to read (~0.2 x 0.16 x 0.07 m). Attach: hand_r.",
+      "style_revision": "8dcd2465",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0025,
+            0.034,
+            -0.0015
+          ],
+          "note": "held flat in the hand"
+        }
+      }
+    },
+    {
+      "id": "item_drone_parts",
+      "category": "gear",
+      "file": "gear/item_drone_parts.glb",
+      "tags": [
+        "gear",
+        "item",
+        "material",
+        "drone",
+        "survivor_tech"
+      ],
+      "params": {
+        "item": "drone_parts"
+      },
+      "dimensions_m": {
+        "x": 0.391,
+        "y": 0.108,
+        "z": 0.241
+      },
+      "tris": 196,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Crafting/loot bundle of drone parts: a motor with a two-blade prop, a green circuit board and a coil of red wire, lashed together. ~0.39 x 0.24 x 0.11 m. Attach: hand_r (the lashing).",
+      "style_revision": "8dcd2465",
+      "attach": {
+        "hand_r": {
+          "point": [
+            -0.0156,
+            0.032,
+            0.0007
+          ],
+          "note": "fist round the leather lashing"
         }
       }
     },
@@ -1558,7 +1676,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Salvaged circuit board with chips and coiled wires, 0.26 x 0.19 x 0.1 m (w x d x h). Dead human tech, no cyan. Attach: hand_r.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "hand_r": {
           "point": [
@@ -1593,7 +1711,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Chunky handheld flare/radio beacon: yellow body, red strobe, stub antenna, 0.13 x 0.14 x 0.42 m (w x d x h). Attach: hand_r (rubber grip), torso (belt clip).",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "hand_r": {
           "point": [
@@ -1637,7 +1755,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Red road flare lying on its side, striker cap toward -Y (the lit end), wire stand folded under the back. ~0.07 x 0.31 x 0.05 m. Attach: hand_r (middle of the tube, cap forward), torso (tucked in a chest strap).",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "hand_r": {
           "point": [
@@ -1675,7 +1793,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "The same flare burning: cap off, emissive flare_glow head and flame at -Y, propped on its wire stand. Drop it on a tile as the placed/burning flare (the game adds the light), or hold it via hand_r.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "hand_r": {
           "point": [
@@ -1710,7 +1828,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Three-prong grapnel standing on its prongs, rope coiled round the shaft. 0.38 x 0.34 x 0.57 m (w x d x h). Attach: hand_r (leather grip on the shaft), back.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "hand_r": {
           "point": [
@@ -1727,6 +1845,44 @@
             0.1632
           ],
           "note": "slung on the back, front prong against it"
+        }
+      }
+    },
+    {
+      "id": "item_hacking_kit",
+      "category": "gear",
+      "file": "gear/item_hacking_kit.glb",
+      "tags": [
+        "gear",
+        "item",
+        "tool",
+        "tier1",
+        "hacking",
+        "survivor_tech",
+        "emissive"
+      ],
+      "params": {
+        "item": "hacking_kit"
+      },
+      "dimensions_m": {
+        "x": 0.342,
+        "y": 0.07,
+        "z": 0.295
+      },
+      "tris": 296,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Cracked rugged tablet (dark screen, amber status LED) on a coiled wire bundle with alligator clips and a jack. ~0.34 x 0.3 x 0.07 m. Attach: hand_r (tablet edge).",
+      "style_revision": "8dcd2465",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.131,
+            0.0401,
+            0.0225
+          ],
+          "note": "fist round the tablet's right edge"
         }
       }
     },
@@ -1754,7 +1910,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Husk Claws. ~0.5 m: scrap gauntlet with three hooked blades, dull amber (husk_eye) node, no cyan. Attach: hand_r (inside the gauntlet).",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "hand_r": {
           "point": [
@@ -1793,7 +1949,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Linked Carbine. ~0.85 m sleek dark Network gun, cyan (emissive) seams, cell and muzzle. Attach: hand_r (pistol grip), back (mid-length).",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "hand_r": {
           "point": [
@@ -1844,7 +2000,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Linked Plating. Near-black Network chest plating with cyan (emissive) seams, sized for adult_male. Attach: torso.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "torso": {
           "point": [
@@ -1880,7 +2036,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Machete. ~0.6 m, blade upright edge-down, leather-wrapped handle. Attach: hand_r.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "hand_r": {
           "point": [
@@ -1915,7 +2071,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "White case with red crosses and a top handle, 0.35 x 0.16 x 0.32 m (w x d x h). Attach: hand_r (handle), back (strapped on).",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "hand_r": {
           "point": [
@@ -1961,7 +2117,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Survivor-made motion sensor: a taped tin-can head with a dark PIR lens toward -Y and a small amber (emissive) LED on a scrap tripod, battery taped to the mast. Stands on its own, so the same mesh is the placed ground prop. ~0.3 x 0.26 x 0.55 m (antenna tip). Attach: hand_r (mast under the head), back (strapped upright).",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "hand_r": {
           "point": [
@@ -2005,7 +2161,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Padded Vest. Sleeveless quilted vest with tape patches, sized for adult_male. Attach: torso.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "torso": {
           "point": [
@@ -2041,7 +2197,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Lead Pipe. ~0.8 m length of rusty pipe, taped grip, T-fitting head. Attach: hand_r (taped grip), back (mid-length).",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "hand_r": {
           "point": [
@@ -2090,7 +2246,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Pistol. ~0.28 m, upright (grip down), taped grip. Attach: hand_r (grip).",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "hand_r": {
           "point": [
@@ -2126,7 +2282,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Rag Coat. Knee-length patched coat sized for adult_male, worn shape. Attach: torso (body chest-centre socket).",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "torso": {
           "point": [
@@ -2163,7 +2319,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Hunting Rifle. ~1.1 m bolt rifle, wood stock, scope. Attach: hand_r (stock wrist), back (mid-length).",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "hand_r": {
           "point": [
@@ -2213,7 +2369,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Riot Armor. Plate vest + layered shoulder plates + neck guard, sized for adult_male (no helmet: torso only). Attach: torso.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "torso": {
           "point": [
@@ -2222,6 +2378,52 @@
             0.005
           ],
           "note": "garment chest centre = body torso socket (adult_male rest pose)"
+        }
+      }
+    },
+    {
+      "id": "item_scout_drone",
+      "category": "gear",
+      "file": "gear/item_scout_drone.glb",
+      "tags": [
+        "gear",
+        "item",
+        "tool",
+        "tier2",
+        "drone",
+        "survivor_tech",
+        "emissive"
+      ],
+      "params": {
+        "folded": true
+      },
+      "dimensions_m": {
+        "x": 0.416,
+        "y": 0.467,
+        "z": 0.881
+      },
+      "tris": 524,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "The scout drone folded for carrying (gear lists, loot): arms swung back along the body, props folded, leather carry band. ~0.42 x 0.88 x 0.47 m (w x d x h). Attach: back (nose against the back), hand_r (carry band).",
+      "style_revision": "8dcd2465",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.395,
+            0.1803
+          ],
+          "note": "fist round the leather carry handle"
+        },
+        "back": {
+          "point": [
+            0.0,
+            0.165,
+            0.3503
+          ],
+          "note": "strapped on the back, nose against it"
         }
       }
     },
@@ -2249,7 +2451,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Scout Jacket. Hip-length olive field jacket, hood, pockets, bandolier strap. Sized for adult_male. Attach: torso.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "torso": {
           "point": [
@@ -2284,7 +2486,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Lashed stack of rusty scrap plates and a pipe, 0.47 x 0.34 x 0.23 m (w x d x h). Attach: hand_r (lashing on top), back.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "hand_r": {
           "point": [
@@ -2329,7 +2531,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Rebar Spear (reach 2). ~1.8 m rebar shaft, lashed scrap blade, two cloth grips. Attach: hand_r (rear grip), back (mid-length).",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "attach": {
         "hand_r": {
           "point": [
@@ -2374,7 +2576,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "3x3 tiles (6x6 m). Walls (0.3 m thick) hug the outer edge of the 8 perimeter tiles; tiles (col,row) from -X/-Y corner. Wall cells: all perimeter tiles except (1,0) front doorway (-Y) and (2,1) east breach (+X); centre (1,1) open floor. Walls 1.2-3.1 m tall with window holes; roof gone.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "contact_marker",
@@ -2398,7 +2600,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Flat ripple ring (1.6 m across) around a '?' glyph, 2.5 cm thick, marker_neutral only: tint it in the game. Readable top-down; '?' top toward +Y.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "cover_high_container",
@@ -2423,7 +2625,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "High cover (terrain Wall, blocks sight). Rusted cargo container cut down to one tile, ~1.9x1.9 m, ~2.3 m tall; doors face -Y.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "cover_high_wall",
@@ -2448,7 +2650,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "High cover (terrain Wall, blocks sight). Makeshift scrap barricade: corrugated sheets on posts, 2.0 m along X, ~2.3 m tall.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "cover_low_barrier",
@@ -2473,7 +2675,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Low cover (terrain Cover). Chipped concrete road barrier, 2.0 m along X, ~0.85 m tall.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "cover_low_sandbags",
@@ -2498,7 +2700,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Low cover (terrain Cover). Sandbag wall ~1.9 m along X, ~0.9 m tall, one tile.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "dead_tree",
@@ -2520,7 +2722,611 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "One tile, ~3.6 m tall. Trunk at the origin; crown fits in ~1.9x1.9 m. Blocks movement (terrain Wall or Cover, game's choice).",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
+    },
+    {
+      "id": "device_camera",
+      "category": "prop",
+      "file": "prop/device_camera.glb",
+      "tags": [
+        "scavenge",
+        "device",
+        "hackable",
+        "network",
+        "emissive"
+      ],
+      "params": {
+        "state": "active"
+      },
+      "dimensions_m": {
+        "x": 0.7,
+        "y": 2.873,
+        "z": 0.928
+      },
+      "tris": 332,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Live Network camera on a 2.4 m pole, footprint 0.7 x 0.7 m. Parts mount / head (pan pivot on the pole top) / lens (sight-cone mount, looks -Y = glTF +Z). Cyan lens + status lamp (emissive). Hang the vision cone off `lens`.",
+      "style_revision": "8dcd2465",
+      "parts": {
+        "mount": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "base plate + pole, pivot at the ground centre"
+        },
+        "head": {
+          "joint": [
+            0.0,
+            2.4,
+            0.0
+          ],
+          "note": "pan bracket + housing, pivot at the pan joint (yaw about Z)"
+        },
+        "lens": {
+          "joint": [
+            0.0,
+            2.58,
+            0.39
+          ],
+          "note": "sight-cone mount: lens centre, looking -Y (glTF +Z)"
+        }
+      }
+    },
+    {
+      "id": "device_camera_disabled",
+      "category": "prop",
+      "file": "prop/device_camera_disabled.glb",
+      "tags": [
+        "scavenge",
+        "device",
+        "hackable",
+        "network",
+        "offline"
+      ],
+      "params": {
+        "state": "disabled"
+      },
+      "dimensions_m": {
+        "x": 0.7,
+        "y": 3.0,
+        "z": 0.871
+      },
+      "tris": 332,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Knocked-out camera: dead dark lens, head drooped 30 deg on its tilt. No sight cone. Same parts as device_camera.",
+      "style_revision": "8dcd2465",
+      "parts": {
+        "mount": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "base plate + pole, pivot at the ground centre"
+        },
+        "head": {
+          "joint": [
+            0.0,
+            2.4,
+            0.0
+          ],
+          "note": "pan bracket + housing, pivot at the pan joint (yaw about Z)"
+        },
+        "lens": {
+          "joint": [
+            0.0,
+            2.775,
+            0.3377
+          ],
+          "note": "sight-cone mount: lens centre, looking -Y (glTF +Z)"
+        }
+      }
+    },
+    {
+      "id": "device_camera_hacked",
+      "category": "prop",
+      "file": "prop/device_camera_hacked.glb",
+      "tags": [
+        "scavenge",
+        "device",
+        "hackable",
+        "network",
+        "emissive",
+        "offline"
+      ],
+      "params": {
+        "state": "hacked"
+      },
+      "dimensions_m": {
+        "x": 0.7,
+        "y": 3.166,
+        "z": 0.928
+      },
+      "tris": 412,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Hacked camera (looping footage for the player): amber lens + lamp (emissive; flicker in the game), hack box clamped on the housing. Same parts as device_camera.",
+      "style_revision": "8dcd2465",
+      "parts": {
+        "mount": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "base plate + pole, pivot at the ground centre"
+        },
+        "head": {
+          "joint": [
+            0.0,
+            2.4,
+            0.0
+          ],
+          "note": "pan bracket + housing, pivot at the pan joint (yaw about Z)"
+        },
+        "lens": {
+          "joint": [
+            0.0,
+            2.58,
+            0.39
+          ],
+          "note": "sight-cone mount: lens centre, looking -Y (glTF +Z)"
+        }
+      }
+    },
+    {
+      "id": "device_door",
+      "category": "prop",
+      "file": "prop/device_door.glb",
+      "tags": [
+        "scavenge",
+        "device",
+        "hackable",
+        "network",
+        "door",
+        "wall",
+        "full_cover",
+        "emissive"
+      ],
+      "params": {
+        "state": "active",
+        "open": false
+      },
+      "dimensions_m": {
+        "x": 2.0,
+        "y": 2.74,
+        "z": 0.625
+      },
+      "tris": 420,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Closed, Network-locked blast door. Exactly 2.0 m along X (one tile), 0.5 m deep, 2.7 m tall; chains with wall_segment. Cyan header strip + lock panels (emissive). Blocks movement and sight.",
+      "style_revision": "8dcd2465"
+    },
+    {
+      "id": "device_door_hacked",
+      "category": "prop",
+      "file": "prop/device_door_hacked.glb",
+      "tags": [
+        "scavenge",
+        "device",
+        "hackable",
+        "network",
+        "door",
+        "wall",
+        "full_cover",
+        "emissive",
+        "offline"
+      ],
+      "params": {
+        "state": "hacked",
+        "open": false
+      },
+      "dimensions_m": {
+        "x": 2.0,
+        "y": 2.971,
+        "z": 0.625
+      },
+      "tris": 512,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Closed door after a hack (unlocked for the survivors): amber header strip + lock panels (emissive; flicker in the game), hack box on the header. Blocks until opened.",
+      "style_revision": "8dcd2465"
+    },
+    {
+      "id": "device_door_hacked_open",
+      "category": "prop",
+      "file": "prop/device_door_hacked_open.glb",
+      "tags": [
+        "scavenge",
+        "device",
+        "hackable",
+        "network",
+        "door",
+        "wall",
+        "emissive",
+        "offline"
+      ],
+      "params": {
+        "state": "hacked",
+        "open": true
+      },
+      "dimensions_m": {
+        "x": 2.0,
+        "y": 2.971,
+        "z": 0.625
+      },
+      "tris": 440,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Hacked door forced open: slab in the floor slot, amber lights, hack box on the header. 1.24 m passage.",
+      "style_revision": "8dcd2465"
+    },
+    {
+      "id": "device_door_open",
+      "category": "prop",
+      "file": "prop/device_door_open.glb",
+      "tags": [
+        "scavenge",
+        "device",
+        "hackable",
+        "network",
+        "door",
+        "wall",
+        "emissive"
+      ],
+      "params": {
+        "state": "active",
+        "open": true
+      },
+      "dimensions_m": {
+        "x": 2.0,
+        "y": 2.74,
+        "z": 0.625
+      },
+      "tris": 348,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Same door opened by the Network: header strip split at the middle (top-down read), slab sunk into the floor slot, 1.24 m passage over a hazard-striped threshold. Cyan lights still live.",
+      "style_revision": "8dcd2465"
+    },
+    {
+      "id": "device_locker",
+      "category": "prop",
+      "file": "prop/device_locker.glb",
+      "tags": [
+        "scavenge",
+        "device",
+        "hackable",
+        "network",
+        "loot",
+        "interactable",
+        "emissive"
+      ],
+      "params": {
+        "state": "active"
+      },
+      "dimensions_m": {
+        "x": 1.28,
+        "y": 0.98,
+        "z": 0.805
+      },
+      "tris": 244,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Sealed Network supply locker, 1.1 x 0.7 x 0.95 m, inside one tile. Cyan seal band round the lid + lock plate on the -Y face (emissive). Hack it to open.",
+      "style_revision": "8dcd2465"
+    },
+    {
+      "id": "device_locker_hacked",
+      "category": "prop",
+      "file": "prop/device_locker_hacked.glb",
+      "tags": [
+        "scavenge",
+        "device",
+        "hackable",
+        "network",
+        "loot",
+        "interactable",
+        "emissive",
+        "offline"
+      ],
+      "params": {
+        "state": "hacked"
+      },
+      "dimensions_m": {
+        "x": 1.28,
+        "y": 1.405,
+        "z": 1.042
+      },
+      "tris": 520,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Unsealed locker: lid stands open (hinged at the back), supplies visible inside, seal dead, amber lock plate (emissive), hack box on the front. Same footprint.",
+      "style_revision": "8dcd2465"
+    },
+    {
+      "id": "device_relay_node",
+      "category": "prop",
+      "file": "prop/device_relay_node.glb",
+      "tags": [
+        "scavenge",
+        "device",
+        "hackable",
+        "network",
+        "interactable",
+        "emissive"
+      ],
+      "params": {
+        "state": "active"
+      },
+      "dimensions_m": {
+        "x": 0.826,
+        "y": 1.17,
+        "z": 0.707
+      },
+      "tris": 176,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Live Network relay node, 0.8 x 0.7 m footing, ~1.2 m to the antenna tip. Cyan core window on the sloped top + antenna tip (emissive). Hack it to cut the devices it links (game logic).",
+      "style_revision": "8dcd2465"
+    },
+    {
+      "id": "device_relay_node_hacked",
+      "category": "prop",
+      "file": "prop/device_relay_node_hacked.glb",
+      "tags": [
+        "scavenge",
+        "device",
+        "hackable",
+        "network",
+        "interactable",
+        "emissive",
+        "offline"
+      ],
+      "params": {
+        "state": "hacked"
+      },
+      "dimensions_m": {
+        "x": 0.826,
+        "y": 1.17,
+        "z": 0.707
+      },
+      "tris": 280,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Hacked relay node: amber core window + tip (emissive; flicker in the game), dead seams, hack box with red leads clamped on top. Same footprint.",
+      "style_revision": "8dcd2465"
+    },
+    {
+      "id": "device_terminal",
+      "category": "prop",
+      "file": "prop/device_terminal.glb",
+      "tags": [
+        "scavenge",
+        "device",
+        "hackable",
+        "network",
+        "interactable",
+        "emissive"
+      ],
+      "params": {
+        "state": "active"
+      },
+      "dimensions_m": {
+        "x": 1.0,
+        "y": 1.412,
+        "z": 0.947
+      },
+      "tris": 304,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Live Network console, ~1.0 x 0.8 x 1.35 m, inside one tile. Screen faces -Y and tilts up; cyan screen + top status bar (emissive). Interact from the -Y side.",
+      "style_revision": "8dcd2465"
+    },
+    {
+      "id": "device_terminal_hacked",
+      "category": "prop",
+      "file": "prop/device_terminal_hacked.glb",
+      "tags": [
+        "scavenge",
+        "device",
+        "hackable",
+        "network",
+        "interactable",
+        "emissive",
+        "offline"
+      ],
+      "params": {
+        "state": "hacked"
+      },
+      "dimensions_m": {
+        "x": 1.0,
+        "y": 1.563,
+        "z": 0.947
+      },
+      "tris": 408,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Same console after a hack: glitched amber screen bands and status bar (emissive; flicker in the game), dead seams, survivor hack box clamped on top. Same footprint.",
+      "style_revision": "8dcd2465"
+    },
+    {
+      "id": "device_turret",
+      "category": "prop",
+      "file": "prop/device_turret.glb",
+      "tags": [
+        "scavenge",
+        "device",
+        "hackable",
+        "network",
+        "hazard",
+        "emissive"
+      ],
+      "params": {
+        "state": "active"
+      },
+      "dimensions_m": {
+        "x": 1.44,
+        "y": 1.205,
+        "z": 1.68
+      },
+      "tris": 556,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Live Network auto-turret, ~1.4 x 1.4 m base (one tile), 1.25 m tall, barrels toward -Y (glTF +Z). Parts base / head (yaw pivot at z=0.75). Cyan eye + seams (emissive). Blocks movement.",
+      "style_revision": "8dcd2465",
+      "parts": {
+        "base": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "armoured base, pivot at the ground centre"
+        },
+        "head": {
+          "joint": [
+            0.0,
+            0.75,
+            0.0
+          ],
+          "note": "gun head, pivot at the yaw joint (yaw about Z)"
+        }
+      }
+    },
+    {
+      "id": "device_turret_disabled",
+      "category": "prop",
+      "file": "prop/device_turret_disabled.glb",
+      "tags": [
+        "scavenge",
+        "device",
+        "hackable",
+        "network",
+        "hazard",
+        "offline"
+      ],
+      "params": {
+        "state": "disabled"
+      },
+      "dimensions_m": {
+        "x": 1.44,
+        "y": 1.2,
+        "z": 1.673
+      },
+      "tris": 544,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Shut-down turret: dead dark eye, barrels slumped 18 deg toward the ground. Same parts and footprint as device_turret.",
+      "style_revision": "8dcd2465",
+      "parts": {
+        "base": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "armoured base, pivot at the ground centre"
+        },
+        "head": {
+          "joint": [
+            0.0,
+            0.75,
+            0.0
+          ],
+          "note": "gun head, pivot at the yaw joint (yaw about Z)"
+        }
+      }
+    },
+    {
+      "id": "device_turret_hacked",
+      "category": "prop",
+      "file": "prop/device_turret_hacked.glb",
+      "tags": [
+        "scavenge",
+        "device",
+        "hackable",
+        "network",
+        "hazard",
+        "emissive",
+        "offline"
+      ],
+      "params": {
+        "state": "hacked"
+      },
+      "dimensions_m": {
+        "x": 1.44,
+        "y": 1.431,
+        "z": 1.68
+      },
+      "tris": 648,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Turret turned to the player's side: head rotated 180 deg (barrels toward +Y in the model; aim it with the `head` yaw), amber eye + lamp (emissive), hack box with red leads clamped on the head. Same parts and footprint as device_turret.",
+      "style_revision": "8dcd2465",
+      "parts": {
+        "base": {
+          "joint": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "note": "armoured base, pivot at the ground centre"
+        },
+        "head": {
+          "joint": [
+            0.0,
+            0.75,
+            0.0
+          ],
+          "note": "gun head, pivot at the yaw joint (yaw about Z)"
+        }
+      }
+    },
+    {
+      "id": "drone_mark_marker",
+      "category": "prop",
+      "file": "prop/drone_mark_marker.glb",
+      "tags": [
+        "marker_fx",
+        "drone",
+        "ui"
+      ],
+      "params": {
+        "glyph": "drone_mark"
+      },
+      "dimensions_m": {
+        "x": 1.473,
+        "y": 0.02,
+        "z": 1.473
+      },
+      "tris": 284,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Flat target reticle (1.6 m across): four corner brackets, four inward ticks and a centre dot, 2 cm thick, marker_neutral only. Put it on a unit the drone has marked; tint it in the game.",
+      "style_revision": "8dcd2465"
     },
     {
       "id": "exit_marker",
@@ -2543,7 +3349,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "One tile (1.9x1.9 m deck, top z~0.1). Chevrons point -Y = the way out; rotate so -Y faces the map edge. Flare pole ~3.2 m at the back (+Y).",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "ground_tile",
@@ -2567,7 +3373,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "2x2 m floor tile for the scavenge map, cracked asphalt. Top z~0.07.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "ground_tile_concrete",
@@ -2592,7 +3398,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "2x2 m floor tile, cracked concrete yard / pavement. Top z~0.07.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "ground_tile_dirt",
@@ -2617,7 +3423,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "2x2 m floor tile, packed earth with cart ruts (along Y), stones and weeds. Top z~0.07.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "ground_tile_overgrown",
@@ -2642,7 +3448,31 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "2x2 m floor tile, broken paving slabs swallowed by moss and grass clumps. Top z~0.07.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
+    },
+    {
+      "id": "hack_marker",
+      "category": "prop",
+      "file": "prop/hack_marker.glb",
+      "tags": [
+        "marker_fx",
+        "hacking",
+        "ui"
+      ],
+      "params": {
+        "glyph": "hack"
+      },
+      "dimensions_m": {
+        "x": 1.669,
+        "y": 0.025,
+        "z": 1.669
+      },
+      "tris": 276,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Flat progress ring (1.7 m across) of 12 ticks, tick 0 at the top (+Y in Blender, -Z in glTF) going clockwise seen from above, around a circuit glyph, 2.5 cm thick, marker_neutral only. Tint it in the game; fake progress by tinting / masking ticks by angle.",
+      "style_revision": "8dcd2465"
     },
     {
       "id": "loot_crate",
@@ -2664,7 +3494,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Pickup marker on the tactical map. ~1 m long, sits inside one tile.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "network_pylon",
@@ -2687,7 +3517,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "One tile (1.8x1.8 m plinth), ~5 m tall. Emissive cyan rings/core: give the environment glow. Blocks movement and sight (terrain Wall).",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "overwatch_marker",
@@ -2711,7 +3541,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Flat thin ring (1.8 m across) with a bold 90-degree watch arc toward -Y (the facing) and an eye glyph at the center, 2 cm thick, marker_neutral only. Origin = the unit; rotate it to the unit's overwatch direction and tint it in the game.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "rubble",
@@ -2733,7 +3563,75 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Half cover. Fits one tile (~1.8 m footprint), ~0.8 m tall.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
+    },
+    {
+      "id": "scout_drone",
+      "category": "prop",
+      "file": "prop/scout_drone.glb",
+      "tags": [
+        "player",
+        "drone",
+        "survivor_tech",
+        "flying",
+        "emissive"
+      ],
+      "params": {
+        "folded": false
+      },
+      "dimensions_m": {
+        "x": 1.098,
+        "y": 0.542,
+        "z": 1.078
+      },
+      "tris": 916,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Deployed survivor scout drone, landed: ~0.95 x 0.95 m across the rotor guards, 0.42 m tall, camera toward -Y (glTF +Z). Parts body (pivot at its centre, z=0.24) and rotor_fl/rotor_fr/rotor_bl/rotor_br (pivot at the hub; spin about Z). Lift the whole model to fly; amber LEDs (emissive), no cyan.",
+      "style_revision": "8dcd2465",
+      "parts": {
+        "rotor_fl": {
+          "joint": [
+            0.34,
+            0.29,
+            0.34
+          ],
+          "note": "prop, pivot at the hub (spin about Z)"
+        },
+        "rotor_fr": {
+          "joint": [
+            -0.34,
+            0.29,
+            0.34
+          ],
+          "note": "prop, pivot at the hub (spin about Z)"
+        },
+        "rotor_bl": {
+          "joint": [
+            0.34,
+            0.29,
+            -0.34
+          ],
+          "note": "prop, pivot at the hub (spin about Z)"
+        },
+        "rotor_br": {
+          "joint": [
+            -0.34,
+            0.29,
+            -0.34
+          ],
+          "note": "prop, pivot at the hub (spin about Z)"
+        },
+        "body": {
+          "joint": [
+            0.0,
+            0.24,
+            0.0
+          ],
+          "note": "drone body + frame, pivot at its centre"
+        }
+      }
     },
     {
       "id": "wall_segment",
@@ -2756,7 +3654,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Full cover. Exactly 2.0 m along X, 0.3 m thick; chain along X for cover lines.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "wrecked_car",
@@ -2779,7 +3677,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Full cover. 2x1 tiles (~4 m along X), ~1.3 m tall. Nose points +X.",
-      "style_revision": "9652bb8d"
+      "style_revision": "8dcd2465"
     },
     {
       "id": "prosthetic_arm_cyborg_l",
@@ -2807,7 +3705,7 @@
       "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Replaces arm_l on adult bodies; origin at the shoulder joint.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "parts": {
         "arm_l": {
           "joint": [
@@ -2845,7 +3743,7 @@
       "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Replaces arm_r on adult bodies; origin at the shoulder joint.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "parts": {
         "arm_r": {
           "joint": [
@@ -2882,7 +3780,7 @@
       "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Leather upper-arm socket, metal rod forearm and a chunky hook. Replaces arm_l on adult bodies; origin at the shoulder joint.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "parts": {
         "arm_l": {
           "joint": [
@@ -2919,7 +3817,7 @@
       "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Leather upper-arm socket, metal rod forearm and a chunky hook. Replaces arm_r on adult bodies; origin at the shoulder joint.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "parts": {
         "arm_r": {
           "joint": [
@@ -2957,7 +3855,7 @@
       "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Replaces leg_l on adult bodies; origin at the hip joint.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "parts": {
         "leg_l": {
           "joint": [
@@ -2995,7 +3893,7 @@
       "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Replaces leg_r on adult bodies; origin at the hip joint.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "parts": {
         "leg_r": {
           "joint": [
@@ -3032,7 +3930,7 @@
       "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Strapped leather socket on a wooden peg with a rubber foot. Replaces leg_l on adult bodies; origin at the hip joint.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "parts": {
         "leg_l": {
           "joint": [
@@ -3069,7 +3967,7 @@
       "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Strapped leather socket on a wooden peg with a rubber foot. Replaces leg_r on adult bodies; origin at the hip joint.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "parts": {
         "leg_r": {
           "joint": [
@@ -3103,7 +4001,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "1.68 m. Rust-red jacket, scarf, ponytail. Swappable limbs: see parts.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "parts": {
         "head": {
           "joint": [
@@ -3215,7 +4113,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "1.80 m. Olive field jacket, backpack, beard. Swappable limbs: see parts.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "parts": {
         "head": {
           "joint": [
@@ -3333,7 +4231,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Fit check: adult male with prosthetic_leg_cyborg_l + prosthetic_arm_cyborg_r swapped in at the same joints. Reference for the in-game part swap.",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "parts": {
         "head": {
           "joint": [
@@ -3444,7 +4342,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "1.15 m. Oversized hoodie. Grows into an adult body (separate asset).",
-      "style_revision": "9652bb8d",
+      "style_revision": "8dcd2465",
       "parts": {
         "head": {
           "joint": [
