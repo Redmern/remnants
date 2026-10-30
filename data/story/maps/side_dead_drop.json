@@ -12,11 +12,9 @@
   "markers": {
     "l": "drop"
   },
-  "devices": [
+  "caches": [
     {
-      "kind": "Locker",
       "marker": "drop",
-      "tag": "drop",
       "items": [
         "trade_crate"
       ]

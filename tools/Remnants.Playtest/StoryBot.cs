@@ -14,9 +14,13 @@ public static class StoryBot
     private const int MaxRounds = 60;
 
     /// <param name="prompt">Which option to pick on a prompt (index, clamped): 0 = the first (talk), 1 = the second (fight).</param>
-    public static (ExtractionResult Result, int Rounds) Play(ScavengeSim sim, int playerId, int prompt = 0, Action<string>? trace = null)
+    /// <param name="choose">Picks a prompt's option id (null: fall back to <paramref name="prompt"/>).</param>
+    public static (ExtractionResult Result, int Rounds) Play(ScavengeSim sim, int playerId, int prompt = 0, Action<string>? trace = null,
+        Func<PromptDef, string?>? choose = null)
     {
         _leaveAll = false;
+        _choose = choose;
+        _exitOf.Clear();
         var seen = sim.State.Events.Count;
         void Flush()
         {
@@ -44,6 +48,10 @@ public static class StoryBot
     }
 
     private static bool _leaveAll;
+    private static Func<PromptDef, string?>? _choose;
+
+    /// <summary>The exit each unit set off for: kept, so it does not swing between two equally near ones.</summary>
+    private static readonly Dictionary<int, Pos> _exitOf = new();
 
     /// <summary>The run has dragged on: everyone heads for the exit (leaving early is "not done yet", not a fail).</summary>
     private static void LeaveNow(ScavengeSim sim, Unit u) => _leaveAll = true;
@@ -54,7 +62,9 @@ public static class StoryBot
         var run = state.Mission!;
         var pid = u.PlayerId!.Value;
         var end = new EndTurn(pid, u.Id);
-        if (run.Pending is { } p) return new ChooseOption(pid, u.Id, p.Id, p.Options[Math.Clamp(prompt, 0, p.Options.Count - 1)].Id);
+        if (run.Pending is { } p)
+            return new ChooseOption(pid, u.Id, p.Id, _choose?.Invoke(p) is { } picked && p.Options.Any(o => o.Id == picked)
+                ? picked : p.Options[Math.Clamp(prompt, 0, p.Options.Count - 1)].Id);
 
         var profile = sim.Profile(u);
         var side = u.Side;
@@ -114,7 +124,17 @@ public static class StoryBot
                         if (hurt.Pos.Chebyshev(u.Pos) <= 1 && Heal(sim, u, hurt, revive: true) is { } aid) return aid;
                         goal = hurt.Pos;
                         break;
-                    case ObjectiveKind.Survive or ObjectiveKind.Defend when run.Def.AtHome:
+                    case ObjectiveKind.Survive when !run.Def.AtHome:
+                        // Hold where it matters: by whoever we defend, else right here.
+                        var held = state.Units.Find(x => x.Tag == run.Def.Objectives.FirstOrDefault(d => d.Kind == ObjectiveKind.Defend)?.Tag && x.OnMap);
+                        if (held is not null && held.Pos.Chebyshev(u.Pos) > 2) { goal = held.Pos; break; }
+                        return u.Ap >= 1 && u.Stance != Stance.Overwatch ? new SetStance(pid, u.Id, Stance.Overwatch) : end;
+                    case ObjectiveKind.Carry:
+                        // Heavy work: get next to it and stay there until it is done.
+                        if (run.Marker(o.Marker).Any(m => m.Chebyshev(u.Pos) <= 1)) return end;
+                        goal = run.Marker(o.Marker).FirstOrDefault();
+                        break;
+                    case ObjectiveKind.Survive or ObjectiveKind.Defend or ObjectiveKind.Keep when run.Def.AtHome:
                         var guard = state.Units.Find(x => x.Tag == run.Def.Objectives.FirstOrDefault(d => d.Kind == ObjectiveKind.Defend)?.Tag) ?? u;
                         var threat = state.Units.Where(t => t.IsActive && u.HostileTo(t) && Detection.SideSees(sim.Data, state, side, t))
                             .OrderBy(t => t.Pos.Chebyshev(guard.Pos)).ThenBy(t => t.Id).FirstOrDefault();
@@ -148,9 +168,14 @@ public static class StoryBot
                 var lagging = state.Units.Any(f => f.FollowingId == u.Id && f.IsActive && f.Pos.Chebyshev(u.Pos) > sim.Data.Rules.EscortRadius);
                 return lagging ? end : new Extract(pid, u.Id);
             }
-            // The nearest exit that can be walked to now (a bystander may stand in a doorway).
+            // The exit it set off for, else the nearest that can be walked to now (a bystander may stand in a doorway).
+            if (_exitOf.TryGetValue(u.Id, out var chosen) && Toward(sim, u, chosen, exact: true) is { } keep) return keep;
             foreach (var exit in state.Map.Exits.OrderBy(e => e.Chebyshev(u.Pos)).ThenBy(state.Map.Index))
-                if (Toward(sim, u, exit, exact: true) is { } step) return step;
+                if (Toward(sim, u, exit, exact: true) is { } step)
+                {
+                    _exitOf[u.Id] = exit;
+                    return step;
+                }
             return end;
         }
 

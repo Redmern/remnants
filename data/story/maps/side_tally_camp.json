@@ -21,17 +21,6 @@
     "C": "cole",
     "l": "strongbox"
   },
-  "devices": [
-    {
-      "kind": "Locker",
-      "marker": "strongbox",
-      "tag": "strongbox",
-      "items": [
-        "marrow_ledger",
-        "scrap"
-      ]
-    }
-  ],
   "enemies": [
     {
       "enemy": "tally_scav",
@@ -55,6 +44,15 @@
       "tag": "family",
       "hp": 60,
       "sex": "Female"
+    }
+  ],
+  "caches": [
+    {
+      "marker": "strongbox",
+      "items": [
+        "marrow_ledger",
+        "scrap"
+      ]
     }
   ]
 }

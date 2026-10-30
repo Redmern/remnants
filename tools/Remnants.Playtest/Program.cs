@@ -4,6 +4,7 @@ using Remnants.Playtest;
 
 // Usage: dotnet run --project tools/Remnants.Playtest -- [--story [--prompt=N]] [--days=N] [--seeds=A..B | --seed=N] [--quiet] [--trace] [--no-expeditions] [--bold] [--no-mods] [--no-raids | --fight] [--data=DIR]
 //        [--no-vehicles] [--schematics=sch_a,sch_b|vehicles]   --travel-table   --zone=ID --vehicle=TIER   (vehicles: every vehicle schematic, to sweep the tiers)
+//        dotnet run --project tools/Remnants.Playtest -- --story-acts[=terms|silence|voice|calm|all] [--seed=N] [--trace]
 //        dotnet run --project tools/Remnants.Playtest -- --zone=outskirts|all [--runs=N] [--party=N] [--trace] [--no-defenses] [--kit=fog|geared|tech|hack|drone|hacker|peg|mech|powered|cyborg|network] [--carbines=N] [--carbine-quality=fine|crude] [--armor] [--no-tech] [--coop=N] [--hour=H[,H...]] [--weather=KIND[,KIND...]|all] [--mods=basic|full|stealth|network] [--no-salvage]
 var options = args.Where(a => a.StartsWith("--")).Select(a => a[2..].Split('=', 2)).ToDictionary(p => p[0], p => p.Length > 1 ? p[1] : "");
 var days = int.Parse(options.GetValueOrDefault("days", "40"));
@@ -34,6 +35,17 @@ foreach (var w in scavenge.LootWarnings) Console.Error.WriteLine($"warning: {w}"
 var story = options.ContainsKey("story") ? Remnants.Core.Story.StoryDataLoader.LoadFromDirectory(Path.Combine(dataDir, "story")) : null;
 var raids = options.ContainsKey("no-raids") ? null : Remnants.Core.Raids.RaidDataLoader.LoadFromDirectory(dataDir);
 raids?.Validate(data, scavenge);
+if (options.TryGetValue("story-acts", out var variantArg))
+{
+    // Story bot playthrough of Acts 2-4: --story-acts[=terms|silence|voice|calm|all] [--seed=N] [--trace]
+    var storyData = Remnants.Core.Story.StoryDataLoader.LoadFromDirectory(Path.Combine(dataDir, "story"));
+    var picked = StoryActs.Variants.Where(v => variantArg is "" or "all" || variantArg.Split(',').Contains(v.Name)).ToList();
+    foreach (var seed in seeds)
+        foreach (var variant in picked)
+            StoryActs.Print(StoryActs.Run(data, scavenge, storyData, seed, variant, options.ContainsKey("trace") ? line => Console.WriteLine($"    {line}") : null),
+                Console.WriteLine);
+    return;
+}
 if (options.TryGetValue("zone", out var zoneArg))
 {
     // Zone trial: --zone=ID[,ID...] [--runs=N] [--party=N]; --hour and --weather take lists and sweep every combination.

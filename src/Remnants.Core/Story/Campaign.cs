@@ -63,6 +63,11 @@ public static class Campaign
         foreach (var call in campaign.Inbox.Where(c => !c.Rung && !c.Taken && c.Tick <= now).ToList()) Ring(sim, call);
         StoryCharacters.Tick(sim);
         StoryWorld.Tick(sim);
+        // The caravan's visits once Marrow trades with the colony (M6 waits for two).
+        var visits = sim.State.Radio.Visits;
+        if (visits > campaign.Flag("trader_visits_seen") && campaign.Flag("caravan_open") > 0)
+            campaign.Flags["marrow_visits"] = campaign.Flag("marrow_visits") + visits - campaign.Flag("trader_visits_seen");
+        campaign.Flags["trader_visits_seen"] = visits;
         if (campaign.Over) return;
         foreach (var def in story.Missions)
         {
@@ -283,7 +288,7 @@ public static class Campaign
         if (!result.Ok) return result;
         sim.State.Expedition!.MissionId = def.Id;
         // One of our own takes the port (M16): the first in the party, unless Iris or Seven carries the key.
-        if (def.MustBring.Contains(StoryCharacters.Key) && sim.State.Campaign.Flag("key_carrier") == 3 && sim.State.Campaign.Flag("key_survivor") == 0)
+        if (def.MustBring.Contains(StoryCharacters.Key) && sim.State.Campaign.Flag("key_carrier") == 3 && KeyCarrierSurvivor(sim) is null)
             sim.State.Campaign.Flags["key_survivor"] = c.Members[0].SurvivorId;
         var p = sim.State.Campaign.Progress(def.Id);
         p.Status = MissionStatus.Active;
@@ -375,6 +380,8 @@ public static class Campaign
         else
         {
             foreach (var e in def.Fail.Effects) Apply(sim, e, $"{def.Name}", lines);
+            // A failed floor of a chain: the assault starts again from the floor below with whoever is fit (cleared floors stay cleared).
+            if (def.ChainFrom is { } below) campaign.ChainParties.Remove(below);
             // A fail effect may close the mission for good (the person it was about is dead): no retry then.
             if (p.Status == MissionStatus.Done) { }
             else if (def.Fail.RetryDays is { } days)

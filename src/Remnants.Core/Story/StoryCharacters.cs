@@ -163,10 +163,19 @@ public static class StoryCharacters
         {
             if (c.SurvivorId is not { } sid || state.FindSurvivor(sid) is not null) continue;
             if (campaign.Taken.Any(t => t.Survivor.Id == sid) || state.Expedition?.Members.Any(m => m.SurvivorId == sid) == true) continue;
-            c.Dead = true;
             c.Joined = false;
-            campaign.Flags[$"{id}_dead"] = 1;
-            Campaign.Log(sim, $"{sim.Story?.Characters.GetValueOrDefault(id)?.Name ?? id} is gone.");
+            // In the memorial: dead. Otherwise they walked away (no bed, no hope) and are still out there.
+            if (state.Memorial.Any(m => m.SurvivorId == sid))
+            {
+                c.Dead = true;
+                campaign.Flags[$"{id}_dead"] = 1;
+                Campaign.Log(sim, $"{sim.Story?.Characters.GetValueOrDefault(id)?.Name ?? id} is gone.");
+            }
+            else
+            {
+                c.Left = true;
+                campaign.Flags[$"{id}_left"] = 1;
+            }
         }
         DocsOath(sim);
         if (state.Tick % sim.Data.Rules.TicksPerDay != 0) return;

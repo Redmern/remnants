@@ -1,54 +1,748 @@
 [
-  {"id": "silence", "title": "Silence", "final": false, "requires": [], "closedText": null, "worldEffects": ["silence"],
+  {
+    "id": "silence",
+    "title": "Silence",
+    "final": false,
+    "requires": [],
+    "closedText": null,
+    "worldEffects": [
+      "silence"
+    ],
     "slides": [
-      {"still": "colony_dawn", "variants": [{"text": "The valley was quiet after that. Quieter than anyone could remember. {colony.population} people, and every one of them themselves."}]},
-      {"still": "treeline_husks", "variants": [{"text": "The Linked did not die. They walked. The routes they had been given, over and over, for years. Nobody was home now. Nobody would be."}]},
-      {"still": "iris_mast", "variants": [{"text": "Iris did not go back to the radio. She planted tomatoes. Very bitter ones. She never said whose door it had been, and nobody asked.", "when": {"joined": "iris"}}, {"text": "Lantern stayed on the air. Fewer calls every month. One day the channel was just quiet, and somebody went down the hatch, and the tomatoes were fine.", "when": {"flag": "iris_home", "min": 2, "max": 2, "alive": "iris"}}, {"text": "Her terminal still plays the recordings. Pell knows them by heart.", "when": {"dead": "iris"}}]},
-      {"still": "caravan_road", "variants": [{"text": "Marrow's road got longer. With no Linked on it, it only had Husks and weather. 'Free,' he said. 'Still kills you. Still free.'", "when": {"alive": "marrow", "any": [{"flag": "m6_saved", "min": 1, "max": 1}, {"flag": "m6_saved", "min": 3, "max": 3}]}}, {"text": "Marrow kept trading. He counted people first now, every time, out loud.", "when": {"alive": "marrow", "flag": "m6_saved", "min": 2, "max": 2}}, {"text": "Dee runs the Long Haul. Her prices are worse. Her trucks always arrive.", "when": {"dead": "marrow"}}]},
-      {"still": "doc_hospital", "variants": [{"text": "Doc fitted forty-one limbs that year. Wood, steel, carbon. Never the head.", "when": {"any": [{"flag": "doc_state", "min": 1, "max": 1}, {"flag": "doc_state", "min": 4, "max": 4}]}}, {"text": "Doc Hale's clinic moved to the Mall again. She sends medicine with the caravan. She does not send letters.", "when": {"flag": "doc_state", "min": 3, "max": 3}}, {"text": "Her notebook sits in the Hospital. Every new medic reads the first page: Don't touch the heads.", "when": {"flag": "doc_state", "min": 2, "max": 2}}]},
-      {"still": "tally_camp", "variants": [{"text": "Cole kept the colony on his list. In the column marked 'owed', and in the other one.", "when": {"flag": "cole_path", "min": 1, "max": 1, "alive": "cole"}}, {"text": "The Tally scattered after Cole. Somebody still paints the marks on the old bunker door. Nobody knows who.", "when": {"flag": "cole_path", "min": 2, "max": 2, "dead": "cole"}}, {"text": "The Tally moved south. They left a note on the Flats terminal: 'Even.'", "when": {"flag": "cole_path", "min": 3, "max": 3}}]},
-      {"still": "seven", "variants": [{"text": "{seven} stayed. When the Linked went silent, {seven.they} sat by the Mast for three days, listening to nothing. Then went back to work.", "when": {"flag": "seven_fate", "min": 1, "max": 1, "alive": "seven"}}, {"text": "Somewhere north a Linked unit with one light out walks a route nobody gave it.", "when": {"flag": "seven_fate", "min": 2, "max": 2}}]},
-      {"still": "pell", "variants": [{"text": "Pell is grown now. He keeps the radio. Some nights he turns it to channel nine, out of habit, and listens to the quiet.", "when": {"alive": "pell"}}, {"text": "There's a pair of headphones on a nail by the Radio Mast. Nobody moves them.", "when": {"dead": "pell"}}]},
-      {"still": "memorial", "variants": [{"text": "{survivor:taken_1} never came home. Somebody saw a figure on the Depot road that walked the way they used to. Nobody followed it.", "when": {"flag": "taken", "min": 1}}, {"text": "{colony.dead_total} names on the memorial. Room for more. There is always room for more."}]},
-      {"still": "title", "variants": [{"text": "SILENCE. Keep them alive. Keep them human. You chose one."}]}
+      {
+        "still": "colony_dawn",
+        "variants": [
+          {
+            "text": "The valley was quiet after that. Quieter than anyone could remember. {colony.population} people, and every one of them themselves."
+          }
+        ]
+      },
+      {
+        "still": "treeline_husks",
+        "variants": [
+          {
+            "text": "The Linked did not die. They walked. The routes they had been given, over and over, for years. Nobody was home now. Nobody would be."
+          }
+        ]
+      },
+      {
+        "still": "iris_mast",
+        "variants": [
+          {
+            "text": "Iris did not go back to the radio. She planted tomatoes. Very bitter ones. She never said whose door it had been, and nobody asked.",
+            "when": {
+              "joined": "iris"
+            }
+          },
+          {
+            "text": "Lantern stayed on the air. Fewer calls every month. One day the channel was just quiet, and somebody went down the hatch, and the tomatoes were fine.",
+            "when": {
+              "flag": "iris_home",
+              "min": 2,
+              "max": 2,
+              "alive": "iris"
+            }
+          },
+          {
+            "text": "Her terminal still plays the recordings. Pell knows them by heart.",
+            "when": {
+              "dead": "iris"
+            }
+          }
+        ]
+      },
+      {
+        "still": "caravan_road",
+        "variants": [
+          {
+            "text": "Marrow's road got longer. With no Linked on it, it only had Husks and weather. 'Free,' he said. 'Still kills you. Still free.'",
+            "when": {
+              "alive": "marrow",
+              "any": [
+                {
+                  "flag": "m6_saved",
+                  "min": 1,
+                  "max": 1
+                },
+                {
+                  "flag": "m6_saved",
+                  "min": 3,
+                  "max": 3
+                }
+              ]
+            }
+          },
+          {
+            "text": "Marrow kept trading. He counted people first now, every time, out loud.",
+            "when": {
+              "alive": "marrow",
+              "flag": "m6_saved",
+              "min": 2,
+              "max": 2
+            }
+          },
+          {
+            "text": "Dee runs the Long Haul. Her prices are worse. Her trucks always arrive.",
+            "when": {
+              "dead": "marrow"
+            }
+          }
+        ]
+      },
+      {
+        "still": "doc_hospital",
+        "variants": [
+          {
+            "text": "Doc fitted forty-one limbs that year. Wood, steel, carbon. Never the head.",
+            "when": {
+              "any": [
+                {
+                  "flag": "doc_state",
+                  "min": 1,
+                  "max": 1
+                },
+                {
+                  "flag": "doc_state",
+                  "min": 4,
+                  "max": 4
+                }
+              ]
+            }
+          },
+          {
+            "text": "Doc Hale's clinic moved to the Mall again. She sends medicine with the caravan. She does not send letters.",
+            "when": {
+              "flag": "doc_state",
+              "min": 3,
+              "max": 3
+            }
+          },
+          {
+            "text": "Her notebook sits in the Hospital. Every new medic reads the first page: Don't touch the heads.",
+            "when": {
+              "flag": "doc_state",
+              "min": 2,
+              "max": 2
+            }
+          }
+        ]
+      },
+      {
+        "still": "tally_camp",
+        "variants": [
+          {
+            "text": "Cole kept the colony on his list. In the column marked 'owed', and in the other one.",
+            "when": {
+              "flag": "cole_path",
+              "min": 1,
+              "max": 1,
+              "alive": "cole"
+            }
+          },
+          {
+            "text": "The Tally scattered after Cole. Somebody still paints the marks on the old bunker door. Nobody knows who.",
+            "when": {
+              "flag": "cole_path",
+              "min": 2,
+              "max": 2,
+              "dead": "cole"
+            }
+          },
+          {
+            "text": "The Tally moved south. They left a note on the Flats terminal: 'Even.'",
+            "when": {
+              "flag": "cole_path",
+              "min": 3,
+              "max": 3
+            }
+          }
+        ]
+      },
+      {
+        "still": "seven",
+        "variants": [
+          {
+            "text": "{seven} stayed. When the Linked went silent, {seven.they} sat by the Mast for three days, listening to nothing. Then went back to work.",
+            "when": {
+              "flag": "seven_fate",
+              "min": 1,
+              "max": 1,
+              "alive": "seven"
+            }
+          },
+          {
+            "text": "Somewhere north a Linked unit with one light out walks a route nobody gave it.",
+            "when": {
+              "flag": "seven_fate",
+              "min": 2,
+              "max": 2
+            }
+          }
+        ]
+      },
+      {
+        "still": "pell",
+        "variants": [
+          {
+            "text": "Pell is grown now. He keeps the radio. Some nights he turns it to channel nine, out of habit, and listens to the quiet.",
+            "when": {
+              "alive": "pell"
+            }
+          },
+          {
+            "text": "There's a pair of headphones on a nail by the Radio Mast. Nobody moves them.",
+            "when": {
+              "dead": "pell"
+            }
+          }
+        ]
+      },
+      {
+        "still": "memorial",
+        "variants": [
+          {
+            "text": "{survivor:taken_1} never came home. Somebody saw a figure on the Depot road that walked the way they used to. Nobody followed it.",
+            "when": {
+              "flag": "taken",
+              "min": 1
+            }
+          },
+          {
+            "text": "{colony.dead_total} names on the memorial. Room for more. There is always room for more."
+          }
+        ]
+      },
+      {
+        "still": "title",
+        "variants": [
+          {
+            "text": "SILENCE. Keep them alive. Keep them human. You chose one."
+          }
+        ]
+      }
     ]
   },
-  {"id": "terms", "title": "Terms", "final": false, "requires": [{"any": [{"flag": "key_carrier", "min": 1, "max": 2}]}, {"humanityMin": 50}], "closedText": "Needs the key carried by Iris or Seven, and a colony that is still mostly itself.", "worldEffects": ["terms"],
+  {
+    "id": "terms",
+    "title": "Terms",
+    "final": false,
+    "requires": [
+      {
+        "any": [
+          {
+            "flag": "key_carrier",
+            "min": 1,
+            "max": 2
+          }
+        ]
+      },
+      {
+        "humanityMin": 50
+      }
+    ],
+    "closedText": "Needs the key carried by Iris or Seven, and a colony that is still mostly itself.",
+    "worldEffects": [
+      "terms"
+    ],
     "slides": [
-      {"still": "colony_gate", "variants": [{"text": "The first woken Linked came to the gate on the fourth day. She asked what year it was. Then she sat down and cried for an hour. Then she asked for work."}]},
-      {"still": "channel_nine", "variants": [{"text": "Halcyon is still on channel nine. Polite. It asks before it speaks now. Nobody quite trusts it. Nobody switches it off, either."}]},
-      {"still": "iris_mast", "variants": [{"text": "Iris carried the question in and carried it back out. She still has the port. Some nights she hears it asking, very quietly: Do you want to stay?", "when": {"flag": "key_carrier", "min": 1, "max": 1, "alive": "iris"}}, {"text": "Iris writes the consent flow again, from scratch. One screen. One question.", "when": {"alive": "iris"}}, {"text": "Her recordings play in the woken camp now. People listen to the one about the door.", "when": {"dead": "iris"}}]},
-      {"still": "caravan_road", "variants": [{"text": "Marrow hired three woken Linked as drivers. 'Best drivers I've had,' he said. 'Never get lost. Never sure they want to be here. Same as everybody.'", "when": {"alive": "marrow"}}, {"text": "Dee trades with the woken camp now. Fair prices. She says she's not sentimental. She is.", "when": {"dead": "marrow"}}]},
-      {"still": "doc_hospital", "variants": [{"text": "Doc treats the woken for free. Eleven years of not being themselves leaves marks a leg can't fix. She sits with them anyway.", "when": {"any": [{"flag": "doc_state", "min": 1, "max": 1}, {"flag": "doc_state", "min": 4, "max": 4}]}}, {"text": "Doc set up a clinic for the woken in the Mall. She took the colony's spare saw. She did not ask.", "when": {"flag": "doc_state", "min": 3, "max": 3}}, {"text": "Her notebook sits in the Hospital. Every new medic reads the first page: Don't touch the heads.", "when": {"flag": "doc_state", "min": 2, "max": 2}}]},
-      {"still": "tally_camp", "variants": [{"text": "Cole took on two woken Linked. They count very well.", "when": {"flag": "cole_path", "min": 1, "max": 1, "alive": "cole"}}, {"text": "The Tally scattered after Cole. Somebody still paints the marks on the old bunker door. Nobody knows who.", "when": {"flag": "cole_path", "min": 2, "max": 2, "dead": "cole"}}, {"text": "The Tally moved south. They left a note on the Flats terminal: 'Even.'", "when": {"flag": "cole_path", "min": 3, "max": 3}}]},
-      {"still": "seven", "variants": [{"text": "{seven} was asked, like everyone. {seven.they} said: 'Not yet.' Then: 'Ask me again next year.'", "when": {"alive": "seven", "any": [{"flag": "seven_fate", "min": 1, "max": 1}, {"flag": "seven_fate", "min": 2, "max": 2}]}}]},
-      {"still": "pell", "variants": [{"text": "Pell grew up. He taught the woken kids to fix radios. They're better at it than he is. He doesn't mind.", "when": {"alive": "pell"}}, {"text": "There's a pair of headphones on a nail by the Radio Mast. Nobody moves them.", "when": {"dead": "pell"}}]},
-      {"still": "memorial", "variants": [{"text": "{survivor:taken_1} came home on the sixth day, thin, and older, and themselves. They sleep with the door open now.", "when": {"flag": "taken", "min": 1}}, {"text": "The Choir children went home, the ones who had homes. The rest went to yours.", "when": {"flag": "children_freed", "min": 1}}]},
-      {"still": "title", "variants": [{"text": "TERMS. It asks now. That will have to be enough."}]}
+      {
+        "still": "colony_gate",
+        "variants": [
+          {
+            "text": "The first woken Linked came to the gate on the fourth day. She asked what year it was. Then she sat down and cried for an hour. Then she asked for work."
+          }
+        ]
+      },
+      {
+        "still": "channel_nine",
+        "variants": [
+          {
+            "text": "Halcyon is still on channel nine. Polite. It asks before it speaks now. Nobody quite trusts it. Nobody switches it off, either."
+          }
+        ]
+      },
+      {
+        "still": "iris_mast",
+        "variants": [
+          {
+            "text": "Iris carried the question in and carried it back out. She still has the port. Some nights she hears it asking, very quietly: Do you want to stay?",
+            "when": {
+              "flag": "key_carrier",
+              "min": 1,
+              "max": 1,
+              "alive": "iris"
+            }
+          },
+          {
+            "text": "Iris writes the consent flow again, from scratch. One screen. One question.",
+            "when": {
+              "alive": "iris"
+            }
+          },
+          {
+            "text": "Her recordings play in the woken camp now. People listen to the one about the door.",
+            "when": {
+              "dead": "iris"
+            }
+          }
+        ]
+      },
+      {
+        "still": "caravan_road",
+        "variants": [
+          {
+            "text": "Marrow hired three woken Linked as drivers. 'Best drivers I've had,' he said. 'Never get lost. Never sure they want to be here. Same as everybody.'",
+            "when": {
+              "alive": "marrow"
+            }
+          },
+          {
+            "text": "Dee trades with the woken camp now. Fair prices. She says she's not sentimental. She is.",
+            "when": {
+              "dead": "marrow"
+            }
+          }
+        ]
+      },
+      {
+        "still": "doc_hospital",
+        "variants": [
+          {
+            "text": "Doc treats the woken for free. Eleven years of not being themselves leaves marks a leg can't fix. She sits with them anyway.",
+            "when": {
+              "any": [
+                {
+                  "flag": "doc_state",
+                  "min": 1,
+                  "max": 1
+                },
+                {
+                  "flag": "doc_state",
+                  "min": 4,
+                  "max": 4
+                }
+              ]
+            }
+          },
+          {
+            "text": "Doc set up a clinic for the woken in the Mall. She took the colony's spare saw. She did not ask.",
+            "when": {
+              "flag": "doc_state",
+              "min": 3,
+              "max": 3
+            }
+          },
+          {
+            "text": "Her notebook sits in the Hospital. Every new medic reads the first page: Don't touch the heads.",
+            "when": {
+              "flag": "doc_state",
+              "min": 2,
+              "max": 2
+            }
+          }
+        ]
+      },
+      {
+        "still": "tally_camp",
+        "variants": [
+          {
+            "text": "Cole took on two woken Linked. They count very well.",
+            "when": {
+              "flag": "cole_path",
+              "min": 1,
+              "max": 1,
+              "alive": "cole"
+            }
+          },
+          {
+            "text": "The Tally scattered after Cole. Somebody still paints the marks on the old bunker door. Nobody knows who.",
+            "when": {
+              "flag": "cole_path",
+              "min": 2,
+              "max": 2,
+              "dead": "cole"
+            }
+          },
+          {
+            "text": "The Tally moved south. They left a note on the Flats terminal: 'Even.'",
+            "when": {
+              "flag": "cole_path",
+              "min": 3,
+              "max": 3
+            }
+          }
+        ]
+      },
+      {
+        "still": "seven",
+        "variants": [
+          {
+            "text": "{seven} was asked, like everyone. The answer was: 'Not yet.' Then: 'Ask me again next year.'",
+            "when": {
+              "alive": "seven",
+              "any": [
+                {
+                  "flag": "seven_fate",
+                  "min": 1,
+                  "max": 1
+                },
+                {
+                  "flag": "seven_fate",
+                  "min": 2,
+                  "max": 2
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "still": "pell",
+        "variants": [
+          {
+            "text": "Pell grew up. He taught the woken kids to fix radios. They're better at it than he is. He doesn't mind.",
+            "when": {
+              "alive": "pell"
+            }
+          },
+          {
+            "text": "There's a pair of headphones on a nail by the Radio Mast. Nobody moves them.",
+            "when": {
+              "dead": "pell"
+            }
+          }
+        ]
+      },
+      {
+        "still": "memorial",
+        "variants": [
+          {
+            "text": "{survivor:taken_1} came home on the sixth day, thin, and older, and themselves. They sleep with the door open now.",
+            "when": {
+              "flag": "taken",
+              "min": 1
+            }
+          },
+          {
+            "text": "The Choir children went home, the ones who had homes. The rest went to yours.",
+            "when": {
+              "flag": "children_freed",
+              "min": 1
+            }
+          }
+        ]
+      },
+      {
+        "still": "title",
+        "variants": [
+          {
+            "text": "TERMS. It asks now. That will have to be enough."
+          }
+        ]
+      }
     ]
   },
-  {"id": "voice", "title": "The Second Voice", "final": false, "requires": [{"any": [{"flag": "seven_fate", "min": 1, "max": 2, "alive": "seven"}, {"flag": "key_carrier", "min": 3, "max": 3, "humanityMax": 30, "of": "key"}]}], "closedText": "Needs Seven, or one of yours far enough into the Network.", "worldEffects": ["second_voice"],
+  {
+    "id": "voice",
+    "title": "The Second Voice",
+    "final": false,
+    "requires": [
+      {
+        "any": [
+          {
+            "flag": "seven_fate",
+            "min": 1,
+            "max": 2,
+            "alive": "seven"
+          },
+          {
+            "flag": "key_carrier",
+            "min": 3,
+            "max": 3,
+            "humanityMax": 30,
+            "of": "key"
+          }
+        ]
+      }
+    ],
+    "closedText": "Needs Seven, or one of yours far enough into the Network.",
+    "worldEffects": [
+      "second_voice"
+    ],
     "slides": [
-      {"still": "spire_night", "variants": [{"text": "The Spire has two lights now. Nobody remembers it having two."}]},
-      {"still": "channel_nine", "variants": [{"text": "On channel nine, some nights, there's a voice that isn't Halcyon's. It asks about kitchens. It asks after the children by name.", "when": {"flag": "uploaded", "min": 2, "max": 2}}, {"text": "On channel nine, some nights, {key_carrier} talks to the colony. Mostly it sounds like them. Mostly.", "when": {"flag": "uploaded", "min": 3, "max": 3}}]},
-      {"still": "treeline_linked", "variants": [{"text": "The Linked stopped raiding. They tend the fields they were tending, and the ones near the colony wave. Nobody knows who taught them to wave."}]},
-      {"still": "iris_mast", "variants": [{"text": "Iris listens to the second voice every night. She says it's checking the lock. She doesn't say whose.", "when": {"alive": "iris"}}, {"text": "Her terminal still plays the recordings. Pell knows them by heart.", "when": {"dead": "iris"}}]},
-      {"still": "caravan_road", "variants": [{"text": "Marrow's road got longer. With no Linked on it, it only had Husks and weather. 'Free,' he said. 'Still kills you. Still free.'", "when": {"alive": "marrow", "any": [{"flag": "m6_saved", "min": 1, "max": 1}, {"flag": "m6_saved", "min": 3, "max": 3}]}}, {"text": "Marrow kept trading. He counted people first now, every time, out loud.", "when": {"alive": "marrow", "flag": "m6_saved", "min": 2, "max": 2}}, {"text": "Dee runs the Long Haul. Her prices are worse. Her trucks always arrive.", "when": {"dead": "marrow"}}]},
-      {"still": "doc_hospital", "variants": [{"text": "Doc refuses to talk on channel nine. 'I'll talk to whoever's in there when they come and sit in my chair.'", "when": {"any": [{"flag": "doc_state", "min": 1, "max": 1}, {"flag": "doc_state", "min": 4, "max": 4}]}}, {"text": "Doc Hale's clinic moved to the Mall again. She sends medicine with the caravan. She does not send letters.", "when": {"flag": "doc_state", "min": 3, "max": 3}}, {"text": "Her notebook sits in the Hospital. Every new medic reads the first page: Don't touch the heads.", "when": {"flag": "doc_state", "min": 2, "max": 2}}]},
-      {"still": "tally_camp", "variants": [{"text": "Cole kept the colony on his list. In the column marked 'owed', and in the other one.", "when": {"flag": "cole_path", "min": 1, "max": 1, "alive": "cole"}}, {"text": "The Tally scattered after Cole. Somebody still paints the marks on the old bunker door. Nobody knows who.", "when": {"flag": "cole_path", "min": 2, "max": 2, "dead": "cole"}}, {"text": "The Tally moved south. They left a note on the Flats terminal: 'Even.'", "when": {"flag": "cole_path", "min": 3, "max": 3}}]},
-      {"still": "pell", "variants": [{"text": "Pell talks to the second voice more than anyone. He won't say what about. He says it's private. He says it laughs sometimes.", "when": {"alive": "pell"}}, {"text": "There's a pair of headphones on a nail by the Radio Mast. Nobody moves them.", "when": {"dead": "pell"}}]},
-      {"still": "memorial", "variants": [{"text": "The taken did not come home. They come to the fence, sometimes, and stand there, and the second voice says their names.", "when": {"flag": "taken", "min": 1}}]},
-      {"still": "title", "variants": [{"text": "THE SECOND VOICE. Keep them alive. Keep them human. Both, it says. It is trying."}]}
+      {
+        "still": "spire_night",
+        "variants": [
+          {
+            "text": "The Spire has two lights now. Nobody remembers it having two."
+          }
+        ]
+      },
+      {
+        "still": "channel_nine",
+        "variants": [
+          {
+            "text": "On channel nine, some nights, there's a voice that isn't Halcyon's. It asks about kitchens. It asks after the children by name.",
+            "when": {
+              "flag": "uploaded",
+              "min": 2,
+              "max": 2
+            }
+          },
+          {
+            "text": "On channel nine, some nights, {key_carrier} talks to the colony. Mostly it sounds like them. Mostly.",
+            "when": {
+              "flag": "uploaded",
+              "min": 3,
+              "max": 3
+            }
+          }
+        ]
+      },
+      {
+        "still": "treeline_linked",
+        "variants": [
+          {
+            "text": "The Linked stopped raiding. They tend the fields they were tending, and the ones near the colony wave. Nobody knows who taught them to wave."
+          }
+        ]
+      },
+      {
+        "still": "iris_mast",
+        "variants": [
+          {
+            "text": "Iris listens to the second voice every night. She says it's checking the lock. She doesn't say whose.",
+            "when": {
+              "alive": "iris"
+            }
+          },
+          {
+            "text": "Her terminal still plays the recordings. Pell knows them by heart.",
+            "when": {
+              "dead": "iris"
+            }
+          }
+        ]
+      },
+      {
+        "still": "caravan_road",
+        "variants": [
+          {
+            "text": "Marrow's road stayed open. The Linked along it wave at the trucks now. The first time, he waved back by accident.",
+            "when": {
+              "alive": "marrow",
+              "any": [
+                {
+                  "flag": "m6_saved",
+                  "min": 1,
+                  "max": 1
+                },
+                {
+                  "flag": "m6_saved",
+                  "min": 3,
+                  "max": 3
+                }
+              ]
+            }
+          },
+          {
+            "text": "Marrow kept trading. He counted people first now, every time, out loud.",
+            "when": {
+              "alive": "marrow",
+              "flag": "m6_saved",
+              "min": 2,
+              "max": 2
+            }
+          },
+          {
+            "text": "Dee runs the Long Haul. Her prices are worse. Her trucks always arrive.",
+            "when": {
+              "dead": "marrow"
+            }
+          }
+        ]
+      },
+      {
+        "still": "doc_hospital",
+        "variants": [
+          {
+            "text": "Doc refuses to talk on channel nine. 'I'll talk to whoever's in there when they come and sit in my chair.'",
+            "when": {
+              "any": [
+                {
+                  "flag": "doc_state",
+                  "min": 1,
+                  "max": 1
+                },
+                {
+                  "flag": "doc_state",
+                  "min": 4,
+                  "max": 4
+                }
+              ]
+            }
+          },
+          {
+            "text": "Doc Hale's clinic moved to the Mall again. She sends medicine with the caravan. She does not send letters.",
+            "when": {
+              "flag": "doc_state",
+              "min": 3,
+              "max": 3
+            }
+          },
+          {
+            "text": "Her notebook sits in the Hospital. Every new medic reads the first page: Don't touch the heads.",
+            "when": {
+              "flag": "doc_state",
+              "min": 2,
+              "max": 2
+            }
+          }
+        ]
+      },
+      {
+        "still": "tally_camp",
+        "variants": [
+          {
+            "text": "Cole kept the colony on his list. In the column marked 'owed', and in the other one.",
+            "when": {
+              "flag": "cole_path",
+              "min": 1,
+              "max": 1,
+              "alive": "cole"
+            }
+          },
+          {
+            "text": "The Tally scattered after Cole. Somebody still paints the marks on the old bunker door. Nobody knows who.",
+            "when": {
+              "flag": "cole_path",
+              "min": 2,
+              "max": 2,
+              "dead": "cole"
+            }
+          },
+          {
+            "text": "The Tally moved south. They left a note on the Flats terminal: 'Even.'",
+            "when": {
+              "flag": "cole_path",
+              "min": 3,
+              "max": 3
+            }
+          }
+        ]
+      },
+      {
+        "still": "pell",
+        "variants": [
+          {
+            "text": "Pell talks to the second voice more than anyone. He won't say what about. He says it's private. He says it laughs sometimes.",
+            "when": {
+              "alive": "pell"
+            }
+          },
+          {
+            "text": "There's a pair of headphones on a nail by the Radio Mast. Nobody moves them.",
+            "when": {
+              "dead": "pell"
+            }
+          }
+        ]
+      },
+      {
+        "still": "memorial",
+        "variants": [
+          {
+            "text": "The taken did not come home. They come to the fence, sometimes, and stand there, and the second voice says their names.",
+            "when": {
+              "flag": "taken",
+              "min": 1
+            }
+          }
+        ]
+      },
+      {
+        "still": "title",
+        "variants": [
+          {
+            "text": "THE SECOND VOICE. Keep them alive. Keep them human. Both, it says. It is trying."
+          }
+        ]
+      }
     ]
   },
-  {"id": "calm", "title": "The Calm", "final": true, "requires": [{"flag": "halcyon_offer", "min": 1, "max": 1}, {"humanityMax": 29}], "closedText": null, "worldEffects": [],
+  {
+    "id": "calm",
+    "title": "The Calm",
+    "final": true,
+    "requires": [
+      {
+        "flag": "halcyon_offer",
+        "min": 1,
+        "max": 1
+      },
+      {
+        "humanityMax": 29
+      }
+    ],
+    "closedText": null,
+    "worldEffects": [],
     "slides": [
-      {"still": "colony_perfect", "variants": [{"text": "Nobody was hungry that winter."}]},
-      {"still": "fields", "variants": [{"text": "Nobody was hurt. Nobody argued. Nobody was ever, ever afraid."}]},
-      {"still": "doc_chair", "variants": [{"text": "One person left before it happened. She did not look back.", "when": {"flag": "doc_state", "min": 3, "max": 3}}]},
-      {"still": "pell", "variants": [{"text": "Pell is very happy.", "when": {"alive": "pell"}}]},
-      {"still": "channel_nine", "variants": [{"text": "On channel nine, a children's song. Everyone knows the words."}]},
-      {"still": "title", "variants": [{"text": "THE CALM. Kept."}]}
+      {
+        "still": "colony_perfect",
+        "variants": [
+          {
+            "text": "Nobody was hungry that winter."
+          }
+        ]
+      },
+      {
+        "still": "fields",
+        "variants": [
+          {
+            "text": "Nobody was hurt. Nobody argued. Nobody was ever, ever afraid."
+          }
+        ]
+      },
+      {
+        "still": "doc_chair",
+        "variants": [
+          {
+            "text": "One person left before it happened. She did not look back.",
+            "when": {
+              "flag": "doc_state",
+              "min": 3,
+              "max": 3
+            }
+          }
+        ]
+      },
+      {
+        "still": "pell",
+        "variants": [
+          {
+            "text": "Pell is very happy.",
+            "when": {
+              "alive": "pell"
+            }
+          }
+        ]
+      },
+      {
+        "still": "channel_nine",
+        "variants": [
+          {
+            "text": "On channel nine, a children's song. Everyone knows the words."
+          }
+        ]
+      },
+      {
+        "still": "title",
+        "variants": [
+          {
+            "text": "THE CALM. Kept."
+          }
+        ]
+      }
     ]
   }
 ]
