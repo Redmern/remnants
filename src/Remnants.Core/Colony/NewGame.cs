@@ -19,6 +19,7 @@ public static class NewGame
 
         foreach (var (res, amount) in rules.Stock) state.Stockpile.Add(res, amount);
         foreach (var (item, count) in rules.Items.OrderBy(kv => kv.Key, StringComparer.Ordinal)) state.Inventory.Add(item, count);
+        Pantry.Reconcile(state, data);
         for (var plot = 0; plot < rules.Buildings.Count; plot++)
             state.Buildings.Add(new Building { Id = state.NextBuildingId++, DefId = rules.Buildings[plot], Level = 1, Plot = plot });
 

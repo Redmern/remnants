@@ -1,0 +1,273 @@
+[
+  {
+    "id": "m1", "act": 1, "name": "Home", "type": "Colony",
+    "summary": "Get the colony on its feet: food, wood, a workshop. Then put up a Radio Mast and let Pell tune it.",
+    "teaches": "Building, jobs, food, the clock, the Radio Mast.",
+    "briefing": "m1_home",
+    "colonyObjectives": [
+      { "id": "farm", "kind": "Build", "text": "Build a Farm", "building": "farm" },
+      { "id": "woodcutter", "kind": "Build", "text": "Build a Woodcutter", "building": "woodcutter" },
+      { "id": "workshop", "kind": "Build", "text": "Build a Workshop", "building": "workshop" },
+      { "id": "mast", "kind": "Build", "text": "Build the Radio Mast", "building": "radio_mast" },
+      { "id": "tune", "kind": "Scene", "text": "Pell tunes the radio at dusk", "dialogue": "m1_tuning", "phase": "Dusk" }
+    ],
+    "rewards": [
+      { "kind": "SetFlag", "id": "iris_channel", "value": 1 },
+      { "kind": "Character", "id": "iris", "value": 1 },
+      { "kind": "Resource", "id": "scrap", "value": 10 }
+    ]
+  },
+  {
+    "id": "m2", "act": 1, "name": "First Light", "type": "Field",
+    "summary": "Iris needs a working antenna to reach farther. A collapsed Network relay shed in the Outskirts still has one.",
+    "teaches": "Moving, attacking, AP, looting, extracting; a schematic learned on return.",
+    "needsText": "M1 Home",
+    "zone": "outskirts", "threat": 1, "map": "handmade:relay_shed",
+    "requires": [ { "mission": "m1" } ],
+    "briefing": "m2_first_light", "debrief": "m2_debrief",
+    "field": {
+      "id": "m2", "name": "First Light",
+      "objectives": [
+        { "id": "reach", "kind": "Reach", "text": "Reach the relay shed", "marker": "shed", "radius": 1 },
+        { "id": "antenna", "kind": "Retrieve", "text": "Bring the antenna home", "item": "relay_antenna" }
+      ],
+      "triggers": [
+        { "id": "hello", "when": { "kind": "Round", "round": 1 },
+          "actions": [ { "kind": "Say", "speaker": "Lantern", "text": "Husks walk the same loop forever. Watch it once, then go round." } ] },
+        { "id": "at_shed", "when": { "kind": "ObjectiveDone", "objective": "reach" },
+          "actions": [ { "kind": "Say", "speaker": "Lantern", "text": "That's the shed. Antenna should be in the back, in a crate. Grab it." } ] },
+        { "id": "pulled", "when": { "kind": "PickedUp", "item": "relay_antenna" },
+          "actions": [
+            { "kind": "Say", "speaker": "Lantern", "text": "Got it? Great. That noise was you, by the way. Go." },
+            { "kind": "Spawn", "enemy": "husk", "count": 1, "marker": "shed_back", "tag": "woken", "goal": "shed" }
+          ] }
+      ]
+    },
+    "rewards": [
+      { "kind": "Schematic", "id": "sch_watchtower" },
+      { "kind": "RevealZone", "id": "suburb_ruins", "text": "Radio range now covers Ashgrove" },
+      { "kind": "Resource", "id": "medicine", "value": 3 },
+      { "kind": "Item", "id": "relay_antenna", "value": -1 },
+      { "kind": "SetFlag", "id": "radio_range", "value": 2 }
+    ],
+    "fail": {
+      "retryDays": 3, "call": "m2_retry",
+      "extraEnemies": [ { "enemy": "husk", "marker": "shed_back" }, { "enemy": "husk", "marker": "antenna" } ]
+    }
+  },
+  {
+    "id": "t_med_bay", "act": 1, "name": "A Place to Heal", "type": "Colony", "main": false, "task": true,
+    "summary": "Iris: people get hurt out there. Build a Med Bay before you need one.",
+    "requires": [ { "mission": "m2" } ],
+    "colonyObjectives": [ { "id": "build", "kind": "Build", "text": "Build a Med Bay", "building": "med_bay" } ],
+    "rewards": [ { "kind": "Resource", "id": "medicine", "value": 2 } ]
+  },
+  {
+    "id": "t_bandages", "act": 1, "name": "Clean Cloth", "type": "Colony", "main": false, "task": true,
+    "summary": "Keep bandages in stock. The Tailor or the Workshop can make them; have five on the shelf.",
+    "requires": [ { "mission": "m2" } ],
+    "colonyObjectives": [ { "id": "bandages", "kind": "HaveItem", "text": "Have 5 bandages", "item": "bandage", "count": 5 } ],
+    "rewards": [ { "kind": "Resource", "id": "cloth", "value": 5 } ]
+  },
+  {
+    "id": "t_patient", "act": 1, "name": "Bed Rest", "type": "Colony", "main": false, "task": true,
+    "summary": "A wound left alone gets worse. Admit someone hurt to the Med Bay.",
+    "requires": [ { "mission": "t_med_bay" } ],
+    "colonyObjectives": [ { "id": "admit", "kind": "Patient", "text": "Admit a patient to the Med Bay" } ],
+    "rewards": [ { "kind": "Resource", "id": "food", "value": 10 } ]
+  },
+  {
+    "id": "t_tailor", "act": 1, "name": "Needle and Thread", "type": "Colony", "main": false, "task": true,
+    "summary": "Build a Tailor: coats against the cold, cloaks against eyes.",
+    "requires": [ { "mission": "m2" } ],
+    "colonyObjectives": [ { "id": "build", "kind": "Build", "text": "Build a Tailor", "building": "tailor" } ],
+    "rewards": [ { "kind": "Resource", "id": "cloth", "value": 5 } ]
+  },
+  {
+    "id": "m3", "act": 1, "name": "Signal in the Rust", "type": "Field",
+    "summary": "A terminal is pinging out in the Scrapyard Flats. Iris will talk you through the hack. Someone else heard it too.",
+    "teaches": "Hacking, chance, alarms and lockouts; a non-hostile human side.",
+    "needsText": "M2 First Light, a Workshop",
+    "zone": "scrapyard_flats", "threat": 1, "map": "generated", "room": "scrapyard_terminal",
+    "requires": [ { "mission": "m2" }, { "building": "workshop" } ],
+    "briefing": "m3_brief", "debrief": "m3_debrief",
+    "field": {
+      "id": "m3", "name": "Signal in the Rust",
+      "objectives": [
+        { "id": "locker", "kind": "Hack", "text": "Hack the locker", "tag": "locker" },
+        { "id": "terminal", "kind": "Hack", "text": "Hack the marked terminal", "tag": "terminal", "failsMission": true },
+        { "id": "tally", "kind": "Reach", "text": "Deal with the Tally", "marker": "none", "optional": true, "hidden": true }
+      ],
+      "triggers": [
+        { "id": "hello", "when": { "kind": "Round", "round": 1 },
+          "actions": [ { "kind": "Say", "speaker": "Lantern", "text": "There's a toolbox in the terminal room. Kit inside. Take it before you touch anything." } ] },
+        { "id": "kit", "when": { "kind": "PickedUp", "item": "hacking_kit" },
+          "actions": [ { "kind": "Say", "speaker": "Lantern", "text": "Start with the locker. Easy one. Stand next to it and hack." } ] },
+        { "id": "locker_done", "when": { "kind": "ObjectiveDone", "objective": "locker" },
+          "actions": [ { "kind": "Say", "speaker": "Lantern", "text": "See? Now the terminal. It's on the Network, so it bites back if you fumble." } ] },
+        { "id": "alarm", "when": { "kind": "Alarm" },
+          "actions": [ { "kind": "Say", "speaker": "Lantern", "text": "Ow. That's a lockout. Wait it out, breathe, try again." } ] },
+        { "id": "tally_come", "when": { "kind": "Round", "round": 4 },
+          "actions": [
+            { "kind": "Spawn", "enemy": "cole", "count": 1, "marker": "tally_in", "tag": "tally", "side": "neutral" },
+            { "kind": "Spawn", "enemy": "tally_scav", "count": 1, "marker": "tally_in", "tag": "tally", "side": "neutral" },
+            { "kind": "Say", "speaker": "Lantern", "text": "Company. Two of them, human. Don't shoot first." }
+          ] },
+        { "id": "tally_seen", "when": { "kind": "Sees", "tag": "tally" },
+          "actions": [
+            { "kind": "Activate", "objective": "tally" },
+            { "kind": "Flag", "flag": "cole_met", "value": 1 },
+            { "kind": "Prompt", "prompt": {
+              "id": "tally", "speaker": "Cole Brannigan",
+              "text": "Easy. Easy. That terminal's been pinging for a week and we've been walking toward it for six days. Call it a draw? We split what's in it. Or we don't, and I write your names down.",
+              "options": [
+                { "id": "talk", "text": "Split it. Nobody needs to bleed over a box.", "hint": "Cole will remember this" },
+                { "id": "fight", "text": "We were here first. Walk away.", "hint": "This becomes a fight" },
+                { "id": "leave", "text": "Say nothing. Finish the hack and go." }
+              ] } }
+          ] },
+        { "id": "talked", "when": { "kind": "Chosen", "choice": "tally:talk" },
+          "actions": [
+            { "kind": "Flag", "flag": "cole_respect", "value": 1, "add": true },
+            { "kind": "Split", "tag": "terminal" },
+            { "kind": "Complete", "objective": "tally" },
+            { "kind": "Say", "speaker": "Cole Brannigan", "text": "That's one you owe me. I write it down. I write everything down." }
+          ] },
+        { "id": "fought", "when": { "kind": "Chosen", "choice": "tally:fight" },
+          "actions": [
+            { "kind": "Flag", "flag": "cole_respect", "value": -1, "add": true },
+            { "kind": "SetSide", "tag": "tally", "side": "hostile" },
+            { "kind": "Complete", "objective": "tally" },
+            { "kind": "Say", "speaker": "Cole Brannigan", "text": "Your call. I'll remember who made it." }
+          ] },
+        { "id": "left", "when": { "kind": "Chosen", "choice": "tally:leave" },
+          "actions": [
+            { "kind": "Complete", "objective": "tally" },
+            { "kind": "Say", "speaker": "Cole Brannigan", "text": "Quiet type. Fine. Tick tock." }
+          ] }
+      ]
+    },
+    "rewards": [
+      { "kind": "Schematic", "id": "sch_camo_cloak" },
+      { "kind": "Item", "id": "hacking_kit", "value": 1 },
+      { "kind": "Character", "id": "cole", "value": 1, "when": { "flag": "cole_met" } }
+    ],
+    "fail": { "retryDays": 4, "call": "m3_retry" }
+  },
+  {
+    "id": "m4", "act": 1, "name": "The Stranger", "type": "Field",
+    "summary": "A wounded scout is hiding in a house in the Suburb Ruins. The Husks around it have gone still in the fog.",
+    "teaches": "Fog, Lookout, flares, ambushes; treating and escorting someone home. Vehicles exist.",
+    "needsText": "M3 Signal in the Rust, Town Hall, a Med Bay",
+    "zone": "suburb_ruins", "threat": 2, "map": "generated", "room": "ruins_house",
+    "requires": [ { "mission": "m3" }, { "townHall": 1 }, { "building": "med_bay" } ],
+    "briefing": "m4_brief", "debrief": "m4_debrief",
+    "field": {
+      "id": "m4", "name": "The Stranger", "excludeEnemyTags": ["network"],
+      "objectives": [
+        { "id": "find", "kind": "Reach", "text": "Find the scout", "marker": "scout", "radius": 2 },
+        { "id": "aid", "kind": "Aid", "text": "Stabilise her (bandage or med-kit)", "tag": "juniper", "failsMission": true },
+        { "id": "escort", "kind": "Escort", "text": "Get Juniper out alive", "tag": "juniper", "failsMission": true }
+      ],
+      "triggers": [
+        { "id": "hello", "when": { "kind": "Round", "round": 1 },
+          "actions": [ { "kind": "Say", "speaker": "Lantern", "text": "Fog's thick in the Ruins. Use Lookout before you walk into anything. Flares if you have them." } ] },
+        { "id": "found", "when": { "kind": "ObjectiveDone", "objective": "find" },
+          "actions": [ { "kind": "Say", "speaker": "Juniper", "text": "Don't — okay. You're not Linked. You're not Linked, right? My leg. I can't walk on it." } ] },
+        { "id": "aided", "when": { "kind": "ObjectiveDone", "objective": "aid" },
+          "actions": [
+            { "kind": "Follow", "tag": "juniper" },
+            { "kind": "Say", "speaker": "Juniper", "text": "Thanks. Juniper. I ride for Marrow. He'll pay you back. He always does." },
+            { "kind": "Spawn", "enemy": "husk_crawler", "count": 1, "marker": "scout", "tag": "ambush", "goal": "scout" },
+            { "kind": "Say", "speaker": "Lantern", "text": "Movement. They were waiting for her to move. Go, go." }
+          ] },
+        { "id": "lost", "when": { "kind": "ObjectiveFailed", "objective": "escort" },
+          "actions": [ { "kind": "Say", "speaker": "Lantern", "text": "...She's gone. I'm sorry. Get yourselves out." } ] }
+      ]
+    },
+    "rewards": [
+      { "kind": "Schematic", "id": "sch_bicycle_cart" },
+      { "kind": "Fallback", "id": "handcart", "text": "Juniper's handcart, parked by the gate (vehicles come later: its wood and scrap for now)" },
+      { "kind": "Resource", "id": "wood", "value": 20 },
+      { "kind": "Resource", "id": "scrap", "value": 10 },
+      { "kind": "Item", "id": "manual_electronics", "value": 1 },
+      { "kind": "SetFlag", "id": "caravan_open", "value": 1 },
+      { "kind": "Character", "id": "juniper", "value": 1 },
+      { "kind": "Character", "id": "marrow", "value": 1 },
+      { "kind": "Call", "id": "marrow_hello", "value": 48 }
+    ],
+    "fail": {
+      "call": "m4_failed",
+      "effects": [
+        { "kind": "SetFlag", "id": "caravan_open", "value": 1 },
+        { "kind": "SetFlag", "id": "marrow_grieving", "value": 1 },
+        { "kind": "Character", "id": "marrow", "value": 1 },
+        { "kind": "Call", "id": "marrow_grief", "value": 96 }
+      ]
+    }
+  },
+  {
+    "id": "t_town_hall", "act": 1, "name": "Room to Grow", "type": "Colony", "main": false, "task": true,
+    "summary": "More hands need a bigger hall. Raise the Town Hall to level 2.",
+    "requires": [ { "mission": "m3" } ],
+    "colonyObjectives": [ { "id": "th2", "kind": "Build", "text": "Upgrade the Town Hall to level 2", "building": "town_hall", "level": 2 } ],
+    "rewards": [ { "kind": "Resource", "id": "stone", "value": 15 } ]
+  },
+  {
+    "id": "t_children", "act": 1, "name": "Small Hands", "type": "Colony", "main": false, "task": true,
+    "summary": "Children grow into what they do. Put one to work on the Farm.",
+    "requires": [ { "mission": "m2" } ],
+    "colonyObjectives": [ { "id": "child", "kind": "ChildJob", "text": "Assign a child to farming", "job": "farming" } ],
+    "rewards": [ { "kind": "Resource", "id": "food", "value": 8 } ]
+  },
+  {
+    "id": "m5", "act": 1, "name": "Hold the Line", "type": "Field",
+    "summary": "The radio mast is loud. Something heard it. A Husk swarm is walking in from the treeline at dusk.",
+    "teaches": "Overwatch, Brace, defending the colony; why the Watchtower matters.",
+    "needsText": "M4 The Stranger, Town Hall 2",
+    "zone": "outskirts", "threat": 2, "map": "perimeter", "maxParty": 4,
+    "requires": [ { "mission": "m4" }, { "townHall": 2 } ],
+    "briefing": "m5_brief", "debrief": "m5_debrief",
+    "field": {
+      "id": "m5", "name": "Hold the Line", "atHome": true,
+      "objectives": [
+        { "id": "survive", "kind": "Survive", "text": "Survive 8 rounds", "count": 8 },
+        { "id": "mast", "kind": "Defend", "text": "Keep the Radio Mast standing", "tag": "mast", "failsMission": true }
+      ],
+      "triggers": [
+        { "id": "w1", "when": { "kind": "Round", "round": 1 },
+          "actions": [
+            { "kind": "Say", "speaker": "Lantern", "text": "They're coming for the mast. It's the loudest thing for miles. Put someone on overwatch." },
+            { "kind": "Spawn", "enemy": "husk", "count": 3, "marker": "treeline", "tag": "swarm", "goal": "mast" }
+          ] },
+        { "id": "w2", "when": { "kind": "Round", "round": 4 },
+          "actions": [
+            { "kind": "Say", "speaker": "Lantern", "text": "Second wave. Brace if you're in the open." },
+            { "kind": "Spawn", "enemy": "husk", "count": 3, "marker": "treeline", "tag": "swarm", "goal": "mast" },
+            { "kind": "Spawn", "enemy": "husk_crawler", "count": 1, "marker": "treeline", "tag": "swarm", "goal": "mast" }
+          ] },
+        { "id": "w3", "when": { "kind": "Round", "round": 6 },
+          "actions": [
+            { "kind": "Say", "speaker": "Lantern", "text": "Last of them. I think. Hold on." },
+            { "kind": "Spawn", "enemy": "husk", "count": 3, "marker": "treeline", "tag": "swarm", "goal": "mast" },
+            { "kind": "Spawn", "enemy": "husk_crawler", "count": 2, "marker": "treeline", "tag": "swarm", "goal": "mast" }
+          ] },
+        { "id": "mast_hit", "when": { "kind": "ObjectiveFailed", "objective": "mast" },
+          "actions": [ { "kind": "Say", "speaker": "Lantern", "text": "—lost the mast — I'm — " } ] }
+      ]
+    },
+    "rewards": [
+      { "kind": "Schematic", "id": "sch_workshop_3" },
+      { "kind": "ResearchData", "value": 6 },
+      { "kind": "SetFlag", "id": "act", "value": 2 },
+      { "kind": "Note", "text": "End of Act 1: Static." }
+    ],
+    "fail": {
+      "retryDays": 5, "call": "m5_failed",
+      "effects": [
+        { "kind": "SetFlag", "id": "iris_off_air", "value": 1 },
+        { "kind": "Note", "text": "The Radio Mast went down. Iris is off the air for 5 days while it's patched." }
+      ]
+    }
+  }
+]

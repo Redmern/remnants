@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<g transform="scale(1)">
+<path d="M14,112 a50,7 0 1,0 100,0 a50,7 0 1,0 -100,0 Z" fill="#3b3d3c" opacity="0.45"/>
+<path d="M10,84 a50,20 0 1,0 100,0 a50,20 0 1,0 -100,0 Z" fill="#8c7f5c" stroke="#3b3d3c" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M18,70 a50,20 0 1,0 100,0 a50,20 0 1,0 -100,0 Z" fill="#b8962e" stroke="#3b3d3c" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M16,56 a48,19 0 1,0 96,0 a48,19 0 1,0 -96,0 Z" fill="#a39a7c" stroke="#3b3d3c" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M38,52 a6,3 0 1,0 12,0 a6,3 0 1,0 -12,0 Z" fill="#523b26" opacity="0.85"/>
+<path d="M61,60 a5,2.5 0 1,0 10,0 a5,2.5 0 1,0 -10,0 Z" fill="#523b26" opacity="0.85"/>
+<path d="M73,50 a7,3.5 0 1,0 14,0 a7,3.5 0 1,0 -14,0 Z" fill="#523b26" opacity="0.85"/>
+<path d="M50,62 a4,2 0 1,0 8,0 a4,2 0 1,0 -8,0 Z" fill="#523b26" opacity="0.85"/>
+<path d="M84,60 a4,2 0 1,0 8,0 a4,2 0 1,0 -8,0 Z" fill="#523b26" opacity="0.85"/>
+<path d="M28,48 C40,40 60,38 72,40" fill="none" stroke="#c9c6bb" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" opacity="0.6"/>
+<path d="M104,54 l-6,4 l4,4 l-6,4" fill="none" stroke="#3b3d3c" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round"/>
+</g>
+</svg>

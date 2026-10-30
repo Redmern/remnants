@@ -16,10 +16,11 @@ public static class Protocol
     /// drone marks in views).
     /// 5: day and night: the run's environment (hour, phase, weather) in views; the server decides it.
     /// 6: cybernetics (eyes in bodies, units' cybernetic hooks, parts locked by interference, the limb-locked event).
-    /// 8: player trading (live trade messages in the lobby and between allies; the Trading Post's market messages).
-    /// 7 is story-schematics'.
+    /// 7: schematics (schematic items; the result's co-op schematic copies and heard-of schematics).
+    /// 8: weather: the environment's intensity, coming changes and the rounds of the last thunder and lightning.
+    /// 9: player trading (live trade messages in the lobby and between allies; the Trading Post's market messages).
     /// </summary>
-    public const int Version = 8;
+    public const int Version = 9;
     public const int DefaultPort = 7777;
 }
 

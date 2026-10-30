@@ -15,16 +15,11 @@
     "childMultiplier": 2.0
   },
   "food": {
-    "resourceId": "food",
     "adultPerTick": 0.05,
     "childPerTick": 0.04,
     "infantPerTick": 0.02,
     "starvationDamagePerTick": 1.0,
-    "recoveryPerTick": 0.25,
-    "meals": [
-      { "resource": "stew", "foodValue": 2.5, "moodPerTick": 0.1, "healthPerTick": 0.5 },
-      { "resource": "meal", "foodValue": 2.0, "moodPerTick": 0.05, "healthPerTick": 0.15 }
-    ]
+    "recoveryPerTick": 0.25
   },
   "crafting": {
     "maxQueue": 8,
@@ -115,8 +110,8 @@
     "childAgeRange": [6, 12],
     "attributeRange": [25, 60],
     "childAttributeRange": [10, 35],
-    "stock": { "wood": 60, "stone": 30, "food": 40, "medicine": 2 },
-    "items": { "pipe": 2, "spear": 1, "rag_coat": 2, "padded_vest": 1, "backpack": 1, "bandage": 3, "med_kit": 1 },
+    "stock": { "wood": 60, "stone": 30, "medicine": 2 },
+    "items": { "potato": 26, "beans": 8, "canned_food": 3, "pipe": 2, "spear": 1, "rag_coat": 2, "padded_vest": 1, "backpack": 1, "bandage": 3, "med_kit": 1 },
     "buildings": ["town_hall", "shelter"],
     "maleNames": ["Arlo", "Tomas", "Jonah", "Silas", "Bram", "Kofi", "Ravi", "Emil"],
     "femaleNames": ["Mara", "Ines", "Juno", "Petra", "Ada", "Noor", "Lena", "Sana"]

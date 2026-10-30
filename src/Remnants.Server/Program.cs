@@ -11,7 +11,7 @@ namespace Remnants.Server;
 /// Headless authoritative server for one shared scavenge instance (see docs/MULTIPLAYER.md).
 /// <code>
 /// dotnet run --project src/Remnants.Server -- --port 7777 [--zone ID] [--seed N] [--players 2] [--max-players 4]
-///     [--turn-seconds 60] [--reconnect-seconds 120] [--bind 0.0.0.0] [--data DIR] [--coop] [--hour 0-23]
+///     [--turn-seconds 60] [--reconnect-seconds 120] [--bind 0.0.0.0] [--data DIR] [--coop] [--hour 0-23] [--weather KIND[:INTENSITY]]
 /// dotnet run --project src/Remnants.Server -- --bot 127.0.0.1:7777 [--name Bot] [--rounds 30] [--team N] [--hostile] [--propose]
 ///     [--trade [--trade-offer "scrap:20,bandage"]]
 /// dotnet run --project src/Remnants.Server -- --market market.json [--port 7780] [--bind 0.0.0.0]
@@ -77,6 +77,8 @@ public static class Program
             ReconnectSeconds = a.Double("--reconnect-seconds", 120),
             Mode = a.Flag("--coop") ? MissionMode.Coop : MissionMode.Versus,
             Hour = a.Value("--hour") is { } hour ? int.Parse(hour, CultureInfo.InvariantCulture) : null,
+            Weather = a.Value("--weather") is { } w ? w.Split(':')[0] : null,
+            WeatherIntensity = a.Value("--weather") is { } wi && wi.Split(':') is [_, var i] ? double.Parse(i, CultureInfo.InvariantCulture) : 0.7,
             Trade = trade,
             Resources = game.Resources.Keys.ToList(),
         };

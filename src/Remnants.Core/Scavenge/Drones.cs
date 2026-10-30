@@ -76,6 +76,9 @@ public static class Drones
         return result;
     }
 
+    /// <summary>The weather keeps drones down (a dust storm): none takes off or flies; a drone up can still be recalled.</summary>
+    public static bool Grounded(ScavengeSim sim) => FieldEnvironment.Effects(sim.Data, sim.State).DronesGrounded;
+
     internal static ScavengeResult Deploy(ScavengeSim sim, Unit unit, DeployDrone c)
     {
         var data = sim.Data;
@@ -83,6 +86,7 @@ public static class Drones
         var rules = data.Rules.Drone;
         if (DroneOf(state, unit) is not null) return ScavengeResult.Fail(ScavengeError.DroneAlreadyOut, $"{unit.Name}'s drone is already out.");
         if (CarriedDrone(data, unit) is not { } itemId) return ScavengeResult.Fail(ScavengeError.NoDrone, $"{unit.Name} carries no scout drone.");
+        if (Grounded(sim)) return ScavengeResult.Fail(ScavengeError.DroneGrounded, "The weather keeps drones on the ground.");
         if (unit.Pos.Chebyshev(c.At) != 1 || !CanHover(sim, c.At))
             return ScavengeResult.Fail(ScavengeError.InvalidTile, $"The drone needs a free tile next to {unit.Name}.");
         var battery = PackedBattery(data, unit, itemId);
@@ -126,6 +130,7 @@ public static class Drones
         var rules = sim.Data.Rules.Drone;
         if (DroneOf(state, unit) is not { } drone) return ScavengeResult.Fail(ScavengeError.NoDrone, $"{unit.Name} has no drone in the air.");
         if (drone.Battery <= 0) return ScavengeResult.Fail(ScavengeError.LowBattery, "The drone's battery is flat.");
+        if (Grounded(sim)) return ScavengeResult.Fail(ScavengeError.DroneGrounded, "The weather keeps drones on the ground: recall it.");
         if (!CanHover(sim, c.To) || c.To == drone.Pos) return ScavengeResult.Fail(ScavengeError.InvalidTile, $"The drone cannot hover at {c.To}.");
         if (drone.Pos.Chebyshev(c.To) > FlyRange(sim, drone)) return ScavengeResult.Fail(ScavengeError.TooFar, $"{c.To} is beyond one flight.");
         if (unit.Pos.Chebyshev(c.To) > ControlRange(sim.Data, unit, drone.DroneItemId!))

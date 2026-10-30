@@ -398,6 +398,31 @@ outcomes (lockers block tiles, so runs differ), as in the fog pass.
 Watch next pass: Rail Depot and up are harder with cameras and turrets; the hack AP cost (2) against the per-device work;
 whether a novice should get lockers at 65% (they are not on the Network) or terminals higher than ~35%.
 
+## Story Act 1 pass
+
+`dotnet run --project tools/Remnants.Playtest -- --story --seeds=1..20 --days=50` (the story bot: two strongest adults,
+the colony's gear, the first choice in every dialogue, "talk" to the Tally).
+
+| Mission | Closed in 50 days | Median day | STORY.md target | Notes |
+|---|---|---|---|---|
+| M1 Home | 20/20 | 7 | early Act 1 | needs Farm, Woodcutter, Workshop, Radio Mast, then the dusk scene |
+| M2 First Light | 18/20 | 7 | ~day 7–12 | 5 of 23 runs failed (party wipe), retried 3 days later |
+| M3 Signal in the Rust | 17/20 | 11 | — | 6 of 23 runs failed; the Tally arrive on round 4; hack lockouts are the main delay |
+| M4 The Stranger | 16/20 (4 closed as failed) | 18 | — | Juniper dies in about one run in four; the caravan opens either way |
+| M5 Hold the Line | 8/20 | 44 | ~day 30 | gated by Town Hall 2, which the bot reaches late (day 30–48); every run held |
+
+This table is after the rebase onto night missions and cybernetics. Changes from the first sweep, in which M2 failed
+16 of 35 runs with 43 deaths and M4 timed out 12 times:
+- M2: the antenna wakes one Husk in the shed. It no longer also sends the patrol at the party.
+- M4: one crawler ambushes when Juniper moves, not two. Juniper starts at 30 HP, not 18. There are no Linked in the
+  Ruins for it (`excludeEnemyTags`, as STORY.md says), which took M4 from 9 failed runs of 18 back to 4.
+- Missions in generated zones wait for daylight, since night adds Husks there. Handmade maps and the defense go when
+  they go.
+- The bot: it no longer walks out on a teammate who is fighting, and it waits for a bandage before an Aid mission.
+
+Act 1 lands on the doc's timeline up to M4. M5 waits on Town Hall 2, which the bot reaches late, as in the plain
+sweeps.
+
 ## Linked carbine pass
 
 The fog pass found that a geared party which fights the Linked still loses, and named the Linked carbine as the lever.
@@ -621,3 +646,187 @@ Watch next pass: T1 at day ~80 feels late for the first amputee (Workshop 2 wait
 bot's order); the runner pair dominates every kit because the bot's answer to danger is running; humanity strain on
 couples is unmeasured in sweeps (no bot augments), so its rates (`partnerStrainPerTick` 0.05, breakup below 40) are a
 first guess.
+
+## Schematics pass
+
+Blueprints became schematics (SCHEMATICS.md). Colony sweep, 20 seeds × 60 days, `main` → this branch (default bot):
+median population 7 → 8, Town Hall 2 day 31.0 → 30.0, House affordable 48.4 → 50.4, Armory 51.8 → 52.6, Lab 57.6 → 59.5,
+expedition deaths 9 → 12 over ~330 runs. No early gate moved. The bot also runs the hardest allowed zone every other
+expedition now (`Stretch`), and `--bold` climbs threat after two runs without a death.
+
+Schematic measures (default bot, which rarely leaves threat 1): first schematic day 11.8 (20/20); known at day
+30/60/90 1 / 3 / 4; 150 days: Town Hall 3 and Armory + Lab L2 in 18/20 colonies with the default set plus loot.
+The default bot reaches tier 2 rarely (2/20 by day 150) because it hardly ever runs Ashgrove. With `--bold`: first tier-2
+schematic day 25.6 (20/20), known at day 90: 8, sources Loot 105 / Trade 27 / Research 5, 74 trader visits; the bolder
+climb costs deaths (30 vs ~13 in 90 days) and delays TH2 to day 34.
+
+Zone trials (schematics brought home per run, 300 runs; target from SCHEMATICS.md): Outskirts 0.24 (0.25), Scrapyard
+0.22 (0.3), Suburb Ruins with a hacker 0.39 (0.5), Flooded Mall with a hacker 0.25 (0.5), Rail Depot (2 carbines,
+plating) 0.36 (0.8), Network Relay 0.31 (1.0). Deeper zones fall short mostly because trial parties die there. Changed:
+tier 1–2 cache odds 2% / 4% → 3% / 5%, locker odds 3% / 5% / 6% → 4% / 6% / 7%.
+Watch next: Research Data piles up (374 gained over 150 days, little researched) because the heard-of list stays
+short without trader visits. A heard-of source for tier-1 zones may be needed.
+
+Story sweep after merging schematics into Story mode (`--story --seeds=1..20 --days=50`; Act 1 pass above in
+brackets): M1 20/20 day 7 (20, 7), M2 19 day 7.3 (18, 7), M3 19 day 11.4 (17, 11), M4 17 closed, 5 as failed, day 17.4
+(16, 18), M5 7 day 37.8 (8, 44). Story rewards are the main schematic source in Story mode (53 of 96 learned), and the
+first tier-2 schematic comes by day 34 in 11 of 20 colonies.
+
+
+## Weather pass
+
+Weather is a seeded Markov chain of spells per region (`data/weather.json`, `Colony/Weather.cs`), on whenever the
+file is present, so every colony sweep now runs with it. At home: rain slows outdoor work ×0.9 and waters the farm ×1.3;
+a thunderstorm ×0.7 outdoors, costs mood and can strike a building with lightning (half output until repaired for 6
+wood + 3 scrap); fog costs a little mood; a dust storm ×0.3 outdoors (×0.65 with a dust mask), keeps children in, burns
+unmasked outdoor workers' health and the crop ×0.6. On the road: storms add days, a dust storm closes routes two days or
+more out. In the field (`scavenge.json environment.weather`): rain and storms cut hearing (×0.6 / ×0.5) and flare time,
+storms add thunder (no footsteps) and lightning (everyone seen); fog halves people's sight and gives +10 stealth; a dust
+storm cuts sight hard (people ×0.45, Linked ×0.6), +10 stealth except to Husks, −15% ranged hit chance, grounds drones
+and halves relay range.
+
+The bot now copes with it: it waits when a dust storm closes the route (`RouteBlocked`) rather than picking another zone,
+packs `ArrivalPlan.ExtraRationsPerMember` (the wait for dawn plus weather delays), repairs struck buildings as soon as
+it can afford to, and has the Tailor make two dust masks. The colony report adds a line for the weather at home,
+lightning strikes and repairs. Zone trials take `--weather=KIND[,KIND...]|all` (held for the whole run at intensity
+0.8, no changes mid-run), and `--hour` takes a list too; the two sweep every combination.
+
+```sh
+dotnet run --project tools/Remnants.Playtest -- --data=data --seeds=1..40 --days=60 --quiet                    # weather on
+dotnet run --project tools/Remnants.Playtest -- --data=NOWEATHER --seeds=1..40 --days=60 --quiet               # data/ copy, weather.json "enabled": false
+dotnet run --project tools/Remnants.Playtest -- --data=data --zone=suburb_ruins --runs=300 --hour=12,23 --weather=all
+```
+
+### Colony sweep
+
+40 seeds × 60 days, weather off → on (same bot, same Core; days are medians over the colonies that got there):
+
+| | weather off | weather on |
+|---|---|---|
+| median population at day 60 | 7 | 7 |
+| starvation deaths / departures | 0 / 36 | 0 / 36 |
+| expedition deaths | 22 over 671 runs | 23 over 660 runs |
+| births | 76 | 74 |
+| min food stock (days of need, median) | 3.8 | 3.8 |
+| Town Hall 2 / House affordable (median day) | 31.5 / 48.4 | 32.6 / 49.3 |
+| Armory / Electronics Lab (median day) | 51.5 / 59.3 | 50.5 / 59.0 |
+| first pregnancy / first birth (median day) | 35 / 39 | 31 / 34 |
+| weather at home | — | clear 47%, overcast 31%, rain 15%, fog 4%, thunderstorm 3%, dust storm 1% |
+| lightning strikes / repairs | — | 37 / 36 (0.9 per colony) |
+
+Economy only (`--no-expeditions`, 20 seeds): Town Hall 2 day 21.0 → 22.5, House affordable 33.8 → 35.5, Armory 40.5 →
+42.5, Lab 54.5 → 56.8, min food 5.5 → 5.6 days, births 74 → 63, median population 9 → 8.
+
+| target | with weather |
+|---|---|
+| 1 First days tight but survivable | **holds**: no starvation, min food 3.8 days as before (the low end, as since the night pass) |
+| 3 Outskirts usually survivable | **holds**: a death in 4–7% of runs in any weather by day, 2–7% at night (below) |
+| 4 Linked rare in early zones | **holds**: none in Outskirts; Suburb Ruins sees one in 17–21% of runs (27–29% in a storm) |
+| 5 First births near House affordable | **holds**, about as loosely as before (births still come before the House) |
+| 6 Crafting tiers unlock progressively | **holds**: Town Hall 2 ~day 33, Armory ~50, Lab ~59 |
+
+Weather costs the economy one to two days on every milestone (outdoor work lost to storms and lightning at half pace
+until repaired), which the expedition colonies hide in their own noise. No `weather.json` numbers were changed. Dust
+storms are rare at home (1% of hours, Home Valley ×0.6), so masks and the dust's health loss barely show here.
+
+### Missions in weather
+
+Zone trials, 300 runs per cell, two adults with starting gear, `--hour=12,23 --weather=all` (one weather for the whole
+run at intensity 0.8). Someone dies, day → night; wipes and items per run in brackets:
+
+| weather | Town Outskirts | Suburb Ruins | Rail Depot |
+|---|---|---|---|
+| clear | 6% → 7% (2% → 1%; 10.6 → 10.6) | 33% → 40% (12% → 17%; 8.6 → 7.8) | 92% → 92% (64% → 62%; 1.6 → 1.6) |
+| overcast | 5% → 6% | 34% → 39% | 92% → 92% |
+| rain | 4% → 5% (1% → 1%; 10.8 → 11.2) | 31% → **26%** (12% → 9%; 8.7 → 9.7) | 93% → 93% (63% → 58%; 1.6 → 1.8) |
+| thunderstorm | 6% → **2%** (1% → 0%; 10.7 → 11.4) | 38% → **22%** (10% → 4%; 8.0 → 10.0) | 91% → 89% (59% → 52%; 1.6 → 2.1) |
+| fog | 4% → **3%** (0% → 0%; 11.1 → 11.5) | **20% → 17%** (5% → 6%; 10.4 → 10.6) | 85% → 83% (49% → 46%; 3.0 → 3.4) |
+| dust storm | 7% → 6% (1% → 1%; 10.8 → 10.8) | 28% → 33% (9% → 11%; 9.3 → 8.7) | **74% → 72%** (**39% → 37%**; 3.9 → 4.5) |
+
+Rail Depot, ambushes per run day → night: clear 4.52 → 5.42, rain 4.89 → 5.55, storm 4.31 → 4.67, fog 4.45 → 4.81, dust
+3.36 → 3.41. Suburb Ruins, losing someone when a Linked shows (day): clear 80%, rain 72%, storm 58%, fog 63%, dust 62%.
+
+The same Rail Depot trial with the geared kit and two Linked carbines (`--kit=geared --carbines=2`), someone dies day →
+night (Linked kills per run): clear 63% → 84% (2.94 → 2.23), rain 59% → 79% (2.69 → 2.43), thunderstorm 54% → 75%
+(2.90 → 2.55), fog 67% → 87% (2.62 → 2.21), dust storm 62% → 83% (2.52 → 2.18).
+
+- **Dust storms are an opening against the Linked for a party that runs.** In Rail Depot a starting party dies in 74%
+  of dust-storm runs (92% clear), wipes 39% (64%) and brings back 2.4× the loot: the Linked's sight ×0.6, +10 stealth
+  and halved relay range cut ambushes by a quarter. It does nothing for Husks (they smell through it): Suburb Ruins in a
+  dust storm is about as deadly as clear, and at night a little worse.
+- **For a party that fights the Linked, dust and fog are no help**: the −15% ranged hit chance and the shorter sight
+  cost as much as the stealth gains (Linked kills down 10–15%); rain and storms help a little (deaths −4 to −9 points).
+- **Fog is the safest weather against Husks**: Suburb Ruins 33% → 20% by day, 17% at night, with more loot (+20%), as
+  the party slips past what it cannot see either. It also blunts Rail Depot (85%).
+- **Rain and storms turn the night around.** Hearing ×0.6 / ×0.5 and thunder hide the party's footsteps from Husks that
+  hear ×1.5 further at night, so a stormy night in Suburb Ruins (22%) is safer than a clear day (33%), and the Outskirts
+  at night drop from 7% to 2%. By day rain changes little, and a thunderstorm in Suburb Ruins reads a little worse
+  (38%), with a Linked seen in 29% of runs instead of 20% (lightning shows everyone to everyone).
+- Overcast is clear for every purpose (within a point).
+- The early-zone targets hold in every weather: Outskirts deaths stay at 2–7%, wipes ≤ 2%.
+
+Watch next: the bot does not use the forecast (it never times a run for fog or a storm, nor holds back from one); dust
+masks and the dust's health loss barely show at 1% dust hours at home; a geared party might want to hold its fire in
+dust (−15%) rather than trade shots.
+## Food and cooking
+
+Food is now ingredients in a pantry (ARCHITECTURE.md "Food and cooking"). The aim: the early game stays as tight as
+before, and the late surplus the day/night pass flagged gets something to do (it spoils, unless it is cooked,
+preserved or kept cold). Consumption rates are unchanged; potatoes are 1 food each and the Farm's potatoes yield what
+it made before, so the economy's base is the same.
+
+Data (food.json, recipes.json, buildings.json):
+
+- New game: 40 food → 26 potatoes, 8 beans, 3 canned food (40 food value). Potatoes keep 14 days, beans 30, corn 20,
+  meat 3, Husk meat 2, dishes 2–5, preserved food 30–180.
+- The Farm's first harvest comes in `growDays` after it is built or switched (potatoes 1, herbs 1, beans 3, corn 4);
+  the effort meanwhile is not lost (it is the standing crop). Beans yield ×0.85, herbs ×1.6 (0.2 food each).
+- Cooking stretches food: Boiled Potatoes 3 potatoes + water → 4.2 food (×1.4), Stew ~4 food → 6.4, Roast 3 → 4.
+- Herbal Remedy and Plant-fiber Cloth take `tag:plant` (any crop) in place of the old food pool, same amounts.
+- Buffs: Well Fed ×1.08 output and ×1.25 healing (8–24 h), Comfort +0.1 mood/h, Energised ×1.15 then 4 h sleep debt,
+  Soothed ×1.5 healing; Hungry ×0.85 output and ×0.75 healing for 12 h after starving, Malnourished ×0.9.
+- Bot: food staffing counts each harvest's food value; it cooks while food lasts over 3 days and keeps about two days
+  of dishes, smokes meat and dries produce about to spoil, packs field rations or a good meal for expeditions, and builds
+  the Hunting Lodge, Smokehouse and Kitchen L2 after the Lab. A first try with an early Campfire (and its cook) and
+  the food buildings before the Armory pushed Town Hall 2 from day 31 to 34; the bot now leaves them later.
+
+20 seeds × 60 days, before (`main`) → after:
+
+| | before | after |
+|---|---|---|
+| median population at day 60 | 7 | 7 |
+| starvation deaths | 0 | 0 |
+| min food stock (days of need, median) | 3.8 | 3.6 |
+| Town Hall 2 / House affordable (median day) | 31.0 / 48.4 | 31.8 / 48.4 |
+| Armory / Electronics Lab (median day) | 51.8 / 57.6 | 49.6 / 56.8 |
+| first pregnancy / first birth (median day) | 40 / 44 | 31 / 35 |
+| births / departures | 37 / 13 | 35 / 22 |
+| expedition deaths | 9 over 324 runs | 2 over 320 runs |
+| food rotted / food poisonings / batches cooked per colony | — | 58 / 0 / 103 |
+| cooked share of the diet / mean nutrition at the end | — | 82% / 0.58 |
+
+Economy only (`--no-expeditions`): Town Hall 2 day 21.0 → 19.6, House affordable 33.8 → 31.5, Armory 40.5 → 36.6, Lab
+54.5 → 51.5, min food 5.5 → 5.4 days, median population 9 → 8, 109 food rotted per colony.
+
+- Target 1 holds: seed 2's first week dips from 40 to 17.1 (was 19.2) on day 6, then recovers; nobody starves in any
+  seed. The day-1 drop is larger (−9.5 vs −5.2) because the new farm's potatoes come in on day 2.
+- Town Hall 2 timing is within a day; the cooked food's mood and Well Fed output make up for the cook's hours.
+- More departures (13 → 22): homeless recruits and newborns. Recruits went 39 → 43 and the colonies conceive earlier
+  (food value in dishes counts for the "enough food for babies" check); housing, not food, is the wall there.
+- Expedition deaths fell (9 → 2): good meals for the road give +1 AP on the first round. Watch it in zone trials
+  before reading too much into 20 colonies.
+- Rot: a bot that over-farms loses ~1 food a day per colony late on. A player has the Smokehouse, Cold Cellar
+  (schematic), beans and corn, or simply farming less.
+
+Watch next: the Hunting Lodge and Husk-zone game (the bot never hunts Husk game, so taint is untested in the sweep),
+the Greenhouse and the Cold Cellar (both behind schematics the bot does not find pre-merge), and variety (the bot
+cooks two or three dishes; Same Again rarely triggers).
+
+### After merging story-schematics, story-campaign and weather
+
+Same sweep (20 seeds × 60 days), `main` with schematics, story and weather vs this branch on top of it: median
+population 8 → 8, Town Hall 2 day 29.5 → 28.8, House affordable 46.8 → 44.5, Armory 50.8 → 47.5, Lab 59.0 → 58.6, min
+food 4.1 → 3.7 days, starvation 0 → 0, departures 15 → 11, births 36 → 34, expedition deaths 7 → 12 over 317 → 328 runs
+(within the noise of 20 colonies; zone trials are the better read), food rotted 42 per colony, food poisonings 0. Weather
+now waters or buries the crops per harvest (`Crops.Multiplier` in `HarvestSystem`; the Greenhouse is indoors) instead of
+scaling every farming worker, and rain or storms skip the Campfire's supper bonus as they skip campfire evenings.

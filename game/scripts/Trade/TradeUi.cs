@@ -26,6 +26,17 @@ public static class TradeUi
         return item is null ? Icons.Get("item_generic", size) : Icons.Item(item.DefinedId, item.Kind.ToString(), size);
     }
 
+    /// <summary>Debug runs (scripted trades, the Trading Post demo): a fresh colony gets the Radio Mast trading needs.</summary>
+    public static void EnsureMastForDebug(Remnants.Core.Colony.ColonySim sim)
+    {
+        if (TradeUi.Rules.Courier.RequiresBuilding is not { } id || !sim.Data.Buildings.ContainsKey(id) || sim.State.Buildings.Any(b => b.DefId == id)) return;
+        if (sim.FreePlots().FirstOrDefault(-1) is var plot and >= 0)
+            sim.State.Buildings.Add(new Remnants.Core.Colony.Building { Id = sim.State.NextBuildingId++, DefId = id, Level = 1, Plot = plot });
+    }
+
+    public static string Describe(System.Collections.Generic.IEnumerable<TradeGood> goods) =>
+        TradeGoods.Describe(goods, GameDataPaths.Load(), GameDataPaths.LoadScavenge());
+
     /// <summary>"Fine", "Crude" … for a quality variant, null for a base item.</summary>
     public static string? Quality(TradeGood g) =>
         g.Kind == GoodKind.Item && GameDataPaths.LoadScavenge().Items.GetValueOrDefault(g.Id) is { Quality: { } q } ? q : null;
@@ -47,6 +58,14 @@ public static class TradeUi
         {
             if (extras.Mk is { } mk) row.AddChild(Tag($"Mk {mk}", Palette.Good));
             if (extras.Mods is { Count: > 0 } mods) row.AddChild(Tag($"{mods.Count} mod{(mods.Count == 1 ? "" : "s")}", Palette.Good));
+            if (extras.Lots is { Count: > 0 } lots)
+            {
+                // Food: the soonest-to-spoil lot sets the tag; quality and taint show when they are not plain.
+                var days = lots.Where(l => l.TicksLeft is not null).Select(l => l.TicksLeft!.Value).DefaultIfEmpty(-1).Min() / GameDataPaths.Load().Rules.TicksPerDay;
+                if (days >= 0) row.AddChild(Tag($"keeps {days:0.#}d", days < 1 ? Palette.Warn : Palette.TextMuted));
+                if (lots.Select(l => l.Quality).Distinct().SingleOrDefault() is { } q && q != Remnants.Core.Colony.FoodQuality.Standard) row.AddChild(Tag(q, Palette.Amber));
+                if (lots.Any(l => l.Tainted)) row.AddChild(Tag("tainted", Palette.Danger));
+            }
         }
         if (onRemove is not null)
         {

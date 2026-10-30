@@ -172,14 +172,16 @@ public partial class MultiplayerMenu : Control
         _party.Text = "Party: " + description;
     }
 
-    private static int? ColonyHour() =>
+    /// <summary>The colony's waiting party's mission environment (its hour and the weather over the zone), if hosting from one.</summary>
+    private static Remnants.Core.Scavenge.ScavengeEnvironment? ColonyEnvironment() =>
         Colony.ColonySession.Current is { } session && session.MultiplayerParty() is not null && session.Sim.State.Expedition is { } e
-            ? session.Sim.MissionEnvironment(e.ArrivalTick).Hour
+            ? session.Sim.MissionEnvironment(e.ArrivalTick, e.ZoneId)
             : null;
 
     private void OnHost()
     {
         var (_, port) = MultiplayerSession.ParseAddress(_address.Text);
+        var env = ColonyEnvironment();
         var options = new HostOptions
         {
             ZoneId = _zoneIds[_zone.Selected],
@@ -188,8 +190,12 @@ public partial class MultiplayerMenu : Control
             MaxPartySize = GameDataPaths.Load().Rules.Expedition.PartySizeByTownHallLevel.Max(),
             TurnSeconds = double.TryParse(DebugCapture.Value("--mp-turn-seconds"), out var turn) ? turn : 60,
             Mode = _mode.Selected == 1 ? MissionMode.Coop : MissionMode.Versus,
-            // Hosting from the colony's waiting party: the mission is at the hour it arrived (and maybe waited for).
-            Hour = ColonyHour(),
+            // Hosting from the colony's waiting party: the mission is at the hour it arrived (and maybe waited for), in the
+            // weather over the zone then; otherwise the server rolls the weather from the seed.
+            Hour = env?.Hour,
+            Weather = env?.Weather,
+            WeatherIntensity = env?.Intensity ?? 0.7,
+            WeatherShifts = env?.Shifts ?? new(),
         };
         try
         {
@@ -219,7 +225,10 @@ public partial class MultiplayerMenu : Control
         _client = client;
         client.Changed += Refresh;
         if (DebugCapture.HasFlag("--mp-trade-colony") && Colony.ColonySession.Current is null)
+        {
             Colony.ColonySession.Current = new Colony.ColonySession(Remnants.Core.Colony.NewGame.Create(GameDataPaths.Load(), 7, GameDataPaths.LoadScavenge()));
+            TradeUi.EnsureMastForDebug(Colony.ColonySession.Current.Sim);
+        }
         _dock = new TradeDock(client, null);
         AddChild(_dock);
         client.TradeNews += DebugOffer;
@@ -283,7 +292,8 @@ public partial class MultiplayerMenu : Control
             var bits = part.Split(':');
             var count = bits.Length > 1 && int.TryParse(bits[1], out var n) ? n : 1;
             return game.Resources.ContainsKey(bits[0]) ? Remnants.Core.Trade.TradeGood.Resource(bits[0], count) : Remnants.Core.Trade.TradeGood.Item(bits[0], count);
-        }).Where(g => g.Kind == Remnants.Core.Trade.GoodKind.Resource || items.Items.ContainsKey(g.Id)).ToList();
+        }).Where(g => g.Kind == Remnants.Core.Trade.GoodKind.Resource || items.Items.ContainsKey(g.Id))
+            .Select(g => Colony.ColonySession.Current is { } c ? Remnants.Core.Trade.FoodGoods.WithLots(c.Sim.State, c.Sim.Data, g) : g).ToList();
         _client.OfferTrade(update.Trade.TradeId, goods);
     }
 

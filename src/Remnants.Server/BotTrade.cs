@@ -84,7 +84,7 @@ internal static class BotTrade
         colony.State.Stockpile.Add("scrap", 80);
         colony.State.Stockpile.Add("electronics", 12);
         colony.State.Stockpile.Add("cloth", 20);
-        colony.State.Inventory.Add("bp_rifle");
+        colony.State.Inventory.Add("sch_rifle");
 
         var inbox = Channel.CreateUnbounded<Action>();
         var transport = await TcpClientTransport.ConnectAsync(host, port);
@@ -98,8 +98,8 @@ internal static class BotTrade
         var offers = new List<(List<TradeGood> Give, List<TradeGood> Want)>
         {
             ([TradeGood.Resource("wood", 30)], [TradeGood.Resource("scrap", 12)]),
-            ([TradeGood.Item("bp_rifle")], [TradeGood.Resource("electronics", 6), TradeGood.Resource("medicine", 2)]),
-            ([TradeGood.Resource("scrap", 25)], [TradeGood.Resource("food", 30)]),
+            ([TradeGood.Item("sch_rifle")], [TradeGood.Resource("electronics", 6), TradeGood.Resource("medicine", 2)]),
+            ([TradeGood.Resource("scrap", 25)], [TradeGood.Item("canned_food", 6)]),
             ([TradeGood.Item("bandage", 2)], [TradeGood.Resource("cloth", 6)]),
             ([TradeGood.Resource("stone", 20)], [TradeGood.Resource("wood", 15)]),
         };
@@ -129,7 +129,7 @@ internal static class BotTrade
                 stage = -1;
                 Then(market.Browse(), page =>
                 {
-                    if (page.Listings.FirstOrDefault(l => !l.Mine && TradeGoods.Has(colony.State, l.Want)) is not { } listing) return;
+                    if (page.Listings.FirstOrDefault(l => !l.Mine && TradeGoods.Has(colony.State, colony.Data, l.Want)) is not { } listing) return;
                     busy = true;
                     Then(market.Accept(listing), r => Program.Print($"{name}: take #{listing.Id}: {r.Message}"));
                 });

@@ -9,14 +9,22 @@ namespace Remnants.Core.Trade;
 public enum GoodKind { Resource, Item }
 
 /// <summary>
-/// Per-item data that must survive a trade beyond the item id (quality is already part of the id: a quality variant is
-/// its own item). Weapon mods and the Mk level live here once the weapon-mods work lands; until then they ride along
-/// untouched and the colony inventory, which only counts ids, drops them on delivery.
+/// Per-item data that must survive a trade beyond the item id (gear quality is already part of the id: a quality
+/// variant is its own item). <see cref="Lots"/>: for food, the Pantry lots the units come from (quality, tainted, time
+/// left before they spoil), so a trade hands over the same food, not fresh food. Weapon mods and the Mk level ride along
+/// for the weapon-mods work; the colony inventory, which only counts ids, does not keep them yet.
 /// </summary>
-public sealed record ItemExtras(List<string>? Mods = null, int? Mk = null)
+public sealed record ItemExtras(List<string>? Mods = null, int? Mk = null, List<FoodLotExtra>? Lots = null)
 {
-    public bool IsEmpty => (Mods is null || Mods.Count == 0) && Mk is null;
+    public bool IsEmpty => (Mods is null || Mods.Count == 0) && Mk is null && (Lots is null || Lots.Count == 0);
+
+    /// <summary>A stable text for grouping lines (lines with different extras stay apart).</summary>
+    public string Signature => string.Join(",", Mods ?? []) + "|" + Mk + "|" +
+        string.Join(";", (Lots ?? []).Select(l => $"{l.Count}:{l.Quality}:{l.Tainted}:{l.TicksLeft:0.##}"));
 }
+
+/// <summary>Some units of a food item from one Pantry lot: <paramref name="TicksLeft"/> until it spoils (null = keeps).</summary>
+public sealed record FoodLotExtra(int Count, string Quality, bool Tainted, double? TicksLeft);
 
 /// <summary>
 /// One line of a trade offer: <paramref name="Count"/> of a resource or of one item id. Schematic copies are items (a
@@ -36,7 +44,7 @@ public static class TradeGoods
     /// <summary>Lines merged by kind + id (extras kept per line, so modded items never merge with plain ones), in a stable order.</summary>
     public static List<TradeGood> Normalize(IEnumerable<TradeGood> goods) =>
         goods.Where(g => g.Count > 0)
-            .GroupBy(g => (g.Kind, g.Id, Extras: g.Extras is { IsEmpty: false } e ? string.Join(",", e.Mods ?? []) + "|" + e.Mk : ""))
+            .GroupBy(g => (g.Kind, g.Id, Extras: g.Extras is { IsEmpty: false } e ? e.Signature : ""))
             .Select(grp => grp.First() with { Count = grp.Sum(g => g.Count) })
             .OrderBy(g => g.Kind).ThenBy(g => g.Id, StringComparer.Ordinal)
             .ToList();
@@ -70,6 +78,10 @@ public static class TradeGoods
                     if (g.Count > rules.Limits.MaxItemCount) return $"At most {rules.Limits.MaxItemCount} × {item.Name} per line.";
                     if (g.Extras is { Mods.Count: > 8 }) return $"{item.Name}: too many mods.";
                     if (g.Extras is { Mk: < 0 or > 10 }) return $"{item.Name}: implausible Mk level.";
+                    if (g.Extras?.Lots is { Count: > 0 } lots
+                        && (item.Kind != ItemKind.Food || lots.Count > 8 || lots.Sum(l => l.Count) != g.Count
+                            || lots.Any(l => l.Count <= 0 || string.IsNullOrWhiteSpace(l.Quality) || l.Quality.Length > 24 || l.TicksLeft < 0)))
+                        return $"{item.Name}: the food lots do not add up.";
                     break;
                 default:
                     return "Unknown kind of goods.";
@@ -98,12 +110,12 @@ public static class TradeGoods
     }
 
     /// <summary>Whether the colony has all of these in its stockpile and inventory right now.</summary>
-    public static bool Has(ColonyState state, IEnumerable<TradeGood> goods) =>
-        Normalize(goods).All(g => g.Kind == GoodKind.Resource ? state.Stockpile.Has(g.Id, g.Count) : state.Inventory.Has(g.Id, g.Count));
+    public static bool Has(ColonyState state, GameData data, IEnumerable<TradeGood> goods) =>
+        Normalize(goods).GroupBy(g => (g.Kind, g.Id)).All(grp => FoodGoods.Have(state, data, grp.First()) >= grp.Sum(g => g.Count));
 
     /// <summary>Items as a flat list of ids (field trades work on pack contents).</summary>
     public static List<string> ItemIds(IEnumerable<TradeGood> goods) =>
         goods.Where(g => g.Kind == GoodKind.Item).SelectMany(g => Enumerable.Repeat(g.Id, g.Count)).ToList();
 
-    public static bool IsSchematic(ItemDef item) => item.Kind == ItemKind.Blueprint;
+    public static bool IsSchematic(ItemDef item) => item.Kind == ItemKind.Schematic;
 }

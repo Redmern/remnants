@@ -22,7 +22,8 @@ public class ScavengeDataTests
 
     private static GameDataException Broken(string? items = null, string? enemies = null, string? zones = null, string? rules = null) =>
         Assert.Throws<GameDataException>(() => ScavengeDataLoader.LoadFromJson(
-            items ?? File("items.json"), enemies ?? File("enemies.json"), zones ?? File("zones.json"), rules ?? File("scavenge.json")));
+            items ?? File("items.json"), enemies ?? File("enemies.json"), zones ?? File("zones.json"), rules ?? File("scavenge.json"),
+            schematics: File("schematics.json")));
 
     [Fact]
     public void Zone_with_unknown_enemy_is_rejected()

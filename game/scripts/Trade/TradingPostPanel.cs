@@ -103,7 +103,8 @@ public partial class TradingPostPanel : Overlay
         postRow.AddChild(Widgets.IconButton("ui_close", "Clear", "Start over", () => { _give.Clear(); _want.Clear(); Redraw(); }));
         postRow.AddChild(Widgets.IconButton("ui_post", "Post offer", "List it on the Trading Post", () => _ = Post(), variation: "Primary"));
         post.AddChild(postRow);
-        _givePicker.Picked += g => { _give.Add(g); Normalize(_give); Redraw(); };
+        // Food carries the Pantry lots it would come from (quality, time left), so the buyer sees what they get.
+        _givePicker.Picked += g => { _give.Add(g); Normalize(_give); Annotate(_give); Redraw(); };
         _wantPicker.Picked += g => { _want.Add(g); Normalize(_want); Redraw(); };
 
         Page("My offers", stack).AddChild(Scroll(_mine));
@@ -242,6 +243,14 @@ public partial class TradingPostPanel : Overlay
         await Browse();
     }
 
+    private void Annotate(List<TradeGood> goods)
+    {
+        var merged = goods.GroupBy(g => (g.Kind, g.Id)).Select(grp => grp.First() with { Count = grp.Sum(g => g.Count), Extras = null })
+            .Select(g => FoodGoods.WithLots(_session.Sim.State, _session.Sim.Data, g)).ToList();
+        goods.Clear();
+        goods.AddRange(merged);
+    }
+
     private static void Normalize(List<TradeGood> goods)
     {
         var merged = TradeGoods.Normalize(goods);
@@ -270,7 +279,7 @@ public partial class TradingPostPanel : Overlay
         var listings = market?.Listings?.Listings ?? new();
         var others = listings.Where(l => !l.Mine).ToList();
         if (others.Count == 0) _browse.AddChild(Widgets.Label(market is null ? "Connect to see the offers." : "No offers match.", "Muted"));
-        foreach (var l in others) _browse.AddChild(Row(l, TradeGoods.Has(sim.State, l.Want)
+        foreach (var l in others) _browse.AddChild(Row(l, TradeGoods.Has(sim.State, sim.Data, l.Want)
             ? Widgets.IconButton("stat_check", "Take", "Pay what they want; their goods come to you as a claim", () => _ = Accept(l), variation: "Primary")
             : Disabled("Take", "Your colony does not have what they want.")));
 
@@ -290,8 +299,9 @@ public partial class TradingPostPanel : Overlay
         var state = sim.State;
         _givePicker.SetChoices(sim.Data.Resources.Keys.Where(id => state.Stockpile.Get(id) >= 1).OrderBy(id => sim.Data.Resources[id].Name)
             .Select(id => (TradeGood.Resource(id, 1), (int)Math.Floor(state.Stockpile.Get(id) + 1e-9) - _give.Where(g => g.Id == id).Sum(g => g.Count)))
-            .Concat(state.Inventory.Counts.Select(kv => (TradeGood.Item(kv.Key), kv.Value - _give.Where(g => g.Id == kv.Key).Sum(g => g.Count)))));
-        var items = GameDataPaths.LoadScavenge().Items.Values.Where(i => !i.Natural && i.LootWeight > 0 || i.Kind == Core.Items.ItemKind.Blueprint)
+            .Concat(state.Inventory.Counts.Keys.Select(id => (TradeGood.Item(id),
+                (int)FoodGoods.Have(state, sim.Data, TradeGood.Item(id)) - _give.Where(g => g.Id == id).Sum(g => g.Count)))));
+        var items = GameDataPaths.LoadScavenge().Items.Values.Where(i => !i.Natural && i.LootWeight > 0 || i.Kind is Core.Items.ItemKind.Schematic or Core.Items.ItemKind.Food)
             .OrderBy(i => i.Name).Select(i => (TradeGood.Item(i.Id), TradeUi.Rules.Limits.MaxItemCount));
         _wantPicker.SetChoices(sim.Data.Resources.Keys.OrderBy(id => sim.Data.Resources[id].Name)
             .Select(id => (TradeGood.Resource(id, 1), TradeUi.Rules.Limits.MaxResourceAmount)).Concat(items));

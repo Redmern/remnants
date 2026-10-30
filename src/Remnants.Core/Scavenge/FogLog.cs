@@ -26,7 +26,8 @@ public static class FogLog
         var result = new List<ScavengeEvent>();
         foreach (var e in events)
         {
-            if (e.Type is ScavengeEventType.RoundStarted or ScavengeEventType.PartyDone or ScavengeEventType.Finished)
+            if (e.Type is ScavengeEventType.RoundStarted or ScavengeEventType.PartyDone or ScavengeEventType.Finished
+                or ScavengeEventType.WeatherChanged or ScavengeEventType.Thunder or ScavengeEventType.Lightning)
             {
                 result.Add(e);
                 continue;

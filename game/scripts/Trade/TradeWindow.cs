@@ -177,7 +177,11 @@ public partial class TradeWindow : Overlay
     private void Add(TradeGood good)
     {
         if (_view is not { } v) return;
-        _client.OfferTrade(v.TradeId, TradeGoods.Normalize(MyGoods().Append(good)));
+        var goods = MyGoods().Append(good).GroupBy(g => (g.Kind, g.Id)).Select(grp => grp.First() with { Count = grp.Sum(g => g.Count), Extras = null });
+        // Lobby food carries the Pantry lots it would come from (quality, time left), so the other side sees what it gets.
+        if (v.Venue == TradeVenue.Lobby && Colony.ColonySession.Current is { } session)
+            goods = goods.Select(g => FoodGoods.WithLots(session.Sim.State, session.Sim.Data, g));
+        _client.OfferTrade(v.TradeId, TradeGoods.Normalize(goods));
     }
 
     private void Remove(TradeGood good)

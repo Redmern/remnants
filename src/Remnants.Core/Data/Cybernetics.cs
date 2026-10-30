@@ -36,6 +36,9 @@ public sealed record CyberTierDef
     public string Name { get; init; } = "";
     public string Description { get; init; } = "";
 
+    /// <summary>Knowing this tier's schematic opens its designs without one of the tier below known.</summary>
+    public bool SchematicSkips { get; init; }
+
     /// <summary>Humanity a prosthetic of this tier costs when it replaces a lost limb (or an older prosthetic).</summary>
     public double Humanity { get; init; }
 
@@ -82,8 +85,10 @@ public sealed record CyberEffectsDef
 
 /// <summary>
 /// One design in the tree. Its id is the prosthetic item's id. The way in is one of <see cref="Requires"/> (nodes of a
-/// lower tier) known to the colony — crafted, fitted or owned; tier 0 is known from the start — or, instead, its
-/// <see cref="Blueprint"/> studied (a blueprint skips the tier below). On top: the perk someone at home must have.
+/// lower tier) known to the colony — crafted, fitted or owned; tier 0 is known from the start — or, for a tier with
+/// <see cref="CyberTierDef.SchematicSkips"/>, its tier schematic known (it skips the tier below). On top: the perk someone
+/// at home must have, and the schematics of its tier and specialisation (data/schematics.json, <c>prosthetic</c> unlocks
+/// <c>tier:N</c> and <c>spec:ID</c>).
 /// Building and level come from the recipe that makes it; components are that recipe's item inputs.
 /// </summary>
 public sealed record CyberNodeDef
@@ -97,9 +102,6 @@ public sealed record CyberNodeDef
 
     public List<string> Requires { get; init; } = new();
     public string? Perk { get; init; }
-
-    /// <summary>A blueprint that opens this design without knowing the tier below.</summary>
-    public string? Blueprint { get; init; }
 
     /// <summary>
     /// Model variant: the game shows <c>prosthetic_{arm|leg}_{model}_{l|r}</c> (and falls back to the cyborg one), tinted

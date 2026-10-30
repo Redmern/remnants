@@ -1,0 +1,34 @@
+[
+  {
+    "id": "m1_home", "mode": "InPerson", "caller": "pell", "title": "Home",
+    "nodes": [
+      { "id": "a", "speaker": "narration", "text": "(Morning. Two shelters, a fire pit and a hall with half a roof. Pell sits on an upturned bucket, turning a dead radio over in his hands.)", "next": "b" },
+      { "id": "b", "speaker": "pell", "text": "Found it in the hall. It's not broken. It's just quiet.", "next": "c" },
+      { "id": "c", "speaker": "player", "text": "", "choices": [
+        { "text": "Food first. Radios later.", "next": "c1" },
+        { "text": "What do you think it needs?", "next": "c2" },
+        { "text": "Who would we even call?", "next": "c3" }
+      ] },
+      { "id": "c1", "speaker": "pell", "text": "Okay. But later's a real time, right? Not a grown-up later.", "next": "d" },
+      { "id": "c2", "speaker": "pell", "text": "A mast. A tall one. And wire. Lots of wire. The Workshop could make it.", "next": "d" },
+      { "id": "c3", "speaker": "pell", "text": "Anyone. Someone's out there. There's always someone.", "next": "d" },
+      { "id": "d", "speaker": "player", "text": "A Farm. A Woodcutter. A Workshop. Then the mast.", "next": "e" },
+      { "id": "e", "speaker": "pell", "text": "Then the mast. Promise." }
+    ]
+  },
+  {
+    "id": "m1_tuning", "mode": "InPerson", "caller": "pell", "title": "Tuning",
+    "nodes": [
+      { "id": "a", "speaker": "narration", "text": "(Dusk. The new Radio Mast creaks in the wind. Pell is under it with the headphones on, far too big for him, turning the dial one click at a time.)", "next": "b" },
+      { "id": "b", "speaker": "pell", "text": "Static. Static. Static.", "next": "c" },
+      { "id": "c", "speaker": "pell", "text": "...Someone's singing. On nine. Lots of someones.", "next": "d" },
+      { "id": "d", "speaker": "player", "text": "", "choices": [
+        { "text": "Take those off. Now.", "next": "d1" },
+        { "text": "Let me listen.", "next": "d2" }
+      ] },
+      { "id": "d1", "speaker": "pell", "text": "It's just singing. It's nice. It's... it's the same song. Over and over.", "next": "e" },
+      { "id": "d2", "speaker": "narration", "text": "(A choir, very far away. Every voice on the same note, breathing at the same time. Nobody misses a beat.)", "next": "e" },
+      { "id": "e", "speaker": "pell", "text": "I'll keep looking. There's got to be somebody who talks.", "effects": [ { "kind": "SetFlag", "id": "heard_channel_nine", "value": 1 } ] }
+    ]
+  }
+]

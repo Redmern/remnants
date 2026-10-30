@@ -1,6 +1,7 @@
 using Remnants.Core.Colony;
 using Remnants.Core.Data;
 using Remnants.Core.Scavenge;
+using Remnants.Core.Schematics;
 
 namespace Remnants.Core.Trade;
 
@@ -58,15 +59,16 @@ public static class ColonyTrade
         if (trade.WasApplied(txId)) return CommandResult.Fail(CommandError.AlreadyKnown, "That trade is already settled.");
         var lines = TradeGoods.Normalize(goods);
         var state = colony.State;
-        // Lines of one id (an item with different mods) draw on the same stock: check their total.
+        // Lines of one id (an item with different mods) draw on the same stock: check their total. Food counts fresh units.
         foreach (var g in lines.GroupBy(g => (g.Kind, g.Id)).Select(grp => grp.First() with { Count = grp.Sum(x => x.Count) }))
         {
-            var have = g.Kind == GoodKind.Resource ? state.Stockpile.Get(g.Id) : state.Inventory.Count(g.Id);
+            var have = FoodGoods.Have(state, colony.Data, g);
             if (have + 1e-9 < g.Count)
                 return CommandResult.Fail(CommandError.MissingItems, $"Not enough {Name(colony, g)} (have {Math.Floor(have):0}, offered {g.Count}).");
         }
-        foreach (var g in lines) Take(state, g);
-        trade.Escrows.Add(new TradeEscrow(txId, lines, purpose, state.Tick, market));
+        // Food lines come back with the Pantry lots they were taken from (refunds and the partner get the same food).
+        var held = lines.Select(g => Take(colony, g)).ToList();
+        trade.Escrows.Add(new TradeEscrow(txId, held, purpose, state.Tick, market));
         return CommandResult.Success($"Set aside for {purpose}.");
     }
 
@@ -76,7 +78,7 @@ public static class ColonyTrade
         var trade = Of(colony);
         if (trade.Escrows.Find(e => e.TxId == txId) is not { } escrow) return false;
         trade.Escrows.Remove(escrow);
-        foreach (var g in escrow.Goods) Put(colony, g);
+        foreach (var g in escrow.Goods) Put(colony, g, refund: true);
         return true;
     }
 
@@ -145,16 +147,28 @@ public static class ColonyTrade
         }
     }
 
-    private static void Take(ColonyState state, TradeGood g)
+    private static TradeGood Take(ColonySim colony, TradeGood g)
     {
+        var state = colony.State;
         if (g.Kind == GoodKind.Resource) state.Stockpile.TryTake(g.Id, g.Count);
+        else if (FoodGoods.IsFood(colony.Data, g.Id)) return FoodGoods.Take(state, colony.Data, g) ?? g;
         else state.Inventory.TryTake(g.Id, g.Count);
+        return g;
     }
 
-    private static void Put(ColonySim colony, TradeGood g)
+    /// <summary>
+    /// Goods into the colony. Arriving schematic copies are received the normal way (<see cref="Schematics.Schematics.Receive"/>:
+    /// learned, waiting for decrypt, or Research Data when known); a <paramref name="refund"/> puts the item back as it was.
+    /// Food goes into the Pantry with its lots.
+    /// </summary>
+    private static void Put(ColonySim colony, TradeGood g, bool refund = false)
     {
-        if (g.Kind == GoodKind.Resource) colony.State.Stockpile.Add(g.Id, g.Count);
-        else for (var i = 0; i < g.Count; i++) SchematicCopies.Receive(colony, g.Id);
+        var state = colony.State;
+        if (g.Kind == GoodKind.Resource) state.Stockpile.Add(g.Id, g.Count);
+        else if (FoodGoods.IsFood(colony.Data, g.Id)) FoodGoods.Put(state, colony.Data, g);
+        else if (!refund && colony.Data.Schematics.Find(g.Id) is not null)
+            for (var i = 0; i < g.Count; i++) Schematics.Schematics.Receive(colony, g.Id, SchematicSource.Trade);
+        else state.Inventory.Add(g.Id, g.Count);
     }
 
     private static string Name(ColonySim colony, TradeGood g) =>

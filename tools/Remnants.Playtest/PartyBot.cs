@@ -349,7 +349,7 @@ public static class PartyBot
     /// <summary>Rough value per kilo so packs fill with the good stuff first.</summary>
     private static double Value(ItemDef item) => item.Kind switch
     {
-        ItemKind.Blueprint => 100,
+        ItemKind.Schematic => 100,
         ItemKind.Prosthetic or ItemKind.Weapon or ItemKind.Armor or ItemKind.Clothing or ItemKind.Tool => 20,
         ItemKind.Consumable => 15,
         _ => item.Salvage is { } s ? 10 * s.Amount / Math.Max(item.Weight, 0.1) / 3 : 1,

@@ -1,6 +1,7 @@
 using Remnants.Core.Data;
 using Remnants.Core.Random;
 using Remnants.Core.Scavenge;
+using Remnants.Core.Schematics;
 using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Colony;
@@ -24,7 +25,7 @@ public sealed record SkillGap(Skill Skill, double Best, double Needed, int? Tick
 /// </summary>
 internal static class CraftingSystem
 {
-    public static void Run(ColonyState state, GameData data, ScavengeData? items, DeterministicRng rng)
+    public static void Run(ColonyState state, GameData data, ScavengeData? items, DeterministicRng rng, ColonySim? sim = null)
     {
         foreach (var building in state.Buildings.Where(b => b.Queue.Count > 0))
         {
@@ -43,7 +44,7 @@ internal static class CraftingSystem
                 continue;
             }
             var recipe = data.Recipes[order.RecipeId];
-            if (!order.Paid) Pay(state, items, recipe, order);
+            if (!order.Paid) Pay(state, data, items, recipe, order);
 
             foreach (var (w, shift) in crew)
             {
@@ -51,7 +52,9 @@ internal static class CraftingSystem
                 Training.Work(state, data, job, w);
             }
             if (order.Progress + 1e-9 < recipe.Work) continue;
-            Finish(state, data, items, rng, building, def, recipe, order, BestSkill(workers, job), QualityBonus(data, workers, job));
+            Finish(state, data, items, rng, building, def, recipe, order, BestSkill(workers, job), QualityBonus(data, workers, job),
+                workers.Max(w => PerkEffects.For(w, data).Hook(PerkHooks.ShelfLifeBonus)));
+            if (recipe.Learns is { } learns && sim is not null) Schematics.Schematics.Grant(sim, learns, SchematicSource.Terminal);
             foreach (var w in workers) Progression.GrantXp(state, data, w, data.Progression.Xp.PerCraft, XpSource.Crafting);
         }
     }
@@ -100,7 +103,7 @@ internal static class CraftingSystem
         return building.Queue.FirstOrDefault(o =>
         {
             var r = data.Recipes[o.RecipeId];
-            return r.MinSkill <= skill + 1e-9 && state.Stockpile.CanAfford(r.Inputs) && HasItemInputs(state, items, r);
+            return r.MinSkill <= skill + 1e-9 && state.Stockpile.CanAfford(r.Inputs) && HasItemInputs(state, items, r) && HasIngredients(state, data, r);
         });
     }
 
@@ -112,6 +115,29 @@ internal static class CraftingSystem
         workers.OrderByDescending(w => w.Get(job.Skill)).ThenBy(w => w.Id).FirstOrDefault() is { } best
             ? PerkEffects.For(best, data).CraftQualityBonus(job.Id)
             : 0;
+
+    /// <summary>Enough fresh food in the pantry for each ingredient (an input key's own units are not counted twice: keys are checked in turn on a copy).</summary>
+    public static bool HasIngredients(ColonyState state, GameData data, RecipeDef recipe)
+    {
+        if (recipe.Ingredients.Count == 0) return true;
+        if (data.Food is not { } food) return false;
+        Pantry.Reconcile(state, data);
+        var stock = state.Food.Lots.ToDictionary(kv => kv.Key, kv => kv.Value.Where(l => !l.Spoiled).Sum(l => l.Count));
+        // Exact item keys first, then tags (the order Pay takes them in).
+        foreach (var (key, count) in recipe.Ingredients.OrderBy(kv => kv.Key.StartsWith(FoodData.TagPrefix, StringComparison.Ordinal) ? 1 : 0))
+        {
+            var left = count;
+            foreach (var id in stock.Keys.Where(id => food.Matches(id, key)).OrderBy(id => id, StringComparer.Ordinal).ToList())
+            {
+                var n = Math.Min(left, stock[id]);
+                stock[id] -= n;
+                left -= n;
+                if (left == 0) break;
+            }
+            if (left > 0) return false;
+        }
+        return true;
+    }
 
     public static bool HasItemInputs(ColonyState state, ScavengeData? items, RecipeDef recipe) =>
         recipe.ItemInputs.All(kv => Matching(state, items, kv.Key).Sum(id => state.Inventory.Count(id)) >= kv.Value);
@@ -127,9 +153,15 @@ internal static class CraftingSystem
             .ToList();
     }
 
-    private static void Pay(ColonyState state, ScavengeData? items, RecipeDef recipe, CraftOrder order)
+    private static void Pay(ColonyState state, GameData data, ScavengeData? items, RecipeDef recipe, CraftOrder order)
     {
         state.Stockpile.Spend(recipe.Inputs);
+        foreach (var (key, count) in recipe.Ingredients.OrderBy(kv => kv.Key.StartsWith(FoodData.TagPrefix, StringComparison.Ordinal) ? 1 : 0))
+            foreach (var t in Pantry.TakeIngredient(state, data, key, count) ?? throw new InvalidOperationException($"Missing ingredient {key}."))
+            {
+                for (var i = 0; i < t.Count; i++) order.PaidItems.Add(t.ItemId);
+                if (t.Tainted) order.Tainted = true;
+            }
         foreach (var (itemId, count) in recipe.ItemInputs)
         {
             var left = count;
@@ -148,17 +180,35 @@ internal static class CraftingSystem
     {
         if (!order.Paid) return;
         foreach (var (res, amount) in data.Recipes[order.RecipeId].Inputs) state.Stockpile.Add(res, amount);
-        foreach (var id in order.PaidItems) state.Inventory.Add(id);
+        foreach (var id in order.PaidItems)
+            if (data.Food?.IsFood(id) == true) Pantry.Add(state, data, id, 1, tainted: order.Tainted && data.Food.Items[id].Tainted);
+            else state.Inventory.Add(id);
         order.PaidItems.Clear();
         order.Paid = false;
+        order.Tainted = false;
         order.Progress = 0;
     }
 
     private static void Finish(ColonyState state, GameData data, ScavengeData? items, DeterministicRng rng,
-        Building building, BuildingDef def, RecipeDef recipe, CraftOrder order, double skill, double qualityBonus)
+        Building building, BuildingDef def, RecipeDef recipe, CraftOrder order, double skill, double qualityBonus, double preserver)
     {
         string made;
-        if (recipe.Item is { } item)
+        if (recipe.Learns is { } learns)
+        {
+            made = $"a decrypted {data.Schematics.All[learns].Name} schematic";
+            order.Repeat = false;
+            order.Remaining = 1;
+        }
+        else if (recipe.Item is { } food && data.Food?.IsFood(food) == true)
+        {
+            var count = (int)Math.Round(recipe.Amount);
+            var quality = FoodQuality.Roll(data, Score(data, building, skill) + qualityBonus, rng);
+            var taint = order.Tainted && rng.NextDouble() < data.Food.Rules.Quality.TaintKept.GetValueOrDefault(quality, 1);
+            Pantry.Add(state, data, food, count, quality, taint, Cooking.ShelfMultiplier(data, food, preserver));
+            var name = items?.Items.GetValueOrDefault(food)?.Name ?? recipe.Name;
+            made = $"{count} {name} ({quality}{(taint ? ", tainted" : "")})";
+        }
+        else if (recipe.Item is { } item)
         {
             var count = (int)Math.Round(recipe.Amount);
             var id = item;
@@ -175,6 +225,7 @@ internal static class CraftingSystem
 
         order.Progress = 0;
         order.Paid = false;
+        order.Tainted = false;
         order.PaidItems.Clear();
         if (order.Repeat)
         {
@@ -195,7 +246,7 @@ internal static class CraftingSystem
             .ToList();
     }
 
-    private static double Score(GameData data, Building building, double skill) =>
+    internal static double Score(GameData data, Building building, double skill) =>
         skill / Survivor.MaxStat + (building.Level - 1) * data.Rules.Crafting.QualityPerLevel;
 
     /// <summary>The best tier whose threshold the score reaches.</summary>
@@ -208,6 +259,13 @@ internal static class CraftingSystem
     public static IReadOnlyList<(string Tier, double Chance)> QualityChances(ColonyState state, GameData data, ScavengeData? items,
         Building building, RecipeDef recipe)
     {
+        if (recipe.Item is { } food && data.Food?.IsFood(food) == true && data.Food.Items[food].Meal is not null)
+        {
+            var bdef = data.Buildings[building.DefId];
+            var crew = state.WorkersAt(building.Id).ToList();
+            var s = bdef.Job is null ? 0 : BestSkill(crew, data.Jobs[bdef.Job]);
+            return FoodQuality.Chances(data, Score(data, building, s) + (bdef.Job is null ? 0 : QualityBonus(data, crew, data.Jobs[bdef.Job])));
+        }
         if (recipe.Item is null || Tiers(data, items, recipe.Item) is not { } tiers) return [];
         var def = data.Buildings[building.DefId];
         var workers = state.WorkersAt(building.Id).ToList();
@@ -289,37 +347,23 @@ internal static class CraftingHandlers
         return CommandResult.Success(message, building.Id);
     }
 
-    public static CommandResult Study(ColonySim sim, StudyBlueprint c)
-    {
-        var state = sim.State;
-        if (sim.Scavenge is null) return ExpeditionHandlers.NoData();
-        if (!sim.Scavenge.Items.TryGetValue(c.ItemId, out var item)) return CommandResult.Fail(CommandError.UnknownItem, $"No item '{c.ItemId}'.");
-        if (item.Blueprint is not { } bp) return CommandResult.Fail(CommandError.NotABlueprint, $"{item.Name} is not a blueprint.");
-        if (state.KnownBlueprints.Contains(item.Id)) return CommandResult.Fail(CommandError.AlreadyKnown, $"{item.Name} is already studied.");
-        if (!state.Inventory.Has(item.Id)) return CommandResult.Fail(CommandError.MissingItems, $"The colony has no {item.Name}.");
-        var at = sim.Data.Buildings[bp.StudyAt];
-        if (!state.Buildings.Any(b => b.DefId == at.Id && b.Level >= bp.MinLevel))
-            return CommandResult.Fail(CommandError.NoStudyBuilding, $"{item.Name} is studied at a {at.Name} of level {bp.MinLevel}.");
-
-        state.Inventory.TryTake(item.Id);
-        state.KnownBlueprints.Add(item.Id);
-        var unlocked = sim.Data.Recipes.Values.Where(r => r.Blueprint == item.Id).Select(r => r.Name)
-            .Concat(sim.Data.Cybernetics?.Nodes.Values.Where(n => n.Blueprint == item.Id).Select(n => sim.Scavenge.Items[n.Id].Name) ?? [])
-            .ToList();
-        var message = $"Studied {item.Name}: {(unlocked.Count == 0 ? "nothing new" : string.Join(", ", unlocked))} unlocked.";
-        state.Log(new(state.Tick, ColonyEventType.BlueprintStudied, message));
-        return CommandResult.Success(message);
-    }
-
-    /// <summary>Building level, blueprint, item data and (for cybernetics) the tree a recipe needs before it can be queued.</summary>
+    /// <summary>Building level, schematic, item data and (for cybernetics) the tree a recipe needs before it can be queued.</summary>
     public static CommandResult CheckRecipe(ColonySim sim, Building building, RecipeDef recipe)
     {
         var def = sim.Data.Buildings[building.DefId];
         if (recipe.MinLevel > building.Level)
             return CommandResult.Fail(CommandError.RecipeLevelTooLow, $"{recipe.Name} needs {def.Name} level {recipe.MinLevel}.");
-        if (recipe.Blueprint is { } bp && !sim.State.KnownBlueprints.Contains(bp))
-            return CommandResult.Fail(CommandError.RecipeLocked,
-                $"{recipe.Name} needs its blueprint ({sim.Scavenge?.Items.GetValueOrDefault(bp)?.Name ?? bp}) studied.");
+        if (sim.Data.Schematics.GateOfRecipe(recipe.Id) is { } gate && !Schematics.Schematics.Has(sim, gate))
+            return CommandResult.Fail(CommandError.RecipeLocked, $"{recipe.Name} needs the {sim.Data.Schematics.All[gate].Name} schematic.");
+        if (recipe.Learns is { } learns)
+        {
+            var name = sim.Data.Schematics.All[learns].Name;
+            if (Schematics.Schematics.Has(sim, learns)) return CommandResult.Fail(CommandError.AlreadyKnown, $"The {name} schematic is already known.");
+            var queued = sim.State.Buildings.SelectMany(b => b.Queue).Where(o => o.RecipeId == recipe.Id)
+                .Sum(o => o.Paid ? 0 : o.Repeat ? 1 : o.Remaining);
+            if (!sim.State.Inventory.Has(learns, queued + 1))
+                return CommandResult.Fail(CommandError.MissingItems, $"There is no {name} chip to decrypt.");
+        }
         if ((recipe.Item is not null || recipe.ItemInputs.Count > 0) && sim.Scavenge is null) return ExpeditionHandlers.NoData();
         if (Cybernetics.CraftGate(sim, recipe) is { } locked) return locked;
         return CommandResult.Success("");

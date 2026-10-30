@@ -251,14 +251,16 @@ public partial class CyberneticsPanel : Overlay
         if (node.Requires.Count > 0)
         {
             var know = "know " + string.Join(" or ", node.Requires.Select(r => sim.Scavenge.Items[r].Name));
-            if (node.Blueprint is { } way) know += $", or study {sim.Scavenge.Items[way].Name}";
-            lines.Add(Mark(Cybernetics.WayIn(sim.State, cyber, node), know));
+            if (cyber.Def.Tiers.Find(t => t.Tier == node.Tier) is { SchematicSkips: true } && Cybernetics.TierGate(sim, node) is { } way)
+                know += $", or learn the {sim.Data.Schematics.All[way].Name} schematic";
+            lines.Add(Mark(Cybernetics.WayIn(sim, cyber, node), know));
         }
+        foreach (var gate in new[] { Cybernetics.TierGate(sim, node), Cybernetics.SpecGate(sim, node) }.OfType<string>().Distinct())
+            lines.Add(Mark(Remnants.Core.Schematics.Schematics.Has(sim, gate), $"the {sim.Data.Schematics.All[gate].Name} schematic"));
         if (node.Perk is { } perk) lines.Add(Mark(Cybernetics.ColonyHasPerk(sim.State, perk), $"someone at home with {sim.Data.Perks[perk].Name}"));
         if (st.Recipe is { } r)
         {
             lines.Add(Mark(sim.State.Buildings.Any(b => b.DefId == r.Building && b.Level >= r.MinLevel), $"{sim.Data.Buildings[r.Building].Name} level {r.MinLevel}"));
-            if (r.Blueprint is { } bp) lines.Add(Mark(sim.State.KnownBlueprints.Contains(bp), $"{sim.Scavenge.Items[bp].Name} studied"));
             if (r.MinSkill > 0) lines.Add(Palette.Paint($"   a worker with {sim.Data.Jobs[sim.Data.Buildings[r.Building].Job!].Skill} {r.MinSkill:0} · {r.Work:0} work", Palette.TextMuted));
         }
         else lines.Add(Palette.Paint("   no recipe: found or salvaged only", Palette.TextMuted));

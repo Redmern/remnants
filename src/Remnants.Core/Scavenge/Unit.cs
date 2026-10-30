@@ -86,6 +86,9 @@ public sealed class Unit
     /// <summary>Linked: knocked off the relay (as if jammed) through this round (see <see cref="Items.BaneDef.DisruptRounds"/>).</summary>
     public int OffRelayUntilRound { get; set; }
 
+    /// <summary>AP added (negative: taken, never below 1) at the start of its first-round turn: a good meal or bad rations on the way.</summary>
+    public int FirstRoundAp { get; set; }
+
     /// <summary>Pinned by suppressing fire: loses AP at the start of its next turn.</summary>
     public bool Suppressed { get; set; }
 
@@ -143,6 +146,22 @@ public sealed class Unit
 
     /// <summary>A Linked turned by Override: fights for its hacker's side through this round, then goes back to the Network.</summary>
     public int? OverrideUntilRound { get; set; }
+
+    /// <summary>Story missions: a script tag ("patrol", "tally", "juniper") that objectives and triggers point at.</summary>
+    public string? Tag { get; set; }
+
+    /// <summary>Story missions: the named character this unit is (it never joins the colony as a plain recruit).</summary>
+    public string? CharacterId { get; set; }
+
+    /// <summary>Story missions: cannot be recruited (until a trigger makes it follow).</summary>
+    public bool NoRecruit { get; set; }
+
+    /// <summary>Story missions: waypoints an idle unit walks in a loop (a patrol the player can watch), and the next one.</summary>
+    public List<Pos> Patrol { get; set; } = new();
+    public int PatrolIndex { get; set; }
+
+    /// <summary>Stands on a raised tile (a watchtower): more sight and detection (see <see cref="StoryFieldRules"/>).</summary>
+    public bool Raised { get; set; }
 
     public Dictionary<AttributeKind, double> Attributes { get; set; } = new();
     public Dictionary<Skill, double> Skills { get; set; } = new();

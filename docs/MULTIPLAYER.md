@@ -12,6 +12,7 @@ dotnet run --project src/Remnants.Server -- --port 7777
 #    options: --zone ID (default suburb_ruins) --seed N --players 2 (min to start) --max-players 4
 #             --turn-seconds 60 (0 = no AFK timer) --reconnect-seconds 120 --max-party N --bind 0.0.0.0 --data DIR
 #             --coop (everyone on one team; default versus) --hour 0-23 (time of day; default: from the seed)
+#             --weather KIND[:INTENSITY] (clear, overcast, rain, thunderstorm, fog, dust_storm; default: from the seed)
 
 # 2. two game clients: main menu → Multiplayer → name + server address → Join → Ready
 godot-mono --path game
@@ -91,8 +92,8 @@ the discriminator), `giveItem`, `carry`, `putDown`, and pings, alliance offers a
 called this "v2"; 2 was already the fog of war, so co-op is 3.) **4: hacking and drones** — the command kinds `hack`,
 `deployDrone`, `flyDrone`, `recallDrone`, `markTarget`, `dropPayload`, and devices and drone marks in views. **6: cybernetics** — bodies carry the eyes and each
 part's humanity, upkeep and `interfered` flag, units carry `cyberHooks` (stripped from other players' views like perk
-hooks), and the `limbLocked` event. (7 is story-schematics'.) **8: trading** — the live trade messages and the Trading
-Post's market messages (see "Trading").
+hooks), and the `limbLocked` event. **7: schematics** — schematic items (`sch_*`, kind `Schematic`) in packs and caches; `MissionEnded.result` carries `sharedSchematics` (co-op: what allies on the side carried out, copied to each ally who got home; versus: none) and `heardOf` (schematics the side saw but left behind, or glimpsed on a terminal it failed to hack). **9: trading** — the live trade messages and the Trading Post's market messages (see
+"Trading").
 
 | Direction | Message | Meaning |
 |-----------|---------|---------|
@@ -296,6 +297,21 @@ map), Accept (Y) / Decline (U) an offer, Offer an alliance (Y) to a rival you se
   and flares (which every side sees) show the same lit ground to all. `NightNetTests` stage it with `CheckFog` on every
   message: server-decided hour in both views, a day/night standoff (sent by day, not at night, nothing leaked), a flare.
 
+## Weather over the wire
+
+- **The server decides the weather** like the hour: `HostOptions.Weather` / `WeatherIntensity` / `WeatherShifts`
+  (`--weather KIND[:INTENSITY]`), else `FieldEnvironment.RollWeather(data, seed)` (clear about half the time, else one of
+  `scavenge.json environment.weather`). A host playing from the colony's waiting party passes the weather over the zone
+  at arrival and the changes due within the mission (`ColonySim.MissionEnvironment(tick, zone)`).
+- **Every view carries it**: weather, intensity, the changes still to come, and the rounds of the last thunder and
+  lightning (protocol version 8). The changes apply at round start on the server; `WeatherChanged`, `Thunder` and
+  `Lightning` events name no unit and go to every side (`FogLog`).
+- **Fog follows the weather on the server** through the same `Detection` / `Visibility`: dust or fog hides what clear
+  weather shows; in a lightning round every unit on the map is seen by every side, and only in that round. Thunder
+  silences movement contacts. `WeatherNetTests` check with `CheckFog` on every message: the server's weather in both views,
+  the roll from the seed, a clear/dust standoff (sent in clear, not in dust, nothing leaked), lightning for its round
+  only, and a change reaching every client. `NetFixture` plays in clear weather unless a test asks.
+
 ## Parties and results — the trust gap
 
 - **Party in.** `MultiplayerSession.PickParty` takes the party of the colony's expedition when one is in its zone and
@@ -326,12 +342,15 @@ Players barter: no currency, goods for goods. Two ways:
 - **The Trading Post** — an asynchronous market on a persistent server: post "give X for Y", others browse and take it,
   everything owed waits as a claim until you connect.
 
-**What trades:** resources (wood, stone, scrap, food, medicine, electronics, Research Data, …) and items. Quality is part
+**What trades:** resources (wood, stone, scrap, cloth, medicine, electronics, Research Data, …) and items. Quality is part
 of an item's id, so a Fine pistol stays Fine; `ItemExtras` carries weapon mods and the Mk level across the wire (the
-weapon-mods work fills them in; the colony inventory, which only counts ids, keeps them once it can). **Schematic copies**
-are items: a colony that knows a blueprint/schematic makes a copy (Items → Copy, `SchematicCopies.MakeCopy`: Research
-Data, or the material option while there is none) and keeps the knowledge; the buyer learns the copy the normal way
-(today: Study; with story-schematics: learned on arrival, `Schematics.Receive`). **Survivors do not trade** in v1. A v2
+weapon-mods work fills them in; the colony inventory, which only counts ids, keeps them once it can). **Food** trades as
+Pantry items with their lots: fresh units only, soonest to spoil first, and they arrive with the same quality, taint and
+time left (`ItemExtras.Lots`; chips show "keeps 2.5d", the quality and "tainted"); spoiled food cannot be offered.
+**Schematic copies** are items: a colony that knows a schematic makes a copy (Radio Mast or archive → Copy,
+`Schematics.MakeCopy`, Research Data) and keeps the knowledge; the buyer's copy is received the normal way on arrival
+(`Schematics.Receive`: learned, to decrypt, or Research Data when already known). Reference values are the trader's
+(`TradeValues`). **Survivors do not trade** in v1. A v2
 could hand a survivor over (a recruit hand-over at the Radio Mast): it would need the survivor record checked by the
 server, their bonds and family cut, and an arrival like a recruit's.
 
@@ -377,7 +396,7 @@ dotnet run --project src/Remnants.Server -- --market market.json --port 7780
 # scripted traders: post a few listings; --take also takes the first one it can pay for (identity kept per name)
 dotnet run --project src/Remnants.Server -- --market-bot 127.0.0.1:7780 --name Juniper --listings 4 --seconds 5
 dotnet run --project src/Remnants.Server -- --market-bot 127.0.0.1:7780 --name Dee --listings 0 --take --seconds 5
-# the game: colony top bar → Trading Post → server address → Connect (or scripted:)
+# the game: select the Radio Mast → Trading Post tab → Open → server address → Connect (or scripted:)
 godot-mono --path game -- --colony --trading-post=127.0.0.1:7780
 ```
 
@@ -402,7 +421,7 @@ godot-mono --path game -- --colony --trading-post=127.0.0.1:7780
   claims cannot be reached. Listings show the seller's name only, never the id or key.
 - **Limits**: at most `maxOpenListings` (8) open listings each, `postsPerMinute` (4) posts and `requestsPerMinute` (120)
   requests per connection, at most `maxListingsSent` (200) listings per page; per line the offer caps below.
-- UI: the Trading Post panel (top bar, at the Radio Mast; separate from the NPC trader) with **Browse** (filter, take
+- UI: the Radio Mast's **Trading Post** tab (separate from the Trader tab, the NPC caravan) opens the Trading Post panel with **Browse** (filter, take
   what the colony can pay for), **Post** (give / want pickers, lifetime, reference values), **My offers** (cancel) and
   **Claims** (collected this session, waiting for the server, couriers on the road). Claims toast as "Goods received".
 

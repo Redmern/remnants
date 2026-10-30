@@ -23,7 +23,9 @@ public class TradeNetTests
     {
         var colony = NewGame.Create(Game, seed, NetFixture.Data);
         colony.State.Stockpile.Add("scrap", 50);
-        colony.State.Inventory.Add("bp_rifle");
+        colony.State.Inventory.Add("sch_rifle");
+        // Lobby trades come in over the Radio Mast.
+        colony.State.Buildings.Add(new Building { Id = colony.State.NextBuildingId++, DefId = "radio_mast", Level = 1, Plot = colony.FreePlots().First() });
         return colony;
     }
 
@@ -62,10 +64,10 @@ public class TradeNetTests
         var id = Open(a, b);
 
         a.Client.OfferTrade(id, [TradeGood.Resource("scrap", 20)]);
-        b.Client.OfferTrade(id, [TradeGood.Item("bp_rifle")]);
+        b.Client.OfferTrade(id, [TradeGood.Item("sch_rifle")]);
         var (me, them) = a.Client.SidesOf(a.Trade);
         Assert.Equal(20, me.Goods.Single().Count);
-        Assert.Equal("bp_rifle", them.Goods.Single().Id);
+        Assert.Equal("sch_rifle", them.Goods.Single().Id);
 
         Assert.False(a.Sync.Confirm(id).Ok, "confirm needs both locked");
         Assert.Empty(a.Colony.State.Trade.Escrows);
@@ -81,16 +83,16 @@ public class TradeNetTests
         var cb = b.Player.Last<TradeCommit>();
         Assert.Equal(ca.TxId, cb.TxId);
         Assert.Equal(ca.Legs, cb.Legs);
-        Assert.Equal("bp_rifle", ca.Get.Single().Id);
+        Assert.Equal("sch_rifle", ca.Get.Single().Id);
         Assert.Empty(a.Colony.State.Trade.Escrows);
         Assert.Empty(b.Colony.State.Trade.Escrows);
-        Assert.Equal(0, b.Colony.State.Inventory.Count("bp_rifle"));
+        Assert.Equal(0, b.Colony.State.Inventory.Count("sch_rifle"));
         Assert.Empty(a.Client.Trades);
 
         var delivery = a.Colony.State.Trade.Deliveries.Single();
         a.Colony.Advance((int)(delivery.ArriveTick - a.Colony.State.Tick));
         b.Colony.Advance((int)(b.Colony.State.Trade.Deliveries.Single().ArriveTick - b.Colony.State.Tick));
-        Assert.Equal(2, a.Colony.State.Inventory.Count("bp_rifle"));
+        Assert.True(Remnants.Core.Schematics.Schematics.Has(a.Colony, "sch_rifle"), "the copy is learned on arrival");
         Assert.Equal(70, b.Colony.State.Stockpile.Get("scrap"), 6);
 
         Assert.DoesNotContain(carol.Link.Inbox, m => m is TradeInvite or TradeUpdate or TradeCommit or TradeCancelled);
@@ -147,17 +149,17 @@ public class TradeNetTests
         var a = Seat(f, "Alice", 1);
         var b = Seat(f, "Bob", 2);
         var id = Open(a, b);
-        a.Client.OfferTrade(id, [TradeGood.Resource("scrap", 25), TradeGood.Item("bp_rifle")]);
+        a.Client.OfferTrade(id, [TradeGood.Resource("scrap", 25), TradeGood.Item("sch_rifle")]);
         a.Client.LockTrade(id, true);
         b.Client.LockTrade(id, true);
         a.Sync.Confirm(id);
-        Assert.Equal(0, a.Colony.State.Inventory.Count("bp_rifle"));
+        Assert.Equal(0, a.Colony.State.Inventory.Count("sch_rifle"));
 
         b.Player.Link.Close();
         Assert.Contains("disconnected", a.Player.Last<TradeCancelled>().Reason);
         Assert.Empty(a.Colony.State.Trade.Escrows);
         Assert.Equal(50, a.Colony.State.Stockpile.Get("scrap"), 6);
-        Assert.Equal(1, a.Colony.State.Inventory.Count("bp_rifle"));
+        Assert.Equal(1, a.Colony.State.Inventory.Count("sch_rifle"));
         Assert.Equal(0, f.Host.Trades.Open);
         Assert.Equal(0, f.Host.Trades.Committed);
     }

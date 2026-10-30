@@ -5,6 +5,8 @@ using Godot;
 using Remnants.Game.Hud;
 using Remnants.Core.Colony;
 using Remnants.Core.Scavenge;
+using Remnants.Core.Story;
+using Remnants.Game.Story;
 
 namespace Remnants.Game.Colony.Ui;
 
@@ -31,6 +33,11 @@ public partial class WorldMapPanel : Control
 
     /// <summary>"Plan expedition" for a zone: the screen opens the expedition planner on it.</summary>
     public event Action<string>? PlanPressed;
+
+    /// <summary>A story mission's marker or card entry: the screen opens its briefing.</summary>
+    public event Action<string>? MissionPressed;
+
+    private readonly VBoxContainer _story = Widgets.Column(4);
 
     public WorldMapPanel(ColonySession session)
     {
@@ -64,6 +71,7 @@ public partial class WorldMapPanel : Control
         box.AddChild(_cardRegion);
         _cardBody.CustomMinimumSize = new Vector2(340, 0);
         box.AddChild(_cardBody);
+        box.AddChild(_story);
         _plan = Widgets.IconButton("ui_expedition", "Plan expedition", "Open the expedition planner on this zone", () =>
         {
             if (_selected is not { } id) return;
@@ -122,6 +130,7 @@ public partial class WorldMapPanel : Control
         _plan.Disabled = sim.State.Expedition is not null;
         _plan.Text = sim.State.Expedition is null ? "Plan expedition" : "A party is already out";
         RefreshDrone(sim, info);
+        RefreshStory(sim, id);
     }
 
     /// <summary>The scout drone button: what a flight there would cost and risk, or why it cannot go.</summary>
@@ -144,6 +153,33 @@ public partial class WorldMapPanel : Control
                              + $"{rules.RechargeDays:0.#} days after the flight home.";
     }
 
+    /// <summary>The zone card's story section: missions there, their threat, the schematics they pay and what they need.</summary>
+    private void RefreshStory(ColonySim sim, string zoneId)
+    {
+        Widgets.Clear(_story);
+        var missions = Campaign.Visible(sim).Where(m => m.Def.Zone == zoneId && m.Def.Type == MissionType.Field && !m.Def.Perimeter).ToList();
+        var later = sim.Story?.Missions.Where(m => m.Zone == zoneId && m.Type == MissionType.Field && !m.Perimeter
+                                                    && sim.State.Campaign?.Progress(m.Id).Status == MissionStatus.Locked).Take(2).ToList() ?? [];
+        if (missions.Count == 0 && later.Count == 0) return;
+        _story.AddChild(Widgets.SectionHeader("Story", "story_main"));
+        foreach (var (def, p) in missions)
+        {
+            var row = Widgets.Row(6);
+            row.AddChild(Icons.Rect(Icons.Get(def.Main ? "story_main" : "story_side", 16), 16, p.Status == MissionStatus.Done ? Palette.TextDim : Palette.Amber));
+            var state = p.Status switch { MissionStatus.Done => p.Outcome == "failed" ? " · failed" : " · done", MissionStatus.Failed => " · back later", _ => "" };
+            row.AddChild(Widgets.Label($"{def.Name} · threat {def.Threat}{state}", "Small"));
+            row.AddChild(Widgets.Spacer());
+            if (p.Status == MissionStatus.Available)
+                row.AddChild(Widgets.IconButton("ui_info", "Briefing", "Read the briefing", () => MissionPressed?.Invoke(def.Id), variation: "Flat"));
+            _story.AddChild(row);
+            var schematics = def.Rewards.Where(e => e.Kind == EffectKind.Schematic).Select(e => Campaign.SchematicName(e.Id)).ToList();
+            if (schematics.Count > 0 && p.Status != MissionStatus.Done)
+                _story.AddChild(Widgets.Label($"   pays: {string.Join(", ", schematics)}", "Small", Palette.Good));
+        }
+        foreach (var def in later)
+            _story.AddChild(Widgets.Label($"◇ {def.Name} · needs {def.NeedsText}", "Small", Palette.TextDim));
+    }
+
     private static Control Legend()
     {
         var legend = Ui.Rich();
@@ -153,13 +189,16 @@ public partial class WorldMapPanel : Control
             $"[color=#{ColonyText.ThreatColor(2).ToHtml(false)}]●[/color] 2  " +
             $"[color=#{ColonyText.ThreatColor(3).ToHtml(false)}]●[/color] 3  " +
             $"[color=#{ColonyText.ThreatColor(4).ToHtml(false)}]●[/color] 4\n" +
-            "bigger marker = richer loot · [color=#4dd9f2]○[/color] Linked presence · ? rumored, not scouted";
+            "bigger marker = richer loot · [color=#4dd9f2]○[/color] Linked presence · ? rumored, not scouted\n" +
+            $"[color=#{Palette.Amber.ToHtml(false)}]◆[/color] story mission · ◇ side mission · ))) a call at the colony";
         return legend;
     }
 
     internal ColonySim Sim => _session.Sim;
 
     internal string? Selected => _selected;
+
+    internal void OpenMission(string missionId) => MissionPressed?.Invoke(missionId);
 
     internal void Select(string zoneId)
     {
@@ -203,6 +242,13 @@ public partial class WorldMapCanvas : Control
     public override void _GuiInput(InputEvent e)
     {
         if (e is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } click) return;
+        var pin = StoryPins().Where(p => p.At.DistanceTo(click.Position) < 14).Select(p => p.Id).FirstOrDefault();
+        if (pin is not null && _owner.Sim.State.Campaign?.Progress(pin).Status == MissionStatus.Available)
+        {
+            _owner.OpenMission(pin);
+            AcceptEvent();
+            return;
+        }
         var hit = _owner.Sim.WorldZones()
             .Where(z => z.Intel != ZoneIntel.Unknown)
             .Select(z => (z.Zone.Id, Distance: At(z.Zone.MapPos).DistanceTo(click.Position) - Radius(z.Zone)))
@@ -258,6 +304,75 @@ public partial class WorldMapCanvas : Control
         foreach (var info in zones) DrawZone(info, font, info.Zone.Id == _owner.Selected);
         DrawParty(sim, data, colony);
         DrawCouriers(sim, colony, font, area);
+        DrawStory(sim, colony, font);
+    }
+
+    /// <summary>Open story missions as pins on their zone's edge: (mission id, where, main?, new?).</summary>
+    private List<(string Id, Vector2 At, bool Main, bool New, string Name)> StoryPins()
+    {
+        var sim = _owner.Sim;
+        var pins = new List<(string, Vector2, bool, bool, string)>();
+        if (sim.Scavenge is not { } data) return pins;
+        var slot = new Dictionary<string, int>();
+        foreach (var (def, p) in Campaign.Visible(sim).Where(m => m.Def.Type == MissionType.Field && m.Progress.Status is MissionStatus.Available or MissionStatus.Active))
+        {
+            var at = def.Perimeter ? At(data.Rules.World.ColonyPos) + new Vector2(30, -26)
+                : def.Zone is { } z && data.Zones.TryGetValue(z, out var zone) ? At(zone.MapPos) + new Vector2(Radius(zone) + 10, -Radius(zone) - 6) : Vector2.Zero;
+            if (at == Vector2.Zero) continue;
+            var key = def.Zone ?? "";
+            var n = slot.GetValueOrDefault(key);
+            slot[key] = n + 1;
+            pins.Add((def.Id, at + new Vector2(0, n * 22), def.Main, p.AvailableTick >= sim.State.Tick - sim.Data.Rules.TicksPerDay, def.Name));
+        }
+        return pins;
+    }
+
+    /// <summary>
+    /// Story marks: a gold diamond (main) or hollow one (side) per open mission, pulsing while new; radio waves at the
+    /// colony while someone is calling; the caravan's truck on its road with the days until it arrives.
+    /// </summary>
+    private void DrawStory(ColonySim sim, Vector2 colony, Font font)
+    {
+        if (sim.State.Campaign is not { } campaign || sim.Story is null) return;
+        var pulse = 0.5f + 0.5f * Mathf.Sin((float)Time.GetTicksMsec() / 260f);
+        foreach (var (_, at, main, isNew, name) in StoryPins())
+        {
+            var size = isNew ? 12 + 2 * pulse : 12;
+            if (StoryArt.Marker(main ? "marker_mission_main" : "marker_mission_side") is { } tex)
+                DrawTextureRect(tex, new Rect2(at - new Vector2(size, size) * 1.4f, new Vector2(size, size) * 2.8f), false);
+            else
+            {
+                Vector2[] diamond = [at + new Vector2(0, -size), at + new Vector2(size, 0), at + new Vector2(0, size), at + new Vector2(-size, 0)];
+                if (main) DrawColoredPolygon(diamond, Palette.Amber);
+                DrawPolyline([.. diamond, diamond[0]], main ? Palette.Amber.Darkened(0.4f) : Palette.Amber, 2f, true);
+            }
+            DrawString(font, at + new Vector2(14, 5), name, HorizontalAlignment.Left, -1, 13, Palette.Amber);
+        }
+        if (Campaign.Waiting(sim).Any())
+        {
+            var at = colony + new Vector2(-30, -24);
+            if (StoryArt.Marker("marker_radio_contact") is { } wave) DrawTextureRect(wave, new Rect2(at - new Vector2(14, 14), new Vector2(28, 28)), false);
+            else
+                for (var i = 0; i < 3; i++)
+                    DrawArc(at, 5 + i * 5 + pulse * 2, -Mathf.Pi * 0.8f, -Mathf.Pi * 0.2f, 12, new Color(Palette.Amber, 0.9f - i * 0.25f), 2f, true);
+        }
+        // The caravan on its road (the next caravan call not yet in).
+        if (campaign.Flag("caravan_open") > 0 && campaign.Inbox.FirstOrDefault(c => !c.Taken && c.Tick > sim.State.Tick
+                                                                                  && sim.Story.Dialogues.GetValueOrDefault(c.DialogueId)?.Caller == "marrow") is { } coming)
+        {
+            var days = (coming.Tick - sim.State.Tick) / (double)sim.Data.Rules.TicksPerDay;
+            var from = colony + new Vector2(-260, 120);
+            var at = from.Lerp(colony, (float)Math.Clamp(1 - days / 4, 0.1, 0.9));
+            DrawDashedLine(from, colony, new Color(Ink, 0.35f), 2f, 6f);
+            if (StoryArt.Marker("marker_caravan") is { } truck) DrawTextureRect(truck, new Rect2(at - new Vector2(16, 16), new Vector2(32, 32)), false);
+            else DrawRect(new Rect2(at - new Vector2(10, 6), new Vector2(20, 12)), Ink);
+            DrawString(font, at + new Vector2(-30, 28), $"Long Haul · {days:0.#}d", HorizontalAlignment.Left, -1, 13, Ink);
+        }
+    }
+
+    public override void _Process(double delta)
+    {
+        if (IsVisibleInTree() && _owner.Sim.State.Campaign is not null) QueueRedraw();
     }
 
     /// <summary>

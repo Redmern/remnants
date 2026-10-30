@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<defs><filter id="chipglow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter></defs>
+<rect x="27" y="14" width="6" height="14" fill="#6e7275"/>
+<rect x="27" y="100" width="6" height="14" fill="#6e7275"/>
+<rect x="14" y="27" width="14" height="6" fill="#6e7275"/>
+<rect x="100" y="27" width="14" height="6" fill="#6e7275"/>
+<rect x="40.6" y="14" width="6" height="14" fill="#6e7275"/>
+<rect x="40.6" y="100" width="6" height="14" fill="#6e7275"/>
+<rect x="14" y="40.6" width="14" height="6" fill="#6e7275"/>
+<rect x="100" y="40.6" width="14" height="6" fill="#6e7275"/>
+<rect x="54.2" y="14" width="6" height="14" fill="#6e7275"/>
+<rect x="54.2" y="100" width="6" height="14" fill="#6e7275"/>
+<rect x="14" y="54.2" width="14" height="6" fill="#6e7275"/>
+<rect x="100" y="54.2" width="14" height="6" fill="#6e7275"/>
+<rect x="67.8" y="14" width="6" height="14" fill="#6e7275"/>
+<rect x="67.8" y="100" width="6" height="14" fill="#6e7275"/>
+<rect x="14" y="67.8" width="14" height="6" fill="#6e7275"/>
+<rect x="100" y="67.8" width="14" height="6" fill="#6e7275"/>
+<rect x="81.4" y="14" width="6" height="14" fill="#6e7275"/>
+<rect x="81.4" y="100" width="6" height="14" fill="#6e7275"/>
+<rect x="14" y="81.4" width="14" height="6" fill="#6e7275"/>
+<rect x="100" y="81.4" width="14" height="6" fill="#6e7275"/>
+<rect x="95" y="14" width="6" height="14" fill="#6e7275"/>
+<rect x="95" y="100" width="6" height="14" fill="#6e7275"/>
+<rect x="14" y="95" width="14" height="6" fill="#6e7275"/>
+<rect x="100" y="95" width="14" height="6" fill="#6e7275"/>
+<rect x="26" y="26" width="76" height="76" rx="6" fill="#23272c" stroke="#3a4048" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="34,40 48,40 56,48" fill="none" stroke="#2a8f9a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="34,88 46,88 52,80" fill="none" stroke="#2a8f9a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="94,40 82,40 76,48" fill="none" stroke="#2a8f9a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="94,88 82,88 76,80" fill="none" stroke="#2a8f9a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="64,32 64,44" fill="none" stroke="#2a8f9a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="50" y="58" width="28" height="22" rx="3" fill="none" stroke="#3fe0f0" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round" filter="url(#chipglow)"/>
+<rect x="50" y="58" width="28" height="22" rx="3" fill="none" stroke="#3fe0f0" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M56.0,58.0 V52.0 A8.0,8.0 0 0 1 72.0,52.0 V58.0" fill="none" stroke="#3fe0f0" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="64" cy="68" r="3" fill="#3fe0f0"/>
+<circle cx="30" cy="30" r="3" fill="#3a4048"/>
+</svg>

@@ -26,7 +26,11 @@ public partial class ColonyHud : CanvasLayer
     public MedBayPanel MedBay { get; }
     public ProductionPanel Production { get; }
     public StudyPanel Study { get; }
+    public ResearchPanel Research { get; }
+    public RadioPanel Radio { get; }
     public InventoryPanel Inventory { get; }
+    public PantryPanel Pantry { get; }
+    public HarvestPanel Harvest { get; }
     public AfterActionDialog Report { get; }
     public Toasts Toasts { get; } = new();
     public PauseMenu Pause { get; }
@@ -34,6 +38,8 @@ public partial class ColonyHud : CanvasLayer
 
     /// <summary>The cybernetics tree (from the Med Bay, Workshop and Electronics Lab).</summary>
     public CyberneticsPanel Cybernetics { get; }
+    /// <summary>Story mode: radio, journal, briefings, dialogue (hidden in Sandbox).</summary>
+    public Remnants.Game.Story.StoryHud Story { get; }
 
     /// <summary>The Trading Post (async market with other players) at the Radio Mast.</summary>
     public Trade.TradingPostPanel TradingPost { get; }
@@ -42,6 +48,35 @@ public partial class ColonyHud : CanvasLayer
     public event Func<bool>? BackRequested;
 
     public event Action? MainMenuRequested;
+
+    /// <summary>The archive's "Research" on a heard-of schematic: the screen selects the Town Hall.</summary>
+    public event Action? ResearchRequested;
+
+    private Remnants.Core.Colony.ColonySim? _watched;
+
+    /// <summary>Toasts for schematics learned (<see cref="Remnants.Core.Colony.ColonySim.SchematicUnlocked"/>), on the current sim.</summary>
+    private void Watch(Remnants.Core.Colony.ColonySim sim)
+    {
+        if (_watched is not null) _watched.SchematicUnlocked -= OnSchematicUnlocked;
+        _watched = sim;
+        sim.SchematicUnlocked += OnSchematicUnlocked;
+    }
+
+    public override void _ExitTree()
+    {
+        if (_watched is not null) _watched.SchematicUnlocked -= OnSchematicUnlocked;
+        _watched = null;
+    }
+
+    private void OnSchematicUnlocked(Remnants.Core.Schematics.SchematicUnlocked e)
+    {
+        var sim = _session.Sim;
+        if (sim.Data.Schematics.Find(e.SchematicId) is not { } def) return;
+        var unlocks = SchematicText.Unlocks(sim, def);
+        var title = $"Schematic learned: {def.Name}";
+        Toasts.Show(title, $"Unlocks {unlocks}.", "item_schematic", Palette.Good, "schematic-learned",
+            n => ($"{n} schematics learned", $"Latest: {def.Name} ({unlocks}). See Items → Schematics."));
+    }
 
     public ColonyHud() : this(null!) { }
 
@@ -76,6 +111,8 @@ public partial class ColonyHud : CanvasLayer
         Inventory = new InventoryPanel(session);
         Expedition = new ExpeditionPanel(session);
         floating.AddChild(Inventory);
+        Pantry = new PantryPanel(session);
+        floating.AddChild(Pantry);
         floating.AddChild(Expedition);
         center.AddChild(floating);
 
@@ -89,6 +126,7 @@ public partial class ColonyHud : CanvasLayer
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
         right.AddChild(scroll);
+        _rightScroll = scroll;
         var stack = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
         stack.AddThemeConstantOverride("separation", 8);
         scroll.AddChild(stack);
@@ -97,9 +135,15 @@ public partial class ColonyHud : CanvasLayer
         MedBay = new MedBayPanel(session);
         Production = new ProductionPanel(session);
         Study = new StudyPanel(session);
+        Harvest = new HarvestPanel(session);
+        Research = new ResearchPanel(session);
+        Radio = new RadioPanel(session);
         stack.AddChild(BuildMenu);
         stack.AddChild(Building);
+        stack.AddChild(Harvest);
         stack.AddChild(MedBay);
+        stack.AddChild(Radio);
+        stack.AddChild(Research);
         stack.AddChild(Study);
         stack.AddChild(Production);
         Log = new EventLog(session);
@@ -114,6 +158,8 @@ public partial class ColonyHud : CanvasLayer
         Toasts.GrowVertical = Control.GrowDirection.Begin;
         toastArea.AddChild(Toasts);
 
+        Story = new Remnants.Game.Story.StoryHud(session);
+        AddChild(Story);
         WorldMap = new WorldMapPanel(session) { Theme = HudTheme.Shared };
         AddChild(WorldMap);
         Report = new AfterActionDialog(session);
@@ -141,10 +187,19 @@ public partial class ColonyHud : CanvasLayer
         Production.CyberneticsPressed += () => Cybernetics.Open();
 
         Log.Important += n => Toasts.Show(n.Title, n.Text, n.Icon, n.Color, n.Key, n.Merged);
+        Inventory.Archive.ResearchRequested += () => ResearchRequested?.Invoke();
+        Watch(session.Sim);
+        session.Replaced += () => Watch(session.Sim);
         TopBar.MenuPressed += OpenPause;
         TopBar.ItemsPressed += () => Inventory.Toggle();
+        TopBar.PantryPressed += () => Pantry.Toggle();
         TopBar.WorldMapPressed += () => WorldMap.Open();
-        TopBar.TradingPostPressed += () => OpenTradingPost();
+        Story.PlanMission += id => Expedition.PlanForMission(id);
+        Story.CallArrived += caller => Toasts.Show("Incoming call", $"{caller} is on the radio.", "ui_radio", Palette.Amber, "story_call");
+        WorldMap.MissionPressed += id => { WorldMap.Close(); Story.OpenBriefing(id); };
+        session.Replaced += () => Story.Reset();
+        Trade.TradingPostTab.OpenRequested += OpenTradingPostFromTab;
+        TreeExiting += () => Trade.TradingPostTab.OpenRequested -= OpenTradingPostFromTab;
         Survivor.Closed += () => Roster.Select(null);
         Roster.SelectionChanged += Survivor.Show;
     }
@@ -158,13 +213,25 @@ public partial class ColonyHud : CanvasLayer
         MedBay.Refresh();
         Production.Refresh();
         Study.Refresh();
+        Research.Refresh();
+        Radio.Refresh();
         Cybernetics.Refresh();
         Inventory.Refresh();
+        Pantry.Refresh();
+        Harvest.Refresh();
         Expedition.Refresh();
         WorldMap.Refresh();
+        Story.Refresh();
         if (BuildMenu.Visible) BuildMenu.Refresh();
         Log.Refresh();
     }
+
+    private readonly ScrollContainer _rightScroll;
+
+    /// <summary>Scrolls the right-hand panel column so <paramref name="control"/> is in view (after layout).</summary>
+    public void ScrollRightTo(Control control) => _rightScroll.CallDeferred(ScrollContainer.MethodName.EnsureControlVisible, control);
+
+    private void OpenTradingPostFromTab() => OpenTradingPost();
 
     /// <summary>Opens the Trading Post (needs a Radio Mast once the game has one); <paramref name="address"/> connects at once.</summary>
     public void OpenTradingPost(string? address = null)
@@ -219,11 +286,13 @@ public partial class ColonyHud : CanvasLayer
     /// <summary>Esc: close the topmost thing that is open, else open the pause menu.</summary>
     private void Back()
     {
-        if (WorldMap.Visible) WorldMap.Close();
+        if (Story.Back()) { }
+        else if (WorldMap.Visible) WorldMap.Close();
         else if (Report.Visible) Report.Hide();
         else if (BackRequested?.Invoke() == true) { }
         else if (Expedition.Visible) Expedition.Toggle();
         else if (Inventory.Visible) Inventory.Toggle();
+        else if (Pantry.Visible) Pantry.Toggle();
         else if (BuildMenu.Visible) TopBar.EmitBuild();
         else if (Survivor.Visible) Roster.Select(null);
         else OpenPause();

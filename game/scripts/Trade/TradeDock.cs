@@ -84,7 +84,8 @@ public partial class TradeDock : Control
         var data = colony.Data;
         return data.Resources.Keys.Where(id => state.Stockpile.Get(id) >= 1).OrderBy(id => data.Resources[id].Name)
             .Select(id => (TradeGood.Resource(id, 1), (int)Math.Floor(state.Stockpile.Get(id) + 1e-9)))
-            .Concat(state.Inventory.Counts.Select(kv => (TradeGood.Item(kv.Key), kv.Value)))
+            .Concat(state.Inventory.Counts.Keys.Select(id => (TradeGood.Item(id), (int)FoodGoods.Have(state, data, TradeGood.Item(id)))))
+            .Where(c => c.Item2 > 0)
             .ToList();
     }
 

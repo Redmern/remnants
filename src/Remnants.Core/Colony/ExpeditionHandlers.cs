@@ -1,5 +1,6 @@
 using Remnants.Core.Items;
 using Remnants.Core.Scavenge;
+using Remnants.Core.Schematics;
 using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Colony;
@@ -11,7 +12,8 @@ namespace Remnants.Core.Colony;
 /// </summary>
 internal static class ExpeditionHandlers
 {
-    public static CommandResult Launch(ColonySim sim, LaunchExpedition c)
+    /// <param name="partyCap">A story mission's own party size (the perimeter defense takes up to 4), else the Town Hall's.</param>
+    public static CommandResult Launch(ColonySim sim, LaunchExpedition c, int? partyCap = null)
     {
         var state = sim.State;
         if (sim.Scavenge is not { } data) return NoData();
@@ -20,8 +22,9 @@ internal static class ExpeditionHandlers
         if (WorldMap.IntelOf(state, zone) == ZoneIntel.Unknown)
             return CommandResult.Fail(CommandError.ZoneUnknown, "Nobody knows the way there yet: scout nearby zones first.");
         if (c.Members.Count == 0) return CommandResult.Fail(CommandError.EmptyParty, "Pick at least one survivor.");
-        if (c.Members.Count > sim.MaxPartySize)
-            return CommandResult.Fail(CommandError.PartyTooLarge, $"The Town Hall allows a party of {sim.MaxPartySize} (picked {c.Members.Count}).");
+        var maxParty = Math.Max(sim.MaxPartySize, partyCap ?? 0);
+        if (c.Members.Count > maxParty)
+            return CommandResult.Fail(CommandError.PartyTooLarge, $"The Town Hall allows a party of {maxParty} (picked {c.Members.Count}).");
         if (c.Members.Select(m => m.SurvivorId).Distinct().Count() != c.Members.Count)
             return CommandResult.Fail(CommandError.DuplicateMember, "A survivor was picked twice.");
 
@@ -47,14 +50,15 @@ internal static class ExpeditionHandlers
         if (!state.Inventory.HasAll(gear))
             return CommandResult.Fail(CommandError.MissingItems, $"Not enough gear in the inventory: {DescribeMissing(state.Inventory, gear, data)}.");
         var plan = sim.PlanArrival(zone.Id, c.WaitFor);
-        var rations = new Dictionary<string, double>
-        {
-            [sim.Data.Rules.Food.ResourceId] = (WorldMap.RationsPerMember(sim.Data, zone) + plan.WaitRationsPerMember) * c.Members.Count,
-        };
-        if (!state.Stockpile.CanAfford(rations))
-            return CommandResult.Fail(CommandError.CannotAfford, $"Not enough rations: {CommandHandlers.Describe(state.Stockpile.Shortfall(rations))}.");
+        if (plan.Blocked)
+            return CommandResult.Fail(CommandError.RouteBlocked, $"{plan.Travel!.Modifiers.First(m => m.Blocks).Reason}. Wait for it to pass.");
+        var need = (WorldMap.RationsPerMember(sim.Data, zone) + plan.ExtraRationsPerMember) * c.Members.Count;
+        var trip = WorldMap.TravelTicks(sim.Data, zone) * 2 + plan.WaitTicks;
+        var bill = Rations.Plan(sim, need, c.Members.Count, trip, c.Rations);
+        if (!bill.Enough)
+            return CommandResult.Fail(CommandError.CannotAfford, $"Not enough food for rations: need {need:0.#}, the pantry has {bill.Covered:0.#}.");
 
-        state.Stockpile.Spend(rations);
+        Rations.Take(sim, need, trip, c.Rations);
         foreach (var id in gear) state.Inventory.TryTake(id);
         foreach (var m in c.Members)
         {
@@ -63,7 +67,7 @@ internal static class ExpeditionHandlers
             s.Away = true;
         }
 
-        var travel = WorldMap.TravelTicks(sim.Data, zone);
+        var travel = plan.Travel?.Ticks ?? WorldMap.TravelTicks(sim.Data, zone);
         var expedition = new Expedition
         {
             Id = state.NextExpeditionId++,
@@ -75,10 +79,12 @@ internal static class ExpeditionHandlers
             ArrivalTick = plan.ArrivalTick,
             Depletion = state.Zones.GetValueOrDefault(zone.Id)?.Depletion ?? 0,
             Members = c.Members.Select(m => m with { Equipment = new(m.Equipment ?? new()), Pack = new(m.Pack ?? []) }).ToList(),
+            Rations = bill.Items,
         };
+        Rations.SetOut(sim, bill, c.Members.Select(m => state.FindSurvivor(m.SurvivorId)!), plan.ArrivalTick, sim.Rng);
         state.Expedition = expedition;
         var names = string.Join(", ", c.Members.Select(m => state.FindSurvivor(m.SurvivorId)!.Name));
-        var road = travel > 0 ? $" ({zone.TravelDays:0.#} days on the road)" : "";
+        var road = travel > 0 ? $" ({travel / (double)sim.Data.Rules.TicksPerDay:0.#} days on the road)" : "";
         if (plan.WaitTicks > 0) road += $", waiting {plan.WaitTicks} h for {plan.Phase.ToString().ToLowerInvariant()}";
         state.Log(new(state.Tick, ColonyEventType.ExpeditionLaunched, $"{names} set out for {zone.Name}{road}."));
         return CommandResult.Success($"{names} set out for {zone.Name}{road}.", expedition.Id);
@@ -86,10 +92,12 @@ internal static class ExpeditionHandlers
 
     /// <summary>The scavenge parties for the active expedition, built from the members' current state.</summary>
     public static PartySetup Party(ColonySim sim, Expedition expedition) =>
-        new(ColonySim.ExpeditionPlayerId, expedition.Members.Select(m => new PartyMember(
-            sim.State.FindSurvivor(m.SurvivorId) ?? throw new InvalidOperationException($"Expedition member {m.SurvivorId} is gone."),
-            new(m.Equipment ?? new()),
-            new(m.Pack ?? []))).ToList());
+        new(ColonySim.ExpeditionPlayerId, expedition.Members.Select(m =>
+        {
+            var s = sim.State.FindSurvivor(m.SurvivorId) ?? throw new InvalidOperationException($"Expedition member {m.SurvivorId} is gone.");
+            return new PartyMember(s, new(m.Equipment ?? new()), new(m.Pack ?? []),
+                sim.Data.Food is null ? 0 : FoodEffects.FieldFirstRoundAp(s, sim.Data, sim.State.Tick));
+        }).ToList());
 
     public static CommandResult Apply(ColonySim sim, ApplyExtractionResult c)
     {
@@ -110,6 +118,9 @@ internal static class ExpeditionHandlers
 
         if (expedition.TravelTicks > 0)
         {
+            // The road home has its own weather: TravelTicks becomes the way back.
+            if (data.Zones.TryGetValue(expedition.ZoneId, out var zone))
+                expedition.TravelTicks = Math.Max(1, WorldMap.Travel(sim, zone, state.Tick, homeward: true).Ticks);
             expedition.PendingResult = result;
             expedition.ReturnTick = state.Tick + expedition.TravelTicks;
             expedition.Scavenge = null;
@@ -151,7 +162,7 @@ internal static class ExpeditionHandlers
             var xp = sim.Data.Progression.Xp;
             Progression.GrantXp(state, sim.Data, s,
                 xp.PerMission + xp.PerMissionThreat * (zone?.Threat ?? 0) + xp.PerFieldSkillPoint * fieldGain + Math.Max(0, r.FieldXp), XpSource.Mission);
-            Stow(sim, r);
+            Stow(sim, r, report);
             report.Returned.Add(new(s.Id, s.Name, r.Evacuated, s.Health, injuries));
         }
 
@@ -189,29 +200,49 @@ internal static class ExpeditionHandlers
             s.GrowthTicks = s.MalnourishedTicks = 0;
             s.Aptitude = new();
             state.Survivors.Add(s);
-            Stow(sim, r);
+            Stow(sim, r, report);
             state.Log(new(state.Tick, ColonyEventType.Recruited, $"{s.Name} joined the colony.", s.Id));
             report.Recruits.Add(s.Name);
         }
 
+        // Co-op: copies of what allies carried out; what the party saw but left behind becomes researchable.
+        foreach (var id in result.SharedSchematics) ReceiveSchematic(sim, id, report);
+        foreach (var (id, where) in result.HeardOf) Schematics.Schematics.HearOf(sim, id, where);
+        RadioMast.PartyHome(sim, expedition.ZoneId);
+
         state.Expedition = null;
         state.LastReport = report;
+        if (expedition.MissionId is { } missionId) global::Remnants.Core.Story.Campaign.Returned(sim, missionId, result.Mission);
         if (zone is not null) WorldMap.Visited(state, data, zone);
         var summary = $"The party is back from {zoneName}: {report.Returned.Count} returned, {report.Dead.Count} dead, {report.Recruits.Count} recruited.";
         state.Log(new(state.Tick, ColonyEventType.ExpeditionReturned, summary));
         return CommandResult.Success(summary, expedition.Id);
     }
 
-    /// <summary>Worn gear goes back to the inventory; carried items too, except salvage, which becomes stockpile resources.</summary>
-    private static void Stow(ColonySim sim, ReturnedSurvivor r)
+    /// <summary>
+    /// Worn gear goes back to the inventory; carried items too, except salvage, which becomes stockpile resources,
+    /// schematics, which the colony learns (or queues for decrypting, or turns into Research Data when known), and food,
+    /// which goes into the pantry as a fresh lot.
+    /// </summary>
+    private static void Stow(ColonySim sim, ReturnedSurvivor r, ExpeditionReport report)
     {
         var data = sim.Scavenge!;
         foreach (var id in r.Equipment.Values) sim.State.Inventory.Add(id);
         foreach (var id in r.Pack)
         {
-            if (data.Items[id].Salvage is { } salvage) sim.State.Stockpile.Add(salvage.Resource, salvage.Amount);
+            if (data.Items[id].Schematic is { } schematic) ReceiveSchematic(sim, schematic, report);
+            else if (data.Items[id].Salvage is { } salvage) sim.State.Stockpile.Add(salvage.Resource, salvage.Amount);
+            else if (sim.Data.Food?.IsFood(id) == true) Pantry.Add(sim.State, sim.Data, id, 1);
             else sim.State.Inventory.Add(id);
         }
+    }
+
+    private static void ReceiveSchematic(ColonySim sim, string id, ExpeditionReport report)
+    {
+        if (sim.Data.Schematics.Find(id) is null) return;
+        sim.State.Schematics.Found++;
+        var result = Schematics.Schematics.Receive(sim, id, SchematicSource.Loot);
+        report.Schematics[id] = result.Outcome;
     }
 
     private static string DescribeMissing(ItemInventory inventory, List<string> gear, ScavengeData data) =>

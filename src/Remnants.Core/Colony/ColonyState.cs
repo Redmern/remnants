@@ -1,3 +1,4 @@
+using Remnants.Core.Schematics;
 using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Colony;
@@ -18,8 +19,11 @@ public sealed class ColonyState
     public List<Building> Buildings { get; set; } = new();
     public Stockpile Stockpile { get; set; } = new();
 
-    /// <summary>Items the colony owns (gear, consumables, prosthetics), by item id.</summary>
+    /// <summary>Items the colony owns (gear, consumables, prosthetics, food), by item id.</summary>
     public ItemInventory Inventory { get; set; } = new();
+
+    /// <summary>The food lots behind the food items in <see cref="Inventory"/>: age, shelf life, quality (see <see cref="Pantry"/>).</summary>
+    public FoodState Food { get; set; } = new();
 
     /// <summary>The party currently out in a zone, if any. One expedition at a time.</summary>
     public Expedition? Expedition { get; set; }
@@ -31,8 +35,11 @@ public sealed class ColonyState
 
     public int NextOrderId { get; set; } = 1;
 
-    /// <summary>Blueprint item ids the colony has studied; recipes that name them can be queued.</summary>
-    public SortedSet<string> KnownBlueprints { get; set; } = new(StringComparer.Ordinal);
+    /// <summary>Schematics known, heard of and being researched (see <see cref="Schematics.Schematics"/>).</summary>
+    public SchematicsState Schematics { get; set; } = new();
+
+    /// <summary>The Radio Mast: trader visits, contracts and the call queue (see <see cref="RadioMast"/>).</summary>
+    public RadioState Radio { get; set; } = new();
 
     /// <summary>Classes running at study buildings (see <see cref="StudySystem"/>).</summary>
     public List<StudyOrder> Studies { get; set; } = new();
@@ -52,12 +59,17 @@ public sealed class ColonyState
     /// next tier needs one of its requirements in here.
     /// </summary>
     public SortedSet<string> KnownCybernetics { get; set; } = new(StringComparer.Ordinal);
+    /// <summary>The weather's seed and the spells worked out so far (see <see cref="Colony.Weather"/>).</summary>
+    public WeatherState Weather { get; set; } = new();
 
     /// <summary>The after-action report of the last expedition that came home (for the UI).</summary>
     public ExpeditionReport? LastReport { get; set; }
 
     /// <summary>Affinity between pairs of adults (and the player's stance on them). See <see cref="Bonds"/>.</summary>
     public List<Relationship> Relationships { get; set; } = new();
+
+    /// <summary>Story mode's campaign (missions, flags, the radio inbox); null in Sandbox.</summary>
+    public Story.CampaignState? Campaign { get; set; }
 
     /// <summary>Everyone who died, oldest first. Never trimmed.</summary>
     public List<MemorialEntry> Memorial { get; set; } = new();

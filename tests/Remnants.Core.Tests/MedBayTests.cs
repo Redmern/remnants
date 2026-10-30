@@ -282,7 +282,7 @@ public class WorkshopTests
     public void Workshop_makes_medicine_and_idles_without_inputs()
     {
         var (sim, shop, _) = Workshop();
-        var before = sim.State.Stockpile.Get("food");
+        var before = sim.FoodStock;
         sim.State.Stockpile.Add("wood", 2);
         Assert.True(sim.Execute(new SetRecipe(shop.Id, "herbal_remedy")).Ok);
 

@@ -11,15 +11,6 @@ public sealed record TradeRules
     public TradeLimits Limits { get; init; } = new();
     public CourierRules Courier { get; init; } = new();
 
-    /// <summary>Per schematic tier (1-based), the price options for a copy; the first affordable one is paid.</summary>
-    public List<List<Dictionary<string, double>>> CopyCost { get; init; } = new();
-
-    /// <summary>Reference value of one unit of a resource, in scrap.</summary>
-    public Dictionary<string, double> ResourceValues { get; init; } = new();
-
-    /// <summary>Reference value of a schematic (blueprint) item per tier, in scrap.</summary>
-    public List<double> SchematicValues { get; init; } = new();
-
     public MarketRules Market { get; init; } = new();
     public LiveTradeRules Live { get; init; } = new();
 
@@ -84,36 +75,15 @@ public sealed record LiveTradeRules
 }
 
 /// <summary>
-/// Reference values in scrap, for a fair-swap hint (no currency: trades are barter). From <c>trade.json</c> until the
-/// trader's price table (story-schematics' <c>TradeValues</c>) is in; the rules mirror it: a resource its listed value, a
-/// schematic its tier price, a crafted item its recipe inputs × 1.25, a material its salvage, anything else 5 × tier;
-/// quality variants scale by their stat multiplier.
+/// Reference values in scrap for the fair-swap hint (no currency: trades are barter), from the trader's price table
+/// (<see cref="Schematics.TradeValues"/>): a resource its listed value, an item its trader / recipe / salvage value, food
+/// by its food value. Quality variants scale.
 /// </summary>
 public static class TradePrices
 {
-    public const double CraftedMarkup = 1.25;
-
     public static double Of(TradeGood good, TradeRules rules, GameData data, ScavengeData items) =>
-        good.Count * (good.Kind == GoodKind.Resource ? OfResource(rules, good.Id) : OfItem(rules, data, items, good.Id, 0));
+        good.Count * (good.Kind == GoodKind.Resource ? Schematics.TradeValues.OfResource(data, good.Id) : Schematics.TradeValues.Of(data, items, good.Id));
 
     public static double Of(IEnumerable<TradeGood> goods, TradeRules rules, GameData data, ScavengeData items) =>
         Math.Round(goods.Sum(g => Of(g, rules, data, items)), 1);
-
-    public static double OfResource(TradeRules rules, string resourceId) => rules.ResourceValues.GetValueOrDefault(resourceId);
-
-    private static double OfItem(TradeRules rules, GameData data, ScavengeData items, string itemId, int depth)
-    {
-        if (depth > 6 || !items.Items.TryGetValue(itemId, out var item)) return 0;
-        if (item.BaseId is { } baseId)
-            return Math.Round(OfItem(rules, data, items, baseId, depth + 1) * (items.QualityOf(item)?.StatMultiplier ?? 1), 1);
-        if (TradeGoods.IsSchematic(item) && rules.SchematicValues.Count > 0) return TradeRules.At(rules.SchematicValues, item.Tier);
-        if (data.Recipes.Values.FirstOrDefault(r => r.Item == itemId) is { } recipe)
-        {
-            var inputs = recipe.Inputs.Sum(kv => OfResource(rules, kv.Key) * kv.Value)
-                         + recipe.ItemInputs.Sum(kv => OfItem(rules, data, items, kv.Key, depth + 1) * kv.Value);
-            return Math.Round(inputs / Math.Max(1, recipe.Amount) * CraftedMarkup, 1);
-        }
-        if (item.Salvage is { } salvage) return OfResource(rules, salvage.Resource) * salvage.Amount;
-        return 5 * item.Tier;
-    }
 }

@@ -1,0 +1,42 @@
+[
+  {
+    "id": "m5_brief", "mode": "Radio", "caller": "iris", "title": "Hold the Line",
+    "nodes": [
+      { "id": "a", "speaker": "narration", "text": "(Dusk. The mast hums. Out past the fence, the treeline is moving.)", "next": "b" },
+      { "id": "b", "speaker": "iris", "mood": "worried", "text": "Listen to me. Your mast is loud. Something heard it. Husks, a lot of them, walking straight at you.", "next": "c" },
+      { "id": "c", "speaker": "pell", "text": "How many is a lot?", "next": "d" },
+      { "id": "d", "speaker": "iris", "text": "Enough. Get the kids inside. Get your best four on the line.", "next": "e" },
+      { "id": "e", "speaker": "player", "text": "", "choices": [
+        { "text": "We could shut the mast off.", "next": "e1" },
+        { "text": "Tell me how to hold them.", "next": "e2" }
+      ] },
+      { "id": "e1", "speaker": "iris", "text": "They've already heard it. Turning it off now just means you can't hear me.", "next": "f" },
+      { "id": "e2", "speaker": "iris", "text": "Overwatch. Somebody watches, the rest wait. Anyone in the open, Brace. Use the towers if you built them.", "next": "f" },
+      { "id": "f", "speaker": "iris", "text": "Keep the mast standing. If it falls, I can't help you for a while. Lantern standing by." }
+    ]
+  },
+  {
+    "id": "m5_debrief", "mode": "Radio", "caller": "iris", "title": "Static",
+    "nodes": [
+      { "id": "a", "speaker": "iris", "text": "...You still there? You're still there.", "next": "b" },
+      { "id": "b", "speaker": "iris", "text": "Those Husks had Link chips in them. Pull them. There's data on them. Old, but real.", "next": "c" },
+      { "id": "c", "speaker": "iris", "text": "And here. Workshop plans, the heavy kind. You've earned bigger tools.", "next": "d" },
+      { "id": "d", "speaker": "pell", "text": "Lantern? Were they people? Before?", "next": "e" },
+      { "id": "e", "speaker": "player", "text": "", "choices": [
+        { "text": "Tell him the truth.", "next": "e1" },
+        { "text": "He's too young.", "next": "e2" }
+      ] },
+      { "id": "e1", "speaker": "iris", "text": "Yeah, kid. They were people. Somebody switched them off and forgot to turn the lights out.", "next": "f" },
+      { "id": "e2", "speaker": "iris", "text": "...Ask me again when you're older. I'll tell you then. Promise.", "next": "f" },
+      { "id": "f", "speaker": "narration", "text": "(Somewhere on channel nine, the singing stops. Just for a moment. Then it starts again.)" }
+    ]
+  },
+  {
+    "id": "m5_failed", "mode": "Radio", "caller": "iris", "title": "Off Air",
+    "nodes": [
+      { "id": "a", "speaker": "narration", "text": "(The mast lies across the yard. Pell is sorting the wire into piles that make sense only to him.)", "next": "b" },
+      { "id": "b", "speaker": "pell", "text": "I can fix it. It'll take days. But I can fix it.", "next": "c" },
+      { "id": "c", "speaker": "pell", "text": "She'll come back. She always comes back." }
+    ]
+  }
+]

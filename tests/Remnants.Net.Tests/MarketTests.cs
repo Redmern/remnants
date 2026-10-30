@@ -247,7 +247,7 @@ public class MarketTests
             var identity = TradeIdentity.Create("Sally");
             var sellerColony = TradeNetTests.Colony(3);
             var seller = Connect(m, "Sally", sellerColony, identity);
-            Done(seller.Client.Post([TradeGood.Item("bp_rifle")], [TradeGood.Resource("electronics", 1)]));
+            Done(seller.Client.Post([TradeGood.Item("sch_rifle")], [TradeGood.Resource("electronics", 1)]));
             Done(seller.Client.Post([TradeGood.Resource("wood", 10)], [TradeGood.Resource("scrap", 2)]));
             seller.Link.Close();
 
@@ -256,8 +256,8 @@ public class MarketTests
             buyer.Colony.State.Stockpile.Add("electronics", 1);
             var listings = Browse(buyer);
             Assert.Equal(2, listings.Count);
-            Assert.True(Done(buyer.Client.Accept(listings.Single(l => l.Give[0].Id == "bp_rifle"))).Ok);
-            Assert.Equal(2, buyer.Colony.State.Inventory.Count("bp_rifle"));
+            Assert.True(Done(buyer.Client.Accept(listings.Single(l => l.Give[0].Id == "sch_rifle"))).Ok);
+            Assert.True(Remnants.Core.Schematics.Schematics.Has(buyer.Colony, "sch_rifle"));
 
             m.Restart(path);
             Assert.Single(m.Host.Data.Listings);
@@ -336,7 +336,7 @@ public class MarketTests
         alice.Client.RequestTrade(bob.Id);
         var id = bob.Last<TradeInvite>().TradeId;
         bob.Client.RespondTrade(id, true);
-        alice.Client.OfferTrade(id, [TradeGood.Resource("food", 10)]);
+        alice.Client.OfferTrade(id, [TradeGood.Item("canned_food", 2)]);
         bob.Client.OfferTrade(id, [TradeGood.Resource("stone", 15)]);
         alice.Client.LockTrade(id, true);
         bob.Client.LockTrade(id, true);
@@ -350,9 +350,9 @@ public class MarketTests
         var market = new Market();
         var a = Connect(market, "Alice", aliceColony);
         var b = Connect(market, "Bob", bobColony);
-        Assert.True(Done(a.Client.Post([TradeGood.Item("bp_rifle")], [TradeGood.Resource("scrap", 20)])).Ok);
+        Assert.True(Done(a.Client.Post([TradeGood.Item("sch_rifle")], [TradeGood.Resource("scrap", 20)])).Ok);
         Assert.True(Done(b.Client.Accept(Browse(b).Single())).Ok);
-        Assert.Equal(2, bobColony.State.Inventory.Count("bp_rifle"));
+        Assert.True(Remnants.Core.Schematics.Schematics.Has(bobColony, "sch_rifle"));
         Assert.Equal(70, aliceColony.State.Stockpile.Get("scrap"), 6);
         Assert.Empty(market.Host.Data.Claims);
     }

@@ -96,17 +96,17 @@ public class TradeTests
         var arrived = new List<CourierDelivery>();
         colony.CourierArrived += arrived.Add;
         var plan = Courier.Plan(colony, Rules, legs: 2);
-        Assert.True(ColonyTrade.Dispatch(colony, "live-1", [TradeGood.Resource("food", 12)], "Bob", plan.Days));
-        Assert.False(ColonyTrade.Dispatch(colony, "live-1", [TradeGood.Resource("food", 12)], "Bob", plan.Days));
+        Assert.True(ColonyTrade.Dispatch(colony, "live-1", [TradeGood.Resource("cloth", 12)], "Bob", plan.Days));
+        Assert.False(ColonyTrade.Dispatch(colony, "live-1", [TradeGood.Resource("cloth", 12)], "Bob", plan.Days));
 
         var ticks = (int)Math.Round(plan.Days * colony.Data.Rules.TicksPerDay);
         colony.Advance(ticks - 1);
         Assert.Empty(arrived);
         colony.Advance(1);
         Assert.Single(arrived);
-        Assert.Equal(12, colony.State.Stockpile.Get("food") - 0, 0);
+        Assert.Equal(12, colony.State.Stockpile.Get("cloth") - 0, 0);
         Assert.Empty(colony.State.Trade.Deliveries);
-        Assert.False(ColonyTrade.Receive(colony, "live-1", [TradeGood.Resource("food", 12)], "Bob"), "delivered id is spent");
+        Assert.False(ColonyTrade.Receive(colony, "live-1", [TradeGood.Resource("cloth", 12)], "Bob"), "delivered id is spent");
     }
 
     [Fact]
@@ -144,52 +144,68 @@ public class TradeTests
     }
 
     [Fact]
-    public void A_schematic_copy_keeps_the_sellers_knowledge_and_the_buyer_studies_it()
+    public void A_schematic_copy_keeps_the_sellers_knowledge_and_the_buyer_learns_it_on_arrival()
     {
-        var seller = Colony(new() { ["cloth"] = 10, ["electronics"] = 10 });
-        seller.State.KnownBlueprints.Add("bp_rifle");
-        var cost = SchematicCopies.CopyCost(seller, Rules, "bp_rifle");
-        Assert.NotEmpty(cost);
+        var seller = Colony(new() { ["research_data"] = 10 });
+        Schematics.Schematics.Grant(seller, "sch_rifle", Schematics.SchematicSource.Debug);
+        Assert.True(seller.Execute(new Schematics.CopySchematic("sch_rifle")).Ok);
+        Assert.True(Schematics.Schematics.Has(seller, "sch_rifle"));
+        Assert.Equal(1, seller.State.Inventory.Count("sch_rifle"));
 
-        var made = SchematicCopies.MakeCopy(seller, Rules, "bp_rifle");
-        Assert.True(made.Ok, made.Message);
-        Assert.Contains("bp_rifle", seller.State.KnownBlueprints);
-        Assert.Equal(1, seller.State.Inventory.Count("bp_rifle"));
-        Assert.True(seller.State.Stockpile.Get("electronics") < 10, "the material option was paid (no Research Data)");
-
-        Assert.True(ColonyTrade.Escrow(seller, "tx", [TradeGood.Item("bp_rifle")], "test").Ok);
+        Assert.True(ColonyTrade.Escrow(seller, "tx", [TradeGood.Item("sch_rifle")], "test").Ok);
         ColonyTrade.Settle(seller, "tx");
         var buyer = Colony();
-        buyer.State.Buildings.Add(new Building { Id = buyer.State.NextBuildingId++, DefId = "town_hall", Level = 3 });
-        ColonyTrade.Receive(buyer, "tx", [TradeGood.Item("bp_rifle")], "seller");
-        Assert.DoesNotContain("bp_rifle", buyer.State.KnownBlueprints);
-        Assert.True(buyer.Execute(new StudyBlueprint("bp_rifle")).Ok, "the buyer learns it the normal way");
-        Assert.Contains("bp_rifle", buyer.State.KnownBlueprints);
-        Assert.Contains("bp_rifle", seller.State.KnownBlueprints);
+        Assert.False(Schematics.Schematics.Has(buyer, "sch_rifle"));
+        ColonyTrade.Receive(buyer, "tx", [TradeGood.Item("sch_rifle")], "seller");
+        Assert.True(Schematics.Schematics.Has(buyer, "sch_rifle"), "a plain copy is learned when it arrives");
+        Assert.True(Schematics.Schematics.Has(seller, "sch_rifle"));
     }
 
     [Fact]
-    public void Research_Data_pays_for_a_copy_first()
+    public void A_refunded_schematic_copy_comes_back_as_the_item()
     {
-        var colony = Colony(new() { ["research_data"] = 5, ["cloth"] = 10, ["electronics"] = 10 });
-        colony.State.KnownBlueprints.Add("bp_scanner");
-        Assert.True(SchematicCopies.MakeCopy(colony, Rules, "bp_scanner").Ok);
-        Assert.Equal(3, colony.State.Stockpile.Get("research_data"), 6);
-        Assert.Equal(10, colony.State.Stockpile.Get("cloth"), 6);
+        var colony = Colony(null, ("sch_rifle", 1));
+        ColonyTrade.Escrow(colony, "tx", [TradeGood.Item("sch_rifle")], "test");
+        ColonyTrade.Refund(colony, "tx");
+        Assert.Equal(1, colony.State.Inventory.Count("sch_rifle"));
+        Assert.False(Schematics.Schematics.Has(colony, "sch_rifle"), "a refund is not a purchase");
     }
 
     [Fact]
-    public void Unknown_or_unaffordable_schematics_cannot_be_copied()
+    public void Food_trades_with_its_lots_and_spoilage()
     {
-        var colony = Colony(new() { ["cloth"] = 10, ["electronics"] = 10 });
-        Assert.False(SchematicCopies.MakeCopy(colony, Rules, "bp_rifle").Ok);
-        Assert.False(SchematicCopies.MakeCopy(colony, Rules, "pistol").Ok);
-        var poor = Colony();
-        poor.State.KnownBlueprints.Add("bp_rifle");
-        var result = SchematicCopies.MakeCopy(poor, Rules, "bp_rifle");
-        Assert.False(result.Ok);
-        Assert.Equal(CommandError.CannotAfford, result.Error);
-        Assert.Equal(0, poor.State.Inventory.Count("bp_rifle"));
+        var seller = Colony();
+        var data = seller.Data;
+        Pantry.Add(seller.State, data, "vegetables", 3, quality: "fine");
+        seller.Advance(data.Rules.TicksPerDay * 2); // two days older
+        Pantry.Add(seller.State, data, "vegetables", 2);
+        var offer = FoodGoods.WithLots(seller.State, data, TradeGood.Item("vegetables", 4));
+        Assert.Equal(4, offer.Extras!.Lots!.Sum(l => l.Count));
+        Assert.Null(TradeGoods.Validate([offer], Rules, data, Real));
+
+        Assert.True(ColonyTrade.Escrow(seller, "tx", [TradeGood.Item("vegetables", 4)], "test").Ok);
+        var held = seller.State.Trade.Escrows.Single().Goods.Single();
+        Assert.Equal(3, held.Extras!.Lots!.First().Count); // the older lot goes first
+        Assert.Equal("fine", held.Extras.Lots!.First().Quality);
+        Assert.Equal(1, Pantry.Available(seller.State, data, "vegetables"));
+        ColonyTrade.Settle(seller, "tx");
+
+        var buyer = Colony();
+        ColonyTrade.Receive(buyer, "tx", [held], "seller");
+        var lots = buyer.State.Food.Lots["vegetables"];
+        Assert.Equal(4, lots.Sum(l => l.Count));
+        var fine = lots.Single(l => l.Quality == "fine");
+        Assert.Equal(held.Extras.Lots!.First().TicksLeft!.Value, fine.TicksLeft!.Value, 3); // same time left, not fresh
+    }
+
+    [Fact]
+    public void Spoiled_food_cannot_be_traded()
+    {
+        var colony = Colony();
+        Pantry.Add(colony.State, colony.Data, "mushrooms", 2);
+        colony.Advance(colony.Data.Rules.TicksPerDay * 30);
+        Assert.Equal(0, FoodGoods.Have(colony.State, colony.Data, TradeGood.Item("mushrooms")));
+        Assert.False(ColonyTrade.Escrow(colony, "tx", [TradeGood.Item("mushrooms")], "test").Ok);
     }
 
     [Fact]
@@ -231,7 +247,7 @@ public class TradeTests
         double V(TradeGood g) => TradePrices.Of(g, Rules, TestData.Real, Real);
         Assert.Equal(10, V(TradeGood.Resource("scrap", 10)), 6);
         Assert.True(V(TradeGood.Resource("electronics", 1)) > V(TradeGood.Resource("wood", 1)));
-        Assert.True(V(TradeGood.Item("bp_rifle")) > 0);
+        Assert.True(V(TradeGood.Item("sch_rifle")) > 0);
         var best = Real.Rules.Quality.OrderByDescending(q => q.StatMultiplier).First();
         Assert.True(V(TradeGood.Item(Real.QualityVariant("pistol", best.Id))) >= V(TradeGood.Item("pistol")));
     }
@@ -243,7 +259,7 @@ public class TradeTests
         ColonyTrade.Escrow(colony, "mkt-post-1", [TradeGood.Resource("scrap", 5)], "Trading Post",
             new PendingMarketOp(true, Want: [TradeGood.Resource("wood", 10)], Hours: 24));
         ColonyTrade.Dispatch(colony, "live-9", [TradeGood.Item("pistol")], "Bob", 1.5);
-        ColonyTrade.Receive(colony, "claim-7", [TradeGood.Resource("food", 1)], "x");
+        ColonyTrade.Receive(colony, "claim-7", [TradeGood.Resource("cloth", 1)], "x");
 
         var loaded = SaveGame.Load(TestData.Real, SaveGame.Save(colony.State), Real);
         var trade = loaded.State.Trade;

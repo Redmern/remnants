@@ -41,6 +41,53 @@ public static class ColonyText
         return string.Join("\n", lines);
     }
 
+    /// <summary>A weather kind's name as the colony says it ("Heavy rain" from 0.75 up).</summary>
+    public static string WeatherName(ColonySim sim, string kind, double intensity) =>
+        kind == "rain" && intensity >= 0.75 ? "Heavy rain" : sim.Data.Weather.Kind(kind).Name;
+
+    /// <summary>What a kind of weather does at home and on the road, one line each.</summary>
+    public static List<string> WeatherEffects(ColonySim sim, string kind)
+    {
+        var def = sim.Data.Weather.Kind(kind);
+        var c = def.Colony;
+        var lines = new List<string>();
+        string Pct(double m) => $"{(m >= 1 ? "+" : "−")}{System.Math.Abs(System.Math.Round((m - 1) * 100)):0}%";
+        if (c.MaskedOutput is { } masked)
+            lines.Add($"Outdoor work {Pct(c.OutdoorOutput)} without a dust mask ({Pct(masked)} with one); the unmasked lose health.");
+        else if (c.OutdoorOutput < 1) lines.Add($"Outdoor work {Pct(c.OutdoorOutput)}.");
+        if (System.Math.Abs(c.CropOutput - 1) > 1e-9) lines.Add($"Crops {Pct(c.CropOutput)}.");
+        if (c.ChildrenStayIn) lines.Add("Children stay indoors.");
+        if (c.MoodPerTick > 0) lines.Add("Spirits sink.");
+        if (c.NoCampfire) lines.Add("No campfire in the evening.");
+        if (c.LightningChancePerTick > 0) lines.Add("Lightning may strike a building.");
+        if (def.Travel.ExtraDays > 0) lines.Add($"Parties setting out take +{def.Travel.ExtraDays:0.#} days.");
+        if (def.Travel.BlocksFromDays is { } d) lines.Add($"Routes {d:0.#}+ days out are closed while it rages over them.");
+        if (def.GroundsDrones) lines.Add("Scout drones stay grounded.");
+        else if (def.GroundsDronesFrom is { } from) lines.Add($"Scout drones stay grounded when it is heavy.");
+        return lines;
+    }
+
+    /// <summary>The weather chip's tooltip: now, what it does, and the forecast as far as the colony sees.</summary>
+    public static string WeatherTip(ColonySim sim)
+    {
+        var state = sim.State;
+        var rules = sim.Data.Rules;
+        var now = Weather.Current(state, sim.Data);
+        var lines = new List<string> { $"{WeatherName(sim, now.Kind, now.Intensity)} for about {System.Math.Max(1, now.End - state.Tick)} h more." };
+        lines.AddRange(WeatherEffects(sim, now.Kind));
+        var masks = Weather.Masks(state, sim.Data);
+        if (sim.Data.Weather.Kind(now.Kind).Colony.MaskedOutput is not null)
+            lines.Add($"Dust masks in the stores: {masks} for {Weather.OutdoorCrew(state, sim.Data).Count()} outdoor workers.");
+        var forecast = Weather.Forecast(state, sim.Data);
+        if (forecast.Days <= 0) return string.Join("\n", lines);
+        lines.Add("");
+        lines.Add($"Forecast, {forecast.Days} day{(forecast.Days == 1 ? "" : "s")} ahead (next call {forecast.Accuracy * 100:0}% sure):");
+        foreach (var e in forecast.Entries.Where(e => !e.Current))
+            lines.Add($"  Day {DayNight.Day(e.Start, rules)} {DayNight.Hour(e.Start, rules):00}:00  {WeatherName(sim, e.Called, e.Intensity)}");
+        lines.Add("A bigger Town Hall and an Electronics Lab see further; a scanner in the stores reads the sky better.");
+        return string.Join("\n", lines);
+    }
+
     /// <summary>What a Night Shift does here, for the building panel (or why it cannot run).</summary>
     public static string NightShiftTip(ColonySim sim, Building b)
     {
@@ -102,6 +149,8 @@ public static class ColonyText
         : s.PatientAtBuildingId is not null ? "Patient"
         : sim.ClassOf(s) is { } study ? (study.StudentId == s.Id ? "In class: " : "Teaching: ")
             + (study.Skill is { } k ? sim.Data.SkillInfo(k).Name : sim.Data.Perks[study.PerkId!].Name)
+        : sim.State.Schematics.Research is { } r && r.ResearcherId == s.Id
+            ? $"Researching: {sim.Data.Schematics.Find(r.SchematicId)?.Name ?? r.SchematicId}"
         : s.AssignedBuildingId is { } id && sim.State.FindBuilding(id) is { } b ? sim.Data.Buildings[b.DefId].Name : "Idle";
 
     public static string BuildingName(ColonySim sim, Building b) => $"{sim.Data.Buildings[b.DefId].Name} L{b.Level}";
