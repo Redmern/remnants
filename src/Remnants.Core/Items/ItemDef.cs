@@ -3,7 +3,7 @@ using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Items;
 
-public enum ItemKind { Weapon, Armor, Clothing, Tool, Consumable, Material, Prosthetic, Blueprint }
+public enum ItemKind { Weapon, Armor, Clothing, Tool, Consumable, Material, Prosthetic, Blueprint, Food }
 
 /// <summary>Where an item sits when equipped. Anything not equipped is carried in the pack.</summary>
 public enum EquipSlot { Weapon, Body, Tool }

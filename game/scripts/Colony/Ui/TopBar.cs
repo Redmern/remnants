@@ -202,8 +202,7 @@ public partial class TopBar : PanelContainer
             var workers = sim.State.WorkersAt(b.Id).Count();
             lines.Add($"Made by {ColonyText.BuildingName(sim, b)}: {workers} worker{(workers == 1 ? "" : "s")}, about {sim.OutputPerDay(b):0.#}/day");
         }
-        if (id == sim.Data.Rules.Food.ResourceId) lines.Add($"Eaten: about {sim.FoodPerDay:0.#}/day by the people at home");
-        if (makers.Count == 0 && id != sim.Data.Rules.Food.ResourceId)
+        if (makers.Count == 0)
             lines.Add(sim.Data.Recipes.Values.Any(r => r.Resource == id) ? "Crafted in a production building." : "Found by scavenging and spent on building.");
         return string.Join("\n", lines);
     }

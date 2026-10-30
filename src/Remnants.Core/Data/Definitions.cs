@@ -60,6 +60,12 @@ public sealed record RecipeDef
 
     /// <summary>Items used up per batch: item id → count.</summary>
     public Dictionary<string, int> ItemInputs { get; init; } = new();
+
+    /// <summary>
+    /// Food from the pantry used up per batch: a food item id or <c>tag:x</c> (any food tagged x, soonest to spoil
+    /// first, never spoiled) → count. Food outputs go into the pantry as a lot with the cook's quality.
+    /// </summary>
+    public Dictionary<string, int> Ingredients { get; init; } = new();
     public string? Item { get; init; }
     public string? Resource { get; init; }
     public double Amount { get; init; } = 1;

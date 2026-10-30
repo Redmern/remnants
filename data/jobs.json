@@ -94,5 +94,15 @@
     "attributes": { "Creativity": 0.5, "Perception": 0.5 },
     "bodyParts": { "Arms": 0.6, "Head": 0.4 },
     "toolBonus": 0.3
+  },
+  {
+    "id": "hunting",
+    "name": "Hunting",
+    "skill": "Firearms",
+    "skillWeight": 0.6,
+    "trains": { "Farming": 0.3 },
+    "attributes": { "Perception": 0.5, "Agility": 0.3, "Endurance": 0.2 },
+    "bodyParts": { "Legs": 0.5, "Arms": 0.3, "Head": 0.2 },
+    "toolBonus": 0.5
   }
 ]

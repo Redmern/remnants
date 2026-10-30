@@ -208,10 +208,10 @@ public class NightMissionTests
         Assert.Equal(7, dawn.WaitTicks);  // 22:00 → 05:00
         Assert.True(dawn.WaitRationsPerMember > 0);
 
-        var food = sim.State.Stockpile.Get("food");
+        var food = sim.FoodStock;
         var r = sim.Execute(new LaunchExpedition(zone, [new(a.Id), new(b.Id)], DayPhase.Dawn));
         Assert.True(r.Ok, r.Message);
-        var spent = food - sim.State.Stockpile.Get("food");
+        var spent = food - sim.FoodStock;
         Assert.Equal((WorldMap.RationsPerMember(sim.Data, Real.Zones[zone]) + dawn.WaitRationsPerMember) * 2, spent, 9);
         Assert.Equal(ExpeditionPhase.Outbound, sim.CurrentExpeditionPhase);
 

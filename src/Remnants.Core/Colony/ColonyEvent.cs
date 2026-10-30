@@ -10,6 +10,7 @@ public enum ColonyEventType
     LevelUp, PerkLearned, StudyStarted, StudyFinished, StudyEnded,
     NightShift, Tired, FloodlightFitted,
     SurgeryBooked, SurgeryDone, SurgeryComplication, SurgeryCancelled, ProstheticServiced, ProstheticNeedsService, Humanity,
+    HarvestChanged, FoodRotted, FoodPoisoning,
 }
 
 /// <summary>Something notable the UI can show in a log. Purely informational.</summary>

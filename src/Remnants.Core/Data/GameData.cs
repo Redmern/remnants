@@ -20,6 +20,9 @@ public sealed class GameData
     /// <summary>The cybernetics tree (data/cybernetics.json); null when not loaded (no tree, no surgery, no humanity effects).</summary>
     public CyberneticsData? Cybernetics { get; }
 
+    /// <summary>Food and cooking (data/food.json); null when not loaded (nobody eats, nothing is harvested).</summary>
+    public FoodData? Food { get; }
+
     private readonly Dictionary<string, List<RecipeDef>> _recipesByBuilding;
 
     public GameData(
@@ -29,7 +32,9 @@ public sealed class GameData
         RulesDef rules,
         IEnumerable<RecipeDef>? recipes = null,
         ProgressionDef? progression = null,
-        CyberneticsDef? cybernetics = null)
+        CyberneticsDef? cybernetics = null,
+        FoodDef? food = null,
+        FoodSchematicFile? foodSchematics = null)
     {
         Resources = Index(resources, r => r.Id, "resource");
         Jobs = Index(jobs, j => j.Id, "job");
@@ -42,7 +47,9 @@ public sealed class GameData
         Perks = Index(Progression.Perks, p => p.Id, "perk");
         Disciplines = Index(Progression.Disciplines, d => d.Id, "discipline");
         Cybernetics = cybernetics is null ? null : new CyberneticsData(cybernetics);
+        Food = food is null ? null : new FoodData(food, foodSchematics);
         Validate();
+        Food?.Validate(this);
         ValidateProgression();
         ValidateCybernetics();
     }
@@ -120,12 +127,6 @@ public sealed class GameData
         var c = Rules.Crafting;
         if (c.MaxQueue < 1 || c.MaxBatches < 1 || c.QualitySpread < 0)
             throw new GameDataException("Rules.crafting needs maxQueue and maxBatches of at least 1 and a non-negative qualitySpread.");
-        foreach (var meal in Rules.Food.Meals)
-        {
-            RequireResource(meal.Resource, "Rules.food.meals");
-            if (meal.FoodValue <= 0) throw new GameDataException($"Rules.food.meals '{meal.Resource}' needs a positive foodValue.");
-        }
-        RequireResource(Rules.Food.ResourceId, "Rules.food");
         foreach (var res in Rules.NewGame.Stock.Keys) RequireResource(res, "Rules.newGame.stock");
         foreach (var b in Rules.NewGame.Buildings)
             if (!Buildings.ContainsKey(b)) throw new GameDataException($"Rules.newGame: unknown building '{b}'.");

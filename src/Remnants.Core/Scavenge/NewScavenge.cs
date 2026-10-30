@@ -6,7 +6,8 @@ using Remnants.Core.Survivors;
 namespace Remnants.Core.Scavenge;
 
 /// <summary>A survivor sent on a run, with the gear they wear and carry.</summary>
-public sealed record PartyMember(Survivor Survivor, Dictionary<EquipSlot, string>? Equipment = null, List<string>? Pack = null);
+/// <summary>A survivor going into a zone with their gear. <paramref name="FirstRoundAp"/>: AP added (or taken) on the first round, from what they ate on the way (food buffs).</summary>
+public sealed record PartyMember(Survivor Survivor, Dictionary<EquipSlot, string>? Equipment = null, List<string>? Pack = null, int FirstRoundAp = 0);
 
 /// <summary>
 /// One player's party entering a zone. Parties with the same <see cref="Team"/> start allied (one side, see
@@ -198,6 +199,7 @@ public static class NewScavenge
             Origin = origin,
             Hooks = data.HooksFor(origin.Perks),
             CyberHooks = data.CyberHooksFor(origin.Body),
+            FirstRoundAp = member.FirstRoundAp,
         };
     }
 

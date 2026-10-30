@@ -18,8 +18,11 @@ public sealed class ColonyState
     public List<Building> Buildings { get; set; } = new();
     public Stockpile Stockpile { get; set; } = new();
 
-    /// <summary>Items the colony owns (gear, consumables, prosthetics), by item id.</summary>
+    /// <summary>Items the colony owns (gear, consumables, prosthetics, food), by item id.</summary>
     public ItemInventory Inventory { get; set; } = new();
+
+    /// <summary>The food lots behind the food items in <see cref="Inventory"/>: age, shelf life, quality (see <see cref="Pantry"/>).</summary>
+    public FoodState Food { get; set; } = new();
 
     /// <summary>The party currently out in a zone, if any. One expedition at a time.</summary>
     public Expedition? Expedition { get; set; }

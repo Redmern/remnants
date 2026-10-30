@@ -37,7 +37,7 @@ public class WorldMapTests
         Assert.True(sim.Execute(new LaunchExpedition(zone.Id, [LoopTestData.Member(a)])).Ok);
 
         var rules = sim.Data.Rules.Expedition;
-        Assert.Equal(200 - (rules.RationFoodPerMember + rules.RationFoodPerMemberPerDay * zone.TravelDays * 2), sim.State.Stockpile.Get("food"), 6);
+        Assert.Equal(200 - (rules.RationFoodPerMember + rules.RationFoodPerMemberPerDay * zone.TravelDays * 2), sim.FoodStock, 6);
         Assert.Equal(ExpeditionPhase.Outbound, sim.CurrentExpeditionPhase);
         Assert.Throws<InvalidOperationException>(() => sim.OpenExpeditionScavenge());
 

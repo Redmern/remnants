@@ -50,6 +50,7 @@ internal static class CommandHandlers
         if (!IsTownHall(sim, def) && sim.TownHallLevel < def.MinTownHallLevel)
             return CommandResult.Fail(CommandError.TownHallLevelTooLow,
                 $"{def.Name} needs Town Hall level {def.MinTownHallLevel} (have {sim.TownHallLevel}).");
+        if (FoodSchematics.LevelGate(sim, def, 1) is { } gate) return gate;
 
         int plot;
         if (c.Plot is { } wanted)
@@ -70,6 +71,7 @@ internal static class CommandHandlers
         sim.State.Stockpile.Spend(cost);
         var building = new Building { Id = sim.State.NextBuildingId++, DefId = def.Id, Level = 1, Plot = plot };
         sim.State.Buildings.Add(building);
+        Harvesting.Planted(sim.State, sim.Data, building);
         sim.State.Log(new(sim.State.Tick, ColonyEventType.Constructed, $"Built {def.Name}.", BuildingId: building.Id));
         return CommandResult.Success($"Built {def.Name}.", building.Id);
     }
@@ -85,6 +87,7 @@ internal static class CommandHandlers
         if (next > sim.MaxUpgradeLevel(def))
             return CommandResult.Fail(CommandError.TownHallLevelTooLow,
                 $"{def.Name} level {next} needs Town Hall level {next} (have {sim.TownHallLevel}).");
+        if (FoodSchematics.LevelGate(sim, def, next) is { } gate) return gate;
 
         var cost = def.Level(next).Cost;
         if (!sim.State.Stockpile.CanAfford(cost))

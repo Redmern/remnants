@@ -366,7 +366,7 @@ public partial class ExpeditionPanel : PanelContainer
         if (SelectedZone is { } zid) perMember += RefreshArrival(sim, zid);
         var food = perMember * _picked.Count;
         _partyInfo.Text = $"Party {_picked.Count}/{sim.MaxPartySize} (Town Hall L{sim.TownHallLevel}) · rations {food:0} food " +
-                          $"(have {sim.State.Stockpile.Get(sim.Data.Rules.Food.ResourceId):0}) · away members don't eat at home";
+                          $"(have {sim.FoodStock:0}) · away members don't eat at home";
         _launch.Disabled = _launchOnline.Disabled = _picked.Count == 0;
         var data = sim.Scavenge!;
         var signature = string.Join(",", sim.State.Inventory.Counts.Select(kv => $"{kv.Key}:{kv.Value}"));

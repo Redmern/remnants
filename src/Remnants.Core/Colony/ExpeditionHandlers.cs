@@ -47,14 +47,13 @@ internal static class ExpeditionHandlers
         if (!state.Inventory.HasAll(gear))
             return CommandResult.Fail(CommandError.MissingItems, $"Not enough gear in the inventory: {DescribeMissing(state.Inventory, gear, data)}.");
         var plan = sim.PlanArrival(zone.Id, c.WaitFor);
-        var rations = new Dictionary<string, double>
-        {
-            [sim.Data.Rules.Food.ResourceId] = (WorldMap.RationsPerMember(sim.Data, zone) + plan.WaitRationsPerMember) * c.Members.Count,
-        };
-        if (!state.Stockpile.CanAfford(rations))
-            return CommandResult.Fail(CommandError.CannotAfford, $"Not enough rations: {CommandHandlers.Describe(state.Stockpile.Shortfall(rations))}.");
+        var need = (WorldMap.RationsPerMember(sim.Data, zone) + plan.WaitRationsPerMember) * c.Members.Count;
+        var trip = WorldMap.TravelTicks(sim.Data, zone) * 2 + plan.WaitTicks;
+        var bill = Rations.Plan(sim, need, c.Members.Count, trip, c.Rations);
+        if (!bill.Enough)
+            return CommandResult.Fail(CommandError.CannotAfford, $"Not enough food for rations: need {need:0.#}, the pantry has {bill.Covered:0.#}.");
 
-        state.Stockpile.Spend(rations);
+        Rations.Take(sim, need, trip, c.Rations);
         foreach (var id in gear) state.Inventory.TryTake(id);
         foreach (var m in c.Members)
         {
@@ -75,7 +74,9 @@ internal static class ExpeditionHandlers
             ArrivalTick = plan.ArrivalTick,
             Depletion = state.Zones.GetValueOrDefault(zone.Id)?.Depletion ?? 0,
             Members = c.Members.Select(m => m with { Equipment = new(m.Equipment ?? new()), Pack = new(m.Pack ?? []) }).ToList(),
+            Rations = bill.Items,
         };
+        Rations.SetOut(sim, bill, c.Members.Select(m => state.FindSurvivor(m.SurvivorId)!), plan.ArrivalTick, sim.Rng);
         state.Expedition = expedition;
         var names = string.Join(", ", c.Members.Select(m => state.FindSurvivor(m.SurvivorId)!.Name));
         var road = travel > 0 ? $" ({zone.TravelDays:0.#} days on the road)" : "";
@@ -86,10 +87,12 @@ internal static class ExpeditionHandlers
 
     /// <summary>The scavenge parties for the active expedition, built from the members' current state.</summary>
     public static PartySetup Party(ColonySim sim, Expedition expedition) =>
-        new(ColonySim.ExpeditionPlayerId, expedition.Members.Select(m => new PartyMember(
-            sim.State.FindSurvivor(m.SurvivorId) ?? throw new InvalidOperationException($"Expedition member {m.SurvivorId} is gone."),
-            new(m.Equipment ?? new()),
-            new(m.Pack ?? []))).ToList());
+        new(ColonySim.ExpeditionPlayerId, expedition.Members.Select(m =>
+        {
+            var s = sim.State.FindSurvivor(m.SurvivorId) ?? throw new InvalidOperationException($"Expedition member {m.SurvivorId} is gone.");
+            return new PartyMember(s, new(m.Equipment ?? new()), new(m.Pack ?? []),
+                sim.Data.Food is null ? 0 : FoodEffects.FieldFirstRoundAp(s, sim.Data, sim.State.Tick));
+        }).ToList());
 
     public static CommandResult Apply(ColonySim sim, ApplyExtractionResult c)
     {
@@ -202,7 +205,10 @@ internal static class ExpeditionHandlers
         return CommandResult.Success(summary, expedition.Id);
     }
 
-    /// <summary>Worn gear goes back to the inventory; carried items too, except salvage, which becomes stockpile resources.</summary>
+    /// <summary>
+    /// Worn gear goes back to the inventory; carried items too, except salvage, which becomes stockpile resources. Food
+    /// found in the field goes into the pantry as a fresh lot.
+    /// </summary>
     private static void Stow(ColonySim sim, ReturnedSurvivor r)
     {
         var data = sim.Scavenge!;
@@ -210,6 +216,7 @@ internal static class ExpeditionHandlers
         foreach (var id in r.Pack)
         {
             if (data.Items[id].Salvage is { } salvage) sim.State.Stockpile.Add(salvage.Resource, salvage.Amount);
+            else if (sim.Data.Food?.IsFood(id) == true) Pantry.Add(sim.State, sim.Data, id, 1);
             else sim.State.Inventory.Add(id);
         }
     }

@@ -15,7 +15,7 @@ namespace Remnants.Game;
 /// </summary>
 public static class GameDataPaths
 {
-    private static readonly string[] Files = ["resources.json", "jobs.json", "buildings.json", "rules.json", "recipes.json", "perks.json", "cybernetics.json"];
+    private static readonly string[] Files = ["resources.json", "jobs.json", "buildings.json", "rules.json", "recipes.json", "perks.json", "cybernetics.json", "food.json", "schematics.food.json"];
     private static readonly string[] ScavengeFiles = ["items.json", "enemies.json", "zones.json", "scavenge.json"];
     private const string EmbeddedPrefix = "Remnants.Data.";
 
@@ -61,7 +61,8 @@ public static class GameDataPaths
 
     private static GameData LoadEmbedded() =>
         GameDataLoader.LoadFromJson(ReadEmbedded("resources.json"), ReadEmbedded("jobs.json"), ReadEmbedded("buildings.json"), ReadEmbedded("rules.json"),
-            ReadEmbedded("recipes.json"), ReadEmbedded("perks.json"), ReadEmbedded("cybernetics.json"));
+            ReadEmbedded("recipes.json"), ReadEmbedded("perks.json"), ReadEmbedded("cybernetics.json"), ReadEmbedded("food.json"),
+            ReadEmbedded("schematics.food.json"));
 
     private static string ReadEmbedded(string file)
     {

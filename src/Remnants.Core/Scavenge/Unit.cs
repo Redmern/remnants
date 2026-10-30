@@ -86,6 +86,9 @@ public sealed class Unit
     /// <summary>Linked: knocked off the relay (as if jammed) through this round (see <see cref="Items.BaneDef.DisruptRounds"/>).</summary>
     public int OffRelayUntilRound { get; set; }
 
+    /// <summary>AP added (negative: taken, never below 1) at the start of its first-round turn: a good meal or bad rations on the way.</summary>
+    public int FirstRoundAp { get; set; }
+
     /// <summary>Pinned by suppressing fire: loses AP at the start of its next turn.</summary>
     public bool Suppressed { get; set; }
 

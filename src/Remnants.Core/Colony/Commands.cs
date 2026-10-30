@@ -20,7 +20,10 @@ public sealed record Upgrade(int BuildingId) : IColonyCommand;
 /// <paramref name="WaitFor"/> the party waits outside the zone until that phase starts (if they would arrive in another),
 /// taking extra rations for the wait (see <see cref="ColonySim.PlanArrival"/>).
 /// </summary>
-public sealed record LaunchExpedition(string ZoneId, List<ExpeditionMember> Members, DayPhase? WaitFor = null) : IColonyCommand;
+public sealed record LaunchExpedition(string ZoneId, List<ExpeditionMember> Members, DayPhase? WaitFor = null, RationChoice? Rations = null) : IColonyCommand;
+
+/// <summary>Pick what a Farm, Greenhouse or Hunting Lodge works on (data/food.json harvests). The standing crop is lost.</summary>
+public sealed record SetHarvest(int BuildingId, string HarvestId) : IColonyCommand;
 
 /// <summary>
 /// Fly a scout drone from the inventory over a rumored zone: it reveals the zone's intel without anyone going (see
@@ -183,6 +186,9 @@ public enum CommandError
     AlreadyBooked,
     UnknownSurgery,
     NoCybernetics,
+    /// <summary>Food: the building does not harvest, or not this; or the schematic for a building (level) is not known.</summary>
+    UnknownHarvest,
+    SchematicNeeded,
 }
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>

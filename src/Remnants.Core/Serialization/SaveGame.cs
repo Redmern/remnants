@@ -39,10 +39,18 @@ namespace Remnants.Core.Serialization;
 /// the scavenge run carries the units' cybernetic hooks (<see cref="ScavengeSave"/> version 7). Older prosthetics are
 /// mapped into the tree by <see cref="MigrateCybernetics"/>: an item outside the tree (none before items existed) becomes the
 /// crude part below quality 1 and the standard cyborg part from there, and pays its tier's replacement humanity.
+/// Version <see cref="FoodVersion"/> adds food and cooking: food is inventory items with lots (<see cref="ColonyState.Food"/>),
+/// buildings harvest (farm crops, greenhouse, hunting lodge), survivors carry nutrition, buffs and a diet. Older saves
+/// are converted by <see cref="MigrateFood"/>: the single food pool becomes a mix of potatoes, beans, corn and canned
+/// food of the same food value, Simple Meals become Boiled Potatoes and Hearty Stew becomes Stew (by food value), their
+/// Kitchen orders follow (a paid batch gives its food back), and farms keep growing potatoes, already ripe.
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 12;
+    public const int Version = 13;
+
+    /// <summary>The save version that brought food and cooking (one constant so a renumbering on merge is one edit).</summary>
+    public const int FoodVersion = 13;
     private const int OldestVersion = 1;
 
     /// <summary>What a pre-version-4 generic "blueprint" item becomes.</summary>
@@ -72,6 +80,7 @@ public static class SaveGame
             else foreach (var skill in Enum.GetValues<Survivors.Skill>()) s.Skills.TryAdd(skill, 0);
         StudySystem.Repair(colony);
         if (envelope.Version < 12) MigrateCybernetics(data, scavenge, colony);
+        if (envelope.Version < FoodVersion) MigrateFood(data, colony);
         Validate(data, colony);
         if (scavenge is not null) Validate(scavenge, colony);
         return new ColonySim(data, colony, scavenge);
@@ -166,6 +175,59 @@ public static class SaveGame
     }
 
     /// <summary>Before version 3 children grew up by age in years; put them at the same share of the growth track.</summary>
+    /// <summary>Old food pool: share of its food value per new item (the rest of the rounding goes to potatoes).</summary>
+    private static readonly (string Item, double Share)[] LegacyFoodMix = [("beans", 0.25), ("corn", 0.15), ("canned_food", 0.10)];
+
+    /// <summary>Old Kitchen resources and recipes → the new dish (item, recipe) and its food value per old unit.</summary>
+    private static readonly Dictionary<string, (string Item, string OldRecipe, string Recipe, double OldValue, double OldFood)> LegacyMeals =
+        new(StringComparer.Ordinal)
+        {
+            ["meal"] = ("boiled_potatoes", "simple_meal", "boiled_potatoes", 2.0, 4),
+            ["stew"] = ("stew", "hearty_stew", "stew", 2.5, 5),
+        };
+
+    private static void MigrateFood(GameData data, ColonyState colony)
+    {
+        var amounts = colony.Stockpile.Amounts;
+        var pool = amounts.GetValueOrDefault("food");
+        amounts.Remove("food");
+        foreach (var b in colony.Buildings)
+            foreach (var order in b.Queue)
+            {
+                var old = LegacyMeals.Values.FirstOrDefault(m => m.OldRecipe == order.RecipeId);
+                if (old.Item is null) continue;
+                order.RecipeId = old.Recipe;
+                if (!order.Paid) continue;
+                pool += old.OldFood;
+                order.Paid = false;
+                order.Progress = 0;
+                order.PaidItems.Clear();
+            }
+
+        void Give(string item, int count)
+        {
+            if (count <= 0) return;
+            if (data.Food is not null) Pantry.Add(colony, data, item, count);
+            else colony.Inventory.Add(item, count);
+        }
+        foreach (var (resource, meal) in LegacyMeals)
+        {
+            var units = amounts.GetValueOrDefault(resource);
+            amounts.Remove(resource);
+            var value = data.Food?.Items.GetValueOrDefault(meal.Item)?.FoodValue ?? 1;
+            Give(meal.Item, (int)Math.Round(units * meal.OldValue / value));
+        }
+        var given = 0.0;
+        foreach (var (item, share) in LegacyFoodMix)
+        {
+            var value = data.Food?.Items.GetValueOrDefault(item)?.FoodValue ?? 1;
+            var count = (int)Math.Floor(pool * share / value);
+            Give(item, count);
+            given += count * value;
+        }
+        Give("potato", (int)Math.Ceiling(pool - given - 1e-9));
+    }
+
     private static void MigrateGrowth(GameData data, ColonyState colony)
     {
         foreach (var s in colony.Survivors.Where(s => s.IsChild))

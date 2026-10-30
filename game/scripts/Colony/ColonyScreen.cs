@@ -140,7 +140,7 @@ public partial class ColonyScreen : Node3D
                      ("rail_depot", ZoneIntel.Scouted, 0.1, 1), ("network_relay", ZoneIntel.Rumored, 0.0, 0),
                  })
             sim.State.Zones[id] = new ZoneStatus { Intel = intel, Depletion = depletion, Visits = visits };
-        sim.State.Stockpile.Add(sim.Data.Rules.Food.ResourceId, 50);
+        Pantry.Add(sim.State, sim.Data, "potato", 50);
         var adults = sim.State.Survivors.Where(s => !s.IsChild).Take(2)
             .Select(s => new ExpeditionMember(s.Id, new() { [Remnants.Core.Items.EquipSlot.Weapon] = "pipe" })).ToList();
         if (_session.Execute(new LaunchExpedition("suburb_ruins", adults)).Ok) _session.FastForward(10, _ => false);
@@ -200,7 +200,7 @@ public partial class ColonyScreen : Node3D
         if (adults.FirstOrDefault(s => s.Sex == Remnants.Core.Survivors.Sex.Female) is not { } woman
             || adults.FirstOrDefault(s => s.Sex == Remnants.Core.Survivors.Sex.Male) is not { } man) return;
         _session.Execute(new Matchmake(woman.Id, man.Id, PairStance.Encourage));
-        sim.State.Stockpile.Add(sim.Data.Rules.Food.ResourceId, 200);  // so the colony can afford a family right away
+        Pantry.Add(sim.State, sim.Data, "beans", 200);  // so the colony can afford a family right away
         _session.FastForward(20_000, s => s.State.Events.Any(e => e.Type == ColonyEventType.Born));
         _session.FastForward(30, _ => false);
         _hud.Roster.Select(woman.Id);
