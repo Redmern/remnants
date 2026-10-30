@@ -11,7 +11,7 @@ namespace Remnants.Game.Colony.Ui;
 /// The colony feed: Core events, command feedback and first-time tips (<see cref="Advice"/>, each once per session),
 /// each line with time, an icon and a colour by kind, filterable (All / People / Colony / Alerts / Tips) and
 /// collapsible. Important events (a death, a birth, someone leaving, a party home, a level up, a perk learned, a class
-/// finished) are also raised as
+/// finished, a raid seen coming, beaten or breaking through, a building wrecked) are also raised as
 /// <see cref="Important"/> for toasts, keyed by event type and survivor so a burst about one survivor merges.
 /// </summary>
 public partial class EventLog : PanelContainer
@@ -162,6 +162,11 @@ public partial class EventLog : PanelContainer
         ColonyEventType.SurgeryDone => ("Surgery done", true),
         ColonyEventType.SurgeryComplication => ("Surgery complication", true),
         ColonyEventType.ProstheticNeedsService => ("Prosthetic needs a service", true),
+        ColonyEventType.RaidWarned => ("Raid incoming", true),
+        ColonyEventType.RaidRepelled => ("Raid repelled", true),
+        ColonyEventType.RaidBreached => ("The raid broke through", true),
+        ColonyEventType.BuildingWrecked => ("Building wrecked", true),
+        ColonyEventType.DefenseSchematicLearned => ("Schematic learned", true),
         _ => null,
     };
 
@@ -195,6 +200,15 @@ public partial class EventLog : PanelContainer
         ColonyEventType.SurgeryCancelled => ("body_prosthetic", Palette.TextMuted, Kind.People),
         ColonyEventType.SurgeryComplication => ("stat_injured", Palette.Warn, Kind.Alert),
         ColonyEventType.ProstheticNeedsService => ("body_prosthetic", Palette.Warn, Kind.Alert),
+        ColonyEventType.RaidWarned or ColonyEventType.RaidBreached => ("stat_threat", Palette.Danger, Kind.Alert),
+        ColonyEventType.RaidRepelled => ("ui_defend", Palette.Good, Kind.Alert),
+        ColonyEventType.BuildingWrecked or ColonyEventType.DefenseDestroyed => ("ui_repair", Palette.Danger, Kind.Alert),
+        ColonyEventType.DefenseUnpaid => ("stat_warning", Palette.Warn, Kind.Alert),
+        ColonyEventType.DefenseBuilt => ("ui_defend", Palette.Good, Kind.Colony),
+        ColonyEventType.Repaired => ("ui_repair", Palette.Good, Kind.Colony),
+        ColonyEventType.GuardPosted => ("stance_overwatch", Palette.Amber, Kind.People),
+        ColonyEventType.DefenseSchematicLearned => ("item_blueprint", Palette.Good, Kind.Colony),
+        ColonyEventType.ExpeditionRecalled => ("ui_expedition", Palette.Warn, Kind.Colony),
         ColonyEventType.Humanity => ("stat_mood", Palette.Network.Lerp(Palette.TextMuted, 0.4f), Kind.People),
         _ => ("ui_info", Palette.TextMuted, Kind.Colony),
     };

@@ -31,6 +31,7 @@ public sealed class ColonySession
     {
         Sim = sim;
         Sim.Story ??= GameDataPaths.LoadStory();
+        Sim.Raids ??= GameDataPaths.LoadRaids();
         Phase = sim.Phase;
     }
 
@@ -190,6 +191,29 @@ public sealed class ColonySession
         return result;
     }
 
+    /// <summary>
+    /// Sends several commands in a row (e.g. "queue all repairs", a dragged wall line) with one line of feedback: the
+    /// first refusal if any (and stops there), else <paramref name="summary"/>.
+    /// </summary>
+    public int ExecuteAll(System.Collections.Generic.IEnumerable<IColonyCommand> commands, string summary)
+    {
+        var done = 0;
+        foreach (var command in commands)
+        {
+            var result = Sim.Execute(command);
+            if (!result.Ok)
+            {
+                Feedback?.Invoke(done > 0 ? $"{result.Message} ({done} done)" : result.Message, true);
+                Changed?.Invoke();
+                return done;
+            }
+            done++;
+        }
+        if (done > 0) Feedback?.Invoke(summary, false);
+        Changed?.Invoke();
+        return done;
+    }
+
     public void Save()
     {
         using var file = FileAccess.Open(SavePath, FileAccess.ModeFlags.Write);
@@ -213,6 +237,7 @@ public sealed class ColonySession
         {
             Sim = SaveGame.Load(Sim.Data, FileAccess.GetFileAsString(SavePath), Sim.Scavenge);
             Sim.Story = GameDataPaths.LoadStory();
+            Sim.Raids = GameDataPaths.LoadRaids();
         }
         catch (Exception e) when (e is System.Text.Json.JsonException or InvalidOperationException or ArgumentException)
         {

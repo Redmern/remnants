@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using Godot;
 using Remnants.Core.Data;
+using Remnants.Core.Raids;
 using Remnants.Core.Scavenge;
 
 namespace Remnants.Game;
@@ -22,6 +23,8 @@ public static class GameDataPaths
     private static GameData? _data;
     private static ScavengeData? _scavenge;
     private static Remnants.Core.Story.StoryData? _story;
+    private static RaidData? _raids;
+    private static bool _raidsLoaded;
 
     /// <summary>Where the loaded data came from, for diagnostics.</summary>
     public static string Source { get; private set; } = "";
@@ -52,6 +55,36 @@ public static class GameDataPaths
             .Where(n => n[prefix.Length..].Replace('\\', '/').StartsWith(folder + "/", StringComparison.Ordinal))
             .Select(n => (n, Read(n)));
         return Remnants.Core.Story.StoryDataLoader.LoadFromJson(Read(prefix + "characters.json"), In("missions"), In("dialogue"), In("maps"));
+    }
+
+    /// <summary>
+    /// The raid model and defense catalogue (raids.json + schematics.defense.json), validated against the colony and
+    /// scavenge data; null when raids.json is missing (no raids). Set it on every <c>ColonySim</c> the game makes.
+    /// </summary>
+    public static RaidData? LoadRaids()
+    {
+        if (_raidsLoaded) return _raids;
+        _raidsLoaded = true;
+        _raids = LoadRaidsFresh();
+        _raids?.Validate(Load(), LoadScavenge());
+        return _raids;
+    }
+
+    private static RaidData? LoadRaidsFresh()
+    {
+        foreach (var dir in CandidateDirectories())
+            if (File.Exists(Path.Combine(dir, "raids.json")))
+                return RaidDataLoader.LoadFromDirectory(dir);
+        var raids = TryReadEmbedded("raids.json");
+        return raids is null ? null : RaidDataLoader.LoadFromJson(raids, TryReadEmbedded(DefenseSchematics.FileName));
+    }
+
+    private static string? TryReadEmbedded(string file)
+    {
+        using var stream = typeof(GameDataPaths).Assembly.GetManifestResourceStream(EmbeddedPrefix + file);
+        if (stream is null) return null;
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 
     private static ScavengeData LoadScavengeFresh()
