@@ -197,7 +197,7 @@ public static class WorldMap
 
         if (state.Expedition is not { } expedition) return;
         var name = scavenge.Zones.TryGetValue(expedition.ZoneId, out var z) ? z.Name : expedition.ZoneId;
-        if (expedition.PendingResult is null && expedition.TravelTicks > 0 && state.Tick == expedition.ArrivalTick)
+        if (expedition.PendingResult is null && expedition.ArrivalTick > expedition.LaunchedTick && state.Tick == expedition.ArrivalTick)
             state.Log(new(state.Tick, ColonyEventType.ExpeditionArrived, $"The party reached {name}: the mission can be played."));
         if (expedition.PendingResult is { } result && state.Tick >= expedition.ReturnTick)
             ExpeditionHandlers.ApplyNow(sim, expedition, result);

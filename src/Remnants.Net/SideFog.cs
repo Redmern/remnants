@@ -14,6 +14,7 @@ namespace Remnants.Net;
 ///   for everyone);</item>
 /// <item>loot caches as the side last saw them (a cache looted out of sight still shows until seen again);</item>
 /// <item>the turn order cut to known units, with <see cref="HiddenUnitId"/> standing in when an unseen unit is up;</item>
+/// <item>the run's environment (hour, phase, weather): the same for everyone;</item>
 /// <item>the side's own explored tiles, every party's done flag, and no RNG state or Network alarm counters;</item>
 /// <item>co-op: the side's own pings, alliance offers to or from the player, and breaks announced on its team;</item>
 /// <item>hackable devices as the side last saw them (or learned of them from a terminal's map), current while their tile
@@ -101,6 +102,7 @@ public sealed class SideFog(int playerId, string side)
         return new ScavengeState
         {
             ZoneId = state.ZoneId,
+            Environment = state.Environment.Copy(),
             Round = state.Round,
             TurnOrder = order,
             TurnIndex = index,

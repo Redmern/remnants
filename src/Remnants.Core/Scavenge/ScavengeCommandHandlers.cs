@@ -126,7 +126,7 @@ internal static class ScavengeCommandHandlers
         if (use.Consumed) unit.Pack.Remove(item.Id);
         if (use.LightRadius > 0)
         {
-            state.Flares.Add(new Flare(at, use.LightRadius, state.Round + use.LightRounds - 1));
+            state.Flares.Add(new Flare(at, use.LightRadius * FieldEnvironment.Effects(sim.Data, state).FlareRadiusMultiplier, state.Round + use.LightRounds - 1));
             state.Log(new(state.Round, ScavengeEventType.FlareLit, $"{unit.Name} throws a {item.Name}: {at} is lit up.", unit.Id, Pos: at));
             // Hostiles standing in the light are seen now; overwatch on them may fire.
             foreach (var u in state.Units.Where(u => u.IsActive && Detection.IsLit(state, u.Pos)).OrderBy(u => u.Id).ToList())

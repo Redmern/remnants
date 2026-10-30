@@ -31,8 +31,11 @@ public sealed class Expedition
     /// <summary>One-way travel time in ticks (0 for a zone on the doorstep).</summary>
     public long TravelTicks { get; set; }
 
-    /// <summary>When the party reaches the zone.</summary>
+    /// <summary>When the party reaches the zone (and the mission starts: its time of day is this tick's).</summary>
     public long ArrivalTick { get; set; }
+
+    /// <summary>Hours the party waits outside the zone for a better time (included in <see cref="ArrivalTick"/>).</summary>
+    public long WaitTicks { get; set; }
 
     /// <summary>The zone's depletion at launch; the run is generated with it.</summary>
     public double Depletion { get; set; }
@@ -74,6 +77,9 @@ public sealed class DroneFlight
     public long ReturnTick { get; set; }
     public bool Arrived { get; set; }
 }
+
+/// <summary>When a party would reach its zone and in which day phase; how long it waits for it and the food that costs.</summary>
+public sealed record ArrivalPlan(long ArrivalTick, DayPhase Phase, long WaitTicks, double WaitRationsPerMember);
 
 /// <summary>A party member as they came home.</summary>
 public sealed record ReportSurvivor(int SurvivorId, string Name, bool Evacuated, double Health, List<string> NewInjuries);

@@ -218,9 +218,33 @@ public sealed class ColonySim
         if (expedition.PhaseAt(State.Tick) != ExpeditionPhase.InZone)
             throw new InvalidOperationException("The party is not in the zone (still on the road, or heading home).");
         if (expedition.Scavenge is { } running) return new ScavengeSim(data, running);
-        var sim = NewScavenge.Create(data, expedition.ZoneId, expedition.Seed, [ExpeditionParty()], new ZoneConditions(expedition.Depletion));
+        var sim = NewScavenge.Create(data, expedition.ZoneId, expedition.Seed, [ExpeditionParty()],
+            new ZoneConditions(expedition.Depletion, MissionEnvironment(expedition.ArrivalTick)));
         expedition.Scavenge = sim.State;
         return sim;
+    }
+
+    /// <summary>The field environment of a mission that starts at <paramref name="tick"/> (its hour and day phase).</summary>
+    public ScavengeEnvironment MissionEnvironment(long tick) =>
+        ScavengeEnvironment.At(DayNight.Hour(tick, Data.Rules), DayNight.PhaseAt(tick, Data.Rules));
+
+    /// <summary>
+    /// When a party launched now would reach a zone, in which phase, and — when waiting for <paramref name="waitFor"/> — the
+    /// hours they wait outside for it to start and the extra food per member (<c>rationFoodPerMemberPerDay</c> per day
+    /// waited, rounded up to whole units). No wait when they would arrive in that phase anyway.
+    /// </summary>
+    public ArrivalPlan PlanArrival(string zoneId, DayPhase? waitFor = null)
+    {
+        var scavenge = Scavenge ?? throw new InvalidOperationException("Scavenge data is not loaded.");
+        var arrival = State.Tick + WorldMap.TravelTicks(Data, scavenge.Zones[zoneId]);
+        long wait = 0;
+        if (waitFor is { } want && DayNight.PhaseAt(arrival, Data.Rules) != want)
+        {
+            var start = DayNight.StartHour(want, Data.Rules.DayNight);
+            wait = ((start - DayNight.Hour(arrival, Data.Rules)) % Data.Rules.TicksPerDay + Data.Rules.TicksPerDay) % Data.Rules.TicksPerDay;
+        }
+        var food = wait == 0 ? 0 : Math.Ceiling(Data.Rules.Expedition.RationFoodPerMemberPerDay * wait / Data.Rules.TicksPerDay);
+        return new ArrivalPlan(arrival + wait, DayNight.PhaseAt(arrival + wait, Data.Rules), wait, food);
     }
 
     /// <summary>A survivor's field profile (movement mode, AP, attacks) with this gear, for the expedition planner.</summary>

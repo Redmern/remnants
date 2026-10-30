@@ -32,10 +32,12 @@ namespace Remnants.Core.Serialization;
 /// Version 10 adds the day and night cycle: per building the Night Shift and a Floodlight, per survivor the sleep debt.
 /// Older saves load with no night shifts, no Floodlights and everyone rested; their clock hour is whatever their tick
 /// says (version 9 and older games started at midnight).
+/// Version 11 adds night missions: the expedition's wait for a better hour (<see cref="Expedition.WaitTicks"/>) and the run's
+/// environment (<see cref="ScavengeSave"/> version 6); older runs in progress load at midday.
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 10;
+    public const int Version = 11;
     private const int OldestVersion = 1;
 
     /// <summary>What a pre-version-4 generic "blueprint" item becomes.</summary>

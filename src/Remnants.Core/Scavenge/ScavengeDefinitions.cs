@@ -566,6 +566,9 @@ public sealed record ScavengeRules
     public Dictionary<DeviceKind, DeviceKindDef> Devices { get; init; } = new();
     public DroneRules Drone { get; init; } = new();
 
+    /// <summary>Time of day and weather in the field (see <see cref="FieldEnvironment"/>).</summary>
+    public EnvironmentRules Environment { get; init; } = new();
+
     /// <summary>Followers within this many tiles leave with the unit that extracts.</summary>
     public int EscortRadius { get; init; } = 2;
 

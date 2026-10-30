@@ -13,10 +13,11 @@ namespace Remnants.Core.Scavenge;
 /// Version 5 adds hacking and drones: devices (with hacks in progress, lockouts and contents), drone marks, units' perk
 /// hooks, field XP, drones and their operators' batteries, overridden Linked; older saves load with no devices, no drones
 /// and no perks in the field.
+/// Version 6 adds the run's environment (hour, day phase, weather slot); older saves load at midday in clear weather.
 /// </summary>
 public static class ScavengeSave
 {
-    public const int Version = 5;
+    public const int Version = 6;
     private const int OldestVersion = 1;
 
     private sealed record Envelope(int Version, ScavengeState Scavenge);

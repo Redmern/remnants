@@ -14,8 +14,9 @@ public static class Protocol
     /// 3: co-op (lobby mode and teams, alliance messages, ping / give / carry commands, pings and alliances in views).
     /// 4: hacking and drones (hack / deployDrone / flyDrone / recallDrone / markTarget / dropPayload commands, devices and
     /// drone marks in views).
+    /// 5: day and night: the run's environment (hour, phase, weather) in views; the server decides it.
     /// </summary>
-    public const int Version = 4;
+    public const int Version = 5;
     public const int DefaultPort = 7777;
 }
 

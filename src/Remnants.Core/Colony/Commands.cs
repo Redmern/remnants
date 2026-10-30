@@ -15,8 +15,12 @@ public sealed record Construct(string BuildingDefId, int? Plot = null) : IColony
 
 public sealed record Upgrade(int BuildingId) : IColonyCommand;
 
-/// <summary>Send adults into a zone with gear from the colony inventory. They are away until the result is applied.</summary>
-public sealed record LaunchExpedition(string ZoneId, List<ExpeditionMember> Members) : IColonyCommand;
+/// <summary>
+/// Send adults into a zone with gear from the colony inventory. They are away until the result is applied. With
+/// <paramref name="WaitFor"/> the party waits outside the zone until that phase starts (if they would arrive in another),
+/// taking extra rations for the wait (see <see cref="ColonySim.PlanArrival"/>).
+/// </summary>
+public sealed record LaunchExpedition(string ZoneId, List<ExpeditionMember> Members, DayPhase? WaitFor = null) : IColonyCommand;
 
 /// <summary>
 /// Fly a scout drone from the inventory over a rumored zone: it reveals the zone's intel without anyone going (see

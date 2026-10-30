@@ -100,6 +100,18 @@
                             { "id": "motion_sensor", "weight": 0.5 }, { "id": "drone_parts", "weight": 0.5 }, { "id": "hacking_kit", "weight": 0.3 } ] },
     "Relay":    { "work": 3, "difficulty": 0.15, "networked": true, "radius": 5 }
   },
+  "environment": {
+    "phases": {
+      "Dawn":  { "sight": { "Human": 0.8, "Husk": 0.9, "Drone": 0.9 }, "stealthBonus": 5, "stealthIgnoredBy": ["Linked", "Camera", "Turret"] },
+      "Dusk":  { "sight": { "Human": 0.8, "Husk": 0.9, "Drone": 0.9 }, "stealthBonus": 5, "stealthIgnoredBy": ["Linked", "Camera", "Turret"] },
+      "Night": {
+        "sight": { "Human": 0.6, "Husk": 0.8, "Drone": 0.8 },
+        "stealthBonus": 15, "stealthIgnoredBy": ["Linked", "Camera", "Turret"],
+        "huskCountMultiplier": 1.5, "huskHearingMultiplier": 1.5, "flareRadiusMultiplier": 1.25, "minSight": 2
+      }
+    },
+    "weather": {}
+  },
   "drone": {
     "hp": 14, "attributes": { "Strength": 10, "Agility": 70, "Endurance": 30, "Perception": 80 },
     "equipment": ["drone_frame"],

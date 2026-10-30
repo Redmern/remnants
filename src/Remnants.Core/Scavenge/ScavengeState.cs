@@ -144,6 +144,9 @@ public sealed class ScavengeState
     public const int MaxEvents = 500;
 
     public string ZoneId { get; set; } = "";
+
+    /// <summary>Time of day and weather the run is played in (see <see cref="FieldEnvironment"/>).</summary>
+    public ScavengeEnvironment Environment { get; set; } = new();
     public ulong RngState { get; set; }
     public int Round { get; set; }
 

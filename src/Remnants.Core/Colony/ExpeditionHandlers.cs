@@ -46,7 +46,11 @@ internal static class ExpeditionHandlers
         var gear = c.Members.SelectMany(m => m.AllItems).ToList();
         if (!state.Inventory.HasAll(gear))
             return CommandResult.Fail(CommandError.MissingItems, $"Not enough gear in the inventory: {DescribeMissing(state.Inventory, gear, data)}.");
-        var rations = new Dictionary<string, double> { [sim.Data.Rules.Food.ResourceId] = WorldMap.RationsPerMember(sim.Data, zone) * c.Members.Count };
+        var plan = sim.PlanArrival(zone.Id, c.WaitFor);
+        var rations = new Dictionary<string, double>
+        {
+            [sim.Data.Rules.Food.ResourceId] = (WorldMap.RationsPerMember(sim.Data, zone) + plan.WaitRationsPerMember) * c.Members.Count,
+        };
         if (!state.Stockpile.CanAfford(rations))
             return CommandResult.Fail(CommandError.CannotAfford, $"Not enough rations: {CommandHandlers.Describe(state.Stockpile.Shortfall(rations))}.");
 
@@ -67,13 +71,15 @@ internal static class ExpeditionHandlers
             Seed = sim.Rng.NextULong(),
             LaunchedTick = state.Tick,
             TravelTicks = travel,
-            ArrivalTick = state.Tick + travel,
+            WaitTicks = plan.WaitTicks,
+            ArrivalTick = plan.ArrivalTick,
             Depletion = state.Zones.GetValueOrDefault(zone.Id)?.Depletion ?? 0,
             Members = c.Members.Select(m => m with { Equipment = new(m.Equipment ?? new()), Pack = new(m.Pack ?? []) }).ToList(),
         };
         state.Expedition = expedition;
         var names = string.Join(", ", c.Members.Select(m => state.FindSurvivor(m.SurvivorId)!.Name));
         var road = travel > 0 ? $" ({zone.TravelDays:0.#} days on the road)" : "";
+        if (plan.WaitTicks > 0) road += $", waiting {plan.WaitTicks} h for {plan.Phase.ToString().ToLowerInvariant()}";
         state.Log(new(state.Tick, ColonyEventType.ExpeditionLaunched, $"{names} set out for {zone.Name}{road}."));
         return CommandResult.Success($"{names} set out for {zone.Name}{road}.", expedition.Id);
     }

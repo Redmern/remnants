@@ -16,7 +16,8 @@ public sealed record PartyMember(Survivor Survivor, Dictionary<EquipSlot, string
 public sealed record PartySetup(int PlayerId, List<PartyMember> Members, int? Team = null, string? Name = null);
 
 /// <summary>How the zone is right now: <see cref="Depletion"/> (0..1) thins out the loot caches of a picked-over zone.</summary>
-public sealed record ZoneConditions(double Depletion = 0);
+/// <summary>How a zone is found: its depletion, and the time of day and weather the run is played in (midday, clear, if null).</summary>
+public sealed record ZoneConditions(double Depletion = 0, ScavengeEnvironment? Environment = null);
 
 /// <summary>
 /// Builds a scavenge instance: generates the zone map from its template and a seed, places every party
@@ -33,7 +34,12 @@ public static class NewScavenge
 
         var rng = new DeterministicRng(seed);
         var generated = MapGenerator.Generate(data, zone, rng);
-        var state = new ScavengeState { ZoneId = zone.Id, Map = generated.Map };
+        var env = conditions?.Environment;
+        var state = new ScavengeState
+        {
+            ZoneId = zone.Id, Map = generated.Map,
+            Environment = env is null ? new ScavengeEnvironment() : ScavengeEnvironment.At(env.Hour, env.Phase, env.Weather),
+        };
         var map = state.Map;
         var open = generated.Reachable.Where(p => !map.IsExit(p)).OrderBy(map.Index).ToList();
         bool Free(Pos p) => state.UnitAt(p) is null;
@@ -88,6 +94,23 @@ public static class NewScavenge
             var def = data.Enemies[PickWeighted(rng, allowed, e => e.Weight).Id];
             spawned[def.Id] = spawned.GetValueOrDefault(def.Id) + 1;
             state.Units.Add(EnemyUnit(data, state, def, spot.Value));
+        }
+
+        // The dark brings out more Husks: extra ones from the Husk part of the mix (none by day, so day runs are as before).
+        var huskMix = mix.Where(e => data.Enemies[e.Id].Ai == AiKind.Husk).ToList();
+        var huskMult = FieldEnvironment.Effects(data, state).HuskCountMultiplier;
+        if (huskMult > 1 && huskMix.Count > 0)
+        {
+            var husks = spawned.Where(kv => data.Enemies[kv.Key].Ai == AiKind.Husk).Sum(kv => kv.Value);
+            var extra = (int)Math.Round(husks * (huskMult - 1));
+            for (var i = 0; i < extra; i++)
+            {
+                var spot = TakeRandom(rng, enemySpots, Free);
+                if (spot is null) break;
+                var def = data.Enemies[PickWeighted(rng, huskMix, e => e.Weight).Id];
+                spawned[def.Id] = spawned.GetValueOrDefault(def.Id) + 1;
+                state.Units.Add(EnemyUnit(data, state, def, spot.Value));
+            }
         }
 
         var lootTable = data.Items.Values.Where(i => i.LootWeight > 0 && i.Tier <= zone.LootTier)

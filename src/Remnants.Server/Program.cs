@@ -10,7 +10,7 @@ namespace Remnants.Server;
 /// Headless authoritative server for one shared scavenge instance (see docs/MULTIPLAYER.md).
 /// <code>
 /// dotnet run --project src/Remnants.Server -- --port 7777 [--zone ID] [--seed N] [--players 2] [--max-players 4]
-///     [--turn-seconds 60] [--reconnect-seconds 120] [--bind 0.0.0.0] [--data DIR] [--coop]
+///     [--turn-seconds 60] [--reconnect-seconds 120] [--bind 0.0.0.0] [--data DIR] [--coop] [--hour 0-23]
 /// dotnet run --project src/Remnants.Server -- --bot 127.0.0.1:7777 [--name Bot] [--rounds 30] [--team N] [--hostile] [--propose]
 /// </code>
 /// The server runs one mission, then exits once every player's run is over. <c>--bot</c> instead joins a server
@@ -48,6 +48,7 @@ public static class Program
             TurnSeconds = a.Double("--turn-seconds", 60),
             ReconnectSeconds = a.Double("--reconnect-seconds", 120),
             Mode = a.Flag("--coop") ? MissionMode.Coop : MissionMode.Versus,
+            Hour = a.Value("--hour") is { } hour ? int.Parse(hour, CultureInfo.InvariantCulture) : null,
         };
         using var server = HostedServer.Start(scavenge, options, IPAddress.Parse(a.Value("--bind") ?? "0.0.0.0"), a.Int("--port", Protocol.DefaultPort), Print);
         var done = new TaskCompletionSource();

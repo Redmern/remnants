@@ -28,7 +28,7 @@ public static class Visibility
     {
         var result = new HashSet<int>();
         foreach (var u in state.Units.Where(u => u.Side == side && u.IsActive))
-            result.UnionWith(VisibleTiles(data, state.Map, u, ProfileDeriver.Derive(data, u).Sight));
+            result.UnionWith(VisibleTiles(data, state.Map, u, FieldEnvironment.Sight(data, state, u, ProfileDeriver.Derive(data, u).Sight)));
         if (result.Count > 0) result.UnionWith(Detection.LitTiles(state));
         return result;
     }

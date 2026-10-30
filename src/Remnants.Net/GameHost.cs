@@ -16,6 +16,14 @@ public sealed record HostOptions
 
     /// <summary>Co-op: every seat starts on one team (spawned together, shared sight). Versus: teams only by choice.</summary>
     public MissionMode Mode { get; init; } = MissionMode.Versus;
+
+    /// <summary>
+    /// Hour of day the mission is played at. The server decides: this when set, else an hour from the seed. Every player
+    /// gets the same light (it is in each view) and the fog follows it on the server.
+    /// </summary>
+    public int? Hour { get; init; }
+
+    public int MissionHour => Hour ?? (int)(Seed % 24);
 }
 
 public enum HostPhase { Lobby, Playing, Ended }
@@ -238,7 +246,8 @@ public sealed class GameHost : IHostSink
         try
         {
             Sim = NewScavenge.Create(_data, Options.ZoneId, Options.Seed,
-                _seats.Select(s => new PartySetup(s.PlayerId, s.Party, s.StartTeam(Options.Mode), s.Name)).ToList());
+                _seats.Select(s => new PartySetup(s.PlayerId, s.Party, s.StartTeam(Options.Mode), s.Name)).ToList(),
+                new ZoneConditions(Environment: ScavengeEnvironment.AtHour(Options.MissionHour)));
         }
         catch (ArgumentException e)
         {
@@ -249,7 +258,7 @@ public sealed class GameHost : IHostSink
             return;
         }
         Phase = HostPhase.Playing;
-        Log?.Invoke($"mission started in {Options.ZoneId} (seed {Options.Seed}) with {_seats.Count} players");
+        Log?.Invoke($"mission started in {Options.ZoneId} (seed {Options.Seed}, {Sim.State.Environment.Hour:00}:00 {Sim.State.Environment.Phase}) with {_seats.Count} players");
         foreach (var seat in _seats) seat.Connection?.Send(Started());
         _lastPublished = null;
         Publish();

@@ -27,7 +27,12 @@ public sealed class ScavengeSim
     /// <summary>Sim-owned randomness. Always draw through this so the state stays in the save.</summary>
     public DeterministicRng Rng => _rng;
 
-    public UnitProfile Profile(Unit unit) => ProfileDeriver.Derive(Data, unit);
+    /// <summary>A unit's field profile, with its sight as the run's light and weather leave it.</summary>
+    public UnitProfile Profile(Unit unit)
+    {
+        var p = ProfileDeriver.Derive(Data, unit);
+        return p with { Sight = FieldEnvironment.Sight(Data, State, unit, p.Sight) };
+    }
 
     /// <summary>Tiles the unit can move to with one move action now, with AP cost (for UI highlights).</summary>
     public Dictionary<Pos, int> Reachable(Unit unit) => Movement.Reachable(State, unit, Profile(unit).Movement);
@@ -265,7 +270,10 @@ public sealed class ScavengeSim
     {
         foreach (var u in State.Units.Where(u => u.IsActive && u.Kind == UnitKind.Enemy && u.Ai.Mode == AiMode.Idle))
         {
-            if (!u.HostileTo(source) || u.Pos.Chebyshev(source.Pos) > radius) continue;
+            // Husks hear further in the dark (FieldEnvironment).
+            var heard = FieldEnvironment.SenseOf(Data, State, u) == SenseKind.Husk
+                ? radius * FieldEnvironment.Effects(Data, State).HuskHearingMultiplier : radius;
+            if (!u.HostileTo(source) || u.Pos.Chebyshev(source.Pos) > heard + 1e-9) continue;
             u.Ai.Mode = AiMode.Hunting;
             u.Ai.TargetId = null;
             u.Ai.LastKnown = source.Pos;

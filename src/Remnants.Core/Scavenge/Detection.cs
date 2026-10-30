@@ -5,7 +5,8 @@ namespace Remnants.Core.Scavenge;
 /// <summary>
 /// Who sees whom. Sight (<see cref="Visibility"/>) says which tiles a unit could see; inside that, a hostile is only
 /// <em>seen</em> when the observer's detection beats its stealth, less <see cref="FogRules.PerTile"/> per tile beyond
-/// <see cref="FogRules.CloseRange"/> (where everything in sight is seen). No randomness: the same positions and gear
+/// <see cref="FogRules.CloseRange"/> (where everything in sight is seen). Time of day and weather change sight and stealth
+/// (<see cref="FieldEnvironment"/>). No randomness: the same positions and gear
 /// always give the same answer. A side also sees
 /// <list type="bullet">
 /// <item>everyone on a tile lit by a <see cref="Flare"/> (every side sees lit tiles);</item>
@@ -27,11 +28,12 @@ public static class Detection
         var from = observerAt ?? observer.Pos;
         var to = targetAt ?? target.Pos;
         var seer = ProfileDeriver.Derive(data, observer);
-        if (!Visibility.CanSee(data, state.Map, from, seer.Sight, to)) return false;
+        if (!Visibility.CanSee(data, state.Map, from, FieldEnvironment.Sight(data, state, observer, seer.Sight), to)) return false;
         var fog = data.Rules.Fog;
         if (from.Chebyshev(to) <= fog.CloseRange) return true;
         var distance = Math.Sqrt(from.DistanceSquared(to));
-        return seer.Detection - ProfileDeriver.Derive(data, target).Stealth - (distance - fog.CloseRange) * fog.PerTile >= -1e-9;
+        var stealth = ProfileDeriver.Derive(data, target).Stealth + FieldEnvironment.StealthBonusAgainst(data, state, observer);
+        return seer.Detection - stealth - (distance - fog.CloseRange) * fog.PerTile >= -1e-9;
     }
 
     /// <summary>Whether <paramref name="side"/> sees <paramref name="target"/> right now (its own units always).</summary>
@@ -49,7 +51,10 @@ public static class Detection
         return observers.Any(o => Spots(data, state, o, target));
     }
 
-    /// <summary>Whether an observer picks out a unit revealed to its side: line of sight within the stretched reveal range.</summary>
+    /// <summary>
+    /// Whether an observer picks out a unit revealed to its side: line of sight within the stretched reveal range. The
+    /// observer's sight before the environment counts: a muzzle flash or a sensor ping shows up in the dark too.
+    /// </summary>
     public static bool SeesRevealed(ScavengeData data, ScavengeState state, Unit observer, Unit target) =>
         IsRevealed(state, target.Id, observer.Side)
         && Visibility.CanSee(data, state.Map, observer.Pos, ProfileDeriver.Derive(data, observer).Sight * data.Rules.Fog.RevealSightMultiplier, target.Pos);
