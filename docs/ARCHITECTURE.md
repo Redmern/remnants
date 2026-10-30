@@ -444,6 +444,14 @@ All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `fo
 - **UI**: selecting a production building shows `ProductionPanel` (queue with progress and cancel, recipe picker with
   ×1/×5/repeat, locked reasons, inputs, quality odds). The top bar's Items button opens `InventoryPanel` (items by kind
   and quality; the schematics archive sits beside it). Buildings render `{type}_l{level}` models, falling back to the
+||||||| parent of 3fe29d8 (docs: schematics UI and debug flags; ui-screenshots takes the schematics screens)
+  ×1/×5/repeat, locked reasons, inputs, quality odds). The top bar's Items button opens `InventoryPanel` (items by kind
+  and quality, studied blueprints, Study buttons). Buildings render `{type}_l{level}` models, falling back to the
+  ×1/×5/repeat, locked reasons, inputs, quality odds; Decrypt orders while their chip is in the stores). The top bar's
+  Items button opens `InventoryPanel`: items by kind and quality, and the Schematics tab (`SchematicsArchive`: every
+  schematic by category with Known / To decrypt / Heard of / Unknown / Coming, Copy, Decrypt, Salvage; see SCHEMATICS.md).
+  The Town Hall shows `ResearchPanel` (running research, researcher picker, heard-of schematics with Start), the Radio
+  Mast `RadioPanel` (tabs from `RadioPanel.Tabs`: Calls, Trader, Contracts). Buildings render `{type}_l{level}` models, falling back to the
   nearest lower level.
 
 ## Fog of war
@@ -895,7 +903,10 @@ drone scouting (saves its own still with `--screenshot`), `--fog-demo` (with `--
 screenshots); `--scavenge --zone=ID --seed=N` plays the debug mission in another zone, `--multiplayer` opens the multiplayer menu and
 `--mp-host[=PORT]` / `--mp-join=ADDR` with `--mp-name`, `--mp-ready`, `--mp-coop`, `--mp-team=N`, … script it (see `MULTIPLAYER.md`), `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG (any scene). Day and night: `--night-demo` (the demo town two days on, a Floodlight and the Night Shift on the Woodcutter,
 selected), `--hour=H` runs to the next H:00, pauses and puts sleepers indoors, `--no-select` clears the selection for
-scenery shots. HUD shots: `--pause-menu`, `--settings`, `--build-menu`, `--select-survivor=ID`, `--survivor-tab=N` (colony), `--menu-settings` (main menu). Needs a display; on
+scenery shots. Schematics: `--schematics-demo` (the crafting town plus a Radio Mast, a Lab L2, known / heard-of / encrypted
+schematics, a research running and the trader parked) with `--archive [--archive-filter=known|todecrypt|heard|unknown]`,
+`--research` (selects the Town Hall), `--radio=calls|trader|contracts` (selects the Radio Mast) and `--collapse-log`.
+HUD shots: `--pause-menu`, `--settings`, `--build-menu`, `--select-survivor=ID`, `--survivor-tab=N` (colony), `--menu-settings` (main menu). Needs a display; on
 Wayland pass `--display-driver wayland --disable-vsync` so an unfocused window still renders:
 
 ```sh
