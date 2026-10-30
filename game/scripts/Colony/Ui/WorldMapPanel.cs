@@ -257,6 +257,31 @@ public partial class WorldMapCanvas : Control
         DrawColony(colony, font);
         foreach (var info in zones) DrawZone(info, font, info.Zone.Id == _owner.Selected);
         DrawParty(sim, data, colony);
+        DrawCouriers(sim, colony, font, area);
+    }
+
+    /// <summary>
+    /// Trade couriers on their way in from another colony (off the map's east edge, which is not on this map), with who
+    /// sent them and the days left.
+    /// </summary>
+    private void DrawCouriers(ColonySim sim, Vector2 colony, Font font, Rect2 area)
+    {
+        var deliveries = sim.State.Trade.Deliveries;
+        for (var i = 0; i < deliveries.Count; i++)
+        {
+            var d = deliveries[i];
+            var from = new Vector2(area.End.X - 20, area.Position.Y + 40 + i * 46);
+            var span = Math.Max(1, d.ArriveTick - d.DepartTick);
+            var progress = Mathf.Clamp((sim.State.Tick - d.DepartTick) / (float)span, 0, 1);
+            DrawDashedLine(from, colony, new Color(Palette.Good, 0.5f), 2f, 6f);
+            var at = from.Lerp(colony, progress);
+            DrawCircle(at, 11, new Color(0.1f, 0.1f, 0.1f, 0.85f));
+            DrawTextureRect(Icons.Get("ui_courier", 18), new Rect2(at - new Vector2(9, 9), new Vector2(18, 18)), false, Palette.Good);
+            var days = Math.Max(0, d.ArriveTick - sim.State.Tick) / (double)sim.Data.Rules.TicksPerDay;
+            var label = $"Courier from {d.From} · {days:0.#}d";
+            var width = font.GetStringSize(label, HorizontalAlignment.Left, -1, 13).X;
+            DrawString(font, at + new Vector2(-width / 2, -16), label, HorizontalAlignment.Left, -1, 13, Ink);
+        }
     }
 
     /// <summary>A fixed, hand-shaped landmass with a river through it: the same picture every time.</summary>

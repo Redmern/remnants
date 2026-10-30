@@ -34,6 +34,7 @@ public partial class TopBar : PanelContainer
     public event Action? ExpeditionPressed;
     public event Action? ItemsPressed;
     public event Action? WorldMapPressed;
+    public event Action? TradingPostPressed;
     public event Action? MenuPressed;
 
     public TopBar(ColonySession session)
@@ -101,6 +102,7 @@ public partial class TopBar : PanelContainer
         row.AddChild(Widgets.IconButton("ui_items", "", "Items and blueprints", () => ItemsPressed?.Invoke(), Hotkeys.KeyName("open_items")));
         row.AddChild(Widgets.IconButton("ui_expedition", "", "Expedition", () => ExpeditionPressed?.Invoke(), Hotkeys.KeyName("open_expedition")));
         row.AddChild(Widgets.IconButton("ui_world_map", "", "World map", () => WorldMapPressed?.Invoke()));
+        row.AddChild(Widgets.IconButton("ui_post", "", "Trading Post: barter with other colonies (Radio Mast)", () => TradingPostPressed?.Invoke()));
         row.AddChild(Widgets.IconButton("ui_menu", "", "Menu: save, load, settings", () => MenuPressed?.Invoke(), Hotkeys.KeyName("pause_menu")));
     }
 

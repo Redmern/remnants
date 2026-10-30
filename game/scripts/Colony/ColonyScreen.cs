@@ -92,6 +92,37 @@ public partial class ColonyScreen : Node3D
         if (int.TryParse(DebugCapture.Value("--select-survivor"), out var who)) _hud.Roster.Select(who);
         if (int.TryParse(DebugCapture.Value("--survivor-tab"), out var tab)) _hud.Survivor.ShowTab(tab);
         CallDeferred(MethodName.ShowUnseenReport);
+        // A live trade cannot outlive its connection: anything still in escrow for one goes back to the stores.
+        if (Remnants.Game.Multiplayer.MultiplayerSession.Client is null
+            && Remnants.Core.Trade.ColonyTrade.RefundAll(_session.Sim, Remnants.Net.LiveTradeSync.EscrowPrefix) > 0)
+            _session.Notify("Goods set aside for an unfinished trade are back in the stores.");
+        if (DebugCapture.HasFlag("--courier-demo")) RunCourierDemo();
+        if (DebugCapture.HasFlag("--trading-post") || DebugCapture.Value("--trading-post") is not null)
+        {
+            var address = DebugCapture.Value("--trading-post");
+            Callable.From(() =>
+            {
+                _hud.OpenTradingPost(address);
+                if (DebugCapture.Value("--trading-post-tab") is { Length: > 0 } tab) _hud.TradingPost.ShowTab(tab);
+            }).CallDeferred();
+        }
+    }
+
+    /// <summary>
+    /// `--courier-demo`: two trade couriers on the road (one arriving in `--courier-days`, default a quarter day, for the
+    /// delivery toast; one two days out for the world map), at full speed.
+    /// </summary>
+    private void RunCourierDemo()
+    {
+        var sim = _session.Sim;
+        var days = double.TryParse(DebugCapture.Value("--courier-days"), System.Globalization.NumberStyles.Float,
+            System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : 0.25;
+        Remnants.Core.Trade.ColonyTrade.Dispatch(sim, $"demo-{sim.State.Tick}-a",
+            [Remnants.Core.Trade.TradeGood.Resource("scrap", 20), Remnants.Core.Trade.TradeGood.Item("bp_rifle")], "Bob", days);
+        Remnants.Core.Trade.ColonyTrade.Dispatch(sim, $"demo-{sim.State.Tick}-b",
+            [Remnants.Core.Trade.TradeGood.Resource("electronics", 6)], "Rook", 2);
+        _session.SetSpeed(DebugCapture.HasFlag("--world-map") ? 0 : 4);
+        RefreshAll();
     }
 
     public override void _ExitTree() => _session.DetachViews();

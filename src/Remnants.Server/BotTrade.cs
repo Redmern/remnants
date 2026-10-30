@@ -16,7 +16,8 @@ namespace Remnants.Server;
 /// offer; field: one item from its packs), locks once the other side has locked, and confirms once both are locked.</item>
 /// <item><c>--market-bot ADDR --name N [--listings 3] [--take]</c>: connects to a Trading Post with a fresh colony,
 /// posts a few listings out of its stock, with <c>--take</c> also takes the first listing it can pay for, applies its
-/// claims, then stays until Ctrl+C (or <c>--seconds S</c>).</item>
+/// claims, then stays until Ctrl+C (or <c>--seconds S</c>). Its identity is kept in <c>--identity FILE</c> (default a
+/// file per name in the temp folder), so it collects its claims when it comes back.</item>
 /// </list>
 /// </summary>
 internal static class BotTrade
@@ -90,7 +91,8 @@ internal static class BotTrade
         var market = new MarketClient(transport, () => colony, work => inbox.Writer.TryWrite(work));
         market.Claimed += claims => Program.Print($"{name}: claimed {string.Join("; ", claims.Select(c => c.Reason))}");
         transport.Start();
-        market.Hello(TradeIdentity.Create(name));
+        // A persistent identity per bot name, so a bot that comes back collects what it is owed.
+        market.Hello(TradeIdentity.LoadOrCreate(a.Value("--identity") ?? Path.Combine(Path.GetTempPath(), $"remnants-market-bot-{name}.json"), name));
         Program.Print($"{name}: at the Trading Post {target}");
 
         var offers = new List<(List<TradeGood> Give, List<TradeGood> Want)>

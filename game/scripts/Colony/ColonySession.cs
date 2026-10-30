@@ -189,6 +189,8 @@ public sealed class ColonySession
 
     public void Save()
     {
+        // Scripted runs (screenshots, demos) leave the player's real save alone.
+        if (DebugCapture.HasFlag("--no-save")) return;
         using var file = FileAccess.Open(SavePath, FileAccess.ModeFlags.Write);
         if (file is null)
         {

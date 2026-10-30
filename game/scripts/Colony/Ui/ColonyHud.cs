@@ -35,6 +35,9 @@ public partial class ColonyHud : CanvasLayer
     /// <summary>The cybernetics tree (from the Med Bay, Workshop and Electronics Lab).</summary>
     public CyberneticsPanel Cybernetics { get; }
 
+    /// <summary>The Trading Post (async market with other players) at the Radio Mast.</summary>
+    public Trade.TradingPostPanel TradingPost { get; }
+
     /// <summary>Esc with nothing else to close; the screen may cancel placement or deselect first.</summary>
     public event Func<bool>? BackRequested;
 
@@ -129,6 +132,8 @@ public partial class ColonyHud : CanvasLayer
         Pause.Closed += ResumeTime;
         Cybernetics = new CyberneticsPanel(session);
         AddChild(Cybernetics);
+        TradingPost = new Trade.TradingPostPanel(session);
+        AddChild(TradingPost);
         AddChild(Pause);
         AddChild(Settings);
         MedBay.CyberneticsPressed += (who, part) =>
@@ -139,6 +144,7 @@ public partial class ColonyHud : CanvasLayer
         TopBar.MenuPressed += OpenPause;
         TopBar.ItemsPressed += () => Inventory.Toggle();
         TopBar.WorldMapPressed += () => WorldMap.Open();
+        TopBar.TradingPostPressed += () => OpenTradingPost();
         Survivor.Closed += () => Roster.Select(null);
         Roster.SelectionChanged += Survivor.Show;
     }
@@ -158,6 +164,17 @@ public partial class ColonyHud : CanvasLayer
         WorldMap.Refresh();
         if (BuildMenu.Visible) BuildMenu.Refresh();
         Log.Refresh();
+    }
+
+    /// <summary>Opens the Trading Post (needs a Radio Mast once the game has one); <paramref name="address"/> connects at once.</summary>
+    public void OpenTradingPost(string? address = null)
+    {
+        if (Remnants.Core.Trade.Courier.Blocked(_session.Sim, Trade.TradeUi.Rules) is { } why)
+        {
+            Toasts.Show("No Radio Mast", why, "ui_post", Palette.Warn);
+            return;
+        }
+        TradingPost.Open(address);
     }
 
     public void OpenPause()

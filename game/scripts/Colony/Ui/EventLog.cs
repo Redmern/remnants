@@ -159,6 +159,8 @@ public partial class EventLog : PanelContainer
         ColonyEventType.PerkLearned => ("Perk learned", true),
         ColonyEventType.StudyFinished => ("Class finished", true),
         ColonyEventType.NightShift => ("Night shift", true),
+        ColonyEventType.CourierArrived => ("Courier arrived", true),
+        ColonyEventType.TradeReceived => ("Goods received", true),
         ColonyEventType.SurgeryDone => ("Surgery done", true),
         ColonyEventType.SurgeryComplication => ("Surgery complication", true),
         ColonyEventType.ProstheticNeedsService => ("Prosthetic needs a service", true),
@@ -195,6 +197,9 @@ public partial class EventLog : PanelContainer
         ColonyEventType.SurgeryCancelled => ("body_prosthetic", Palette.TextMuted, Kind.People),
         ColonyEventType.SurgeryComplication => ("stat_injured", Palette.Warn, Kind.Alert),
         ColonyEventType.ProstheticNeedsService => ("body_prosthetic", Palette.Warn, Kind.Alert),
+        ColonyEventType.CourierDispatched or ColonyEventType.CourierArrived => ("ui_courier", Palette.Good, Kind.Colony),
+        ColonyEventType.TradeReceived => ("stat_loot", Palette.Good, Kind.Colony),
+        ColonyEventType.SchematicCopied => ("item_blueprint", Palette.Amber, Kind.Colony),
         ColonyEventType.Humanity => ("stat_mood", Palette.Network.Lerp(Palette.TextMuted, 0.4f), Kind.People),
         _ => ("ui_info", Palette.TextMuted, Kind.Colony),
     };

@@ -30,6 +30,14 @@ public static class GameDataPaths
     /// <summary>Scavenge definitions (items, enemies, zones, rules), found the same way as the colony data.</summary>
     public static ScavengeData LoadScavenge() => _scavenge ??= LoadScavengeFresh();
 
+    private static Remnants.Core.Trade.TradeRules? _trade;
+
+    /// <summary>Player trading rules (trade.json), found the same way.</summary>
+    public static Remnants.Core.Trade.TradeRules LoadTrade() => _trade ??=
+        CandidateDirectories().FirstOrDefault(dir => File.Exists(Path.Combine(dir, "trade.json"))) is { } dir
+            ? Remnants.Core.Trade.TradeRules.Load(dir)
+            : Remnants.Core.Trade.TradeRules.Parse(ReadEmbedded("trade.json"));
+
     private static ScavengeData LoadScavengeFresh()
     {
         foreach (var dir in CandidateDirectories())

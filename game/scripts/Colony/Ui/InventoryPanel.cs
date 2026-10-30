@@ -34,7 +34,38 @@ public partial class InventoryPanel : PanelContainer
         box.AddChild(scroll);
         box.AddChild(Ui.Heading("Blueprints", "item_blueprint"));
         box.AddChild(_known);
+        box.AddChild(_copies);
         box.AddChild(_study);
+    }
+
+    private readonly VBoxContainer _copies = new();
+    private string? _copiesShown;
+
+    /// <summary>Known blueprints can be copied into a tradeable item (the colony keeps the knowledge).</summary>
+    private void RefreshCopies(Remnants.Core.Scavenge.ScavengeData data)
+    {
+        var sim = _session.Sim;
+        var rules = Trade.TradeUi.Rules;
+        var signature = string.Join(",", sim.State.KnownBlueprints) + "|" + string.Join(",", sim.State.Stockpile.Amounts.Select(kv => $"{kv.Key}:{kv.Value:0}"));
+        if (signature == _copiesShown) return;
+        _copiesShown = signature;
+        foreach (var child in _copies.GetChildren()) child.QueueFree();
+        foreach (var id in Remnants.Core.Trade.SchematicCopies.Copyable(sim))
+        {
+            var options = Remnants.Core.Trade.SchematicCopies.CopyCost(sim, rules, id);
+            if (options.Count == 0) continue;
+            var cost = string.Join(" or ", options.Select(o => string.Join(" + ", o.Select(kv => $"{kv.Value:0} {sim.Data.Resources.GetValueOrDefault(kv.Key)?.Name ?? kv.Key}"))));
+            var row = new HBoxContainer();
+            var label = Ui.Label($"Copy {data.Items[id].Name}", 13, Ui.Muted);
+            label.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            row.AddChild(label);
+            var copyId = id;
+            var button = Widgets.IconButton("ui_trade", "Copy", $"Make a tradeable copy ({cost}). You keep the blueprint; whoever gets the copy studies it.",
+                () => _session.Notify(Remnants.Core.Trade.SchematicCopies.MakeCopy(sim, rules, copyId).Message));
+            button.Disabled = !options.Any(sim.State.Stockpile.CanAfford);
+            row.AddChild(button);
+            _copies.AddChild(row);
+        }
     }
 
     public void Toggle()
@@ -49,6 +80,7 @@ public partial class InventoryPanel : PanelContainer
         var state = _session.Sim.State;
 
         RefreshItems(data, state.Inventory);
+        RefreshCopies(data);
 
         var unlocks = _session.Sim.Data.Recipes.Values.Where(r => r.Blueprint is not null).ToLookup(r => r.Blueprint!);
         string Unlocks(string bp) => string.Join(", ", unlocks[bp].Select(r => r.Name));

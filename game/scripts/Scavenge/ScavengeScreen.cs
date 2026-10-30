@@ -113,6 +113,14 @@ public partial class ScavengeScreen : Node3D
             (_hud.TurnBar, _hud.UnitPanel, _hud.Actions, _hud.Stances, _hud.Log, _hud.Result);
         _coopPanel = _hud.Coop;
         _techPanel = _hud.Tech;
+        // Multiplayer: trade with allies (items between the parties' packs) at any time, not only on your turn.
+        if (_presenter.Driver is RemoteDriver remote)
+        {
+            var dock = new Trade.TradeDock(remote.Client, _hud.Toasts);
+            _hud.AddChild(dock);
+            _coopPanel.TradeRequested += dock.Request;
+            _coopPanel.CanTrade = true;
+        }
     }
 
     private void Wire()

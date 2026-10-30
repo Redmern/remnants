@@ -24,6 +24,12 @@ public partial class CoopPanel : PanelContainer
 
     public event Action<IScavengeCommand>? CommandRequested;
 
+    /// <summary>Trade with an ally (multiplayer): open a trade window with that player.</summary>
+    public event Action<int>? TradeRequested;
+
+    /// <summary>Trading is possible (a multiplayer mission).</summary>
+    public bool CanTrade { get; set; }
+
     /// <summary>A ping kind was picked: the next tile click places it.</summary>
     public event Action<PingKind>? PingChosen;
 
@@ -143,6 +149,14 @@ public partial class CoopPanel : PanelContainer
                 () => CommandRequested?.Invoke(new ProposeAlliance(pid, unit.Id, to)));
             button.SetBlocked(pending);
         }
+
+        if (CanTrade)
+            foreach (var ally in allies)
+            {
+                var other = ally;
+                Add(new ActionButton("ui_trade", $"Trade with {_presenter.PlayerName(other)}", "swap pack items · free, any time", 0, null),
+                    () => TradeRequested?.Invoke(other));
+            }
 
         if (allies.Count > 0)
         {
