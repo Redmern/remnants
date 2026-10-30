@@ -81,8 +81,8 @@ public class GearModsTests
         Assert.Equal(1, scoped.CloseApPenalty);
 
         Assert.True(Item("pistol+mod_long_barrel").Weight > Item("pistol").Weight + 1);
-        Assert.Equal(Item("linked_carbine").Actions[0].Accuracy + 0.09, Item("linked_carbine+mod_compensator").Actions[0].Accuracy, 6);
-        Assert.Equal(shoot.Accuracy + 0.03, Item("pistol+mod_compensator").Actions[0].Accuracy, 6);
+        Assert.Equal(Item("linked_carbine").Actions[0].Accuracy + 0.06, Item("linked_carbine+mod_compensator").Actions[0].Accuracy, 6);
+        Assert.Equal(shoot.Accuracy + 0.02, Item("pistol+mod_compensator").Actions[0].Accuracy, 6);
 
         var heavy = Item("pipe+mod_weighted_head").Actions[0];
         Assert.Equal(Item("pipe").Actions[0].ApCost + 1, heavy.ApCost);
@@ -121,7 +121,7 @@ public class GearModsTests
     {
         var vest = Item("padded_vest");
         var plated = Item("padded_vest+mod_armor_scrap_plates");
-        Assert.Equal(vest.Armor + 1.5, plated.Armor, 6);
+        Assert.Equal(vest.Armor + 0.75, plated.Armor, 6);
         Assert.Equal(vest.Weight + 3, plated.Weight, 2);
         Assert.True(plated.Stealth < vest.Stealth);
         Assert.Equal(1, plated.MoveNoise);
