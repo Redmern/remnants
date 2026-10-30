@@ -165,21 +165,35 @@ public class FogTests
     }
 
     [Fact]
-    public void Overwatch_fires_once_at_the_first_hostile_that_walks_into_sight()
+    public void Overwatch_turns_the_ap_left_into_reactions_at_hostiles_that_walk_into_sight()
     {
         var u = SurvivorUnit(pos: new(0, 4), weapon: "pistol");
-        var husk = EnemyUnit("husk", new(10, 4));
+        var husk = EnemyUnit("husk", new(7, 4)); // every step it takes ends in sight and reach
         husk.Ai.Mode = AiMode.Hunting;
         husk.Ai.LastKnown = u.Pos;
         var sim = Arena(12, 9, [u, husk]);
+        var rules = sim.Data.Rules.Fog.Overwatch;
 
         Assert.Equal(ScavengeError.InvalidStance, sim.Execute(new SetStance(1, u.Id, Stance.None)).Error);
         Assert.True(sim.Execute(new SetStance(1, u.Id, Stance.Overwatch)).Ok);
 
-        var reactions = sim.State.Events.Where(e => e.Type == ScavengeEventType.Overwatch && e.UnitId == u.Id && e.TargetId == husk.Id).ToList();
-        Assert.Single(reactions);
+        // Full AP (3) less the cost leaves 2 reactions; the husk keeps walking in, so both fire, and no more.
+        var expected = Math.Min(rules.Reactions, sim.Profile(u).MaxAp - rules.ApCost);
+        var reactions = sim.State.Events.Count(e => e.Type == ScavengeEventType.Overwatch && e.UnitId == u.Id && e.TargetId == husk.Id);
+        Assert.Equal(expected, reactions);
         Assert.True(Shot(sim, u, husk));
-        Assert.Equal(1, sim.State.Events.Count(e => e.UnitId == u.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed));
+        Assert.Equal(expected, sim.State.Events.Count(e => e.UnitId == u.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed));
+    }
+
+    [Fact]
+    public void Overwatch_with_little_ap_left_still_holds_one_reaction()
+    {
+        var u = SurvivorUnit(pos: new(0, 4), weapon: "pistol");
+        var husk = EnemyUnit("husk", new(10, 4));
+        var sim = Arena(12, 9, [u, husk]);
+        u.Ap = sim.Data.Rules.Fog.Overwatch.ApCost;
+        Assert.True(sim.Execute(new SetStance(1, u.Id, Stance.Overwatch)).Ok);
+        Assert.True(u.Reactions == 1 || u.Stance == Stance.None);
     }
 
     [Fact]

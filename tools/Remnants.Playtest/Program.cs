@@ -3,7 +3,7 @@ using Remnants.Core.Scavenge;
 using Remnants.Playtest;
 
 // Usage: dotnet run --project tools/Remnants.Playtest -- [--days=N] [--seeds=A..B | --seed=N] [--quiet] [--trace] [--no-expeditions] [--data=DIR]
-//        dotnet run --project tools/Remnants.Playtest -- --zone=outskirts|all [--runs=N] [--party=N] [--trace]
+//        dotnet run --project tools/Remnants.Playtest -- --zone=outskirts|all [--runs=N] [--party=N] [--trace] [--no-defenses] [--kit=fog|geared]
 var options = args.Where(a => a.StartsWith("--")).Select(a => a[2..].Split('=', 2)).ToDictionary(p => p[0], p => p.Length > 1 ? p[1] : "");
 var days = int.Parse(options.GetValueOrDefault("days", "40"));
 var dataDir = options.GetValueOrDefault("data", Path.Combine(AppContext.BaseDirectory, "data"));
@@ -20,7 +20,8 @@ if (options.TryGetValue("zone", out var zoneArg))
     // Zone trial: --zone=ID[,ID...] [--runs=N] [--party=N]
     foreach (var z in (zoneArg == "all" ? scavenge.Zones.Keys.ToList() : zoneArg.Split(',').ToList()))
         Console.Write(ZoneTrial.Run(data, scavenge, z, int.Parse(options.GetValueOrDefault("runs", "100")), int.Parse(options.GetValueOrDefault("party", "2")),
-            options.ContainsKey("trace") ? line => Console.WriteLine($"    {line}") : null));
+            options.ContainsKey("trace") ? line => Console.WriteLine($"    {line}") : null,
+            defenses: !options.ContainsKey("no-defenses"), kit: options.GetValueOrDefault("kit", "")));
     return;
 }
 

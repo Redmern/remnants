@@ -104,8 +104,9 @@ internal static class ScavengeAi
     {
         var fog = sim.Data.Rules.Fog;
         if (!fog.Ai.LinkedLurk || unit.Ap < fog.Overwatch.ApCost || unit.Stance != Stance.None) return false;
+        var left = unit.Ap - fog.Overwatch.ApCost;
         unit.Ap = 0;
-        ScavengeCommandHandlers.Enter(sim, unit, Stance.Overwatch);
+        ScavengeCommandHandlers.Enter(sim, unit, Stance.Overwatch, left);
         return true;
     }
 

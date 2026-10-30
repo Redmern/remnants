@@ -242,7 +242,7 @@ public sealed class ScavengeSim
 
     /// <summary>
     /// Overwatch: every unit on overwatch hostile to <paramref name="unit"/> that sees it now (by its own eyes, or as
-    /// revealed to its side within its sight) and reaches it fires one reaction, by id, while the unit stands. A
+    /// revealed to its side, <see cref="Detection.SeesRevealed"/>) and reaches it fires one reaction, by id, while the unit stands. A
     /// reaction does not set off further reactions.
     /// </summary>
     internal void CheckOverwatch(Unit unit)
@@ -255,9 +255,7 @@ public sealed class ScavengeSim
                          .OrderBy(u => u.Id).ToList())
             {
                 if (!unit.IsActive) break;
-                var sees = Detection.Spots(Data, State, watcher, unit)
-                           || (Detection.IsRevealed(State, unit.Id, watcher.Side)
-                               && Visibility.CanSee(Data, State.Map, watcher.Pos, Profile(watcher).Sight, unit.Pos));
+                var sees = Detection.Spots(Data, State, watcher, unit) || Detection.SeesRevealed(Data, State, watcher, unit);
                 if (!sees) continue;
                 var action = Profile(watcher).Actions
                     .Where(a => Combat.CheckReach(Data, State.Map, watcher.Pos, a, unit.Pos) == ScavengeError.None)

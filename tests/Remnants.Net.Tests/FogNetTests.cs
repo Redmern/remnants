@@ -1,5 +1,6 @@
 using Remnants.Core.Items;
 using Remnants.Core.Scavenge;
+using Remnants.Core.Survivors;
 
 namespace Remnants.Net.Tests;
 
@@ -10,13 +11,19 @@ namespace Remnants.Net.Tests;
 public class FogNetTests
 {
     /// <summary>
-    /// Alice's sniper, cloaked, with binoculars and a rifle, 9 tiles from Bob's pair on open ground: Alice sees Bob,
-    /// Bob (sight ~7) cannot see her. The map is flattened and the AI removed so only the duel matters.
+    /// Alice's sniper, cloaked, with binoculars and a rifle, 9 tiles from Bob's short-sighted pair on open ground: Alice
+    /// sees Bob; Bob (sight ~5, a muzzle flash ~8) cannot see her even when she fires. The map is flattened and the AI
+    /// removed so only the duel matters.
     /// </summary>
     private static (NetFixture F, TestPlayer A, TestPlayer B, Unit Sniper, Unit Victim) Duel()
     {
         var f = new NetFixture(new HostOptions { TurnSeconds = 0 });
-        var (a, b) = f.StartTwo();
+        var a = f.Join("Alice");
+        var bobs = NetFixture.Party("B");
+        foreach (var m in bobs) m.Survivor.Set(AttributeKind.Perception, 20);
+        var b = f.Join("Bob", bobs);
+        a.Client.SetReady(true);
+        b.Client.SetReady(true);
         f.EndTurnsUntil(() => f.PlayerUp(a, b) == a, a, b);
         var state = f.Sim.State;
         foreach (var p in state.Map.AllPositions.ToList()) state.Map[p] = Terrain.Floor;
@@ -24,16 +31,16 @@ public class FogNetTests
 
         var sniper = state.CurrentUnit!;
         var spotter = state.Units.First(u => u.PlayerId == a.Id && u.Id != sniper.Id);
-        var bobs = state.Units.Where(u => u.PlayerId == b.Id).ToList();
+        var pair = state.Units.Where(u => u.PlayerId == b.Id).ToList();
         sniper.Pos = new(11, 10);
         sniper.Equipment[EquipSlot.Weapon] = "rifle";
         sniper.Equipment[EquipSlot.Body] = "camo_cloak";
         sniper.Equipment[EquipSlot.Tool] = "binoculars";
         sniper.Ap = f.Sim.Profile(sniper).MaxAp;
         spotter.Pos = new(state.Map.Width - 1, state.Map.Height - 1);
-        bobs[0].Pos = new(2, 10);
-        bobs[1].Pos = new(2, 11);
-        return (f, a, b, sniper, bobs[0]);
+        pair[0].Pos = new(2, 10);
+        pair[1].Pos = new(2, 11);
+        return (f, a, b, sniper, pair[0]);
     }
 
     [Fact]
@@ -71,7 +78,7 @@ public class FogNetTests
     public void A_revealed_attacker_within_sight_shows_up_for_the_victim()
     {
         var (f, a, b, sniper, victim) = Duel();
-        sniper.Pos = new(8, 10); // inside Bob's sight, still hidden by the cloak
+        sniper.Pos = new(7, 10); // inside a muzzle flash's range of Bob, still hidden by the cloak
         Assert.False(Detection.SideSees(f.Sim.Data, f.Sim.State, Unit.PlayerSide(b.Id), sniper));
 
         Assert.True(a.Do(new Attack(a.Id, sniper.Id, victim.Id, "aimed_shot")).Ok);

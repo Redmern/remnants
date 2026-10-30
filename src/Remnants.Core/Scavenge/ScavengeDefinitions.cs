@@ -268,6 +268,12 @@ public sealed record FogRules
     /// <summary>Unseen hostiles moving within this distance (Chebyshev) of a side's unit become movement contacts.</summary>
     public int HearMovement { get; init; } = 3;
 
+    /// <summary>
+    /// A revealed unit (muzzle flash, motion sensor) is seen by an observer with line of sight out to this multiple of
+    /// its sight: a flash carries further than a figure in the dark.
+    /// </summary>
+    public double RevealSightMultiplier { get; init; } = 1.5;
+
     /// <summary>Rounds a unit stays revealed to a side after tripping its motion sensor.</summary>
     public int SensorRevealRounds { get; init; } = 1;
 
@@ -307,12 +313,17 @@ public sealed record AmbushRules
     public double BacksReduction { get; init; } = 0.5;
 }
 
-/// <summary>Overwatch stance: ends the turn; reacts to the first hostile that moves or reveals itself in sight and reach.</summary>
+/// <summary>
+/// Overwatch stance: ends the turn; reacts to hostiles that move or reveal themselves in sight and reach. The AP left
+/// after paying for it become reactions (at least one, at most <see cref="Reactions"/>).
+/// </summary>
 public sealed record OverwatchRules
 {
-    /// <summary>AP needed to go on overwatch (the rest of the turn is forfeited).</summary>
-    public int ApCost { get; init; } = 2;
-    public int Reactions { get; init; } = 1;
+    /// <summary>AP needed to go on overwatch.</summary>
+    public int ApCost { get; init; } = 1;
+
+    /// <summary>Most reactions one overwatch holds.</summary>
+    public int Reactions { get; init; } = 2;
     public double AccuracyPenalty { get; init; } = 0.1;
     public double DetectionBonus { get; init; } = 10;
 }

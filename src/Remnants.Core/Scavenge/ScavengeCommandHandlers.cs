@@ -143,16 +143,20 @@ internal static class ScavengeCommandHandlers
         if (c.Stance == Stance.Overwatch && sim.Profile(unit).Actions.Count == 0)
             return ScavengeResult.Fail(ScavengeError.InvalidStance, $"{unit.Name} has nothing to fire on overwatch.");
 
+        var left = unit.Ap - cost;
         unit.Ap = 0;
-        Enter(sim, unit, c.Stance);
+        Enter(sim, unit, c.Stance, left);
         return ScavengeResult.Success(c.Stance == Stance.Overwatch ? $"{unit.Name} is on overwatch." : $"{unit.Name} braces.");
     }
 
-    /// <summary>Puts a unit in a stance and logs it (players through <see cref="SetStance"/>, the Linked lurking).</summary>
-    internal static void Enter(ScavengeSim sim, Unit unit, Stance stance)
+    /// <summary>
+    /// Puts a unit in a stance and logs it (players through <see cref="SetStance"/>, the Linked lurking). On overwatch the
+    /// <paramref name="apLeft"/> after paying become its reactions (1..<see cref="OverwatchRules.Reactions"/>).
+    /// </summary>
+    internal static void Enter(ScavengeSim sim, Unit unit, Stance stance, int apLeft)
     {
         unit.Stance = stance;
-        unit.Reactions = stance == Stance.Overwatch ? sim.Data.Rules.Fog.Overwatch.Reactions : 0;
+        unit.Reactions = stance == Stance.Overwatch ? Math.Clamp(apLeft, 1, sim.Data.Rules.Fog.Overwatch.Reactions) : 0;
         if (stance == Stance.Overwatch)
             sim.State.Log(new(sim.State.Round, ScavengeEventType.Overwatch, $"{unit.Name} goes on overwatch.", unit.Id, Pos: unit.Pos));
         else

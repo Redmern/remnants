@@ -9,7 +9,8 @@ namespace Remnants.Core.Scavenge;
 /// always give the same answer. A side also sees
 /// <list type="bullet">
 /// <item>everyone on a tile lit by a <see cref="Flare"/> (every side sees lit tiles);</item>
-/// <item>a unit <see cref="Reveal"/>ed to it (muzzle flash, motion sensor) while one of its units has the tile in sight;</item>
+/// <item>a unit <see cref="Reveal"/>ed to it (muzzle flash, motion sensor) while one of its units has line of sight to it
+/// within <see cref="FogRules.RevealSightMultiplier"/> times its sight;</item>
 /// <item>hostiles within a working scanner's radius of one of its units, through walls and stealth.</item>
 /// </list>
 /// Contacts ("?" markers) are the middle state: the side knows something is near a tile, not what.
@@ -40,13 +41,16 @@ public static class Detection
         if (IsLit(state, target.Pos)) return true;
         var observers = state.Units.Where(u => u.Side == side && u.IsActive).ToList();
         if (observers.Count == 0) return false;
-        if (IsRevealed(state, target.Id, side)
-            && observers.Any(o => Visibility.CanSee(data, state.Map, o.Pos, ProfileDeriver.Derive(data, o).Sight, target.Pos)))
-            return true;
+        if (IsRevealed(state, target.Id, side) && observers.Any(o => SeesRevealed(data, state, o, target))) return true;
         if (observers.Any(o => o.HostileTo(target) && ScanRadius(data, o) is var r && r > 0 && o.Pos.Chebyshev(target.Pos) <= r))
             return true;
         return observers.Any(o => Spots(data, state, o, target));
     }
+
+    /// <summary>Whether an observer picks out a unit revealed to its side: line of sight within the stretched reveal range.</summary>
+    public static bool SeesRevealed(ScavengeData data, ScavengeState state, Unit observer, Unit target) =>
+        IsRevealed(state, target.Id, observer.Side)
+        && Visibility.CanSee(data, state.Map, observer.Pos, ProfileDeriver.Derive(data, observer).Sight * data.Rules.Fog.RevealSightMultiplier, target.Pos);
 
     /// <summary>Ids of every unit on the map the side sees right now, its own included.</summary>
     public static HashSet<int> SeenBy(ScavengeData data, ScavengeState state, string side) =>
