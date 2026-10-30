@@ -70,7 +70,7 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   outside), `SurvivorWalkers` (purely visual ambient life: workers circle their workplace with the odd break at home,
   idle adults potter near home or sit at the campfire, children play by the Town Hall, patients sit outside the Med
   Bay, infants stay home; long walks follow the gutters between plots, figures keep apart, at most 2x speed),
-  `OrbitCamera` (WASD/arrows/middle-drag pan, wheel zoom, Q/E/right-drag rotate). `TownLayout.Commons` puts the
+  `OrbitCamera` (WASD/arrows/middle-drag pan, wheel zoom, Q/R/right-drag rotate; speeds from `GameSettings`). `TownLayout.Commons` puts the
   campfire and playground just outside the grid beside the Town Hall, so they never take a plot.
 - `ModelLibrary` — reads `assets/generated/manifest.json`; buildings map to `{type}_l{level}` (nearest
   lower level, then a placeholder box), survivors to `survivor_adult_male|female` / `survivor_child`
@@ -82,14 +82,45 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   `rot_deg`, scaled by chest height for bodies other than the adult male). Body → torso; weapon → hand, else back (a
   missing arm drops it to the back; a prosthetic arm holds it); tool → back, else chest, else hand. Colony survivors
   carry no gear in Core, so the colony shows prosthetics only.
-- `scripts/HudTheme` — the one `Theme` for both screens' HUDs (opaque dark panels, buttons, scrollbars, font size), set
-  on each HUD root and on dialogs (a `CanvasLayer` does not pass a theme on). Panels add content, not styles.
-- `scripts/Colony/Ui/` — HUD panels (top bar with a beds/population warning, roster with partner/growth per line, a
-  family section, mood and a matchmaking row, building, build menu, event log with first-time tips from `Advice`, `ExpeditionPanel`,
-  `MedBayPanel`, `ProductionPanel`, `InventoryPanel`, `AfterActionDialog`). Read Core state, call the session; no rules. Where the UI
+- `scripts/HudTheme` — the one `Theme` for every screen's HUD: worn-metal 9-slice panels, bevelled buttons with hover /
+  pressed / disabled / focus states, tabs, lists, sliders, tooltips, scrollbars, progress bars, the bundled fonts; type
+  variations (`Card`, `CardSelected`, `Inset`, `Chip`, `Toast` panels; `Title`, `Display`, `Heading`, `Muted`, `Small`,
+  `Number` labels; `Primary`, `Flat`, `Tab` buttons). Set on each HUD root and overlay (a `CanvasLayer` does not pass a
+  theme on). Panels pick a variation and add content, not styles.
+- `scripts/Hud/` — the HUD component library and design tokens, shared by all screens:
+  - `Palette` (colour tokens: rust/amber for the player, moss good, red danger; **cyan only for the AI Network**),
+    `Fonts` (Barlow body, Barlow Condensed display/numbers, OFL, in `game/ui/fonts` with their licences), `PanelArt`
+    (procedural grain/bevel/rivet 9-slice textures), `Fmt` (number formatting), `Motion` (reveal/press/flash tweens).
+  - `Icons` — line icons by id from `game/ui/icons/{group}_{id}.svg` (24×24, white 2px stroke, tinted; imported with the
+    "keep" importer so exports ship the SVG), rasterised at 2× with mipmaps; fallbacks per call, then `item_generic`.
+    `Icons.Item` prefers a rendered gear icon `assets/generated/icons/{baseItemId}.png` when the asset pipeline adds one.
+  - Components: `Widgets` (labels, section headers, icon buttons with the hotkey in the tooltip, chips, cost chips that
+    mark what is missing, `Pips`), `StatBar`, `ResourceChip`, `Portrait`, `Toasts`, `ConfirmDialog`, `Overlay` (dimmed
+    modal base) with `PauseMenu` and `SettingsPanel`, `ProfileChips` (a field profile as chips).
+  - `PortraitStudio` — survivor portraits rendered at runtime from the 3D models (prosthetics, and for field units
+    their gear) in a private `SubViewport`, one per frame, cached by look; lives on the tree root.
+  - `GameSettings` — `user://settings.cfg`: UI scale (root `ContentScaleFactor` = auto by window height × the
+    setting), window mode/size, vsync, master/music/sfx bus volumes (buses made at boot), camera pan/zoom speed.
+    `Hotkeys` installs the InputMap actions (Esc menu, Space pause, 1/2/3 speed, B build, E expedition, I items,
+    L log, Tab next survivor, Q/R colony camera rotation; Space/Enter end turn in scavenge). `GameSettings.Boot` runs
+    once from whichever scene starts first and also attaches `DebugCapture`.
+- `scripts/MainMenu` + `MenuBackdrop` — the title screen over a throwaway grown colony circled by a slow camera:
+  Continue (the session's colony, else the save), New Game, Load, Multiplayer, Settings, Quit, debug skirmish.
+- `scripts/Colony/Ui/` — `ColonyHud` lays the colony HUD out and owns its hotkeys: `TopBar` (clock, speed, resource
+  chips with the change over the last day and what makes/eats each, population / beds / food-days pressure chips,
+  Build / Items / Expedition / World map / Menu), `RosterPanel` of `SurvivorCard`s (portrait, job, health and mood
+  bars, badges: injured / worsening, patient, pregnant, away, starving, homeless with its timer; collapsible),
+  `SurvivorPanel` (tabs Overview with the job output formula as a tooltip, Skills, Body, Family with matchmaking),
+  `BuildingPanel` (level pips, worker portraits, upgrade cost chips and Town Hall cap), `BuildMenu` (category filter,
+  grid with costs, locks and tooltips), `EventLog` (filterable, collapsible feed with icons; first-time tips from
+  `Advice`; raises toasts for deaths, births, departures, a party's arrival and return, lost limbs, recruits),
+  `ExpeditionPanel`, `WorldMapPanel`, `MedBayPanel`, `ProductionPanel`, `InventoryPanel`, `AfterActionDialog` (who came
+  home with injury chips, who was lost, recruits, loot). Esc closes the topmost panel, then opens the pause menu
+  (resume, save, load, settings, main menu, quit). Read Core state, call the session; no rules. Where the UI
   needs a rule Core exposes a query (`MaxUpgradeLevel`, `MaxPartySize`, `HealPerTick`/`HealEta`, `IsWorsening`,
   `CraftEffortPerTick`, `CraftStatus`, `SkillGap`, `CanQueue`, `QualityChances`, `PreviewProfile` for a survivor's field profile with
-  a given loadout).
+  a given loadout, `FoodPerDay`/`FoodDays`, `OutputPerTick`); the per-survivor output breakdown uses `JobOutput`'s
+  public factors.
 - `ColonySession.Current` keeps the colony alive across scene changes, so a party can go to the scavenge scene and
   come back. Each `ColonyScreen` detaches its handlers when it leaves the tree.
 - `scripts/ScavengeHandoff` — how the colony enters scavenge mode: `ColonySession.PlayExpedition` builds (or resumes)
@@ -357,7 +388,7 @@ and fast-forwards until a baby is born (then selects the mother), `--crafting-de
 production building, some at level 2–3) with staffed, queued Armory and Tailor and opens the Armory and item panels, `--expedition` opens the expedition planner with two adults picked, `--world-map` opens the world map
 (`--zone=ID` selects a marker), `--world-demo` fakes a few weeks of scouting and sends a party on the road (for
 screenshots); `--scavenge --zone=ID --seed=N` plays the debug mission in another zone, `--multiplayer` opens the multiplayer menu and
-`--mp-host[=PORT]` / `--mp-join=ADDR` with `--mp-name`, `--mp-ready`, … script it (see `MULTIPLAYER.md`), `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG. Needs a display; on
+`--mp-host[=PORT]` / `--mp-join=ADDR` with `--mp-name`, `--mp-ready`, … script it (see `MULTIPLAYER.md`), `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG (any scene). HUD shots: `--pause-menu`, `--settings`, `--build-menu`, `--select-survivor=ID`, `--survivor-tab=N` (colony), `--menu-settings` (main menu). Needs a display; on
 Wayland pass `--display-driver wayland --disable-vsync` so an unfocused window still renders:
 
 ```sh

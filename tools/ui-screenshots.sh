@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Capture every HUD screen as PNG (for UI reviews and before/after comparisons). Needs a display.
+#   tools/ui-screenshots.sh OUTDIR
+# On Wayland it passes --display-driver wayland --disable-vsync so an unfocused window still renders.
+set -uo pipefail
+out=${1:?usage: tools/ui-screenshots.sh OUTDIR}
+mkdir -p "$out"
+cd "$(dirname "$0")/.."
+driver=()
+[[ -n "${WAYLAND_DISPLAY:-}" ]] && driver=(--display-driver wayland --disable-vsync)
+
+shot() {
+  local name=$1 frames=$2; shift 2
+  timeout 120 godot-mono "${driver[@]}" --path game -- "$@" --screenshot="$out/$name.png" --frames="$frames" --quit \
+    >"$out/$name.log" 2>&1 || echo "FAILED: $name (see $out/$name.log)"
+}
+
+shot menu              200
+shot menu_settings     150 --menu-settings
+shot multiplayer       150 --multiplayer
+shot colony            150 --colony
+shot colony_demo       200 --colony --demo
+shot build_menu        150 --colony --build-menu
+shot family            200 --colony --family-demo
+shot survivor_skills   200 --colony --family-demo --survivor-tab=1
+shot survivor_body     200 --colony --family-demo --survivor-tab=2
+shot survivor_family   200 --colony --family-demo --survivor-tab=3
+shot crafting          250 --colony --crafting-demo
+shot expedition        150 --colony --expedition
+shot world_map         150 --colony --world-demo
+shot after_action      400 --colony --loop-demo --autopilot
+shot pause_menu        150 --colony --crafting-demo --pause-menu
+shot settings          150 --colony --settings
+shot scavenge          200 --scavenge
+shot scavenge_autoplay 600 --scavenge --autoplay=6
