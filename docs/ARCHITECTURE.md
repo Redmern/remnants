@@ -1162,9 +1162,9 @@ effects, upgrade kits, headgear, zone biomes, extra enemy tags / drops / termina
   players — carries the mods with no extra state, and `Items.ContainsKey` is the validation (a save or a joining party with a
   build gear_mods.json does not allow is refused like an unknown item). `ItemDef` gains `Mk`, `Mods`, `UnmoddedId` /
   `IsModded`; `DefinedId` stays the base item (models, icons, recipe inputs). Recipe item inputs never take modded gear.
-- **Types and slots**: firearm (sight, muzzle, stock, underbarrel: 2 / 3 / 4 at Mk I / II / III), melee (edge, grip, coil:
+- **Types and slots**: firearm (sight, muzzle, stock, underbarrel: 1 / 2 / 3 at Mk I / II / III), melee (edge, grip, coil:
   1 / 2 / 3), integrated (a fitted gun arm: one of sight, muzzle, underbarrel), armor (plating, lining, outer, webbing:
-  2 / 3 / 4), clothing (lining, outer, webbing: 2 / 3 / 3), helmet (plating, lining, visor: 1 / 2 / 3), mask (visor: 1).
+  1 / 2 / 3), clothing (lining, outer, webbing: 1 / 2 / 3), helmet (plating, lining, visor: 1 / 2 / 3), mask (visor: 1).
   Families (sidearm, long gun, carbine, melee, clothing, armor, plating) name the kit per Mk.
 - **Effects** (`ModEffect`): on attacks (ranged mods change ranged attacks, melee mods melee ones) accuracy (per action id
   too: a compensator on bursts), damage, reach, noise, reveal, AP, strength scaling, armor pierce, injury multiplier, a

@@ -22,7 +22,7 @@ public static class GearDemo
         var map = state.Map;
         foreach (var u in state.Units.Where(u => u.PlayerId is null && u.Kind is UnitKind.Enemy or UnitKind.Device)) u.Status = UnitStatus.Dead;
         var acting = state.CurrentUnit!;
-        acting.Equipment[EquipSlot.Weapon] = mods.Canonical("pistol", 2, ["mod_scope", "mod_suppressor", "mod_emp_coil"]);
+        acting.Equipment[EquipSlot.Weapon] = mods.Canonical("pistol", 3, ["mod_scope", "mod_suppressor", "mod_emp_coil"]);
         acting.Equipment[EquipSlot.Body] = mods.Canonical("padded_vest", 1, ["mod_armor_scrap_plates"]);
         acting.Equipment[EquipSlot.Head] = "helmet_scrap";
         acting.Pack.AddRange(["mod_reflex_sight", "mod_laser"]);

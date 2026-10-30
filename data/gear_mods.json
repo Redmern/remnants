@@ -35,11 +35,11 @@
 
   // Slot kinds per gear type and how many may be filled at Mk I / II / III.
   "types": {
-    "firearm": { "slots": ["sight", "muzzle", "stock", "underbarrel"], "slotsByMark": [2, 3, 4] },
+    "firearm": { "slots": ["sight", "muzzle", "stock", "underbarrel"], "slotsByMark": [1, 2, 3] },
     "melee": { "slots": ["edge", "grip", "coil"], "slotsByMark": [1, 2, 3] },
     "integrated": { "slots": ["sight", "muzzle", "underbarrel"], "slotsByMark": [1] },
-    "armor": { "slots": ["plating", "lining", "outer", "webbing"], "slotsByMark": [2, 3, 4] },
-    "clothing": { "slots": ["lining", "outer", "webbing"], "slotsByMark": [2, 3, 3] },
+    "armor": { "slots": ["plating", "lining", "outer", "webbing"], "slotsByMark": [1, 2, 3] },
+    "clothing": { "slots": ["lining", "outer", "webbing"], "slotsByMark": [1, 2, 3] },
     "helmet": { "slots": ["plating", "lining", "visor"], "slotsByMark": [1, 2, 3] },
     "mask": { "slots": ["visor"], "slotsByMark": [1] }
   },

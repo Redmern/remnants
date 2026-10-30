@@ -47,11 +47,12 @@ public class GearModsTests
     [Fact]
     public void A_modded_id_resolves_only_as_a_valid_build_in_canonical_order()
     {
-        Assert.True(Real.Items.ContainsKey("pistol+mod_iron_sight+mod_suppressor"));
-        Assert.False(Real.Items.ContainsKey("pistol+mod_suppressor+mod_iron_sight"), "mods go in slot order");
-        Assert.False(Real.Items.ContainsKey("pistol+mod_iron_sight+mod_reflex_sight"), "one mod per slot");
-        Assert.False(Real.Items.ContainsKey("pistol+mod_iron_sight+mod_suppressor+mod_stock"), "Mk I firearms take two mods");
-        Assert.True(Real.Items.ContainsKey("pistol+mk2+mod_iron_sight+mod_suppressor+mod_stock"));
+        Assert.True(Real.Items.ContainsKey("pistol+mk2+mod_iron_sight+mod_suppressor"));
+        Assert.False(Real.Items.ContainsKey("pistol+mk2+mod_suppressor+mod_iron_sight"), "mods go in slot order");
+        Assert.False(Real.Items.ContainsKey("pistol+mk2+mod_iron_sight+mod_reflex_sight"), "one mod per slot");
+        Assert.False(Real.Items.ContainsKey("pistol+mod_iron_sight+mod_suppressor"), "Mk I firearms take one mod");
+        Assert.False(Real.Items.ContainsKey("pistol+mk2+mod_iron_sight+mod_suppressor+mod_stock"));
+        Assert.True(Real.Items.ContainsKey("pistol+mk3+mod_iron_sight+mod_suppressor+mod_stock"));
         Assert.False(Real.Items.ContainsKey("pistol+mod_sharpened_edge"), "a melee mod does not fit a gun");
         Assert.False(Real.Items.ContainsKey("pistol+mod_nothing"));
         Assert.False(Real.Items.ContainsKey("pistol+mk9"));
@@ -144,17 +145,17 @@ public class GearModsTests
         Assert.True(swap.Ok, swap.Message);
         Assert.True(inv.Has("pistol+mod_reflex_sight") && inv.Has("mod_iron_sight"), "the old sight comes back");
 
-        Assert.True(sim.Execute(new InstallMod("pistol+mod_reflex_sight", "mod_suppressor")).Ok);
-        Assert.Equal(CommandError.NoFreeModSlot, sim.Execute(new InstallMod("pistol+mod_reflex_sight+mod_suppressor", "mod_stock")).Error);
-        Assert.Equal(CommandError.WrongKit, sim.Execute(new UpgradeGear("pistol+mod_reflex_sight+mod_suppressor", "kit_melee_mk2")).Error);
-        Assert.True(sim.Execute(new UpgradeGear("pistol+mod_reflex_sight+mod_suppressor", "kit_sidearm_mk2")).Ok);
-        Assert.True(sim.Execute(new InstallMod("pistol+mk2+mod_reflex_sight+mod_suppressor", "mod_stock")).Ok, "Mk II opens a third slot");
+        Assert.Equal(CommandError.NoFreeModSlot, sim.Execute(new InstallMod("pistol+mod_reflex_sight", "mod_suppressor")).Error);
+        Assert.Equal(CommandError.WrongKit, sim.Execute(new UpgradeGear("pistol+mod_reflex_sight", "kit_melee_mk2")).Error);
+        Assert.True(sim.Execute(new UpgradeGear("pistol+mod_reflex_sight", "kit_sidearm_mk2")).Ok);
+        Assert.True(sim.Execute(new InstallMod("pistol+mk2+mod_reflex_sight", "mod_suppressor")).Ok, "Mk II opens a second slot");
+        Assert.Equal(CommandError.NoFreeModSlot, sim.Execute(new InstallMod("pistol+mk2+mod_reflex_sight+mod_suppressor", "mod_stock")).Error);
 
-        var off = sim.Execute(new RemoveMod("pistol+mk2+mod_reflex_sight+mod_suppressor+mod_stock", "muzzle"));
+        var off = sim.Execute(new RemoveMod("pistol+mk2+mod_reflex_sight+mod_suppressor", "muzzle"));
         Assert.True(off.Ok, off.Message);
-        Assert.True(inv.Has("pistol+mk2+mod_reflex_sight+mod_stock") && inv.Has("mod_suppressor"), "removing a mod returns it intact");
-        Assert.Equal(CommandError.EmptyModSlot, sim.Execute(new RemoveMod("pistol+mk2+mod_reflex_sight+mod_stock", "muzzle")).Error);
-        Assert.Equal(CommandError.UnknownItem, sim.Execute(new InstallMod("pistol+mk2+mod_reflex_sight+mod_stock", "kit_melee_mk2")).Error);
+        Assert.True(inv.Has("pistol+mk2+mod_reflex_sight") && inv.Has("mod_suppressor"), "removing a mod returns it intact");
+        Assert.Equal(CommandError.EmptyModSlot, sim.Execute(new RemoveMod("pistol+mk2+mod_reflex_sight", "muzzle")).Error);
+        Assert.Equal(CommandError.UnknownItem, sim.Execute(new InstallMod("pistol+mk2+mod_reflex_sight", "kit_melee_mk2")).Error);
         Assert.Contains(sim.State.Events, e => e.Type == ColonyEventType.GearModded);
     }
 

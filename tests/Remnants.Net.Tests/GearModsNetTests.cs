@@ -15,13 +15,13 @@ public class GearModsNetTests
         var f = new NetFixture();
         var cheat = f.Connect("Cheat");
         var forged = NetFixture.Party("C");
-        // Three mods on a Mk I pistol: two slots at most.
-        forged[0].Equipment![EquipSlot.Weapon] = "pistol+mod_iron_sight+mod_suppressor+mod_stock";
+        // Two mods on a Mk I pistol: one slot.
+        forged[0].Equipment![EquipSlot.Weapon] = "pistol+mod_iron_sight+mod_suppressor";
         cheat.Client.Join("Cheat", forged);
         Assert.Contains("pistol+mod_iron_sight", cheat.Last<JoinRefused>().Reason);
 
         var party = NetFixture.Party("A");
-        party[0].Equipment![EquipSlot.Weapon] = "pistol@fine+mk2+mod_reflex_sight+mod_suppressor";
+        party[0].Equipment![EquipSlot.Weapon] = "pistol@fine+mk3+mod_reflex_sight+mod_suppressor";
         party[0].Equipment![EquipSlot.Head] = "helmet_scrap";
         party[0].Pack!.Add("mod_flashlight");
         party[0].Survivor.Perks.Add("jury_rig");
@@ -30,13 +30,13 @@ public class GearModsNetTests
         a.Client.SetReady(true);
         b.Client.SetReady(true);
         var alice = f.Sim.State.Units.First(u => u.PlayerId == a.Id && u.Name == "A1");
-        Assert.Equal("pistol@fine+mk2+mod_reflex_sight+mod_suppressor", alice.Equipment[EquipSlot.Weapon]);
+        Assert.Equal("pistol@fine+mk3+mod_reflex_sight+mod_suppressor", alice.Equipment[EquipSlot.Weapon]);
         Assert.Equal("helmet_scrap", alice.Equipment[EquipSlot.Head]);
 
         f.EndTurnsUntil(() => f.Sim.State.CurrentUnitId == alice.Id, a, b);
         var fit = a.Do(new FieldMod(a.Id, alice.Id, "mod_flashlight"));
         Assert.True(fit.Ok, fit.Message);
-        Assert.Equal("pistol@fine+mk2+mod_reflex_sight+mod_suppressor+mod_flashlight", alice.Equipment[EquipSlot.Weapon]);
+        Assert.Equal("pistol@fine+mk3+mod_reflex_sight+mod_suppressor+mod_flashlight", alice.Equipment[EquipSlot.Weapon]);
         Assert.Contains(a.View.Units, u => u.Id == alice.Id && u.Equipment[EquipSlot.Weapon] == alice.Equipment[EquipSlot.Weapon]);
         f.AssertNoLeaks();
     }
