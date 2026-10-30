@@ -25,12 +25,13 @@ public static class SurvivorDressing
 
     /// <summary>
     /// Sockets each slot may use, best first. Clothing and armor go on the torso; a weapon in the hand, else slung on
-    /// the back (the left hand when only that arm is left); a tool on the back, else hung on the chest (over any garment),
+    /// the back (the left hand when only that arm is left); headgear on the head; a tool on the back, else hung on the chest (over any garment),
     /// else in the hand.
     /// </summary>
     private static readonly (EquipSlot Slot, string[] Sockets)[] GearSockets =
     [
         (EquipSlot.Body, ["torso"]),
+        (EquipSlot.Head, ["head"]),
         (EquipSlot.Weapon, ["hand_r", "hand_l", "back"]),
         (EquipSlot.Tool, ["back", "torso", "hand_r"]),
     ];
@@ -174,7 +175,8 @@ public static class SurvivorDressing
             .Where(m => m.Skin is not null).OrderBy(m => m.Name == part ? 0 : 1).FirstOrDefault();
 
     /// <summary>
-    /// Hangs the equipped items (by slot, item ids may carry an <c>@quality</c> suffix) on a body model built from
+    /// Hangs the equipped items (by slot; item ids may carry an <c>@quality</c> suffix and gear mods, shown by
+    /// <see cref="GearModels.FitMods"/>) on a body model built from
     /// <paramref name="bodyId"/>. Call after <see cref="FitLimbs"/> so a hand item rides on a prosthetic arm and a
     /// missing arm drops its weapon to the back. Items with no model or no free socket are left off.
     /// </summary>
@@ -188,7 +190,7 @@ public static class SurvivorDressing
         foreach (var (slot, preferred) in GearSockets)
         {
             if (!equipment.TryGetValue(slot, out var itemId)) continue;
-            var modelId = $"item_{itemId.Split('@')[0]}";
+            var modelId = GearModels.ItemModel(itemId);
             var attach = library.AttachPoints(modelId);
             foreach (var name in preferred)
             {
@@ -202,6 +204,7 @@ public static class SurvivorDressing
                     if (!PartShown(model, skeleton, socket.Part) || library.TryInstance(modelId) is not { } held) continue;
                     held.Transform = new Transform3D(basis, -(basis * at.Point));
                     held.Name = $"Gear_{slot}";
+                    GearModels.FitMods(library, held, itemId);
                     SocketNode(skeleton, bone).AddChild(held);
                 }
                 else
@@ -211,6 +214,7 @@ public static class SurvivorDressing
                     var inModel = new Transform3D(basis, socket.Point - basis * at.Point);
                     item.Transform = RelativeTo(model, part).AffineInverse() * inModel;
                     item.Name = $"Gear_{slot}";
+                    GearModels.FitMods(library, item, itemId);
                     part.AddChild(item);
                 }
                 // A garment shares the chest with a hung tool (binoculars over a jacket); everything else is exclusive.
