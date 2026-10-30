@@ -18,7 +18,7 @@ public sealed record PlaythroughSummary(
     double? TownHall2Day, double? FirstStarvingDay, double MinFoodDays, int Expeditions, int ExpeditionsWithDeaths,
     int LinkedEncountersEarly, double? WorkshopDay, double? ArmoryDay, double? LabDay, int CraftedItems, int Recruits,
     double? FirstPerkPointDay, int LevelUps, double SurvivorDays, int PerksLearned, double MeanLevel, int MaxLevel, int UnspentPoints,
-    CyberSummary? Cyber = null, SchematicSummary? Schematics = null);
+    CyberSummary? Cyber = null, SchematicSummary? Schematics = null, MedicineSummary? Medicine = null);
 
 /// <summary>
 /// Schematics: the first day one was learned (any) and the first tier-2 one, how many were known at days 30/60/90
@@ -28,6 +28,13 @@ public sealed record PlaythroughSummary(
 public sealed record SchematicSummary(double? FirstDay, double? FirstTier2Day, int?[] KnownAt, SortedDictionary<string, int> BySource,
     int Found, int Duplicates, double ResearchDataGained, int TraderVisits, int ContractsDone, int TownHallLevel, int MaxThreatRun,
     bool ArmoryAndLab2);
+
+/// <summary>
+/// Medicine: wounds that got infected, sicknesses, treatments given at home (Med Bay or by hand), blood donations, deaths
+/// to a condition, medical supplies crafted, and the first day infection and the dispensary were seen.
+/// </summary>
+public sealed record MedicineSummary(int Infections, int Sicknesses, int Treatments, int Donations, int ConditionDeaths, int SuppliesCrafted,
+    double? FirstInfectionDay, int InfectedAtEnd);
 
 /// <summary>
 /// Cybernetics: the first day a design of each tier could be queued (requirements met, building there), limbs lost,
@@ -66,6 +73,8 @@ public sealed class Playthrough
     private int _limbsLost, _surgeries, _complications;
     private readonly int?[] _knownAt = new int?[3];
     private double _researchData, _lastResearchData;
+    private int _infections, _sicknesses, _treatments, _donations, _conditionDeaths, _supplies;
+    private double? _firstInfection;
 
     public PlaythroughSummary Run(int days, int actEveryTicks = 4)
     {
@@ -102,7 +111,7 @@ public sealed class Playthrough
             _departures, _births, _firstBirth, _firstPregnancy, _houseAffordable, _houseBuilt, _townHall2, _firstStarving,
             _minFoodDays, Bot.Expeditions.Count, Bot.Expeditions.Count(e => e.Dead > 0), linkedEarly, _workshop, _armory, _lab, _crafted, _recruits,
             _firstPerkPoint, _levelUps, _survivorTicks / tpd, _perks, grown.Count == 0 ? 0 : grown.Average(x => x.Level),
-            grown.Select(x => x.Level).DefaultIfEmpty(1).Max(), grown.Sum(x => x.PerkPoints), Cyber(), SchematicStats());
+            grown.Select(x => x.Level).DefaultIfEmpty(1).Max(), grown.Sum(x => x.PerkPoints), Cyber(), SchematicStats(), Medicine());
     }
 
     /// <summary>Where people are right now: workers per building, patients, away, idle.</summary>
@@ -136,12 +145,22 @@ public sealed class Playthrough
             {
                 case ColonyEventType.Died when e.Message.Contains("starved"): _starvationDeaths++; break;
                 case ColonyEventType.Died when e.Message.Contains(" died in "): _expeditionDeaths++; break;
-                case ColonyEventType.Died: _otherDeaths++; break;
+                case ColonyEventType.Died:
+                    _otherDeaths++;
+                    if (Sim.Data.Medicine is { } med && med.Conditions.Values.Any(c => e.Message.Contains(c.Name.ToLowerInvariant()))) _conditionDeaths++;
+                    break;
+                case ColonyEventType.Infected: _infections++; _firstInfection ??= Day; break;
+                case ColonyEventType.FellSick: _sicknesses++; break;
+                case ColonyEventType.Treated: _treatments++; break;
+                case ColonyEventType.BloodDonated: _donations++; break;
                 case ColonyEventType.Left: _departures++; break;
                 case ColonyEventType.Born: _births++; _firstBirth ??= Day; break;
                 case ColonyEventType.Pregnant: _firstPregnancy ??= Day; break;
                 case ColonyEventType.Starving: _firstStarving ??= Day; break;
-                case ColonyEventType.Crafted: _crafted++; break;
+                case ColonyEventType.Crafted:
+                    _crafted++;
+                    if (e.BuildingId is { } b && Sim.State.FindBuilding(b)?.DefId == Sim.Data.Rules.Medical.BuildingId) _supplies++;
+                    break;
                 case ColonyEventType.Recruited: _recruits++; break;
                 case ColonyEventType.LevelUp: _levelUps++; _firstPerkPoint ??= Day; break;
                 case ColonyEventType.PerkLearned: _perks++; break;
@@ -196,6 +215,10 @@ public sealed class Playthrough
             Bot.Expeditions.Select(e => Sim.Scavenge!.Zones[e.Zone].Threat).DefaultIfEmpty(0).Max(),
             Sim.State.Buildings.Any(b => b.DefId == "armory" && b.Level >= 2) && Sim.State.Buildings.Any(b => b.DefId == "electronics_lab" && b.Level >= 2));
     }
+    private MedicineSummary? Medicine() =>
+        Sim.Data.Medicine is not { } med ? null
+            : new MedicineSummary(_infections, _sicknesses, _treatments, _donations, _conditionDeaths, _supplies, _firstInfection,
+                Sim.State.Survivors.Count(x => x.Body.Conditions.Any(c => med.Condition(c.Id)?.Kind == Remnants.Core.Data.ConditionKind.Infection)));
 
     private CyberSummary? Cyber()
     {

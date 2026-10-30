@@ -159,7 +159,8 @@ public sealed class ColonyBot
             else if (Count("padded_vest") < 2 && State.Stockpile.Get("cloth") >= 5) Queue(tailor, "padded_vest");
         }
         if (Find("kitchen") is { } kitchen && kitchen.Queue.Count == 0 && State.Stockpile.Get("food") > 30)
-            Queue(kitchen, "simple_meal");
+            Queue(kitchen, State.Stockpile.Get("alcohol") < 2 && Find("med_bay") is not null && State.Stockpile.Get("food") > 60 ? "spirits" : "simple_meal");
+        if (Find("med_bay") is { } bay && bay.Queue.Count == 0) CraftMedicine(bay);
         if (Find("armory") is { } armory && armory.Queue.Count == 0 && Count("machete") < 2 && State.Stockpile.Get("scrap") >= 10)
             Queue(armory, "machete");
         if (Find("electronics_lab") is { } lab && lab.Queue.Count == 0 && State.Stockpile.Get("scrap") >= 20)
@@ -207,6 +208,24 @@ public sealed class ColonyBot
         foreach (var call in State.Radio.Calls.ToList()) _sim.Execute(new AnswerCall(call.Id));
     }
 
+    /// <summary>
+    /// The Med Bay's dispensary: antibiotics while anyone is infected, then a small stock of the basics (antiseptic,
+    /// splints, clean dressings), and blood bags for the party once there is a donor to spare. Only what it may make.
+    /// </summary>
+    private void CraftMedicine(Building bay)
+    {
+        bool Can(string recipe) => _sim.CanQueue(bay, Data.Recipes[recipe]).Ok && State.Stockpile.CanAfford(Data.Recipes[recipe].Inputs);
+        var infected = State.Survivors.Any(s => s.Body.Conditions.Any(c => Data.Medicine?.Condition(c.Id)?.Kind == ConditionKind.Infection));
+        string? pick = null;
+        if (infected && Count("antibiotics") < 1 && Can("antibiotics")) pick = "antibiotics";
+        else if (Count("antiseptic") < 3 && Can("antiseptic")) pick = "antiseptic";
+        else if (Count("splint") < 2 && Can("splint")) pick = "splint";
+        else if (Count("clean_dressing") < 3 && Can("clean_dressing")) pick = "clean_dressing";
+        else if (Count("antibiotics") < 2 && Can("antibiotics")) pick = "antibiotics";
+        else if (Count("blood_bag") < 1 && Can("blood_bag") && Medicine.Donor(State, Data, Data.Recipes["blood_bag"].DonorHealth) is not null) pick = "blood_bag";
+        if (pick is not null) Queue(bay, pick);
+    }
+
     private int Count(string baseId) =>
         State.Inventory.Counts.Where(kv => _sim.Scavenge!.Items.TryGetValue(kv.Key, out var d) && d.DefinedId == baseId).Sum(kv => kv.Value);
 
@@ -223,10 +242,17 @@ public sealed class ColonyBot
         if (!_sim.MedBays.Any()) return;
         // Light wounds heal on their own while people work; only the ones that would not (or would worsen) need a bed.
         var natural = Data.Rules.Medical.NaturalHealMaxSeverity;
+        var med = Data.Medicine;
         foreach (var s in State.Survivors.Where(s => !s.Away && s.PatientAtBuildingId is null
-                     && s.Body.Parts.Values.Any(p => p.Condition == PartCondition.Injured && p.Severity >= natural)).ToList())
+                     && (s.Body.Parts.Values.Any(p => p.Condition == PartCondition.Injured && p.Severity >= natural)
+                         || med is not null && s.Body.Conditions.Any(c => med.Condition(c.Id)?.Kind is ConditionKind.Infection or ConditionKind.Sickness))).ToList())
             if (_sim.MedBays.Any(b => _sim.FreePatientSlots(b) > 0))
                 _sim.Execute(new AdmitPatient(s.Id));
+        // Nobody in a bed: dress the wounds of those who work through them, so they do not go bad.
+        foreach (var s in State.Survivors.Where(s => !s.Away && s.PatientAtBuildingId is null && s.IsInjured).ToList())
+            if (State.Inventory.Counts.Keys.FirstOrDefault(id => _sim.Scavenge!.Items[id].DefinedId is "antiseptic" or "clean_dressing") is { } dressing
+                && Treatment.Helps(med, s.Body, _sim.Scavenge!.Items[dressing].Use!))
+                _sim.Execute(new TreatSurvivor(s.Id, dressing));
     }
 
     // ---- cybernetics -----------------------------------------------------------------------------------------
@@ -550,11 +576,13 @@ public sealed class ColonyBot
             members[party.IndexOf(party.MaxBy(s => s.Get(Skill.Hacking) + s.Get(AttributeKind.Intellect) / 10)!)].Pack!.Add(kit);
         if (Take(d => d.Drone is not null, _ => 1) is { } drone)
             members[party.IndexOf(party.MaxBy(s => s.Get(Skill.DronePiloting) + s.Get(AttributeKind.Perception) / 10)!)].Pack!.Add(drone);
-        // Medical: one med-kit and bandages spread over the party.
+        // Medical: a blood bag or med-kit for the downed, then bandages, splints and painkillers spread over the party.
         for (var i = 0; ; i++)
         {
-            var id = Take(d => d.DefinedId == "med_kit", _ => 1) ?? Take(d => d.DefinedId == "bandage", _ => 1);
-            if (id is null || i >= party.Count * 2) break;
+            var id = Take(d => d.DefinedId is "trauma_kit" or "blood_bag" or "med_kit", d => d.Use?.ReviveHp ?? 0)
+                     ?? Take(d => d.DefinedId is "bandage" or "clean_dressing", d => d.Use?.Heal ?? 0)
+                     ?? Take(d => d.DefinedId is "splint" or "painkiller" or "antiseptic", _ => 1);
+            if (id is null || i >= party.Count * 3) break;
             members[i % members.Count].Pack!.Add(id);
         }
         return members;

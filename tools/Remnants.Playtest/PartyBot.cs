@@ -1,6 +1,7 @@
 using Remnants.Core.Colony;
 using Remnants.Core.Items;
 using Remnants.Core.Scavenge;
+using Remnants.Core.Survivors;
 
 namespace Remnants.Playtest;
 
@@ -152,15 +153,24 @@ public static class PartyBot
 
         // 1. A downed ally next to us gets the med-kit; a badly hurt one (or we) a bandage when nobody is adjacent.
         foreach (var ally in allies.Where(a => a.Status == UnitStatus.Downed && a.Pos.Chebyshev(unit.Pos) <= 1))
-            if (Usable(sim, unit, "med_kit", u => u.ReviveHp > 0 || u.Stabilize) is { } kit)
+            if (Best(sim, unit, u => u.ReviveHp > 0 || u.Stabilize, u => -u.ReviveHp) is { } kit)
                 return new UseItem(playerId, unit.Id, kit, ally.Id);
             // Co-op: no med-kit, so carry them out (Core says whether we can).
             else if (ally.PlayerId != playerId && CoopActions.CheckCarry(sim, unit, ally) is null)
                 return new Carry(playerId, unit.Id, ally.Id);
         var hurt = allies.Where(a => a.IsActive && a.Hp < a.MaxHp * 0.5 && a.Pos.Chebyshev(unit.Pos) <= 1).OrderBy(a => a.Hp).FirstOrDefault();
         if (hurt is not null && !hostiles.Any(h => h.Pos.Chebyshev(unit.Pos) <= 1)
-            && Usable(sim, unit, "bandage", u => u.Heal > 0) is { } bandage)
+            && Best(sim, unit, u => u.Heal > 0 && u.ReviveHp == 0 && u.HumanityCost == 0, u => -u.Heal) is { } bandage)
             return new UseItem(playerId, unit.Id, bandage, hurt.Id);
+        // A broken limb gets a splint when nothing is in reach; a survivor in pain takes a painkiller once.
+        if (!hostiles.Any(h => h.Pos.Chebyshev(unit.Pos) <= 2) && sim.Data.Medicine is { } med)
+        {
+            if (allies.FirstOrDefault(a => a.IsActive && a.Pos.Chebyshev(unit.Pos) <= 1 && Treatment.UnsplintedFracture(med, a.Body) is not null) is { } broken
+                && Best(sim, unit, u => u.Splint, _ => 0) is { } splint)
+                return new UseItem(playerId, unit.Id, splint, broken.Id);
+            if (Treatment.InPain(med, unit.Body) && unit.Body.Doses < 1 && Best(sim, unit, u => u.PainRelief > 0 && u.HumanityCost == 0, _ => 0) is { } pill)
+                return new UseItem(playerId, unit.Id, pill);
+        }
 
         // 1b. Against the fog: light up where an ambush came from; scan when something is heard but not seen.
         if (defenses && hostiles.Count == 0)
@@ -342,6 +352,11 @@ public static class PartyBot
 
     private static int ThrowRange(ScavengeSim sim, Unit unit, string baseId) =>
         unit.Pack.Select(id => sim.Data.Items[id]).Where(i => i.DefinedId == baseId && i.Use is not null).Select(i => i.Use!.Range).DefaultIfEmpty(0).Max();
+
+    /// <summary>The pack item that does this and fits the AP, lowest <paramref name="rank"/> first (then the pack order).</summary>
+    private static string? Best(ScavengeSim sim, Unit unit, Func<UseEffect, bool> does, Func<UseEffect, double> rank) =>
+        unit.Pack.Where(id => sim.Data.Items[id].Use is { } use && does(use) && use.ApCost <= unit.Ap)
+            .OrderBy(id => rank(sim.Data.Items[id].Use!)).FirstOrDefault();
 
     private static string? Usable(ScavengeSim sim, Unit unit, string baseId, Func<UseEffect, bool> does) =>
         unit.Pack.FirstOrDefault(id => sim.Data.Items[id] is { Use: { } use } item && item.DefinedId == baseId && does(use) && use.ApCost <= unit.Ap);
