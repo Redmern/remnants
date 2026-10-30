@@ -3,6 +3,7 @@ using System.Linq;
 using Godot;
 using Remnants.Core.Items;
 using Remnants.Core.Survivors;
+using Remnants.Game.Anim;
 
 namespace Remnants.Game.Colony;
 
@@ -35,10 +36,11 @@ public static class SurvivorDressing
     ];
 
     /// <summary>
-    /// Hides missing limbs and fits prosthetic ones. On a rigged body (manifest v2) the prosthetic's skinned mesh moves
-    /// under the body's <c>Skeleton3D</c> (its skin binds by bone name to the bones in <c>limb_bones</c>), so it follows
-    /// every clip. A static body (v1) gets the old swap: the prosthetic model placed at the limb's joint, scaled down for
-    /// a child.
+    /// Hides missing limbs and fits prosthetic ones, and an eye implant on the head. On a rigged body (manifest v2) the
+    /// prosthetic's skinned mesh moves under the body's <c>Skeleton3D</c> (its skin binds by bone name to the bones in
+    /// <c>limb_bones</c>; an implant's <c>eye</c> part to <c>neck</c>), so it follows every clip. A static body (v1) gets the
+    /// old swap: the prosthetic model placed at the limb's joint, scaled down for a child. A blade arm also fits its open
+    /// mesh, hidden; <see cref="BladeArm"/> swaps them during attacks.
     /// </summary>
     public static void FitLimbs(ModelLibrary library, Node3D model, Body body, bool child)
     {
@@ -54,22 +56,20 @@ public static class SurvivorDressing
             var kind = Body.RegionOf(part) == BodyRegion.Arms ? "arm" : "leg";
             var side = nodeName[^1];
             var (variant, tint) = ProstheticModel(state, kind);
-            var id = new[] { $"prosthetic_{kind}_{variant}_{side}", variant, $"prosthetic_{kind}_cyborg_{side}" }.FirstOrDefault(library.Has);
+            var exact = $"prosthetic_{kind}_{variant}_{side}";
+            var id = new[] { exact, variant, $"prosthetic_{kind}_cyborg_{side}" }.FirstOrDefault(library.Has);
             if (id is null || library.TryInstance(id) is not { } prosthetic) continue;
-            if (tint is { } t) Tint(prosthetic, t);
-            if (skeleton is not null && Skinned(prosthetic, nodeName) is { } mesh)
+            // The tier tint only stands in for a mesh the asset export does not have yet.
+            if (id != exact && tint is { } t) Tint(prosthetic, t);
+            if (skeleton is not null && Mount(library, skeleton, prosthetic, id, nodeName, nodeName + ProstheticSuffix))
             {
-                var bones = library.LimbBones(id).GetValueOrDefault(nodeName) ?? [];
-                if (bones.All(b => skeleton.FindBone(b) >= 0))
+                var open = exact.Replace("_blade_", "_blade_open_");
+                if (id == exact && open != exact && library.TryInstance(open) is { } opened
+                    && Mount(library, skeleton, opened, open, nodeName, nodeName + ProstheticSuffix + BladeArm.OpenSuffix))
                 {
-                    mesh.GetParent().RemoveChild(mesh);
-                    mesh.Owner = null;
-                    mesh.Name = nodeName + ProstheticSuffix;
-                    mesh.Transform = Transform3D.Identity;
-                    skeleton.AddChild(mesh);
-                    mesh.Skeleton = mesh.GetPathTo(skeleton);
+                    skeleton.GetNode<Node3D>(nodeName + ProstheticSuffix + BladeArm.OpenSuffix).Visible = false;
+                    if (model.GetNodeOrNull(nameof(BladeArm)) is null) model.AddChild(new BladeArm { Name = nameof(BladeArm) });
                 }
-                prosthetic.Free();
                 continue;
             }
             var joint = prosthetic.FindChild(nodeName, true, false) as Node3D;
@@ -78,15 +78,57 @@ public static class SurvivorDressing
             prosthetic.Position = limb.Position - (joint?.Position ?? Vector3.Zero) * scale;
             limb.GetParent().AddChild(prosthetic);
         }
+        FitEye(library, model, skeleton, body[BodyPart.Eyes]);
     }
 
     /// <summary>A prosthetic mesh moved onto a rigged body is named <c>{part}_prosthetic</c> (e.g. <c>leg_l_prosthetic</c>).</summary>
     public const string ProstheticSuffix = "_prosthetic";
 
     /// <summary>
-    /// The model variant for a fitted part (<c>prosthetic_{kind}_{variant}_{side}</c>) and the tint it wears: the node's
-    /// <c>model</c> id and its tier's tint (cybernetics.json), so per-tier meshes drop in by data. Parts outside the tree
-    /// (old saves without data) fall back to hook/peg below quality 1 and cyborg from there.
+    /// An eye implant (<c>prosthetic_{model}</c>, e.g. <c>prosthetic_eye_scope</c>): its <c>eye</c> part, skinned to
+    /// <c>neck</c>, moves under the body's skeleton as <c>eye_prosthetic</c>; on a static body the model is added as it
+    /// stands (it is placed as on the adult body). The head stays; implants have no stand-in mesh.
+    /// </summary>
+    private static void FitEye(ModelLibrary library, Node3D model, Skeleton3D? skeleton, BodyPartState state)
+    {
+        if (state.Condition != PartCondition.Prosthetic) return;
+        var (variant, _) = ProstheticModel(state, "eye");
+        var id = $"prosthetic_{variant}";
+        if (!library.Has(id) || library.TryInstance(id) is not { } implant) return;
+        if (skeleton is not null && Mount(library, skeleton, implant, id, EyeNode, EyeNode + ProstheticSuffix)) return;
+        model.AddChild(implant);
+    }
+
+    private const string EyeNode = "eye";
+
+    /// <summary>
+    /// Moves a prosthetic model's skinned mesh under the body's skeleton as <paramref name="name"/> and frees the rest of
+    /// the model. False (the model kept) when it has no skinned mesh or the body lacks one of its bones.
+    /// </summary>
+    private static bool Mount(ModelLibrary library, Skeleton3D skeleton, Node3D prosthetic, string id, string part, string name)
+    {
+        if (Skinned(prosthetic, part) is not { } mesh) return false;
+        var bones = library.LimbBones(id).GetValueOrDefault(part) ?? [];
+        if (!bones.All(b => skeleton.FindBone(b) >= 0))
+        {
+            prosthetic.Free();
+            return true;
+        }
+        mesh.GetParent().RemoveChild(mesh);
+        mesh.Owner = null;
+        mesh.Name = name;
+        mesh.Transform = Transform3D.Identity;
+        skeleton.AddChild(mesh);
+        mesh.Skeleton = mesh.GetPathTo(skeleton);
+        prosthetic.Free();
+        return true;
+    }
+
+    /// <summary>
+    /// The model variant for a fitted part (<c>prosthetic_{kind}_{variant}_{side}</c>; an eye implant's is
+    /// <c>eye_{spec}</c>) and its tier's tint: the node's <c>model</c> id (cybernetics.json), so per-tier meshes drop in by
+    /// data. The tint is only worn when that mesh is missing and a stand-in fills in. Parts outside the tree (old saves
+    /// without data) fall back to hook/peg below quality 1 and cyborg from there.
     /// </summary>
     public static (string Variant, Color? Tint) ProstheticModel(BodyPartState state, string kind)
     {
@@ -101,8 +143,8 @@ public static class SurvivorDressing
         p.Condition == PartCondition.Prosthetic ? $"{(int)p.Condition}{p.ProstheticItemId ?? (p.ProstheticQuality < 1 ? "-" : "+")}" : $"{(int)p.Condition}";
 
     /// <summary>
-    /// Stand-in for per-tier meshes: every surface gets a copy of its material with the albedo pulled toward the tier's
-    /// tint (the copy is per instance, so the shared model stays as it is).
+    /// Stand-in for a missing per-tier mesh: every surface gets a copy of its material with the albedo pulled toward the
+    /// tier's tint (the copy is per instance, so the shared model stays as it is).
     /// </summary>
     private static void Tint(Node node, Color tint)
     {

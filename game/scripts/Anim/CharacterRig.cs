@@ -50,6 +50,9 @@ public partial class CharacterRig : Node
     /// <summary>The clip playing now (or crossfading in).</summary>
     public string Current => _current;
 
+    /// <summary>Seconds into the current clip (authored time, wrapped for a loop).</summary>
+    public float ClipTime => Mathf.Max(0f, _time);
+
     /// <summary>The loop the rig returns to after a one-shot.</summary>
     public string Base => _base;
 

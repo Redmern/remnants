@@ -13,7 +13,8 @@ namespace Remnants.Game.Anim;
 /// or 1 (fail): every rigged model in the manifest gets a <see cref="CharacterRig"/> with its clips and loop flags;
 /// a one-shot fires its manifest event once at the right time, then returns to the base loop; looping work clips fire
 /// every stroke; walks get footfall steps; <c>downed</c> hands over to <c>downed_loop</c> and <c>death</c> holds;
-/// prosthetics (peg, hook, cyborg; adult and child; model and tier tint from the cybernetics data) move under the body's skeleton and follow its clips; gear hangs on
+/// prosthetics (peg, hook, cyborg; adult and child; one data-named mesh per tier, untinted) move under the body's skeleton and follow its clips;
+/// an eye implant rides the neck under the head; a blade arm is open only around an attack's impact; gear hangs on
 /// <see cref="BoneAttachment3D"/> sockets and moves with the hand; a portrait pose is idle; a static model gets no rig.
 /// </summary>
 public partial class AnimSelfTest : Node3D
@@ -156,20 +157,73 @@ public partial class AnimSelfTest : Node3D
             model.QueueFree();
         }
 
-        // The cybernetics data names the model and tints it by tier: a crude-quality servo arm (T2) still wears the cyborg mesh, tinted.
-        var servo = new Body();
-        servo.Lose(BodyPart.LeftArm);
-        servo.FitProsthetic(BodyPart.LeftArm, 0.4, "servo_arm");
-        if (Make("survivor_adult_male", servo) is var (m2, _, _))
+        // The cybernetics data names the mesh, one per tier, worn as exported (the tier tint is only a stand-in).
+        var tiers = new (string Item, BodyPart Part, string Node, string Mesh)[]
         {
-            var mesh = SurvivorDressing.Skeleton(m2)!.GetNodeOrNull<MeshInstance3D>("arm_l" + SurvivorDressing.ProstheticSuffix);
-            var cyborg = _library.TryInstance("prosthetic_arm_cyborg_l")?.FindChildren("*", nameof(MeshInstance3D), true, false).OfType<MeshInstance3D>().First().Mesh;
-            if (mesh?.Mesh is null || cyborg is null || mesh.Mesh.GetFaces().Length != cyborg.GetFaces().Length)
-                Fail("servo_arm (data model cyborg) did not fit the cyborg arm");
-            else if (mesh.GetSurfaceOverrideMaterial(0) is null) Fail("servo_arm on the skeleton is not tinted by its tier");
-            m2.QueueFree();
+            ("hook_arm", BodyPart.LeftArm, "arm_l", "prosthetic_arm_hook_l"),
+            ("mech_leg", BodyPart.RightLeg, "leg_r", "prosthetic_leg_mech_r"),
+            ("servo_arm", BodyPart.LeftArm, "arm_l", "prosthetic_arm_servo_l"),
+            ("labor_arm_mk2", BodyPart.RightArm, "arm_r", "prosthetic_arm_labor_mk2_r"),
+            ("cyber_leg", BodyPart.LeftLeg, "leg_l", "prosthetic_leg_cyborg_l"),
+            ("network_arm", BodyPart.RightArm, "arm_r", "prosthetic_arm_network_r"),
+        };
+        foreach (var (item, part, node, meshId) in tiers)
+        {
+            var body = new Body();
+            body.Lose(part);
+            body.FitProsthetic(part, 1.2, item);
+            if (Make("survivor_adult_male", body) is not var (m, _, _)) continue;
+            var mesh = SurvivorDressing.Skeleton(m)!.GetNodeOrNull<MeshInstance3D>(node + SurvivorDressing.ProstheticSuffix);
+            if (mesh?.Mesh is null || mesh.Mesh.GetFaces().Length != Faces(meshId)) Fail($"{item} did not fit {meshId}");
+            else if (mesh.GetSurfaceOverrideMaterial(0) is not null) Fail($"{item} wears a tier tint over its own mesh");
+            m.QueueFree();
+        }
+
+        // An eye implant: the eye part under the skeleton on neck, the head still shown, moving with the head.
+        var eyed = new Body();
+        eyed.Fit(BodyPart.Eyes, 1.2, "thermal_eye");
+        if (Make("survivor_adult_female", eyed) is var (m3, rig3, _))
+        {
+            var skeleton = SurvivorDressing.Skeleton(m3)!;
+            var eye = skeleton.GetNodeOrNull<MeshInstance3D>("eye" + SurvivorDressing.ProstheticSuffix);
+            if (eye?.Mesh is null || eye.Mesh.GetFaces().Length != Faces("prosthetic_eye_thermal")) Fail("thermal_eye did not fit prosthetic_eye_thermal on the head");
+            else if (eye.GetNodeOrNull(eye.Skeleton) != skeleton) Fail("the eye implant is not bound to the body skeleton");
+            if (m3.FindChild("head", true, false) is Node3D { Visible: false }) Fail("the eye implant hid the head");
+            var neck = skeleton.FindBone("neck");
+            var rest = skeleton.GetBoneGlobalPose(neck);
+            rig3.Loop("walk");
+            await Frames(0.35f);
+            if (skeleton.GetBoneGlobalPose(neck).IsEqualApprox(rest)) Fail("the neck (and the eye on it) does not move under walk");
+            m3.QueueFree();
+        }
+
+        // A blade arm: closed at rest, open around attack_swing's impact, closed again after.
+        var bladed = new Body();
+        bladed.Lose(BodyPart.RightArm);
+        bladed.FitProsthetic(BodyPart.RightArm, 1.2, "blade_arm_mk2");
+        if (Make("survivor_adult_male", bladed) is var (m4, rig4, _))
+        {
+            var skeleton = SurvivorDressing.Skeleton(m4)!;
+            var closed = skeleton.GetNodeOrNull<Node3D>("arm_r" + SurvivorDressing.ProstheticSuffix);
+            var open = skeleton.GetNodeOrNull<Node3D>("arm_r" + SurvivorDressing.ProstheticSuffix + BladeArm.OpenSuffix);
+            if (closed is null || open is null) Fail("blade_arm_mk2 did not fit both blade meshes");
+            else
+            {
+                await Frames(0.1f);
+                if (!closed.Visible || open.Visible) Fail("the blade is out at rest");
+                var impact = rig4.EventDelay("attack_swing", ClipMap.Impact);
+                rig4.Once("attack_swing");
+                await Frames(impact + 0.05f);
+                if (closed.Visible || !open.Visible) Fail("the blade is not out at attack_swing's impact");
+                await Frames((rig4.Info("attack_swing")?.Length ?? 1f) + 0.3f - impact);
+                if (!closed.Visible || open.Visible) Fail("the blade did not fold after attack_swing");
+            }
+            m4.QueueFree();
         }
     }
+
+    private int Faces(string id) =>
+        _library.TryInstance(id)?.FindChildren("*", nameof(MeshInstance3D), true, false).OfType<MeshInstance3D>().First().Mesh.GetFaces().Length ?? -1;
 
     /// <summary>A weapon in the right hand rides a BoneAttachment3D on socket_hand_r and moves with the swing.</summary>
     private async Task Gear()
