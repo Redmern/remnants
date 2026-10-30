@@ -301,7 +301,7 @@ map), Accept (Y) / Decline (U) an offer, Offer an alliance (Y) to a rival you se
   server parks it at that player's spawn point and refuses a party larger than its seats or a vehicle that does not add up
   (HP, cargo, turret over `scavenge.json vehicle` limits). Cargo is enforced by the sim: `stashItem` fails past the limit.
 - Commands `stashItem`, `takeFromStash`, `salvage`. Views carry the parked vehicles: the side's own in full, another
-  party's only once its tile is explored, never with its stash; stripped wrecks are public. Protocol version 6.
+  party's only once its tile is explored, never with its stash; stripped wrecks are public. Protocol version 7.
 - `VehicleNetTests`: two players with their own vehicles (stash hidden from the other), seat and stat refusals, stash over
   the wire.
 

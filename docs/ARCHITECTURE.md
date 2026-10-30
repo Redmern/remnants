@@ -914,8 +914,8 @@ the schematic catalogue in `data/schematics.vehicles.json`. Core: `Data/Vehicles
   dropped as a cache.
 - **Schematics**: `VehicleSchematics.Has / LevelUnlocked` is the one adapter (today studied blueprints and
   `BuildingLevelDef.Schematic`); defaults (cargo rack, fuel cans, spare parts, handcart) need none.
-- **Saves**: colony version 12 (vehicles; the expedition's vehicle, noise, fuel, return trip; older colonies get the
-  handcart), scavenge version 7 (parked vehicles, stripped wrecks).
+- **Saves**: colony version 15 (vehicles; the expedition's vehicle, noise, fuel, return trip; older colonies get the
+  handcart), scavenge version 9 (parked vehicles, stripped wrecks).
 - **Game**: `GaragePanel` (opens with the Garage selected: vehicles, slot chips with quality and condition, fit preview with
   before → after numbers, parts by quality, repairs), the expedition planner's vehicle picker (days, fuel, seats, cargo,
   noise, terms), the vehicle token on the world map, `MapView` parks `vehicle_parked_extraction_t{tier}` (or the cart model)
