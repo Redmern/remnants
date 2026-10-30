@@ -24,9 +24,10 @@
     "id": "woodcutter",
     "name": "Woodcutter",
     "category": "Gathering",
+    "outdoor": true,
     "job": "woodcutting",
     "produces": "wood",
-    "baseOutput": 0.55,
+    "baseOutput": 0.96,
     "levels": [
       { "cost": { "wood": 10, "stone": 5 },   "workerSlots": 2, "outputMultiplier": 1.0 },
       { "cost": { "wood": 30, "stone": 20 },  "workerSlots": 3, "outputMultiplier": 1.25 },
@@ -37,9 +38,10 @@
     "id": "quarry",
     "name": "Quarry",
     "category": "Gathering",
+    "outdoor": true,
     "job": "mining",
     "produces": "stone",
-    "baseOutput": 0.5,
+    "baseOutput": 0.88,
     "levels": [
       { "cost": { "wood": 15 },               "workerSlots": 2, "outputMultiplier": 1.0 },
       { "cost": { "wood": 35, "stone": 20 },  "workerSlots": 3, "outputMultiplier": 1.25 },
@@ -50,9 +52,10 @@
     "id": "scrapyard",
     "name": "Scrapyard",
     "category": "Gathering",
+    "outdoor": true,
     "job": "scavenging",
     "produces": "scrap",
-    "baseOutput": 0.25,
+    "baseOutput": 0.43,
     "levels": [
       { "cost": { "wood": 20, "stone": 10 },  "workerSlots": 2, "outputMultiplier": 1.0 },
       { "cost": { "wood": 40, "stone": 30 },  "workerSlots": 3, "outputMultiplier": 1.25 },
@@ -63,9 +66,10 @@
     "id": "farm",
     "name": "Farm",
     "category": "Gathering",
+    "outdoor": true,
     "job": "farming",
     "produces": "food",
-    "baseOutput": 0.6,
+    "baseOutput": 1.03,
     "levels": [
       { "cost": { "wood": 15 },               "workerSlots": 2, "outputMultiplier": 1.0 },
       { "cost": { "wood": 35, "stone": 15 },  "workerSlots": 3, "outputMultiplier": 1.25 },
@@ -91,7 +95,7 @@
     "category": "Production",
     "unique": true,
     "job": "crafting",
-    "baseOutput": 1.0,
+    "baseOutput": 1.7,
     "levels": [
       { "cost": { "wood": 25, "stone": 10 },               "workerSlots": 2, "outputMultiplier": 1.0 },
       { "cost": { "wood": 45, "stone": 30, "scrap": 20 },  "workerSlots": 3, "outputMultiplier": 1.25 },
@@ -104,7 +108,7 @@
     "category": "Production",
     "unique": true,
     "job": "tailoring",
-    "baseOutput": 1.0,
+    "baseOutput": 1.7,
     "levels": [
       { "cost": { "wood": 30, "stone": 10 },                              "workerSlots": 2, "outputMultiplier": 1.0 },
       { "cost": { "wood": 50, "stone": 30, "cloth": 10 },                 "workerSlots": 3, "outputMultiplier": 1.25 },
@@ -117,7 +121,7 @@
     "category": "Care",
     "unique": true,
     "job": "cooking",
-    "baseOutput": 1.0,
+    "baseOutput": 1.7,
     "levels": [
       { "cost": { "wood": 30, "stone": 20 },                              "workerSlots": 2, "outputMultiplier": 1.0 },
       { "cost": { "wood": 50, "stone": 40, "scrap": 10 },                 "workerSlots": 3, "outputMultiplier": 1.25 },
@@ -131,7 +135,7 @@
     "unique": true,
     "minTownHallLevel": 2,
     "job": "gunsmithing",
-    "baseOutput": 1.0,
+    "baseOutput": 1.7,
     "levels": [
       { "cost": { "wood": 40, "stone": 40, "scrap": 30 },                 "workerSlots": 2, "outputMultiplier": 1.0 },
       { "cost": { "wood": 60, "stone": 60, "scrap": 50 },                 "workerSlots": 3, "outputMultiplier": 1.25 },
@@ -145,7 +149,7 @@
     "unique": true,
     "minTownHallLevel": 2,
     "job": "electronics",
-    "baseOutput": 1.0,
+    "baseOutput": 1.7,
     "levels": [
       { "cost": { "wood": 40, "stone": 30, "scrap": 40 },                     "workerSlots": 2, "outputMultiplier": 1.0 },
       { "cost": { "wood": 60, "stone": 50, "scrap": 50, "electronics": 15 }, "workerSlots": 3, "outputMultiplier": 1.25 },

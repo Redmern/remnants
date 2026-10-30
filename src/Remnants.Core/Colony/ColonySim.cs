@@ -71,6 +71,37 @@ public sealed class ColonySim
         return State.WorkersAt(building.Id).Sum(w => JobOutput.PerTick(def, building.Level, job, w, Data.Rules.Output, Data));
     }
 
+    /// <summary>
+    /// Units of its resource a gathering building's workers make per day on their schedule (day shift, plus the Night
+    /// Shift at its reduced rate when on), at today's stats. Equals <see cref="OutputPerTick"/> · ticksPerDay with
+    /// day/night off.
+    /// </summary>
+    public double OutputPerDay(Building building)
+    {
+        var def = Data.Buildings[building.DefId];
+        if (def.Job is null || def.Produces is null) return 0;
+        var job = Data.Jobs[def.Job];
+        return State.WorkersAt(building.Id).Sum(w =>
+            JobOutput.PerTick(def, building.Level, job, w, Data.Rules.Output, Data) * Schedule.ShiftHoursPerDay(w, building, def, Data.Rules));
+    }
+
+    /// <summary>Hour of day now (0..ticksPerDay−1).</summary>
+    public int Hour => DayNight.Hour(State.Tick, Data.Rules);
+
+    /// <summary>The day phase now (dawn / day / dusk / night). Presentation and audio switch on this.</summary>
+    public DayPhase Phase => DayNight.PhaseAt(State.Tick, Data.Rules);
+
+    /// <summary>Working this tick (assigned, home, on the day shift or a Night Shift).</summary>
+    public bool OnShift(Survivor s) => Schedule.OnShift(State, Data, s);
+
+    public bool IsAsleep(Survivor s) => Schedule.IsAsleep(State, Data, s);
+
+    public bool IsTired(Survivor s) => Schedule.IsTired(s, Data.Rules.DayNight);
+
+    /// <summary>Whether a Night Shift may run here (has a job; indoors, level ≥ litMinLevel or a Floodlight).</summary>
+    public bool CanRunNightShift(Building building) =>
+        Schedule.CanRunNightShift(building, Data.Buildings[building.DefId], Data.Rules.DayNight);
+
     /// <summary>The summed effects of a survivor's perks, incl. the scavenge hooks (<see cref="PerkHooks"/>).</summary>
     public PerkEffects PerkEffects(Survivor s) => Colony.PerkEffects.For(s, Data);
 
@@ -199,6 +230,7 @@ public sealed class ColonySim
         StudySystem.Run(State, Data, Scavenge);
         MedicalSystem.Run(State, Data);
         FoodSystem.Run(State, Data);
+        DayNightSystem.Run(State, Data);
         RelationshipSystem.Run(State, Data);
         FamilySystem.Run(State, Data, _rng);
         HousingSystem.Run(State, Data);
@@ -235,6 +267,8 @@ public sealed class ColonySim
             ChoosePerk c => ProgressionHandlers.ChoosePerk(this, c),
             StartStudy c => StudyHandlers.Start(this, c),
             CancelStudy c => StudyHandlers.Cancel(this, c),
+            SetNightShift c => DayNightHandlers.SetNightShift(this, c),
+            InstallFloodlight c => DayNightHandlers.InstallFloodlight(this, c),
             _ => CommandResult.Fail(CommandError.UnknownCommand, $"Unknown command {command.GetType().Name}."),
         };
         SyncRng();

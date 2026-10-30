@@ -65,6 +65,9 @@ public sealed class Survivor
     /// </summary>
     public Dictionary<AttributeKind, double> Aptitude { get; set; } = new();
 
+    /// <summary>Hours of sleep missed and not yet slept off; tired at <c>dayNight.tired.threshold</c>.</summary>
+    public double SleepDebt { get; set; }
+
     /// <summary>The housing building this survivor sleeps in, while they have a bed.</summary>
     public int? HomeBuildingId { get; set; }
 

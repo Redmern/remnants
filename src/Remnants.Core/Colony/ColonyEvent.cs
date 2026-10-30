@@ -8,6 +8,7 @@ public enum ColonyEventType
     NewCouple, BrokeUp, Pregnant, Born, BecameChild, Grieving, Miscarried,
     ExpeditionArrived, ExpeditionHeadingHome, ZoneRevealed, DroneScouted, DroneLost, DroneReturned,
     LevelUp, PerkLearned, StudyStarted, StudyFinished, StudyEnded,
+    NightShift, Tired, FloodlightFitted,
 }
 
 /// <summary>Something notable the UI can show in a log. Purely informational.</summary>

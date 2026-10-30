@@ -3,7 +3,7 @@ using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Colony;
 
-/// <summary>Workers at gathering buildings produce resources and train. Care and crafting have their own systems.</summary>
+/// <summary>Workers on shift (see <see cref="Schedule"/>) at gathering buildings produce resources and train. Care and crafting have their own systems.</summary>
 internal static class ProductionSystem
 {
     public static void Run(ColonyState state, GameData data)
@@ -13,9 +13,9 @@ internal static class ProductionSystem
             var def = data.Buildings[building.DefId];
             if (def.Job is null || def.Produces is null) continue;
             var job = data.Jobs[def.Job];
-            foreach (var worker in state.WorkersAt(building.Id).OrderBy(w => w.Id))
+            foreach (var (worker, shift) in Schedule.Crew(state, data, building))
             {
-                state.Stockpile.Add(def.Produces, JobOutput.PerTick(def, building.Level, job, worker, data.Rules.Output, data));
+                state.Stockpile.Add(def.Produces, JobOutput.PerTick(def, building.Level, job, worker, data.Rules.Output, data) * shift);
                 Training.Work(state, data, job, worker);
             }
         }
@@ -45,7 +45,9 @@ internal static class FoodSystem
             {
                 s.StarvingTicks = 0;
                 s.Health = Math.Min(Survivor.MaxHealth, s.Health + rules.RecoveryPerTick + meal.HealthPerTick);
-                s.Mood = Math.Min(Survivor.MaxMood, s.Mood + meal.MoodPerTick);
+                var supper = data.Rules.DayNight.Enabled && DayNight.PhaseAt(state.Tick, data.Rules) is DayPhase.Dusk or DayPhase.Night
+                    ? data.Rules.DayNight.NightMealMoodPerTick : 0;
+                s.Mood = Math.Min(Survivor.MaxMood, s.Mood + meal.MoodPerTick + supper);
                 continue;
             }
             if (state.Stockpile.TryTake(rules.ResourceId, need))

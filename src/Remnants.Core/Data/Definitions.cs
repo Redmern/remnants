@@ -89,6 +89,9 @@ public sealed record BuildingDef
     /// <summary>Units per worker per tick at performance 1, before level multiplier.</summary>
     public double BaseOutput { get; init; }
 
+    /// <summary>Work happens outside: a Night Shift here needs light (level ≥ <c>dayNight.litMinLevel</c> or a Floodlight).</summary>
+    public bool Outdoor { get; init; }
+
     /// <summary>Town Hall level needed to construct it (on top of the Town Hall capping every building's level).</summary>
     public int MinTownHallLevel { get; init; }
 

@@ -57,6 +57,8 @@ public static class StudySystem
             if (order.MentorId is { } mid && state.FindSurvivor(mid) is not { Away: false, PatientAtBuildingId: null })
                 if (!DropMentor(state, data, order, student.Name)) continue;
             var mentor = order.MentorId is { } m ? state.FindSurvivor(m) : null;
+            // Classes keep the student's day shift (see Schedule); nights are for sleep.
+            if (data.Rules.DayNight.Enabled && !Schedule.IsDayShiftHour(student, DayNight.Hour(state.Tick, data.Rules), data.Rules.DayNight)) continue;
             var rate = Rate(data, student, mentor, order.Skill, order.PerkId, order.ManualItemId, items);
             if (order.Skill is { } skill)
             {

@@ -11,6 +11,12 @@ public sealed class Building
 
     /// <summary>Production buildings: orders in work order; only the first is worked (see <c>QueueRecipe</c>).</summary>
     public List<CraftOrder> Queue { get; set; } = new();
+
+    /// <summary>Adult workers keep working outside the day shift, at reduced output and a mood cost (see <c>dayNight</c>).</summary>
+    public bool NightShift { get; set; }
+
+    /// <summary>A Floodlight is fitted: an outdoor building is lit at level 1.</summary>
+    public bool Floodlight { get; set; }
 }
 
 /// <summary>

@@ -30,7 +30,8 @@ internal static class CraftingSystem
         {
             var def = data.Buildings[building.DefId];
             if (def.Job is null) continue;
-            var workers = state.WorkersAt(building.Id).OrderBy(w => w.Id).ToList();
+            var crew = Schedule.Crew(state, data, building).ToList();
+            var workers = crew.Select(c => c.Worker).ToList();
             if (workers.Count == 0) continue;
             var job = data.Jobs[def.Job];
             var order = Pick(state, data, items, building, workers, job);
@@ -44,9 +45,9 @@ internal static class CraftingSystem
             var recipe = data.Recipes[order.RecipeId];
             if (!order.Paid) Pay(state, items, recipe, order);
 
-            foreach (var w in workers)
+            foreach (var (w, shift) in crew)
             {
-                order.Progress += JobOutput.PerTick(def, building.Level, job, w, data.Rules.Output, data);
+                order.Progress += JobOutput.PerTick(def, building.Level, job, w, data.Rules.Output, data) * shift;
                 Training.Work(state, data, job, w);
             }
             if (order.Progress + 1e-9 < recipe.Work) continue;

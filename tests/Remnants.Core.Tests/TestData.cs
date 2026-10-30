@@ -7,10 +7,23 @@ namespace Remnants.Core.Tests;
 /// <summary>Shared fixtures: the real data/ folder, plus small hand-built defs for exact-math tests.</summary>
 public static class TestData
 {
-    private static readonly Lazy<GameData> RealData =
+    private static readonly Lazy<GameData> RealNights =
         new(() => GameDataLoader.LoadFromDirectory(Path.Combine(AppContext.BaseDirectory, "data")));
 
+    private static readonly Lazy<GameData> RealData = new(() =>
+    {
+        var d = RealNights.Value;
+        var rules = d.Rules with { DayNight = d.Rules.DayNight with { Enabled = false } };
+        return new GameData(d.Resources.Values, d.Jobs.Values, d.Buildings.Values, rules, d.Recipes.Values, d.Progression);
+    });
+
+    /// <summary>
+    /// The real data/ folder with the day and night cycle off (everyone works every tick, nobody sleeps), so tests of
+    /// other rules can count ticks without a clock. <see cref="RealWithNights"/> is the data exactly as shipped.
+    /// </summary>
     public static GameData Real => RealData.Value;
+
+    public static GameData RealWithNights => RealNights.Value;
 
     public static JobDef Job(
         Dictionary<AttributeKind, double>? attributes = null,

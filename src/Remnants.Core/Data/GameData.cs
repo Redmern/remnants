@@ -66,6 +66,17 @@ public sealed class GameData
             if (!Resources.ContainsKey(id)) throw new GameDataException($"{where}: unknown resource '{id}'.");
         }
 
+        var day = Rules.DayNight;
+        var tpd = Rules.TicksPerDay;
+        if (!(0 <= day.DawnHour && day.DawnHour < day.DayHour && day.DayHour < day.DuskHour && day.DuskHour < day.NightHour && day.NightHour < tpd))
+            throw new GameDataException("Rules.dayNight: phase hours must run dawn < day < dusk < night within the day.");
+        foreach (var (name, w) in new[] { ("workHours", day.WorkHours), ("adultSleep", day.AdultSleep), ("childSleep", day.ChildSleep) })
+            if (w.Length != 2 || w.Any(h => h < 0 || h >= tpd) || w[0] == w[1])
+                throw new GameDataException($"Rules.dayNight.{name}: [start, end) hours within the day.");
+        if (Rules.NewGame.StartHour < 0 || Rules.NewGame.StartHour >= tpd)
+            throw new GameDataException("Rules.newGame.startHour must be an hour of the day.");
+        foreach (var res in day.FloodlightCost.Keys) RequireResource(res, "Rules.dayNight.floodlightCost");
+
         foreach (var b in Buildings.Values)
         {
             if (b.Levels.Count == 0) throw new GameDataException($"Building '{b.Id}' has no levels.");

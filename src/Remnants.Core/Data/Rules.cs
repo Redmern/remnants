@@ -18,6 +18,7 @@ public sealed record RulesDef
     public RelationshipRules Relationships { get; init; } = new();
     public FamilyRules Family { get; init; } = new();
     public MoodRules Mood { get; init; } = new();
+    public DayNightRules DayNight { get; init; } = new();
     public LayoutRules Layout { get; init; } = new();
     public NewGameRules NewGame { get; init; } = new();
 
@@ -202,6 +203,73 @@ public sealed record MoodRules
     public double RecoveryPerTick { get; init; } = 0.15;
 }
 
+/// <summary>
+/// The colony's day: phases by hour, who works and sleeps when, the Night Shift and sleep debt. An hour is a tick
+/// (<c>hour = tick % ticksPerDay</c>). Hour windows are [start, end) and may wrap past midnight. Off by default (everyone
+/// works every tick, nobody sleeps), so hand-built rules in tests keep the old per-tick math; data/rules.json turns it on.
+/// <code>
+/// on day shift     : hour in workHours (children: also outside childSleep)      → output × 1
+/// on night shift   : building.nightShift, adult, lit or indoor, outside workHours → output × nightShift.outputMultiplier
+/// tired            : sleepDebt ≥ tired.threshold                                  → output × tired.outputMultiplier
+/// </code>
+/// </summary>
+public sealed record DayNightRules
+{
+    public bool Enabled { get; init; }
+
+    /// <summary>Hour each phase starts: dawn, day, dusk, night (in that order through the day).</summary>
+    public int DawnHour { get; init; } = 5;
+    public int DayHour { get; init; } = 7;
+    public int DuskHour { get; init; } = 18;
+    public int NightHour { get; init; } = 20;
+
+    /// <summary>The day shift [start, end) for adults; children work it too, minus their earlier bedtime.</summary>
+    public int[] WorkHours { get; init; } = [6, 20];
+    public int[] AdultSleep { get; init; } = [22, 6];
+    public int[] ChildSleep { get; init; } = [19, 7];
+
+    /// <summary>Asleep in a bed (or a Med Bay cot): mood and health gained per tick.</summary>
+    public double SleepMoodPerTick { get; init; } = 0.2;
+    public double SleepHealthPerTick { get; init; } = 0.3;
+
+    /// <summary>Awake and off work from dusk until bedtime: an evening at the campfire.</summary>
+    public double CampfireMoodPerTick { get; init; } = 0.15;
+
+    /// <summary>Extra mood for eating a cooked meal from dusk until dawn (a hot supper).</summary>
+    public double NightMealMoodPerTick { get; init; } = 0.1;
+
+    public NightShiftRules NightShift { get; init; } = new();
+    public TiredRules Tired { get; init; } = new();
+
+    /// <summary>Outdoor buildings at this level or above are lit (lamps on the bigger site) and may run a Night Shift.</summary>
+    public int LitMinLevel { get; init; } = 2;
+
+    /// <summary>A Floodlight lights a level-1 outdoor building.</summary>
+    public Dictionary<string, double> FloodlightCost { get; init; } = new();
+}
+
+public sealed record NightShiftRules
+{
+    public double OutputMultiplier { get; init; } = 0.7;
+
+    /// <summary>Mood each tick of night work costs (on top of the lost sleep).</summary>
+    public double MoodPerTick { get; init; } = 0.5;
+}
+
+/// <summary>
+/// Sleep debt: each tick of a survivor's sleep window spent working adds <see cref="DebtPerMissedTick"/>; each tick
+/// asleep pays back <see cref="RecoveryPerSleepTick"/>. At <see cref="Threshold"/> or more they are tired.
+/// </summary>
+public sealed record TiredRules
+{
+    public double DebtPerMissedTick { get; init; } = 1;
+    public double RecoveryPerSleepTick { get; init; } = 1.5;
+    public double Threshold { get; init; } = 4;
+    public double MaxDebt { get; init; } = 24;
+    public double MoodPerTick { get; init; } = 0.1;
+    public double OutputMultiplier { get; init; } = 0.85;
+}
+
 /// <summary>The town is a grid of building plots; a plot index is row-major (plot = row · columns + column).</summary>
 public sealed record LayoutRules
 {
@@ -215,6 +283,9 @@ public sealed record NewGameRules
 {
     public int Adults { get; init; } = 3;
     public int Children { get; init; } = 2;
+
+    /// <summary>Hour of day 1 the game starts at (the first tick).</summary>
+    public int StartHour { get; init; }
     public int[] AdultAgeRange { get; init; } = [20, 45];
     public int[] ChildAgeRange { get; init; } = [6, 12];
     public int[] AttributeRange { get; init; } = [25, 60];

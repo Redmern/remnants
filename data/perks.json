@@ -21,10 +21,10 @@
     "perLevelStep": 72,
     "maxLevel": 20,
     "pointsPerLevel": 1,
-    "perWorkTick": 1,
+    "perWorkTick": 1.7,
     "perCraft": 4,
-    "perStudyTick": 1,
-    "perTeachTick": 0.5,
+    "perStudyTick": 1.7,
+    "perTeachTick": 0.85,
     "perMission": 20,
     "perMissionThreat": 10,
     "perFieldSkillPoint": 4,
@@ -37,13 +37,13 @@
       "electronics_lab": { "skills": ["Electronics", "Hacking", "DronePiloting"], "slots": [1, 2, 3] },
       "town_hall": { "skills": ["Woodcutting", "Mining", "Crafting", "Tailoring", "Medicine", "Firearms", "Melee", "Cooking", "Farming"], "slots": [1, 2, 3] }
     },
-    "skillPerTick": 0.12,
+    "skillPerTick": 0.2,
     "aptitudeFloor": 0.5,
     "selfStudyCap": 20,
     "mentorMultiplier": 2,
     "mentorLead": 5,
     "maxStudentsPerMentor": 2,
-    "perkWorkPerTier": 96
+    "perkWorkPerTier": 56
   },
 
   "disciplines": [

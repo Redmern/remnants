@@ -29,10 +29,13 @@ namespace Remnants.Core.Serialization;
 /// Version 9 adds scout drones over the world map (<see cref="ColonyState.DroneFlights"/>) and carries the scavenge run's
 /// hacking and drones (<see cref="ScavengeSave"/> version 5); older saves load with no drones out and a run without
 /// devices.
+/// Version 10 adds the day and night cycle: per building the Night Shift and a Floodlight, per survivor the sleep debt.
+/// Older saves load with no night shifts, no Floodlights and everyone rested; their clock hour is whatever their tick
+/// says (version 9 and older games started at midnight).
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 9;
+    public const int Version = 10;
     private const int OldestVersion = 1;
 
     /// <summary>What a pre-version-4 generic "blueprint" item becomes.</summary>

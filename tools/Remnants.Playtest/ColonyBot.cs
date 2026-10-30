@@ -199,8 +199,10 @@ public sealed class ColonyBot
         }
 
         var free = workers.ToList();
+        // Averaged over the day: workers only produce on their shift (see Schedule).
         double Output(Survivor s, Building b) =>
-            JobOutput.PerTick(Data.Buildings[b.DefId], b.Level, Data.Jobs[Data.Buildings[b.DefId].Job!], s, Data.Rules.Output);
+            JobOutput.PerTick(Data.Buildings[b.DefId], b.Level, Data.Jobs[Data.Buildings[b.DefId].Job!], s, Data.Rules.Output)
+            * Schedule.ShiftHoursPerDay(s, b, Data.Buildings[b.DefId], Data.Rules) / TicksPerDay;
 
         // Food: aim for need × margin, more while the stock is low.
         var food = Data.Rules.Food;

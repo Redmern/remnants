@@ -15,7 +15,7 @@ public static class NewGame
     {
         var rules = data.Rules.NewGame;
         var rng = new DeterministicRng(seed);
-        var state = new ColonyState();
+        var state = new ColonyState { Tick = rules.StartHour };
 
         foreach (var (res, amount) in rules.Stock) state.Stockpile.Add(res, amount);
         foreach (var (item, count) in rules.Items.OrderBy(kv => kv.Key, StringComparer.Ordinal)) state.Inventory.Add(item, count);

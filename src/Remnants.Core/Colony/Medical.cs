@@ -15,8 +15,8 @@ public static class Care
         if (def.Job is { } jobId)
         {
             var job = data.Jobs[jobId];
-            foreach (var medic in state.WorkersAt(medBay.Id).Where(w => !w.Away))
-                care += JobOutput.Performance(job, medic, data.Rules.Output)
+            foreach (var (medic, shift) in Schedule.Crew(state, data, medBay))
+                care += shift * JobOutput.Performance(job, medic, data.Rules.Output)
                     * JobOutput.ToolFactor(job, medic)
                     * JobOutput.HealthFactor(job, medic, data.Rules.Output)
                     * JobOutput.LifeFactor(medic, data.Rules.Output)
@@ -108,7 +108,7 @@ internal static class MedicalSystem
         foreach (var medBay in state.Buildings.Where(b => treatedAt.Contains(b.Id)))
         {
             if (data.Buildings[medBay.DefId].Job is not { } jobId) continue;
-            foreach (var medic in state.WorkersAt(medBay.Id).OrderBy(w => w.Id))
+            foreach (var (medic, _) in Schedule.Crew(state, data, medBay))
                 Training.Work(state, data, data.Jobs[jobId], medic);
         }
     }

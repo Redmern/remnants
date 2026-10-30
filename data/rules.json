@@ -10,8 +10,8 @@
     "lowMoodMultiplier": 0.8
   },
   "training": {
-    "skillPerTick": 0.05,
-    "attributePerTick": 0.01,
+    "skillPerTick": 0.085,
+    "attributePerTick": 0.017,
     "childMultiplier": 2.0
   },
   "food": {
@@ -45,7 +45,7 @@
   "medical": {
     "buildingId": "med_bay",
     "medicineResourceId": "medicine",
-    "healPerTick": 0.012,
+    "healPerTick": 0.0155,
     "unstaffedCare": 0.4,
     "medicinePerPatientTick": 0.015,
     "patientHealthPerTick": 0.5,
@@ -85,6 +85,24 @@
     "heartbreak": 20,
     "recoveryPerTick": 0.15
   },
+  "dayNight": {
+    "enabled": true,
+    "dawnHour": 5,
+    "dayHour": 7,
+    "duskHour": 18,
+    "nightHour": 20,
+    "workHours": [6, 20],
+    "adultSleep": [22, 6],
+    "childSleep": [19, 7],
+    "sleepMoodPerTick": 0.2,
+    "sleepHealthPerTick": 0.3,
+    "campfireMoodPerTick": 0.15,
+    "nightMealMoodPerTick": 0.1,
+    "nightShift": { "outputMultiplier": 0.7, "moodPerTick": 0.5 },
+    "tired": { "debtPerMissedTick": 1, "recoveryPerSleepTick": 1.5, "threshold": 4, "maxDebt": 24, "moodPerTick": 0.1, "outputMultiplier": 0.85 },
+    "litMinLevel": 2,
+    "floodlightCost": { "wood": 10, "scrap": 5 }
+  },
   "layout": {
     "plotColumns": 6,
     "plotRows": 4
@@ -92,6 +110,7 @@
   "newGame": {
     "adults": 3,
     "children": 2,
+    "startHour": 6,
     "adultAgeRange": [20, 45],
     "childAgeRange": [6, 12],
     "attributeRange": [25, 60],

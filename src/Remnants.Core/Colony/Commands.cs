@@ -68,6 +68,12 @@ public sealed record StartStudy(int StudentId, int BuildingId, Skill? Skill = nu
 
 public sealed record CancelStudy(int StudyId) : IColonyCommand;
 
+/// <summary>Turn a building's Night Shift on or off. Needs a job, and light for outdoor work.</summary>
+public sealed record SetNightShift(int BuildingId, bool On) : IColonyCommand;
+
+/// <summary>Fit a Floodlight (<c>dayNight.floodlightCost</c>) to an outdoor building so it can run a Night Shift at level 1.</summary>
+public sealed record InstallFloodlight(int BuildingId) : IColonyCommand;
+
 public enum CommandError
 {
     None,
@@ -147,6 +153,10 @@ public enum CommandError
     NotAManual,
     WrongManual,
     UnknownStudy,
+    /// <summary>Night Shift at an unlit outdoor building; or a Floodlight where it is indoors or already lit.</summary>
+    NeedsLight,
+    AlreadyLit,
+    NotOutdoor,
 }
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>
