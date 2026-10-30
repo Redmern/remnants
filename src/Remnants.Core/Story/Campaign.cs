@@ -518,6 +518,10 @@ public static class Campaign
             case EffectKind.ReturnTaken:
                 foreach (var name in StoryWorld.ReturnTaken(sim, e.Value)) lines?.Add($"{name} came home");
                 break;
+            case EffectKind.Vehicle:
+                var vehicle = VehicleRules.Add(state, sim.Data, e.Id);
+                lines?.Add($"{vehicle.Name} (vehicle)");
+                break;
             case EffectKind.Rename:
                 if (StoryCharacters.SurvivorOf(sim, e.Id) is { } renamed && e.Text is { Length: > 0 } newName) renamed.Name = newName;
                 break;

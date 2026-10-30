@@ -189,6 +189,9 @@ public sealed class ScavengeModels(ModelLibrary library)
             && (tag is RaidBattleTags.Hall or RaidBattleTags.Mast || tag.Length > 1 && tag[0] == 'b' && tag.Skip(1).All(char.IsAsciiDigit)))
             return StructureMarker(tag == RaidBattleTags.Hall);
         if (unit.Tag == "mast") return library.TryInstance("radio_mast_l1");
+        // The Long Haul (M6): the caravan's trucks, not people.
+        if (unit.Tag is "truck_people" or "truck_cargo" or "convoy")
+            return library.TryInstance(unit.Tag switch { "truck_people" => "long_haul_lead_truck", "truck_cargo" => "long_haul_cargo_truck", _ => "long_haul_gun_truck" });
         if (unit.CharacterId == "juniper") return library.TryInstance(unit.FollowingId is null ? "story_juniper" : "story_juniper_bandaged");
         if (unit.CharacterId is { } character) return library.TryInstance($"story_{character}");
         return unit.EnemyDefId switch

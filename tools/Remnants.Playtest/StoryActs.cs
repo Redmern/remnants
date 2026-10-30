@@ -139,7 +139,7 @@ public static class StoryActs
             else state.Buildings.Add(new Building { Id = state.NextBuildingId++, DefId = id, Level = level, Plot = state.Buildings.Count });
         }
         foreach (var (id, level) in new[] { ("town_hall", 3), ("med_bay", 2), ("workshop", 2), ("electronics_lab", 2), ("radio_mast", 1), ("watchtower", 1),
-                                             ("armory", 2), ("house", 2), ("farm", 2), ("kitchen", 1) })
+                                             ("armory", 2), ("house", 2), ("farm", 2), ("kitchen", 1), ("garage", 3) })
             Build(id, level);
         foreach (var s in state.Survivors.Where(s => !s.IsChild))
         {

@@ -173,9 +173,9 @@ the Choir. If he dies, the story continues; the epilogue remembers him (endings.
 | enemy | `tally_blade` | M9, Cole's Last Job (enemy) | as `tally_scav` with `machete` + `padded_vest`, Melee 45 |
 | item (quest) | `drone_core` | M8 | weight 6 |
 | item (quest) | `diesel_engine` | M12 | weight 40; also a vehicle part when the vehicles branch lands |
-| item (quest) | `surgical_kit` | M15 | weight 3 |
+| item | `surgical_kit` | M15 | main's medicine item (no story copy) |
 | item (quest) | `marrow_ledger` | Marrow's Debt | weight 1 |
 | item (quest) | `cole_ledger` | Cole's Last Job (enemy) | weight 1; a Codex page |
 | item (quest) | `trade_crate` | Dead Drop | paid out as trade goods |
-| item | `fuel_can` | M6, Marrow's Debt | vehicles branch; fallback `scrap` |
+| item | `fuel_can` | M6, Marrow's Debt | the vehicles feature's fuel can |
 | character | `tile` / `kit` names | Seven's Name | names only; Seven keeps id `seven` |

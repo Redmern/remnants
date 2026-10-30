@@ -79,6 +79,7 @@ public sealed class StoryData
                     EffectKind.Mood or EffectKind.Humanity or EffectKind.Leaves => e.Id != "key" && !Characters.ContainsKey(e.Id),
                     EffectKind.Character or EffectKind.Dies or EffectKind.Rename => !Characters.ContainsKey(e.Id),
                     EffectKind.Close => !missionIds.Contains(e.Id),
+                    EffectKind.Vehicle => !game.VehicleTiers.ContainsKey(e.Id),
                     EffectKind.Ending => !Endings.ContainsKey(e.Id),
                     EffectKind.WorldEffect or EffectKind.EndWorldEffect => !StoryWorld.Known.Contains(e.Id),
                     EffectKind.Schematic or EffectKind.Fallback => !e.Id.StartsWith("sch_", StringComparison.Ordinal) && e.Kind == EffectKind.Schematic,

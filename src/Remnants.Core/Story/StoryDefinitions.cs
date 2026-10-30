@@ -151,6 +151,8 @@ public enum EffectKind
     ReturnTaken,
     /// <summary>Character <see cref="EffectDef.Id"/> (a unique survivor) is renamed <see cref="EffectDef.Text"/>.</summary>
     Rename,
+    /// <summary>A vehicle of tier <see cref="EffectDef.Id"/> (vehicles.json) joins the colony's yard (Juniper's handcart).</summary>
+    Vehicle,
 }
 
 /// <summary>

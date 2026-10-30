@@ -187,9 +187,7 @@
     },
     "rewards": [
       { "kind": "Schematic", "id": "sch_bicycle_cart" },
-      { "kind": "Fallback", "id": "handcart", "text": "Juniper's handcart, parked by the gate (vehicles come later: its wood and scrap for now)" },
-      { "kind": "Resource", "id": "wood", "value": 20 },
-      { "kind": "Resource", "id": "scrap", "value": 10 },
+      { "kind": "Vehicle", "id": "handcart" },
       { "kind": "Item", "id": "manual_electronics", "value": 1 },
       { "kind": "SetFlag", "id": "caravan_open", "value": 1 },
       { "kind": "Character", "id": "juniper", "value": 1 },
