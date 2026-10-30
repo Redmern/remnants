@@ -40,7 +40,7 @@ public sealed class GameData
         Resources = Index(resources, r => r.Id, "resource");
         Jobs = Index(jobs, j => j.Id, "job");
         Buildings = Index(buildings, b => b.Id, "building");
-        var recipeList = (recipes ?? []).Concat(DecryptRecipes(Schematics)).ToList();
+        var recipeList = (recipes ?? []).Where(r => r.Learns is null).Concat(DecryptRecipes(Schematics)).ToList();
         Recipes = Index(recipeList, r => r.Id, "recipe");
         _recipesByBuilding = recipeList.GroupBy(r => r.Building).ToDictionary(g => g.Key, g => g.ToList());
         Rules = rules;

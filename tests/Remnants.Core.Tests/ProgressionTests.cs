@@ -123,7 +123,7 @@ public class ProgressionTests
     }
 
     [Fact]
-    public void Datashard_perks_are_locked_until_the_shard_is_studied()
+    public void Technique_perks_are_locked_until_the_schematic_is_known()
     {
         var sim = Colony(townHallLevel: 2);
         var s = sim.AddSurvivor(attributes: 50);
@@ -135,9 +135,7 @@ public class ProgressionTests
         Assert.Equal(CommandError.PerkLocked, locked.Error);
         Assert.Equal(PerkBlock.Locked, sim.PerkStatus(s, sim.Data.Perks["network_ghost"]).Block);
 
-        sim.Build("electronics_lab");
-        sim.State.Inventory.Add("ds_network_ghost");
-        Assert.True(sim.Execute(new StudyBlueprint("ds_network_ghost")).Ok);
+        Schematics.Schematics.Grant(sim, "sch_network_ghost", Schematics.SchematicSource.Debug);
         Assert.True(sim.Execute(new ChoosePerk(s.Id, "network_ghost")).Ok);
     }
 

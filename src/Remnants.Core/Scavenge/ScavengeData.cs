@@ -35,8 +35,8 @@ public sealed class ScavengeData
         SchematicCatalog? schematics = null)
     {
         Schematics = schematics ?? SchematicCatalog.Empty;
-        // Schematic items come from the catalogue (data built from another ScavengeData's items already has them).
-        items = items.Where(i => i.Kind != ItemKind.Schematic).Concat(Schematics.All.Values.Select(SchematicItem));
+        // Schematic items come from the catalogue; without one, data built from another ScavengeData's items keeps them.
+        if (schematics is not null) items = items.Where(i => i.Kind != ItemKind.Schematic).Concat(Schematics.All.Values.Select(SchematicItem));
         PerkHooks = perkHooks ?? new Dictionary<string, IReadOnlyDictionary<string, double>>();
         Cybernetics = cybernetics is null ? null : new CyberneticsData(cybernetics);
         // Variants are always derived (so data built from another ScavengeData's items gets them fresh).
