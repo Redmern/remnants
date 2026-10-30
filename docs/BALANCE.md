@@ -703,15 +703,14 @@ adults, starting gear) put Suburb Ruins deaths at 31% (`main`) → 37%, Flooded 
 slower, got hit again and went down, a death spiral. At a threshold of 0.8 it was still +3/+4 points; without the AP
 cost Suburb Ruins is back at 30%. So pain costs output at home and nothing extra in the field (the wound itself already
 does); fevers keep their −1 AP, as a reason not to send the sick. Fractures (35%) changed nothing measurable (38% vs
-37%). With the shipped data: Outskirts / Suburb Ruins / Flooded Mall runs with a death 6% / 30% / 52% (`main` 6% / 31% /
-50%).
+37%). With the shipped data, rebased on `main` (story and schematics in): Outskirts / Suburb Ruins / Flooded Mall runs with a
+death 4% / 31% / 52% (`main` before the rebase: 6% / 31% / 50%).
 
-Colony sweep, 8 seeds × 40 days (`--seeds=1..8 --days=40`, `main` → this branch): median population 6 → 6, starvation
-0 → 0, expedition deaths 5 → 2 over 88 / 87 runs, births 4 → 4, departures 2 → 7 (more recruits came home: 9 → 16, and
-not all had a bed), Town Hall 2 day 35.8 → 30.6, min food 3.7 → 4.1 days. Medicine line: 8 infections over the 8
-colonies (first on day 13, median), all cured, none fatal; 81 treatments given at home, 48 supplies crafted at the
-dispensary; no sicknesses (food-cooking is not merged); no blood donations (no bot colony reaches Med Bay 2 in 40 days).
-The bot crafts antiseptic, splints and dressings once the Med Bay stands, antibiotics while anyone is infected, distils
+Colony sweep, 8 seeds × 40 days (`--seeds=1..8 --days=40`, `main` → this branch, after the rebase): median population
+6 → 6, starvation 0 → 0, expedition deaths 3 over 76 runs → 2 over 88, births 2 → 6, departures 1 → 2, Town Hall 2 day
+30.0 → 31.5, min food 4.3 → 3.9 days. Medicine line: 7 infections over the 8 colonies (first on day 24, median), all
+cured, none fatal; 100 treatments given at home, 53 supplies crafted at the dispensary; no sicknesses (food-cooking is
+not merged); no blood donations (no bot colony reaches Med Bay 2 in 40 days). The bot crafts antiseptic, splints and dressings once the Med Bay stands, antibiotics while anyone is infected, distils
 spirits when alcohol runs low, admits the infected and sick, and dresses the wounds of those working through them; in the
 field it revives with the strongest kit, splints broken limbs and takes one painkiller when in pain.
 
