@@ -83,7 +83,8 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   (placeholder capsule), dressed by `SurvivorDressing` (below). `tools/sync-assets.sh [EXPORT_DIR]` refreshes `assets/generated/` from the
   remnants-assets `export/` (default `../../remnants-assets/main/export`), models and `audio/` alike.
 - `SurvivorDressing` (shared by both views, purely visual): missing limbs hidden; prosthetics swapped in at the joint,
-  `prosthetic_*_hook|peg_*` below quality 1, `*_cyborg_*` from there; equipped gear hung on the body's manifest
+  the mesh the part's cybernetics node names (`prosthetic_*_hook|peg_*` below quality 1, `*_cyborg_*` from there for
+  parts outside the tree); an eye implant on the head; equipped gear hung on the body's manifest
   `sockets` (the `item_{baseId}` model's `attach` point lands on the socket, under the part it rides on, turned by its
   `rot_deg`, scaled by chest height for bodies other than the adult male). Body → torso; weapon → hand, else back (a
   missing arm drops it to the back; a prosthetic arm holds it); tool → back, else chest, else hand. Colony survivors
@@ -232,8 +233,10 @@ models still load and fall back to tweens.
   (`swing` → attack_swing, `aimed_shot` → shoot_rifle, `claw` → attack_claw, `zap` → shoot_burst, ...), the hold loop by
   status/stance, work loops by job id.
 - `SurvivorDressing` on a rigged body moves the prosthetic's skinned mesh under the body's `Skeleton3D` (`{part}_prosthetic`,
-  bound by bone name, only when the body has every `limb_bones` bone); the model id and tier tint come from the
-  cybernetics data (`ProstheticModel`). Gear hangs on a `BoneAttachment3D` on the socket bone (`Socket_{bone}`), offset by
+  bound by bone name, only when the body has every `limb_bones` bone); the model id comes from the cybernetics data
+  (`ProstheticModel`), and the tier tint only marks a stand-in when that mesh is missing. An eye implant
+  (`prosthetic_eye_*`) moves its `eye` part (skinned to `neck`) under the skeleton the same way, keeping the head. A
+  blade arm also fits `prosthetic_arm_blade_open_*`, hidden; `BladeArm` shows it around an attack clip's `impact`. Gear hangs on a `BoneAttachment3D` on the socket bone (`Socket_{bone}`), offset by
   minus its attach point; a one-armed survivor holds the weapon in the left hand.
 - Scavenge (`UnitViews`): units walk a view-side tile path (8-way over what the unit can cross) facing each step, the walk
   clip timed to the tween (carry_walk when carrying, run on long paths); attacks turn to the target and land the hit flash,
@@ -245,7 +248,7 @@ models still load and fall back to tweens.
   Med Bay, child_play; clip speed = colony pace capped at 2x times the gait pace; pose updates every frame near the
   camera, every 2nd / 4th further out, every 8th off screen; near footfalls fire `colony.step`.
 - Debug: `--anim-selftest` (headless, in `run-tests.sh --godot`) checks every rigged model's clips, event timing, loops,
-  downed/death, prosthetic swaps with data models and tints, sockets and the portrait pose. `--anim-demo=survivor|enemy`
+  downed/death, prosthetic swaps (one data-named mesh per tier, an eye implant, the blade opening on impact), sockets and the portrait pose. `--anim-demo=survivor|cyborg|enemy`
   (with `--scavenge`) and `--anim-demo=colony` (with `--colony --demo --hour=8`) stage captures that `FrameRecorder`
   saves with `--record=DIR [--record-every=K] [--record-start=N --record-frames=M] [--gif=PATH] --quit`; pass Godot's
   `--fixed-fps 30` so clips keep their speed while frames are saved.
@@ -358,7 +361,7 @@ Each node is a prosthetic item of the same id (validated both ways) made by the 
   ETA or what blocks it, cancel) and books fits (`CyberBooking`; a healthy part asks for confirmation with the humanity
   hit). The survivor Body tab shows the humanity bar and band, the eyes, and each part's tier, specialisation,
   augmentation, humanity and next service. The scavenge unit card shows tier and effects and "LOCKED" while
-  interfered. `SurvivorDressing` takes the node's model id and tints by tier (`CyberText` holds the shared strings).
+  interfered. `SurvivorDressing` fits the node's model id (tier tint only on a stand-in) (`CyberText` holds the shared strings).
   `--cyber-demo` (with `--cyber-tree` or `--survivor-tab=2`) stages it for screenshots.
 - **Saves**: colony 12 (`SaveGame.MigrateCybernetics`: legacy parts → hook / peg below quality 1, cybernetic arm / leg
   from it, replacement humanity), scavenge 7 (survivors' cyber hooks resolved on load), protocol 6. Tests:

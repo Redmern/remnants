@@ -19,7 +19,7 @@ are never hit or lost in the field; they are only ever replaced electively. The 
 times the eyes' (healthy eyes change nothing; an eye implant at quality 1.15 scales sight, detection and ranged aim by
 1.15).
 
-| tier | name | how it goes on | humanity (replacement / elective) | upkeep | look until tier models exist |
+| tier | name | how it goes on | humanity (replacement / elective) | upkeep | stand-in tint (missing mesh) |
 |---|---|---|---|---|---|
 | T0 | Crude | straps on (`FitProsthetic`), Med Bay 1 | 0 / — | none | peg / hook models |
 | T1 | Mechanical | straps on, Med Bay 1 | 3 / — | none | cyborg model, tint `#9a8668` |
@@ -200,10 +200,11 @@ Every body gains healthy eyes; upkeep starts full; the colony knows what it has 
 
 ## Models for remnants-assets
 
-Until the rigs branch lands, the game maps every tier onto the existing meshes: T0 → `prosthetic_{arm,leg}_{hook,peg}_{l,r}`,
-T1+ → `prosthetic_{arm,leg}_cyborg_{l,r}` tinted by tier. Each node's `model` id in `cybernetics.json` names its mesh
-variant (`prosthetic_{arm|leg}_{model}_{l|r}`), so new meshes drop in by changing that id. Wanted, fitted to the new
-bones, left and right each, with the joint node names the current prosthetics use:
+Each node's `model` id in `cybernetics.json` names its mesh variant (`prosthetic_{arm|leg}_{model}_{l|r}`; an eye
+implant's `prosthetic_{model}`), worn as exported. T0 → hook / peg, T1 → `mech`, T2 standard → `servo`, a specialisation
+→ its own mesh (`labor`, `blade`, … ; hacker, gun and jumper start at T3 on theirs), its Mk2 → `{spec}_mk2`, T3
+standard → `cyborg`, T4 → `network`. The tier tint (the table above) only marks a stand-in when a named mesh is missing;
+the UI keeps the tier colours. A blade arm swaps to `arm_blade_open_*` (`_mk2` too) around an attack's impact.
 
 | model id (`prosthetic_…`) | for | look |
 |---|---|---|
@@ -222,4 +223,4 @@ bones, left and right each, with the joint node names the current prosthetics us
 | `arm_network_{l,r}` / `leg_network_{l,r}` | T4 Network-grade | Linked style: smooth black shell, cyan seams (match `enemy_linked`) |
 | `eye_scope`, `eye_thermal`, `eye_network` | eye implants | a lens over one eye socket (scope: barrel; thermal: red; network: cyan), parented to the head |
 
-Mk2 (T3) variants of a specialisation may reuse the T2 mesh with the T3 tint, or get their own `_mk2` mesh.
+Every specialisation also has its `_mk2` (T3) mesh.
