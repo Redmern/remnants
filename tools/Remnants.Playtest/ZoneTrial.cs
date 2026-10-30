@@ -41,10 +41,12 @@ public static class ZoneTrial
     /// only the one. "hacker": the
     /// same with a trained crew: Hacking 35 and the Hacking I perk, Drone Piloting 25 with Drone Operator I and Spotter.</param>
     /// <param name="tech">The bot hacks and flies the drone when it has the gear (off: it carries them and does nothing).</param>
+    /// <param name="carbines">With the geared kit: this many members carry a Linked carbine instead of their rifle / pistol.</param>
+    /// <param name="armor">With the geared kit: everyone wears Linked plating instead of the vest / cloak.</param>
     /// <param name="players">Co-op: this many parties (each a fresh colony's first party, different seeds) on one team;
     /// the zone scales its enemies to the player count. Per-party rates are per party, "someone dies" per mission.</param>
     public static string Run(GameData data, ScavengeData scavenge, string zoneId, int runs, int partySize = 2, Action<string>? trace = null,
-        bool defenses = true, string kit = "", int players = 1, bool tech = true)
+        bool defenses = true, string kit = "", int players = 1, bool tech = true, int carbines = 0, bool armor = false)
     {
         int hacked = 0, hackFailed = 0, flights = 0, dronesLost = 0, marks = 0, fromDevices = 0;
         int partyRuns = 0, partyWipes = 0, partyDeathRuns = 0;
@@ -52,6 +54,7 @@ public static class ZoneTrial
         int deaths = 0, runsWithDeath = 0, wipes = 0, injuredRuns = 0, limbs = 0, items = 0, linkedSeen = 0, runsWithLinked = 0, kills = 0, rounds = 0, stuck = 0;
         var injuries = 0;
         var deadWithLinked = 0;
+        var linkedKills = 0;
         for (var seed = 1; seed <= runs; seed++)
         {
             var setups = new List<PartySetup>();
@@ -70,6 +73,8 @@ public static class ZoneTrial
                 weapons = new Queue<string>(["rifle", "pistol", "pistol"]);
                 bodies = new Queue<string>(["padded_vest", "camo_cloak", "camo_cloak"]);
                 packs = [["med_kit", "bandage"], ["med_kit", "bandage"], ["bandage"]];
+                weapons = new Queue<string>(weapons.Select((w, i) => i < carbines ? "linked_carbine" : w));
+                if (armor) bodies = new Queue<string>(["linked_plating", "linked_plating", "linked_plating"]);
             }
             if (kit is "tech" or "hacker" or "hack" or "drone")
             {
@@ -136,6 +141,7 @@ public static class ZoneTrial
                 if (result.Deaths.Count > 0) deadWithLinked++;
             }
             kills += stats.Kills;
+            linkedKills += stats.LinkedKills;
             rounds += stats.Rounds;
             ambushed += stats.AmbushedTimes;
             reactions += stats.OverwatchShots;
@@ -149,10 +155,10 @@ public static class ZoneTrial
         }
         var n = Math.Max(1, runs - stuck);
         var sb = new StringBuilder();
-        sb.AppendLine($"zone {zoneId}: {runs} runs, {(players > 1 ? $"{players} allied parties of" : "party")} {partySize} ({(kit == "geared" ? "geared" : "starting gear")}{(kit == "fog" ? " + flares, sensor" : "")}{(kit is "tech" or "hacker" or "hack" or "drone" ? $" + {kit} kit{(tech ? "" : " (unused)")}" : "")}{(defenses ? "" : ", no defenses")}){(stuck > 0 ? $", {stuck} stuck" : "")}");
+        sb.AppendLine($"zone {zoneId}: {runs} runs, {(players > 1 ? $"{players} allied parties of" : "party")} {partySize} ({(kit == "geared" ? "geared" + (carbines > 0 ? $", {carbines} carbine{(carbines > 1 ? "s" : "")}" : "") + (armor ? ", plating" : "") : "starting gear")}{(kit == "fog" ? " + flares, sensor" : "")}{(kit is "tech" or "hacker" or "hack" or "drone" ? $" + {kit} kit{(tech ? "" : " (unused)")}" : "")}{(defenses ? "" : ", no defenses")}){(stuck > 0 ? $", {stuck} stuck" : "")}");
         sb.AppendLine($"  runs with a death {100.0 * runsWithDeath / n:0}%  wipes {100.0 * wipes / n:0}%  deaths/run {deaths / (double)n:0.00}");
         sb.AppendLine($"  runs with new injuries {100.0 * injuredRuns / n:0}%  injuries/run {injuries / (double)n:0.0}  limbs lost/run {limbs / (double)n:0.00}");
-        sb.AppendLine($"  items/run {items / (double)n:0.0}  kills/run {kills / (double)n:0.0}  rounds/run {rounds / (double)n:0}");
+        sb.AppendLine($"  items/run {items / (double)n:0.0}  kills/run {kills / (double)n:0.0}  Linked kills/run {linkedKills / (double)n:0.00}  rounds/run {rounds / (double)n:0}");
         sb.AppendLine($"  ambushed/run {ambushed / (double)n:0.00}  overwatch shots/run {reactions / (double)n:0.00}  defenses used/run {defended / (double)n:0.0}");
         var otherRuns = n - runsWithLinked;
         sb.AppendLine($"  runs seeing Linked {100.0 * runsWithLinked / n:0}%  Linked seen/run {linkedSeen / (double)n:0.00}" +
