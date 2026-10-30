@@ -36,7 +36,7 @@ public static class GameDataPaths
             if (ScavengeFiles.All(f => File.Exists(Path.Combine(dir, f))))
                 return ScavengeDataLoader.LoadFromDirectory(dir);
         return ScavengeDataLoader.LoadFromJson(ReadEmbedded("items.json"), ReadEmbedded("enemies.json"),
-            ReadEmbedded("zones.json"), ReadEmbedded("scavenge.json"));
+            ReadEmbedded("zones.json"), ReadEmbedded("scavenge.json"), ReadEmbedded("perks.json"));
     }
 
     private static GameData LoadFresh()

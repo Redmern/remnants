@@ -143,7 +143,7 @@ public sealed class ScavengePresenter
         var data = Sim.Data;
         var map = State.Map;
         return State.Units
-            .Where(t => t.OnMap && unit.HostileTo(t) && CanSee(t)
+            .Where(t => t.OnMap && unit.HostileTo(t) && CanSee(t) && Drones.CanStrike(action, t)
                         && Combat.CheckReach(data, map, unit.Pos, action, t.Pos) == ScavengeError.None)
             .Select(t => new AttackOption(t, action, Combat.ChanceToHit(Sim, unit, action, t), Combat.AmbushAgainst(data, State, unit, t)))
             .ToList();
@@ -155,6 +155,35 @@ public sealed class ScavengePresenter
     /// <summary>Unrecruited NPC survivors standing next to the unit.</summary>
     public IEnumerable<Unit> RecruitableNear(Unit unit) =>
         State.Units.Where(u => u.Kind == UnitKind.Npc && u.IsActive && u.Side == Unit.NeutralSide && u.Pos.Chebyshev(unit.Pos) <= 1);
+
+    /// <summary>Devices the local side knows of (seen, or on its map from a terminal): a remote view only holds those.</summary>
+    public IEnumerable<ZoneDevice> KnownDevices => State.Devices.Where(d => IsExplored(d.Pos));
+
+    /// <summary>The side a device works for, as the local player knows it.</summary>
+    public string ControllerOf(ZoneDevice d) => Hacking.ControllerOf(State, d);
+
+    /// <summary>A hack the unit can start or continue now: a device in its tool's reach, or with Override a Linked.</summary>
+    public sealed record HackOption(ZoneDevice? Device, Unit? Target, string Name, double Chance, int Done, int Needed);
+
+    public List<HackOption> HackOptions(Unit unit)
+    {
+        var data = Sim.Data;
+        if (Hacking.Tool(data, unit)?.HackTool is not { } kit) return [];
+        var map = State.Map;
+        bool InReach(Pos p) => p.Chebyshev(unit.Pos) <= kit.Range && (p.Chebyshev(unit.Pos) <= 1 || map.HasLineOfSight(data, unit.Pos, p));
+        var options = KnownDevices
+            .Where(d => IsVisible(d.Pos) && InReach(d.Pos) && Hacking.Working(State, d) && !d.Used && ControllerOf(d) != Side)
+            .Select(d => new HackOption(d, null, ScavengeText.Device(d.Kind), Hacking.Chance(Sim, unit, d),
+                Hacking.ProgressOf(d, Side)?.Done ?? 0, data.Device(d.Kind).Work))
+            .ToList();
+        if (unit.Hook(Remnants.Core.Colony.PerkHooks.CanHackLinked) > 0)
+            options.AddRange(State.Units.Where(t => t.IsActive && t.Kind == UnitKind.Enemy && unit.HostileTo(t) && CanSee(t) && Network.IsLinked(data, t) && InReach(t.Pos))
+                .Select(t => new HackOption(null, t, $"Override {t.Name}", Hacking.Chance(Sim, unit, null, t), 0, 1)));
+        return options;
+    }
+
+    /// <summary>Free tiles next to the unit a drone can take off onto.</summary>
+    public IEnumerable<Pos> DeployTiles(Unit unit) => Pos.Neighbours8.Select(d => unit.Pos + d).Where(p => Drones.CanHover(Sim, p));
 
     private void RefreshVisibility()
     {

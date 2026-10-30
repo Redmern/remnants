@@ -168,6 +168,11 @@ public static class Hotkeys
         new("scav_ping_loot", "Ping: loot", "Scavenge", [Key.N]),
         new("scav_ally", "Offer / accept an alliance", "Scavenge", [Key.Y]),
         new("scav_decline", "Decline an alliance", "Scavenge", [Key.U]),
+        new("scav_hack", "Hack the first device in reach", "Scavenge", [Key.H]),
+        new("scav_drone", "Deploy / recall the scout drone", "Scavenge", [Key.K]),
+        new("scav_fly", "Fly the scout drone", "Scavenge", [Key.J]),
+        new("scav_mark", "Mark a target with the drone", "Scavenge", [Key.M]),
+        new("scav_payload", "Drop a payload from the drone", "Scavenge", [Key.P]),
     ];
 
     /// <summary>Camera panning is not an action (it reads WASD and arrows directly); listed for the settings screen.</summary>

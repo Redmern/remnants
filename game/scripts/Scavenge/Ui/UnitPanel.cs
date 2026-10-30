@@ -33,6 +33,11 @@ public partial class UnitPanel : PanelContainer
     private readonly Label _empty = Widgets.Wrapped("Click a unit. Your units take orders on their turn.", "Muted");
     private readonly Label _allyText = Widgets.Wrapped("", "Small");
     private PanelContainer _allyCard = null!;
+    private PanelContainer _droneCard = null!;
+    private PanelContainer _bodyCard = null!;
+    private PanelContainer _gearCard = null!;
+    private readonly Pips _battery = new();
+    private readonly Label _droneText = Widgets.Wrapped("", "Small");
     private string _profileSignature = "";
 
     public UnitPanel(ScavengePresenter presenter)
@@ -69,9 +74,19 @@ public partial class UnitPanel : PanelContainer
         _allyCard = Section("Ally", "stat_ally", _allyText);
         _allyCard.AddThemeStyleboxOverride("panel", HudTheme.Box(Palette.Inset, Palette.Ally, 1, radius: 3, padX: 8, padY: 6));
         _sections.AddChild(_allyCard);
-        _sections.AddChild(Section("Body", "body_full", BodyRows()));
+        var drone = Widgets.Column(4);
+        var batteryRow = Widgets.Row(6);
+        batteryRow.AddChild(Widgets.Label("BATTERY", "Heading"));
+        batteryRow.AddChild(_battery);
+        drone.AddChild(batteryRow);
+        drone.AddChild(_droneText);
+        _droneCard = Section("Scout drone", "skill_dronepiloting", drone);
+        _sections.AddChild(_droneCard);
+        _bodyCard = Section("Body", "body_full", BodyRows());
+        _sections.AddChild(_bodyCard);
         _sections.AddChild(Section("Field profile", "ui_move", _profile));
-        _sections.AddChild(Section("Gear", "item_tool", _gear));
+        _gearCard = Section("Gear", "item_tool", _gear);
+        _sections.AddChild(_gearCard);
     }
 
     private static PanelContainer Section(string title, string icon, Control content)
@@ -147,10 +162,40 @@ public partial class UnitPanel : PanelContainer
         if (unit.CarryingId is { } c && _presenter.State.FindUnit(c) is { } carried) lines.Add($"Carrying {carried.Name} (slower).");
         if (unit.CarriedById is { } by && _presenter.State.FindUnit(by) is { } carrier) lines.Add($"Carried by {carrier.Name}.");
         _allyText.Text = string.Join("\n", lines);
+        RefreshDrone(data, unit);
+        // Machines have no limbs or pack worth a card.
+        _bodyCard.Visible = _gearCard.Visible = unit.Kind is not (UnitKind.Drone or UnitKind.Device);
 
         RefreshBody(unit);
         RefreshProfile(profile);
         RefreshGear(data, unit, profile);
+    }
+
+    /// <summary>A drone's card (battery pips, who flies it, how far it may go), or an operator's drone in the air or in the pack.</summary>
+    private void RefreshDrone(ScavengeData data, Unit unit)
+    {
+        var state = _presenter.State;
+        var drone = unit.Kind == UnitKind.Drone ? unit : Drones.DroneOf(state, unit);
+        var op = unit.Kind == UnitKind.Drone ? (unit.OperatorId is { } o ? state.FindUnit(o) : null) : unit;
+        var packed = unit.Kind == UnitKind.Drone ? null : Drones.CarriedDrone(data, unit);
+        _droneCard.Visible = drone is not null || packed is not null;
+        if (!_droneCard.Visible) return;
+        var item = drone?.DroneItemId ?? packed!;
+        var max = op is not null && op.PlayerId == _presenter.PlayerId ? Drones.MaxBattery(data, op, item) : data.Items[item].Drone!.Battery;
+        var charge = drone?.Battery ?? (op is not null ? Drones.PackedBattery(data, op, item) : max);
+        var low = charge <= 1 ? Palette.Danger : charge < data.Rules.Drone.MinBattery ? Palette.Warn : Palette.Network.Lerp(Palette.Amber, 0.85f);
+        _battery.Set(charge, Math.Max(max, charge), low);
+        _battery.TooltipText = $"{charge} of {max} rounds of battery";
+        var lines = new List<string>();
+        if (drone is null) lines.Add(charge < data.Rules.Drone.MinBattery ? "In the pack, charging." : "In the pack, ready to launch (K).");
+        else
+        {
+            if (op is not null && _presenter.CanSee(op) || op?.Side == _presenter.Side)
+                lines.Add($"Flown by {op!.Name}{(op.PlayerId == _presenter.PlayerId ? $" · control range {Drones.ControlRange(data, op, item)}" : "")}.");
+            lines.Add(Drones.Jammed(_presenter.Sim, drone.Pos) ? "Jammed: 1 tile a flight, battery drains fast." : $"Flies {data.Items[item].Drone!.FlyRange} tiles over anything.");
+            if (drone.Id == unit.Id) lines.Add("Flies on its operator's AP; melee cannot reach it, the Linked shoot it down.");
+        }
+        _droneText.Text = string.Join("\n", lines);
     }
 
     private void RefreshBody(Unit unit)

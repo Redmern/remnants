@@ -63,6 +63,8 @@ public static class ScavengeText
         UnitKind.Enemy => u.EnemyDefId is "linked" ? "Linked (Network)" : "Husk",
         UnitKind.Npc when u.FollowingId is not null => "Recruit",
         UnitKind.Npc => "Stranger",
+        UnitKind.Drone => "Scout drone",
+        UnitKind.Device => u.EnemyDefId is "turret" ? "Turret (device)" : "Camera (device)",
         _ => u.Origin is { IsChild: true } ? "Survivor (child)" : "Survivor",
     };
 
@@ -99,6 +101,44 @@ public static class ScavengeText
         ScavengeError.BreakPending => "Already leaving",
         ScavengeError.PingLimit => "No pings left",
         ScavengeError.CannotCarry => "Can't carry",
+        ScavengeError.NoHackingTool => "No hacking tool",
+        ScavengeError.UnknownDevice => "No such device",
+        ScavengeError.AlreadyHacked => "Nothing to hack",
+        ScavengeError.LockedOut => "Locked out",
+        ScavengeError.NotHackable => "Can't hack that",
+        ScavengeError.NoDrone => "No drone",
+        ScavengeError.DroneAlreadyOut => "Drone already out",
+        ScavengeError.LowBattery => "Battery low",
+        ScavengeError.MissingPerk => "Needs a perk",
         _ => error.ToString(),
     };
+
+    public static string Device(DeviceKind kind) => kind switch
+    {
+        DeviceKind.Terminal => "Terminal",
+        DeviceKind.Camera => "Camera",
+        DeviceKind.Turret => "Turret",
+        DeviceKind.Door => "Blast door",
+        DeviceKind.Locker => "Locker",
+        _ => "Relay node",
+    };
+
+    /// <summary>What hacking a device of this kind does, for its tooltip and hack button.</summary>
+    public static string HackEffect(DeviceKind kind) => kind switch
+    {
+        DeviceKind.Terminal => "its data (datashards, blueprints) into your pack, and the zone's map and enemy positions",
+        DeviceKind.Camera => "it watches for your team instead of alerting the Linked",
+        DeviceKind.Turret => "it fires at your enemies instead of you",
+        DeviceKind.Door => "your team passes, everyone else is locked out",
+        DeviceKind.Locker => "it opens: its loot spills out to pick up",
+        _ => "the Linked around it lose the Network, and no reinforcements come",
+    };
+
+    /// <summary>What a device does now, as the local side knows it.</summary>
+    public static string DeviceState(ZoneDevice d, string controller, string localSide) =>
+        d.Disabled ? "destroyed"
+        : d.Used ? (d.Kind == DeviceKind.Terminal ? "downloaded" : "opened")
+        : controller == localSide ? "hacked: works for your team"
+        : controller == Unit.EnemySide ? (d.Networked ? "on the Network" : "locked")
+        : "hacked by a rival";
 }

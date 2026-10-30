@@ -9,7 +9,9 @@ namespace Remnants.Game.Scavenge;
 
 /// <summary>
 /// Scavenge model lookup on top of the shared <see cref="ModelLibrary"/>: map props (pylon tiles: <c>network_pylon</c>),
-/// enemies by definition (<c>enemy_{defId}</c>: husk, husk_crawler, linked, linked_drone, linked_warden) and survivor
+/// enemies by definition (<c>enemy_{defId}</c>: husk, husk_crawler, linked, linked_drone, linked_warden), device units
+/// (<c>device_camera</c> / <c>device_turret</c>, <c>_hacked</c> once they work for a party), the scout drone (<c>scout_drone</c>,
+/// hovering), hackable devices (<see cref="DeviceViews"/>) and survivor
 /// bodies dressed by <see cref="SurvivorDressing"/> (prosthetics, missing limbs, worn gear).
 /// Every lookup falls back to a primitive so the mode runs with no generated assets.
 /// </summary>
@@ -71,8 +73,20 @@ public sealed class ScavengeModels(ModelLibrary library)
 
     public Node3D Crate() => library.TryInstance("loot_crate") ?? Box(new Vector3(1.1f, 0.65f, 0.65f), new Color(0.6f, 0.5f, 0.25f));
 
-    public Node3D Unit(Unit unit)
+    /// <param name="hacked">Device units: whether it works for a party (the <c>_hacked</c> variant).</param>
+    public Node3D Unit(Unit unit, bool hacked = false)
     {
+        if (unit.Kind == UnitKind.Device)
+            return library.TryInstance($"device_{unit.EnemyDefId}{(hacked ? "_hacked" : "")}") ?? library.TryInstance($"device_{unit.EnemyDefId}")
+                   ?? Capsule(1.2f, new Color(0.3f, 0.75f, 0.85f));
+        if (unit.Kind == UnitKind.Drone)
+        {
+            // It hovers: lifted above the ground so it reads as flying.
+            var drone = library.TryInstance("scout_drone") ?? Capsule(0.4f, new Color(0.85f, 0.6f, 0.3f));
+            var hover = new Node3D { Name = "Hover", Position = new Vector3(0, 1.3f, 0) };
+            hover.AddChild(drone);
+            return hover;
+        }
         if (unit.Kind == UnitKind.Enemy)
         {
             var linked = unit.EnemyDefId?.StartsWith("linked") == true;

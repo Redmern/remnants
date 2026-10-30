@@ -26,6 +26,7 @@ public partial class WorldMapPanel : Control
     private readonly Label _cardRegion = Ui.Label(size: 13, color: Ui.Muted);
     private readonly RichTextLabel _cardBody = Ui.Rich();
     private readonly Button _plan;
+    private readonly Button _drone;
     private string? _selected;
 
     /// <summary>"Plan expedition" for a zone: the screen opens the expedition planner on it.</summary>
@@ -71,6 +72,15 @@ public partial class WorldMapPanel : Control
         });
         _plan.ThemeTypeVariation = "Primary";
         box.AddChild(_plan);
+        _drone = Widgets.IconButton("skill_dronepiloting", "Send scout drone", "Fly a scout drone from the stores over this zone: its intel without anyone going", () =>
+        {
+            if (_selected is not { } id) return;
+            // The best pilot at home flies it: less risk, and they train Drone Piloting.
+            var pilot = _session.Sim.State.Survivors.Where(s => !s.IsChild && !s.Away).MaxBy(s => s.Get(Remnants.Core.Survivors.Skill.DronePiloting));
+            _session.Execute(new SendScoutDrone(id, pilot?.Id));
+            Refresh();
+        });
+        box.AddChild(_drone);
         box.AddChild(Legend());
     }
 
@@ -101,6 +111,7 @@ public partial class WorldMapPanel : Control
             _cardRegion.Text = "";
             _cardBody.Text = "Click a marker on the map.";
             _plan.Disabled = true;
+            _drone.Visible = false;
             return;
         }
         _cardTitle.Text = info.Zone.Name;
@@ -110,6 +121,27 @@ public partial class WorldMapPanel : Control
         _cardBody.Text = body;
         _plan.Disabled = sim.State.Expedition is not null;
         _plan.Text = sim.State.Expedition is null ? "Plan expedition" : "A party is already out";
+        RefreshDrone(sim, info);
+    }
+
+    /// <summary>The scout drone button: what a flight there would cost and risk, or why it cannot go.</summary>
+    private void RefreshDrone(ColonySim sim, ZoneInfo info)
+    {
+        var scavenge = sim.Scavenge!;
+        var rules = scavenge.Rules.World.DroneScout;
+        var flying = sim.State.DroneFlights.FirstOrDefault(f => f.ZoneId == info.Zone.Id);
+        var item = WorldMap.DroneItem(sim.State, scavenge);
+        _drone.Visible = info.Intel != ZoneIntel.Scouted || flying is not null;
+        var pilot = sim.State.Survivors.Where(s => !s.IsChild && !s.Away).MaxBy(s => s.Get(Remnants.Core.Survivors.Skill.DronePiloting));
+        var risk = WorldMap.DroneLossChance(scavenge, info.Zone, pilot);
+        var days = WorldMap.DroneLegTicks(sim.Data, scavenge, info.Zone) / (double)sim.Data.Rules.TicksPerDay;
+        (_drone.Disabled, _drone.Text) = flying is not null ? (true, flying.Arrived ? "Scout drone flying home" : "Scout drone on its way")
+            : info.Zone.TravelDays > rules.MaxTravelDays ? (true, "Beyond a drone's battery")
+            : item is null ? (true, "No scout drone in the stores")
+            : (false, $"Send scout drone · {days:0.#}d · {risk * 100:0}% risk");
+        _drone.TooltipText = $"Reveals this zone's intel in {days:0.#} days without anyone going. It may be shot down over dangerous zones "
+                             + $"({risk * 100:0}% here{(pilot is null ? "" : $", flown by {pilot.Name}")}); otherwise it is back, recharged, "
+                             + $"{rules.RechargeDays:0.#} days after the flight home.";
     }
 
     private static Control Legend()

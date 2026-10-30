@@ -21,6 +21,7 @@ public partial class ScavengeScreen : Node3D
     private MapView _map = null!;
     private UnitViews _units = null!;
     private FogOverlay _fog = null!;
+    private DeviceViews _devices = null!;
     private TacticalCamera _camera = null!;
 
     private ScavengeHud _hud = null!;
@@ -28,6 +29,8 @@ public partial class ScavengeScreen : Node3D
     private UnitPanel _unitPanel = null!;
     private ActionPanel _actionPanel = null!;
     private StancePanel _stancePanel = null!;
+    private TechPanel _techPanel = null!;
+    private TechAim _aim;
     private CoopPanel _coopPanel = null!;
     private ScavengeLog _log = null!;
     private ResultPanel _result = null!;
@@ -64,6 +67,9 @@ public partial class ScavengeScreen : Node3D
         _fog = new FogOverlay { Name = "Fog" };
         AddChild(_fog);
         _fog.Setup(_presenter, models);
+        _devices = new DeviceViews { Name = "Devices" };
+        AddChild(_devices);
+        _devices.Setup(_presenter, models);
 
         BuildHud();
         Wire();
@@ -73,6 +79,7 @@ public partial class ScavengeScreen : Node3D
         foreach (var e in FogLog.For(_presenter.Sim, _presenter.Side, _presenter.State.Events).TakeLast(8)) _log.Event(e);
 
         if (Fog.FogDemo.Requested) _ = FogDemoScript();
+        if (TechDemo.Requested) _ = TechDemoScript();
         if (float.TryParse(DebugValue("--zoom"), out var zoom)) _camera.Camera.Size = zoom;
         if (int.TryParse(DebugValue("--autoplay"), out var steps)) _ = Autoplay(steps);
         if (int.TryParse(DebugValue("--select-unit"), out var unitId)) CallDeferred(MethodName.SelectForCapture, unitId);
@@ -108,6 +115,7 @@ public partial class ScavengeScreen : Node3D
         (_turnBar, _unitPanel, _actionPanel, _stancePanel, _log, _result) =
             (_hud.TurnBar, _hud.UnitPanel, _hud.Actions, _hud.Stances, _hud.Log, _hud.Result);
         _coopPanel = _hud.Coop;
+        _techPanel = _hud.Tech;
     }
 
     private void Wire()
@@ -125,9 +133,10 @@ public partial class ScavengeScreen : Node3D
         };
         _hud.BackRequested += () =>
         {
-            if (_usingItem is null && _pinging is null) return false;
+            if (_usingItem is null && _pinging is null && _aim == TechAim.None) return false;
             _usingItem = null;
             _pinging = null;
+            _aim = TechAim.None;
             RefreshHud();
             return true;
         };
@@ -147,6 +156,14 @@ public partial class ScavengeScreen : Node3D
         };
         _actionPanel.CommandRequested += command => _ = Run(command);
         _stancePanel.CommandRequested += command => _ = Run(command);
+        _techPanel.CommandRequested += command => _ = Run(command);
+        _techPanel.AimChosen += aim =>
+        {
+            _aim = aim;
+            _usingItem = null;
+            _pinging = null;
+            RefreshHud();
+        };
         _coopPanel.CommandRequested += command => _ = Run(command);
         _coopPanel.PingChosen += kind =>
         {
@@ -173,6 +190,10 @@ public partial class ScavengeScreen : Node3D
                     _map.SetHover(hover);
                     RefreshFocus();
                 }
+                if (hover is { } over && _presenter.IsExplored(over) && _presenter.State.DeviceAt(over) is { } device
+                    && _presenter.KnownDevices.Contains(device))
+                    _hud.DeviceTip.Show(_presenter, device, _hud.DeviceTip.GetGlobalMousePosition());
+                else _hud.DeviceTip.HideTip();
                 break;
             case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } click:
                 if (TileUnder(click.Position) is { } tile) OnTileClicked(tile);
@@ -180,6 +201,7 @@ public partial class ScavengeScreen : Node3D
             case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Right }:
                 _usingItem = null;
                 _pinging = null;
+                _aim = TechAim.None;
                 SelectActing();
                 RefreshHud();
                 break;
@@ -200,6 +222,14 @@ public partial class ScavengeScreen : Node3D
         var clicked = state.UnitAt(tile) is { } u && _presenter.CanSee(u) ? u : null;
         var acting = _presenter.ActingUnit;
         var pid = _presenter.PlayerId;
+
+        if (_aim != TechAim.None && acting is not null)
+        {
+            var aim = _aim;
+            _aim = TechAim.None;
+            _ = Run(aim == TechAim.Deploy ? new DeployDrone(pid, acting.Id, tile) : new FlyDrone(pid, acting.Id, tile));
+            return;
+        }
 
         if (_pinging is { } ping && acting is not null)
         {
@@ -257,6 +287,7 @@ public partial class ScavengeScreen : Node3D
         _busy = true;
         var result = await _presenter.Execute(command);
         if (result.Ok) _usingItem = null;
+        if (result.Ok) _aim = TechAim.None;
         if (result.Ok && command is not PingTile) _pinging = null;
         await ReplayNew();
         return result.Ok;
@@ -335,6 +366,7 @@ public partial class ScavengeScreen : Node3D
         _map.Sync();
         _units.Sync();
         _fog.Sync();
+        _devices.Sync();
         RefreshHud();
         _seen = new HashSet<int>(_presenter.Visible);
         if (_presenter.Done && !_result.Visible && _presenter.Result() is { } result)
@@ -364,6 +396,7 @@ public partial class ScavengeScreen : Node3D
         _unitPanel.Present(selected);
         _actionPanel.Refresh(_busy, _usingItem);
         _stancePanel.Refresh(_busy);
+        _techPanel.Refresh(_busy, _aim);
         _coopPanel.Refresh(_busy, selected, _pinging);
         _hud.Banner.Refresh();
         RefreshHighlights(selected);
@@ -381,6 +414,12 @@ public partial class ScavengeScreen : Node3D
 
         var acting = _presenter.ActingUnit;
         var isActing = acting is not null && acting.Id == selected.Id;
+        if (isActing && _aim != TechAim.None)
+        {
+            var targets = _aim == TechAim.Deploy ? _presenter.DeployTiles(acting!) : Drones.FlightTargets(_presenter.Sim, acting!);
+            foreach (var p in targets) _map.Highlight(p, HighlightKind.Use);
+            return;
+        }
         if (isActing && _usingItem is { } placed && _presenter.Sim.Data.Items[placed].Use is { TargetsTile: true } onTile)
         {
             var map = _presenter.State.Map;
@@ -397,6 +436,8 @@ public partial class ScavengeScreen : Node3D
             return;
         }
 
+        // Drones fly on their operator's orders and devices stay put: no walking tiles for them.
+        if (selected.Kind is UnitKind.Drone or UnitKind.Device) return;
         foreach (var (tile, cost) in _presenter.Reachable(selected))
         {
             if (isActing && cost > selected.Ap) continue;

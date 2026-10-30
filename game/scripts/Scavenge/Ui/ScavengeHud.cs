@@ -7,9 +7,11 @@ namespace Remnants.Game.Scavenge.Ui;
 /// <summary>
 /// The scavenge HUD's layout and keyboard: turn bar on top; the selected unit's card on the left; actions and stances
 /// on the right; toasts and the log at the bottom; world tags (<see cref="WorldTags"/>) under everything; the run
-/// summary, pause menu and settings on top; the alliance banner (<see cref="AllianceBanner"/>) under the turn bar and the
-/// Team panel (<see cref="CoopPanel"/>) under the stances. Hotkeys: Space/Enter end the turn, 1–3 attacks, 4–6 items,
-/// O/B/L stances, F loot, T recruit, X extract, G give, C carry, Z/V/N pings, Y/U alliance, Esc cancels aiming or opens
+/// summary, pause menu and settings on top; the alliance banner (<see cref="AllianceBanner"/>) under the turn bar, the Tech
+/// panel (<see cref="TechPanel"/>: hacking and the scout drone) and the Team panel (<see cref="CoopPanel"/>) under the
+/// stances, and a device tooltip (<see cref="DeviceTip"/>) at the cursor. Hotkeys: Space/Enter end the turn, 1–3 attacks, 4–6 items,
+/// O/B/L stances, F loot, T recruit, X extract, H hack, K deploy / recall the drone, J fly it, M mark, P payload, G give, C carry,
+/// Z/V/N pings, Y/U alliance, Esc cancels aiming or opens
 /// the menu. <see cref="ScavengeScreen"/> wires it to the map.
 /// </summary>
 public partial class ScavengeHud : CanvasLayer
@@ -19,6 +21,10 @@ public partial class ScavengeHud : CanvasLayer
     public UnitPanel UnitPanel { get; }
     public ActionPanel Actions { get; }
     public StancePanel Stances { get; }
+    public TechPanel Tech { get; }
+
+    /// <summary>A hovered device's state, owner and what hacking it does, next to the cursor.</summary>
+    public DeviceTip DeviceTip { get; } = new();
     public CoopPanel Coop { get; }
     public AllianceBanner Banner { get; }
     public ScavengeLog Log { get; } = new() { CustomMinimumSize = new Vector2(440, 150) };
@@ -67,6 +73,8 @@ public partial class ScavengeHud : CanvasLayer
         right.AddChild(Actions);
         Stances = new StancePanel(presenter) { SizeFlagsVertical = Control.SizeFlags.ShrinkBegin };
         right.AddChild(Stances);
+        Tech = new TechPanel(presenter) { SizeFlagsVertical = Control.SizeFlags.ShrinkBegin };
+        right.AddChild(Tech);
         Coop = new CoopPanel(presenter) { SizeFlagsVertical = Control.SizeFlags.ShrinkBegin };
         right.AddChild(Coop);
 
@@ -85,6 +93,8 @@ public partial class ScavengeHud : CanvasLayer
         bottom.AddChild(toastBox);
         bottom.AddChild(Log);
 
+        DeviceTip.Theme = HudTheme.Shared;
+        AddChild(DeviceTip);
         AddChild(Result);
         Pause = new PauseMenu(
         [
@@ -111,7 +121,7 @@ public partial class ScavengeHud : CanvasLayer
             if (BackRequested?.Invoke() != true) Pause.Open();
         }
         else if (Hotkeys.Pressed(e, "end_turn")) EndTurnRequested?.Invoke();
-        else if (!Actions.PressHotkey(e) && !Stances.PressHotkey(e) && !Coop.PressHotkey(e)) return;
+        else if (!Actions.PressHotkey(e) && !Stances.PressHotkey(e) && !Tech.PressHotkey(e) && !Coop.PressHotkey(e)) return;
         GetViewport().SetInputAsHandled();
     }
 }

@@ -70,7 +70,7 @@ public partial class UnitViews : Node3D
             if (bodyKey != view.BodyKey && unit.Kind != UnitKind.Enemy)
             {
                 view.Model.QueueFree();
-                view.Model = _models.Unit(unit);
+                view.Model = _models.Unit(unit, unit.Side != Unit.EnemySide);
                 view.Model.RotationDegrees = Facing(unit);
                 view.Pose.AddChild(view.Model);
                 view.BodyKey = bodyKey;
@@ -84,7 +84,7 @@ public partial class UnitViews : Node3D
         var root = new Node3D { Name = $"Unit{unit.Id}" };
         var pose = new Node3D { Name = "Pose" };
         root.AddChild(pose);
-        var model = _models.Unit(unit);
+        var model = _models.Unit(unit, unit.Side != Unit.EnemySide);
         model.RotationDegrees = Facing(unit);
         pose.AddChild(model);
         var ring = new MeshInstance3D
@@ -109,7 +109,7 @@ public partial class UnitViews : Node3D
     private static Vector3 Facing(Unit unit) => new(0, 45, 0);
 
     /// <summary>What the model shows: limb conditions (and prosthetic kind) plus worn gear; the model is rebuilt when it changes.</summary>
-    private static string BodyKey(Unit unit) =>
+    private static string BodyKey(Unit unit) => unit.Side + "|" +
         string.Join(",", unit.Body.Parts.OrderBy(kv => kv.Key).Select(kv => $"{(int)kv.Value.Condition}{(kv.Value.ProstheticQuality < 1 ? "" : "+")}"))
         + "|" + string.Join(",", unit.Equipment.OrderBy(kv => kv.Key).Select(kv => kv.Value));
 
@@ -130,7 +130,7 @@ public partial class UnitViews : Node3D
             var target = e.TargetId is { } t && _views.TryGetValue(t, out var tv) ? tv : null;
             switch (e.Type)
             {
-                case ScavengeEventType.Moved when actor is not null && e.Pos is { } to:
+                case ScavengeEventType.Moved or ScavengeEventType.DroneFlown when actor is not null && e.Pos is { } to:
                     var from = TileGrid.FromWorld(actor.Root.Position);
                     if (!Mine(e.UnitId) && !Seen(from) && !Seen(to))
                     {
@@ -195,6 +195,16 @@ public partial class UnitViews : Node3D
                     FloatText(actor.Root.Position, e.Type == ScavengeEventType.Extracted ? "extracted" : "evacuated", Hud.Palette.Good);
                     await TweenTo(actor.Root, actor.Root.Position + Vector3.Up * 3, 0.35f);
                     actor.Root.Visible = false;
+                    break;
+
+                case ScavengeEventType.Hacked or ScavengeEventType.Overridden when e.Side is null && e.Pos is { } hackedAt && (Seen(hackedAt) || Mine(e.UnitId)):
+                    FloatText(TileGrid.ToWorld(hackedAt), e.Type == ScavengeEventType.Hacked ? "HACKED" : "OVERRIDDEN", Hud.Palette.Amber);
+                    await Wait(0.3f);
+                    break;
+
+                case ScavengeEventType.HackFailed when e.Pos is { } alarmAt && (Seen(alarmAt) || Mine(e.UnitId)):
+                    FloatText(TileGrid.ToWorld(alarmAt), "ALARM!", Hud.Palette.Danger);
+                    await Wait(0.3f);
                     break;
 
                 case ScavengeEventType.Healed or ScavengeEventType.Stabilized or ScavengeEventType.Revived when target is not null:
