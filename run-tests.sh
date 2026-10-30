@@ -11,4 +11,5 @@ dotnet test tests/Remnants.Net.Tests --nologo --no-build -v quiet
 if [[ "${1:-}" == "--godot" ]]; then
   godot-mono --headless --path game --build-solutions --quit
   godot-mono --headless --path game -- --audio-selftest | grep -E '^\[audio-selftest\]'
+  godot-mono --headless --path game -- --anim-selftest | grep -E '^\[anim-selftest\]'
 fi
