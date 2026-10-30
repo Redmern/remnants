@@ -1,0 +1,83 @@
+{
+  "id": "m15_medwing",
+  "zone": "network_relay",
+  "room": true,
+  "rows": [
+    "#####ww#########",
+    "#p....x.......q#",
+    "#.t.t......t.t.#",
+    "#..............#",
+    "#=.....W......=#",
+    "#..............#",
+    "#A.....b......C#",
+    "#.....n........#",
+    "######..B#######"
+  ],
+  "markers": {
+    "w": "wing",
+    "x": "wing_core",
+    "p": "w1",
+    "q": "w2",
+    "t": "table",
+    "W": "warden",
+    "A": "suite_a",
+    "B": "suite_b",
+    "C": "suite_c",
+    "b": "bench",
+    "n": "notes"
+  },
+  "caches": [
+    {
+      "marker": "suite_a",
+      "items": [
+        "surgical_kit"
+      ]
+    },
+    {
+      "marker": "suite_b",
+      "items": [
+        "surgical_kit",
+        "med_supplies"
+      ]
+    },
+    {
+      "marker": "suite_c",
+      "items": [
+        "surgical_kit"
+      ]
+    },
+    {
+      "marker": "bench",
+      "items": [
+        "network_arm"
+      ]
+    }
+  ],
+  "devices": [
+    {
+      "kind": "Terminal",
+      "marker": "notes",
+      "tag": "notes",
+      "items": [
+        "bp_cybernetics"
+      ]
+    }
+  ],
+  "enemies": [
+    {
+      "enemy": "linked",
+      "marker": "table",
+      "tag": "table",
+      "side": "neutral"
+    },
+    {
+      "enemy": "linked_warden",
+      "marker": "warden",
+      "tag": "orderly",
+      "patrol": [
+        "w1",
+        "w2"
+      ]
+    }
+  ]
+}

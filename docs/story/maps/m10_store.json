@@ -1,0 +1,28 @@
+{
+  "id": "m10_store",
+  "zone": "flooded_mall",
+  "room": true,
+  "rows": [
+    "###hh#####",
+    "#~~..~~~~#",
+    "#~=rrr=~~#",
+    "#~.rxr.~~#",
+    "#~=rrr=~~#",
+    "#~~~~~~~~#",
+    "#####..###"
+  ],
+  "markers": {
+    "h": "hunt_edge",
+    "r": "store",
+    "x": "seven"
+  },
+  "enemies": [
+    {
+      "enemy": "linked",
+      "marker": "seven",
+      "tag": "seven",
+      "name": "L-0707",
+      "side": "neutral"
+    }
+  ]
+}

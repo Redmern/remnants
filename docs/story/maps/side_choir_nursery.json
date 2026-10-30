@@ -1,0 +1,59 @@
+{
+  "id": "side_choir_nursery",
+  "zone": "network_relay",
+  "room": true,
+  "rows": [
+    "#####..#######",
+    "#............#",
+    "#..1...2...3.#",
+    "#............#",
+    "#=..........=#",
+    "#.m........m.#",
+    "#..........C.#",
+    "#####..#######"
+  ],
+  "markers": {
+    "1": "child_1",
+    "2": "child_2",
+    "3": "child_3",
+    "m": "minder",
+    "C": "cam"
+  },
+  "devices": [
+    {
+      "kind": "Camera",
+      "marker": "cam",
+      "tag": "cam"
+    }
+  ],
+  "enemies": [
+    {
+      "enemy": "linked",
+      "marker": "minder",
+      "tag": "minder"
+    }
+  ],
+  "npcs": [
+    {
+      "name": "Linked child",
+      "marker": "child_1",
+      "tag": "child_1",
+      "hp": 40,
+      "sex": "Female"
+    },
+    {
+      "name": "Linked child",
+      "marker": "child_2",
+      "tag": "child_2",
+      "hp": 40,
+      "sex": "Male"
+    },
+    {
+      "name": "Linked child",
+      "marker": "child_3",
+      "tag": "child_3",
+      "hp": 40,
+      "sex": "Female"
+    }
+  ]
+}

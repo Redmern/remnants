@@ -1,0 +1,60 @@
+{
+  "id": "m8_atrium",
+  "zone": "flooded_mall",
+  "room": true,
+  "rows": [
+    "#####..#####",
+    "#a.........b",
+    "#..........#",
+    "#...~~~~~..#",
+    "#...~~f~~..#",
+    "#...~~~~~..C",
+    "....~~~~~...",
+    "#..........#",
+    "#.....k....#",
+    "#d........c#",
+    "#####..#####"
+  ],
+  "markers": {
+    "a": "c1",
+    "b": "c2",
+    "c": "c3",
+    "d": "c4",
+    "f": "fountain",
+    "k": "core",
+    "C": "cam"
+  },
+  "caches": [
+    {
+      "marker": "core",
+      "items": [
+        "drone_core"
+      ]
+    }
+  ],
+  "devices": [
+    {
+      "kind": "Camera",
+      "marker": "cam",
+      "tag": "cam"
+    }
+  ],
+  "enemies": [
+    {
+      "enemy": "linked_drone",
+      "marker": "c1",
+      "tag": "circuit",
+      "patrol": [
+        "c1",
+        "c2",
+        "c3",
+        "c4"
+      ]
+    },
+    {
+      "enemy": "husk",
+      "marker": "fountain",
+      "tag": "fountain"
+    }
+  ]
+}

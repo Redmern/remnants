@@ -1,0 +1,33 @@
+{
+  "id": "side_hideout",
+  "zone": "suburb_ruins",
+  "room": true,
+  "rows": [
+    "###dd###",
+    "#......#",
+    "#.=..=.#",
+    "#..p...#",
+    "#......#",
+    "########"
+  ],
+  "markers": {
+    "d": "door",
+    "p": "patient"
+  },
+  "enemies": [
+    {
+      "enemy": "husk",
+      "marker": "door",
+      "tag": "door"
+    }
+  ],
+  "npcs": [
+    {
+      "name": "Patient",
+      "marker": "patient",
+      "tag": "patient",
+      "hp": 30,
+      "sex": "Female"
+    }
+  ]
+}

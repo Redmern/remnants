@@ -1,0 +1,75 @@
+{
+  "id": "m9_armoury",
+  "zone": "suburb_ruins",
+  "room": true,
+  "rows": [
+    "######DD########",
+    "#..tttttt......#",
+    "#..............#",
+    "###.######.#####",
+    "#.......a......#",
+    "#..=........=..#",
+    "######.####.####",
+    "#.......b......v",
+    "#..............#",
+    "####.#######.###",
+    "#...V..l...V...#",
+    "################"
+  ],
+  "markers": {
+    "D": "door",
+    "t": "tally_line",
+    "a": "hall_a",
+    "b": "hall_b",
+    "V": "vault",
+    "l": "vault_locker",
+    "v": "vent"
+  },
+  "devices": [
+    {
+      "kind": "Locker",
+      "marker": "vault_locker",
+      "tag": "vault_locker",
+      "items": [
+        "riot_armor",
+        "riot_armor",
+        "rifle"
+      ]
+    }
+  ],
+  "enemies": [
+    {
+      "enemy": "cole",
+      "marker": "door",
+      "tag": "cole",
+      "count": 1,
+      "name": "Cole",
+      "side": "neutral"
+    },
+    {
+      "enemy": "tally_scav",
+      "marker": "tally_line",
+      "tag": "tally",
+      "count": 4,
+      "side": "neutral"
+    },
+    {
+      "enemy": "husk",
+      "marker": "hall_a",
+      "tag": "vault_husk",
+      "count": 1
+    },
+    {
+      "enemy": "husk",
+      "marker": "hall_b",
+      "tag": "vault_husk",
+      "count": 1
+    },
+    {
+      "enemy": "husk_crawler",
+      "marker": "vault",
+      "tag": "vault_husk",
+      "count": 1
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "id": "side_tally_camp",
+  "zone": "scrapyard_flats",
+  "room": true,
+  "rows": [
+    "#####nnn######",
+    "#............#",
+    "#.t...%%...t.#",
+    "#....%..%....#",
+    "#.t..%..%..t.#",
+    "#.....%%.....#",
+    "..ff..C...l...",
+    "#.ff.........#",
+    "#=..=....=..=#",
+    "#####....#####"
+  ],
+  "markers": {
+    "n": "north",
+    "t": "tally",
+    "f": "family",
+    "C": "cole",
+    "l": "strongbox"
+  },
+  "devices": [
+    {
+      "kind": "Locker",
+      "marker": "strongbox",
+      "tag": "strongbox",
+      "items": [
+        "marrow_ledger",
+        "scrap"
+      ]
+    }
+  ],
+  "enemies": [
+    {
+      "enemy": "tally_scav",
+      "marker": "tally",
+      "tag": "tally",
+      "count": 3,
+      "side": "neutral"
+    },
+    {
+      "enemy": "cole",
+      "marker": "cole",
+      "tag": "cole",
+      "name": "Cole",
+      "side": "neutral"
+    }
+  ],
+  "npcs": [
+    {
+      "name": "Tally family",
+      "marker": "family",
+      "tag": "family",
+      "hp": 60,
+      "sex": "Female"
+    }
+  ]
+}

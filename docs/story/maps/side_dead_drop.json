@@ -1,0 +1,25 @@
+{
+  "id": "side_dead_drop",
+  "zone": "scrapyard_flats",
+  "room": true,
+  "rows": [
+    "###..##",
+    "#.....#",
+    "#.=.l.#",
+    "#.....#",
+    "#######"
+  ],
+  "markers": {
+    "l": "drop"
+  },
+  "devices": [
+    {
+      "kind": "Locker",
+      "marker": "drop",
+      "tag": "drop",
+      "items": [
+        "trade_crate"
+      ]
+    }
+  ]
+}
