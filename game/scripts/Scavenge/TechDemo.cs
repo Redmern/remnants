@@ -29,7 +29,7 @@ public static class TechDemo
         {
             case "hack":
                 acting.Pack.Add("hacking_kit");
-                var terminal = Hacking.Place(sim.Data, state, DeviceKind.Terminal, Near(acting.Pos, 1, 1), ["ds_override"]);
+                var terminal = Hacking.Place(sim.Data, state, DeviceKind.Terminal, Near(acting.Pos, 1, 1), ["sch_override"]);
                 var locker = Hacking.Place(sim.Data, state, DeviceKind.Locker, Near(acting.Pos, 3, 4), ["med_kit"]);
                 _ = terminal;
                 _ = locker;
