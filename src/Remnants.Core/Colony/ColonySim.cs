@@ -159,7 +159,17 @@ public sealed class ColonySim
 
     public bool IsWorsening(Survivor s) => Care.IsWorsening(s, Data.Rules.Medical);
 
-    /// <summary>Recipe effort per tick from the building's current workers.</summary>
+    /// <summary>Recipe effort per tick averaged over a day on the workers' schedule (for ETAs).</summary>
+    public double CraftEffortPerHourAveraged(Building building)
+    {
+        var def = Data.Buildings[building.DefId];
+        if (def.Job is null) return 0;
+        var job = Data.Jobs[def.Job];
+        return State.WorkersAt(building.Id).Sum(w =>
+            JobOutput.PerTick(def, building.Level, job, w, Data.Rules.Output, Data) * Schedule.AverageFactor(w, building, def, Data.Rules));
+    }
+
+    /// <summary>Recipe effort per tick from the building's current workers (while on shift).</summary>
     public double CraftEffortPerTick(Building building) => CraftingSystem.EffortPerTick(State, Data, building);
 
     /// <summary>Whether this recipe can be queued now, and why not (level, blueprint, missing item data).</summary>

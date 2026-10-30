@@ -200,7 +200,7 @@ public partial class TownView : Node3D
             Mesh = new BoxMesh { Size = new Vector3(0.2f, 0.26f, 0.2f) }, MaterialOverride = lanternGlass,
             Position = lantern + new Vector3(0, 1.6f, 0), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
         });
-        Lighting.AddGlow(lanternGlass, 4f);
+        Lighting.AddGlow(lanternGlass, node, 4f);
         if (Light(lantern + new Vector3(0, 1.7f, 0), 4.5f, warm) is { } l) Lighting.AddLight(l, 1.1f);
 
         var home = def.Levels.Any(x => x.Beds > 0) || def.Id == _session.Sim.Data.Rules.TownHallBuildingId;
@@ -223,7 +223,7 @@ public partial class TownView : Node3D
                 CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
             });
             bool On() => _session.Sim.State.FindBuilding(id) is { NightShift: true };
-            Lighting.AddGlow(head, 5f, on: On);
+            Lighting.AddGlow(head, node, 5f, on: On);
             if (Light(new Vector3(-1.2f, 3.4f, 1.2f), 10f, cold) is { } flood) Lighting.AddLight(flood, 2.6f, on: On);
         }
         return used;

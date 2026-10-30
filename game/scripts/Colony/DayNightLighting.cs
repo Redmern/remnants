@@ -37,7 +37,7 @@ public partial class DayNightLighting : Node3D
 
     private sealed record NightLight(OmniLight3D Light, float DayEnergy, float NightEnergy, bool Flicker, Func<bool>? On, float Seed);
 
-    private sealed record Glow(StandardMaterial3D Material, float DayEnergy, float NightEnergy, Func<bool>? On);
+    private sealed record Glow(StandardMaterial3D Material, Node Owner, float DayEnergy, float NightEnergy, Func<bool>? On);
 
     private readonly List<NightLight> _lights = new();
     private readonly List<Glow> _glows = new();
@@ -46,6 +46,8 @@ public partial class DayNightLighting : Node3D
     private Godot.Environment _env = null!;
     private ColonySession _session = null!;
     private double _shown = double.NaN;
+    private long _progressTick = -1;
+    private double _progress;
     private float _time;
 
     /// <summary>Hold the scene at this hour instead of following the clock (the menu backdrop shows dusk).</summary>
@@ -81,9 +83,9 @@ public partial class DayNightLighting : Node3D
     public void AddLight(OmniLight3D light, float nightEnergy, float dayEnergy = 0, bool flicker = false, Func<bool>? on = null) =>
         _lights.Add(new NightLight(light, dayEnergy, nightEnergy, flicker, on, (float)GD.RandRange(0, 100)));
 
-    /// <summary>An emissive material (a window, a lamp head) that glows at night.</summary>
-    public void AddGlow(StandardMaterial3D material, float nightEnergy, float dayEnergy = 0, Func<bool>? on = null) =>
-        _glows.Add(new Glow(material, dayEnergy, nightEnergy, on));
+    /// <summary>An emissive material (a window, a lamp head) on <paramref name="owner"/> that glows at night; dropped when the owner goes.</summary>
+    public void AddGlow(StandardMaterial3D material, Node owner, float nightEnergy, float dayEnergy = 0, Func<bool>? on = null) =>
+        _glows.Add(new Glow(material, owner, dayEnergy, nightEnergy, on));
 
     public override void _Process(double delta)
     {
@@ -91,8 +93,9 @@ public partial class DayNightLighting : Node3D
         _time += (float)delta;
         var target = Target();
         var diff = target - _shown;
-        // Whole days skipped (fast-forward, load) look the same: drop them. What is left eases in, quickly but never in one frame.
-        var days = Math.Truncate(diff / 24.0);
+        // Whole days skipped (fast-forward, load) look the same: drop them, and go the short way round the clock (a load
+        // 10 h earlier eases back, not forward through the night). What is left eases in, quickly but never in one frame.
+        var days = Math.Round(diff / 24.0);
         _shown += days * 24;
         diff -= days * 24;
         _shown += diff * (1 - Math.Exp(-delta * 6));
@@ -103,8 +106,15 @@ public partial class DayNightLighting : Node3D
     private double Target()
     {
         if (FixedHour is { } h) return h;
-        var progress = _session.Speed == 0 ? 0 : _session.TickProgress;
-        return _session.Sim.State.Tick + progress;
+        // Pausing or changing speed resets the session's progress into the tick; never step back within a tick for it.
+        var tick = _session.Sim.State.Tick;
+        if (tick != _progressTick)
+        {
+            _progressTick = tick;
+            _progress = 0;
+        }
+        _progress = Math.Max(_progress, _session.Speed == 0 ? 0 : _session.TickProgress);
+        return tick + _progress;
     }
 
     private void Apply(double time)
@@ -132,7 +142,7 @@ public partial class DayNightLighting : Node3D
         _env.FogDensity = k.Fog;
         Night = k.Lamps;
 
-        _lights.RemoveAll(l => !IsInstanceValid(l.Light));
+        _lights.RemoveAll(l => !IsInstanceValid(l.Light) || l.Light.IsQueuedForDeletion());
         foreach (var l in _lights)
         {
             var on = l.On?.Invoke() ?? true;
@@ -141,7 +151,7 @@ public partial class DayNightLighting : Node3D
             l.Light.LightEnergy = energy;
             l.Light.Visible = energy > 0.01f;
         }
-        _glows.RemoveAll(g => !IsInstanceValid(g.Material));
+        _glows.RemoveAll(g => !IsInstanceValid(g.Owner) || g.Owner.IsQueuedForDeletion());
         foreach (var g in _glows)
             g.Material.EmissionEnergyMultiplier = (g.On?.Invoke() ?? true) ? Mathf.Lerp(g.DayEnergy, g.NightEnergy, Night) : 0;
     }

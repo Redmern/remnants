@@ -141,7 +141,8 @@ public partial class SurvivorWalkers : Node3D
             var role = sim.IsAsleep(s) ? Role.Asleep
                 : s.PatientAtBuildingId is not null ? Role.Patient
                 : s.IsInfant ? Role.Infant
-                : s.AssignedBuildingId is not null ? Role.Worker
+                : s.AssignedBuildingId is not null && sim.OnShift(s) ? Role.Worker
+                : s.AssignedBuildingId is not null && !s.IsChild ? Role.Idle
                 : s.IsChild ? Role.Child
                 : Role.Idle;
             var workplace = (s.PatientAtBuildingId ?? s.AssignedBuildingId) is { } bid ? sim.State.FindBuilding(bid) : null;

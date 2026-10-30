@@ -142,6 +142,7 @@ public partial class ProductionPanel : PanelContainer
     private static string Status(ColonySim sim, Building building)
     {
         var rate = sim.CraftEffortPerTick(building);
+        var average = sim.CraftEffortPerHourAveraged(building);
         var working = building.Queue.FirstOrDefault(o => o.Paid);
         return sim.CraftStatus(building) switch
         {
@@ -149,8 +150,8 @@ public partial class ProductionPanel : PanelContainer
             CraftStatus.NoWorkers => $"[color=#{Ui.Hex(Ui.Bad)}]No workers assigned.[/color]",
             CraftStatus.NeedsSkill => NeedsSkill(sim, building),
             CraftStatus.WaitingForInputs => $"[color=#{Ui.Hex(Ui.Bad)}]Waiting for materials.[/color]",
-            _ when working is not null => $"Working on [b]{sim.Data.Recipes[working.RecipeId].Name}[/b], {rate:0.##} work/h: done in "
-                + ColonyText.Duration((int)System.Math.Ceiling((sim.Data.Recipes[working.RecipeId].Work - working.Progress) / System.Math.Max(rate, 1e-6)), sim.Data.Rules),
+            _ when working is not null => $"Working on [b]{sim.Data.Recipes[working.RecipeId].Name}[/b], {rate:0.##} work/h on shift: done in "
+                + ColonyText.Duration((int)System.Math.Ceiling((sim.Data.Recipes[working.RecipeId].Work - working.Progress) / System.Math.Max(average, 1e-6)), sim.Data.Rules),
             _ => $"Starting next hour, {rate:0.##} work/h.",
         };
     }

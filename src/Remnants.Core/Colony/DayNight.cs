@@ -104,16 +104,30 @@ public static class Schedule
         && DayNight.InWindow(DayNight.Hour(state.Tick, data.Rules), SleepWindow(s, data.Rules.DayNight))
         && !OnShift(state, data, s);
 
-    /// <summary>Full-output hours this worker gives per day at this building (for per-day estimates), ignoring tiredness.</summary>
+    /// <summary>
+    /// Full-output hours this worker gives per day at this building (for per-day estimates). A Night Shift crew works
+    /// through its sleep and stays tired, so their whole day counts at the tired rate.
+    /// </summary>
     public static double ShiftHoursPerDay(Survivor s, Building building, BuildingDef def, RulesDef rules)
     {
         if (!rules.DayNight.Enabled) return rules.TicksPerDay;
         var hours = 0.0;
+        var nights = false;
         for (var h = 0; h < rules.TicksPerDay; h++)
-            hours += IsDayShiftHour(s, h, rules.DayNight) ? 1
-                : IsNightShiftHour(s, building, def, h, rules.DayNight) ? rules.DayNight.NightShift.OutputMultiplier : 0;
-        return hours;
+        {
+            if (IsDayShiftHour(s, h, rules.DayNight)) hours += 1;
+            else if (IsNightShiftHour(s, building, def, h, rules.DayNight))
+            {
+                hours += rules.DayNight.NightShift.OutputMultiplier;
+                nights = true;
+            }
+        }
+        return nights ? hours * rules.DayNight.Tired.OutputMultiplier : hours;
     }
+
+    /// <summary>Hours of a day this worker is on shift here (any rate), for converting per-hour rates to per-day.</summary>
+    public static double AverageFactor(Survivor s, Building building, BuildingDef def, RulesDef rules) =>
+        ShiftHoursPerDay(s, building, def, rules) / rules.TicksPerDay;
 
     /// <summary>The workers of a building who work this tick, with their shift factor.</summary>
     public static IEnumerable<(Survivor Worker, double Factor)> Crew(ColonyState state, GameData data, Building building)

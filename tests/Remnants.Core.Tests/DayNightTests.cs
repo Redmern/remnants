@@ -154,6 +154,10 @@ public class DayNightTests
         sim.Execute(new AssignJob(adult.Id, cutter.Id));
         sim.Execute(new AssignJob(child.Id, farm.Id));
 
+        // A standing night shift: 14 day hours + 10 night hours at 70%, all at the tired rate.
+        var r = sim.Data.Rules.DayNight;
+        Assert.Equal(sim.OutputPerTick(cutter) * (14 + 10 * r.NightShift.OutputMultiplier) * r.Tired.OutputMultiplier, sim.OutputPerDay(cutter), 9);
+
         RunTo(sim, 23);
         Assert.True(sim.OnShift(adult));
         Assert.False(sim.IsAsleep(adult));

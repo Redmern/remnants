@@ -642,7 +642,8 @@ An hour is a tick (`hour = tick % ticksPerDay`); a new game starts at `newGame.s
   building is lit (indoors, level ≥ `litMinLevel`, or a Floodlight); else 0; times `tired.outputMultiplier` (0.85) while
   tired. Production, crafting effort, Med Bay staffing and training/XP all go through `Schedule.Crew`; classes keep the
   student's day shift. Queries: `OnShift`, `IsAsleep`, `IsTired`, `CanRunNightShift`, `OutputPerDay` (per-day output on
-  the schedule; `OutputPerTick` stays the on-shift rate), `Schedule.ShiftHoursPerDay`.
+  the schedule, a standing Night Shift crew counted tired; `OutputPerTick` stays the on-shift rate),
+  `CraftEffortPerHourAveraged` (production ETAs), `Schedule.ShiftHoursPerDay`.
 - **Sleep and mood** (`DayNightSystem`, after food): asleep in their window (a bed or a Med Bay cot) gives
   `sleepMoodPerTick` / `sleepHealthPerTick` and pays back sleep debt; working the window adds `Survivor.SleepDebt`; at
   `tired.threshold` they are tired (−mood per tick, −15% output) until slept off. Night work costs
