@@ -22,6 +22,8 @@ public class ProtocolTests
             new UseItem(1, 2, "flare", At: new Pos(6, 1)), new SetStance(1, 2, Stance.Overwatch), new Lookout(1, 2),
             new ProposeAlliance(1, 2, 3), new RespondAlliance(1, 2, 3, true), new BreakAlliance(1, 2),
             new PingTile(1, 2, new Pos(1, 1), PingKind.Loot), new GiveItem(1, 2, 4, "scrap"), new Carry(1, 2, 4), new PutDown(1, 2, new Pos(2, 2)),
+            new Hack(1, 2, 7), new Hack(1, 2, TargetId: 5), new DeployDrone(1, 2, new Pos(3, 3)), new FlyDrone(1, 2, new Pos(6, 6)),
+            new RecallDrone(1, 2), new MarkTarget(1, 2, 9), new DropPayload(1, 2, "flare"),
         ];
         foreach (var intent in intents)
         {

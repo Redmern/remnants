@@ -10,8 +10,12 @@ namespace Remnants.Net;
 /// </summary>
 public static class Protocol
 {
-    /// <summary>3: co-op (lobby mode and teams, alliance messages, ping / give / carry commands, pings and alliances in views).</summary>
-    public const int Version = 3;
+    /// <summary>
+    /// 3: co-op (lobby mode and teams, alliance messages, ping / give / carry commands, pings and alliances in views).
+    /// 4: hacking and drones (hack / deployDrone / flyDrone / recallDrone / markTarget / dropPayload commands, devices and
+    /// drone marks in views).
+    /// </summary>
+    public const int Version = 4;
     public const int DefaultPort = 7777;
 }
 

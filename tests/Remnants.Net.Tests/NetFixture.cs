@@ -47,9 +47,9 @@ public sealed class NetFixture
     public LoopbackHub Hub { get; }
     public List<string> FogViolations { get; } = new();
 
-    public NetFixture(HostOptions? options = null)
+    public NetFixture(HostOptions? options = null, ScavengeData? data = null)
     {
-        Host = new GameHost(Data, options ?? new HostOptions { TurnSeconds = 30, ReconnectSeconds = 60 }, Clock);
+        Host = new GameHost(data ?? Data, options ?? new HostOptions { TurnSeconds = 30, ReconnectSeconds = 60 }, Clock);
         Hub = new LoopbackHub(Host);
     }
 
@@ -177,6 +177,24 @@ public sealed class NetFixture
                     FogViolations.Add($"{player.Name} was told {u.Name} is on {u.Side}.");
                 foreach (var e in s.Events.Where(e => e.Type.ToString().StartsWith("Alliance") && (e.UnitId is not null || e.Pos is not null)))
                     FogViolations.Add($"{player.Name} got an alliance event placing a unit: '{e.Message}'.");
+                var explored = sim.State.Explored.GetValueOrDefault(side, []);
+                foreach (var d in s.View.Devices)
+                {
+                    if (!explored.Contains(map.Index(d.Pos))) FogViolations.Add($"{player.Name} was sent device {d.Id} on a tile they never saw.");
+                    if (d.Items.Count > 0) FogViolations.Add($"{player.Name} was sent what device {d.Id} holds.");
+                    if (d.Progress.Any(p => p.Side != side) || d.Lockouts.Any(l => l.Side != side))
+                        FogViolations.Add($"{player.Name} was sent another side's hack on device {d.Id}.");
+                    if (d.Controller != side && d.Controller != Unit.EnemySide && (d.ControllerPlayerId is not null || !d.Controller.StartsWith("player:")))
+                        FogViolations.Add($"{player.Name} was told device {d.Id} works for {d.Controller}.");
+                    if (d.UnitId is { } du && !shown.Contains(du)) FogViolations.Add($"{player.Name} was sent device {d.Id}'s unseen unit.");
+                }
+                foreach (var m in s.View.Marks.Where(m => m.Side != side || !shown.Contains(m.UnitId)))
+                    FogViolations.Add($"{player.Name} was sent {m.Side}'s mark on unit {m.UnitId}.");
+                foreach (var u in s.View.Units)
+                    if ((u.DroneId is { } dr && !shown.Contains(dr)) || (u.OperatorId is { } op && !shown.Contains(op)))
+                        FogViolations.Add($"{player.Name} was sent {u.Name}'s link to a drone or operator they cannot see.");
+                foreach (var u in s.View.Units.Where(u => u.PlayerId != me && (u.Hooks.Count > 0 || u.DroneBattery is not null)))
+                    FogViolations.Add($"{player.Name} was sent {u.Name}'s perks or drone battery.");
                 if (s.View.RngState != 0) FogViolations.Add($"{player.Name} was sent the RNG state.");
                 if (s.View.Explored.Keys.Any(k => k != side)) FogViolations.Add($"{player.Name} was sent another side's explored tiles.");
                 foreach (var c in s.View.Caches)

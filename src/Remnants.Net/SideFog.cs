@@ -15,7 +15,11 @@ namespace Remnants.Net;
 /// <item>loot caches as the side last saw them (a cache looted out of sight still shows until seen again);</item>
 /// <item>the turn order cut to known units, with <see cref="HiddenUnitId"/> standing in when an unseen unit is up;</item>
 /// <item>the side's own explored tiles, every party's done flag, and no RNG state or Network alarm counters;</item>
-/// <item>co-op: the side's own pings, alliance offers to or from the player, and breaks announced on its team.</item>
+/// <item>co-op: the side's own pings, alliance offers to or from the player, and breaks announced on its team;</item>
+/// <item>hackable devices as the side last saw them (or learned of them from a terminal's map), current while their tile
+///   is in sight or the side controls them; never their contents, nor other sides' hacks in progress or lockouts, and an
+///   other team's control shows as its owner's own side. Drone marks of the side on units it is sent. Other sides' drones
+///   only while seen, like any unit, and a rival's link to an unseen drone or operator is cut.</item>
 /// </list>
 /// The terrain is not part of a view; it goes once in <see cref="MissionStarted"/>. The side is the player's party's side
 /// at each <see cref="Update"/>: a team side while allied (team fog), their own again the moment an alliance breaks.
@@ -26,6 +30,7 @@ public sealed class SideFog(int playerId, string side)
     public const int HiddenUnitId = -1;
 
     private readonly Dictionary<int, LootCache> _knownCaches = new();
+    private readonly Dictionary<int, ZoneDevice> _knownDevices = new();
 
     public int PlayerId { get; } = playerId;
     public string Side { get; private set; } = side;
@@ -60,6 +65,14 @@ public sealed class SideFog(int playerId, string side)
             _knownCaches.Remove(id);
         foreach (var cache in state.Caches.Where(c => Visible.Contains(state.Map.Index(c.Pos))))
             _knownCaches[cache.Id] = new LootCache { Id = cache.Id, Pos = cache.Pos, Items = new(cache.Items) };
+        var explored = state.Explored.GetValueOrDefault(Side);
+        foreach (var device in state.Devices)
+        {
+            var tile = state.Map.Index(device.Pos);
+            var current = Visible.Contains(tile) || Hacking.ControllerOf(state, device) == Side;
+            if (current || (!_knownDevices.ContainsKey(device.Id) && explored?.Contains(tile) == true))
+                _knownDevices[device.Id] = Redacted(state, device);
+        }
         return before;
     }
 
@@ -107,7 +120,34 @@ public sealed class SideFog(int playerId, string side)
             Pings = state.Pings.Where(p => p.Side == Side).ToList(),
             Proposals = state.Proposals.Where(p => p.FromPlayerId == PlayerId || p.ToPlayerId == PlayerId).ToList(),
             Breaks = state.Breaks.Where(b => b.Side == Side).ToList(),
-        };
+            Devices = _knownDevices.Values.OrderBy(d => d.Id).Select(d => ProtocolCopy.Clone(d)).ToList(),
+            Marks = state.Marks.Where(m => m.Side == Side && known.Contains(m.UnitId)).ToList(),
+        }.Also(v =>
+        {
+            // A device's unit only while that unit is sent; links to drones / operators the side does not know are cut.
+            foreach (var d in v.Devices.Where(d => d.UnitId is { } id && !known.Contains(id))) d.UnitId = null;
+            foreach (var u in v.Units)
+            {
+                if (u.DroneId is { } drone && !known.Contains(drone)) u.DroneId = null;
+                if (u.OperatorId is { } op && !known.Contains(op)) u.OperatorId = null;
+            }
+        });
+    }
+
+    /// <summary>
+    /// A device as this side may know it: no contents, only its own side's hack in progress and lockout, and control by
+    /// another team shown as the owner's own side.
+    /// </summary>
+    private ZoneDevice Redacted(ScavengeState state, ZoneDevice d)
+    {
+        var copy = ProtocolCopy.Clone(d);
+        var controller = Hacking.ControllerOf(state, d);
+        copy.Controller = Shown(controller, controller == Side ? null : d.ControllerPlayerId);
+        if (controller != Side) copy.ControllerPlayerId = null;
+        copy.Items = new();
+        copy.Progress = d.Progress.Where(p => p.Side == Side).ToList();
+        copy.Lockouts = d.Lockouts.Where(l => l.Side == Side).ToList();
+        return copy;
     }
 
     /// <summary>
@@ -132,6 +172,9 @@ public sealed class SideFog(int playerId, string side)
         var copy = ProtocolCopy.Clone(u);
         copy.Side = Shown(u.Side, u.PlayerId);
         copy.Ai = new AiMemory();
+        copy.Hooks = new(StringComparer.Ordinal);
+        copy.FieldXp = 0;
+        copy.DroneBattery = null;
         copy.Origin = u.Origin is { } o ? new Survivor { Name = o.Name, Sex = o.Sex, LifeStage = o.LifeStage } : null;
         return copy;
     }
@@ -139,6 +182,12 @@ public sealed class SideFog(int playerId, string side)
 
 internal static class ProtocolCopy
 {
+    public static T Also<T>(this T value, Action<T> act)
+    {
+        act(value);
+        return value;
+    }
+
     public static T Clone<T>(T value) =>
         System.Text.Json.JsonSerializer.Deserialize<T>(System.Text.Json.JsonSerializer.Serialize(value, ProtocolJson.Options), ProtocolJson.Options)!;
 }

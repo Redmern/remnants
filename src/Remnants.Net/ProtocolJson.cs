@@ -46,6 +46,12 @@ public static class ProtocolJson
                     new JsonDerivedType(typeof(GiveItem), "giveItem"),
                     new JsonDerivedType(typeof(Carry), "carry"),
                     new JsonDerivedType(typeof(PutDown), "putDown"),
+                    new JsonDerivedType(typeof(Hack), "hack"),
+                    new JsonDerivedType(typeof(DeployDrone), "deployDrone"),
+                    new JsonDerivedType(typeof(FlyDrone), "flyDrone"),
+                    new JsonDerivedType(typeof(RecallDrone), "recallDrone"),
+                    new JsonDerivedType(typeof(MarkTarget), "markTarget"),
+                    new JsonDerivedType(typeof(DropPayload), "dropPayload"),
                 },
             };
         });
