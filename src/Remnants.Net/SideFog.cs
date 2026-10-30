@@ -6,16 +6,19 @@ namespace Remnants.Net;
 /// <summary>
 /// Server-side fog of war for one player: decides what that player's client may receive. A view holds
 /// <list type="bullet">
-/// <item>the player's own units (any status) and other units only while the side sees them now (<see cref="Detection"/>:
+/// <item>the units of its side (any status: its own, and its allies' with their colony record cut like anyone else's)
+///   and other units only while the side sees them now (<see cref="Detection"/>:
 ///   in sight and detected, lit by a flare, revealed, or scanned); other units lose their AI memory and colony record
 ///   (only name, sex and child/adult are kept for the model);</item>
 /// <item>the side's own contacts and motion sensors, reveals of units it sees, and every burning flare (they light up
 ///   for everyone);</item>
 /// <item>loot caches as the side last saw them (a cache looted out of sight still shows until seen again);</item>
 /// <item>the turn order cut to known units, with <see cref="HiddenUnitId"/> standing in when an unseen unit is up;</item>
-/// <item>the side's own explored tiles, every party's done flag, and no RNG state or Network alarm counters.</item>
+/// <item>the side's own explored tiles, every party's done flag, and no RNG state or Network alarm counters;</item>
+/// <item>co-op: the side's own pings, alliance offers to or from the player, and breaks announced on its team.</item>
 /// </list>
-/// The terrain is not part of a view; it goes once in <see cref="MissionStarted"/>.
+/// The terrain is not part of a view; it goes once in <see cref="MissionStarted"/>. The side is the player's party's side
+/// at each <see cref="Update"/>: a team side while allied (team fog), their own again the moment an alliance breaks.
 /// </summary>
 public sealed class SideFog(int playerId, string side)
 {
@@ -25,7 +28,7 @@ public sealed class SideFog(int playerId, string side)
     private readonly Dictionary<int, LootCache> _knownCaches = new();
 
     public int PlayerId { get; } = playerId;
-    public string Side { get; } = side;
+    public string Side { get; private set; } = side;
 
     /// <summary>Tiles the side saw at the last <see cref="Update"/>.</summary>
     public HashSet<int> Visible { get; private set; } = [];
@@ -41,6 +44,7 @@ public sealed class SideFog(int playerId, string side)
     {
         var before = Visible;
         var state = sim.State;
+        Side = state.FindParty(PlayerId)?.Side ?? Side;
         Visible = Visibility.SideVisible(sim.Data, state, Side);
         SeenBefore = Seen;
         Seen = Detection.SeenBy(sim.Data, state, Side);
@@ -59,7 +63,7 @@ public sealed class SideFog(int playerId, string side)
     public ScavengeState View(ScavengeSim sim)
     {
         var state = sim.State;
-        var units = state.Units.Where(u => Knows(state, u)).Select(u => Owns(u) ? Copy(u) : Redacted(u)).ToList();
+        var units = state.Units.Where(u => Knows(state, u)).Select(u => u.PlayerId == PlayerId ? Copy(u) : Redacted(u)).ToList();
         var known = units.Select(u => u.Id).ToHashSet();
 
         var order = new List<int>();
@@ -91,6 +95,9 @@ public sealed class SideFog(int playerId, string side)
             Reveals = state.Reveals.Where(r => r.Side == Side && known.Contains(r.UnitId)).ToList(),
             Flares = state.Flares.ToList(),
             Sensors = state.Sensors.Where(x => x.Side == Side).ToList(),
+            Pings = state.Pings.Where(p => p.Side == Side).ToList(),
+            Proposals = state.Proposals.Where(p => p.FromPlayerId == PlayerId || p.ToPlayerId == PlayerId).ToList(),
+            Breaks = state.Breaks.Where(b => b.Side == Side).ToList(),
         };
     }
 

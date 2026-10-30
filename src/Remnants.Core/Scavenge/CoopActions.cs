@@ -137,8 +137,8 @@ public static class CoopActions
         var state = sim.State;
         unit.PingsUsed++;
         state.Pings.RemoveAll(p => p.Side == unit.Side && p.Pos == c.At);
-        state.Pings.Add(new Ping(unit.Side, c.PlayerId, c.At, c.Kind, state.Round));
-        var what = c.Kind switch { PingKind.Danger => "Danger", PingKind.GoHere => "Go here", _ => "Loot" };
+        state.Pings.Add(new Ping(unit.Side, c.PlayerId, c.At, c.Mark, state.Round));
+        var what = c.Mark switch { PingKind.Danger => "Danger", PingKind.GoHere => "Go here", _ => "Loot" };
         state.Log(new(state.Round, ScavengeEventType.Pinged, $"{unit.Name} pings {c.At}: {what}.", unit.Id, Pos: c.At, Side: unit.Side));
         return ScavengeResult.Success($"Pinged {c.At}.");
     }

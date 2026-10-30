@@ -56,6 +56,8 @@ public static class Alliances
         var state = sim.State;
         var offer = state.Proposals.Find(p => p.FromPlayerId == c.FromPlayerId && p.ToPlayerId == c.PlayerId);
         if (offer is null) return ScavengeResult.Fail(ScavengeError.NoProposal, $"Player {c.FromPlayerId} made you no offer.");
+        if (c.Accept && state.FindParty(c.FromPlayerId) is not { Done: false })
+            return ScavengeResult.Fail(ScavengeError.NotAPlayer, $"Player {c.FromPlayerId} has left the zone.");
         state.Proposals.Remove(offer);
         var sides = new List<string> { Side(state, c.FromPlayerId), Side(state, c.PlayerId) };
         if (!c.Accept)
@@ -64,8 +66,6 @@ public static class Alliances
                 $"Player {c.PlayerId} declines player {c.FromPlayerId}'s alliance.", unit.Id, Pos: unit.Pos, Sides: sides));
             return ScavengeResult.Success($"Declined player {c.FromPlayerId}'s offer.");
         }
-        if (state.FindParty(c.FromPlayerId) is not { Done: false })
-            return ScavengeResult.Fail(ScavengeError.NotAPlayer, $"Player {c.FromPlayerId} has left the zone.");
         var side = Merge(state, c.FromPlayerId, c.PlayerId);
         state.Log(new(state.Round, ScavengeEventType.AllianceAccepted,
             $"Players {c.FromPlayerId} and {c.PlayerId} are allies now: shared sight, no friendly fire.", unit.Id, Pos: unit.Pos,

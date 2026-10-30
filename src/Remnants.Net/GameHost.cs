@@ -13,6 +13,9 @@ public sealed record HostOptions
     public int MaxPartySize { get; init; } = 6;
     public double TurnSeconds { get; init; } = 60;
     public double ReconnectSeconds { get; init; } = 120;
+
+    /// <summary>Co-op: every seat starts on one team (spawned together, shared sight). Versus: teams only by choice.</summary>
+    public MissionMode Mode { get; init; } = MissionMode.Versus;
 }
 
 public enum HostPhase { Lobby, Playing, Ended }
@@ -76,6 +79,10 @@ public sealed class GameHost : IHostSink
         public bool Gone;
         public bool ResultSent;
         public SideFog Fog = null!;
+        public int? Team;
+
+        /// <summary>The team the seat starts on: everyone on 1 in co-op, the lobby pick in versus.</summary>
+        public int? StartTeam(MissionMode mode) => mode == MissionMode.Coop ? 1 : Team;
     }
 
     // ---- IHostSink ----
@@ -95,6 +102,11 @@ public sealed class GameHost : IHostSink
                 seat.Ready = ready.IsReady;
                 BroadcastLobby();
                 TryStart();
+                break;
+            case SetTeam team when seat is not null && Phase == HostPhase.Lobby:
+                if (Options.Mode == MissionMode.Versus) seat.Team = team.Team is > 0 and <= 8 ? team.Team : null;
+                seat.Ready = false;
+                BroadcastLobby();
                 break;
             case Command command when seat is not null:
                 HandleCommand(seat, command);
@@ -216,14 +228,16 @@ public sealed class GameHost : IHostSink
 
     private void BroadcastLobby() =>
         Broadcast(new LobbyState(Options.ZoneId, Options.MinPlayers, Options.MaxPlayers,
-            _seats.Select(s => new LobbyPlayer(s.PlayerId, s.Name, s.Party.Count, s.Ready, s.Connection is not null)).ToList()));
+            _seats.Select(s => new LobbyPlayer(s.PlayerId, s.Name, s.Party.Count, s.Ready, s.Connection is not null, s.StartTeam(Options.Mode))).ToList(),
+            Options.Mode));
 
     private void TryStart()
     {
         if (Phase != HostPhase.Lobby || _seats.Count < Options.MinPlayers || !_seats.All(s => s.Ready && s.Connection is not null)) return;
         try
         {
-            Sim = NewScavenge.Create(_data, Options.ZoneId, Options.Seed, _seats.Select(s => new PartySetup(s.PlayerId, s.Party)).ToList());
+            Sim = NewScavenge.Create(_data, Options.ZoneId, Options.Seed,
+                _seats.Select(s => new PartySetup(s.PlayerId, s.Party, s.StartTeam(Options.Mode))).ToList());
         }
         catch (ArgumentException e)
         {
@@ -235,9 +249,7 @@ public sealed class GameHost : IHostSink
         }
         Phase = HostPhase.Playing;
         Log?.Invoke($"mission started in {Options.ZoneId} (seed {Options.Seed}) with {_seats.Count} players");
-        var players = _seats.Select(s => new PlayerInfo(s.PlayerId, s.Name)).ToList();
-        foreach (var seat in _seats)
-            seat.Connection?.Send(new MissionStarted(Sim.State.ZoneId, Sim.State.Map, players, Options.TurnSeconds, Options.ReconnectSeconds));
+        foreach (var seat in _seats) seat.Connection?.Send(Started());
         _lastPublished = null;
         Publish();
         AfterChange(forceTurn: true);
@@ -267,12 +279,46 @@ public sealed class GameHost : IHostSink
         AfterChange();
     }
 
-    /// <summary>Runs one command on the sim and, if it changed anything, sends every seat its new view.</summary>
+    private MissionStarted Started() =>
+        new(Sim!.State.ZoneId, Sim.State.Map, _seats.Select(s => new PlayerInfo(s.PlayerId, s.Name, s.StartTeam(Options.Mode))).ToList(),
+            Options.TurnSeconds, Options.ReconnectSeconds, Options.Mode);
+
+    /// <summary>
+    /// Runs one command on the sim and, if it changed anything, sends every seat its new view, then tells the players
+    /// involved about alliance changes it caused (an offer, a merge, a decline or lapse, a break announced or done).
+    /// </summary>
     private ScavengeResult Act(IScavengeCommand command)
     {
-        var result = Sim!.Execute(command);
-        if (result.Ok) Publish();
+        var state = Sim!.State;
+        var offers = state.Proposals.ToList();
+        var breaks = state.Breaks.ToList();
+        var sides = state.Parties.ToDictionary(p => p.PlayerId, p => p.Side);
+        var result = Sim.Execute(command);
+        if (!result.Ok) return result;
+        Publish();
+
+        List<int> Team(int playerId) => state.PlayersOn(state.FindParty(playerId)!.Side).ToList();
+        foreach (var offer in state.Proposals.Except(offers))
+            SendTo([offer.FromPlayerId, offer.ToPlayerId],
+                new AllianceProposed(offer.FromPlayerId, offer.ToPlayerId, offer.Round + _data.Rules.Coop.ProposalRounds - 1));
+        foreach (var offer in offers.Except(state.Proposals))
+        {
+            if (state.Allied(offer.FromPlayerId, offer.ToPlayerId)) SendTo(Team(offer.ToPlayerId), new AllianceAccepted(Team(offer.ToPlayerId)));
+            else SendTo([offer.FromPlayerId, offer.ToPlayerId],
+                new AllianceDeclined(offer.FromPlayerId, offer.ToPlayerId, Lapsed: command is not RespondAlliance { Accept: false }));
+        }
+        foreach (var b in state.Breaks.Except(breaks)) SendTo(Team(b.PlayerId), new AllianceBreakWarning(b.PlayerId, b.EffectiveRound));
+        foreach (var b in breaks.Except(state.Breaks).Where(b => b.EffectiveRound <= state.Round))
+        {
+            var former = sides.Where(kv => kv.Value == b.Side && kv.Key != b.PlayerId).Select(kv => kv.Key).ToList();
+            SendTo([b.PlayerId, .. former], new AllianceBroken(b.PlayerId, former));
+        }
         return result;
+    }
+
+    private void SendTo(IEnumerable<int> playerIds, Message message)
+    {
+        foreach (var id in playerIds.Distinct()) SeatOf(id)?.Connection?.Send(message);
     }
 
     /// <summary>Every seat (connected or not, so its cache memory stays right) gets its fog updated; connected ones get a snapshot.</summary>
@@ -392,8 +438,7 @@ public sealed class GameHost : IHostSink
             BroadcastLobby();
             return;
         }
-        var players = _seats.Select(s => new PlayerInfo(s.PlayerId, s.Name)).ToList();
-        connection.Send(new MissionStarted(Sim.State.ZoneId, Sim.State.Map, players, Options.TurnSeconds, Options.ReconnectSeconds));
+        connection.Send(Started());
         connection.Send(new Snapshot(seat.Fog.View(Sim), seat.Fog.Visible.Order().ToList(), []));
         Broadcast(new Notice($"{seat.Name} is back."));
         SendTurn(seat);

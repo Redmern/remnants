@@ -71,8 +71,17 @@ public sealed class NetClient
     /// <summary>Anything changed (lobby, view, turn, result, connection).</summary>
     public event Action? Changed;
 
-    /// <summary>A line for the log: notices, players dropping and coming back.</summary>
+    /// <summary>A line for the log: notices, players dropping and coming back, alliance news.</summary>
     public event Action<string>? Noticed;
+
+    /// <summary>Alliance news for this player (offer, accepted, declined, break warning, broken), for banners.</summary>
+    public event Action<Message>? AllianceNews;
+
+    /// <summary>The latest alliance message for this player (banners re-read it).</summary>
+    public Message? LastAllianceNews { get; private set; }
+
+    /// <summary>Lobby, versus missions: start on a team with whoever picks the same number (null = on your own).</summary>
+    public void SetTeam(int? team) => _transport.Send(new SetTeam(team));
 
     public string NameOf(int playerId) =>
         Mission?.Players.Find(p => p.PlayerId == playerId)?.Name ?? Lobby?.Players.Find(p => p.PlayerId == playerId)?.Name ?? $"Player {playerId}";
@@ -174,6 +183,11 @@ public sealed class NetClient
             case Notice n:
                 Noticed?.Invoke(n.Text);
                 break;
+            case AllianceProposed or AllianceAccepted or AllianceDeclined or AllianceBreakWarning or AllianceBroken:
+                LastAllianceNews = message;
+                Noticed?.Invoke(Describe(message));
+                AllianceNews?.Invoke(message);
+                break;
             case MissionEnded e:
                 Result ??= e.Result;
                 EndReason = e.Reason;
@@ -181,6 +195,26 @@ public sealed class NetClient
                 break;
         }
         Changed?.Invoke();
+    }
+
+    /// <summary>A log line for an alliance message, from this player's point of view.</summary>
+    public string Describe(Message message)
+    {
+        string Who(int id) => id == PlayerId ? "you" : NameOf(id);
+        string Them(IEnumerable<int> ids) => string.Join(" and ", ids.Where(id => id != PlayerId).Select(NameOf));
+        return message switch
+        {
+            AllianceProposed p when p.ToPlayerId == PlayerId => $"{NameOf(p.FromPlayerId)} offers an alliance (answer on your turn, until round {p.UntilRound}).",
+            AllianceProposed p => $"You offered {NameOf(p.ToPlayerId)} an alliance.",
+            AllianceAccepted a => $"Allied with {Them(a.Team)}: shared sight, no friendly fire.",
+            AllianceDeclined d when d.Lapsed => $"The alliance offer between {Who(d.FromPlayerId)} and {Who(d.ToPlayerId)} lapsed.",
+            AllianceDeclined d => d.ToPlayerId == PlayerId ? $"You declined {NameOf(d.FromPlayerId)}'s alliance." : $"{NameOf(d.ToPlayerId)} declined your alliance.",
+            AllianceBreakWarning w when w.PlayerId == PlayerId => $"You leave the alliance when round {w.EffectiveRound} starts.",
+            AllianceBreakWarning w => $"{NameOf(w.PlayerId)} leaves the alliance when round {w.EffectiveRound} starts!",
+            AllianceBroken b when b.PlayerId == PlayerId => $"You have left the alliance with {Them(b.FormerAllies)}.",
+            AllianceBroken b => $"{NameOf(b.PlayerId)} has left the alliance: no more shared sight.",
+            _ => message.GetType().Name,
+        };
     }
 
     private void Complete(int requestId, ScavengeResult result)

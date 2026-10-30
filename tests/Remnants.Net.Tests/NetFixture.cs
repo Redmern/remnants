@@ -130,7 +130,9 @@ public sealed class NetFixture
     private void CheckFog(TestPlayer player, Message message)
     {
         if (Host.Sim is not { } sim || player.Client.PlayerId == 0) return;
-        var side = Unit.PlayerSide(player.Client.PlayerId);
+        var me = player.Client.PlayerId;
+        // The side the player is on right now: their team's while allied (team fog), their own otherwise.
+        var side = sim.State.FindParty(me)?.Side ?? Unit.PlayerSide(me);
         var seen = Detection.SeenBy(sim.Data, sim.State, side);
         var map = sim.State.Map;
         bool Theirs(Unit u) => u.Side == side || u.PlayerId == player.Client.PlayerId;
@@ -161,11 +163,28 @@ public sealed class NetFixture
                     FogViolations.Add($"{player.Name} was sent a reveal of unit {r.UnitId} for {r.Side}.");
                 foreach (var u in s.View.Units.Where(u => u.Side != side && u.Ai.TargetId is not null))
                     FogViolations.Add($"{player.Name} was sent {u.Name}'s AI memory.");
+                foreach (var p in s.View.Pings.Where(p => p.Side != side))
+                    FogViolations.Add($"{player.Name} was sent {p.Side}'s ping at {p.Pos}.");
+                foreach (var o in s.View.Proposals.Where(o => o.FromPlayerId != me && o.ToPlayerId != me))
+                    FogViolations.Add($"{player.Name} was sent the offer between players {o.FromPlayerId} and {o.ToPlayerId}.");
+                foreach (var b in s.View.Breaks.Where(b => b.Side != side))
+                    FogViolations.Add($"{player.Name} was sent {b.Side}'s break.");
+                foreach (var u in s.View.Units.Where(u => u.PlayerId != me && u.Origin is { } o && o.Attributes.Values.Any(v => v > 0)))
+                    FogViolations.Add($"{player.Name} was sent {u.Name}'s colony record.");
                 if (s.View.RngState != 0) FogViolations.Add($"{player.Name} was sent the RNG state.");
                 if (s.View.Explored.Keys.Any(k => k != side)) FogViolations.Add($"{player.Name} was sent another side's explored tiles.");
                 foreach (var c in s.View.Caches)
                     if (!sim.State.Explored.GetValueOrDefault(side, []).Contains(map.Index(c.Pos)))
                         FogViolations.Add($"{player.Name} was sent cache {c.Id} on a tile they never saw.");
+                break;
+            case AllianceProposed m when m.FromPlayerId != me && m.ToPlayerId != me:
+            case AllianceDeclined d when d.FromPlayerId != me && d.ToPlayerId != me:
+            case AllianceAccepted a when !a.Team.Contains(me):
+            case AllianceBroken b when b.PlayerId != me && !b.FormerAllies.Contains(me):
+                FogViolations.Add($"{player.Name} was told of someone else's alliance: {message}.");
+                break;
+            case AllianceBreakWarning w when sim.State.FindParty(w.PlayerId)?.Side != side:
+                FogViolations.Add($"{player.Name} was warned of a break on another team: {message}.");
                 break;
             case TurnChanged t when t.UnitId is { } id:
                 var unit = sim.State.FindUnit(id)!;

@@ -47,8 +47,8 @@ public sealed record RespondAlliance(int PlayerId, int UnitId, int FromPlayerId,
 /// <summary>Co-op: leave your team. It takes effect after a warning round both sides see (<see cref="AllianceBreak"/>).</summary>
 public sealed record BreakAlliance(int PlayerId, int UnitId) : IScavengeCommand;
 
-/// <summary>Co-op: mark a tile for your team only (danger / go here / loot). Free, a few per turn.</summary>
-public sealed record PingTile(int PlayerId, int UnitId, Pos At, PingKind Kind) : IScavengeCommand;
+/// <summary>Co-op: mark a tile for your team only (danger / go here / loot). Free, a few per turn. (<c>Mark</c>, not <c>Kind</c>: the wire format uses <c>kind</c> for the command type.)</summary>
+public sealed record PingTile(int PlayerId, int UnitId, Pos At, PingKind Mark) : IScavengeCommand;
 
 /// <summary>Hand a carried item to an adjacent unit on your side (an ally's goes into their party, and home with them).</summary>
 public sealed record GiveItem(int PlayerId, int UnitId, int TargetId, string ItemId) : IScavengeCommand;

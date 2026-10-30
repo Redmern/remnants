@@ -39,6 +39,13 @@ public static class ProtocolJson
                     new JsonDerivedType(typeof(Extract), "extract"),
                     new JsonDerivedType(typeof(SetStance), "setStance"),
                     new JsonDerivedType(typeof(Lookout), "lookout"),
+                    new JsonDerivedType(typeof(ProposeAlliance), "proposeAlliance"),
+                    new JsonDerivedType(typeof(RespondAlliance), "respondAlliance"),
+                    new JsonDerivedType(typeof(BreakAlliance), "breakAlliance"),
+                    new JsonDerivedType(typeof(PingTile), "ping"),
+                    new JsonDerivedType(typeof(GiveItem), "giveItem"),
+                    new JsonDerivedType(typeof(Carry), "carry"),
+                    new JsonDerivedType(typeof(PutDown), "putDown"),
                 },
             };
         });

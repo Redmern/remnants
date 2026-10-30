@@ -10,8 +10,8 @@ namespace Remnants.Server;
 /// Headless authoritative server for one shared scavenge instance (see docs/MULTIPLAYER.md).
 /// <code>
 /// dotnet run --project src/Remnants.Server -- --port 7777 [--zone ID] [--seed N] [--players 2] [--max-players 4]
-///     [--turn-seconds 60] [--reconnect-seconds 120] [--bind 0.0.0.0] [--data DIR]
-/// dotnet run --project src/Remnants.Server -- --bot 127.0.0.1:7777 [--name Bot] [--rounds 30]
+///     [--turn-seconds 60] [--reconnect-seconds 120] [--bind 0.0.0.0] [--data DIR] [--coop]
+/// dotnet run --project src/Remnants.Server -- --bot 127.0.0.1:7777 [--name Bot] [--rounds 30] [--team N] [--hostile]
 /// </code>
 /// The server runs one mission, then exits once every player's run is over. <c>--bot</c> instead joins a server
 /// as a scripted headless client (for smoke tests).
@@ -47,12 +47,13 @@ public static class Program
             MaxPartySize = a.Int("--max-party", game.Rules.Expedition.PartySizeByTownHallLevel.Max()),
             TurnSeconds = a.Double("--turn-seconds", 60),
             ReconnectSeconds = a.Double("--reconnect-seconds", 120),
+            Mode = a.Flag("--coop") ? MissionMode.Coop : MissionMode.Versus,
         };
         using var server = HostedServer.Start(scavenge, options, IPAddress.Parse(a.Value("--bind") ?? "0.0.0.0"), a.Int("--port", Protocol.DefaultPort), Print);
         var done = new TaskCompletionSource();
         server.Host.Ended += () => done.TrySetResult();
         Print($"Remnants server v{Protocol.Version} on port {server.Port}: zone {options.ZoneId}, seed {options.Seed}, " +
-              $"{options.MinPlayers}-{options.MaxPlayers} players, turn timer {options.TurnSeconds}s, reconnect window {options.ReconnectSeconds}s");
+              $"{options.MinPlayers}-{options.MaxPlayers} players, {(options.Mode == MissionMode.Coop ? "co-op" : "versus")}, turn timer {options.TurnSeconds}s, reconnect window {options.ReconnectSeconds}s");
 
         Console.CancelKeyPress += (_, e) =>
         {
@@ -91,6 +92,8 @@ internal sealed class Args(string[] args)
         }
         return null;
     }
+
+    public bool Flag(string name) => args.Contains(name);
 
     public int Int(string name, int fallback) => Value(name) is { } v ? int.Parse(v, CultureInfo.InvariantCulture) : fallback;
 
