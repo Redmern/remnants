@@ -830,3 +830,58 @@ food 4.1 → 3.7 days, starvation 0 → 0, departures 15 → 11, births 36 → 3
 (within the noise of 20 colonies; zone trials are the better read), food rotted 42 per colony, food poisonings 0. Weather
 now waters or buries the crops per harvest (`Crops.Multiplier` in `HarvestSystem`; the Greenhouse is indoors) instead of
 scaling every farming worker, and rain or storms skip the Campfire's supper bonus as they skip campfire evenings.
+
+## Electronics and power
+
+Bot changes: the colony bot builds a Fuel Generator after Electronics Lab 2 (solar and a bank once their schematics are
+known), runs the Lab as a bench (strip junk except Linked cores, keep a few wiring and boards, then two radios, noise and
+holo-decoys, EMPs and a drone variant), and sends radios in pairs, EMPs and decoys spread over the party, and a medic drone
+first (never a drone the pilot lacks the perk for). The party bot throws an EMP over two or more Network machines (or one
+Linked within 3), a holo-decoy between itself and a Linked when hurt, a noise decoy at full range away from the exit when
+two Husks close in, heals with a medic drone, fires a combat drone and ferries a full cargo hold. New measures: a `power:`
+line in the colony report, and `--kit=electronics` / `--kit=electronics-combat` zone trials.
+
+### Colony (`main` with schematics, story and weather → this branch, 90 days)
+
+| | seeds 1–20 | seeds 21–40 | all 40 |
+|---|---|---|---|
+| median pop | 14 → 11 | 12 → 14 | — |
+| TH2 / Armory / Lab day | 29.5 / 50.8 / 65.5 → 30.8 / 54.5 / 72.5 | 31.5 / 52.6 / 69.5 → 29.5 / 53.0 / 67.5 | — |
+| expedition deaths | 9 / 475 → 15 / 470 | 19 / 472 → 10 / 480 | 28 → 25 |
+
+- The early game does not move beyond seed noise: the two halves swing in opposite directions (the extra loot and drops
+  shift every RNG stream). Before the rebase (20 seeds × 60 days) it read TH2 31.0 → 30.6, Armory 51.8 → 49.8, Lab
+  57.6 → 56.6. No generator means no grid and nothing new in the log. The new tier-1 loot (broken gadgets, wiring,
+  boards, dead radios, noise decoys, radios) was halved after the rebase to about 6% of the tier-1 loot weight, so it
+  does not crowd out scrap and food.
+- Power is a mid-game boost: by day 90 no bot colony has a generator; over 150 days (before the rebase) 16/20 built one
+  (median day 117), with no brownouts or breaker trips, 7 064 powered Lab hours, 333 disassemblies and 220 devices made.
+
+### Zones (300 runs each, party of 2, starting gear; death rate / wipes; before the rebase)
+
+| Zone | plain | + electronics kit | + electronics-combat kit | kit carried, unused |
+|---|---|---|---|---|
+| Suburb Ruins | 33% / 11% | 30% / 12% | 35% / 12% | — |
+| Flooded Mall | 51% / 23% | 59% / 26% | 62% / 27% | 51% / 19% |
+| Rail Depot | 93% / 63% | 93% / 63% | 93% / 62% | — |
+
+Kit: two handheld radios, an EMP, a holo-decoy, a noise decoy and a medic (or combat) drone. Per run in the Flooded Mall:
+0.55 EMPs, 0.53 holo-decoys, 0.6 noise decoys, 0.5 drone heals (or 0.75 drone bursts).
+
+- **The noise decoy first made things worse** (Suburb wipes 11% → 19%): Husks only turned to it while idle, so it woke the
+  map around the party. Now Husks leave a hunt for it unless their prey is adjacent, and the bot throws it away from the
+  exit: Suburb Ruins is down to 30% / 12%.
+- In the Flooded Mall the kit brings home 21% more items (6.9 vs 5.7) and the runs last two rounds longer (the bot stays
+  while a drone keeps healing and a decoy covers it), which costs more lives than the devices save. Carried but unused, the
+  kit changes nothing (51%). This is mostly the bot staying too long; a player who leaves when the decoy goes up gets the
+  benefit. Watch next: a "decoy up → withdraw" rule for the bot before retuning device numbers.
+- After the rebase (schematics, weather on main): plain Suburb Ruins 32% / 10% → 32% / 9%, Flooded Mall 53% / 23% →
+  53% / 25%; with the electronics kit 38% / 12% and 55% / 27% — the same pattern (more loot, longer runs).
+- The Rail Depot is out of reach for a starting party with or without devices (as before: it needs carbines).
+
+### Watch next
+
+- The generator comes very late for the bot (day ~117); a player builds it right after Lab 2. If that is too late in
+  practice, move it before Town Hall 3 in the build order.
+- Once the weather branch feeds `Power.SolarWeatherFactor`, check solar arrays at dusk and in storms against the bank size.
+- With story-schematics merged, recheck the electronics drop odds against the "first tier-2 schematic by day ~35" target.

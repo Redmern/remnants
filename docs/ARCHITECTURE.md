@@ -132,6 +132,16 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   `CraftEffortPerTick`, `CraftStatus`, `SkillGap`, `CanQueue`, `QualityChances`, `PreviewProfile` for a survivor's field profile with
   a given loadout, `FoodPerDay`/`FoodDays`, `OutputPerTick`); the per-survivor output breakdown uses `JobOutput`'s
   public factors.
+- Electronics and power UI: `ProductionPanel` groups a bench's recipes into tabs by `RecipeDef.Group` (Electronics Lab:
+  Components / Devices / Upgrades / Disassembly / Other), badges `NeedsPower` recipes and orders, shows disassembly yields and
+  research chance, the lab's powered line and the charging bench (`ColonyState.Charging`, `Power.ChargeEta`); `TopBar`
+  shows used/supply, battery % and brownout / breaker trouble once a generator or bank stands, with a grid button (P) for
+  `PowerOverlay` (posts, tags and cables over the town from `ColonySim.PowerNodes`, fed / not fed / idle / off); the
+  `BuildingPanel` Power section (`PowerText`) has the on/off switch (`SetPower`). Power buildings use shaped placeholders
+  (`Placeholders`, category colour) until `fuel_generator_l1` etc. exist. In the field: EMP / holo-decoy / noise decoy use
+  buttons (tile-aimed like flares, charges for reusable kits), drone-role orders in `TechPanel` (R: heal / load / fire, I:
+  ferry), the drone card's variant, role and cargo hold, hologram decoys, the EMP ring (`UnitViews.EmpRing`), tinted
+  `scout_drone` models for the variants, EMP / DECOY world tags and log icons.
 - `ColonySession.Current` keeps the colony alive across scene changes, so a party can go to the scavenge scene and
   come back. Each `ColonyScreen` detaches its handlers when it leaves the tree.
 - `scripts/ScavengeHandoff` — how the colony enters scavenge mode: `ColonySession.PlayExpedition` builds (or resumes)
@@ -265,15 +275,15 @@ models still load and fall back to tweens.
 - **Commands only.** The UI changes the sim only via `ColonySim.Execute(IColonyCommand)`
   (`AssignJob`, `Unassign`, `Construct`, `Upgrade`, `LaunchExpedition`, `ApplyExtractionResult`, `AdmitPatient`,
   `Discharge`, `FitProsthetic`, `SetRecipe`, `QueueRecipe`, `CancelOrder`, `Matchmake`, `ChoosePerk`,
-  `StartStudy`, `CancelStudy`, `SetNightShift`, `InstallFloodlight`, `RepairBuilding`; schematics: `StartResearch`, `CancelResearch`, `SalvageSchematic`, `CopySchematic`, `BuyFromTrader`, `SellToTrader`, `AnswerCall`, `AcceptContract`). Core validates and returns a `CommandResult`
+  `StartStudy`, `CancelStudy`, `SetNightShift`, `InstallFloodlight`, `RepairBuilding`, `SetPower`; schematics: `StartResearch`, `CancelResearch`, `SalvageSchematic`, `CopySchematic`, `BuyFromTrader`, `SellToTrader`, `AnswerCall`, `AcceptContract`). Core validates and returns a `CommandResult`
   with a `CommandError` code. This is also the future client→server intent format.
-- **Tick order:** production (+training) → crafting → study → research → medical → food → day/night (sleep, night work, evenings) → weather (mood, dust, lightning) →
+- **Tick order:** power grid (and the charging bench) → production (+training) → crafting → study → research → medical → food → day/night (sleep, night work, evenings) → weather (mood, dust, lightning) →
   relationships (mood, affinity, couples) →
   family (births, conception) → housing → growth (aging, growing up).
 - **Scavenge commands** (`Move`, `Attack`, `UseItem` (on a unit, or a tile with `At`), `PickUp`, `Recruit`, `SetStance`
   (Overwatch / Brace), `Lookout`, `EndTurn`, `Extract`; co-op: `ProposeAlliance`, `RespondAlliance`, `BreakAlliance`,
   `PingTile`, `GiveItem`, `Carry`, `PutDown`; tech: `Hack`, `DeployDrone`, `FlyDrone`, `RecallDrone`, `MarkTarget`,
-  `DropPayload`) carry a
+  `DropPayload`; drone roles: `DroneHeal`, `DroneLoad`, `DroneFerry`, `DroneFire`) carry a
   `PlayerId` + `UnitId`; Core checks ownership and whose turn it is and returns a `ScavengeResult`
   with a `ScavengeError`. Several players' parties can share one instance (each party is a side).
   A party is done when it has no conscious controllable unit left (its downed die, recruits stay or go over to an ally),
@@ -1020,6 +1030,59 @@ Food is ordinary inventory items (`items.json` kind `Food`); `data/food.json` sa
   bar), buff badges on `SurvivorCard` and lines in the survivor overview, the ration picker in `ExpeditionPanel`;
   `--colony --food-demo --food-view=kitchen|pantry|farm|roster` sets up screenshots.
 
+## Electronics and power
+
+Everything is data in `data/electronics.json` (items, recipes, disassembly table, the three power buildings, `power`,
+`charging`), merged at load like `gear_mods.json`: its items join `items.json` (`ScavengeData.Electronics`), its recipes and
+buildings join the colony data (`GameData.Electronics`). Core: `Data/Electronics.cs`, `Colony/Power.cs`,
+`Scavenge/ElectronicWarfare.cs`, `Scavenge/DroneRoles.cs`.
+
+- **Component chain** (Electronics Lab, `RecipeDef.Group` "Components"): scrap → wiring → circuit boards → antennas and sensor
+  modules; microchips and cyan **Network chips** (from Linked circuitry, `NetworkGrade`) are tier 3 and `needsPower`. The
+  cybernetics power cell is the basic battery and the Workshop servo is reused. Devices and their Mk upgrades (groups
+  "Devices", "Upgrades") consume components; tools roll quality as before, and quality now also scales a device's radius,
+  a drone's battery, a hacking tool's chance and a radio's range (`ScavengeData` variants).
+- **Disassembly**: one `disassemble_{item}` recipe per table entry (group "Disassembly"): the item in, its first yield as the
+  recipe's item and the rest as `RecipeDef.Byproducts`, `ResearchChance` for one Research Data. Each component has a chance of
+  one more: the bench's best worker's `disassembly_yield_bonus` (Circuit Tinkerer) + Electronics × `skillYieldPerPoint`. Loot
+  adds broken gadgets, dead radios, smashed drones; the Linked drop Linked circuitry (electronics.json `drops`).
+- **Schematics**: `schematics.electronics.json` is a catalogue extension the Schematics module merges (recipes and the
+  solar array / battery bank gated, Kill-sourced ones dropped by the Linked through electronics.json `drops`). Not listed,
+  so open from the start: wiring, circuit boards, antennas, the power cell, handheld radios, noise decoys, the fuel
+  generator (the scanner stays behind `sch_scanner`; `sch_scanner_mk2` gates Mk II). A disassembly's research roll pays
+  the module's Research Data. Iris's missions are listed per schematic (`storyMissions`); every one also drops, sits in
+  terminals, trades or can be researched.
+- **Power grid** (`Power.Run`, first in the tick): with no generator or bank built nothing happens (no brownouts: the early
+  game is unchanged). Consumers (priority = data order) draw per level, only while their workplace has a crew on shift;
+  `floodlight` = every building with a Floodlight after dusk, `charging` = the bench per device. Draws are cut by the best
+  `power_efficiency` (Electrician) at home. Supply: solar (`solarByPhase` × `Power.SolarWeatherFactor`, the weather
+  adapter), battery banks (rate-limited), fuel generators (the first of `fuel` in stock: vehicles' `fuel`, else wood, per
+  power supplied). Consumers that do not fit are shed (brownout, logged); demand above `overloadRatio` × capacity for
+  `overloadTicks` trips the breaker for `breakerTicks`. Effects (`PowerEffect`): Lab `CraftSpeed` (+25%, tier 3 recipes wait:
+  `CraftStatus.NeedsPower`), Med Bay L3 `SurgeryBonus`, Floodlight `NightShiftBonus` (through `Schedule.Crew`), Charging.
+  **Seam**: `Power.IsPowered(state, building)` / `ColonySim.IsPowered` for the Radio Mast, Cold Cellar and turrets (their
+  consumer entries are ignored until those buildings exist). `SetPower(building, on)` switches anything on the grid
+  (`NotOnGrid`). `PowerState` keeps what each part did last tick for the UI (`ColonySim.PowerNodes`).
+- **Charges and charging**: `UseEffect.Charges` makes a device reusable; `Unit.ChargesUsed` pools spent charges per item id
+  (`ElectronicWarfare.ChargesLeft`); results carry them (`ReturnedSurvivor.ChargesUsed`) and `Stow` puts drained devices on the
+  charging bench (`ColonyState.Charging`), `workPerCharge` each at `poweredRate` while fed, else `unpoweredRate`, plus
+  `Power.VehicleChargeRate` (the vehicles adapter for a powered parked vehicle). No other durability.
+- **Field devices**: scanners and jammers Mk II–III (radius), sensor kits (charges), radios carried anywhere (two on a side:
+  +accuracy within range in `Combat.ChanceToHit`, extra pings, a squad radio's overwatch fires at what the side sees),
+  rangefinder (`ItemDef.RangedAccuracy`), EMP (`EmpDef`: Linked off the relay and `Unit.EmpUntilRound` with no AP, drones fall,
+  cameras/turrets fried, Network-grade implants nearby lock — your own too), holo-decoy (`UnitKind.Decoy`: a fake survivor of
+  the user's side that takes no turns, lures, draws the Linked's focus and fades after `DecoyUntilRound`), noise decoy (Husks
+  follow it unless their prey is adjacent; the Linked only when they lose sight), Network deck (`HackToolDef.TraceChance`:
+  a hack action may be traced → Linked hunt the hacker). All tile devices also work as drone payloads.
+- **Drone roles** (`DroneItemDef.Role`, `DroneRoles`): medic (`DroneHeal`: a healing item from the operator's pack on a friend
+  next to the drone, with medic perks), cargo (`DroneLoad` from an adjacent cache up to `Cargo`; `DroneFerry` next to an exit
+  → `Party.Secured`, home whatever happens, in `ExtractionResult.Secured`), combat (`DroneFire` with its natural gun, the
+  operator's Drone Piloting as Firearms; `RequiresHook` drone_range_bonus = Drone Operator I). Scout Mk II–III are batteries.
+- **Net**: protocol 9 (the role commands); `SideFog` shows a rival's decoy as a survivor and hides others' charges.
+- **Saves**: colony 18 (`Power`, `Charging`), scavenge 10 (decoys, EMP stuns, charges, secured cargo); keyed on presence, so
+  older saves load with an empty grid and nothing charging.
+- Tests: `ElectronicsTests.cs` (data, power, disassembly, field devices, drone roles, saves), `ElectronicsNetTests`.
+
 ## Data files
 
 - `resources.json` — resource ids and names.
@@ -1034,6 +1097,8 @@ Food is ordinary inventory items (`items.json` kind `Food`); `data/food.json` sa
   rules (see "Food and cooking"); `schematics.food.json` — the food schematics.
 - `perks.json` — skills (names, learning attributes), XP sources and level curve, study buildings and rates,
   disciplines and the perk tree (see "Perks and study").
+- `electronics.json` / `schematics.electronics.json` — components, devices, drone variants, disassembly, power buildings,
+  grid and charging rules; electronics schematics (see "Electronics and power").
 - `cybernetics.json` — tiers, specialisations, the tree's nodes (one per prosthetic item), paired sets, surgery, humanity,
   upkeep and interference (see "Cybernetics" and CYBERNETICS.md).
 - `rules.json` — tick/time scale, output formula constants, training rates, food (how much is eaten), housing grace,
@@ -1084,8 +1149,11 @@ the adults, `--loop-demo` sends the adults on an expedition to the outskirts (sc
 `--autopilot`) and builds a Med Bay and Workshop, `--family-demo` does `--demo`, encourages the first man and woman
 and fast-forwards until a baby is born (then selects the mother), `--crafting-demo` builds a grown town (Town Hall 3, every
 production building, some at level 2–3) with staffed, queued Armory and Tailor and opens the Armory and item panels, `--expedition` opens the expedition planner with two adults picked, `--world-map` opens the world map
-(`--zone=ID` selects a marker), `--tech-demo=hack|turret|drone` (with `--scavenge`) stages a hack in progress, a hacked turret firing or a
-drone scouting (saves its own still with `--screenshot`), `--fog-demo` (with `--scavenge`) stages a fog ambush (`--select-unit=watcher` shows the unit on overwatch with its range;
+(`--zone=ID` selects a marker), `--tech-demo=hack|turret|drone|medic|cargo|combat|emp` (with `--scavenge`) stages a hack in progress, a hacked turret firing, a
+drone scouting, a medic drone treating a teammate, a cargo drone loaded beside an exit, a combat drone firing or an EMP bursting over a Linked and its
+drone (saves its own still with `--screenshot`), `--power-demo` (colony) builds a grown town with a Fuel Generator, Solar Array, Battery Bank and a
+staffed, queued level 3 Electronics Lab with two devices charging, and opens its bench (`--bench-tab=Devices` etc. picks the tab), `--power-overlay`
+opens the power grid overlay, `--fog-demo` (with `--scavenge`) stages a fog ambush (`--select-unit=watcher` shows the unit on overwatch with its range;
 `--select-unit=ID` and `--pause-menu` work in any scavenge run), `--world-demo` fakes a few weeks of scouting and sends a party on the road (for
 screenshots); `--scavenge --zone=ID --seed=N` plays the debug mission in another zone, `--multiplayer` opens the multiplayer menu and
 `--mp-host[=PORT]` / `--mp-join=ADDR` with `--mp-name`, `--mp-ready`, `--mp-coop`, `--mp-team=N`, … script it (see `MULTIPLAYER.md`), `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG (any scene). Day and night: `--night-demo` (the demo town two days on, a Floodlight and the Night Shift on the Woodcutter,
