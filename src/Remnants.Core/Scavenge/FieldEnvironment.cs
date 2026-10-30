@@ -198,6 +198,19 @@ public static class FieldEnvironment
         }
     }
 
+    /// <summary>
+    /// Weather for a mission with no colony behind it (a dedicated server, a debug run): from the seed alone, clear about
+    /// half the time, else one of the field weathers in <c>scavenge.json</c> (by id order), at an intensity from the seed.
+    /// </summary>
+    public static (string Weather, double Intensity) RollWeather(ScavengeData data, ulong seed)
+    {
+        var rng = new Random.DeterministicRng(seed * 0x9E3779B97F4A7C15UL + 0x5EA7);
+        var kinds = data.Rules.Environment.Weather.Keys.OrderBy(k => k, StringComparer.Ordinal).ToList();
+        var pick = rng.Next(0, 2 * Math.Max(1, kinds.Count));
+        var intensity = Math.Round(0.4 + 0.6 * rng.NextDouble(), 3);
+        return pick < kinds.Count ? (kinds[pick], intensity) : (Data.WeatherRules.Clear, 0);
+    }
+
     /// <summary>A weather id as words ("dust_storm" → "dust storm").</summary>
     public static string Name(string? weather) => string.IsNullOrEmpty(weather) ? "clear" : weather.Replace('_', ' ');
 
