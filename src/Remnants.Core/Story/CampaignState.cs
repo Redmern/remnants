@@ -31,6 +31,9 @@ public sealed class RadioCall
     public string DialogueId { get; set; } = "";
     public long Tick { get; set; }
     public bool Taken { get; set; }
+
+    /// <summary>Put in the Radio Mast's queue (tag <c>story:&lt;Id&gt;</c>) once its time came.</summary>
+    public bool Rung { get; set; }
 }
 
 /// <summary>The dialogue on screen: which graph, which line, and the call it came from.</summary>
@@ -72,12 +75,6 @@ public sealed class CampaignState
     /// <summary>Dialogues played to the end.</summary>
     public SortedSet<string> Heard { get; set; } = new(StringComparer.Ordinal);
     public List<StoryLine> Log { get; set; } = new();
-
-    /// <summary>
-    /// Schematics the story granted, by id, while the colony has no schematics module of its own (see
-    /// <see cref="CampaignLedger"/>); with it, grants go there instead.
-    /// </summary>
-    public SortedSet<string> Schematics { get; set; } = new(StringComparer.Ordinal);
 
     /// <summary>The last mission result, for the debrief panel.</summary>
     public MissionDebrief? LastDebrief { get; set; }

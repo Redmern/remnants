@@ -1,22 +1,112 @@
 {
   "skills": [
-    { "skill": "Woodcutting",   "name": "Woodcutting",    "attributes": { "Strength": 0.6, "Endurance": 0.4 } },
-    { "skill": "Mining",        "name": "Mining",         "attributes": { "Strength": 0.5, "Endurance": 0.5 } },
-    { "skill": "Crafting",      "name": "Crafting",       "attributes": { "Intellect": 0.5, "Creativity": 0.5 } },
-    { "skill": "Tailoring",     "name": "Tailoring",      "attributes": { "Creativity": 0.5, "Agility": 0.5 } },
-    { "skill": "Electronics",   "name": "Electronics",    "attributes": { "Intellect": 0.6, "Creativity": 0.4 } },
-    { "skill": "Medicine",      "name": "Medicine",       "attributes": { "Intellect": 0.6, "Perception": 0.4 } },
-    { "skill": "Firearms",      "name": "Firearms",       "attributes": { "Perception": 0.6, "Agility": 0.4 } },
-    { "skill": "Melee",         "name": "Melee",          "attributes": { "Strength": 0.5, "Agility": 0.5 } },
-    { "skill": "Cooking",       "name": "Cooking",        "attributes": { "Creativity": 0.5, "Perception": 0.5 } },
-    { "skill": "Farming",       "name": "Farming",        "attributes": { "Endurance": 0.5, "Perception": 0.5 } },
-    { "skill": "Hacking",       "name": "Hacking",        "attributes": { "Intellect": 0.6, "Perception": 0.4 },
-      "description": "Breaking into Network devices and machines. Grows at the Electronics Lab and from field hacks." },
-    { "skill": "DronePiloting", "name": "Drone Piloting", "attributes": { "Perception": 0.6, "Agility": 0.4 },
-      "description": "Flying scout drones: range, battery and what they can spot. Grows at the Electronics Lab and in the field." },
-    { "skill": "Mechanics",     "name": "Mechanics",      "attributes": { "Strength": 0.4, "Intellect": 0.6 } }
+    {
+      "skill": "Woodcutting",
+      "name": "Woodcutting",
+      "attributes": {
+        "Strength": 0.6,
+        "Endurance": 0.4
+      }
+    },
+    {
+      "skill": "Mining",
+      "name": "Mining",
+      "attributes": {
+        "Strength": 0.5,
+        "Endurance": 0.5
+      }
+    },
+    {
+      "skill": "Crafting",
+      "name": "Crafting",
+      "attributes": {
+        "Intellect": 0.5,
+        "Creativity": 0.5
+      }
+    },
+    {
+      "skill": "Tailoring",
+      "name": "Tailoring",
+      "attributes": {
+        "Creativity": 0.5,
+        "Agility": 0.5
+      }
+    },
+    {
+      "skill": "Electronics",
+      "name": "Electronics",
+      "attributes": {
+        "Intellect": 0.6,
+        "Creativity": 0.4
+      }
+    },
+    {
+      "skill": "Medicine",
+      "name": "Medicine",
+      "attributes": {
+        "Intellect": 0.6,
+        "Perception": 0.4
+      }
+    },
+    {
+      "skill": "Firearms",
+      "name": "Firearms",
+      "attributes": {
+        "Perception": 0.6,
+        "Agility": 0.4
+      }
+    },
+    {
+      "skill": "Melee",
+      "name": "Melee",
+      "attributes": {
+        "Strength": 0.5,
+        "Agility": 0.5
+      }
+    },
+    {
+      "skill": "Cooking",
+      "name": "Cooking",
+      "attributes": {
+        "Creativity": 0.5,
+        "Perception": 0.5
+      }
+    },
+    {
+      "skill": "Farming",
+      "name": "Farming",
+      "attributes": {
+        "Endurance": 0.5,
+        "Perception": 0.5
+      }
+    },
+    {
+      "skill": "Hacking",
+      "name": "Hacking",
+      "attributes": {
+        "Intellect": 0.6,
+        "Perception": 0.4
+      },
+      "description": "Breaking into Network devices and machines. Grows at the Electronics Lab and from field hacks."
+    },
+    {
+      "skill": "DronePiloting",
+      "name": "Drone Piloting",
+      "attributes": {
+        "Perception": 0.6,
+        "Agility": 0.4
+      },
+      "description": "Flying scout drones: range, battery and what they can spot. Grows at the Electronics Lab and in the field."
+    },
+    {
+      "skill": "Mechanics",
+      "name": "Mechanics",
+      "attributes": {
+        "Strength": 0.4,
+        "Intellect": 0.6
+      }
+    }
   ],
-
   "xp": {
     "perLevel": 96,
     "perLevelStep": 72,
@@ -32,12 +122,48 @@
     "childMultiplier": 1.5,
     "migrationPerSkillPoint": 3
   },
-
   "study": {
     "buildings": {
-      "garage": { "skills": ["Mechanics"], "slots": [1, 2, 2] },
-      "electronics_lab": { "skills": ["Electronics", "Hacking", "DronePiloting"], "slots": [1, 2, 3] },
-      "town_hall": { "skills": ["Woodcutting", "Mining", "Crafting", "Tailoring", "Medicine", "Firearms", "Melee", "Cooking", "Farming"], "slots": [1, 2, 3] }
+      "electronics_lab": {
+        "skills": [
+          "Electronics",
+          "Hacking",
+          "DronePiloting"
+        ],
+        "slots": [
+          1,
+          2,
+          3
+        ]
+      },
+      "town_hall": {
+        "skills": [
+          "Woodcutting",
+          "Mining",
+          "Crafting",
+          "Tailoring",
+          "Medicine",
+          "Firearms",
+          "Melee",
+          "Cooking",
+          "Farming"
+        ],
+        "slots": [
+          1,
+          2,
+          3
+        ]
+      },
+      "garage": {
+        "skills": [
+          "Mechanics"
+        ],
+        "slots": [
+          1,
+          2,
+          2
+        ]
+      }
     },
     "skillPerTick": 0.2,
     "aptitudeFloor": 0.5,
@@ -47,185 +173,954 @@
     "maxStudentsPerMentor": 2,
     "perkWorkPerTier": 56
   },
-
   "disciplines": [
-    { "id": "tech",     "name": "Tech",     "icon": "hacking", "studyAt": "electronics_lab", "description": "Hacking Network devices and machines, field repairs." },
-    { "id": "drones",   "name": "Drones",   "icon": "drone",   "studyAt": "electronics_lab", "description": "Scout drones: range, battery, marking targets, payloads." },
-    { "id": "combat",   "name": "Combat",   "icon": "combat",  "studyAt": "town_hall",       "description": "Shooting, close quarters and holding a position." },
-    { "id": "survival", "name": "Survival", "icon": "scout",   "studyAt": "town_hall",       "description": "Scouting, moving unseen, carrying and finding more." },
-    { "id": "medic",    "name": "Medic",    "icon": "medic",   "studyAt": "town_hall",       "description": "Patching people up in the field and at the Med Bay." },
-    { "id": "mechanics", "name": "Mechanics", "icon": "mechanics", "studyAt": "garage", "description": "Vehicles: cheaper repairs, tuned engines." }
-  ],
-
-  "perks": [
-    { "id": "hacking_1", "name": "Hacking I", "discipline": "tech", "tier": 1,
-      "description": "Knows how Network locks think. Better odds on every hack.",
-      "requires": { "skills": { "Hacking": 10 }, "attributes": { "Intellect": 35 } },
-      "effects": { "hooks": { "hack_chance_bonus": 0.1 }, "jobOutput": { "electronics": 0.05 } } },
-    { "id": "jury_rig", "name": "Jury-rig", "discipline": "tech", "tier": 1,
-      "description": "Field repairs with whatever is at hand; tidier work at the Lab bench.",
-      "requires": { "skills": { "Electronics": 15 }, "attributes": { "Creativity": 35 } },
-      "effects": { "hooks": { "field_repair": 1 }, "craftQuality": { "electronics": 0.05 }, "jobOutput": { "electronics": 0.05 } } },
-    { "id": "quick_study", "name": "Quick Study", "discipline": "tech", "tier": 1,
-      "description": "Picks things up fast: studies quicker and learns more from everything.",
-      "requires": { "attributes": { "Intellect": 45 } },
-      "effects": { "studySpeed": 0.25, "xpBonus": 0.1 } },
-    { "id": "tinkerer", "name": "Tinkerer", "discipline": "tech", "tier": 1,
-      "description": "Handy at the Workshop bench: faster and better tools.",
-      "requires": { "skills": { "Crafting": 10 } },
-      "effects": { "jobOutput": { "crafting": 0.05, "scavenging": 0.05 }, "craftQuality": { "crafting": 0.1 } } },
-    { "id": "hacking_2", "name": "Hacking II", "discipline": "tech", "tier": 2,
-      "description": "Faster, surer intrusions: hacks cost less time.",
-      "requires": { "skills": { "Hacking": 25 }, "perks": ["hacking_1"], "level": 3, "building": "electronics_lab" },
-      "effects": { "hooks": { "hack_chance_bonus": 0.1, "hack_ap_discount": 1 } } },
-    { "id": "network_ghost", "name": "Network Ghost", "discipline": "tech", "tier": 2,
-      "description": "Slips in and out of the Network quietly: hacks raise half the alarm.",
-      "requires": { "skills": { "Hacking": 20 }, "attributes": { "Perception": 40 }, "perks": ["hacking_1"], "blueprint": "ds_network_ghost" },
-      "effects": { "hooks": { "hack_alarm_reduction": 0.5 } } },
-    { "id": "bench_engineer", "name": "Bench Engineer", "discipline": "tech", "tier": 2,
-      "description": "A careful hand with circuits: better devices out of the Lab.",
-      "requires": { "skills": { "Electronics": 30 }, "perks": ["jury_rig"], "level": 3 },
-      "effects": { "craftQuality": { "electronics": 0.1 }, "jobOutput": { "electronics": 0.1 } } },
-    { "id": "hacking_3", "name": "Hacking III", "discipline": "tech", "tier": 3,
-      "description": "Few locks stand up to them.",
-      "requires": { "skills": { "Hacking": 45 }, "perks": ["hacking_2"], "level": 6, "building": "electronics_lab", "buildingLevel": 2 },
-      "effects": { "hooks": { "hack_chance_bonus": 0.15 } } },
-    { "id": "override", "name": "Override", "discipline": "tech", "tier": 3,
-      "description": "Can hack Linked units themselves, not only Husks and devices.",
-      "requires": { "skills": { "Hacking": 40 }, "perks": ["hacking_2", "network_ghost"], "level": 6, "blueprint": "ds_override", "adultsOnly": true },
-      "effects": { "hooks": { "can_hack_linked": 1 } } },
-
-    { "id": "drone_operator_1", "name": "Drone Operator I", "discipline": "drones", "tier": 1,
-      "description": "Flies a scout drone further and longer.",
-      "requires": { "skills": { "DronePiloting": 10 }, "attributes": { "Perception": 35 } },
-      "effects": { "hooks": { "drone_range_bonus": 2, "drone_battery_bonus": 1 } } },
-    { "id": "drone_operator_2", "name": "Drone Operator II", "discipline": "drones", "tier": 2,
-      "description": "Squeezes every tile and minute out of a drone.",
-      "requires": { "skills": { "DronePiloting": 25 }, "perks": ["drone_operator_1"], "level": 3, "building": "electronics_lab" },
-      "effects": { "hooks": { "drone_range_bonus": 2, "drone_battery_bonus": 2 } } },
-    { "id": "spotter", "name": "Spotter", "discipline": "drones", "tier": 2,
-      "description": "Whatever the drone sees, the whole team sees: it marks targets.",
-      "requires": { "skills": { "DronePiloting": 20 }, "attributes": { "Perception": 45 }, "perks": ["drone_operator_1"] },
-      "effects": { "hooks": { "drone_can_mark": 1 } } },
-    { "id": "payload", "name": "Payload", "discipline": "drones", "tier": 3,
-      "description": "Rigs the drone to carry and drop a flare or a motion sensor.",
-      "requires": { "skills": { "DronePiloting": 35, "Electronics": 20 }, "perks": ["drone_operator_2"], "level": 5, "blueprint": "ds_drone_payload" },
-      "effects": { "hooks": { "drone_payload": 1 } } },
-
-    { "id": "steady_aim", "name": "Steady Aim", "discipline": "combat", "tier": 1,
-      "description": "Breathes out, then squeezes. Hits a little more often.",
-      "requires": { "skills": { "Firearms": 10 } },
-      "effects": { "hooks": { "accuracy_bonus": 0.05 }, "jobOutput": { "gunsmithing": 0.05 } } },
-    { "id": "brawler", "name": "Brawler", "discipline": "combat", "tier": 1,
-      "description": "Hits harder up close.",
-      "requires": { "skills": { "Melee": 10 }, "attributes": { "Strength": 40 } },
-      "effects": { "hooks": { "melee_damage_bonus": 0.15 } } },
-    { "id": "sentinel", "name": "Sentinel", "discipline": "combat", "tier": 2,
-      "description": "On overwatch, gets one more reaction shot.",
-      "requires": { "skills": { "Firearms": 25 }, "attributes": { "Perception": 40 }, "perks": ["steady_aim"], "level": 3 },
-      "effects": { "hooks": { "overwatch_reactions_bonus": 1 } } },
-    { "id": "gunsmith", "name": "Gunsmith", "discipline": "combat", "tier": 2,
-      "description": "Knows guns from the inside: better weapons out of the Armory.",
-      "requires": { "skills": { "Firearms": 20 }, "perks": ["steady_aim"], "building": "armory" },
-      "effects": { "craftQuality": { "gunsmithing": 0.1 }, "jobOutput": { "gunsmithing": 0.1 } } },
-    { "id": "dug_in", "name": "Dug In", "discipline": "combat", "tier": 2,
-      "description": "Braced, they are very hard to hit.",
-      "requires": { "attributes": { "Endurance": 45 }, "perks": ["brawler"], "level": 3 },
-      "effects": { "hooks": { "brace_cover_bonus": 0.15 } } },
-    { "id": "marksman", "name": "Marksman", "discipline": "combat", "tier": 3,
-      "description": "Rarely misses.",
-      "requires": { "skills": { "Firearms": 45 }, "perks": ["sentinel"], "level": 6 },
-      "effects": { "hooks": { "accuracy_bonus": 0.1 } } },
-
-    { "id": "forager", "name": "Forager", "discipline": "survival", "tier": 1,
-      "description": "Knows what grows and what is worth picking up.",
-      "requires": { "skills": { "Farming": 10 } },
-      "effects": { "jobOutput": { "farming": 0.1, "scavenging": 0.05 } } },
-    { "id": "woodsman", "name": "Woodsman", "discipline": "survival", "tier": 1,
-      "description": "Fells and splits wood with less waste.",
-      "requires": { "skills": { "Woodcutting": 10 } },
-      "effects": { "jobOutput": { "woodcutting": 0.1 } } },
-    { "id": "prospector", "name": "Prospector", "discipline": "survival", "tier": 1,
-      "description": "Reads stone: finds the seams worth breaking.",
-      "requires": { "skills": { "Mining": 10 } },
-      "effects": { "jobOutput": { "mining": 0.1 } } },
-    { "id": "camp_cook", "name": "Camp Cook", "discipline": "survival", "tier": 1,
-      "description": "Gets more meals out of the same pot.",
-      "requires": { "skills": { "Cooking": 10 } },
-      "effects": { "jobOutput": { "cooking": 0.1 } } },
-    { "id": "needlework", "name": "Needlework", "discipline": "survival", "tier": 1,
-      "description": "Tighter stitches: better clothes and armor from the Tailor.",
-      "requires": { "skills": { "Tailoring": 10 } },
-      "effects": { "jobOutput": { "tailoring": 0.05 }, "craftQuality": { "tailoring": 0.1 } } },
-    { "id": "light_step", "name": "Light Step", "discipline": "survival", "tier": 1,
-      "description": "Moves quietly.",
-      "requires": { "attributes": { "Agility": 40 } },
-      "effects": { "hooks": { "stealth_bonus": 5 } } },
-    { "id": "keen_eye", "name": "Keen Eye", "discipline": "survival", "tier": 1,
-      "description": "Sees further and notices more.",
-      "requires": { "attributes": { "Perception": 45 } },
-      "effects": { "hooks": { "detection_bonus": 5, "sight_bonus": 1 } } },
-    { "id": "pack_mule", "name": "Pack Mule", "discipline": "survival", "tier": 2,
-      "description": "Carries more, in the field and at the woodpile.",
-      "requires": { "attributes": { "Strength": 45, "Endurance": 45 }, "level": 3 },
-      "effects": { "hooks": { "carry_bonus": 10 }, "jobOutput": { "woodcutting": 0.05, "mining": 0.05 } } },
-    { "id": "scavenger", "name": "Scavenger", "discipline": "survival", "tier": 2,
-      "description": "Finds the good stuff in every cache.",
-      "requires": { "perks": ["keen_eye"], "level": 3 },
-      "effects": { "hooks": { "loot_bonus": 0.2 }, "jobOutput": { "scavenging": 0.1 } } },
-    { "id": "ghost", "name": "Ghost", "discipline": "survival", "tier": 3,
-      "description": "Hard to spot even up close.",
-      "requires": { "attributes": { "Agility": 55 }, "perks": ["light_step"], "level": 6 },
-      "effects": { "hooks": { "stealth_bonus": 10 } } },
-
-    { "id": "field_medic", "name": "Field Medic", "discipline": "medic", "tier": 1,
-      "description": "Bandages and med-kits do more in their hands.",
-      "requires": { "skills": { "Medicine": 10 } },
-      "effects": { "hooks": { "field_heal_bonus": 0.25 }, "jobOutput": { "medicine": 0.05 } } },
-    { "id": "triage", "name": "Triage", "discipline": "medic", "tier": 2,
-      "description": "Gets the downed back on their feet stronger and buys them time.",
-      "requires": { "skills": { "Medicine": 25 }, "perks": ["field_medic"], "level": 3 },
-      "effects": { "hooks": { "revive_hp_bonus": 10, "bleedout_rounds_bonus": 1 } } },
-    { "id": "surgeon", "name": "Chief Medic", "discipline": "medic", "tier": 3,
-      "description": "Patients at the Med Bay heal much faster in their care.",
-      "requires": { "skills": { "Medicine": 45 }, "perks": ["triage"], "level": 6, "building": "med_bay", "buildingLevel": 2 },
-      "effects": { "jobOutput": { "medicine": 0.25 } } },
-    { "id": "surgery_1", "name": "Surgeon I", "discipline": "medic", "tier": 1,
-      "description": "Steady hands on the operating table: surgeries go faster and go wrong less often.",
-      "requires": { "skills": { "Medicine": 15 }, "attributes": { "Perception": 35 } },
-      "effects": { "hooks": { "surgery_success_bonus": 0.08, "surgery_speed_bonus": 0.25 } } },
-    { "id": "surgery_2", "name": "Surgeon II", "discipline": "medic", "tier": 2,
-      "description": "Has fitted enough powered limbs to do it half asleep.",
-      "requires": { "skills": { "Medicine": 30 }, "perks": ["surgery_1"], "level": 3, "building": "med_bay", "buildingLevel": 2 },
-      "effects": { "hooks": { "surgery_success_bonus": 0.08, "surgery_speed_bonus": 0.25 } } },
-    { "id": "cyber_surgeon", "name": "Cyber-Surgeon", "discipline": "medic", "tier": 3,
-      "description": "Wires nerve to neural link. Needed to fit cyborg-grade and Network-grade parts.",
-      "requires": { "skills": { "Medicine": 40, "Electronics": 15 }, "perks": ["surgery_2"], "level": 5, "building": "med_bay", "buildingLevel": 2 },
-      "effects": { "hooks": { "cyber_surgery": 1, "surgery_success_bonus": 0.05 } } },
-
-    { "id": "biomech", "name": "Biomech", "discipline": "tech", "tier": 2,
-      "description": "Builds powered limbs: servos, power cells and the specialised arms and legs that use them.",
-      "requires": { "skills": { "Electronics": 15 }, "attributes": { "Intellect": 35 }, "level": 3, "building": "electronics_lab" },
-      "effects": { "craftQuality": { "electronics": 0.05 } } },
-    { "id": "neural_interface", "name": "Neural Interface", "discipline": "tech", "tier": 3,
-      "description": "Understands how a neural link talks to a nerve. Unlocks cyborg-grade designs.",
-      "requires": { "skills": { "Electronics": 30 }, "perks": ["biomech"], "level": 5, "building": "electronics_lab", "buildingLevel": 2 },
-      "effects": { "jobOutput": { "electronics": 0.05 } } },
-    { "id": "linked_salvage", "name": "Linked Salvage", "discipline": "tech", "tier": 3,
-      "description": "Strips Linked cores into Network-grade limbs, and shields their own from the Network's reach.",
-      "requires": { "skills": { "Electronics": 40, "Hacking": 20 }, "perks": ["neural_interface"], "level": 7, "blueprint": "bp_network_grade" },
-      "effects": { "hooks": { "cyber_interference_reduction": 0.5 } } },
     {
-      "id": "grease_monkey", "name": "Grease Monkey", "discipline": "mechanics", "tier": 1,
-      "description": "Knows which bolt matters. Garage repairs need 30% fewer spare parts.",
-      "requires": { "skills": { "Mechanics": 10 } },
-      "effects": { "hooks": { "repair_parts_discount": 0.3 }, "jobOutput": { "mechanics": 0.05 } }
+      "id": "tech",
+      "name": "Tech",
+      "icon": "hacking",
+      "studyAt": "electronics_lab",
+      "description": "Hacking Network devices and machines, field repairs."
     },
     {
-      "id": "tuner", "name": "Tuner", "discipline": "mechanics", "tier": 2,
+      "id": "drones",
+      "name": "Drones",
+      "icon": "drone",
+      "studyAt": "electronics_lab",
+      "description": "Scout drones: range, battery, marking targets, payloads."
+    },
+    {
+      "id": "combat",
+      "name": "Combat",
+      "icon": "combat",
+      "studyAt": "town_hall",
+      "description": "Shooting, close quarters and holding a position."
+    },
+    {
+      "id": "survival",
+      "name": "Survival",
+      "icon": "scout",
+      "studyAt": "town_hall",
+      "description": "Scouting, moving unseen, carrying and finding more."
+    },
+    {
+      "id": "medic",
+      "name": "Medic",
+      "icon": "medic",
+      "studyAt": "town_hall",
+      "description": "Patching people up in the field and at the Med Bay."
+    },
+    {
+      "id": "mechanics",
+      "name": "Mechanics",
+      "icon": "mechanics",
+      "studyAt": "garage",
+      "description": "Vehicles: cheaper repairs, tuned engines."
+    }
+  ],
+  "perks": [
+    {
+      "id": "hacking_1",
+      "name": "Hacking I",
+      "discipline": "tech",
+      "tier": 1,
+      "description": "Knows how Network locks think. Better odds on every hack.",
+      "requires": {
+        "skills": {
+          "Hacking": 10
+        },
+        "attributes": {
+          "Intellect": 35
+        }
+      },
+      "effects": {
+        "hooks": {
+          "hack_chance_bonus": 0.1
+        },
+        "jobOutput": {
+          "electronics": 0.05
+        }
+      }
+    },
+    {
+      "id": "jury_rig",
+      "name": "Jury-rig",
+      "discipline": "tech",
+      "tier": 1,
+      "description": "Field repairs with whatever is at hand; tidier work at the Lab bench.",
+      "requires": {
+        "skills": {
+          "Electronics": 15
+        },
+        "attributes": {
+          "Creativity": 35
+        }
+      },
+      "effects": {
+        "hooks": {
+          "field_repair": 1
+        },
+        "craftQuality": {
+          "electronics": 0.05
+        },
+        "jobOutput": {
+          "electronics": 0.05
+        }
+      }
+    },
+    {
+      "id": "quick_study",
+      "name": "Quick Study",
+      "discipline": "tech",
+      "tier": 1,
+      "description": "Picks things up fast: studies quicker and learns more from everything.",
+      "requires": {
+        "attributes": {
+          "Intellect": 45
+        }
+      },
+      "effects": {
+        "studySpeed": 0.25,
+        "xpBonus": 0.1
+      }
+    },
+    {
+      "id": "tinkerer",
+      "name": "Tinkerer",
+      "discipline": "tech",
+      "tier": 1,
+      "description": "Handy at the Workshop bench: faster and better tools.",
+      "requires": {
+        "skills": {
+          "Crafting": 10
+        }
+      },
+      "effects": {
+        "jobOutput": {
+          "crafting": 0.05,
+          "scavenging": 0.05
+        },
+        "craftQuality": {
+          "crafting": 0.1
+        }
+      }
+    },
+    {
+      "id": "hacking_2",
+      "name": "Hacking II",
+      "discipline": "tech",
+      "tier": 2,
+      "description": "Faster, surer intrusions: hacks cost less time.",
+      "requires": {
+        "skills": {
+          "Hacking": 25
+        },
+        "perks": [
+          "hacking_1"
+        ],
+        "level": 3,
+        "building": "electronics_lab"
+      },
+      "effects": {
+        "hooks": {
+          "hack_chance_bonus": 0.1,
+          "hack_ap_discount": 1
+        }
+      }
+    },
+    {
+      "id": "network_ghost",
+      "name": "Network Ghost",
+      "discipline": "tech",
+      "tier": 2,
+      "description": "Slips in and out of the Network quietly: hacks raise half the alarm.",
+      "requires": {
+        "skills": {
+          "Hacking": 20
+        },
+        "attributes": {
+          "Perception": 40
+        },
+        "perks": [
+          "hacking_1"
+        ]
+      },
+      "effects": {
+        "hooks": {
+          "hack_alarm_reduction": 0.5
+        }
+      }
+    },
+    {
+      "id": "bench_engineer",
+      "name": "Bench Engineer",
+      "discipline": "tech",
+      "tier": 2,
+      "description": "A careful hand with circuits: better devices out of the Lab.",
+      "requires": {
+        "skills": {
+          "Electronics": 30
+        },
+        "perks": [
+          "jury_rig"
+        ],
+        "level": 3
+      },
+      "effects": {
+        "craftQuality": {
+          "electronics": 0.1
+        },
+        "jobOutput": {
+          "electronics": 0.1
+        }
+      }
+    },
+    {
+      "id": "hacking_3",
+      "name": "Hacking III",
+      "discipline": "tech",
+      "tier": 3,
+      "description": "Few locks stand up to them.",
+      "requires": {
+        "skills": {
+          "Hacking": 45
+        },
+        "perks": [
+          "hacking_2"
+        ],
+        "level": 6,
+        "building": "electronics_lab",
+        "buildingLevel": 2
+      },
+      "effects": {
+        "hooks": {
+          "hack_chance_bonus": 0.15
+        }
+      }
+    },
+    {
+      "id": "override",
+      "name": "Override",
+      "discipline": "tech",
+      "tier": 3,
+      "description": "Can hack Linked units themselves, not only Husks and devices.",
+      "requires": {
+        "skills": {
+          "Hacking": 40
+        },
+        "perks": [
+          "hacking_2",
+          "network_ghost"
+        ],
+        "level": 6,
+        "adultsOnly": true
+      },
+      "effects": {
+        "hooks": {
+          "can_hack_linked": 1
+        }
+      }
+    },
+    {
+      "id": "drone_operator_1",
+      "name": "Drone Operator I",
+      "discipline": "drones",
+      "tier": 1,
+      "description": "Flies a scout drone further and longer.",
+      "requires": {
+        "skills": {
+          "DronePiloting": 10
+        },
+        "attributes": {
+          "Perception": 35
+        }
+      },
+      "effects": {
+        "hooks": {
+          "drone_range_bonus": 2,
+          "drone_battery_bonus": 1
+        }
+      }
+    },
+    {
+      "id": "drone_operator_2",
+      "name": "Drone Operator II",
+      "discipline": "drones",
+      "tier": 2,
+      "description": "Squeezes every tile and minute out of a drone.",
+      "requires": {
+        "skills": {
+          "DronePiloting": 25
+        },
+        "perks": [
+          "drone_operator_1"
+        ],
+        "level": 3,
+        "building": "electronics_lab"
+      },
+      "effects": {
+        "hooks": {
+          "drone_range_bonus": 2,
+          "drone_battery_bonus": 2
+        }
+      }
+    },
+    {
+      "id": "spotter",
+      "name": "Spotter",
+      "discipline": "drones",
+      "tier": 2,
+      "description": "Whatever the drone sees, the whole team sees: it marks targets.",
+      "requires": {
+        "skills": {
+          "DronePiloting": 20
+        },
+        "attributes": {
+          "Perception": 45
+        },
+        "perks": [
+          "drone_operator_1"
+        ]
+      },
+      "effects": {
+        "hooks": {
+          "drone_can_mark": 1
+        }
+      }
+    },
+    {
+      "id": "payload",
+      "name": "Payload",
+      "discipline": "drones",
+      "tier": 3,
+      "description": "Rigs the drone to carry and drop a flare or a motion sensor.",
+      "requires": {
+        "skills": {
+          "DronePiloting": 35,
+          "Electronics": 20
+        },
+        "perks": [
+          "drone_operator_2"
+        ],
+        "level": 5
+      },
+      "effects": {
+        "hooks": {
+          "drone_payload": 1
+        }
+      }
+    },
+    {
+      "id": "steady_aim",
+      "name": "Steady Aim",
+      "discipline": "combat",
+      "tier": 1,
+      "description": "Breathes out, then squeezes. Hits a little more often.",
+      "requires": {
+        "skills": {
+          "Firearms": 10
+        }
+      },
+      "effects": {
+        "hooks": {
+          "accuracy_bonus": 0.05
+        },
+        "jobOutput": {
+          "gunsmithing": 0.05
+        }
+      }
+    },
+    {
+      "id": "brawler",
+      "name": "Brawler",
+      "discipline": "combat",
+      "tier": 1,
+      "description": "Hits harder up close.",
+      "requires": {
+        "skills": {
+          "Melee": 10
+        },
+        "attributes": {
+          "Strength": 40
+        }
+      },
+      "effects": {
+        "hooks": {
+          "melee_damage_bonus": 0.15
+        }
+      }
+    },
+    {
+      "id": "sentinel",
+      "name": "Sentinel",
+      "discipline": "combat",
+      "tier": 2,
+      "description": "On overwatch, gets one more reaction shot.",
+      "requires": {
+        "skills": {
+          "Firearms": 25
+        },
+        "attributes": {
+          "Perception": 40
+        },
+        "perks": [
+          "steady_aim"
+        ],
+        "level": 3
+      },
+      "effects": {
+        "hooks": {
+          "overwatch_reactions_bonus": 1
+        }
+      }
+    },
+    {
+      "id": "gunsmith",
+      "name": "Gunsmith",
+      "discipline": "combat",
+      "tier": 2,
+      "description": "Knows guns from the inside: better weapons out of the Armory.",
+      "requires": {
+        "skills": {
+          "Firearms": 20
+        },
+        "perks": [
+          "steady_aim"
+        ],
+        "building": "armory"
+      },
+      "effects": {
+        "craftQuality": {
+          "gunsmithing": 0.1
+        },
+        "jobOutput": {
+          "gunsmithing": 0.1
+        }
+      }
+    },
+    {
+      "id": "dug_in",
+      "name": "Dug In",
+      "discipline": "combat",
+      "tier": 2,
+      "description": "Braced, they are very hard to hit.",
+      "requires": {
+        "attributes": {
+          "Endurance": 45
+        },
+        "perks": [
+          "brawler"
+        ],
+        "level": 3
+      },
+      "effects": {
+        "hooks": {
+          "brace_cover_bonus": 0.15
+        }
+      }
+    },
+    {
+      "id": "marksman",
+      "name": "Marksman",
+      "discipline": "combat",
+      "tier": 3,
+      "description": "Rarely misses.",
+      "requires": {
+        "skills": {
+          "Firearms": 45
+        },
+        "perks": [
+          "sentinel"
+        ],
+        "level": 6
+      },
+      "effects": {
+        "hooks": {
+          "accuracy_bonus": 0.1
+        }
+      }
+    },
+    {
+      "id": "forager",
+      "name": "Forager",
+      "discipline": "survival",
+      "tier": 1,
+      "description": "Knows what grows and what is worth picking up.",
+      "requires": {
+        "skills": {
+          "Farming": 10
+        }
+      },
+      "effects": {
+        "jobOutput": {
+          "farming": 0.1,
+          "scavenging": 0.05
+        }
+      }
+    },
+    {
+      "id": "woodsman",
+      "name": "Woodsman",
+      "discipline": "survival",
+      "tier": 1,
+      "description": "Fells and splits wood with less waste.",
+      "requires": {
+        "skills": {
+          "Woodcutting": 10
+        }
+      },
+      "effects": {
+        "jobOutput": {
+          "woodcutting": 0.1
+        }
+      }
+    },
+    {
+      "id": "prospector",
+      "name": "Prospector",
+      "discipline": "survival",
+      "tier": 1,
+      "description": "Reads stone: finds the seams worth breaking.",
+      "requires": {
+        "skills": {
+          "Mining": 10
+        }
+      },
+      "effects": {
+        "jobOutput": {
+          "mining": 0.1
+        }
+      }
+    },
+    {
+      "id": "camp_cook",
+      "name": "Camp Cook",
+      "discipline": "survival",
+      "tier": 1,
+      "description": "Gets more meals out of the same pot, and they taste better for it.",
+      "requires": {
+        "skills": {
+          "Cooking": 10
+        }
+      },
+      "effects": {
+        "jobOutput": {
+          "cooking": 0.1
+        },
+        "craftQuality": {
+          "cooking": 0.05
+        }
+      }
+    },
+    {
+      "id": "chef",
+      "name": "Chef",
+      "discipline": "survival",
+      "tier": 2,
+      "description": "Cooks like it matters: much better dishes from the Kitchen and the fire.",
+      "requires": {
+        "skills": {
+          "Cooking": 30
+        },
+        "perks": [
+          "camp_cook"
+        ],
+        "level": 3
+      },
+      "effects": {
+        "jobOutput": {
+          "cooking": 0.05
+        },
+        "craftQuality": {
+          "cooking": 0.15
+        }
+      }
+    },
+    {
+      "id": "preserver",
+      "name": "Preserver",
+      "discipline": "survival",
+      "tier": 2,
+      "description": "Smokes, salts, pickles and cans so it keeps half as long again.",
+      "requires": {
+        "skills": {
+          "Cooking": 20
+        },
+        "perks": [
+          "camp_cook"
+        ],
+        "level": 3
+      },
+      "effects": {
+        "hooks": {
+          "shelf_life_bonus": 0.5
+        }
+      }
+    },
+    {
+      "id": "needlework",
+      "name": "Needlework",
+      "discipline": "survival",
+      "tier": 1,
+      "description": "Tighter stitches: better clothes and armor from the Tailor.",
+      "requires": {
+        "skills": {
+          "Tailoring": 10
+        }
+      },
+      "effects": {
+        "jobOutput": {
+          "tailoring": 0.05
+        },
+        "craftQuality": {
+          "tailoring": 0.1
+        }
+      }
+    },
+    {
+      "id": "light_step",
+      "name": "Light Step",
+      "discipline": "survival",
+      "tier": 1,
+      "description": "Moves quietly.",
+      "requires": {
+        "attributes": {
+          "Agility": 40
+        }
+      },
+      "effects": {
+        "hooks": {
+          "stealth_bonus": 5
+        }
+      }
+    },
+    {
+      "id": "keen_eye",
+      "name": "Keen Eye",
+      "discipline": "survival",
+      "tier": 1,
+      "description": "Sees further and notices more.",
+      "requires": {
+        "attributes": {
+          "Perception": 45
+        }
+      },
+      "effects": {
+        "hooks": {
+          "detection_bonus": 5,
+          "sight_bonus": 1
+        }
+      }
+    },
+    {
+      "id": "pack_mule",
+      "name": "Pack Mule",
+      "discipline": "survival",
+      "tier": 2,
+      "description": "Carries more, in the field and at the woodpile.",
+      "requires": {
+        "attributes": {
+          "Strength": 45,
+          "Endurance": 45
+        },
+        "level": 3
+      },
+      "effects": {
+        "hooks": {
+          "carry_bonus": 10
+        },
+        "jobOutput": {
+          "woodcutting": 0.05,
+          "mining": 0.05
+        }
+      }
+    },
+    {
+      "id": "scavenger",
+      "name": "Scavenger",
+      "discipline": "survival",
+      "tier": 2,
+      "description": "Finds the good stuff in every cache.",
+      "requires": {
+        "perks": [
+          "keen_eye"
+        ],
+        "level": 3
+      },
+      "effects": {
+        "hooks": {
+          "loot_bonus": 0.2
+        },
+        "jobOutput": {
+          "scavenging": 0.1
+        }
+      }
+    },
+    {
+      "id": "ghost",
+      "name": "Ghost",
+      "discipline": "survival",
+      "tier": 3,
+      "description": "Hard to spot even up close.",
+      "requires": {
+        "attributes": {
+          "Agility": 55
+        },
+        "perks": [
+          "light_step"
+        ],
+        "level": 6
+      },
+      "effects": {
+        "hooks": {
+          "stealth_bonus": 10
+        }
+      }
+    },
+    {
+      "id": "field_medic",
+      "name": "Field Medic",
+      "discipline": "medic",
+      "tier": 1,
+      "description": "Bandages and med-kits do more in their hands.",
+      "requires": {
+        "skills": {
+          "Medicine": 10
+        }
+      },
+      "effects": {
+        "hooks": {
+          "field_heal_bonus": 0.25
+        },
+        "jobOutput": {
+          "medicine": 0.05
+        }
+      }
+    },
+    {
+      "id": "triage",
+      "name": "Triage",
+      "discipline": "medic",
+      "tier": 2,
+      "description": "Gets the downed back on their feet stronger and buys them time.",
+      "requires": {
+        "skills": {
+          "Medicine": 25
+        },
+        "perks": [
+          "field_medic"
+        ],
+        "level": 3
+      },
+      "effects": {
+        "hooks": {
+          "revive_hp_bonus": 10,
+          "bleedout_rounds_bonus": 1
+        }
+      }
+    },
+    {
+      "id": "surgeon",
+      "name": "Chief Medic",
+      "discipline": "medic",
+      "tier": 3,
+      "description": "Patients at the Med Bay heal much faster in their care.",
+      "requires": {
+        "skills": {
+          "Medicine": 45
+        },
+        "perks": [
+          "triage"
+        ],
+        "level": 6,
+        "building": "med_bay",
+        "buildingLevel": 2
+      },
+      "effects": {
+        "jobOutput": {
+          "medicine": 0.25
+        }
+      }
+    },
+    {
+      "id": "surgery_1",
+      "name": "Surgeon I",
+      "discipline": "medic",
+      "tier": 1,
+      "description": "Steady hands on the operating table: surgeries go faster and go wrong less often.",
+      "requires": {
+        "skills": {
+          "Medicine": 15
+        },
+        "attributes": {
+          "Perception": 35
+        }
+      },
+      "effects": {
+        "hooks": {
+          "surgery_success_bonus": 0.08,
+          "surgery_speed_bonus": 0.25
+        }
+      }
+    },
+    {
+      "id": "surgery_2",
+      "name": "Surgeon II",
+      "discipline": "medic",
+      "tier": 2,
+      "description": "Has fitted enough powered limbs to do it half asleep.",
+      "requires": {
+        "skills": {
+          "Medicine": 30
+        },
+        "perks": [
+          "surgery_1"
+        ],
+        "level": 3,
+        "building": "med_bay",
+        "buildingLevel": 2
+      },
+      "effects": {
+        "hooks": {
+          "surgery_success_bonus": 0.08,
+          "surgery_speed_bonus": 0.25
+        }
+      }
+    },
+    {
+      "id": "cyber_surgeon",
+      "name": "Cyber-Surgeon",
+      "discipline": "medic",
+      "tier": 3,
+      "description": "Wires nerve to neural link. Needed to fit cyborg-grade and Network-grade parts.",
+      "requires": {
+        "skills": {
+          "Medicine": 40,
+          "Electronics": 15
+        },
+        "perks": [
+          "surgery_2"
+        ],
+        "level": 5,
+        "building": "med_bay",
+        "buildingLevel": 2
+      },
+      "effects": {
+        "hooks": {
+          "cyber_surgery": 1,
+          "surgery_success_bonus": 0.05
+        }
+      }
+    },
+    {
+      "id": "biomech",
+      "name": "Biomech",
+      "discipline": "tech",
+      "tier": 2,
+      "description": "Builds powered limbs: servos, power cells and the specialised arms and legs that use them.",
+      "requires": {
+        "skills": {
+          "Electronics": 15
+        },
+        "attributes": {
+          "Intellect": 35
+        },
+        "level": 3,
+        "building": "electronics_lab"
+      },
+      "effects": {
+        "craftQuality": {
+          "electronics": 0.05
+        }
+      }
+    },
+    {
+      "id": "neural_interface",
+      "name": "Neural Interface",
+      "discipline": "tech",
+      "tier": 3,
+      "description": "Understands how a neural link talks to a nerve. Unlocks cyborg-grade designs.",
+      "requires": {
+        "skills": {
+          "Electronics": 30
+        },
+        "perks": [
+          "biomech"
+        ],
+        "level": 5,
+        "building": "electronics_lab",
+        "buildingLevel": 2
+      },
+      "effects": {
+        "jobOutput": {
+          "electronics": 0.05
+        }
+      }
+    },
+    {
+      "id": "linked_salvage",
+      "name": "Linked Salvage",
+      "discipline": "tech",
+      "tier": 3,
+      "description": "Strips Linked cores into Network-grade limbs, and shields their own from the Network's reach.",
+      "requires": {
+        "skills": {
+          "Electronics": 40,
+          "Hacking": 20
+        },
+        "perks": [
+          "neural_interface"
+        ],
+        "level": 7
+      },
+      "effects": {
+        "hooks": {
+          "cyber_interference_reduction": 0.5
+        }
+      }
+    },
+    {
+      "id": "grease_monkey",
+      "name": "Grease Monkey",
+      "discipline": "mechanics",
+      "tier": 1,
+      "description": "Knows which bolt matters. Garage repairs need 30% fewer spare parts.",
+      "requires": {
+        "skills": {
+          "Mechanics": 10
+        }
+      },
+      "effects": {
+        "hooks": {
+          "repair_parts_discount": 0.3
+        },
+        "jobOutput": {
+          "mechanics": 0.05
+        }
+      }
+    },
+    {
+      "id": "tuner",
+      "name": "Tuner",
+      "discipline": "mechanics",
+      "tier": 2,
       "description": "Engines run sweeter: engine upgrades fitted at their Garage work 15% better; finer parts.",
-      "requires": { "skills": { "Mechanics": 25 }, "perks": ["grease_monkey"], "level": 3 },
-      "effects": { "hooks": { "engine_tune_bonus": 0.15 }, "craftQuality": { "mechanics": 0.1 } }
+      "requires": {
+        "skills": {
+          "Mechanics": 25
+        },
+        "perks": [
+          "grease_monkey"
+        ],
+        "level": 3
+      },
+      "effects": {
+        "hooks": {
+          "engine_tune_bonus": 0.15
+        },
+        "craftQuality": {
+          "mechanics": 0.1
+        }
+      }
     }
   ]
 }

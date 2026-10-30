@@ -9,7 +9,7 @@ namespace Remnants.Game.Colony.Ui;
 
 /// <summary>
 /// The build menu: category tabs and a grid of tiles (icon, name, cost chips). Tiles the colony cannot build yet show
-/// a lock and say why (Town Hall level, already built); unaffordable costs are marked. Tooltips describe what the
+/// a lock and say why (a schematic, Town Hall level, already built); unaffordable costs are marked. Tooltips describe what the
 /// building does. Picking a tile starts plot placement in the town view.
 /// </summary>
 public partial class BuildMenu : PanelContainer
@@ -91,7 +91,9 @@ public partial class BuildMenu : PanelContainer
             tile.Visible = _category == "All" || def.Category.ToString() == _category;
             if (!tile.Visible) continue;
             string? lockReason = null;
-            if (def.MinTownHallLevel > sim.TownHallLevel) lockReason = $"Needs Town Hall level {def.MinTownHallLevel}";
+            if (sim.Data.Schematics.GateOfBuildingLevel(id, 1) is { } gate && !Remnants.Core.Schematics.Schematics.Has(sim, gate))
+                lockReason = $"Needs the {sim.Data.Schematics.All[gate].Name} schematic";
+            else if (def.MinTownHallLevel > sim.TownHallLevel) lockReason = $"Needs Town Hall level {def.MinTownHallLevel}";
             else if (def.Unique && sim.State.Buildings.Any(b => b.DefId == id)) lockReason = "Already built (only one allowed)";
             tile.Refresh(sim, lockReason, id == _placing);
         }

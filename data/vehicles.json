@@ -47,6 +47,6 @@
   "weather": {
     "dust_storm": {"name": "Dust storm", "blocks": ["bicycle_cart", "motorbike"], "speedMultiplier": 0.5},
     "rain": {"name": "Rain", "wheeledSpeedMultiplier": 0.8},
-    "storm": {"name": "Storm", "speedMultiplier": 0.8, "wheeledSpeedMultiplier": 0.75}
+    "thunderstorm": {"name": "Thunderstorm", "speedMultiplier": 0.8, "wheeledSpeedMultiplier": 0.75}
   }
 }

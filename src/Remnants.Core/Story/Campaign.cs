@@ -17,45 +17,6 @@ public sealed record ChooseDialogue(string NodeId, int Index) : IColonyCommand;
 public sealed record LaunchStoryMission(string MissionId, List<ExpeditionMember> Members) : IColonyCommand;
 
 /// <summary>
-/// Where story rewards put schematics. The schematics module (story-schematics branch) supplies the real one
-/// (<c>Schematics.Grant(colony, id, source)</c>); until it lands, <see cref="CampaignLedger"/> keeps them in the campaign.
-/// Swapping is one line: <see cref="Campaign.Schematics"/>.
-/// </summary>
-public interface ISchematicGrants
-{
-    /// <summary>Grants a schematic (learned, queued to decrypt, or Research Data if known); returns a line for the debrief.</summary>
-    string Grant(ColonySim sim, string schematicId, string source);
-    bool Has(ColonySim sim, string schematicId);
-    void AddResearchData(ColonySim sim, int amount);
-}
-
-/// <summary>The stand-in <see cref="ISchematicGrants"/>: schematics in <see cref="CampaignState.Schematics"/>, Research Data as a flag.</summary>
-public sealed class CampaignLedger : ISchematicGrants
-{
-    public const string ResearchDataFlag = "research_data";
-
-    public string Grant(ColonySim sim, string schematicId, string source)
-    {
-        var campaign = sim.State.Campaign!;
-        if (!campaign.Schematics.Add(schematicId))
-        {
-            AddResearchData(sim, 1);
-            return $"{Campaign.SchematicName(schematicId)} (known: +1 Research Data)";
-        }
-        sim.State.Log(new(sim.State.Tick, ColonyEventType.SchematicLearned, $"Schematic learned: {Campaign.SchematicName(schematicId)} ({source})."));
-        return $"Schematic: {Campaign.SchematicName(schematicId)}";
-    }
-
-    public bool Has(ColonySim sim, string schematicId) => sim.State.Campaign?.Schematics.Contains(schematicId) == true;
-
-    public void AddResearchData(ColonySim sim, int amount)
-    {
-        var campaign = sim.State.Campaign!;
-        campaign.Flags[ResearchDataFlag] = campaign.Flag(ResearchDataFlag) + amount;
-    }
-}
-
-/// <summary>
 /// The campaign's rules: starting Story mode, unlocking missions from colony state (in definition order, every tick),
 /// colony objectives and scenes, the radio inbox, launching a field mission and building its run, paying rewards on
 /// return, failing and retrying. Dialogue lives in <see cref="Dialogue"/>.
@@ -63,9 +24,6 @@ public sealed class CampaignLedger : ISchematicGrants
 public static class Campaign
 {
     public const string PellId = "pell";
-
-    /// <summary>Where schematic rewards go (see <see cref="ISchematicGrants"/>).</summary>
-    public static ISchematicGrants Schematics { get; set; } = new CampaignLedger();
 
     /// <summary>
     /// Turns a fresh colony into a Story game: one of the starting children is Pell (he/him), at the start of his childhood, and the first missions
@@ -96,6 +54,7 @@ public static class Campaign
     {
         if (sim.State.Campaign is not { } campaign || sim.Story is not { } story) return;
         var now = sim.State.Tick;
+        foreach (var call in campaign.Inbox.Where(c => !c.Rung && !c.Taken && c.Tick <= now).ToList()) Ring(sim, call);
         foreach (var def in story.Missions)
         {
             var p = campaign.Progress(def.Id);
@@ -128,7 +87,7 @@ public static class Campaign
             {
                 ColonyObjectiveKind.Build => state.Buildings.Any(b => b.DefId == o.Building && b.Level >= o.Level),
                 ColonyObjectiveKind.HaveItem => state.Inventory.Count(o.Item!) >= o.Count,
-                ColonyObjectiveKind.HaveResource => state.Stockpile.Get(o.Resource!) >= o.Count,
+                ColonyObjectiveKind.HaveResource => (o.Resource == Pantry.FoodKey ? Pantry.FoodValue(state, sim.Data) : state.Stockpile.Get(o.Resource!)) >= o.Count,
                 ColonyObjectiveKind.Patient => state.Survivors.Any(s => s.PatientAtBuildingId is not null),
                 ColonyObjectiveKind.ChildJob => state.Survivors.Any(s => s.IsChild && s.AssignedBuildingId is { } b
                     && state.FindBuilding(b) is { } at && sim.Data.Buildings[at.DefId].Job == o.Job),
@@ -174,14 +133,52 @@ public static class Campaign
         return true;
     }
 
+    /// <summary>
+    /// A story schematic reward: learned now through the schematics module (<c>Schematics.Grant</c>, source Story); a
+    /// known one pays its duplicate value in Research Data. Returns the debrief line.
+    /// </summary>
+    public static string GrantSchematic(ColonySim sim, string schematicId)
+    {
+        var name = sim.Data.Schematics.Find(schematicId)?.Name ?? SchematicName(schematicId);
+        if (sim.Data.Schematics.Find(schematicId) is null) return $"Schematic: {name}";
+        var result = Remnants.Core.Schematics.Schematics.Grant(sim, schematicId, Remnants.Core.Schematics.SchematicSource.Story);
+        return result.Learned ? $"Schematic: {name}" : $"{name} (known: +{result.ResearchData:0.#} Research Data)";
+    }
+
+    /// <summary>Tag of a story call in the Radio Mast's queue: "story:" + the campaign call id.</summary>
+    public const string CallTagPrefix = "story:";
+
+    /// <summary>
+    /// Queues a character's call: recorded in the campaign (<see cref="CampaignState.Inbox"/>: which dialogue it opens)
+    /// and, once its time comes, put in the Radio Mast's queue (<see cref="Remnants.Core.Schematics.RadioMast.Enqueue"/>,
+    /// tag <c>story:&lt;id&gt;</c>), where answering it opens the dialogue like <see cref="TakeCall"/>.
+    /// </summary>
     public static RadioCall QueueCall(ColonySim sim, string dialogueId, long delayTicks = 0)
     {
         var campaign = sim.State.Campaign!;
         var call = new RadioCall { Id = campaign.NextCallId++, DialogueId = dialogueId, Tick = sim.State.Tick + delayTicks };
         campaign.Inbox.Add(call);
-        if (delayTicks == 0 && sim.Story?.Dialogues.GetValueOrDefault(dialogueId) is { } d)
-            sim.State.Log(new(sim.State.Tick, ColonyEventType.RadioCall, $"Incoming call: {CallerName(sim, d)}."));
+        if (delayTicks == 0) Ring(sim, call);
         return call;
+    }
+
+    /// <summary>Puts a campaign call that has come in on the Radio Mast (once).</summary>
+    private static void Ring(ColonySim sim, RadioCall call)
+    {
+        if (call.Rung || call.Taken) return;
+        call.Rung = true;
+        var def = sim.Story?.Dialogues.GetValueOrDefault(call.DialogueId);
+        var caller = def is null ? "radio" : def.Caller;
+        var name = def is null ? "A voice on the radio" : CallerName(sim, def);
+        Remnants.Core.Schematics.RadioMast.Enqueue(sim, Remnants.Core.Schematics.RadioCallKind.Story, caller, name,
+            def?.Title ?? "", tag: CallTagPrefix + call.Id);
+    }
+
+    /// <summary>The player answered a story call on the Radio Mast: its dialogue opens.</summary>
+    internal static void Answered(ColonySim sim, Remnants.Core.Schematics.RadioCall radioCall)
+    {
+        if (sim.State.Campaign is null || radioCall.Tag is not { } tag || !tag.StartsWith(CallTagPrefix)) return;
+        if (int.TryParse(tag[CallTagPrefix.Length..], out var id)) Dialogue.Take(sim, id);
     }
 
     /// <summary>Calls that have come in and not been taken, oldest first.</summary>
@@ -309,7 +306,7 @@ public static class Campaign
                 campaign.Flags[e.Id] = campaign.Flag(e.Id) + e.Value;
                 break;
             case EffectKind.Schematic:
-                var granted = Schematics.Grant(sim, e.Id, source);
+                var granted = GrantSchematic(sim, e.Id);
                 lines?.Add(granted);
                 break;
             case EffectKind.Item:
@@ -317,12 +314,17 @@ public static class Campaign
                 else state.Inventory.TryTake(e.Id, Math.Min(-e.Value, state.Inventory.Count(e.Id)));
                 if (e.Value > 0) lines?.Add($"{e.Value} × {ItemName(sim, e.Id)}");
                 break;
+            case EffectKind.Resource when e.Id == Pantry.FoodKey:
+                // "food" rewards are food value: canned food into the pantry.
+                Pantry.AddFoodValue(state, sim.Data, e.Value);
+                lines?.Add($"{e.Value} food (canned)");
+                break;
             case EffectKind.Resource:
                 state.Stockpile.Add(e.Id, e.Value);
                 lines?.Add($"{e.Value} {sim.Data.Resources[e.Id].Name}");
                 break;
             case EffectKind.ResearchData:
-                Schematics.AddResearchData(sim, e.Value);
+                state.Stockpile.Add(sim.Data.Schematics.Rules.ResearchDataResource, e.Value);
                 lines?.Add($"{e.Value} Research Data");
                 break;
             case EffectKind.RevealZone:

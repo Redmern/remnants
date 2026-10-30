@@ -22,6 +22,14 @@ public sealed record ExtractionResult(
 {
     /// <summary>The party's parked vehicle at the end (null when it came on foot). Its stash is in <see cref="Loot"/> unless it was lost.</summary>
     public VehicleResult? Vehicle { get; init; }
+    /// <summary>
+    /// Co-op: schematics allied players carried out; every ally who got home receives a copy (knowledge copies).
+    /// Not the player's own (those are in the packs).
+    /// </summary>
+    public List<string> SharedSchematics { get; init; } = new();
+
+    /// <summary>Schematics the side saw but did not bring home (left in a cache, on a terminal it failed to hack): id → where.</summary>
+    public SortedDictionary<string, string> HeardOf { get; init; } = new(StringComparer.Ordinal);
 
     internal static ExtractionResult Build(ScavengeSim sim, int playerId)
     {
@@ -43,7 +51,22 @@ public sealed record ExtractionResult(
         if (vehicle is { Wrecked: false } && returned.Count > 0)
             foreach (var id in vehicle.Stash) loot[id] = loot.GetValueOrDefault(id) + 1;
 
-        return new ExtractionResult(playerId, party.Done, returned, recruits, deaths, loot, MissionRules.Result(state, playerId)) { Vehicle = vehicle };
+        var shared = new List<string>();
+        var heard = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        if (returned.Count > 0)
+        {
+            // Allies on the same side when they got out share what they carried (versus: no copies).
+            foreach (var u in state.Units.Where(u => u.PlayerId != playerId && u.PlayerId > 0 && Out(u) && u.Side == party.Side))
+                shared.AddRange(u.AllItems.Where(id => sim.Data.Items.GetValueOrDefault(id)?.Schematic is not null));
+            var zone = sim.Data.Zones.GetValueOrDefault(state.ZoneId)?.Name ?? state.ZoneId;
+            var explored = state.Explored.GetValueOrDefault(party.Side);
+            foreach (var cache in state.Caches.Where(c => explored?.Contains(state.Map.Index(c.Pos)) == true))
+                foreach (var id in cache.Items.Where(id => sim.Data.Items.GetValueOrDefault(id)?.Schematic is not null))
+                    heard.TryAdd(id, $"left behind in {zone}");
+            foreach (var id in state.HeardSchematics.GetValueOrDefault(party.Side) ?? [])
+                heard.TryAdd(id, $"on a terminal in {zone}");
+        }
+        return new ExtractionResult(playerId, party.Done, returned, recruits, deaths, loot, MissionRules.Result(state, playerId)) { SharedSchematics = shared, HeardOf = heard, Vehicle = vehicle };
     }
 
     private static ReturnedSurvivor ToReturned(Unit u) =>

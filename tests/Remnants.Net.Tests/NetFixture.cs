@@ -47,9 +47,11 @@ public sealed class NetFixture
     public LoopbackHub Hub { get; }
     public List<string> FogViolations { get; } = new();
 
+    /// <summary>The weather is clear unless a test asks for some (a server otherwise rolls it from the seed).</summary>
     public NetFixture(HostOptions? options = null, ScavengeData? data = null)
     {
-        Host = new GameHost(data ?? Data, options ?? new HostOptions { TurnSeconds = 30, ReconnectSeconds = 60 }, Clock);
+        options ??= new HostOptions { TurnSeconds = 30, ReconnectSeconds = 60 };
+        Host = new GameHost(data ?? Data, options.Weather is null ? options with { Weather = "clear" } : options, Clock);
         Hub = new LoopbackHub(Host);
     }
 

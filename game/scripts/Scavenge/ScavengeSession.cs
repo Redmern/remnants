@@ -88,8 +88,9 @@ public static class ScavengeSession
 
     /// <summary>
     /// The debug mission's sim; <c>--fog-demo</c> stages a hidden Linked near the party (<see cref="Fog.FogDemo"/>),
-    /// <c>--hour=H</c> plays it at that hour (its day phase by the colony's hours), <c>--vehicle=TIER</c> parks a vehicle of
-    /// that tier (with a roof turret, winch, cargo rack, turbo and plates where they fit) at the party's spawn point.
+    /// <c>--hour=H</c> plays it at that hour (its day phase by the colony's hours), <c>--weather=KIND[:INTENSITY]</c> in that weather,
+    /// <c>--vehicle=TIER</c> parks a vehicle of that tier (with a roof turret, winch, cargo rack, turbo and plates where they fit)
+    /// at the party's spawn point.
     /// </summary>
     private static ScavengeSim DebugSim()
     {
@@ -97,6 +98,14 @@ public static class ScavengeSession
         ZoneConditions? conditions = null;
         if (int.TryParse(DebugCapture.Value("--hour"), out var hour))
             conditions = new ZoneConditions(Environment: ScavengeEnvironment.At(hour, Remnants.Core.Colony.DayNight.PhaseAtHour(hour, GameDataPaths.Load().Rules.DayNight)));
+        if (DebugCapture.Value("--weather") is { Length: > 0 } weather)
+        {
+            var parts = weather.Split(':');
+            var env = conditions?.Environment ?? new ScavengeEnvironment();
+            env.Weather = parts[0];
+            env.Intensity = parts.Length > 1 && double.TryParse(parts[1], System.Globalization.CultureInfo.InvariantCulture, out var i) ? i : 0.85;
+            conditions = new ZoneConditions(Environment: env);
+        }
         var sim = NewScavenge.Create(GameDataPaths.LoadScavenge(), DebugZoneArg, DebugSeedArg,
             [new PartySetup(LocalPlayerId, DebugParty()) { Vehicle = DebugVehicle() }], conditions);
         if (Fog.FogDemo.Requested) Fog.FogDemo.Stage(sim, LocalPlayerId);

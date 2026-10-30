@@ -2,6 +2,7 @@ using Remnants.Core.Colony;
 using Remnants.Core.Data;
 using Remnants.Core.Items;
 using Remnants.Core.Scavenge;
+using Remnants.Core.Schematics;
 using Remnants.Core.Story;
 using Remnants.Core.Survivors;
 
@@ -22,6 +23,11 @@ public sealed record BotOptions
     /// <summary>Highest zone threat the bot will risk (it climbs only after a clean run at the level below).</summary>
     public int MaxThreat { get; init; } = 2;
 
+    /// <summary>Every other run goes to the hardest zone the threat cap allows (off = always the easiest).</summary>
+    public bool Stretch { get; init; } = true;
+
+    /// <summary>Climb threat after two runs without a death (default: two runs without a death or a new injury).</summary>
+    public bool Bold { get; init; }
     /// <summary>Story mode: which option the party bot picks on a field prompt (0 = the first, e.g. talk to the Tally).</summary>
     public int StoryPrompt { get; init; }
     /// <summary>Build vehicles at the Garage and drive them out (else every party walks).</summary>
@@ -42,8 +48,9 @@ public sealed class ColonyBot
     private static readonly (string Building, int Level)[] BuildOrder =
     [
         ("farm", 1), ("woodcutter", 1), ("quarry", 1), ("workshop", 1), ("scrapyard", 1), ("med_bay", 1),
-        ("farm", 2), ("woodcutter", 2), ("quarry", 2), ("kitchen", 1), ("tailor", 1), ("town_hall", 2),
-        ("house", 1), ("armory", 1), ("scrapyard", 2), ("workshop", 2), ("garage", 1), ("farm", 3), ("electronics_lab", 1),
+        ("farm", 2), ("woodcutter", 2), ("quarry", 2), ("kitchen", 1), ("tailor", 1), ("town_hall", 2), ("radio_mast", 1),
+        ("house", 1), ("armory", 1), ("scrapyard", 2), ("workshop", 2), ("farm", 3), ("electronics_lab", 1),
+        ("hunting_lodge", 1), ("smokehouse", 1), ("kitchen", 2), ("garage", 1),
         ("tailor", 2), ("med_bay", 2), ("fuel_still", 1), ("garage", 2), ("armory", 2), ("woodcutter", 3), ("quarry", 3), ("town_hall", 3), ("garage", 3), ("house", 2),
         ("electronics_lab", 2),
     ];
@@ -59,7 +66,7 @@ public sealed class ColonyBot
     {
         _sim = sim;
         _options = options ?? new BotOptions();
-        foreach (var id in _options.Schematics) _sim.State.KnownBlueprints.Add(id);
+        foreach (var id in _options.Schematics) _sim.State.Schematics.Known.Add(id);
     }
 
     public List<ExpeditionOutcome> Expeditions { get; } = [];
@@ -75,6 +82,7 @@ public sealed class ColonyBot
     /// <summary>One decision pass. Call it every few ticks.</summary>
     public void Act()
     {
+        Repair();
         Story();
         Build();
         Craft();
@@ -118,6 +126,7 @@ public sealed class ColonyBot
             // Vehicle buildings: only with vehicles on, and a level whose schematic is still missing waits.
             if (id is "garage" or "fuel_still" && !_options.Vehicles) continue;
             if (!VehicleSchematics.LevelUnlocked(_sim, id, level)) continue;
+            if (!Remnants.Core.Schematics.Schematics.LevelUnlocked(_sim, id, level)) continue;
             return (id, level);
         }
         return null;
@@ -141,6 +150,17 @@ public sealed class ColonyBot
 
     public List<string> Problems { get; } = [];
 
+    /// <summary>Buildings struck by lightning are repaired as soon as the repair is affordable, before any new build.</summary>
+    private void Repair()
+    {
+        foreach (var b in State.Buildings.Where(b => b.Damaged).OrderBy(b => b.Id).ToList())
+        {
+            if (!State.Stockpile.CanAfford(Data.Weather.Repair.Cost)) return;
+            var r = _sim.Execute(new RepairBuilding(b.Id));
+            if (!r.Ok) Problems.Add($"day {Day:0.0}: repair {b.DefId}: {r.Message}");
+        }
+    }
+
     // ---- crafting -------------------------------------------------------------------------------------------
 
     private Building? Find(string defId) => State.Buildings.FirstOrDefault(b => b.DefId == defId);
@@ -150,26 +170,68 @@ public sealed class ColonyBot
         if (Find("workshop") is { } workshop && workshop.Queue.Count == 0)
         {
             var weapons = Count("pipe") + Count("spear") + Count("machete");
-            if (State.Stockpile.Get("medicine") < 3 && State.Stockpile.Get("food") > 25) Queue(workshop, "herbal_remedy");
+            if (State.Stockpile.Get("medicine") < 3 && _sim.FoodStock > 25) Queue(workshop, "herbal_remedy");
             else if (weapons < 3 && State.Stockpile.Get("scrap") >= 6) Queue(workshop, "spear");
             else if (workshop.Level >= 2 && Count("med_kit") < 2 && State.Stockpile.Get("cloth") >= 2 && State.Stockpile.Get("medicine") >= 3)
                 Queue(workshop, "med_kit");
         }
         if (Find("tailor") is { } tailor && tailor.Queue.Count == 0)
         {
-            if (State.Stockpile.Get("cloth") < 4 && State.Stockpile.Get("food") > 50) Queue(tailor, "fiber_cloth");
+            if (State.Stockpile.Get("cloth") < 4 && _sim.FoodStock > 50) Queue(tailor, "fiber_cloth");
             else if (Count("bandage") < 4 && State.Stockpile.Get("cloth") >= 1) Queue(tailor, "bandage");
             else if (Count("padded_vest") < 2 && State.Stockpile.Get("cloth") >= 5) Queue(tailor, "padded_vest");
+            // A couple of dust masks keep the woodcutter and quarry going (and healthy) in a dust storm.
+            else if (Weather.Enabled(Data) && Count("dust_mask") < 2 && State.Stockpile.Get("cloth") >= 4 && State.Stockpile.Get("scrap") >= 3)
+                Queue(tailor, "dust_mask");
         }
-        if (Find("kitchen") is { } kitchen && kitchen.Queue.Count == 0 && State.Stockpile.Get("food") > 30)
-            Queue(kitchen, "simple_meal");
+        Cook();
         if (Find("armory") is { } armory && armory.Queue.Count == 0 && Count("machete") < 2 && State.Stockpile.Get("scrap") >= 10)
             Queue(armory, "machete");
         if (Find("electronics_lab") is { } lab && lab.Queue.Count == 0 && State.Stockpile.Get("scrap") >= 20)
             Queue(lab, "salvage_circuits");
-        foreach (var bp in State.Inventory.Counts.Keys.Where(id => _sim.Scavenge!.Items[id].Kind == ItemKind.Blueprint).ToList())
-            _sim.Execute(new StudyBlueprint(bp));
+        HandleSchematics();
         if (_options.Vehicles) Garage();
+    }
+
+    /// <summary>
+    /// Schematics: decrypt chips at the Lab when it can; research the cheapest heard-of schematic at the Town Hall with a
+    /// spare adult; buy from the trader with Research Data, else scrap, keeping a reserve; sell chips it cannot decrypt.
+    /// </summary>
+    private void HandleSchematics()
+    {
+        var catalog = _sim.Data.Schematics;
+        if (Find("electronics_lab") is { } lab)
+            foreach (var id in State.Inventory.Counts.Keys.Where(id => catalog.Find(id) is not null).ToList())
+            {
+                var recipe = _sim.Data.Recipes.GetValueOrDefault(Remnants.Core.Schematics.Schematics.DecryptRecipeId(id));
+                if (recipe is not null && lab.Queue.All(o => o.RecipeId != recipe.Id) && _sim.CanQueue(lab, recipe).Ok)
+                    _sim.Execute(new QueueRecipe(lab.Id, recipe.Id, 1));
+            }
+        if (State.Schematics.Research is null)
+        {
+            var target = State.Schematics.HeardOf.Keys.Select(catalog.Find).OfType<SchematicDef>()
+                .Where(s => Research.Check(_sim, s.Id).Ok).OrderBy(s => s.Tier).ThenBy(s => s.Id, StringComparer.Ordinal).FirstOrDefault();
+            var researcher = State.Survivors.Where(s => !s.IsChild && !s.IsInfant && !s.Away && s.PatientAtBuildingId is null
+                    && _sim.ClassOf(s) is null && s.AssignedBuildingId is null)
+                .OrderByDescending(s => s.Get(AttributeKind.Intellect)).FirstOrDefault();
+            if (target is not null && researcher is not null) _sim.Execute(new StartResearch(target.Id, researcher.Id));
+        }
+        if (State.Radio.TraderHere)
+            foreach (var id in State.Radio.Stock.ToList())
+            {
+                var prices = RadioMast.Prices(_sim, catalog.All[id]);
+                for (var o = prices.Count - 1; o >= 0; o--)
+                {
+                    var cost = prices[o].Cost;
+                    var keep = cost.Keys.Any(k => k == "scrap") ? 40 : cost.Keys.Any(k => k == "food") ? 60 : 0;
+                    double Have(string k) => k == Pantry.FoodKey ? _sim.FoodStock : State.Stockpile.Get(k);
+                    if (cost.All(kv => Have(kv.Key) >= kv.Value + (kv.Key is "scrap" or "food" ? keep : 0))
+                        && _sim.Execute(new BuyFromTrader(id, o)).Ok) break;
+                }
+            }
+        if (State.Radio.Contract is { Accepted: false } contract && _sim.ZoneInfo(contract.ZoneId).Zone.Threat <= 2)
+            _sim.Execute(new AcceptContract(contract.Id));
+        foreach (var call in State.Radio.Calls.ToList()) _sim.Execute(new AnswerCall(call.Id));
     }
 
     // ---- vehicles -------------------------------------------------------------------------------------------
@@ -180,7 +242,7 @@ public sealed class ColonyBot
     /// </summary>
     private void Garage()
     {
-        if (Find("fuel_still") is { } still && still.Queue.Count == 0 && State.Stockpile.Get("fuel") < 40 && State.Stockpile.Get("food") > 80)
+        if (Find("fuel_still") is { } still && still.Queue.Count == 0 && State.Stockpile.Get("fuel") < 40 && _sim.FoodStock > 80)
             Queue(still, "biofuel");
         if (Find("garage") is not { } garage) return;
         foreach (var v in State.Vehicles.Where(v => !v.Away && v.Condition < _sim.VehicleStats(v).MaxCondition * 0.6))
@@ -227,6 +289,39 @@ public sealed class ColonyBot
             .Where(x => x.Plan.Blocked is null && State.Stockpile.Get(Data.Vehicles.FuelResource) >= x.Plan.FuelRoundTrip)
             .OrderBy(x => x.Plan.Days).ThenByDescending(x => _sim.VehicleStats(x.Vehicle).CargoKg).ThenBy(x => x.Vehicle.Id)
             .Select(x => x.Vehicle).FirstOrDefault();
+    }
+
+    // ---- food ---------------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Cooks and preserves sensibly: keeps about two days of cooked food on hand (not more, it spoils), water for the pot,
+    /// stew at a Kitchen L2 when the ingredients are there, otherwise roast, boiled potatoes or flatbread from what is in
+    /// stock; at the Campfire only until the Kitchen is up. The Smokehouse smokes meat and dries produce that would spoil
+    /// within three days. Fields stay on potatoes, the lodge on game.
+    /// </summary>
+    private void Cook()
+    {
+        if (Data.Food is not { } food) return;
+        var pot = Find("kitchen") ?? Find(food.Rules.CampfireBuilding);
+        var perDay = _sim.FoodPerDay;
+        var cooked = Pantry.Entries(_sim).Where(e => food.Items[e.ItemId].Meal is { Hot: true } || e.ItemId == "flatbread").Sum(e => e.FoodValue);
+        if (pot is not null && pot.Queue.Count == 0 && _sim.FoodDays > 3 && cooked < 2 * perDay)
+        {
+            var at = pot.DefId == "kitchen" ? "" : "campfire_";
+            bool Has(string key, int n) => Pantry.Available(State, Data, key) >= n;
+            if (!Has("water", 2)) Queue(pot, at == "" ? "purify_water" : "campfire_water");
+            else if (pot.DefId == "kitchen" && pot.Level >= 2 && Has("tag:veg", 2) && Has("tag:protein", 1)) Queue(pot, "stew");
+            else if (Has("tag:fresh_meat", 2)) Queue(pot, at + "roast");
+            else if (Has("potato", 6)) Queue(pot, at == "" ? "boiled_potatoes" : "campfire_potatoes");
+            else if (Has("corn", 3)) Queue(pot, at + "flatbread");
+        }
+        if (Find("smokehouse") is { } smoke && smoke.Queue.Count == 0)
+        {
+            var soon = State.Food.Lots.Where(kv => food.Matches(kv.Key, "tag:fresh_veg"))
+                .Sum(kv => kv.Value.Where(l => l.TicksLeft is { } t && t > 0 && t < 3 * TicksPerDay).Sum(l => l.Count));
+            if (Pantry.Available(State, Data, "tag:fresh_meat") >= 6) Queue(smoke, "smoke_meat");
+            else if (soon >= 6 && _sim.FoodDays > 6) Queue(smoke, "dry_food");
+        }
     }
 
     private int Count(string baseId) =>
@@ -302,7 +397,7 @@ public sealed class ColonyBot
     /// </summary>
     private void Explore(CyberneticsData cyber)
     {
-        if (State.Stockpile.Get("scrap") < 40 || State.Stockpile.Get("food") < 30) return;
+        if (State.Stockpile.Get("scrap") < 40 || _sim.FoodStock < 30) return;
         var next = cyber.Nodes.Values.Where(n => n.Slot != CyberSlot.Eye)
             .Select(n => Cybernetics.Status(_sim, n))
             .Where(st => st.State == CyberNodeState.Available && st.Recipe is not null && Find(st.Recipe.Building) is not null)
@@ -343,7 +438,7 @@ public sealed class ColonyBot
     /// </summary>
     private void Staff()
     {
-        var workers = State.Survivors.Where(s => !s.Away && !s.IsInfant && s.PatientAtBuildingId is null).ToList();
+        var workers = State.Survivors.Where(s => !s.Away && !s.IsInfant && s.PatientAtBuildingId is null && !Research.IsResearching(State, s.Id)).ToList();
         var slots = State.Buildings.Where(b => Data.Buildings[b.DefId].Job is not null)
             .ToDictionary(b => b.Id, b => Data.Buildings[b.DefId].Level(b.Level).WorkerSlots);
         var plan = new Dictionary<int, int>(); // survivor -> building
@@ -370,16 +465,21 @@ public sealed class ColonyBot
             LifeStage.Child => food.ChildPerTick,
             _ => food.AdultPerTick,
         });
-        var days = State.Stockpile.Get("food") / Math.Max(need * TicksPerDay, 1e-6);
+        var days = _sim.FoodStock / Math.Max(need * TicksPerDay, 1e-6);
         var margin = days < 3 ? 1.6 : days < 8 ? 1.25 : days > 25 ? 0.9 : 1.1;
         var produced = 0.0;
-        foreach (var farm in State.Buildings.Where(b => b.DefId == "farm").OrderByDescending(b => b.Level))
+        // Food value per worker: job output times what the harvest brings in (potatoes 1, beans less, meat 1.5 a piece).
+        double Food(Survivor s, Building b) =>
+            Output(s, b) * (Harvesting.Current(Data, b) is { } h ? Harvesting.FoodValuePerEffort(State, Data, b, h) : 0);
+        foreach (var farm in State.Buildings.Where(b => Harvesting.Current(Data, b) is not null)
+                     .OrderBy(b => b.DefId == "farm" ? 0 : 1).ThenByDescending(b => b.Level))
             while (produced < need * margin && free.Count > 0)
             {
                 // Children farm first (it is one of their jobs); adults fill the rest.
-                var best = free.OrderBy(s => s.IsChild ? 0 : 1).ThenByDescending(s => Output(s, farm)).FirstOrDefault(s => !s.IsChild || Data.Jobs["farming"].ChildrenAllowed);
+                var job = Data.Jobs[Data.Buildings[farm.DefId].Job!];
+                var best = free.OrderBy(s => s.IsChild ? 0 : 1).ThenByDescending(s => Food(s, farm)).FirstOrDefault(s => !s.IsChild || job.ChildrenAllowed);
                 if (best is null || !Take(best, farm)) break;
-                produced += Output(best, farm);
+                produced += Food(best, farm);
                 free.Remove(best);
             }
 
@@ -392,7 +492,7 @@ public sealed class ColonyBot
 
         var goal = GoalCost();
         double Short(string res) => Math.Max(0, goal.GetValueOrDefault(res) - State.Stockpile.Get(res)) + 5;
-        var gatherers = State.Buildings.Where(b => Data.Buildings[b.DefId] is { Produces: { } p } && p != "food").ToList();
+        var gatherers = State.Buildings.Where(b => Data.Buildings[b.DefId] is { Produces: not null }).ToList();
         while (free.Count > 0)
         {
             var target = gatherers.Where(b => plan.Values.Count(id => id == b.Id) < slots[b.Id])
@@ -469,9 +569,11 @@ public sealed class ColonyBot
         // Never alone: a lone survivor who goes down has nobody to patch them up.
         if (size < Math.Min(2, _sim.MaxPartySize)) return;
 
-        // Easiest known zone up to the current threat cap; prefer close and fresh ones.
+        // Easiest known zone up to the current threat cap, prefer close and fresh ones; every other run (once the cap has
+        // climbed) the hardest zone the cap allows, so the bot sees the next region (and its schematics and trader).
+        var stretch = _options.Stretch && Expeditions.Count % 2 == 1 && _threatCap > 1;
         var zone = _sim.WorldZones().Where(z => z.Intel != ZoneIntel.Unknown && z.Zone.Threat <= _threatCap)
-            .OrderBy(z => z.Zone.Threat).ThenBy(z => z.Depletion > 0.5 ? 1 : 0).ThenBy(z => z.Zone.TravelDays).ThenBy(z => z.Zone.Id)
+            .OrderBy(z => stretch ? -z.Zone.Threat : z.Zone.Threat).ThenBy(z => z.Depletion > 0.5 ? 1 : 0).ThenBy(z => z.Zone.TravelDays).ThenBy(z => z.Zone.Id)
             .FirstOrDefault();
         if (zone is null) return;
         var vehicle = PickVehicle(zone.Zone.Id);
@@ -479,14 +581,19 @@ public sealed class ColonyBot
         var travel = _sim.PlanTravel(zone.Zone.Id, vehicle?.Id);
         // A party that would arrive in the dark waits outside for dawn (it costs rations, see PlanArrival).
         DayPhase? waitFor = _sim.PlanArrival(zone.Zone.Id, null, vehicle?.Id).Phase == DayPhase.Night ? DayPhase.Dawn : null;
-        var rations = (WorldMap.RationsPerMember(Data, travel.Days) + _sim.PlanArrival(zone.Zone.Id, waitFor, vehicle?.Id).WaitRationsPerMember) * size;
+        var plan = _sim.PlanArrival(zone.Zone.Id, waitFor, vehicle?.Id);
+        // A dust storm over the zone closes the route: wait for it to pass rather than pick another zone.
+        if (plan.Blocked) return;
+        var rations = (WorldMap.RationsPerMember(Data, travel.MovingTicks / (double)TicksPerDay) + plan.ExtraRationsPerMember) * size;
         var needPerDay = State.Survivors.Count(s => !s.Away) * Data.Rules.Food.AdultPerTick * TicksPerDay;
-        if (State.Stockpile.Get("food") < rations + needPerDay * (3 + 2 * travel.Days)) return;
+        if (_sim.FoodStock < rations + needPerDay * (3 + 2 * travel.Days)) return;
 
         var party = adults.OrderByDescending(s => s.Get(AttributeKind.Strength) + s.Get(AttributeKind.Agility) + s.Get(AttributeKind.Endurance))
             .Take(size).ToList();
         var members = Gear(party);
-        var launched = _sim.Execute(new LaunchExpedition(zone.Zone.Id, members, waitFor, vehicle?.Id));
+        // Light, long-keeping field rations when there are any, else a good hot meal for the road.
+        var prefer = new[] { "field_rations", "stew", "pie", "preserved_rations" }.FirstOrDefault(id => State.Inventory.Count(id) >= size);
+        var launched = _sim.Execute(new LaunchExpedition(zone.Zone.Id, members, waitFor, new RationChoice(prefer), vehicle?.Id));
         if (!launched.Ok) Problems.Add($"day {Day:0.0}: launch {zone.Zone.Id}: {launched.Message}");
     }
 
@@ -529,7 +636,7 @@ public sealed class ColonyBot
         // A mission that needs someone treated waits for something to treat them with.
         if (mission.Field!.Objectives.Any(o => o.Kind == ObjectiveKind.Aid) && Count("bandage") + Count("med_kit") == 0) return false;
         var zone = _sim.Scavenge!.Zones[mission.Zone!];
-        if (State.Stockpile.Get("food") < WorldMap.RationsPerMember(Data, zone) * size + 5) return false;
+        if (_sim.FoodStock < WorldMap.RationsPerMember(Data, zone) * size + 5) return false;
         var party = adults.OrderByDescending(s => s.Get(AttributeKind.Strength) + s.Get(AttributeKind.Agility) + s.Get(AttributeKind.Endurance)).Take(size).ToList();
         var launched = _sim.Execute(new LaunchStoryMission(mission.Id, Gear(party)));
         if (!launched.Ok) Problems.Add($"day {Day:0.0}: launch {mission.Id}: {launched.Message}");
@@ -589,10 +696,10 @@ public sealed class ColonyBot
         return members;
     }
 
-    /// <summary>The bot climbs threat only after two clean runs (nobody hurt or dead) at the current cap.</summary>
+    /// <summary>The bot climbs threat only after two clean runs in a row at the current cap (nobody dead, and unless bold, nobody hurt).</summary>
     private void OnReturn(ExpeditionOutcome o)
     {
-        if (o.Dead == 0 && o.NewInjuries == 0) _cleanRunsAtThreat++;
+        if (o.Dead == 0 && (_options.Bold || o.NewInjuries == 0)) _cleanRunsAtThreat++;
         else _cleanRunsAtThreat = 0;
         if (_cleanRunsAtThreat >= 2 && _threatCap < _options.MaxThreat)
         {

@@ -15,7 +15,7 @@ namespace Remnants.Game;
 /// </summary>
 public static class GameDataPaths
 {
-    private static readonly string[] Files = ["resources.json", "jobs.json", "buildings.json", "rules.json", "recipes.json", "perks.json", "cybernetics.json", "vehicles.json"];
+    private static readonly string[] Files = ["resources.json", "jobs.json", "buildings.json", "rules.json", "recipes.json", "perks.json", "cybernetics.json", "schematics.json", "food.json", "vehicles.json"];
     private static readonly string[] ScavengeFiles = ["items.json", "enemies.json", "zones.json", "scavenge.json"];
     private const string EmbeddedPrefix = "Remnants.Data.";
 
@@ -60,7 +60,8 @@ public static class GameDataPaths
             if (ScavengeFiles.All(f => File.Exists(Path.Combine(dir, f))))
                 return ScavengeDataLoader.LoadFromDirectory(dir);
         return ScavengeDataLoader.LoadFromJson(ReadEmbedded("items.json"), ReadEmbedded("enemies.json"),
-            ReadEmbedded("zones.json"), ReadEmbedded("scavenge.json"), ReadEmbedded("perks.json"), ReadEmbedded("cybernetics.json"));
+            ReadEmbedded("zones.json"), ReadEmbedded("scavenge.json"), ReadEmbedded("perks.json"), ReadEmbedded("cybernetics.json"), ReadEmbedded("schematics.json"),
+            ReadEmbedded("schematics.food.json"), ReadEmbedded("schematics.vehicles.json"));
     }
 
     private static GameData LoadFresh()
@@ -85,7 +86,9 @@ public static class GameDataPaths
 
     private static GameData LoadEmbedded() =>
         GameDataLoader.LoadFromJson(ReadEmbedded("resources.json"), ReadEmbedded("jobs.json"), ReadEmbedded("buildings.json"), ReadEmbedded("rules.json"),
-            ReadEmbedded("recipes.json"), ReadEmbedded("perks.json"), ReadEmbedded("cybernetics.json"), ReadEmbedded("vehicles.json"));
+            ReadEmbedded("recipes.json"), ReadEmbedded("perks.json"), ReadEmbedded("cybernetics.json"), ReadEmbedded("weather.json"),
+            ReadEmbedded("food.json"), ReadEmbedded("vehicles.json"),
+            schematics: [ReadEmbedded("schematics.json"), ReadEmbedded("schematics.food.json"), ReadEmbedded("schematics.vehicles.json")]);
 
     private static string ReadEmbedded(string file)
     {

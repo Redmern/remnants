@@ -539,6 +539,150 @@
       "style_revision": "09d4038e"
     },
     {
+      "id": "campfire_cooking",
+      "category": "building",
+      "file": "building/campfire_cooking.glb",
+      "tags": [
+        "colony",
+        "food",
+        "cooking",
+        "care",
+        "survivor_tech",
+        "emissive",
+        "level1"
+      ],
+      "params": {
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 2.0,
+        "y": 1.484,
+        "z": 2.0
+      },
+      "tris": 976,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 1x1 tile (2x2 m). Fire ring at the center, tripod pot over it, spit along X on forked sticks, log seats -Y and +X, wood pile and cooking crate at the back. Embers/flames emissive.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "cold_cellar_l1",
+      "category": "building",
+      "file": "building/cold_cellar_l1.glb",
+      "tags": [
+        "colony",
+        "food",
+        "storage",
+        "care",
+        "survivor_tech",
+        "level1"
+      ],
+      "params": {
+        "level": 1,
+        "powered": false
+      },
+      "dimensions_m": {
+        "x": 2.0,
+        "y": 1.461,
+        "z": 2.0
+      },
+      "tris": 400,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 1x1 tile (2x2 m). Earth mound over the cellar, stone face and plank door on -Y down three steps, vent pipe on top.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "cold_cellar_l1_powered",
+      "category": "building",
+      "file": "building/cold_cellar_l1_powered.glb",
+      "tags": [
+        "colony",
+        "food",
+        "storage",
+        "care",
+        "survivor_tech",
+        "powered",
+        "emissive",
+        "level1"
+      ],
+      "params": {
+        "level": 1,
+        "powered": true
+      },
+      "dimensions_m": {
+        "x": 2.0,
+        "y": 1.461,
+        "z": 2.0
+      },
+      "tris": 684,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "cold_cellar_l1 plus a compressor box front-right (amber running lamp, emissive), a cable to a solar panel on the mound and a white lamp over the door (non-emissive lens: light it in the game).",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "cold_cellar_l2",
+      "category": "building",
+      "file": "building/cold_cellar_l2.glb",
+      "tags": [
+        "colony",
+        "food",
+        "storage",
+        "care",
+        "survivor_tech",
+        "level2"
+      ],
+      "params": {
+        "level": 2,
+        "powered": false
+      },
+      "dimensions_m": {
+        "x": 2.0,
+        "y": 1.526,
+        "z": 2.0
+      },
+      "tris": 376,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 1x1 tile. Concrete face, steel door, two capped vent stacks, ice sledge.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "cold_cellar_l2_powered",
+      "category": "building",
+      "file": "building/cold_cellar_l2_powered.glb",
+      "tags": [
+        "colony",
+        "food",
+        "storage",
+        "care",
+        "survivor_tech",
+        "powered",
+        "emissive",
+        "level2"
+      ],
+      "params": {
+        "level": 2,
+        "powered": true
+      },
+      "dimensions_m": {
+        "x": 2.0,
+        "y": 1.526,
+        "z": 2.0
+      },
+      "tris": 692,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "cold_cellar_l2 plus the compressor, panel, cable and white door lamp, as cold_cellar_l1_powered.",
+      "style_revision": "09d4038e"
+    },
+    {
       "id": "electronics_lab_l1",
       "category": "building",
       "file": "building/electronics_lab_l1.glb",
@@ -767,11 +911,11 @@
         "y": 2.63,
         "z": 4.0
       },
-      "tris": 1088,
+      "tris": 1548,
       "pivot": "ground_center",
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
-      "notes": "footprint 2x2 tiles (4x4 m). One glass bay (x -1.9..0.3, y -1.8..1.3) with two raised beds, door on -Y; rain barrel and seed crates in the open half.",
+      "notes": "footprint 2x2 tiles (4x4 m). One glass bay (x -1.9..0.3, y -1.8..1.3) with two raised beds planted in rows (greens, tomatoes or beans), door on -Y; rain barrel and seed crates in the open half.",
       "style_revision": "09d4038e"
     },
     {
@@ -790,11 +934,11 @@
         "level": 2
       },
       "dimensions_m": {
-        "x": 4.0,
+        "x": 4.016,
         "y": 2.63,
         "z": 4.03
       },
-      "tris": 2008,
+      "tris": 2928,
       "pivot": "ground_center",
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
@@ -824,6 +968,88 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x2 tiles (6x4 m, wide along X). Main house left/center (two rooms) with cross gable + porch at the front, chimney left, bunk lean-to right, yard with fence front.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "hunting_lodge_l1",
+      "category": "building",
+      "file": "building/hunting_lodge_l1.glb",
+      "tags": [
+        "colony",
+        "food",
+        "hunting",
+        "gathering",
+        "survivor_tech",
+        "level1"
+      ],
+      "params": {
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 4.0,
+        "y": 2.102,
+        "z": 4.0
+      },
+      "tris": 876,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles (4x4 m). Hide lean-to at the back (y 0.4..1.9) over a butcher block, hide-scraping frame front-left, meat gallows front-right, forage basket. Entrance -Y.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "hunting_lodge_l2",
+      "category": "building",
+      "file": "building/hunting_lodge_l2.glb",
+      "tags": [
+        "colony",
+        "food",
+        "hunting",
+        "gathering",
+        "survivor_tech",
+        "level2"
+      ],
+      "params": {
+        "level": 2
+      },
+      "dimensions_m": {
+        "x": 4.02,
+        "y": 2.66,
+        "z": 4.02
+      },
+      "tris": 1816,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles. Log cabin at the back with a shake roof and door on -Y, two hide frames, tanning tub, drying line with pelts, meat gallows.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "hunting_lodge_l3",
+      "category": "building",
+      "file": "building/hunting_lodge_l3.glb",
+      "tags": [
+        "colony",
+        "food",
+        "hunting",
+        "gathering",
+        "survivor_tech",
+        "emissive",
+        "level3"
+      ],
+      "params": {
+        "level": 3
+      },
+      "dimensions_m": {
+        "x": 4.02,
+        "y": 3.36,
+        "z": 4.02
+      },
+      "tris": 2260,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 2x2 tiles. Log cabin with a stone chimney and boardwalk, covered meat rack, tanning vats, two hide frames, amber lantern by the door (emissive).",
       "style_revision": "09d4038e"
     },
     {
@@ -1204,6 +1430,62 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Two-storey concrete bunkhouse, flat roof with solar, two bunks under a framed tarp, sandbags, floodlight, Network heater.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "smokehouse_l1",
+      "category": "building",
+      "file": "building/smokehouse_l1.glb",
+      "tags": [
+        "colony",
+        "food",
+        "production",
+        "cooking",
+        "survivor_tech",
+        "emissive",
+        "level1"
+      ],
+      "params": {
+        "level": 1
+      },
+      "dimensions_m": {
+        "x": 2.02,
+        "y": 2.81,
+        "z": 2.02
+      },
+      "tris": 876,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 1x1 tile (2x2 m). Plank shed (x -0.9..0.35, y -0.45..0.9) with the door on -Y half open, fire pit front-right feeding it through a flue, wood pile at the back. Fire glows (emissive).",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "smokehouse_l2",
+      "category": "building",
+      "file": "building/smokehouse_l2.glb",
+      "tags": [
+        "colony",
+        "food",
+        "production",
+        "cooking",
+        "survivor_tech",
+        "emissive",
+        "level2"
+      ],
+      "params": {
+        "level": 2
+      },
+      "dimensions_m": {
+        "x": 2.02,
+        "y": 2.96,
+        "z": 2.02
+      },
+      "tris": 964,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "footprint 1x1 tile. Brick-based shed with a metal roof, iron stove-box with a pipe front-right, side drying rack of fish under an awning, salt barrel.",
       "style_revision": "09d4038e"
     },
     {
@@ -7922,6 +8204,354 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Low cover (terrain Cover). Sandbag wall ~1.9 m along X, ~0.9 m tall, one tile.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_beans_s1",
+      "category": "prop",
+      "file": "prop/crop_beans_s1.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage1"
+      ],
+      "params": {
+        "crop": "beans",
+        "stage": 1
+      },
+      "dimensions_m": {
+        "x": 0.5,
+        "y": 0.187,
+        "z": 2.0
+      },
+      "tris": 216,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "beans row, growth stage 1/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_beans_s2",
+      "category": "prop",
+      "file": "prop/crop_beans_s2.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage2"
+      ],
+      "params": {
+        "crop": "beans",
+        "stage": 2
+      },
+      "dimensions_m": {
+        "x": 0.512,
+        "y": 1.008,
+        "z": 2.0
+      },
+      "tris": 348,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "beans row, growth stage 2/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_beans_s3",
+      "category": "prop",
+      "file": "prop/crop_beans_s3.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage3"
+      ],
+      "params": {
+        "crop": "beans",
+        "stage": 3
+      },
+      "dimensions_m": {
+        "x": 0.514,
+        "y": 1.455,
+        "z": 2.0
+      },
+      "tris": 636,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "beans row, growth stage 3/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_corn_s1",
+      "category": "prop",
+      "file": "prop/crop_corn_s1.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage1"
+      ],
+      "params": {
+        "crop": "corn",
+        "stage": 1
+      },
+      "dimensions_m": {
+        "x": 0.5,
+        "y": 0.302,
+        "z": 2.0
+      },
+      "tris": 204,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "corn row, growth stage 1/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_corn_s2",
+      "category": "prop",
+      "file": "prop/crop_corn_s2.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage2"
+      ],
+      "params": {
+        "crop": "corn",
+        "stage": 2
+      },
+      "dimensions_m": {
+        "x": 0.656,
+        "y": 0.82,
+        "z": 2.0
+      },
+      "tris": 264,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "corn row, growth stage 2/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_corn_s3",
+      "category": "prop",
+      "file": "prop/crop_corn_s3.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage3"
+      ],
+      "params": {
+        "crop": "corn",
+        "stage": 3
+      },
+      "dimensions_m": {
+        "x": 0.892,
+        "y": 2.05,
+        "z": 2.016
+      },
+      "tris": 544,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "corn row, growth stage 3/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_herbs_s1",
+      "category": "prop",
+      "file": "prop/crop_herbs_s1.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage1"
+      ],
+      "params": {
+        "crop": "herbs",
+        "stage": 1
+      },
+      "dimensions_m": {
+        "x": 0.5,
+        "y": 0.19,
+        "z": 2.0
+      },
+      "tris": 108,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "herbs row, growth stage 1/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_herbs_s2",
+      "category": "prop",
+      "file": "prop/crop_herbs_s2.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage2"
+      ],
+      "params": {
+        "crop": "herbs",
+        "stage": 2
+      },
+      "dimensions_m": {
+        "x": 0.5,
+        "y": 0.294,
+        "z": 2.0
+      },
+      "tris": 332,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "herbs row, growth stage 2/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_herbs_s3",
+      "category": "prop",
+      "file": "prop/crop_herbs_s3.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage3"
+      ],
+      "params": {
+        "crop": "herbs",
+        "stage": 3
+      },
+      "dimensions_m": {
+        "x": 0.5,
+        "y": 0.5,
+        "z": 2.011
+      },
+      "tris": 500,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "herbs row, growth stage 3/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_potato_s1",
+      "category": "prop",
+      "file": "prop/crop_potato_s1.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage1"
+      ],
+      "params": {
+        "crop": "potato",
+        "stage": 1
+      },
+      "dimensions_m": {
+        "x": 0.5,
+        "y": 0.172,
+        "z": 2.0
+      },
+      "tris": 204,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "potato row, growth stage 1/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_potato_s2",
+      "category": "prop",
+      "file": "prop/crop_potato_s2.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage2"
+      ],
+      "params": {
+        "crop": "potato",
+        "stage": 2
+      },
+      "dimensions_m": {
+        "x": 0.5,
+        "y": 0.421,
+        "z": 2.029
+      },
+      "tris": 224,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "potato row, growth stage 2/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "crop_potato_s3",
+      "category": "prop",
+      "file": "prop/crop_potato_s3.glb",
+      "tags": [
+        "colony",
+        "food",
+        "farm",
+        "crop",
+        "crop_row",
+        "survivor_tech",
+        "stage3"
+      ],
+      "params": {
+        "crop": "potato",
+        "stage": 3
+      },
+      "dimensions_m": {
+        "x": 0.5,
+        "y": 0.58,
+        "z": 2.061
+      },
+      "tris": 464,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "potato row, growth stage 3/3. Ridge 0.5 x 2.0 m along Y (glTF Z), origin at the ground center.",
       "style_revision": "09d4038e"
     },
     {
@@ -39394,6 +40024,1216 @@
       "svg": "ui/frame_radio.svg",
       "notes": "Radio frame, 608x704; portrait window at [48, 48, 512, 512] (transparent hole).",
       "source": "assets/ui/frames.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_beans",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_beans.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "beans",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_beans.svg",
+      "notes": "Food icon: beans (raw produce).",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_beans_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_beans_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "beans",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_beans_64.svg",
+      "notes": "Food icon: beans (raw produce).",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_boiled_potatoes",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_boiled_potatoes.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "boiled_potatoes",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_boiled_potatoes.svg",
+      "notes": "Meal icon: a steaming bowl of potatoes.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_boiled_potatoes_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_boiled_potatoes_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "boiled_potatoes",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_boiled_potatoes_64.svg",
+      "notes": "Meal icon: a steaming bowl of potatoes.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_canned_food",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_canned_food.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "canned_food",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_canned_food.svg",
+      "notes": "Food icon: a dented food tin (preserved).",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_canned_food_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_canned_food_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "canned_food",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_canned_food_64.svg",
+      "notes": "Food icon: a dented food tin (preserved).",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_corn",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_corn.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "corn",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_corn.svg",
+      "notes": "Food icon: corn cob in its husk (raw produce).",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_corn_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_corn_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "corn",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_corn_64.svg",
+      "notes": "Food icon: corn cob in its husk (raw produce).",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_dried_food",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_dried_food.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "dried_food",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_dried_food.svg",
+      "notes": "Food icon: dried slices strung on twine.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_dried_food_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_dried_food_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "dried_food",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_dried_food_64.svg",
+      "notes": "Food icon: dried slices strung on twine.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_feast",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_feast.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "feast",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_feast.svg",
+      "notes": "Meal icon: a laden platter: roast bird, bread, tomatoes.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_feast_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_feast_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "feast",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_feast_64.svg",
+      "notes": "Meal icon: a laden platter: roast bird, bread, tomatoes.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_field_rations",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_field_rations.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "field_rations",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_field_rations.svg",
+      "notes": "Meal icon: olive ration pouch with a tin and a spoon.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_field_rations_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_field_rations_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "field_rations",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_field_rations_64.svg",
+      "notes": "Meal icon: olive ration pouch with a tin and a spoon.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_flatbread",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_flatbread.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "flatbread",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_flatbread.svg",
+      "notes": "Meal icon: a stack of charred flatbreads.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_flatbread_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_flatbread_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "flatbread",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_flatbread_64.svg",
+      "notes": "Meal icon: a stack of charred flatbreads.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_herbs",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_herbs.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "herbs",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_herbs.svg",
+      "notes": "Food icon: tied herb bundle (ingredient).",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_herbs_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_herbs_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "herbs",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_herbs_64.svg",
+      "notes": "Food icon: tied herb bundle (ingredient).",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_husk_meat",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_husk_meat.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "tainted"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "husk_meat",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_husk_meat.svg",
+      "notes": "Food icon: husk meat. Same cut as meat but grey-green and mottled, a metal shard in it: tainted.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_husk_meat_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_husk_meat_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "tainted"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "husk_meat",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_husk_meat_64.svg",
+      "notes": "Food icon: husk meat. Same cut as meat but grey-green and mottled, a metal shard in it: tainted.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_meat",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_meat.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "meat",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_meat.svg",
+      "notes": "Food icon: raw meat cut with a marrow bone.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_meat_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_meat_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "meat",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_meat_64.svg",
+      "notes": "Food icon: raw meat cut with a marrow bone.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_medicinal_broth",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_medicinal_broth.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "medicinal_broth",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_medicinal_broth.svg",
+      "notes": "Meal icon: enamel bowl with a red cross, herb broth, steam.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_medicinal_broth_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_medicinal_broth_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "medicinal_broth",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_medicinal_broth_64.svg",
+      "notes": "Meal icon: enamel bowl with a red cross, herb broth, steam.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_mushrooms",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_mushrooms.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "mushrooms",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_mushrooms.svg",
+      "notes": "Food icon: two foraged mushrooms.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_mushrooms_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_mushrooms_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "mushrooms",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_mushrooms_64.svg",
+      "notes": "Food icon: two foraged mushrooms.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_pickles",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_pickles.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "pickles",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_pickles.svg",
+      "notes": "Food icon: a jar of pickles in brine.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_pickles_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_pickles_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "pickles",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_pickles_64.svg",
+      "notes": "Food icon: a jar of pickles in brine.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_pie",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_pie.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "pie",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_pie.svg",
+      "notes": "Meal icon: a lattice pie with a slice cut out.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_pie_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_pie_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "pie",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_pie_64.svg",
+      "notes": "Meal icon: a lattice pie with a slice cut out.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_potato",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_potato.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "potato",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_potato.svg",
+      "notes": "Food icon: potatoes (raw produce).",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_potato_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_potato_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "potato",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_potato_64.svg",
+      "notes": "Food icon: potatoes (raw produce).",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_preserved_rations",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_preserved_rations.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "preserved_rations",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_preserved_rations.svg",
+      "notes": "Meal icon: wax-paper parcel tied with string, stamped.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_preserved_rations_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_preserved_rations_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "preserved_rations",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_preserved_rations_64.svg",
+      "notes": "Meal icon: wax-paper parcel tied with string, stamped.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_roast",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_roast.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "roast",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_roast.svg",
+      "notes": "Meal icon: a roast leg on a plate.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_roast_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_roast_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "roast",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_roast_64.svg",
+      "notes": "Meal icon: a roast leg on a plate.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_roots",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_roots.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "roots",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_roots.svg",
+      "notes": "Food icon: gnarled foraged roots.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_roots_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_roots_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "roots",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_roots_64.svg",
+      "notes": "Food icon: gnarled foraged roots.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_salt",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_salt.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "salt",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_salt.svg",
+      "notes": "Food icon: an open sack of salt.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_salt_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_salt_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "salt",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_salt_64.svg",
+      "notes": "Food icon: an open sack of salt.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_salted_meat",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_salted_meat.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "salted_meat",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_salted_meat.svg",
+      "notes": "Food icon: a slab of meat crusted with salt.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_salted_meat_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_salted_meat_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "salted_meat",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_salted_meat_64.svg",
+      "notes": "Food icon: a slab of meat crusted with salt.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_smoked_meat",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_smoked_meat.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "smoked_meat",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_smoked_meat.svg",
+      "notes": "Food icon: a smoked ham hung on a string.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_smoked_meat_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_smoked_meat_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "smoked_meat",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_smoked_meat_64.svg",
+      "notes": "Food icon: a smoked ham hung on a string.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_spices",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_spices.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "spices",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_spices.svg",
+      "notes": "Food icon: mortar and pestle with a chili.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_spices_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_spices_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "spices",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_spices_64.svg",
+      "notes": "Food icon: mortar and pestle with a chili.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_stew",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_stew.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "stew",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_stew.svg",
+      "notes": "Meal icon: a pot of stew with a ladle.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_stew_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_stew_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "stew",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_stew_64.svg",
+      "notes": "Meal icon: a pot of stew with a ladle.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_stim_tea",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_stim_tea.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "stim_tea",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_stim_tea.svg",
+      "notes": "Meal icon: tin mug of tea with zig-zag amber steam.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_stim_tea_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_stim_tea_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network",
+        "meal"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "stim_tea",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_stim_tea_64.svg",
+      "notes": "Meal icon: tin mug of tea with zig-zag amber steam.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_vegetables",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_vegetables.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "vegetables",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_vegetables.svg",
+      "notes": "Food icon: carrot, tomato and cabbage.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_vegetables_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_vegetables_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "vegetables",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_vegetables_64.svg",
+      "notes": "Food icon: carrot, tomato and cabbage.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_water",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_water.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        128,
+        128
+      ],
+      "item": "water",
+      "icon_px": 128,
+      "svg": "ui/food/icon_food_water.svg",
+      "notes": "Food icon: a canteen and a water drop.",
+      "source": "assets/ui/food_icons.py",
+      "style_revision": "09d4038e"
+    },
+    {
+      "id": "icon_food_water_64",
+      "category": "ui",
+      "kind": "image",
+      "file": "ui/food/icon_food_water_64.png",
+      "tags": [
+        "ui",
+        "icon",
+        "food",
+        "off_network"
+      ],
+      "size_px": [
+        64,
+        64
+      ],
+      "item": "water",
+      "icon_px": 64,
+      "svg": "ui/food/icon_food_water_64.svg",
+      "notes": "Food icon: a canteen and a water drop.",
+      "source": "assets/ui/food_icons.py",
       "style_revision": "09d4038e"
     },
     {

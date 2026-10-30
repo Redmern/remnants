@@ -65,24 +65,23 @@ public sealed record VehicleStats(
 }
 
 /// <summary>
-/// One factor of a trip's speed: the vehicle, its upgrades, the dark, the weather. Terms multiply; the travel planner
-/// lists them so the player sees why a trip takes as long as it does. Other features add their own terms here.
+/// One factor of a trip's speed as the planner lists it: the vehicle, its upgrades, the dark, the road in this weather
+/// (<see cref="SpeedMultiplier"/> on the speed), or a weather delay (<see cref="ExtraTicks"/>, from the weather feature's
+/// own term).
 /// </summary>
-public sealed record TravelTerm(string Source, string Label, double SpeedMultiplier);
+public sealed record TravelTerm(string Source, string Label, double SpeedMultiplier, long ExtraTicks = 0);
 
 /// <summary>
-/// A one-way trip: the walking days of the zone, the terms that change its speed, the resulting days and ticks, the fuel
-/// for the round trip, and whether the trip cannot be made (<see cref="Blocked"/> with a reason).
+/// A one-way trip by a vehicle (or on foot): the planner's <see cref="TravelPlan"/> (the zone's base time with the weather's
+/// terms and the vehicle's), the same terms as speed factors for the UI, the resulting days, the fuel for the round trip,
+/// and why it cannot be made (<see cref="Blocked"/>), if so.
 /// </summary>
-public sealed record TravelPlan(
-    double BaseDays,
-    IReadOnlyList<TravelTerm> Terms,
-    double Days,
-    long Ticks,
-    double FuelRoundTrip,
-    string? Blocked)
+public sealed record VehicleTrip(TravelPlan Travel, IReadOnlyList<TravelTerm> Terms, double Days, double FuelRoundTrip, string? Blocked)
 {
-    public double Speed => Terms.Aggregate(1.0, (s, t) => s * t.SpeedMultiplier);
+    public long Ticks => Travel.Ticks;
+
+    /// <summary>Hours spent moving, without the weather's delays (rations are planned on these; delays add their own).</summary>
+    public long MovingTicks => Math.Max(0, Travel.Ticks - Travel.Modifiers.Sum(m => m.ExtraTicks));
 }
 
 /// <summary>
@@ -161,50 +160,66 @@ public static class VehicleRules
         sim.State.Vehicles.Where(v => !v.Away).Select(v => Stats(sim.Data, v).RadioRange).DefaultIfEmpty(0).Max();
 
     /// <summary>
-    /// A one-way trip to <paramref name="zone"/> leaving at <paramref name="departTick"/> with <paramref name="vehicle"/>
-    /// (null = on foot). Terms: the vehicle's speed and upgrades; the weather on the road (<see cref="ColonySim.WeatherAt"/>
-    /// read through <see cref="VehicleData.Weather"/>: it may block the vehicle — wide tyres or a ram drive through slowly
-    /// instead — or slow it, mud slowing wheels unless fitted for rough ground); the dark for a motor vehicle without
-    /// headlights, when it leaves or arrives at night. The fuel is for the round trip; a zone beyond the vehicle's range on
-    /// a tank is blocked. A party on foot keeps the zone's travel days.
+    /// The weather kind on the road to a zone at a tick: the weather feature's spell over the zone's region, unless a test or
+    /// tool set <see cref="ColonySim.WeatherAt"/>; null when the weather is off.
     /// </summary>
-    public static TravelPlan Plan(ColonySim sim, ZoneDef zone, Vehicle? vehicle, long departTick)
+    public static string? WeatherKind(ColonySim sim, ZoneDef zone, long tick) =>
+        sim.WeatherAt(tick) ?? (Weather.Enabled(sim.Data) ? Weather.SpellAt(sim.State, sim.Data, Weather.RegionOf(sim.Data, zone), tick).Kind : null);
+
+    /// <summary>
+    /// A one-way trip to (or <paramref name="homeward"/> from) <paramref name="zone"/> setting out at
+    /// <paramref name="departTick"/> with <paramref name="vehicle"/> (null = on foot): the world map's planner
+    /// (<see cref="WorldMap.Travel"/>: base time and the weather's delay or closed route) plus the vehicle's own terms as
+    /// <see cref="TravelModifier"/>s — its speed and upgrades; what this weather does to vehicles
+    /// (<see cref="VehicleData.Weather"/>: it may keep a tier home — wide tyres or a ram push through slowly instead — or slow
+    /// it, mud slowing wheels unless fitted for rough ground); the dark for a motor vehicle without headlights leaving or
+    /// arriving at night; a zone beyond its range on a tank. Fuel is for the round trip.
+    /// </summary>
+    public static VehicleTrip Plan(ColonySim sim, ZoneDef zone, Vehicle? vehicle, long departTick, bool homeward = false)
     {
         var data = sim.Data;
         var tpd = data.Rules.TicksPerDay;
-        var baseDays = zone.TravelDays;
-        if (vehicle is null || baseDays <= 0)
-            return new TravelPlan(baseDays, [], baseDays, (long)Math.Round(baseDays * tpd), 0, null);
+        var road = WorldMap.Travel(sim, zone, departTick, homeward);
+        var weatherTerms = road.Modifiers.Select(m => new TravelTerm(m.Source, m.Reason, m.Multiplier, m.ExtraTicks)).ToList();
+        string? roadBlock = road.Modifiers.FirstOrDefault(m => m.Blocks)?.Reason;
+        if (vehicle is null || road.BaseTicks <= 0)
+            return new VehicleTrip(road, weatherTerms, road.Ticks / (double)tpd, 0, roadBlock);
 
         var stats = Stats(data, vehicle);
         var terms = new List<TravelTerm> { new("vehicle", stats.Tier.Name, stats.Tier.Speed) };
         if (Math.Abs(stats.Speed / stats.Tier.Speed - 1) > 1e-9) terms.Add(new("upgrades", "Upgrades", stats.Speed / stats.Tier.Speed));
-        string? blocked = null;
-        if (sim.WeatherAt(departTick) is { } weatherId && data.Vehicles.Weather.TryGetValue(weatherId, out var weather))
+        var blocks = new List<string>();
+        if (WeatherKind(sim, zone, departTick) is { } weatherId && data.Vehicles.Weather.TryGetValue(weatherId, out var weather))
         {
             var name = weather.Name.Length > 0 ? weather.Name : weatherId;
             if (weather.Blocks.Contains(stats.Tier.Id))
             {
                 if (stats.BlockedSpeedMultiplier > 0) terms.Add(new("blocked", $"{name}: pushing through", stats.BlockedSpeedMultiplier));
-                else blocked = $"{name}: the {stats.Tier.Name} cannot go out in it.";
+                else blocks.Add($"{name}: the {stats.Tier.Name} cannot go out in it");
             }
-            if (Math.Abs(weather.SpeedMultiplier - 1) > 1e-9) terms.Add(new("weather", name, weather.SpeedMultiplier));
+            if (Math.Abs(weather.SpeedMultiplier - 1) > 1e-9) terms.Add(new("vehicle_weather", name, weather.SpeedMultiplier));
             if (stats.Tier.Wheeled && !stats.AllTerrain && Math.Abs(weather.WheeledSpeedMultiplier - 1) > 1e-9)
                 terms.Add(new("mud", $"{name}: mud", weather.WheeledSpeedMultiplier));
         }
 
-        double Days(IEnumerable<TravelTerm> ts) => baseDays / ts.Aggregate(1.0, (s, t) => s * t.SpeedMultiplier);
+        TravelPlan With(IEnumerable<TravelTerm> ts) => road with
+        {
+            Modifiers = road.Modifiers.Concat(ts.Select(t => new TravelModifier(t.Source, t.Label, Multiplier: 1 / t.SpeedMultiplier)))
+                .Concat(blocks.Select(b => new TravelModifier("vehicle", b, Blocks: true))).ToList(),
+        };
         if (stats.Tier.Motorized && !stats.Headlights && data.Rules.DayNight.Enabled)
         {
-            var arrival = departTick + (long)Math.Round(Days(terms) * tpd);
+            var arrival = departTick + With(terms).Ticks;
             if (DayNight.PhaseAt(departTick, data.Rules) == DayPhase.Night || DayNight.PhaseAt(arrival, data.Rules) == DayPhase.Night)
                 terms.Add(new("night", "Night, no headlights", data.Vehicles.NightSpeedMultiplier));
         }
+        if (zone.TravelDays > stats.RangeDays + 1e-9)
+            blocks.Add($"{zone.Name} is beyond the {stats.Tier.Name}'s range ({stats.RangeDays:0.#} days on a tank)");
 
-        var days = Days(terms);
-        if (blocked is null && baseDays > stats.RangeDays + 1e-9)
-            blocked = $"{zone.Name} is beyond the {stats.Tier.Name}'s range ({stats.RangeDays:0.#} days on a tank).";
-        return new TravelPlan(baseDays, terms, days, (long)Math.Round(days * tpd), Math.Max(0, Math.Ceiling(stats.FuelPerDay * days * 2 - 1e-9)), blocked);
+        var plan = With(terms);
+        var days = plan.Ticks / (double)tpd;
+        var blocked = roadBlock ?? blocks.FirstOrDefault();
+        return new VehicleTrip(plan, weatherTerms.Concat(terms).ToList(), days, Math.Max(0, Math.Ceiling(stats.FuelPerDay * days * 2 - 1e-9)), blocked);
     }
 
     /// <summary>The noise the vehicle makes arriving: its stats' noise, none under a smoke launcher's cover.</summary>

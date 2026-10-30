@@ -59,7 +59,7 @@ public sealed class StoryData
                 var bad = e.Kind switch
                 {
                     EffectKind.Item => !scavenge.Items.ContainsKey(e.Id),
-                    EffectKind.Resource => !game.Resources.ContainsKey(e.Id),
+                    EffectKind.Resource => e.Id != Colony.Pantry.FoodKey && !game.Resources.ContainsKey(e.Id),
                     EffectKind.RevealZone => !scavenge.Zones.ContainsKey(e.Id),
                     EffectKind.Call => !Dialogues.ContainsKey(e.Id),
                     EffectKind.Character => !Characters.ContainsKey(e.Id),
@@ -120,7 +120,7 @@ public sealed class StoryData
                     if (o.Building is { } b && !game.Buildings.ContainsKey(b)) errors.Add($"{where}: objective {o.Id} names unknown building '{b}'.");
                     if (o.Dialogue is { } dl && !Dialogues.ContainsKey(dl)) errors.Add($"{where}: objective {o.Id} names unknown dialogue '{dl}'.");
                     if (o.Item is { } it && !scavenge.Items.ContainsKey(it)) errors.Add($"{where}: objective {o.Id} names unknown item '{it}'.");
-                    if (o.Resource is { } rs && !game.Resources.ContainsKey(rs)) errors.Add($"{where}: objective {o.Id} names unknown resource '{rs}'.");
+                    if (o.Resource is { } rs && rs != Colony.Pantry.FoodKey && !game.Resources.ContainsKey(rs)) errors.Add($"{where}: objective {o.Id} names unknown resource '{rs}'.");
                 }
                 continue;
             }

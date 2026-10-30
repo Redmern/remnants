@@ -22,6 +22,27 @@ public sealed record ZoneInfo(
     LinkedPresence Linked);
 
 /// <summary>
+/// One term in a trip's travel time (<see cref="WorldMap.Travel"/>): who adds it (<c>weather</c>; vehicles add theirs),
+/// why, ticks added, a multiplier on the base time, and whether it closes the route. Terms compose: multipliers
+/// multiply on the base, extra ticks add, any block blocks.
+/// </summary>
+public sealed record TravelModifier(string Source, string Reason, long ExtraTicks = 0, double Multiplier = 1, bool Blocks = false);
+
+/// <summary>A trip's travel time: the zone's base time and every term on it.</summary>
+public sealed record TravelPlan(long BaseTicks, IReadOnlyList<TravelModifier> Modifiers)
+{
+    public long Ticks => BaseTicks <= 0 ? 0
+        : Math.Max(0, (long)Math.Round(BaseTicks * Modifiers.Aggregate(1.0, (m, t) => m * t.Multiplier)) + Modifiers.Sum(t => t.ExtraTicks));
+
+    public bool Blocked => Modifiers.Any(t => t.Blocks);
+
+    /// <summary>Ticks the terms add over the base.</summary>
+    public long DelayTicks => Ticks - BaseTicks;
+
+    public static TravelPlan Plain(long ticks) => new(ticks, []);
+}
+
+/// <summary>
 /// The world map rules on the colony side: zone intel (scouting by visiting, rumors from neighbours), depletion and
 /// replenishment, travel time and rations, and the expedition's road out and home.
 /// </summary>
@@ -30,7 +51,25 @@ public static class WorldMap
     public static ZoneIntel IntelOf(ColonyState state, ZoneDef zone) =>
         (ZoneIntel)Math.Max((int)zone.StartIntel, (int)(state.Zones.GetValueOrDefault(zone.Id)?.Intel ?? ZoneIntel.Unknown));
 
+    /// <summary>The zone's base one-way travel time, before any <see cref="TravelModifier"/>.</summary>
     public static long TravelTicks(GameData data, ZoneDef zone) => (long)Math.Round(zone.TravelDays * data.Rules.TicksPerDay);
+
+    /// <summary>
+    /// The travel planner: a trip to (or, <paramref name="homeward"/>, back from) a zone setting out at
+    /// <paramref name="departTick"/>, as the base time and the terms on it from every source in <see cref="TravelTerms"/>.
+    /// A party's vehicle adds its own terms on top (<see cref="VehicleRules.Plan"/>).
+    /// </summary>
+    public static TravelPlan Travel(ColonySim sim, ZoneDef zone, long departTick, bool homeward = false) =>
+        new(TravelTicks(sim.Data, zone), TravelTerms.Select(t => t(sim, zone, departTick, homeward)).OfType<TravelModifier>().ToList());
+
+    /// <summary>
+    /// Sources of travel terms, each independent of the others (weather). A source returns null when it changes nothing for
+    /// this trip. The vehicle's terms depend on the party's vehicle, so <see cref="VehicleRules.Plan"/> adds them.
+    /// </summary>
+    public static readonly IReadOnlyList<Func<ColonySim, ZoneDef, long, bool, TravelModifier?>> TravelTerms =
+    [
+        Weather.TravelTerm,
+    ];
 
     /// <summary>Food per member: the base ration plus the per-day ration for the trip out and back (on foot).</summary>
     public static double RationsPerMember(GameData data, ZoneDef zone) => RationsPerMember(data, zone.TravelDays);
@@ -100,6 +139,15 @@ public static class WorldMap
         sim.Scavenge!.Rules.World.DroneScout.MaxTravelDays
         + sim.State.Vehicles.Where(v => !v.Away && !VehicleRules.Broken(sim.Data, v))
             .Select(v => VehicleRules.Stats(sim.Data, v).DroneRangeDays).DefaultIfEmpty(0).Max();
+    /// <summary>Why a scout drone cannot fly to the zone now (a dust storm or heavy rain at home or over it), or null.</summary>
+    public static string? DronesGrounded(ColonySim sim, ZoneDef zone)
+    {
+        var data = sim.Data;
+        var home = Weather.Current(sim.State, data);
+        if (Weather.GroundsDrones(data, home)) return $"{Weather.KindOf(data, home).Name} at home: the drones stay grounded.";
+        var there = Weather.SpellAt(sim.State, data, Weather.RegionOf(data, zone), sim.State.Tick);
+        return Weather.GroundsDrones(data, there) ? $"{Weather.KindOf(data, there).Name} over {zone.Name}: the drones stay grounded." : null;
+    }
 
     /// <summary>Ticks out to the zone (one way) for a scouting drone: at least a few hours even next door.</summary>
     public static long DroneLegTicks(GameData data, ScavengeData scavenge, ZoneDef zone) =>
@@ -134,6 +182,7 @@ public static class WorldMap
         if (zone.TravelDays > reach + 1e-9)
             return CommandResult.Fail(CommandError.OutOfDroneRange, $"{zone.Name} is beyond a drone's battery ({reach:0.#} days out).");
         if (DroneItem(state, scavenge) is not { } item) return CommandResult.Fail(CommandError.NoDrone, "There is no scout drone in the stores.");
+        if (DronesGrounded(sim, zone) is { } why) return CommandResult.Fail(CommandError.DronesGrounded, why);
         Survivor? pilot = null;
         if (c.PilotId is { } pid)
         {

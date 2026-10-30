@@ -14,22 +14,19 @@ public class CraftingDataTests
     public void Every_item_has_a_source_in_a_recipe_loot_or_enemy_drops()
     {
         var made = TestData.Real.Recipes.Values.Where(r => r.Item is not null).Select(r => r.Item!)
-            .Concat(ScavengeTestData.Real.Enemies.Values.SelectMany(e => e.Drops).Select(d => d.Item)).ToHashSet();
+            .Concat(ScavengeTestData.Real.Enemies.Values.SelectMany(e => e.Drops).Select(d => d.Item))
+            .Concat(TestData.Real.Food!.Harvests.Values.SelectMany(h => h.Outputs.Keys)).ToHashSet();
         var orphans = ScavengeTestData.Real.Items.Values
-            .Where(i => i.BaseId is null && !i.Natural && !i.Quest && i.LootWeight <= 0 && !made.Contains(i.Id))
+            .Where(i => i.BaseId is null && !i.Natural && !i.Quest && i.Kind != ItemKind.Schematic && i.LootWeight <= 0 && !made.Contains(i.Id))
             .Select(i => i.Id).ToList();
         Assert.Empty(orphans);
     }
 
     [Fact]
-    public void Every_blueprint_unlocks_a_recipe_or_perk_and_new_buildings_have_recipes()
+    public void Every_schematic_item_has_a_schematic_and_new_buildings_have_recipes()
     {
-        foreach (var bp in ScavengeTestData.Real.Items.Values.Where(i => i.Kind == ItemKind.Blueprint))
-            Assert.True(TestData.Real.Recipes.Values.Any(r => r.Blueprint == bp.Id) || TestData.Real.Perks.Values.Any(p => p.Requires.Blueprint == bp.Id)
-                        || TestData.Real.Cybernetics!.Nodes.Values.Any(n => n.Blueprint == bp.Id)
-                        || TestData.Real.Buildings.Values.Any(b => b.Levels.Any(l => l.Schematic == bp.Id))
-                        || TestData.Real.Vehicles.Upgrades.Any(u => u.Schematic == bp.Id),
-                $"{bp.Id} unlocks nothing");
+        foreach (var item in ScavengeTestData.Real.Items.Values.Where(i => i.Kind == ItemKind.Schematic))
+            Assert.NotNull(TestData.Real.Schematics.Find(item.Schematic!));
         foreach (var id in new[] { "workshop", "tailor", "electronics_lab", "armory", "kitchen" })
             Assert.NotEmpty(TestData.Real.RecipesFor(id));
         Assert.Equal(3, TestData.Real.Buildings["house"].MaxLevel);
@@ -137,7 +134,8 @@ public class ProductionQueueTests
     public void Cancelling_refunds_a_paid_batch_including_items()
     {
         var (sim, shop, _) = Shop("armory", level: 3);
-        sim.State.KnownBlueprints.Add("bp_linked_plating");
+        sim.State.Schematics.Known.Add("sch_linked_plating");
+        sim.State.Schematics.Known.Add("sch_armory_3");
         sim.State.Stockpile.Add("scrap", 12);
         sim.State.Stockpile.Add("electronics", 3);
         sim.State.Inventory.Add("padded_vest@crude");
@@ -291,48 +289,6 @@ public class QualityTests
     }
 }
 
-public class BlueprintTests
-{
-    [Fact]
-    public void Studying_a_blueprint_uses_it_up_and_unlocks_its_recipes()
-    {
-        var sim = LoopTestData.Colony(townHallLevel: 2, items: new() { ["bp_riot_armor"] = 1 });
-        var armory = sim.Build("armory");
-        armory.Level = 2;
-        Assert.Equal(CommandError.RecipeLocked, sim.CanQueue(armory, sim.Data.Recipes["riot_armor"]).Error);
-
-        var result = sim.Execute(new StudyBlueprint("bp_riot_armor"));
-
-        Assert.True(result.Ok, result.Message);
-        Assert.Contains("Riot Armor", result.Message);
-        Assert.Contains("bp_riot_armor", sim.State.KnownBlueprints);
-        Assert.Equal(0, sim.State.Inventory.Count("bp_riot_armor"));
-        Assert.True(sim.Execute(new QueueRecipe(armory.Id, "riot_armor")).Ok);
-    }
-
-    [Fact]
-    public void Studying_is_validated()
-    {
-        var sim = LoopTestData.Colony(townHallLevel: 2, items: new() { ["bp_scanner"] = 2, ["pipe"] = 1 });
-        Assert.Equal(CommandError.UnknownItem, sim.Execute(new StudyBlueprint("bp_laser")).Error);
-        Assert.Equal(CommandError.NotABlueprint, sim.Execute(new StudyBlueprint("pipe")).Error);
-        Assert.Equal(CommandError.MissingItems, sim.Execute(new StudyBlueprint("bp_rifle")).Error);
-        Assert.Equal(CommandError.NoStudyBuilding, sim.Execute(new StudyBlueprint("bp_scanner")).Error);  // needs an Electronics Lab
-        sim.Build("electronics_lab");
-        Assert.True(sim.Execute(new StudyBlueprint("bp_scanner")).Ok);
-        Assert.Equal(CommandError.AlreadyKnown, sim.Execute(new StudyBlueprint("bp_scanner")).Error);
-    }
-
-    [Fact]
-    public void Blueprints_turn_up_in_higher_tier_zone_loot()
-    {
-        var items = ScavengeTestData.Real.Items.Values;
-        // Gear blueprints start in tier 2 zones; vehicle schematics follow SCHEMATICS.md, where the first ones are Home Valley finds.
-        Assert.DoesNotContain(items, i => i.Kind == ItemKind.Blueprint && !i.Id.StartsWith("sch_") && i.LootWeight > 0
-                                          && i.Tier <= ScavengeTestData.Real.Zones["outskirts"].LootTier);
-        Assert.Contains(items, i => i.Kind == ItemKind.Blueprint && i.LootWeight > 0 && i.Tier <= ScavengeTestData.Real.Zones["suburb_ruins"].LootTier);
-    }
-}
 
 public class KitchenTests
 {
@@ -343,12 +299,12 @@ public class KitchenTests
         sim.Build("shelter");
         var s = sim.AddSurvivor();
         s.Mood = 50;
-        var meal = sim.Data.Rules.Food.Meals.Single(m => m.Resource == "meal");
-        sim.State.Stockpile.Add("meal", 1);
+        var meal = sim.Data.Food!.Items["boiled_potatoes"];
+        Pantry.Add(sim.State, sim.Data, "boiled_potatoes", 1);
 
         sim.Tick();
 
-        Assert.Equal(1 - sim.Data.Rules.Food.AdultPerTick / meal.FoodValue, sim.State.Stockpile.Get("meal"), 6);
+        Assert.Equal(1 - sim.Data.Rules.Food.AdultPerTick / meal.FoodValue, sim.State.Food.Open.Single().Left, 6);
         Assert.Equal(0, s.StarvingTicks);
         Assert.True(s.Mood > 50 + sim.Data.Rules.Mood.RecoveryPerTick - 1e-9);
     }
@@ -356,17 +312,20 @@ public class KitchenTests
     [Fact]
     public void The_kitchen_cooks_more_food_value_than_it_uses()
     {
-        var recipe = TestData.Real.Recipes["simple_meal"];
-        var value = TestData.Real.Rules.Food.Meals.Single(m => m.Resource == recipe.Resource).FoodValue;
-        Assert.True(recipe.Amount * value > recipe.Inputs["food"]);
+        var food = TestData.Real.Food!;
+        var recipe = TestData.Real.Recipes["boiled_potatoes"];
+        var used = recipe.Ingredients.Sum(kv => kv.Value * food.Items[kv.Key].FoodValue);
+        Assert.True(recipe.Amount * food.Items[recipe.Item!].FoodValue > used);
 
         var sim = LoopTestData.Colony(food: 100);
         var kitchen = sim.Build("kitchen");
+        sim.State.Stockpile.Add("wood", 5);
         var cook = sim.AddSurvivor(attributes: 60);
         Assert.True(sim.Execute(new AssignJob(cook.Id, kitchen.Id)).Ok);
-        Assert.True(sim.Execute(new QueueRecipe(kitchen.Id, "simple_meal")).Ok);
+        Assert.True(sim.Execute(new QueueRecipe(kitchen.Id, "purify_water")).Ok);
+        Assert.True(sim.Execute(new QueueRecipe(kitchen.Id, "boiled_potatoes")).Ok);
         for (var i = 0; i < 100 && kitchen.Queue.Count > 0; i++) sim.Tick();
-        Assert.True(sim.State.Stockpile.Get("meal") > 0);
+        Assert.True(sim.State.Inventory.Count("boiled_potatoes") + sim.State.Food.Open.Count(p => p.ItemId == "boiled_potatoes") > 0);
         Assert.True(cook.Get(Skill.Cooking) > 0);
     }
 }
@@ -409,15 +368,15 @@ public class DeviceTests
 public class CraftingSaveTests
 {
     [Fact]
-    public void Queues_and_blueprints_survive_a_save()
+    public void Queues_and_schematics_survive_a_save()
     {
         var sim = LoopTestData.Colony(townHallLevel: 2);
         var tailor = sim.Build("tailor");
-        sim.State.KnownBlueprints.Add("bp_scanner");
+        sim.State.Schematics.Known.Add("sch_scanner");
         sim.Execute(new QueueRecipe(tailor.Id, "rag_coat", 2));
         var loaded = SaveGame.Load(TestData.Real, SaveGame.Save(sim.State), ScavengeTestData.Real);
         Assert.Equal("rag_coat", Assert.Single(loaded.State.FindBuilding(tailor.Id)!.Queue).RecipeId);
-        Assert.Contains("bp_scanner", loaded.State.KnownBlueprints);
+        Assert.Contains("sch_scanner", loaded.State.Schematics.Known);
         Assert.Equal(SaveGame.Save(sim.State), SaveGame.Save(loaded.State));
     }
 
@@ -442,7 +401,9 @@ public class CraftingSaveTests
 
         var order = Assert.Single(loaded.State.FindBuilding(shop.Id)!.Queue);
         Assert.Equal(("peg_leg", true, 4.5, true), (order.RecipeId, order.Repeat, order.Progress, order.Paid));
-        Assert.Equal(2, loaded.State.Inventory.Count(SaveGame.LegacyBlueprintItem));
+        // The generic blueprint became the scanner blueprint (v4), then the scanner schematic (v13): plain, so learned.
+        Assert.Contains("sch_scanner", loaded.State.Schematics.Known);
+        Assert.Equal(0, loaded.State.Inventory.Count("sch_scanner"));
         Assert.True(loaded.Execute(new QueueRecipe(shop.Id, "pipe")).EntityId > order.Id);
     }
 }

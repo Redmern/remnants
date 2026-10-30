@@ -9,7 +9,6 @@ public class ProductionTests
     [InlineData("woodcutter", "wood")]
     [InlineData("quarry", "stone")]
     [InlineData("scrapyard", "scrap")]
-    [InlineData("farm", "food")]
     public void Gathering_buildings_produce_through_assigned_workers(string building, string resource)
     {
         var sim = TestData.EmptyColony(stock: new() { ["food"] = 100 });
@@ -25,9 +24,8 @@ public class ProductionTests
         var start = sim.State.Stockpile.Get(resource);
         sim.Tick();
 
-        var foodEaten = resource == "food" ? sim.Data.Rules.Food.AdultPerTick : 0;
-        Assert.Equal(-foodEaten, idleDelta, 9);
-        Assert.Equal(expected - foodEaten, sim.State.Stockpile.Get(resource) - start, 9);
+        Assert.Equal(0, idleDelta, 9);
+        Assert.Equal(expected, sim.State.Stockpile.Get(resource) - start, 9);
         Assert.True(expected > 0);
     }
 
@@ -63,7 +61,7 @@ public class FoodTests
 
         sim.Tick();
 
-        Assert.Equal(10 - food.AdultPerTick - food.ChildPerTick, sim.State.Stockpile.Get("food"), 9);
+        Assert.Equal(10 - food.AdultPerTick - food.ChildPerTick, sim.FoodStock, 9);
     }
 
     [Fact]
@@ -102,7 +100,7 @@ public class FoodTests
         var sim = TestData.EmptyColony();
         var adult = sim.AddSurvivor();
         var child = sim.AddSurvivor(LifeStage.Child);
-        sim.State.Stockpile.Add("food", sim.Data.Rules.Food.ChildPerTick);
+        sim.State.AddOpenFood(sim.Data.Rules.Food.ChildPerTick);
 
         sim.Tick();
 

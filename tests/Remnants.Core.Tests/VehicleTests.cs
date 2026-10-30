@@ -55,7 +55,7 @@ public class VehicleTests
         Assert.True(sim.Execute(new AssignJob(worker.Id, garage.Id)).Ok);
 
         Assert.Equal(CommandError.RecipeLocked, sim.Execute(new QueueRecipe(garage.Id, "build_bicycle_cart")).Error);
-        sim.State.KnownBlueprints.Add("sch_bicycle_cart");
+        sim.State.Schematics.Known.Add("sch_bicycle_cart");
         Assert.True(sim.Execute(new QueueRecipe(garage.Id, "build_bicycle_cart")).Ok);
         sim.Advance(200);
 
@@ -73,26 +73,28 @@ public class VehicleTests
         sim.State.Stockpile.Add("wood", 500);
         sim.State.Stockpile.Add("stone", 500);
         sim.State.Stockpile.Add("scrap", 500);
-        Assert.Equal(CommandError.RecipeLocked, sim.Execute(new Upgrade(garage.Id)).Error);
-        Assert.Equal(CommandError.RecipeLocked, sim.Execute(new Construct("fuel_still")).Error);
-        sim.State.KnownBlueprints.UnionWith(["sch_garage_2", "sch_biofuel_still"]);
+        Assert.Equal(CommandError.SchematicNeeded, sim.Execute(new Upgrade(garage.Id)).Error);
+        Assert.Equal(CommandError.SchematicNeeded, sim.Execute(new Construct("fuel_still")).Error);
+        sim.State.Schematics.Known.UnionWith(["sch_garage_2", "sch_biofuel_still"]);
         Assert.True(sim.Execute(new Upgrade(garage.Id)).Ok);
         Assert.True(sim.Execute(new Construct("fuel_still")).Ok);
     }
 
     [Fact]
-    public void Studying_a_schematic_says_what_it_unlocks()
+    public void Vehicle_schematics_are_in_the_catalogue_with_their_unlocks()
     {
-        var sim = Colony(items: new() { ["sch_garage_2"] = 1 });
-        Assert.True(sim.Execute(new StudyBlueprint("sch_garage_2")).Ok);
-        Assert.Contains("Garage level 2", sim.State.Events[^1].Message);
+        var catalog = TestData.Real.Schematics;
+        Assert.NotNull(catalog.Find("sch_garage_2"));
+        Assert.Equal("sch_garage_2", catalog.GateOfBuildingLevel("garage", 2));
+        Assert.Equal("sch_motorbike", catalog.GateOfRecipe("build_motorbike"));
+        Assert.Contains(catalog.Find("sch_turbo")!.Unlocks, u => u.Kind == Remnants.Core.Schematics.UnlockKind.Vehicle && u.Id == "turbo");
     }
 
     [Fact]
     public void The_still_turns_food_into_fuel()
     {
         var sim = Colony();
-        sim.State.KnownBlueprints.Add("sch_biofuel_still");
+        sim.State.Schematics.Known.Add("sch_biofuel_still");
         var still = sim.Build("fuel_still");
         var worker = sim.AddSurvivor(attributes: 60);
         Assert.True(sim.Execute(new AssignJob(worker.Id, still.Id)).Ok);
@@ -110,16 +112,17 @@ public class VehicleTests
         var walk = sim.PlanTravel(zone.Id);
         var ride = sim.PlanTravel(zone.Id, bike.Id);
         Assert.Equal(zone.TravelDays, walk.Days, 6);
-        Assert.Equal(zone.TravelDays / 2.5, ride.Days, 6);
+        Assert.Equal(Math.Round(24 * zone.TravelDays / 2.5) / 24, ride.Days, 6); // whole hours
         Assert.Equal(Math.Ceiling(2 * ride.Days * 2), ride.FuelRoundTrip);
         Assert.Contains(ride.Terms, t => t.Source == "vehicle" && t.SpeedMultiplier == 2.5);
 
         var a = sim.AddSurvivor();
-        var food = sim.State.Stockpile.Get("food");
+        var food = sim.FoodStock;
         var result = sim.Execute(new LaunchExpedition(zone.Id, [LoopTestData.Member(a)], VehicleId: bike.Id));
         Assert.True(result.Ok, result.Message);
         var rules = sim.Data.Rules.Expedition;
-        Assert.Equal(food - (rules.RationFoodPerMember + rules.RationFoodPerMemberPerDay * ride.Days * 2), sim.State.Stockpile.Get("food"), 6);
+        // Rations for the shorter road, taken from the pantry in whole units.
+        Assert.Equal(food - Math.Ceiling(rules.RationFoodPerMember + rules.RationFoodPerMemberPerDay * ride.Days * 2), sim.FoodStock, 6);
         Assert.Equal(50 - ride.FuelRoundTrip, sim.State.Stockpile.Get("fuel"), 6);
         Assert.True(bike.Away);
         Assert.Equal(sim.State.Tick + ride.Ticks, sim.State.Expedition!.ArrivalTick);
@@ -145,7 +148,7 @@ public class VehicleTests
             sim.State.Zones[id] = new ZoneStatus { Intel = ZoneIntel.Rumored };
         var far = sim.PlanTravel("network_relay", bike.Id);
         Assert.NotNull(far.Blocked);
-        Assert.Equal(CommandError.RoadBlocked, sim.Execute(new LaunchExpedition("network_relay", members[..2], VehicleId: bike.Id)).Error);
+        Assert.Equal(CommandError.RouteBlocked, sim.Execute(new LaunchExpedition("network_relay", members[..2], VehicleId: bike.Id)).Error);
         var withCans = Give(sim, "motorbike", "fuel_cans");
         Assert.Null(sim.PlanTravel("network_relay", withCans.Id).Blocked);
     }
@@ -159,7 +162,7 @@ public class VehicleTests
         var lit = Give(sim, "motorbike", "headlights");
         var dark = sim.PlanTravel("suburb_ruins", bike.Id);
         Assert.Contains(dark.Terms, t => t.Source == "night");
-        Assert.Equal(1 / 2.5 / sim.Data.Vehicles.NightSpeedMultiplier, dark.Days, 6);
+        Assert.Equal(Math.Round(24 / 2.5 / sim.Data.Vehicles.NightSpeedMultiplier) / 24, dark.Days, 6);
         Assert.DoesNotContain(sim.PlanTravel("suburb_ruins", lit.Id).Terms, t => t.Source == "night");
 
         sim.State.Tick = 9; // leaves and arrives by day
@@ -185,7 +188,7 @@ public class VehicleTests
         Assert.Null(slow.Blocked);
         Assert.Equal(1 / (2.0 * 0.5), slow.Days, 6);
         var a = sim.AddSurvivor();
-        Assert.Equal(CommandError.RoadBlocked, sim.Execute(new LaunchExpedition("suburb_ruins", [LoopTestData.Member(a)], VehicleId: bike.Id)).Error);
+        Assert.Equal(CommandError.RouteBlocked, sim.Execute(new LaunchExpedition("suburb_ruins", [LoopTestData.Member(a)], VehicleId: bike.Id)).Error);
         // On foot the weather does not change the trip.
         Assert.Empty(sim.PlanTravel("suburb_ruins").Terms);
 
@@ -202,7 +205,7 @@ public class VehicleTests
         Assert.Equal(CommandError.NoGarage, sim.Execute(new FitUpgrade(buggy.Id, "headlights")).Error);
         var garage = Garage(sim);
         Assert.Equal(CommandError.RecipeLocked, sim.Execute(new FitUpgrade(buggy.Id, "headlights")).Error);
-        sim.State.KnownBlueprints.Add("sch_headlights");
+        sim.State.Schematics.Known.Add("sch_headlights");
         Assert.Equal(CommandError.CannotAfford, sim.Execute(new FitUpgrade(buggy.Id, "headlights")).Error);
         sim.State.Stockpile.Add("electronics", 3);
         sim.State.Stockpile.Add("scrap", 2);
@@ -213,7 +216,7 @@ public class VehicleTests
         Assert.Equal(CommandError.RecipeLevelTooLow, sim.Execute(new FitUpgrade(buggy.Id, "armor_plates")).Error);
         garage.Level = 3;
         Assert.Equal(CommandError.RecipeLocked, sim.Execute(new FitUpgrade(buggy.Id, "armor_plates")).Error);
-        sim.State.KnownBlueprints.Add("sch_armor_plates");
+        sim.State.Schematics.Known.Add("sch_armor_plates");
         var before = sim.VehicleStats(buggy);
         Assert.True(sim.Execute(new FitUpgrade(buggy.Id, "armor_plates")).Ok);
         var after = sim.VehicleStats(buggy);
@@ -425,7 +428,7 @@ public class VehicleTests
         Assert.True(loaded.FindVehicle(vehicle.Id)!.Away);
 
         var old = LoopTestData.Colony();
-        var v12 = SaveGame.Save(old.State).Replace("\"version\": 15", "\"version\": 14").Replace("\"version\":15", "\"version\":14");
+        var v12 = SaveGame.Save(old.State).Replace($"\"version\": {SaveGame.Version}", $"\"version\": {SaveGame.VehiclesVersion - 1}").Replace($"\"version\":{SaveGame.Version}", $"\"version\":{SaveGame.VehiclesVersion - 1}");
         var migrated = SaveGame.Load(TestData.Real, v12, ScavengeTestData.Real);
         Assert.Equal("handcart", Assert.Single(migrated.State.Vehicles).TierId);
     }

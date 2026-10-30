@@ -170,7 +170,7 @@ public partial class ActionPanel : PanelContainer
         if (vehicle.Wrecked || vehicle.Pos.Chebyshev(unit.Pos) > 1) return;
         var cost = data.Rules.Turn.PickUpApCost;
         var haul = unit.Pack.Where(id => data.Items[id].Weight <= vehicle.CargoKg - load + 1e-9)
-            .OrderByDescending(id => data.Items[id].Kind is ItemKind.Material or ItemKind.Blueprint)
+            .OrderByDescending(id => data.Items[id].Kind is ItemKind.Material or ItemKind.Schematic)
             .ThenByDescending(id => data.Items[id].Weight).ThenBy(id => id, StringComparer.Ordinal).FirstOrDefault();
         if (haul is not null)
         {

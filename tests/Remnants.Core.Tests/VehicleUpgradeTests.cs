@@ -33,7 +33,7 @@ public class VehicleUpgradeTests
     }
 
     private static void Know(ColonySim sim) =>
-        sim.State.KnownBlueprints.UnionWith(sim.Data.Vehicles.Upgrades.Select(u => u.Schematic).OfType<string>());
+        sim.State.Schematics.Known.UnionWith(sim.Data.Vehicles.Upgrades.Select(u => u.Schematic).OfType<string>());
 
     [Fact]
     public void Every_tier_has_slots_the_handcart_one_utility_and_the_rig_the_most()
@@ -51,8 +51,10 @@ public class VehicleUpgradeTests
         var ups = TestData.Real.VehicleUpgrades;
         Assert.Null(ups["cargo_rack"].Schematic);
         Assert.Null(ups["fuel_cans"].Schematic);
-        Assert.Null(TestData.Real.Recipes["spare_parts"].Blueprint);
-        Assert.All(ups.Values.Where(u => u.Schematic is not null), u => Assert.True(ScavengeTestData.Real.Items[u.Schematic!].LootWeight > 0, u.Id));
+        Assert.Null(TestData.Real.Schematics.GateOfRecipe("spare_parts"));
+        // Never story-only: every other one also drops, trades or is researched.
+        Assert.All(ups.Values.Where(u => u.Schematic is not null), u =>
+            Assert.Contains(TestData.Real.Schematics.Find(u.Schematic!)!.Sources, s => s != Remnants.Core.Schematics.SchematicSource.Story));
     }
 
     [Fact]

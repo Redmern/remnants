@@ -23,6 +23,12 @@ public partial class TopBar : PanelContainer
     private readonly TextureRect _phaseIcon = new() { StretchMode = TextureRect.StretchModeEnum.KeepCentered, CustomMinimumSize = new Vector2(26, 26) };
     private readonly Label _phase = Widgets.Label("", "Small");
     private DayPhase? _shownPhase;
+    private readonly TextureRect _weatherIcon = new() { StretchMode = TextureRect.StretchModeEnum.KeepCentered, CustomMinimumSize = new Vector2(26, 26) };
+    private readonly Label _weather = Widgets.Label("", "Small");
+    private readonly Control _weatherBox;
+    private readonly HBoxContainer _forecast = Widgets.Row(2);
+    private string _forecastShown = "";
+    private (string Kind, double Intensity)? _shownWeather;
     private readonly Dictionary<int, Button> _speedButtons = new();
     private readonly Dictionary<string, ResourceChip> _chips = new();
     private readonly PanelContainer _pop;
@@ -33,6 +39,9 @@ public partial class TopBar : PanelContainer
     public event Action? BuildPressed;
     public event Action? ExpeditionPressed;
     public event Action? ItemsPressed;
+
+    /// <summary>The food-days chip or the pantry button was pressed.</summary>
+    public event Action? PantryPressed;
     public event Action? WorldMapPressed;
     public event Action? MenuPressed;
 
@@ -51,6 +60,32 @@ public partial class TopBar : PanelContainer
         _phase.AddThemeFontSizeOverride("font_size", 11);
         phaseBox.AddChild(_phase);
         row.AddChild(phaseBox);
+
+        // The weather now; the tooltip says what it does and gives the forecast.
+        _weatherBox = Widgets.Column(-2);
+        _weatherBox.MouseFilter = MouseFilterEnum.Stop;
+        _weatherIcon.MouseFilter = MouseFilterEnum.Ignore;
+        _weather.MouseFilter = MouseFilterEnum.Ignore;
+        _weatherBox.AddChild(_weatherIcon);
+        _weather.HorizontalAlignment = HorizontalAlignment.Center;
+        _weather.AddThemeFontSizeOverride("font_size", 11);
+        _weatherBox.AddChild(_weather);
+        // The forecast as small icons beside it (what the colony expects next, as far as it sees).
+        var weatherRow = Widgets.Row(6);
+        weatherRow.MouseFilter = MouseFilterEnum.Pass;
+        weatherRow.AddChild(_weatherBox);
+        var next = Widgets.Column(0);
+        next.MouseFilter = MouseFilterEnum.Ignore;
+        var nextLabel = Widgets.Label("NEXT", "Small");
+        nextLabel.AddThemeFontSizeOverride("font_size", 10);
+        nextLabel.AddThemeColorOverride("font_color", Palette.TextMuted);
+        next.AddChild(nextLabel);
+        _forecast.MouseFilter = MouseFilterEnum.Ignore;
+        next.AddChild(_forecast);
+        weatherRow.AddChild(next);
+        weatherRow.Visible = session.Sim.Data.Weather.Enabled;
+        _weatherBox.Visible = weatherRow.Visible;
+        row.AddChild(weatherRow);
 
         var clock = Widgets.Column(-4);
         _day.AddThemeFontSizeOverride("font_size", 18);
@@ -95,10 +130,16 @@ public partial class TopBar : PanelContainer
         row.AddChild(_pop);
         row.AddChild(_beds);
         row.AddChild(_food);
+        _food.MouseFilter = MouseFilterEnum.Stop;
+        _food.GuiInput += e =>
+        {
+            if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) PantryPressed?.Invoke();
+        };
         row.AddChild(new VSeparator());
 
         row.AddChild(Widgets.IconButton("ui_build", "", "Build", () => BuildPressed?.Invoke(), Hotkeys.KeyName("open_build")));
         row.AddChild(Widgets.IconButton("ui_items", "", "Items and blueprints", () => ItemsPressed?.Invoke(), Hotkeys.KeyName("open_items")));
+        row.AddChild(Widgets.IconButton("res_food", "", "Pantry: food, spoilage and food days", () => PantryPressed?.Invoke()));
         row.AddChild(Widgets.IconButton("ui_expedition", "", "Expedition", () => ExpeditionPressed?.Invoke(), Hotkeys.KeyName("open_expedition")));
         row.AddChild(Widgets.IconButton("ui_world_map", "", "World map", () => WorldMapPressed?.Invoke()));
         row.AddChild(Widgets.IconButton("ui_menu", "", "Menu: save, load, settings", () => MenuPressed?.Invoke(), Hotkeys.KeyName("pause_menu")));
@@ -123,6 +164,47 @@ public partial class TopBar : PanelContainer
         _phaseIcon.TooltipText = _phase.TooltipText = _day.TooltipText = _hour.TooltipText = tip;
     }
 
+    private void RefreshWeather(ColonySim sim)
+    {
+        if (!_weatherBox.Visible) return;
+        var now = Weather.Current(sim.State, sim.Data);
+        if (_shownWeather != (now.Kind, now.Intensity))
+        {
+            _shownWeather = (now.Kind, now.Intensity);
+            var color = WeatherColor(now.Kind);
+            _weatherIcon.Texture = Icons.Get($"weather_{now.Kind}", 22, "weather_clear");
+            _weatherIcon.Modulate = color;
+            _weather.Text = ColonyText.WeatherName(sim, now.Kind, now.Intensity).ToUpperInvariant();
+            _weather.AddThemeColorOverride("font_color", color);
+        }
+        // Rebuilt hourly: the forecast and hours left move with the clock.
+        _weatherBox.TooltipText = ColonyText.WeatherTip(sim);
+        var forecast = Weather.Forecast(sim.State, sim.Data).Entries.Where(e => !e.Current).Take(4).ToList();
+        var signature = string.Join(",", forecast.Select(e => $"{e.Start}:{e.Called}"));
+        if (signature == _forecastShown) return;
+        _forecastShown = signature;
+        Widgets.Clear(_forecast);
+        foreach (var e in forecast)
+        {
+            var rules = sim.Data.Rules;
+            var icon = Icons.Rect(Icons.Get($"weather_{e.Called}", 14, "weather_clear"), 14, WeatherColor(e.Called));
+            icon.TooltipText = $"Day {DayNight.Day(e.Start, rules)} {DayNight.Hour(e.Start, rules):00}:00: {ColonyText.WeatherName(sim, e.Called, e.Intensity)}";
+            icon.MouseFilter = MouseFilterEnum.Pass;
+            _forecast.AddChild(icon);
+        }
+        if (forecast.Count == 0) _forecast.AddChild(Widgets.Label("—", "Small"));
+    }
+
+    /// <summary>Calm weather muted, wet weather cool, storms in warning colours.</summary>
+    public static Color WeatherColor(string kind) => kind switch
+    {
+        "clear" => Palette.Warn,
+        "rain" or "fog" or "overcast" => Palette.TextMuted,
+        "thunderstorm" => Palette.Night,
+        "dust_storm" => Palette.Rust,
+        _ => Palette.TextMuted,
+    };
+
     public static (string Icon, Color Color) PhaseLook(DayPhase phase) => phase switch
     {
         DayPhase.Dawn => ("phase_dawn", Palette.Rust),
@@ -138,6 +220,7 @@ public partial class TopBar : PanelContainer
         _day.Text = $"DAY {sim.State.Tick / rules.TicksPerDay + 1}";
         _hour.Text = $"{sim.State.Tick % rules.TicksPerDay:00}:00";
         RefreshPhase(sim);
+        RefreshWeather(sim);
         foreach (var (speed, button) in _speedButtons) button.SetPressedNoSignal(speed == _session.Speed);
 
         _history.Record(sim);
@@ -175,7 +258,8 @@ public partial class TopBar : PanelContainer
         var foodColor = days < 3 ? Palette.Danger : days < 7 ? Palette.Warn : Palette.Good;
         var daysText = double.IsInfinity(days) ? "∞" : days >= 99 ? "99+d" : $"{days:0.#}d";
         SetChip(_food, daysText + (days < 3 ? " !" : ""), foodColor,
-            $"Food lasts about {daysText} at {sim.FoodPerDay:0.#} eaten per day.\nInfants and children are fed first; the hungry lose health.",
+            $"Food lasts about {daysText} at {sim.FoodPerDay:0.#} eaten per day ({sim.FoodStock:0} food in the pantry).\n" +
+            "Infants and children are fed first; the hungry lose health. Click for the pantry.",
             days < 3 ? "stat_starving" : "res_food");
     }
 
@@ -202,8 +286,7 @@ public partial class TopBar : PanelContainer
             var workers = sim.State.WorkersAt(b.Id).Count();
             lines.Add($"Made by {ColonyText.BuildingName(sim, b)}: {workers} worker{(workers == 1 ? "" : "s")}, about {sim.OutputPerDay(b):0.#}/day");
         }
-        if (id == sim.Data.Rules.Food.ResourceId) lines.Add($"Eaten: about {sim.FoodPerDay:0.#}/day by the people at home");
-        if (makers.Count == 0 && id != sim.Data.Rules.Food.ResourceId)
+        if (makers.Count == 0)
             lines.Add(sim.Data.Recipes.Values.Any(r => r.Resource == id) ? "Crafted in a production building." : "Found by scavenging and spent on building.");
         return string.Join("\n", lines);
     }

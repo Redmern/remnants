@@ -23,52 +23,6 @@ internal static class ProductionSystem
 }
 
 /// <summary>
-/// Everyone at home eats each tick (away parties live on the rations they took). Infants, then children are fed first;
-/// whoever goes hungry takes damage and may die. Cooked meals (<c>food.meals</c>, best first) are eaten before raw
-/// food: one unit covers its food value of the need and adds its mood and health bonus.
-/// </summary>
-internal static class FoodSystem
-{
-    public static void Run(ColonyState state, GameData data)
-    {
-        var rules = data.Rules.Food;
-        var dead = new List<Survivor>();
-        foreach (var s in state.Survivors.Where(s => !s.Away).OrderBy(s => s.LifeStage).ThenBy(s => s.Id))
-        {
-            var need = s.LifeStage switch
-            {
-                LifeStage.Infant => rules.InfantPerTick,
-                LifeStage.Child => rules.ChildPerTick,
-                _ => rules.AdultPerTick,
-            };
-            if (rules.Meals.FirstOrDefault(m => state.Stockpile.TryTake(m.Resource, need / m.FoodValue)) is { } meal)
-            {
-                s.StarvingTicks = 0;
-                s.Health = Math.Min(Survivor.MaxHealth, s.Health + rules.RecoveryPerTick + meal.HealthPerTick);
-                var supper = data.Rules.DayNight.Enabled && DayNight.PhaseAt(state.Tick, data.Rules) is DayPhase.Dusk or DayPhase.Night
-                    ? data.Rules.DayNight.NightMealMoodPerTick : 0;
-                s.Mood = Math.Min(Survivor.MaxMood, s.Mood + meal.MoodPerTick + supper);
-                continue;
-            }
-            if (state.Stockpile.TryTake(rules.ResourceId, need))
-            {
-                s.StarvingTicks = 0;
-                s.Health = Math.Min(Survivor.MaxHealth, s.Health + rules.RecoveryPerTick);
-                continue;
-            }
-
-            if (s.StarvingTicks == 0)
-                state.Log(new(state.Tick, ColonyEventType.Starving, $"{s.Name} is starving.", s.Id));
-            s.StarvingTicks++;
-            s.Health -= rules.StarvationDamagePerTick;
-            if (s.Health <= 0) dead.Add(s);
-        }
-
-        foreach (var s in dead) ColonyDeaths.Remove(state, data, s, "starved to death", "Starvation");
-    }
-}
-
-/// <summary>
 /// Beds go first to those who already had one, then by id. Each bed is in a housing building: people keep their
 /// home while it has room, and newcomers move in with their partner or parents when they can. The homeless count
 /// down a grace timer (paused while they are away) and leave the colony when it runs out. An infant or child whose timer runs out leaves with a

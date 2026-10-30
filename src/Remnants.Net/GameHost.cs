@@ -24,6 +24,30 @@ public sealed record HostOptions
     public int? Hour { get; init; }
 
     public int MissionHour => Hour ?? (int)(Seed % 24);
+
+    /// <summary>
+    /// Weather the mission is played in (a <c>scavenge.json environment.weather</c> id, or <c>clear</c>). The server
+    /// decides: this when set (an in-game host passes its colony's weather over the zone), else one rolled from the seed
+    /// (<see cref="FieldEnvironment.RollWeather"/>). Like the hour it is in every view, so every player plays the same sky.
+    /// </summary>
+    public string? Weather { get; init; }
+
+    /// <summary>Intensity 0..1 of <see cref="Weather"/> (for the look and sound only).</summary>
+    public double WeatherIntensity { get; init; } = 0.7;
+
+    /// <summary>Changes during the run (from the host's colony), by round.</summary>
+    public List<WeatherShift> WeatherShifts { get; init; } = new();
+
+    /// <summary>The mission's environment: the hour, and the weather set or rolled from the seed.</summary>
+    public ScavengeEnvironment MissionEnvironment(ScavengeData data)
+    {
+        var env = ScavengeEnvironment.AtHour(MissionHour);
+        var (weather, intensity) = Weather is { } w ? (w, WeatherIntensity) : FieldEnvironment.RollWeather(data, Seed);
+        env.Weather = weather;
+        env.Intensity = intensity;
+        env.Shifts = WeatherShifts.ToList();
+        return env;
+    }
 }
 
 public enum HostPhase { Lobby, Playing, Ended }
@@ -257,7 +281,7 @@ public sealed class GameHost : IHostSink
         {
             Sim = NewScavenge.Create(_data, Options.ZoneId, Options.Seed,
                 _seats.Select(s => new PartySetup(s.PlayerId, s.Party, s.StartTeam(Options.Mode), s.Name) { Vehicle = s.Vehicle }).ToList(),
-                new ZoneConditions(Environment: ScavengeEnvironment.AtHour(Options.MissionHour)));
+                new ZoneConditions(Environment: Options.MissionEnvironment(_data)));
         }
         catch (ArgumentException e)
         {
@@ -268,7 +292,7 @@ public sealed class GameHost : IHostSink
             return;
         }
         Phase = HostPhase.Playing;
-        Log?.Invoke($"mission started in {Options.ZoneId} (seed {Options.Seed}, {Sim.State.Environment.Hour:00}:00 {Sim.State.Environment.Phase}) with {_seats.Count} players");
+        Log?.Invoke($"mission started in {Options.ZoneId} (seed {Options.Seed}, {Sim.State.Environment.Hour:00}:00 {Sim.State.Environment.Phase}, {FieldEnvironment.Name(Sim.State.Environment.Weather)}) with {_seats.Count} players");
         foreach (var seat in _seats) seat.Connection?.Send(Started());
         _lastPublished = null;
         Publish();

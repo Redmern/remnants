@@ -155,6 +155,7 @@ public enum ScavengeError
     CargoFull,
     /// <summary>Salvage: no wreck there, or it was stripped already.</summary>
     NothingToSalvage,
+    DroneGrounded,
 }
 
 /// <summary>Outcome of a scavenge command. <see cref="EntityId"/> carries e.g. the attacked unit.</summary>

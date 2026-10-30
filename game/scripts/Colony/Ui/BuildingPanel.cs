@@ -34,6 +34,10 @@ public partial class BuildingPanel : PanelContainer
     private readonly MarginContainer _floodCost = new();
     private readonly Button _flood;
     private string _floodSignature = "";
+    private readonly VBoxContainer _repairBox = Widgets.Column(4);
+    private readonly Label _repairNote = Widgets.Wrapped("", "Small");
+    private readonly MarginContainer _repairCost = new();
+    private Button _repair = null!;
     private string _workerSignature = "";
     private string _costSignature = "";
 
@@ -81,6 +85,16 @@ public partial class BuildingPanel : PanelContainer
         _nightBox.AddChild(_floodRow);
         box.AddChild(_nightBox);
 
+        // Struck by lightning: half output until repaired.
+        _repairBox.AddChild(Widgets.SectionHeader("Lightning damage", "weather_lightning"));
+        _repairBox.AddChild(_repairNote);
+        var repairRow = Widgets.Row(6);
+        _repair = Widgets.IconButton("ui_build", "Repair", "", Repair, variation: "Primary");
+        repairRow.AddChild(_repair);
+        repairRow.AddChild(_repairCost);
+        _repairBox.AddChild(repairRow);
+        box.AddChild(_repairBox);
+
         _upgradeBox.AddChild(Widgets.SectionHeader("Upgrade", "ui_chevron_up"));
         _upgradeBox.AddChild(_upgradeTitle);
         _upgradeBox.AddChild(_costs);
@@ -123,6 +137,7 @@ public partial class BuildingPanel : PanelContainer
         _output.TooltipText = tip;
         _output.Visible = _output.Text.Length > 0;
         RefreshNight(sim, building, def);
+        RefreshRepair(sim, building, def);
         RefreshUpgrade(sim, building, def);
     }
 
@@ -153,6 +168,24 @@ public partial class BuildingPanel : PanelContainer
             _floodCost.AddChild(Widgets.CostChips(cost.Select(kv => (kv.Key, sim.Data.Resources[kv.Key].Name, kv.Value, sim.State.Stockpile.Get(kv.Key)))));
         }
         _flood.TooltipText = $"A lamp mast that lights {def.Name} for a night shift ({ColonyText.Cost(cost, sim.Data)}).";
+    }
+
+    private void RefreshRepair(ColonySim sim, Building building, Remnants.Core.Data.BuildingDef def)
+    {
+        _repairBox.Visible = building.Damaged;
+        if (!building.Damaged) return;
+        var rules = sim.Data.Weather.Repair;
+        _repairNote.Text = $"Lightning struck the {def.Name}: it works at {rules.DamagedOutput * 100:0}% until repaired.";
+        _repairNote.AddThemeColorOverride("font_color", Palette.Warn);
+        Widgets.Clear(_repairCost);
+        _repairCost.AddChild(Widgets.CostChips(rules.Cost.Select(kv => (kv.Key, sim.Data.Resources[kv.Key].Name, kv.Value, sim.State.Stockpile.Get(kv.Key)))));
+        _repair.Disabled = !sim.State.Stockpile.CanAfford(rules.Cost);
+        _repair.TooltipText = $"Repair the {def.Name} ({ColonyText.Cost(rules.Cost, sim.Data)}).";
+    }
+
+    private void Repair()
+    {
+        if (BuildingId is { } id) _session.Execute(new RepairBuilding(id));
     }
 
     private void ToggleNightShift()
@@ -199,6 +232,14 @@ public partial class BuildingPanel : PanelContainer
                   "\nPer day counts the shift hours (and the Night Shift at its rate). Open a worker's Overview for the full formula.";
             return $"Makes about {total:0.#} {name} per day";
         }
+        if (Harvesting.Current(sim.Data, building) is { } harvest)
+        {
+            tip = $"{harvest.Name}: {harvest.Description}\n" + string.Join("\n", sim.State.WorkersAt(building.Id).Select(w =>
+                $"  {w.Name}: {JobOutput.PerTick(def, building.Level, sim.Data.Jobs[def.Job!], w, sim.Data.Rules.Output, sim.Data) * Schedule.ShiftHoursPerDay(w, building, def, sim.Data.Rules) * harvest.Yield:0.#} items/day"));
+            return $"{harvest.Name}: about {sim.OutputPerDay(building):0.#} food per day";
+        }
+        if (def.Id == sim.Data.Food?.Rules.CellarBuilding)
+            return $"Produce and meat age at {Pantry.CellarRate(sim.State, sim.Data) * 100:0}% speed";
         if (level.Beds > 0) return $"Sleeps {level.Beds}";
         if (level.Patients > 0) return $"{level.Patients} patient beds";
         return "";
@@ -233,14 +274,18 @@ public partial class BuildingPanel : PanelContainer
 
         var cap = sim.MaxUpgradeLevel(def);
         var capped = def.Id != sim.Data.Rules.TownHallBuildingId && next > cap;
-        _cap.Visible = def.Id != sim.Data.Rules.TownHallBuildingId;
-        _cap.Text = capped ? $"⚠ Town Hall level {sim.TownHallLevel} allows up to level {cap}: upgrade the Town Hall first."
+        var gate = Remnants.Core.Schematics.Schematics.LevelUnlocked(sim, def.Id, next) ? null : sim.Data.Schematics.GateOfBuildingLevel(def.Id, next);
+        var gateName = gate is null ? null : sim.Data.Schematics.All[gate].Name;
+        _cap.Visible = def.Id != sim.Data.Rules.TownHallBuildingId || gate is not null;
+        _cap.Text = gateName is not null ? $"⚠ Level {next} needs the {gateName} schematic (see Items → Schematics)."
+            : capped ? $"⚠ Town Hall level {sim.TownHallLevel} allows up to level {cap}: upgrade the Town Hall first."
             : $"Town Hall level {sim.TownHallLevel} allows up to level {cap}.";
-        _cap.AddThemeColorOverride("font_color", capped ? Palette.Danger : Palette.TextMuted);
+        _cap.AddThemeColorOverride("font_color", capped || gate is not null ? Palette.Danger : Palette.TextMuted);
         var affordable = sim.State.Stockpile.CanAfford(cost);
         // Core decides; a refused upgrade explains itself in the log. The button only signals what is likely.
-        _upgrade.Disabled = capped;
-        _upgrade.TooltipText = capped ? "Needs a higher Town Hall level." : affordable ? $"Upgrade to level {next}." : "Not enough resources yet (marked with !).";
+        _upgrade.Disabled = capped || gate is not null;
+        _upgrade.TooltipText = gateName is not null ? $"Needs the {gateName} schematic."
+            : capped ? "Needs a higher Town Hall level." : affordable ? $"Upgrade to level {next}." : "Not enough resources yet (marked with !).";
     }
 
     private void Upgrade()

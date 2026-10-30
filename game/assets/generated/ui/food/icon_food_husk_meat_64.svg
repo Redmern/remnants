@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+<g transform="scale(0.5)">
+<path d="M16,112 a48,7 0 1,0 96,0 a48,7 0 1,0 -96,0 Z" fill="#3b3d3c" opacity="0.45"/>
+<path d="M18,62 C16,36 50,26 76,30 C104,34 116,52 108,74 C100,96 70,106 44,100 C26,96 20,82 18,62 Z" fill="#8a8a82" stroke="#3b3d3c" stroke-width="5.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M26,62 C24,42 52,34 76,38 C98,42 106,56 100,72 C94,88 70,96 46,92 C32,88 28,78 26,62 Z" fill="#7d7e70"/>
+<circle cx="42" cy="56" r="6" fill="#3f4a28"/>
+<circle cx="88" cy="74" r="7" fill="#3f4a28"/>
+<circle cx="54" cy="82" r="4" fill="#6a5a2e"/>
+<circle cx="90" cy="52" r="4" fill="#6a5a2e"/>
+<circle cx="72" cy="62" r="11" fill="#c9c6bb" stroke="#3b3d3c" stroke-width="5.2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="72" cy="62" r="5" fill="#a8774f"/>
+<polygon points="30,30 44,20 50,54 40,58" fill="#6e7275" stroke="#3b3d3c" stroke-width="5.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M84,90 l6,-8 l6,8 l6,-8" fill="none" stroke="#45494c" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+</g>
+</svg>

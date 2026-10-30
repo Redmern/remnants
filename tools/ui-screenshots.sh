@@ -34,6 +34,10 @@ shot study             250 --colony --perks-demo
 shot expedition        150 --colony --expedition
 shot world_map         150 --colony --world-demo
 shot after_action      400 --colony --loop-demo --autopilot
+shot archive           300 --colony --schematics-demo --archive
+shot research          300 --colony --schematics-demo --research
+shot trader            300 --colony --schematics-demo --radio=trader --collapse-log
+shot radio_calls       300 --colony --schematics-demo --radio=calls
 shot pause_menu        150 --colony --crafting-demo --pause-menu
 shot settings          150 --colony --settings
 shot scavenge          200 --scavenge

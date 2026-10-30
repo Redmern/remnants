@@ -210,8 +210,12 @@ public sealed class ModelLibrary
         return state is null ? null : new GltfDocument().GenerateScene(state) as Node3D;
     }
 
+    /// <summary>Building types whose model has its own id (one level only).</summary>
+    private static readonly Dictionary<string, string> BuildingModels = new() { ["campfire"] = "campfire_cooking" };
+
     public Node3D Building(BuildingDef def, int level)
     {
+        if (BuildingModels.TryGetValue(def.Id, out var single) && TryInstance(single) is { } own) return own;
         for (var l = level; l >= 1; l--)
         {
             if (TryInstance($"{def.Id}_l{l}") is not { } model) continue;

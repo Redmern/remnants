@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<g transform="scale(1)">
+<g transform="translate(64 64) scale(1.14) translate(-64 -64)">
+<path d="M18,112 a46,7 0 1,0 92,0 a46,7 0 1,0 -92,0 Z" fill="#3b3d3c" opacity="0.45"/>
+<g transform="rotate(-35 64 66)">
+<path d="M64,118 C40,104 40,70 50,54 C54,72 58,90 64,98 Z" fill="#7d8a3c" stroke="#3b3d3c" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M64,118 C88,104 88,70 78,54 C74,72 70,90 64,98 Z" fill="#5d6b3a" stroke="#3b3d3c" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M47,60 a17,42 0 1,0 34,0 a17,42 0 1,0 -34,0 Z" fill="#b8962e" stroke="#3b3d3c" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="55.19" y1="26" x2="72.81" y2="26" fill="none" stroke="#b0673a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="52.22" y1="34" x2="75.78" y2="34" fill="none" stroke="#b0673a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="50.45" y1="42" x2="77.55" y2="42" fill="none" stroke="#b0673a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="49.43" y1="50" x2="78.57" y2="50" fill="none" stroke="#b0673a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="49.02" y1="58" x2="78.98" y2="58" fill="none" stroke="#b0673a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="49.15" y1="66" x2="78.85" y2="66" fill="none" stroke="#b0673a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="49.86" y1="74" x2="78.14" y2="74" fill="none" stroke="#b0673a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="51.22" y1="82" x2="76.78" y2="82" fill="none" stroke="#b0673a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="53.5" y1="90" x2="74.5" y2="90" fill="none" stroke="#b0673a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="56" y1="24" x2="56" y2="98" fill="none" stroke="#b0673a" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="64" y1="24" x2="64" y2="98" fill="none" stroke="#b0673a" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="72" y1="24" x2="72" y2="98" fill="none" stroke="#b0673a" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M64,118 C52,104 50,88 54,72 C60,88 62,100 64,108 Z" fill="#7d8a3c" stroke="#3b3d3c" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+</g>
+</g>
+</g>
+</svg>

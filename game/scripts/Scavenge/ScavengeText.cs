@@ -9,6 +9,36 @@ namespace Remnants.Game.Scavenge;
 /// <summary>View-model formatting of scavenge state for labels. Read-only; no rules.</summary>
 public static class ScavengeText
 {
+    /// <summary>"Dust storm" for <c>dust_storm</c>; "Clear" for none; "Heavy rain" from 0.75 up.</summary>
+    public static string WeatherName(string? weather, double intensity) => weather switch
+    {
+        null or "" or "clear" => "Clear",
+        "rain" when intensity >= 0.75 => "Heavy rain",
+        _ => char.ToUpperInvariant(weather[0]) + weather[1..].Replace('_', ' '),
+    };
+
+    /// <summary>What the run's weather does in the field, one line each, from its <c>scavenge.json</c> entry.</summary>
+    public static string WeatherTip(ScavengeData data, ScavengeEnvironment env)
+    {
+        var lines = new List<string> { WeatherName(env.Weather, env.Intensity) + "." };
+        if (env.Weather is not { } w || !data.Rules.Environment.Weather.TryGetValue(w, out var e))
+            return lines[0] + " Nothing in the air to help or hinder.";
+        string Pct(double m) => $"{(m >= 1 ? "+" : "−")}{System.Math.Abs(System.Math.Round((m - 1) * 100)):0}%";
+        var sight = e.Sight.Where(kv => System.Math.Abs(kv.Value - 1) > 1e-9).Select(kv => $"{kv.Key} {Pct(kv.Value)}").ToList();
+        if (sight.Count > 0) lines.Add("Sight: " + string.Join(", ", sight) + ".");
+        if (e.StealthBonus > 0)
+            lines.Add($"+{e.StealthBonus:0} stealth for everyone" + (e.StealthIgnoredBy.Count > 0 ? $" (not against {string.Join(", ", e.StealthIgnoredBy)})." : "."));
+        if (e.HearingMultiplier < 1) lines.Add($"Noise and footsteps carry {Pct(e.HearingMultiplier)} as far.");
+        if (e.FlareRoundsMultiplier < 1) lines.Add("Flares burn out sooner.");
+        if (e.RangedAccuracyPenalty > 0) lines.Add($"Ranged attacks −{e.RangedAccuracyPenalty * 100:0} points to hit.");
+        if (e.DronesGrounded) lines.Add("Drones are grounded (one in the air can still be recalled).");
+        if (e.RelayRangeMultiplier < 1) lines.Add($"Linked relay range {Pct(e.RelayRangeMultiplier)}: their squads lose touch.");
+        if (e.ThunderChance > 0) lines.Add("Thunder now and then drowns out every footstep for a round.");
+        if (e.LightningChance > 0) lines.Add("Lightning now and then shows everyone on the map for a round.");
+        if (env.Shifts.Count > 0) lines.Add("The sky is changing: it may turn during the run.");
+        return string.Join("\n", lines);
+    }
+
     /// <summary>"Knight — Grappling Hook" for a mode with a source, "King 2" for the plain walk.</summary>
     public static string Mode(MoveMode mode)
     {

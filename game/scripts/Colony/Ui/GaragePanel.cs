@@ -93,7 +93,7 @@ public partial class GaragePanel : PanelContainer
                             $"{v.Id}:{v.Condition:0.0}:{v.Away}:{string.Join(",", v.Upgrades.Select(u => $"{u.UpgradeId}/{u.Condition:0.00}"))}"))
                         + "|" + string.Join(",", sim.State.Inventory.Counts.Select(kv => $"{kv.Key}:{kv.Value}"))
                         + "|" + string.Join(",", sim.State.Stockpile.Amounts.Select(kv => $"{kv.Key}:{kv.Value:0}"))
-                        + "|" + string.Join(",", sim.State.KnownBlueprints);
+                        + "|" + string.Join(",", sim.State.Schematics.Known);
         if (signature == _shown) return;
         _shown = signature;
         _title.Text = $"Level {garage.Level} · {vehicles.Count} vehicle{(vehicles.Count == 1 ? "" : "s")}";

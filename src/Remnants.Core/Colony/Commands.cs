@@ -21,7 +21,11 @@ public sealed record Upgrade(int BuildingId) : IColonyCommand;
 /// taking extra rations for the wait (see <see cref="ColonySim.PlanArrival"/>). With <paramref name="VehicleId"/> the party
 /// drives a colony vehicle: faster on the road, its seats cap the party, it burns fuel and parks at the zone's edge.
 /// </summary>
-public sealed record LaunchExpedition(string ZoneId, List<ExpeditionMember> Members, DayPhase? WaitFor = null, int? VehicleId = null) : IColonyCommand;
+public sealed record LaunchExpedition(string ZoneId, List<ExpeditionMember> Members, DayPhase? WaitFor = null, RationChoice? Rations = null,
+    int? VehicleId = null) : IColonyCommand;
+
+/// <summary>Pick what a Farm, Greenhouse or Hunting Lodge works on (data/food.json harvests). The standing crop is lost.</summary>
+public sealed record SetHarvest(int BuildingId, string HarvestId) : IColonyCommand;
 
 /// <summary>Fit an upgrade (data/vehicles.json) to a vehicle at the Garage, paying its resources and parts.</summary>
 public sealed record FitUpgrade(int VehicleId, string UpgradeId) : IColonyCommand;
@@ -37,6 +41,9 @@ public sealed record RepairVehicle(int VehicleId) : IColonyCommand;
 /// <see cref="WorldMap.SendDrone"/>). <paramref name="PilotId"/>: a survivor at home who flies it (less risk, trains Drone Piloting).
 /// </summary>
 public sealed record SendScoutDrone(string ZoneId, int? PilotId = null) : IColonyCommand;
+
+/// <summary>Repair a building struck by lightning (<c>weather.repair.cost</c>).</summary>
+public sealed record RepairBuilding(int BuildingId) : IColonyCommand;
 
 /// <summary>Bring the active expedition home: survivors, injuries, deaths, recruits and loot.</summary>
 public sealed record ApplyExtractionResult(ExtractionResult Result) : IColonyCommand;
@@ -74,9 +81,6 @@ public sealed record QueueRecipe(int BuildingId, string RecipeId, int Count = 1,
 
 /// <summary>Remove an order from a building's queue; a batch in progress refunds its inputs.</summary>
 public sealed record CancelOrder(int BuildingId, int OrderId) : IColonyCommand;
-
-/// <summary>Study (use up) a blueprint item at its study building, unlocking the recipes that name it.</summary>
-public sealed record StudyBlueprint(string ItemId) : IColonyCommand;
 
 /// <summary>
 /// Nudge two adults: encourage (they bond faster), discourage (they stop bonding; a couple splits up) or neutral.
@@ -149,7 +153,7 @@ public enum CommandError
     InvalidCount,
     QueueFull,
     UnknownOrder,
-    NotABlueprint,
+    NotASchematic,
     AlreadyKnown,
     NoStudyBuilding,
     TooYoung,
@@ -193,11 +197,23 @@ public enum CommandError
     AlreadyBooked,
     UnknownSurgery,
     NoCybernetics,
+    /// <summary>Building or level gated by a schematic the colony does not know.</summary>
+    SchematicNeeded,
+    /// <summary>Food: the building does not harvest, or not this.</summary>
+    UnknownHarvest,
+    NotResearchable,
+    NotHeardOf,
+    ResearchBusy,
+    NoResearch,
+    IsResearching,
+    NoTrader,
+    NotInStock,
+    UnknownCall,
+    NoContract,
     /// <summary>Story commands in a Sandbox colony (or without story data).</summary>
     NoCampaign,
     UnknownMission,
     MissionNotAvailable,
-    UnknownCall,
     NoDialogue,
     InvalidChoice,
     /// <summary>Vehicles: unknown, out with a party, broken down, too few seats, blocked by weather or range, no Garage.</summary>
@@ -206,13 +222,16 @@ public enum CommandError
     VehicleAway,
     VehicleBroken,
     NotEnoughSeats,
-    RoadBlocked,
     NoGarage,
     AlreadyFitted,
     UpgradeDoesNotFit,
-    NotDamaged,
     /// <summary>Every slot of the upgrade's kind on the vehicle is taken.</summary>
     SlotFull,
+    /// <summary>Nothing to repair (a building or a vehicle).</summary>
+    NotDamaged,
+    /// <summary>The road is closed: the weather over the zone, or the vehicle cannot make it (dust, range).</summary>
+    RouteBlocked,
+    DronesGrounded,
 }
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>

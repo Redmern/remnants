@@ -1,12 +1,14 @@
 using Remnants.Core.Items;
 using Remnants.Core.Random;
+using Remnants.Core.Schematics;
 using Remnants.Core.Serialization;
 using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Scavenge;
 
 /// <summary>A survivor sent on a run, with the gear they wear and carry.</summary>
-public sealed record PartyMember(Survivor Survivor, Dictionary<EquipSlot, string>? Equipment = null, List<string>? Pack = null);
+/// <summary>A survivor going into a zone with their gear. <paramref name="FirstRoundAp"/>: AP added (or taken) on the first round, from what they ate on the way (food buffs).</summary>
+public sealed record PartyMember(Survivor Survivor, Dictionary<EquipSlot, string>? Equipment = null, List<string>? Pack = null, int FirstRoundAp = 0);
 
 /// <summary>
 /// One player's party entering a zone. Parties with the same <see cref="Team"/> start allied (one side, see
@@ -30,9 +32,11 @@ public sealed record MissionSetup(FieldMission Mission, HandmadeMapDef? Map = nu
 
 /// <summary>
 /// How a zone is found: its depletion (0..1 thins out the loot caches), the time of day and weather the run is played in
-/// (midday, clear, if null), and <see cref="HuskMultiplier"/>: more Husks drawn by an arriving vehicle's noise (1 = none).
+/// (midday, clear, if null), <see cref="KnownSchematics"/> (what the colony already knows: picked at half weight, so
+/// duplicates do not dominate) and <see cref="HuskMultiplier"/>: more Husks drawn by an arriving vehicle's noise (1 = none).
 /// </summary>
-public sealed record ZoneConditions(double Depletion = 0, ScavengeEnvironment? Environment = null, double HuskMultiplier = 1);
+public sealed record ZoneConditions(double Depletion = 0, ScavengeEnvironment? Environment = null, IReadOnlyCollection<string>? KnownSchematics = null,
+    double HuskMultiplier = 1);
 
 /// <summary>
 /// Builds a scavenge instance: generates the zone map from its template and a seed, places every party
@@ -61,7 +65,8 @@ public static class NewScavenge
         var state = new ScavengeState
         {
             ZoneId = zone.Id, Map = generated.Map,
-            Environment = env is null ? new ScavengeEnvironment() : ScavengeEnvironment.At(env.Hour, env.Phase, env.Weather),
+            Environment = env is null ? new ScavengeEnvironment() : env.Copy(),
+            KnownSchematics = new(conditions?.KnownSchematics ?? [], StringComparer.Ordinal),
         };
         var map = state.Map;
         var open = generated.Reachable.Where(p => !map.IsExit(p)).OrderBy(map.Index).ToList();
@@ -150,7 +155,8 @@ public static class NewScavenge
             if (spot is null) break;
             var cache = new LootCache { Id = state.NextCacheId++, Pos = spot.Value };
             var items = rng.NextInclusive(zone.ItemsPerCache[0], zone.ItemsPerCache[1]);
-            for (var k = 0; k < items; k++) cache.Items.Add(PickWeighted(rng, lootTable, it => it.LootWeight).Id);
+            for (var k = 0; k < items; k++)
+                cache.Items.Add(SchematicDrops.Roll(data, zone, DropSite.Cache, rng, state.KnownSchematics) ?? PickWeighted(rng, lootTable, it => it.LootWeight).Id);
             state.Caches.Add(cache);
         }
 
@@ -335,6 +341,7 @@ public static class NewScavenge
             Origin = origin,
             Hooks = data.HooksFor(origin.Perks),
             CyberHooks = data.CyberHooksFor(origin.Body),
+            FirstRoundAp = member.FirstRoundAp,
         };
     }
 

@@ -54,6 +54,9 @@ public static class PerkHooks
     public const string ThermalRadius = "thermal_radius";
     public const string NightDetectionBonus = "night_detection_bonus";
 
+    // Food
+    public const string ShelfLifeBonus = "shelf_life_bonus";
+
     /// <summary>Every hook id with what it means; perks.json may only name these.</summary>
     public static readonly IReadOnlyDictionary<string, string> All = new Dictionary<string, string>(StringComparer.Ordinal)
     {
@@ -83,6 +86,7 @@ public static class PerkHooks
         [SurgerySuccessBonus] = "Colony: added to the success chance of a surgery this medic leads (0.1 = +10 points).",
         [SurgerySpeedBonus] = "Colony: surgery effort multiplier bonus when this medic leads it (0.25 = +25%).",
         [CyberSurgery] = "Colony flag: can lead surgery on cyborg-grade (tier 3+) prosthetics.",
+        [ShelfLifeBonus] = "Colony: preserved food this cook makes keeps this much longer (0.5 = +50% shelf life).",
         [CyberInterferenceReduction] = "Share of the Network interference chance on Network-grade parts that is removed (0.5 = half).",
         [ArmorBonus] = "Flat damage reduction added (armored legs).",
         [ThermalRadius] = "Hostiles within this many tiles are seen through walls and stealth, like a scanner (thermal eye).",

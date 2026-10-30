@@ -13,7 +13,8 @@ namespace Remnants.Core.Colony;
 /// life          = child ? childOutputMultiplier : 1
 /// mood          = lerp(lowMoodMultiplier, 1, mood/100)
 /// perks         = 1 + Σ perk jobOutput[job] + Σ working cybernetics jobOutput[job]
-/// output/tick   = building.baseOutput · level.outputMultiplier · performance · tool · health · life · mood · perks
+/// food          = Π active food buffs' output (Well Fed ×1.08, Hungry ×0.85, ...; see FoodEffects)
+/// output/tick   = building.baseOutput · level.outputMultiplier · performance · tool · health · life · mood · perks · food
 /// </code>
 /// </summary>
 public static class JobOutput
@@ -57,5 +58,6 @@ public static class JobOutput
         * HealthFactor(job, s, rules)
         * LifeFactor(s, rules)
         * MoodFactor(s, rules)
-        * PerkFactor(job, s, data);
+        * PerkFactor(job, s, data)
+        * FoodEffects.OutputFactor(s, data);
 }

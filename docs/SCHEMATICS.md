@@ -1,6 +1,7 @@
 # Schematics
 
-Design proposal for review. Nothing here is built yet. Numbers are first guesses for the playtest bot to check.
+Phases 1–2 are built (schematics core, research and trade); see "As built" at the end for where the code differs from
+this design. Numbers are first guesses checked by the playtest bot (BALANCE.md "Schematics pass").
 
 ## In one paragraph
 
@@ -63,7 +64,8 @@ it is how characters call you, in Sandbox it is how traders and contracts find y
 "Migration")
 
 - Workshop: Herbal Remedy, Peg Leg, Hook Arm, Lead Pipe, Rebar Spear, Med-kit
-- Tailor: Plant-fiber Cloth, Bandages, Rag Coat, Backpack, Padded Vest, Climbing Gear, Scout Jacket
+- Tailor: Plant-fiber Cloth, Bandages, Dust Mask & Goggles, Rag Coat, Backpack, Padded Vest, Climbing Gear, Scout Jacket
+  (the dust mask came with the weather pass: default-known, no field in `recipes.json`)
 - Kitchen: Simple Meals, Hearty Stew, Canned Rations
 - Armory: Machete, Pistol
 - Electronics Lab: Salvaged Circuits, Flares, Motion Sensor, Binoculars, Drone Parts, Hacking Kit
@@ -353,3 +355,46 @@ the Iron Corridor tier.
   days until the first tier-2 schematic. Target: the first schematic by about day 10, the first tier-2 one by about
   day 35, without the story.
 - Zone trials: count schematics per run per zone and compare with the table above.
+
+## As built (phases 1–2)
+
+Core lives in `src/Remnants.Core/Schematics/` (self-contained); ARCHITECTURE.md "Schematics" maps it. Where the build
+differs from the design above:
+
+- **One source of gating.** What a schematic unlocks is written only in `data/schematics.json` (`unlocks`); recipes,
+  buildings, perks and the cybernetics tree carry no `schematic`/`blueprint` field. Core indexes the catalogue the other
+  way (`SchematicCatalog.GateOf…`). Anything no schematic unlocks is in the default set.
+- **Rules in the schematics file.** The drop odds, duplicate values, research costs, decrypt rules, trader prices,
+  contracts, copy cost and trade values are the `rules` block of `schematics.json`, not `rules.json`, so the module
+  stays in one file. Features add their own entries in `data/schematics.<feature>.json` (only `schematics` and
+  `traders`; merged in name order; a reused id is an error).
+- **Find tier = zone threat** (Core Spire is tier 4, although its item loot tier is 3).
+- **Cybernetics** (merged from prosthetics-tree): prosthetic unlocks are `tier:N` and `spec:ID` of
+  `cybernetics.json`. A design needs its tier's schematic and, for a specialisation, its spec's schematic, on top of
+  the tree's own requirements. `sch_cybernetics` (was `bp_cybernetics`) and `sch_network_grade` (was
+  `bp_network_grade`, also gates the Linked Salvage perk) keep the old "skips the tier below" rule (tiers with
+  `schematicSkips`). T0 Crude is the default; T1 needs `sch_mech_limbs`, T2 `sch_powered_limbs`.
+- **Planned entries.** Vehicles, the Garage and the Biofuel Still are not in the game yet; their schematics are in the
+  catalogue as `planned` (shown as "coming" in the archive) and never drop, sell or research. The Watchtower and the
+  Greenhouse are built as simple buildings (the Watchtower has no effect yet; the Greenhouse is an indoor farm). The
+  Pulse Rifle is an Armory L3 recipe (2 Linked Cores).
+- **Enemy drops.** A kill rolls its schematic drops in order and only the first hit drops; a known schematic drops at
+  `knownWeight` × its chance.
+- **Heard of** comes from the trader's stock, a schematic left lying on a tile the party saw, a terminal it failed to
+  hack (the side glimpses what the terminal held), and `Schematics.HearOf` (story dialogue).
+- **Research** takes one researcher (off their job) on their day shift; factor `0.4 + Intellect·0.006 +
+  Electronics·0.006`, work 42 / 84 / 168 (about 4 / 8 / 16 days for an average researcher on a 14-hour day shift). Tier 3 needs Town Hall 3 and
+  an Electronics Lab L2.
+- **Decrypt** is a synthesized Electronics Lab recipe per encrypted schematic (`decrypt:<id>`, its chip as the one
+  input), at the existing queue. The minimum is Electronics 20 (Hacking does not count).
+- **Trader.** Sandbox: "A passing caravan" (`traders` in the data), visiting once the colony has a Radio Mast and has
+  scouted Suburb Ruins; Story mode swaps its trader in with `RadioMast.SetTrader`. Before day 60 the stock is two tier
+  ≤ 2 schematics; from day 60 one of them is tier 3. Tier-4 prices exist for a story trader (`maxTier` 4).
+- **Radio contracts:** one offer every 6 days (a call): bring a party home from a known zone (threat ≤ 2 at Radio Mast
+  L1, any at L2) within 8 days, for Research Data plus scrap or electronics.
+- **Copies.** `CopySchematic` makes a tradeable item copy of a known schematic for Research Data (`copyCost` 1 / 2 / 3 /
+  5), for trade between players; the receiving colony learns it the usual way. `TradeValues` gives reference values in
+  scrap from the price table.
+- **Saves:** colony version 15 (`ColonyState.Schematics`, `ColonyState.Radio`); protocol 7 (the extraction result's
+  co-op copies and heard-of list).
+

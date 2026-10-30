@@ -218,7 +218,7 @@ public static class PartyBot
         var parked = ParkedVehicles.Of(state, playerId) is { Wrecked: false } pv ? pv : null;
         var room = parked is null ? 0 : parked.CargoKg - ParkedVehicles.Load(sim.Data, parked);
         if (parked is not null && parked.Pos.Chebyshev(unit.Pos) <= 1 && unit.Ap >= sim.Data.Rules.Turn.PickUpApCost
-            && unit.Pack.Where(id => sim.Data.Items[id].Kind is ItemKind.Material or ItemKind.Blueprint && sim.Data.Items[id].Weight <= room + 1e-9)
+            && unit.Pack.Where(id => sim.Data.Items[id].Kind is ItemKind.Material or ItemKind.Schematic && sim.Data.Items[id].Weight <= room + 1e-9)
                 .OrderByDescending(id => sim.Data.Items[id].Weight).ThenBy(id => id, StringComparer.Ordinal).FirstOrDefault() is { } haul)
             return new StashItem(playerId, unit.Id, haul);
 
@@ -226,7 +226,7 @@ public static class PartyBot
         // A Linked in sight is beyond a starting party: break off and head out. Loaded with room in the vehicle, unload first.
         var loaded = profile.Load >= profile.CarryCapacity * 0.8;
         // Only worth the walk when something in the pack is loot that fits.
-        var unload = loaded && unit.Pack.Any(id => sim.Data.Items[id].Kind is ItemKind.Material or ItemKind.Blueprint && sim.Data.Items[id].Weight <= room + 1e-9);
+        var unload = loaded && unit.Pack.Any(id => sim.Data.Items[id].Kind is ItemKind.Material or ItemKind.Schematic && sim.Data.Items[id].Weight <= room + 1e-9);
         var leaving = Leaving(sim, unit, hostiles, allies, fightLinked, tech, unload);
         if (leaving && (map.IsExit(unit.Pos) || ParkedVehicles.Beside(state, unit) is not null)) return new Extract(playerId, unit.Id);
 
@@ -370,7 +370,7 @@ public static class PartyBot
     /// <summary>Rough value per kilo so packs fill with the good stuff first.</summary>
     private static double Value(ItemDef item) => item.Kind switch
     {
-        ItemKind.Blueprint => 100,
+        ItemKind.Schematic => 100,
         ItemKind.Prosthetic or ItemKind.Weapon or ItemKind.Armor or ItemKind.Clothing or ItemKind.Tool => 20,
         ItemKind.Consumable => 15,
         _ => item.Salvage is { } s ? 10 * s.Amount / Math.Max(item.Weight, 0.1) / 3 : 1,

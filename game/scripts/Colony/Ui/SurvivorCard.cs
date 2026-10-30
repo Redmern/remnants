@@ -137,12 +137,16 @@ public partial class SurvivorCard : PanelContainer
         if (s.Away) badges.Add(("job_away", Palette.TextMuted, "Away on an expedition"));
         if (s.StarvingTicks > 0) badges.Add(("stat_starving", Palette.Danger, "Starving"));
         if (sim.ClassOf(s) is { } study) badges.Add(("ui_study", Palette.Amber, study.StudentId == s.Id ? "In class (studying)" : "Teaching a class"));
+        if (Remnants.Core.Schematics.Research.IsResearching(sim.State, s.Id)) badges.Add(("ui_research", Palette.Amber, "Researching at the Town Hall"));
         if (sim.IsAsleep(s)) badges.Add(("stat_sleep", Palette.Night, "Asleep"));
         else if (sim.OnShift(s) && !Schedule.IsDayShiftHour(s, sim.Hour, rules.DayNight)
                  && s.AssignedBuildingId is { } at && sim.State.FindBuilding(at) is { } shift)
             badges.Add(("ui_night_shift", Palette.Night, $"On the night shift at {sim.Data.Buildings[shift.DefId].Name}: losing sleep"));
         if (sim.IsTired(s))
             badges.Add(("stat_tired", Palette.Warn, $"Tired: missed sleep ({s.SleepDebt:0} h to make up). −{(int)Math.Round((1 - rules.DayNight.Tired.OutputMultiplier) * 100)}% output and a slow mood drain until they sleep."));
+        foreach (var (buff, active) in FoodEffects.Active(s, sim.Data).OrderBy(x => x.Def.Debuff).ThenBy(x => x.Def.Id))
+            badges.Add((FoodText.BuffIcon(buff.Id), buff.Debuff ? (buff.Id == "sick" ? Palette.Danger : Palette.Warn) : Palette.Good,
+                FoodText.BuffTip(buff) + (active.Until - sim.State.Tick > 1 ? $"\n{ColonyText.Duration((int)(active.Until - sim.State.Tick), rules)} left" : "")));
         if (s.PerkPoints > 0)
             badges.Add(("stat_perk", Palette.Amber, $"{s.PerkPoints} perk point{(s.PerkPoints == 1 ? "" : "s")} to spend: open Perks"));
         var left = Math.Max(0, rules.Housing.HomelessGraceTicks - s.HomelessTicks);
@@ -175,6 +179,7 @@ public partial class SurvivorCard : PanelContainer
         if (s.IsInfant) return Icons.Get("job_baby", 14);
         if (s.PatientAtBuildingId is not null) return Icons.Get("job_patient", 14);
         if (sim.ClassOf(s) is not null) return Icons.Get("ui_study", 14);
+        if (Remnants.Core.Schematics.Research.IsResearching(sim.State, s.Id)) return Icons.Get("ui_research", 14);
         if (s.AssignedBuildingId is { } id && sim.State.FindBuilding(id) is { } b && sim.Data.Buildings[b.DefId].Job is { } job)
             return Icons.Get($"skill_{job}", 14, $"job_{job}", "skill_crafting");
         return Icons.Get("job_idle", 14);
