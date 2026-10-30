@@ -78,6 +78,10 @@ with an engine, and the third level of the production buildings.
 
 Tier says where it is normally found: **1** = Home Valley (Outskirts, Scrapyard Flats), **2** = Ashgrove (Suburb
 Ruins, Flooded Mall), **3** = Iron Corridor (Rail Depot, Network Relay), **4** = The Black Grid (Core Spire).
+This "find tier" is not the same as an item's own tier. Vehicles use six tiers of their own (T0 Handcart, T1 Bicycle
+Cart, T2 Motorbike, T3 Buggy, T4 Truck, T5 Armored Rig), shown in the Unlocks column. Their find tiers are 1, 2, 2, 3
+and 4 (the handcart is default), so the Buggy is a late-Ashgrove find, the Truck an Iron Corridor one, and the Armored
+Rig comes only from the Black Grid. Prosthetic tiers (T0–T4) work the same way.
 
 Source codes:
 
