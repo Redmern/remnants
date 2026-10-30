@@ -73,6 +73,7 @@ public static class ZoneTrial
             var stats = VehicleRules.Stats(data, tier, Array.Empty<string>());
             field = new FieldVehicle(tier.Id, tier.Name, tier.Tier, stats.MaxCondition, stats.MaxCondition, stats.Armor, stats.CargoKg, stats.Armored, stats.Seats);
             conditions = (conditions ?? new ZoneConditions()) with { HuskMultiplier = 1 + stats.Noise };
+            if (stats.Seats is { } seats && partySize > seats) partySize = seats;
         }
         int stashed = 0, wrecked = 0;
         int hacked = 0, hackFailed = 0, flights = 0, dronesLost = 0, marks = 0, fromDevices = 0;
