@@ -4,11 +4,11 @@
   "stashApCost": 1,
   "nodes": [
     { "id": "rubble", "name": "Rubble", "table": "salvage_rubble", "model": "rubble", "terrain": "Rubble",
-      "work": 2, "lots": [1, 2], "apCost": 2, "noise": 3, "skill": "Mining", "tools": { "pickaxe": 1, "crowbar": 1 } },
+      "work": 2, "lots": [2, 3], "apCost": 2, "noise": 3, "skill": "Mining", "tools": { "pickaxe": 1, "crowbar": 1 } },
     { "id": "dead_tree", "name": "Dead Tree", "table": "salvage_tree", "model": "dead_tree", "terrain": "Floor",
       "work": 2, "lots": [2, 3], "apCost": 2, "noise": 3, "skill": "Woodcutting", "tools": { "hand_saw": 1, "machete": 1 } },
     { "id": "furniture", "name": "Broken Furniture", "table": "salvage_furniture", "model": "ruins_house_shelf", "terrain": "Floor",
-      "work": 1, "lots": [1, 2], "apCost": 2, "noise": 2, "skill": "Woodcutting", "tools": { "hand_saw": 1, "crowbar": 1 } },
+      "work": 1, "lots": [2, 2], "apCost": 2, "noise": 2, "skill": "Woodcutting", "tools": { "hand_saw": 1, "crowbar": 1 } },
     { "id": "bedding", "name": "Old Bedding", "table": "salvage_bedding", "model": "ruins_house_bed", "terrain": "Floor",
       "work": 1, "lots": [1, 1], "apCost": 1, "noise": 1, "skill": "Tailoring" },
     { "id": "wrecked_car", "name": "Wrecked Car", "table": "salvage_car", "model": "wrecked_car", "terrain": "Cover",

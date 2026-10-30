@@ -8,7 +8,7 @@ namespace Remnants.Playtest;
 public sealed record RunStats(int Rounds, int Kills, int LinkedSeen, int LinkedKills, int ItemsLooted, int Reinforcements,
     int AmbushedTimes = 0, int OverwatchShots = 0, int DefensesUsed = 0,
     int Hacked = 0, int HackFailed = 0, int Overrides = 0, int DroneFlights = 0, int DronesLost = 0, int Marks = 0, int FromDevices = 0,
-    int LimbLocks = 0);
+    int LimbLocks = 0, int Salvaged = 0, int PilesLooted = 0);
 
 /// <summary>
 /// Plays the colony's party in a scavenge run through Core commands only, roughly like a careful player:
@@ -22,9 +22,29 @@ public sealed record RunStats(int Rounds, int Kills, int LinkedSeen, int LinkedK
 /// about, and with Override a Linked next to it; it walks to devices worth hacking like to caches. With a scout drone it
 /// launches it when the coast is clear, flies it ahead toward the next goal once a turn, marks a Linked it sees (Spotter),
 /// and recalls it before the battery runs flat or when leaving.
+/// Loot: it takes everything that fits from a pile (Take all), the most valuable piece first when it is nearly full,
+/// and (unless <see cref="Salvage"/> is off) works salvage nodes it has seen when nothing hostile is in sight and it
+/// has room for a lot.
 /// </summary>
 public static class PartyBot
 {
+    /// <summary>Units pathing around other units until this round (they were boxed in).</summary>
+    private static readonly Dictionary<int, int> Detours = new();
+
+    /// <summary>Whether the bot salvages (<c>--no-salvage</c> turns it off, for before/after comparisons).</summary>
+    public static bool Salvage { get; set; } = true;
+
+    /// <summary>Room (kg) the bot wants free under <see cref="SalvageLoad"/> of its capacity before it starts on a salvage node.</summary>
+    private const double SalvageRoom = 5;
+
+    /// <summary>The share of carry capacity the bot salvages up to (heavier slows it down a lot: the encumbrance steps).</summary>
+    private const double SalvageLoad = 0.8;
+
+    /// <summary>Over this share of capacity the bot drops its least valuable weight (it can hardly walk).</summary>
+    private const double DropLoad = 0.85;
+
+    private static bool RoomToSalvage(UnitProfile profile) => profile.CarryCapacity * SalvageLoad - profile.Load >= SalvageRoom;
+
     private const int MaxCommands = 20000;
     private const int MaxRounds = 40;
 
@@ -46,6 +66,7 @@ public static class PartyBot
     public static (List<ExtractionResult> Results, RunStats Stats) PlayAll(ScavengeSim sim, IReadOnlyList<int> playerIds, Action<string>? trace = null,
         bool recruit = true, bool defenses = true, bool fightLinked = false, bool tech = true)
     {
+        Detours.Clear();
         ScavengeEvent? last = null;
         void Flush()
         {
@@ -65,6 +86,7 @@ public static class PartyBot
         var stalls = new Dictionary<int, int>();
         var acted = new HashSet<int>();
         var looted = 0;
+        var salvaged = 0;
         for (var i = 0; i < MaxCommands && playerIds.Any(id => !(state.FindParty(id)?.Done ?? true)) && !state.Finished; i++)
         {
             if (state.CurrentUnit is not { PlayerId: { } playerId } unit || !playerIds.Contains(playerId) || !unit.PlayerControlled || state.Round > StallRounds) break;
@@ -78,8 +100,13 @@ public static class PartyBot
             if (ends) acted.Remove(unit.Id);
             else acted.Add(unit.Id);
             var result = sim.Execute(command);
-            if (result.Ok && command is PickUp) looted++;
-            if (!result.Ok && command is not EndTurn) sim.Execute(new EndTurn(playerId, unit.Id));
+            if (result.Ok && command is PickUp or TakeAll) looted++;
+            if (result.Ok && command is Salvage) salvaged++;
+            if (!result.Ok && command is not EndTurn)
+            {
+                trace?.Invoke($"bot: {command} failed: {result.Message}");
+                sim.Execute(new EndTurn(playerId, unit.Id));
+            }
             Flush();
         }
 
@@ -102,7 +129,7 @@ public static class PartyBot
             state.Events.Count(e => e.Type == ScavengeEventType.DroneFlown && e.UnitId is { } d && state.FindUnit(d)?.PlayerId is { } p && playerIds.Contains(p)),
             dronesLost,
             state.Events.Count(e => e.Type == ScavengeEventType.Marked && e.UnitId is { } m && state.FindUnit(m)?.PlayerId is { } p && playerIds.Contains(p)),
-            fromDevices, Count(ScavengeEventType.LimbLocked)));
+            fromDevices, Count(ScavengeEventType.LimbLocked), salvaged, Count(ScavengeEventType.PickedUp)));
     }
 
     private static bool IsLinked(ScavengeSim sim, Unit u) =>
@@ -214,6 +241,12 @@ public static class PartyBot
                 return new SetStance(playerId, unit.Id, Stance.Brace);
         }
 
+        // 2c. Too heavy to walk: drop the carried material worth least per kilo.
+        if (profile.Load > profile.CarryCapacity * DropLoad
+            && unit.Pack.Where(id => sim.Data.Items[id].Kind == ItemKind.Material && sim.Data.Items[id].Weight > 0)
+                .OrderBy(id => Value(sim.Data.Items[id])).ThenByDescending(id => sim.Data.Items[id].Weight).FirstOrDefault() is { } heavy)
+            return new DropItem(playerId, unit.Id, heavy);
+
         // 3. Decide where to go: out when hurt, loaded, late or out of caches; else the nearest cache.
         // A Linked in sight is beyond a starting party: break off and head out.
         var leaving = Leaving(sim, unit, hostiles, allies, fightLinked, tech);
@@ -227,13 +260,20 @@ public static class PartyBot
 
         if (!leaving)
         {
-            var cache = state.Caches.Where(c => c.Pos.Chebyshev(unit.Pos) <= 1).FirstOrDefault();
+            var cache = state.Caches.Where(c => c.Pos.Chebyshev(unit.Pos) <= 1 && Carriable(sim, profile, c)).FirstOrDefault();
             if (cache is not null && unit.Ap >= sim.Data.Rules.Turn.PickUpApCost)
             {
-                var item = cache.Items.Where(id => profile.Load + sim.Data.Items[id].Weight <= profile.CarryCapacity + 1e-9)
+                // Room for all of it: take it all for one pick-up; else the most valuable piece that fits.
+                if (Fits(profile, cache.Items.Sum(id => sim.Data.Items[id].Weight)))
+                    return new TakeAll(playerId, unit.Id, cache.Id);
+                var item = cache.Items.Where(id => Fits(profile, sim.Data.Items[id].Weight))
                     .OrderByDescending(id => Value(sim.Data.Items[id])).FirstOrDefault();
                 if (item is not null) return new PickUp(playerId, unit.Id, cache.Id, item);
             }
+            if (Salvage && hostiles.Count == 0 && RoomToSalvage(profile)
+                && state.SalvageNodes.FirstOrDefault(n => !n.Depleted && n.Pos.Chebyshev(unit.Pos) <= 1
+                                                          && sim.Data.Salvage.Node(n.Kind) is { } d && d.ApCost <= unit.Ap) is { } node)
+                return new Salvage(playerId, unit.Id, node.Id);
         }
 
         // Goals in order (close in on a visible enemy, a stranger to recruit, the nearest cache we can still carry from,
@@ -243,19 +283,32 @@ public static class PartyBot
         {
             goals.AddRange(hostiles.OrderBy(h => h.Pos.Chebyshev(unit.Pos)).Select(h => h.Pos));
             goals.AddRange(strangers.OrderBy(n => n.Pos.Chebyshev(unit.Pos)).Select(n => n.Pos));
-            goals.AddRange(state.Caches.Where(c => c.Items.Any(id => profile.Load + sim.Data.Items[id].Weight <= profile.CarryCapacity + 1e-9))
+            goals.AddRange(state.Caches.Where(c => Carriable(sim, profile, c))
                 .OrderBy(c => c.Pos.Chebyshev(unit.Pos)).Select(c => c.Pos));
+            if (Salvage && hostiles.Count == 0 && RoomToSalvage(profile))
+                goals.AddRange(KnownNodes(sim, unit).OrderBy(n => n.Pos.Chebyshev(unit.Pos)).Select(n => n.Pos));
             if (tech)
                 goals.AddRange(Hackable(sim, unit, linkedAbout).Where(d => d.Kind is DeviceKind.Locker or DeviceKind.Terminal
                                                                            && state.Explored.GetValueOrDefault(unit.Side)?.Contains(map.Index(d.Pos)) == true)
                     .OrderBy(d => d.Pos.Chebyshev(unit.Pos)).Select(d => d.Pos));
         }
-        goals.AddRange(map.Exits.OrderBy(e => e.Chebyshev(unit.Pos)));
+        // The nearest exits always stay in the running, however many places are left to loot.
+        goals = goals.Take(5).Concat(map.Exits.OrderBy(e => e.Chebyshev(unit.Pos)).Take(3)).ToList();
 
         var reachable = sim.Reachable(unit).Where(kv => kv.Value <= unit.Ap).ToList();
-        foreach (var goal in goals.Take(6))
+        // Boxed in (often by our own follower in a doorway): for a few rounds, path around the units in the way.
+        if (stalled >= 2) Detours[unit.Id] = state.Round + 3;
+        var detour = Detours.GetValueOrDefault(unit.Id) >= state.Round;
+        foreach (var goal in goals)
         {
             var field = Movement.DistanceField(state, unit, profile.Movement, goal);
+            if (detour)
+            {
+                var around = new TileMap(map.Width, map.Height) { Tiles = map.Tiles.ToList(), Exits = map.Exits };
+                foreach (var p in field.Keys.Where(p => p != goal && state.UnitAt(p) is { } o && o.Id != unit.Id)) around[p] = Terrain.Wall;
+                foreach (var p in map.AllPositions.Where(p => !field.ContainsKey(p) && p != goal)) around[p] = Terrain.Wall;
+                if (Movement.DistanceField(around, profile.Movement, goal) is var clear && clear.ContainsKey(unit.Pos)) field = clear;
+            }
             if (!field.TryGetValue(unit.Pos, out var here)) continue;
             // Among equally good steps, one next to an ally (backs covered against ambushes).
             bool Covered(Pos p) => defenses && allies.Any(x => x.Id != unit.Id && x.IsActive && x.Pos.Chebyshev(p) <= 1);
@@ -264,7 +317,7 @@ public static class PartyBot
                 .OrderBy(kv => field[kv.Key]).ThenBy(kv => Covered(kv.Key) ? 0 : 1).ThenBy(kv => kv.Value).ThenBy(kv => map.Index(kv.Key))
                 .Select(kv => (Pos?)kv.Key).FirstOrDefault();
             if (step is { } to) return new Move(playerId, unit.Id, to);
-            // Boxed in (often by our own follower) for a couple of turns: sidestep to the best free tile.
+            // Boxed in for a couple of turns: sidestep to the best free tile.
             if (stalled >= 2 && reachable.Where(kv => field.ContainsKey(kv.Key)).OrderBy(kv => field[kv.Key]).ThenBy(kv => map.Index(kv.Key))
                     .Select(kv => (Pos?)kv.Key).FirstOrDefault() is { } aside)
                 return new Move(playerId, unit.Id, aside);
@@ -285,7 +338,23 @@ public static class PartyBot
                || profile.Load >= profile.CarryCapacity * 0.8
                || state.Round >= MaxRounds
                || allies.Any(a => a.Status == UnitStatus.Downed)
-               || (state.Caches.Count == 0 && !(tech && Hackable(sim, unit, false).Any(d => d.Kind is DeviceKind.Locker or DeviceKind.Terminal)));
+               || (!state.Caches.Any(c => Carriable(sim, profile, c))
+                   && !(Salvage && RoomToSalvage(profile) && KnownNodes(sim, unit).Any())
+                   && !(tech && Hackable(sim, unit, false).Any(d => d.Kind is DeviceKind.Locker or DeviceKind.Terminal)));
+    }
+
+    /// <summary>A pile with something in it the unit can still carry.</summary>
+    private static bool Carriable(ScavengeSim sim, UnitProfile profile, LootCache c) =>
+        c.Items.Any(id => Fits(profile, sim.Data.Items[id].Weight));
+
+    /// <summary>Whether the bot would still walk well carrying this much more (it never loads itself past <see cref="DropLoad"/>).</summary>
+    private static bool Fits(UnitProfile profile, double kg) => profile.Load + kg <= profile.CarryCapacity * DropLoad + 1e-9;
+
+    /// <summary>Salvage nodes with lots left on tiles the unit's side has seen.</summary>
+    private static IEnumerable<SalvageNode> KnownNodes(ScavengeSim sim, Unit unit)
+    {
+        var explored = sim.State.Explored.GetValueOrDefault(unit.Side);
+        return sim.State.SalvageNodes.Where(n => !n.Depleted && explored?.Contains(sim.State.Map.Index(n.Pos)) == true);
     }
 
     /// <summary>

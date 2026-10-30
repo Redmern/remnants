@@ -87,6 +87,8 @@ public static class ZoneTrial
         int partyRuns = 0, partyWipes = 0, partyDeathRuns = 0;
         int ambushed = 0, reactions = 0, defended = 0;
         int deaths = 0, runsWithDeath = 0, wipes = 0, injuredRuns = 0, limbs = 0, items = 0, schematics = 0, linkedSeen = 0, runsWithLinked = 0, kills = 0, rounds = 0, stuck = 0;
+        int salvaged = 0, piles = 0;
+        var resources = new SortedDictionary<string, double>(StringComparer.Ordinal);
         var injuries = 0;
         var deadWithLinked = 0;
         var linkedKills = 0;
@@ -161,7 +163,7 @@ public static class ZoneTrial
                 if (r.Returned.Count == 0) partyWipes++;
                 if (r.Deaths.Count > 0) partyDeathRuns++;
             }
-            if (!result.Complete) { stuck++; trace?.Invoke($"seed {seed} stalled"); Console.Error.WriteLine($"{zoneId} seed {seed} stalled at round {stats.Rounds}: " + string.Join(", ", sim.State.Units.Where(u => u.PlayerId == ColonySim.ExpeditionPlayerId).Select(u => $"{u.Name} {u.Kind} {u.Status} at {u.Pos} following {u.FollowingId}")));
+            if (!result.Complete) { stuck++; trace?.Invoke($"seed {seed} stalled"); Console.Error.WriteLine($"{zoneId} seed {seed} stalled at round {stats.Rounds}: " + string.Join(", ", sim.State.Units.Where(u => u.PlayerId == ColonySim.ExpeditionPlayerId).Select(u => $"{u.Name} {u.Kind} {u.Status} at {u.Pos} following {u.FollowingId} load {sim.Profile(u).Load:0.#}/{sim.Profile(u).CarryCapacity:0.#} ap {sim.Profile(u).MaxAp} [{string.Join(",", u.Pack)}]")));
                 Console.Error.WriteLine(Picture(sim));
                 continue; }
             deaths += result.Deaths.Count;
@@ -173,6 +175,10 @@ public static class ZoneTrial
             if (hurt > 0) injuredRuns++;
             limbs += result.Returned.Sum(r => r.Survivor.Body.Parts.Values.Count(p => p.Condition == Remnants.Core.Survivors.PartCondition.Missing));
             items += result.Loot.Values.Sum();
+            foreach (var (id, count) in result.Loot)
+                if (scavenge.Items[id].Salvage is { } s) resources[s.Resource] = resources.GetValueOrDefault(s.Resource) + s.Amount * count;
+            salvaged += stats.Salvaged;
+            piles += stats.PilesLooted;
             schematics += result.Loot.Where(kv => scavenge.Items[kv.Key].Schematic is not null).Sum(kv => kv.Value);
             linkedSeen += stats.LinkedSeen;
             if (stats.LinkedSeen > 0)
@@ -200,6 +206,7 @@ public static class ZoneTrial
         sb.AppendLine($"  runs with a death {100.0 * runsWithDeath / n:0}%  wipes {100.0 * wipes / n:0}%  deaths/run {deaths / (double)n:0.00}");
         sb.AppendLine($"  runs with new injuries {100.0 * injuredRuns / n:0}%  injuries/run {injuries / (double)n:0.0}  limbs lost/run {limbs / (double)n:0.00}");
         sb.AppendLine($"  items/run {items / (double)n:0.0}  schematics/run {schematics / (double)n:0.00}  kills/run {kills / (double)n:0.0}  Linked kills/run {linkedKills / (double)n:0.00}  rounds/run {rounds / (double)n:0}");
+        sb.AppendLine($"  carried home/run: {string.Join("  ", resources.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => $"{kv.Key} {kv.Value / (double)n:0.0}"))}  pick-ups/run {piles / (double)n:0.0}  salvage actions/run {salvaged / (double)n:0.0}");
         sb.AppendLine($"  ambushed/run {ambushed / (double)n:0.00}  overwatch shots/run {reactions / (double)n:0.00}  defenses used/run {defended / (double)n:0.0}");
         var otherRuns = n - runsWithLinked;
         sb.AppendLine($"  runs seeing Linked {100.0 * runsWithLinked / n:0}%  Linked seen/run {linkedSeen / (double)n:0.00}" +
