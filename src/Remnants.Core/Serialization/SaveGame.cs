@@ -18,10 +18,13 @@ namespace Remnants.Core.Serialization;
 /// Version 5 adds the world map: per-zone intel and depletion (<see cref="ColonyState.Zones"/>) and the expedition's
 /// road (travel, arrival, the result carried home). Older saves start with every zone as data says and an expedition
 /// already in its zone; an older scavenge run in progress loads as scavenge save version 1.
+/// Version 6 carries the scavenge run's fog of war (stances, lookout, contacts, reveals, flares, motion sensors; see
+/// <see cref="ScavengeSave"/> version 3). A version 5 run in progress loads with none of it: nobody in a stance, nothing
+/// placed, no contacts.
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 5;
+    public const int Version = 6;
     private const int OldestVersion = 1;
 
     /// <summary>What a pre-version-4 generic "blueprint" item becomes.</summary>

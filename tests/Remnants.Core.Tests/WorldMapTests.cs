@@ -154,6 +154,27 @@ public class WorldMapTests
     }
 
     [Fact]
+    public void Version_5_saves_resume_a_scavenge_run_without_fog_state()
+    {
+        var sim = Colony();
+        var a = sim.AddSurvivor();
+        Assert.True(sim.Execute(new LaunchExpedition("outskirts", [LoopTestData.Member(a)])).Ok);
+        sim.OpenExpeditionScavenge();
+        var node = System.Text.Json.Nodes.JsonNode.Parse(SaveGame.Save(sim.State))!;
+        node["version"] = 5;
+        var run = node["colony"]!["expedition"]!["scavenge"]!.AsObject();
+        foreach (var key in new[] { "contacts", "reveals", "flares", "sensors", "nextSensorId" }) run.Remove(key);
+        foreach (var unit in run["units"]!.AsArray())
+            foreach (var key in new[] { "stance", "reactions", "lookout" }) unit!.AsObject().Remove(key);
+
+        var loaded = SaveGame.Load(sim.Data, node.ToJsonString(), ScavengeTestData.Real);
+        var scavenge = loaded.OpenExpeditionScavenge();
+        Assert.Empty(scavenge.State.Contacts);
+        Assert.All(scavenge.State.Units, u => Assert.Equal(Remnants.Core.Scavenge.Stance.None, u.Stance));
+        Assert.Equal(6, SaveGame.Version);
+    }
+
+    [Fact]
     public void Saves_with_unknown_zone_status_are_rejected()
     {
         var sim = Colony();
