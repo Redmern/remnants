@@ -24,6 +24,9 @@ public sealed record GearModsDef
     /// <summary>Zone id → biome, for camo patterns.</summary>
     public Dictionary<string, string> ZoneBiomes { get; init; } = new();
 
+    /// <summary>Bane tags added per enemy id, merged into enemies.json's.</summary>
+    public Dictionary<string, List<string>> EnemyTags { get; init; } = new();
+
     /// <summary>Extra kill drops per enemy id, merged into enemies.json's.</summary>
     public Dictionary<string, List<EnemyDropDef>> Drops { get; init; } = new();
 

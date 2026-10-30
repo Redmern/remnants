@@ -63,7 +63,8 @@ public sealed class ScavengeData
             var have = defined.Select(i => i.Id).ToHashSet();
             defined.AddRange(mods.ExtraItems().Where(i => !have.Contains(i.Id)));
             enemies = enemies.Select(e => mods.Def.Drops.TryGetValue(e.Id, out var extra) && !e.Drops.Contains(extra[0])
-                ? e with { Drops = e.Drops.Concat(extra).ToList() } : e);
+                ? e with { Drops = e.Drops.Concat(extra).ToList() } : e)
+                .Select(e => mods.Def.EnemyTags.TryGetValue(e.Id, out var tags) ? e with { Tags = e.Tags.Union(tags).ToList() } : e);
         }
         // Variants are always derived (so data built from another ScavengeData's items gets them fresh).
         var index = Index(WithQualityVariants(defined, rules.Quality), i => i.Id, "item");

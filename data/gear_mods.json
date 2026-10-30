@@ -199,6 +199,13 @@
     "core_spire": "urban"
   },
 
+  // Bane tags added to enemies (merged into enemies.json tags): incendiary rounds burn Husks, EMP and shock hit machines.
+  "enemyTags": {
+    "husk": ["husk"],
+    "husk_crawler": ["husk"],
+    "turret": ["device"]
+  },
+
   // Extra kill drops (merged into enemies.json drops): gear schematics the Linked carry. Terminals and caches roll the
   // catalogue (schematics.gearmods.json sources).
   "drops": {

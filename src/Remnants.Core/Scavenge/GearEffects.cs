@@ -96,7 +96,7 @@ public static class GearEffects
     /// An EMP shot's feedback: each Network-grade part of the attacker's side within 1 tile (the attacker's own included)
     /// locks up this round with the action's chance, less its wearer's weave. Rolled by unit id, then part.
     /// </summary>
-    internal static void Feedback(ScavengeSim sim, Unit attacker, ActionProfile action)
+    public static void Feedback(ScavengeSim sim, Unit attacker, ActionProfile action)
     {
         if (action.NetworkFeedback <= 0) return;
         foreach (var unit in sim.State.Units.Where(u => u.IsActive && u.Side == attacker.Side && u.Pos.Chebyshev(attacker.Pos) <= 1).OrderBy(u => u.Id))

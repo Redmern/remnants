@@ -35,6 +35,6 @@
     {"id": "sch_kit_carbine_mk2", "name": "Carbine Mk II", "tier": 3, "encrypted": true, "unlocks": [{"kind": "Recipe", "id": "kit_carbine_mk2"}], "sources": ["Loot", "Terminal", "Kill", "Research"], "description": "A Network rebuild of the Linked carbine."},
     {"id": "sch_kit_carbine_mk3", "name": "Carbine Mk III", "tier": 3, "encrypted": true, "unlocks": [{"kind": "Recipe", "id": "kit_carbine_mk3"}], "sources": ["Loot", "Kill", "Research"], "description": "The Wardens' own carbine spec."},
     {"id": "sch_kit_plating_mk2", "name": "Plating Mk II", "tier": 3, "encrypted": true, "unlocks": [{"kind": "Recipe", "id": "kit_plating_mk2"}], "sources": ["Loot", "Kill", "Research"], "description": "Linked plating, layered."},
-    {"id": "sch_kit_plating_mk3", "name": "Plating Mk III", "tier": 3, "encrypted": true, "unlocks": [{"kind": "Recipe", "id": "kit_plating_mk3"}], "sources": ["Loot", "Kill", "Research"], "description": "Linked plating as the Wardens wear it."}
+    {"id": "sch_kit_plating_mk3", "name": "Plating Mk III", "tier": 3, "encrypted": true, "unlocks": [{"kind": "Recipe", "id": "kit_plating_mk3"}], "sources": ["Loot", "Research"], "description": "Linked plating as the Wardens wear it."}
   ]
 }
