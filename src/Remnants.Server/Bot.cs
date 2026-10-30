@@ -35,6 +35,7 @@ internal static class Bot
         var inbox = Channel.CreateUnbounded<Action>();
         var client = new NetClient(transport, data, work => inbox.Writer.TryWrite(work));
         client.Noticed += text => Program.Print($"{name}: {text}");
+        if (a.Flag("--trade")) BotTrade.Attach(client, name, BotTrade.ParseGoods(a.Value("--trade-offer") ?? "scrap:20,bandage", game, data));
         transport.Start();
 
         var survivors = NewGame.Create(game, (ulong)name.Sum(c => c)).State.Survivors.Where(s => !s.IsChild).Take(2).ToList();

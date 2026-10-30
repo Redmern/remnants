@@ -40,7 +40,7 @@ Every field that is set must hold:
 | kind | does |
 |---|---|
 | `SetFlag` / `AddFlag` | campaign flag `id` = / += `value` |
-| `Schematic` | grants schematic `id` through `ISchematicGrants`. A duplicate gives Research Data. |
+| `Schematic` | grants schematic `id` (`Schematics.Grant`, source Story; the id must be in `data/schematics.json`). A duplicate gives its Research Data value. |
 | `Item` | `value` × item `id` into the inventory. A negative value takes items away. |
 | `Resource` | `value` of resource `id` into the stockpile |
 | `ResearchData` | `value` Research Data |

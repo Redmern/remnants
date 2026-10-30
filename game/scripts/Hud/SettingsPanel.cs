@@ -68,6 +68,12 @@ public partial class SettingsPanel : Overlay
         var vsync = new CheckBox { Text = "Vertical sync", ButtonPressed = GameSettings.Vsync, FocusMode = FocusModeEnum.None };
         vsync.Toggled += on => { GameSettings.Vsync = on; GameSettings.Apply(); };
         box.AddChild(vsync);
+
+        var weather = new OptionButton { FocusMode = FocusModeEnum.None };
+        foreach (var w in new[] { "Full", "Reduced (no flashes)", "Off" }) weather.AddItem(w);
+        weather.Select((int)GameSettings.WeatherEffects);
+        weather.ItemSelected += i => GameSettings.WeatherEffects = (WeatherEffects)(int)i;
+        box.AddChild(Row("Weather effects", weather, "Rain, dust and lightning on screen. Reduced draws less and never flashes; the weather's effects on play stay the same."));
         return Scroll(box);
     }
 

@@ -2,23 +2,21 @@ using System.Text.Json;
 using Remnants.Core.Colony;
 using Remnants.Core.Data;
 using Remnants.Core.Scavenge;
+using Remnants.Core.Schematics;
 using Remnants.Core.Serialization;
 
 namespace Remnants.Core.Raids;
 
 /// <summary>
-/// The raid model and defense catalogue (data/raids.json) plus the defense schematics (data/schematics.defense.json),
-/// indexed and checked against the colony data. Immutable after load. A <see cref="ColonySim"/> without it has no raids.
+/// The raid model and defense catalogue (data/raids.json), indexed and checked against the colony data (and the defense
+/// schematics in the schematics catalogue). Immutable after load. A <see cref="ColonySim"/> without it has no raids.
 /// </summary>
 public sealed class RaidData
 {
     public RaidsDef Def { get; }
     public IReadOnlyDictionary<string, DefenseDef> Defenses { get; }
 
-    /// <summary>The defense schematics, in file order (see <see cref="DefenseSchematics"/>).</summary>
-    public IReadOnlyList<DefenseSchematicDef> Schematics { get; }
-
-    public RaidData(RaidsDef def, IEnumerable<DefenseSchematicDef>? schematics = null)
+    public RaidData(RaidsDef def)
     {
         Def = def;
         var defenses = new Dictionary<string, DefenseDef>(StringComparer.Ordinal);
@@ -28,7 +26,6 @@ public sealed class RaidData
             if (!defenses.TryAdd(d.Id, d)) throw new GameDataException($"raids.json: duplicate defense id '{d.Id}'.");
         }
         Defenses = defenses;
-        Schematics = (schematics ?? []).ToList();
     }
 
     public DefenseDef Defense(string id) => Defenses[id];
@@ -49,7 +46,7 @@ public sealed class RaidData
         foreach (var (kind, t) in Def.Threats)
         {
             if (t.MinSize < 1 || t.MaxSize < t.MinSize) throw new GameDataException($"raids.json threat {kind}: sizes must be 1 ≤ min ≤ max.");
-            foreach (var r in t.SpoilResources)
+            foreach (var r in t.SpoilResources.Where(r => r is not (CropDamage.Crops or CropDamage.Food)))
                 if (!data.Resources.ContainsKey(r)) throw new GameDataException($"raids.json threat {kind}: unknown resource '{r}'.");
             if (scavenge is null) continue;
             foreach (var e in t.Enemies)
@@ -81,46 +78,31 @@ public sealed class RaidData
         foreach (var w in new[] { hours.DaySleepHours })
             if (w.Length != 2 || w.Any(h => h < 0 || h >= data.Rules.TicksPerDay))
                 throw new GameDataException("raids.json guard: hour windows are [start, end) within the day.");
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var s in Schematics)
-        {
-            if (!seen.Add(s.Id)) throw new GameDataException($"schematics.defense.json: duplicate schematic '{s.Id}'.");
-            if (s.Unlocks.Count == 0) throw new GameDataException($"schematics.defense.json '{s.Id}': unlocks nothing.");
-            foreach (var u in s.Unlocks)
-                if (u.Kind != DefenseSchematics.UnlockKind || !Defenses.ContainsKey(u.Id))
-                    throw new GameDataException($"schematics.defense.json '{s.Id}': unknown unlock {u.Kind} '{u.Id}'.");
-            if (!s.Default && s.Sources.All(src => src == "Story"))
-                throw new GameDataException($"schematics.defense.json '{s.Id}': needs a source besides Story.");
-        }
-        foreach (var d in Defenses.Values)
-            if (!Schematics.Any(s => s.Unlocks.Any(u => u.Id == d.Id)))
-                throw new GameDataException($"raids.json defense '{d.Id}': no schematic unlocks it.");
+        foreach (var s in data.Schematics.All.Values)
+            foreach (var u in s.Unlocks.Where(u => u.Kind == UnlockKind.Defense))
+                if (!Defenses.ContainsKey(u.Id)) throw new GameDataException($"Schematic '{s.Id}': unknown defense '{u.Id}'.");
     }
 }
 
-/// <summary>Reads data/raids.json and data/schematics.defense.json.</summary>
+/// <summary>Reads data/raids.json (its schematics, schematics.defense.json, load with the schematics catalogue).</summary>
 public static class RaidDataLoader
 {
     /// <summary>Null when raids.json is missing (no raids).</summary>
     public static RaidData? LoadFromDirectory(string directory)
     {
         var path = Path.Combine(directory, "raids.json");
-        if (!File.Exists(path)) return null;
-        var schematics = Path.Combine(directory, DefenseSchematics.FileName);
-        return LoadFromJson(File.ReadAllText(path), File.Exists(schematics) ? File.ReadAllText(schematics) : null);
+        return File.Exists(path) ? LoadFromJson(File.ReadAllText(path)) : null;
     }
 
-    public static RaidData LoadFromJson(string raids, string? schematics = null)
+    public static RaidData LoadFromJson(string raids)
     {
         try
         {
-            var def = JsonSerializer.Deserialize<RaidsDef>(raids, Json.Options) ?? throw new GameDataException("raids.json is empty.");
-            var sch = schematics is null ? null : JsonSerializer.Deserialize<DefenseSchematicFile>(schematics, Json.Options);
-            return new RaidData(def, sch?.Schematics);
+            return new RaidData(JsonSerializer.Deserialize<RaidsDef>(raids, Json.Options) ?? throw new GameDataException("raids.json is empty."));
         }
         catch (JsonException e)
         {
-            throw new GameDataException($"raids.json or {DefenseSchematics.FileName} is invalid: {e.Message}");
+            throw new GameDataException($"raids.json is invalid: {e.Message}");
         }
     }
 }

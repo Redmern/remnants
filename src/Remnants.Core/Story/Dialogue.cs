@@ -23,6 +23,7 @@ public static class Dialogue
         if (call is null) return CommandResult.Fail(CommandError.UnknownCall, $"No call {callId}.");
         if (sim.Story!.Dialogues.GetValueOrDefault(call.DialogueId) is not { } def) return CommandResult.Fail(CommandError.UnknownCall, $"Call {callId} has no dialogue.");
         call.Taken = true;
+        sim.State.Radio.Calls.RemoveAll(c => c.Tag == Campaign.CallTagPrefix + call.Id);
         Open(sim, def, call.Id);
         return CommandResult.Success($"Call from {Campaign.CallerName(sim, def)}.", call.Id);
     }

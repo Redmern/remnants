@@ -2,6 +2,7 @@ using Remnants.Core.Data;
 using Remnants.Core.Items;
 using Remnants.Core.Random;
 using Remnants.Core.Scavenge;
+using Remnants.Core.Schematics;
 using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Colony;
@@ -35,8 +36,24 @@ public sealed class ColonySim
         Scavenge = scavenge;
         if (scavenge is not null) ValidateLinks(data, scavenge);
         _rng = new DeterministicRng { State = state.RngState == 0 ? new DeterministicRng(0).State : state.RngState };
+        // Story calls ring on the Radio Mast; answering one there opens its dialogue.
+        RadioCallAnswered += call => global::Remnants.Core.Story.Campaign.Answered(this, call);
         SyncRng();
+        if (state.Weather.Seed == 0) state.Weather.Seed = Colony.Weather.SeedFrom(state.RngState);
     }
+
+    /// <summary>The colony learned a schematic (any source: field, decrypt, research, trade, story, migration).</summary>
+    public event Action<SchematicUnlocked>? SchematicUnlocked;
+
+    /// <summary>A call joined the Radio Mast's queue (<see cref="RadioMast.Enqueue"/>).</summary>
+    public event Action<RadioCall>? RadioCallReceived;
+
+    /// <summary>The player answered a call (<see cref="AnswerCall"/>); Story mode plays its dialogue from <see cref="RadioCall.Tag"/>.</summary>
+    public event Action<RadioCall>? RadioCallAnswered;
+
+    internal void RaiseSchematicUnlocked(SchematicUnlocked e) => SchematicUnlocked?.Invoke(e);
+    internal void RaiseRadioCallReceived(RadioCall call) => RadioCallReceived?.Invoke(call);
+    internal void RaiseRadioCallAnswered(RadioCall call) => RadioCallAnswered?.Invoke(call);
 
     /// <summary>Sim-owned randomness. Always draw through this so the state stays in the save.</summary>
     public DeterministicRng Rng => _rng;
@@ -61,20 +78,30 @@ public sealed class ColonySim
         }
     }
 
-    /// <summary>Days the raw food in the stockpile lasts at <see cref="FoodPerDay"/> (infinity when nobody eats).</summary>
-    public double FoodDays => FoodPerDay <= 0 ? double.PositiveInfinity : State.Stockpile.Get(Data.Rules.Food.ResourceId) / FoodPerDay;
+    /// <summary>Food value in the pantry that is fit to eat (see <see cref="Pantry.FoodValue(ColonySim)"/>).</summary>
+    public double FoodStock => Pantry.FoodValue(this);
+
+    /// <summary>Days the food in the pantry lasts at <see cref="FoodPerDay"/> (infinity when nobody eats).</summary>
+    public double FoodDays => FoodPerDay <= 0 ? double.PositiveInfinity : FoodStock / FoodPerDay;
 
     /// <summary>
     /// Units of its resource a gathering building's current workers make per tick (0 for buildings that produce none):
-    /// the sum of <see cref="JobOutput.PerTick"/> over them, as <c>ProductionSystem</c> adds it.
+    /// the sum of <see cref="JobOutput.PerTick"/> over them, as <c>ProductionSystem</c> adds it. For a farm, greenhouse or
+    /// hunting lodge: the food value its harvest brings in.
     /// </summary>
     public double OutputPerTick(Building building)
     {
         var def = Data.Buildings[building.DefId];
-        if (def.Job is null || def.Produces is null) return 0;
+        var factor = OutputFactor(building, def);
+        if (def.Job is null || factor <= 0) return 0;
         var job = Data.Jobs[def.Job];
-        return State.WorkersAt(building.Id).Sum(w => JobOutput.PerTick(def, building.Level, job, w, Data.Rules.Output, Data));
+        return State.WorkersAt(building.Id).Sum(w => JobOutput.PerTick(def, building.Level, job, w, Data.Rules.Output, Data)) * factor;
     }
+
+    private double OutputFactor(Building building, BuildingDef def) =>
+        def.Produces is not null ? 1
+        : Harvesting.Current(Data, building) is { } harvest ? Harvesting.FoodValuePerEffort(State, Data, building, harvest)
+        : 0;
 
     /// <summary>
     /// Units of its resource a gathering building's workers make per day on their schedule (day shift, plus the Night
@@ -84,10 +111,11 @@ public sealed class ColonySim
     public double OutputPerDay(Building building)
     {
         var def = Data.Buildings[building.DefId];
-        if (def.Job is null || def.Produces is null) return 0;
+        var factor = OutputFactor(building, def);
+        if (def.Job is null || factor <= 0) return 0;
         var job = Data.Jobs[def.Job];
         return State.WorkersAt(building.Id).Sum(w =>
-            JobOutput.PerTick(def, building.Level, job, w, Data.Rules.Output, Data) * Schedule.ShiftHoursPerDay(w, building, def, Data.Rules));
+            JobOutput.PerTick(def, building.Level, job, w, Data.Rules.Output, Data) * Schedule.ShiftHoursPerDay(w, building, def, Data.Rules)) * factor;
     }
 
     /// <summary>Hour of day now (0..ticksPerDay−1).</summary>
@@ -177,7 +205,7 @@ public sealed class ColonySim
     /// <summary>Recipe effort per tick from the building's current workers (while on shift).</summary>
     public double CraftEffortPerTick(Building building) => CraftingSystem.EffortPerTick(State, Data, building);
 
-    /// <summary>Whether this recipe can be queued now, and why not (level, blueprint, missing item data).</summary>
+    /// <summary>Whether this recipe can be queued now, and why not (level, schematic, missing item data).</summary>
     public CommandResult CanQueue(Building building, RecipeDef recipe) => CraftingHandlers.CheckRecipe(this, building, recipe);
 
     /// <summary>The closest skill its workers lack for a queued order (they practise meanwhile), or null.</summary>
@@ -189,6 +217,15 @@ public sealed class ColonySim
     /// <summary>Chance of each quality tier for a batch of this recipe with the building's current workers (empty for non-gear).</summary>
     public IReadOnlyList<(string Tier, double Chance)> QualityChances(Building building, RecipeDef recipe) =>
         CraftingSystem.QualityChances(State, Data, Scavenge, building, recipe);
+
+    /// <summary>Whether a consumer building is fed by the grid now (the hook other features read; see <see cref="Colony.Power"/>).</summary>
+    public bool IsPowered(Building building) => Colony.Power.IsPowered(State, building);
+
+    /// <summary>The grid's generators, banks and consumers with what each did last tick (empty without electronics data).</summary>
+    public List<PowerNode> PowerNodes() => Colony.Power.Nodes(State, Data);
+
+    /// <summary>Total battery capacity on the grid.</summary>
+    public double PowerStorageCapacity => Colony.Power.StorageCapacity(State, Data);
 
     /// <summary>The scavenge party for the active expedition, from the members' current colony state.</summary>
     /// <summary>The active expedition's phase now, or null when no party is out.</summary>
@@ -225,16 +262,31 @@ public sealed class ColonySim
         if (expedition.Scavenge is { } running) return new ScavengeSim(data, running);
         var mission = expedition.MissionId is { } missionId ? global::Remnants.Core.Story.Campaign.Setup(this, missionId) : null;
         var sim = NewScavenge.Create(data, expedition.ZoneId, expedition.Seed, [ExpeditionParty()],
-            new ZoneConditions(expedition.Depletion, MissionEnvironment(expedition.ArrivalTick)), mission);
+            new ZoneConditions(expedition.Depletion, MissionEnvironment(expedition.ArrivalTick, expedition.ZoneId), State.Schematics.Known), mission);
         expedition.Scavenge = sim.State;
         return sim;
     }
 
-    /// <summary>The field environment of a mission that starts at <paramref name="tick"/> (its hour and day phase).</summary>
-    public ScavengeEnvironment MissionEnvironment(long tick) =>
-        Data.Rules.DayNight.Enabled
+    /// <summary>
+    /// The field environment of a mission that starts at <paramref name="tick"/>: its hour and day phase, and with a zone
+    /// the weather over its region then, with the spells that follow within <see cref="FieldWeatherRules.LookaheadHours"/>
+    /// as changes during the run (<see cref="FieldWeatherRules.RoundsPerHour"/> rounds to the hour).
+    /// </summary>
+    public ScavengeEnvironment MissionEnvironment(long tick, string? zoneId = null)
+    {
+        var env = Data.Rules.DayNight.Enabled
             ? ScavengeEnvironment.At(DayNight.Hour(tick, Data.Rules), DayNight.PhaseAt(tick, Data.Rules))
             : ScavengeEnvironment.At(12, DayPhase.Day);
+        if (!Data.Weather.Enabled || zoneId is null || Scavenge?.Zones.GetValueOrDefault(zoneId) is not { } zone) return env;
+        var region = Colony.Weather.RegionOf(Data, zone);
+        var field = Data.Weather.Field;
+        var spells = Colony.Weather.SpellsBetween(State, Data, region, tick, tick + field.LookaheadHours);
+        env.Weather = spells[0].Kind;
+        env.Intensity = spells[0].Intensity;
+        env.Shifts = spells.Skip(1)
+            .Select(s => new WeatherShift(1 + (int)(s.Start - tick) * field.RoundsPerHour, s.Kind, s.Intensity)).ToList();
+        return env;
+    }
 
     /// <summary>
     /// When a party launched now would reach a zone, in which phase, and — when waiting for <paramref name="waitFor"/> — the
@@ -245,8 +297,11 @@ public sealed class ColonySim
     public ArrivalPlan PlanArrival(string zoneId, DayPhase? waitFor = null)
     {
         var scavenge = Scavenge ?? throw new InvalidOperationException("Scavenge data is not loaded.");
-        var arrival = State.Tick + WorldMap.TravelTicks(Data, scavenge.Zones[zoneId]);
-        if (!Data.Rules.DayNight.Enabled) return new ArrivalPlan(arrival, DayPhase.Day, 0, 0);
+        var zone = scavenge.Zones[zoneId];
+        var travel = WorldMap.Travel(this, zone, State.Tick);
+        var arrival = State.Tick + travel.Ticks;
+        var delay = travel.DelayTicks <= 0 ? 0 : Math.Ceiling(Data.Rules.Expedition.RationFoodPerMemberPerDay * travel.DelayTicks / Data.Rules.TicksPerDay);
+        if (!Data.Rules.DayNight.Enabled) return new ArrivalPlan(arrival, DayPhase.Day, 0, 0, travel, delay);
         long wait = 0;
         if (waitFor is { } want && DayNight.PhaseAt(arrival, Data.Rules) != want)
         {
@@ -254,7 +309,7 @@ public sealed class ColonySim
             wait = ((start - DayNight.Hour(arrival, Data.Rules)) % Data.Rules.TicksPerDay + Data.Rules.TicksPerDay) % Data.Rules.TicksPerDay;
         }
         var food = wait == 0 ? 0 : Math.Ceiling(Data.Rules.Expedition.RationFoodPerMemberPerDay * wait / Data.Rules.TicksPerDay);
-        return new ArrivalPlan(arrival + wait, DayNight.PhaseAt(arrival + wait, Data.Rules), wait, food);
+        return new ArrivalPlan(arrival + wait, DayNight.PhaseAt(arrival + wait, Data.Rules), wait, food, travel, delay);
     }
 
     /// <summary>A survivor's field profile (movement mode, AP, attacks) with this gear, for the expedition planner.</summary>
@@ -267,14 +322,23 @@ public sealed class ColonySim
     /// <summary>Unbuilt plots in ascending order.</summary>
     public IEnumerable<int> FreePlots() => Enumerable.Range(0, Data.Rules.Layout.PlotCount).Where(IsPlotFree);
 
+    /// <summary>A trade courier arrived and handed over its goods (for a toast).</summary>
+    public event Action<Trade.CourierDelivery>? CourierArrived;
+
+    internal void RaiseCourierArrived(Trade.CourierDelivery delivery) => CourierArrived?.Invoke(delivery);
+
     public void Tick()
     {
+        Colony.Power.Run(State, Data);
         ProductionSystem.Run(State, Data);
-        CraftingSystem.Run(State, Data, Scavenge, _rng);
+        HarvestSystem.Run(State, Data);
+        CraftingSystem.Run(State, Data, Scavenge, _rng, this);
         StudySystem.Run(State, Data, Scavenge);
+        Research.Run(this);
         MedicalSystem.Run(State, Data);
-        FoodSystem.Run(State, Data);
+        FoodSystem.Run(State, Data, Scavenge, _rng);
         DayNightSystem.Run(State, Data);
+        WeatherSystem.Run(State, Data, _rng);
         RelationshipSystem.Run(State, Data);
         CyberneticsSystem.Run(this, _rng);
         FamilySystem.Run(State, Data, _rng);
@@ -283,6 +347,8 @@ public sealed class ColonySim
         State.Tick++;
         WorldMap.Run(this);
         global::Remnants.Core.Story.Campaign.Tick(this);
+        RadioMast.Run(this);
+        Trade.ColonyTrade.Run(this);
         global::Remnants.Core.Raids.RaidSystem.Run(this);
         SyncRng();
     }
@@ -311,17 +377,20 @@ public sealed class ColonySim
             SetRecipe c => CraftingHandlers.SetRecipe(this, c),
             QueueRecipe c => CraftingHandlers.Queue(this, c),
             CancelOrder c => CraftingHandlers.Cancel(this, c),
-            StudyBlueprint c => CraftingHandlers.Study(this, c),
             Matchmake c => LifeHandlers.Matchmake(this, c),
             ChoosePerk c => ProgressionHandlers.ChoosePerk(this, c),
             StartStudy c => StudyHandlers.Start(this, c),
             CancelStudy c => StudyHandlers.Cancel(this, c),
             SetNightShift c => DayNightHandlers.SetNightShift(this, c),
+            SetHarvest c => HarvestHandlers.Set(this, c),
             InstallFloodlight c => DayNightHandlers.InstallFloodlight(this, c),
+            SetPower c => Colony.Power.SetPower(this, c),
+            RepairBuilding c => WeatherHandlers.Repair(this, c),
             global::Remnants.Core.Story.TakeCall or global::Remnants.Core.Story.AdvanceDialogue or global::Remnants.Core.Story.ChooseDialogue
                 or global::Remnants.Core.Story.LaunchStoryMission => global::Remnants.Core.Story.Campaign.Execute(this, command),
             global::Remnants.Core.Raids.IRaidCommand c => global::Remnants.Core.Raids.DefenseHandlers.Execute(this, c),
-            _ => CommandResult.Fail(CommandError.UnknownCommand, $"Unknown command {command.GetType().Name}."),
+            _ => SchematicHandlers.Handle(this, command)
+                 ?? CommandResult.Fail(CommandError.UnknownCommand, $"Unknown command {command.GetType().Name}."),
         };
         SyncRng();
         return result;
@@ -339,17 +408,13 @@ public sealed class ColonySim
             if (r.Item is not null && !scavenge.Items.ContainsKey(r.Item)) throw new GameDataException($"Recipe '{r.Id}': unknown item '{r.Item}'.");
             foreach (var id in r.ItemInputs.Keys)
                 if (!scavenge.Items.ContainsKey(id)) throw new GameDataException($"Recipe '{r.Id}': unknown input item '{id}'.");
-            if (r.Blueprint is not null && scavenge.Items.GetValueOrDefault(r.Blueprint)?.Kind != ItemKind.Blueprint)
-                throw new GameDataException($"Recipe '{r.Id}': '{r.Blueprint}' is not a blueprint item.");
+            foreach (var id in r.Byproducts.Keys)
+                if (!scavenge.Items.ContainsKey(id)) throw new GameDataException($"Recipe '{r.Id}': unknown byproduct item '{id}'.");
         }
-        foreach (var item in scavenge.Items.Values)
-            if (item.Blueprint is { } bp && (!data.Buildings.TryGetValue(bp.StudyAt, out var at) || bp.MinLevel < 1 || bp.MinLevel > at.MaxLevel))
-                throw new GameDataException($"Item '{item.Id}': blueprints are studied at a known building, at a level it has.");
+        if (data.Schematics.All.Keys.Where(id => !scavenge.Schematics.All.ContainsKey(id)).FirstOrDefault() is { } missing)
+            throw new GameDataException($"Schematic '{missing}' is in the colony data but not in the scavenge data (load both from one schematics.json).");
         foreach (var tier in data.Rules.Crafting.QualityThresholds.Keys)
             if (scavenge.Rules.Quality.All(q => q.Id != tier)) throw new GameDataException($"Rules.crafting.qualityThresholds: unknown quality tier '{tier}'.");
-        foreach (var perk in data.Perks.Values)
-            if (perk.Requires.Blueprint is { } bp && scavenge.Items.GetValueOrDefault(bp)?.Kind != ItemKind.Blueprint)
-                throw new GameDataException($"Perk '{perk.Id}': '{bp}' is not a blueprint/datashard item.");
         foreach (var item in scavenge.Items.Values)
             if (item.Manual is { } manual && (item.Kind != ItemKind.Material || item.Salvage is not null || manual.StudyBonus < 0))
                 throw new GameDataException($"Item '{item.Id}': manuals are Material items without salvage and with a non-negative study bonus.");
@@ -360,8 +425,6 @@ public sealed class ColonySim
             foreach (var node in cyber.Nodes.Values)
             {
                 if (!scavenge.Items.ContainsKey(node.Id)) throw new GameDataException($"Cybernetics node '{node.Id}': no item of that id.");
-                if (node.Blueprint is { } bp && scavenge.Items.GetValueOrDefault(bp)?.Kind != ItemKind.Blueprint)
-                    throw new GameDataException($"Cybernetics node '{node.Id}': '{bp}' is not a blueprint item.");
             }
     }
 }

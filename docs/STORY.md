@@ -599,8 +599,9 @@ keeps everything, the Radio Mast keeps giving contracts, and Marrow (or Dee) kee
 > **Built (phases 3–4, Act 1).** Where the build differs from the outline below:
 > - **Saves:** a scavenge save keeps a copy of the whole field script, plus the map id and hash, and does not reload
 >   the map from data. A changed map in data cannot break a run in progress.
-> - **Schematic rewards:** they go through a small `ISchematicGrants` adapter until the schematics module merges.
-> - **Radio Mast and Watchtower:** both are buildings already, not gated by schematics yet.
+> - **Schematic rewards** go to the schematics module (`Schematics.Grant`, source Story); story calls ring on the Radio
+>   Mast's call queue (SCHEMATICS.md "As built").
+> - **Radio Mast and Watchtower:** the Radio Mast is in the default set; the Watchtower needs `sch_watchtower` (M2's reward).
 > - **Pell:** he starts at the beginning of his childhood, so he grows up during Act 1. A starting age of 9 would make
 >   him an adult within the first week.
 > - **Colony tasks:** they are small task missions in the journal: Med Bay, bandages, a patient, Tailor, Town Hall 2,

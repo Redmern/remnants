@@ -47,7 +47,7 @@ public static class Bonds
 
     /// <summary>Food in stock is enough to start a family: at least <c>minFoodPerPerson</c> per person.</summary>
     public static bool EnoughFoodForBabies(ColonyState state, GameData data) =>
-        state.Stockpile.Get(data.Rules.Food.ResourceId) + 1e-9
+        (data.Food is null ? double.PositiveInfinity : Pantry.FoodValue(state, data)) + 1e-9
         >= data.Rules.Family.MinFoodPerPerson * (state.Survivors.Count + state.Survivors.Count(s => s.Pregnancy is not null));
 
     /// <summary>A woman and a man in a couple, both adults at home; she is not pregnant and has no infant.</summary>
@@ -237,8 +237,9 @@ internal static class FamilySystem
 }
 
 /// <summary>
-/// Adults age; infants and children grow. A fed minor's attributes move towards their aptitude; a hungry one
-/// does not grow stronger that tick (and it is counted). Stages change at the <see cref="LifeRules"/> thresholds.
+/// Adults age; infants and children grow. A fed minor's attributes move towards their aptitude, faster on good food
+/// (<c>food.json nutrition.growthAtLow..growthAtHigh</c> by nutrition); a hungry or malnourished one does not grow
+/// stronger that tick (and it is counted). Stages change at the <see cref="LifeRules"/> thresholds.
 /// </summary>
 internal static class GrowthSystem
 {
@@ -254,10 +255,15 @@ internal static class GrowthSystem
             }
 
             s.GrowthTicks++;
-            if (s.StarvingTicks > 0) s.MalnourishedTicks++;
+            var nutrition = data.Food?.Rules.Nutrition;
+            if (s.StarvingTicks > 0 || nutrition is not null && s.Nutrition + 1e-9 < nutrition.MalnourishedBelow) s.MalnourishedTicks++;
             else
+            {
+                var rate = rules.AttributeGrowthPerTick
+                    * (nutrition is null ? 1 : nutrition.GrowthAtLow + (nutrition.GrowthAtHigh - nutrition.GrowthAtLow) * Math.Clamp(s.Nutrition, 0, 1));
                 foreach (var (attribute, target) in s.Aptitude)
-                    s.Set(attribute, s.Get(attribute) + (target - s.Get(attribute)) * rules.AttributeGrowthPerTick);
+                    s.Set(attribute, s.Get(attribute) + (target - s.Get(attribute)) * Math.Min(1, rate));
+            }
             s.AgeTicks = Bonds.AgeTicksAt(s.GrowthTicks, data.Rules);
 
             var stage = Bonds.StageAt(s.GrowthTicks, rules);

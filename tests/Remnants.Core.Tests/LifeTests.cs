@@ -109,7 +109,7 @@ public class GrowthTests
         var food = sim.Data.Rules.Food;
         var child = sim.AddSurvivor(LifeStage.Child);
         var baby = sim.AddSurvivor(LifeStage.Infant);
-        sim.State.Stockpile.Add("food", food.InfantPerTick);
+        sim.State.AddOpenFood(food.InfantPerTick);
 
         sim.Tick();
 
@@ -458,7 +458,7 @@ public class LifeSaveTests
         var sim = NewGame.Create(TestData.Real, seed);
         var adults = sim.State.Survivors.Where(s => !s.IsChild).ToList();
         sim.Execute(new Matchmake(adults[0].Id, adults[1].Id, PairStance.Encourage));
-        sim.State.Stockpile.Add("food", 500);
+        sim.State.AddFood(500);
         sim.Advance(1500);
         return sim;
     }

@@ -20,13 +20,19 @@ public sealed record Upgrade(int BuildingId) : IColonyCommand;
 /// <paramref name="WaitFor"/> the party waits outside the zone until that phase starts (if they would arrive in another),
 /// taking extra rations for the wait (see <see cref="ColonySim.PlanArrival"/>).
 /// </summary>
-public sealed record LaunchExpedition(string ZoneId, List<ExpeditionMember> Members, DayPhase? WaitFor = null) : IColonyCommand;
+public sealed record LaunchExpedition(string ZoneId, List<ExpeditionMember> Members, DayPhase? WaitFor = null, RationChoice? Rations = null) : IColonyCommand;
+
+/// <summary>Pick what a Farm, Greenhouse or Hunting Lodge works on (data/food.json harvests). The standing crop is lost.</summary>
+public sealed record SetHarvest(int BuildingId, string HarvestId) : IColonyCommand;
 
 /// <summary>
 /// Fly a scout drone from the inventory over a rumored zone: it reveals the zone's intel without anyone going (see
 /// <see cref="WorldMap.SendDrone"/>). <paramref name="PilotId"/>: a survivor at home who flies it (less risk, trains Drone Piloting).
 /// </summary>
 public sealed record SendScoutDrone(string ZoneId, int? PilotId = null) : IColonyCommand;
+
+/// <summary>Repair a building struck by lightning (<c>weather.repair.cost</c>).</summary>
+public sealed record RepairBuilding(int BuildingId) : IColonyCommand;
 
 /// <summary>Bring the active expedition home: survivors, injuries, deaths, recruits and loot.</summary>
 public sealed record ApplyExtractionResult(ExtractionResult Result) : IColonyCommand;
@@ -64,9 +70,6 @@ public sealed record QueueRecipe(int BuildingId, string RecipeId, int Count = 1,
 
 /// <summary>Remove an order from a building's queue; a batch in progress refunds its inputs.</summary>
 public sealed record CancelOrder(int BuildingId, int OrderId) : IColonyCommand;
-
-/// <summary>Study (use up) a blueprint item at its study building, unlocking the recipes that name it.</summary>
-public sealed record StudyBlueprint(string ItemId) : IColonyCommand;
 
 /// <summary>
 /// Nudge two adults: encourage (they bond faster), discourage (they stop bonding; a couple splits up) or neutral.
@@ -139,7 +142,7 @@ public enum CommandError
     InvalidCount,
     QueueFull,
     UnknownOrder,
-    NotABlueprint,
+    NotASchematic,
     AlreadyKnown,
     NoStudyBuilding,
     TooYoung,
@@ -183,11 +186,23 @@ public enum CommandError
     AlreadyBooked,
     UnknownSurgery,
     NoCybernetics,
+    /// <summary>Building or level gated by a schematic the colony does not know.</summary>
+    SchematicNeeded,
+    /// <summary>Food: the building does not harvest, or not this.</summary>
+    UnknownHarvest,
+    NotResearchable,
+    NotHeardOf,
+    ResearchBusy,
+    NoResearch,
+    IsResearching,
+    NoTrader,
+    NotInStock,
+    UnknownCall,
+    NoContract,
     /// <summary>Story commands in a Sandbox colony (or without story data).</summary>
     NoCampaign,
     UnknownMission,
     MissionNotAvailable,
-    UnknownCall,
     NoDialogue,
     InvalidChoice,
     /// <summary>Raids and defenses (<c>Raids/</c>): no raids.json loaded; unknown placed defense; its schematic is not known.</summary>
@@ -198,14 +213,24 @@ public enum CommandError
     CellOccupied,
     NotATrap,
     AlreadyArmed,
-    NotDamaged,
     NoRaidWarning,
     CannotRecall,
     /// <summary>The building was wrecked in a raid: repair it first.</summary>
     Wrecked,
     /// <summary>The raid cannot be fought on the map (no field units, no Town Hall, nobody able).</summary>
     CannotFight,
+    NotDamaged,
+    RouteBlocked,
+    DronesGrounded,
+    /// <summary>Power: the building neither makes, stores nor draws power.</summary>
+    NotOnGrid,
 }
+
+/// <summary>
+/// Switch a building's power draw on or off (see <c>Power</c>): a switched-off consumer never draws (and gets no bonus);
+/// a switched-off generator stays cold (no fuel burnt).
+/// </summary>
+public sealed record SetPower(int BuildingId, bool On) : IColonyCommand;
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>
 public sealed record CommandResult(CommandError Error, string Message, int? EntityId = null)

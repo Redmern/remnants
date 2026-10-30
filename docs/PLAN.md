@@ -48,6 +48,11 @@ a few people into dangerous zones (**Scavenge mode**). Every loss is permanent.
   - **Day and night**: survivors work a day shift and sleep at night (children go to bed earlier); a building can run
     a Night Shift at reduced output and a mood and sleep cost, outdoor sites only when lit (level 2 or a Floodlight).
     Sleep, campfire evenings and hot suppers lift mood. The town's light, lamps and people follow the clock.
+  - **Weather**: clear, overcast, rain, thunderstorms, fog and dust storms in spells of hours to days, per region (the
+    wastes get more dust), with a forecast. Rain waters the fields and slows outdoor work; storms dampen spirits and
+    lightning damages buildings; dust stops outdoor work unless the workers have masks, buries crops and keeps children
+    in. On the road storms add days, dust closes far routes and grounds drones. In the field rain drowns out noise, fog
+    blinds, dust spoils aim and breaks the Linked's links, and lightning shows everyone for a moment.
 - **Population growth**: adults form relationships, couples have children, children need
   food and care and grow into adults over time. Recruits come from scavenging.
 - **Housing pressure**: anyone without a bed (newborns, recruits) has a grace timer. If no
@@ -133,7 +138,10 @@ palette (rust, concrete, moss) with cold cyan accents for anything Network-conne
 | — | Cybernetics | prosthetics tree T0 Crude → T4 Network-grade per arm, leg and the eyes; specialisations and paired sets; components incl. Linked cores; surgery at the Med Bay; upkeep; humanity (mood, couples, children); Network interference in the field; new Medic/Tech perks (done; see CYBERNETICS.md) |
 | — | Fog of war | stealth vs detection, contacts, ambushes from the fog, Overwatch / Brace / Lookout, flares, motion sensors, scanner, camo cloak, Linked lurking and drone spotting, no-leak multiplayer (done; see ARCHITECTURE.md "Fog of war") |
 | — | Story mode, Act 1 | Story / Sandbox choice; campaign state, mission unlocks, dialogue with choices, radio inbox, journal, briefings and debriefs, world-map story markers; field objectives, triggers, chatter and prompts; handmade maps, fixed rooms, story NPCs, colony-perimeter defense; M1–M5 playable with the full script; `--story` playtest bot (done; see STORY.md, docs/story/FORMAT.md, ARCHITECTURE.md "Story mode") |
+| — | Weather | seeded weather per region with a forecast; effects at home (work, crops, masks, mood, lightning), on the road (travel terms, closed routes, grounded drones) and in the field (sight, noise, flares, aim, drones, relay, thunder and lightning, changes mid-run); server-decided in multiplayer; particles, sky grade, flashes, sound, HUD (done; see ARCHITECTURE.md "Weather", BALANCE.md "Weather pass") |
+| — | Electronics and power | component chain and disassembly at the Electronics Lab, Mk II–III recon / EW / drone / hacking devices, EMP and decoys, radios, medic / cargo / combat drones, an opt-in colony grid (fuel, solar, batteries, brownouts) with charging (done; see ARCHITECTURE.md "Electronics and power") |
 | — | Linked carbine | the turning point against the Linked: anti-Network bane (hit, damage, armor pierce, relay knock-off), quality that matters, drops from Linked and Wardens, Armory recipe behind a blueprint (done; see BALANCE.md "Linked carbine pass") |
+| — | Schematics | blueprints and datashards become schematics (one catalogue, default set, gating of buildings, levels, recipes, perks and cybernetics tiers/specs); learned on return, Network chips decrypted at the Lab; drops by find tier and enemy kills; Research Data, "heard of" and research at the Town Hall; Radio Mast with a visiting trader, contracts and a call queue for Story mode; archive, research, radio and trader screens (SCHEMATICS.md) |
 | — | Raids + defenses | Husk hordes drawn by noise, Linked probes, raider bands; scheduler with grace and escalation; lead-time warning and size estimate; a defense grid with walls, gates, posts, towers, lights, turrets, alarms and traps from schematics; the Guard job and night watch; Engineer and Sentry; prep; auto-resolve with damage, wrecks, repairs, spoils, casualties, loot (stage 1 done; the fought defense battle on a map generated from the colony is stage 2; see ARCHITECTURE.md "Raids and defenses") |
 
 Assets run in parallel: style guide → survivors (adult/child, m/f) → level-1 buildings →

@@ -126,9 +126,6 @@ public sealed record PerkRequirements
     public string? Building { get; init; }
     public int BuildingLevel { get; init; } = 1;
 
-    /// <summary>A blueprint or datashard item the colony has studied (<c>KnownBlueprints</c>).</summary>
-    public string? Blueprint { get; init; }
-
     public bool AdultsOnly { get; init; }
 }
 

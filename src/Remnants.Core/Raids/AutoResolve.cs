@@ -226,20 +226,18 @@ public static class Consequences
         var stolen = new Dictionary<string, double>();
         if (spoil > 0)
         {
-            if (raid.Kind == ThreatKind.Husk)
-                foreach (var r in threat.SpoilResources)
+            foreach (var r in threat.SpoilResources)
+            {
+                var take = r switch
                 {
-                    var lost = CropDamage.Trample(sim, r, spoil);
-                    if (lost > 0) stolen[r] = lost;
-                }
-            else
-                foreach (var r in threat.SpoilResources)
-                {
-                    var take = Math.Round(state.Stockpile.Get(r) * spoil, 1);
-                    if (take <= 0) continue;
-                    state.Stockpile.Spend(new Dictionary<string, double> { [r] = take });
-                    stolen[r] = take;
-                }
+                    CropDamage.Crops => CropDamage.Trample(sim, spoil),
+                    CropDamage.Food => CropDamage.Steal(sim, spoil),
+                    _ => Math.Round(state.Stockpile.Get(r) * spoil, 1),
+                };
+                if (take <= 0) continue;
+                if (r is not (CropDamage.Crops or CropDamage.Food)) state.Stockpile.Spend(new Dictionary<string, double> { [r] = take });
+                stolen[r] = take;
+            }
         }
 
         // Casualties.
@@ -291,7 +289,7 @@ public static class Consequences
             if (drops.Count > 0 && rng.NextDouble() < threat.SchematicChance)
             {
                 var pick = drops[rng.Next(0, drops.Count)];
-                DefenseSchematics.Grant(sim, pick.Id, "dropped by the raiders");
+                Schematics.Schematics.Grant(sim, pick.Id, Schematics.SchematicSource.Kill);
                 schematic = pick.Name;
             }
         }

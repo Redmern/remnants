@@ -80,6 +80,18 @@ public sealed record MarkTarget(int PlayerId, int UnitId, int TargetId) : IScave
 /// <summary>Payload perk: the drone drops a carried flare or motion sensor on its tile.</summary>
 public sealed record DropPayload(int PlayerId, int UnitId, string ItemId) : IScavengeCommand;
 
+/// <summary>Medic drone: apply a healing item from the operator's pack to a friendly unit next to the drone.</summary>
+public sealed record DroneHeal(int PlayerId, int UnitId, int TargetId) : IScavengeCommand;
+
+/// <summary>Cargo drone: take one item from a cache on or next to the drone into its hold.</summary>
+public sealed record DroneLoad(int PlayerId, int UnitId, int CacheId, string ItemId) : IScavengeCommand;
+
+/// <summary>Cargo drone next to an exit: fly the hold (and the drone) out of the zone; it is home whatever happens.</summary>
+public sealed record DroneFerry(int PlayerId, int UnitId) : IScavengeCommand;
+
+/// <summary>Combat drone: fire its gun at a hostile it sees; the operator pays the gun's AP.</summary>
+public sealed record DroneFire(int PlayerId, int UnitId, int TargetId) : IScavengeCommand;
+
 public enum ScavengeError
 {
     None,
@@ -142,6 +154,7 @@ public enum ScavengeError
     ChoicePending,
     /// <summary>No such prompt is waiting.</summary>
     NoPrompt,
+    DroneGrounded,
 }
 
 /// <summary>Outcome of a scavenge command. <see cref="EntityId"/> carries e.g. the attacked unit.</summary>

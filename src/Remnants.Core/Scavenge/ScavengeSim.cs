@@ -82,6 +82,10 @@ public sealed class ScavengeSim
             RecallDrone => Drones.Recall(this, unit!),
             MarkTarget c => Drones.Mark(this, unit!, c),
             DropPayload c => Drones.Drop(this, unit!, c),
+            DroneHeal c => DroneRoles.Heal(this, unit!, c),
+            DroneLoad c => DroneRoles.Load(this, unit!, c),
+            DroneFerry => DroneRoles.Ferry(this, unit!),
+            DroneFire c => DroneRoles.Fire(this, unit!, c),
             _ => ScavengeResult.Fail(ScavengeError.UnknownCommand, $"Unknown command {command.GetType().Name}."),
         };
 
@@ -148,7 +152,13 @@ public sealed class ScavengeSim
         unit.Lookout = false;
         unit.PingsUsed = 0;
         unit.Ap = Profile(unit).MaxAp;
+        if (State.Round == 1 && unit.FirstRoundAp != 0) unit.Ap = Math.Max(1, unit.Ap + unit.FirstRoundAp);
         if (braced) unit.Ap = Math.Max(1, unit.Ap - Data.Rules.Fog.Brace.NextTurnApPenalty);
+        if (unit.EmpUntilRound >= State.Round)
+        {
+            unit.Ap = 0;
+            State.Log(new(State.Round, ScavengeEventType.EmpBurst, $"{unit.Name} is still down from the EMP.", unit.Id, Pos: unit.Pos));
+        }
     }
 
     /// <summary>Bleeding ticks down, then everyone conscious (except idle NPCs) is ordered by initiative.</summary>
@@ -163,17 +173,19 @@ public sealed class ScavengeSim
         }
         UpdateParties();
         Detection.Expire(Data, State);
+        FieldEnvironment.RoundStarted(this);
         Alliances.RoundStarted(this);
         Hacking.RoundStarted(this);
         Drones.RoundStarted(this);
         Network.RoundStarted(this);
         Interference.RoundStarted(this);
+        ElectronicWarfare.RoundStarted(this);
         MissionRules.RoundStarted(this);
         if (State.Finished) return;
 
         // Drones fly on their operator's AP and cameras only watch: neither takes turns.
         State.TurnOrder = State.Units
-            .Where(u => u.IsActive && u.Side != Unit.NeutralSide && u.Kind != UnitKind.Drone
+            .Where(u => u.IsActive && u.Side != Unit.NeutralSide && u.Kind is not (UnitKind.Drone or UnitKind.Decoy)
                         && (u.Kind != UnitKind.Device || Profile(u).Actions.Count > 0))
             .Select(u => (u.Id, Profile(u).Initiative))
             .OrderByDescending(t => t.Initiative)
@@ -260,10 +272,11 @@ public sealed class ScavengeSim
             Drones.Destroyed(State, unit);
             return;
         }
+        if (unit.Kind == UnitKind.Decoy) return;
         if (unit.Kind == UnitKind.Device) Hacking.UnitKilled(this, unit);
 
         var drops = unit.Kind == UnitKind.Enemy && unit.EnemyDefId is { } enemyId
-            ? Data.Enemies[enemyId].Drops.Where(d => Rng.NextDouble() < d.Chance).Select(d => d.Item).ToList()
+            ? Schematics.SchematicDrops.EnemyDrops(Data, Data.Enemies[enemyId], Rng, State.KnownSchematics)
             : unit.AllItems.Where(id => unit.Kind != UnitKind.Device || Data.Items[id].LootWeight > 0).ToList();
         if (drops.Count == 0) return;
         var cache = State.Caches.Find(c => c.Pos == unit.Pos);
@@ -280,9 +293,10 @@ public sealed class ScavengeSim
     {
         foreach (var u in State.Units.Where(u => u.IsActive && u.Kind == UnitKind.Enemy && u.Ai.Mode == AiMode.Idle))
         {
-            // Husks hear further in the dark (FieldEnvironment).
-            var heard = FieldEnvironment.SenseOf(Data, State, u) == SenseKind.Husk
-                ? radius * FieldEnvironment.Effects(Data, State).HuskHearingMultiplier : radius;
+            // Husks hear further in the dark; rain drowns noise out for everyone (FieldEnvironment).
+            var effects = FieldEnvironment.Effects(Data, State);
+            var heard = radius * effects.HearingMultiplier
+                        * (FieldEnvironment.SenseOf(Data, State, u) == SenseKind.Husk ? effects.HuskHearingMultiplier : 1);
             if (!u.HostileTo(source) || u.Pos.Chebyshev(source.Pos) > heard + 1e-9) continue;
             u.Ai.Mode = AiMode.Hunting;
             u.Ai.TargetId = null;
@@ -312,8 +326,10 @@ public sealed class ScavengeSim
             if (unit.Pos.Chebyshev(sensor.Pos) > sensor.Radius || from.Chebyshev(sensor.Pos) <= sensor.Radius) continue;
             Trip(sensor, unit);
         }
+        // Thunder drowns out footsteps; rain shortens how far they carry.
+        var hear = FieldEnvironment.ThunderNow(State) ? -1 : fog.HearMovement * FieldEnvironment.Effects(Data, State).HearingMultiplier;
         foreach (var side in Detection.PartySides(State).Where(s => s != unit.Side && unit.Side != Unit.NeutralSide))
-            if (State.Units.Any(u => u.Side == side && u.IsActive && u.Pos.Chebyshev(unit.Pos) <= fog.HearMovement)
+            if (State.Units.Any(u => u.Side == side && u.IsActive && u.Pos.Chebyshev(unit.Pos) <= hear + 1e-9)
                 && !Detection.SideSees(Data, State, side, unit))
                 Detection.AddContact(Data, State, side, unit.Pos, ContactKind.Movement, unit.Id);
         MissionRules.Moved(this, unit);
@@ -347,7 +363,8 @@ public sealed class ScavengeSim
             {
                 if (!unit.IsActive) break;
                 if (!watcher.IsActive || watcher.Reactions <= 0) continue;
-                var sees = Detection.Spots(Data, State, watcher, unit) || Detection.SeesRevealed(Data, State, watcher, unit);
+                var sees = Detection.Spots(Data, State, watcher, unit) || Detection.SeesRevealed(Data, State, watcher, unit)
+                           || ElectronicWarfare.SharesOverwatch(this, watcher, unit);
                 if (!sees) continue;
                 var action = Profile(watcher).Actions
                     .Where(a => Drones.CanStrike(a, unit) && Combat.CheckReach(Data, State.Map, watcher.Pos, a, unit.Pos) == ScavengeError.None)

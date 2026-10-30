@@ -1,22 +1,6 @@
 {
   "schematics": [
     {
-      "id": "sch_wall_wood",
-      "name": "Wooden Wall",
-      "tier": 1,
-      "default": true,
-      "unlocks": [
-        {
-          "kind": "Defense",
-          "id": "wall_wood"
-        }
-      ],
-      "sources": [
-        "Default"
-      ],
-      "description": "Planks and posts. Slows anything that wants in."
-    },
-    {
       "id": "sch_wall_scrap",
       "name": "Scrap Wall",
       "tier": 2,
@@ -28,7 +12,6 @@
       ],
       "sources": [
         "Loot",
-        "Kill",
         "Trade",
         "Research"
       ],
@@ -46,27 +29,10 @@
       ],
       "sources": [
         "Loot",
-        "Kill",
         "Trade",
         "Research"
       ],
       "description": "Rubble and cement. It holds."
-    },
-    {
-      "id": "sch_gate_wood",
-      "name": "Gate",
-      "tier": 1,
-      "default": true,
-      "unlocks": [
-        {
-          "kind": "Defense",
-          "id": "gate_wood"
-        }
-      ],
-      "sources": [
-        "Default"
-      ],
-      "description": "A wall that opens. Shut it when they come."
     },
     {
       "id": "sch_barricade",
@@ -80,7 +46,6 @@
       ],
       "sources": [
         "Loot",
-        "Kill",
         "Trade",
         "Research"
       ],
@@ -98,27 +63,10 @@
       ],
       "sources": [
         "Loot",
-        "Kill",
         "Trade",
         "Research"
       ],
       "description": "A ring of sandbags for two guards."
-    },
-    {
-      "id": "sch_watchtower_1",
-      "name": "Lookout Tower",
-      "tier": 1,
-      "default": true,
-      "unlocks": [
-        {
-          "kind": "Defense",
-          "id": "watchtower_1"
-        }
-      ],
-      "sources": [
-        "Default"
-      ],
-      "description": "A ladder and a platform. Sees them coming."
     },
     {
       "id": "sch_watchtower_2",
@@ -132,7 +80,6 @@
       ],
       "sources": [
         "Loot",
-        "Kill",
         "Trade",
         "Research"
       ],
@@ -150,7 +97,6 @@
       ],
       "sources": [
         "Loot",
-        "Kill",
         "Trade",
         "Research"
       ],
@@ -168,7 +114,6 @@
       ],
       "sources": [
         "Loot",
-        "Kill",
         "Trade",
         "Research"
       ],
@@ -186,43 +131,10 @@
       ],
       "sources": [
         "Loot",
-        "Kill",
         "Trade",
         "Research"
       ],
       "description": "A survivor-made gun on a swivel. Eats scrap for ammo."
-    },
-    {
-      "id": "sch_alarm_bell",
-      "name": "Alarm Bell",
-      "tier": 1,
-      "default": true,
-      "unlocks": [
-        {
-          "kind": "Defense",
-          "id": "alarm_bell"
-        }
-      ],
-      "sources": [
-        "Default"
-      ],
-      "description": "Nobody sleeps through it."
-    },
-    {
-      "id": "sch_spike_strip",
-      "name": "Spike Strip",
-      "tier": 1,
-      "default": true,
-      "unlocks": [
-        {
-          "kind": "Defense",
-          "id": "spike_strip"
-        }
-      ],
-      "sources": [
-        "Default"
-      ],
-      "description": "Sharpened stakes in the grass. Reset them after."
     },
     {
       "id": "sch_snare",
@@ -236,7 +148,6 @@
       ],
       "sources": [
         "Loot",
-        "Kill",
         "Trade",
         "Research"
       ],
@@ -254,7 +165,6 @@
       ],
       "sources": [
         "Loot",
-        "Kill",
         "Trade",
         "Research"
       ],
@@ -272,7 +182,6 @@
       ],
       "sources": [
         "Loot",
-        "Kill",
         "Trade",
         "Research"
       ],
@@ -290,7 +199,6 @@
       ],
       "sources": [
         "Loot",
-        "Kill",
         "Trade",
         "Research"
       ],
@@ -308,7 +216,6 @@
       ],
       "sources": [
         "Loot",
-        "Kill",
         "Trade",
         "Research"
       ],
@@ -326,7 +233,6 @@
       ],
       "sources": [
         "Loot",
-        "Kill",
         "Trade",
         "Research"
       ],
@@ -344,7 +250,6 @@
       ],
       "sources": [
         "Loot",
-        "Kill",
         "Trade",
         "Research"
       ],

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Remnants.Core.Data;
 using Remnants.Core.Items;
+using Remnants.Core.Schematics;
 using Remnants.Core.Serialization;
 using Remnants.Core.Survivors;
 
@@ -14,6 +15,9 @@ public sealed class ScavengeData
     public IReadOnlyDictionary<string, ZoneDef> Zones { get; }
     public ScavengeRules Rules { get; }
 
+    /// <summary>The schematics catalogue: drop odds and pools; each schematic is also an item with its id.</summary>
+    public SchematicCatalog Schematics { get; }
+
     /// <summary>
     /// Perk id → its scavenge hooks (from perks.json when loaded with it), so a party's perks reach the field with the
     /// survivors alone (<see cref="HooksFor"/>), locally and on a server.
@@ -26,18 +30,36 @@ public sealed class ScavengeData
     /// </summary>
     public CyberneticsData? Cybernetics { get; }
 
+    /// <summary>Electronics devices, drones and power (electronics.json, when loaded with it); null without them.</summary>
+    public ElectronicsDef? Electronics { get; }
+
     public ScavengeData(IEnumerable<ItemDef> items, IEnumerable<EnemyDef> enemies, IEnumerable<ZoneDef> zones, ScavengeRules rules,
-        IReadOnlyDictionary<string, IReadOnlyDictionary<string, double>>? perkHooks = null, CyberneticsDef? cybernetics = null)
+        IReadOnlyDictionary<string, IReadOnlyDictionary<string, double>>? perkHooks = null, CyberneticsDef? cybernetics = null,
+        SchematicCatalog? schematics = null, ElectronicsDef? electronics = null)
     {
+        Schematics = schematics ?? SchematicCatalog.Empty;
+        // Schematic items come from the catalogue; without one, data built from another ScavengeData's items keeps them.
+        if (schematics is not null) items = items.Where(i => i.Kind != ItemKind.Schematic).Concat(Schematics.All.Values.Select(SchematicItem));
         PerkHooks = perkHooks ?? new Dictionary<string, IReadOnlyDictionary<string, double>>();
         Cybernetics = cybernetics is null ? null : new CyberneticsData(cybernetics);
+        Electronics = electronics;
+        var defined = items.Where(i => i.BaseId is null).ToList();
+        if (electronics is not null)
+        {
+            // Devices and components (skipped when the list already has them: data built from another's items).
+            var have = defined.Select(i => i.Id).ToHashSet();
+            defined.AddRange(electronics.Items.Where(i => !have.Contains(i.Id)));
+            enemies = enemies.Select(e => electronics.Drops.TryGetValue(e.Id, out var extra) && extra.Count > 0 && e.Drops.All(d => d.Item != extra[0].Item)
+                ? e with { Drops = e.Drops.Concat(extra).ToList() } : e);
+        }
         // Variants are always derived (so data built from another ScavengeData's items gets them fresh).
-        Items = Index(WithQualityVariants(items.Where(i => i.BaseId is null).ToList(), rules.Quality), i => i.Id, "item");
+        Items = Index(WithQualityVariants(defined, rules.Quality), i => i.Id, "item");
         Enemies = Index(enemies, e => e.Id, "enemy");
         Zones = Index(zones, z => z.Id, "zone");
         Rules = rules;
         Validate();
         ValidateCybernetics();
+        if (Electronics is not null) ElectronicsValidation.Validate(Electronics, this);
     }
 
     public TerrainDef Terrain(Terrain terrain) => Rules.Terrain[terrain];
@@ -55,6 +77,11 @@ public sealed class ScavengeData
         foreach (var item in Items.Values.Where(i => i.Prosthetic is not null && cyber.Node(i.Id) is null))
             throw new GameDataException($"Item '{item.Id}': every prosthetic needs a node in cybernetics.json.");
     }
+    /// <summary>The field item of a schematic: a plan or chip, light, never in the loot tables (drops roll separately).</summary>
+    public static ItemDef SchematicItem(SchematicDef s) => new()
+    {
+        Id = s.Id, Name = s.ItemName, Kind = ItemKind.Schematic, Weight = 0.1, Tier = s.Tier, Schematic = s.Id,
+    };
 
     /// <summary>The summed hooks of these perks (unknown perk ids are ignored).</summary>
     public Dictionary<string, double> HooksFor(IEnumerable<string> perkIds)
@@ -133,6 +160,11 @@ public sealed class ScavengeData
             CarryBonus = item.CarryBonus * m,
             Stealth = Bonus(item.Stealth),
             Detection = Bonus(item.Detection),
+            RangedAccuracy = Bonus(item.RangedAccuracy),
+            Device = item.Device is { } dev ? dev with { Radius = Math.Max(1, (int)Math.Round(dev.Radius * m)) } : null,
+            Drone = item.Drone is { } dr ? dr with { Battery = Math.Max(1, (int)Math.Round(dr.Battery * m)) } : null,
+            HackTool = item.HackTool is { } ht ? ht with { ChanceBonus = ht.ChanceBonus + (m - 1) * 0.1 } : null,
+            Radio = item.Radio is { } ra ? ra with { Range = Math.Max(1, (int)Math.Round(ra.Range * m)), AccuracyBonus = ra.AccuracyBonus * m } : null,
             Actions = item.Actions.Select(a => a with
             {
                 MinDamage = (int)Math.Round(a.MinDamage * m),
@@ -185,8 +217,8 @@ public sealed class ScavengeData
         foreach (var item in Items.Values)
         {
             if (item.BaseId is null && item.Id.Contains('@')) throw new GameDataException($"Item id '{item.Id}' must not contain '@' (reserved for quality variants).");
-            if ((item.Kind == ItemKind.Blueprint) != (item.Blueprint is not null))
-                throw new GameDataException($"Item '{item.Id}': blueprint items (and only they) need a blueprint definition.");
+            if ((item.Kind == ItemKind.Schematic) != (item.Schematic is not null) || item.Kind == ItemKind.Schematic && item.LootWeight > 0)
+                throw new GameDataException($"Item '{item.Id}': schematic items come from schematics.json, without a loot weight.");
             if (item.Device is { } device && (item.Kind != ItemKind.Tool || device.Radius < 1))
                 throw new GameDataException($"Item '{item.Id}': devices are tools with a radius of at least 1.");
             if (item.Weight < 0) throw new GameDataException($"Item '{item.Id}' has negative weight.");
@@ -311,12 +343,14 @@ public static class ScavengeDataLoader
         string? Optional(string file) => File.Exists(Path.Combine(directory, file)) ? File.ReadAllText(Path.Combine(directory, file)) : null;
 
         return LoadFromJson(Read("items.json"), Read("enemies.json"), Read("zones.json"), Read("scavenge.json"),
-            Optional("perks.json"), Optional("cybernetics.json"));
+            Optional("perks.json"), Optional("cybernetics.json"), Optional("electronics.json"), SchematicCatalogLoader.Files(directory).Select(File.ReadAllText).ToArray());
     }
 
     /// <param name="perks">perks.json (optional): only each perk's scavenge hooks are read (see <see cref="ScavengeData.PerkHooks"/>).</param>
     /// <param name="cybernetics">cybernetics.json (optional; see <see cref="ScavengeData.Cybernetics"/>).</param>
-    public static ScavengeData LoadFromJson(string items, string enemies, string zones, string rules, string? perks = null, string? cybernetics = null) =>
+    /// <param name="electronics">electronics.json (optional; see <see cref="ScavengeData.Electronics"/>).</param>
+    public static ScavengeData LoadFromJson(string items, string enemies, string zones, string rules, string? perks = null, string? cybernetics = null,
+        string? electronics = null, params string[]? schematics) =>
         new(
             Parse<List<ItemDef>>(items, "items"),
             Parse<List<EnemyDef>>(enemies, "enemies"),
@@ -324,7 +358,9 @@ public static class ScavengeDataLoader
             Parse<ScavengeRules>(rules, "scavenge"),
             perks is null ? null : Parse<ProgressionDef>(perks, "perks").Perks
                 .ToDictionary(p => p.Id, p => (IReadOnlyDictionary<string, double>)new Dictionary<string, double>(p.Effects.Hooks, StringComparer.Ordinal)),
-            cybernetics is null ? null : Parse<CyberneticsDef>(cybernetics, "cybernetics"));
+            cybernetics is null ? null : Parse<CyberneticsDef>(cybernetics, "cybernetics"),
+            SchematicCatalogLoader.LoadFromJson(schematics ?? []),
+            electronics is null ? null : Parse<ElectronicsDef>(electronics, "electronics"));
 
     private static T Parse<T>(string json, string name)
     {

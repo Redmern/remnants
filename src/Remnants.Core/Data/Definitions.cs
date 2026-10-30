@@ -28,7 +28,7 @@ public sealed record JobDef
     public bool ChildrenAllowed { get; init; }
 }
 
-public enum BuildingCategory { Core, Housing, Gathering, Production, Care }
+public enum BuildingCategory { Core, Housing, Gathering, Production, Care, Power }
 
 public sealed record BuildingLevelDef
 {
@@ -45,7 +45,8 @@ public sealed record BuildingLevelDef
 /// Something a production building makes (data/recipes.json). A batch's inputs (resources and items) are paid when
 /// it starts; the building's workers add their job output as effort each tick until it reaches <see cref="Work"/>,
 /// then the batch yields <see cref="Amount"/> of an item (into the colony inventory, at a rolled quality for gear) or
-/// of a resource (into the stockpile). Recipes naming a <see cref="Blueprint"/> stay locked until it is studied.
+/// of a resource (into the stockpile), or teaches a schematic (<see cref="Learns"/>: the synthesized Decrypt orders).
+/// Recipes a schematic unlocks (data/schematics.json) stay locked until the colony knows it.
 /// </summary>
 public sealed record RecipeDef
 {
@@ -60,6 +61,12 @@ public sealed record RecipeDef
 
     /// <summary>Items used up per batch: item id → count.</summary>
     public Dictionary<string, int> ItemInputs { get; init; } = new();
+
+    /// <summary>
+    /// Food from the pantry used up per batch: a food item id or <c>tag:x</c> (any food tagged x, soonest to spoil
+    /// first, never spoiled) → count. Food outputs go into the pantry as a lot with the cook's quality.
+    /// </summary>
+    public Dictionary<string, int> Ingredients { get; init; } = new();
     public string? Item { get; init; }
     public string? Resource { get; init; }
     public double Amount { get; init; } = 1;
@@ -67,8 +74,20 @@ public sealed record RecipeDef
     /// <summary>At least one worker needs this much of the job's skill, or the building idles.</summary>
     public double MinSkill { get; init; }
 
-    /// <summary>Blueprint item that must have been studied before the recipe can be queued.</summary>
-    public string? Blueprint { get; init; }
+    /// <summary>Decrypt orders: the schematic learned when the batch is done (its item is the one input).</summary>
+    public string? Learns { get; init; }
+
+    /// <summary>Only worked while the building is on a powered grid (<c>Power.IsPowered</c>): tier 3 electronics.</summary>
+    public bool NeedsPower { get; init; }
+
+    /// <summary>Further items a batch yields besides <see cref="Item"/> (a disassembly's other components).</summary>
+    public Dictionary<string, int> Byproducts { get; init; } = new();
+
+    /// <summary>Chance per batch of one Research Data on top (disassembled tech; the Schematics module).</summary>
+    public double ResearchChance { get; init; }
+
+    /// <summary>A heading for the bench UI ("Components", "Devices", "Upgrades", "Disassembly"); null = none.</summary>
+    public string? Group { get; init; }
 }
 
 public sealed record BuildingDef

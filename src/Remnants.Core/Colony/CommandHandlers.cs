@@ -15,6 +15,8 @@ internal static class CommandHandlers
         if (survivor.Away) return CommandResult.Fail(CommandError.SurvivorAway, $"{survivor.Name} is away on an expedition.");
         if (survivor.PatientAtBuildingId is not null)
             return CommandResult.Fail(CommandError.IsPatient, $"{survivor.Name} is a patient; discharge them first.");
+        if (Schematics.Research.IsResearching(sim.State, survivor.Id))
+            return CommandResult.Fail(CommandError.IsResearching, $"{survivor.Name} is researching at the Town Hall; stop the research first.");
         if (survivor.IsInfant) return CommandResult.Fail(CommandError.TooYoung, $"{survivor.Name} is a baby.");
         if (StudySystem.ClassOf(sim.State, survivor.Id) is not null)
             return CommandResult.Fail(CommandError.InClass, $"{survivor.Name} is in class; end the study first.");
@@ -53,6 +55,8 @@ internal static class CommandHandlers
         if (!IsTownHall(sim, def) && sim.TownHallLevel < def.MinTownHallLevel)
             return CommandResult.Fail(CommandError.TownHallLevelTooLow,
                 $"{def.Name} needs Town Hall level {def.MinTownHallLevel} (have {sim.TownHallLevel}).");
+        if (!Schematics.Schematics.LevelUnlocked(sim, def.Id, 1))
+            return CommandResult.Fail(CommandError.SchematicNeeded, $"{def.Name} needs the {SchematicName(sim, def.Id, 1)} schematic.");
 
         int plot;
         if (c.Plot is { } wanted)
@@ -73,6 +77,7 @@ internal static class CommandHandlers
         sim.State.Stockpile.Spend(cost);
         var building = new Building { Id = sim.State.NextBuildingId++, DefId = def.Id, Level = 1, Plot = plot };
         sim.State.Buildings.Add(building);
+        Harvesting.Planted(sim.State, sim.Data, building);
         sim.State.Log(new(sim.State.Tick, ColonyEventType.Constructed, $"Built {def.Name}.", BuildingId: building.Id));
         return CommandResult.Success($"Built {def.Name}.", building.Id);
     }
@@ -88,6 +93,8 @@ internal static class CommandHandlers
         if (next > sim.MaxUpgradeLevel(def))
             return CommandResult.Fail(CommandError.TownHallLevelTooLow,
                 $"{def.Name} level {next} needs Town Hall level {next} (have {sim.TownHallLevel}).");
+        if (!Schematics.Schematics.LevelUnlocked(sim, def.Id, next))
+            return CommandResult.Fail(CommandError.SchematicNeeded, $"{def.Name} level {next} needs the {SchematicName(sim, def.Id, next)} schematic.");
 
         var cost = def.Level(next).Cost;
         if (!sim.State.Stockpile.CanAfford(cost))
@@ -98,6 +105,9 @@ internal static class CommandHandlers
         sim.State.Log(new(sim.State.Tick, ColonyEventType.Upgraded, $"{def.Name} reached level {next}.", BuildingId: building.Id));
         return CommandResult.Success($"{def.Name} reached level {next}.", building.Id);
     }
+
+    private static string SchematicName(ColonySim sim, string buildingId, int level) =>
+        sim.Data.Schematics.All[sim.Data.Schematics.GateOfBuildingLevel(buildingId, level)!].Name;
 
     internal static bool IsTownHall(ColonySim sim, BuildingDef def) => def.Id == sim.Data.Rules.TownHallBuildingId;
 

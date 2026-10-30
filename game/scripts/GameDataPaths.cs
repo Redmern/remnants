@@ -16,7 +16,7 @@ namespace Remnants.Game;
 /// </summary>
 public static class GameDataPaths
 {
-    private static readonly string[] Files = ["resources.json", "jobs.json", "buildings.json", "rules.json", "recipes.json", "perks.json", "cybernetics.json"];
+    private static readonly string[] Files = ["resources.json", "jobs.json", "buildings.json", "rules.json", "recipes.json", "perks.json", "cybernetics.json", "schematics.json", "food.json"];
     private static readonly string[] ScavengeFiles = ["items.json", "enemies.json", "zones.json", "scavenge.json"];
     private const string EmbeddedPrefix = "Remnants.Data.";
 
@@ -33,6 +33,14 @@ public static class GameDataPaths
 
     /// <summary>Scavenge definitions (items, enemies, zones, rules), found the same way as the colony data.</summary>
     public static ScavengeData LoadScavenge() => _scavenge ??= LoadScavengeFresh();
+
+    private static Remnants.Core.Trade.TradeRules? _trade;
+
+    /// <summary>Player trading rules (trade.json), found the same way.</summary>
+    public static Remnants.Core.Trade.TradeRules LoadTrade() => _trade ??=
+        CandidateDirectories().FirstOrDefault(dir => File.Exists(Path.Combine(dir, "trade.json"))) is { } dir
+            ? Remnants.Core.Trade.TradeRules.Load(dir)
+            : Remnants.Core.Trade.TradeRules.Parse(ReadEmbedded("trade.json"));
 
     /// <summary>The story (data/story): missions, dialogue, maps. A Sandbox colony carries it too and simply never uses it.</summary>
     public static Remnants.Core.Story.StoryData LoadStory() => _story ??= LoadStoryFresh();
@@ -76,7 +84,7 @@ public static class GameDataPaths
             if (File.Exists(Path.Combine(dir, "raids.json")))
                 return RaidDataLoader.LoadFromDirectory(dir);
         var raids = TryReadEmbedded("raids.json");
-        return raids is null ? null : RaidDataLoader.LoadFromJson(raids, TryReadEmbedded(DefenseSchematics.FileName));
+        return raids is null ? null : RaidDataLoader.LoadFromJson(raids);
     }
 
     private static string? TryReadEmbedded(string file)
@@ -93,7 +101,8 @@ public static class GameDataPaths
             if (ScavengeFiles.All(f => File.Exists(Path.Combine(dir, f))))
                 return ScavengeDataLoader.LoadFromDirectory(dir);
         return ScavengeDataLoader.LoadFromJson(ReadEmbedded("items.json"), ReadEmbedded("enemies.json"),
-            ReadEmbedded("zones.json"), ReadEmbedded("scavenge.json"), ReadEmbedded("perks.json"), ReadEmbedded("cybernetics.json"));
+            ReadEmbedded("zones.json"), ReadEmbedded("scavenge.json"), ReadEmbedded("perks.json"), ReadEmbedded("cybernetics.json"), ReadEmbedded("electronics.json"),
+            ReadEmbedded("schematics.json"), ReadEmbedded("schematics.electronics.json"));
     }
 
     private static GameData LoadFresh()
@@ -118,7 +127,9 @@ public static class GameDataPaths
 
     private static GameData LoadEmbedded() =>
         GameDataLoader.LoadFromJson(ReadEmbedded("resources.json"), ReadEmbedded("jobs.json"), ReadEmbedded("buildings.json"), ReadEmbedded("rules.json"),
-            ReadEmbedded("recipes.json"), ReadEmbedded("perks.json"), ReadEmbedded("cybernetics.json"));
+            ReadEmbedded("recipes.json"), ReadEmbedded("perks.json"), ReadEmbedded("cybernetics.json"), ReadEmbedded("weather.json"),
+            ReadEmbedded("food.json"), ReadEmbedded("electronics.json"), ReadEmbedded("schematics.json"), ReadEmbedded("schematics.food.json"),
+            ReadEmbedded("schematics.electronics.json"));
 
     private static string ReadEmbedded(string file)
     {

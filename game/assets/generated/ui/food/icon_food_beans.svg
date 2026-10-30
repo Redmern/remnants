@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+<g transform="scale(1)">
+<g transform="translate(64 64) scale(1.12) translate(-64 -64)">
+<path d="M18,112 a46,7 0 1,0 92,0 a46,7 0 1,0 -92,0 Z" fill="#3b3d3c" opacity="0.45"/>
+<path d="M20,58 C36,30 92,24 112,40 C96,44 52,48 26,70 Z" fill="#7d8a3c" stroke="#3b3d3c" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="32" y1="56" x2="100" y2="38" fill="none" stroke="#3f4a28" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<g transform="rotate(-20 40 82)">
+<path d="M27,82 C27,71 53,71 53,82 C53,91 43,87 40,85 C37,87 27,91 27,82 Z" fill="#7a3b33" stroke="#3b3d3c" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="34" y1="78" x2="42" y2="76" fill="none" stroke="#d2a782" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.7"/>
+</g>
+<g transform="rotate(15 60 88)">
+<path d="M47,88 C47,77 73,77 73,88 C73,97 63,93 60,91 C57,93 47,97 47,88 Z" fill="#7d4a3c" stroke="#3b3d3c" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="54" y1="84" x2="62" y2="82" fill="none" stroke="#d2a782" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.7"/>
+</g>
+<g transform="rotate(-10 82 86)">
+<path d="M69,86 C69,75 95,75 95,86 C95,95 85,91 82,89 C79,91 69,95 69,86 Z" fill="#7d4a3c" stroke="#3b3d3c" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="76" y1="82" x2="84" y2="80" fill="none" stroke="#d2a782" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.7"/>
+</g>
+<g transform="rotate(30 50 100)">
+<path d="M37,100 C37,89 63,89 63,100 C63,109 53,105 50,103 C47,105 37,109 37,100 Z" fill="#7a3b33" stroke="#3b3d3c" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="44" y1="96" x2="52" y2="94" fill="none" stroke="#d2a782" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.7"/>
+</g>
+<g transform="rotate(-25 74 102)">
+<path d="M61,102 C61,91 87,91 87,102 C87,111 77,107 74,105 C71,107 61,111 61,102 Z" fill="#7d4a3c" stroke="#3b3d3c" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="68" y1="98" x2="76" y2="96" fill="none" stroke="#d2a782" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.7"/>
+</g>
+<g transform="rotate(10 96 98)">
+<path d="M83,98 C83,87 109,87 109,98 C109,107 99,103 96,101 C93,103 83,107 83,98 Z" fill="#7d4a3c" stroke="#3b3d3c" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="90" y1="94" x2="98" y2="92" fill="none" stroke="#d2a782" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.7"/>
+</g>
+<g transform="rotate(5 64 72)">
+<path d="M51,72 C51,61 77,61 77,72 C77,81 67,77 64,75 C61,77 51,81 51,72 Z" fill="#7a3b33" stroke="#3b3d3c" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="58" y1="68" x2="66" y2="66" fill="none" stroke="#d2a782" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="0.7"/>
+</g>
+</g>
+</g>
+</svg>

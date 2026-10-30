@@ -16,6 +16,9 @@ public sealed class Party
 
     /// <summary>The player is gone for good (multiplayer): their units hold position, and allies stop counting on them.</summary>
     public bool Left { get; set; }
+
+    /// <summary>Items a cargo drone ferried out of the zone (and the drone itself): home whatever happens to the party.</summary>
+    public List<string> Secured { get; set; } = new();
 }
 
 public enum ScavengeEventType
@@ -31,6 +34,8 @@ public enum ScavengeEventType
     RelayDisrupted,
     LimbLocked,
     ObjectiveUpdated, Chatter, MissionPrompt, MissionEnded,
+    WeatherChanged, Thunder, Lightning,
+    EmpBurst, DecoyDeployed, DecoyGone, NoiseDecoy, DroneHealed, DroneLoaded, DroneFerried, DroneFired, Traced,
 }
 
 /// <summary>
@@ -166,6 +171,12 @@ public sealed class ScavengeState
     public List<Party> Parties { get; set; } = new();
     public List<Unit> Units { get; set; } = new();
     public List<LootCache> Caches { get; set; } = new();
+
+    /// <summary>Schematics a side learned of without getting them (a failed terminal hack): side → schematic ids.</summary>
+    public SortedDictionary<string, SortedSet<string>> HeardSchematics { get; set; } = new(StringComparer.Ordinal);
+
+    /// <summary>Schematics the colony running this instance already knows (picked at half weight by enemy drops).</summary>
+    public SortedSet<string> KnownSchematics { get; set; } = new(StringComparer.Ordinal);
 
     /// <summary>Tiles each side has ever seen (map index), for fog of war. Sorted so saves are stable.</summary>
     public Dictionary<string, SortedSet<int>> Explored { get; set; } = new();

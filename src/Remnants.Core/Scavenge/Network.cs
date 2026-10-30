@@ -28,8 +28,10 @@ public static class Network
             .Where(u => u.IsActive && u.Side == Unit.EnemySide && IsLinked(data, u) && !Devices.IsJammed(sim, u))
             .OrderBy(u => u.Id).ToList();
         var pylons = Pylons(sim.State.Map).Where(p => PylonOnline(sim, p)).ToList();
-        var pylonRange = data.Rules.Network.PylonRange;
-        int Relay(Unit u) => data.Enemies[u.EnemyDefId!].RelayRange;
+        // Weather static (a dust storm) shortens every link.
+        var relayMult = FieldEnvironment.Effects(data, sim.State).RelayRangeMultiplier;
+        var pylonRange = (int)Math.Floor(data.Rules.Network.PylonRange * relayMult + 1e-9);
+        int Relay(Unit u) => (int)Math.Floor(data.Enemies[u.EnemyDefId!].RelayRange * relayMult + 1e-9);
 
         // Union-find over units (0..n-1) then pylons (n..).
         var parent = Enumerable.Range(0, units.Count + pylons.Count).ToArray();

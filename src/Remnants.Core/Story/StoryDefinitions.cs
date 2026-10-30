@@ -42,7 +42,7 @@ public enum EffectKind
     SetFlag,
     /// <summary>Flag <see cref="EffectDef.Id"/> += <see cref="EffectDef.Value"/>.</summary>
     AddFlag,
-    /// <summary>Schematic <see cref="EffectDef.Id"/> through <see cref="ISchematicGrants"/>.</summary>
+    /// <summary>Schematic <see cref="EffectDef.Id"/>, learned through <c>Schematics.Grant</c> (source Story).</summary>
     Schematic,
     /// <summary><see cref="EffectDef.Value"/> × item <see cref="EffectDef.Id"/> into the inventory (negative takes).</summary>
     Item,

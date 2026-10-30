@@ -11,7 +11,8 @@ namespace Remnants.Game.Colony.Ui;
 /// The colony feed: Core events, command feedback and first-time tips (<see cref="Advice"/>, each once per session),
 /// each line with time, an icon and a colour by kind, filterable (All / People / Colony / Alerts / Tips) and
 /// collapsible. Important events (a death, a birth, someone leaving, a party home, a level up, a perk learned, a class
-/// finished, a raid seen coming, beaten or breaking through, a building wrecked) are also raised as
+/// finished, a schematic found, the trader arriving, a contract done, a raid seen coming, beaten or breaking through, a
+/// building wrecked) are also raised as
 /// <see cref="Important"/> for toasts, keyed by event type and survivor so a burst about one survivor merges.
 /// </summary>
 public partial class EventLog : PanelContainer
@@ -106,7 +107,7 @@ public partial class EventLog : PanelContainer
             var e = events[i];
             var (icon, color, kind) = Style(e.Type);
             Add($"D{e.Tick / rules.TicksPerDay + 1} {e.Tick % rules.TicksPerDay:00}h", icon, color, e.Message, kind);
-            if (ToastFor(e.Type) is { } toast && !RepeatNightShift(events, i)) Important?.Invoke(NoticeFor(e, toast.Title, icon, color));
+            if (ToastFor(e.Type) is { } toast && !RepeatNightShift(events, i) && !(e.Type == ColonyEventType.SchematicFound && _session.FromCommand(e))) Important?.Invoke(NoticeFor(e, toast.Title, icon, color));
         }
         if (events.Count > 0) _lastSeen = events[^1];
         if (Advice.Next(_session.Sim) is { } tip && _tipsShown.Add(tip.Id))
@@ -134,6 +135,11 @@ public partial class EventLog : PanelContainer
     /// </summary>
     private Notice NoticeFor(ColonyEvent e, string title, string icon, Color color)
     {
+        if (e.Type == ColonyEventType.SchematicFound)
+        {
+            var name = SchematicText.Named(_session.Sim, e.Message)?.Name;
+            return new(name is null ? title : $"{title}: {name}", e.Message, icon, color, "schematic-found", null);
+        }
         if (e.SurvivorId is not { } id) return new(title, e.Message, icon, color, null, null);
         var key = $"{e.Type}:{id}";
         if (e.Type != ColonyEventType.LevelUp || _session.Sim.State.FindSurvivor(id) is not { } s) return new(title, e.Message, icon, color, key, null);
@@ -159,6 +165,8 @@ public partial class EventLog : PanelContainer
         ColonyEventType.PerkLearned => ("Perk learned", true),
         ColonyEventType.StudyFinished => ("Class finished", true),
         ColonyEventType.NightShift => ("Night shift", true),
+        ColonyEventType.CourierArrived => ("Courier arrived", true),
+        ColonyEventType.TradeReceived => ("Goods received", true),
         ColonyEventType.SurgeryDone => ("Surgery done", true),
         ColonyEventType.SurgeryComplication => ("Surgery complication", true),
         ColonyEventType.ProstheticNeedsService => ("Prosthetic needs a service", true),
@@ -167,7 +175,13 @@ public partial class EventLog : PanelContainer
         ColonyEventType.RaidRepelled => ("Raid repelled", true),
         ColonyEventType.RaidBreached => ("The raid broke through", true),
         ColonyEventType.BuildingWrecked => ("Building wrecked", true),
-        ColonyEventType.DefenseSchematicLearned => ("Schematic learned", true),
+        ColonyEventType.SchematicFound => ("Schematic found", true),
+        ColonyEventType.TraderArrived => ("The trader is here", true),
+        ColonyEventType.ContractDone => ("Contract done", true),
+        ColonyEventType.Storm => ("Weather", true),
+        ColonyEventType.LightningStruck => ("Lightning strike", true),
+        ColonyEventType.FoodPoisoning => ("Food poisoning", true),
+        ColonyEventType.FoodRotted => ("Food rotted", true),
         _ => null,
     };
 
@@ -206,11 +220,27 @@ public partial class EventLog : PanelContainer
         ColonyEventType.BuildingWrecked or ColonyEventType.DefenseDestroyed => ("ui_repair", Palette.Danger, Kind.Alert),
         ColonyEventType.DefenseUnpaid => ("stat_warning", Palette.Warn, Kind.Alert),
         ColonyEventType.DefenseBuilt => ("ui_defend", Palette.Good, Kind.Colony),
-        ColonyEventType.Repaired => ("ui_repair", Palette.Good, Kind.Colony),
         ColonyEventType.GuardPosted => ("stance_overwatch", Palette.Amber, Kind.People),
-        ColonyEventType.DefenseSchematicLearned => ("item_blueprint", Palette.Good, Kind.Colony),
         ColonyEventType.ExpeditionRecalled => ("ui_expedition", Palette.Warn, Kind.Colony),
+        ColonyEventType.HarvestChanged => ("skill_farming", Palette.Amber, Kind.Colony),
+        ColonyEventType.FoodRotted => ("stat_warning", Palette.Warn, Kind.Alert),
+        ColonyEventType.FoodPoisoning => ("buff_sick", Palette.Danger, Kind.Alert),
+        ColonyEventType.CourierDispatched or ColonyEventType.CourierArrived => ("ui_courier", Palette.Good, Kind.Colony),
+        ColonyEventType.TradeReceived => ("stat_loot", Palette.Good, Kind.Colony),
         ColonyEventType.Humanity => ("stat_mood", Palette.Network.Lerp(Palette.TextMuted, 0.4f), Kind.People),
+        ColonyEventType.SchematicFound => ("item_chip", Palette.Network, Kind.Colony),
+        ColonyEventType.SchematicLearned => ("item_schematic", Palette.Good, Kind.Colony),
+        ColonyEventType.SchematicHeardOf => ("item_schematic", Palette.Amber, Kind.Colony),
+        ColonyEventType.ResearchStarted or ColonyEventType.ResearchFinished => ("ui_research", Palette.Amber, Kind.Colony),
+        ColonyEventType.ResearchEnded => ("ui_research", Palette.TextMuted, Kind.Colony),
+        ColonyEventType.RadioCall => ("ui_radio", Palette.Amber, Kind.Colony),
+        ColonyEventType.TraderArrived or ColonyEventType.TraderLeft or ColonyEventType.Traded => ("ui_trade", Palette.Amber, Kind.Colony),
+        ColonyEventType.ContractOffered or ColonyEventType.ContractAccepted or ColonyEventType.ContractDone => ("ui_contract", Palette.Amber, Kind.Colony),
+        ColonyEventType.ContractFailed => ("ui_contract", Palette.Warn, Kind.Alert),
+        ColonyEventType.WeatherChanged => ("weather_overcast", Palette.TextMuted, Kind.Colony),
+        ColonyEventType.Storm => ("weather_thunderstorm", Palette.Warn, Kind.Colony),
+        ColonyEventType.LightningStruck => ("weather_lightning", Palette.Danger, Kind.Alert),
+        ColonyEventType.Repaired => ("ui_build", Palette.Good, Kind.Colony),
         _ => ("ui_info", Palette.TextMuted, Kind.Colony),
     };
 

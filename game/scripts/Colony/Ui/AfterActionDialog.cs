@@ -79,6 +79,24 @@ public partial class AfterActionDialog : Overlay
         }
         _content.AddChild(Widgets.SectionHeader("Loot", "stat_loot"));
         _content.AddChild(Items(sim, report.Loot, Palette.Text, "Nothing brought back."));
+        if (report.Schematics.Count > 0)
+        {
+            _content.AddChild(Widgets.SectionHeader("Schematics", "item_schematic"));
+            var flow = Flow();
+            foreach (var (id, outcome) in report.Schematics)
+            {
+                var name = sim.Data.Schematics.Find(id)?.Name ?? id;
+                var (text, color, tip, icon) = outcome switch
+                {
+                    Remnants.Core.Schematics.ReceiveOutcome.Learned => ($"{name}: learned", Palette.Good, "The colony knows it now.", "item_schematic"),
+                    Remnants.Core.Schematics.ReceiveOutcome.ToDecrypt => ($"{name}: to decrypt", Palette.Network,
+                        "An encrypted Network chip: queue a Decrypt at the Electronics Lab (Items → Schematics).", "item_chip"),
+                    _ => ($"{name}: Research Data", Palette.TextMuted, "Already known: turned into Research Data.", "res_research_data"),
+                };
+                flow.AddChild(Widgets.Chip(Icons.Get(icon, 16), text, color, tip, color));
+            }
+            _content.AddChild(flow);
+        }
         if (report.LostGear.Count > 0)
         {
             _content.AddChild(Widgets.SectionHeader("Gear lost", "stat_warning"));

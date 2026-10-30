@@ -14,6 +14,8 @@ namespace Remnants.Game.Hud;
 /// <para>The UI scale is the root window's content scale: <c>auto × UiScale</c>, where auto follows the window height
 /// (about 1000 logical pixels tall from 850px up, a little denser below), so 720p, 1080p and 1440p all fit the HUD.</para>
 /// </summary>
+public enum WeatherEffects { Full, Reduced, Off }
+
 public static class GameSettings
 {
     private const string Path = "user://settings.cfg";
@@ -30,6 +32,12 @@ public static class GameSettings
 
     /// <summary>Accessibility: small HUD markers toward off-screen ambush and contact sounds (<see cref="Audio.SoundCues"/>).</summary>
     public static bool VisualSoundCues { get; set; }
+
+    /// <summary>
+    /// How much weather is drawn (<see cref="WeatherFx.WeatherView"/>): Full; Reduced (fewer particles, no lightning flashes:
+    /// the accessibility option); Off (only the sky's tint). Rules are the same either way.
+    /// </summary>
+    public static WeatherEffects WeatherEffects { get; set; } = WeatherEffects.Full;
 
     /// <summary>The window lost focus (set by the audio autoload); mutes Master when <see cref="MuteWhenUnfocused"/>.</summary>
     public static bool Unfocused { get; set; }
@@ -103,6 +111,7 @@ public static class GameSettings
         cfg.SetValue("audio", "ambience", AmbienceVolume);
         cfg.SetValue("audio", "mute_unfocused", MuteWhenUnfocused);
         cfg.SetValue("audio", "visual_cues", VisualSoundCues);
+        cfg.SetValue("display", "weather", (int)WeatherEffects);
         cfg.SetValue("camera", "pan", CameraPanSpeed);
         cfg.SetValue("camera", "zoom", CameraZoomSpeed);
         cfg.Save(Path);
@@ -122,6 +131,7 @@ public static class GameSettings
         AmbienceVolume = (float)cfg.GetValue("audio", "ambience", AmbienceVolume);
         MuteWhenUnfocused = (bool)cfg.GetValue("audio", "mute_unfocused", MuteWhenUnfocused);
         VisualSoundCues = (bool)cfg.GetValue("audio", "visual_cues", VisualSoundCues);
+        WeatherEffects = (WeatherEffects)Math.Clamp((int)cfg.GetValue("display", "weather", (int)WeatherEffects), 0, 2);
         CameraPanSpeed = (float)cfg.GetValue("camera", "pan", CameraPanSpeed);
         CameraZoomSpeed = (float)cfg.GetValue("camera", "zoom", CameraZoomSpeed);
     }
@@ -158,6 +168,7 @@ public static class Hotkeys
         new("open_items", "Items", "Colony", [Key.I]),
         new("open_log", "Event log filters", "Colony", [Key.L]),
         new("cycle_survivor", "Next survivor", "Colony", [Key.Tab]),
+        new("open_power", "Power grid overlay", "Colony", [Key.P]),
         new("camera_rotate_left", "Rotate camera left", "Colony", [Key.Q]),
         new("camera_rotate_right", "Rotate camera right", "Colony", [Key.R]),
         new("end_turn", "End turn", "Scavenge", [Key.Space, Key.Enter]),
@@ -185,6 +196,8 @@ public static class Hotkeys
         new("scav_fly", "Fly the scout drone", "Scavenge", [Key.J]),
         new("scav_mark", "Mark a target with the drone", "Scavenge", [Key.M]),
         new("scav_payload", "Drop a payload from the drone", "Scavenge", [Key.P]),
+        new("scav_drone_action", "Drone role: heal / load / fire", "Scavenge", [Key.R]),
+        new("scav_ferry", "Cargo drone: ferry the load out", "Scavenge", [Key.I]),
     ];
 
     /// <summary>Camera panning is not an action (it reads WASD and arrows directly); listed for the settings screen.</summary>

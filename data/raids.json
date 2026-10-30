@@ -26,7 +26,7 @@
       "arrivalPhase": { "Dawn": 1, "Day": 0.4, "Dusk": 1.5, "Night": 3 },
       "tags": ["husk"],
       "spoilShare": 0.35,
-      "spoilResources": ["food"],
+      "spoilResources": ["crops"],
       "loot": { "scrap": 0.3 },
       "schematicChance": 0.15
     },
@@ -98,7 +98,8 @@
   "weather": {
     "dust_storm": { "warning": 0.5, "pressure": { "Raider": 1.2 }, "attack": { "Raider": 1.1 }, "defense": 0.9 },
     "rain": { "warning": 0.8, "pressure": { "Husk": 0.8 }, "attack": {}, "defense": 0.95 },
-    "fog": { "warning": 0.6, "pressure": {}, "attack": { "Husk": 1.1 }, "defense": 0.9 }
+    "fog": { "warning": 0.6, "pressure": {}, "attack": { "Husk": 1.1 }, "defense": 0.9 },
+    "thunderstorm": { "warning": 0.7, "pressure": { "Husk": 0.9, "Raider": 0.8 }, "attack": {}, "defense": 0.9 }
   },
   "strength": {
     "perDefender": 8,

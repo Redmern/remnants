@@ -17,7 +17,7 @@
     "skills": { "Firearms": 50, "Melee": 40 },
     "equipment": ["linked_carbine", "linked_plating"],
     "tags": ["network"],
-    "drops": [ { "item": "linked_carbine", "chance": 0.15 }, { "item": "bp_linked_carbine", "chance": 0.05 }, { "item": "linked_core", "chance": 1 } ]
+    "drops": [ { "item": "linked_carbine", "chance": 0.15 }, { "item": "sch_linked_carbine", "chance": 0.03 }, { "item": "sch_linked_plating", "chance": 0.02 }, { "item": "sch_powered_limbs", "chance": 0.02 }, { "item": "linked_core", "chance": 1 } ]
   },
   {
     "id": "linked_drone", "name": "Linked Drone", "hp": 20, "ai": "Linked", "relayRange": 10,
@@ -25,7 +25,7 @@
     "skills": { "Firearms": 30 },
     "equipment": ["drone_zapper", "drone_rotors"],
     "tags": ["network"],
-    "drops": [ { "item": "electronics", "chance": 0.5 } ]
+    "drops": [ { "item": "electronics", "chance": 0.5 }, { "item": "sch_network_ghost", "chance": 0.02 }, { "item": "sch_drone_payload", "chance": 0.03 } ]
   },
   {
     "id": "linked_warden", "name": "Linked Warden", "hp": 140, "ai": "Linked", "relayRange": 6,
@@ -33,7 +33,9 @@
     "skills": { "Firearms": 45, "Melee": 50 },
     "equipment": ["warden_pulse", "warden_shell"],
     "tags": ["network"],
-    "drops": [ { "item": "linked_carbine", "chance": 0.6 }, { "item": "bp_linked_carbine", "chance": 0.25 }, { "item": "electronics", "chance": 1 },
+    "drops": [ { "item": "linked_carbine", "chance": 0.6 }, { "item": "sch_linked_carbine", "chance": 0.25 }, { "item": "sch_linked_plating", "chance": 0.15 },
+              { "item": "sch_cybernetics", "chance": 0.10 }, { "item": "sch_override", "chance": 0.10 }, { "item": "sch_pulse_rifle", "chance": 0.08 },
+              { "item": "sch_network_grade", "chance": 0.05 }, { "item": "sch_spec_gun", "chance": 0.05 }, { "item": "electronics", "chance": 1 },
               { "item": "linked_core", "chance": 1 }, { "item": "linked_core", "chance": 1 }, { "item": "linked_core", "chance": 1 } ]
   },
   {

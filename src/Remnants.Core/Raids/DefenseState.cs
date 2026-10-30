@@ -38,10 +38,7 @@ public sealed class DefenseState
     public List<RepairOrder> Repairs { get; set; } = new();
     public int NextRepairId { get; set; } = 1;
 
-    /// <summary>
-    /// Defense schematics the colony knows beyond the defaults (the adapter's store until story-schematics lands, see
-    /// <see cref="DefenseSchematics"/>).
-    /// </summary>
+    /// <summary>Saves made before the schematics merge kept learned defense schematics here; on load they move into <c>ColonyState.Schematics</c>.</summary>
     public SortedSet<string> KnownSchematics { get; set; } = new(StringComparer.Ordinal);
 
     /// <summary>The last raid's report, for the after-raid screen; older ones are in <see cref="History"/>.</summary>

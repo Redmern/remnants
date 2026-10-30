@@ -62,23 +62,30 @@ public class RaidDataTests
     {
         RaidTestData.Real.Validate(TestData.Real, ScavengeTestData.Real);
         Assert.Equal(3, RaidTestData.Real.Def.Threats.Count);
-        Assert.All(RaidTestData.Real.Defenses.Values, d => Assert.NotNull(DefenseSchematics.GateOf(RaidTestData.Real, d.Id)));
+        var sim = RaidTestData.Colony();
+        var ungated = RaidTestData.Real.Defenses.Keys.Where(id => DefenseSchematics.GateOf(sim, id) is null).Order().ToList();
+        Assert.Equal(["alarm_bell", "gate_wood", "spike_strip", "wall_wood", "watchtower_1"], ungated);
     }
 
     [Fact]
-    public void Defaults_are_wood_walls_a_gate_spike_strips_an_alarm_bell_and_a_basic_watchtower()
+    public void A_defense_schematic_for_an_unknown_defense_is_an_error()
     {
-        var defaults = RaidTestData.Real.Schematics.Where(s => s.Default).SelectMany(s => s.Unlocks).Select(u => u.Id).Order().ToList();
-        Assert.Equal(["alarm_bell", "gate_wood", "spike_strip", "wall_wood", "watchtower_1"], defaults);
+        var data = TestData.Real;
+        var bad = new Remnants.Core.Schematics.SchematicDef
+        {
+            Id = "sch_x", Name = "X", Unlocks = [new() { Kind = Remnants.Core.Schematics.UnlockKind.Defense, Id = "nope" }],
+            Sources = [Remnants.Core.Schematics.SchematicSource.Loot],
+        };
+        var catalog = new Remnants.Core.Schematics.SchematicCatalog(new Remnants.Core.Schematics.SchematicFile
+        {
+            Rules = data.Schematics.Rules, Traders = data.Schematics.Traders.Values.ToList(), Schematics = data.Schematics.All.Values.Append(bad).ToList(),
+        });
+        Assert.Throws<GameDataException>(() => RaidTestData.Real.Validate(WithCatalog(data, catalog)));
     }
 
-    [Fact]
-    public void A_schematic_for_an_unknown_defense_is_an_error()
-    {
-        var bad = RaidDataLoader.LoadFromJson(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "data", "raids.json")),
-            """{ "schematics": [ { "id": "sch_x", "name": "X", "default": true, "unlocks": [ { "kind": "Defense", "id": "nope" } ] } ] }""");
-        Assert.Throws<GameDataException>(() => bad.Validate(TestData.Real));
-    }
+    private static GameData WithCatalog(GameData d, Remnants.Core.Schematics.SchematicCatalog catalog) =>
+        new(d.Resources.Values, d.Jobs.Values, d.Buildings.Values, d.Rules, d.Recipes.Values, d.Progression, d.Cybernetics?.Def, catalog, d.Weather,
+            d.Food?.Def, d.Electronics);
 
     [Fact]
     public void Engineer_and_Sentry_perks_load_with_their_hooks()
@@ -134,7 +141,7 @@ public class DefensePlacementTests
         Assert.Equal(CommandError.CellOccupied, sim.Execute(new PlaceDefense("spike_strip", hall.X, hall.Y)).Error);
         Assert.Equal(CommandError.InvalidCell, sim.Execute(new PlaceDefense("spike_strip", -1, 0)).Error);
         Assert.Equal(CommandError.SchematicMissing, sim.Execute(new PlaceDefense("barricade", 1, 1)).Error);
-        Assert.True(DefenseSchematics.Grant(sim, "sch_barricade", "test"));
+        Assert.True(Remnants.Core.Schematics.Schematics.Grant(sim, "sch_barricade", Remnants.Core.Schematics.SchematicSource.Debug).Outcome == Remnants.Core.Schematics.ReceiveOutcome.Learned);
         Assert.True(sim.Execute(new PlaceDefense("barricade", 1, 1)).Ok);
         Assert.Equal(CommandError.TownHallLevelTooLow, sim.ExecuteGranted("sch_defense_turret", new PlaceDefense("defense_turret", 2, 2)).Error);
     }
@@ -155,7 +162,7 @@ public class DefensePlacementTests
     public void Upgrade_pays_the_difference_and_remove_refunds_half()
     {
         var sim = RaidTestData.Colony(townHallLevel: 2);
-        DefenseSchematics.Grant(sim, "sch_wall_scrap", "test");
+        Remnants.Core.Schematics.Schematics.Grant(sim, "sch_wall_scrap", Remnants.Core.Schematics.SchematicSource.Debug);
         var wall = sim.Place("wall_wood", (1, 1));
         var scrap = sim.State.Stockpile.Get("scrap");
         Assert.True(sim.Execute(new UpgradeDefense(wall.Id)).Ok);
@@ -174,7 +181,7 @@ file static class GrantExtensions
 {
     public static CommandResult ExecuteGranted(this ColonySim sim, string schematic, IColonyCommand c)
     {
-        DefenseSchematics.Grant(sim, schematic, "test");
+        Remnants.Core.Schematics.Schematics.Grant(sim, schematic, Remnants.Core.Schematics.SchematicSource.Debug);
         return sim.Execute(c);
     }
 }
@@ -509,7 +516,7 @@ public class RaidBattleTests
         var wall = sim.Place("wall_wood", RaidTestData.Edge(sim, Side.North, 2));
         var tower = sim.Place("watchtower_1", RaidTestData.Edge(sim, Side.North, 3, 3));
         sim.State.Buildings[0].Level = 2;
-        DefenseSchematics.Grant(sim, "sch_defense_turret", "test");
+        Remnants.Core.Schematics.Schematics.Grant(sim, "sch_defense_turret", Remnants.Core.Schematics.SchematicSource.Debug);
         var turret = sim.Place("defense_turret", RaidTestData.Edge(sim, Side.North, 3, -3), Side.North);
         var map = RaidBattle.ColonyMap(sim, RaidTestData.Real, Side.North);
         Assert.Equal(g.Width, map.Width);
@@ -602,6 +609,7 @@ public class RaidBattleTests
         sim.State.Campaign!.Progress("m5").Attempts = 1;
         Assert.Equal("perimeter_th2", Remnants.Core.Story.Campaign.Setup(sim, "m5").Map!.Id);
         sim.Build("radio_mast");
+        Remnants.Core.Schematics.Schematics.Grant(sim, "sch_watchtower", Remnants.Core.Schematics.SchematicSource.Debug);
         sim.Build("watchtower");
         var setup = Remnants.Core.Story.Campaign.Setup(sim, "m5");
         Assert.StartsWith("colony_", setup.Map!.Id);
@@ -611,5 +619,65 @@ public class RaidBattleTests
         Assert.NotEmpty(run.State.Mission!.Marker("treeline"));
         var result = Play(run);
         Assert.True(result.Complete);
+    }
+}
+
+public class RaidIntegrationTests
+{
+    [Fact]
+    public void Bad_weather_shortens_the_warning()
+    {
+        var sim = new ColonySim(TestData.RealWithWeather, NewGame.Create(TestData.RealWithWeather, 3, ScavengeTestData.Real).State, ScavengeTestData.Real)
+            { Raids = RaidTestData.Real };
+        var clear = Enumerable.Range(0, 24 * 120).Select(t => (long)t).FirstOrDefault(t => RaidWeather.At(sim, t) == "clear", -1);
+        var bad = Enumerable.Range(0, 24 * 120).Select(t => (long)t)
+            .FirstOrDefault(t => RaidWeather.At(sim, t) is { } k && RaidTestData.Real.Def.Weather.ContainsKey(k), -1);
+        Assert.True(clear >= 0 && bad >= 0, "the weather has clear spells and rain, fog or storms within 120 days");
+        Assert.Equal(1, RaidWeather.Modifiers(sim, RaidTestData.Real, clear).Warning);
+        Assert.True(RaidWeather.Modifiers(sim, RaidTestData.Real, bad).Warning < 1);
+    }
+
+    [Fact]
+    public void A_defense_cabled_to_a_powered_building_gets_its_bonus()
+    {
+        var sim = RaidTestData.Colony();
+        Remnants.Core.Schematics.Schematics.Grant(sim, "sch_floodlight_post", Remnants.Core.Schematics.SchematicSource.Debug);
+        var hall = sim.State.Buildings[0];
+        var near = DefenseGrid.Of(sim, RaidTestData.Real).PlotCenter(hall.Plot);
+        var light = sim.Place("floodlight_post", (near.X, near.Y + 3));
+        var far = sim.Place("floodlight_post", RaidTestData.Edge(sim, Side.East));
+        Assert.False(DefensePower.IsPowered(sim, light));
+        sim.State.Power.Powered.Add(hall.Id);
+        Assert.True(DefensePower.IsPowered(sim, light));
+        Assert.False(DefensePower.IsPowered(sim, far));
+        Assert.Equal(1.5, DefensePower.Multiplier(sim, light, RaidTestData.Real.Defense("floodlight_post")));
+    }
+
+    [Fact]
+    public void Husks_trample_the_standing_crops_and_raiders_take_pantry_food()
+    {
+        var sim = RaidTestData.Colony();
+        var farm = sim.Build("farm");
+        farm.HarvestProgress["potato"] = 10;
+        Assert.Equal(5, CropDamage.Trample(sim, 0.5));
+        Assert.Equal(5, farm.HarvestProgress["potato"], 6);
+        Pantry.Add(sim.State, sim.Data, "potato", 20);
+        var before = Pantry.FoodValue(sim);
+        var taken = CropDamage.Steal(sim, 0.5);
+        Assert.True(taken > 0);
+        Assert.True(Pantry.FoodValue(sim) <= before - taken + 1e-9);
+    }
+
+    [Fact]
+    public void Defense_schematics_from_an_older_save_move_into_the_schematics_catalogue()
+    {
+        var sim = RaidTestData.Colony();
+        sim.State.Defense.KnownSchematics.Add("sch_barricade");
+        var json = SaveGame.Save(sim.State).Replace($"\"version\": {SaveGame.Version}", $"\"version\": {SaveGame.RaidsVersion}");
+        var loaded = SaveGame.Load(sim.Data, json, ScavengeTestData.Real);
+        loaded.Raids = RaidTestData.Real;
+        Assert.Contains("sch_barricade", loaded.State.Schematics.Known);
+        Assert.Empty(loaded.State.Defense.KnownSchematics);
+        Assert.True(DefenseSchematics.Unlocked(loaded, "barricade"));
     }
 }

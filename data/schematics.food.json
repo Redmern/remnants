@@ -1,0 +1,108 @@
+{
+  "schematics": [
+    {
+      "id": "sch_cold_cellar",
+      "name": "Cold Cellar",
+      "tier": 1,
+      "unlocks": [
+        {
+          "kind": "Building",
+          "id": "cold_cellar"
+        }
+      ],
+      "sources": [
+        "Loot",
+        "Trade",
+        "Research"
+      ],
+      "description": "Dig deep, line it with stone, keep the door shut: food keeps far longer."
+    },
+    {
+      "id": "sch_pickling",
+      "name": "Pickling",
+      "tier": 1,
+      "unlocks": [
+        {
+          "kind": "Recipe",
+          "id": "pickle"
+        }
+      ],
+      "sources": [
+        "Loot",
+        "Trade",
+        "Research"
+      ],
+      "description": "Brine, herbs and jars: vegetables that keep for weeks."
+    },
+    {
+      "id": "sch_medicinal_broth",
+      "name": "Medicinal Broth",
+      "tier": 1,
+      "unlocks": [
+        {
+          "kind": "Recipe",
+          "id": "medicinal_broth"
+        }
+      ],
+      "sources": [
+        "Loot",
+        "Trade",
+        "Research"
+      ],
+      "description": "An old field-hospital recipe: bone broth and bitter herbs that help wounds close."
+    },
+    {
+      "id": "sch_feast",
+      "name": "Feast Day",
+      "tier": 2,
+      "unlocks": [
+        {
+          "kind": "Recipe",
+          "id": "feast"
+        }
+      ],
+      "sources": [
+        "Loot",
+        "Trade",
+        "Research"
+      ],
+      "description": "A handwritten menu for a feast, spices and all. Marrow's caravan sells copies."
+    },
+    {
+      "id": "sch_stim_tea",
+      "name": "Stim Tea",
+      "tier": 2,
+      "unlocks": [
+        {
+          "kind": "Recipe",
+          "id": "stim_tea"
+        }
+      ],
+      "sources": [
+        "Loot",
+        "Trade",
+        "Research"
+      ],
+      "description": "Steep it strong: a long day's work, and a hard night after."
+    },
+    {
+      "id": "sch_field_rations",
+      "name": "Field Rations",
+      "tier": 2,
+      "unlocks": [
+        {
+          "kind": "Recipe",
+          "id": "field_rations"
+        }
+      ],
+      "sources": [
+        "Loot",
+        "Terminal",
+        "Trade",
+        "Research"
+      ],
+      "description": "Pressed, salted bars from an old army manual: light and nearly ageless."
+    }
+  ],
+  "traders": []
+}

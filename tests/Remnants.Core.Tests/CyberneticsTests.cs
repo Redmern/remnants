@@ -1,3 +1,4 @@
+using Remnants.Core.Schematics;
 using Remnants.Core.Colony;
 using Remnants.Core.Data;
 using Remnants.Core.Items;
@@ -79,6 +80,9 @@ public class CyberneticsTreeTests
         var sim = CyberTestColony.Make();
         foreach (var (res, n) in new Dictionary<string, double> { ["scrap"] = 500, ["wood"] = 200, ["cloth"] = 100, ["electronics"] = 100, ["medicine"] = 50 })
             sim.State.Stockpile.Add(res, n);
+        // The tree's own rules are under test here: every tier and specialisation schematic is known except T3 and T4.
+        foreach (var s in sim.Data.Schematics.All.Values.Where(s => s.Unlocks.Any(u => u.Kind == UnlockKind.Prosthetic && u.Id is not ("tier:3" or "tier:4"))))
+            sim.State.Schematics.Known.Add(s.Id);
         return sim;
     }
 
@@ -112,11 +116,12 @@ public class CyberneticsTreeTests
         Assert.Equal(["know Mechanical Leg"], runner.Missing);
         Assert.Equal(CommandError.RecipeLocked, sim.Execute(new QueueRecipe(lab.Id, "runner_leg")).Error);
 
-        // A blueprint skips a tier: Cybernetics opens cyborg designs without a powered one known.
+        // The tier-3 schematic skips a tier: Cybernetics opens cyborg designs without a powered one known.
         crafter.Perks.Add("neural_interface");
-        Assert.Contains(Status(sim, "cyber_leg").Missing, m => m.StartsWith("know Runner Leg or Silent Leg or Armored Leg, or study Blueprint: Cybernetics"));
-        sim.State.KnownBlueprints.Add("bp_cybernetics");
-        Assert.DoesNotContain(Status(sim, "cyber_leg").Missing, m => m.StartsWith("know"));
+        Assert.Contains(Status(sim, "cyber_leg").Missing, m => m.StartsWith("know Runner Leg or Silent Leg or Armored Leg"));
+        Assert.Contains("Schematic: Cybernetics", Status(sim, "cyber_leg").Missing);
+        sim.State.Schematics.Known.Add("sch_cybernetics");
+        Assert.DoesNotContain(Status(sim, "cyber_leg").Missing, m => m.StartsWith("know") || m.StartsWith("Schematic"));
 
         sim.State.Inventory.Add("mech_leg");
         sim.Tick();

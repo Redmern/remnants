@@ -61,7 +61,8 @@ public static class RaidText
     public static string? LockReason(ColonySim sim, RaidData raids, DefenseDef def)
     {
         if (!DefenseSchematics.Unlocked(sim, def.Id))
-            return DefenseSchematics.GateOf(raids, def.Id) is { } gate ? $"Needs the schematic {gate.Name}" : "Needs its schematic";
+            return DefenseSchematics.GateOf(sim, def.Id) is { } gate && sim.Data.Schematics.Find(gate) is { } sch
+                ? $"Needs the schematic {sch.Name}" : "Needs its schematic";
         if (sim.TownHallLevel < def.MinTownHallLevel) return $"Needs Town Hall level {def.MinTownHallLevel}";
         return null;
     }

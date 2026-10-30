@@ -51,7 +51,7 @@ public partial class ScavengeScreen : Node3D
         Hud.GameSettings.Boot(GetTree());
         _mission = ScavengeSession.TakeMission();
         _presenter = new ScavengePresenter(_mission.Driver);
-        var models = new ScavengeModels(ModelLibrary.Load()) { ColonyMap = ColonyBattleDressing.IsColonyMap(_presenter.State) };
+        var models = new ScavengeModels(ModelLibrary.Load()) { ColonyMap = ColonyBattleDressing.IsColonyMap(_presenter.State), Data = _presenter.Sim.Data };
         GD.Print($"Scavenge: zone {_presenter.State.ZoneId}, {_presenter.State.Units.Count} units, {models.ModelCount} generated models.");
 
         AddEnvironment();
@@ -59,6 +59,7 @@ public partial class ScavengeScreen : Node3D
         _camera = new TacticalCamera { Name = "Camera" };
         AddChild(_camera);
         _camera.SetBounds(Vector2.Zero, new Vector2((map.Width - 1) * TileGrid.TileSize, (map.Height - 1) * TileGrid.TileSize));
+        AddWeather();
 
         _map = new MapView { Name = "Map" };
         AddChild(_map);
@@ -99,13 +100,43 @@ public partial class ScavengeScreen : Node3D
     /// <summary>
     /// The colony's sky and light at the run's hour (<see cref="ScavengeState.Environment"/>, the server's in
     /// multiplayer): dawn and dusk warm, night dark blue with flares and muzzle flashes lighting the ground. No distance
-    /// fog on the tactical map. Weather would plug into <see cref="Colony.DayNightLighting.Weather"/>.
+    /// fog on the tactical map, only weather's ground mist. The weather (<see cref="WeatherFx.WeatherView"/>) grades that light
+    /// and draws rain and dust; it follows the run's environment on every sync, and lightning flashes on Core's event.
     /// </summary>
     private void AddEnvironment()
     {
-        var lighting = new Colony.DayNightLighting { Name = "Lighting", UseFog = false };
-        AddChild(lighting);
-        lighting.SetupFixed(_presenter.State.Environment.Hour + 0.5);
+        _lighting = new Colony.DayNightLighting { Name = "Lighting", UseFog = false };
+        AddChild(_lighting);
+        _lighting.SetupFixed(_presenter.State.Environment.Hour + 0.5);
+    }
+
+    private Colony.DayNightLighting _lighting = null!;
+    private WeatherFx.WeatherView _weather = null!;
+
+    private void AddWeather()
+    {
+        _weather = new WeatherFx.WeatherView { Name = "Weather", AmbientLightning = false };
+        AddChild(_weather);
+        _weather.Setup(_camera.Camera, _lighting, 26f);
+        SyncWeather(instant: true);
+    }
+
+    private void SyncWeather(bool instant = false)
+    {
+        var env = _presenter.State.Environment;
+        _weather.Set(env.Weather, env.Intensity, instant);
+        WeatherFx.WeatherSounds.Set(env.Weather, env.Intensity);
+    }
+
+    /// <summary>A replayed weather event: the sky turns, thunder rolls, lightning flashes.</summary>
+    private void WeatherEvent(ScavengeEvent e)
+    {
+        switch (e.Type)
+        {
+            case ScavengeEventType.WeatherChanged: SyncWeather(); break;
+            case ScavengeEventType.Lightning: _weather.Strike(0.15f); break;
+            case ScavengeEventType.Thunder: Audio.WeatherAudio.Lightning(0.9f); break;
+        }
     }
 
     private void BuildHud()
@@ -117,6 +148,14 @@ public partial class ScavengeScreen : Node3D
             (_hud.TurnBar, _hud.UnitPanel, _hud.Actions, _hud.Stances, _hud.Log, _hud.Result);
         _coopPanel = _hud.Coop;
         _techPanel = _hud.Tech;
+        // Multiplayer: trade with allies (items between the parties' packs) at any time, not only on your turn.
+        if (_presenter.Driver is RemoteDriver remote)
+        {
+            var dock = new Trade.TradeDock(remote.Client, _hud.Toasts);
+            _hud.AddChild(dock);
+            _coopPanel.TradeRequested += dock.Request;
+            _coopPanel.CanTrade = true;
+        }
     }
 
     private void Wire()
@@ -224,6 +263,19 @@ public partial class ScavengeScreen : Node3D
         var acting = _presenter.ActingUnit;
         var pid = _presenter.PlayerId;
 
+        if (_aim is TechAim.Heal or TechAim.Fire && acting is not null)
+        {
+            if (clicked is null)
+            {
+                Toast(_aim == TechAim.Heal ? "Click a friendly unit next to the drone." : "Click a hostile the drone sees.");
+                return;
+            }
+            var aimed = _aim;
+            _aim = TechAim.None;
+            _ = Run(aimed == TechAim.Heal ? new DroneHeal(pid, acting.Id, clicked.Id) : new DroneFire(pid, acting.Id, clicked.Id));
+            return;
+        }
+
         if (_aim != TechAim.None && acting is not null)
         {
             var aim = _aim;
@@ -326,6 +378,7 @@ public partial class ScavengeScreen : Node3D
                     _log.Event(e);
                     _fog.Incoming(e);
                     _audio.Step(e);
+                    WeatherEvent(e);
                     // Follow what others do in sight (enemy turns, recruits) so it never happens off screen.
                     if (e.Type is ScavengeEventType.Moved or ScavengeEventType.Attacked or ScavengeEventType.Missed
                         && e.UnitId is { } actor && _presenter.State.FindUnit(actor) is { } u && u.PlayerId != _presenter.PlayerId
@@ -365,6 +418,7 @@ public partial class ScavengeScreen : Node3D
 
     private void SyncAll()
     {
+        SyncWeather();
         _map.Sync();
         _units.Sync();
         _fog.Sync();
@@ -418,6 +472,25 @@ public partial class ScavengeScreen : Node3D
 
         var acting = _presenter.ActingUnit;
         var isActing = acting is not null && acting.Id == selected.Id;
+        if (isActing && _aim is TechAim.Heal && Drones.DroneOf(_presenter.State, acting!) is { } medic)
+        {
+            _map.Highlight(medic.Pos, HighlightKind.Selected);
+            foreach (var u in _techPanel.HealTargets(acting!, medic)) _map.Highlight(u.Pos, HighlightKind.Use, u.Name);
+            return;
+        }
+        if (isActing && _aim is TechAim.Fire && Drones.DroneOf(_presenter.State, acting!) is { } gunship)
+        {
+            _map.Highlight(gunship.Pos, HighlightKind.Selected);
+            var gun = _presenter.Sim.Profile(gunship).Actions.FirstOrDefault();
+            foreach (var t in DroneRoles.FireTargets(_presenter.Sim, acting!).Where(_presenter.CanSee))
+            {
+                _map.Highlight(t.Pos, HighlightKind.Attack);
+                if (gun is not null)
+                    previews[t.Id] = new WorldTags.Preview($"DRONE {Combat.ChanceToHit(_presenter.Sim, gunship, gun, t) * 100:0}% · {gun.MinDamage:0}–{gun.MaxDamage:0}",
+                        false, gun.ApCost > acting!.Ap);
+            }
+            return;
+        }
         if (isActing && _aim != TechAim.None)
         {
             var targets = _aim == TechAim.Deploy ? _presenter.DeployTiles(acting!) : Drones.FlightTargets(_presenter.Sim, acting!);

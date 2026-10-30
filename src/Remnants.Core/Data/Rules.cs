@@ -45,29 +45,17 @@ public sealed record TrainingRules
     public double ChildMultiplier { get; init; } = 2.0;
 }
 
+/// <summary>
+/// How much everyone at home eats per tick, in food value (see data/food.json for what food is). Who goes without
+/// takes damage and may starve.
+/// </summary>
 public sealed record FoodRules
 {
-    public string ResourceId { get; init; } = "food";
     public double AdultPerTick { get; init; } = 0.05;
     public double ChildPerTick { get; init; } = 0.04;
     public double InfantPerTick { get; init; } = 0.02;
     public double StarvationDamagePerTick { get; init; } = 1.0;
     public double RecoveryPerTick { get; init; } = 0.25;
-
-    /// <summary>Cooked food, best first: eaten before raw food when in stock.</summary>
-    public List<MealRules> Meals { get; init; } = new();
-}
-
-/// <summary>
-/// A Kitchen product. One unit covers <see cref="FoodValue"/> food of someone's need (so cooking stretches food), and
-/// each tick someone eats it they gain extra mood and health.
-/// </summary>
-public sealed record MealRules
-{
-    public string Resource { get; init; } = "";
-    public double FoodValue { get; init; } = 1;
-    public double MoodPerTick { get; init; }
-    public double HealthPerTick { get; init; }
 }
 
 /// <summary>

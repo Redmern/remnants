@@ -193,7 +193,7 @@ public class CampaignTests
     }
 
     [Fact]
-    public void Done_pays_rewards_through_the_schematic_adapter_and_queues_the_debrief()
+    public void Done_pays_schematic_rewards_through_the_schematics_module_and_queues_the_debrief()
     {
         var sim = NewStory();
         var campaign = sim.State.Campaign!;
@@ -210,8 +210,8 @@ public class CampaignTests
         Assert.True(sim.Execute(new ApplyExtractionResult(run.ResultFor(1))).Ok);
 
         Assert.Equal(MissionStatus.Done, campaign.Progress("m2").Status);
-        Assert.Contains("sch_watchtower", campaign.Schematics);
-        Assert.True(Campaign.Schematics.Has(sim, "sch_watchtower"));
+        Assert.True(Schematics.Schematics.Has(sim, "sch_watchtower"));
+        Assert.Equal(Schematics.SchematicSource.Story, sim.State.Schematics.LearnedFrom["sch_watchtower"]);
         Assert.Equal(medicine + 3, sim.State.Stockpile.Get("medicine"));
         Assert.Equal(0, sim.State.Inventory.Count("relay_antenna"));
         Assert.Equal(ZoneIntel.Rumored, WorldMap.IntelOf(sim.State, ScavengeTestData.Real.Zones["suburb_ruins"]));
@@ -220,8 +220,9 @@ public class CampaignTests
         Assert.Contains(campaign.LastDebrief.Rewards, r => r.Contains("Watchtower"));
 
         // A duplicate becomes Research Data.
+        var data = sim.State.Stockpile.Get("research_data");
         Campaign.Apply(sim, new EffectDef { Kind = EffectKind.Schematic, Id = "sch_watchtower" }, "test");
-        Assert.Equal(1, campaign.Flag(CampaignLedger.ResearchDataFlag));
+        Assert.Equal(data + 2, sim.State.Stockpile.Get("research_data"));  // tier 1 duplicate
     }
 
     [Fact]
@@ -247,7 +248,7 @@ public class CampaignTests
         sim.Build("med_bay");
         sim.Tick();
         var adult = sim.State.Survivors.First(s => !s.IsChild);
-        sim.State.Stockpile.Add("food", 50);
+        sim.AddFood(50);
         Assert.True(sim.Execute(new LaunchStoryMission("m4", [new ExpeditionMember(adult.Id)])).Ok);
         sim.Advance(48);
         var run = sim.OpenExpeditionScavenge();
@@ -310,6 +311,7 @@ public class CampaignTests
         sim.State.Buildings.Single(b => b.DefId == "town_hall").Level = 2;
         Assert.Equal("perimeter_th2", Campaign.Setup(sim, "m5").Map!.Id);
         sim.State.Buildings.Single(b => b.DefId == "town_hall").Level = 3;
+        Schematics.Schematics.Grant(sim, "sch_watchtower", Schematics.SchematicSource.Story);  // M2's reward
         sim.Build("watchtower");
         var setup = Campaign.Setup(sim, "m5");
         Assert.Equal("perimeter_th3", setup.Map!.Id);
@@ -647,5 +649,45 @@ public class ObjectiveTests
             return ScavengeSave.Save(sim.State);
         }
         Assert.Equal(Play(), Play());
+    }
+
+    [Fact]
+    public void Story_calls_ring_on_the_radio_mast_and_answering_there_opens_the_dialogue()
+    {
+        var sim = NewStory();
+        var call = Campaign.QueueCall(sim, Campaign.Waiting(sim).FirstOrDefault()?.DialogueId ?? sim.Story!.Dialogues.Keys.First());
+        var radio = Assert.Single(Remnants.Core.Schematics.RadioMast.Calls(sim), c => c.Tag == Campaign.CallTagPrefix + call.Id);
+        Assert.Equal(Remnants.Core.Schematics.RadioCallKind.Story, radio.Kind);
+
+        Assert.True(sim.Execute(new Remnants.Core.Schematics.AnswerCall(radio.Id)).Ok);
+
+        Assert.True(call.Taken);
+        Assert.NotNull(sim.State.Campaign!.Active);
+        Assert.DoesNotContain(Remnants.Core.Schematics.RadioMast.Calls(sim), c => c.Tag == Campaign.CallTagPrefix + call.Id);
+    }
+
+    [Fact]
+    public void Taking_a_call_from_the_story_hud_clears_it_from_the_radio_and_delayed_calls_ring_later()
+    {
+        var sim = NewStory();
+        var dialogue = sim.Story!.Dialogues.Keys.First();
+        var later = Campaign.QueueCall(sim, dialogue, delayTicks: 5);
+        Assert.DoesNotContain(Remnants.Core.Schematics.RadioMast.Calls(sim), c => c.Tag == Campaign.CallTagPrefix + later.Id);
+        for (var i = 0; i < 6; i++) sim.Tick();
+        Assert.Contains(Remnants.Core.Schematics.RadioMast.Calls(sim), c => c.Tag == Campaign.CallTagPrefix + later.Id);
+        Assert.True(sim.Execute(new TakeCall(later.Id)).Ok);
+        Assert.DoesNotContain(Remnants.Core.Schematics.RadioMast.Calls(sim), c => c.Tag == Campaign.CallTagPrefix + later.Id);
+    }
+
+    [Fact]
+    public void Every_story_schematic_reward_is_in_the_catalogue()
+    {
+        var catalog = TestData.Real.Schematics;
+        var dir = Path.Combine(AppContext.BaseDirectory, "data", "story");
+        var ids = Directory.GetFiles(dir, "*.json", SearchOption.AllDirectories)
+            .SelectMany(f => System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(f), "\"(sch_[a-z0-9_]+)\"").Select(m => m.Groups[1].Value))
+            .Distinct().ToList();
+        Assert.NotEmpty(ids);
+        Assert.All(ids, id => Assert.NotNull(catalog.Find(id)));
     }
 }

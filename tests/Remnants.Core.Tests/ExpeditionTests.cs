@@ -13,7 +13,7 @@ public static class LoopTestData
     {
         var state = new ColonyState();
         state.Buildings.Add(new Building { Id = state.NextBuildingId++, DefId = "town_hall", Level = townHallLevel });
-        state.Stockpile.Add("food", food);
+        state.AddFood(food);
         foreach (var (id, n) in items ?? new()) state.Inventory.Add(id, n);
         return new ColonySim(TestData.Real, state, ScavengeTestData.Real);
     }
@@ -60,8 +60,8 @@ public class LaunchExpeditionTests
         Assert.True(result.Ok, result.Message);
         Assert.True(a.Away && b.Away);
         Assert.Null(a.AssignedBuildingId);
-        Assert.Empty(sim.State.Inventory.Counts);
-        Assert.Equal(100 - 2 * sim.Data.Rules.Expedition.RationFoodPerMember, sim.State.Stockpile.Get("food"), 6);
+        Assert.DoesNotContain(sim.State.Inventory.Counts, kv => !sim.Data.Food!.IsFood(kv.Key));
+        Assert.Equal(100 - 2 * sim.Data.Rules.Expedition.RationFoodPerMember, sim.FoodStock, 6);
         Assert.Equal("outskirts", sim.State.Expedition!.ZoneId);
         Assert.Contains(sim.State.Events, e => e.Type == ColonyEventType.ExpeditionLaunched);
         Assert.Equal(CommandError.SurvivorAway, sim.Execute(new AssignJob(a.Id, farm.Id)).Error);
@@ -74,11 +74,11 @@ public class LaunchExpeditionTests
         var a = sim.AddSurvivor();
         var home = sim.AddSurvivor();
         Assert.True(sim.Execute(new LaunchExpedition("outskirts", [LoopTestData.Member(a)])).Ok);
-        var before = sim.State.Stockpile.Get("food");
+        var before = sim.FoodStock;
 
         sim.Advance(10);
 
-        Assert.Equal(before - 10 * sim.Data.Rules.Food.AdultPerTick, sim.State.Stockpile.Get("food"), 6);
+        Assert.Equal(before - 10 * sim.Data.Rules.Food.AdultPerTick, sim.FoodStock, 6);
         Assert.Equal(0, a.StarvingTicks);
         Assert.Contains(home, sim.State.Survivors);
     }
@@ -259,7 +259,7 @@ public class ApplyExtractionResultTests
 
         Assert.Empty(sim.State.Survivors);
         Assert.Equal(2, sim.State.Memorial.Count);
-        Assert.Empty(sim.State.Inventory.Counts);
+        Assert.DoesNotContain(sim.State.Inventory.Counts, kv => !sim.Data.Food!.IsFood(kv.Key));
     }
 
     [Fact]
