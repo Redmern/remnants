@@ -28,6 +28,9 @@ public partial class UnitPanel : PanelContainer
     private readonly Label _apLabel = Widgets.Label("AP", "Heading");
     private readonly VBoxContainer _sections = Widgets.Column(8);
     private readonly Dictionary<BodyPart, (TextureRect Icon, Label Text, StatBar Bar)> _parts = new();
+
+    /// <summary>Conditions under the body rows: "Fracture (left leg) · Infected wound 40% · fever · in pain" (medicine.json).</summary>
+    private readonly Label _conditions = Widgets.Label("", "Small", Palette.Warn);
     private readonly MarginContainer _profile = new();
     private readonly VBoxContainer _gear = Widgets.Column(3);
     private readonly Label _empty = Widgets.Wrapped("Click a unit. Your units take orders on their turn.", "Muted");
@@ -117,6 +120,9 @@ public partial class UnitPanel : PanelContainer
             rows.AddChild(row);
             _parts[part] = (icon, text, bar);
         }
+        _conditions.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        _conditions.MouseFilter = MouseFilterEnum.Stop;
+        rows.AddChild(_conditions);
         return rows;
     }
 
@@ -202,6 +208,13 @@ public partial class UnitPanel : PanelContainer
     private void RefreshBody(ScavengeData data, Unit unit)
     {
         var cyber = data.Cybernetics;
+        var med = data.Medicine;
+        var tags = MedicalText.Tags(med, unit.Body);
+        if (unit.CalmUntilRound >= _presenter.Sim.State.Round) tags.Add("calm");
+        if (unit.CrashAp > 0) tags.Add($"stim crash −{unit.CrashAp} AP next turn");
+        _conditions.Text = tags.Count == 0 ? "" : "⚕ " + string.Join(" · ", tags);
+        _conditions.Visible = tags.Count > 0;
+        _conditions.TooltipText = med is null ? "" : string.Join("\n", unit.Body.Conditions.Select(c => MedicalText.Line(med, c, field: true)));
         foreach (var (part, (icon, text, bar)) in _parts)
         {
             var p = unit.Body[part];
@@ -214,7 +227,8 @@ public partial class UnitPanel : PanelContainer
                     icon.Modulate = Palette.TextMuted;
                     break;
                 case PartCondition.Injured:
-                    text.Text = $"{name} · hurt";
+                    var broken = med is not null && unit.Body.Find(med.Fracture.Condition, part) is { } f ? (f.Treated ? " · splint" : " · broken") : "";
+                    text.Text = $"{name} · hurt{broken}";
                     bar.Set(1 - p.Severity, Fmt.Percent(p.Severity), p.Severity >= 0.5 ? Palette.Danger : Palette.Warn);
                     icon.Modulate = Palette.Danger;
                     break;
@@ -286,7 +300,7 @@ public partial class UnitPanel : PanelContainer
             {
                 var def = data.Items.GetValueOrDefault(group.Key);
                 flow.AddChild(Widgets.Chip(def is null ? Icons.Get("item_generic", 14) : Icons.Item(def.DefinedId, def.Kind.ToString(), 14),
-                    $"{ScavengeText.Item(data, group.Key)}{(group.Count() > 1 ? $" ×{group.Count()}" : "")}", null, "In the pack"));
+                    $"{ScavengeText.Item(data, group.Key)}{(group.Count() > 1 ? $" ×{group.Count()}" : "")}", null, def is { Medical: true } ? MedicalText.ItemTip(data, def) : "In the pack"));
             }
             _gear.AddChild(flow);
         }

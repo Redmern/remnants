@@ -72,6 +72,7 @@ public partial class ColonyScreen : Node3D
             _hud.Expedition.Pick(_session.Sim.State.Survivors.Where(s => !s.IsChild).Select(s => s.Id).Take(2));
         }
         if (DebugCapture.HasFlag("--cyber-demo") && IsFreshGame) RunCyberDemo();
+        if (DebugCapture.HasFlag("--medicine-demo") && IsFreshGame) RunMedicineDemo();
         if (DebugCapture.HasFlag("--world-demo") && IsFreshGame) RunWorldDemo();
         if (DebugCapture.HasFlag("--night-demo") && IsFreshGame) RunNightDemo();
         if (int.TryParse(DebugCapture.Value("--hour"), out var hour)) JumpToHour(hour);

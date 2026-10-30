@@ -73,6 +73,11 @@ public partial class ColonyHud : CanvasLayer
             n => ($"{n} schematics learned", $"Latest: {def.Name} ({unlocks}). See Items → Schematics."));
     }
 
+    private ScrollContainer _rightScroll = null!;
+
+    /// <summary>Scrolls the right-hand column so <paramref name="control"/> is in view (after layout).</summary>
+    public void ScrollRightTo(Control control) => _rightScroll.CallDeferred(ScrollContainer.MethodName.EnsureControlVisible, control);
+
     public ColonyHud() : this(null!) { }
 
     public ColonyHud(ColonySession session)
@@ -119,6 +124,7 @@ public partial class ColonyHud : CanvasLayer
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
         right.AddChild(scroll);
+        _rightScroll = scroll;
         var stack = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
         stack.AddThemeConstantOverride("separation", 8);
         scroll.AddChild(stack);

@@ -99,12 +99,14 @@ public partial class ActionPanel : PanelContainer
                 var def = data.Items[id];
                 var use = def.Use!;
                 var count = unit.Pack.Count(p => p == id);
-                var hotkey = i < 3 ? $"scav_item_{++i}" : null;
+                var hotkey = i < 6 ? $"scav_item_{++i}" : null;
+                var ap = FieldMedicine.ApCost(unit, use);
                 var button = Add(new ActionButton($"item_{def.Kind.ToString().ToLowerInvariant()}", $"{ScavengeText.Item(data, id)} ×{count}",
-                    use.TargetsTile ? $"on a tile within {use.Range}" : "on yourself or someone next to you", use.ApCost, hotkey), () => UseItemChosen?.Invoke(id));
+                    use.TargetsTile ? $"on a tile within {use.Range}" : use.Range == 0 ? "on yourself" : "on yourself or someone next to you", ap, hotkey,
+                    tooltip: def.Medical ? MedicalText.ItemTip(data, def) : ""), () => UseItemChosen?.Invoke(id));
                 button.ToggleMode = true;
                 button.ButtonPressed = id == usingItem;
-                button.SetBlocked(use.ApCost > unit.Ap, use.ApCost > unit.Ap);
+                button.SetBlocked(ap > unit.Ap, ap > unit.Ap);
             }
         }
 

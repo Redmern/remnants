@@ -89,6 +89,7 @@ public partial class ScavengeScreen : Node3D
 
         if (Fog.FogDemo.Requested) _ = FogDemoScript();
         if (TechDemo.Requested) _ = TechDemoScript();
+        if (MedicineDemoRequested) _ = MedicineDemoScript();
         if (AnimDemo.Requested) _ = AnimDemoScript();
         if (float.TryParse(DebugValue("--zoom"), out var zoom)) _camera.Camera.Size = zoom;
         if (int.TryParse(DebugValue("--autoplay"), out var steps)) _ = Autoplay(steps);

@@ -158,6 +158,7 @@ public partial class SurvivorPanel : PanelContainer
             _parts[part] = (icon, text, bar, detail);
             box.AddChild(row);
         }
+        BuildConditions(box);
         return Scroll(box, "Body");
     }
 
@@ -249,6 +250,7 @@ public partial class SurvivorPanel : PanelContainer
         foreach (var (a, bar) in _attributes) bar.Set(s.Get(a) / Survivor.MaxStat, $"{s.Get(a):0}", Palette.Rust);
         foreach (var (k, bar) in _skills) bar.Set(s.Get(k) / Survivor.MaxStat, $"{s.Get(k):0}", Palette.Amber);
         RefreshBody(sim, s);
+        RefreshConditions(sim, s);
         _family.Text = FamilyText(sim, s);
         RefreshPairs(sim, s);
         _perks.Refresh(s.Id);
@@ -356,7 +358,10 @@ public partial class SurvivorPanel : PanelContainer
                     icon.Modulate = Palette.TextMuted;
                     break;
                 case PartCondition.Injured:
-                    text.Text = $"{name}: injured{(p.Severity >= sim.Data.Rules.Medical.WorsenThreshold ? " — worsening" : "")}";
+                    var dressed = p.Dressing switch { Dressing.Clean => " · clean", Dressing.Bandaged => " · bandaged", _ => "" };
+                    var infected = sim.Data.Medicine is { } med && s.Body.Conditions.Any(c => c.Part == part && med.Condition(c.Id)?.Kind == Remnants.Core.Data.ConditionKind.Infection);
+                    var broken = sim.Data.Medicine is { } m2 && s.Body.Find(m2.Fracture.Condition, part) is { } f ? (f.Treated ? " · splinted" : " · fractured") : "";
+                    text.Text = $"{name}: injured{(p.Severity >= sim.Data.Rules.Medical.WorsenThreshold ? " — worsening" : "")}{(infected ? " · infected" : "")}{broken}{dressed}";
                     bar.Set(1 - p.Severity, $"{ColonyText.Percent(p.Severity)} hurt", p.Severity >= sim.Data.Rules.Medical.WorsenThreshold ? Palette.Danger : Palette.Warn);
                     icon.Modulate = Palette.Danger;
                     break;
