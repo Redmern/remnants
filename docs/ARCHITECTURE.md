@@ -923,6 +923,15 @@ their RNG draws), so the game, the playtest bot and raid tests set it after `New
 - **Adapters for parallel branches** (`Raids/Adapters.cs`): `RaidWeather.Provider` (weather id at a tick; `weather` modifiers),
   `DefensePower.Provider` (the power grid's `IsPowered`; powered turrets and floodlights get `poweredBonus`, never required),
   `DefenseSchematics`, `CropDamage`; each is neutral until its branch sets it.
+- **Presentation** (`game/scripts/Colony`: `DefenseView`, `DefenseModels`, `RaidText`; `Colony/Ui`: `DefenseCatalog`,
+  `DefensePanel`, `RepairPanel`, `RaidBanner`, `RaidPrepDialog`, `RaidReportDialog`): Defend mode (TopBar or **F**; D stays
+  camera pan) with the catalogue by category, cost chips and lock reasons, a grid-snapped ghost tinted by `CanPlace`, drag to
+  lay a line of walls or traps, R to rotate, the free-cell grid and coverage / fire-arc overlays; a placed defense's panel
+  (HP, repair / re-arm / upgrade / rotate / remove with costs, guards and the night watch); defenses on the town by
+  `defense_{id}` with fallbacks by kind, sprung / unpaid / destroyed looks, damaged and wrecked buildings; the warning banner
+  and the prep screen (time pauses; defenders, shelter, gates, recall, lead sources, strength bar and breakdown); the raid
+  report; the repair queue (TopBar Repairs). `--colony --raid-demo=placement|warning|prep|report` stages each for
+  `--screenshot=PATH --quit`.
 - **Saves**: colony version 15 (`SaveGame.RaidsVersion`) adds `Defense`; older saves load with none, and the gap since "the
   last raid" counts from the save's tick. Guards of missing survivors and repairs of missing targets are dropped on load.
 
