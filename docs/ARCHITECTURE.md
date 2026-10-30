@@ -63,6 +63,10 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   - `Network` — the Linked relay graph (groups, shared knowledge, squad focus, pylon alarm and reinforcements).
   - `ExtractionResult` per player — returned survivors (with injuries/health), recruits, deaths, loot.
   - `ScavengeSave` — versioned save/load with validation against `data/`.
+  - `FieldTrade` — a live trade between allies in a mission: pack items swapped atomically (see "Player trading").
+- `Trade/` — player trading (see "Player trading"): `TradeGood` / `TradeGoods` (lines, validation, caps), `TradeRules`
+  and `TradePrices` (data/trade.json), `ColonyTrade` + `TradeState` (escrow, settle, refund, receive, courier deliveries;
+  idempotent per transaction id), `Courier` (travel plan, composable modifiers), `SchematicCopies` (the copy adapter).
 
 ## Game layout (`game/`)
 
@@ -534,6 +538,36 @@ Players scavenge together as teams (details, protocol and how to run it: MULTIPL
   lapse, break timing and split sight, carry out and per-player results, put down / let go, left behind, give, heal an
   ally, per-player extraction and recruit hand-over, pings, co-op spawn and enemy scaling, saves); Net: `CoopNetTests`.
 
+## Player trading
+
+Barter between players, live (a trade window in the lobby or between allies in a mission) and asynchronous (the
+Trading Post market server). Details, protocol, trust and how to run it: MULTIPLAYER.md "Trading".
+
+- **Goods** are `TradeGood` lines: a resource or an item id with a count. Quality is part of the item id (a variant is its
+  own item); `ItemExtras` (mods, Mk) ride along for weapon mods. Schematic copies are items (a blueprint / schematic item),
+  so they trade like anything else and the buyer learns them the normal way. Survivors are not tradeable (a v2 idea:
+  a recruit hand-over would need the survivor record, its bonds and the colony-side checks).
+- **Colony ledger** (`ColonyTrade`, `ColonyState.Trade`): `Escrow` takes goods out under a transaction id (live trades on
+  confirm, market posts and accepts), `Settle` forgets them when the trade goes through, `Refund` puts them back,
+  `Receive` pays a claim once per id (`TradeState.Applied`), `Dispatch` sends a courier that `ColonyTrade.Run` (every tick)
+  hands over on arrival (`ColonySim.CourierArrived`, a `CourierArrived` event). Live escrows left over from a lost
+  connection are refunded when the colony screen opens. No save-version bump: the field is new and defaults to empty.
+- **Couriers** (`Courier.Plan`): `baseDays + daysPerLeg × legs`, legs 1..`maxLegs` from the two players' names (the same
+  on both sides), times every factor: `courier.buildingFactors` from data (a Garage) and `Courier.Modifiers`, a list of
+  `Func<ColonySim, CourierFactor?>` other systems add to (weather, a vehicle or caravan upgrade). The Radio Mast gate
+  (`courier.requiresBuilding`) applies once the game data has that building.
+- **Schematic copies** (`SchematicCopies`): `MakeCopy` pays the first affordable option of `copyCost` per tier (Research
+  Data first) and puts the copy item in the inventory; the colony keeps the knowledge. `Receive` puts a traded item in the
+  inventory. Both mirror story-schematics' `Schematics.MakeCopy` / `Schematics.Receive` so switching is one line each.
+- **Reference values** (`TradePrices`): from `trade.json` until the trader's prices (story-schematics' `TradeValues`)
+  land; same rules (resource value, schematic tier price, recipe inputs × 1.25, salvage, 5 × tier; quality scales).
+- Net: `TradeDesk` (live trades, owned by `GameHost`), `LiveTradeSync` (client: escrow on confirm, courier on commit,
+  refund on cancel), `MarketHost` + `MarketStore` (the Trading Post: JSON file, atomic writes) and `MarketClient`
+  (colony-aware client: escrow, retries under the same id, claims). Game: `scripts/Trade/` (`TradeWindow`, `TradeDock`,
+  `TradingPostPanel`, `TradeUi`), the lobby's Trade row, the Team panel's Trade buttons, courier toasts and world-map
+  markers, Copy for trade in Items.
+- Tests: `TradeTests` (Core), `TradeNetTests` and `MarketTests` (Net, loopback, including the two-player smoke script).
+
 ## Hacking and scout drones
 
 Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), items (`hackTool`, `drone`), zones
@@ -808,6 +842,8 @@ An hour is a tick (`hour = tick % ticksPerDay`); a new game starts at `newGame.s
   disciplines and the perk tree (see "Perks and study").
 - `cybernetics.json` — tiers, specialisations, the tree's nodes (one per prosthetic item), paired sets, surgery, humanity,
   upkeep and interference (see "Cybernetics" and CYBERNETICS.md).
+- `trade.json` — player trading: offer caps and suspicious amounts, courier timing and building factors, schematic copy
+  costs per tier, reference values, market limits (listing hours, open listings, rate limits), live-trade idle timeout.
 - `rules.json` — tick/time scale, output formula constants, training rates, food, housing grace,
   meals, crafting (queue limits, quality roll), expedition (party size per Town Hall level, rations, recruit ages), medical (heal/worsen rates, medicine use),
   life (growth stages and rates), relationships (affinity), family (conception, pregnancy, baby names), mood,
