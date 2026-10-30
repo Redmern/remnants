@@ -203,7 +203,7 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
     sync group (scavenge explore / combat / layers), never restarts a state's track, stems by `Intensity`, layers on
     top (`linked_layer`, `contact_layer` while something is heard but not seen), one-shot stings (`music.extraction_sting`).
   - Scene hooks, one node each: `ColonyAudio` (colony events at their buildings, day/night bed — the one day/night
-    decision is `ColonyAudio.IsNight`; the music holds day or night 90 s, since a day passes in seconds —, campfire, work loops at staffed buildings, listener height follows zoom,
+    decision is `ColonyAudio.IsNight(ColonySession.Phase)`, refreshed on `PhaseChanged`; the music holds day or night 90 s, since a day passes in seconds —, campfire, work loops at staffed buildings, listener height follows zoom,
     music state), `ScavengeAudio` (each replayed event via `ScavengeScreen`'s replay step, so sound lands with the
     animation: attacks by action, moves/deaths/hits by who, barks, overwatch shots, contacts, hacked devices by
     kind, drone hum; zone ambience; combat/explore music and the Linked layer), `UiAudio` (buttons, overlays, side
@@ -670,7 +670,7 @@ An hour is a tick (`hour = tick % ticksPerDay`); a new game starts at `newGame.s
   cards, a toast on a shift's first night (later nights only log).
 - **For audio**: switch on `ColonySession.Phase` / `PhaseChanged(DayPhase)` (raised after the tick that crossed into a
   phase, after a fast-forward and after a load), or `DayNight.PhaseAt(tick, rules)` in Core — not on raw hours.
-  `ColonyAudio.IsNight` still reads the clock with its own 20–06 window until it is switched over.
+  `ColonyAudio.IsNight(DayPhase)` does: the night bed and music for Night, the day ones for Dawn, Day and Dusk.
 
 ## Data files
 

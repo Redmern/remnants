@@ -106,7 +106,13 @@ public partial class AudioSelfTest : Node
         Flush();
         for (var i = 0; i < sim.Data.Rules.TicksPerDay; i++) sim.Tick();
         Flush();
-        GD.Print($"[audio-selftest] colony: night at 23h = {ColonyAudio.IsNight(sim)}, tension = {ColonyAudio.Tension(sim)}");
+        // Games start at dawn; run the clock into the night and back out, as Core's day phases have it.
+        for (var i = 0; i < sim.Data.Rules.TicksPerDay && sim.Phase != DayPhase.Night; i++) sim.Tick();
+        var nightHour = DayNight.Hour(sim.State.Tick, sim.Data.Rules);
+        if (!ColonyAudio.IsNight(sim.Phase)) Fail($"no night within a day (at {nightHour}h the phase is {sim.Phase})");
+        for (var i = 0; i < sim.Data.Rules.TicksPerDay && sim.Phase != DayPhase.Day; i++) sim.Tick();
+        if (ColonyAudio.IsNight(sim.Phase)) Fail($"still night at {DayNight.Hour(sim.State.Tick, sim.Data.Rules)}h ({sim.Phase})");
+        GD.Print($"[audio-selftest] colony: night from {nightHour}h, day again at {DayNight.Hour(sim.State.Tick, sim.Data.Rules)}h, tension = {ColonyAudio.Tension(sim)}");
     }
 
     /// <summary>The debug party walks the outskirts to an exit (autopilot); enemy turns happen as they come.</summary>

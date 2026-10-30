@@ -19,9 +19,6 @@ namespace Remnants.Game.Audio;
 /// </summary>
 public partial class ColonyAudio : Node3D
 {
-    /// <summary>Night runs from this hour to <see cref="DawnHour"/> (until Core has day phases; see <see cref="IsNight"/>).</summary>
-    private const int DuskHour = 20, DawnHour = 6;
-
     private ColonySession _session = null!;
     private TownLayout _layout = null!;
     private OrbitCamera _camera = null!;
@@ -51,6 +48,7 @@ public partial class ColonyAudio : Node3D
             if (error) AudioManager.Fire("ui.error");
         };
         session.Replaced += Reset;
+        session.PhaseChanged += _ => Refresh();
         Reset();
 
         var map = AudioManager.Instance?.Map;
@@ -112,7 +110,7 @@ public partial class ColonyAudio : Node3D
     private void Refresh()
     {
         var sim = _session.Sim;
-        var night = IsNight(sim);
+        var night = IsNight(_session.Phase);
         if (_day is not null) _day.Level = night ? 0 : 1;
         if (_night is not null) _night.Level = night ? 1 : 0;
         // A colony day is a few real minutes at most (12 s at 1x), so the music only turns day/night after holding.
@@ -131,14 +129,11 @@ public partial class ColonyAudio : Node3D
     }
 
     /// <summary>
-    /// The one place audio decides day or night (bed and music both ask here). Reads the colony clock for now; when
-    /// Core's day phases land (day-night-cycle branch) this becomes a check of <c>DayNight.Phase</c>.
+    /// The one place audio decides day or night (bed and music both ask here), from Core's day phase
+    /// (<see cref="DayNight.PhaseAt"/>): the night bed and music for <see cref="DayPhase.Night"/>, the day ones for
+    /// dawn, day and dusk.
     /// </summary>
-    public static bool IsNight(ColonySim sim)
-    {
-        var hour = sim.State.Tick % sim.Data.Rules.TicksPerDay;
-        return hour >= DuskHour || hour < DawnHour;
-    }
+    public static bool IsNight(DayPhase phase) => phase == DayPhase.Night;
 
     /// <summary>The colony is under pressure: beds or food are short, or someone is starving or sleeping rough.</summary>
     public static bool Tension(ColonySim sim) =>
