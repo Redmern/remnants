@@ -63,9 +63,13 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   - `Network` — the Linked relay graph (groups, shared knowledge, squad focus, pylon alarm and reinforcements).
   - `ExtractionResult` per player — returned survivors (with injuries/health), recruits, deaths, loot.
   - `ScavengeSave` — versioned save/load with validation against `data/`.
+  - `FieldTrade` — a live trade between allies in a mission: pack items swapped atomically (see "Player trading").
   - Story missions in the field: `FieldMission` (objectives, triggers, prompts), `MissionRules` (the rules over
     `ScavengeState.Mission`), `HandmadeMaps` (handmade maps and fixed rooms). See "Story mode".
 - `Story/` — Story mode's campaign (see "Story mode"): `CampaignState`, `Campaign`, `Dialogue`, `StoryData` + loader.
+- `Trade/` — player trading (see "Player trading"): `TradeGood` / `TradeGoods` (lines, validation, caps), `TradeRules`
+  and `TradePrices` (data/trade.json), `ColonyTrade` + `TradeState` (escrow, settle, refund, receive, courier deliveries;
+  idempotent per transaction id), `Courier` (travel plan, composable modifiers), `FoodGoods` (food lines and their Pantry lots).
 
 ## Game layout (`game/`)
 
@@ -92,6 +96,14 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   `rot_deg`, scaled by chest height for bodies other than the adult male). Body → torso; weapon → hand, else back (a
   missing arm drops it to the back; a prosthetic arm holds it); tool → back, else chest, else hand. Colony survivors
   carry no gear in Core, so the colony shows prosthetics only.
+- `GearModels` (purely visual, used by `SurvivorDressing` for field units, portraits and the Gear Bench render): a modded
+  item id resolves to its base model `item_{definedId}`; each mod's model (a code-side map from mod item id to the
+  asset id, else the data's `model`, else nothing) is parented under the gear's `mod_{slot}` node (the glb node, else the
+  manifest `mod_slots` point), offset by minus its `attach.mount`. Node choice: the mod model's `params.slots`, then the
+  data slot (`stock` → `mod_stock` else `mod_grip`; `visor` → `mod_visor` else `mod_filter`, a filter the other way).
+  Mods with `params.apply = "recolor"` (camo, waterproofing) recolour the garment's materials named in `params.recolor`
+  to `style.json` `palette[value]` (and `params.roughness`). Headgear hangs on the `head` socket. Missing models,
+  nodes or a manifest without `mod_slots` leave the gear plain.
 - `scripts/HudTheme` — the one `Theme` for every screen's HUD: worn-metal 9-slice panels, bevelled buttons with hover /
   pressed / disabled / focus states, tabs, lists, sliders, tooltips, scrollbars, progress bars, the bundled fonts; type
   variations (`Card`, `CardSelected`, `Inset`, `Chip`, `Toast` panels; `Title`, `Display`, `Heading`, `Muted`, `Small`,
@@ -125,13 +137,23 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   `BuildingPanel` (level pips, worker portraits, upgrade cost chips and Town Hall cap), `BuildMenu` (category filter,
   grid with costs, locks and tooltips), `EventLog` (filterable, collapsible feed with icons; first-time tips from
   `Advice`; raises toasts for deaths, births, departures, a party's arrival and return, lost limbs, recruits),
-  `ExpeditionPanel`, `WorldMapPanel`, `MedBayPanel`, `ProductionPanel`, `InventoryPanel`, `AfterActionDialog` (who came
+  `ExpeditionPanel` (Weapon / Body / Head / Tool per member), `WorldMapPanel`, `MedBayPanel`, `ProductionPanel`, `InventoryPanel`, `GearBenchPanel` (below), `AfterActionDialog` (who came
   home with injury chips, who was lost, recruits, loot). Esc closes the topmost panel, then opens the pause menu
   (resume, save, load, settings, main menu, quit). Read Core state, call the session; no rules. Where the UI
   needs a rule Core exposes a query (`MaxUpgradeLevel`, `MaxPartySize`, `HealPerTick`/`HealEta`, `IsWorsening`,
   `CraftEffortPerTick`, `CraftStatus`, `SkillGap`, `CanQueue`, `QualityChances`, `PreviewProfile` for a survivor's field profile with
   a given loadout, `FoodPerDay`/`FoodDays`, `OutputPerTick`); the per-survivor output breakdown uses `JobOutput`'s
   public factors.
+- Electronics and power UI: `ProductionPanel` groups a bench's recipes into tabs by `RecipeDef.Group` (Electronics Lab:
+  Components / Devices / Upgrades / Disassembly / Other), badges `NeedsPower` recipes and orders, shows disassembly yields and
+  research chance, the lab's powered line and the charging bench (`ColonyState.Charging`, `Power.ChargeEta`); `TopBar`
+  shows used/supply, battery % and brownout / breaker trouble once a generator or bank stands, with a grid button (P) for
+  `PowerOverlay` (posts, tags and cables over the town from `ColonySim.PowerNodes`, fed / not fed / idle / off); the
+  `BuildingPanel` Power section (`PowerText`) has the on/off switch (`SetPower`). Power buildings use shaped placeholders
+  (`Placeholders`, category colour) until `fuel_generator_l1` etc. exist. In the field: EMP / holo-decoy / noise decoy use
+  buttons (tile-aimed like flares, charges for reusable kits), drone-role orders in `TechPanel` (R: heal / load / fire, I:
+  ferry), the drone card's variant, role and cargo hold, hologram decoys, the EMP ring (`UnitViews.EmpRing`), tinted
+  `scout_drone` models for the variants, EMP / DECOY world tags and log icons.
 - `ColonySession.Current` keeps the colony alive across scene changes, so a party can go to the scavenge scene and
   come back. Each `ColonyScreen` detaches its handlers when it leaves the tree.
 - `scripts/ScavengeHandoff` — how the colony enters scavenge mode: `ColonySession.PlayExpedition` builds (or resumes)
@@ -213,7 +235,7 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
     kind, drone hum; zone ambience; combat/explore music and the Linked layer), `UiAudio` (buttons, overlays, side
     panels and toasts hooked as nodes enter the tree; menu and lobby music), `SoundCues` (accessibility: chips at the
     screen edge toward off-screen ambush/contact/alarm sounds), `WeatherAudio` (`Set(kind, intensity)`,
-    `Lightning(distance)`, `Gust()`; nothing drives it yet).
+    `Lightning(distance)`, `Gust()`; driven by the weather, see "Weather").
   - `--audio-trace` logs every fired event and its sound; `--audio-selftest` (run by `run-tests.sh --godot`) checks
     every Core event type is mapped and replays a scripted colony, an autopiloted scavenge run and the hack/drone
     events, failing when key events pick the wrong id; `--weather=KIND[:INTENSITY]` sets the weather bed; `--audio-meter` prints each bus's peak every second. Once the
@@ -265,15 +287,15 @@ models still load and fall back to tweens.
 - **Commands only.** The UI changes the sim only via `ColonySim.Execute(IColonyCommand)`
   (`AssignJob`, `Unassign`, `Construct`, `Upgrade`, `LaunchExpedition`, `ApplyExtractionResult`, `AdmitPatient`,
   `Discharge`, `FitProsthetic`, `SetRecipe`, `QueueRecipe`, `CancelOrder`, `Matchmake`, `ChoosePerk`,
-  `StartStudy`, `CancelStudy`, `SetNightShift`, `InstallFloodlight`; schematics: `StartResearch`, `CancelResearch`, `SalvageSchematic`, `CopySchematic`, `BuyFromTrader`, `SellToTrader`, `AnswerCall`, `AcceptContract`). Core validates and returns a `CommandResult`
+  `StartStudy`, `CancelStudy`, `SetNightShift`, `InstallFloodlight`, `RepairBuilding`, `SetPower`; schematics: `StartResearch`, `CancelResearch`, `SalvageSchematic`, `CopySchematic`, `BuyFromTrader`, `SellToTrader`, `AnswerCall`, `AcceptContract`; defenses: see "Raids and defenses"). Core validates and returns a `CommandResult`
   with a `CommandError` code. This is also the future client→server intent format.
-- **Tick order:** production (+training) → crafting → study → research → medical → food → day/night (sleep, night work, evenings) →
+- **Tick order:** power grid (and the charging bench) → production (+training) → crafting → study → research → medical → food → day/night (sleep, night work, evenings) → weather (mood, dust, lightning) →
   relationships (mood, affinity, couples) →
-  family (births, conception) → housing → growth (aging, growing up).
+  family (births, conception) → housing → growth (aging, growing up) → world map → raids (upkeep, guards, repairs, scheduler).
 - **Scavenge commands** (`Move`, `Attack`, `UseItem` (on a unit, or a tile with `At`), `PickUp`, `Recruit`, `SetStance`
   (Overwatch / Brace), `Lookout`, `EndTurn`, `Extract`; co-op: `ProposeAlliance`, `RespondAlliance`, `BreakAlliance`,
   `PingTile`, `GiveItem`, `Carry`, `PutDown`; tech: `Hack`, `DeployDrone`, `FlyDrone`, `RecallDrone`, `MarkTarget`,
-  `DropPayload`) carry a
+  `DropPayload`; drone roles: `DroneHeal`, `DroneLoad`, `DroneFerry`, `DroneFire`) carry a
   `PlayerId` + `UnitId`; Core checks ownership and whose turn it is and returns a `ScavengeResult`
   with a `ScavengeError`. Several players' parties can share one instance (each party is a side).
   A party is done when it has no conscious controllable unit left (its downed die, recruits stay or go over to an ally),
@@ -460,6 +482,22 @@ All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `fo
   Version 2 (and 1) saves load: their children are placed on the growth track by age (no aptitude, so they change
   only by training) and everything else starts empty/content.
 
+### Gear Bench (UI)
+
+`GearBenchPanel` (an overlay, from the "Gear Bench" button on the production panel of a `rules.benches` building):
+the colony's moddable gear grouped (weapons, armor and clothing, headgear) plus survivors' fitted gun arms, each with its
+mod chips; the picked piece's model with its mods (`PortraitStudio.Object`), Mk pips, the Mk kit upgrade (needs the kit
+and a `rules.upgradeAt` building), and every slot of its type: the mod in it with Remove, the fitting mods in the stores
+(hover previews, click fits; `GearBench.Install` says why one cannot), or locked with the Mk that opens one more. The
+compare column puts `GearBench.Stats` of the build next to the previewed one with good/bad deltas (weapons: accuracy,
+damage, range, AP, noise, reveal; worn gear: armor per region, melee armor, injury resist, move noise, stealth, carry;
+weight and slots for both), the gained and lost effect tags, and a body silhouette of armor per region. A strip lists
+the mod and kit orders in every building's queue (right-click cancels) with a picker to queue one (`CanQueue` reasons).
+Network-grade mods are cyan (`GearText`), nothing else is. In the field `UnitPanel` shows each piece as "Pistol Mk II"
+with mod chips, and with Jury-rig (`rules.fieldHook`) on the unit's turn Fit / Remove buttons (`FieldMod`); attack
+previews add mod tags under the hit chance: true AP from `Combat.ApCost` ("+1 AP close"), extra banes that apply to
+the target (EMP, SHOCK, INCENDIARY) and armor pierce.
+
 ## Crafting tiers
 
 - **Buildings**: Workshop (tools, simple weapons, prosthetics), Tailor (cloth, clothing, light armor, bandages,
@@ -595,6 +633,41 @@ Players scavenge together as teams (details, protocol and how to run it: MULTIPL
 - Tests: `CoopTests` (no friendly fire and overwatch, team fog and contacts, backs, offers and answers, decline and
   lapse, break timing and split sight, carry out and per-player results, put down / let go, left behind, give, heal an
   ally, per-player extraction and recruit hand-over, pings, co-op spawn and enemy scaling, saves); Net: `CoopNetTests`.
+
+## Player trading
+
+Barter between players, live (a trade window in the lobby or between allies in a mission) and asynchronous (the
+Trading Post market server). Details, protocol, trust and how to run it: MULTIPLAYER.md "Trading".
+
+- **Goods** are `TradeGood` lines: a resource or an item id with a count. Quality is part of the item id (a variant is its
+  own item); `ItemExtras` (mods, Mk) ride along for weapon mods. Schematic copies are items (a blueprint / schematic item),
+  so they trade like anything else and the buyer learns them the normal way. Survivors are not tradeable (a v2 idea:
+  a recruit hand-over would need the survivor record, its bonds and the colony-side checks).
+- **Colony ledger** (`ColonyTrade`, `ColonyState.Trade`): `Escrow` takes goods out under a transaction id (live trades on
+  confirm, market posts and accepts), `Settle` forgets them when the trade goes through, `Refund` puts them back,
+  `Receive` pays a claim once per id (`TradeState.Applied`), `Dispatch` sends a courier that `ColonyTrade.Run` (every tick)
+  hands over on arrival (`ColonySim.CourierArrived`, a `CourierArrived` event). Live escrows left over from a lost
+  connection are refunded when the colony screen opens. Colony save version 19; older saves load with an empty ledger.
+- **Food** (`FoodGoods`): food items trade as Pantry items. Escrow takes fresh units only, soonest to spoil first
+  (`Pantry.TakeIngredient`), and keeps the lots taken (`ItemExtras.Lots`: count, quality, tainted, time left); arrival adds
+  them back as lots with the same quality, taint and time left (`Pantry.Add` with a shelf factor). Offers show the lots
+  they would come from (`FoodGoods.WithLots`). Spoiled food cannot be offered.
+- **Devices**: device quality is the item id; charge lives in the colony's charging queue (stores only hold full devices)
+  and, in the field, in `Unit.ChargesUsed`, which `FieldTrade.Swap` moves with the device (most-spent copy first).
+- **Couriers** (`Courier.Plan`): `baseDays + daysPerLeg × legs`, legs 1..`maxLegs` from the two players' names (the same
+  on both sides), times every factor: `courier.buildingFactors` from data (a Garage) and `Courier.Modifiers`, a list of
+  `Func<ColonySim, CourierFactor?>` other systems add to (weather, a vehicle or caravan upgrade). The Radio Mast gate
+  (`courier.requiresBuilding`) applies once the game data has that building.
+- **Schematic copies**: made with `Schematics.MakeCopy` (the archive's Copy, Research Data); the seller keeps the
+  knowledge. A copy that arrives by trade goes through `Schematics.Receive` (learned, waiting for a decrypt, or Research
+  Data when already known); a refunded copy comes back as the item.
+- **Reference values** (`TradePrices`): the trader's prices, `Schematics.TradeValues` (resources, items, schematics, food).
+- Net: `TradeDesk` (live trades, owned by `GameHost`), `LiveTradeSync` (client: escrow on confirm, courier on commit,
+  refund on cancel), `MarketHost` + `MarketStore` (the Trading Post: JSON file, atomic writes) and `MarketClient`
+  (colony-aware client: escrow, retries under the same id, claims). Game: `scripts/Trade/` (`TradeWindow`, `TradeDock`,
+  `TradingPostPanel`, `TradingPostTab`, `TradeUi`), the lobby's Trade row, the Team panel's Trade buttons, the Radio
+  Mast's Trading Post tab, courier toasts and world-map markers.
+- Tests: `TradeTests` (Core), `TradeNetTests` and `MarketTests` (Net, loopback, including the two-player smoke script).
 
 ## Hacking and scout drones
 
@@ -765,6 +838,10 @@ All numbers live in `data/perks.json` (`skills`, `xp`, `study`, `disciplines`, `
   | `armor_bonus` | flat damage reduction added | Bulwark (armored legs set) |
   | `thermal_radius` | hostiles within it are seen through walls and stealth | Thermal / Network-grade Eye |
   | `night_detection_bonus` | detection at night (for the day-night cycle; unread yet) | Thermal / Network-grade Eye |
+  | `trap_cost_reduction` | colony: share off traps' build and re-arm cost while home (best counts, ≤ 0.5) | Engineer |
+  | `repair_speed_bonus` | colony: repairs this much faster while home (best counts) | Engineer |
+  | `post_defense_bonus` | colony raids: a guard on duty at a post fights this much better | Sentry |
+  | `sentry_lead_hours` | colony raids: hours of warning added while on guard duty | Sentry |
 
   Fitted cybernetics give hooks too (see "Cybernetics"); they reach the field as `Unit.CyberHooks`.
 
@@ -965,6 +1042,327 @@ The spec is STORY.md. The data format, field by field, is docs/story/FORMAT.md. 
   `DialogueTests` (choices, effects, conditions, conditional lines, placeholders, Sandbox), `ObjectiveTests` (each kind
   passes and fails; triggers once; prompts block and branch; patrols; wipe; determinism).
 
+## Weather
+
+Colony and world in `data/weather.json`, field effects in `scavenge.json environment.weather` (same ids); Core is
+`Colony/Weather.cs` and `Data/Weather.cs`, game-side `Weather/WeatherView.cs` and `Weather/ColonyWeather.cs` (namespace
+`Remnants.Game.WeatherFx`, so it does not shadow Core's `Weather`).
+
+- **Spells** (`WeatherSpell`: index, kind, start, end, intensity): per region a Markov chain; the next kind is weighted by
+  `next[previous]` × `regions[region]` (the wastes get more dust), its hours and intensity drawn from the kind's ranges.
+  Each spell comes from a hash of (`WeatherState.Seed`, region, index), so the weather never depends on when it was asked
+  for and never touches the colony RNG (lightning strikes are the one draw from it, only in a storm).
+  `ColonyState.Weather` keeps the seed and a cache of spells (pruned three days back). The seed comes from the colony's
+  RNG state the first time (new games and older saves). Disabled (no file, or `enabled: false`) is always clear.
+  `TestData.Real` and `RealWithNights` have weather off; `RealWithWeather` is the data as shipped.
+- **Queries**: `Weather.Current`, `SpellAt(region, tick)`, `SpellsBetween`, `RegionOf(zone)`, `GroundsDrones`,
+  `Forecast` (days by Town Hall level, +1 with an Electronics Lab L2; the next call's accuracy from base, Lab level and a
+  scanner in the stores (`instrumentItems`), less per day ahead; a miss names the kind's `confusedWith`; stable per
+  spell), `Masks`, `Masked`, `OutdoorCrew`.
+- **At home** (`WeatherSystem`, after day and night; `Schedule.Crew` multiplies `Weather.WorkFactor`, so the Night Shift
+  and the weather stack): outdoor work × `outdoorOutput`; in a dust storm a worker with a mask works at `maskedOutput`,
+  without one at `outdoorOutput` and loses health (never below 25); children stay in; mood per tick; no campfire;
+  lightning damages a building (`Building.Damaged`: × `repair.damagedOutput` until `RepairBuilding`, `repair.cost`;
+  error `NotDamaged`). Logs `WeatherChanged`, `Storm` (a severe kind starting or ending: toasts), `LightningStruck`,
+  `Repaired`.
+- **Crops: one hook.** `Crops.Modifiers(data, spell)` returns `CropModifier(Source, Reason, Multiplier)` terms (now only
+  the weather's `cropOutput`: rain 1.3, storm 1.1, dust 0.6); the food system applies them per
+  weather-sensitive harvest at outdoor buildings (`HarvestSystem`; the Greenhouse is indoors), see "Food and cooking".
+- **Dust masks**: `dust_mask` ("Dust Mask & Goggles", Tailor L1, no blueprint, so default-known; see SCHEMATICS.md). It is
+  a Material for now and counted through `weather.json maskItems`, so moving it to a Headgear slot is a data change.
+- **On the road: the travel planner.** `WorldMap.Travel(sim, zone, departTick, homeward)` gives a `TravelPlan`: the zone's
+  base ticks and the `TravelModifier(Source, Reason, ExtraTicks, Multiplier, Blocks)` terms from every source in
+  `WorldMap.TravelTerms`; multipliers multiply the base, extra ticks add, any block blocks. Weather is one source
+  (`Weather.TravelTerm`): the worse of home and the zone's weather at departure adds `travel.extraDays`; a kind with
+  `travel.blocksFromDays`, raging over the zone, closes routes that long or longer (only outbound). Vehicles add their own
+  term, independently. `PlanArrival` returns the plan (`Travel`, `DelayRationsPerMember`, `ExtraRationsPerMember`,
+  `Blocked`); `LaunchExpedition` fails with `RouteBlocked`, and pays rations for the delay; `Expedition.TravelTicks` is the
+  way out, then the way home (planned when the run ends). `SendScoutDrone` fails with `DronesGrounded` in a dust storm or
+  heavy rain at home or over the zone (`WorldMap.DronesGrounded`).
+- **In the field**: `ColonySim.MissionEnvironment(tick, zone)` sets the weather over the zone's region at arrival and the
+  spells starting within `field.lookaheadHours` as `ScavengeEnvironment.Shifts` (round `1 + hours × roundsPerHour`).
+  `FieldEnvironment.RoundStarted` applies a shift due (`WeatherChanged`), then rolls thunder (`Thunder`: no movement
+  contacts this round) and lightning (`Lightning`: every unit on the map seen by every side this round) from the run's RNG,
+  only when the weather has them. `EnvironmentEffects` adds `hearingMultiplier` (noise and footsteps), `flareRoundsMultiplier`,
+  `rangedAccuracyPenalty` (`Combat.WeatherPenalty`), `dronesGrounded` (Deploy / Fly fail with `DroneGrounded`; Recall
+  works), `relayRangeMultiplier` (`Network.Groups`), `thunderChance`, `lightningChance`. Rain: shorter hearing and flares,
+  a little stealth; fog: sight much lower; dust: sight and aim down, drones grounded, the Linked's links halved, Husks unaffected
+  (their sight stays, and they see through its stealth); thunderstorm: rain plus thunder, lightning and grounded drones.
+  Scavenge save 9, colony save 16.
+- **Presentation** (no rules): `WeatherView` (made by `ColonyScreen` and `ScavengeScreen`) keeps GPU particles (rain
+  streaks, dust puffs, debris) over the ground point the camera looks at, grades the time of day's `SkyLook`
+  (`DayNightLighting.Weather`: wet and dark under rain, grey overcast, a brown cast and haze in dust, ground mist
+  (`SkyLook.GroundFog`, height fog that also works on the tactical map) in fog), crossfades between kinds over 3 s, and
+  flashes for lightning (`Strike`; the colony strikes on its own in a thunderstorm, the field on Core's `Lightning`).
+  `GameSettings.WeatherEffects`: Full; Reduced (a third of the particles, no flashes); Off (tint only). `ColonyWeather`
+  follows `Weather.Current` into the view and `WeatherAudio` (`WeatherSounds.AudioKind`: rain, heavy rain from 0.75 and in
+  storms, dust storm, wind when overcast); gusts rattle debris in dust. HUD: the top bar's weather chip (tooltip: what it
+  does, masks, the forecast), toasts for storms and lightning, Repair on the building panel, the planner's travel terms and
+  closed routes, the turn bar's weather chip (tooltip: field effects), log icons. `--weather=KIND[:INTENSITY]` forces it
+  in the colony (from now on) and in the debug mission. Not done yet: wind on trees and flags, a wet-surface shader.
+- **Multiplayer**: the server decides it (see MULTIPLAYER.md "Weather over the wire").
+## Food and cooking
+
+Food is ordinary inventory items (`items.json` kind `Food`); `data/food.json` says what each does. Core is
+`Colony/Pantry.cs`, `Colony/FoodSystem.cs`, `Colony/Harvest.cs`, `Colony/Rations.cs`, `Data/Food.cs`; tests are
+`FoodCookingTests.cs`.
+
+- **Pantry** (`Pantry`, `ColonyState.Food`): per food item a list of lots (count, age, shelf, quality tier, tainted)
+  plus the opened portions being eaten. Lots are the items' instance data and follow `Inventory.Counts`:
+  `Pantry.Reconcile` turns items added by anything (loot, trade, crafting) into a fresh lot and takes missing ones from
+  the oldest lots, so other branches can move food as plain items. Queries: `FoodValue` (fresh food in the old food
+  units, what `ColonySim.FoodStock` / `FoodDays` read), `TakeFoodValue` (for food-priced costs elsewhere), `Entries` (the
+  pantry view), `Available` / `TakeIngredient` (recipe inputs by item id or `tag:x`, soonest to spoil first).
+- **Spoilage**: lots age a tick per tick (Cold Cellar `cellarRateByLevel` for `cellar` items; a powered cellar
+  `poweredCellarMultiplier` again through the `FoodPower` adapter, false until the power grid merges). Past its shelf a lot
+  is spoiled (no longer food value, eaten only when nothing else is left, with a sickness chance) and rots away after
+  `spoilage.spoiledDays` (`FoodRotted`).
+- **Eating** (`FoodSystem`, same rates as before: adult 0.05/h): children first, each picks by a score (cooked first,
+  quality, mood, health, buffs; minus their recent share of that dish; +0.3 for what spoils within a day; −1 for
+  long-keeping food, kept for the road). A dish adds mood and health (× quality effect), its buffs, the hot-supper bonus
+  between dusk and dawn (×`campfireSupperMultiplier` with a Campfire), and moves `Survivor.Nutrition` towards its
+  nutrition. Starving gives Hungry; Bland (no cooked meal for `blandAfterHours`), Malnourished (nutrition under
+  `malnourishedBelow`) and Same Again (one dish over `variety.share` of a fading diet) follow the diet.
+- **Buffs** (`FoodEffects`, `Survivor.Buffs`): output (in `JobOutput.PerTick`), healing (Med Bay care and natural healing),
+  mood and health per tick, sleep debt when a stim wears off, AP on the first field round. Sickness goes through one
+  function, `FoodSickness.Apply` (the Food Poisoning debuff; the medicine-crafting illness hook replaces its body).
+- **Children**: a malnourished tick counts as hungry growth; attribute growth runs at `lerp(growthAtLow, growthAtHigh,
+  nutrition)` of the base rate.
+- **Harvests** (`HarvestSystem`, `SetHarvest`, `Building.Harvest`/`HarvestProgress`/`HarvestReadyTick`): Farm crops
+  (potatoes, beans, corn, herbs), Greenhouse (vegetables, herbs; indoors, no weather), Hunting Lodge (game with hides →
+  cloth, Husk-zone game that is tainted, forage). Effort = job output × yield (× `Crops.Multiplier` for weather-sensitive
+  harvests outdoors: rain waters them, dust buries them) accrues per output item; whole items come in once `growDays`
+  have passed since planting or switching (switching loses the standing crop).
+  `ColonySim.OutputPerTick/PerDay` give a harvest building's food value.
+- **Cooking** (Campfire, Kitchen L1–3, Smokehouse): ordinary recipes with `ingredients` (item ids or `tag:x`). A food
+  output is rolled like gear quality (cook's Cooking skill, level, `craftQuality.cooking` perks: Camp Cook, Chef) and
+  becomes a lot; tainted inputs stay tainted at `quality.taintKept`; preserved output keeps longer by the cook's
+  `shelf_life_bonus` hook (Preserver).
+- **Rations** (`Rations`, `LaunchExpedition.Rations`): the need stays a food-value number (`WorldMap.RationsPerMember`
+  plus the wait), so vehicles can price days on the road; `RationChoice.Prefer` packs one item first, the rest is food
+  that keeps until the party is home. Risky food (spoiled, tainted, spoiling on the road) may sicken members at launch;
+  a dish with a `fieldBuff` (one per member, standard quality or better) gives Fed for the Road, read into
+  `PartyMember.FirstRoundAp` → `Unit.FirstRoundAp`. `Expedition.Rations` keeps what was packed.
+- **Schematics** (`data/schematics.food.json`, merged into the catalogue): Cold Cellar, Pickling, Medicinal Broth,
+  Feast, Stim Tea, Field Rations (the Greenhouse's `sch_greenhouse` is in schematics.json). Gating is the catalogue's
+  (`Schematics.RecipeUnlocked` / `LevelUnlocked`); every other food recipe and building is default.
+- **Food as a price**: trader prices, rewards and story effects may name `food` (`Pantry.FoodKey`): food value from the
+  pantry (`Schematics.Payment`, `Pantry.TakeFoodValue`), or into it as canned food (`Pantry.AddFoodValue`). Food items
+  are valued by trade at food value × `resourceValues.food` (dishes with the crafted markup).
+- **Save**: `SaveGame.FoodVersion` converts the old pool (potatoes 50%, beans 25%, corn 15%, canned 10% of its food
+  value), Simple Meals → Boiled Potatoes, Hearty Stew → Stew, their Kitchen orders, and leaves farms on ripe potatoes.
+- **UI**: the production panel is a recipe book at cooking buildings; `HarvestPanel` (crop picker), `PantryPanel` (top
+  bar), buff badges on `SurvivorCard` and lines in the survivor overview, the ration picker in `ExpeditionPanel`;
+  `--colony --food-demo --food-view=kitchen|pantry|farm|roster` sets up screenshots.
+
+## Electronics and power
+
+Everything is data in `data/electronics.json` (items, recipes, disassembly table, the three power buildings, `power`,
+`charging`), merged at load like `gear_mods.json`: its items join `items.json` (`ScavengeData.Electronics`), its recipes and
+buildings join the colony data (`GameData.Electronics`). Core: `Data/Electronics.cs`, `Colony/Power.cs`,
+`Scavenge/ElectronicWarfare.cs`, `Scavenge/DroneRoles.cs`.
+
+- **Component chain** (Electronics Lab, `RecipeDef.Group` "Components"): scrap → wiring → circuit boards → antennas and sensor
+  modules; microchips and cyan **Network chips** (from Linked circuitry, `NetworkGrade`) are tier 3 and `needsPower`. The
+  cybernetics power cell is the basic battery and the Workshop servo is reused. Devices and their Mk upgrades (groups
+  "Devices", "Upgrades") consume components; tools roll quality as before, and quality now also scales a device's radius,
+  a drone's battery, a hacking tool's chance and a radio's range (`ScavengeData` variants).
+- **Disassembly**: one `disassemble_{item}` recipe per table entry (group "Disassembly"): the item in, its first yield as the
+  recipe's item and the rest as `RecipeDef.Byproducts`, `ResearchChance` for one Research Data. Each component has a chance of
+  one more: the bench's best worker's `disassembly_yield_bonus` (Circuit Tinkerer) + Electronics × `skillYieldPerPoint`. Loot
+  adds broken gadgets, dead radios, smashed drones; the Linked drop Linked circuitry (electronics.json `drops`).
+- **Schematics**: `schematics.electronics.json` is a catalogue extension the Schematics module merges (recipes and the
+  solar array / battery bank gated, Kill-sourced ones dropped by the Linked through electronics.json `drops`). Not listed,
+  so open from the start: wiring, circuit boards, antennas, the power cell, handheld radios, noise decoys, the fuel
+  generator (the scanner stays behind `sch_scanner`; `sch_scanner_mk2` gates Mk II). A disassembly's research roll pays
+  the module's Research Data. Iris's missions are listed per schematic (`storyMissions`); every one also drops, sits in
+  terminals, trades or can be researched.
+- **Power grid** (`Power.Run`, first in the tick): with no generator or bank built nothing happens (no brownouts: the early
+  game is unchanged). Consumers (priority = data order) draw per level, only while their workplace has a crew on shift;
+  `floodlight` = every building with a Floodlight after dusk, `charging` = the bench per device. Draws are cut by the best
+  `power_efficiency` (Electrician) at home. Supply: solar (`solarByPhase` × `Power.SolarWeatherFactor`, the weather
+  adapter), battery banks (rate-limited), fuel generators (the first of `fuel` in stock: vehicles' `fuel`, else wood, per
+  power supplied). Consumers that do not fit are shed (brownout, logged); demand above `overloadRatio` × capacity for
+  `overloadTicks` trips the breaker for `breakerTicks`. Effects (`PowerEffect`): Lab `CraftSpeed` (+25%, tier 3 recipes wait:
+  `CraftStatus.NeedsPower`), Med Bay L3 `SurgeryBonus`, Floodlight `NightShiftBonus` (through `Schedule.Crew`), Charging.
+  **Seam**: `Power.IsPowered(state, building)` / `ColonySim.IsPowered` for the Radio Mast, Cold Cellar and turrets (their
+  consumer entries are ignored until those buildings exist). `SetPower(building, on)` switches anything on the grid
+  (`NotOnGrid`). `PowerState` keeps what each part did last tick for the UI (`ColonySim.PowerNodes`).
+- **Charges and charging**: `UseEffect.Charges` makes a device reusable; `Unit.ChargesUsed` pools spent charges per item id
+  (`ElectronicWarfare.ChargesLeft`); results carry them (`ReturnedSurvivor.ChargesUsed`) and `Stow` puts drained devices on the
+  charging bench (`ColonyState.Charging`), `workPerCharge` each at `poweredRate` while fed, else `unpoweredRate`, plus
+  `Power.VehicleChargeRate` (the vehicles adapter for a powered parked vehicle). No other durability.
+- **Field devices**: scanners and jammers Mk II–III (radius), sensor kits (charges), radios carried anywhere (two on a side:
+  +accuracy within range in `Combat.ChanceToHit`, extra pings, a squad radio's overwatch fires at what the side sees),
+  rangefinder (`ItemDef.RangedAccuracy`), EMP (`EmpDef`: Linked off the relay and `Unit.EmpUntilRound` with no AP, drones fall,
+  cameras/turrets fried, Network-grade implants nearby lock — your own too), holo-decoy (`UnitKind.Decoy`: a fake survivor of
+  the user's side that takes no turns, lures, draws the Linked's focus and fades after `DecoyUntilRound`), noise decoy (Husks
+  follow it unless their prey is adjacent; the Linked only when they lose sight), Network deck (`HackToolDef.TraceChance`:
+  a hack action may be traced → Linked hunt the hacker). All tile devices also work as drone payloads.
+- **Drone roles** (`DroneItemDef.Role`, `DroneRoles`): medic (`DroneHeal`: a healing item from the operator's pack on a friend
+  next to the drone, with medic perks), cargo (`DroneLoad` from an adjacent cache up to `Cargo`; `DroneFerry` next to an exit
+  → `Party.Secured`, home whatever happens, in `ExtractionResult.Secured`), combat (`DroneFire` with its natural gun, the
+  operator's Drone Piloting as Firearms; `RequiresHook` drone_range_bonus = Drone Operator I). Scout Mk II–III are batteries.
+- **Net**: protocol 9 (the role commands); `SideFog` shows a rival's decoy as a survivor and hides others' charges.
+- **Saves**: colony 18 (`Power`, `Charging`), scavenge 10 (decoys, EMP stuns, charges, secured cargo); keyed on presence, so
+  older saves load with an empty grid and nothing charging.
+- Tests: `ElectronicsTests.cs` (data, power, disassembly, field devices, drone roles, saves), `ElectronicsNetTests`.
+## Gear mods
+
+Weapon, armor and clothing mods and Mk II / III upgrades, one framework for all gear. Data: `gear_mods.json` (rules, slots,
+gear types with their slots and slot counts per Mk, the moddable gear and its upgrade family, the marks, the mods and their
+effects, upgrade kits, headgear, zone biomes, extra enemy tags / drops / terminal loot, recipes) and
+`schematics.gearmods.json` (the gated recipes' schematics, in the Schematics module's catalogue format). Core:
+`Items/GearMods.cs`, `Items/ItemCatalog.cs`, `Items/GearBench.cs`, `Items/GearModSchematics.cs`, `Scavenge/GearEffects.cs`,
+`Colony/GearBenchHandlers.cs`. Balance: BALANCE.md "Gear mods".
+
+- **A modded piece is an item id**: `base[@quality][+mk2|+mk3][+mod[@quality]]...`, mods in the type's slot order
+  (`GearModsData.Canonical`), so the same build always has the same id and stacks. `ScavengeData.Items` is an `ItemCatalog`:
+  defined items and quality variants as before, and any valid modded id resolved on demand (`GearModsData.Check` + `Build`;
+  cached, pure); enumerating it lists only the defined items, so modded gear is never loot. Everything that stores item ids —
+  the colony inventory, expeditions, units' equipment and packs, caches, fitted prosthetics, saves, the wire, trades between
+  players — carries the mods with no extra state, and `Items.ContainsKey` is the validation (a save or a joining party with a
+  build gear_mods.json does not allow is refused like an unknown item). `ItemDef` gains `Mk`, `Mods`, `UnmoddedId` /
+  `IsModded`; `DefinedId` stays the base item (models, icons, recipe inputs). Recipe item inputs never take modded gear.
+- **Types and slots**: firearm (sight, muzzle, stock, underbarrel: 1 / 2 / 3 at Mk I / II / III), melee (edge, grip, coil:
+  1 / 2 / 3), integrated (a fitted gun arm: one of sight, muzzle, underbarrel), armor (plating, lining, outer, webbing:
+  1 / 2 / 3), clothing (lining, outer, webbing: 1 / 2 / 3), helmet (plating, lining, visor: 1 / 2 / 3), mask (visor: 1).
+  Families (sidearm, long gun, carbine, melee, clothing, armor, plating) name the kit per Mk.
+- **Effects** (`ModEffect`): on attacks (ranged mods change ranged attacks, melee mods melee ones) accuracy (per action id
+  too: a compensator on bursts), damage, reach, noise, reveal, AP, strength scaling, armor pierce, injury multiplier, a
+  scope's close-range AP (`ActionDef.CloseRange` / `CloseApPenalty`, `Combat.ApCost`), a stock's share of the after-moving
+  penalty, extra banes (`ActionDef.ExtraBanes`: EMP coil vs `network` and `device`, incendiary rounds vs `husk`, a shock
+  coil's `stun`), EMP feedback; on the piece armor, melee armor, injury resist, stealth, carry, sight, detection, move noise,
+  camo, weather protection, thermal mask, Network weave, a light. A mod's quality scales it: benefits × the tier's
+  multiplier, drawbacks ÷ it (`ModEffect.AtQuality`). A Mk adds damage and accuracy to weapons, armor (base + bonus, × a
+  multiplier) and coverage to worn gear, and a little weight, and stacks with quality.
+- **Coverage and the Head slot**: `EquipSlot.Head` (`ItemKind.Headgear`: scrap helmet, riot helmet, gas mask, and the
+  weather's dust mask, which the colony still counts as a mask with the gas mask, `weather.json maskItems`). Gear with
+  `coverage` counts its armor only on hits to those regions (`UnitProfile.RegionArmor`, `ArmorAgainst(region, melee)`);
+  gear without it protects every part as before. `Combat.Strike` takes armor for the part hit (after the hit location
+  roll, so the RNG stream is unchanged), less the attack's pierce; injury severity × the attack's injury multiplier ×
+  (1 − the wearer's injury resist).
+- **In the field** (`GearEffects`): a ranged attack after moving this turn (`Unit.Moved`) loses
+  `rules.movedAccuracyPenalty` (the Linked and machines do not), less a stock's share; a **weapon light** in the dark (human
+  sight below `darkBelowSight`: night, or blinding weather) lets its carrier see in a cone toward `Unit.Facing` (set by
+  moves and attacks) as by day (`Detection.Spots`, `Visibility.SideVisible`), costs it stealth, and as a beacon shows it to
+  anyone with line of sight in their pre-dark sight; **camo** adds stealth in zones of its biome (`zoneBiomes`); **thermal
+  masking** adds stealth in the dark against the senses that see through it and hides from thermal eyes (not scanners);
+  **Network weave** adds stealth against the Linked's senses, takes its share off Network interference and EMP feedback,
+  and Husks hear its wearer further (`HuskLure`); **plates** clank (`MoveNoise`: idle enemies in earshot of a move come
+  looking, and parties hear it further; quiet fabric takes it off); **weather protection** keeps a weather's effects off the
+  wearer's senses (`FieldEnvironment.EffectsFor`: waterproofing rain and thunderstorms, a dust filter, the dust mask and
+  the gas mask dust storms, the gas mask fog too); an **EMP shot** may lock up Network-grade
+  parts of the shooter's side within 1 tile (`GearEffects.Feedback`, one roll per part).
+- **Gear Bench** (`GearBench`: pure; `InstallMod`, `RemoveMod`, `UpgradeGear` colony commands): mods go on and come off
+  gear in the inventory (or a survivor's fitted gun arm: `SurvivorId` + `Part`) at an Armory, Workshop or Tailor; fitting
+  into a taken slot swaps the old mod out; removing returns it intact; kits are fitted at the Armory or Tailor, one Mk at a
+  time. Errors `NoBench`, `NotModdable`, `ModDoesNotFit`, `NoFreeModSlot`, `EmptyModSlot`, `WrongKit`, `MaxMk`; event
+  `GearModded`. In the field `FieldMod` (Jury-rig, `field_repair`; `rules.fieldApCost` AP) fits a mod from the pack to an
+  equipped piece or takes one off into the pack (scavenge event `GearModded`).
+- **Crafting**: mod and kit recipes at the Workshop (simple mods, scrap helmet), Tailor (clothing mods, gas mask, clothing
+  kits), Armory (firearm mods, plates, visor, riot helmet, weapon and armor kits) and Electronics Lab (light, laser, shock
+  coil, thermal masking, and the Network-grade EMP coil and weave from Linked cores). Crafted mods roll a quality from the
+  crafter's skill like gear. Mods, kits and schematics are loot; the EMP coil, weave and carbine/plating kit schematics also
+  drop from the Linked and come from terminals.
+- **Schematics** (`GearModSchematics`): the gear schematics are `data/schematics.gearmods.json`, merged into the catalogue
+  by the Schematics module (see "Schematics"); each unlocks the mod and kit recipes it names, so `CheckRecipe` gates them
+  like any other. The default set (iron sights, wrapped grip, sharpened edge, padding, webbing, scrap plates, visor, dust
+  filter, helmets, gas mask, Mk II for sidearms, melee, clothing and armor) has no entry. `GearModSchematics.Has` /
+  `RecipeUnlocked` are `Schematics.Has` / `Schematics.RecipeUnlocked`. Caches, lockers and terminals roll gear schematics
+  from the catalogue by their sources; the EMP coil, weave, shock coil and carbine / plating kit schematics also drop from
+  the Linked (`gear_mods.json drops`, kept in step with the `Kill` sources).
+- **Multiplayer**: the server's party check (`Items.TryGetValue` + slot) validates every build; `fieldMod` is an intent;
+  views carry equipment as ids (a visible unit's mods are as visible as its weapon). Protocol 11.
+- **Saves**: colony 20 (`SaveGame.GearModsVersion`), scavenge 11 (units' `Moved` and `Facing`); older saves load unchanged. Tests: `GearModsTests`,
+  `GearModsNetTests`.
+
+## Raids and defenses
+
+Core is `src/Remnants.Core/Raids/`, data `data/raids.json` and `data/schematics.defense.json`; balance in BALANCE.md "Raids".
+`ColonySim.Raids` (`RaidData`, settable like `Story`) is optional: without it nothing below happens (tests of other rules keep
+their RNG draws), so the game, the playtest bot and raid tests set it after `NewGame`/`SaveGame.Load`. State is
+`ColonyState.Defense` (`DefenseState`). `RaidSystem.Run` is the last step of `ColonySim.Tick` (after `WorldMap`).
+
+- **Grid** (`DefenseGrid`): the plot grid at `grid.cellsPerPlot` (4) cells per plot inside a `grid.margin` (4) of cells; a
+  cell is one 2 m scavenge tile, so the grid maps 1:1 onto the battle map (see "Fought raids" below). Cell (0, 0) is the
+  north-west corner; South (+y, +Z in the town) is the road and the main gate. `SideOf`, `DistanceToEdge`, `Coverage` and
+  `Covers` (range, turret arcs around the facing) serve the rules and the overlays.
+- **Defenses** (`DefenseDef`, kinds Wall / Gate / Barricade / Post / Tower / Light / Turret / Alarm / Trap): cost, upkeep (paid
+  at midnight; unpaid ones stand idle that day), HP, soak (walls), flat defense, warning hours, guard slots and post bonus,
+  range/arc, lights, wakes (alarm), trap damage vs tags, re-armable with a re-arm cost or used up, lure, `upgradesTo` (wood →
+  scrap → concrete walls; tower levels 1–3), `poweredBonus`. Commands (`IRaidCommand`, handled by `DefenseHandlers`):
+  `PlaceDefense`, `RemoveDefense` (half back, scaled by HP), `RotateDefense`, `UpgradeDefense` (the cost difference),
+  `RearmTrap`, `AssignGuard`, `SetNightWatch`, `QueueRepair` / `CancelRepair`, and the prep commands below. UI queries:
+  `DefenseHandlers.CanPlace` (the ghost's ok / reason), `Cost` (Engineer discount), `UpgradeCost`, `FreeGuardSlots`, `CanRecall`.
+- **Schematics** (`DefenseSchematics`): `schematics.defense.json` is part of the schematics catalogue (unlock kind
+  `UnlockKind.Defense`, ids checked by `RaidData.Validate`). A defense no schematic names is default content (Wooden Wall,
+  Gate, Spike Strip, Alarm Bell, Lookout Tower); the rest are found as loot, traded, researched, or carried by beaten raids
+  (`Droppable`: unknown defense schematics with the Loot source, granted with `SchematicSource.Kill`). `Unlocked` = no gate or
+  `Schematics.Has`.
+- **Guards** (`Guards`): a guard has no building job and stands at a post on the day shift, or the night watch (the hours
+  outside `dayNight.workHours`). `Schedule.OnShift` asks `Guards.OnShift`, so the night watch is night work to the day/night
+  rules (sleep debt, mood); off duty in `guard.daySleepHours` they sleep it off. On duty they train like workers at the
+  `guard` job (Firearms; Perception, Endurance; Melee on the side) with work XP. `AssignJob` ends guard duty.
+- **Threats** (`ThreatModel`): pressure per hour per kind = `(basePerHour + perInputPerHour · input) · weather`; Husks hear
+  noise (survivors, night shifts, Floodlights at night, returns, noisy items such as vehicles, minus lures), the Linked follow
+  Network presence (known Linked zones' threat, growing with the days), raiders smell wealth. `RaidSystem` draws a raid when a
+  kind reaches `scheduler.threshold` — after the grace (days and buildings), never within `minGapDays` of the last — with a
+  size from pressure and escalation (raids survived, days), an approach side and an arrival phase by weight (Husks favour
+  night). It sets out `travelHours` ahead.
+- **Warning** (`RaidWarning`): lead hours = base + the best tower + other watching defenses (bell, tripwires) + watching
+  buildings (`warning.buildingHoursPerLevel`: Watchtower, Radio Mast once that data lands) + guards on duty (+ Sentry) + a drone
+  patrol (a scout drone and a pilot at home), × weather, capped. The raid is seen once its arrival is within the lead; the size
+  estimate's error shrinks with the lead. Logged as `RaidWarned`.
+- **Prep** (only while a raid is warned): `SetDefenders`, `ShelterChildren`, `CloseGates`, `RecallExpedition` (a party still
+  walking out that can make it home), `ChooseFight` (fight it on the map; `RaidBattle.CannotFight` says why not).
+- **Fought raids** (`RaidBattle`): a fought raid reaches `RaidStage.Battle` on arrival (`RaidAtTheFence`) and waits up to
+  `battle.maxWaitHours` for the player to open it, then settles itself by auto-resolve. `RaidBattle.Open` builds (or resumes
+  `Raid.Battle`, carried in the colony save) a scavenge run on `ColonyMap`: the grid as a `HandmadeMapDef`, with built plots
+  as 3×3 wall blocks whose door tile holds the building as a structure unit (HP = `consequences.buildingHp` minus damage;
+  Town Hall tagged `hall`, Radio Mast `mast`, others `b{id}`), wrecked ones as rubble; walls and shut gates as wall, barricades
+  and nests as cover, destroyed defenses as rubble, towers (and Watchtower buildings) as raised posts, turrets as party-owned
+  turret devices (`MapDeviceDef.Party`); the approach band as the spawn marker; exits on the far side; the party by the Town
+  Hall. The script (`Script`): Survive `battle.rounds` + Defend `hall` (fails the mission), attackers in `battle.waves` from
+  the approach toward the hall, tagged `raider`, minus those the traps take out first (`TrapKills`). Defenders take their
+  auto-resolve gear; guards start on their posts; lit floodlights become lights at dusk and night; the hour is the arrival's.
+  `ApplyRaidBattle(result)` brings everyone home as they are (injuries, deaths, field skill), puts each structure's lost HP on
+  its building (a destroyed one is wrecked), and calls `Consequences.Apply` with a `BattleOutcome` (the battle's dead, hurt
+  and kills replace the dice) and a pressure from how it went (held: ½ · attackers left standing; lost or abandoned: ½ + ½ ·
+  that), so traps, walls, spoils, mood, loot and schematics follow as in auto-resolve; the report has `Fought`.
+- **Story**: `Campaign.Setup` fights a perimeter mission (M5, M14) on `RaidBattle.StoryMap` — the colony map with the
+  approach from the north named after the script's spawn marker (`treeline`) — when it has every marker the script names and
+  every structure a Defend objective needs (M5: a built Radio Mast); otherwise on the handmade `perimeter_thN`.
+- **Auto-resolve** (`AutoResolve.Assess` → `RaidAssessment`, `Consequences.Apply`): the formula is in the class remarks and
+  BALANCE.md; gear is handed out from the inventory best-first per slot (weapon, body, head); modded gear resolves through the
+  item catalogue with its mods applied, so gear mods count as in the field. Consequences, from the pressure p: traps spring (re-armable ones wait, used-up ones go), walls on the approach take
+  damage first, then (if they got in) the nearest buildings (`DefenseState.BuildingDamage`; a building at 0 HP is **wrecked**:
+  workers leave, `AssignJob` fails with `Wrecked`), spoils (raiders steal the listed resources; Husks trample food through the
+  `CropDamage` adapter, which will call the Pantry once food-cooking lands), injuries (p² per defender) and deaths, the Linked
+  carry people off, mood for everyone, XP for the defenders, loot and a schematic from a beaten raid. `RaidReport` goes to
+  `DefenseState.LastReport` (history kept) and the log (`RaidRepelled` / `RaidBreached`). `RaidSystem.Finish` is shared with
+  the fought battle.
+- **Repairs**: `QueueRepair` books a building or defense; materials are paid when the repair starts; it progresses on the day
+  shift at `repair.baseHpPerTick` plus idle adults by Crafting (+ the Engineer's `repair_speed_bonus`).
+- **Other systems** (`Raids/Adapters.cs`): `RaidWeather` reads the colony's weather spell (`Weather.SpellAt`; rain, fog,
+  thunderstorms and dust storms cut the warning and shift pressure and strength per raids.json `weather`); `DefensePower`
+  counts a defense as powered when a building the grid fed last tick (`Power.IsPowered`) stands within 6 cells, and then it
+  gets its `poweredBonus` (turrets' defense, floodlights' range), never a requirement; `CropDamage` spoils food through the
+  food system: `crops` tramples the standing crop of outdoor harvests (`Building.HarvestProgress`), `food` takes pantry food
+  value (`Pantry.TakeFoodValue`). Raid loot goes through `RaidLoot.Roll` (the seam for enemy loot tables).
+- **Presentation** (`game/scripts/Colony`: `DefenseView`, `DefenseModels`, `RaidText`; `Colony/Ui`: `DefenseCatalog`,
+  `DefensePanel`, `RepairPanel`, `RaidBanner`, `RaidPrepDialog`, `RaidReportDialog`): Defend mode (TopBar or **F**; D stays
+  camera pan) with the catalogue by category, cost chips and lock reasons, a grid-snapped ghost tinted by `CanPlace`, drag to
+  lay a line of walls or traps, R to rotate, the free-cell grid and coverage / fire-arc overlays; a placed defense's panel
+  (HP, repair / re-arm / upgrade / rotate / remove with costs, guards and the night watch); defenses on the town by
+  `defense_{id}` with fallbacks by kind, sprung / unpaid / destroyed looks, damaged and wrecked buildings; the warning banner
+  and the prep screen (time pauses; defenders, shelter, gates, recall, lead sources, strength bar and breakdown); the raid
+  report; the repair queue (TopBar Repairs). `--colony --raid-demo=placement|warning|prep|report` stages each for
+  `--screenshot=PATH --quit`.
+- **Saves**: colony version 21 (`SaveGame.RaidsVersion`) adds `Defense`; older saves load with none, and the gap since "the
+  last raid" counts from the save's tick. Guards of missing survivors and repairs of missing targets are dropped on load, and
+  defense schematics a pre-merge raids save kept in `Defense.KnownSchematics` move into `ColonyState.Schematics`.
+
 ## Data files
 
 - `resources.json` — resource ids and names.
@@ -974,16 +1372,26 @@ The spec is STORY.md. The data format, field by field, is docs/story/FORMAT.md. 
 - `buildings.json` — category, job, produced resource, base output (per worker-hour on shift), `outdoor` (a Night Shift
   needs light), `minTownHallLevel`, and per-level
   cost / worker slots / output multiplier / beds / patients. Level 1 cost = construction cost.
-- `recipes.json` — what production buildings make (see "Crafting tiers").
+- `recipes.json` — what production buildings make (see "Crafting tiers"); food recipes take `ingredients`.
+- `food.json` — food items (food value, nutrition, shelf, tags, meal effects and buffs), harvests, buffs and the food
+  rules (see "Food and cooking"); `schematics.food.json` — the food schematics.
+- `raids.json` — the defense grid, raid scheduler, threats (enemies, pressure, size, strength, approach and arrival weights,
+  trap tags, spoils, loot, schematic chance), noise, warning, day-phase and weather modifiers, strength, consequences, guard,
+  repair, and every defense and trap (see "Raids and defenses"). `schematics.defense.json` — the schematics that unlock them.
 - `perks.json` — skills (names, learning attributes), XP sources and level curve, study buildings and rates,
   disciplines and the perk tree (see "Perks and study").
+- `electronics.json` / `schematics.electronics.json` — components, devices, drone variants, disassembly, power buildings,
+  grid and charging rules; electronics schematics (see "Electronics and power").
+- `gear_mods.json`, `schematics.gearmods.json` — gear mods, Mk kits, headgear and their schematics (see "Gear mods").
 - `cybernetics.json` — tiers, specialisations, the tree's nodes (one per prosthetic item), paired sets, surgery, humanity,
   upkeep and interference (see "Cybernetics" and CYBERNETICS.md).
 - `medicine.json` — conditions, infection, fractures, pain and painkillers, sickness kinds, Med Bay auto-treatment,
-  surgery kits, blood donors, field rules, the save migration and ingredient adapters (see "Medicine").
-- `schematics.medicine.json` — the medical schematics (defaults and gated ones; interim blueprint fields).
-- `rules.json` — tick/time scale, output formula constants, training rates, food, housing grace,
-  meals, crafting (queue limits, quality roll), expedition (party size per Town Hall level, rations, recruit ages), medical (heal/worsen rates, medicine use),
+  surgery kits, blood donors, field rules and the save migration (see "Medicine").
+- `schematics.medicine.json` — the medical schematics (the gated supplies; the basics are in the default set).
+- `trade.json` — player trading: offer caps and suspicious amounts, courier timing and building factors, market limits
+  (listing hours, open listings, rate limits), live-trade idle timeout. Reference values come from schematics.json.
+- `rules.json` — tick/time scale, output formula constants, training rates, food (how much is eaten), housing grace,
+  crafting (queue limits, quality roll), expedition (party size per Town Hall level, rations, recruit ages), medical (heal/worsen rates, medicine use),
   life (growth stages and rates), relationships (affinity), family (conception, pregnancy, baby names), mood,
   new-game setup (counts, age/stat ranges, stock, starting items, starting buildings, names, start hour), `dayNight`
   (phase hours, work and sleep windows, sleep / campfire / supper mood, Night Shift, sleep debt, light, Floodlight cost).
@@ -998,6 +1406,9 @@ The spec is STORY.md. The data format, field by field, is docs/story/FORMAT.md. 
   banes) and `drops` (what a kill leaves behind; Linked and Wardens always leave Linked cores).
 - `zones.json` — size, threat, loot tier, terrain densities, spawn/exit edges, enemy count + mix,
   caches, NPC count, hackable devices per kind.
+- `weather.json` — weather kinds (hours, intensity, forecast confusion, drones, colony and travel effects), the Markov
+  `next` weights, per-region multipliers, the forecast, field changes (`roundsPerHour`, `lookaheadHours`), repair, mask
+  items and crop jobs (see "Weather"). Optional: without it the weather is always clear.
 - `scavenge.json` — `environment` (per day phase and per weather: sight per sense kind, stealth bonus and who ignores it,
   Husk count and hearing, flare radius; see "Day and night"), `hacking`, `devices`, `drone`, `world.droneScout` (see "Hacking and scout drones"), `coop` (alliance offer / break-warning rounds, pings, give and carry costs, carry movement penalty,
   enemies per extra player), `fog` (stealth, detection, contacts, ambush, overwatch, brace, lookout, Linked fog AI), `network` (Linked squad tuning), `world.colonyPos`, terrain table, movement derivation (base pattern/range, Agility per range,
@@ -1027,16 +1438,19 @@ the adults, `--loop-demo` sends the adults on an expedition to the outskirts (sc
 `--autopilot`) and builds a Med Bay and Workshop, `--family-demo` does `--demo`, encourages the first man and woman
 and fast-forwards until a baby is born (then selects the mother), `--crafting-demo` builds a grown town (Town Hall 3, every
 production building, some at level 2–3) with staffed, queued Armory and Tailor and opens the Armory and item panels, `--expedition` opens the expedition planner with two adults picked, `--world-map` opens the world map
-(`--zone=ID` selects a marker), `--tech-demo=hack|turret|drone` (with `--scavenge`) stages a hack in progress, a hacked turret firing or a
-drone scouting (saves its own still with `--screenshot`), `--fog-demo` (with `--scavenge`) stages a fog ambush (`--select-unit=watcher` shows the unit on overwatch with its range;
+(`--zone=ID` selects a marker), `--tech-demo=hack|turret|drone|medic|cargo|combat|emp` (with `--scavenge`) stages a hack in progress, a hacked turret firing, a
+drone scouting, a medic drone treating a teammate, a cargo drone loaded beside an exit, a combat drone firing or an EMP bursting over a Linked and its
+drone (saves its own still with `--screenshot`), `--power-demo` (colony) builds a grown town with a Fuel Generator, Solar Array, Battery Bank and a
+staffed, queued level 3 Electronics Lab with two devices charging, and opens its bench (`--bench-tab=Devices` etc. picks the tab), `--power-overlay`
+opens the power grid overlay, `--fog-demo` (with `--scavenge`) stages a fog ambush (`--select-unit=watcher` shows the unit on overwatch with its range;
 `--select-unit=ID` and `--pause-menu` work in any scavenge run), `--world-demo` fakes a few weeks of scouting and sends a party on the road (for
 screenshots); `--scavenge --zone=ID --seed=N` plays the debug mission in another zone, `--multiplayer` opens the multiplayer menu and
 `--mp-host[=PORT]` / `--mp-join=ADDR` with `--mp-name`, `--mp-ready`, `--mp-coop`, `--mp-team=N`, … script it (see `MULTIPLAYER.md`), `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG (any scene). Day and night: `--night-demo` (the demo town two days on, a Floodlight and the Night Shift on the Woodcutter,
 selected), `--hour=H` runs to the next H:00, pauses and puts sleepers indoors, `--no-select` clears the selection for
 scenery shots. Schematics: `--schematics-demo` (the crafting town plus a Radio Mast, a Lab L2, known / heard-of / encrypted
 schematics, a research running and the trader parked) with `--archive [--archive-filter=known|todecrypt|heard|unknown]`,
-`--research` (selects the Town Hall), `--radio=calls|trader|contracts` (selects the Radio Mast) and `--collapse-log`.
-HUD shots: `--pause-menu`, `--settings`, `--build-menu`, `--select-survivor=ID`, `--survivor-tab=N` (colony), `--menu-settings` (main menu). Needs a display; on
+`--research` (selects the Town Hall), `--radio=calls|trader|contracts` (selects the Radio Mast) and `--collapse-log`. HUD shots: `--pause-menu`, `--settings`, `--build-menu`, `--select-survivor=ID`, `--survivor-tab=N` (colony), `--menu-settings` (main menu). `--gear-demo` (colony): a town with an Armory, Workshop and Tailor, gear, mods and kits in the stores, the Gear Bench open on a Mk II pistol with a Reflex Sight previewed (`--gear-item=ID`, `--gear-preview=MOD` pick others).
+`--scavenge --gear-demo`: the debug mission with a modded unit (Mk III pistol with scope, suppressor, EMP coil; plated vest; scrap helmet; Jury-rig) aiming at a revealed Linked two tiles off (saves its own still with `--screenshot`). Needs a display; on
 Wayland pass `--display-driver wayland --disable-vsync` so an unfocused window still renders:
 
 ```sh

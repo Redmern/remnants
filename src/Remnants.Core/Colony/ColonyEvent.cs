@@ -14,6 +14,13 @@ public enum ColonyEventType
     TraderArrived, TraderLeft, Traded, ContractOffered, ContractAccepted, ContractDone, ContractFailed,
     StoryMission, RadioCall,
     Infected, FellSick, Recovered, Treated, BloodDonated,
+    WeatherChanged, Storm, LightningStruck, Repaired,
+    HarvestChanged, FoodRotted, FoodPoisoning,
+    Brownout, PowerRestored, BreakerTripped, PowerSwitched, DeviceCharged, Disassembled,
+    TradeReceived, CourierDispatched, CourierArrived,
+    GearModded,
+    RaidWarned, RaidRepelled, RaidBreached, DefenseBuilt, DefenseDestroyed, DefenseUnpaid, BuildingWrecked, GuardPosted,
+    ExpeditionRecalled, RaidAtTheFence,
 }
 
 /// <summary>Something notable the UI can show in a log. Purely informational.</summary>

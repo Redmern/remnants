@@ -76,9 +76,5 @@
 
   "field": { "maxApPenalty": 1, "skillPerTreatment": 0.3 },
 
-  "migration": { "antisepticItem": "antiseptic", "shareConverted": 0.5, "medicinePerAntiseptic": 2 },
-
-  "ingredients": [
-    { "id": "herbs", "fallback": "food", "ratio": 1.5 }
-  ]
+  "migration": { "antisepticItem": "antiseptic", "shareConverted": 0.5, "medicinePerAntiseptic": 2 }
 }

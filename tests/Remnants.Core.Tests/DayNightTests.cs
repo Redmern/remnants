@@ -12,7 +12,9 @@ public class DayNightTests
         var state = new ColonyState { Tick = hour };
         state.Buildings.Add(new Building { Id = state.NextBuildingId++, DefId = "town_hall", Level = 1 });
         state.Buildings.Add(new Building { Id = state.NextBuildingId++, DefId = "shelter", Level = 1, Plot = 1 });
-        foreach (var (res, amount) in stock ?? new()) state.Stockpile.Add(res, amount);
+        foreach (var (res, amount) in stock ?? new())
+            if (res == TestData.Food) state.AddFood(amount);
+            else state.Stockpile.Add(res, amount);
         return new ColonySim(TestData.RealWithNights, state);
     }
 
@@ -80,7 +82,7 @@ public class DayNightTests
     [Fact]
     public void Output_per_day_counts_the_shift_hours()
     {
-        var sim = Colony(12);
+        var sim = Colony(12, new() { [TestData.Food] = 100 });
         var farm = sim.Build("farm");
         var s = sim.AddSurvivor();
         sim.Execute(new AssignJob(s.Id, farm.Id));
@@ -89,12 +91,14 @@ public class DayNightTests
         Assert.Equal(sim.OutputPerTick(farm) * hours, sim.OutputPerDay(farm), 9);
 
         var expectedBefore = sim.OutputPerDay(farm);
-        var before = sim.State.Stockpile.Get("food");
-        // Nobody eats here except the farmer; add the food eaten back to compare production.
+        farm.HarvestReadyTick = 0;  // already growing
+        double Grown() => sim.FoodStock + farm.HarvestProgress.Values.Sum();
+        var before = Grown();
+        // Nobody eats here except the farmer; add the food eaten back to compare production (potatoes are 1 food each).
         sim.Advance(24);
         var eaten = sim.Data.Rules.Food.AdultPerTick * 24;
         // Training during the day nudges the rate up a little.
-        Assert.InRange(sim.State.Stockpile.Get("food") - before + eaten, expectedBefore * 0.99, expectedBefore * 1.03);
+        Assert.InRange(Grown() - before + eaten, expectedBefore * 0.99, expectedBefore * 1.03);
     }
 
     [Fact]
@@ -206,7 +210,7 @@ public class DayNightTests
         s.HasBed = true;
         s.Mood = 40;
         s.Health = 50;
-        sim.State.Stockpile.Add("food", 10);
+        sim.State.AddFood(10);
         var rules = sim.Data.Rules;
         sim.Tick();
         Assert.Equal(40 + rules.Mood.RecoveryPerTick + rules.DayNight.SleepMoodPerTick, s.Mood, 9);
@@ -223,10 +227,10 @@ public class DayNightTests
         sim.Tick();
         Assert.Equal(40 + rules.Mood.RecoveryPerTick + rules.DayNight.CampfireMoodPerTick, s.Mood, 9);
 
-        sim.State.Stockpile.Add("stew", 5);
+        Pantry.Add(sim.State, sim.Data, "stew", 5);
         s.Mood = 40;
         sim.Tick();
-        var stew = rules.Food.Meals.First(m => m.Resource == "stew");
+        var stew = sim.Data.Food!.Items["stew"].Meal!;
         Assert.Equal(40 + stew.MoodPerTick + rules.DayNight.NightMealMoodPerTick + rules.Mood.RecoveryPerTick + rules.DayNight.CampfireMoodPerTick, s.Mood, 9);
     }
 

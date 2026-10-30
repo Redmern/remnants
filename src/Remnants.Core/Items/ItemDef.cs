@@ -3,10 +3,10 @@ using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Items;
 
-public enum ItemKind { Weapon, Armor, Clothing, Tool, Consumable, Material, Prosthetic, Schematic }
+public enum ItemKind { Weapon, Armor, Clothing, Tool, Consumable, Material, Prosthetic, Schematic, Food, Mod, Headgear }
 
 /// <summary>Where an item sits when equipped. Anything not equipped is carried in the pack.</summary>
-public enum EquipSlot { Weapon, Body, Tool }
+public enum EquipSlot { Weapon, Body, Tool, Head }
 
 /// <summary>How a unit may move in one move action (chess-like).</summary>
 public enum MovePattern
@@ -110,6 +110,25 @@ public sealed record ActionDef
     /// same way). Gear whose handling depends on the build: a fine Linked carbine shoots straighter, not just harder.
     /// </summary>
     public double QualityAccuracy { get; init; }
+
+    /// <summary>Armor on the target counts for this much less (spikes; gear mods).</summary>
+    public double ArmorPierce { get; init; }
+
+    /// <summary>Injury severity a hit causes × this (a serrated edge's wounds; gear mods).</summary>
+    public double InjuryMultiplier { get; init; } = 1;
+
+    /// <summary>Within this many tiles (Chebyshev) the attack costs <see cref="CloseApPenalty"/> more AP (a scope up close).</summary>
+    public int CloseRange { get; init; }
+    public int CloseApPenalty { get; init; }
+
+    /// <summary>Share of the after-moving accuracy penalty this attack ignores (a stock).</summary>
+    public double MovedPenaltyReduction { get; init; }
+
+    /// <summary>Banes added by gear mods (an EMP coil, incendiary rounds), on top of <see cref="Bane"/>.</summary>
+    public List<BaneDef> ExtraBanes { get; init; } = new();
+
+    /// <summary>Chance per Network-grade prosthetic of the attacker's side within 1 tile to lock up this round when it fires (EMP).</summary>
+    public double NetworkFeedback { get; init; }
 }
 
 /// <summary>
@@ -125,6 +144,41 @@ public sealed record BaneDef
     public double DamageMultiplier { get; init; } = 1;
     public double ArmorPierce { get; init; }
     public int DisruptRounds { get; init; }
+
+    /// <summary>A hit stuns: the target loses AP at the start of its next turn, as if pinned (a shock coil).</summary>
+    public bool Stun { get; init; }
+}
+
+/// <summary>Camo pattern: stealth while in a zone of <see cref="Biome"/> (gear_mods.json zoneBiomes).</summary>
+public sealed record CamoDef
+{
+    public string Biome { get; init; } = "";
+    public double Stealth { get; init; }
+}
+
+/// <summary>
+/// Network weave: the wearer's Network-grade prosthetics lock up less (<see cref="InterferenceReduction"/>, EMP feedback
+/// too), the Linked's sensors and cameras find the wearer harder (<see cref="LinkedStealth"/>), but Husks hear the wearer
+/// <see cref="HuskLure"/> tiles further.
+/// </summary>
+public sealed record WeaveDef
+{
+    public double InterferenceReduction { get; init; }
+    public double LinkedStealth { get; init; }
+    public int HuskLure { get; init; }
+}
+
+/// <summary>
+/// A weapon light. In the dark the carrier sees hostiles within <see cref="Range"/> in a cone of <see cref="ConeDegrees"/>
+/// toward where it last faced, as by day; it loses <see cref="StealthPenalty"/> stealth, and with <see cref="Beacon"/> it is
+/// seen by anyone with line of sight to it within their sight before the dark.
+/// </summary>
+public sealed record LightDef
+{
+    public double Range { get; init; } = 6;
+    public double ConeDegrees { get; init; } = 90;
+    public double StealthPenalty { get; init; }
+    public bool Beacon { get; init; }
 }
 
 /// <summary>What using a consumable does.</summary>
@@ -184,11 +238,59 @@ public sealed record UseEffect
     /// <summary>Humanity it costs the one it is used on, for good (a Network-grade drug).</summary>
     public double HumanityCost { get; init; }
 
+    /// <summary>
+    /// Reusable devices (a motion sensor kit): uses per mission before it is flat. The item is not used up; spent charges
+    /// come home with it and recharge at the colony (see <c>Power</c>). 0 = a one-shot item (<see cref="Consumed"/> applies).
+    /// </summary>
+    public int Charges { get; init; }
+
+    /// <summary>EMP grenade: thrown at a tile; disables the Network's machines in a radius (see <see cref="EmpDef"/>).</summary>
+    public EmpDef? Emp { get; init; }
+
+    /// <summary>Holo-decoy: a fake survivor on the tile that draws Husks and the Linked's fire (see <see cref="DecoyDef"/>).</summary>
+    public DecoyDef? Decoy { get; init; }
+
+    /// <summary>Noise decoy: a racket at the tile; idle enemies within this radius come to look.</summary>
+    public int NoiseRadius { get; init; }
+
     /// <summary>Used on a tile (<see cref="Remnants.Core.Scavenge.UseItem.At"/>) rather than on a unit.</summary>
-    public bool TargetsTile => LightRadius > 0 || SensorRadius > 0;
+    public bool TargetsTile => LightRadius > 0 || SensorRadius > 0 || Emp is not null || Decoy is not null || NoiseRadius > 0;
 
     /// <summary>Does something for a body (heals, dresses, cures, splints, numbs): a medical treatment the Med Bay can use too.</summary>
     public bool Treats => Heal > 0 || Dress != Dressing.None || Cures.Count > 0 || Splint || PainRelief > 0;
+}
+
+/// <summary>
+/// An EMP burst (Chebyshev <see cref="Radius"/>): Linked units drop off the relay and lose their next turn's AP, drones in
+/// the air (anyone's) fall, cameras and turrets are fried, and Network-grade implants nearby (your own too) lock for the round.
+/// </summary>
+public sealed record EmpDef
+{
+    public int Radius { get; init; } = 2;
+
+    /// <summary>Rounds the Linked stay off the relay and stunned (this one and the next N − 1).</summary>
+    public int Rounds { get; init; } = 2;
+}
+
+/// <summary>A holo-decoy: a fake unit of the user's side with <see cref="Hp"/> that lasts <see cref="Rounds"/> and calls out to enemies within <see cref="LureRadius"/>.</summary>
+public sealed record DecoyDef
+{
+    public int Rounds { get; init; } = 2;
+    public double Hp { get; init; } = 4;
+    public int LureRadius { get; init; } = 6;
+}
+
+/// <summary>
+/// A handheld radio, carried anywhere: every unit of its side within <see cref="Range"/> of a carrier coordinates
+/// (<see cref="AccuracyBonus"/>), team pings reach <see cref="PingRangeBonus"/> further, and with
+/// <see cref="ShareOverwatch"/> a carrier on overwatch also fires at hostiles its side sees.
+/// </summary>
+public sealed record RadioDef
+{
+    public int Range { get; init; } = 8;
+    public double AccuracyBonus { get; init; }
+    public int ExtraPings { get; init; }
+    public bool ShareOverwatch { get; init; }
 }
 
 /// <summary>A replacement limb fitted at the Med Bay. Quality is the part's efficiency (above 1 beats the original).</summary>
@@ -231,17 +333,52 @@ public sealed record HackToolDef
     public int Range { get; init; } = 1;
     public double ChanceBonus { get; init; }
     public int Progress { get; init; } = 1;
+
+    /// <summary>
+    /// A Network deck talks the Network's own protocol: each hack action with it has this chance to be traced (the Linked
+    /// hunt the hacker and the alarm rises, as on a failed hack, without the shock or lockout).
+    /// </summary>
+    public double TraceChance { get; init; }
+}
+
+/// <summary>What a drone does beyond scouting (see <c>Scavenge.DroneRoles</c>).</summary>
+public enum DroneRole
+{
+    Scout,
+    /// <summary>Applies a carried bandage or med-kit to a friendly unit next to it.</summary>
+    Medic,
+    /// <summary>Loads items from caches and ferries them out of the zone (secured even if the party falls).</summary>
+    Cargo,
+    /// <summary>Fires a light gun at hostiles it sees: loud, and it draws fire.</summary>
+    Combat,
 }
 
 /// <summary>
 /// A scout drone item: deployed it becomes a flying unit. Battery in rounds, how far one flight goes, and how far from its
-/// operator it can be (before Drone Piloting and perks).
+/// operator it can be (before Drone Piloting and perks). Variants (medic, cargo, combat) add a <see cref="Role"/>.
 /// </summary>
 public sealed record DroneItemDef
 {
     public int Battery { get; init; } = 6;
     public int FlyRange { get; init; } = 4;
     public int ControlRange { get; init; } = 6;
+
+    public DroneRole Role { get; init; } = DroneRole.Scout;
+
+    /// <summary>Overrides <c>drone.hp</c> (a combat drone is a little sturdier, a cargo drone frailer).</summary>
+    public double? Hp { get; init; }
+
+    /// <summary>Cargo drones: items it can hold.</summary>
+    public int Cargo { get; init; }
+
+    /// <summary>Combat drones: the natural weapon item it is fitted with.</summary>
+    public string? Weapon { get; init; }
+
+    /// <summary>AP the operator pays for the role's action (heal, load, ferry; a combat drone's shot costs its weapon's AP).</summary>
+    public int ActionApCost { get; init; } = 1;
+
+    /// <summary>A perk hook the operator needs (above 0) to deploy it (e.g. a combat drone needs Drone Operator I).</summary>
+    public string? RequiresHook { get; init; }
 }
 
 /// <summary>
@@ -285,6 +422,12 @@ public sealed record ItemDef
     /// <summary>Added to the carrier's detection (binoculars, scanner).</summary>
     public double Detection { get; init; }
 
+    /// <summary>Equipped: added to the hit chance of ranged attacks (a rangefinder).</summary>
+    public double RangedAccuracy { get; init; }
+
+    /// <summary>Network-grade gear (cyan): built round Linked parts; an EMP or the Network may bite it.</summary>
+    public bool NetworkGrade { get; init; }
+
     /// <summary>Movement and action modifiers only apply when this body requirement holds.</summary>
     public BodyRequirement? Requires { get; init; }
 
@@ -307,6 +450,10 @@ public sealed record ItemDef
     /// <summary>Scout drones (see <see cref="DroneItemDef"/>).</summary>
     public DroneItemDef? Drone { get; init; }
 
+    /// <summary>Handheld radios (see <see cref="RadioDef"/>).</summary>
+    public RadioDef? Radio { get; init; }
+
+
     /// <summary>Schematic items: the schematic (data/schematics.json) they carry. Made from the catalogue, never in items.json.</summary>
     public string? Schematic { get; init; }
 
@@ -318,6 +465,47 @@ public sealed record ItemDef
 
     /// <summary>A story quest item (the relay antenna): placed by a mission's map, never looted or crafted.</summary>
     public bool Quest { get; init; }
+    /// <summary>
+    /// Worn gear: share of its armor that counts per body region (missing regions: none). Null protects every part with
+    /// all of it (the gear before coverage existed).
+    /// </summary>
+    public Dictionary<BodyRegion, double>? Coverage { get; init; }
+
+    /// <summary>Worn: injury severity the wearer takes × (1 − this) (padding).</summary>
+    public double InjuryResist { get; init; }
+
+    /// <summary>Worn: extra armor against melee attacks (stab-proof lining).</summary>
+    public double MeleeArmor { get; init; }
+
+    /// <summary>Worn: tiles added to how far hostiles hear this unit move (plates clank; quiet fabric takes it off).</summary>
+    public int MoveNoise { get; init; }
+
+    /// <summary>Worn: stealth in zones of a biome (camo patterns).</summary>
+    public CamoDef? Camo { get; init; }
+
+    /// <summary>Weather ids whose effects do not reach the wearer's senses (waterproofing: rain; filters: dust).</summary>
+    public List<string> WeatherProtection { get; init; } = new();
+
+    /// <summary>Worn: stealth in the dark against the senses that see through it (the Linked, cameras), and no thermal scan.</summary>
+    public double ThermalMask { get; init; }
+
+    /// <summary>Worn: Linked-fibre cloth (see <see cref="WeaveDef"/>).</summary>
+    public WeaveDef? NetworkWeave { get; init; }
+
+    /// <summary>A light (weapon light): in the dark the carrier sees in a cone, and is seen.</summary>
+    public LightDef? Light { get; init; }
+
+    /// <summary>Gear mods: the Mk (1 = as built).</summary>
+    public int Mk { get; init; } = 1;
+
+    /// <summary>Gear mods: the mod item ids fitted, in slot order (empty for unmodded gear).</summary>
+    public List<string> Mods { get; init; } = new();
+
+    /// <summary>Gear mods: the item without its Mk and mods (its quality variant), or null for unmodded gear.</summary>
+    public string? UnmoddedId { get; init; }
+
+    /// <summary>Modded or upgraded gear (an instance with its own id; never stacked with the plain item).</summary>
+    public bool IsModded => UnmoddedId is not null;
 
     /// <summary>A medical supply: crafted in quality tiers like gear (a Fine bandage heals more), see <c>medicine.json</c>.</summary>
     public bool Medical { get; init; }
@@ -332,13 +520,14 @@ public sealed record ItemDef
     public string DefinedId => BaseId ?? Id;
 
     /// <summary>Gear that comes in quality tiers when crafted.</summary>
-    public bool HasQuality => (Slot is not null || Medical) && !Natural;
+    public bool HasQuality => (Slot is not null || Kind == ItemKind.Mod || Medical) && !Natural;
 
     public EquipSlot? Slot => Kind switch
     {
         ItemKind.Weapon => EquipSlot.Weapon,
         ItemKind.Armor or ItemKind.Clothing => EquipSlot.Body,
         ItemKind.Tool => EquipSlot.Tool,
+        ItemKind.Headgear => EquipSlot.Head,
         _ => null,
     };
 }

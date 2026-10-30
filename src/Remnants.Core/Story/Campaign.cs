@@ -87,7 +87,7 @@ public static class Campaign
             {
                 ColonyObjectiveKind.Build => state.Buildings.Any(b => b.DefId == o.Building && b.Level >= o.Level),
                 ColonyObjectiveKind.HaveItem => state.Inventory.Count(o.Item!) >= o.Count,
-                ColonyObjectiveKind.HaveResource => state.Stockpile.Get(o.Resource!) >= o.Count,
+                ColonyObjectiveKind.HaveResource => (o.Resource == Pantry.FoodKey ? Pantry.FoodValue(state, sim.Data) : state.Stockpile.Get(o.Resource!)) >= o.Count,
                 ColonyObjectiveKind.Patient => state.Survivors.Any(s => s.PatientAtBuildingId is not null),
                 ColonyObjectiveKind.ChildJob => state.Survivors.Any(s => s.IsChild && s.AssignedBuildingId is { } b
                     && state.FindBuilding(b) is { } at && sim.Data.Buildings[at.DefId].Job == o.Job),
@@ -224,9 +224,16 @@ public static class Campaign
         var def = story.Mission(missionId) ?? throw new InvalidOperationException($"Unknown mission '{missionId}'.");
         var p = sim.State.Campaign!.Progress(missionId);
         var towers = sim.State.Buildings.Where(b => b.DefId == "watchtower").Sum(b => b.Level);
+        var map = story.MapFor(def, sim.TownHallLevel);
+        // A perimeter defense is fought on the real colony when it has what the script needs; the handmade map is the fallback.
+        if (def.Perimeter && sim.Raids is { } raids && Raids.RaidBattle.StoryMap(sim, raids, def.Field!) is { } colony)
+        {
+            map = colony;
+            towers = Raids.RaidBattle.TowerCount(colony);
+        }
         return new MissionSetup(
             def.Field!,
-            story.MapFor(def, sim.TownHallLevel),
+            map,
             def.Room is { } room ? story.Maps[room] : null,
             towers,
             p.Attempts > 1 ? def.Fail.ExtraEnemies : null);
@@ -313,6 +320,11 @@ public static class Campaign
                 if (e.Value >= 0) state.Inventory.Add(e.Id, e.Value);
                 else state.Inventory.TryTake(e.Id, Math.Min(-e.Value, state.Inventory.Count(e.Id)));
                 if (e.Value > 0) lines?.Add($"{e.Value} × {ItemName(sim, e.Id)}");
+                break;
+            case EffectKind.Resource when e.Id == Pantry.FoodKey:
+                // "food" rewards are food value: canned food into the pantry.
+                Pantry.AddFoodValue(state, sim.Data, e.Value);
+                lines?.Add($"{e.Value} food (canned)");
                 break;
             case EffectKind.Resource:
                 state.Stockpile.Add(e.Id, e.Value);

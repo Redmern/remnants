@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using Remnants.Core.Colony;
+using Remnants.Core.Items;
 using Remnants.Core.Scavenge;
 using Remnants.Game.Hud;
 using UiKit = Remnants.Game.Colony.Ui.Ui;
@@ -10,12 +11,14 @@ using UiKit = Remnants.Game.Colony.Ui.Ui;
 namespace Remnants.Game.Scavenge.Ui;
 
 /// <summary>What a tech button asks the screen to do with the next map click.</summary>
-public enum TechAim { None, Deploy, Fly }
+public enum TechAim { None, Deploy, Fly, Heal, Fire }
 
 /// <summary>
 /// Hacking and the scout drone for the acting unit, as <see cref="ActionButton"/>s with AP pips and hotkeys: Hack (H) each
 /// device in the tool's reach with its chance and progress (or Override a Linked), Deploy (K, then click a tile next to
-/// the unit), Fly (J, then click a lit tile), Recall (K), Mark (M) a hostile the drone sees, and drop a payload (P).
+/// the unit), Fly (J, then click a lit tile), Recall (K), Mark (M) a hostile the drone sees, and drop a payload (P); the
+/// drone variants' role (R): a medic drone's Heal and a combat drone's Fire arm a click on a highlighted unit, a cargo
+/// drone loads from a cache next to it, and Ferry (I) flies its hold out from next to an exit.
 /// Hidden when the unit has neither a hacking tool nor a drone. Core decides whether anything works.
 /// </summary>
 public partial class TechPanel : PanelContainer
@@ -82,7 +85,9 @@ public partial class TechPanel : PanelContainer
 
         if (drone is null && carried is null) return;
         var rules = data.Rules.Drone;
-        _content.AddChild(Widgets.Label("SCOUT DRONE", "Heading"));
+        var droneItem = drone?.DroneItemId ?? carried!;
+        var spec = data.Items[droneItem].Drone!;
+        _content.AddChild(Widgets.Label(ScavengeText.Item(data, droneItem).ToUpperInvariant(), "Heading"));
         if (drone is null)
         {
             var battery = Drones.PackedBattery(data, unit!, carried!);
@@ -109,6 +114,8 @@ public partial class TechPanel : PanelContainer
             rules.RecallApCost, "scav_drone", "Call the drone back; it recharges in the pack."),
             () => CommandRequested?.Invoke(new RecallDrone(pid, unit.Id)));
         recall.SetBlocked(!inRange || rules.RecallApCost > unit.Ap, rules.RecallApCost > unit.Ap);
+
+        AddRole(unit, drone, spec, aim, inRange);
 
         if (unit.Hook(PerkHooks.DroneCanMark) > 0)
         {
@@ -137,6 +144,78 @@ public partial class TechPanel : PanelContainer
             }
         }
     }
+
+    /// <summary>The variant's own orders (medic, cargo, combat); Core checks range, AP and targets.</summary>
+    private void AddRole(Unit unit, Unit drone, DroneItemDef spec, TechAim aim, bool inRange)
+    {
+        var sim = _presenter.Sim;
+        var data = sim.Data;
+        var pid = _presenter.PlayerId;
+        var cost = spec.ActionApCost;
+        switch (spec.Role)
+        {
+            case DroneRole.Medic:
+            {
+                var patients = HealTargets(unit, drone);
+                var kit = patients.Select(p => DroneRoles.HealItem(data, unit, p)).FirstOrDefault(i => i is not null)
+                          ?? unit.Pack.FirstOrDefault(id => data.Items[id].Use is { TargetsTile: false, Heal: > 0 });
+                var detail = !inRange ? "out of control range" : kit is null ? "no bandage or med-kit in your pack"
+                    : patients.Count == 0 ? $"fly it next to someone hurt · {ScavengeText.Item(data, kit)}"
+                    : $"{patients.Count} in reach · then click who · {ScavengeText.Item(data, kit)}";
+                var heal = Add(new ActionButton("ui_heal", "Drone: heal", detail, cost, "scav_drone_action",
+                        "Medic drone: drops a bandage or med-kit from your pack on a friendly unit next to it (stabilizes the downed)."),
+                    () => AimChosen?.Invoke(aim == TechAim.Heal ? TechAim.None : TechAim.Heal));
+                heal.ToggleMode = true;
+                heal.ButtonPressed = aim == TechAim.Heal;
+                heal.SetBlocked(!inRange || kit is null || patients.Count == 0 || cost > unit.Ap, cost > unit.Ap);
+                break;
+            }
+            case DroneRole.Cargo:
+            {
+                var hold = drone.Pack.Count;
+                var first = true;
+                foreach (var cache in _presenter.State.Caches.Where(c => c.Pos.Chebyshev(drone.Pos) <= 1 && _presenter.IsExplored(c.Pos)).ToList())
+                    foreach (var id in cache.Items.Distinct().ToList())
+                    {
+                        var cacheId = cache.Id;
+                        var load = Add(new ActionButton("stat_loot", $"Drone: load {ScavengeText.Item(data, id)}", $"hold {hold}/{spec.Cargo}", cost,
+                                first ? "scav_drone_action" : null, "Cargo drone: winch an item from the cache into the drone's hold."),
+                            () => CommandRequested?.Invoke(new DroneLoad(pid, unit.Id, cacheId, id)));
+                        load.SetBlocked(!inRange || hold >= spec.Cargo || cost > unit.Ap, cost > unit.Ap);
+                        first = false;
+                    }
+                var ferryPoint = DroneRoles.FerryPoint(sim, drone.Pos);
+                var ferry = Add(new ActionButton("ui_extract", "Drone: ferry out",
+                        ferryPoint ? $"{hold} item{(hold == 1 ? "" : "s")} home, safe whatever happens" : "fly it next to an exit first", cost, "scav_ferry",
+                        "Cargo drone: flies its hold (and itself) out of the zone. They come home even if the party falls."),
+                    () => CommandRequested?.Invoke(new DroneFerry(pid, unit.Id)));
+                ferry.SetBlocked(!inRange || !ferryPoint || cost > unit.Ap, cost > unit.Ap);
+                if (ferryPoint && inRange) ferry.ThemeTypeVariation = "Primary";
+                break;
+            }
+            case DroneRole.Combat:
+            {
+                var targets = DroneRoles.FireTargets(sim, unit).Where(_presenter.CanSee).ToList();
+                var gun = sim.Profile(drone).Actions.FirstOrDefault();
+                var ap = gun?.ApCost ?? cost;
+                var detail = !inRange ? "out of control range" : targets.Count == 0 ? "no hostile in its sights"
+                    : $"{targets.Count} target{(targets.Count == 1 ? "" : "s")} · {gun?.MinDamage:0}–{gun?.MaxDamage:0} dmg · then click one";
+                var fire = Add(new ActionButton("skill_firearms", "Drone: fire", detail, ap, "scav_drone_action",
+                        "Combat drone: its gun at a hostile it sees, aimed with your Drone Piloting. Loud: it draws fire."),
+                    () => AimChosen?.Invoke(aim == TechAim.Fire ? TechAim.None : TechAim.Fire));
+                fire.ToggleMode = true;
+                fire.ButtonPressed = aim == TechAim.Fire;
+                fire.SetBlocked(!inRange || targets.Count == 0 || ap > unit.Ap, ap > unit.Ap);
+                break;
+            }
+        }
+    }
+
+    /// <summary>Friendly people next to the drone the medic could treat (hurt or downed).</summary>
+    public List<Unit> HealTargets(Unit operatorUnit, Unit drone) =>
+        _presenter.State.Units.Where(u => u.OnMap && u.Side == operatorUnit.Side && u.Kind is UnitKind.Survivor or UnitKind.Npc
+                                          && u.Status is UnitStatus.Active or UnitStatus.Downed && u.Pos.Chebyshev(drone.Pos) <= 1
+                                          && (u.Status == UnitStatus.Downed || u.Hp < u.MaxHp)).OrderBy(u => u.Id).ToList();
 
     private ActionButton Add(ActionButton button, Action onPressed)
     {

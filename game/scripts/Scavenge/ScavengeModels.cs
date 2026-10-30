@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using Remnants.Core.Items;
 using Remnants.Core.Scavenge;
 using Remnants.Core.Survivors;
 using Remnants.Game.Anim;
@@ -11,7 +12,7 @@ namespace Remnants.Game.Scavenge;
 /// <summary>
 /// Scavenge model lookup on top of the shared <see cref="ModelLibrary"/>: map props (pylon tiles: <c>network_pylon</c>),
 /// enemies by definition (<c>enemy_{defId}</c>: husk, husk_crawler, linked, linked_drone, linked_warden), device units
-/// (<c>device_camera</c> / <c>device_turret</c>, <c>_hacked</c> once they work for a party), the scout drone (<c>scout_drone</c>,
+/// (<c>device_camera</c> / <c>device_turret</c>, <c>_hacked</c> once they work for a party), the scout drone (<c>scout_drone</c>; medic, cargo and combat variants tinted until their own models land,
 /// hovering), hackable devices (<see cref="DeviceViews"/>) and survivor
 /// bodies dressed by <see cref="SurvivorDressing"/> (prosthetics, missing limbs, worn gear). Rigged models come with
 /// their <see cref="CharacterRig"/>.
@@ -20,6 +21,17 @@ namespace Remnants.Game.Scavenge;
 public sealed class ScavengeModels(ModelLibrary library)
 {
     public int ModelCount => library.ModelCount;
+
+    /// <summary>The shared model library (the colony map's buildings and defenses come from it).</summary>
+    public ModelLibrary Library => library;
+
+    /// <summary>
+    /// A fought raid on a colony map: the buildings are drawn by the map (<see cref="ColonyBattleDressing"/>), so their
+    /// structure units are only a small banner on the door tile.
+    /// </summary>
+    public bool ColonyMap { get; set; }
+    /// <summary>The run's items, so drone variants pick their model or tint (set by the screen).</summary>
+    public ScavengeData? Data { get; init; }
 
     /// <summary>Ground variants that read as road (painted markings); kept off the open ground so it stays calm.</summary>
     private static readonly HashSet<string> RoadVariants = ["asphalt"];
@@ -87,7 +99,10 @@ public sealed class ScavengeModels(ModelLibrary library)
         if (unit.Kind == UnitKind.Drone)
         {
             // It hovers: lifted above the ground so it reads as flying.
-            var drone = Rigged("scout_drone") ?? Capsule(0.4f, new Color(0.85f, 0.6f, 0.3f));
+            // Variants share the scout drone's model until their own exist, told apart by a tint.
+            var role = unit.DroneItemId is { } droneItem && Data?.Items.GetValueOrDefault(droneItem)?.Drone is { } spec ? spec.Role : DroneRole.Scout;
+            var drone = Rigged(role switch { DroneRole.Medic => "medic_drone", DroneRole.Cargo => "cargo_drone", DroneRole.Combat => "combat_drone", _ => "scout_drone" })
+                        ?? Tinted(Rigged("scout_drone"), RoleTint(role)) ?? Capsule(0.4f, new Color(0.85f, 0.6f, 0.3f));
             var hover = new Node3D { Name = "Hover", Position = new Vector3(0, 1.3f, 0) };
             hover.AddChild(drone);
             return hover;
@@ -100,6 +115,13 @@ public sealed class ScavengeModels(ModelLibrary library)
                    ?? Capsule(linked ? 2.1f : 1.7f, linked ? new Color(0.3f, 0.75f, 0.85f) : new Color(0.55f, 0.45f, 0.3f));
         }
 
+        if (unit.Kind == UnitKind.Decoy)
+        {
+            // A holo-decoy: a see-through cyan figure of a survivor (no model of its own); UnitViews makes it flicker.
+            var figure = library.TryInstance(ModelLibrary.SurvivorId(false, Sex.Male)) ?? Placeholders.Survivor(false);
+            return Hologram(figure);
+        }
+
         var child = unit.Origin?.IsChild ?? false;
         var id = ModelLibrary.SurvivorId(child, unit.Origin?.Sex ?? Sex.Male);
         if (library.TryInstance(id) is not { } model) return Placeholders.Survivor(child);
@@ -107,6 +129,24 @@ public sealed class ScavengeModels(ModelLibrary library)
         SurvivorDressing.AttachGear(library, model, id, unit.Equipment);
         CharacterRig.Attach(library, model, id);
         return model;
+    }
+
+    /// <summary>A building's structure on a colony map: a short post with a rust pennant (amber for the Town Hall you must hold).</summary>
+    private static Node3D StructureMarker(bool hall)
+    {
+        var root = new Node3D { Name = "Structure" };
+        root.AddChild(new MeshInstance3D
+        {
+            Mesh = new CylinderMesh { TopRadius = 0.04f, BottomRadius = 0.05f, Height = 1.6f, RadialSegments = 6 },
+            MaterialOverride = Placeholders.Material(new Color(0.3f, 0.27f, 0.24f)), Position = new Vector3(0.6f, 0.8f, 0.6f),
+        });
+        root.AddChild(new MeshInstance3D
+        {
+            Mesh = new BoxMesh { Size = new Vector3(0.5f, 0.32f, 0.03f) },
+            MaterialOverride = Placeholders.Material(hall ? Hud.Palette.Amber : Hud.Palette.Rust, unshaded: true),
+            Position = new Vector3(0.87f, 1.42f, 0.6f), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+        });
+        return root;
     }
 
     /// <summary>A model with its <see cref="CharacterRig"/> when the asset is rigged (manifest v2), else as it is.</summary>
@@ -123,6 +163,9 @@ public sealed class ScavengeModels(ModelLibrary library)
     /// </summary>
     private Node3D? Story(Unit unit)
     {
+        if (ColonyMap && unit.Kind == UnitKind.Npc && unit.NoRecruit && !unit.CanBeDowned && unit.Tag is { } tag
+            && (tag is RaidBattleTags.Hall or RaidBattleTags.Mast || tag.Length > 1 && tag[0] == 'b' && tag.Skip(1).All(char.IsAsciiDigit)))
+            return StructureMarker(tag == RaidBattleTags.Hall);
         if (unit.Tag == "mast") return library.TryInstance("radio_mast_l1");
         if (unit.CharacterId == "juniper") return library.TryInstance(unit.FollowingId is null ? "story_juniper" : "story_juniper_bandaged");
         if (unit.CharacterId is { } character) return library.TryInstance($"story_{character}");
@@ -133,6 +176,57 @@ public sealed class ScavengeModels(ModelLibrary library)
             _ => null,
         };
     }
+
+    /// <summary>The drone variants' tints over the scout drone model: medic white-green, cargo rust, combat gunmetal red.</summary>
+    public static Color RoleTint(DroneRole role) => role switch
+    {
+        DroneRole.Medic => new Color(0.75f, 1f, 0.8f),
+        DroneRole.Cargo => new Color(1f, 0.72f, 0.45f),
+        DroneRole.Combat => new Color(1f, 0.5f, 0.45f),
+        _ => Colors.White,
+    };
+
+    /// <summary>Multiplies every surface's albedo by <paramref name="tint"/> (materials are copied, so other instances keep theirs).</summary>
+    public static Node3D? Tinted(Node3D? model, Color tint)
+    {
+        if (model is null || tint == Colors.White) return model;
+        foreach (var mesh in Meshes(model))
+            for (var i = 0; i < mesh.GetSurfaceOverrideMaterialCount(); i++)
+                if ((mesh.GetSurfaceOverrideMaterial(i) ?? mesh.Mesh?.SurfaceGetMaterial(i)) is BaseMaterial3D source)
+                {
+                    var copy = (BaseMaterial3D)source.Duplicate();
+                    copy.AlbedoColor *= tint;
+                    mesh.SetSurfaceOverrideMaterial(i, copy);
+                }
+        return model;
+    }
+
+    /// <summary>The hologram look: one shared, unshaded, see-through cyan material over every mesh (tagged for the flicker).</summary>
+    private static Node3D Hologram(Node3D model)
+    {
+        var holo = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(0.35f, 0.9f, 1f, 0.42f),
+            ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+            EmissionEnabled = true,
+            Emission = new Color(0.25f, 0.85f, 0.95f),
+            CullMode = BaseMaterial3D.CullModeEnum.Back,
+        };
+        foreach (var mesh in Meshes(model))
+        {
+            mesh.MaterialOverride = holo;
+            mesh.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+        }
+        model.SetMeta(HologramMeta, holo);
+        return model;
+    }
+
+    /// <summary>Meta key on a decoy's model holding its hologram material (UnitViews flickers its alpha).</summary>
+    public const string HologramMeta = "hologram";
+
+    private static IEnumerable<MeshInstance3D> Meshes(Node node) =>
+        node.FindChildren("*", nameof(MeshInstance3D), true, false).OfType<MeshInstance3D>().Concat(node is MeshInstance3D self ? [self] : []);
 
     private static Node3D Box(Vector3 size, Color color)
     {

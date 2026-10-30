@@ -30,12 +30,6 @@ public sealed record MedicineDef
     public DonorRules Donor { get; init; } = new();
     public FieldMedicineRules Field { get; init; } = new();
     public MedicineMigrationRules Migration { get; init; } = new();
-
-    /// <summary>Ingredient adapters: ids other features own, with a stand-in when that feature is not in the data.</summary>
-    public List<IngredientAdapter> Ingredients { get; init; } = [.. DefaultIngredients];
-
-    /// <summary>Used without medicine.json too: recipes.json names herbs either way.</summary>
-    public static readonly IReadOnlyList<IngredientAdapter> DefaultIngredients = [new IngredientAdapter { Id = "herbs", Fallback = "food", Ratio = 1.5 }];
 }
 
 /// <summary>
@@ -188,17 +182,6 @@ public sealed record MedicineMigrationRules
     public string AntisepticItem { get; init; } = "antiseptic";
     public double ShareConverted { get; init; } = 0.5;
     public double MedicinePerAntiseptic { get; init; } = 2;
-}
-
-/// <summary>
-/// An ingredient another feature owns (herbs from food-cooking, alcohol from the vehicles' still): recipes name
-/// <see cref="Id"/>; when no resource of that id is loaded, the recipe uses <see cref="Fallback"/> × <see cref="Ratio"/> instead.
-/// </summary>
-public sealed record IngredientAdapter
-{
-    public string Id { get; init; } = "";
-    public string Fallback { get; init; } = "";
-    public double Ratio { get; init; } = 1;
 }
 
 /// <summary>The medicine data indexed for lookups. Immutable.</summary>

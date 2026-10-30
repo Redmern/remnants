@@ -59,10 +59,10 @@ internal static class MedicalSystem
             {
                 if (Medicine.NeedsCare(s, data) && state.Stockpile.TryTake(rules.MedicineResourceId, rules.MedicinePerPatientTick))
                 {
-                    HealAll(s, data, Care.HealPerTick(state, data, medBay));
+                    HealAll(s, data, Care.HealPerTick(state, data, medBay) * FoodEffects.HealingFactor(s, data));
                     treatedAt.Add(medBay.Id);
                 }
-                else HealAll(s, data, rules.NaturalHealPerTick);
+                else HealAll(s, data, rules.NaturalHealPerTick * FoodEffects.HealingFactor(s, data));
                 s.Health = Math.Min(Survivor.MaxHealth, s.Health + rules.PatientHealthPerTick);
                 if (!Medicine.NeedsCare(s, data) && state.Surgeries.All(o => o.SurvivorId != s.Id))
                 {
@@ -77,7 +77,7 @@ internal static class MedicalSystem
             {
                 if (p.Severity < rules.NaturalHealMaxSeverity)
                 {
-                    p.Severity -= rules.NaturalHealPerTick * Treatment.HealFactor(data.Medicine, s.Body, part);
+                    p.Severity -= rules.NaturalHealPerTick * FoodEffects.HealingFactor(s, data) * Treatment.HealFactor(data.Medicine, s.Body, part);
                     if (p.Severity <= 1e-9)
                     {
                         s.Body.Heal(part);

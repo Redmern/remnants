@@ -52,6 +52,18 @@ public partial class ScavengeLog : PanelContainer
             ScavengeEventType.DroneDeployed or ScavengeEventType.DroneFlown or ScavengeEventType.DroneRecalled or ScavengeEventType.DroneLanded
                 or ScavengeEventType.Marked or ScavengeEventType.PayloadDropped => ("skill_dronepiloting", Palette.Amber),
             ScavengeEventType.DeviceDisabled or ScavengeEventType.RelayDisrupted => ("ui_attack", Palette.Good),
+            ScavengeEventType.WeatherChanged => ("weather_overcast", Palette.TextMuted),
+            ScavengeEventType.Thunder => ("weather_thunderstorm", Palette.TextMuted),
+            ScavengeEventType.Lightning => ("weather_lightning", Palette.Warn),
+            // An EMP is a weapon against the Network: its line is cyan like the Network's own.
+            ScavengeEventType.EmpBurst => ("item_emp", Palette.Network),
+            ScavengeEventType.Traced => ("stat_linked", Palette.Network),
+            ScavengeEventType.DecoyDeployed or ScavengeEventType.DecoyGone => ("item_decoy", Palette.Amber),
+            ScavengeEventType.NoiseDecoy => ("item_noise", Palette.Amber),
+            ScavengeEventType.DroneHealed => ("ui_heal", Palette.Good),
+            ScavengeEventType.DroneLoaded => ("stat_loot", Palette.Amber),
+            ScavengeEventType.DroneFerried => ("ui_extract", Palette.Good),
+            ScavengeEventType.DroneFired => ("skill_firearms", Palette.Warn),
             ScavengeEventType.Overwatch => ("stance_overwatch", Palette.Amber),
             ScavengeEventType.Braced => ("stance_brace", Palette.Amber),
             ScavengeEventType.Lookout => ("stance_scan", Palette.Amber),

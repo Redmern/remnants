@@ -36,9 +36,16 @@ public sealed class ScavengeData
     /// </summary>
     public MedicineData? Medicine { get; }
 
+    /// <summary>Electronics devices, drones and power (electronics.json, when loaded with it); null without them.</summary>
+    public ElectronicsDef? Electronics { get; }
+
+    /// <summary>Gear mods and Mk upgrades (gear_mods.json, when loaded with it); null without them.</summary>
+    public GearModsData? GearMods { get; }
+
     public ScavengeData(IEnumerable<ItemDef> items, IEnumerable<EnemyDef> enemies, IEnumerable<ZoneDef> zones, ScavengeRules rules,
         IReadOnlyDictionary<string, IReadOnlyDictionary<string, double>>? perkHooks = null, CyberneticsDef? cybernetics = null,
-        SchematicCatalog? schematics = null, MedicineDef? medicine = null)
+        SchematicCatalog? schematics = null, ElectronicsDef? electronics = null, GearModsDef? gearMods = null,
+        MedicineDef? medicine = null)
     {
         Schematics = schematics ?? SchematicCatalog.Empty;
         // Schematic items come from the catalogue; without one, data built from another ScavengeData's items keeps them.
@@ -46,13 +53,49 @@ public sealed class ScavengeData
         PerkHooks = perkHooks ?? new Dictionary<string, IReadOnlyDictionary<string, double>>();
         Cybernetics = cybernetics is null ? null : new CyberneticsData(cybernetics);
         Medicine = medicine is null ? null : new MedicineData(medicine);
+        Electronics = electronics;
+        var defined = items.Where(i => i.BaseId is null).ToList();
+        if (electronics is not null)
+        {
+            // Devices and components (skipped when the list already has them: data built from another's items).
+            var have = defined.Select(i => i.Id).ToHashSet();
+            defined.AddRange(electronics.Items.Where(i => !have.Contains(i.Id)));
+            enemies = enemies.Select(e => electronics.Drops.TryGetValue(e.Id, out var extra) && extra.Count > 0 && e.Drops.All(d => d.Item != extra[0].Item)
+                ? e with { Drops = e.Drops.Concat(extra).ToList() } : e);
+        }
+        GearMods = gearMods is null ? null : new GearModsData(gearMods);
+        if (GearMods is { } mods)
+        {
+            // Mod, kit and headgear items (skipped when the list already has them: data built from another's items). Their
+            // schematics are in the catalogue (schematics.gearmods.json), drops of them in Drops.
+            var have = defined.Select(i => i.Id).ToHashSet();
+            defined.AddRange(mods.ExtraItems().Where(i => !have.Contains(i.Id)));
+            enemies = enemies.Select(e => mods.Def.Drops.TryGetValue(e.Id, out var extra) && !e.Drops.Contains(extra[0])
+                ? e with { Drops = e.Drops.Concat(extra).ToList() } : e)
+                .Select(e => mods.Def.EnemyTags.TryGetValue(e.Id, out var tags) ? e with { Tags = e.Tags.Union(tags).ToList() } : e);
+        }
         // Variants are always derived (so data built from another ScavengeData's items gets them fresh).
-        Items = Index(WithQualityVariants(items.Where(i => i.BaseId is null).ToList(), rules.Quality), i => i.Id, "item");
+        var index = Index(WithQualityVariants(defined, rules.Quality), i => i.Id, "item");
+        Items = new ItemCatalog(index, GearMods is null ? null : ResolveModded);
         Enemies = Index(enemies, e => e.Id, "enemy");
         Zones = Index(zones, z => z.Id, "zone");
         Rules = rules;
         Validate();
         ValidateCybernetics();
+        if (Electronics is not null) ElectronicsValidation.Validate(Electronics, this);
+        GearMods?.Validate(index, this);
+    }
+
+    /// <summary>A modded gear id as its item, or null when it is not a valid build in canonical form.</summary>
+    private ItemDef? ResolveModded(string id)
+    {
+        var mods = GearMods!;
+        var parsed = GearModsData.Parse(id);
+        if (GearModsData.IsComposite(parsed.BaseId)) return null;
+        var defined = (ItemCatalog)Items;
+        if (mods.Check(defined, parsed) is not null) return null;
+        if (mods.Canonical(parsed.BaseId, parsed.Mk, parsed.Mods) != id) return null;
+        return mods.Build(defined, parsed, Rules.Quality);
     }
 
     public TerrainDef Terrain(Terrain terrain) => Rules.Terrain[terrain];
@@ -160,6 +203,11 @@ public sealed class ScavengeData
                 CureStrength = use.CureStrength * m,
                 PainRelief = Math.Min(1, use.PainRelief * m),
             } : null,
+            RangedAccuracy = Bonus(item.RangedAccuracy),
+            Device = item.Device is { } dev ? dev with { Radius = Math.Max(1, (int)Math.Round(dev.Radius * m)) } : null,
+            Drone = item.Drone is { } dr ? dr with { Battery = Math.Max(1, (int)Math.Round(dr.Battery * m)) } : null,
+            HackTool = item.HackTool is { } ht ? ht with { ChanceBonus = ht.ChanceBonus + (m - 1) * 0.1 } : null,
+            Radio = item.Radio is { } ra ? ra with { Range = Math.Max(1, (int)Math.Round(ra.Range * m)), AccuracyBonus = ra.AccuracyBonus * m } : null,
             Actions = item.Actions.Select(a => a with
             {
                 MinDamage = (int)Math.Round(a.MinDamage * m),
@@ -212,6 +260,7 @@ public sealed class ScavengeData
         foreach (var item in Items.Values)
         {
             if (item.BaseId is null && item.Id.Contains('@')) throw new GameDataException($"Item id '{item.Id}' must not contain '@' (reserved for quality variants).");
+            if (item.Id.Contains(ModdedId.Separator)) throw new GameDataException($"Item id '{item.Id}' must not contain '+' (reserved for gear mods).");
             if ((item.Kind == ItemKind.Schematic) != (item.Schematic is not null) || item.Kind == ItemKind.Schematic && item.LootWeight > 0)
                 throw new GameDataException($"Item '{item.Id}': schematic items come from schematics.json, without a loot weight.");
             if (item.Device is { } device && (item.Kind != ItemKind.Tool || device.Radius < 1))
@@ -338,18 +387,25 @@ public static class ScavengeDataLoader
         string? Optional(string file) => File.Exists(Path.Combine(directory, file)) ? File.ReadAllText(Path.Combine(directory, file)) : null;
 
         return LoadFromJson(Read("items.json"), Read("enemies.json"), Read("zones.json"), Read("scavenge.json"),
-            Optional("perks.json"), Optional("cybernetics.json"), Optional("medicine.json"), SchematicCatalogLoader.Files(directory).Select(File.ReadAllText).ToArray());
+            Optional("perks.json"), Optional("cybernetics.json"), Optional("electronics.json"), Optional("gear_mods.json"), Optional("medicine.json"),
+            SchematicCatalogLoader.Files(directory).Select(File.ReadAllText).ToArray());
     }
 
     /// <param name="perks">perks.json (optional): only each perk's scavenge hooks are read (see <see cref="ScavengeData.PerkHooks"/>).</param>
     /// <param name="cybernetics">cybernetics.json (optional; see <see cref="ScavengeData.Cybernetics"/>).</param>
+    /// <param name="electronics">electronics.json (optional; see <see cref="ScavengeData.Electronics"/>).</param>
     public static ScavengeData LoadFromJson(string items, string enemies, string zones, string rules, string? perks = null, string? cybernetics = null,
-        params string[]? schematics) =>
-        LoadFromJson(items, enemies, zones, rules, perks, cybernetics, null, schematics ?? []);
+        string? electronics = null, params string[]? schematics) =>
+        LoadFromJson(items, enemies, zones, rules, perks, cybernetics, electronics, gearMods: null, schematics ?? []);
+
+    /// <param name="gearMods">gear_mods.json (optional; see <see cref="ScavengeData.GearMods"/>).</param>
+    public static ScavengeData LoadFromJson(string items, string enemies, string zones, string rules, string? perks, string? cybernetics,
+        string? electronics, string? gearMods, string[] schematics) =>
+        LoadFromJson(items, enemies, zones, rules, perks, cybernetics, electronics, gearMods, medicine: null, schematics);
 
     /// <param name="medicine">medicine.json (optional; see <see cref="ScavengeData.Medicine"/>).</param>
     public static ScavengeData LoadFromJson(string items, string enemies, string zones, string rules, string? perks, string? cybernetics,
-        string? medicine, string[] schematics) =>
+        string? electronics, string? gearMods, string? medicine, string[] schematics) =>
         new(
             Parse<List<ItemDef>>(items, "items"),
             Parse<List<EnemyDef>>(enemies, "enemies"),
@@ -358,7 +414,9 @@ public static class ScavengeDataLoader
             perks is null ? null : Parse<ProgressionDef>(perks, "perks").Perks
                 .ToDictionary(p => p.Id, p => (IReadOnlyDictionary<string, double>)new Dictionary<string, double>(p.Effects.Hooks, StringComparer.Ordinal)),
             cybernetics is null ? null : Parse<CyberneticsDef>(cybernetics, "cybernetics"),
-            SchematicCatalogLoader.LoadFromJson(schematics),
+            SchematicCatalogLoader.LoadFromJson(schematics ?? []),
+            electronics is null ? null : Parse<ElectronicsDef>(electronics, "electronics"),
+            gearMods is null ? null : Parse<GearModsDef>(gearMods, "gear_mods"),
             medicine is null ? null : Parse<MedicineDef>(medicine, "medicine"));
 
     private static T Parse<T>(string json, string name)

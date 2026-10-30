@@ -1,0 +1,54 @@
+{
+  "enabled": true,
+  "colonyRegion": "Home Valley",
+  "start": "clear",
+  "maskItems": ["dust_mask", "gas_mask"],
+  "kinds": {
+    "clear":    { "name": "Clear", "hours": [14, 40], "intensity": [0, 0] },
+    "overcast": { "name": "Overcast", "hours": [6, 20], "intensity": [0.2, 0.5] },
+    "rain": {
+      "name": "Rain", "hours": [4, 14], "intensity": [0.3, 1], "groundsDronesFrom": 0.75, "confusedWith": "overcast",
+      "colony": { "outdoorOutput": 0.9, "cropOutput": 1.3, "noCampfire": true }
+    },
+    "thunderstorm": {
+      "name": "Thunderstorm", "hours": [2, 7], "intensity": [0.6, 1], "groundsDrones": true, "severe": true, "confusedWith": "rain",
+      "colony": { "outdoorOutput": 0.7, "cropOutput": 1.1, "moodPerTick": 0.08, "noCampfire": true, "lightningChancePerTick": 0.03 },
+      "travel": { "extraDays": 0.5 }
+    },
+    "fog": {
+      "name": "Fog", "hours": [3, 9], "intensity": [0.4, 1], "confusedWith": "overcast",
+      "colony": { "moodPerTick": 0.03 }
+    },
+    "dust_storm": {
+      "name": "Dust storm", "hours": [5, 20], "intensity": [0.5, 1], "groundsDrones": true, "severe": true, "confusedWith": "overcast",
+      "colony": {
+        "outdoorOutput": 0.3, "maskedOutput": 0.65, "unmaskedHealthPerTick": 0.4, "childrenStayIn": true,
+        "cropOutput": 0.6, "moodPerTick": 0.06, "noCampfire": true
+      },
+      "travel": { "extraDays": 1, "blocksFromDays": 2 }
+    }
+  },
+  "next": {
+    "clear":        { "overcast": 4, "fog": 1.5, "rain": 1, "dust_storm": 0.3 },
+    "overcast":     { "clear": 3, "rain": 3, "thunderstorm": 0.8, "fog": 0.6, "dust_storm": 0.3 },
+    "rain":         { "overcast": 3, "clear": 1.5, "thunderstorm": 1, "fog": 0.5 },
+    "thunderstorm": { "rain": 2, "overcast": 2, "clear": 1 },
+    "fog":          { "clear": 2, "overcast": 2, "rain": 0.5 },
+    "dust_storm":   { "overcast": 2, "clear": 2 }
+  },
+  "regions": {
+    "Home Valley":   { "dust_storm": 0.6, "rain": 1.2 },
+    "Ashgrove":      { "fog": 1.4, "rain": 1.2 },
+    "Iron Corridor": { "dust_storm": 3, "rain": 0.6, "fog": 0.6 },
+    "The Black Grid": { "dust_storm": 4, "thunderstorm": 1.5, "rain": 0.5, "fog": 0.5 }
+  },
+  "forecast": {
+    "daysByTownHallLevel": [1, 2, 3],
+    "labDays": 1, "labBuildingId": "electronics_lab", "labMinLevel": 2,
+    "accuracy": 0.7, "accuracyLossPerDay": 0.12,
+    "instrumentItems": ["scanner"], "instrumentAccuracy": 0.15,
+    "labAccuracyPerLevel": 0.03, "maxAccuracy": 0.97
+  },
+  "field": { "roundsPerHour": 4, "lookaheadHours": 8 },
+  "repair": { "damagedOutput": 0.5, "cost": { "wood": 6, "scrap": 3 } }
+}

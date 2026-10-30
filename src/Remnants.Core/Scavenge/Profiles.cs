@@ -33,7 +33,13 @@ public sealed record ActionProfile(
     int Noise,
     int Area = 0,
     int Reveal = 1,
-    BaneDef? Bane = null);
+    BaneDef? Bane = null,
+    double ArmorPierce = 0,
+    double InjuryMultiplier = 1,
+    int CloseRange = 0,
+    int CloseApPenalty = 0,
+    IReadOnlyList<BaneDef>? ExtraBanes = null,
+    double NetworkFeedback = 0);
 
 /// <summary>
 /// Everything the rules need about a unit, derived from attributes + carried gear + body state + stance.
@@ -52,9 +58,19 @@ public sealed record UnitProfile(
     double Dodge,
     double Stealth = 0,
     double Detection = 0,
-    double CoverBonus = 0)
+    double CoverBonus = 0,
+    IReadOnlyDictionary<BodyRegion, double>? RegionArmor = null,
+    double InjuryResist = 0,
+    double MeleeArmor = 0)
 {
     public ActionProfile? Action(string id) => Actions.FirstOrDefault(a => a.Id == id);
+
+    /// <summary>
+    /// Armor against a hit on a region: <see cref="Armor"/> (gear that protects every part) plus what covers that region,
+    /// plus <see cref="MeleeArmor"/> against melee.
+    /// </summary>
+    public double ArmorAgainst(BodyRegion region, bool melee) =>
+        Armor + (RegionArmor?.GetValueOrDefault(region) ?? 0) + (melee ? MeleeArmor : 0);
 }
 
 /// <summary>
@@ -111,11 +127,22 @@ public static class ProfileDeriver
             Sight: Math.Max(1, sight * head),
             CarryCapacity: capacity,
             Load: load,
-            Armor: equipped.Sum(i => i.Armor) + unit.Hook(PerkHooks.ArmorBonus),
+            Armor: equipped.Where(i => i.Coverage is null).Sum(i => i.Armor) + unit.Hook(PerkHooks.ArmorBonus),
             Dodge: (agility - 50) * rules.Combat.DodgePerAgility + equipped.Sum(i => i.Dodge),
             Stealth: stealth,
             Detection: detection * head,
-            CoverBonus: unit.Stance == Stance.Brace ? fog.Brace.CoverBonus + unit.Hook(PerkHooks.BraceCoverBonus) : 0);
+            CoverBonus: unit.Stance == Stance.Brace ? fog.Brace.CoverBonus + unit.Hook(PerkHooks.BraceCoverBonus) : 0,
+            RegionArmor: RegionArmor(equipped),
+            InjuryResist: 1 - equipped.Aggregate(1.0, (keep, i) => keep * (1 - Math.Clamp(i.InjuryResist, 0, 1))),
+            MeleeArmor: equipped.Sum(i => i.MeleeArmor));
+    }
+
+    /// <summary>Armor of gear with coverage, per region it covers (null when no gear has coverage).</summary>
+    private static Dictionary<BodyRegion, double>? RegionArmor(List<ItemDef> equipped)
+    {
+        var covering = equipped.Where(i => i.Coverage is not null).ToList();
+        if (covering.Count == 0) return null;
+        return Enum.GetValues<BodyRegion>().ToDictionary(r => r, r => covering.Sum(i => i.Armor * Math.Clamp(i.Coverage!.GetValueOrDefault(r), 0, 1)));
     }
 
     /// <summary>Equipped item defs in slot order (Weapon, Body, Tool), the order modifiers apply in.</summary>
@@ -221,13 +248,16 @@ public static class ProfileDeriver
             accuracy *= arms;
             if (a.Pattern != AttackPattern.Melee) accuracy *= unit.Body.RegionEfficiency(BodyRegion.Head);
             accuracy += unit.Hook(PerkHooks.AccuracyBonus);
+            if (a.Pattern != AttackPattern.Melee) accuracy += unit.Equipment.Values.Sum(id => data.Items.TryGetValue(id, out var gear) ? gear.RangedAccuracy : 0);
+            accuracy -= GearEffects.MovedPenalty(data, unit, a);
 
             var damageScale = 1 + (unit.Get(AttributeKind.Strength) - 50) / 100 * a.StrengthScaling;
             if (a.Pattern == AttackPattern.Melee) damageScale *= arms * (1 + unit.Hook(PerkHooks.MeleeDamageBonus));
             damageScale = Math.Max(0, damageScale);
 
             result.Add(new ActionProfile(a.Id, a.Name, itemId, a.Pattern, a.Reach,
-                a.MinDamage * damageScale, a.MaxDamage * damageScale, a.ApCost, Math.Max(0, accuracy), a.Noise, a.Area, a.Reveal, a.Bane));
+                a.MinDamage * damageScale, a.MaxDamage * damageScale, a.ApCost, Math.Max(0, accuracy), a.Noise, a.Area, a.Reveal, a.Bane,
+                a.ArmorPierce, a.InjuryMultiplier, a.CloseRange, a.CloseApPenalty, a.ExtraBanes, a.NetworkFeedback));
         }
 
         foreach (var item in working)
@@ -238,7 +268,7 @@ public static class ProfileDeriver
             foreach (var a in item.Actions)
                 Add(a, item.Id, unit.Body.PartEfficiency(part));
         // Drones and devices have no fists.
-        if (result.All(r => r.Id != combat.Unarmed.Id) && unit.Kind is not (UnitKind.Drone or UnitKind.Device)) Add(combat.Unarmed, null);
+        if (result.All(r => r.Id != combat.Unarmed.Id) && unit.Kind is not (UnitKind.Drone or UnitKind.Device or UnitKind.Decoy)) Add(combat.Unarmed, null);
         return result;
     }
 }

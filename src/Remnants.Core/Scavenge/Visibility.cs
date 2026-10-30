@@ -28,7 +28,14 @@ public static class Visibility
     {
         var result = new HashSet<int>();
         foreach (var u in state.Units.Where(u => u.Side == side && u.IsActive))
-            result.UnionWith(VisibleTiles(data, state.Map, u, FieldEnvironment.Sight(data, state, u, ProfileDeriver.Derive(data, u).Sight)));
+        {
+            var baseSight = ProfileDeriver.Derive(data, u).Sight;
+            result.UnionWith(VisibleTiles(data, state.Map, u, FieldEnvironment.Sight(data, state, u, baseSight)));
+            // A weapon light's cone shows its tiles as by day.
+            if (GearEffects.ActiveLight(data, state, u) is { } light)
+                result.UnionWith(VisibleTiles(data, state.Map, u, Math.Min(baseSight, light.Range))
+                    .Where(i => GearEffects.InCone(u.Facing, u.Pos, new Pos(i % state.Map.Width, i / state.Map.Width), light.ConeDegrees)));
+        }
         if (result.Count > 0) result.UnionWith(Detection.LitTiles(state));
         return result;
     }

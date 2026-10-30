@@ -15,6 +15,9 @@ public static class TownDressing
     /// <summary>How far outside the plot grid the perimeter runs (the commons sit inside it).</summary>
     public const float PerimeterGap = 7.5f;
 
+    /// <summary>Meta flag on the fence props, so the defense view can hide the ones a real defense stands on.</summary>
+    public const string FenceMeta = "fence";
+
     private const float Tile = 2f;
     private const ulong Seed = 0x5EED_70A1;
 
@@ -160,6 +163,7 @@ public static class TownDressing
                 if (h % 100 < 18) continue; // fallen
                 if (models.TryInstance(kinds[(int)((h >> 8) % (ulong)kinds.Length)]) is not { } prop) continue;
                 prop.Position = at;
+                prop.SetMeta(FenceMeta, true);
                 prop.Rotation = new Vector3(0, Mathf.Atan2(dir.Z, dir.X) * -1 + ((h >> 20) % 2 == 0 ? 0 : Mathf.Pi), 0);
                 prop.RotateY(((int)((h >> 24) % 7) - 3) * 0.03f);
                 root.AddChild(prop);

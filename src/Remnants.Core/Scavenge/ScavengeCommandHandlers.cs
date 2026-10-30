@@ -28,6 +28,8 @@ internal static class ScavengeCommandHandlers
         var from = unit.Pos;
         unit.Pos = c.To;
         unit.Ap -= cost;
+        unit.Moved = true;
+        unit.Facing = Combat.Face(from, c.To);
         // The carried unit moves along before anything reacts to the move.
         if (unit.CarryingId is { } carried && sim.State.FindUnit(carried) is { } load) load.Pos = c.To;
         sim.State.Log(new(sim.State.Round, ScavengeEventType.Moved, $"{unit.Name} moved {from} -> {c.To}.", unit.Id, Pos: c.To));
@@ -47,7 +49,7 @@ internal static class ScavengeCommandHandlers
             return ScavengeResult.Fail(ScavengeError.InvalidTarget, $"{target.Name} is not a hostile target.");
         var action = sim.Profile(unit).Action(c.ActionId);
         if (action is null) return ScavengeResult.Fail(ScavengeError.UnknownAction, $"{unit.Name} cannot use '{c.ActionId}' now.");
-        if (action.ApCost > unit.Ap) return NotEnoughAp(unit, action.ApCost);
+        if (Combat.ApCost(action, unit.Pos, target.Pos) is var apCost && apCost > unit.Ap) return NotEnoughAp(unit, apCost);
         var reach = Combat.CheckReach(sim.Data, sim.State.Map, unit.Pos, action, target.Pos);
         if (reach != ScavengeError.None) return ScavengeResult.Fail(reach, $"{target.Name} is not in reach of {action.Name} ({reach}).");
         if (!Drones.CanStrike(action, target)) return ScavengeResult.Fail(ScavengeError.OutOfRange, $"{action.Name} cannot reach a flying drone.");
@@ -61,6 +63,7 @@ internal static class ScavengeCommandHandlers
         if (!unit.Pack.Contains(c.ItemId)) return ScavengeResult.Fail(ScavengeError.ItemNotCarried, $"{unit.Name} carries no '{c.ItemId}'.");
         var item = sim.Item(c.ItemId);
         if (item.Use is not { } use) return ScavengeResult.Fail(ScavengeError.NotUsable, $"{item.Name} cannot be used.");
+        if (ElectronicWarfare.CheckCharges(sim.Data, unit, item) is { } flat) return flat;
         if (use.TargetsTile) return UseOnTile(sim, unit, c, item, use);
 
         var target = c.TargetId is { } id ? sim.State.FindUnit(id) : unit;
@@ -97,7 +100,7 @@ internal static class ScavengeCommandHandlers
         }
 
         unit.Ap -= apCost;
-        if (use.Consumed) unit.Pack.Remove(c.ItemId);
+        ElectronicWarfare.Spend(unit, item, use);
         return ScavengeResult.Success($"{unit.Name} used {item.Name} on {target.Name}.", target.Id);
     }
 
@@ -110,6 +113,8 @@ internal static class ScavengeCommandHandlers
         if (unit.Pos.Chebyshev(at) > use.Range) return ScavengeResult.Fail(ScavengeError.TooFar, $"{at} is out of {item.Name}'s reach.");
         if (use.SensorRadius > 0 && (!sim.Data.Terrain(state.Map[at]).Passable || state.DeviceAt(at) is not null))
             return ScavengeResult.Fail(ScavengeError.InvalidTile, $"{item.Name} cannot be placed on {state.Map[at]}.");
+        if (use.Decoy is not null && !ElectronicWarfare.CanPlaceDecoy(sim, at))
+            return ScavengeResult.Fail(ScavengeError.InvalidTile, $"{item.Name} needs a free floor tile.");
         if (use.ApCost > unit.Ap) return NotEnoughAp(unit, use.ApCost);
         PlaceOnTile(sim, unit, item, use, at);
         return ScavengeResult.Success($"{unit.Name} used {item.Name} at {at}.");
@@ -120,10 +125,15 @@ internal static class ScavengeCommandHandlers
     {
         var state = sim.State;
         unit.Ap -= use.ApCost;
-        if (use.Consumed) unit.Pack.Remove(item.Id);
+        ElectronicWarfare.Spend(unit, item, use);
+        if (use.Emp is { } emp) ElectronicWarfare.Emp(sim, unit, item, emp, at);
+        if (use.Decoy is { } decoy && ElectronicWarfare.CanPlaceDecoy(sim, at)) ElectronicWarfare.Decoy(sim, unit, item, decoy, at);
+        if (use.NoiseRadius > 0) ElectronicWarfare.Noise(sim, unit, item, use.NoiseRadius, at);
         if (use.LightRadius > 0)
         {
-            state.Flares.Add(new Flare(at, use.LightRadius * FieldEnvironment.Effects(sim.Data, state).FlareRadiusMultiplier, state.Round + use.LightRounds - 1));
+            var effects = FieldEnvironment.Effects(sim.Data, state);
+            var rounds = Math.Max(1, (int)Math.Round(use.LightRounds * effects.FlareRoundsMultiplier));
+            state.Flares.Add(new Flare(at, use.LightRadius * effects.FlareRadiusMultiplier, state.Round + rounds - 1));
             state.Log(new(state.Round, ScavengeEventType.FlareLit, $"{unit.Name} throws a {item.Name}: {at} is lit up.", unit.Id, Pos: at));
             // Hostiles standing in the light are seen now; overwatch on them may fire.
             foreach (var u in state.Units.Where(u => u.IsActive && Detection.IsLit(state, u.Pos)).OrderBy(u => u.Id).ToList())
@@ -264,6 +274,33 @@ internal static class ScavengeCommandHandlers
             sim.Log(ScavengeEventType.Extracted, $"{f.Name} extracted with {unit.Name}.", f);
         }
         return ScavengeResult.Success($"{unit.Name} extracted.", unit.Id);
+    }
+
+    /// <summary>Jury-rig: a mod from the pack onto equipped gear, or off it into the pack (<see cref="GearBench"/>).</summary>
+    public static ScavengeResult FieldMod(ScavengeSim sim, Unit unit, FieldMod c)
+    {
+        if (sim.Data.GearMods is not { } mods) return ScavengeResult.Fail(ScavengeError.CannotMod, "There are no gear mods.");
+        if (unit.Hook(mods.Def.Rules.FieldHook) <= 0)
+            return ScavengeResult.Fail(ScavengeError.MissingPerk, $"{unit.Name} needs Jury-rig to modify gear in the field.");
+        if (!unit.Equipment.TryGetValue(c.Slot, out var gear)) return ScavengeResult.Fail(ScavengeError.CannotMod, $"{unit.Name} has nothing in the {c.Slot} slot.");
+        var cost = mods.Def.Rules.FieldApCost;
+        if (cost > unit.Ap) return NotEnoughAp(unit, cost);
+        GearBench.Outcome outcome;
+        if (c.ModItemId is { } mod)
+        {
+            if (!unit.Pack.Contains(mod)) return ScavengeResult.Fail(ScavengeError.ItemNotCarried, $"{unit.Name} carries no '{mod}'.");
+            outcome = GearBench.Install(sim.Data, gear, mod);
+            if (outcome.Ok) unit.Pack.Remove(mod);
+        }
+        else if (c.RemoveSlot is { } slot) outcome = GearBench.Remove(sim.Data, gear, slot);
+        else return ScavengeResult.Fail(ScavengeError.CannotMod, "Name a mod to fit or a slot to clear.");
+        if (!outcome.Ok) return ScavengeResult.Fail(ScavengeError.CannotMod, outcome.Message);
+
+        unit.Equipment[c.Slot] = outcome.ItemId!;
+        if (outcome.Returned is { } back) unit.Pack.Add(back);
+        unit.Ap -= cost;
+        sim.Log(ScavengeEventType.GearModded, $"{unit.Name} jury-rigs their gear: {outcome.Message}", unit);
+        return ScavengeResult.Success(outcome.Message);
     }
 
     private static ScavengeResult NotEnoughAp(Unit unit, int cost) =>

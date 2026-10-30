@@ -52,7 +52,7 @@ public static class Icons
         var key = ($"gear:{baseItemId}", size);
         if (Cache.TryGetValue(key, out var cached)) return cached;
         var path = GearDir + baseItemId + ".png";
-        var texture = ResourceLoader.Exists(path) ? GD.Load<Texture2D>(path) : Get($"item_{kind.ToLowerInvariant()}", size);
+        var texture = ResourceLoader.Exists(path) ? GD.Load<Texture2D>(path) : Get($"item_{kind.ToLowerInvariant()}", size, kind switch { "Headgear" => "body_head", "Mod" => "skill_crafting", _ => "item_generic" });
         return Cache[key] = texture;
     }
 

@@ -20,13 +20,19 @@ public sealed record Upgrade(int BuildingId) : IColonyCommand;
 /// <paramref name="WaitFor"/> the party waits outside the zone until that phase starts (if they would arrive in another),
 /// taking extra rations for the wait (see <see cref="ColonySim.PlanArrival"/>).
 /// </summary>
-public sealed record LaunchExpedition(string ZoneId, List<ExpeditionMember> Members, DayPhase? WaitFor = null) : IColonyCommand;
+public sealed record LaunchExpedition(string ZoneId, List<ExpeditionMember> Members, DayPhase? WaitFor = null, RationChoice? Rations = null) : IColonyCommand;
+
+/// <summary>Pick what a Farm, Greenhouse or Hunting Lodge works on (data/food.json harvests). The standing crop is lost.</summary>
+public sealed record SetHarvest(int BuildingId, string HarvestId) : IColonyCommand;
 
 /// <summary>
 /// Fly a scout drone from the inventory over a rumored zone: it reveals the zone's intel without anyone going (see
 /// <see cref="WorldMap.SendDrone"/>). <paramref name="PilotId"/>: a survivor at home who flies it (less risk, trains Drone Piloting).
 /// </summary>
 public sealed record SendScoutDrone(string ZoneId, int? PilotId = null) : IColonyCommand;
+
+/// <summary>Repair a building struck by lightning (<c>weather.repair.cost</c>).</summary>
+public sealed record RepairBuilding(int BuildingId) : IColonyCommand;
 
 /// <summary>Bring the active expedition home: survivors, injuries, deaths, recruits and loot.</summary>
 public sealed record ApplyExtractionResult(ExtractionResult Result) : IColonyCommand;
@@ -94,6 +100,19 @@ public sealed record SetNightShift(int BuildingId, bool On) : IColonyCommand;
 
 /// <summary>Fit a Floodlight (<c>dayNight.floodlightCost</c>) to an outdoor building so it can run a Night Shift at level 1.</summary>
 public sealed record InstallFloodlight(int BuildingId) : IColonyCommand;
+
+/// <summary>
+/// Gear Bench: fit a mod from the inventory to a piece of gear in the inventory, or to a survivor's fitted prosthetic
+/// (<paramref name="SurvivorId"/> + <paramref name="Part"/>: a gun arm). A mod already in that slot comes off into the
+/// inventory. Needs a bench building (<c>gear_mods.json rules.benches</c>).
+/// </summary>
+public sealed record InstallMod(string ItemId, string ModItemId, int? SurvivorId = null, BodyPart? Part = null) : IColonyCommand;
+
+/// <summary>Gear Bench: take the mod in a slot off (it goes back to the inventory intact).</summary>
+public sealed record RemoveMod(string ItemId, string Slot, int? SurvivorId = null, BodyPart? Part = null) : IColonyCommand;
+
+/// <summary>Fit an upgrade kit from the inventory to gear in the inventory: it goes up one Mk (<c>rules.upgradeAt</c>).</summary>
+public sealed record UpgradeGear(string ItemId, string KitItemId) : IColonyCommand;
 
 public enum CommandError
 {
@@ -188,6 +207,8 @@ public enum CommandError
     NoCybernetics,
     /// <summary>Building or level gated by a schematic the colony does not know.</summary>
     SchematicNeeded,
+    /// <summary>Food: the building does not harvest, or not this.</summary>
+    UnknownHarvest,
     NotResearchable,
     NotHeardOf,
     ResearchBusy,
@@ -206,7 +227,40 @@ public enum CommandError
     /// <summary>Medicine: the item is not a treatment used at home, or would do nothing for them now.</summary>
     NotATreatment,
     NothingToTreat,
+    /// <summary>Raids and defenses (<c>Raids/</c>): no raids.json loaded; unknown placed defense; its schematic is not known.</summary>
+    NoRaidData,
+    UnknownDefense,
+    SchematicMissing,
+    InvalidCell,
+    CellOccupied,
+    NotATrap,
+    AlreadyArmed,
+    NoRaidWarning,
+    CannotRecall,
+    /// <summary>The building was wrecked in a raid: repair it first.</summary>
+    Wrecked,
+    /// <summary>The raid cannot be fought on the map (no field units, no Town Hall, nobody able).</summary>
+    CannotFight,
+    NotDamaged,
+    RouteBlocked,
+    DronesGrounded,
+    /// <summary>Power: the building neither makes, stores nor draws power.</summary>
+    NotOnGrid,
+    /// <summary>Gear mods: no bench (or upgrade) building; the gear or mod or kit does not work that way.</summary>
+    NoBench,
+    NotModdable,
+    ModDoesNotFit,
+    NoFreeModSlot,
+    EmptyModSlot,
+    WrongKit,
+    MaxMk,
 }
+
+/// <summary>
+/// Switch a building's power draw on or off (see <c>Power</c>): a switched-off consumer never draws (and gets no bonus);
+/// a switched-off generator stays cold (no fuel burnt).
+/// </summary>
+public sealed record SetPower(int BuildingId, bool On) : IColonyCommand;
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>
 public sealed record CommandResult(CommandError Error, string Message, int? EntityId = null)

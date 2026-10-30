@@ -144,6 +144,9 @@ public sealed record FieldMission
     public bool AtHome { get; init; }
     public bool FailOnWipe { get; init; } = true;
 
+    /// <summary>At home, a party survivor who goes down is dragged to safety at once (out of the fight, alive and hurt) instead of bleeding out where they fell (raid battles).</summary>
+    public bool RescueDowned { get; init; }
+
     /// <summary>A generated zone's own enemies with any of these tags are left out ("network": no Linked in M4).</summary>
     public List<string> ExcludeEnemyTags { get; init; } = new();
 }

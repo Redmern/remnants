@@ -18,7 +18,11 @@ public partial class DayNightLighting : Node3D
     /// <summary>One look of the scene at an hour; the hours between are blended. <c>Lamps</c> is how far up the night lights are.</summary>
     public readonly record struct SkyLook(
         float Hour, Color Sun, float SunEnergy, Color Moon, float MoonEnergy, Color Ambient, float AmbientEnergy,
-        Color Sky, float Fog, float Lamps);
+        Color Sky, float Fog, float Lamps)
+    {
+        /// <summary>Mist hugging the ground (height fog density; weather sets it, also on the tactical map).</summary>
+        public float GroundFog { get; init; }
+    }
 
     // Dawn is warm and misty, the day as before this cycle, dusk amber, the night a dark blue-grey that keeps the town
     // readable (moonlight plus a cool ambient).
@@ -171,7 +175,11 @@ public partial class DayNightLighting : Node3D
         _env.AmbientLightColor = k.Ambient;
         _env.AmbientLightEnergy = k.AmbientEnergy;
         _env.FogLightColor = k.Sky.Lerp(k.Ambient, 0.35f);
-        _env.FogDensity = k.Fog;
+        // The tactical map takes no distance fog (it would hide tiles), only weather's ground mist.
+        _env.FogEnabled = UseFog || k.GroundFog > 0.001f;
+        _env.FogDensity = UseFog ? k.Fog : k.Fog * 0.15f;
+        _env.FogHeight = 0.6f;
+        _env.FogHeightDensity = k.GroundFog;
         Night = k.Lamps;
 
         _lights.RemoveAll(l => !IsInstanceValid(l.Light) || l.Light.IsQueuedForDeletion());

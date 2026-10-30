@@ -64,7 +64,8 @@ it is how characters call you, in Sandbox it is how traders and contracts find y
 "Migration")
 
 - Workshop: Herbal Remedy, Peg Leg, Hook Arm, Lead Pipe, Rebar Spear, Med-kit
-- Tailor: Plant-fiber Cloth, Bandages, Rag Coat, Backpack, Padded Vest, Climbing Gear, Scout Jacket
+- Tailor: Plant-fiber Cloth, Bandages, Dust Mask & Goggles, Rag Coat, Backpack, Padded Vest, Climbing Gear, Scout Jacket
+  (the dust mask came with the weather pass: default-known, no field in `recipes.json`)
 - Kitchen: Simple Meals, Hearty Stew, Canned Rations
 - Armory: Machete, Pistol
 - Electronics Lab: Salvaged Circuits, Flares, Motion Sensor, Binoculars, Drone Parts, Hacking Kit

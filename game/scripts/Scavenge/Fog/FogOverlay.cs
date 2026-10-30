@@ -95,13 +95,18 @@ public partial class FogOverlay : Node3D
         foreach (var flare in state.Flares.Where(f => f.UntilRound >= state.Round))
         {
             var at = TileGrid.ToWorld(flare.Pos);
-            var model = _models.Prop("item_flare_lit") ?? Placeholder(new Color(1f, 0.3f, 0.2f));
-            model.Position = at;
-            _markers.AddChild(model);
+            // On a colony map a flare that never burns out is a floodlight: the post is the map's, the light cold white.
+            var lamp = _models.ColonyMap && flare.UntilRound == int.MaxValue;
+            if (!lamp)
+            {
+                var model = _models.Prop("item_flare_lit") ?? Placeholder(new Color(1f, 0.3f, 0.2f));
+                model.Position = at;
+                _markers.AddChild(model);
+            }
             _markers.AddChild(new OmniLight3D
             {
-                Position = at + Vector3.Up * 1.5f,
-                LightColor = new Color(1f, 0.55f, 0.4f),
+                Position = at + Vector3.Up * (lamp ? 3f : 1.5f),
+                LightColor = lamp ? new Color(0.95f, 0.95f, 0.85f) : new Color(1f, 0.55f, 0.4f),
                 LightEnergy = 2.5f,
                 OmniRange = (float)flare.Radius * TileGrid.TileSize + 1.5f,
             });

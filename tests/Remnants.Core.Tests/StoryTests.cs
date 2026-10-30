@@ -248,7 +248,7 @@ public class CampaignTests
         sim.Build("med_bay");
         sim.Tick();
         var adult = sim.State.Survivors.First(s => !s.IsChild);
-        sim.State.Stockpile.Add("food", 50);
+        sim.AddFood(50);
         Assert.True(sim.Execute(new LaunchStoryMission("m4", [new ExpeditionMember(adult.Id)])).Ok);
         sim.Advance(48);
         var run = sim.OpenExpeditionScavenge();

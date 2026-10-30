@@ -90,9 +90,10 @@ public static class Schedule
         rules.Enabled && building.NightShift && !s.IsChild && !DayNight.InWindow(hour, rules.WorkHours)
         && CanRunNightShift(building, def, rules);
 
-    /// <summary>Whether a survivor is working right now (assigned, home, not a patient, and on shift).</summary>
+    /// <summary>Whether a survivor is working right now (assigned, home, not a patient, and on shift; or a guard on duty).</summary>
     public static bool OnShift(ColonyState state, GameData data, Survivor s)
     {
+        if (s.AssignedBuildingId is null) return Raids.Guards.OnShift(state, data, s);
         if (s.AssignedBuildingId is not { } id || s.Away || s.PatientAtBuildingId is not null) return false;
         if (state.FindBuilding(id) is not { } b) return false;
         return Factor(s, b, data.Buildings[b.DefId], DayNight.Hour(state.Tick, data.Rules), data.Rules.DayNight) > 0;
@@ -129,15 +130,25 @@ public static class Schedule
     public static double AverageFactor(Survivor s, Building building, BuildingDef def, RulesDef rules) =>
         ShiftHoursPerDay(s, building, def, rules) / rules.TicksPerDay;
 
-    /// <summary>The workers of a building who work this tick, with their shift factor.</summary>
+    /// <summary>
+    /// The workers of a building who work this tick, with their shift factor times the weather's
+    /// (<see cref="Weather.WorkFactor"/>: Night Shift and weather stack).
+    /// </summary>
     public static IEnumerable<(Survivor Worker, double Factor)> Crew(ColonyState state, GameData data, Building building)
     {
         var def = data.Buildings[building.DefId];
         var hour = DayNight.Hour(state.Tick, data.Rules);
+        var spell = Weather.Current(state, data);
+        HashSet<int>? masked = null;
         foreach (var w in state.WorkersAt(building.Id).OrderBy(w => w.Id))
         {
             if (w.Away) continue;
             var f = Factor(w, building, def, hour, data.Rules.DayNight);
+            if (f <= 0) continue;
+            if (def.Outdoor) masked ??= Weather.Masked(state, data, spell);
+            f *= Weather.WorkFactor(data, spell, building, def, w, masked?.Contains(w.Id) == true);
+            // A powered Floodlight makes night work easier (see Power).
+            if (IsNightShiftHour(w, building, def, hour, data.Rules.DayNight)) f *= 1 + Power.NightShiftBonus(state, data, building);
             if (f > 0) yield return (w, f);
         }
     }
@@ -156,6 +167,7 @@ internal static class DayNightSystem
         var rules = data.Rules.DayNight;
         if (!rules.Enabled) return;
         var hour = DayNight.Hour(state.Tick, data.Rules);
+        var campfire = !Weather.KindOf(data, Weather.Current(state, data)).Colony.NoCampfire;
         foreach (var s in state.Survivors.Where(s => !s.Away).OrderBy(s => s.Id))
         {
             var working = Schedule.OnShift(state, data, s);
@@ -174,7 +186,7 @@ internal static class DayNightSystem
             }
             if (nightWork) s.Mood -= rules.NightShift.MoodPerTick;
             if (Schedule.IsTired(s, rules)) s.Mood -= rules.Tired.MoodPerTick;
-            if (!inSleep && !working && s.PatientAtBuildingId is null && hour >= rules.DuskHour)
+            if (!inSleep && !working && s.PatientAtBuildingId is null && hour >= rules.DuskHour && campfire)
                 s.Mood += rules.CampfireMoodPerTick;
             s.Mood = Math.Clamp(s.Mood, 0, Survivor.MaxMood);
         }

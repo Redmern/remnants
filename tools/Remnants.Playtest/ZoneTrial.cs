@@ -13,6 +13,13 @@ namespace Remnants.Playtest;
 /// </summary>
 public static class ZoneTrial
 {
+    /// <summary>The intensity of a trial's weather: heavy rain (drones grounded), a strong storm.</summary>
+    public const double TrialIntensity = 0.8;
+
+    /// <summary>The kinds <c>--weather=all</c> sweeps: every kind in weather.json, or the usual five without one.</summary>
+    public static List<string> WeatherKinds(GameData data) =>
+        data.Weather.Kinds.Count > 0 ? data.Weather.Kinds.Keys.ToList() : [WeatherRules.Clear, "rain", "thunderstorm", "fog", "dust_storm"];
+
     /// <summary>The map as text: # wall, r rubble, c cover, ~ water, P pylon, E exit, units by first letter, $ caches.</summary>
     public static string Picture(ScavengeSim sim)
     {
@@ -57,15 +64,48 @@ public static class ZoneTrial
     /// <param name="carbines">With the geared kit: this many members carry a Linked carbine instead of their rifle / pistol.</param>
     /// <param name="carbineQuality">The carbines' quality tier ("fine", "crude"; empty: standard).</param>
     /// <param name="armor">With the geared kit: everyone wears Linked plating instead of the vest / cloak.</param>
+    /// <param name="mods">Gear mods on the kit, fitted by <see cref="GearModder"/> for the run (night, fighting the Linked):
+    /// "basic" the default set (iron sights, wrapped grip, sharpened edge, padding, webbing, scrap plates) and a scrap
+    /// helmet; "full" Mk II where a kit exists and every survivor-made mod; "stealth" the same chosen to stay hidden; "network"
+    /// full plus the EMP coil and Network weave.</param>
     /// <param name="players">Co-op: this many parties (each a fresh colony's first party, different seeds) on one team;
     /// the zone scales its enemies to the player count. Per-party rates are per party, "someone dies" per mission.</param>
+    /// <param name="hour">Every run is played at this hour of day (its phase by the colony's hours); null: midday.</param>
+    /// <param name="weather">Every run is played in this weather (a <c>weather.json</c> kind id) at
+    /// <see cref="TrialIntensity"/>, with no change during the run; null: no weather.</param>
+    private static readonly string[] BasicMods =
+        ["mod_iron_sight", "mod_wrapped_grip", "mod_sharpened_edge", "mod_armor_padding", "mod_armor_webbing", "mod_armor_scrap_plates"];
+
+    /// <summary>Fits a kit's weapon and body with mods for the preset, and a helmet.</summary>
+    private static void Mod(ScavengeData data, Dictionary<EquipSlot, string> gear, string preset, ModContext context)
+    {
+        var all = data.GearMods!.Def.Mods.Where(m => !m.Network || preset == "network").Select(m => m.Id).ToList();
+        var pool = preset == "basic" ? BasicMods.ToList() : all;
+        foreach (var slot in new[] { EquipSlot.Weapon, EquipSlot.Body })
+        {
+            var id = gear[slot];
+            if (preset != "basic" && data.GearMods.KitFor(data.Items[id].DefinedId, 1) is not null) id = GearModsData.Compose(id, 2, []);
+            gear[slot] = GearModder.Fit(data, id, pool, context);
+        }
+        gear[EquipSlot.Head] = preset == "basic" ? "helmet_scrap" : GearModder.Fit(data, "helmet_scrap", pool, context);
+    }
+
     public static string Run(GameData data, ScavengeData scavenge, string zoneId, int runs, int partySize = 2, Action<string>? trace = null,
-        bool defenses = true, string kit = "", int players = 1, bool tech = true, int carbines = 0, bool armor = false, string carbineQuality = "", int? hour = null)
+        bool defenses = true, string kit = "", int players = 1, bool tech = true, int carbines = 0, bool armor = false, string carbineQuality = "", int? hour = null, string? weather = null, string mods = "")
     {
         // --hour=H plays every run at that hour of day (its phase by the colony's hours); without it, midday as before.
-        var conditions = hour is { } h ? new ZoneConditions(Environment: ScavengeEnvironment.At(h, DayNight.PhaseAtHour(h, data.Rules.DayNight))) : null;
+        // --weather=KIND holds that weather for the whole run ("clear" is the same as none).
+        ScavengeEnvironment? environment = null;
+        if (hour is not null || weather is not null)
+        {
+            var h = hour ?? 12;
+            environment = ScavengeEnvironment.At(h, DayNight.PhaseAtHour(h, data.Rules.DayNight), weather);
+            if (weather is not null && weather != WeatherRules.Clear) environment.Intensity = TrialIntensity;
+        }
+        var conditions = environment is null ? null : new ZoneConditions(Environment: environment);
         int limbLocks = 0;
         int hacked = 0, hackFailed = 0, flights = 0, dronesLost = 0, marks = 0, fromDevices = 0;
+        int emps = 0, decoys = 0, noises = 0, heals = 0, ferried = 0, droneShots = 0;
         int partyRuns = 0, partyWipes = 0, partyDeathRuns = 0;
         int ambushed = 0, reactions = 0, defended = 0;
         int deaths = 0, runsWithDeath = 0, wipes = 0, injuredRuns = 0, limbs = 0, items = 0, schematics = 0, linkedSeen = 0, runsWithLinked = 0, kills = 0, rounds = 0, stuck = 0;
@@ -108,6 +148,21 @@ public static class ZoneTrial
                     }
                 }
             }
+            // "electronics": starting gear plus a radio pair, an EMP and a holo-decoy (first), a noise decoy and a medic
+            // drone (second); "electronics-combat" swaps in a combat drone flown by a Drone Operator.
+            if (kit is "electronics" or "electronics-combat")
+            {
+                packs[0].AddRange(["handheld_radio", "emp_grenade", "holo_decoy"]);
+                if (packs.Count > 1)
+                {
+                    packs[1].AddRange(["handheld_radio", "noise_decoy", kit == "electronics" ? "medic_drone" : "combat_drone"]);
+                    if (kit == "electronics-combat")
+                    {
+                        adults[1].Set(Remnants.Core.Survivors.Skill.DronePiloting, 25);
+                        adults[1].Perks.Add("drone_operator_1");
+                    }
+                }
+            }
             if (CyberKits.TryGetValue(kit, out var fitted))
                 foreach (var (adult, i) in adults.Select((a, i) => (a, i)))
                     foreach (var (part, item) in fitted[Math.Min(i, fitted.Length - 1)])
@@ -121,6 +176,7 @@ public static class ZoneTrial
             {
                 var gearSet = new Dictionary<EquipSlot, string> { [EquipSlot.Weapon] = weapons.Dequeue(), [EquipSlot.Body] = bodies.Dequeue() };
                 if (kit == "geared") gearSet[EquipSlot.Tool] = "binoculars";
+                if (mods != "") Mod(scavenge, gearSet, mods, new ModContext(conditions?.Environment?.IsDark == true, kit == "geared", mods == "stealth"));
                 return new PartyMember(s, gearSet, packs[i]);
             }).ToList();
             setups.Add(new PartySetup(ColonySim.ExpeditionPlayerId + p, party, players > 1 ? 1 : null));
@@ -175,10 +231,16 @@ public static class ZoneTrial
             marks += stats.Marks;
             fromDevices += stats.FromDevices;
             limbLocks += stats.LimbLocks;
+            emps += stats.Emps;
+            decoys += stats.Decoys;
+            noises += stats.NoiseDecoys;
+            heals += stats.DroneHeals;
+            ferried += stats.Ferried;
+            droneShots += stats.DroneShots;
         }
         var n = Math.Max(1, runs - stuck);
         var sb = new StringBuilder();
-        sb.AppendLine($"zone {zoneId}: {runs} runs, {(players > 1 ? $"{players} allied parties of" : "party")} {partySize} ({(kit == "geared" ? "geared" + (carbines > 0 ? $", {carbines} {carbineQuality}{(carbineQuality == "" ? "" : " ")}carbine{(carbines > 1 ? "s" : "")}" : "") + (armor ? ", plating" : "") : "starting gear")}{(kit == "fog" ? " + flares, sensor" : "")}{(kit is "tech" or "hacker" or "hack" or "drone" ? $" + {kit} kit{(tech ? "" : " (unused)")}" : "")}{(CyberKits.ContainsKey(kit) ? $" + {kit} cybernetics" : "")}{(defenses ? "" : ", no defenses")}){(conditions?.Environment is { } env ? $" at {env.Hour:00}:00 ({env.Phase})" : "")}{(stuck > 0 ? $", {stuck} stuck" : "")}");
+        sb.AppendLine($"zone {zoneId}: {runs} runs, {(players > 1 ? $"{players} allied parties of" : "party")} {partySize} ({(kit == "geared" ? "geared" + (carbines > 0 ? $", {carbines} {carbineQuality}{(carbineQuality == "" ? "" : " ")}carbine{(carbines > 1 ? "s" : "")}" : "") + (armor ? ", plating" : "") : "starting gear")}{(kit == "fog" ? " + flares, sensor" : "")}{(kit is "tech" or "hacker" or "hack" or "drone" or "electronics" or "electronics-combat" ? $" + {kit} kit{(tech ? "" : " (unused)")}" : "")}{(CyberKits.ContainsKey(kit) ? $" + {kit} cybernetics" : "")}{(mods != "" ? $", {mods} mods" : "")}{(defenses ? "" : ", no defenses")}){(conditions?.Environment is { } env ? $" at {env.Hour:00}:00 ({env.Phase}{(env.Weather is { } w ? $", {w}" : "")})" : "")}{(stuck > 0 ? $", {stuck} stuck" : "")}");
         sb.AppendLine($"  runs with a death {100.0 * runsWithDeath / n:0}%  wipes {100.0 * wipes / n:0}%  deaths/run {deaths / (double)n:0.00}");
         sb.AppendLine($"  runs with new injuries {100.0 * injuredRuns / n:0}%  injuries/run {injuries / (double)n:0.0}  limbs lost/run {limbs / (double)n:0.00}");
         sb.AppendLine($"  items/run {items / (double)n:0.0}  schematics/run {schematics / (double)n:0.00}  kills/run {kills / (double)n:0.0}  Linked kills/run {linkedKills / (double)n:0.00}  rounds/run {rounds / (double)n:0}");
@@ -189,6 +251,9 @@ public static class ZoneTrial
         if (kit is "tech" or "hacker" or "hack" or "drone")
             sb.AppendLine($"  hacks/run {hacked / (double)n:0.00}  failed (alarms)/run {hackFailed / (double)n:0.00}  lockers+terminals opened/run {fromDevices / (double)n:0.0}" +
                           $"  drone flights/run {flights / (double)n:0.0}  drones lost {100.0 * dronesLost / n:0}% of runs  marks/run {marks / (double)n:0.00}");
+        if (kit is "electronics" or "electronics-combat")
+            sb.AppendLine($"  EMPs/run {emps / (double)n:0.00}  holo-decoys/run {decoys / (double)n:0.00}  noise decoys/run {noises / (double)n:0.00}" +
+                          $"  drone heals/run {heals / (double)n:0.00}  drone shots/run {droneShots / (double)n:0.00}  drone flights/run {flights / (double)n:0.0}");
         if (CyberKits.ContainsKey(kit))
             sb.AppendLine($"  limb lock-ups (interference)/run {limbLocks / (double)n:0.00}");
         if (players > 1)

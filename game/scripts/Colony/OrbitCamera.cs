@@ -22,6 +22,9 @@ public partial class OrbitCamera : Node3D
 
     public Camera3D Camera { get; private set; } = null!;
 
+    /// <summary>While this holds, Q/R do not turn the camera (R turns the defense being placed instead).</summary>
+    public System.Func<bool>? KeyRotationBlocked { get; set; }
+
     public override void _Ready()
     {
         Camera = new Camera3D { Fov = 40, Far = 400 };
@@ -51,8 +54,11 @@ public partial class OrbitCamera : Node3D
         if (Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right)) move.X += 1;
         if (move != Vector2.Zero) Pan(move.Normalized() * PanSpeed * GameSettings.CameraPanSpeed * _distance * dt);
 
-        if (Input.IsActionPressed("camera_rotate_left")) _yaw -= RotateSpeed * dt;
-        if (Input.IsActionPressed("camera_rotate_right")) _yaw += RotateSpeed * dt;
+        if (KeyRotationBlocked?.Invoke() != true)
+        {
+            if (Input.IsActionPressed("camera_rotate_left")) _yaw -= RotateSpeed * dt;
+            if (Input.IsActionPressed("camera_rotate_right")) _yaw += RotateSpeed * dt;
+        }
         Apply();
     }
 

@@ -9,7 +9,8 @@ namespace Remnants.Core.Scavenge;
 /// (<see cref="FieldEnvironment"/>). No randomness: the same positions and gear
 /// always give the same answer. A side also sees
 /// <list type="bullet">
-/// <item>everyone on a tile lit by a <see cref="Flare"/> (every side sees lit tiles);</item>
+/// <item>everyone on a tile lit by a <see cref="Flare"/> (every side sees lit tiles), and everyone on the map in the round
+/// lightning strikes (<see cref="FieldEnvironment.LightningNow"/>);</item>
 /// <item>a unit <see cref="Reveal"/>ed to it (muzzle flash, motion sensor) while one of its units has line of sight to it
 /// within <see cref="FogRules.RevealSightMultiplier"/> times its sight;</item>
 /// <item>hostiles within a working scanner's (or thermal eye's) radius of one of its units, through walls and stealth;</item>
@@ -28,11 +29,16 @@ public static class Detection
         var from = observerAt ?? observer.Pos;
         var to = targetAt ?? target.Pos;
         var seer = ProfileDeriver.Derive(data, observer);
-        if (!Visibility.CanSee(data, state.Map, from, FieldEnvironment.Sight(data, state, observer, seer.Sight), to)) return false;
+        // A weapon light shows what it falls on as by day: full sight out to its range, and the dark hides nothing there.
+        var lit = GearEffects.Illuminates(data, state, observer, from, to);
+        var sight = FieldEnvironment.Sight(data, state, observer, seer.Sight);
+        if (lit) sight = Math.Max(sight, seer.Sight);
+        if (!Visibility.CanSee(data, state.Map, from, sight, to)) return false;
         var fog = data.Rules.Fog;
         if (from.Chebyshev(to) <= fog.CloseRange) return true;
         var distance = Math.Sqrt(from.DistanceSquared(to));
-        var stealth = ProfileDeriver.Derive(data, target).Stealth + FieldEnvironment.StealthBonusAgainst(data, state, observer);
+        var stealth = ProfileDeriver.Derive(data, target).Stealth + (lit ? 0 : FieldEnvironment.StealthBonusAgainst(data, state, observer))
+            + GearEffects.StealthAgainst(data, state, target, observer);
         return seer.Detection - stealth - (distance - fog.CloseRange) * fog.PerTile >= -1e-9;
     }
 
@@ -43,10 +49,12 @@ public static class Detection
         if (!target.OnMap) return false;
         var observers = state.Units.Where(u => u.Side == side && u.IsActive).ToList();
         if (observers.Count == 0) return false;
-        if (IsLit(state, target.Pos)) return true;
+        if (IsLit(state, target.Pos) || FieldEnvironment.LightningNow(state)) return true;
         if (Drones.IsMarked(state, target.Id, side)) return true;
         if (IsRevealed(state, target.Id, side) && observers.Any(o => SeesRevealed(data, state, o, target))) return true;
-        if (observers.Any(o => o.HostileTo(target) && ScanRadius(data, o) is var r && r > 0 && o.Pos.Chebyshev(target.Pos) <= r))
+        if (observers.Any(o => GearEffects.BeaconSeenBy(data, state, o, target))) return true;
+        var masked = GearEffects.ThermalMasked(data, target);
+        if (observers.Any(o => o.HostileTo(target) && ScanRadius(data, o, thermal: !masked) is var r && r > 0 && o.Pos.Chebyshev(target.Pos) <= r))
             return true;
         return observers.Any(o => Spots(data, state, o, target));
     }
@@ -86,9 +94,10 @@ public static class Detection
     }
 
     /// <summary>Radius of the unit's working scanner or thermal eye (<c>thermal_radius</c>), 0 without either.</summary>
-    public static int ScanRadius(ScavengeData data, Unit unit) =>
+    /// <param name="thermal">False against a target in thermal masking: only a scanner device counts.</param>
+    public static int ScanRadius(ScavengeData data, Unit unit, bool thermal = true) =>
         Devices.Working(data, unit).Where(d => d.Effect == DeviceEffect.Scanner).Select(d => d.Radius)
-            .Append(unit.IsActive ? (int)unit.Hook(Colony.PerkHooks.ThermalRadius) : 0).Max();
+            .Append(unit.IsActive && thermal ? (int)unit.Hook(Colony.PerkHooks.ThermalRadius) : 0).Max();
 
     /// <summary>Reveals a unit to a side through <paramref name="untilRound"/> (keeps the later of two reveals).</summary>
     internal static void Reveal(ScavengeState state, Unit unit, string side, int untilRound)

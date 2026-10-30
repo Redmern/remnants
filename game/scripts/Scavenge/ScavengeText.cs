@@ -9,6 +9,36 @@ namespace Remnants.Game.Scavenge;
 /// <summary>View-model formatting of scavenge state for labels. Read-only; no rules.</summary>
 public static class ScavengeText
 {
+    /// <summary>"Dust storm" for <c>dust_storm</c>; "Clear" for none; "Heavy rain" from 0.75 up.</summary>
+    public static string WeatherName(string? weather, double intensity) => weather switch
+    {
+        null or "" or "clear" => "Clear",
+        "rain" when intensity >= 0.75 => "Heavy rain",
+        _ => char.ToUpperInvariant(weather[0]) + weather[1..].Replace('_', ' '),
+    };
+
+    /// <summary>What the run's weather does in the field, one line each, from its <c>scavenge.json</c> entry.</summary>
+    public static string WeatherTip(ScavengeData data, ScavengeEnvironment env)
+    {
+        var lines = new List<string> { WeatherName(env.Weather, env.Intensity) + "." };
+        if (env.Weather is not { } w || !data.Rules.Environment.Weather.TryGetValue(w, out var e))
+            return lines[0] + " Nothing in the air to help or hinder.";
+        string Pct(double m) => $"{(m >= 1 ? "+" : "−")}{System.Math.Abs(System.Math.Round((m - 1) * 100)):0}%";
+        var sight = e.Sight.Where(kv => System.Math.Abs(kv.Value - 1) > 1e-9).Select(kv => $"{kv.Key} {Pct(kv.Value)}").ToList();
+        if (sight.Count > 0) lines.Add("Sight: " + string.Join(", ", sight) + ".");
+        if (e.StealthBonus > 0)
+            lines.Add($"+{e.StealthBonus:0} stealth for everyone" + (e.StealthIgnoredBy.Count > 0 ? $" (not against {string.Join(", ", e.StealthIgnoredBy)})." : "."));
+        if (e.HearingMultiplier < 1) lines.Add($"Noise and footsteps carry {Pct(e.HearingMultiplier)} as far.");
+        if (e.FlareRoundsMultiplier < 1) lines.Add("Flares burn out sooner.");
+        if (e.RangedAccuracyPenalty > 0) lines.Add($"Ranged attacks −{e.RangedAccuracyPenalty * 100:0} points to hit.");
+        if (e.DronesGrounded) lines.Add("Drones are grounded (one in the air can still be recalled).");
+        if (e.RelayRangeMultiplier < 1) lines.Add($"Linked relay range {Pct(e.RelayRangeMultiplier)}: their squads lose touch.");
+        if (e.ThunderChance > 0) lines.Add("Thunder now and then drowns out every footstep for a round.");
+        if (e.LightningChance > 0) lines.Add("Lightning now and then shows everyone on the map for a round.");
+        if (env.Shifts.Count > 0) lines.Add("The sky is changing: it may turn during the run.");
+        return string.Join("\n", lines);
+    }
+
     /// <summary>"Knight — Grappling Hook" for a mode with a source, "King 2" for the plain walk.</summary>
     public static string Mode(MoveMode mode)
     {
@@ -66,8 +96,52 @@ public static class ScavengeText
         UnitKind.Npc => "Stranger",
         UnitKind.Drone => "Scout drone",
         UnitKind.Device => u.EnemyDefId is "turret" ? "Turret (device)" : "Camera (device)",
+        UnitKind.Decoy => "Holo-decoy",
         _ => u.Origin is { IsChild: true } ? "Survivor (child)" : "Survivor",
     };
+
+    /// <summary>A unit's kind with the drone variant named ("Medic drone · Medic").</summary>
+    public static string Kind(ScavengeData data, Unit u) =>
+        u.Kind == UnitKind.Drone && DroneRoles.Spec(data, u) is { } spec
+            ? $"{Item(data, u.DroneItemId!)}{(spec.Role == DroneRole.Scout ? "" : $" · {spec.Role} role")}"
+            : Kind(u);
+
+    /// <summary>Line icon for a usable item: EMP, decoys, flares and sensors by what they do, else by kind.</summary>
+    public static string UseIcon(ItemDef def) => def.Use switch
+    {
+        { Emp: not null } => "item_emp",
+        { Decoy: not null } => "item_decoy",
+        { NoiseRadius: > 0 } => "item_noise",
+        { SensorRadius: > 0 } or { LightRadius: > 0 } => "stat_sight",
+        _ => $"item_{def.Kind.ToString().ToLowerInvariant()}",
+    };
+
+    /// <summary>The use button's detail line.</summary>
+    public static string UseDetail(UseEffect use) => use switch
+    {
+        { Emp: { } emp } => $"tile within {use.Range} · burst {emp.Radius} · stuns the Network {emp.Rounds} rounds",
+        { Decoy: { } d } => $"tile within {use.Range} · draws fire {d.Rounds} rounds",
+        { NoiseRadius: > 0 } => $"tile within {use.Range} · lures enemies within {use.NoiseRadius}",
+        { TargetsTile: true } => $"on a tile within {use.Range}",
+        _ => "on yourself or someone next to you",
+    };
+
+    /// <summary>The use button's tooltip: what the device does and, for a reusable one, its charges.</summary>
+    public static string UseTip(ScavengeData data, ItemDef def, int? chargesLeft)
+    {
+        var use = def.Use!;
+        var what = use switch
+        {
+            { Emp: { } emp } => $"Throw it at a tile: every Linked within {emp.Radius} tiles drops off the relay and loses its turns for {emp.Rounds} rounds, "
+                                + "drones in the air fall, cameras and turrets are fried. Network-grade implants nearby lock up, yours too.",
+            { Decoy: { } d } => $"A flickering fake of you on the tile for {d.Rounds} rounds: it calls enemies within {d.LureRadius} tiles and soaks the Linked's fire.",
+            { NoiseRadius: > 0 } => $"A rattling box on the tile: idle enemies within {use.NoiseRadius} tiles come to look.",
+            _ => def.Medical ? Hud.MedicalText.ItemTip(data, def) : def.Name,
+        };
+        if (chargesLeft is { } c)
+            what += $"\nReusable: {c} of {use.Charges} charge{(use.Charges == 1 ? "" : "s")} left (each carried kit adds {use.Charges}); recharged at the colony's charging bench.";
+        return what;
+    }
 
     /// <summary>Short, player-facing name for a command error code.</summary>
     public static string Error(ScavengeError error) => error switch

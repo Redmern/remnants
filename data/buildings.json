@@ -68,7 +68,6 @@
     "category": "Gathering",
     "outdoor": true,
     "job": "farming",
-    "produces": "food",
     "baseOutput": 1.03,
     "levels": [
       { "cost": { "wood": 15 },               "workerSlots": 2, "outputMultiplier": 1.0 },
@@ -129,6 +128,64 @@
     ]
   },
   {
+    "id": "campfire",
+    "name": "Campfire",
+    "category": "Care",
+    "unique": true,
+    "job": "cooking",
+    "baseOutput": 1.2,
+    "levels": [
+      { "cost": { "wood": 8 }, "workerSlots": 1, "outputMultiplier": 1.0 }
+    ]
+  },
+  {
+    "id": "hunting_lodge",
+    "name": "Hunting Lodge",
+    "category": "Gathering",
+    "outdoor": true,
+    "job": "hunting",
+    "baseOutput": 1.0,
+    "levels": [
+      { "cost": { "wood": 25, "stone": 5 },               "workerSlots": 2, "outputMultiplier": 1.0 },
+      { "cost": { "wood": 40, "stone": 20 },              "workerSlots": 3, "outputMultiplier": 1.25 },
+      { "cost": { "wood": 70, "stone": 40, "scrap": 15 }, "workerSlots": 4, "outputMultiplier": 1.5 }
+    ]
+  },
+  {
+    "id": "smokehouse",
+    "name": "Smokehouse",
+    "category": "Production",
+    "unique": true,
+    "job": "cooking",
+    "baseOutput": 1.7,
+    "levels": [
+      { "cost": { "wood": 30, "stone": 15 },               "workerSlots": 1, "outputMultiplier": 1.0 },
+      { "cost": { "wood": 50, "stone": 30, "scrap": 10 },  "workerSlots": 2, "outputMultiplier": 1.25 }
+    ]
+  },
+  {
+    "id": "cold_cellar",
+    "name": "Cold Cellar",
+    "category": "Care",
+    "unique": true,
+    "levels": [
+      { "cost": { "wood": 25, "stone": 35 } },
+      { "cost": { "wood": 40, "stone": 60, "scrap": 10 } }
+    ]
+  },
+  {
+    "id": "greenhouse",
+    "name": "Greenhouse",
+    "category": "Gathering",
+    "job": "farming",
+    "baseOutput": 0.9,
+    "minTownHallLevel": 2,
+    "levels": [
+      { "cost": { "wood": 40, "stone": 20, "scrap": 15 }, "workerSlots": 2, "outputMultiplier": 1.0 },
+      { "cost": { "wood": 70, "stone": 40, "scrap": 30 }, "workerSlots": 3, "outputMultiplier": 1.3 }
+    ]
+  },
+  {
     "id": "armory",
     "name": "Armory",
     "category": "Production",
@@ -179,19 +236,6 @@
     "levels": [
       { "cost": { "wood": 25, "stone": 10 }, "workerSlots": 0 },
       { "cost": { "wood": 40, "stone": 30, "scrap": 10 }, "workerSlots": 0 }
-    ]
-  },
-  {
-    "id": "greenhouse",
-    "name": "Greenhouse",
-    "category": "Gathering",
-    "job": "farming",
-    "produces": "food",
-    "baseOutput": 0.9,
-    "minTownHallLevel": 2,
-    "levels": [
-      { "cost": { "wood": 40, "stone": 20, "scrap": 15 }, "workerSlots": 2, "outputMultiplier": 1.0 },
-      { "cost": { "wood": 70, "stone": 40, "scrap": 30 }, "workerSlots": 3, "outputMultiplier": 1.3 }
     ]
   }
 ]

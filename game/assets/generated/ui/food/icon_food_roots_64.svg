@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+<g transform="scale(0.5)">
+<path d="M18,112 a46,7 0 1,0 92,0 a46,7 0 1,0 -92,0 Z" fill="#3b3d3c" opacity="0.45"/>
+<g transform="rotate(-38 64 34)">
+<path d="M52,34 C50,56 58,85.8 64,108 C70,85.8 78,56 76,34 Z" fill="#a39a7c" stroke="#3b3d3c" stroke-width="5.2" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="70" y1="50" x2="82" y2="56" fill="none" stroke="#8c7f5c" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="72" y1="64" x2="86" y2="70" fill="none" stroke="#8c7f5c" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+</g>
+<g transform="rotate(0 64 34)">
+<path d="M52,34 C50,56 58,91.4 64,116 C70,91.4 78,56 76,34 Z" fill="#8c7f5c" stroke="#3b3d3c" stroke-width="5.2" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="70" y1="50" x2="82" y2="56" fill="none" stroke="#a39a7c" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="72" y1="64" x2="86" y2="70" fill="none" stroke="#a39a7c" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+</g>
+<g transform="rotate(36 64 34)">
+<path d="M52,34 C50,56 58,83.0 64,104 C70,83.0 78,56 76,34 Z" fill="#a39a7c" stroke="#3b3d3c" stroke-width="5.2" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="70" y1="50" x2="82" y2="56" fill="none" stroke="#8c7f5c" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="72" y1="64" x2="86" y2="70" fill="none" stroke="#8c7f5c" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+</g>
+<path d="M42,32 a22,11 0 1,0 44,0 a22,11 0 1,0 -44,0 Z" fill="#7a5a3a" stroke="#3b3d3c" stroke-width="5.2" stroke-linejoin="round" stroke-linecap="round"/>
+<path d="M54,24 L50,10 M64,22 L64,6 M74,24 L80,12" fill="none" stroke="#523b26" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="30" cy="104" r="6" fill="#6b5843" stroke="#3b3d3c" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="98" cy="100" r="7" fill="#6b5843" stroke="#3b3d3c" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="84" cy="110" r="4" fill="#6b5843" stroke="#3b3d3c" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+</g>
+</svg>

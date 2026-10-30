@@ -31,7 +31,52 @@ public sealed class ColonySession
     {
         Sim = sim;
         Sim.Story ??= GameDataPaths.LoadStory();
+        Sim.Raids ??= GameDataPaths.LoadRaids();
         Phase = sim.Phase;
+        SeenRaidReport = Sim.State.Defense.LastReport;
+    }
+
+    /// <summary>
+    /// The raid report the colony screen last showed (or that was there at load), so only a new one pops up — kept here
+    /// because a fought raid's report is made while the colony scene is away.
+    /// </summary>
+    public Remnants.Core.Raids.RaidReport? SeenRaidReport { get; set; }
+
+    /// <summary>
+    /// The raid at the fence (<see cref="Remnants.Core.Raids.RaidStage.Battle"/>): opens the fight on the scavenge screen
+    /// (Core's <c>RaidBattle.Open</c> makes it, or resumes the one kept in the raid). When it ends the result goes back
+    /// with <c>ApplyRaidBattle</c> and the raid report pops in the colony; leaving mid-fight keeps it for later.
+    /// </summary>
+    public void PlayRaidBattle(SceneTree tree)
+    {
+        if (Sim.State.Defense.Raid is not { Stage: Remnants.Core.Raids.RaidStage.Battle })
+        {
+            Feedback?.Invoke("No raid is at the fence.", true);
+            return;
+        }
+        ScavengeSim battle;
+        try
+        {
+            battle = Remnants.Core.Raids.RaidBattle.Open(Sim);
+        }
+        catch (InvalidOperationException e)
+        {
+            Feedback?.Invoke($"Cannot fight: {e.Message}", true);
+            return;
+        }
+        SetSpeed(0);
+        ScavengeHandoff.Begin(tree, new ScavengeRun(battle, ColonySim.ExpeditionPlayerId), ApplyBattleResult);
+    }
+
+    private void ApplyBattleResult(ExtractionResult result)
+    {
+        if (!result.Complete)
+        {
+            UnseenNotice = "The fight is on hold: they are still at the fence. Press Fight on the banner to go back in.";
+            return;
+        }
+        var applied = Execute(new Remnants.Core.Raids.ApplyRaidBattle(result));
+        if (!applied.Ok) UnseenNotice = applied.Message;
     }
 
     /// <summary>The running colony for this game session; survives scene changes.</summary>
@@ -200,8 +245,33 @@ public sealed class ColonySession
         return result;
     }
 
+    /// <summary>
+    /// Sends several commands in a row (e.g. "queue all repairs", a dragged wall line) with one line of feedback: the
+    /// first refusal if any (and stops there), else <paramref name="summary"/>.
+    /// </summary>
+    public int ExecuteAll(System.Collections.Generic.IEnumerable<IColonyCommand> commands, string summary)
+    {
+        var done = 0;
+        foreach (var command in commands)
+        {
+            var result = Sim.Execute(command);
+            if (!result.Ok)
+            {
+                Feedback?.Invoke(done > 0 ? $"{result.Message} ({done} done)" : result.Message, true);
+                Changed?.Invoke();
+                return done;
+            }
+            done++;
+        }
+        if (done > 0) Feedback?.Invoke(summary, false);
+        Changed?.Invoke();
+        return done;
+    }
+
     public void Save()
     {
+        // Scripted runs (screenshots, demos) leave the player's real save alone.
+        if (DebugCapture.HasFlag("--no-save")) return;
         using var file = FileAccess.Open(SavePath, FileAccess.ModeFlags.Write);
         if (file is null)
         {
@@ -223,6 +293,8 @@ public sealed class ColonySession
         {
             Sim = SaveGame.Load(Sim.Data, FileAccess.GetFileAsString(SavePath), Sim.Scavenge);
             Sim.Story = GameDataPaths.LoadStory();
+            Sim.Raids = GameDataPaths.LoadRaids();
+            SeenRaidReport = Sim.State.Defense.LastReport;
         }
         catch (Exception e) when (e is System.Text.Json.JsonException or InvalidOperationException or ArgumentException)
         {

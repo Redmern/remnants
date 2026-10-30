@@ -6,8 +6,9 @@ namespace Remnants.Game.Colony.Ui;
 
 /// <summary>
 /// The colony HUD's layout and keyboard: top bar; roster and survivor details down the left; the expedition and
-/// item panels in the middle; building, build menu, Med Bay and production down the right above the event log;
-/// toasts at the town's bottom-right; world map, after-action report, pause menu and settings on top. Hotkeys
+/// item panels and the repair queue in the middle; the raid warning under the top bar; building, build menu, defend
+/// catalogue, selected defense, Med Bay and production down the right above the event log;
+/// toasts at the town's bottom-right; world map, after-action and raid reports, raid prep, pause menu and settings on top. Hotkeys
 /// (<see cref="Hotkeys"/>) do what their buttons do. <see cref="ColonyScreen"/> wires the panels to the town.
 /// </summary>
 public partial class ColonyHud : CanvasLayer
@@ -29,7 +30,17 @@ public partial class ColonyHud : CanvasLayer
     public ResearchPanel Research { get; }
     public RadioPanel Radio { get; }
     public InventoryPanel Inventory { get; }
+    public PantryPanel Pantry { get; }
+    public HarvestPanel Harvest { get; }
     public AfterActionDialog Report { get; }
+
+    /// <summary>Defend mode's catalogue, the selected defense, the repair queue, the raid warning, prep and report.</summary>
+    public DefenseCatalog Defend { get; }
+    public DefensePanel Defense { get; }
+    public RepairPanel Repairs { get; }
+    public RaidBanner Banner { get; }
+    public RaidPrepDialog RaidPrep { get; }
+    public RaidReportDialog RaidReport { get; }
     public Toasts Toasts { get; } = new();
     public PauseMenu Pause { get; }
     public SettingsPanel Settings { get; } = new();
@@ -38,6 +49,11 @@ public partial class ColonyHud : CanvasLayer
     public CyberneticsPanel Cybernetics { get; }
     /// <summary>Story mode: radio, journal, briefings, dialogue (hidden in Sandbox).</summary>
     public Remnants.Game.Story.StoryHud Story { get; }
+
+    /// <summary>The Trading Post (async market with other players) at the Radio Mast.</summary>
+    public Trade.TradingPostPanel TradingPost { get; }
+    /// <summary>The Gear Bench (from the Armory, Workshop and Tailor).</summary>
+    public GearBenchPanel GearBench { get; }
 
     /// <summary>Esc with nothing else to close; the screen may cancel placement or deselect first.</summary>
     public event Func<bool>? BackRequested;
@@ -73,11 +89,6 @@ public partial class ColonyHud : CanvasLayer
             n => ($"{n} schematics learned", $"Latest: {def.Name} ({unlocks}). See Items → Schematics."));
     }
 
-    private ScrollContainer _rightScroll = null!;
-
-    /// <summary>Scrolls the right-hand column so <paramref name="control"/> is in view (after layout).</summary>
-    public void ScrollRightTo(Control control) => _rightScroll.CallDeferred(ScrollContainer.MethodName.EnsureControlVisible, control);
-
     public ColonyHud() : this(null!) { }
 
     public ColonyHud(ColonySession session)
@@ -95,6 +106,11 @@ public partial class ColonyHud : CanvasLayer
         root.AddChild(column);
         TopBar = new TopBar(session);
         column.AddChild(TopBar);
+        // The raid warning sits under the top bar, centred, only while a raid is seen coming.
+        var bannerRow = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
+        Banner = new RaidBanner(session);
+        bannerRow.AddChild(Banner);
+        column.AddChild(bannerRow);
 
         var middle = new HBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
         middle.AddThemeConstantOverride("separation", 8);
@@ -110,8 +126,12 @@ public partial class ColonyHud : CanvasLayer
         var floating = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
         Inventory = new InventoryPanel(session);
         Expedition = new ExpeditionPanel(session);
+        Repairs = new RepairPanel(session);
         floating.AddChild(Inventory);
+        Pantry = new PantryPanel(session);
+        floating.AddChild(Pantry);
         floating.AddChild(Expedition);
+        floating.AddChild(Repairs);
         center.AddChild(floating);
 
         var right = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(360, 0) };
@@ -129,19 +149,25 @@ public partial class ColonyHud : CanvasLayer
         stack.AddThemeConstantOverride("separation", 8);
         scroll.AddChild(stack);
         BuildMenu = new BuildMenu(session);
+        Defend = new DefenseCatalog(session);
+        Defense = new DefensePanel(session);
         Building = new BuildingPanel(session);
         MedBay = new MedBayPanel(session);
         Production = new ProductionPanel(session);
         Study = new StudyPanel(session);
+        Harvest = new HarvestPanel(session);
         Research = new ResearchPanel(session);
         Radio = new RadioPanel(session);
         stack.AddChild(BuildMenu);
+        stack.AddChild(Defense);
+        stack.AddChild(Defend);
         stack.AddChild(Building);
+        stack.AddChild(Harvest);
         stack.AddChild(MedBay);
         stack.AddChild(Radio);
         stack.AddChild(Research);
-        stack.AddChild(Study);
         stack.AddChild(Production);
+        stack.AddChild(Study);
         Log = new EventLog(session);
         right.AddChild(Log);
 
@@ -160,6 +186,15 @@ public partial class ColonyHud : CanvasLayer
         AddChild(WorldMap);
         Report = new AfterActionDialog(session);
         AddChild(Report);
+        RaidPrep = new RaidPrepDialog(session);
+        AddChild(RaidPrep);
+        RaidReport = new RaidReportDialog(session);
+        AddChild(RaidReport);
+        // Time stands still while the colony prepares.
+        RaidPrep.Closed += ResumeTime;
+        Banner.PreparePressed += OpenPrep;
+        Defend.RepairsPressed += () => Repairs.Toggle();
+        TopBar.RepairsPressed += () => Repairs.Toggle();
 
         Pause = new PauseMenu(
         [
@@ -174,11 +209,16 @@ public partial class ColonyHud : CanvasLayer
         Pause.Closed += ResumeTime;
         Cybernetics = new CyberneticsPanel(session);
         AddChild(Cybernetics);
+        TradingPost = new Trade.TradingPostPanel(session);
+        AddChild(TradingPost);
+        GearBench = new GearBenchPanel(session);
+        AddChild(GearBench);
         AddChild(Pause);
         AddChild(Settings);
         MedBay.CyberneticsPressed += (who, part) =>
             Cybernetics.Open(part is { } p ? Remnants.Core.Data.CyberneticsData.SlotOf(p) : null, who, part);
         Production.CyberneticsPressed += () => Cybernetics.Open();
+        Production.GearBenchPressed += () => GearBench.Open();
 
         Log.Important += n => Toasts.Show(n.Title, n.Text, n.Icon, n.Color, n.Key, n.Merged);
         Inventory.Archive.ResearchRequested += () => ResearchRequested?.Invoke();
@@ -186,11 +226,14 @@ public partial class ColonyHud : CanvasLayer
         session.Replaced += () => Watch(session.Sim);
         TopBar.MenuPressed += OpenPause;
         TopBar.ItemsPressed += () => Inventory.Toggle();
+        TopBar.PantryPressed += () => Pantry.Toggle();
         TopBar.WorldMapPressed += () => WorldMap.Open();
         Story.PlanMission += id => Expedition.PlanForMission(id);
         Story.CallArrived += caller => Toasts.Show("Incoming call", $"{caller} is on the radio.", "ui_radio", Palette.Amber, "story_call");
         WorldMap.MissionPressed += id => { WorldMap.Close(); Story.OpenBriefing(id); };
         session.Replaced += () => Story.Reset();
+        Trade.TradingPostTab.OpenRequested += OpenTradingPostFromTab;
+        TreeExiting += () => Trade.TradingPostTab.OpenRequested -= OpenTradingPostFromTab;
         Survivor.Closed += () => Roster.Select(null);
         Roster.SelectionChanged += Survivor.Show;
     }
@@ -198,6 +241,8 @@ public partial class ColonyHud : CanvasLayer
     public void Refresh()
     {
         TopBar.Refresh();
+        Banner.Refresh();
+        RaidPrep.Refresh();
         Roster.Refresh();
         Survivor.Refresh();
         Building.Refresh();
@@ -207,12 +252,39 @@ public partial class ColonyHud : CanvasLayer
         Research.Refresh();
         Radio.Refresh();
         Cybernetics.Refresh();
+        GearBench.Refresh();
         Inventory.Refresh();
+        Pantry.Refresh();
+        Harvest.Refresh();
         Expedition.Refresh();
         WorldMap.Refresh();
         Story.Refresh();
         if (BuildMenu.Visible) BuildMenu.Refresh();
+        if (Defend.Visible) Defend.Refresh();
+        Defense.Refresh();
+        Repairs.Refresh();
         Log.Refresh();
+    }
+
+    private readonly ScrollContainer _rightScroll;
+
+    /// <summary>Scrolls the right-hand panel column so <paramref name="control"/> is in view (after layout).</summary>
+    public void ScrollRightTo(Control control) => _rightScroll.CallDeferred(ScrollContainer.MethodName.EnsureControlVisible, control);
+
+    /// <summary>Scrolls the right-hand column so a panel shows (debug captures of long panels).</summary>
+    public void ScrollSideTo(Control panel) => ScrollRightTo(panel);
+
+    private void OpenTradingPostFromTab() => OpenTradingPost();
+
+    /// <summary>Opens the Trading Post (needs a Radio Mast once the game has one); <paramref name="address"/> connects at once.</summary>
+    public void OpenTradingPost(string? address = null)
+    {
+        if (Remnants.Core.Trade.Courier.Blocked(_session.Sim, Trade.TradeUi.Rules) is { } why)
+        {
+            Toasts.Show("No Radio Mast", why, "ui_post", Palette.Warn);
+            return;
+        }
+        TradingPost.Open(address);
     }
 
     public void OpenPause()
@@ -225,6 +297,15 @@ public partial class ColonyHud : CanvasLayer
 
     private void ClosePause() => Pause.Close();
 
+    /// <summary>The prep screen for the warned raid; time pauses until it closes.</summary>
+    public void OpenPrep()
+    {
+        if (RaidPrep.Visible || _session.Sim.State.Defense.Raid is not { Stage: Remnants.Core.Raids.RaidStage.Warned }) return;
+        _speedBeforePause = _session.Speed == 0 ? _speedBeforePause : _session.Speed;
+        _session.SetSpeed(0);
+        RaidPrep.Open();
+    }
+
     private void ResumeTime()
     {
         if (_session.Speed == 0) _session.SetSpeed(_speedBeforePause);
@@ -233,17 +314,19 @@ public partial class ColonyHud : CanvasLayer
     public override void _UnhandledInput(InputEvent e)
     {
         if (e is not InputEventKey { Pressed: true, Echo: false }) return;
-        if (Pause.Visible || Settings.Visible || Cybernetics.Visible) return; // the overlays handle their own Esc
+        if (Pause.Visible || Settings.Visible || Cybernetics.Visible || GearBench.Visible || RaidPrep.Visible || RaidReport.Visible) return; // the overlays handle their own Esc
         if (Hotkeys.Pressed(e, "pause_menu")) Back();
         else if (Hotkeys.Pressed(e, "toggle_pause")) _session.SetSpeed(_session.Speed == 0 ? Math.Max(1, _speedBeforePause) : Remember());
         else if (Hotkeys.Pressed(e, "speed_1")) _session.SetSpeed(1);
         else if (Hotkeys.Pressed(e, "speed_2")) _session.SetSpeed(2);
         else if (Hotkeys.Pressed(e, "speed_3")) _session.SetSpeed(4);
         else if (Hotkeys.Pressed(e, "open_build")) TopBar.EmitBuild();
+        else if (Hotkeys.Pressed(e, "open_defend")) TopBar.EmitDefend();
         else if (Hotkeys.Pressed(e, "open_expedition")) Expedition.Toggle();
         else if (Hotkeys.Pressed(e, "open_items")) Inventory.Toggle();
         else if (Hotkeys.Pressed(e, "open_log")) Log.ToggleCollapsed();
         else if (Hotkeys.Pressed(e, "cycle_survivor")) Roster.SelectNext();
+        else if (Hotkeys.Pressed(e, "open_power")) TopBar.EmitPower();
         else return;
         GetViewport().SetInputAsHandled();
     }
@@ -263,6 +346,8 @@ public partial class ColonyHud : CanvasLayer
         else if (BackRequested?.Invoke() == true) { }
         else if (Expedition.Visible) Expedition.Toggle();
         else if (Inventory.Visible) Inventory.Toggle();
+        else if (Repairs.Visible) Repairs.Toggle();
+        else if (Pantry.Visible) Pantry.Toggle();
         else if (BuildMenu.Visible) TopBar.EmitBuild();
         else if (Survivor.Visible) Roster.Select(null);
         else OpenPause();

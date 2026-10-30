@@ -27,6 +27,15 @@ public sealed class GameData
     /// <summary>The medicine system (data/medicine.json); null when not loaded (no conditions, no infections, no auto-treatment).</summary>
     public MedicineData? Medicine { get; }
 
+    /// <summary>Weather at home and over the world (data/weather.json); disabled when absent.</summary>
+    public WeatherRules Weather { get; }
+
+    /// <summary>Food and cooking (data/food.json); null when not loaded (nobody eats, nothing is harvested).</summary>
+    public FoodData? Food { get; }
+
+    /// <summary>Electronics and power (data/electronics.json); null when not loaded (no grid, no charging bench).</summary>
+    public ElectronicsDef? Electronics { get; }
+
     private readonly Dictionary<string, List<RecipeDef>> _recipesByBuilding;
 
     public GameData(
@@ -38,14 +47,16 @@ public sealed class GameData
         ProgressionDef? progression = null,
         CyberneticsDef? cybernetics = null,
         SchematicCatalog? schematics = null,
+        WeatherRules? weather = null,
+        FoodDef? food = null,
+        ElectronicsDef? electronics = null,
         MedicineDef? medicine = null)
     {
         Schematics = schematics ?? SchematicCatalog.Empty;
         Resources = Index(resources, r => r.Id, "resource");
         Jobs = Index(jobs, j => j.Id, "job");
         Buildings = Index(buildings, b => b.Id, "building");
-        var recipeList = Adapt((recipes ?? []).Where(r => r.Learns is null), medicine?.Ingredients ?? [.. MedicineDef.DefaultIngredients])
-            .Concat(DecryptRecipes(Schematics)).ToList();
+        var recipeList = (recipes ?? []).Where(r => r.Learns is null).Concat(DecryptRecipes(Schematics)).ToList();
         Recipes = Index(recipeList, r => r.Id, "recipe");
         _recipesByBuilding = recipeList.GroupBy(r => r.Building).ToDictionary(g => g.Key, g => g.ToList());
         Rules = rules;
@@ -53,11 +64,17 @@ public sealed class GameData
         Perks = Index(Progression.Perks, p => p.Id, "perk");
         Disciplines = Index(Progression.Disciplines, d => d.Id, "discipline");
         Cybernetics = cybernetics is null ? null : new CyberneticsData(cybernetics);
+        Weather = weather ?? new WeatherRules();
+        Food = food is null ? null : new FoodData(food);
+        Electronics = electronics;
         Medicine = medicine is null ? null : new MedicineData(medicine);
         Validate();
+        ValidateWeather();
+        Food?.Validate(this);
         ValidateProgression();
         ValidateCybernetics();
         Schematics.ValidateAgainst(this);
+        if (Electronics is not null) ElectronicsValidation.Validate(Electronics, this);
     }
 
     /// <summary>One Decrypt order per encrypted schematic, at the Decrypt building: its chip in, the schematic learned.</summary>
@@ -78,27 +95,6 @@ public sealed class GameData
     }
 
     public BuildingDef TownHall => Buildings[Rules.TownHallBuildingId];
-
-    /// <summary>
-    /// Recipe inputs that name an adapted ingredient (medicine.json <c>ingredients</c>) whose owner is not loaded use its
-    /// stand-in: herbs become food until food-cooking brings them.
-    /// </summary>
-    private IEnumerable<RecipeDef> Adapt(IEnumerable<RecipeDef> recipes, List<IngredientAdapter> adapters)
-    {
-        var missing = adapters.Where(a => !Resources.ContainsKey(a.Id)).ToList();
-        foreach (var r in recipes)
-        {
-            if (!missing.Any(a => r.Inputs.ContainsKey(a.Id))) { yield return r; continue; }
-            var inputs = new Dictionary<string, double>(r.Inputs);
-            foreach (var a in missing.Where(a => inputs.ContainsKey(a.Id)))
-            {
-                var amount = inputs[a.Id] * a.Ratio;
-                inputs.Remove(a.Id);
-                inputs[a.Fallback] = inputs.GetValueOrDefault(a.Fallback) + amount;
-            }
-            yield return r with { Inputs = inputs };
-        }
-    }
 
     /// <summary>The recipes a building type makes, in data order.</summary>
     public IReadOnlyList<RecipeDef> RecipesFor(string buildingDefId) =>
@@ -173,12 +169,6 @@ public sealed class GameData
         var c = Rules.Crafting;
         if (c.MaxQueue < 1 || c.MaxBatches < 1 || c.QualitySpread < 0)
             throw new GameDataException("Rules.crafting needs maxQueue and maxBatches of at least 1 and a non-negative qualitySpread.");
-        foreach (var meal in Rules.Food.Meals)
-        {
-            RequireResource(meal.Resource, "Rules.food.meals");
-            if (meal.FoodValue <= 0) throw new GameDataException($"Rules.food.meals '{meal.Resource}' needs a positive foodValue.");
-        }
-        RequireResource(Rules.Food.ResourceId, "Rules.food");
         foreach (var res in Rules.NewGame.Stock.Keys) RequireResource(res, "Rules.newGame.stock");
         foreach (var b in Rules.NewGame.Buildings)
             if (!Buildings.ContainsKey(b)) throw new GameDataException($"Rules.newGame: unknown building '{b}'.");
@@ -304,5 +294,37 @@ public sealed class GameData
     {
         if (range.Length != 2 || range[0] > range[1])
             throw new GameDataException($"Rules.{(name.Contains('.') ? name : "newGame." + name)} must be [min, max] with min <= max.");
+    }
+
+    private void ValidateWeather()
+    {
+        var w = Weather;
+        if (!w.Enabled) return;
+        if (!w.Kinds.ContainsKey(w.Start)) throw new GameDataException($"weather.start: unknown kind '{w.Start}'.");
+        foreach (var (id, kind) in w.Kinds)
+        {
+            if (kind.Hours.Length != 2 || kind.Hours[0] < 1 || kind.Hours[1] < kind.Hours[0])
+                throw new GameDataException($"weather.kinds.{id}.hours: [min, max] with 1 ≤ min ≤ max.");
+            if (kind.Intensity.Length != 2 || kind.Intensity[0] < 0 || kind.Intensity[1] > 1 || kind.Intensity[1] < kind.Intensity[0])
+                throw new GameDataException($"weather.kinds.{id}.intensity: [min, max] within 0..1.");
+            if (kind.ConfusedWith is { } c && !w.Kinds.ContainsKey(c))
+                throw new GameDataException($"weather.kinds.{id}.confusedWith: unknown kind '{c}'.");
+            if (!w.Next.TryGetValue(id, out var next) || next.Count == 0 || next.Values.Sum() <= 0)
+                throw new GameDataException($"weather.next.{id}: every kind needs somewhere to go.");
+        }
+        foreach (var (from, next) in w.Next)
+        {
+            if (!w.Kinds.ContainsKey(from)) throw new GameDataException($"weather.next: unknown kind '{from}'.");
+            foreach (var (to, weight) in next)
+                if (!w.Kinds.ContainsKey(to) || to == from || weight < 0)
+                    throw new GameDataException($"weather.next.{from}.{to}: a known other kind with a weight ≥ 0.");
+        }
+        foreach (var (region, mults) in w.Regions)
+            foreach (var (kind, m) in mults)
+                if (!w.Kinds.ContainsKey(kind) || m < 0) throw new GameDataException($"weather.regions.{region}.{kind}: a known kind with a multiplier ≥ 0.");
+        if (w.Forecast.DaysByTownHallLevel.Count == 0) throw new GameDataException("weather.forecast.daysByTownHallLevel is empty.");
+        if (w.Field.RoundsPerHour < 1) throw new GameDataException("weather.field.roundsPerHour must be at least 1.");
+        foreach (var res in w.Repair.Cost.Keys)
+            if (!Resources.ContainsKey(res)) throw new GameDataException($"weather.repair.cost: unknown resource '{res}'.");
     }
 }

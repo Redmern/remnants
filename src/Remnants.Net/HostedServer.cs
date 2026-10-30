@@ -36,3 +36,34 @@ public sealed class HostedServer : IDisposable
         Tcp.Dispose();
     }
 }
+
+/// <summary>A <see cref="MarketHost"/> (the Trading Post) listening on TCP, expiring listings every few seconds.</summary>
+public sealed class HostedMarket : IDisposable
+{
+    private readonly Timer _timer;
+
+    private HostedMarket(MarketHost host, TcpServer tcp)
+    {
+        Host = host;
+        Tcp = tcp;
+        _timer = new Timer(_ => Tcp.Run(Host.Tick), null, 1000, 5000);
+    }
+
+    public MarketHost Host { get; }
+    public TcpServer Tcp { get; }
+    public int Port => Tcp.Port;
+
+    public static HostedMarket Start(MarketHost host, IPAddress bind, int port, Action<string>? log = null)
+    {
+        host.Log ??= log;
+        var tcp = new TcpServer(host, bind, port) { Log = log };
+        tcp.Start();
+        return new HostedMarket(host, tcp);
+    }
+
+    public void Dispose()
+    {
+        _timer.Dispose();
+        Tcp.Dispose();
+    }
+}

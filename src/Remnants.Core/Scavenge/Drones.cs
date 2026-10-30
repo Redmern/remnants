@@ -76,6 +76,9 @@ public static class Drones
         return result;
     }
 
+    /// <summary>The weather keeps drones down (a dust storm): none takes off or flies; a drone up can still be recalled.</summary>
+    public static bool Grounded(ScavengeSim sim) => FieldEnvironment.Effects(sim.Data, sim.State).DronesGrounded;
+
     internal static ScavengeResult Deploy(ScavengeSim sim, Unit unit, DeployDrone c)
     {
         var data = sim.Data;
@@ -83,13 +86,17 @@ public static class Drones
         var rules = data.Rules.Drone;
         if (DroneOf(state, unit) is not null) return ScavengeResult.Fail(ScavengeError.DroneAlreadyOut, $"{unit.Name}'s drone is already out.");
         if (CarriedDrone(data, unit) is not { } itemId) return ScavengeResult.Fail(ScavengeError.NoDrone, $"{unit.Name} carries no scout drone.");
+        if (Grounded(sim)) return ScavengeResult.Fail(ScavengeError.DroneGrounded, "The weather keeps drones on the ground.");
         if (unit.Pos.Chebyshev(c.At) != 1 || !CanHover(sim, c.At))
             return ScavengeResult.Fail(ScavengeError.InvalidTile, $"The drone needs a free tile next to {unit.Name}.");
         var battery = PackedBattery(data, unit, itemId);
         if (battery < rules.MinBattery) return ScavengeResult.Fail(ScavengeError.LowBattery, $"The drone is still charging ({battery}/{rules.MinBattery} rounds).");
+        if (data.Items[itemId].Drone!.RequiresHook is { } hook && unit.Hook(hook) <= 0)
+            return ScavengeResult.Fail(ScavengeError.MissingPerk, $"{data.Items[itemId].Name} needs a perk {unit.Name} does not have ({hook}).");
         if (rules.DeployApCost > unit.Ap) return NotEnoughAp(unit, rules.DeployApCost);
 
         unit.Ap -= rules.DeployApCost;
+        var spec = data.Items[itemId].Drone!;
         var fromTool = unit.Equipment.TryGetValue(EquipSlot.Tool, out var tool) && tool == itemId;
         if (fromTool) unit.Equipment.Remove(EquipSlot.Tool);
         else unit.Pack.Remove(itemId);
@@ -102,11 +109,13 @@ public static class Drones
             PlayerId = unit.PlayerId,
             OperatorId = unit.Id,
             Pos = c.At,
-            Hp = rules.Hp,
-            MaxHp = rules.Hp,
+            Hp = spec.Hp ?? rules.Hp,
+            MaxHp = spec.Hp ?? rules.Hp,
             CanBeDowned = false,
             Attributes = Enum.GetValues<AttributeKind>().ToDictionary(a => a, a => rules.Attributes.GetValueOrDefault(a, 50)),
-            Equipment = rules.Equipment.ToDictionary(id => data.Items[id].Slot!.Value, id => id),
+            Equipment = DroneRoles.Equipment(data, spec),
+            // A combat drone shoots with its operator's piloting.
+            Skills = spec.Role == DroneRole.Combat ? new() { [Skill.Firearms] = unit.Get(Skill.DronePiloting) } : new(),
             Battery = battery,
             DroneItemId = itemId,
             DroneFromTool = fromTool,
@@ -114,7 +123,7 @@ public static class Drones
         state.Units.Add(drone);
         unit.DroneId = drone.Id;
         unit.DroneBattery = null;
-        state.Log(new(state.Round, ScavengeEventType.DroneDeployed, $"{unit.Name} launches a scout drone ({battery} rounds of battery).",
+        state.Log(new(state.Round, ScavengeEventType.DroneDeployed, $"{unit.Name} launches a {data.Items[itemId].Name} ({battery} rounds of battery).",
             unit.Id, drone.Id, c.At));
         sim.Moved(drone, unit.Pos);
         return ScavengeResult.Success($"{unit.Name} launched the drone.", drone.Id);
@@ -126,6 +135,7 @@ public static class Drones
         var rules = sim.Data.Rules.Drone;
         if (DroneOf(state, unit) is not { } drone) return ScavengeResult.Fail(ScavengeError.NoDrone, $"{unit.Name} has no drone in the air.");
         if (drone.Battery <= 0) return ScavengeResult.Fail(ScavengeError.LowBattery, "The drone's battery is flat.");
+        if (Grounded(sim)) return ScavengeResult.Fail(ScavengeError.DroneGrounded, "The weather keeps drones on the ground: recall it.");
         if (!CanHover(sim, c.To) || c.To == drone.Pos) return ScavengeResult.Fail(ScavengeError.InvalidTile, $"The drone cannot hover at {c.To}.");
         if (drone.Pos.Chebyshev(c.To) > FlyRange(sim, drone)) return ScavengeResult.Fail(ScavengeError.TooFar, $"{c.To} is beyond one flight.");
         if (unit.Pos.Chebyshev(c.To) > ControlRange(sim.Data, unit, drone.DroneItemId!))
@@ -199,6 +209,8 @@ public static class Drones
     {
         if (drone.DroneFromTool && !operatorUnit.Equipment.ContainsKey(EquipSlot.Tool)) operatorUnit.Equipment[EquipSlot.Tool] = drone.DroneItemId!;
         else operatorUnit.Pack.Add(drone.DroneItemId!);
+        operatorUnit.Pack.AddRange(drone.Pack);
+        drone.Pack.Clear();
         operatorUnit.DroneBattery = drone.Battery;
         operatorUnit.DroneId = null;
         drone.Status = UnitStatus.Extracted;
@@ -226,7 +238,14 @@ public static class Drones
                 op.DroneBattery = op.DroneBattery + rules.RechargePerRound >= max ? null : op.DroneBattery + rules.RechargePerRound;
     }
 
-    /// <summary>A drone comes down where it is: its item lies there to pick up again.</summary>
+    /// <summary>A drone forced down (an EMP): it lands where it is with a flat battery, as if it ran out.</summary>
+    internal static void Downed(ScavengeSim sim, Unit drone, string why)
+    {
+        drone.Battery = 0;
+        Land(sim, drone, drone.OperatorId is { } oid ? sim.State.FindUnit(oid) : null, why);
+    }
+
+    /// <summary>A drone comes down where it is: its item lies there (with any cargo) to pick up again.</summary>
     private static void Land(ScavengeSim sim, Unit drone, Unit? op, string why)
     {
         var state = sim.State;
@@ -234,6 +253,8 @@ public static class Drones
         var cache = state.Caches.Find(c => c.Pos == drone.Pos);
         if (cache is null) state.Caches.Add(cache = new LootCache { Id = state.NextCacheId++, Pos = drone.Pos });
         cache.Items.Add(drone.DroneItemId!);
+        cache.Items.AddRange(drone.Pack);
+        drone.Pack.Clear();
         if (op is not null)
         {
             op.DroneId = null;

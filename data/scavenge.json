@@ -109,7 +109,27 @@
         "huskCountMultiplier": 1.25, "huskHearingMultiplier": 1.5, "flareRadiusMultiplier": 1.25, "minSight": 2
       }
     },
-    "weather": {}
+    "weather": {
+      "overcast": { "sight": { "Human": 0.95, "Drone": 0.95 } },
+      "rain": {
+        "sight": { "Human": 0.85, "Husk": 0.9, "Drone": 0.85, "Camera": 0.9 },
+        "stealthBonus": 5, "hearingMultiplier": 0.6, "flareRoundsMultiplier": 0.6
+      },
+      "thunderstorm": {
+        "sight": { "Human": 0.8, "Husk": 0.85, "Drone": 0.8, "Camera": 0.85 },
+        "stealthBonus": 8, "hearingMultiplier": 0.5, "flareRoundsMultiplier": 0.5, "dronesGrounded": true,
+        "thunderChance": 0.3, "lightningChance": 0.12
+      },
+      "fog": {
+        "sight": { "Human": 0.5, "Husk": 0.7, "Linked": 0.7, "Drone": 0.5, "Camera": 0.5, "Turret": 0.6 },
+        "stealthBonus": 10, "minSight": 2
+      },
+      "dust_storm": {
+        "sight": { "Human": 0.45, "Linked": 0.6, "Drone": 0.4, "Camera": 0.5, "Turret": 0.6 },
+        "stealthBonus": 10, "stealthIgnoredBy": ["Husk"], "rangedAccuracyPenalty": 0.15, "dronesGrounded": true,
+        "relayRangeMultiplier": 0.5, "minSight": 2
+      }
+    }
   },
   "drone": {
     "hp": 14, "attributes": { "Strength": 10, "Agility": 70, "Endurance": 30, "Perception": 80 },

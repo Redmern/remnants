@@ -17,7 +17,8 @@ public partial class WorldTags : Control
 {
     private const float HeadHeight = 2.15f;
 
-    public sealed record Preview(string Text, bool Ambush, bool Unaffordable);
+    /// <summary>An attack preview: the main line, and optional gear-mod tags under it (cyan when they are Network effects).</summary>
+    public sealed record Preview(string Text, bool Ambush, bool Unaffordable, string? Effects = null, bool NetworkEffects = false);
 
     private sealed class Stack
     {
@@ -122,6 +123,8 @@ public partial class WorldTags : Control
         if (_previews.TryGetValue(unit.Id, out var preview))
             lines.Add(new(preview.Text, preview.Ambush ? Palette.Danger : Palette.Text, "ui_attack", 17,
                 Fade: preview.Unaffordable ? 0.6f : 1f, Strong: true));
+        if (preview?.Effects is { } effects)
+            lines.Add(new(effects, preview.NetworkEffects ? Palette.Network : Palette.Amber, "stat_quality", 12, Fade: preview.Unaffordable ? 0.6f : 1f));
 
         var tags = new List<Line>();
         if (unit.Stance == Stance.Overwatch)
@@ -129,6 +132,9 @@ public partial class WorldTags : Control
         else if (unit.Stance == Stance.Brace && mine) tags.Add(new("BRACED", Palette.Text, "stance_brace", 12));
         if (unit.Lookout && mine) tags.Add(new("LOOKOUT", Palette.Text, "stance_scan", 12));
         if (!mine && _presenter.IsRevealed(unit)) tags.Add(new("REVEALED", Palette.Danger, "stat_sight", 12));
+        if (unit.EmpUntilRound >= _presenter.State.Round && unit.IsActive) tags.Add(new("EMP · OFF RELAY", Palette.Network, "item_emp", 12));
+        if (unit.Kind == UnitKind.Decoy && mine)
+            tags.Add(new($"DECOY · {Mathf.Max(0, unit.DecoyUntilRound - _presenter.State.Round + 1)}r", Palette.Network, "item_decoy", 12));
         lines.AddRange(tags);
 
         var downed = unit.Status == UnitStatus.Downed;

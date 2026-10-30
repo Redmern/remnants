@@ -248,15 +248,37 @@ public static class Research
 /// </summary>
 public static class Payment
 {
-    public static bool CanAfford(ColonySim sim, IReadOnlyDictionary<string, double> cost) => sim.State.Stockpile.CanAfford(new Dictionary<string, double>(cost));
+    /// <summary>
+    /// Prices and rewards may name <see cref="Pantry.FoodKey"/> ("food"): that much food value from the pantry (whole items,
+    /// soonest to spoil first), or into it as canned food. Everything else is a stockpile resource.
+    /// </summary>
+    public static bool CanAfford(ColonySim sim, IReadOnlyDictionary<string, double> cost) =>
+        sim.State.Stockpile.CanAfford(Resources(cost)) && Pantry.FoodValue(sim) + 1e-9 >= Food(cost);
 
-    public static void Spend(ColonySim sim, IReadOnlyDictionary<string, double> cost) => sim.State.Stockpile.Spend(new Dictionary<string, double>(cost));
+    public static void Spend(ColonySim sim, IReadOnlyDictionary<string, double> cost)
+    {
+        if (!CanAfford(sim, cost)) throw new InvalidOperationException("Cannot afford cost.");
+        sim.State.Stockpile.Spend(Resources(cost));
+        Pantry.TakeFoodValue(sim, Food(cost));
+    }
 
     public static void Receive(ColonySim sim, IReadOnlyDictionary<string, double> amounts)
     {
-        foreach (var (res, amount) in amounts) sim.State.Stockpile.Add(res, amount);
+        foreach (var (res, amount) in amounts)
+            if (res == Pantry.FoodKey) Pantry.AddFoodValue(sim.State, sim.Data, amount);
+            else sim.State.Stockpile.Add(res, amount);
     }
 
-    public static string Shortfall(ColonySim sim, IReadOnlyDictionary<string, double> cost) =>
-        CommandHandlers.Describe(sim.State.Stockpile.Shortfall(new Dictionary<string, double>(cost)));
+    public static string Shortfall(ColonySim sim, IReadOnlyDictionary<string, double> cost)
+    {
+        var shortfall = sim.State.Stockpile.Shortfall(Resources(cost));
+        var food = Food(cost) - Pantry.FoodValue(sim);
+        if (food > 1e-9) shortfall[Pantry.FoodKey] = food;
+        return CommandHandlers.Describe(shortfall);
+    }
+
+    private static double Food(IReadOnlyDictionary<string, double> cost) => cost.GetValueOrDefault(Pantry.FoodKey);
+
+    private static Dictionary<string, double> Resources(IReadOnlyDictionary<string, double> cost) =>
+        cost.Where(kv => kv.Key != Pantry.FoodKey).ToDictionary(kv => kv.Key, kv => kv.Value);
 }

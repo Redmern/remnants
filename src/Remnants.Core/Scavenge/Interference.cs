@@ -31,7 +31,8 @@ public static class Interference
             chance += rules.Overrider;
         if (sim.State.Units.Any(u => u.IsActive && Devices.Working(sim.Data, u).Any(d => d.Effect == DeviceEffect.Jammer && u.Pos.Chebyshev(unit.Pos) <= d.Radius)))
             chance += rules.Jammer;
-        return Math.Min(rules.MaxChance, chance) * Math.Clamp(1 - unit.Hook(PerkHooks.CyberInterferenceReduction), 0, 1);
+        return Math.Min(rules.MaxChance, chance) * Math.Clamp(1 - unit.Hook(PerkHooks.CyberInterferenceReduction), 0, 1)
+            * (1 - GearEffects.InterferenceReduction(sim.Data, unit));
     }
 
     /// <summary>The unit's fitted Network-grade parts.</summary>

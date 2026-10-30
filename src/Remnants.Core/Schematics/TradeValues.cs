@@ -40,6 +40,9 @@ public static class TradeValues
             var prices = data.Schematics.Rules.Radio.Prices;
             return s.Tier <= prices.Count && prices[s.Tier - 1].Count > 0 ? prices[s.Tier - 1].Min(o => Of(data, o.Cost)) : 0;
         }
+        // Food: its food value at the price of food (resourceValues "food"), cooked and preserved food with the markup.
+        if (data.Food?.Items.GetValueOrDefault(itemId) is { FoodValue: > 0 } food)
+            return Math.Round(food.FoodValue * OfResource(data, Colony.Pantry.FoodKey) * (food.Meal is null ? 1 : CraftedMarkup), 1);
         if (data.Recipes.Values.FirstOrDefault(r => r.Item == itemId) is { } recipe)
         {
             var inputs = Of(data, recipe.Inputs) + recipe.ItemInputs.Sum(kv => Of(data, items, kv.Key, depth + 1) * kv.Value);

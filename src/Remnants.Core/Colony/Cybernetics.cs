@@ -82,7 +82,7 @@ public static class Cybernetics
         }
         else if (!IsKnown(state, node)) missing.Add("found as loot only");
         var owned = sim.Scavenge is null ? 0 : state.Inventory.Counts.Where(kv => sim.Scavenge.Items.TryGetValue(kv.Key, out var i) && i.DefinedId == node.Id).Sum(kv => kv.Value);
-        var fitted = state.Survivors.Sum(s => s.Body.Parts.Values.Count(p => p.Condition == PartCondition.Prosthetic && p.ProstheticItemId == node.Id));
+        var fitted = state.Survivors.Sum(s => s.Body.Parts.Values.Count(p => p.Condition == PartCondition.Prosthetic && (p.ProstheticItemId ?? "").Split(Items.ModdedId.Separator)[0] == node.Id));
         // Owning a part counts even when it could not be made here (loot, a recipe still locked).
         var nodeState = IsKnown(state, node) && (missing.Count == 0 || recipe is null) ? CyberNodeState.Known
             : missing.Count > 0 ? CyberNodeState.Locked : CyberNodeState.Available;
@@ -180,6 +180,7 @@ public static class Cybernetics
             + (lead?.Get(Skill.Medicine) ?? 0) * rules.PerMedicine
             + (kit?.Bonus ?? 0)
             + (lead is null ? 0 : PerkEffects.For(lead, sim.Data).Hook(PerkHooks.SurgerySuccessBonus))
+            + Power.Bonus(sim.State, sim.Data, bay, PowerEffect.SurgeryBonus)
             - rules.TierPenalty[tier]
             - (elective ? rules.ElectivePenalty : 0);
         return Math.Clamp(chance, rules.MinChance, rules.MaxChance);

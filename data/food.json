@@ -1,0 +1,100 @@
+{
+  "items": [
+    { "id": "potato",     "foodValue": 1.0, "nutrition": 0.55, "shelfDays": 14, "cellar": true, "tags": ["fresh_veg", "plant", "veg", "starch", "produce"] },
+    { "id": "beans",      "foodValue": 1.0, "nutrition": 0.7,  "shelfDays": 30, "cellar": true, "tags": ["plant", "protein", "legume", "produce"] },
+    { "id": "corn",       "foodValue": 1.0, "nutrition": 0.5,  "shelfDays": 20, "cellar": true, "tags": ["plant", "grain", "starch", "produce"] },
+    { "id": "herbs",      "foodValue": 0.2, "nutrition": 0.3,  "shelfDays": 6,  "cellar": true, "edible": false, "tags": ["plant", "herb"] },
+    { "id": "vegetables", "foodValue": 1.0, "nutrition": 0.8,  "shelfDays": 7,  "cellar": true, "tags": ["fresh_veg", "plant", "veg", "produce"] },
+    { "id": "mushrooms",  "foodValue": 0.6, "nutrition": 0.45, "shelfDays": 4,  "cellar": true, "tags": ["fresh_veg", "plant", "veg", "forage", "produce"] },
+    { "id": "roots",      "foodValue": 0.8, "nutrition": 0.4,  "shelfDays": 10, "cellar": true, "tags": ["fresh_veg", "plant", "veg", "starch", "forage", "produce"] },
+    { "id": "meat",       "foodValue": 1.5, "nutrition": 0.8,  "shelfDays": 3,  "cellar": true, "edible": false, "rawSicknessPerTick": 0.01, "tags": ["fresh_meat", "meat", "protein", "produce"] },
+    { "id": "husk_meat",  "foodValue": 1.5, "nutrition": 0.6,  "shelfDays": 2,  "cellar": true, "edible": false, "rawSicknessPerTick": 0.04, "tainted": true, "tags": ["fresh_meat", "meat", "protein", "produce"] },
+    { "id": "water",      "foodValue": 0,   "nutrition": 0,    "shelfDays": 0,  "edible": false, "tags": ["water"] },
+    { "id": "salt",       "foodValue": 0,   "nutrition": 0,    "shelfDays": 0,  "edible": false, "tags": ["salt"] },
+    { "id": "spices",     "foodValue": 0,   "nutrition": 0,    "shelfDays": 0,  "edible": false, "tags": ["spice"] },
+
+    { "id": "canned_food",      "foodValue": 2.0, "nutrition": 0.6,  "shelfDays": 180, "tags": ["preserved"],
+      "meal": { "hot": false } },
+    { "id": "smoked_meat",      "foodValue": 1.5, "nutrition": 0.75, "shelfDays": 30, "tags": ["meat", "protein", "preserved"],
+      "meal": { "hot": false, "moodPerTick": 0.02 } },
+    { "id": "salted_meat",      "foodValue": 1.5, "nutrition": 0.7,  "shelfDays": 60, "tags": ["meat", "protein", "preserved"],
+      "meal": { "hot": false } },
+    { "id": "dried_food",       "foodValue": 0.8, "nutrition": 0.5,  "shelfDays": 40, "tags": ["veg", "preserved"],
+      "meal": { "hot": false } },
+    { "id": "pickles",          "foodValue": 1.0, "nutrition": 0.7,  "shelfDays": 50, "tags": ["veg", "preserved"],
+      "meal": { "hot": false, "moodPerTick": 0.02 } },
+
+    { "id": "roast",            "foodValue": 2.0, "nutrition": 0.85, "shelfDays": 2,
+      "meal": { "moodPerTick": 0.05, "healthPerTick": 0.1, "buffs": { "well_fed": 8 } } },
+    { "id": "boiled_potatoes",  "foodValue": 1.4, "nutrition": 0.6,  "shelfDays": 2,
+      "meal": { "moodPerTick": 0.03, "healthPerTick": 0.1 } },
+    { "id": "flatbread",        "foodValue": 1.4, "nutrition": 0.55, "shelfDays": 5,
+      "meal": { "hot": false, "moodPerTick": 0.03, "healthPerTick": 0.05 } },
+    { "id": "stew",             "foodValue": 1.6, "nutrition": 0.9,  "shelfDays": 3,
+      "meal": { "moodPerTick": 0.1, "healthPerTick": 0.3, "buffs": { "well_fed": 12 }, "fieldBuff": "trail_fed" } },
+    { "id": "pie",              "foodValue": 1.6, "nutrition": 0.8,  "shelfDays": 4,
+      "meal": { "moodPerTick": 0.12, "healthPerTick": 0.15, "buffs": { "comfort": 12 }, "fieldBuff": "trail_fed" } },
+    { "id": "preserved_rations","foodValue": 1.6, "nutrition": 0.7,  "shelfDays": 45, "tags": ["preserved"],
+      "meal": { "hot": false, "moodPerTick": 0.03, "healthPerTick": 0.1 } },
+    { "id": "feast",            "foodValue": 1.5, "nutrition": 1.0,  "shelfDays": 2,
+      "meal": { "moodPerTick": 0.25, "healthPerTick": 0.3, "buffs": { "well_fed": 24, "comfort": 24 }, "fieldBuff": "trail_fed" } },
+    { "id": "medicinal_broth",  "foodValue": 1.0, "nutrition": 0.85, "shelfDays": 3,
+      "meal": { "moodPerTick": 0.05, "healthPerTick": 0.5, "buffs": { "soothed": 24 } } },
+    { "id": "stim_tea",         "foodValue": 0.2, "nutrition": 0.3,  "shelfDays": 3,
+      "meal": { "moodPerTick": 0.02, "buffs": { "energised": 10 } } },
+    { "id": "field_rations",    "foodValue": 2.0, "nutrition": 0.75, "shelfDays": 90, "tags": ["preserved"],
+      "meal": { "hot": false, "moodPerTick": 0.02, "fieldBuff": "trail_fed" } }
+  ],
+
+  "harvests": [
+    { "id": "potatoes", "name": "Potatoes", "buildings": ["farm"], "outputs": { "potato": 1 }, "yield": 1.0, "growDays": 1, "weather": true,
+      "description": "Plain, filling and quick. Keeps two weeks." },
+    { "id": "beans", "name": "Beans", "buildings": ["farm"], "outputs": { "beans": 1 }, "yield": 0.85, "growDays": 3, "weather": true,
+      "description": "Slower and smaller harvests, but protein that keeps a month." },
+    { "id": "corn", "name": "Corn", "buildings": ["farm"], "outputs": { "corn": 1 }, "yield": 1.0, "growDays": 4, "weather": true,
+      "description": "Grain for flatbread, pie and field rations." },
+    { "id": "herbs", "name": "Herbs", "buildings": ["farm", "greenhouse"], "outputs": { "herbs": 1 }, "yield": 1.6, "growDays": 1, "weather": true,
+      "description": "Seasoning and medicine: broth, stim tea, pickles and feasts." },
+    { "id": "vegetables", "name": "Vegetables", "buildings": ["greenhouse"], "outputs": { "vegetables": 1 }, "yield": 1.1, "growDays": 2,
+      "description": "Under glass, whatever the weather. The most nourishing crop." },
+    { "id": "game", "name": "Hunt game", "buildings": ["hunting_lodge"], "outputs": { "meat": 1 }, "yield": 0.55, "byproducts": { "cloth": 0.25 },
+      "description": "Deer, hare and wild dogs. Meat spoils in three days; hides tan into cloth." },
+    { "id": "husk_game", "name": "Husk-zone game", "buildings": ["hunting_lodge"], "outputs": { "husk_meat": 1 }, "yield": 0.95, "byproducts": { "scrap": 0.1 },
+      "description": "Mutated animals from near the Husk zones: plenty of meat, but it can make people sick unless it is cooked well." },
+    { "id": "forage", "name": "Forage", "buildings": ["hunting_lodge"], "outputs": { "mushrooms": 0.5, "roots": 0.4, "herbs": 0.1 }, "yield": 1.2, "weather": true,
+      "description": "Mushrooms, roots and wild herbs from the woods." }
+  ],
+
+  "buffs": [
+    { "id": "well_fed", "name": "Well Fed", "description": "A proper meal: works harder and heals faster.", "output": 1.08, "healing": 1.25 },
+    { "id": "comfort", "name": "Comfort Food", "description": "Tastes like before: mood lifts.", "moodPerTick": 0.1 },
+    { "id": "energised", "name": "Energised", "description": "Stim tea: works much faster, then crashes (sleep debt).", "output": 1.15, "sleepDebtOnEnd": 4 },
+    { "id": "soothed", "name": "Soothed", "description": "Medicinal broth: wounds heal faster.", "healing": 1.5, "healthPerTick": 0.2 },
+    { "id": "trail_fed", "name": "Fed for the Road", "description": "Set out on a good meal: +1 AP on the first round in the field.", "fieldFirstRoundAp": 1 },
+
+    { "id": "hungry", "name": "Hungry", "description": "Went without food: works slower and heals slower.", "debuff": true, "output": 0.85, "healing": 0.75 },
+    { "id": "bland", "name": "Bland Diet", "description": "No cooked meal for two days: mood drags.", "debuff": true, "moodPerTick": -0.05 },
+    { "id": "malnourished", "name": "Malnourished", "description": "Poor food for days: works slower; children grow weaker.", "debuff": true, "output": 0.9 },
+    { "id": "sick", "name": "Food Poisoning", "description": "Bad or tainted food: weak, miserable, losing health.", "debuff": true, "output": 0.75, "moodPerTick": -0.1, "healthPerTick": -0.15, "fieldFirstRoundAp": -1 },
+    { "id": "same_again", "name": "Same Again", "description": "The same dish for days on end.", "debuff": true, "moodPerTick": -0.05 }
+  ],
+
+  "rules": {
+    "cellarBuilding": "cold_cellar",
+    "cellarRateByLevel": [0.6, 0.4],
+    "campfireBuilding": "campfire",
+    "campfireSupperMultiplier": 1.5,
+    "blandAfterHours": 48,
+    "hungryHours": 12,
+    "spoilage": { "spoiledDays": 2, "perkShelfPerPoint": 1 },
+    "quality": {
+      "effect": { "crude": 0.8, "standard": 1.0, "fine": 1.25 },
+      "taintKept": { "crude": 0.6, "standard": 0.2, "fine": 0 },
+      "fieldBuffMin": "standard"
+    },
+    "variety": { "halfLifeHours": 48, "share": 0.7, "minFood": 2, "choiceWeight": 1 },
+    "nutrition": { "averageHours": 48, "malnourishedBelow": 0.45, "start": 0.6, "growthAtLow": 0.8, "growthAtHigh": 1.2, "qualityBonus": 0.2 },
+    "sickness": { "spoiledPerTick": 0.02, "taintedPerTick": 0.02, "hours": 24, "rationChance": 0.5, "rationHealthLoss": 10 },
+    "rations": { "fieldBuffHours": 24 }
+  }
+}

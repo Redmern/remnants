@@ -10,7 +10,7 @@ public class DataLoadingTests
         var data = TestData.Real;
         foreach (var id in new[] { "town_hall", "shelter", "woodcutter", "quarry", "scrapyard", "farm" })
             Assert.Contains(id, data.Buildings.Keys);
-        foreach (var id in new[] { "wood", "stone", "scrap", "food" })
+        foreach (var id in new[] { "wood", "stone", "scrap" })
             Assert.Contains(id, data.Resources.Keys);
         Assert.All(data.Buildings.Values.Where(b => b.Category == BuildingCategory.Gathering),
             b => Assert.NotNull(b.Job));

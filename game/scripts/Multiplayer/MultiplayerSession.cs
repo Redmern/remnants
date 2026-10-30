@@ -74,7 +74,8 @@ public static class MultiplayerSession
         return (debug, $"Debug party ({string.Join(", ", debug.Select(m => m.Survivor.Name))}) — send an expedition from your colony to bring your own.");
     }
 
-    private static ColonySession? LoadSavedColony()
+    /// <summary>The saved colony, or null when there is none (or it cannot be read).</summary>
+    public static ColonySession? LoadSavedColony()
     {
         if (!FileAccess.FileExists(ColonySession.SavePath)) return null;
         try

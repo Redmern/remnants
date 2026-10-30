@@ -19,10 +19,17 @@ namespace Remnants.Core.Scavenge;
 /// Version 8 adds story missions: <see cref="ScavengeState.Mission"/> (the field script, objectives, triggers fired,
 /// chatter, the pending prompt, field flags, markers, the handmade map id and hash) and units' and devices' story fields
 /// (tags, character ids, patrols, raised tiles); older saves load as plain runs.
+/// Version 9 adds the weather's intensity, its changes still to come, and the rounds of the last thunder and lightning;
+/// older runs load with steady weather.
+/// Version 10 adds electronics: holo-decoy units and their fade round, EMP stuns, charges spent per device and a party's
+/// secured cargo; an older run loads with none of them.
+/// Version 11 adds gear mods: modded gear ids in equipment, packs and caches, the Head slot, and per unit whether it moved
+/// this turn (<see cref="Unit.Moved"/>) and where it faces (<see cref="Unit.Facing"/>); older runs load with nobody moved
+/// and no facing (a weapon light shines all round until its carrier moves or shoots).
 /// </summary>
 public static class ScavengeSave
 {
-    public const int Version = 8;
+    public const int Version = 11;
     private const int OldestVersion = 1;
 
     private sealed record Envelope(int Version, ScavengeState Scavenge);

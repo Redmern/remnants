@@ -15,12 +15,12 @@ public class ColonyQueryTests
         var expected = sim.State.Survivors.Sum(s => s.IsInfant ? food.InfantPerTick : s.IsChild ? food.ChildPerTick : food.AdultPerTick)
                        * sim.Data.Rules.TicksPerDay;
         Assert.Equal(expected, sim.FoodPerDay, 6);
-        Assert.Equal(sim.State.Stockpile.Get(food.ResourceId) / expected, sim.FoodDays, 6);
+        Assert.Equal(sim.FoodStock / expected, sim.FoodDays, 6);
 
         // A day of it really goes: run 24 ticks with nothing producing and the stock drops by about FoodPerDay.
-        var before = sim.State.Stockpile.Get(food.ResourceId);
+        var before = sim.FoodStock;
         sim.Advance(sim.Data.Rules.TicksPerDay);
-        Assert.Equal(expected, before - sim.State.Stockpile.Get(food.ResourceId), 3);
+        Assert.Equal(expected, before - sim.FoodStock, 3);
     }
 
     [Fact]

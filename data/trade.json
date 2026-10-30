@@ -1,0 +1,34 @@
+{
+  // Player trading (docs/MULTIPLAYER.md "Trading"). Barter only; values are reference prices in scrap.
+  "limits": {
+    "maxLines": 8,
+    "maxResourceAmount": 500,
+    "maxItemCount": 20,
+    // Above these a trade still goes through, but the server logs it as suspicious.
+    "suspiciousResourceAmount": 200,
+    "suspiciousItemCount": 10
+  },
+  "courier": {
+    // Lobby trades travel home by courier: baseDays + daysPerLeg × legs (1..maxLegs, from the two players' keys),
+    // times every modifier (buildings below, weather and vehicles in code: Courier.Modifiers), at least minDays.
+    "baseDays": 0.5,
+    "daysPerLeg": 0.5,
+    "maxLegs": 4,
+    "minDays": 0.25,
+    // Trades come in over the Radio Mast when the game has one (ignored while no building of that id exists in data).
+    "requiresBuilding": "radio_mast",
+    "buildingFactors": { "garage": 0.8 }
+  },
+  "market": {
+    "listingHours": 72,
+    "maxListingHours": 168,
+    "maxOpenListings": 8,
+    "postsPerMinute": 4,
+    "requestsPerMinute": 120,
+    "maxListingsSent": 200
+  },
+  "live": {
+    // A live trade nobody touches for this long is cancelled (both sides refunded).
+    "idleSeconds": 180
+  }
+}

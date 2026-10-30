@@ -273,6 +273,15 @@ public partial class SurvivorPanel : PanelContainer
         lines.Add($"Level {s.Level} · {Fmt.Amount(s.Xp)} XP" + (s.PerkPoints > 0 ? "  " + Palette.Paint($"★ {s.PerkPoints} perk point{(s.PerkPoints == 1 ? "" : "s")} — see Perks", Palette.Amber) : "")
                   + (s.Level < xp.MaxLevel ? Palette.Paint($"  (next at {Fmt.Amount(Progression.XpForLevel(s.Level + 1, xp))})", Palette.TextMuted) : ""));
         if (s.IsChild) lines.Add($"Growing: {ColonyText.Stage(s, rules)}");
+        if (sim.Data.Food is { } food)
+        {
+            var low = s.Nutrition < food.Rules.Nutrition.MalnourishedBelow;
+            lines.Add($"Nutrition {Palette.Paint($"{s.Nutrition * 100:0}%", low ? Palette.Warn : Palette.Good)}"
+                      + (s.Diet.Count > 0 ? Palette.Paint($"  · lately {string.Join(", ", s.Diet.OrderByDescending(kv => kv.Value).Take(3).Select(kv => FoodText.ItemName(sim, kv.Key)))}", Palette.TextMuted) : ""));
+            foreach (var (buff, active) in FoodEffects.Active(s, sim.Data))
+                lines.Add(Palette.Paint(buff.Name, buff.Debuff ? Palette.Warn : Palette.Good)
+                          + Palette.Paint($" — {buff.Description}" + (active.Until - sim.State.Tick > 1 ? $" ({ColonyText.Duration((int)(active.Until - sim.State.Tick), rules)} left)" : ""), Palette.TextMuted));
+        }
         return string.Join("\n", lines);
     }
 
