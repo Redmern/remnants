@@ -34,7 +34,7 @@ public sealed class ColonyBot
     private static readonly (string Building, int Level)[] BuildOrder =
     [
         ("farm", 1), ("woodcutter", 1), ("quarry", 1), ("workshop", 1), ("scrapyard", 1), ("med_bay", 1),
-        ("farm", 2), ("woodcutter", 2), ("quarry", 2), ("kitchen", 1), ("tailor", 1), ("town_hall", 2),
+        ("farm", 2), ("woodcutter", 2), ("quarry", 2), ("kitchen", 1), ("tailor", 1), ("town_hall", 2), ("radio_mast", 1),
         ("house", 1), ("armory", 1), ("scrapyard", 2), ("workshop", 2), ("farm", 3), ("electronics_lab", 1),
         ("tailor", 2), ("med_bay", 2), ("armory", 2), ("woodcutter", 3), ("quarry", 3), ("town_hall", 3), ("house", 2), ("electronics_lab", 2),
     ];
@@ -104,6 +104,7 @@ public sealed class ColonyBot
             var def = Data.Buildings[id];
             if (level == 1 && def.MinTownHallLevel > _sim.TownHallLevel) continue;
             if (level > 1 && level > _sim.MaxUpgradeLevel(def)) continue;
+            if (!Remnants.Core.Schematics.Schematics.LevelUnlocked(_sim, id, level)) continue;
             return (id, level);
         }
         return null;

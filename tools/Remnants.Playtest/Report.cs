@@ -37,6 +37,18 @@ public static class Report
                           $"surgeries {runs.Sum(r => r.Cyber!.Surgeries)} ({runs.Sum(r => r.Cyber!.Complications)} complications), " +
                           $"limbs still missing {runs.Sum(r => r.Cyber!.MissingAtEnd)}, lowest humanity {runs.Min(r => r.Cyber!.MinHumanity):0}");
         }
+        if (runs.All(r => r.Schematics is not null))
+        {
+            var known = string.Join(" / ", Enumerable.Range(0, 3).Select(i => D(Median(r => r.Schematics!.KnownAt[i])).Trim()));
+            var sources = runs.SelectMany(r => r.Schematics!.BySource).GroupBy(kv => kv.Key)
+                .Select(g => $"{g.Key} {g.Sum(kv => kv.Value)}");
+            sb.AppendLine($"schematics: first learned day {D(Median(r => r.Schematics!.FirstDay)).Trim()} ({runs.Count(r => r.Schematics!.FirstDay is not null)}/{runs.Count}), " +
+                          $"first tier-2 day {D(Median(r => r.Schematics!.FirstTier2Day)).Trim()} ({runs.Count(r => r.Schematics!.FirstTier2Day is not null)}/{runs.Count}), " +
+                          $"known at day 30/60/90 {known} (median), by source [{string.Join(", ", sources)}], found {runs.Sum(r => r.Schematics!.Found)}, " +
+                          $"duplicates {runs.Sum(r => r.Schematics!.Duplicates)}, Research Data gained {runs.Sum(r => r.Schematics!.ResearchDataGained):0}, " +
+                          $"trader visits {runs.Sum(r => r.Schematics!.TraderVisits)}, contracts done {runs.Sum(r => r.Schematics!.ContractsDone)}, " +
+                          $"Town Hall 3 reached {runs.Count(r => r.Schematics!.TownHallLevel >= 3)}/{runs.Count}");
+        }
         sb.AppendLine($"totals: starvation deaths {runs.Sum(r => r.StarvationDeaths)}, expedition deaths {runs.Sum(r => r.ExpeditionDeaths)} over {runs.Sum(r => r.Expeditions)} expeditions " +
                       $"({runs.Sum(r => r.ExpeditionsWithDeaths)} with deaths), departures {runs.Sum(r => r.Departures)}, births {runs.Sum(r => r.Births)}, " +
                       $"early Linked sightings {runs.Sum(r => r.LinkedEncountersEarly)}, recruits {runs.Sum(r => r.Recruits)}");

@@ -30,7 +30,7 @@ times the eyes' (healthy eyes change nothing; an eye implant at quality 1.15 sca
 ## The tree
 
 A design (node) opens when **one of its lower-tier requirements is known** — crafted, fitted or owned at some point;
-tier 0 is known from the start — **or its blueprint is studied** (a blueprint skips the tier below), and **someone at
+tier 0 is known from the start — **or, for T3 and T4, its tier schematic is known** (it skips the tier below; see SCHEMATICS.md), and **someone at
 home has its perk**. Its recipe adds the building level and the components. Specialisations start at T2.
 
 ```
@@ -96,9 +96,9 @@ The existing `scavenge.json` body rule still applies: two prosthetic legs of qua
 
 **Components** (items, all `Material`): Servo (Workshop 2: 6 scrap, 1 wood; loot T1), Power Cell (Lab 1: 2 electronics,
 2 scrap; loot T2), Myomer Bundle (Tailor 2: 4 cloth, 1 medicine; loot T2), Neural Link (Lab 2: 4 electronics, 1 scrap;
-loot T3), **Linked Core** (never crafted: every killed Linked drops one, a Warden three). Blueprints: Cybernetics
-(`bp_cybernetics`, loot T2, studied at Lab 2: opens every T3 design without a T2 known) and Network-grade Limbs
-(`bp_network_grade`, loot T3, Lab 3: opens T4 designs, and Linked Salvage needs it).
+loot T3), **Linked Core** (never crafted: every killed Linked drops one, a Warden three). Schematics (SCHEMATICS.md): every tier above T0 needs its tier schematic (`sch_mech_limbs` T1, `sch_powered_limbs` T2,
+`sch_cybernetics` T3, `sch_network_grade` T4, which also gates Linked Salvage), and each specialisation its `sch_spec_*`
+schematic; the T3 and T4 schematics open their designs without one of the tier below known.
 
 **Perks**:
 

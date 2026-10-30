@@ -91,7 +91,7 @@ the discriminator), `giveItem`, `carry`, `putDown`, and pings, alliance offers a
 called this "v2"; 2 was already the fog of war, so co-op is 3.) **4: hacking and drones** — the command kinds `hack`,
 `deployDrone`, `flyDrone`, `recallDrone`, `markTarget`, `dropPayload`, and devices and drone marks in views. **6: cybernetics** — bodies carry the eyes and each
 part's humanity, upkeep and `interfered` flag, units carry `cyberHooks` (stripped from other players' views like perk
-hooks), and the `limbLocked` event.
+hooks), and the `limbLocked` event. **7: schematics** — schematic items (`sch_*`, kind `Schematic`) in packs and caches; `MissionEnded.result` carries `sharedSchematics` (co-op: what allies on the side carried out, copied to each ally who got home; versus: none) and `heardOf` (schematics the side saw but left behind, or glimpsed on a terminal it failed to hack).
 
 | Direction | Message | Meaning |
 |-----------|---------|---------|

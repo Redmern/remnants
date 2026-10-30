@@ -133,6 +133,7 @@ palette (rust, concrete, moss) with cold cyan accents for anything Network-conne
 | — | Cybernetics | prosthetics tree T0 Crude → T4 Network-grade per arm, leg and the eyes; specialisations and paired sets; components incl. Linked cores; surgery at the Med Bay; upkeep; humanity (mood, couples, children); Network interference in the field; new Medic/Tech perks (done; see CYBERNETICS.md) |
 | — | Fog of war | stealth vs detection, contacts, ambushes from the fog, Overwatch / Brace / Lookout, flares, motion sensors, scanner, camo cloak, Linked lurking and drone spotting, no-leak multiplayer (done; see ARCHITECTURE.md "Fog of war") |
 | — | Linked carbine | the turning point against the Linked: anti-Network bane (hit, damage, armor pierce, relay knock-off), quality that matters, drops from Linked and Wardens, Armory recipe behind a blueprint (done; see BALANCE.md "Linked carbine pass") |
+| — | Schematics | blueprints and datashards become schematics (one catalogue, default set, gating of buildings, levels, recipes, perks and cybernetics tiers/specs); learned on return, Network chips decrypted at the Lab; drops by find tier and enemy kills; Research Data, "heard of" and research at the Town Hall; Radio Mast with a visiting trader, contracts and a call queue for Story mode; archive, research, radio and trader screens (SCHEMATICS.md) |
 
 Assets run in parallel: style guide → survivors (adult/child, m/f) → level-1 buildings →
 Husk → Linked → tiles/props → building upgrade levels → gear.

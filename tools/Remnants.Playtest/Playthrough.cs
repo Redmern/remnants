@@ -18,7 +18,15 @@ public sealed record PlaythroughSummary(
     double? TownHall2Day, double? FirstStarvingDay, double MinFoodDays, int Expeditions, int ExpeditionsWithDeaths,
     int LinkedEncountersEarly, double? WorkshopDay, double? ArmoryDay, double? LabDay, int CraftedItems, int Recruits,
     double? FirstPerkPointDay, int LevelUps, double SurvivorDays, int PerksLearned, double MeanLevel, int MaxLevel, int UnspentPoints,
-    CyberSummary? Cyber = null);
+    CyberSummary? Cyber = null, SchematicSummary? Schematics = null);
+
+/// <summary>
+/// Schematics: the first day one was learned (any) and the first tier-2 one, how many were known at days 30/60/90
+/// (beyond the default set), how they came (source → count), schematic items found in the field, duplicates turned into
+/// Research Data, Research Data gained in all, trader visits, and the highest Town Hall level reached.
+/// </summary>
+public sealed record SchematicSummary(double? FirstDay, double? FirstTier2Day, int?[] KnownAt, SortedDictionary<string, int> BySource,
+    int Found, int Duplicates, double ResearchDataGained, int TraderVisits, int ContractsDone, int TownHallLevel);
 
 /// <summary>
 /// Cybernetics: the first day a design of each tier could be queued (requirements met, building there), limbs lost,
@@ -50,6 +58,8 @@ public sealed class Playthrough
     private double _minFoodDays = double.MaxValue;
     private readonly double?[] _tierDay = new double?[5];
     private int _limbsLost, _surgeries, _complications;
+    private readonly int?[] _knownAt = new int?[3];
+    private double _researchData, _lastResearchData;
 
     public PlaythroughSummary Run(int days, int actEveryTicks = 4)
     {
@@ -70,6 +80,7 @@ public sealed class Playthrough
                 Track();
             }
             TrackCyber();
+            if ((day + 1) % 30 == 0 && (day + 1) / 30 <= 3) _knownAt[(day + 1) / 30 - 1] = Sim.State.Schematics.Known.Count;
             var s = Sim.State;
             Timeline.Add(new DaySnapshot(day + 1,
                 s.Survivors.Count(x => !x.IsChild), s.Survivors.Count(x => x.LifeStage == LifeStage.Child), s.Survivors.Count(x => x.IsInfant),
@@ -85,7 +96,7 @@ public sealed class Playthrough
             _departures, _births, _firstBirth, _firstPregnancy, _houseAffordable, _houseBuilt, _townHall2, _firstStarving,
             _minFoodDays, Bot.Expeditions.Count, Bot.Expeditions.Count(e => e.Dead > 0), linkedEarly, _workshop, _armory, _lab, _crafted, _recruits,
             _firstPerkPoint, _levelUps, _survivorTicks / tpd, _perks, grown.Count == 0 ? 0 : grown.Average(x => x.Level),
-            grown.Select(x => x.Level).DefaultIfEmpty(1).Max(), grown.Sum(x => x.PerkPoints), Cyber());
+            grown.Select(x => x.Level).DefaultIfEmpty(1).Max(), grown.Sum(x => x.PerkPoints), Cyber(), SchematicStats());
     }
 
     /// <summary>Where people are right now: workers per building, patients, away, idle.</summary>
@@ -140,6 +151,9 @@ public sealed class Playthrough
 
     private void Track()
     {
+        var rd = Sim.State.Stockpile.Get(Sim.Data.Schematics.Rules.ResearchDataResource);
+        if (rd > _lastResearchData) _researchData += rd - _lastResearchData;
+        _lastResearchData = rd;
         var s = Sim.State;
         var house = Sim.Data.Buildings["house"];
         if (_houseAffordable is null && Sim.TownHallLevel >= house.MinTownHallLevel && s.Stockpile.CanAfford(house.Level(1).Cost))
@@ -163,6 +177,16 @@ public sealed class Playthrough
         if (Sim.Data.Cybernetics is not { } cyber) return;
         foreach (var node in cyber.Nodes.Values.Where(n => _tierDay[n.Tier] is null))
             if (Cybernetics.Status(Sim, node).State != CyberNodeState.Locked) _tierDay[node.Tier] = Day;
+    }
+
+    private SchematicSummary SchematicStats()
+    {
+        var s = Sim.State.Schematics;
+        double? DayOf(IEnumerable<string> ids) =>
+            ids.Select(id => s.LearnedAt.TryGetValue(id, out var t) ? t / (double)Sim.Data.Rules.TicksPerDay : (double?)null).Where(d => d is not null).Min();
+        var bySource = new SortedDictionary<string, int>(s.LearnedFrom.GroupBy(kv => kv.Value.ToString()).ToDictionary(g => g.Key, g => g.Count()));
+        return new SchematicSummary(DayOf(s.Known), DayOf(s.Known.Where(id => Sim.Data.Schematics.All[id].Tier >= 2)), _knownAt, bySource,
+            s.Found, s.Duplicates, _researchData, Sim.State.Radio.Visits, Sim.State.Radio.ContractsDone, Sim.TownHallLevel);
     }
 
     private CyberSummary? Cyber()
