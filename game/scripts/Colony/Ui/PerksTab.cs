@@ -233,8 +233,8 @@ public partial class PerksTab : VBoxContainer
 }
 
 /// <summary>
-/// A discipline's perks as a tree: one row per tier, a node per perk, lines from each prerequisite (drawn behind the
-/// nodes). Clicking a node picks it.
+/// A discipline's perks as a tree: one row per tier (wrapping onto another line when a tier has more perks than fit), a
+/// node per perk, lines from each prerequisite (drawn behind the nodes). Clicking a node picks it.
 /// </summary>
 public partial class PerkTree : Control
 {
@@ -267,8 +267,9 @@ public partial class PerkTree : Control
         _nodes.Clear();
         foreach (var tier in perks.GroupBy(p => p.Perk.Tier).OrderBy(g => g.Key))
         {
-            var row = Widgets.Row(6);
-            row.Alignment = BoxContainer.AlignmentMode.Center;
+            var row = new HFlowContainer { Alignment = FlowContainer.AlignmentMode.Center };
+            row.AddThemeConstantOverride("h_separation", 6);
+            row.AddThemeConstantOverride("v_separation", 6);
             foreach (var st in tier)
             {
                 var node = new PerkNode(st, st.Perk.Id == picked) { TooltipText = tooltip(st) };
@@ -302,7 +303,10 @@ public partial class PerkTree : Control
     }
 }
 
-/// <summary>One perk in the tree: a small card with a state icon and the name, coloured by state.</summary>
+/// <summary>
+/// One perk in the tree: a small card with a state icon over the name, coloured by state. The name wraps only between
+/// words, and the node is never narrower than its longest word.
+/// </summary>
 public partial class PerkNode : Button
 {
     public bool Owned { get; }
@@ -312,11 +316,11 @@ public partial class PerkNode : Button
         Owned = st.Owned;
         FocusMode = FocusModeEnum.None;
         MouseDefaultCursorShape = CursorShape.PointingHand;
-        CustomMinimumSize = new Vector2(80, 44);
+        CustomMinimumSize = new Vector2(72, 44);
         SizeFlagsHorizontal = SizeFlags.ExpandFill;
         ToggleMode = true;
         ButtonPressed = picked;
-        AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        AutowrapMode = TextServer.AutowrapMode.Word;
         Text = st.Perk.Name;
         AddThemeFontSizeOverride("font_size", 13);
         var (icon, tint) = st.Block switch
@@ -328,6 +332,10 @@ public partial class PerkNode : Button
             _ => ("stat_lock", Palette.TextDim),
         };
         Icon = Icons.Get(icon, 14);
+        IconAlignment = HorizontalAlignment.Center;
+        VerticalIconAlignment = VerticalAlignment.Top;
+        AddThemeConstantOverride("icon_max_width", 14);
+        AddThemeConstantOverride("h_separation", 2);
         AddThemeColorOverride("icon_normal_color", tint);
         AddThemeColorOverride("icon_hover_color", tint);
         AddThemeColorOverride("icon_pressed_color", tint);
@@ -344,5 +352,20 @@ public partial class PerkNode : Button
         AddThemeColorOverride("font_pressed_color", Palette.Text);
         AddThemeColorOverride("font_hover_pressed_color", Palette.Text);
         if (st.Owned) AddThemeStyleboxOverride("normal", HudTheme.CardSelectedStyle);
+    }
+
+    public override void _Notification(int what)
+    {
+        if (what == NotificationThemeChanged) FitLongestWord();
+    }
+
+    /// <summary>Widens the node to its longest word plus padding (the theme is only known in the tree).</summary>
+    private void FitLongestWord()
+    {
+        var font = GetThemeFont("font");
+        var size = GetThemeFontSize("font_size");
+        var word = Text.Split(' ').Max(w => font.GetStringSize(w, HorizontalAlignment.Left, -1, size).X);
+        var width = Mathf.Ceil(word + GetThemeStylebox("normal").GetMinimumSize().X + 4);
+        CustomMinimumSize = new Vector2(Mathf.Max(72, width), CustomMinimumSize.Y);
     }
 }
