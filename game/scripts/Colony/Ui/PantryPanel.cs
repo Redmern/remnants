@@ -25,7 +25,7 @@ public partial class PantryPanel : PanelContainer
         var box = Ui.Panel(this);
         box.AddChild(Ui.TitleRow("Pantry", "res_food", Toggle));
         box.AddChild(_summary);
-        var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, CustomMinimumSize = new Vector2(0, 360) };
+        var scroll = new ScrollContainer { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, CustomMinimumSize = new Vector2(0, 620) };
         _rows.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         scroll.AddChild(_rows);
         box.AddChild(scroll);

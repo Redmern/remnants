@@ -426,10 +426,17 @@ public partial class ColonyScreen : Node3D
             default:
                 if (kitchen is { } kitchenId) _town.Select(kitchenId);
                 _hud.Log.ToggleCollapsed();
-                GetTree().CreateTimer(0.6).Timeout += () => _hud.ScrollRightTo(_hud.Production.Book);
+                ScrollToBookLater();
                 break;
         }
         if (adults.Count > 0) _hud.Roster.Select(view == "roster" ? adults[1].Id : null);
+    }
+
+    /// <summary>Scrolls the right column to the recipe book once the panels have been laid out (a few frames).</summary>
+    private async void ScrollToBookLater()
+    {
+        for (var i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        if (IsInstanceValid(_hud)) _hud.ScrollRightTo(_hud.Production.Book);
     }
 
     /// <summary>
