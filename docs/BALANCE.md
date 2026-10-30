@@ -193,7 +193,43 @@ Three allied parties at ×3 (`--coop=3`): Outskirts 4% per party (8% per mission
   usually at hand), so its tuning (`carryRangePenalty` 1) is unmeasured.
 - Versus missions scale the same way (it is the number of players, allied or not).
 
-## Watch next pass
+## Perks and XP pass
+
+Experience, perks and study (see ARCHITECTURE.md "Perks and study"). The goal: a perk point every few in-game days of
+focused work — something to look forward to each week, not each hour — with children (who learn faster) a little
+quicker and missions worth about a day's work. The bot now spends perk points as they come (a perk for its current job
+first, then any open one, lowest tier first); it does not study, since classes take people off work.
+
+`xp`: `perLevel` 96 (level 2 after 4 days of work at 24 XP/day), `perLevelStep` 72 (each level costs 3 more days than
+the one before), `perCraft` 4, `perMission` 20 + 10 per threat + 4 per field skill point, children ×1.5.
+First try was `perLevelStep` 48, `perMission` 30 + 15/threat + 10 per field skill point: 8.8 survivor-days per level,
+mean level 6.1 by day 60, and 473 unspent points over 20 colonies, because gatherers, cooks and tailors had nothing
+to spend on. Woodsman, Prospector, Camp Cook, Needlework and Tinkerer (tier 1 job perks) fill that gap.
+
+20 seeds × 60 days, `main` before this branch vs. after:
+
+| | before | after |
+|---|---|---|
+| median population at day 60 | 7 | 7 |
+| starvation deaths / departures | 0 / 13 | 0 / 9 |
+| expedition deaths | 13 over 323 runs | 13 over 325 runs |
+| births | 24 | 30 |
+| Town Hall 2 / House affordable (median day) | 30.7 / 50.5 | 30.4 / 44.7 |
+| Armory (median day) | 49.7 | 48.9 |
+| Electronics Lab reached (seeds) | 1 of 20 | 3 of 20 |
+| min food stock (days of need, median) | 4.5 | 4.8 |
+| first perk point (median day) | — | 2.7 (a child farming; adults ~day 4) |
+| survivor-days per level-up | — | 10.7 |
+| perks learned per colony / mean level at day 60 / max level | — | 18.4 / 5.3 / 7 |
+| unspent points (20 colonies) | — | 237 |
+
+Perks raise output by 5–10% in the jobs people stay in, so the economy is a little quicker (House a few days earlier,
+more births); food and deaths do not move. Datashards, manuals, drone parts, the hacking kit and the new blueprints add
+loot weight 0.3–0.5 each at tiers 1–3; zone lethality is unchanged (no combat numbers moved).
+
+Study (not used by the bot): `skillPerTick` 0.12. Alone, a 50-attribute adult gets a skill from 0 to the self-study
+cap of 20 in about 10 days (practising at a job takes ~19); with a mentor about 5 days, and on up to the mentor's level. A tier-1 perk from a mentor takes ~3 days, tier 3
+~8. Both cost two people's work, so study is for catching someone up (a child, a recruit) rather than for everyone.
 
 ## Watch next pass
 

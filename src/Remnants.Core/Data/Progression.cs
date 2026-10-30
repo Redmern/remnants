@@ -79,7 +79,7 @@ public sealed record StudyRules
 {
     /// <summary>Study building type → what can be studied there and how many students per level.</summary>
     public Dictionary<string, StudyBuildingRules> Buildings { get; init; } = new();
-    public double SkillPerTick { get; init; } = 0.08;
+    public double SkillPerTick { get; init; } = 0.12;
     public double AptitudeFloor { get; init; } = 0.5;
     public double SelfStudyCap { get; init; } = 20;
     public double MentorMultiplier { get; init; } = 2;

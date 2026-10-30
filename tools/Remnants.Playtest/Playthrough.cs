@@ -16,7 +16,8 @@ public sealed record PlaythroughSummary(
     ulong Seed, int Days, int FinalPopulation, int StarvationDeaths, int ExpeditionDeaths, int OtherDeaths,
     int Departures, int Births, double? FirstBirthDay, double? FirstPregnancyDay, double? HouseAffordableDay, double? HouseBuiltDay,
     double? TownHall2Day, double? FirstStarvingDay, double MinFoodDays, int Expeditions, int ExpeditionsWithDeaths,
-    int LinkedEncountersEarly, double? WorkshopDay, double? ArmoryDay, double? LabDay, int CraftedItems, int Recruits);
+    int LinkedEncountersEarly, double? WorkshopDay, double? ArmoryDay, double? LabDay, int CraftedItems, int Recruits,
+    double? FirstPerkPointDay, int LevelUps, double SurvivorDays, int PerksLearned, double MeanLevel, int MaxLevel, int UnspentPoints);
 
 /// <summary>Runs <see cref="ColonyBot"/> on a fresh New Game and records a daily timeline.</summary>
 public sealed class Playthrough
@@ -34,7 +35,9 @@ public sealed class Playthrough
     public List<DaySnapshot> Timeline { get; } = [];
 
     private readonly List<ColonyEvent> _events = [];
-    private int _starvationDeaths, _expeditionDeaths, _otherDeaths, _departures, _births, _crafted, _recruits;
+    private int _starvationDeaths, _expeditionDeaths, _otherDeaths, _departures, _births, _crafted, _recruits, _levelUps, _perks;
+    private double? _firstPerkPoint;
+    private double _survivorTicks;
     private double? _firstBirth, _firstPregnancy, _houseAffordable, _houseBuilt, _townHall2, _firstStarving, _workshop, _armory, _lab;
     private double _minFoodDays = double.MaxValue;
 
@@ -66,9 +69,12 @@ public sealed class Playthrough
                 _events.Skip(dayStart).Where(Notable).Select(e => e.Message).ToList()));
         }
         var linkedEarly = Bot.Expeditions.Where(e => Sim.Scavenge!.Zones[e.Zone].Threat <= 1).Sum(e => e.Stats.LinkedSeen);
+        var grown = Sim.State.Survivors.Where(x => !x.IsInfant).ToList();
         return new PlaythroughSummary(Seed, days, Sim.State.Survivors.Count, _starvationDeaths, _expeditionDeaths, _otherDeaths,
             _departures, _births, _firstBirth, _firstPregnancy, _houseAffordable, _houseBuilt, _townHall2, _firstStarving,
-            _minFoodDays, Bot.Expeditions.Count, Bot.Expeditions.Count(e => e.Dead > 0), linkedEarly, _workshop, _armory, _lab, _crafted, _recruits);
+            _minFoodDays, Bot.Expeditions.Count, Bot.Expeditions.Count(e => e.Dead > 0), linkedEarly, _workshop, _armory, _lab, _crafted, _recruits,
+            _firstPerkPoint, _levelUps, _survivorTicks / tpd, _perks, grown.Count == 0 ? 0 : grown.Average(x => x.Level),
+            grown.Select(x => x.Level).DefaultIfEmpty(1).Max(), grown.Sum(x => x.PerkPoints));
     }
 
     /// <summary>Where people are right now: workers per building, patients, away, idle.</summary>
@@ -109,6 +115,8 @@ public sealed class Playthrough
                 case ColonyEventType.Starving: _firstStarving ??= Day; break;
                 case ColonyEventType.Crafted: _crafted++; break;
                 case ColonyEventType.Recruited: _recruits++; break;
+                case ColonyEventType.LevelUp: _levelUps++; _firstPerkPoint ??= Day; break;
+                case ColonyEventType.PerkLearned: _perks++; break;
             }
         }
         if (log.Count > 0) _last = log[^1];
@@ -128,6 +136,7 @@ public sealed class Playthrough
         if (_workshop is null && s.Buildings.Any(b => b.DefId == "workshop")) _workshop = Day;
         if (_armory is null && s.Buildings.Any(b => b.DefId == "armory")) _armory = Day;
         if (_lab is null && s.Buildings.Any(b => b.DefId == "electronics_lab")) _lab = Day;
+        _survivorTicks += s.Survivors.Count(x => !x.IsInfant);
         var food = Sim.Data.Rules.Food;
         var need = s.Survivors.Where(x => !x.Away).Sum(x => x.IsInfant ? food.InfantPerTick : x.IsChild ? food.ChildPerTick : food.AdultPerTick)
                    * Sim.Data.Rules.TicksPerDay;
@@ -137,7 +146,7 @@ public sealed class Playthrough
     private static bool Notable(ColonyEvent e) => e.Type is ColonyEventType.Constructed or ColonyEventType.Upgraded or ColonyEventType.Died
         or ColonyEventType.Left or ColonyEventType.Born or ColonyEventType.Pregnant or ColonyEventType.NewCouple or ColonyEventType.Starving
         or ColonyEventType.ExpeditionLaunched or ColonyEventType.ExpeditionReturned or ColonyEventType.Recruited or ColonyEventType.BecameAdult
-        or ColonyEventType.LimbLost or ColonyEventType.BlueprintStudied or ColonyEventType.ZoneRevealed or ColonyEventType.Homeless;
+        or ColonyEventType.LimbLost or ColonyEventType.BlueprintStudied or ColonyEventType.PerkLearned or ColonyEventType.ZoneRevealed or ColonyEventType.Homeless;
 
     public static string Short(string defId) => defId switch
     {

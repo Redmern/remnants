@@ -29,7 +29,12 @@ a few people into dangerous zones (**Scavenge mode**). Every loss is permanent.
 - **Survivors** have:
   - Attributes: Strength, Agility, Endurance, Intellect, Creativity, Perception (0–100).
   - Skills that grow with use (Woodcutting, Mining, Crafting, Tailoring, Electronics,
-    Medicine, Firearms, Melee, Cooking, Farming).
+    Medicine, Firearms, Melee, Cooking, Farming, Hacking, Drone Piloting).
+  - **Experience and perks**: work, crafting, study and missions earn XP; levels give perk points for a data-driven
+    perk tree (Tech, Drones, Combat, Survival, Medic) gated by skills, attributes, other perks, buildings and
+    datashards found on scavenges. Skills and perks can also be **studied** at the Town Hall / Electronics Lab, faster
+    with a mentor (capped at the mentor's level) or a field manual. Perks feed job output and crafting quality, and
+    name hooks the scavenge mode reads (hacking, scout drones, combat, scouting, field medicine).
   - **Job output = f(relevant attributes, skill, tool, health)**. Examples: woodcutting is
     mostly Strength and Endurance; tool-making is Intellect and Creativity; tailoring is
     Creativity and Agility. Weights live in data files.

@@ -68,7 +68,26 @@ public sealed class ColonyBot
         Craft();
         Care();
         Staff();
+        Perks();
         if (_options.Expeditions) Expedition();
+    }
+
+    // ---- perks ----------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// Spends perk points as they come: an open perk that helps the survivor's current job (output or quality) first,
+    /// then any open perk, lowest tier first. The bot does not study (classes take people off work).
+    /// </summary>
+    private void Perks()
+    {
+        foreach (var s in State.Survivors.Where(s => s.PerkPoints > 0).ToList())
+        {
+            var job = s.AssignedBuildingId is { } id && State.FindBuilding(id) is { } b ? Data.Buildings[b.DefId].Job : null;
+            var open = Data.Perks.Values.Where(p => _sim.PerkStatus(s, p).Block == PerkBlock.Ok)
+                .OrderByDescending(p => job is not null && (p.Effects.JobOutput.ContainsKey(job) || p.Effects.CraftQuality.ContainsKey(job)))
+                .ThenBy(p => p.Tier).ThenBy(p => p.Id, StringComparer.Ordinal).FirstOrDefault();
+            if (open is not null) _sim.Execute(new ChoosePerk(s.Id, open.Id));
+        }
     }
 
     // ---- building -------------------------------------------------------------------------------------------

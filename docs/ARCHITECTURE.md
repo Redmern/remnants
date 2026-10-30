@@ -193,9 +193,10 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   `ColonySim.Rng`. Same seed + same commands = identical save JSON (tested).
 - **Commands only.** The UI changes the sim only via `ColonySim.Execute(IColonyCommand)`
   (`AssignJob`, `Unassign`, `Construct`, `Upgrade`, `LaunchExpedition`, `ApplyExtractionResult`, `AdmitPatient`,
-  `Discharge`, `FitProsthetic`, `SetRecipe`, `QueueRecipe`, `CancelOrder`, `StudyBlueprint`, `Matchmake`). Core validates and returns a `CommandResult`
+  `Discharge`, `FitProsthetic`, `SetRecipe`, `QueueRecipe`, `CancelOrder`, `StudyBlueprint`, `Matchmake`, `ChoosePerk`,
+  `StartStudy`, `CancelStudy`). Core validates and returns a `CommandResult`
   with a `CommandError` code. This is also the future client→server intent format.
-- **Tick order:** production (+training) → crafting → medical → food → relationships (mood, affinity, couples) →
+- **Tick order:** production (+training) → crafting → study → medical → food → relationships (mood, affinity, couples) →
   family (births, conception) → housing → growth (aging, growing up).
 - **Scavenge commands** (`Move`, `Attack`, `UseItem` (on a unit, or a tile with `At`), `PickUp`, `Recruit`, `SetStance`
   (Overwatch / Brace), `Lookout`, `EndTurn`, `Extract`; co-op: `ProposeAlliance`, `RespondAlliance`, `BreakAlliance`,
@@ -453,6 +454,85 @@ Players scavenge together as teams (details, protocol and how to run it: MULTIPL
 - Game: `WorldMapPanel` (opened from Expedition → World map) draws the chart in code; clicking a marker shows its card;
   "Plan expedition" opens the expedition planner on that zone, which launches as before.
 
+## Perks and study
+
+All numbers live in `data/perks.json` (`skills`, `xp`, `study`, `disciplines`, `perks`); Core is `Colony/Progression.cs`,
+`Colony/PerkEffects.cs`, `Colony/Study.cs` and `Data/Progression.cs`.
+
+- **Skills**: Hacking (Intellect + Perception) and Drone Piloting (Perception + Agility) join the others. Every skill
+  gain goes through `Survivor.GainSkill(skill, amount, source)` (diminishing: `amount · (1 − skill/100)`, returns the
+  gain). Colony practice: a job's `trains` map grows side skills at a share of the main gain (Electronics Lab work →
+  Hacking 0.3, Drone Piloting 0.15). The scavenge side calls `GainSkill` on its units' skills; field gains come home
+  with the result.
+- **XP** (`Survivor.Xp`, `Level`, `PerkPoints`): `xp.perWorkTick` per tick at a job (gathering, crafting, treating,
+  practising), `perCraft` per finished batch to each worker, `perStudyTick` / `perTeachTick` in class, and on
+  `ApplyExtractionResult` each survivor home gets `perMission + perMissionThreat · threat + perFieldSkillPoint · skill
+  points gained in the field`. Children earn ×`childMultiplier`, infants nothing, perks may add `xpBonus`. Level L needs
+  `perLevel·(L−1) + perLevelStep·(L−1)(L−2)/2` XP; each level gives `pointsPerLevel` points and logs `LevelUp`.
+  `ColonySim.GrantXp(survivorId, amount, source)` is the entry point for XP from outside the tick (the scavenge side).
+- **Perks** (`PerkDef`): discipline, tier, cost, `requires` (skills, attributes, perks, survivor level, a building at a
+  level, a studied blueprint/**datashard** item, adults only) and `effects`. `ColonySim.PerkStatus(s, perk)` says
+  Owned / Locked (datashard not studied) / MissingPrerequisites (with lines for the tooltip) / NoPoints / Ok.
+  `ChoosePerk(survivor, perk)` spends points; errors `UnknownPerk`, `AlreadyHasPerk`, `PerkLocked`,
+  `PerkRequirementsNotMet`, `NoPerkPoints`. Datashards (`ds_network_ghost`, `ds_override`, `ds_drone_payload`) are
+  Blueprint items: studied with `StudyBlueprint` at the Electronics Lab like any blueprint, they unlock perks.
+- **Effects**: `jobOutput` (job id → bonus; a `perks` factor in `JobOutput.PerTick` and Med Bay care), `craftQuality`
+  (job id → added to the quality score when this survivor is the building's best worker), `studySpeed`, `xpBonus`, and
+  `hooks` for the scavenge mode. `PerkEffects.For(survivor, data)` (or `ColonySim.PerkEffects(s)`) sums a survivor's
+  perks: `Hook(id)`, `Has(id)` (flag > 0), `Hooks`, `JobOutputBonus(job)`, `CraftQualityBonus(job)`. Scavenge units
+  carry their colony survivor as `Unit.Origin`, so the field can call it on that. Hook ids are constants in `PerkHooks`
+  and validated at load (an unknown id in perks.json is an error):
+
+  | hook id | meaning (values of several perks add up) | perks |
+  |---|---|---|
+  | `hack_chance_bonus` | added to hack chance (0.1 = +10 points) | Hacking I/II/III |
+  | `hack_alarm_reduction` | share of a hack's alarm/noise removed (0.5 = half) | Network Ghost |
+  | `can_hack_linked` | flag: can hack Linked units, not only Husks and devices | Override |
+  | `hack_ap_discount` | AP off a hack's cost | Hacking II |
+  | `field_repair` | flag/strength: jury-rig gear and devices in the field | Jury-rig |
+  | `drone_range_bonus` | tiles added to a scout drone's control range | Drone Operator I/II |
+  | `drone_battery_bonus` | rounds added to a scout drone's battery | Drone Operator I/II |
+  | `drone_can_mark` | flag: the drone marks what it sees for the whole party | Spotter |
+  | `drone_payload` | flag: the drone carries and drops a flare or motion sensor | Payload |
+  | `accuracy_bonus` | added to hit chance (0.05 = +5 points) | Steady Aim, Marksman |
+  | `melee_damage_bonus` | melee damage multiplier bonus (0.15 = +15%) | Brawler |
+  | `overwatch_reactions_bonus` | extra overwatch reactions | Sentinel |
+  | `brace_cover_bonus` | cover added while braced | Dug In |
+  | `stealth_bonus` | added to stealth | Light Step, Ghost |
+  | `detection_bonus` | added to detection | Keen Eye |
+  | `sight_bonus` | tiles added to sight | Keen Eye |
+  | `carry_bonus` | kg added to carry capacity | Pack Mule |
+  | `loot_bonus` | extra share of cache items (0.2 = +20%) | Scavenger |
+  | `field_heal_bonus` | healing items restore this much more (0.25 = +25%) | Field Medic |
+  | `revive_hp_bonus` | HP added when reviving a downed ally | Triage |
+  | `bleedout_rounds_bonus` | rounds added to a stabilized ally's bleed-out | Triage |
+
+  Core does not apply the hooks yet; the scavenge hacking/drone work reads them.
+- **Study** (`StudyOrder` in `ColonyState.Studies`; `StartStudy(student, building, skill | perk, mentor?, manual?)`,
+  `CancelStudy`): `study.buildings` says what each study building teaches and how many students per level (Town Hall:
+  the colony skills; Electronics Lab: Electronics, Hacking, Drone Piloting, and the Tech and Drones perks). Student and
+  mentor leave their jobs and cannot be assigned while in class (`InClass`). A skill grows by
+  `skillPerTick · aptitude · (mentor ? mentorMultiplier : 1) · (child ? training.childMultiplier : 1) · (1 + studySpeed +
+  manual studyBonus)` (diminishing), up to the mentor's level, or `selfStudyCap` alone, or a **field manual**'s cap
+  (Material items with `manual: { skill, studyBonus, cap }`, used up at the start). A mentor must lead by `mentorLead`
+  and teaches at most `maxStudentsPerMentor`. A perk is studied only from a mentor who has it (`NeedsMentor`), taking
+  `perkWorkPerTier · tier` effort, and is learned without a point; its requirements still apply. A class ends when the
+  student is gone, away or admitted; a skill class whose mentor goes carries on alone, a perk class stops.
+  `ColonySim.PlanStudy` previews cap, rate and ETA (or the error); `StudyEta`, `StudySlots`, `ClassOf` serve the UI.
+  Errors: `NotAStudyBuilding`, `InvalidStudy`, `StudyFull`, `CannotStudyHere`, `InClass`, `NeedsMentor`, `MentorNotAhead`,
+  `MentorBusy`, `AlreadyAtCap`, `NotAManual`, `WrongManual`, `UnknownStudy`.
+- **Gear for later**: Hacking Kit (Lab L1) and Cyberdeck (Lab L3, `bp_cyberdeck`, uses a kit), Drone Parts (Lab L1) and
+  Scout Drone (Lab L2, `bp_scout_drone`, 2 parts) are Tool/Material items with recipes and no field behaviour yet. Models
+  `item_hacking_kit`, `item_cyberdeck`, `scout_drone` come from remnants-assets; until synced the usual placeholders and
+  kind icons show.
+- **UI**: the survivor panel's Perks tab (`PerksTab`: level, XP, points, discipline switcher, `PerkTree` with
+  prerequisite lines, detail with ✓/✗ requirements and Learn), XP bar + level and perk-point / in-class badges on
+  `SurvivorCard`, `StudyPanel` on study buildings, toasts for level-ups, perks and finished classes. `--perks-demo`
+  stages it for screenshots (`--survivor-tab=4` opens Perks).
+- **Saves**: colony version 8 adds XP, levels, points, perks, classes and the new skills. Older survivors get
+  `xp.migrationPerSkillPoint` XP per skill point they already have (veterans arrive with levels and unspent points);
+  unknown perk ids in a save are an error. Tests: `ProgressionTests`, `StudyTests`.
+
 ## Data files
 
 - `resources.json` — resource ids and names.
@@ -460,6 +540,8 @@ Players scavenge together as teams (details, protocol and how to run it: MULTIPL
 - `buildings.json` — category, job, produced resource, base output, `minTownHallLevel`, and per-level
   cost / worker slots / output multiplier / beds / patients. Level 1 cost = construction cost.
 - `recipes.json` — what production buildings make (see "Crafting tiers").
+- `perks.json` — skills (names, learning attributes), XP sources and level curve, study buildings and rates,
+  disciplines and the perk tree (see "Perks and study").
 - `rules.json` — tick/time scale, output formula constants, training rates, food, housing grace,
   meals, crafting (queue limits, quality roll), expedition (party size per Town Hall level, rations, recruit ages), medical (heal/worsen rates, medicine use),
   life (growth stages and rates), relationships (affinity), family (conception, pregnancy, baby names), mood,

@@ -21,6 +21,10 @@ public static class Report
         sb.AppendLine($"median: pop {Median(r => r.FinalPopulation):0}, first pregnancy day {D(Median(r => r.FirstPregnancyDay))}, first birth day {D(Median(r => r.FirstBirthDay))}, " +
                       $"house affordable {D(Median(r => r.HouseAffordableDay))}, TH2 {D(Median(r => r.TownHall2Day))}, " +
                       $"armory {D(Median(r => r.ArmoryDay))}, lab {D(Median(r => r.LabDay))}, min food days {Median(r => r.MinFoodDays):0.0}");
+        sb.AppendLine($"perks: first perk point day {D(Median(r => r.FirstPerkPointDay))} (median), survivor-days per level-up " +
+                      $"{runs.Sum(r => r.SurvivorDays) / Math.Max(1, runs.Sum(r => r.LevelUps)):0.0}, perks learned {runs.Sum(r => r.PerksLearned)} " +
+                      $"({(double)runs.Sum(r => r.PerksLearned) / runs.Count:0.0}/colony), mean level at the end {Median(r => r.MeanLevel):0.0} (median), " +
+                      $"max level {runs.Max(r => r.MaxLevel)}, unspent points {runs.Sum(r => r.UnspentPoints)}");
         sb.AppendLine($"totals: starvation deaths {runs.Sum(r => r.StarvationDeaths)}, expedition deaths {runs.Sum(r => r.ExpeditionDeaths)} over {runs.Sum(r => r.Expeditions)} expeditions " +
                       $"({runs.Sum(r => r.ExpeditionsWithDeaths)} with deaths), departures {runs.Sum(r => r.Departures)}, births {runs.Sum(r => r.Births)}, " +
                       $"early Linked sightings {runs.Sum(r => r.LinkedEncountersEarly)}, recruits {runs.Sum(r => r.Recruits)}");
