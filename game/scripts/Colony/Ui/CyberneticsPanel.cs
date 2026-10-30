@@ -250,8 +250,9 @@ public partial class CyberneticsPanel : Overlay
         lines.Add("[b]Needs[/b]");
         if (node.Requires.Count > 0)
         {
-            var known = node.Requires.Any(r => Cybernetics.IsKnown(sim.State, cyber.Nodes[r]));
-            lines.Add(Mark(known, "know " + string.Join(" or ", node.Requires.Select(r => sim.Scavenge.Items[r].Name))));
+            var know = "know " + string.Join(" or ", node.Requires.Select(r => sim.Scavenge.Items[r].Name));
+            if (node.Blueprint is { } way) know += $", or study {sim.Scavenge.Items[way].Name}";
+            lines.Add(Mark(Cybernetics.WayIn(sim.State, cyber, node), know));
         }
         if (node.Perk is { } perk) lines.Add(Mark(Cybernetics.ColonyHasPerk(sim.State, perk), $"someone at home with {sim.Data.Perks[perk].Name}"));
         if (st.Recipe is { } r)
