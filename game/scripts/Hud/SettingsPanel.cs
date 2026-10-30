@@ -5,8 +5,8 @@ using Godot;
 namespace Remnants.Game.Hud;
 
 /// <summary>
-/// Settings, in tabs: Display (UI scale, fullscreen, window size, vsync), Audio (master / music / sfx volume on
-/// their buses), Camera (pan and zoom speed) and Controls (the hotkey list). Changes apply at once and are saved
+/// Settings, in tabs: Display (UI scale, fullscreen, window size, vsync), Audio (master / music / effects / ambience
+/// volume on their buses, mute when unfocused, visual sound cues), Camera (pan and zoom speed) and Controls (the hotkey list). Changes apply at once and are saved
 /// when the panel closes (<see cref="GameSettings"/>).
 /// </summary>
 public partial class SettingsPanel : Overlay
@@ -80,7 +80,17 @@ public partial class SettingsPanel : Overlay
         box.AddChild(Slider("Master", GameSettings.MasterVolume, v => GameSettings.MasterVolume = v));
         box.AddChild(Slider("Music", GameSettings.MusicVolume, v => GameSettings.MusicVolume = v));
         box.AddChild(Slider("Effects", GameSettings.SfxVolume, v => GameSettings.SfxVolume = v));
-        box.AddChild(Widgets.Wrapped("The game has no sound yet; these already drive the Master, Music and SFX buses.", "Small"));
+        box.AddChild(Slider("Ambience", GameSettings.AmbienceVolume, v => GameSettings.AmbienceVolume = v));
+        var mute = new CheckBox { Text = "Mute when the window is in the background", ButtonPressed = GameSettings.MuteWhenUnfocused, FocusMode = FocusModeEnum.None };
+        mute.Toggled += on => { GameSettings.MuteWhenUnfocused = on; GameSettings.ApplyVolumes(); };
+        box.AddChild(mute);
+        var cues = new CheckBox
+        {
+            Text = "Visual sound cues", ButtonPressed = GameSettings.VisualSoundCues, FocusMode = FocusModeEnum.None,
+            TooltipText = "Show a marker at the screen edge toward ambushes and contacts you hear but cannot see.",
+        };
+        cues.Toggled += on => GameSettings.VisualSoundCues = on;
+        box.AddChild(cues);
         return Scroll(box);
     }
 

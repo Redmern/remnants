@@ -6,6 +6,10 @@ config/name="Remnants"
 run/main_scene="res://scenes/MainMenu.tscn"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 
+[autoload]
+
+AudioManager="*res://scripts/Audio/AudioManager.cs"
+
 [dotnet]
 project/assembly_name="Remnants.Game"
 project/solution_directory=".."

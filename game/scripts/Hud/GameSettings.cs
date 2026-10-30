@@ -6,8 +6,9 @@ using Godot;
 namespace Remnants.Game.Hud;
 
 /// <summary>
-/// Player settings in <c>user://settings.cfg</c>: UI scale, window mode and size, vsync, master / music / sfx volume
-/// (on their own audio buses, made here if the project has none), camera pan and zoom speed. Also owns the hotkey
+/// Player settings in <c>user://settings.cfg</c>: UI scale, window mode and size, vsync, master / music / sfx /
+/// ambience volume (on the buses of <see cref="Audio.AudioBuses"/>), mute when unfocused, visual sound cues, camera
+/// pan and zoom speed. Also owns the hotkey
 /// actions (<see cref="Hotkeys"/>), added to the InputMap at boot. <see cref="Boot"/> runs once per process from
 /// whichever scene starts first.
 /// <para>The UI scale is the root window's content scale: <c>auto × UiScale</c>, where auto follows the window height
@@ -24,6 +25,14 @@ public static class GameSettings
     public static float MasterVolume { get; set; } = 0.8f;
     public static float MusicVolume { get; set; } = 0.7f;
     public static float SfxVolume { get; set; } = 0.8f;
+    public static float AmbienceVolume { get; set; } = 0.7f;
+    public static bool MuteWhenUnfocused { get; set; } = true;
+
+    /// <summary>Accessibility: small HUD markers toward off-screen ambush and contact sounds (<see cref="Audio.SoundCues"/>).</summary>
+    public static bool VisualSoundCues { get; set; }
+
+    /// <summary>The window lost focus (set by the audio autoload); mutes Master when <see cref="MuteWhenUnfocused"/>.</summary>
+    public static bool Unfocused { get; set; }
     public static float CameraPanSpeed { get; set; } = 1f;
     public static float CameraZoomSpeed { get; set; } = 1f;
 
@@ -57,10 +66,16 @@ public static class GameSettings
             if (!Fullscreen && DisplayServer.WindowGetSize() != WindowSize) DisplayServer.WindowSetSize(WindowSize);
             DisplayServer.WindowSetVsyncMode(Vsync ? DisplayServer.VSyncMode.Enabled : DisplayServer.VSyncMode.Disabled);
         }
-        SetVolume("Master", MasterVolume);
+        ApplyVolumes();
+        ApplyScale();
+    }
+
+    public static void ApplyVolumes()
+    {
+        SetVolume("Master", Unfocused && MuteWhenUnfocused ? 0 : MasterVolume);
         SetVolume("Music", MusicVolume);
         SetVolume("SFX", SfxVolume);
-        ApplyScale();
+        SetVolume("Ambience", AmbienceVolume);
     }
 
     /// <summary>The automatic part of the UI scale for a window height.</summary>
@@ -85,6 +100,9 @@ public static class GameSettings
         cfg.SetValue("audio", "master", MasterVolume);
         cfg.SetValue("audio", "music", MusicVolume);
         cfg.SetValue("audio", "sfx", SfxVolume);
+        cfg.SetValue("audio", "ambience", AmbienceVolume);
+        cfg.SetValue("audio", "mute_unfocused", MuteWhenUnfocused);
+        cfg.SetValue("audio", "visual_cues", VisualSoundCues);
         cfg.SetValue("camera", "pan", CameraPanSpeed);
         cfg.SetValue("camera", "zoom", CameraZoomSpeed);
         cfg.Save(Path);
@@ -101,21 +119,14 @@ public static class GameSettings
         MasterVolume = (float)cfg.GetValue("audio", "master", MasterVolume);
         MusicVolume = (float)cfg.GetValue("audio", "music", MusicVolume);
         SfxVolume = (float)cfg.GetValue("audio", "sfx", SfxVolume);
+        AmbienceVolume = (float)cfg.GetValue("audio", "ambience", AmbienceVolume);
+        MuteWhenUnfocused = (bool)cfg.GetValue("audio", "mute_unfocused", MuteWhenUnfocused);
+        VisualSoundCues = (bool)cfg.GetValue("audio", "visual_cues", VisualSoundCues);
         CameraPanSpeed = (float)cfg.GetValue("camera", "pan", CameraPanSpeed);
         CameraZoomSpeed = (float)cfg.GetValue("camera", "zoom", CameraZoomSpeed);
     }
 
-    private static void EnsureBuses()
-    {
-        foreach (var name in new[] { "Music", "SFX" })
-        {
-            if (AudioServer.GetBusIndex(name) >= 0) continue;
-            AudioServer.AddBus();
-            var index = AudioServer.BusCount - 1;
-            AudioServer.SetBusName(index, name);
-            AudioServer.SetBusSend(index, "Master");
-        }
-    }
+    private static void EnsureBuses() => Audio.AudioBuses.Ensure();
 
     private static void SetVolume(string bus, float linear)
     {
