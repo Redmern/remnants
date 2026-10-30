@@ -101,6 +101,9 @@ public sealed record DialogueNode
     public string? Next { get; init; }
     public List<EffectDef> Effects { get; init; } = new();
     public List<ChoiceDef> Choices { get; init; } = new();
+
+    /// <summary>A conditional line: skipped (straight on to <see cref="Next"/>) unless this holds.</summary>
+    public ConditionDef? When { get; init; }
 }
 
 public enum DialogueMode { Radio, InPerson }

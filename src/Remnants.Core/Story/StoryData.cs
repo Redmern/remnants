@@ -92,6 +92,8 @@ public sealed class StoryData
                 if (n.Choices.Count > 3) errors.Add($"{where}: more than three choices.");
                 if (n.Choices.Count > 0 && n.Next is not null) errors.Add($"{where}: a line with choices has no next of its own.");
                 Effects(where, n.Effects);
+                if (n.When is { } nw) Condition(where, nw);
+                if (n.When is not null && (n.Choices.Count > 0 || d.Nodes[0] == n)) errors.Add($"{where}: only a plain line after the first may be conditional.");
                 foreach (var c in n.Choices)
                 {
                     if (c.Next is { } cn && !ids.Contains(cn)) errors.Add($"{where}: choice next '{cn}' does not exist.");

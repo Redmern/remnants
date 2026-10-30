@@ -75,8 +75,14 @@ public static class Dialogue
     private static void Go(ColonySim sim, DialogueDef def, string? next)
     {
         var campaign = sim.State.Campaign!;
-        if (next is not null && def.Node(next) is { } node)
+        // Conditional lines that do not hold are passed over.
+        for (var hops = 0; next is not null && def.Node(next) is { } node && hops <= def.Nodes.Count; hops++)
         {
+            if (node.When is { } when && !Campaign.Holds(sim, when) && node.Choices.Count == 0)
+            {
+                next = node.Next;
+                continue;
+            }
             Enter(sim, def, node);
             return;
         }

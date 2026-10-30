@@ -1,0 +1,51 @@
+{
+  "id": "scrapyard_terminal",
+  "zone": "scrapyard_flats",
+  "room": true,
+  "rows": [
+    "####.####",
+    "#=..y..=#",
+    "#.......#",
+    "#...t...#",
+    "#.l...k.#",
+    "#.......#",
+    "####.####"
+  ],
+  "markers": {
+    "t": "terminal",
+    "l": "locker",
+    "k": "toolbox",
+    "y": "tally_in"
+  },
+  "caches": [
+    {
+      "marker": "toolbox",
+      "items": [
+        "hacking_kit"
+      ]
+    }
+  ],
+  "devices": [
+    {
+      "kind": "Locker",
+      "marker": "locker",
+      "tag": "locker",
+      "items": [
+        "bandage",
+        "scrap",
+        "flare"
+      ]
+    },
+    {
+      "kind": "Terminal",
+      "marker": "terminal",
+      "tag": "terminal",
+      "items": [
+        "manual_intrusion",
+        "electronics",
+        "electronics",
+        "scrap"
+      ]
+    }
+  ]
+}

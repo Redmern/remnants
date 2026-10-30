@@ -302,7 +302,8 @@ public static class Campaign
                 campaign.Flags[e.Id] = campaign.Flag(e.Id) + e.Value;
                 break;
             case EffectKind.Schematic:
-                lines?.Add(Schematics.Grant(sim, e.Id, source));
+                var granted = Schematics.Grant(sim, e.Id, source);
+                lines?.Add(granted);
                 break;
             case EffectKind.Item:
                 if (e.Value >= 0) state.Inventory.Add(e.Id, e.Value);

@@ -98,7 +98,7 @@ public static class MissionRules
     /// Re-checks every objective and condition trigger until nothing changes: reach, hack, aid, kills, the defended
     /// and escorted still alive, stealth, carried items, area and sight triggers; then whether the mission is decided.
     /// </summary>
-    internal static void Update(ScavengeSim sim)
+    public static void Update(ScavengeSim sim)
     {
         if (sim.State.Mission is not { } run || sim.State.Finished) return;
         var state = sim.State;
