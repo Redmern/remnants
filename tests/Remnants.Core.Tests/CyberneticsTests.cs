@@ -502,9 +502,9 @@ public class CyberFieldTests
         Assert.Equal(0, Interference.Chance(far, cyborg));
 
         var near = Arena(8, 3, [cyborg, EnemyUnit("linked", new(4, 0)), EnemyUnit("linked", new(5, 0))]);
-        Assert.Equal(0.16, Interference.Chance(near, cyborg), 6);
+        Assert.Equal(0.30, Interference.Chance(near, cyborg), 6);
         cyborg.Hooks[PerkHooks.CyberInterferenceReduction] = 0.5;
-        Assert.Equal(0.08, Interference.Chance(near, cyborg), 6);
+        Assert.Equal(0.15, Interference.Chance(near, cyborg), 6);
         cyborg.Hooks.Clear();
 
         var locked = 0;
@@ -513,7 +513,7 @@ public class CyberFieldTests
             Interference.RoundStarted(near);
             locked += cyborg.Body.Parts.Values.Count(p => p.Interfered);
         }
-        Assert.InRange(locked, 30, 100); // 400 rolls at 16%
+        Assert.InRange(locked, 80, 160); // 400 rolls at 30%
         Assert.Contains(near.State.Events, e => e.Type == ScavengeEventType.LimbLocked);
     }
 
@@ -536,7 +536,7 @@ public class CyberFieldTests
         var cyborg = Cyborg(new(0, 0), (BodyPart.Eyes, "network_eye"));
         var ally = SurvivorUnit(pos: new(1, 0), tool: "signal_jammer");
         var sim = Arena(6, 3, [cyborg, ally]);
-        Assert.Equal(0.15, Interference.Chance(sim, cyborg), 6);
+        Assert.Equal(0.20, Interference.Chance(sim, cyborg), 6);
     }
 
     [Fact]

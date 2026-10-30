@@ -554,3 +554,65 @@ before this pass they hit a Linked about 40% of the time while the Linked hit th
 Watch next: the Husk side of geared play (a ranged unit stepping out of melee before it shoots; Husk accuracy 0.75 +
 skill against Firearms-0 survivors); whether Fine carbines (+0.10 accuracy, ×2.25 against the Network) make the Relay too
 easy for a late colony; carbine drop pacing in a colony sweep.
+## Cybernetics
+
+The prosthetics tree (CYBERNETICS.md). The aims: **a lost limb is a setback, not a death sentence** (crude parts from day
+1, mechanical ones mid-game); **powered and cyborg parts are a real power curve** you build toward over months, gated by
+Electronics Lab levels, the Biomech → Neural Interface perks and components; **Network-grade is a trade-off**, best
+where the Linked are few and no better than cyborg where they are many; and the bill is paid in **humanity**, not only
+in scrap. The bot (`ColonyBot`) fits the best part it has to a missing or crude limb (surgery when needed), crafts for
+amputees, and — like a curious player — builds one part of each tier as it opens so the next tier can be known. It
+never augments electively. Electronics Lab 2 joins the end of its build order.
+
+Progression timeline, 20 seeds × 150 days (`--days=150 --seeds=1..20`), first day a design of the tier can be queued:
+
+| tier | median day | colonies that reach it | what gates it in practice |
+|---|---|---|---|
+| T0 Crude | 1 | 20/20 | Workshop 1 |
+| T1 Mechanical | 81 | 20/20 | Workshop 2 + a Tinkerer (60-day runs: 1 of 20, day 53) |
+| T2 Powered | 102 | 17/20 | a T1 part made + an Electronics Lab tech with Biomech |
+| T3 Cyborg | 133 | 9/20 | a T2 part made + Neural Interface (Electronics 30, level 5) + Lab 2; or `bp_cybernetics` found in a tier-2 zone |
+| T4 Network-grade | — | 0/20 | Linked Salvage needs `bp_network_grade` (tier-3 zones) and Linked cores: late game by design |
+
+The first try had Biomech need Crafting 20 *and* Electronics 15, and Neural Interface Electronics 30 on top: no bot
+colony ever had one person with both, so T2/T3 never opened. Biomech now sits on the electronics track (the Lab makes
+every powered part). Before the "blueprint **or** knowledge" rule, T3 also needed the blueprint, which a starter bot
+never finds (0/20).
+
+Colony sweep (20 seeds × 60 days, `main` → this branch): median population 8 → 7, starvation 0 → 0, expedition deaths 11
+over 335 runs → 10 over 336, births 33 → 33, departures 14 → 12, Town Hall 2 day 32.4 → 33.2, House affordable 51.2 →
+51.6, Armory 53.0 → 51.4, Lab 58.5 → 58.5, min food 4.9 → 4.5 days. The new loot (components, blueprints) dilutes caches
+a little; the drift is within the noise of different expedition outcomes. Limbs are rarely lost by the bot (1 in 20
+colonies over 150 days), so surgery and humanity barely show in sweeps; they are covered by tests.
+
+Zone trials, 300 runs, two adults with starting gear plus a cybernetic kit (`--kit=…`; parts fitted on healthy limbs,
+so this is the most a party could carry, not what a colony has):
+
+| zone | no kit (`main` → branch) | peg (one peg leg) | mech (one mech leg) | powered (runner / silent pair + blade / precision arm) | cyborg (runner / jumper pair + blade arm / gun arm + scope eye) | network (Network legs, arm, eye) |
+|---|---|---|---|---|---|---|
+| Town Outskirts | 6% → 6% | 5% | 5% | 2% | 0% | 0% (items 15.9 vs 10.6) |
+| Suburb Ruins | 33% → 31% | 33% | 33% | 16% | 6% | 6% (0.5 lock-ups/run at the first try) |
+| Flooded Mall | 52% → 50% | 51% | 51% | 31% | 18% | **21%** (4.1 lock-ups/run) |
+| Rail Depot | 92% | — | — | — | 60% | **56%** (5.5 lock-ups/run) |
+
+- A peg or mechanical leg on one side barely changes the odds (rounds go up 16 → 20: they are slower, so they loot a
+  little more and leave later). That is the intent: crude parts restore a survivor, they do not make one.
+- **Powered parts halve the deaths** (Suburb Ruins 31% → 16%, Flooded Mall 50% → 31%): mostly the runner pair's extra
+  tile (the bot survives by leaving) and the blade's silent attack. **Cyborg** parts make the mid zones routine and Rail
+  Depot survivable (92% → 60%). This is a lot, but it costs a whole body: the cyborg kit electively is 105+35 humanity
+  (0, detached), and as replacements it needs four lost limbs. A colony gets there around day 130+.
+- **Network interference** at the first guess (`perLinked` 0.08, max 0.4) locked ~2–3 limbs a run in Linked zones and
+  Network-grade still beat cyborg everywhere (Flooded Mall 15% vs 18%, Rail Depot 49% vs 60%). At `perLinked` 0.15,
+  `overrider` 0.15, `jammer` 0.2, max 0.6 it is the trade-off it should be: better where the Linked are few (Outskirts
+  loot +35%, the hacker arm and stats), level with cyborg where they are many (Mall 21% vs 18%, Rail Depot 56% vs 60%).
+  Linked Salvage halves the risk, which tips it back toward Network-grade for a colony that invests.
+
+Surgery (tests and the formula): a fresh medic fits a powered part at 76%, a Medicine 40 Cyber-Surgeon with Surgeon I/II
+a cyborg part at 97%; T2 surgery is 24 effort (~1–2 days at a Med Bay 2), T3 48, T4 72, at 0.03 medicine a tick.
+Failures leave an infection (torso 0.30–0.55), never a death; at 0 Medicine skill a powered part fails ~30% of the
+time.
+
+Watch next pass: T1 at day ~80 feels late for the first amputee (Workshop 2 waits behind the House and Armory in the
+bot's order); the runner pair dominates every kit because the bot's answer to danger is running; humanity strain on
+couples is unmeasured in sweeps (no bot augments), so its rates (`partnerStrainPerTick` 0.05, breakup below 40) are a
+first guess.

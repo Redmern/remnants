@@ -207,10 +207,10 @@ public sealed record UpkeepRules
 public sealed record InterferenceRules
 {
     public int Range { get; init; } = 6;
-    public double PerLinked { get; init; } = 0.06;
-    public double Overrider { get; init; } = 0.1;
-    public double Jammer { get; init; } = 0.15;
-    public double MaxChance { get; init; } = 0.35;
+    public double PerLinked { get; init; } = 0.15;
+    public double Overrider { get; init; } = 0.15;
+    public double Jammer { get; init; } = 0.2;
+    public double MaxChance { get; init; } = 0.6;
 }
 
 /// <summary>Lookups over a loaded <see cref="CyberneticsDef"/>.</summary>

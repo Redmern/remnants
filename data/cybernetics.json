@@ -155,5 +155,5 @@
 
   "upkeep": { "decayPerDay": 0.05, "minUpkeep": 0.6 },
 
-  "interference": { "range": 6, "perLinked": 0.08, "overrider": 0.1, "jammer": 0.15, "maxChance": 0.4 }
+  "interference": { "range": 6, "perLinked": 0.15, "overrider": 0.15, "jammer": 0.2, "maxChance": 0.6 }
 }

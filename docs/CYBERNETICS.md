@@ -167,9 +167,9 @@ part of an active unit unlocks and is rolled again; it locks up for the round (e
 lapse; logged as `LimbLocked`) with
 
 ```
-chance = min(0.40, 0.08 · Linked on the Network within 6 tiles
-                   + 0.10 if a hostile with Override is within 6
-                   + 0.15 if any signal jammer covers the unit — your own side's too)
+chance = min(0.60, 0.15 · Linked on the Network within 6 tiles
+                   + 0.15 if a hostile with Override is within 6
+                   + 0.20 if any signal jammer covers the unit — your own side's too)
          · (1 − cyber_interference_reduction)
 ```
 
