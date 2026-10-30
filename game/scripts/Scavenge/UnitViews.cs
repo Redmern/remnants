@@ -217,6 +217,18 @@ public partial class UnitViews : Node3D
                     await Wait(0.12f);
                     break;
 
+                // From the fog: no one to animate, only the victim's hit.
+                case ScavengeEventType.Attacked or ScavengeEventType.Missed when actor is null && target is not null && e.UnitId is null:
+                    if (e.Type == ScavengeEventType.Attacked)
+                    {
+                        Flash(target, _hitFlash);
+                        var hidden = DamagePattern.Match(e.Message);
+                        FloatText(target.Root.Position, hidden.Success ? $"-{hidden.Groups[1].Value}" : "hit", new Color(1f, 0.4f, 0.3f));
+                    }
+                    else FloatText(target.Root.Position, "miss", new Color(0.85f, 0.85f, 0.85f));
+                    await Wait(0.3f);
+                    break;
+
                 case ScavengeEventType.LimbLost when actor is not null && Seen(e.Pos):
                     FloatText(actor.Root.Position + Vector3.Up * 0.5f, "limb lost!", new Color(1f, 0.25f, 0.2f));
                     await Wait(0.3f);

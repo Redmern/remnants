@@ -59,7 +59,7 @@ public static class ScavengeSession
             LocalPlayerId, onFinished, returnScene);
 
     /// <summary>A debug mission with <see cref="DebugParty"/>, returning to the main menu. --zone=ID / --seed=N pick another.</summary>
-    public static void BeginDebug(SceneTree tree) => Begin(tree, DebugZoneArg, DebugSeedArg, DebugParty());
+    public static void BeginDebug(SceneTree tree) => Begin(tree, DebugSim());
 
     private static string DebugZoneArg => DebugCapture.Value("--zone") is { Length: > 0 } z ? z : DebugZone;
 
@@ -68,11 +68,17 @@ public static class ScavengeSession
     /// <summary>The pending mission, or a fresh debug one when the scene was opened directly (editor, --scavenge).</summary>
     public static ScavengeMission TakeMission()
     {
-        var mission = Pending ?? new ScavengeMission(new LocalDriver(
-            NewScavenge.Create(GameDataPaths.LoadScavenge(), DebugZoneArg, DebugSeedArg, [new PartySetup(LocalPlayerId, DebugParty())]),
-            LocalPlayerId), null, MenuScene);
+        var mission = Pending ?? new ScavengeMission(new LocalDriver(DebugSim(), LocalPlayerId), null, MenuScene);
         Pending = mission;
         return mission;
+    }
+
+    /// <summary>The debug mission's sim; <c>--fog-demo</c> stages a hidden Linked near the party (<see cref="Fog.FogDemo"/>).</summary>
+    private static ScavengeSim DebugSim()
+    {
+        var sim = NewScavenge.Create(GameDataPaths.LoadScavenge(), DebugZoneArg, DebugSeedArg, [new PartySetup(LocalPlayerId, DebugParty())]);
+        if (Fog.FogDemo.Requested) Fog.FogDemo.Stage(sim, LocalPlayerId);
+        return sim;
     }
 
     /// <summary>Called by the scavenge scene when the player leaves the summary screen.</summary>

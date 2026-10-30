@@ -57,7 +57,9 @@ public partial class ActionPanel : PanelContainer
         var profile = sim.Profile(unit);
         if (ActionId is null || profile.Action(ActionId) is null) ActionId = profile.Actions.FirstOrDefault()?.Id;
         _hint.Text = usingItem is { } item
-            ? $"Click who gets the {ScavengeText.Item(data, item)} (yourself or someone next to you). Right-click to cancel."
+            ? data.Items[item].Use is { TargetsTile: true } onTile
+                ? $"Click a tile within {onTile.Range} for the {ScavengeText.Item(data, item)}. Right-click to cancel."
+                : $"Click who gets the {ScavengeText.Item(data, item)} (yourself or someone next to you). Right-click to cancel."
             : "Click a blue tile to move, a red target to attack. Right-click cancels.";
 
         _content.AddChild(UiKit.Label("Attack with", 13, UiKit.Muted));

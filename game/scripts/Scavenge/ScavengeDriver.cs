@@ -22,9 +22,12 @@ public interface IScavengeDriver
     /// <summary>Tiles the local side sees right now.</summary>
     HashSet<int> Visible { get; }
 
+    /// <summary>Units the local side sees right now (its own included): in sight and detected, lit, revealed or scanned.</summary>
+    HashSet<int> SeenUnits { get; }
+
     Task<ScavengeResult> Execute(IScavengeCommand command);
 
-    /// <summary>Events since the last call, oldest first.</summary>
+    /// <summary>Events since the last call the local side may hear of, oldest first, unseen actors made anonymous (<see cref="FogLog"/>).</summary>
     List<ScavengeEvent> TakeNewEvents();
 
     /// <summary>The local player's result: final once their run is over, null while a remote result is still on its way.</summary>
@@ -47,6 +50,7 @@ public interface IScavengeDriver
 public sealed class LocalDriver : IScavengeDriver
 {
     private ScavengeEvent? _lastSeen;
+    private HashSet<int> _unitsBefore, _tilesBefore;
 
     public LocalDriver(ScavengeSim sim, int playerId)
     {
@@ -54,18 +58,25 @@ public sealed class LocalDriver : IScavengeDriver
         PlayerId = playerId;
         var events = sim.State.Events;
         _lastSeen = events.Count > 0 ? events[^1] : null;
+        _unitsBefore = SeenUnits;
+        _tilesBefore = Visible;
     }
 
     public ScavengeSim Sim { get; }
     public int PlayerId { get; }
+    private string Side => Sim.State.FindParty(PlayerId)?.Side ?? Unit.PlayerSide(PlayerId);
     public HashSet<int> Visible => Sim.VisibleTo(PlayerId);
+    public HashSet<int> SeenUnits => Detection.SeenBy(Sim.Data, Sim.State, Side);
 
     public event Action? Pushed { add { } remove { } }
     public event Action<string>? Noticed { add { } remove { } }
 
     public Task<ScavengeResult> Execute(IScavengeCommand command) => Task.FromResult(Sim.Execute(command));
 
-    /// <summary>Core events logged since the last call (the list is capped, so the last one seen is found by identity).</summary>
+    /// <summary>
+    /// Core events logged since the last call (the list is capped, so the last one seen is found by identity), as the
+    /// local side hears them: judged against what it saw at the last call and sees now, as the server would.
+    /// </summary>
     public List<ScavengeEvent> TakeNewEvents()
     {
         var events = Sim.State.Events;
@@ -75,7 +86,10 @@ public sealed class LocalDriver : IScavengeDriver
                 if (ReferenceEquals(events[i], _lastSeen)) { start = i + 1; break; }
         var fresh = events.Skip(start).ToList();
         if (events.Count > 0) _lastSeen = events[^1];
-        return fresh;
+        var heard = FogLog.For(Sim, Side, fresh, _unitsBefore, _tilesBefore);
+        _unitsBefore = SeenUnits;
+        _tilesBefore = Visible;
+        return heard;
     }
 
     public ExtractionResult Result() => Sim.ResultFor(PlayerId);
@@ -104,6 +118,9 @@ public sealed class RemoteDriver : IScavengeDriver
     public ScavengeSim Sim => _client.View ?? throw new InvalidOperationException("No view from the server yet.");
     public int PlayerId => _client.PlayerId;
     public HashSet<int> Visible => _client.Visible;
+
+    /// <summary>The server only sends units the side sees.</summary>
+    public HashSet<int> SeenUnits => _client.View is { } view ? view.State.Units.Where(u => u.OnMap).Select(u => u.Id).ToHashSet() : [];
 
     public event Action? Pushed;
     public event Action<string>? Noticed;

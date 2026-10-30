@@ -30,7 +30,8 @@ public partial class DebugCapture : Node
 
     public static DebugCapture? FromCommandLine()
     {
-        if (Value("--screenshot") is not { Length: > 0 } path) return null;
+        // --fog-demo saves its own still at the ambush (ScavengeScreen.FogDemo).
+        if (Value("--screenshot") is not { Length: > 0 } path || HasFlag("--fog-demo")) return null;
         return new DebugCapture
         {
             Name = "DebugCapture",

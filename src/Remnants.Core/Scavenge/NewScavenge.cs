@@ -146,7 +146,7 @@ public static class NewScavenge
         };
     }
 
-    internal static Unit EnemyUnit(ScavengeData data, ScavengeState state, EnemyDef def, Pos pos)
+    public static Unit EnemyUnit(ScavengeData data, ScavengeState state, EnemyDef def, Pos pos)
     {
         var number = state.Units.Count(u => u.EnemyDefId == def.Id) + 1;
         return new Unit

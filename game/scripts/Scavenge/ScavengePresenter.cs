@@ -6,8 +6,11 @@ using Remnants.Core.Scavenge;
 
 namespace Remnants.Game.Scavenge;
 
-/// <summary>A hostile unit the acting unit can hit with an action, and the chance Core gives it.</summary>
-public sealed record AttackOption(Unit Target, ActionProfile Action, double HitChance);
+/// <summary>
+/// A hostile unit the acting unit can hit with an action, and the chance Core gives it. <see cref="Ambush"/>: the
+/// target's side does not see the attacker, so it would strike from the fog (bonus included in the chance).
+/// </summary>
+public sealed record AttackOption(Unit Target, ActionProfile Action, double HitChance, AmbushInfo? Ambush = null);
 
 /// <summary>
 /// Presenter between the scavenge screen and Core: plays one local player through an <see cref="IScavengeDriver"/>
@@ -18,6 +21,7 @@ public sealed record AttackOption(Unit Target, ActionProfile Action, double HitC
 public sealed class ScavengePresenter
 {
     private HashSet<int> _visible = [];
+    private HashSet<int> _seenUnits = [];
 
     public ScavengePresenter(IScavengeDriver driver)
     {
@@ -76,8 +80,14 @@ public sealed class ScavengePresenter
     public bool IsVisible(Pos p) => State.Map.InBounds(p) && _visible.Contains(State.Map.Index(p));
     public bool IsExplored(Pos p) => State.Map.InBounds(p) && Explored.Contains(State.Map.Index(p));
 
-    /// <summary>Whether the local player may see this unit: own side always, others only on visible tiles.</summary>
-    public bool CanSee(Unit u) => u.OnMap && (u.Side == Side || IsVisible(u.Pos));
+    /// <summary>Whether the local player may see this unit: own side always, others only when the side sees them (not just their tile).</summary>
+    public bool CanSee(Unit u) => u.OnMap && (u.Side == Side || _seenUnits.Contains(u.Id));
+
+    /// <summary>The local side's contacts: "something is there" without what.</summary>
+    public IEnumerable<Contact> Contacts => State.Contacts.Where(c => c.Side == Side);
+
+    /// <summary>Whether a hostile unit is revealed to the local side (muzzle flash, motion sensor).</summary>
+    public bool IsRevealed(Unit u) => Detection.IsRevealed(State, u.Id, Side);
 
     public bool IsMine(Unit u) => u.PlayerId == PlayerId;
 
@@ -92,7 +102,7 @@ public sealed class ScavengePresenter
         return State.Units
             .Where(t => t.OnMap && unit.HostileTo(t) && CanSee(t)
                         && Combat.CheckReach(data, map, unit.Pos, action, t.Pos) == ScavengeError.None)
-            .Select(t => new AttackOption(t, action, Combat.HitChance(data, map, unit.Pos, action, t.Pos, Sim.Profile(t))))
+            .Select(t => new AttackOption(t, action, Combat.ChanceToHit(Sim, unit, action, t), Combat.AmbushAgainst(data, State, unit, t)))
             .ToList();
     }
 
@@ -103,5 +113,9 @@ public sealed class ScavengePresenter
     public IEnumerable<Unit> RecruitableNear(Unit unit) =>
         State.Units.Where(u => u.Kind == UnitKind.Npc && u.IsActive && u.Side == Unit.NeutralSide && u.Pos.Chebyshev(unit.Pos) <= 1);
 
-    private void RefreshVisibility() => _visible = Driver.Visible;
+    private void RefreshVisibility()
+    {
+        _visible = Driver.Visible;
+        _seenUnits = Driver.SeenUnits;
+    }
 }

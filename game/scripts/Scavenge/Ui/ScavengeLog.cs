@@ -33,6 +33,9 @@ public partial class ScavengeLog : PanelContainer
                 or ScavengeEventType.Stabilized or ScavengeEventType.Revived or ScavengeEventType.PickedUp => UiKit.Hex(UiKit.Good),
             ScavengeEventType.RoundStarted => "e8d8a0",
             ScavengeEventType.Reinforced or ScavengeEventType.Flanked or ScavengeEventType.Suppressed => "70d8e8",
+            ScavengeEventType.Ambushed => "ff6a50",
+            ScavengeEventType.Overwatch or ScavengeEventType.Lookout or ScavengeEventType.Braced => "8ce6ff",
+            ScavengeEventType.SensorTripped or ScavengeEventType.FlareLit or ScavengeEventType.SensorPlaced => "b4f08c",
             _ => "dddddd",
         };
         Append($"[color=#888]R{e.Round}[/color]  [color=#{color}]{e.Message}[/color]");

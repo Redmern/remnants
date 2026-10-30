@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Godot;
 using Remnants.Core.Scavenge;
 using Remnants.Game.Colony;
+using Remnants.Game.Scavenge.Fog;
 using Remnants.Game.Scavenge.Ui;
 
 namespace Remnants.Game.Scavenge;
@@ -19,11 +20,13 @@ public partial class ScavengeScreen : Node3D
     private ScavengePresenter _presenter = null!;
     private MapView _map = null!;
     private UnitViews _units = null!;
+    private FogOverlay _fog = null!;
     private TacticalCamera _camera = null!;
 
     private TurnBar _turnBar = null!;
     private UnitPanel _unitPanel = null!;
     private ActionPanel _actionPanel = null!;
+    private StancePanel _stancePanel = null!;
     private ScavengeLog _log = null!;
     private ResultPanel _result = null!;
     private Label _toast = null!;
@@ -57,14 +60,18 @@ public partial class ScavengeScreen : Node3D
         _units = new UnitViews { Name = "Units" };
         AddChild(_units);
         _units.Setup(_presenter, models);
+        _fog = new FogOverlay { Name = "Fog" };
+        AddChild(_fog);
+        _fog.Setup(_presenter, models);
 
         BuildHud();
         Wire();
         SelectActing();
         _camera.Focus(PartyCentre());
         SyncAll();
-        foreach (var e in _presenter.State.Events.Where(Shown).TakeLast(8)) _log.Event(e);
+        foreach (var e in FogLog.For(_presenter.Sim, _presenter.Side, _presenter.State.Events).TakeLast(8)) _log.Event(e);
 
+        if (Fog.FogDemo.Requested) _ = FogDemoScript();
         if (float.TryParse(DebugValue("--zoom"), out var zoom)) _camera.Camera.Size = zoom;
         if (int.TryParse(DebugValue("--autoplay"), out var steps)) _ = Autoplay(steps);
     }
@@ -114,6 +121,8 @@ public partial class ScavengeScreen : Node3D
         middle.AddChild(right);
         _actionPanel = new ActionPanel(_presenter) { SizeFlagsVertical = Control.SizeFlags.ShrinkBegin };
         right.AddChild(_actionPanel);
+        _stancePanel = new StancePanel(_presenter) { SizeFlagsVertical = Control.SizeFlags.ShrinkBegin };
+        right.AddChild(_stancePanel);
 
         _toast = Colony.Ui.Ui.Label("", 17, Colony.Ui.Ui.Bad);
         _toast.HorizontalAlignment = HorizontalAlignment.Center;
@@ -158,6 +167,7 @@ public partial class ScavengeScreen : Node3D
             RefreshHud();
         };
         _actionPanel.CommandRequested += command => _ = Run(command);
+        _stancePanel.CommandRequested += command => _ = Run(command);
         _result.ContinuePressed += Finish;
     }
 
@@ -214,6 +224,11 @@ public partial class ScavengeScreen : Node3D
         if (_usingItem is { } item && acting is not null)
         {
             _usingItem = null;
+            if (_presenter.Sim.Data.Items[item].Use is { TargetsTile: true })
+            {
+                _ = Run(new UseItem(pid, acting.Id, item, At: tile));
+                return;
+            }
             if (clicked is null)
             {
                 Toast("Pick a unit to use the item on.");
@@ -288,8 +303,8 @@ public partial class ScavengeScreen : Node3D
                 _map.Sync();
                 await _units.Replay(events, seenBefore, e =>
                 {
-                    if (!Shown(e, seenBefore)) return;
                     _log.Event(e);
+                    _fog.Incoming(e);
                     // Follow what others do in sight (enemy turns, recruits) so it never happens off screen.
                     if (e.Type is ScavengeEventType.Moved or ScavengeEventType.Attacked or ScavengeEventType.Missed
                         && e.UnitId is { } actor && _presenter.State.FindUnit(actor) is { } u && u.PlayerId != _presenter.PlayerId
@@ -308,18 +323,6 @@ public partial class ScavengeScreen : Node3D
         SyncAll();
     }
 
-    /// <summary>Whether the local player gets to hear about an event (no news of enemies moving in the dark).</summary>
-    private bool Shown(ScavengeEvent e) => Shown(e, _presenter.Visible);
-
-    private bool Shown(ScavengeEvent e, IReadOnlySet<int> visible)
-    {
-        if (e.Type is ScavengeEventType.RoundStarted or ScavengeEventType.PartyDone or ScavengeEventType.Finished) return true;
-        bool Mine(int? id) => id is { } i && _presenter.State.FindUnit(i) is { } u && u.Side == _presenter.Side;
-        if (Mine(e.UnitId) || Mine(e.TargetId)) return true;
-        var map = _presenter.State.Map;
-        return e.Pos is { } p && map.InBounds(p) && visible.Contains(map.Index(p));
-    }
-
     private void SelectActing()
     {
         if (_presenter.ActingUnit is { } acting) Select(acting.Id);
@@ -336,6 +339,7 @@ public partial class ScavengeScreen : Node3D
     {
         _map.Sync();
         _units.Sync();
+        _fog.Sync();
         RefreshHud();
         _seen = new HashSet<int>(_presenter.Visible);
         if (_presenter.Done && !_result.Visible && _presenter.Result() is { } result)
@@ -363,6 +367,7 @@ public partial class ScavengeScreen : Node3D
         _turnBar.Refresh(_busy);
         _unitPanel.Present(selected);
         _actionPanel.Refresh(_busy, _usingItem);
+        _stancePanel.Refresh(_busy);
         RefreshHighlights(selected);
     }
 
@@ -376,6 +381,15 @@ public partial class ScavengeScreen : Node3D
 
         var acting = _presenter.ActingUnit;
         var isActing = acting is not null && acting.Id == selected.Id;
+        if (isActing && _usingItem is { } placed && _presenter.Sim.Data.Items[placed].Use is { TargetsTile: true } onTile)
+        {
+            var map = _presenter.State.Map;
+            for (var dy = -onTile.Range; dy <= onTile.Range; dy++)
+                for (var dx = -onTile.Range; dx <= onTile.Range; dx++)
+                    if (acting!.Pos + new Pos(dx, dy) is var p && map.InBounds(p) && (dx, dy) != (0, 0))
+                        _map.Highlight(p, HighlightKind.Use);
+            return;
+        }
         if (isActing && _usingItem is { } item && _presenter.Sim.Data.Items[item].Use is { } use)
         {
             foreach (var u in _presenter.State.Units.Where(u => u.OnMap && !acting!.HostileTo(u) && u.Pos.Chebyshev(acting.Pos) <= use.Range))
@@ -392,6 +406,7 @@ public partial class ScavengeScreen : Node3D
         if (!isActing || _actionPanel.ActionId is not { } actionId || _presenter.Sim.Profile(selected).Action(actionId) is not { } action) return;
         foreach (var option in _presenter.AttackOptions(selected, action))
             _map.Highlight(option.Target.Pos, HighlightKind.Attack,
+                (option.Ambush is { Braced: false } ? "AMBUSH " : "") +
                 $"{option.HitChance:P0} · {action.MinDamage:0}–{action.MaxDamage:0}" + (action.ApCost > selected.Ap ? " · no AP" : ""));
     }
 
