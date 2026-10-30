@@ -185,7 +185,7 @@ public static class RaidSystem
         if (ready.Count == 0) return;
         d.Raid = Draw(sim, raids, ready[0].Key, ready[0].Value);
         d.Pressure[ready[0].Key] = 0;
-        foreach (var k in d.Pressure.Keys.ToList()) d.Pressure[k] *= 0.5;
+        foreach (var k in d.Pressure.Keys.ToList()) d.Pressure[k] *= 0.25;
     }
 
     /// <summary>Makes a raid of this kind now (size from pressure and escalation, approach and arrival phase by weight).</summary>

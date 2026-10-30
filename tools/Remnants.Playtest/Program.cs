@@ -2,7 +2,7 @@ using Remnants.Core.Data;
 using Remnants.Core.Scavenge;
 using Remnants.Playtest;
 
-// Usage: dotnet run --project tools/Remnants.Playtest -- [--story [--prompt=N]] [--days=N] [--seeds=A..B | --seed=N] [--quiet] [--trace] [--no-expeditions] [--data=DIR]
+// Usage: dotnet run --project tools/Remnants.Playtest -- [--story [--prompt=N]] [--days=N] [--seeds=A..B | --seed=N] [--quiet] [--trace] [--no-expeditions] [--no-raids] [--data=DIR]
 //        dotnet run --project tools/Remnants.Playtest -- --zone=outskirts|all [--runs=N] [--party=N] [--trace] [--no-defenses] [--kit=fog|geared|tech|hack|drone|hacker|peg|mech|powered|cyborg|network] [--carbines=N] [--carbine-quality=fine|crude] [--armor] [--no-tech] [--coop=N] [--hour=0..23]
 var options = args.Where(a => a.StartsWith("--")).Select(a => a[2..].Split('=', 2)).ToDictionary(p => p[0], p => p.Length > 1 ? p[1] : "");
 var days = int.Parse(options.GetValueOrDefault("days", "40"));
@@ -17,6 +17,8 @@ var data = GameDataLoader.LoadFromDirectory(dataDir);
 var scavenge = ScavengeDataLoader.LoadFromDirectory(dataDir);
 // --story: a Story game; the bot takes story missions as they open (the report lists the day each is done).
 var story = options.ContainsKey("story") ? Remnants.Core.Story.StoryDataLoader.LoadFromDirectory(Path.Combine(dataDir, "story")) : null;
+var raids = options.ContainsKey("no-raids") ? null : Remnants.Core.Raids.RaidDataLoader.LoadFromDirectory(dataDir);
+raids?.Validate(data, scavenge);
 if (options.TryGetValue("zone", out var zoneArg))
 {
     // Zone trial: --zone=ID[,ID...] [--runs=N] [--party=N]
@@ -34,7 +36,7 @@ if (options.TryGetValue("zone", out var zoneArg))
 var summaries = new List<PlaythroughSummary>();
 foreach (var seed in seeds)
 {
-    var run = new Playthrough(data, scavenge, seed, bot, story);
+    var run = new Playthrough(data, scavenge, seed, bot, story, raids);
     if (options.ContainsKey("trace")) run.Bot.Trace = line => Console.WriteLine($"    {line}");
     summaries.Add(run.Run(days));
     if (!quiet || seeds.Count == 1) Console.WriteLine(run.Describe());

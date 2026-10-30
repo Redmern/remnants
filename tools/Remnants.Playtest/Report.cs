@@ -37,6 +37,19 @@ public static class Report
                           $"surgeries {runs.Sum(r => r.Cyber!.Surgeries)} ({runs.Sum(r => r.Cyber!.Complications)} complications), " +
                           $"limbs still missing {runs.Sum(r => r.Cyber!.MissingAtEnd)}, lowest humanity {runs.Min(r => r.Cyber!.MinHumanity):0}");
         }
+        if (runs.All(r => r.Raids is not null))
+        {
+            sb.AppendLine("raids: seed  raids held firstDay firstHeld dead taken hurt stolen wrecked defenses guards kinds");
+            foreach (var r in runs)
+            {
+                var x = r.Raids!;
+                sb.AppendLine($"      {r.Seed,4} {x.Raids,6} {x.Repelled,4} {D(x.FirstDay)}  {(x.FirstHeld is null ? "-" : x.FirstHeld.Value ? "yes" : "NO"),8} {x.Dead,4} {x.Taken,5} {x.Injured,4} {x.Stolen,6:0} {x.Wrecked,7} {x.Defenses,8} {x.Guards,6} {x.Kinds}");
+            }
+            var all = runs.Select(r => r.Raids!).ToList();
+            sb.AppendLine($"raids: {all.Sum(x => x.Raids)} in all, {all.Sum(x => x.Repelled)} held; first raid day {D(Median(r => r.Raids!.FirstDay)).Trim()} (median), " +
+                          $"first held {all.Count(x => x.FirstHeld == true)}/{all.Count(x => x.FirstHeld is not null)}; dead {all.Sum(x => x.Dead)}, taken {all.Sum(x => x.Taken)}, " +
+                          $"hurt {all.Sum(x => x.Injured)}, stolen {all.Sum(x => x.Stolen):0}, wrecked {all.Sum(x => x.Wrecked)}");
+        }
         sb.AppendLine($"totals: starvation deaths {runs.Sum(r => r.StarvationDeaths)}, expedition deaths {runs.Sum(r => r.ExpeditionDeaths)} over {runs.Sum(r => r.Expeditions)} expeditions " +
                       $"({runs.Sum(r => r.ExpeditionsWithDeaths)} with deaths), departures {runs.Sum(r => r.Departures)}, births {runs.Sum(r => r.Births)}, " +
                       $"early Linked sightings {runs.Sum(r => r.LinkedEncountersEarly)}, recruits {runs.Sum(r => r.Recruits)}");

@@ -1,12 +1,12 @@
 {
   "grid": { "cellsPerPlot": 4, "margin": 4, "cellSize": 2.0 },
   "scheduler": {
-    "graceDays": 6,
+    "graceDays": 8,
     "graceBuildings": 5,
-    "threshold": 100,
-    "minGapDays": 3,
+    "threshold": 130,
+    "minGapDays": 6,
     "travelHours": 24,
-    "escalationPerRaid": 0.15,
+    "escalationPerRaid": 0.1,
     "escalationPerDay": 0.01,
     "firstRaidMaxSize": 3,
     "smallRaidRatio": 1.0
@@ -15,12 +15,12 @@
     "Husk": {
       "name": "Husk horde",
       "enemies": ["husk", "husk_crawler"],
-      "basePerHour": 0.6,
-      "perInputPerHour": 0.25,
+      "basePerHour": 0.2,
+      "perInputPerHour": 0.1,
       "minDay": 1,
       "minSize": 2,
       "maxSize": 14,
-      "sizePerPressure": 2,
+      "sizePerPressure": 1.5,
       "strengthPerUnit": 5,
       "approach": { "North": 1.5, "East": 1, "South": 0.7, "West": 1 },
       "arrivalPhase": { "Dawn": 1, "Day": 0.4, "Dusk": 1.5, "Night": 3 },
@@ -34,8 +34,8 @@
       "name": "Linked probe",
       "enemies": ["linked", "linked_drone"],
       "basePerHour": 0,
-      "perInputPerHour": 0.08,
-      "minDay": 15,
+      "perInputPerHour": 0.05,
+      "minDay": 25,
       "minSize": 2,
       "maxSize": 10,
       "sizePerPressure": 1.5,
@@ -52,13 +52,13 @@
     "Raider": {
       "name": "Raider band",
       "enemies": [],
-      "basePerHour": 0.2,
-      "perInputPerHour": 0.08,
+      "basePerHour": 0.1,
+      "perInputPerHour": 0.03,
       "minDay": 10,
       "minSize": 2,
       "maxSize": 10,
       "sizePerPressure": 1.5,
-      "strengthPerUnit": 7,
+      "strengthPerUnit": 6,
       "approach": { "North": 0.5, "East": 1, "South": 3, "West": 1 },
       "arrivalPhase": { "Dawn": 2, "Day": 1, "Dusk": 1, "Night": 1 },
       "tags": ["raider"],
@@ -93,7 +93,7 @@
     "Dawn": { "attack": {}, "defense": 0.9, "litRecovers": 0.75, "asleepShare": 0.7 },
     "Day": { "attack": {}, "defense": 1, "litRecovers": 0, "asleepShare": 1 },
     "Dusk": { "attack": { "Husk": 1.1 }, "defense": 0.9, "litRecovers": 0.75, "asleepShare": 1 },
-    "Night": { "attack": { "Husk": 1.3, "Raider": 1.1 }, "defense": 0.7, "litRecovers": 0.75, "asleepShare": 0.5 }
+    "Night": { "attack": { "Husk": 1.25, "Raider": 1.1 }, "defense": 0.75, "litRecovers": 0.75, "asleepShare": 0.5 }
   },
   "weather": {
     "dust_storm": { "warning": 0.5, "pressure": { "Raider": 1.2 }, "attack": { "Raider": 1.1 }, "defense": 0.9 },
@@ -115,7 +115,7 @@
   "consequences": {
     "damagePerAttack": 1.5,
     "spoilFrom": 0.4,
-    "injuryChance": 0.8,
+    "injuryChance": 1.0,
     "deathFrom": 0.6,
     "winMood": 8,
     "lossMood": 12,

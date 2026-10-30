@@ -18,7 +18,11 @@ public sealed record PlaythroughSummary(
     double? TownHall2Day, double? FirstStarvingDay, double MinFoodDays, int Expeditions, int ExpeditionsWithDeaths,
     int LinkedEncountersEarly, double? WorkshopDay, double? ArmoryDay, double? LabDay, int CraftedItems, int Recruits,
     double? FirstPerkPointDay, int LevelUps, double SurvivorDays, int PerksLearned, double MeanLevel, int MaxLevel, int UnspentPoints,
-    CyberSummary? Cyber = null);
+    CyberSummary? Cyber = null, RaidSummary? Raids = null);
+
+/// <summary>Raids: how many came and were held, the first one's day and outcome, and what they cost.</summary>
+public sealed record RaidSummary(int Raids, int Repelled, double? FirstDay, bool? FirstHeld, int Dead, int Taken, int Injured,
+    double Stolen, int Wrecked, int Defenses, int Guards, string Kinds);
 
 /// <summary>
 /// Cybernetics: the first day a design of each tier could be queued (requirements met, building there), limbs lost,
@@ -30,10 +34,12 @@ public sealed record CyberSummary(double?[] TierDay, int LimbsLost, int[] Fitted
 /// <summary>Runs <see cref="ColonyBot"/> on a fresh New Game and records a daily timeline.</summary>
 public sealed class Playthrough
 {
-    public Playthrough(GameData data, ScavengeData scavenge, ulong seed, BotOptions? options = null, Remnants.Core.Story.StoryData? story = null)
+    public Playthrough(GameData data, ScavengeData scavenge, ulong seed, BotOptions? options = null, Remnants.Core.Story.StoryData? story = null,
+        Remnants.Core.Raids.RaidData? raids = null)
     {
         Seed = seed;
         Sim = NewGame.Create(data, seed, scavenge);
+        Sim.Raids = raids;
         if (story is not null)
         {
             Sim.Story = story;
@@ -54,7 +60,7 @@ public sealed class Playthrough
     private double? _firstBirth, _firstPregnancy, _houseAffordable, _houseBuilt, _townHall2, _firstStarving, _workshop, _armory, _lab;
     private double _minFoodDays = double.MaxValue;
     private readonly double?[] _tierDay = new double?[5];
-    private int _limbsLost, _surgeries, _complications;
+    private int _limbsLost, _surgeries, _complications, _raidDeaths;
 
     public PlaythroughSummary Run(int days, int actEveryTicks = 4)
     {
@@ -90,7 +96,7 @@ public sealed class Playthrough
             _departures, _births, _firstBirth, _firstPregnancy, _houseAffordable, _houseBuilt, _townHall2, _firstStarving,
             _minFoodDays, Bot.Expeditions.Count, Bot.Expeditions.Count(e => e.Dead > 0), linkedEarly, _workshop, _armory, _lab, _crafted, _recruits,
             _firstPerkPoint, _levelUps, _survivorTicks / tpd, _perks, grown.Count == 0 ? 0 : grown.Average(x => x.Level),
-            grown.Select(x => x.Level).DefaultIfEmpty(1).Max(), grown.Sum(x => x.PerkPoints), Cyber());
+            grown.Select(x => x.Level).DefaultIfEmpty(1).Max(), grown.Sum(x => x.PerkPoints), Cyber(), RaidStats());
     }
 
     /// <summary>Where people are right now: workers per building, patients, away, idle.</summary>
@@ -124,6 +130,7 @@ public sealed class Playthrough
             {
                 case ColonyEventType.Died when e.Message.Contains("starved"): _starvationDeaths++; break;
                 case ColonyEventType.Died when e.Message.Contains(" died in "): _expeditionDeaths++; break;
+                case ColonyEventType.Died when e.Message.Contains("defending") || e.Message.Contains("taken by the Linked"): _raidDeaths++; break;
                 case ColonyEventType.Died: _otherDeaths++; break;
                 case ColonyEventType.Left: _departures++; break;
                 case ColonyEventType.Born: _births++; _firstBirth ??= Day; break;
@@ -170,6 +177,16 @@ public sealed class Playthrough
             if (Cybernetics.Status(Sim, node).State != CyberNodeState.Locked) _tierDay[node.Tier] = Day;
     }
 
+    private RaidSummary? RaidStats()
+    {
+        if (Sim.Raids is null) return null;
+        var r = Bot.Defense.Reports;
+        return new RaidSummary(r.Count, r.Count(x => x.Repelled), Bot.Defense.FirstRaidDay, r.Count == 0 ? null : r[0].Repelled,
+            r.Sum(x => x.Dead.Count), r.Sum(x => x.Taken.Count), r.Sum(x => x.Injured.Count), r.Sum(x => x.Stolen.Values.Sum()),
+            r.Sum(x => x.Damaged.Count(d => d.Destroyed)), Sim.State.Defense.Defenses.Count, Sim.State.Defense.Guards.Count,
+            string.Join("", r.Select(x => x.Kind.ToString()[0])));
+    }
+
     private CyberSummary? Cyber()
     {
         if (Sim.Data.Cybernetics is not { } cyber) return null;
@@ -185,6 +202,8 @@ public sealed class Playthrough
         or ColonyEventType.Left or ColonyEventType.Born or ColonyEventType.Pregnant or ColonyEventType.NewCouple or ColonyEventType.Starving
         or ColonyEventType.ExpeditionLaunched or ColonyEventType.ExpeditionReturned or ColonyEventType.Recruited or ColonyEventType.BecameAdult
         or ColonyEventType.LimbLost or ColonyEventType.ProstheticFitted or ColonyEventType.SurgeryBooked or ColonyEventType.SurgeryDone
+        or ColonyEventType.RaidWarned or ColonyEventType.RaidRepelled or ColonyEventType.RaidBreached or ColonyEventType.BuildingWrecked
+        or ColonyEventType.DefenseSchematicLearned
         or ColonyEventType.SurgeryComplication or ColonyEventType.ProstheticNeedsService or ColonyEventType.BlueprintStudied or ColonyEventType.PerkLearned or ColonyEventType.ZoneRevealed or ColonyEventType.Homeless;
 
     public static string Short(string defId) => defId switch

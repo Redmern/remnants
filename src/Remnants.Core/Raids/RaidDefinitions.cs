@@ -234,7 +234,7 @@ public sealed record ConsequenceRules
     /// <summary>Spoils (stolen or trampled) scale from 0 at p = <see cref="SpoilFrom"/> to the full share at p = 1.</summary>
     public double SpoilFrom { get; init; } = 0.35;
 
-    /// <summary>Injuries: each defender is hurt with chance p · this; severity 0.2..0.2+p·0.6.</summary>
+    /// <summary>Injuries: each defender is hurt with chance p² · this; severity 0.2..0.2+p·0.6.</summary>
     public double InjuryChance { get; init; } = 0.8;
 
     /// <summary>A hurt defender dies with chance (p − this)·2 when p is above it (a lost fight).</summary>

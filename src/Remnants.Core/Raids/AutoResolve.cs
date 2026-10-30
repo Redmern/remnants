@@ -255,7 +255,7 @@ public static class Consequences
                 ColonyDeaths.Remove(state, sim.Data, s, "was taken by the Linked", "Taken by the Linked in a raid");
                 continue;
             }
-            if (rng.NextDouble() >= p * rules.InjuryChance) continue;
+            if (rng.NextDouble() >= p * p * rules.InjuryChance) continue;
             var part = Hurt(s, 0.2 + p * 0.6 * rng.NextDouble(), rng);
             if (p > rules.DeathFrom && rng.NextDouble() < (p - rules.DeathFrom) * 2)
             {
@@ -267,7 +267,7 @@ public static class Consequences
         }
         if (!holds && !raid.ChildrenSheltered)
             foreach (var c in state.Survivors.Where(c => c.IsChild && !c.Away).OrderBy(c => c.Id).ToList())
-                if (rng.NextDouble() < p * raids.Def.Strength.ChildRisk * rules.InjuryChance)
+                if (rng.NextDouble() < p * p * raids.Def.Strength.ChildRisk * rules.InjuryChance)
                     injured.Add(new(c.Name, Hurt(c, 0.2 + p * 0.4 * rng.NextDouble(), rng)));
 
         // Mood, XP.

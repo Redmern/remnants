@@ -53,7 +53,11 @@ public sealed class ColonyBot
     {
         _sim = sim;
         _options = options ?? new BotOptions();
+        Defense = new DefenseBot(sim, this);
     }
+
+    /// <summary>Defenses, guards and raid prep (does nothing without raid data).</summary>
+    public DefenseBot Defense { get; }
 
     public List<ExpeditionOutcome> Expeditions { get; } = [];
 
@@ -69,6 +73,7 @@ public sealed class ColonyBot
     public void Act()
     {
         Story();
+        Defense.Act();
         Build();
         Craft();
         Care();
@@ -275,7 +280,7 @@ public sealed class ColonyBot
     /// </summary>
     private void Staff()
     {
-        var workers = State.Survivors.Where(s => !s.Away && !s.IsInfant && s.PatientAtBuildingId is null).ToList();
+        var workers = State.Survivors.Where(s => !s.Away && !s.IsInfant && s.PatientAtBuildingId is null && !State.Defense.Guards.ContainsKey(s.Id)).ToList();
         var slots = State.Buildings.Where(b => Data.Buildings[b.DefId].Job is not null)
             .ToDictionary(b => b.Id, b => Data.Buildings[b.DefId].Level(b.Level).WorkerSlots);
         var plan = new Dictionary<int, int>(); // survivor -> building
