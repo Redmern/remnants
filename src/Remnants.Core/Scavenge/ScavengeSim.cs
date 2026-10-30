@@ -254,7 +254,7 @@ public sealed class ScavengeSim
         if (unit.Kind == UnitKind.Device) Hacking.UnitKilled(this, unit);
 
         var drops = unit.Kind == UnitKind.Enemy && unit.EnemyDefId is { } enemyId
-            ? Data.Enemies[enemyId].Drops.Where(d => Rng.NextDouble() < d.Chance).Select(d => d.Item).ToList()
+            ? Schematics.SchematicDrops.EnemyDrops(Data, Data.Enemies[enemyId], Rng, State.KnownSchematics)
             : unit.AllItems.Where(id => unit.Kind != UnitKind.Device || Data.Items[id].LootWeight > 0).ToList();
         if (drops.Count == 0) return;
         var cache = State.Caches.Find(c => c.Pos == unit.Pos);

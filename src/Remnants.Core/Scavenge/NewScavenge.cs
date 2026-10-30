@@ -1,5 +1,6 @@
 using Remnants.Core.Items;
 using Remnants.Core.Random;
+using Remnants.Core.Schematics;
 using Remnants.Core.Serialization;
 using Remnants.Core.Survivors;
 
@@ -17,7 +18,8 @@ public sealed record PartySetup(int PlayerId, List<PartyMember> Members, int? Te
 
 /// <summary>How the zone is right now: <see cref="Depletion"/> (0..1) thins out the loot caches of a picked-over zone.</summary>
 /// <summary>How a zone is found: its depletion, and the time of day and weather the run is played in (midday, clear, if null).</summary>
-public sealed record ZoneConditions(double Depletion = 0, ScavengeEnvironment? Environment = null);
+/// <see cref="KnownSchematics"/>: what the colony already knows (picked at half weight, so duplicates do not dominate).
+public sealed record ZoneConditions(double Depletion = 0, ScavengeEnvironment? Environment = null, IReadOnlyCollection<string>? KnownSchematics = null);
 
 /// <summary>
 /// Builds a scavenge instance: generates the zone map from its template and a seed, places every party
@@ -39,6 +41,7 @@ public static class NewScavenge
         {
             ZoneId = zone.Id, Map = generated.Map,
             Environment = env is null ? new ScavengeEnvironment() : ScavengeEnvironment.At(env.Hour, env.Phase, env.Weather),
+            KnownSchematics = new(conditions?.KnownSchematics ?? [], StringComparer.Ordinal),
         };
         var map = state.Map;
         var open = generated.Reachable.Where(p => !map.IsExit(p)).OrderBy(map.Index).ToList();
@@ -125,7 +128,8 @@ public static class NewScavenge
             if (spot is null) break;
             var cache = new LootCache { Id = state.NextCacheId++, Pos = spot.Value };
             var items = rng.NextInclusive(zone.ItemsPerCache[0], zone.ItemsPerCache[1]);
-            for (var k = 0; k < items; k++) cache.Items.Add(PickWeighted(rng, lootTable, it => it.LootWeight).Id);
+            for (var k = 0; k < items; k++)
+                cache.Items.Add(SchematicDrops.Roll(data, zone, DropSite.Cache, rng, state.KnownSchematics) ?? PickWeighted(rng, lootTable, it => it.LootWeight).Id);
             state.Caches.Add(cache);
         }
 

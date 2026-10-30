@@ -39,14 +39,75 @@ namespace Remnants.Core.Serialization;
 /// the scavenge run carries the units' cybernetic hooks (<see cref="ScavengeSave"/> version 7). Older prosthetics are
 /// mapped into the tree by <see cref="MigrateCybernetics"/>: an item outside the tree (none before items existed) becomes the
 /// crude part below quality 1 and the standard cyborg part from there, and pays its tier's replacement humanity.
+/// Version 13 replaces blueprints with schematics (<see cref="ColonyState.Schematics"/>, <see cref="ColonyState.Radio"/>):
+/// see <see cref="MigrateSchematics"/>.
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 12;
+    public const int Version = 13;
     private const int OldestVersion = 1;
 
+    /// <summary>Old blueprint and datashard item ids and the schematics they became (version 13).</summary>
+    public static readonly IReadOnlyList<(string From, string To)> SchematicRenames =
+    [
+        ("bp_riot_armor", "sch_riot_armor"), ("bp_rifle", "sch_rifle"), ("bp_scanner", "sch_scanner"),
+        ("bp_evac_beacon", "sch_evac_beacon"), ("bp_linked_carbine", "sch_linked_carbine"), ("bp_linked_plating", "sch_linked_plating"),
+        ("bp_signal_jammer", "sch_signal_jammer"), ("bp_cybernetics", "sch_cybernetics"), ("bp_cyberdeck", "sch_cyberdeck"),
+        ("bp_scout_drone", "sch_scout_drone"), ("bp_network_grade", "sch_network_grade"),
+        ("ds_network_ghost", "sch_network_ghost"), ("ds_override", "sch_override"), ("ds_drone_payload", "sch_drone_payload"),
+    ];
+
+    /// <summary>
+    /// Before version 13: the studied blueprints become known schematics, and nobody loses anything they could do
+    /// before — the colony is granted every newly gated schematic it was already using: the levels its buildings have
+    /// (and the buildings themselves), the recipes in its queues, Camo Cloak and Grappling Hook with a Tailor / Workshop at
+    /// L2, and the cybernetics tiers and specialisations of every design it knows, owns or has fitted. Plain schematic
+    /// items in the inventory are learned; copies of known ones become Research Data.
+    /// </summary>
+    private static void MigrateSchematics(ColonySim sim, List<string> oldKnown)
+    {
+        var state = sim.State;
+        var catalog = sim.Data.Schematics;
+        state.Schematics.Migrated = true;
+        if (catalog.All.Count == 0) return;
+        void Grant(string? id)
+        {
+            if (id is null || catalog.Find(id) is null || state.Schematics.Known.Contains(id)) return;
+            Remnants.Core.Schematics.Schematics.Grant(sim, id, Remnants.Core.Schematics.SchematicSource.Migration);
+        }
+        foreach (var id in oldKnown) Grant(id);
+        foreach (var b in state.Buildings)
+            for (var level = 1; level <= b.Level; level++) Grant(catalog.GateOfBuildingLevel(b.DefId, level));
+        foreach (var order in state.Buildings.SelectMany(b => b.Queue)) Grant(catalog.GateOfRecipe(order.RecipeId));
+        if (state.Buildings.Any(b => b.DefId == "tailor" && b.Level >= 2)) Grant(catalog.GateOfRecipe("camo_cloak"));
+        if (state.Buildings.Any(b => b.DefId == "workshop" && b.Level >= 2)) Grant(catalog.GateOfRecipe("grappling_hook"));
+        if (sim.Data.Cybernetics is { } cyber)
+        {
+            string Base(string id) => sim.Scavenge?.Items.GetValueOrDefault(id)?.DefinedId ?? id;
+            var designs = state.KnownCybernetics
+                .Concat(state.Inventory.Counts.Keys.Select(Base))
+                .Concat(state.Survivors.SelectMany(s => s.Body.Parts.Values).Select(p => p.ProstheticItemId).OfType<string>().Select(Base))
+                .Select(cyber.Node).OfType<CyberNodeDef>().Distinct();
+            foreach (var node in designs)
+            {
+                Grant(Cybernetics.TierGate(sim, node));
+                Grant(Cybernetics.SpecGate(sim, node));
+            }
+        }
+        foreach (var (id, count) in state.Inventory.Counts.ToList())
+        {
+            if (catalog.Find(id) is not { } def) continue;
+            for (var i = 0; i < count; i++)
+                if (state.Schematics.Known.Contains(id) || !def.Encrypted)
+                {
+                    state.Inventory.TryTake(id);
+                    Remnants.Core.Schematics.Schematics.Receive(sim, id, Remnants.Core.Schematics.SchematicSource.Migration);
+                }
+        }
+    }
+
     /// <summary>What a pre-version-4 generic "blueprint" item becomes.</summary>
-    public const string LegacyBlueprintItem = "bp_scanner";
+    public const string LegacyBlueprintItem = "bp_scanner";  // renamed again to sch_scanner in version 13
 
     private sealed record Envelope(int Version, ColonyState Colony);
 
@@ -61,6 +122,13 @@ public static class SaveGame
         var node = JsonNode.Parse(json, documentOptions: new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true })
             ?? throw new JsonException("Save file is empty.");
         if (node["version"]?.GetValue<int>() is < 4 and >= OldestVersion && node["colony"] is JsonObject old) MigrateCrafting(old);
+        var oldKnown = new List<string>();
+        if (node["version"]?.GetValue<int>() is < 13 and >= OldestVersion && node["colony"] is JsonObject pre13)
+        {
+            foreach (var (from, to) in SchematicRenames) RenameItem(pre13, from, to);
+            oldKnown = pre13["knownBlueprints"]?.AsArray().Select(v => v!.GetValue<string>()).ToList() ?? [];
+            pre13.Remove("knownBlueprints");
+        }
         var envelope = node.Deserialize<Envelope>(Json.Options)
             ?? throw new JsonException("Save file is empty.");
         if (envelope.Version < OldestVersion || envelope.Version > Version)
@@ -74,7 +142,9 @@ public static class SaveGame
         if (envelope.Version < 12) MigrateCybernetics(data, scavenge, colony);
         Validate(data, colony);
         if (scavenge is not null) Validate(scavenge, colony);
-        return new ColonySim(data, colony, scavenge);
+        var sim = new ColonySim(data, colony, scavenge);
+        if (envelope.Version < 13) MigrateSchematics(sim, oldKnown);
+        return sim;
     }
 
     /// <summary>
@@ -245,7 +315,6 @@ public static class SaveGame
         foreach (var id in colony.Inventory.Counts.Keys) RequireItem(id);
         foreach (var zoneId in colony.Zones.Keys)
             if (!data.Zones.ContainsKey(zoneId)) throw new JsonException($"Save references unknown zone '{zoneId}'.");
-        foreach (var id in colony.KnownBlueprints) RequireItem(id);
         foreach (var f in colony.DroneFlights)
         {
             RequireItem(f.ItemId);

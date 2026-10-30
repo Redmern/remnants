@@ -19,7 +19,7 @@ public enum UnlockKind
     /// <summary>A perk (the old datashards, "techniques"): it can be learned.</summary>
     Perk,
 
-    /// <summary>A prosthetic tier or specialisation of the prosthetics tree (not built yet: always <c>planned</c>).</summary>
+    /// <summary>A cybernetics tier (<c>tier:N</c>) or specialisation (<c>spec:ID</c>) of data/cybernetics.json.</summary>
     Prosthetic,
 
     /// <summary>A vehicle chassis, engine or upgrade (not built yet: always <c>planned</c>).</summary>
@@ -319,7 +319,7 @@ public sealed class SchematicCatalog
                     throw new GameDataException($"{where}: a level is given for (and only for) buildingLevel unlocks.");
                 if (u.Kind == UnlockKind.BuildingLevel && u.Level < 2)
                     throw new GameDataException($"{where}: buildingLevel unlocks start at level 2 (level 1 is the building unlock).");
-                if (u.Kind is UnlockKind.Prosthetic or UnlockKind.Vehicle && !s.Planned)
+                if (u.Kind is UnlockKind.Vehicle && !s.Planned)
                     throw new GameDataException($"{where}: {u.Kind} content is not in the game yet, so the schematic must be planned.");
             }
             if (s.Has(SchematicSource.Research) && At(Rules.Research.Cost, s.Tier) <= 0)
@@ -334,6 +334,10 @@ public sealed class SchematicCatalog
         if (All.Count > 0 && Trader(null) is null) throw new GameDataException($"Schematics rules.radio: unknown default trader '{r.Radio.DefaultTrader}'.");
         if (Trader(null) is { StoryOnly: true }) throw new GameDataException("Schematics rules.radio: the default trader cannot be story-only.");
     }
+
+    private static bool ProstheticKnown(GameData data, string id) => data.Cybernetics is { } cyber && (
+        id.StartsWith("tier:") && int.TryParse(id[5..], out var tier) && cyber.Def.Tiers.Any(t => t.Tier == tier)
+        || id.StartsWith("spec:") && cyber.Specs.ContainsKey(id[5..]));
 
     /// <summary>Checks the unlocks against the colony data (buildings, levels, recipes, perks, resources).</summary>
     internal void ValidateAgainst(GameData data)
@@ -355,6 +359,8 @@ public sealed class SchematicCatalog
                         throw new GameDataException($"{where}: unknown recipe '{u.Id}'.");
                     case UnlockKind.Perk when !data.Perks.ContainsKey(u.Id):
                         throw new GameDataException($"{where}: unknown perk '{u.Id}'.");
+                    case UnlockKind.Prosthetic when !ProstheticKnown(data, u.Id):
+                        throw new GameDataException($"{where}: '{u.Id}' is not a cybernetics tier:N or spec:ID (or cybernetics.json is not loaded).");
                 }
             }
         foreach (var id in new[] { Rules.Decrypt.Building, Rules.Research.Building, Rules.Radio.Building })

@@ -1,6 +1,7 @@
 using Remnants.Core.Colony;
 using Remnants.Core.Items;
 using Remnants.Core.Random;
+using Remnants.Core.Schematics;
 using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Scavenge;
@@ -445,9 +446,12 @@ public static class Hacking
                 var items = new List<string>();
                 var loot = def.Loot.Where(l => data.Items[l.Id].Tier <= zone.LootTier).OrderBy(l => l.Id, StringComparer.Ordinal).ToList();
                 var n = rng.NextInclusive(def.LootCount[0], def.LootCount[1]);
+                var site = kind == DeviceKind.Terminal ? DropSite.Terminal : DropSite.Locker;
                 for (var i = 0; i < n; i++)
                 {
-                    if (def.ZoneLoot && lootTable.Count > 0 && (loot.Count == 0 || rng.NextDouble() < 0.5))
+                    if (kind is DeviceKind.Terminal or DeviceKind.Locker && SchematicDrops.Roll(data, zone, site, rng, state.KnownSchematics) is { } schematic)
+                        items.Add(schematic);
+                    else if (def.ZoneLoot && lootTable.Count > 0 && (loot.Count == 0 || rng.NextDouble() < 0.5))
                         items.Add(NewScavenge.PickWeighted(rng, lootTable, it => it.LootWeight).Id);
                     else if (loot.Count > 0)
                         items.Add(NewScavenge.PickWeighted(rng, loot, l => l.Weight).Id);

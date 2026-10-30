@@ -233,7 +233,7 @@ public sealed class ColonySim
             throw new InvalidOperationException("The party is not in the zone (still on the road, or heading home).");
         if (expedition.Scavenge is { } running) return new ScavengeSim(data, running);
         var sim = NewScavenge.Create(data, expedition.ZoneId, expedition.Seed, [ExpeditionParty()],
-            new ZoneConditions(expedition.Depletion, MissionEnvironment(expedition.ArrivalTick)));
+            new ZoneConditions(expedition.Depletion, MissionEnvironment(expedition.ArrivalTick), State.Schematics.Known));
         expedition.Scavenge = sim.State;
         return sim;
     }
@@ -359,8 +359,6 @@ public sealed class ColonySim
             foreach (var node in cyber.Nodes.Values)
             {
                 if (!scavenge.Items.ContainsKey(node.Id)) throw new GameDataException($"Cybernetics node '{node.Id}': no item of that id.");
-                if (node.Blueprint is { } bp && scavenge.Items.GetValueOrDefault(bp)?.Kind != ItemKind.Blueprint)
-                    throw new GameDataException($"Cybernetics node '{node.Id}': '{bp}' is not a blueprint item.");
             }
     }
 }

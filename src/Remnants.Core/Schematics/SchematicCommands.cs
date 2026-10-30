@@ -182,7 +182,7 @@ public static class Research
     {
         var state = sim.State;
         if (state.FindSurvivor(c.ResearcherId) is not { } s) return Fail(CommandError.UnknownSurvivor, $"No survivor {c.ResearcherId}.");
-        if (!s.IsAdult) return Fail(CommandError.TooYoung, $"{s.Name} is too young to research.");
+        if (s.IsChild || s.IsInfant) return Fail(CommandError.TooYoung, $"{s.Name} is too young to research.");
         if (s.Away) return Fail(CommandError.SurvivorAway, $"{s.Name} is away.");
         if (s.PatientAtBuildingId is not null) return Fail(CommandError.IsPatient, $"{s.Name} is a patient.");
         if (StudySystem.ClassOf(state, s.Id) is not null) return Fail(CommandError.InClass, $"{s.Name} is in class.");
