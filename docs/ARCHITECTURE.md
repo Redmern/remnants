@@ -265,11 +265,11 @@ models still load and fall back to tweens.
 - **Commands only.** The UI changes the sim only via `ColonySim.Execute(IColonyCommand)`
   (`AssignJob`, `Unassign`, `Construct`, `Upgrade`, `LaunchExpedition`, `ApplyExtractionResult`, `AdmitPatient`,
   `Discharge`, `FitProsthetic`, `SetRecipe`, `QueueRecipe`, `CancelOrder`, `StudyBlueprint`, `Matchmake`, `ChoosePerk`,
-  `StartStudy`, `CancelStudy`, `SetNightShift`, `InstallFloodlight`). Core validates and returns a `CommandResult`
+  `StartStudy`, `CancelStudy`, `SetNightShift`, `InstallFloodlight`, and the defense commands in "Raids and defenses"). Core validates and returns a `CommandResult`
   with a `CommandError` code. This is also the future client→server intent format.
 - **Tick order:** production (+training) → crafting → study → medical → food → day/night (sleep, night work, evenings) →
   relationships (mood, affinity, couples) →
-  family (births, conception) → housing → growth (aging, growing up).
+  family (births, conception) → housing → growth (aging, growing up) → world map → raids (upkeep, guards, repairs, scheduler).
 - **Scavenge commands** (`Move`, `Attack`, `UseItem` (on a unit, or a tile with `At`), `PickUp`, `Recruit`, `SetStance`
   (Overwatch / Brace), `Lookout`, `EndTurn`, `Extract`; co-op: `ProposeAlliance`, `RespondAlliance`, `BreakAlliance`,
   `PingTile`, `GiveItem`, `Carry`, `PutDown`; tech: `Hack`, `DeployDrone`, `FlyDrone`, `RecallDrone`, `MarkTarget`,
@@ -706,6 +706,10 @@ All numbers live in `data/perks.json` (`skills`, `xp`, `study`, `disciplines`, `
   | `armor_bonus` | flat damage reduction added | Bulwark (armored legs set) |
   | `thermal_radius` | hostiles within it are seen through walls and stealth | Thermal / Network-grade Eye |
   | `night_detection_bonus` | detection at night (for the day-night cycle; unread yet) | Thermal / Network-grade Eye |
+  | `trap_cost_reduction` | colony: share off traps' build and re-arm cost while home (best counts, ≤ 0.5) | Engineer |
+  | `repair_speed_bonus` | colony: repairs this much faster while home (best counts) | Engineer |
+  | `post_defense_bonus` | colony raids: a guard on duty at a post fights this much better | Sentry |
+  | `sentry_lead_hours` | colony raids: hours of warning added while on guard duty | Sentry |
 
   Fitted cybernetics give hooks too (see "Cybernetics"); they reach the field as `Unit.CyberHooks`.
 
@@ -866,6 +870,62 @@ The spec is STORY.md. The data format, field by field, is docs/story/FORMAT.md. 
   `DialogueTests` (choices, effects, conditions, conditional lines, placeholders, Sandbox), `ObjectiveTests` (each kind
   passes and fails; triggers once; prompts block and branch; patrols; wipe; determinism).
 
+## Raids and defenses
+
+Core is `src/Remnants.Core/Raids/`, data `data/raids.json` and `data/schematics.defense.json`; balance in BALANCE.md "Raids".
+`ColonySim.Raids` (`RaidData`, settable like `Story`) is optional: without it nothing below happens (tests of other rules keep
+their RNG draws), so the game, the playtest bot and raid tests set it after `NewGame`/`SaveGame.Load`. State is
+`ColonyState.Defense` (`DefenseState`). `RaidSystem.Run` is the last step of `ColonySim.Tick` (after `WorldMap`).
+
+- **Grid** (`DefenseGrid`): the plot grid at `grid.cellsPerPlot` (4) cells per plot inside a `grid.margin` (4) of cells; a
+  cell is one 2 m scavenge tile, so the grid maps 1:1 onto a tactical map (stage 2 builds a `HandmadeMapDef` from it: built
+  plots → their buildings' blocks as cover with HP, defenses where they stand, guards at their posts). Cell (0, 0) is the
+  north-west corner; South (+y, +Z in the town) is the road and the main gate. `SideOf`, `DistanceToEdge`, `Coverage` and
+  `Covers` (range, turret arcs around the facing) serve the rules and the overlays.
+- **Defenses** (`DefenseDef`, kinds Wall / Gate / Barricade / Post / Tower / Light / Turret / Alarm / Trap): cost, upkeep (paid
+  at midnight; unpaid ones stand idle that day), HP, soak (walls), flat defense, warning hours, guard slots and post bonus,
+  range/arc, lights, wakes (alarm), trap damage vs tags, re-armable with a re-arm cost or used up, lure, `upgradesTo` (wood →
+  scrap → concrete walls; tower levels 1–3), `poweredBonus`. Commands (`IRaidCommand`, handled by `DefenseHandlers`):
+  `PlaceDefense`, `RemoveDefense` (half back, scaled by HP), `RotateDefense`, `UpgradeDefense` (the cost difference),
+  `RearmTrap`, `AssignGuard`, `SetNightWatch`, `QueueRepair` / `CancelRepair`, and the prep commands below. UI queries:
+  `DefenseHandlers.CanPlace` (the ghost's ok / reason), `Cost` (Engineer discount), `UpgradeCost`, `FreeGuardSlots`, `CanRecall`.
+- **Schematics** (`DefenseSchematics`, the adapter): every defense is unlocked by an entry of `schematics.defense.json` in the
+  shape of story-schematics' catalogue (unlock kind `Defense`). Defaults: Wooden Wall, Gate, Spike Strip, Alarm Bell, Lookout
+  Tower; the rest drop from beaten raids (`sources` `Kill`) and later loot / trade / research. Until story-schematics merges
+  the colony's known ones live in `DefenseState.KnownSchematics`; `Has` / `Grant` match `Schematics.Has` / `Grant`.
+- **Guards** (`Guards`): a guard has no building job and stands at a post on the day shift, or the night watch (the hours
+  outside `dayNight.workHours`). `Schedule.OnShift` asks `Guards.OnShift`, so the night watch is night work to the day/night
+  rules (sleep debt, mood); off duty in `guard.daySleepHours` they sleep it off. On duty they train like workers at the
+  `guard` job (Firearms; Perception, Endurance; Melee on the side) with work XP. `AssignJob` ends guard duty.
+- **Threats** (`ThreatModel`): pressure per hour per kind = `(basePerHour + perInputPerHour · input) · weather`; Husks hear
+  noise (survivors, night shifts, Floodlights at night, returns, noisy items such as vehicles, minus lures), the Linked follow
+  Network presence (known Linked zones' threat, growing with the days), raiders smell wealth. `RaidSystem` draws a raid when a
+  kind reaches `scheduler.threshold` — after the grace (days and buildings), never within `minGapDays` of the last — with a
+  size from pressure and escalation (raids survived, days), an approach side and an arrival phase by weight (Husks favour
+  night). It sets out `travelHours` ahead.
+- **Warning** (`RaidWarning`): lead hours = base + the best tower + other watching defenses (bell, tripwires) + watching
+  buildings (`warning.buildingHoursPerLevel`: Watchtower, Radio Mast once that data lands) + guards on duty (+ Sentry) + a drone
+  patrol (a scout drone and a pilot at home), × weather, capped. The raid is seen once its arrival is within the lead; the size
+  estimate's error shrinks with the lead. Logged as `RaidWarned`.
+- **Prep** (only while a raid is warned): `SetDefenders`, `ShelterChildren`, `CloseGates`, `RecallExpedition` (a party still
+  walking out that can make it home), `ChooseFight` (stage 2: the tactical battle).
+- **Auto-resolve** (`AutoResolve.Assess` → `RaidAssessment`, `Consequences.Apply`): the formula is in the class remarks and
+  BALANCE.md; gear is handed out from the inventory best-first (`AutoResolve.GearModPower` adds weapon-mod power once that
+  lands). Consequences, from the pressure p: traps spring (re-armable ones wait, used-up ones go), walls on the approach take
+  damage first, then (if they got in) the nearest buildings (`DefenseState.BuildingDamage`; a building at 0 HP is **wrecked**:
+  workers leave, `AssignJob` fails with `Wrecked`), spoils (raiders steal the listed resources; Husks trample food through the
+  `CropDamage` adapter, which will call the Pantry once food-cooking lands), injuries (p² per defender) and deaths, the Linked
+  carry people off, mood for everyone, XP for the defenders, loot and a schematic from a beaten raid. `RaidReport` goes to
+  `DefenseState.LastReport` (history kept) and the log (`RaidRepelled` / `RaidBreached`). `RaidSystem.Finish` is shared with
+  stage 2's battle.
+- **Repairs**: `QueueRepair` books a building or defense; materials are paid when the repair starts; it progresses on the day
+  shift at `repair.baseHpPerTick` plus idle adults by Crafting (+ the Engineer's `repair_speed_bonus`).
+- **Adapters for parallel branches** (`Raids/Adapters.cs`): `RaidWeather.Provider` (weather id at a tick; `weather` modifiers),
+  `DefensePower.Provider` (the power grid's `IsPowered`; powered turrets and floodlights get `poweredBonus`, never required),
+  `DefenseSchematics`, `CropDamage`; each is neutral until its branch sets it.
+- **Saves**: colony version 15 (`SaveGame.RaidsVersion`) adds `Defense`; older saves load with none, and the gap since "the
+  last raid" counts from the save's tick. Guards of missing survivors and repairs of missing targets are dropped on load.
+
 ## Data files
 
 - `resources.json` — resource ids and names.
@@ -874,6 +934,9 @@ The spec is STORY.md. The data format, field by field, is docs/story/FORMAT.md. 
   needs light), `minTownHallLevel`, and per-level
   cost / worker slots / output multiplier / beds / patients. Level 1 cost = construction cost.
 - `recipes.json` — what production buildings make (see "Crafting tiers").
+- `raids.json` — the defense grid, raid scheduler, threats (enemies, pressure, size, strength, approach and arrival weights,
+  trap tags, spoils, loot, schematic chance), noise, warning, day-phase and weather modifiers, strength, consequences, guard,
+  repair, and every defense and trap (see "Raids and defenses"). `schematics.defense.json` — the schematics that unlock them.
 - `perks.json` — skills (names, learning attributes), XP sources and level curve, study buildings and rates,
   disciplines and the perk tree (see "Perks and study").
 - `cybernetics.json` — tiers, specialisations, the tree's nodes (one per prosthetic item), paired sets, surgery, humanity,

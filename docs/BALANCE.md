@@ -646,3 +646,76 @@ Watch next pass: T1 at day ~80 feels late for the first amputee (Workshop 2 wait
 bot's order); the runner pair dominates every kit because the bot's answer to danger is running; humanity strain on
 couples is unmeasured in sweeps (no bot augments), so its rates (`partnerStrainPerTick` 0.05, breakup below 40) are a
 first guess.
+
+## Raids
+
+Colony raids and crafted defenses (data/raids.json; design in ARCHITECTURE.md "Raids and defenses"). Raids auto-resolve
+from a strength calculation; the bot (`DefenseBot`) builds defenses, posts guards and preps every warned raid.
+`--no-raids` runs the same bot without raids for comparison.
+
+### Targets
+
+- The first raid comes after the basics are up (day 8+, five buildings) and is survivable with a few traps and a tower:
+  held in every seed.
+- After that, a raid every week or so, growing with the colony's noise, wealth and the raids it has survived.
+- A lost raid hurts (stock, injuries, the odd wrecked building), but rarely kills; a colony that invests holds most.
+- The early economy keeps its shape: Town Hall 2 a few days later at most.
+
+### The numbers
+
+| What | Value | Why |
+|---|---|---|
+| Grace | day 9 and five buildings | basics first; pressure builds meanwhile, so the first raid comes soon after |
+| Threshold / gap | 130 pressure, ≥ 6 days | one raid a week; the others' pressure ×0.25 after any raid |
+| Husk pressure/h | 0.2 + 0.1 · noise | noise ≈ 0.5 per survivor + night shifts + floodlights at night + returns (gunfire) − lures |
+| Raider pressure/h | 0.1 + 0.03 · wealth (stock/50 + items/5), from day 10 | rich colonies draw bands |
+| Linked pressure/h | 0.05 · Network presence (known Linked zones' threat × (1 + day/30)), from day 25 | grows with the Network's reach |
+| Size | min + pressure/100 · sizePerPressure, × (1 + 0.1/raid + 0.01/day past grace); first raid ≤ 3 | escalation |
+| Strength per attacker | Husk 5, raider 6, Linked 9 | ×1.25 Husks, ×1.1 raiders at night |
+| Defender | 8 · (0.5 + 0.5 · combat/50) · health · arms + weapon power · 0.6 + armor · 0.8 | gear from the inventory, best to the best |
+| Night | defenders ×0.75 (a lit approach recovers 75% of the loss); asleep ×0.5 unless an Alarm Bell | towers, bells and lights matter at night |
+| Guard at a post | ×(1.25 + post bonus + Sentry 0.25) | and +2 h warning per guard (max 6) |
+| Walls | soak share = min(0.6, soak / (soak + attack)); an open gate halves it | close the gates in prep |
+| Pressure p | attack / (attack + defense); held when p < 0.5 | spoils from p 0.4, injuries p² · 1.0 per defender, deaths above p 0.6 |
+
+### Results (20 seeds × 60 days, bot)
+
+    median: pop 7, first pregnancy day  34.0, first birth day  38.0, house affordable  51.8, TH2  37.0, armory  55.5, lab     -, min food days 3.8
+    raids: seed  raids held firstDay firstHeld dead taken hurt stolen wrecked defenses guards kinds
+             1      5    3  11.2       yes    0     0    2     10       0        6      0 HHHHR
+             2      5    5  11.3       yes    0     0    2      7       0        6      0 HHHHR
+             3      5    3  11.2       yes    0     0    1      8       0        6      1 HHHRL
+             4      6    5  10.8       yes    0     0    6     20       0        6      1 HHHRHR
+             5      6    5  10.8       yes    0     0    4     45       0        6      0 HHHRHR
+             6      3    1  11.2       yes    0     0    4     26       0        6      0 HHH
+             7      5    1  11.8       yes    2     2    3     14       1        6      0 HHHLL
+             8      6    6  10.8       yes    0     0    7     22       0        6      0 HHHRHR
+             9      5    2  11.8       yes    0     0    4     30       0        6      0 HHHHR
+            10      6    4  11.8       yes    0     0    5     23       0        6      1 HHHRHR
+            11      5    2  11.8       yes    1     0    5     70       1        6      0 HHHRH
+            12      6    6  11.2       yes    0     0    4     13       0        6      1 HHHRHR
+            13      6    3  10.8       yes    0     0    2     35       0        6      0 HHHRHR
+            14      6    6  11.8       yes    0     0    3     13       0        6      0 HHHRHR
+            15      5    3  11.2       yes    0     0    3     15       0        6      0 HHHRH
+            16      4    1  11.3       yes    0     2    2      4       2        6      0 HHLL
+            17      6    5  11.8       yes    0     0    6     22       0        6      0 HHHRHR
+            18      6    5  10.8       yes    0     0    7     35       0        6      0 HHHRHR
+            19      5    1  11.2       yes    2     1    1     16       2        6      0 HHHLL
+            20      6    6  11.8       yes    0     0    7     15       0        6      1 HHHRHR
+    raids: 107 in all, 73 held; first raid day 11.2 (median), first held 20/20; dead 5, taken 5, hurt 78, stolen 443, wrecked 6
+    totals: starvation deaths 0, expedition deaths 16 over 295 expeditions (16 with deaths), departures 19, births 30, early Linked sightings 0, recruits 38
+    
+
+Without raids (same bot): Town Hall 2 at day 31 (median); with raids at day 37. Every first raid was held; 68% of all raids
+were held; 10 survivors were lost to raids over 1,200 colony-days (5 killed, 5 taken by the Linked late on). Most of the
+economic cost is labour: a guard is a worker lost, so the bot posts guards only from 7 adults (posting one from 3 adults
+pushed Town Hall 2 to day 44, injuries mattered far less). Husks are most of the raids (night, from the north); raiders
+come up the road once the stock grows.
+
+### Watch next pass
+
+- Guards are strong but expensive for a small colony; a part-time watch (a rota) may be the better early choice.
+- The bot spends only on essentials before Town Hall 2; walls and turrets come late. Players who wall in early will find
+  raids easy — that is intended, but check the wall soak cap if raids feel toothless.
+- Raider bands have no field units yet (`enemies` is empty until story-campaign's Tally lands); stage 2's tactical battle
+  needs them.
