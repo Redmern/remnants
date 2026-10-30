@@ -105,7 +105,8 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   - `PortraitStudio` — survivor portraits rendered at runtime from the 3D models (prosthetics, and for field units
     their gear) in a private `SubViewport`, one per frame, cached by look; lives on the tree root.
   - `GameSettings` — `user://settings.cfg`: UI scale (root `ContentScaleFactor` = auto by window height × the
-    setting), window mode/size, vsync, master/music/sfx bus volumes (buses made at boot), camera pan/zoom speed.
+    setting), window mode/size, vsync, master/music/sfx/ambience bus volumes (buses made at boot), mute when unfocused,
+    visual sound cues, camera pan/zoom speed.
     `Hotkeys` installs the InputMap actions (Esc menu, Space pause, 1/2/3 speed, B build, E expedition, I items,
     L log, Tab next survivor, Q/R colony camera rotation; Space/Enter end turn in scavenge). `GameSettings.Boot` runs
     once from whichever scene starts first and also attaches `DebugCapture`.
@@ -185,6 +186,30 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   `MultiplayerSession` (the party from the colony's waiting expedition or a debug party, the connection, the in-process
   host, auto-reconnect, applying the result to the colony), `NetPump` (posts network callbacks onto the main thread).
   See `MULTIPLAYER.md`.
+
+- `scripts/Audio/` — presentation only, no rules. `AudioManager` is the one autoload (`project.godot`): it makes the
+  buses (`AudioBuses`: Master with compressor + limiter → Music, SFX (→ UI, World), Ambience; Music and Ambience duck
+  under stings), reads `assets/generated/audio/manifest.json` (`AudioManifest`: id, category, file, variants, loop
+  points, default volume, tags, bpm, stems; synced from remnants-assets `export/audio/`) and the event map
+  `game/audio/sound_events.json` (`SoundEventMap`: dotted event names → sound ids, falling back by dropping the last
+  part; per-id tuning — bus, volume, pitch/volume jitter, cooldown, voice limit, 3D attenuation, duck; music states;
+  ambience; zone → tags → loops; weather loops). `Fire(event, pos?)`, `Play(id)`, `PlayAt(id, pos)` play pooled
+  voices with a random variant; an id the manifest lacks stays silent and is logged once (`PlaceholderSounds`
+  synthesises a few UI blips and two stings until the files land). Retuning is a data edit.
+  - `MusicDirector` — states menu, colony_day/night/tension, world_map, scavenge_explore/combat, after_action,
+    coop_lobby; crossfades on the next bar (bpm from the manifest), never restarts a state's track, stems by
+    `Intensity`, `linked_layer` on top, one-shot stings (`music.extraction_sting`).
+  - Scene hooks, one node each: `ColonyAudio` (colony events at their buildings, day/night bed — the one day/night
+    decision is `ColonyAudio.IsNight` —, campfire, work loops at staffed buildings, listener height follows zoom,
+    music state), `ScavengeAudio` (each replayed event via `ScavengeScreen`'s replay step, so sound lands with the
+    animation: attacks by action, moves/deaths/hits by who, barks, overwatch shots, contacts, hacked devices by
+    kind, drone hum; zone ambience; combat/explore music and the Linked layer), `UiAudio` (buttons, overlays, side
+    panels and toasts hooked as nodes enter the tree; menu and lobby music), `SoundCues` (accessibility: chips at the
+    screen edge toward off-screen ambush/contact/alarm sounds), `WeatherAudio` (`Set(kind, intensity)`,
+    `Lightning(distance)`, `Gust()`; nothing drives it yet).
+  - `--audio-trace` logs every fired event and its sound; `--audio-selftest` (run by `run-tests.sh --godot`) checks
+    every Core event type is mapped and replays a scripted colony, an autopiloted scavenge run and the hack/drone
+    events, failing when key events pick the wrong id; `--weather=KIND[:INTENSITY]` sets the weather bed.
 
 ## Rules of the road
 
