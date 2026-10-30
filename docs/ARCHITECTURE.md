@@ -271,13 +271,63 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   natural rate and does not worsen.
 - Outside the Med Bay wounds below `naturalHealMaxSeverity` heal slowly; wounds at or above `worsenThreshold` worsen:
   a limb reaching severity 1 is lost, head/torso wounds drain health (death goes to the memorial).
-- `FitProsthetic(survivor, part, item)` needs a missing limb, a prosthetic item of that region (`items[].prosthetic`:
-  region, quality, `minMedBayLevel`) in the inventory and a Med Bay of that level. The part's efficiency becomes the
-  item's quality — above 1 for cybernetics — which feeds job output (body-region weights), scavenge movement range
-  (leg efficiency, plus `scavenge.json` body rules such as two good prosthetic legs → +1 range) and attacks (arms).
-- Sources: recipes (Workshop: Herbal Remedy → Medicine, Peg Leg, Hook Arm, Med-kit at L2; Electronics Lab: Servo Arm,
-  Cybernetic Leg/Arm from a blueprint), loot (`med_supplies`, Servo Arm, Cybernetic Leg/Arm) and the starting inventory
-  (`rules.newGame.items`).
+- `FitProsthetic(survivor, part, item)` straps a crude or mechanical part (tier below `surgery.fromTier`) onto a missing
+  limb: a prosthetic item of that region (`items[].prosthetic`: region, quality, `minMedBayLevel`) in the inventory and a
+  Med Bay of that level. Powered parts and up go on by surgery (`ScheduleSurgery`, see "Cybernetics"). The part's
+  efficiency becomes the item's quality × its upkeep — above 1 for cybernetics — which feeds job output (body-region
+  weights), scavenge movement range (leg efficiency, plus `scavenge.json` body rules such as two good prosthetic legs →
+  +1 range), attacks (arms) and, for an eye implant, sight and aim (the head region is head × eyes).
+- Sources: recipes (Workshop: Herbal Remedy → Medicine, Peg Leg, Hook Arm, Mechanical parts and Servos at L2, Med-kit at
+  L2; Electronics Lab: the powered, cyborg and Network-grade designs), loot (`med_supplies`, Servo Arm, Cybernetic
+  Leg/Arm, components) and the starting inventory (`rules.newGame.items`).
+
+### Cybernetics
+
+The prosthetics crafting tree; the full design with every number is in **CYBERNETICS.md**. Data: `cybernetics.json`
+(tiers, specialisations, nodes, paired sets, surgery / humanity / upkeep / interference rules), loaded into both
+`GameData.Cybernetics` and `ScavengeData.Cybernetics` (`CyberneticsData`: lookups, `TierOf`, `ActiveSets`, validation).
+Each node is a prosthetic item of the same id (validated both ways) made by the recipe that outputs it.
+
+- **Body**: `BodyPart.Eyes` (head region; `RegionEfficiency(Head)` = head × eyes; never hit or lost, only replaced
+  electively). `BodyPartState` adds `HumanityCost`, `Elective`, `Upkeep` (multiplies the quality), `ServiceTicks`, and
+  `Interfered` (scavenge only: locked this round, efficiency 0). `Body.Humanity` = 100 − Σ costs. `Body.Parts` fills in
+  missing parts on load, so older bodies gain healthy eyes.
+- **Tree** (`Cybernetics.Status(sim, node)` → Locked / Available / Known with the missing lines, recipe, owned and fitted
+  counts): a way in (one requirement known — `ColonyState.KnownCybernetics`, filled from crafted, owned, fitted and booked
+  parts each tick; tier 0 always — or the node's blueprint studied), the node's perk on someone at home, and the recipe's
+  building level. `Cybernetics.CraftGate` makes `QueueRecipe` / `SetRecipe` answer `RecipeLocked` until then.
+- **Surgery** (`ScheduleSurgery`, `CancelSurgery`; `ColonyState.Surgeries`): the patient holds a bed; each Med Bay works
+  its first booking with `Cybernetics.EffortPerTick` and medicine; `Blocked` says why not (no medic, no Cyber-Surgeon for
+  T3+); `SuccessChance` is the roll; a failure still fits the part and leaves a torso infection. `Cybernetics.Fit` puts a
+  part on (humanity cost, elective flag, knowledge) and returns the one it replaced. Errors `NeedsSurgery`,
+  `ElectiveNotAllowed` (healthy part without confirmation, below T3, or a child), `PartInjured`, `AlreadyBooked`,
+  `UnknownSurgery`, `NoCybernetics`.
+- **Each tick** (`CyberneticsSystem`, after relationships): knowledge, surgery, upkeep (`serviceCost` from the stockpile
+  every `serviceDays`, else upkeep decays), humanity (mood cap, partner strain and breakup, children's mood cap, log
+  lines). Events `SurgeryBooked`, `SurgeryDone`, `SurgeryComplication`, `SurgeryCancelled`, `ProstheticServiced`,
+  `ProstheticNeedsService`, `Humanity`.
+- **Effects**: node and set effects (`jobOutput`, `craftQuality`, `hooks`) add into `PerkEffects.For(survivor, data)`
+  (so job output, crafting quality and colony hooks see them) while the part works. In the field, `NewScavenge` resolves
+  them into `Unit.CyberHooks` (one source per part or set, with its parts); `Unit.Hook` counts a source only while none
+  of its parts is interfered. Fitted items count like worn gear in `ProfileDeriver` (`ScavengeData.FittedParts`: armor,
+  stealth, sight, detection, initiative, carry; their attacks at that arm's efficiency; their move modes, deduplicated at
+  the cheapest AP), sets add their movement modifier, `armor_bonus` adds armor; `Hacking.Tool` takes a hacking tool
+  built into a working arm (never a spare one in the pack); `Detection.ScanRadius` takes `thermal_radius`.
+- **Interference** (`Interference.RoundStarted`, after `Network.RoundStarted`): Network-grade parts unlock and reroll each
+  round against Linked on the Network in range, a hostile with Override, and any jammer; `LimbLocked` event.
+  `Interference.Chance` serves the UI. The Linked core comes from `enemies[].drops` (chance 1: one per Linked, three per Warden).
+- **UI**: `CyberneticsPanel` (from the Med Bay's "Tree" button and the Workshop / Electronics Lab production panels):
+  Arms / Legs / Eyes tabs, tiers T0–T4 as columns with prerequisite lines, locked / can-be-made / known states, a detail
+  pane (needs with ✓/✗, component chips, effects, humanity, upkeep, fitting, "Queue at …") and a compare card (a
+  survivor's current limb vs. the design, Fit / Book surgery). `MedBayPanel` lists the surgery queue (progress, odds,
+  ETA or what blocks it, cancel) and books fits (`CyberBooking`; a healthy part asks for confirmation with the humanity
+  hit). The survivor Body tab shows the humanity bar and band, the eyes, and each part's tier, specialisation,
+  augmentation, humanity and next service. The scavenge unit card shows tier and effects and "LOCKED" while
+  interfered. `SurvivorDressing` takes the node's model id and tints by tier (`CyberText` holds the shared strings).
+  `--cyber-demo` (with `--cyber-tree` or `--survivor-tab=2`) stages it for screenshots.
+- **Saves**: colony 11 (`SaveGame.MigrateCybernetics`: legacy parts → hook / peg below quality 1, cybernetic arm / leg
+  from it, replacement humanity), scavenge 6 (survivors' cyber hooks resolved on load), protocol 5. Tests:
+  `CyberneticsTests`.
 
 ## Population life
 
@@ -608,6 +658,15 @@ All numbers live in `data/perks.json` (`skills`, `xp`, `study`, `disciplines`, `
   | `field_heal_bonus` | healing items restore this much more (0.25 = +25%) | Field Medic |
   | `revive_hp_bonus` | HP added when reviving a downed ally | Triage |
   | `bleedout_rounds_bonus` | rounds added to a stabilized ally's bleed-out | Triage |
+  | `surgery_success_bonus` | colony: added to the success of a surgery this medic leads | Surgeon I/II, Cyber-Surgeon |
+  | `surgery_speed_bonus` | colony: surgery effort bonus when this medic leads (0.25 = +25%) | Surgeon I/II |
+  | `cyber_surgery` | colony flag: can lead surgery on cyborg-grade (T3+) parts | Cyber-Surgeon |
+  | `cyber_interference_reduction` | share of the Network interference chance removed | Linked Salvage |
+  | `armor_bonus` | flat damage reduction added | Bulwark (armored legs set) |
+  | `thermal_radius` | hostiles within it are seen through walls and stealth | Thermal / Network-grade Eye |
+  | `night_detection_bonus` | detection at night (for the day-night cycle; unread yet) | Thermal / Network-grade Eye |
+
+  Fitted cybernetics give hooks too (see "Cybernetics"); they reach the field as `Unit.CyberHooks`.
 
   `NewScavenge` resolves each survivor's perks into `Unit.Hooks` (`ScavengeData.HooksFor`, from perks.json loaded with the
   scavenge data), so the field needs no colony data and a server resolves them from the joined party. Every hook is
@@ -709,6 +768,8 @@ An hour is a tick (`hour = tick % ticksPerDay`); a new game starts at `newGame.s
 - `recipes.json` — what production buildings make (see "Crafting tiers").
 - `perks.json` — skills (names, learning attributes), XP sources and level curve, study buildings and rates,
   disciplines and the perk tree (see "Perks and study").
+- `cybernetics.json` — tiers, specialisations, the tree's nodes (one per prosthetic item), paired sets, surgery, humanity,
+  upkeep and interference (see "Cybernetics" and CYBERNETICS.md).
 - `rules.json` — tick/time scale, output formula constants, training rates, food, housing grace,
   meals, crafting (queue limits, quality roll), expedition (party size per Town Hall level, rations, recruit ages), medical (heal/worsen rates, medicine use),
   life (growth stages and rates), relationships (affinity), family (conception, pregnancy, baby names), mood,
@@ -716,12 +777,13 @@ An hour is a tick (`hour = tick % ticksPerDay`); a new game starts at `newGame.s
   (phase hours, work and sleep windows, sleep / campfire / supper mood, Night Shift, sleep debt, light, Floodlight cost).
 - `items.json` — weapons (actions, with `noise`, `reveal`, `bane` and `qualityAccuracy`), clothing/armor (with `stealth`), tools (movement modifiers, carry, sight, `detection`),
   flares and motion sensors (`use.lightRadius`/`lightRounds`, `use.sensorRadius`: used on a tile),
-  consumables (med-kit, bandage, evac beacon), materials (with `salvage` into colony resources), prosthetics
-  (region, quality, Med Bay level), devices (scanner, signal jammer), blueprints (study building and level);
+  consumables (med-kit, bandage, evac beacon), materials (with `salvage` into colony resources; cybernetic components),
+  prosthetics (region — `Head` for eye implants — quality, Med Bay level; the field stats, attacks, move modes or hacking
+  tool of a fitted part), devices (scanner, signal jammer), blueprints (study building and level);
   tier + loot weight for caches; `natural` for enemy body parts (never looted or crafted). Every other item has a
   recipe or a loot weight (tested).
 - `enemies.json` — hp, AI kind, attributes, skills, equipment (a Husk's claws are an item too), `tags` (for weapon
-  banes) and `drops` (what a kill leaves behind).
+  banes) and `drops` (what a kill leaves behind; Linked and Wardens always leave Linked cores).
 - `zones.json` — size, threat, loot tier, terrain densities, spawn/exit edges, enemy count + mix,
   caches, NPC count, hackable devices per kind.
 - `scavenge.json` — `environment` (per day phase and per weather: sight per sense kind, stealth bonus and who ignores it,

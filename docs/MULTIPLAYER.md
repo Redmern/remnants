@@ -89,7 +89,9 @@ sent in `Join`; a mismatch is refused. Bump it for any incompatible record chang
 command kinds `proposeAlliance`, `respondAlliance`, `breakAlliance`, `ping` (its tile kind is `mark`, since `kind` is
 the discriminator), `giveItem`, `carry`, `putDown`, and pings, alliance offers and breaks in views. (The co-op brief
 called this "v2"; 2 was already the fog of war, so co-op is 3.) **4: hacking and drones** — the command kinds `hack`,
-`deployDrone`, `flyDrone`, `recallDrone`, `markTarget`, `dropPayload`, and devices and drone marks in views.
+`deployDrone`, `flyDrone`, `recallDrone`, `markTarget`, `dropPayload`, and devices and drone marks in views. **5: cybernetics** — bodies carry the eyes and each
+part's humanity, upkeep and `interfered` flag, units carry `cyberHooks` (stripped from other players' views like perk
+hooks), and the `limbLocked` event.
 
 | Direction | Message | Meaning |
 |-----------|---------|---------|
@@ -275,6 +277,9 @@ map), Accept (Y) / Decline (U) an offer, Offer an alliance (Y) to a rival you se
   players' perks (`Unit.Hooks`), field XP and packed drone battery are stripped from views.
 - **Perks** travel with the party: the survivors in `Join` carry their perk ids, and the server resolves the hooks from its
   own data (perks.json next to the other data files). The usual trust gap applies (a modified client can claim perks).
+- **Cybernetics** travel the same way: the bodies in `Join` name their fitted parts, and the server resolves their hooks
+  and sets from its own cybernetics.json. Network interference is rolled on the server like everything else; a rival
+  sees a locked limb only in the unit's body when it sees the unit.
 - `NetFixture.CheckFog` checks all of it on every message; `HackNetTests` stage the cases.
 
 ## Night over the wire

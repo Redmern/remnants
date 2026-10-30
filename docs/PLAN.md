@@ -42,7 +42,8 @@ a few people into dangerous zones (**Scavenge mode**). Every loss is permanent.
     raises Intellect and Firearms, and so on. Children train faster and grow into what they do.
   - Body: a body-part model (head, torso, arms, legs). Injuries have a severity. A
     permanent loss (for example a leg) leaves a debuff until a **prosthetic** is fitted at the
-    Med Bay. Cybernetics can end up **better** than the original limb.
+    Med Bay. Cybernetics can end up **better** than the original limb: a crafting tree per limb (and the eyes) from crude
+    to Network-grade, with specialisations, surgery, upkeep and a **humanity** cost (see CYBERNETICS.md).
   - Needs: food and housing. Starvation causes damage and then death.
   - **Day and night**: survivors work a day shift and sleep at night (children go to bed earlier); a building can run
     a Night Shift at reduced output and a mood and sleep cost, outdoor sites only when lit (level 2 or a Floodlight).
@@ -129,6 +130,7 @@ palette (rust, concrete, moss) with cold cyan accents for anything Network-conne
 | M9 | Multiplayer scavenge | headless server, shared instances, PvP (done for localhost/LAN: authoritative server, per-side fog, interleaved turns with AFK timer, disconnect/reconnect, per-player results; see MULTIPLAYER.md) |
 | — | Co-op | teams of players as one side (shared sight, no friendly fire), co-op lobby and alliances in the field with a warning round to break, give / carry / heal / ping between allies, per-player results, enemies scale with players, real colony parties online (done; see MULTIPLAYER.md "Co-op and alliances") |
 | — | Hacking + drones | hackable terminals, cameras, turrets, blast doors, lockers and relay nodes; Override on the Linked; scout drones in the field and over the world map; every perk hook applied in the field; no-leak multiplayer (done; see ARCHITECTURE.md "Hacking and scout drones") |
+| — | Cybernetics | prosthetics tree T0 Crude → T4 Network-grade per arm, leg and the eyes; specialisations and paired sets; components incl. Linked cores; surgery at the Med Bay; upkeep; humanity (mood, couples, children); Network interference in the field; new Medic/Tech perks (done; see CYBERNETICS.md) |
 | — | Fog of war | stealth vs detection, contacts, ambushes from the fog, Overwatch / Brace / Lookout, flares, motion sensors, scanner, camo cloak, Linked lurking and drone spotting, no-leak multiplayer (done; see ARCHITECTURE.md "Fog of war") |
 | — | Linked carbine | the turning point against the Linked: anti-Network bane (hit, damage, armor pierce, relay knock-off), quality that matters, drops from Linked and Wardens, Armory recipe behind a blueprint (done; see BALANCE.md "Linked carbine pass") |
 
