@@ -234,7 +234,7 @@ public static class Consequences
                     CropDamage.Food => CropDamage.Steal(sim, spoil),
                     _ => Math.Round(state.Stockpile.Get(r) * spoil, 1),
                 };
-                if (take <= 0) continue;
+                if (take < 0.5) continue;
                 if (r is not (CropDamage.Crops or CropDamage.Food)) state.Stockpile.Spend(new Dictionary<string, double> { [r] = take });
                 stolen[r] = take;
             }

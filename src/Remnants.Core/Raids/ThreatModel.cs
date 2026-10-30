@@ -10,7 +10,7 @@ namespace Remnants.Core.Raids;
 /// pressure/hour = (basePerHour + perInputPerHour · input) · weather.pressure[kind]
 /// Husk input    = noise: survivors · perSurvivor + night shifts + lit floodlights at night + recent returns + noisy items − lures
 /// Linked input  = Network presence: Σ threat of known zones with Linked, · (1 + day / 30)
-/// Raider input  = wealth: stockpile / 50 + items / 5
+/// Raider input  = wealth: (stockpile + pantry food value) / 50 + non-food items / 5
 /// </code>
 /// </summary>
 public static class ThreatModel
@@ -57,9 +57,13 @@ public static class ThreatModel
         return presence * (1 + DayNight.Day(sim.State.Tick, sim.Data.Rules) / 30.0);
     }
 
-    /// <summary>What raiders smell: the stockpile and the item store.</summary>
-    public static double Wealth(ColonySim sim) =>
-        sim.State.Stockpile.Amounts.Values.Sum() / 50 + sim.State.Inventory.Counts.Values.Sum() / 5.0;
+    /// <summary>What raiders smell: the stockpile, the pantry's food value (as the stock it replaced) and the other items.</summary>
+    public static double Wealth(ColonySim sim)
+    {
+        var food = sim.Data.Food;
+        var items = sim.State.Inventory.Counts.Where(kv => food is null || !food.Items.ContainsKey(kv.Key)).Sum(kv => kv.Value);
+        return (sim.State.Stockpile.Amounts.Values.Sum() + Pantry.FoodValue(sim)) / 50 + items / 5.0;
+    }
 
     /// <summary>A placed defense does its job: standing, upkeep paid, and (traps) armed.</summary>
     public static bool Working(ColonySim sim, PlacedDefense d) => d.Hp > 0 && !d.Sprung && !sim.State.Defense.Unpaid.Contains(d.Id);
