@@ -16,7 +16,7 @@ namespace Remnants.Core.Scavenge;
 public static class Devices
 {
     public static bool IsJammed(ScavengeSim sim, Unit unit) =>
-        Network.IsLinked(sim.Data, unit) && JamsTile(sim, unit.Pos, unit.Side);
+        Network.IsLinked(sim.Data, unit) && (unit.OffRelayUntilRound >= sim.State.Round || JamsTile(sim, unit.Pos, unit.Side));
 
     /// <summary>Whether a jammer carried by someone hostile to <paramref name="side"/>, or a relay node such a side hacked, covers the tile.</summary>
     public static bool JamsTile(ScavengeSim sim, Pos tile, string side) =>

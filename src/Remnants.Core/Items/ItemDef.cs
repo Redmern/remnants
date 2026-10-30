@@ -115,7 +115,8 @@ public sealed record ActionDef
 /// <summary>
 /// An attack's edge against enemies carrying <see cref="Tag"/> (<see cref="Remnants.Core.Scavenge.EnemyDef.Tags"/>):
 /// <see cref="HitBonus"/> is added to the hit chance, the damage roll is multiplied, then the target's armor counts for
-/// <see cref="ArmorPierce"/> less (not below 0).
+/// <see cref="ArmorPierce"/> less (not below 0). A Linked hit is knocked off the relay for <see cref="DisruptRounds"/>
+/// rounds (this one and the next N − 1): it fights alone, as if jammed.
 /// </summary>
 public sealed record BaneDef
 {
@@ -123,6 +124,7 @@ public sealed record BaneDef
     public double HitBonus { get; init; }
     public double DamageMultiplier { get; init; } = 1;
     public double ArmorPierce { get; init; }
+    public int DisruptRounds { get; init; }
 }
 
 /// <summary>What using a consumable does.</summary>

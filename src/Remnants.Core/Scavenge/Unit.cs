@@ -83,6 +83,9 @@ public sealed class Unit
     public int BleedOut { get; set; }
     public bool Stabilized { get; set; }
 
+    /// <summary>Linked: knocked off the relay (as if jammed) through this round (see <see cref="Items.BaneDef.DisruptRounds"/>).</summary>
+    public int OffRelayUntilRound { get; set; }
+
     /// <summary>Pinned by suppressing fire: loses AP at the start of its next turn.</summary>
     public bool Suppressed { get; set; }
 

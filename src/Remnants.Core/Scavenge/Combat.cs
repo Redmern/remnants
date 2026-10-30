@@ -172,6 +172,12 @@ public static class Combat
             $"{attacker.Name} hit {target.Name}'s {part} for {damage:0} ({action.Name}).", attacker.Id, target.Id, target.Pos,
             Anonymous: $"{target.Name} was hit in the {part} for {damage:0} from the fog."));
         ApplyDamage(sim, target, part, damage);
+        if (bane is { DisruptRounds: > 0 } && target.IsActive && Network.IsLinked(data, target))
+        {
+            target.OffRelayUntilRound = Math.Max(target.OffRelayUntilRound, state.Round + bane.DisruptRounds - 1);
+            state.Log(new(state.Round, ScavengeEventType.RelayDisrupted, $"{target.Name} is knocked off the relay.", attacker.Id, target.Id, target.Pos,
+                Anonymous: $"{target.Name} is knocked off the relay."));
+        }
     }
 
     /// <summary>The action's bane when the target is an enemy carrying its tag, else null.</summary>

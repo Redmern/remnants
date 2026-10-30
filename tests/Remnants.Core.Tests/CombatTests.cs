@@ -164,6 +164,31 @@ public class CombatTests
     }
 
     [Fact]
+    public void A_bane_hit_knocks_a_linked_off_the_relay_for_its_rounds()
+    {
+        var shooter = SurvivorUnit(pos: new(0, 0), weapon: "linked_carbine");
+        var linked = EnemyUnit("linked", new(1, 0));
+        var buddy = EnemyUnit("linked", new(3, 0));
+        var sim = Arena(4, 2, [shooter, linked, buddy]);
+        var rounds = sim.Profile(shooter).Action("burst")!.Bane!.DisruptRounds;
+        Assert.True(rounds > 0);
+        Assert.Contains(Network.Groups(sim), g => g.Units.Contains(linked) && g.Units.Contains(buddy));
+
+        while (!sim.State.Events.Any(e => e.Type == ScavengeEventType.RelayDisrupted))
+        {
+            linked.Hp = linked.MaxHp;
+            shooter.Ap = 3;
+            Assert.True(sim.Execute(new Attack(1, shooter.Id, linked.Id, "burst")).Ok);
+        }
+        Assert.Equal(sim.State.Round + rounds - 1, linked.OffRelayUntilRound);
+        Assert.True(Devices.IsJammed(sim, linked));
+        Assert.Null(Network.GroupOf(sim, linked));
+
+        sim.State.Round += rounds;
+        Assert.False(Devices.IsJammed(sim, linked));
+    }
+
+    [Fact]
     public void Quality_scales_a_bane_and_quality_accuracy()
     {
         var plain = Real.Items["linked_carbine"].Actions[0];
