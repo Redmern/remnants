@@ -165,6 +165,12 @@ public sealed class NetFixture
                     FogViolations.Add($"{player.Name} was sent a reveal of unit {r.UnitId} for {r.Side}.");
                 foreach (var u in s.View.Units.Where(u => u.Side != side && u.Ai.TargetId is not null))
                     FogViolations.Add($"{player.Name} was sent {u.Name}'s AI memory.");
+                var sideExplored = sim.State.Explored.GetValueOrDefault(side) ?? [];
+                foreach (var c in s.View.Caches.Where(c => !sideExplored.Contains(map.Index(c.Pos))))
+                    FogViolations.Add($"{player.Name} was sent the pile at {c.Pos}, which their side never saw.");
+                foreach (var n in s.View.SalvageNodes.Where(n => !sideExplored.Contains(map.Index(n.Pos))))
+                    FogViolations.Add($"{player.Name} was sent the salvage node at {n.Pos}, which their side never saw.");
+                if (s.View.LootSeed != 0) FogViolations.Add($"{player.Name} was sent the loot seed.");
                 foreach (var p in s.View.Pings.Where(p => p.Side != side))
                     FogViolations.Add($"{player.Name} was sent {p.Side}'s ping at {p.Pos}.");
                 foreach (var o in s.View.Proposals.Where(o => o.FromPlayerId != me && o.ToPlayerId != me))
