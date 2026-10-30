@@ -156,6 +156,11 @@ public partial class MultiplayerMenu : Control
         _party.Text = "Party: " + description;
     }
 
+    private static int? ColonyHour() =>
+        Colony.ColonySession.Current is { } session && session.MultiplayerParty() is not null && session.Sim.State.Expedition is { } e
+            ? session.Sim.MissionEnvironment(e.ArrivalTick).Hour
+            : null;
+
     private void OnHost()
     {
         var (_, port) = MultiplayerSession.ParseAddress(_address.Text);
@@ -167,6 +172,8 @@ public partial class MultiplayerMenu : Control
             MaxPartySize = GameDataPaths.Load().Rules.Expedition.PartySizeByTownHallLevel.Max(),
             TurnSeconds = double.TryParse(DebugCapture.Value("--mp-turn-seconds"), out var turn) ? turn : 60,
             Mode = _mode.Selected == 1 ? MissionMode.Coop : MissionMode.Versus,
+            // Hosting from the colony's waiting party: the mission is at the hour it arrived (and maybe waited for).
+            Hour = ColonyHour(),
         };
         try
         {

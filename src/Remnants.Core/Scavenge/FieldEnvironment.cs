@@ -57,7 +57,7 @@ public sealed record EnvironmentEffects
     /// <summary>A flare's light radius × this (it carries further in the dark).</summary>
     public double FlareRadiusMultiplier { get; init; } = 1;
 
-    /// <summary>Lowest sight the effects cut anyone to.</summary>
+    /// <summary>Lowest sight the effects cut anyone to (combined: the lower floor, so thick weather can blind further).</summary>
     public double MinSight { get; init; } = 2;
 
     public double SightFor(SenseKind kind) => Sight.GetValueOrDefault(kind, 1);
@@ -70,7 +70,7 @@ public sealed record EnvironmentEffects
         HuskCountMultiplier = HuskCountMultiplier * other.HuskCountMultiplier,
         HuskHearingMultiplier = HuskHearingMultiplier * other.HuskHearingMultiplier,
         FlareRadiusMultiplier = FlareRadiusMultiplier * other.FlareRadiusMultiplier,
-        MinSight = Math.Max(MinSight, other.MinSight),
+        MinSight = Math.Min(MinSight, other.MinSight),
     };
 }
 

@@ -105,9 +105,11 @@ public static class NewScavenge
             var extra = (int)Math.Round(husks * (huskMult - 1));
             for (var i = 0; i < extra; i++)
             {
+                var room = huskMix.Where(e => e.Max is not { } max || spawned.GetValueOrDefault(e.Id) < (int)Math.Ceiling(max * scale - 1e-9)).ToList();
+                if (room.Count == 0) break;
                 var spot = TakeRandom(rng, enemySpots, Free);
                 if (spot is null) break;
-                var def = data.Enemies[PickWeighted(rng, huskMix, e => e.Weight).Id];
+                var def = data.Enemies[PickWeighted(rng, room, e => e.Weight).Id];
                 spawned[def.Id] = spawned.GetValueOrDefault(def.Id) + 1;
                 state.Units.Add(EnemyUnit(data, state, def, spot.Value));
             }

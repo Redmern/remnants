@@ -280,8 +280,9 @@ map), Accept (Y) / Decline (U) an offer, Offer an alliance (Y) to a rival you se
 ## Night over the wire
 
 - **The server decides the hour** (`HostOptions.Hour`, `--hour`; without it `seed % 24`) and makes the instance with it
-  (`ZoneConditions.Environment`, phase by the default colony hours). Clients never choose it; the colony's own expedition
-  arrival time does not travel (an online mission is played at the server's hour).
+  (`ZoneConditions.Environment`, phase by the default colony hours). Joining clients never choose it. A player who hosts
+  from the colony's waiting party passes the hour that party arrives at (and maybe waited and paid rations for) as
+  `Hour`; a party that joins someone else's server plays at that server's hour.
 - **Every view carries the environment** (hour, phase, weather slot): it is public, the same for everyone, so every
   client lights the map alike. Protocol version 5.
 - **Fog follows the dark on the server.** `SideFog` asks the same `Detection` / `Visibility` that the night changes

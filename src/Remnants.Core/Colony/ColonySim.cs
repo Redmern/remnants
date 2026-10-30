@@ -226,17 +226,21 @@ public sealed class ColonySim
 
     /// <summary>The field environment of a mission that starts at <paramref name="tick"/> (its hour and day phase).</summary>
     public ScavengeEnvironment MissionEnvironment(long tick) =>
-        ScavengeEnvironment.At(DayNight.Hour(tick, Data.Rules), DayNight.PhaseAt(tick, Data.Rules));
+        Data.Rules.DayNight.Enabled
+            ? ScavengeEnvironment.At(DayNight.Hour(tick, Data.Rules), DayNight.PhaseAt(tick, Data.Rules))
+            : ScavengeEnvironment.At(12, DayPhase.Day);
 
     /// <summary>
     /// When a party launched now would reach a zone, in which phase, and — when waiting for <paramref name="waitFor"/> — the
     /// hours they wait outside for it to start and the extra food per member (<c>rationFoodPerMemberPerDay</c> per day
-    /// waited, rounded up to whole units). No wait when they would arrive in that phase anyway.
+    /// waited, rounded up to whole units). No wait when they would arrive in that phase anyway, or with day/night off
+    /// (every mission is then at midday).
     /// </summary>
     public ArrivalPlan PlanArrival(string zoneId, DayPhase? waitFor = null)
     {
         var scavenge = Scavenge ?? throw new InvalidOperationException("Scavenge data is not loaded.");
         var arrival = State.Tick + WorldMap.TravelTicks(Data, scavenge.Zones[zoneId]);
+        if (!Data.Rules.DayNight.Enabled) return new ArrivalPlan(arrival, DayPhase.Day, 0, 0);
         long wait = 0;
         if (waitFor is { } want && DayNight.PhaseAt(arrival, Data.Rules) != want)
         {

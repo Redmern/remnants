@@ -234,4 +234,17 @@ public class NightMissionTests
         Assert.True(sim.Execute(new LaunchExpedition(zone, [new(a.Id)])).Ok);
         Assert.Equal(DayPhase.Night, sim.OpenExpeditionScavenge().State.Environment.Phase);
     }
+
+    [Fact]
+    public void With_day_and_night_off_missions_are_at_midday_and_nobody_waits()
+    {
+        var colony = TestData.EmptyColony(stock: new() { ["food"] = 100 });
+        var sim = new ColonySim(TestData.Real, colony.State, Real);
+        sim.State.Tick = 23;
+        var a = sim.AddSurvivor();
+        var zone = Real.Zones.Values.First(z => z.TravelDays == 0).Id;
+        Assert.Equal(0, sim.PlanArrival(zone, DayPhase.Dawn).WaitTicks);
+        Assert.True(sim.Execute(new LaunchExpedition(zone, [new(a.Id)], DayPhase.Dawn)).Ok);
+        Assert.Equal(DayPhase.Day, sim.OpenExpeditionScavenge().State.Environment.Phase);
+    }
 }

@@ -227,7 +227,6 @@ public partial class UnitViews : Node3D
 
     private async Task Wait(float seconds) => await ToSignal(GetTree().CreateTimer(seconds), SceneTreeTimer.SignalName.Timeout);
 
-    /// <summary>Tints every mesh of the unit for a moment.</summary>
     /// <summary>A short warm light at a shooter, fading out in a third of a second.</summary>
     private void MuzzleFlash(Vector3 at)
     {
@@ -242,6 +241,7 @@ public partial class UnitViews : Node3D
         tween.TweenCallback(Callable.From(light.QueueFree));
     }
 
+    /// <summary>Tints every mesh of the unit for a moment.</summary>
     private void Flash(View view, Material overlay)
     {
         var meshes = view.Model.FindChildren("*", nameof(MeshInstance3D), true, false).OfType<MeshInstance3D>().ToList();
