@@ -215,6 +215,41 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
     events, failing when key events pick the wrong id; `--weather=KIND[:INTENSITY]` sets the weather bed; `--audio-meter` prints each bus's peak every second. Once the
     export is synced the self-test also fails on a mapped id the manifest lacks or a file that does not load.
 
+### Character animation (`scripts/Anim/`)
+
+Purely visual. Survivors, enemies, prosthetics and both drones are rigged glbs (remnants-assets manifest v2: `clips`
+with loop flags and events in seconds, `limb_bones`, `sockets[slot].bone`); `ModelLibrary` reads them, and static v1
+models still load and fall back to tweens.
+
+- `CharacterRig` — added to a rigged model (`CharacterRig.Attach(library, model, id)`, found again with `Of`). It drives
+  the glTF `AnimationPlayer` through an `AnimationTree` state machine with a crossfade between every pair of clips (one
+  machine per clip set, shared). A **base loop** (`Loop`: idle, walk, overwatch_aim, crouch_brace, downed_loop, hover,
+  work_*, sit, child_play) runs until a **one-shot** (`Once`: attacks, hit_react, throw, use_item, lookout, downed, death)
+  returns to it, hands over to a named loop (`downed` → `downed_loop`) or holds (`death`). Manifest events come out as
+  the `ClipEvent` signal; gaits without footfall events get a `step` per half cycle. The tree advances by hand:
+  `SpeedScale` (time scale, gait pace) and `UpdateEvery` (animation LOD). `PoseStill` poses a portrait in idle.
+- `ClipMap` — Core → clip names, best first, so each body takes the first it has: attacks by action id then pattern
+  (`swing` → attack_swing, `aimed_shot` → shoot_rifle, `claw` → attack_claw, `zap` → shoot_burst, ...), the hold loop by
+  status/stance, work loops by job id.
+- `SurvivorDressing` on a rigged body moves the prosthetic's skinned mesh under the body's `Skeleton3D` (`{part}_prosthetic`,
+  bound by bone name, only when the body has every `limb_bones` bone); the model id and tier tint come from the
+  cybernetics data (`ProstheticModel`). Gear hangs on a `BoneAttachment3D` on the socket bone (`Socket_{bone}`), offset by
+  minus its attach point; a one-armed survivor holds the weapon in the left hand.
+- Scavenge (`UnitViews`): units walk a view-side tile path (8-way over what the unit can cross) facing each step, the walk
+  clip timed to the tween (carry_walk when carrying, run on long paths); attacks turn to the target and land the hit flash,
+  pop-up, hit_react, muzzle flash and sound on the clip's `impact` / `fire` / `pulse` event (`Replay`'s `onStep` runs at
+  that beat); stances, downed, death (Linked `flicker` pulses cyan), hack, throw, use_item and carrying (the carried unit
+  rides `socket_back`) play their clips; drones hover. Footfalls raise `Footstep` → `ScavengeAudio.Footstep`
+  (`scavenge.step.{who}` if mapped, else `scavenge.step.{terrain}`).
+- Colony (`SurvivorWalkers`): walk / run (children), the job's work loop at the workplace, sit at the fire and outside the
+  Med Bay, child_play; clip speed = colony pace capped at 2x times the gait pace; pose updates every frame near the
+  camera, every 2nd / 4th further out, every 8th off screen; near footfalls fire `colony.step`.
+- Debug: `--anim-selftest` (headless, in `run-tests.sh --godot`) checks every rigged model's clips, event timing, loops,
+  downed/death, prosthetic swaps with data models and tints, sockets and the portrait pose. `--anim-demo=survivor|enemy`
+  (with `--scavenge`) and `--anim-demo=colony` (with `--colony --demo --hour=8`) stage captures that `FrameRecorder`
+  saves with `--record=DIR [--record-every=K] [--record-start=N --record-frames=M] [--gif=PATH] --quit`; pass Godot's
+  `--fixed-fps 30` so clips keep their speed while frames are saved.
+
 ## Rules of the road
 
 - **State vs rules.** `ColonyState` is data only. Rules live in `ColonySim` and its systems.
