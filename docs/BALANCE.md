@@ -163,6 +163,38 @@ Changes made while tuning:
 - Flare / motion sensor / camo cloak loot weights 1 / 0.5 / 0.5 (from 2 / 1 / 1): at the higher weights they diluted
   scrap and cloth drops enough to push Town Hall 2 to day 35.
 
+## Co-op pass
+
+Co-op (MULTIPLAYER.md "Co-op and alliances") puts two or more parties on one team: shared sight, backs covered by the
+other party, med-kits and carrying across parties. Without scaling that is simply easier, so the zone's enemy count and
+per-type caps scale with the number of players: × (1 + `coop.enemiesPerExtraPlayer` × (players − 1)), caps rounded up.
+The aim: **per party, a co-op run is about as risky as a solo run of the same zone**, so teaming up is a choice, not a
+cheat.
+
+Measured with `--zone=… --runs=200 --coop=2` (two allied parties, each a fresh colony's first party of two with starting
+gear; the PartyBot plays both, revives / bandages / carries allies) against the solo trial on the same build, for three
+values of the knob. "Per party, a death" is the share of parties that lost someone; "mission" counts a death on either.
+
+| zone | solo: a death / wipe | ×1.5 per party (mission) | **×2 per party (mission)** | ×2.5 per party (mission) |
+|---|---|---|---|---|
+| Town Outskirts | 8% / 2% | 2% / 0% (4%) | **4% / 1% (7%)** | 8% / 1% (12%) |
+| Scrapyard Flats | 10% / 2% | 3% / 0% (4%) | **7% / 1% (11%)** | 13% / 4% (19%) |
+| Suburb Ruins | 34% / 11% | 19% / 3% (28%) | **33% / 13% (46%)** | 45% / 22% (59%) |
+| Flooded Mall | 50% / 22% | 41% / 14% (57%) | **63% / 32% (76%)** | 81% / 57% (90%) |
+
+Three allied parties at ×3 (`--coop=3`): Outskirts 4% per party (8% per mission), Suburb Ruins 38% / 13% wiped (57%).
+
+- **×2 is the default** (`enemiesPerExtraPlayer` 1.0, was a first guess of 0.5): Suburb Ruins, the zone where co-op
+  matters most, matches solo per party (33% vs 34%); the early zones stay a little gentler (4–7% vs 8–10%), which is fine
+  for the zones new players will try co-op in. At ×1.5 co-op roughly halved the risk.
+- Flooded Mall gets harder than solo at ×2 (63% vs 50%): its Linked caps (one drone, one Linked) double too, and the
+  Linked are what kills a starting party. If that feels wrong, cap scaling could use a smaller factor than the count.
+- Allies seeing for each other shows up as fewer ambushes per party; carrying rarely triggers in the bot runs (a med-kit is
+  usually at hand), so its tuning (`carryRangePenalty` 1) is unmeasured.
+- Versus missions scale the same way (it is the number of players, allied or not).
+
+## Watch next pass
+
 ## Watch next pass
 
 - Late food surplus: by day 60 the bot's colonies sit on 100–150 food; Kitchen meals and more mouths absorb some of it.

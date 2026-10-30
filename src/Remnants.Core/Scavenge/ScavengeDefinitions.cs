@@ -381,7 +381,7 @@ public sealed record CoopRules
     public int CarryRangePenalty { get; init; } = 1;
 
     /// <summary>Enemies in a zone × (1 + this × (players − 1)); per-type caps scale the same (rounded up).</summary>
-    public double EnemiesPerExtraPlayer { get; init; } = 0.5;
+    public double EnemiesPerExtraPlayer { get; init; } = 1.0;
 }
 
 public sealed record AiRules

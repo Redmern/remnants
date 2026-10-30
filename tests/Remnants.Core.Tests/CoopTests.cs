@@ -393,11 +393,11 @@ public class CoopTests
         Assert.All(coop.State.Units.Where(u => u.PlayerId is not null), u => Assert.Equal(coop.State.FindParty(1)!.Side, u.Side));
 
         int Enemies(ScavengeSim s) => s.State.Units.Count(u => u.Kind == UnitKind.Enemy);
-        Assert.Equal(1.5, NewScavenge.EnemyScale(data, 2));
+        Assert.Equal(1 + data.Rules.Coop.EnemiesPerExtraPlayer, NewScavenge.EnemyScale(data, 2));
         Assert.Equal(1, NewScavenge.EnemyScale(data, 1));
         var soloAvg = Enumerable.Range(1, 20).Average(seed => Enemies(NewScavenge.Create(data, "outskirts", (ulong)seed, [Party(1)])));
         var duoAvg = Enumerable.Range(1, 20).Average(seed => Enemies(NewScavenge.Create(data, "outskirts", (ulong)seed, [Party(1) with { Team = 1 }, Party(2) with { Team = 1 }])));
-        Assert.True(duoAvg > soloAvg * 1.3, $"two players face more enemies ({soloAvg} solo, {duoAvg} co-op)");
+        Assert.True(duoAvg > soloAvg * (1 + data.Rules.Coop.EnemiesPerExtraPlayer * 0.6), $"two players face more enemies ({soloAvg} solo, {duoAvg} co-op)");
         Assert.True(Enemies(solo) > 0);
     }
 

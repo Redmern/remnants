@@ -209,7 +209,7 @@ so single player, the server and the bots share them.
   unit id; left out to keep one turn order for everyone). The turn timer applies per player as before.
 - **Difficulty** scales with the number of players in the mission, allied or not: enemies × (1 +
   `enemiesPerExtraPlayer` × (players − 1)), and per-type caps (e.g. at most one Linked) scale the same, rounded up
-  (`NewScavenge.EnemyScale`). See BALANCE.md "Co-op pass".
+  (`NewScavenge.EnemyScale`; default ×2 for two players). See BALANCE.md "Co-op pass".
 - **Fog over the wire.** `SideFog` follows the party's *current* side at every update, so allies get the team's view
   (their ally's units with the colony record cut to name, sex and life stage, like anyone else's; the whole team's
   contacts, sensors and explored tiles; the team's pings) and the moment an alliance breaks each gets only their own

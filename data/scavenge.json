@@ -55,7 +55,7 @@
     "giveApCost": 1,
     "carryApCost": 1,
     "carryRangePenalty": 1,
-    "enemiesPerExtraPlayer": 0.5
+    "enemiesPerExtraPlayer": 1.0
   },
   "fog": {
     "stealth": { "base": 10, "perAgility": 0.3, "perKg": 1.0, "legEfficiency": 20 },
