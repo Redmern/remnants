@@ -218,7 +218,7 @@ public static class VehicleRules
     public static FieldVehicle Field(GameData data, Vehicle vehicle)
     {
         var stats = Stats(data, vehicle);
-        return new FieldVehicle(vehicle.TierId, vehicle.Name, stats.Tier.Tier, vehicle.Condition, stats.MaxCondition, stats.Armor,
+        return new FieldVehicle(vehicle.TierId, vehicle.Name, stats.Tier.Tier, Math.Min(vehicle.Condition, stats.MaxCondition), stats.MaxCondition, stats.Armor,
             stats.CargoKg, stats.Armored, stats.Seats)
         {
             DamageMultiplier = stats.FieldDamageMultiplier, TurretDamage = stats.TurretDamage, TurretRange = stats.TurretRange,
@@ -235,17 +235,23 @@ public static class VehicleRules
     /// The road wears the vehicle and every fitted upgrade by <see cref="VehicleData.WearPerTravelDay"/> a day. Wear never
     /// takes the vehicle below 1 or a part below 0; a worn-out part stays fitted, broken.
     /// </summary>
-    internal static void WearOut(GameData data, Vehicle vehicle, double days)
+    public static void WearOut(GameData data, Vehicle vehicle, double days)
     {
         if (days <= 0) return;
         vehicle.Condition = Math.Max(1, vehicle.Condition - Wear(data, vehicle, days));
         foreach (var u in vehicle.Upgrades) u.Condition = Math.Max(0, u.Condition - data.Vehicles.WearPerTravelDay * days);
+        ClampCondition(data, vehicle);
     }
+
+    /// <summary>A part that broke takes its extra condition with it: the hull never stays above the max it has now.</summary>
+    internal static void ClampCondition(GameData data, Vehicle vehicle) =>
+        vehicle.Condition = Math.Clamp(vehicle.Condition, 1, Stats(data, vehicle).MaxCondition);
 
     /// <summary>A mission took <paramref name="share"/> of the vehicle's HP: its parts take <see cref="VehicleData.CombatWearToParts"/> of that.</summary>
     internal static void CombatWear(GameData data, Vehicle vehicle, double share)
     {
         foreach (var u in vehicle.Upgrades) u.Condition = Math.Max(0, u.Condition - share * data.Vehicles.CombatWearToParts);
+        ClampCondition(data, vehicle);
     }
 
     public static bool Broken(GameData data, Vehicle vehicle) =>
@@ -374,7 +380,7 @@ public static class VehicleRules
         var used = Math.Min(needed, have);
         var work = used * stretch;
         var max = Stats(sim.Data, vehicle).MaxCondition;
-        var hull = Math.Min(work, Math.Ceiling((max - vehicle.Condition) / (rules.RepairPerPart * max) - 1e-9));
+        var hull = Math.Min(work, Math.Max(0, Math.Ceiling((max - vehicle.Condition) / (rules.RepairPerPart * max) - 1e-9)));
         vehicle.Condition = Math.Min(max, vehicle.Condition + hull * rules.RepairPerPart * max);
         work -= hull;
         foreach (var u in vehicle.Upgrades.OrderBy(u => u.Condition))
@@ -397,7 +403,7 @@ public static class VehicleRules
     {
         var rules = sim.Data.Vehicles;
         var max = Stats(sim.Data, vehicle).MaxCondition;
-        var work = Math.Ceiling((max - vehicle.Condition) / (rules.RepairPerPart * max) - 1e-9)
+        var work = Math.Max(0, Math.Ceiling((max - vehicle.Condition) / (rules.RepairPerPart * max) - 1e-9))
                    + vehicle.Upgrades.Sum(u => (1 - u.Condition) / rules.PartRepairPerSparePart);
         var discount = Math.Min(0.9, GarageHook(sim, PerkHooks.RepairPartsDiscount));
         return (int)Math.Ceiling(Math.Max(0, work) * (1 - discount) - 1e-9);

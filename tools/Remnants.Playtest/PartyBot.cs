@@ -225,7 +225,8 @@ public static class PartyBot
         // 3. Decide where to go: out when hurt, loaded, late or out of caches; else the nearest cache.
         // A Linked in sight is beyond a starting party: break off and head out. Loaded with room in the vehicle, unload first.
         var loaded = profile.Load >= profile.CarryCapacity * 0.8;
-        var unload = loaded && room >= 1;
+        // Only worth the walk when something in the pack is loot that fits.
+        var unload = loaded && unit.Pack.Any(id => sim.Data.Items[id].Kind is ItemKind.Material or ItemKind.Blueprint && sim.Data.Items[id].Weight <= room + 1e-9);
         var leaving = Leaving(sim, unit, hostiles, allies, fightLinked, tech, unload);
         if (leaving && (map.IsExit(unit.Pos) || ParkedVehicles.Beside(state, unit) is not null)) return new Extract(playerId, unit.Id);
 

@@ -442,8 +442,9 @@ public sealed class ColonyBot
                 var zoneId = out_.ZoneId;
                 var names = out_.Members.Select(m => before[m.SurvivorId]).ToList();
                 var injuries = result.Returned.Sum(r => BodyDiff.Describe(State.FindSurvivor(r.Survivor.Id)!.Body, r.Survivor.Body).Count);
+                // The tier before the result is applied: a vehicle lost out there is gone from the colony after.
+                var vehicleName = out_.VehicleId is { } vid ? State.Vehicles.Find(v => v.Id == vid)?.TierId : null;
                 var applied = _sim.Execute(new ApplyExtractionResult(result));
-                var vehicleName = out_.VehicleId is { } vid ? Data.VehicleTiers[State.Vehicles.Find(v => v.Id == vid)?.TierId ?? "handcart"].Id : null;
                 var outcome = new ExpeditionOutcome(Day, zoneId, names, result.Returned.Count, result.Deaths.Count,
                     result.Returned.Count(r => r.Evacuated), result.Recruits.Count, injuries,
                     result.Loot.Sum(kv => kv.Value), stats, applied.Ok ? null : applied.Message)

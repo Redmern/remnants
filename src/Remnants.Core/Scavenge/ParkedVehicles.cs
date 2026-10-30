@@ -63,6 +63,9 @@ public static class ParkedVehicles
 {
     public static ParkedVehicle? Of(ScavengeState state, int playerId) => state.Vehicles.Find(v => v.PlayerId == playerId);
 
+    /// <summary>A vehicle still in play: not wrecked, and its party not done (a party that is done has driven it home).</summary>
+    public static bool InPlay(ScavengeState state, ParkedVehicle v) => !v.Wrecked && state.FindParty(v.PlayerId) is not { Done: true };
+
     public static ParkedVehicle? At(ScavengeState state, Pos pos) => state.Vehicles.Find(v => v.Pos == pos);
 
     /// <summary>Weight of the stash now.</summary>
@@ -93,7 +96,7 @@ public static class ParkedVehicles
     /// <summary>A working vehicle of the unit's side next to it (its own player's first), where it may extract or stash.</summary>
     public static ParkedVehicle? Beside(ScavengeState state, Unit unit) =>
         state.Vehicles
-            .Where(v => !v.Wrecked && v.Pos.Chebyshev(unit.Pos) <= 1 && (v.PlayerId == unit.PlayerId || state.Allied(v.PlayerId, unit.PlayerId ?? -1)))
+            .Where(v => InPlay(state, v) && v.Pos.Chebyshev(unit.Pos) <= 1 && (v.PlayerId == unit.PlayerId || state.Allied(v.PlayerId, unit.PlayerId ?? -1)))
             .OrderBy(v => v.PlayerId == unit.PlayerId ? 0 : 1).FirstOrDefault();
 
     /// <summary>
@@ -154,7 +157,7 @@ public static class ParkedVehicles
     public static void RoundStarted(ScavengeSim sim)
     {
         var rules = sim.Data.Rules.Vehicle;
-        foreach (var vehicle in sim.State.Vehicles.Where(v => !v.Wrecked))
+        foreach (var vehicle in sim.State.Vehicles.Where(v => InPlay(sim.State, v)))
         {
             var owner = sim.State.FindParty(vehicle.PlayerId);
             if (vehicle.Workbench) vehicle.Hp = Math.Min(vehicle.MaxHp, vehicle.Hp + rules.WorkbenchRepairPerRound);

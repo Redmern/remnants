@@ -246,7 +246,9 @@ public partial class ExpeditionPanel : PanelContainer
 
     private string? SelectedZone => _zone.Selected >= 0 && _zone.Selected < _zoneIds.Count ? _zoneIds[_zone.Selected] : null;
 
-    private int? SelectedVehicle => _vehicle.Selected >= 0 && _vehicle.Selected < _vehicleIds.Count ? _vehicleIds[_vehicle.Selected] : null;
+    /// <summary>The chosen vehicle; none for a story mission, which goes on foot.</summary>
+    private int? SelectedVehicle =>
+        MissionId is null && _vehicle.Selected >= 0 && _vehicle.Selected < _vehicleIds.Count ? _vehicleIds[_vehicle.Selected] : null;
 
     /// <summary>Debug / screenshots: pick a vehicle by tier.</summary>
     public void PickVehicle(string tierId)
@@ -448,6 +450,7 @@ public partial class ExpeditionPanel : PanelContainer
     {
         var sim = _session.Sim;
         RefreshVehicles(sim);
+        _vehicle.Visible = _vehicleInfo.Visible = MissionId is null;
         var perMember = SelectedZone is { } zoneId
             ? WorldMap.RationsPerMember(sim.Data, sim.PlanTravel(zoneId, SelectedVehicle).Days)
             : sim.Data.Rules.Expedition.RationFoodPerMember;

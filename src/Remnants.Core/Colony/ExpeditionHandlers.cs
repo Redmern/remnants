@@ -132,7 +132,7 @@ internal static class ExpeditionHandlers
             || result.Returned.Concat(result.Recruits).Select(r => r.Survivor).Concat(result.Deaths).Any(s => s is null)
             || result.Returned.Select(r => r.Survivor.Id).Concat(result.Deaths.Select(d => d.Id)).Any(id => !memberIds.Contains(id)))
             return CommandResult.Fail(CommandError.ResultMismatch, "That result is not from this expedition.");
-        var allItems = result.Returned.Concat(result.Recruits).SelectMany(r => r.Equipment.Values.Concat(r.Pack));
+        var allItems = result.Returned.Concat(result.Recruits).SelectMany(r => r.Equipment.Values.Concat(r.Pack)).Concat(result.Vehicle?.Stash ?? []);
         if (allItems.FirstOrDefault(id => !data.Items.ContainsKey(id)) is { } unknown)
             return CommandResult.Fail(CommandError.UnknownItem, $"The result carries unknown item '{unknown}'.");
 
@@ -271,15 +271,19 @@ internal static class ExpeditionHandlers
         var stats = sim.VehicleStats(vehicle);
         if (result.Vehicle is { } field)
         {
-            if (field.Hp < vehicle.Condition) VehicleRules.CombatWear(sim.Data, vehicle, (vehicle.Condition - field.Hp) / Math.Max(1, field.MaxHp));
-            vehicle.Condition = Math.Min(vehicle.Condition, field.Hp);
+            // The parts wear by the HP the vehicle lost in the field; what a workbench mended there comes home too.
+            var lost = Math.Min(vehicle.Condition, field.MaxHp) - field.Hp;
+            if (lost > 0) VehicleRules.CombatWear(sim.Data, vehicle, lost / Math.Max(1, field.MaxHp));
+            vehicle.Condition = field.Hp;
+            VehicleRules.ClampCondition(sim.Data, vehicle);
             foreach (var item in field.Stash)
                 if (data.Items[item].Salvage is { } salvage) state.Stockpile.Add(salvage.Resource, salvage.Amount);
                 else state.Inventory.Add(item);
             if (field.Hp < field.MaxHp - 1e-9)
                 state.Log(new(state.Tick, ColonyEventType.VehicleDamaged, $"The {vehicle.Name} came back damaged ({field.Hp:0}/{field.MaxHp:0})."));
         }
-        var backDays = WorldMap.TravelTicks(sim.Data, data.Zones[expedition.ZoneId]) > 0 ? expedition.TravelTicks / (double)sim.Data.Rules.TicksPerDay : 0;
+        var backTicks = expedition.ReturnTravelTicks > 0 ? expedition.ReturnTravelTicks : expedition.TravelTicks;
+        var backDays = WorldMap.TravelTicks(sim.Data, data.Zones[expedition.ZoneId]) > 0 ? backTicks / (double)sim.Data.Rules.TicksPerDay : 0;
         VehicleRules.WearOut(sim.Data, vehicle, backDays);
         // A field medkit locker patches everyone up before the road.
         if (stats.HealOnReturn > 0)

@@ -152,6 +152,22 @@ public class VehicleUpgradeTests
     }
 
     [Fact]
+    public void A_part_that_breaks_on_the_road_takes_its_extra_condition_with_it()
+    {
+        var sim = Colony(new() { ["spare_parts"] = 20 });
+        Garage(sim);
+        var buggy = Give(sim, "buggy", "armor_plates");
+        buggy.Upgrades[0].Condition = 0.26;
+        Assert.Equal(100, buggy.Condition, 6);
+        VehicleRules.WearOut(sim.Data, buggy, 1);
+        Assert.True(VehicleRules.IsBroken(sim.Data, buggy.Upgrades[0]));
+        Assert.True(buggy.Condition <= sim.VehicleStats(buggy).MaxCondition + 1e-9);
+        Assert.True(VehicleRules.PartsToRepair(sim, buggy) > 0);
+        Assert.True(sim.Execute(new RepairVehicle(buggy.Id)).Ok);
+        Assert.False(VehicleRules.IsBroken(sim.Data, buggy.Upgrades[0]));
+    }
+
+    [Fact]
     public void The_road_and_fights_wear_the_parts_too()
     {
         var sim = Colony();
