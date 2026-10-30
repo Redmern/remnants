@@ -370,6 +370,64 @@ Each node is a prosthetic item of the same id (validated both ways) made by the 
   from it, replacement humanity), scavenge 7 (survivors' cyber hooks resolved on load), protocol 6. Tests:
   `CyberneticsTests`.
 
+### Medicine
+
+A small illness model and the supplies that treat it; numbers in BALANCE.md "Medicine". Data: `medicine.json`
+(conditions, infection, fracture, pain, painkiller, sickness kinds, Med Bay care, surgery kits, donor, field, migration,
+ingredient adapters), loaded into both `GameData.Medicine` and `ScavengeData.Medicine` (`MedicineData`, validated: every
+condition the rules name exists). Without the file nothing changes (no conditions, no infections, no auto-treatment).
+
+- **Body** (so it travels with the party export and comes home on `ExtractionResult`): `Body.Conditions`
+  (`BodyCondition`: id, optional part, severity 0..1, `Remaining` for passing effects, `Treated` for a splinted fracture),
+  `Body.HumanityLoss` (the Calm injector; part of `Humanity`), `Body.Doses` (recent painkillers) and `PainRelief` (the
+  `painkilled` effect). `BodyPartState.Dressing` (None / Bandaged / Clean; a new injury undoes it) and `ConditionPenalty`
+  (a fracture's efficiency cost, lower once splinted). `Body.PartEfficiency(part)` lets a painkiller dull the injury
+  penalty; `RegionEfficiency` and the arm reads in `ProfileDeriver` use it. Healing a part clears its conditions.
+- **Conditions** (`ConditionKind`): wound and surgical infection (grow, block the part's healing, fever, drain health
+  from a severity), fracture, food and Husk sickness (fade; Husk sickness drains), painkiller dependency (a mood dip,
+  fades), the `painkilled` effect. Pain is derived: a worst injury at `pain.threshold` costs output (and
+  `pain.fieldApPenalty` AP, 0 as shipped) until a painkiller dulls it. `Treatment` (Survivors, pure) holds what items and conditions do, the same at home and in the
+  field: `Apply`, `Helps`, `Fracture`/`MaybeFracture`, `Afflict`, `Numb`, `OutputFactor` (into `JobOutput.ConditionFactor`,
+  which `PerTick`, Med Bay care and surgery effort multiply in), `FieldApPenalty` (into the profile's MaxAp), `HealFactor`
+  (an infection stops a part healing, a fracture slows it, a splint speeds it).
+- **Colony** (`MedicineSystem`, after `MedicalSystem`): dirty wounds of at least `infection.minSeverity` roll
+  `chancePerTick` × dressing × patient multipliers; conditions grow or fade (patients on Medicine fade faster); painkiller
+  effects and doses count down; deaths go to the memorial ("died of an infected wound"). Then each Med Bay **auto-treats**
+  up to `medBay.treatmentsPerTick` patients from the inventory, in `ColonyState.MedicalCare.Priorities` order (default
+  Bleeding → Infection → Fracture → Sickness → Pain; `SetCarePriorities` reorders or switches them off; never painkillers
+  to someone near a dependency). `TreatSurvivor(survivor, item)` is the player's override for anyone at home. Patients
+  are admitted for illness too (`Medicine.NeedsCare`) and kept until nothing is left to treat. Events `Infected`,
+  `FellSick`, `Recovered`, `Treated`, `BloodDonated`. **`Sickness.Apply(state, data, survivor, kind, severity)`** is the
+  entry point for food-cooking (kinds `food`, `spoiled`, `raw`, `husk`, or a condition id).
+- **Supplies**: items with `medical: true` come in quality tiers like gear (`HasQuality`; a variant scales `heal`,
+  `reviveHp`, `cureStrength`, `painRelief`), crafted at the Med Bay (its job is `medicine`, so the Medicine skill and
+  Pharmacist's `craftQuality` set the roll). `UseEffect` gains `dress`/`dressAll`, `cures`/`cureStrength`, `splint`,
+  `painRelief`/`painRounds`/`painTicks`, `stimAp`/`crashAp`, `calmRounds`, `humanityCost`; `Treats` says it is a treatment.
+  Recipes may need a blood donor (`donorHealth`: the order waits for `Medicine.Donor`, who gives health when the batch
+  starts). Surgery uses the best kit in stock (`surgery.kits`: odds × its quality, used up) and a failed one also leaves a
+  `surgical_infection` on the part. Ingredients other features own go through `medicine.json` `ingredients`: a recipe
+  input `herbs` becomes food × 1.5 while no `herbs` resource is loaded (food-cooking's Pantry takes over at merge);
+  `alcohol` is a resource of its own with a Kitchen fallback (`spirits`), and the vehicles' still is to output it too.
+- **Field** (`FieldMedicine`): `UseItem` on a conscious unit heals, dresses, cures, splints and numbs (`Treatment.Apply`),
+  a stim adds AP now and sets `Unit.CrashAp` for the next turn, the Calm injector sets `Unit.CalmUntilRound` (suppression
+  cannot pin them) and costs humanity. Downed units are stabilized / revived as before (a blood bag revives with 45 HP).
+  `FieldMedicine.ApCost` applies `medical_ap_discount` (Combat Medic). A hit leaving an arm or leg at
+  `fracture.minSeverity` may break it. New rolls (fractures, infections) are `SideRoll`s off the stream's state, so they
+  do not shift other systems' dice. The server runs the same code; the protocol carries the new body and unit fields.
+- **Schematics** (`schematics.medicine.json`, merged into the catalogue by `SchematicCatalogLoader`): bandage, splint,
+  herbal remedy, antiseptic and the basic med-kit have no schematic (the default set); the rest gate their Med Bay
+  recipes (`Schematics.RecipeUnlocked`). Doc Hale's missions (M7, M15) are listed on the advanced ones; the Calm injector
+  is encrypted (terminals, loot, research).
+- **UI**: `MedBayPanel.Dispensary` (stock chips with the best quality, the auto-treat order: toggle, move up, reset), the
+  generic `ProductionPanel` for the Med Bay's recipes and queue, patient lines with condition tags,
+  `SurvivorPanel.Conditions` in the Body tab (each condition, what helps, a button per stocked item that would treat it
+  now; parts show infected / fractured / splinted and their dressing), the scavenge unit card's condition line and
+  medical tooltips (`MedicalText`) on action buttons, pack chips and the inventory. Item hotkeys 4–9.
+  `--colony --medicine-demo` (with `--dispensary` or `--survivor-tab=2`) and `--scavenge --medicine-demo` (a blood-bag
+  revive, saved with `--screenshot`) stage it.
+- **Saves**: colony `SaveGame.MedicineVersion` (old saves: half the Medicine stock becomes antiseptic, 2 for 1),
+  protocol `Protocol.MedicineVersion`; both keyed so a merge renumbers one constant. Tests: `MedicineTests`.
+
 ## Population life
 
 All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `food.infantPerTick`) and `jobs.json`
@@ -921,6 +979,9 @@ The spec is STORY.md. The data format, field by field, is docs/story/FORMAT.md. 
   disciplines and the perk tree (see "Perks and study").
 - `cybernetics.json` — tiers, specialisations, the tree's nodes (one per prosthetic item), paired sets, surgery, humanity,
   upkeep and interference (see "Cybernetics" and CYBERNETICS.md).
+- `medicine.json` — conditions, infection, fractures, pain and painkillers, sickness kinds, Med Bay auto-treatment,
+  surgery kits, blood donors, field rules, the save migration and ingredient adapters (see "Medicine").
+- `schematics.medicine.json` — the medical schematics (defaults and gated ones; interim blueprint fields).
 - `rules.json` — tick/time scale, output formula constants, training rates, food, housing grace,
   meals, crafting (queue limits, quality roll), expedition (party size per Town Hall level, rations, recruit ages), medical (heal/worsen rates, medicine use),
   life (growth stages and rates), relationships (affinity), family (conception, pregnancy, baby names), mood,
@@ -928,7 +989,7 @@ The spec is STORY.md. The data format, field by field, is docs/story/FORMAT.md. 
   (phase hours, work and sleep windows, sleep / campfire / supper mood, Night Shift, sleep debt, light, Floodlight cost).
 - `items.json` — weapons (actions, with `noise`, `reveal`, `bane` and `qualityAccuracy`), clothing/armor (with `stealth`), tools (movement modifiers, carry, sight, `detection`),
   flares and motion sensors (`use.lightRadius`/`lightRounds`, `use.sensorRadius`: used on a tile),
-  consumables (med-kit, bandage, evac beacon), materials (with `salvage` into colony resources; cybernetic components),
+  consumables (med-kit, bandage and the other medical supplies with `medical: true` and their `use` effects, evac beacon), materials (with `salvage` into colony resources; cybernetic components),
   prosthetics (region — `Head` for eye implants — quality, Med Bay level; the field stats, attacks, move modes or hacking
   tool of a fitted part), devices (scanner, signal jammer);
   tier + loot weight for caches; `natural` for enemy body parts (never looted or crafted). Every other item has a

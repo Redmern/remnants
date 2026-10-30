@@ -672,3 +672,53 @@ brackets): M1 20/20 day 7 (20, 7), M2 19 day 7.3 (18, 7), M3 19 day 11.4 (17, 11
 (16, 18), M5 7 day 37.8 (8, 44). Story rewards are the main schematic source in Story mode (53 of 96 learned), and the
 first tier-2 schematic comes by day 34 in 11 of 20 colonies.
 
+
+## Medicine
+
+The illness model and its supplies (ARCHITECTURE.md "Medicine", `data/medicine.json`). The aims: **the early game stays
+as it was** (herbal remedies and bandages cover the first days, and the defaults include antiseptic and splints);
+**infection is a real but manageable threat** (a dirty wound left alone goes bad in a few days, costs output and can
+kill, but a dressing prevents it and antibiotics or a patient bed on Medicine handle it); and **the advanced supplies are
+a field edge, not a crutch** (a blood bag gets the downed up with 45 HP instead of 15, a stim is one AP now and one
+less next turn).
+
+Key numbers (first pass):
+
+| what | number | why |
+|---|---|---|
+| infection chance | 0.005/h per dirty wound of severity ≥ 0.25; bandaged ×0.35, clean ×0, patient ×0.5 | ~1 in 8 untreated wounds goes bad in a day |
+| infection | starts at 0.15–0.3, grows 0.003/h (about a week to the 0.75 health drain); −0.35 output at full | slow enough to see coming |
+| on Medicine at the Med Bay | an infection fades at 0.003/h | herbal remedies hold it back without antibiotics |
+| fracture | 35% when a limb hit leaves it at ≥ 0.45; −0.25 efficiency, heals ×0.5; splinted −0.08, heals ×1.25 | a splint is worth 2 AP in the field |
+| pain | worst injury ≥ 0.55: −15% output; no field AP cost (see below) | |
+| fever in the field | infection ≥ 0.5, sickness ≥ 0.4–0.6: −1 AP (never more than 1, never below 2 AP) | sick people should stay home |
+| painkiller | ignores 60% of injury penalties for 4 rounds / 24 h; 3 doses close together start a dependency (−0.08 mood/h × severity, fades in ~4 days) | mild and self-limiting; the Med Bay never doses someone near it |
+| food / Husk sickness | −30% / −45% output; fade 0.012 / 0.003 per hour; Husk sickness drains health from 0.7 | Husk meat is a real gamble |
+| blood bag | revive with 45 HP (med-kit 15); the donor gives 20 health and needs 70+ | |
+| surgery kits | Surgical +0.12 (any tier), Suture +0.05 (T0–T2), × quality | a fresh medic's powered-part odds 76% → 88% |
+| quality | Crude ×0.8, Fine ×1.25 on heal, revive HP, cure strength, pain relief | Pharmacist adds +0.15 to the quality score |
+
+Pain in the field: the first pass took 1 AP from anyone with a wound of 0.55 or worse. Zone trials (300 runs, two
+adults, starting gear) put Suburb Ruins deaths at 31% (`main`) → 37%, Flooded Mall 50% → 59%: a hurt survivor got
+slower, got hit again and went down, a death spiral. At a threshold of 0.8 it was still +3/+4 points; without the AP
+cost Suburb Ruins is back at 30%. So pain costs output at home and nothing extra in the field (the wound itself already
+does); fevers keep their −1 AP, as a reason not to send the sick. Fractures (35%) changed nothing measurable (38% vs
+37%). With the shipped data: Outskirts / Suburb Ruins / Flooded Mall runs with a death 6% / 30% / 52% (`main` 6% / 31% /
+50%).
+
+Colony sweep, 8 seeds × 40 days (`--seeds=1..8 --days=40`, `main` → this branch): median population 6 → 6, starvation
+0 → 0, expedition deaths 5 → 2 over 88 / 87 runs, births 4 → 4, departures 2 → 7 (more recruits came home: 9 → 16, and
+not all had a bed), Town Hall 2 day 35.8 → 30.6, min food 3.7 → 4.1 days. Medicine line: 8 infections over the 8
+colonies (first on day 13, median), all cured, none fatal; 81 treatments given at home, 48 supplies crafted at the
+dispensary; no sicknesses (food-cooking is not merged); no blood donations (no bot colony reaches Med Bay 2 in 40 days).
+The bot crafts antiseptic, splints and dressings once the Med Bay stands, antibiotics while anyone is infected, distils
+spirits when alcohol runs low, admits the infected and sick, and dresses the wounds of those working through them; in the
+field it revives with the strongest kit, splints broken limbs and takes one painkiller when in pain.
+
+The fog-of-war checker in the multiplayer tests now accepts an actor its side saw when the event was logged (FogLog's
+`SeenBy` rule): the first pass's pain −1 AP changed a co-op fight so that a watcher went down in the middle of an AI batch, which the
+older, stricter check flagged though the server did what FogLog documents.
+
+Watch next pass: no bot colony reaches Med Bay 2 in 40 days, so antibiotics, blood bags and stims are covered by tests,
+not sweeps; the infection rate is tuned for a colony that keeps a Med Bay, and one without may want antiseptic earlier
+in the bot's build order; when food-cooking lands, Husk sickness odds need a pass of their own.
