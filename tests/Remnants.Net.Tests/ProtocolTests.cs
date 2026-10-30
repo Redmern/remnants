@@ -19,6 +19,7 @@ public class ProtocolTests
         [
             new Move(1, 2, new Pos(3, 4)), new Attack(1, 2, 9, "pistol_shot"), new UseItem(1, 2, "med_kit", 5), new UseItem(1, 2, "bandage"),
             new PickUp(1, 2, 3, "scrap"), new Recruit(1, 2, 7), new EndTurn(1, 2), new Extract(1, 2),
+            new UseItem(1, 2, "flare", At: new Pos(6, 1)), new SetStance(1, 2, Stance.Overwatch), new Lookout(1, 2),
         ];
         foreach (var intent in intents)
         {

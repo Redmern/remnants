@@ -124,18 +124,38 @@ public sealed class NetFixture
         throw new InvalidOperationException($"No free tile next to {near}.");
     }
 
+    /// <summary>Per player: the units their last snapshot showed (events may name those).</summary>
+    private readonly Dictionary<string, HashSet<int>> _lastShown = new();
+
     private void CheckFog(TestPlayer player, Message message)
     {
         if (Host.Sim is not { } sim || player.Client.PlayerId == 0) return;
         var side = Unit.PlayerSide(player.Client.PlayerId);
-        var visible = Visibility.SideVisible(sim.Data, sim.State, side);
+        var seen = Detection.SeenBy(sim.Data, sim.State, side);
         var map = sim.State.Map;
+        bool Theirs(Unit u) => u.Side == side || u.PlayerId == player.Client.PlayerId;
         switch (message)
         {
             case Snapshot s:
-                foreach (var u in s.View.Units.Where(u => u.Side != side && u.PlayerId != player.Client.PlayerId))
-                    if (!u.OnMap || !visible.Contains(map.Index(u.Pos)))
-                        FogViolations.Add($"{player.Name} was sent {u.Name} at {u.Pos}, which their side cannot see.");
+                foreach (var u in s.View.Units.Where(u => !Theirs(u)))
+                    if (!u.OnMap || !seen.Contains(u.Id))
+                        FogViolations.Add($"{player.Name} was sent {u.Name} at {u.Pos}, whom their side cannot see.");
+                var shown = s.View.Units.Select(u => u.Id).ToHashSet();
+                var before = _lastShown.GetValueOrDefault(player.Name, []);
+                foreach (var e in s.Events)
+                {
+                    if (e.Anonymous is not null) FogViolations.Add($"{player.Name} was sent the actor-less text of '{e.Message}'.");
+                    if (e.Side is { } only && only != side) FogViolations.Add($"{player.Name} was sent {only}'s private event '{e.Message}'.");
+                    if (e.UnitId is { } actor && sim.State.FindUnit(actor) is { } a && !Theirs(a) && !shown.Contains(actor) && !before.Contains(actor))
+                        FogViolations.Add($"{player.Name} heard '{e.Message}' naming {a.Name}, whom they never saw.");
+                }
+                _lastShown[player.Name] = shown;
+                foreach (var c in s.View.Contacts.Where(c => c.Side != side))
+                    FogViolations.Add($"{player.Name} was sent {c.Side}'s contact at {c.Pos}.");
+                foreach (var x in s.View.Sensors.Where(x => x.Side != side))
+                    FogViolations.Add($"{player.Name} was sent {x.Side}'s motion sensor at {x.Pos}.");
+                foreach (var r in s.View.Reveals.Where(r => r.Side != side || !shown.Contains(r.UnitId)))
+                    FogViolations.Add($"{player.Name} was sent a reveal of unit {r.UnitId} for {r.Side}.");
                 foreach (var u in s.View.Units.Where(u => u.Side != side && u.Ai.TargetId is not null))
                     FogViolations.Add($"{player.Name} was sent {u.Name}'s AI memory.");
                 if (s.View.RngState != 0) FogViolations.Add($"{player.Name} was sent the RNG state.");
@@ -146,7 +166,7 @@ public sealed class NetFixture
                 break;
             case TurnChanged t when t.UnitId is { } id:
                 var unit = sim.State.FindUnit(id)!;
-                if (unit.Side != side && !visible.Contains(map.Index(unit.Pos)))
+                if (!Theirs(unit) && !seen.Contains(unit.Id))
                     FogViolations.Add($"{player.Name} was told unseen {unit.Name} is up.");
                 break;
         }

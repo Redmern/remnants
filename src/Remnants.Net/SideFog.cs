@@ -6,8 +6,11 @@ namespace Remnants.Net;
 /// <summary>
 /// Server-side fog of war for one player: decides what that player's client may receive. A view holds
 /// <list type="bullet">
-/// <item>the player's own units (any status) and other units only while they stand on a tile the side sees now;
-///   other units lose their AI memory and colony record (only name, sex and child/adult are kept for the model);</item>
+/// <item>the player's own units (any status) and other units only while the side sees them now (<see cref="Detection"/>:
+///   in sight and detected, lit by a flare, revealed, or scanned); other units lose their AI memory and colony record
+///   (only name, sex and child/adult are kept for the model);</item>
+/// <item>the side's own contacts and motion sensors, reveals of units it sees, and every burning flare (they light up
+///   for everyone);</item>
 /// <item>loot caches as the side last saw them (a cache looted out of sight still shows until seen again);</item>
 /// <item>the turn order cut to known units, with <see cref="HiddenUnitId"/> standing in when an unseen unit is up;</item>
 /// <item>the side's own explored tiles, every party's done flag, and no RNG state or Network alarm counters.</item>
@@ -27,12 +30,20 @@ public sealed class SideFog(int playerId, string side)
     /// <summary>Tiles the side saw at the last <see cref="Update"/>.</summary>
     public HashSet<int> Visible { get; private set; } = [];
 
+    /// <summary>Ids of the units the side saw at the last <see cref="Update"/> (its own included).</summary>
+    public HashSet<int> Seen { get; private set; } = [];
+
+    /// <summary>Units the side saw at the update before the last one (for judging events against "before").</summary>
+    public HashSet<int> SeenBefore { get; private set; } = [];
+
     /// <summary>Recomputes what the side sees and refreshes its memory of caches on those tiles. Returns the previous visible set.</summary>
     public HashSet<int> Update(ScavengeSim sim)
     {
         var before = Visible;
         var state = sim.State;
         Visible = Visibility.SideVisible(sim.Data, state, Side);
+        SeenBefore = Seen;
+        Seen = Detection.SeenBy(sim.Data, state, Side);
         foreach (var id in _knownCaches.Where(kv => Visible.Contains(state.Map.Index(kv.Value.Pos))).Select(kv => kv.Key).ToList())
             _knownCaches.Remove(id);
         foreach (var cache in state.Caches.Where(c => Visible.Contains(state.Map.Index(c.Pos))))
@@ -41,8 +52,7 @@ public sealed class SideFog(int playerId, string side)
     }
 
     /// <summary>Whether this side may know of a unit right now.</summary>
-    public bool Knows(ScavengeState state, Unit u) =>
-        Owns(u) || (u.OnMap && Visible.Contains(state.Map.Index(u.Pos)));
+    public bool Knows(ScavengeState state, Unit u) => Owns(u) || (u.OnMap && Seen.Contains(u.Id));
 
     private bool Owns(Unit u) => u.Side == Side || u.PlayerId == PlayerId;
 
@@ -77,21 +87,23 @@ public sealed class SideFog(int playerId, string side)
             Explored = state.Explored.TryGetValue(Side, out var explored)
                 ? new() { [Side] = new SortedSet<int>(explored) }
                 : new(),
+            Contacts = state.Contacts.Where(c => c.Side == Side).ToList(),
+            Reveals = state.Reveals.Where(r => r.Side == Side && known.Contains(r.UnitId)).ToList(),
+            Flares = state.Flares.ToList(),
+            Sensors = state.Sensors.Where(x => x.Side == Side).ToList(),
         };
     }
 
     /// <summary>
-    /// Events this side gets to hear about, judged against what it saw before or after they happened: round and
-    /// party bookkeeping, anything done by or to its own units, and anything on a tile it saw.
+    /// Events this side gets to hear about (<see cref="FogLog"/>), judged against what it saw before or after they
+    /// happened: an unseen actor is removed (the anonymous text, "ambushed from the fog"), side-only alerts stay with
+    /// their side.
     /// </summary>
-    public List<ScavengeEvent> Filter(ScavengeState state, IEnumerable<ScavengeEvent> events, IReadOnlySet<int> seenBefore)
-    {
-        bool Seen(Pos? p) => p is { } at && state.Map.InBounds(at) && (Visible.Contains(state.Map.Index(at)) || seenBefore.Contains(state.Map.Index(at)));
-        bool Mine(int? id) => id is { } i && state.FindUnit(i) is { } u && Owns(u);
-        return events.Where(e =>
-            e.Type is ScavengeEventType.RoundStarted or ScavengeEventType.PartyDone or ScavengeEventType.Finished
-            || Mine(e.UnitId) || Mine(e.TargetId) || Seen(e.Pos)).ToList();
-    }
+    public List<ScavengeEvent> Filter(ScavengeState state, IEnumerable<ScavengeEvent> events, IReadOnlySet<int> seenBefore) =>
+        FogLog.Filter(events, Side,
+            id => state.FindUnit(id) is { } u && Owns(u),
+            id => Seen.Contains(id) || SeenBefore.Contains(id),
+            p => state.Map.InBounds(p) && (Visible.Contains(state.Map.Index(p)) || seenBefore.Contains(state.Map.Index(p))));
 
     private static Unit Copy(Unit u) => ProtocolCopy.Clone(u);
 
