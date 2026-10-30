@@ -286,14 +286,7 @@ public static class Consequences
         string? schematic = null;
         if (holds)
         {
-            foreach (var (item, perKill) in threat.Loot)
-            {
-                var expected = perKill * killed;
-                var n = (int)Math.Floor(expected) + (rng.NextDouble() < expected - Math.Floor(expected) ? 1 : 0);
-                if (n <= 0) continue;
-                state.Inventory.Add(item, n);
-                loot[item] = n;
-            }
+            loot = RaidLoot.Roll(sim, raid.Kind, threat, killed, rng);
             var drops = DefenseSchematics.Droppable(sim).ToList();
             if (drops.Count > 0 && rng.NextDouble() < threat.SchematicChance)
             {
@@ -334,5 +327,27 @@ public static class Consequences
         if (r.Stolen.Count > 0) parts.Add($"lost {string.Join(", ", r.Stolen.Select(kv => $"{kv.Value:0} {kv.Key}"))}");
         if (r.Damaged.Any(d => d.Destroyed)) parts.Add($"{r.Damaged.Count(d => d.Destroyed)} wrecked");
         return parts.Count == 0 ? head + "." : $"{head}: {string.Join(", ", parts)}.";
+    }
+}
+
+/// <summary>
+/// What beaten attackers leave behind, into the colony inventory. The one place raid loot is rolled: once the enemy-loot
+/// branch's loot tables land, this calls their hook per attacker killed instead of <see cref="ThreatDef.Loot"/>.
+/// </summary>
+public static class RaidLoot
+{
+    public static Dictionary<string, int> Roll(ColonySim sim, ThreatKind kind, ThreatDef threat, int killed, DeterministicRng rng)
+    {
+        _ = kind;
+        var loot = new Dictionary<string, int>();
+        foreach (var (item, perKill) in threat.Loot)
+        {
+            var expected = perKill * killed;
+            var n = (int)Math.Floor(expected) + (rng.NextDouble() < expected - Math.Floor(expected) ? 1 : 0);
+            if (n <= 0) continue;
+            sim.State.Inventory.Add(item, n);
+            loot[item] = n;
+        }
+        return loot;
     }
 }
