@@ -144,6 +144,7 @@ public sealed class SideFog(int playerId, string side)
                 .Where(x => state.FindParty(x.PlayerId)?.Side == Side || explored?.Contains(state.Map.Index(x.Pos)) == true)
                 .Select(x => ProtocolCopy.Clone(x).Also(c => { if (state.FindParty(x.PlayerId)?.Side != Side) c.Stash = new(); }))
                 .ToList(),
+            Mission = MissionView(state),
         }.Also(v =>
         {
             // A device's unit only while that unit is sent; links to drones / operators the side does not know are cut.
@@ -154,6 +155,18 @@ public sealed class SideFog(int playerId, string side)
                 if (u.OperatorId is { } op && !known.Contains(op)) u.OperatorId = null;
             }
         });
+    }
+
+    /// <summary>
+    /// A story mission's objectives, chatter and prompt go to the host's team only (a rival never learns them), and
+    /// never the host's campaign flags.
+    /// </summary>
+    private MissionRun? MissionView(ScavengeState state)
+    {
+        if (state.Mission is not { } run || state.Parties.Count == 0 || state.Parties[0].Side != Side) return null;
+        var copy = ProtocolCopy.Clone(run);
+        copy.Campaign.Clear();
+        return copy;
     }
 
     /// <summary>

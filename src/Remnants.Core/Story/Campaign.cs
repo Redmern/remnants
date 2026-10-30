@@ -329,6 +329,19 @@ public static class Campaign
         };
     }
 
+    /// <summary>
+    /// A story mission's run setup without a colony (a dedicated co-op server, a debug run): the script, the map (the
+    /// perimeter variant for <paramref name="townHall"/>), the room, and what a guest copies.
+    /// </summary>
+    public static MissionSetup CoopSetup(StoryData story, string missionId, int townHall = 2)
+    {
+        var def = story.Mission(missionId) is { Type: MissionType.Field } m ? m : throw new ArgumentException($"No field mission '{missionId}'.");
+        return new MissionSetup(def.Field!, story.MapFor(def, townHall), def.Room is { } room ? story.Maps[room] : null)
+        {
+            GuestSchematics = GuestSchematics(def),
+        };
+    }
+
     /// <summary>What a co-op guest copies from a mission: its schematic rewards (STORY.md "Co-op").</summary>
     public static List<string> GuestSchematics(MissionDef def) =>
         def.Rewards.Where(e => e.Kind == EffectKind.Schematic).Select(e => e.Id).Distinct().ToList();

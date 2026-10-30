@@ -58,6 +58,13 @@ public sealed record HostOptions
     /// Research Data.
     /// </summary>
     public IReadOnlyCollection<string>? Resources { get; init; }
+
+    /// <summary>
+    /// Co-op story (STORY.md "Co-op", v1): the host's story mission — its script, handmade map or room, and the
+    /// schematics a guest copies. The first seat is the host (its campaign is the one that advances); a guest's party
+    /// spawns at the map's second spawn point and sees the objectives and chatter as an ally.
+    /// </summary>
+    public MissionSetup? Mission { get; init; }
 }
 
 public enum HostPhase { Lobby, Playing, Ended }
@@ -309,7 +316,7 @@ public sealed class GameHost : IHostSink, TradeDesk.IVenue
         {
             Sim = NewScavenge.Create(_data, Options.ZoneId, Options.Seed,
                 _seats.Select(s => new PartySetup(s.PlayerId, s.Party, s.StartTeam(Options.Mode), s.Name) { Vehicle = s.Vehicle }).ToList(),
-                new ZoneConditions(Environment: Options.MissionEnvironment(_data)));
+                new ZoneConditions(Environment: Options.MissionEnvironment(_data)), Options.Mission);
         }
         catch (ArgumentException e)
         {

@@ -11,7 +11,7 @@ namespace Remnants.Server;
 /// Headless authoritative server for one shared scavenge instance (see docs/MULTIPLAYER.md).
 /// <code>
 /// dotnet run --project src/Remnants.Server -- --port 7777 [--zone ID] [--seed N] [--players 2] [--max-players 4]
-///     [--turn-seconds 60] [--reconnect-seconds 120] [--bind 0.0.0.0] [--data DIR] [--coop] [--hour 0-23] [--weather KIND[:INTENSITY]]
+///     [--turn-seconds 60] [--reconnect-seconds 120] [--bind 0.0.0.0] [--data DIR] [--coop] [--hour 0-23] [--weather KIND[:INTENSITY]] [--story-mission ID]
 /// dotnet run --project src/Remnants.Server -- --bot 127.0.0.1:7777 [--name Bot] [--rounds 30] [--team N] [--hostile] [--propose]
 ///     [--trade [--trade-offer "scrap:20,bandage"]]
 /// dotnet run --project src/Remnants.Server -- --market market.json [--port 7780] [--bind 0.0.0.0]
@@ -37,7 +37,7 @@ public static class Program
             if (a.Value("--bot") is { } target) return await Bot.Run(target, a, scavenge, game);
             if (a.Value("--market-bot") is { } market) return await BotTrade.RunMarket(market, a, scavenge, game);
             if (a.Value("--market") is { } file) return await ServeMarket(a, file, scavenge, game, trade);
-            return await Serve(a, scavenge, game, trade);
+            return await Serve(a, scavenge, game, trade, dataDir);
         }
         catch (Exception e) when (e is ArgumentException or FormatException or GameDataException or IOException)
         {
@@ -64,8 +64,12 @@ public static class Program
         return 0;
     }
 
-    private static async Task<int> Serve(Args a, ScavengeData scavenge, GameData game, TradeRules trade)
+    private static async Task<int> Serve(Args a, ScavengeData scavenge, GameData game, TradeRules trade, string dataDir)
     {
+        // --story-mission=ID: a co-op story mission (the first to join is the host; data/story is loaded from --data).
+        var story = a.Value("--story-mission") is { } missionId
+            ? (Id: missionId, Def: Remnants.Core.Story.StoryDataLoader.LoadFromDirectory(Path.Combine(dataDir, "story")))
+            : default;
         var options = new HostOptions
         {
             ZoneId = a.Value("--zone") ?? "suburb_ruins",
@@ -82,6 +86,12 @@ public static class Program
             Trade = trade,
             Resources = game.Resources.Keys.ToList(),
         };
+        if (story.Def is { } storyData)
+            options = options with
+            {
+                ZoneId = storyData.Mission(story.Id)?.Zone ?? options.ZoneId, Mode = MissionMode.Coop,
+                Mission = Remnants.Core.Story.Campaign.CoopSetup(storyData, story.Id),
+            };
         using var server = HostedServer.Start(scavenge, options, IPAddress.Parse(a.Value("--bind") ?? "0.0.0.0"), a.Int("--port", Protocol.DefaultPort), Print);
         var done = new TaskCompletionSource();
         server.Host.Ended += () => done.TrySetResult();

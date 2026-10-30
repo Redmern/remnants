@@ -246,12 +246,19 @@ public static class NewScavenge
         };
         var map = state.Map;
         var spawn = built.Spawns.Count > 0 ? built.Spawns[0] : map.AllPositions.First(p => data.Terrain(map[p]).Passable);
+        var handmadeTeams = new Dictionary<int, string>();
         for (var i = 0; i < parties.Count; i++)
         {
             var party = parties[i];
             // A second party (co-op) starts at the last spawn tile.
             var anchor = i == 0 ? spawn : built.Spawns[^1];
+            // A team (co-op story: the host and a guest) shares one side, as on a generated map.
             var side = Unit.PlayerSide(party.PlayerId);
+            if (party.Team is { } team)
+            {
+                if (!handmadeTeams.TryGetValue(team, out var shared)) handmadeTeams[team] = shared = Unit.TeamSide(state.NextTeamId++);
+                side = shared;
+            }
             state.Parties.Add(new Party { PlayerId = party.PlayerId, Name = party.Name ?? "", Side = side });
             var spots = map.AllPositions
                 .Where(p => data.Terrain(map[p]).Passable && !map.IsExit(p) && state.UnitAt(p) is null)
