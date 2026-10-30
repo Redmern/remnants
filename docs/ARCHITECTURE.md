@@ -96,6 +96,14 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   `rot_deg`, scaled by chest height for bodies other than the adult male). Body → torso; weapon → hand, else back (a
   missing arm drops it to the back; a prosthetic arm holds it); tool → back, else chest, else hand. Colony survivors
   carry no gear in Core, so the colony shows prosthetics only.
+- `GearModels` (purely visual, used by `SurvivorDressing` for field units, portraits and the Gear Bench render): a modded
+  item id resolves to its base model `item_{definedId}`; each mod's model (a code-side map from mod item id to the
+  asset id, else the data's `model`, else nothing) is parented under the gear's `mod_{slot}` node (the glb node, else the
+  manifest `mod_slots` point), offset by minus its `attach.mount`. Node choice: the mod model's `params.slots`, then the
+  data slot (`stock` → `mod_stock` else `mod_grip`; `visor` → `mod_visor` else `mod_filter`, a filter the other way).
+  Mods with `params.apply = "recolor"` (camo, waterproofing) recolour the garment's materials named in `params.recolor`
+  to `style.json` `palette[value]` (and `params.roughness`). Headgear hangs on the `head` socket. Missing models,
+  nodes or a manifest without `mod_slots` leave the gear plain.
 - `scripts/HudTheme` — the one `Theme` for every screen's HUD: worn-metal 9-slice panels, bevelled buttons with hover /
   pressed / disabled / focus states, tabs, lists, sliders, tooltips, scrollbars, progress bars, the bundled fonts; type
   variations (`Card`, `CardSelected`, `Inset`, `Chip`, `Toast` panels; `Title`, `Display`, `Heading`, `Muted`, `Small`,
@@ -129,7 +137,7 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   `BuildingPanel` (level pips, worker portraits, upgrade cost chips and Town Hall cap), `BuildMenu` (category filter,
   grid with costs, locks and tooltips), `EventLog` (filterable, collapsible feed with icons; first-time tips from
   `Advice`; raises toasts for deaths, births, departures, a party's arrival and return, lost limbs, recruits),
-  `ExpeditionPanel`, `WorldMapPanel`, `MedBayPanel`, `ProductionPanel`, `InventoryPanel`, `AfterActionDialog` (who came
+  `ExpeditionPanel` (Weapon / Body / Head / Tool per member), `WorldMapPanel`, `MedBayPanel`, `ProductionPanel`, `InventoryPanel`, `GearBenchPanel` (below), `AfterActionDialog` (who came
   home with injury chips, who was lost, recruits, loot). Esc closes the topmost panel, then opens the pause menu
   (resume, save, load, settings, main menu, quit). Read Core state, call the session; no rules. Where the UI
   needs a rule Core exposes a query (`MaxUpgradeLevel`, `MaxPartySize`, `HealPerTick`/`HealEta`, `IsWorsening`,
@@ -415,6 +423,22 @@ All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `fo
 - **Saves**: version 3 adds partners, parents, mood, pregnancies, growth, homes and `ColonyState.Relationships`.
   Version 2 (and 1) saves load: their children are placed on the growth track by age (no aptitude, so they change
   only by training) and everything else starts empty/content.
+
+### Gear Bench (UI)
+
+`GearBenchPanel` (an overlay, from the "Gear Bench" button on the production panel of a `rules.benches` building):
+the colony's moddable gear grouped (weapons, armor and clothing, headgear) plus survivors' fitted gun arms, each with its
+mod chips; the picked piece's model with its mods (`PortraitStudio.Object`), Mk pips, the Mk kit upgrade (needs the kit
+and a `rules.upgradeAt` building), and every slot of its type: the mod in it with Remove, the fitting mods in the stores
+(hover previews, click fits; `GearBench.Install` says why one cannot), or locked with the Mk that opens one more. The
+compare column puts `GearBench.Stats` of the build next to the previewed one with good/bad deltas (weapons: accuracy,
+damage, range, AP, noise, reveal; worn gear: armor per region, melee armor, injury resist, move noise, stealth, carry;
+weight and slots for both), the gained and lost effect tags, and a body silhouette of armor per region. A strip lists
+the mod and kit orders in every building's queue (right-click cancels) with a picker to queue one (`CanQueue` reasons).
+Network-grade mods are cyan (`GearText`), nothing else is. In the field `UnitPanel` shows each piece as "Pistol Mk II"
+with mod chips, and with Jury-rig (`rules.fieldHook`) on the unit's turn Fit / Remove buttons (`FieldMod`); attack
+previews add mod tags under the hit chance: true AP from `Combat.ApCost` ("+1 AP close"), extra banes that apply to
+the target (EMP, SHOCK, INCENDIARY) and armor pierce.
 
 ## Crafting tiers
 
@@ -1269,8 +1293,8 @@ screenshots); `--scavenge --zone=ID --seed=N` plays the debug mission in another
 selected), `--hour=H` runs to the next H:00, pauses and puts sleepers indoors, `--no-select` clears the selection for
 scenery shots. Schematics: `--schematics-demo` (the crafting town plus a Radio Mast, a Lab L2, known / heard-of / encrypted
 schematics, a research running and the trader parked) with `--archive [--archive-filter=known|todecrypt|heard|unknown]`,
-`--research` (selects the Town Hall), `--radio=calls|trader|contracts` (selects the Radio Mast) and `--collapse-log`.
-HUD shots: `--pause-menu`, `--settings`, `--build-menu`, `--select-survivor=ID`, `--survivor-tab=N` (colony), `--menu-settings` (main menu). Needs a display; on
+`--research` (selects the Town Hall), `--radio=calls|trader|contracts` (selects the Radio Mast) and `--collapse-log`. HUD shots: `--pause-menu`, `--settings`, `--build-menu`, `--select-survivor=ID`, `--survivor-tab=N` (colony), `--menu-settings` (main menu). `--gear-demo` (colony): a town with an Armory, Workshop and Tailor, gear, mods and kits in the stores, the Gear Bench open on a Mk II pistol with a Reflex Sight previewed (`--gear-item=ID`, `--gear-preview=MOD` pick others).
+`--scavenge --gear-demo`: the debug mission with a modded unit (Mk III pistol with scope, suppressor, EMP coil; plated vest; scrap helmet; Jury-rig) aiming at a revealed Linked two tiles off (saves its own still with `--screenshot`). Needs a display; on
 Wayland pass `--display-driver wayland --disable-vsync` so an unfocused window still renders:
 
 ```sh

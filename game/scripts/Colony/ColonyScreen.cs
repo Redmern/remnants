@@ -84,6 +84,7 @@ public partial class ColonyScreen : Node3D
             _hud.Expedition.Pick(_session.Sim.State.Survivors.Where(s => !s.IsChild).Select(s => s.Id).Take(2));
         }
         if (DebugCapture.HasFlag("--cyber-demo") && IsFreshGame) RunCyberDemo();
+        if (DebugCapture.HasFlag("--gear-demo") && IsFreshGame) RunGearDemo();
         if (DebugCapture.HasFlag("--world-demo") && IsFreshGame) RunWorldDemo();
         if (DebugCapture.HasFlag("--night-demo") && IsFreshGame) RunNightDemo();
         if (DebugCapture.HasFlag("--power-demo") && IsFreshGame) RunPowerDemo();
@@ -573,6 +574,52 @@ public partial class ColonyScreen : Node3D
     {
         for (var i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         if (IsInstanceValid(_hud)) _hud.ScrollRightTo(_hud.Production.Book);
+    /// Debug (screenshots of gear mods, <c>--gear-demo</c>): Town Hall 2 with an Armory, Workshop and Tailor (staffed,
+    /// a few mod and kit orders under way); a pistol, rifle, padded vest and scrap helmet in the stores with mods and kits;
+    /// the pistol taken to Mk II with a suppressor, the vest given scrap plates. Opens the Gear Bench on the pistol with a
+    /// Reflex Sight previewed (<c>--gear-item=ID</c> and <c>--gear-preview=MOD</c> pick another piece and mod).
+    /// </summary>
+    private void RunGearDemo()
+    {
+        var sim = _session.Sim;
+        if (sim.Scavenge?.GearMods is null) return;
+        foreach (var res in sim.Data.Resources.Keys) sim.State.Stockpile.Add(res, 2000);
+        var hall = sim.State.Buildings.First(b => b.DefId == sim.Data.Rules.TownHallBuildingId).Id;
+        _session.Execute(new Upgrade(hall));
+        _session.Execute(new Upgrade(hall));
+        int? Build(string defId, int plot, int level)
+        {
+            if (_session.Execute(new Construct(defId, plot)).EntityId is not { } id) return null;
+            for (var l = 1; l < level; l++) _session.Execute(new Upgrade(id));
+            return id;
+        }
+        var armory = Build("armory", 8, 2);
+        var workshop = Build("workshop", 9, 1);
+        var tailor = Build("tailor", 10, 1);
+        Build("house", 14, 1);
+        foreach (var id in new[] { "pistol", "rifle", "padded_vest", "helmet_scrap", "scout_jacket", "pipe",
+                     "mod_reflex_sight", "mod_suppressor", "mod_scope", "mod_iron_sight", "mod_laser", "mod_emp_coil", "mod_stock",
+                     "mod_armor_scrap_plates", "mod_armor_padding", "mod_armor_webbing", "mod_camo_urban", "mod_helmet_visor",
+                     "mod_sharpened_edge", "kit_sidearm_mk2", "kit_armor_mk2", "mod_camo_urban" })
+            sim.State.Inventory.Add(id);
+        _session.Execute(new UpgradeGear("pistol", "kit_sidearm_mk2"));
+        _session.Execute(new InstallMod("pistol+mk2", "mod_suppressor"));
+        _session.Execute(new InstallMod("padded_vest", "mod_armor_scrap_plates"));
+        _session.Execute(new InstallMod("scout_jacket", "mod_camo_urban"));
+
+        var adults = sim.State.Survivors.Where(s => !s.IsChild).Select(s => s.Id).ToList();
+        var shops = new[] { armory, workshop, tailor };
+        for (var i = 0; i < adults.Count; i++)
+            if (shops[i % shops.Length] is { } at) _session.Execute(new AssignJob(adults[i], at));
+        if (armory is { } a) _session.Execute(new QueueRecipe(a, "kit_armor_mk2", 3));
+        if (workshop is { } w) _session.Execute(new QueueRecipe(w, "mod_wrapped_grip", 1, Repeat: true));
+        if (tailor is { } t) _session.Execute(new QueueRecipe(t, "mod_armor_webbing", 4));
+        _session.FastForward(6, _ => false);
+        if (armory is { } sel) _town.Select(sel);
+        _session.SetSpeed(0);
+        var pistol = sim.State.Inventory.Counts.Keys.FirstOrDefault(k => k.StartsWith("pistol+")) ?? "pistol";
+        _hud.GearBench.Open(DebugCapture.Value("--gear-item") ?? pistol);
+        _hud.GearBench.PreviewMod(DebugCapture.Value("--gear-preview") ?? "mod_reflex_sight");
     }
 
     /// <summary>
