@@ -214,10 +214,20 @@ public static class PartyBot
                 return new SetStance(playerId, unit.Id, Stance.Brace);
         }
 
+        // 2c. Beside the party's vehicle: load the haul into it (the vehicle carries it home), heaviest first.
+        var parked = ParkedVehicles.Of(state, playerId) is { Wrecked: false } pv ? pv : null;
+        var room = parked is null ? 0 : parked.CargoKg - ParkedVehicles.Load(sim.Data, parked);
+        if (parked is not null && parked.Pos.Chebyshev(unit.Pos) <= 1 && unit.Ap >= sim.Data.Rules.Turn.PickUpApCost
+            && unit.Pack.Where(id => sim.Data.Items[id].Kind is ItemKind.Material or ItemKind.Blueprint && sim.Data.Items[id].Weight <= room + 1e-9)
+                .OrderByDescending(id => sim.Data.Items[id].Weight).ThenBy(id => id, StringComparer.Ordinal).FirstOrDefault() is { } haul)
+            return new StashItem(playerId, unit.Id, haul);
+
         // 3. Decide where to go: out when hurt, loaded, late or out of caches; else the nearest cache.
-        // A Linked in sight is beyond a starting party: break off and head out.
-        var leaving = Leaving(sim, unit, hostiles, allies, fightLinked, tech);
-        if (leaving && map.IsExit(unit.Pos)) return new Extract(playerId, unit.Id);
+        // A Linked in sight is beyond a starting party: break off and head out. Loaded with room in the vehicle, unload first.
+        var loaded = profile.Load >= profile.CarryCapacity * 0.8;
+        var unload = loaded && room >= 1;
+        var leaving = Leaving(sim, unit, hostiles, allies, fightLinked, tech, unload);
+        if (leaving && (map.IsExit(unit.Pos) || ParkedVehicles.Beside(state, unit) is not null)) return new Extract(playerId, unit.Id);
 
         var strangers = recruit
             ? state.Units.Where(u => u.Kind == UnitKind.Npc && u.IsActive && u.Side == Unit.NeutralSide && visible.Contains(map.Index(u.Pos))).ToList()
@@ -239,6 +249,10 @@ public static class PartyBot
         // Goals in order (close in on a visible enemy, a stranger to recruit, the nearest cache we can still carry from,
         // an exit); take the first one we can actually make progress towards this turn.
         var goals = new List<Pos>();
+        // Tiles beside the vehicle are where loot is unloaded and where the party leaves from.
+        var bySide = parked is null ? [] : Pos.Neighbours8.Select(d => parked.Pos + d)
+            .Where(p => map.InBounds(p) && sim.Data.Terrain(map[p]).Passable).OrderBy(p => p.Chebyshev(unit.Pos)).ThenBy(map.Index).ToList();
+        if (unload) goals.AddRange(bySide);
         if (!leaving)
         {
             goals.AddRange(hostiles.OrderBy(h => h.Pos.Chebyshev(unit.Pos)).Select(h => h.Pos));
@@ -250,7 +264,7 @@ public static class PartyBot
                                                                            && state.Explored.GetValueOrDefault(unit.Side)?.Contains(map.Index(d.Pos)) == true)
                     .OrderBy(d => d.Pos.Chebyshev(unit.Pos)).Select(d => d.Pos));
         }
-        goals.AddRange(map.Exits.OrderBy(e => e.Chebyshev(unit.Pos)));
+        goals.AddRange(bySide.Concat(map.Exits).OrderBy(e => e.Chebyshev(unit.Pos)));
 
         var reachable = sim.Reachable(unit).Where(kv => kv.Value <= unit.Ap).ToList();
         foreach (var goal in goals.Take(6))
@@ -269,20 +283,21 @@ public static class PartyBot
                     .Select(kv => (Pos?)kv.Key).FirstOrDefault() is { } aside)
                 return new Move(playerId, unit.Id, aside);
         }
-        if (map.IsExit(unit.Pos) && (leaving || state.Round > MaxRounds / 2)) return new Extract(playerId, unit.Id);
+        if ((map.IsExit(unit.Pos) || ParkedVehicles.Beside(state, unit) is not null) && (leaving || state.Round > MaxRounds / 2))
+            return new Extract(playerId, unit.Id);
         if (tech && TryDrone(sim, unit, playerId, hostiles, lastAp: true) is { } idleDrone) return idleDrone;
         return defenses ? Hold(sim, unit, playerId, hostiles, contacts, shotAt) : new EndTurn(playerId, unit.Id);
     }
 
     /// <summary>Out when hurt, loaded, late, an ally is down, or nothing is left to loot (or hack); a starting party also on sighting a Linked.</summary>
-    private static bool Leaving(ScavengeSim sim, Unit unit, List<Unit> hostiles, List<Unit> allies, bool fightLinked, bool tech)
+    private static bool Leaving(ScavengeSim sim, Unit unit, List<Unit> hostiles, List<Unit> allies, bool fightLinked, bool tech, bool unload = false)
     {
         var state = sim.State;
         var profile = sim.Profile(unit);
         return (!fightLinked && hostiles.Any(h => IsLinked(sim, h)))
                || unit.Hp < unit.MaxHp * 0.5
                || unit.CarryingId is not null
-               || profile.Load >= profile.CarryCapacity * 0.8
+               || (profile.Load >= profile.CarryCapacity * 0.8 && !unload)
                || state.Round >= MaxRounds
                || allies.Any(a => a.Status == UnitStatus.Downed)
                || (state.Caches.Count == 0 && !(tech && Hackable(sim, unit, false).Any(d => d.Kind is DeviceKind.Locker or DeviceKind.Terminal)));

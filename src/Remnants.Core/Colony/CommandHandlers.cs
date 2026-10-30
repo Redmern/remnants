@@ -51,7 +51,7 @@ internal static class CommandHandlers
             return CommandResult.Fail(CommandError.TownHallLevelTooLow,
                 $"{def.Name} needs Town Hall level {def.MinTownHallLevel} (have {sim.TownHallLevel}).");
 
-        if (!VehicleRules.HasSchematic(sim.State, def.Level(1).Schematic))
+        if (!VehicleSchematics.LevelUnlocked(sim, def.Id, 1))
             return CommandResult.Fail(CommandError.RecipeLocked, $"{def.Name} needs a schematic the colony has not studied.");
 
         int plot;
@@ -89,7 +89,7 @@ internal static class CommandHandlers
             return CommandResult.Fail(CommandError.TownHallLevelTooLow,
                 $"{def.Name} level {next} needs Town Hall level {next} (have {sim.TownHallLevel}).");
 
-        if (!VehicleRules.HasSchematic(sim.State, def.Level(next).Schematic))
+        if (!VehicleSchematics.LevelUnlocked(sim, def.Id, next))
             return CommandResult.Fail(CommandError.RecipeLocked, $"{def.Name} level {next} needs a schematic the colony has not studied.");
 
         var cost = def.Level(next).Cost;

@@ -82,12 +82,6 @@ public static class VehicleRules
             tier.DroneRangeDays);
     }
 
-    /// <summary>
-    /// Whether the colony has a schematic. Today that is a studied blueprint item; the schematics feature replaces the
-    /// body of this one adapter (<c>Schematics.Has</c>).
-    /// </summary>
-    public static bool HasSchematic(ColonyState state, string? schematic) => schematic is null || state.KnownBlueprints.Contains(schematic);
-
     /// <summary>The colony's Garage (the highest level if there were several), or null.</summary>
     public static Building? Garage(ColonySim sim) =>
         sim.State.Buildings.Where(b => b.DefId == sim.Data.Vehicles.GarageBuilding).OrderByDescending(b => b.Level).FirstOrDefault();
@@ -132,7 +126,7 @@ public static class VehicleRules
         var days = Days(terms);
         if (blocked is null && baseDays > stats.RangeDays + 1e-9)
             blocked = $"{zone.Name} is beyond the {stats.Tier.Name}'s range ({stats.RangeDays:0.#} days on a tank).";
-        return new TravelPlan(baseDays, terms, days, (long)Math.Round(days * tpd), Math.Ceiling(stats.FuelPerDay * days * 2 - 1e-9), blocked);
+        return new TravelPlan(baseDays, terms, days, (long)Math.Round(days * tpd), Math.Max(0, Math.Ceiling(stats.FuelPerDay * days * 2 - 1e-9)), blocked);
     }
 
     /// <summary>The vehicle's state as it parks at the zone's edge, for the scavenge run.</summary>
@@ -187,7 +181,7 @@ public static class VehicleRules
         if (vehicle.Upgrades.Contains(upgrade.Id)) return CommandResult.Fail(CommandError.AlreadyFitted, $"{vehicle.Name} already has {upgrade.Name}.");
         if (tier.Tier < upgrade.MinTier)
             return CommandResult.Fail(CommandError.UpgradeDoesNotFit, $"{upgrade.Name} does not fit a {tier.Name}.");
-        if (!HasSchematic(state, upgrade.Schematic))
+        if (!VehicleSchematics.Has(sim, upgrade.Schematic))
             return CommandResult.Fail(CommandError.RecipeLocked, $"{upgrade.Name} needs a schematic the colony has not studied.");
         if (Pay(sim, upgrade.Cost, upgrade.Parts, upgrade.Name) is { } short_) return short_;
 

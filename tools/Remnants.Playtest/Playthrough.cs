@@ -18,7 +18,7 @@ public sealed record PlaythroughSummary(
     double? TownHall2Day, double? FirstStarvingDay, double MinFoodDays, int Expeditions, int ExpeditionsWithDeaths,
     int LinkedEncountersEarly, double? WorkshopDay, double? ArmoryDay, double? LabDay, int CraftedItems, int Recruits,
     double? FirstPerkPointDay, int LevelUps, double SurvivorDays, int PerksLearned, double MeanLevel, int MaxLevel, int UnspentPoints,
-    CyberSummary? Cyber = null);
+    CyberSummary? Cyber = null, IReadOnlyList<ExpeditionOutcome>? Runs = null);
 
 /// <summary>
 /// Cybernetics: the first day a design of each tier could be queued (requirements met, building there), limbs lost,
@@ -90,7 +90,7 @@ public sealed class Playthrough
             _departures, _births, _firstBirth, _firstPregnancy, _houseAffordable, _houseBuilt, _townHall2, _firstStarving,
             _minFoodDays, Bot.Expeditions.Count, Bot.Expeditions.Count(e => e.Dead > 0), linkedEarly, _workshop, _armory, _lab, _crafted, _recruits,
             _firstPerkPoint, _levelUps, _survivorTicks / tpd, _perks, grown.Count == 0 ? 0 : grown.Average(x => x.Level),
-            grown.Select(x => x.Level).DefaultIfEmpty(1).Max(), grown.Sum(x => x.PerkPoints), Cyber());
+            grown.Select(x => x.Level).DefaultIfEmpty(1).Max(), grown.Sum(x => x.PerkPoints), Cyber(), Bot.Expeditions.ToList());
     }
 
     /// <summary>Where people are right now: workers per building, patients, away, idle.</summary>
@@ -211,7 +211,8 @@ public sealed class Playthrough
         foreach (var e in Bot.Expeditions)
             sb.AppendLine($"  day {e.Day,5:0.0} {e.Zone,-16} party {e.Party.Count} → back {e.Returned} (evac {e.Evacuated}), dead {e.Dead}, " +
                           $"new injuries {e.NewInjuries}, recruits {e.Recruits}, items {e.ItemsBack}, rounds {e.Stats.Rounds}, kills {e.Stats.Kills}, " +
-                          $"linked seen {e.Stats.LinkedSeen}{(e.Error is null ? "" : $" ERROR {e.Error}")}");
+                          $"linked seen {e.Stats.LinkedSeen}, {(e.Vehicle is null ? "on foot" : $"{e.Vehicle} ({e.Fuel:0} fuel, {e.StashedItems} stashed{(e.VehicleLost ? ", LOST" : "")})")} " +
+                          $"{e.TravelDays:0.0} d each way{(e.Error is null ? "" : $" ERROR {e.Error}")}");
         if (Sim.Data.Cybernetics is { } cyber)
             foreach (var tier in Enumerable.Range(1, 4).Where(t => _tierDay[t] is null))
             {

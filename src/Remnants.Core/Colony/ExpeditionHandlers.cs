@@ -62,15 +62,16 @@ internal static class ExpeditionHandlers
         var travel = VehicleRules.Plan(sim, zone, vehicle, state.Tick);
         if (travel.Blocked is { } why) return CommandResult.Fail(CommandError.RoadBlocked, why);
         var plan = sim.PlanArrival(zone.Id, c.WaitFor, vehicle?.Id);
-        var rations = new Dictionary<string, double>
-        {
-            [sim.Data.Rules.Food.ResourceId] = (WorldMap.RationsPerMember(sim.Data, travel.Days) + plan.WaitRationsPerMember) * c.Members.Count,
-        };
-        if (travel.FuelRoundTrip > 0) rations[sim.Data.Vehicles.FuelResource] = travel.FuelRoundTrip;
-        if (!state.Stockpile.CanAfford(rations))
-            return CommandResult.Fail(CommandError.CannotAfford, $"Not enough rations or fuel: {CommandHandlers.Describe(state.Stockpile.Shortfall(rations))}.");
+        var food = (WorldMap.RationsPerMember(sim.Data, travel.Days) + plan.WaitRationsPerMember) * c.Members.Count;
+        var fuel = new Dictionary<string, double>();
+        if (travel.FuelRoundTrip > 0) fuel[sim.Data.Vehicles.FuelResource] = travel.FuelRoundTrip;
+        if (Rations.Available(sim) < food - 1e-9)
+            return CommandResult.Fail(CommandError.CannotAfford, $"Not enough rations: need {Math.Ceiling(food)} food.");
+        if (!state.Stockpile.CanAfford(fuel))
+            return CommandResult.Fail(CommandError.CannotAfford, $"Not enough fuel: {CommandHandlers.Describe(state.Stockpile.Shortfall(fuel))}.");
 
-        state.Stockpile.Spend(rations);
+        Rations.Take(sim, food);
+        state.Stockpile.Spend(fuel);
         foreach (var id in gear) state.Inventory.TryTake(id);
         foreach (var m in c.Members)
         {
@@ -296,6 +297,18 @@ internal static class ExpeditionHandlers
         string.Join(", ", gear.GroupBy(id => id)
             .Where(g => !inventory.Has(g.Key, g.Count()))
             .Select(g => $"{g.Count() - inventory.Count(g.Key)} more {data.Items[g.Key].Name}"));
+
+    /// <summary>
+    /// Food a party takes along, in food units. The one place launch spends food: when ingredients become items, these
+    /// become <c>Pantry.FoodValue(sim)</c> / <c>Pantry.TakeFoodValue(sim, amount)</c>.
+    /// </summary>
+    internal static class Rations
+    {
+        public static double Available(ColonySim sim) => sim.State.Stockpile.Get(sim.Data.Rules.Food.ResourceId);
+
+        public static void Take(ColonySim sim, double amount) =>
+            sim.State.Stockpile.Spend(new Dictionary<string, double> { [sim.Data.Rules.Food.ResourceId] = amount });
+    }
 
     internal static CommandResult NoData() =>
         CommandResult.Fail(CommandError.NoScavengeData, "Scavenge data (items, zones) is not loaded.");
