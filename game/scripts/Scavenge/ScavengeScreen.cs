@@ -91,6 +91,7 @@ public partial class ScavengeScreen : Node3D
         if (Fog.FogDemo.Requested) _ = FogDemoScript();
         if (TechDemo.Requested) _ = TechDemoScript();
         if (AnimDemo.Requested) _ = AnimDemoScript();
+        if (GearDemo.Requested) _ = GearDemoScript();
         if (float.TryParse(DebugValue("--zoom"), out var zoom)) _camera.Camera.Size = zoom;
         if (int.TryParse(DebugValue("--autoplay"), out var steps)) _ = Autoplay(steps);
         if (int.TryParse(DebugValue("--select-unit"), out var unitId)) CallDeferred(MethodName.SelectForCapture, unitId);
@@ -197,6 +198,7 @@ public partial class ScavengeScreen : Node3D
         _actionPanel.CommandRequested += command => _ = Run(command);
         _stancePanel.CommandRequested += command => _ = Run(command);
         _techPanel.CommandRequested += command => _ = Run(command);
+        _unitPanel.CommandRequested += command => _ = Run(command);
         _techPanel.AimChosen += aim =>
         {
             _aim = aim;
@@ -526,10 +528,34 @@ public partial class ScavengeScreen : Node3D
         {
             _map.Highlight(option.Target.Pos, HighlightKind.Attack);
             var ambush = option.Ambush is { Braced: false };
+            // True AP from here (a scope costs more up close) and the mod effects that bite on this target.
+            var ap = Combat.ApCost(action, selected.Pos, option.Target.Pos);
+            var effects = ModEffects(action, option.Target, ap);
             previews[option.Target.Id] = new WorldTags.Preview(
-                (ambush ? "AMBUSH " : "") + $"{option.HitChance * 100:0}% · {action.MinDamage:0}–{action.MaxDamage:0}" + (action.ApCost > selected.Ap ? " · no AP" : ""),
-                ambush, action.ApCost > selected.Ap);
+                (ambush ? "AMBUSH " : "") + $"{option.HitChance * 100:0}% · {action.MinDamage:0}–{action.MaxDamage:0}" + (ap > selected.Ap ? " · no AP" : ""),
+                ambush, ap > selected.Ap, effects.Count == 0 ? null : string.Join(" · ", effects.Select(e => e.Text)),
+                effects.Count > 0 && effects.All(e => e.Network));
         }
+    }
+
+    /// <summary>
+    /// Short tags for gear-mod effects on an attack at this target: "+1 AP close" (a scope within its close range), each
+    /// extra bane that applies ("EMP", "SHOCK", "INCENDIARY"), and armor pierce. EMP and shock against the Network count
+    /// as Network effects (cyan when that is all there is).
+    /// </summary>
+    private List<(string Text, bool Network)> ModEffects(ActionProfile action, Unit target, int ap)
+    {
+        var tags = new List<(string, bool)>();
+        if (ap > action.ApCost) tags.Add(($"+{ap - action.ApCost} AP close", false));
+        var enemyTags = target.EnemyDefId is { } id && _presenter.Sim.Data.Enemies.TryGetValue(id, out var def) ? def.Tags : [];
+        foreach (var bane in (action.ExtraBanes ?? []).Where(b => enemyTags.Contains(b.Tag)))
+        {
+            var label = bane.Stun ? "SHOCK" : bane.Tag is "network" or "device" ? "EMP" : bane.Tag == "husk" ? "INCENDIARY" : bane.Tag.ToUpperInvariant();
+            if (tags.All(t => t.Item1 != label)) tags.Add((label, bane.Tag is "network"));
+        }
+        var pierce = action.ArmorPierce;
+        if (pierce > 0) tags.Add(($"PIERCE {pierce:0.#}", false));
+        return tags;
     }
 
     private void Toast(string message) => _hud.Toasts.Show("Can't do that", message, "stat_warning", Hud.Palette.Danger);

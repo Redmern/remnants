@@ -84,7 +84,9 @@ public partial class ActionPanel : PanelContainer
             var icon = a.Pattern == AttackPattern.Melee ? "skill_melee" : "skill_firearms";
             var hotkey = n < 3 ? $"scav_attack_{++n}" : null;
             var button = Add(new ActionButton(icon, a.Name, $"{a.Pattern} {a.Reach} · {a.MinDamage:0}–{a.MaxDamage:0} dmg · {Fmt.Percent(a.Accuracy)}",
-                a.ApCost, hotkey, $"{a.Name}: choose it for clicks on targets. Hover a target for its hit chance."), () => SetAction(a.Id));
+                a.ApCost, hotkey, $"{a.Name}: choose it for clicks on targets. Hover a target for its hit chance."
+                    + (a.CloseApPenalty > 0 ? $"\n+{a.CloseApPenalty} AP within {a.CloseRange} tiles (scope)." : "")
+                    + (a.ArmorPierce > 0 ? $"\nPierces {a.ArmorPierce:0.#} armor." : "")), () => SetAction(a.Id));
             button.ToggleMode = true;
             button.ButtonPressed = a.Id == ActionId;
             button.SetBlocked(a.ApCost > unit.Ap, a.ApCost > unit.Ap);
