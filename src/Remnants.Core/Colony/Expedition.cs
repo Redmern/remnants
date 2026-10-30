@@ -59,6 +59,22 @@ public sealed class ZoneStatus
     public long? LastVisitTick { get; set; }
 }
 
+/// <summary>
+/// A scout drone flying over a zone: it reaches the zone at <see cref="ArriveTick"/> (intel comes in, and it may be shot
+/// down), and is back in the inventory, recharged, at <see cref="ReturnTick"/>.
+/// </summary>
+public sealed class DroneFlight
+{
+    public int Id { get; set; }
+    public string ZoneId { get; set; } = "";
+    public string ItemId { get; set; } = "";
+    public int? PilotId { get; set; }
+    public long LaunchTick { get; set; }
+    public long ArriveTick { get; set; }
+    public long ReturnTick { get; set; }
+    public bool Arrived { get; set; }
+}
+
 /// <summary>A party member as they came home.</summary>
 public sealed record ReportSurvivor(int SurvivorId, string Name, bool Evacuated, double Health, List<string> NewInjuries);
 

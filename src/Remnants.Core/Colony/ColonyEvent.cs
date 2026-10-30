@@ -6,7 +6,7 @@ public enum ColonyEventType
     ExpeditionLaunched, ExpeditionReturned, Recruited, Admitted, Discharged, Healed, InjuryWorsened, LimbLost,
     ProstheticFitted, Crafted, RecipeChanged, OrderQueued, OrderCancelled, BlueprintStudied,
     NewCouple, BrokeUp, Pregnant, Born, BecameChild, Grieving, Miscarried,
-    ExpeditionArrived, ExpeditionHeadingHome, ZoneRevealed,
+    ExpeditionArrived, ExpeditionHeadingHome, ZoneRevealed, DroneScouted, DroneLost, DroneReturned,
     LevelUp, PerkLearned, StudyStarted, StudyFinished, StudyEnded,
 }
 

@@ -37,6 +37,10 @@ public sealed class ColonyState
     /// <summary>Classes running at study buildings (see <see cref="StudySystem"/>).</summary>
     public List<StudyOrder> Studies { get; set; } = new();
 
+    /// <summary>Scout drones out over the world map (<see cref="WorldMap.SendDrone"/>).</summary>
+    public List<DroneFlight> DroneFlights { get; set; } = new();
+    public int NextFlightId { get; set; } = 1;
+
     public int NextStudyId { get; set; } = 1;
 
     /// <summary>The after-action report of the last expedition that came home (for the UI).</summary>

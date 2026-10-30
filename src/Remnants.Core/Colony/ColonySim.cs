@@ -222,6 +222,7 @@ public sealed class ColonySim
             Construct c => CommandHandlers.Construct(this, c),
             Upgrade c => CommandHandlers.Upgrade(this, c),
             LaunchExpedition c => ExpeditionHandlers.Launch(this, c),
+            SendScoutDrone c => WorldMap.SendDrone(this, c),
             ApplyExtractionResult c => ExpeditionHandlers.Apply(this, c),
             AdmitPatient c => MedicalHandlers.Admit(this, c),
             Discharge c => MedicalHandlers.Discharge(this, c),

@@ -18,6 +18,12 @@ public sealed record Upgrade(int BuildingId) : IColonyCommand;
 /// <summary>Send adults into a zone with gear from the colony inventory. They are away until the result is applied.</summary>
 public sealed record LaunchExpedition(string ZoneId, List<ExpeditionMember> Members) : IColonyCommand;
 
+/// <summary>
+/// Fly a scout drone from the inventory over a rumored zone: it reveals the zone's intel without anyone going (see
+/// <see cref="WorldMap.SendDrone"/>). <paramref name="PilotId"/>: a survivor at home who flies it (less risk, trains Drone Piloting).
+/// </summary>
+public sealed record SendScoutDrone(string ZoneId, int? PilotId = null) : IColonyCommand;
+
 /// <summary>Bring the active expedition home: survivors, injuries, deaths, recruits and loot.</summary>
 public sealed record ApplyExtractionResult(ExtractionResult Result) : IColonyCommand;
 
@@ -118,6 +124,10 @@ public enum CommandError
     SamePerson,
     AlreadyPartnered,
     ZoneUnknown,
+    /// <summary>Scout drone: none in the inventory, the zone is beyond its battery, or already scouted.</summary>
+    NoDrone,
+    OutOfDroneRange,
+    AlreadyScouted,
     NotArrived,
     PartyReturning,
     UnknownPerk,

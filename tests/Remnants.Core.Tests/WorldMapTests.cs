@@ -181,4 +181,61 @@ public class WorldMapTests
         sim.State.Zones["moon"] = new ZoneStatus { Intel = ZoneIntel.Scouted };
         Assert.ThrowsAny<System.Text.Json.JsonException>(() => SaveGame.Load(sim.Data, SaveGame.Save(sim.State), ScavengeTestData.Real));
     }
+
+    [Fact]
+    public void A_scout_drone_scouts_a_rumored_zone_without_anyone_going()
+    {
+        var sim = Colony();
+        var pilot = sim.AddSurvivor();
+        Assert.Equal(CommandError.NoDrone, sim.Execute(new SendScoutDrone("suburb_ruins")).Error);
+        sim.State.Inventory.Add("scout_drone");
+        Assert.Equal(CommandError.AlreadyScouted, sim.Execute(new SendScoutDrone("outskirts")).Error);
+        Assert.Equal(CommandError.ZoneUnknown, sim.Execute(new SendScoutDrone("core_spire")).Error);
+
+        Assert.True(sim.Execute(new SendScoutDrone("suburb_ruins", pilot.Id)).Ok);
+        Assert.False(sim.State.Inventory.Has("scout_drone"));
+        Assert.False(pilot.Away, "nobody goes");
+        var flight = Assert.Single(sim.State.DroneFlights);
+        sim.Advance((int)(flight.ArriveTick - sim.State.Tick));
+        Assert.Equal(ZoneIntel.Scouted, sim.ZoneInfo("suburb_ruins").Intel);
+        foreach (var id in Zone("suburb_ruins").Reveals) Assert.NotEqual(ZoneIntel.Unknown, sim.ZoneInfo(id).Intel);
+        Assert.True(pilot.Get(Survivors.Skill.DronePiloting) > 0);
+        Assert.Equal(0, sim.ZoneInfo("suburb_ruins").Visits);
+
+        // Threat 2 can lose it; if not, it is back in the stores after the flight home and the recharge.
+        var lost = sim.State.DroneFlights.Count == 0;
+        sim.Advance((int)(flight.ReturnTick - sim.State.Tick));
+        Assert.Equal(!lost, sim.State.Inventory.Has("scout_drone"));
+        Assert.Empty(sim.State.DroneFlights);
+    }
+
+    [Fact]
+    public void A_drone_only_reaches_so_far_and_dangerous_zones_may_shoot_it_down()
+    {
+        var sim = Colony();
+        sim.State.Inventory.Add("scout_drone");
+        var far = ScavengeTestData.Real.Zones.Values.First(z => z.TravelDays > ScavengeTestData.Real.Rules.World.DroneScout.MaxTravelDays);
+        sim.State.Zones[far.Id] = new ZoneStatus { Intel = ZoneIntel.Rumored };
+        Assert.Equal(CommandError.OutOfDroneRange, sim.Execute(new SendScoutDrone(far.Id)).Error);
+
+        var data = ScavengeTestData.Real;
+        Assert.Equal(0, WorldMap.DroneLossChance(data, Zone("outskirts"), null));
+        var risky = WorldMap.DroneLossChance(data, Zone("rail_depot"), null);
+        Assert.True(risky > WorldMap.DroneLossChance(data, Zone("suburb_ruins"), null));
+        var ace = new Survivors.Survivor();
+        ace.Set(Survivors.Skill.DronePiloting, 60);
+        Assert.True(WorldMap.DroneLossChance(data, Zone("rail_depot"), ace) < risky);
+    }
+
+    [Fact]
+    public void Saves_carry_drones_in_flight()
+    {
+        var sim = Colony();
+        sim.State.Inventory.Add("scout_drone");
+        Assert.True(sim.Execute(new SendScoutDrone("suburb_ruins")).Ok);
+        var json = SaveGame.Save(sim.State);
+        var loaded = SaveGame.Load(sim.Data, json, ScavengeTestData.Real);
+        Assert.Single(loaded.State.DroneFlights);
+        Assert.Equal(json, SaveGame.Save(loaded.State));
+    }
 }

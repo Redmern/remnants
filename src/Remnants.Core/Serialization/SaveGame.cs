@@ -26,10 +26,13 @@ namespace Remnants.Core.Serialization;
 /// Version 8 adds experience and perks (survivors' XP, level, perk points, perks) and classes at study buildings
 /// (<see cref="ColonyState.Studies"/>), plus the Hacking and Drone Piloting skills. Older survivors get XP for the skills
 /// they already have (<c>xp.migrationPerSkillPoint</c>), so veterans arrive with levels and points to spend.
+/// Version 9 adds scout drones over the world map (<see cref="ColonyState.DroneFlights"/>) and carries the scavenge run's
+/// hacking and drones (<see cref="ScavengeSave"/> version 5); older saves load with no drones out and a run without
+/// devices.
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 8;
+    public const int Version = 9;
     private const int OldestVersion = 1;
 
     /// <summary>What a pre-version-4 generic "blueprint" item becomes.</summary>
@@ -194,6 +197,11 @@ public static class SaveGame
         foreach (var zoneId in colony.Zones.Keys)
             if (!data.Zones.ContainsKey(zoneId)) throw new JsonException($"Save references unknown zone '{zoneId}'.");
         foreach (var id in colony.KnownBlueprints) RequireItem(id);
+        foreach (var f in colony.DroneFlights)
+        {
+            RequireItem(f.ItemId);
+            if (!data.Zones.ContainsKey(f.ZoneId)) throw new JsonException($"Save references unknown zone '{f.ZoneId}'.");
+        }
         foreach (var id in colony.Studies.Select(o => o.ManualItemId).OfType<string>()) RequireItem(id);
         foreach (var id in colony.Buildings.SelectMany(b => b.Queue).SelectMany(o => o.PaidItems)) RequireItem(id);
         foreach (var part in colony.Survivors.SelectMany(s => s.Body.Parts.Values))
