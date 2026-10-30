@@ -101,7 +101,10 @@ Character life and joining use the framework's character state (`alive iris`, `j
 
 ## What the framework needs for Acts 2–4
 
-Gathered from the specs below; stage 2 builds these on the framework, not beside it.
+Gathered from the specs below; stage 2 built these on the framework, not beside it (see ARCHITECTURE.md "Story mode" →
+"Acts 2–4"). Where the data differs from the specs: M6's trucks follow the party (no `pathTo`); Seven (M10) and the
+Choir children are reached and then follow (no hacking units); M12's engine is a `Carry` objective; M14's taken use
+`takeTag` and a `Keep` objective; the Spire is three missions chained with `chainFrom`.
 
 1. **Conditions:** `Humanity` (colony average of adults), `SurvivorHumanity` (one unique survivor), `Joined`, and
    `Outcome` matching one of several (`people|both`).

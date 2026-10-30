@@ -73,10 +73,13 @@ namespace Remnants.Core.Serialization;
 /// starting vehicles (<c>vehicles.starting</c>: the handcart) and their party out on foot.
 /// Version <see cref="LootVersion"/> (24) adds each zone's exit stash (<see cref="ZoneStatus.Stash"/>) and carries the run's field loot
 /// and salvage (<see cref="ScavengeSave.LootVersion"/>); older saves load with no stash.
+/// Version 25 adds Story Acts 2–4: the campaign's world effects, the survivors Halcyon took, chain parties and the
+/// Network-grade parts Doc's oath has counted (<see cref="Story.CampaignState"/>), survivors' story traits and trait hooks; the
+/// run's <see cref="ScavengeSave"/> version 14. Nothing to migrate: every new field starts empty or at zero.
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = LootVersion;
+    public const int Version = 25;
 
     /// <summary>The save version that brought food and cooking (one constant so a renumbering on merge is one edit).</summary>
     public const int FoodVersion = 17;

@@ -732,6 +732,12 @@ Today a scavenge has one goal: get out with loot. Add, in `Scavenge/`:
 6. **Act 4 and endings.** M15–M17, multi-floor maps, endings and epilogue, after-the-end world changes, Codex.
 7. **Co-op story.** Host's mission with one guest, schematic copies, second spawn points.
 
+Phases 1–7 are built. Acts 2–4 content and its specs: `docs/story/` (scripts, mission specs, survivors, endings,
+Codex, map notes); data in `data/story/`; the engine side in ARCHITECTURE.md "Story mode" → "Acts 2–4". Not built yet:
+Iris's weekly Research Data while she stays on the radio, M13's night start, Doc as a Medicine teacher, Seven's
+Override immunity (no Linked overrides survivors yet), and trucks driving their own route in M6 (the convoy follows the
+party).
+
 ## Assets needed (for the assets agent)
 
 **Characters** (3D model for the field/colony where they appear, plus a portrait render or bust each):

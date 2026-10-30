@@ -1039,6 +1039,37 @@ The spec is STORY.md. The data format, field by field, is docs/story/FORMAT.md. 
   - New Game asks Story or Sandbox (`NewGameChoice`).
   - Debug: `--story` (with `--colony`), `--story-demo=radio|dialogue|worldmap|briefing|journal`,
     `--scavenge --story-mission=ID [--th=N] [--rounds=N]`.
+- **Acts 2–4** (`Story/StoryCharacters.cs`, `Story/StoryWorld.cs`; content in `docs/story/`):
+  - *Unique survivors*: a character with a `survivor` def joins as a colony survivor (`StoryCharacters.Join`: fixed
+    stats, perks, story traits from `traits.json`). A trait's hooks are copied onto `Survivor.TraitHooks` and read like
+    perk hooks at home (`PerkEffects.For`) and in the field (`Unit.Hooks`). Daily rules: Seven's humanity grows back
+    (`Body.HumanityLoss` shrinks to a cap of 60) and unsettles the others under 30; Cole keeps score; Pell's mood
+    follows the colony's humanity. Doc's oath counts each Network-grade part fitted (`doc_t4_count`): a warning, then
+    she leaves. A joined character missing from the roster is dead if in the memorial, else left.
+  - *Conditions and effects*: humanity (colony or one survivor, `of`), joined / dead / adult, skill, `any` / `not`;
+    mood, humanity, leaves, dies, close a mission, world effects, endings, recruits, the taken coming home, renames.
+    "key" names the key-carrier. Each objective that came off comes home as flag `<mission>_<objective>`.
+  - *Missions*: `repeatDays` (Doc's Rounds), `chainFrom` (the Spire's three floors: only who came out of the floor
+    below may go on), `mustBring` (a character or "key"), `hostOnly`; a fail effect may close a mission for good.
+    The caravan's visits count into `marrow_visits` (M6).
+  - *World effects* (`StoryWorld`): `relay_down`, `truce` (Halcyon's Offer; launching a Relay or Spire mission during it
+    breaks it: `halcyon_offer` 3 and `m14b`), and the endings' `silence`, `terms`, `second_voice`. They reach the zones
+    as `ZoneConditions.NetworkWeight`, `HuskCountMultiplier`, `NetworkNeutral`.
+  - *Endings, epilogue, Codex*: `endings.json` (requires, closed text, world effects, slides whose first matching
+    variant shows), the `Ending` effect (the Calm ends the game: `CampaignState.Over`), `codex.json` pages unlocked and
+    grown by conditions. The taken (M14) leave the roster for `CampaignState.Taken`.
+  - *Field*: `Carry` (heavy work by N survivors next to a marker) and `Keep` (at most N in 100 taken) objectives;
+    `After` (rounds after an objective starts), `Hurt` and `Taken` triggers; `if` guards on triggers and prompt options
+    (run flags, else the campaign's at launch); `Leave`, `Lock`, `Open` actions; `takeTag` (the Linked carry off the
+    downed); `fuseAfter` (failed hacks destroy a node); `Reach` `by` a tag; party survivors tagged by `MissionSetup.Tags`.
+  - *Co-op story v1*: `HostOptions.Mission` (`--story-mission ID` on the server, `Campaign.CoopSetup`): the first seat
+    is the host; the mission goes to the host's team only (`SideFog`), without campaign flags; a guest's result
+    carries `GuestSchematics` and no campaign progress. Handmade maps put a team on one side.
+  - *Game*: `CodexPanel` and `EpiloguePanel` in the story HUD; `--story-demo=offer|join|codex|epilogue
+    [--ending=ID] [--slide=N] [--codex-tab=people|logs|story]`.
+  - *Playtest*: `--story-acts[=terms|silence|voice|calm|all] [--seed=N] [--trace]` plays Acts 2–4 from Act 1 done to an
+    ending with a strong, kept-up colony; each variant picks its dialogue choices and field prompt options.
+  - *Saves*: colony version 25, scavenge version 14.
 - **Playtest**: `--story [--prompt=N]` plays a Story game. The colony bot takes calls (first choice), builds the Radio
   Mast and a Watchtower, and launches open story missions; `StoryBot` plays them by their objectives. See BALANCE.md
   "Story Act 1 pass".

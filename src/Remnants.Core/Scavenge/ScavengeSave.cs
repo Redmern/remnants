@@ -30,12 +30,15 @@ namespace Remnants.Core.Scavenge;
 /// (<see cref="ScavengeState.SalvagedWrecks"/>); older runs have none.
 /// <see cref="LootVersion"/> adds field loot and salvage: pile kinds, sources and stash owners, salvage nodes, the loot
 /// seed and the difficulty; older runs load with plain caches, no nodes and a loot seed from their RNG state.
+/// Version 14 adds Story Acts 2–4 field rules: the run's campaign flags, the survivors the Linked took and who they are
+/// holding, the party's survivors at the start and a co-op guest's schematic copies (<see cref="MissionRun"/>), and
+/// devices' failed hacks (<see cref="ZoneDevice.Failures"/>); an older run loads with none of them.
 /// </summary>
 public static class ScavengeSave
 {
     /// <summary>Field loot and salvage (keyed: renumber to the next free version at merge).</summary>
     public const int LootVersion = 13;
-    public const int Version = LootVersion;
+    public const int Version = 14;
     private const int OldestVersion = 1;
 
     private sealed record Envelope(int Version, ScavengeState Scavenge);
