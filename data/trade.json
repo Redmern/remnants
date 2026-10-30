@@ -1,0 +1,47 @@
+{
+  // Player trading (docs/MULTIPLAYER.md "Trading"). Barter only; values are reference prices in scrap.
+  "limits": {
+    "maxLines": 8,
+    "maxResourceAmount": 500,
+    "maxItemCount": 20,
+    // Above these a trade still goes through, but the server logs it as suspicious.
+    "suspiciousResourceAmount": 200,
+    "suspiciousItemCount": 10
+  },
+  "courier": {
+    // Lobby trades travel home by courier: baseDays + daysPerLeg × legs (1..maxLegs, from the two players' keys),
+    // times every modifier (buildings below, weather and vehicles in code: Courier.Modifiers), at least minDays.
+    "baseDays": 0.5,
+    "daysPerLeg": 0.5,
+    "maxLegs": 4,
+    "minDays": 0.25,
+    // Trades come in over the Radio Mast when the game has one (ignored while no building of that id exists in data).
+    "requiresBuilding": "radio_mast",
+    "buildingFactors": { "garage": 0.8 }
+  },
+  // A schematic copy, per schematic tier (1-based): the first option the colony can afford is paid.
+  // Mirrors schematics.json copyCost (Research Data); the material option covers colonies without Research Data.
+  "copyCost": [
+    [ { "research_data": 1 }, { "cloth": 3, "electronics": 1 } ],
+    [ { "research_data": 2 }, { "cloth": 4, "electronics": 3 } ],
+    [ { "research_data": 3 }, { "cloth": 6, "electronics": 6 } ],
+    [ { "research_data": 5 }, { "cloth": 8, "electronics": 10 } ]
+  ],
+  // Reference values in scrap until the trader's prices (schematics.json resourceValues) are in.
+  "resourceValues": { "scrap": 1, "wood": 0.5, "stone": 0.5, "food": 0.6, "cloth": 1.5, "electronics": 4, "medicine": 4,
+                      "meal": 1, "stew": 1.6, "research_data": 7.5, "fuel": 3 },
+  // Schematic / blueprint value per tier (the trader's cheapest price).
+  "schematicValues": [ 25, 40, 60, 120 ],
+  "market": {
+    "listingHours": 72,
+    "maxListingHours": 168,
+    "maxOpenListings": 8,
+    "postsPerMinute": 4,
+    "requestsPerMinute": 120,
+    "maxListingsSent": 200
+  },
+  "live": {
+    // A live trade nobody touches for this long is cancelled (both sides refunded).
+    "idleSeconds": 180
+  }
+}

@@ -63,6 +63,9 @@ public sealed class ColonyState
     public List<MemorialEntry> Memorial { get; set; } = new();
     public List<ColonyEvent> Events { get; set; } = new();
 
+    /// <summary>Player trading: goods in escrow, couriers on the road, settled transactions (see <see cref="Trade.ColonyTrade"/>).</summary>
+    public Trade.TradeState Trade { get; set; } = new();
+
     public Survivor? FindSurvivor(int id) => Survivors.Find(s => s.Id == id);
     public Building? FindBuilding(int id) => Buildings.Find(b => b.Id == id);
 

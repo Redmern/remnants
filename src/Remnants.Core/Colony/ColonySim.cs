@@ -261,6 +261,11 @@ public sealed class ColonySim
     /// <summary>Unbuilt plots in ascending order.</summary>
     public IEnumerable<int> FreePlots() => Enumerable.Range(0, Data.Rules.Layout.PlotCount).Where(IsPlotFree);
 
+    /// <summary>A trade courier arrived and handed over its goods (for a toast).</summary>
+    public event Action<Trade.CourierDelivery>? CourierArrived;
+
+    internal void RaiseCourierArrived(Trade.CourierDelivery delivery) => CourierArrived?.Invoke(delivery);
+
     public void Tick()
     {
         ProductionSystem.Run(State, Data);
@@ -276,6 +281,7 @@ public sealed class ColonySim
         GrowthSystem.Run(State, Data);
         State.Tick++;
         WorldMap.Run(this);
+        Trade.ColonyTrade.Run(this);
         SyncRng();
     }
 

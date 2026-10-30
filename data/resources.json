@@ -7,5 +7,6 @@
   { "id": "electronics", "name": "Electronics" },
   { "id": "medicine",    "name": "Medicine" },
   { "id": "meal",        "name": "Meals" },
-  { "id": "stew",        "name": "Hearty Stew" }
+  { "id": "stew",        "name": "Hearty Stew" },
+  { "id": "research_data", "name": "Research Data" }
 ]
