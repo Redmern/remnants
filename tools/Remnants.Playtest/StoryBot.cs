@@ -132,6 +132,14 @@ public static class StoryBot
             if (goal is null) leave = true;
         }
 
+        // Never walk out on a friend in a fight: go to the nearest one with a hostile close by.
+        if (leave && !_leaveAll)
+        {
+            var pressed = ours.Where(f => f.Id != u.Id && f.IsActive && f.Kind == UnitKind.Survivor
+                                          && state.Units.Any(t => t.IsActive && f.HostileTo(t) && t.Pos.Chebyshev(f.Pos) <= 2))
+                .OrderBy(f => f.Pos.Chebyshev(u.Pos)).FirstOrDefault();
+            if (pressed is not null && pressed.Pos.Chebyshev(u.Pos) > 1 && Toward(sim, u, pressed.Pos) is { } help) return help;
+        }
         if (leave)
         {
             if (state.Map.IsExit(u.Pos))

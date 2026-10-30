@@ -39,8 +39,7 @@
         { "id": "pulled", "when": { "kind": "PickedUp", "item": "relay_antenna" },
           "actions": [
             { "kind": "Say", "speaker": "Lantern", "text": "Got it? Great. That noise was you, by the way. Go." },
-            { "kind": "Spawn", "enemy": "husk", "count": 1, "marker": "shed_back", "tag": "woken", "goal": "shed" },
-            { "kind": "Wake", "tag": "patrol", "goal": "shed" }
+            { "kind": "Spawn", "enemy": "husk", "count": 1, "marker": "shed_back", "tag": "woken", "goal": "shed" }
           ] }
       ]
     },
@@ -179,7 +178,7 @@
           "actions": [
             { "kind": "Follow", "tag": "juniper" },
             { "kind": "Say", "speaker": "Juniper", "text": "Thanks. Juniper. I ride for Marrow. He'll pay you back. He always does." },
-            { "kind": "Spawn", "enemy": "husk_crawler", "count": 2, "marker": "scout", "tag": "ambush", "goal": "scout" },
+            { "kind": "Spawn", "enemy": "husk_crawler", "count": 1, "marker": "scout", "tag": "ambush", "goal": "scout" },
             { "kind": "Say", "speaker": "Lantern", "text": "Movement. They were waiting for her to move. Go, go." }
           ] },
         { "id": "lost", "when": { "kind": "ObjectiveFailed", "objective": "escort" },

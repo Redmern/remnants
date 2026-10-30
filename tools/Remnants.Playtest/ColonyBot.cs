@@ -449,6 +449,8 @@ public sealed class ColonyBot
         var adults = State.Survivors.Where(s => !s.IsChild && !s.Away && s.PatientAtBuildingId is null && s.Pregnancy is null && s.Health >= 70).ToList();
         var size = Math.Min(Math.Max(_sim.MaxPartySize, mission.MaxParty ?? 0), adults.Count);
         if (size < 2) return false;
+        // A mission that needs someone treated waits for something to treat them with.
+        if (mission.Field!.Objectives.Any(o => o.Kind == ObjectiveKind.Aid) && Count("bandage") + Count("med_kit") == 0) return false;
         var zone = _sim.Scavenge!.Zones[mission.Zone!];
         if (State.Stockpile.Get("food") < WorldMap.RationsPerMember(Data, zone) * size + 5) return false;
         var party = adults.OrderByDescending(s => s.Get(AttributeKind.Strength) + s.Get(AttributeKind.Agility) + s.Get(AttributeKind.Endurance)).Take(size).ToList();

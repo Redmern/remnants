@@ -176,6 +176,14 @@ public static class StoryDataLoader
             All<HandmadeMapDef>("maps", (json, name) => [HandmadeMaps.Parse(json, name)]));
     }
 
+    /// <summary>From file contents (an exported game's embedded copy): each list is (file name, json) in load order.</summary>
+    public static StoryData LoadFromJson(string characters, IEnumerable<(string Name, string Json)> missions,
+        IEnumerable<(string Name, string Json)> dialogues, IEnumerable<(string Name, string Json)> maps) =>
+        new(Parse<List<CharacterDef>>(characters, "story/characters.json"),
+            missions.OrderBy(f => f.Name, StringComparer.Ordinal).SelectMany(f => Parse<List<MissionDef>>(f.Json, f.Name)).ToList(),
+            dialogues.OrderBy(f => f.Name, StringComparer.Ordinal).SelectMany(f => Parse<List<DialogueDef>>(f.Json, f.Name)).ToList(),
+            maps.OrderBy(f => f.Name, StringComparer.Ordinal).Select(f => HandmadeMaps.Parse(f.Json, f.Name)).ToList());
+
     private static T Parse<T>(string json, string name)
     {
         try
