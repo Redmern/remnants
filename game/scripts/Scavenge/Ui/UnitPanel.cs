@@ -292,8 +292,9 @@ public partial class UnitPanel : PanelContainer
         }
         var load = new StatBar("stat_load");
         var fraction = profile.CarryCapacity > 0 ? profile.Load / profile.CarryCapacity : 0;
-        load.Set(fraction, $"{profile.Load:0.#}/{profile.CarryCapacity:0} kg", fraction > 1 ? Palette.Danger : fraction > 0.85 ? Palette.Warn : Palette.Rust);
-        load.TooltipText = "Load / carry capacity. Overloaded units move and fight worse.";
+        var (color, note) = LootText.Carry(data, profile.Load, profile.CarryCapacity);
+        load.Set(fraction, $"{profile.Load:0.#}/{profile.CarryCapacity:0} kg", color);
+        load.TooltipText = $"Load / carry capacity. Loaded units move fewer tiles a turn and are louder.{(note.Length > 0 ? $"\n{note}" : "")}";
         _gear.AddChild(load);
     }
 }

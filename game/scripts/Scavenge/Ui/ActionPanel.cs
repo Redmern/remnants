@@ -11,9 +11,9 @@ namespace Remnants.Game.Scavenge.Ui;
 
 /// <summary>
 /// What the acting unit can do besides moving, as <see cref="ActionButton"/>s with icons, AP-cost pips and hotkeys:
-/// pick the attack for map clicks (1–3), use a consumable (4–6, then click a target), loot a cache in reach (F),
-/// recruit a stranger (T), extract on an exit (X). Every button sends a Core command through the screen; Core decides
-/// whether it works.
+/// pick the attack for map clicks (1–3), use a consumable (4–6, then click a target), salvage a node in reach (I),
+/// recruit a stranger (T), extract on an exit (X). Piles are taken from the <see cref="LootPanel"/> (F). Every button
+/// sends a Core command through the screen; Core decides whether it works.
 /// </summary>
 public partial class ActionPanel : PanelContainer
 {
@@ -108,22 +108,24 @@ public partial class ActionPanel : PanelContainer
             }
         }
 
-        var caches = _presenter.CachesInReach(unit).ToList();
-        if (caches.Count > 0)
+        var nodes = _presenter.NodesInReach(unit).ToList();
+        if (nodes.Count > 0)
         {
-            _content.AddChild(Widgets.Label("LOOT", "Heading"));
+            _content.AddChild(Widgets.Label("SALVAGE", "Heading"));
             var first = true;
-            var cost = data.Rules.Turn.PickUpApCost;
-            foreach (var cache in caches)
-                foreach (var id in cache.Items.Distinct())
-                {
-                    var weight = data.Items[id].Weight;
-                    var cacheId = cache.Id;
-                    var button = Add(new ActionButton("stat_loot", $"Take {ScavengeText.Item(data, id)}", $"{weight:0.#} kg", cost, first ? "scav_loot" : null),
-                        () => CommandRequested?.Invoke(new PickUp(_presenter.PlayerId, unit.Id, cacheId, id)));
-                    button.SetBlocked(cost > unit.Ap, cost > unit.Ap);
-                    first = false;
-                }
+            foreach (var node in nodes)
+            {
+                if (data.Salvage.Node(node.Kind) is not { } def) continue;
+                var nodeId = node.Id;
+                var actions = FieldSalvage.ActionsLeft(def, node, unit);
+                var yield = FieldSalvage.Estimate(sim, node, unit).OrderByDescending(kv => kv.Value).FirstOrDefault();
+                var detail = $"{(yield.Key is null ? "" : $"~{yield.Value:0.#} {ScavengeText.Item(data, yield.Key)} · ")}{actions} action{(actions == 1 ? "" : "s")} · noise {def.Noise}";
+                var button = Add(new ActionButton("stat_loot", $"Salvage {def.Name}", detail, def.ApCost, first ? "scav_salvage" : null,
+                    $"Salvage the {def.Name.ToLowerInvariant()}: a lot comes off every few actions into your pack (what does not fit stays on the ground). Loud: enemies within {def.Noise} tiles hear it."),
+                    () => CommandRequested?.Invoke(new Salvage(_presenter.PlayerId, unit.Id, nodeId)));
+                button.SetBlocked(def.ApCost > unit.Ap, def.ApCost > unit.Ap);
+                first = false;
+            }
         }
 
         foreach (var npc in _presenter.RecruitableNear(unit))

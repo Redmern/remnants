@@ -23,6 +23,7 @@ public partial class ScavengeScreen : Node3D
     private FogOverlay _fog = null!;
     private Ui.ObjectiveMarkers _objectives = null!;
     private DeviceViews _devices = null!;
+    private SalvageViews _salvage = null!;
     private TacticalCamera _camera = null!;
 
     private ScavengeHud _hud = null!;
@@ -73,6 +74,9 @@ public partial class ScavengeScreen : Node3D
         _devices = new DeviceViews { Name = "Devices" };
         AddChild(_devices);
         _devices.Setup(_presenter, models);
+        _salvage = new SalvageViews { Name = "Salvage" };
+        AddChild(_salvage);
+        _salvage.Setup(_presenter, models);
         _objectives = new Ui.ObjectiveMarkers { Name = "Objectives" };
         AddChild(_objectives);
         _objectives.Setup(_presenter, models);
@@ -187,6 +191,7 @@ public partial class ScavengeScreen : Node3D
             RefreshHud();
         };
         _actionPanel.CommandRequested += command => _ = Run(command);
+        _hud.Loot.CommandRequested += command => _ = Run(command);
         _stancePanel.CommandRequested += command => _ = Run(command);
         _techPanel.CommandRequested += command => _ = Run(command);
         _techPanel.AimChosen += aim =>
@@ -226,6 +231,7 @@ public partial class ScavengeScreen : Node3D
                     && _presenter.KnownDevices.Contains(device))
                     _hud.DeviceTip.Show(_presenter, device, _hud.DeviceTip.GetGlobalMousePosition());
                 else _hud.DeviceTip.HideTip();
+                ShowLootTip(hover);
                 break;
             case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } click:
                 if (TileUnder(click.Position) is { } tile) OnTileClicked(tile);
@@ -395,6 +401,15 @@ public partial class ScavengeScreen : Node3D
         RefreshHud();
     }
 
+    /// <summary>The loot tooltip over a known pile (first) or salvage node on the hovered tile.</summary>
+    private void ShowLootTip(Pos? hover)
+    {
+        var mouse = _hud.LootTip.GetGlobalMousePosition();
+        if (hover is { } at && _presenter.KnownPiles.FirstOrDefault(c => c.Pos == at) is { } pile) _hud.LootTip.ShowPile(_presenter, pile, mouse);
+        else if (hover is { } on && _presenter.KnownNodes.FirstOrDefault(n => n.Pos == on) is { } node) _hud.LootTip.ShowNode(_presenter, node, mouse);
+        else _hud.LootTip.HideTip();
+    }
+
     private void SyncAll()
     {
         SyncWeather();
@@ -402,6 +417,7 @@ public partial class ScavengeScreen : Node3D
         _units.Sync();
         _fog.Sync();
         _devices.Sync();
+        _salvage.Sync();
         _objectives.Sync();
         RefreshHud();
         _seen = new HashSet<int>(_presenter.Visible);
@@ -431,6 +447,7 @@ public partial class ScavengeScreen : Node3D
         _turnBar.Refresh(_busy);
         _unitPanel.Present(selected);
         _actionPanel.Refresh(_busy, _usingItem);
+        _hud.Loot.Refresh(_busy);
         _stancePanel.Refresh(_busy);
         _techPanel.Refresh(_busy, _aim);
         _coopPanel.Refresh(_busy, selected, _pinging);

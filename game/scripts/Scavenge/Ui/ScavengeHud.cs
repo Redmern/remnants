@@ -32,6 +32,8 @@ public partial class ScavengeHud : CanvasLayer
 
     /// <summary>A hovered device's state, owner and what hacking it does, next to the cursor.</summary>
     public DeviceTip DeviceTip { get; } = new();
+    public LootTip LootTip { get; } = new();
+    public LootPanel Loot { get; }
     public CoopPanel Coop { get; }
     public AllianceBanner Banner { get; }
     public ScavengeLog Log { get; } = new() { CustomMinimumSize = new Vector2(440, 150) };
@@ -72,7 +74,12 @@ public partial class ScavengeHud : CanvasLayer
         // Panels hug their content (unit top-left, orders top-right, log bottom-right) so the map stays open.
         UnitPanel = new UnitPanel(presenter);
         middle.AddChild(UnitPanel);
-        middle.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore });
+        // The pickup panel sits low in the middle, between the unit card and the orders.
+        var centre = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
+        centre.AddChild(new Control { SizeFlagsVertical = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore });
+        Loot = new LootPanel(presenter) { SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter };
+        centre.AddChild(Loot);
+        middle.AddChild(centre);
         var right = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         right.AddThemeConstantOverride("separation", 8);
         middle.AddChild(right);
@@ -109,6 +116,8 @@ public partial class ScavengeHud : CanvasLayer
         AddChild(Prompt);
         DeviceTip.Theme = HudTheme.Shared;
         AddChild(DeviceTip);
+        LootTip.Theme = HudTheme.Shared;
+        AddChild(LootTip);
         AddChild(Result);
         Pause = new PauseMenu(
         [
@@ -159,7 +168,7 @@ public partial class ScavengeHud : CanvasLayer
             if (BackRequested?.Invoke() != true) Pause.Open();
         }
         else if (Hotkeys.Pressed(e, "end_turn")) EndTurnRequested?.Invoke();
-        else if (!Actions.PressHotkey(e) && !Stances.PressHotkey(e) && !Tech.PressHotkey(e) && !Coop.PressHotkey(e)) return;
+        else if (!Loot.PressHotkey(e) && !Actions.PressHotkey(e) && !Stances.PressHotkey(e) && !Tech.PressHotkey(e) && !Coop.PressHotkey(e)) return;
         GetViewport().SetInputAsHandled();
     }
 }

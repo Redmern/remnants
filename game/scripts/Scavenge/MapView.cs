@@ -256,9 +256,7 @@ public partial class MapView : Node3D
         {
             if (!_crates.TryGetValue(cache.Id, out var crate))
             {
-                crate = _models.Crate();
-                crate.Position = TileGrid.ToWorld(cache.Pos);
-                crate.RotationDegrees = new Vector3(0, cache.Id * 47 % 90 - 45, 0);
+                crate = Pile(cache);
                 AddChild(crate);
                 _crates[cache.Id] = crate;
             }
@@ -266,6 +264,35 @@ public partial class MapView : Node3D
             var dim = _presenter.IsVisible(cache.Pos) ? null : _fogMaterial;
             foreach (var mesh in Meshes(crate)) mesh.MaterialOverlay = dim;
         }
+    }
+
+    /// <summary>
+    /// A pile on its tile: a zone cache is the full crate; remains and dropped things a small crate (the stand-in for a
+    /// loot sack until one is modelled) set off the tile centre so the body's tile still reads; a stash is amber.
+    /// Everything but a zone cache glints, so a kill's loot is easy to spot.
+    /// </summary>
+    private Node3D Pile(LootCache cache)
+    {
+        var root = new Node3D { Name = $"Pile{cache.Id}", Position = TileGrid.ToWorld(cache.Pos) };
+        var crate = _models.Crate();
+        crate.RotationDegrees = new Vector3(0, cache.Id * 47 % 90 - 45, 0);
+        root.AddChild(crate);
+        if (cache.Kind == LootPileKind.Cache) return root;
+        crate.Scale = Vector3.One * (cache.Kind == LootPileKind.Stash ? 0.8f : 0.5f);
+        crate.Position = cache.Kind == LootPileKind.Stash ? Vector3.Zero : new Vector3(0.45f, 0, 0.35f);
+        if (cache.Kind == LootPileKind.Stash)
+            foreach (var mesh in Meshes(crate)) mesh.MaterialOverride = Placeholders.Material(Hud.Palette.Amber);
+        var glint = new Label3D
+        {
+            Name = "Glint", Text = "✦", FontSize = 64, PixelSize = 0.01f, Font = Hud.Fonts.DisplayBold, NoDepthTest = true,
+            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Modulate = Hud.Palette.Amber,
+            OutlineSize = 8, OutlineModulate = new Color(Hud.Palette.Void, 0.7f), Position = crate.Position + new Vector3(0, 0.9f, 0),
+        };
+        root.AddChild(glint);
+        var tween = glint.CreateTween().SetLoops();
+        tween.TweenProperty(glint, "modulate:a", 0.25f, 0.9f).SetTrans(Tween.TransitionType.Sine);
+        tween.TweenProperty(glint, "modulate:a", 1f, 0.9f).SetTrans(Tween.TransitionType.Sine);
+        return root;
     }
 
     private static MeshInstance3D[] Meshes(Node node) =>

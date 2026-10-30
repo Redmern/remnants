@@ -152,6 +152,15 @@ public sealed class ScavengePresenter
     /// <summary>Caches the unit can loot from (its tile or next to it).</summary>
     public IEnumerable<LootCache> CachesInReach(Unit unit) => State.Caches.Where(c => c.Pos.Chebyshev(unit.Pos) <= 1);
 
+    /// <summary>Piles the local side knows of: on tiles it has seen (a remote view holds only those, as last seen).</summary>
+    public IEnumerable<LootCache> KnownPiles => State.Caches.Where(c => IsExplored(c.Pos));
+
+    /// <summary>Salvage nodes on tiles the local side has seen.</summary>
+    public IEnumerable<SalvageNode> KnownNodes => State.SalvageNodes.Where(n => IsExplored(n.Pos));
+
+    /// <summary>Salvage nodes with something left next to the unit.</summary>
+    public IEnumerable<SalvageNode> NodesInReach(Unit unit) => KnownNodes.Where(n => !n.Depleted && n.Pos.Chebyshev(unit.Pos) <= 1);
+
     /// <summary>Unrecruited NPC survivors standing next to the unit.</summary>
     public IEnumerable<Unit> RecruitableNear(Unit unit) =>
         State.Units.Where(u => u.Kind == UnitKind.Npc && u.IsActive && u.Side == Unit.NeutralSide && u.Pos.Chebyshev(unit.Pos) <= 1);
