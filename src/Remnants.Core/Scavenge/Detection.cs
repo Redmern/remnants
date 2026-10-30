@@ -11,7 +11,8 @@ namespace Remnants.Core.Scavenge;
 /// <item>everyone on a tile lit by a <see cref="Flare"/> (every side sees lit tiles);</item>
 /// <item>a unit <see cref="Reveal"/>ed to it (muzzle flash, motion sensor) while one of its units has line of sight to it
 /// within <see cref="FogRules.RevealSightMultiplier"/> times its sight;</item>
-/// <item>hostiles within a working scanner's radius of one of its units, through walls and stealth.</item>
+/// <item>hostiles within a working scanner's radius of one of its units, through walls and stealth;</item>
+/// <item>a hostile its scout drone marked (<see cref="Drones"/>), wherever it is, while the mark lasts.</item>
 /// </list>
 /// Contacts ("?" markers) are the middle state: the side knows something is near a tile, not what.
 /// </summary>
@@ -41,6 +42,7 @@ public static class Detection
         var observers = state.Units.Where(u => u.Side == side && u.IsActive).ToList();
         if (observers.Count == 0) return false;
         if (IsLit(state, target.Pos)) return true;
+        if (Drones.IsMarked(state, target.Id, side)) return true;
         if (IsRevealed(state, target.Id, side) && observers.Any(o => SeesRevealed(data, state, o, target))) return true;
         if (observers.Any(o => o.HostileTo(target) && ScanRadius(data, o) is var r && r > 0 && o.Pos.Chebyshev(target.Pos) <= r))
             return true;
@@ -117,6 +119,7 @@ public static class Detection
         state.Contacts.RemoveAll(c => c.Round + rounds <= state.Round);
         state.Reveals.RemoveAll(r => r.UntilRound < state.Round);
         state.Flares.RemoveAll(f => f.UntilRound < state.Round);
+        state.Marks.RemoveAll(m => m.UntilRound < state.Round);
     }
 
     /// <summary>Party sides still playing (the sides that keep contacts).</summary>

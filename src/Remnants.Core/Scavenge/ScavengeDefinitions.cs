@@ -8,7 +8,11 @@ public enum Terrain { Floor, Rubble, Cover, Water, Wall, Pylon }
 
 public enum MapEdge { North, South, East, West }
 
-public enum AiKind { Husk, Linked }
+/// <summary>
+/// How an enemy definition is run: Husk and Linked as before; Device for fixed machines that act as units (a camera, a
+/// turret): they never move and take their side's orders (see <see cref="ZoneDevice"/>).
+/// </summary>
+public enum AiKind { Husk, Linked, Device }
 
 public sealed record TerrainDef
 {
@@ -96,6 +100,9 @@ public sealed record ZoneDef
     public int[] Pylons { get; init; } = [0, 0];
     public ReinforcementDef Reinforcements { get; init; } = new();
 
+    /// <summary>Hackable devices placed in the zone: [min, max] per kind (see <see cref="DeviceKindDef"/>).</summary>
+    public Dictionary<DeviceKind, int[]> Devices { get; init; } = new();
+
     // World map (colony side): where the zone is, how far, and how it recovers from being picked over.
 
     /// <summary>Region label on the world map.</summary>
@@ -132,6 +139,136 @@ public sealed record WorldRules
 {
     /// <summary>The colony's marker position, each axis 0..1.</summary>
     public double[] ColonyPos { get; init; } = [0.5, 0.5];
+
+    /// <summary>Sending a scout drone over a zone from the world map (see <c>WorldMap.SendDrone</c>).</summary>
+    public DroneScoutRules DroneScout { get; init; } = new();
+}
+
+/// <summary>
+/// A scout drone flown over a zone from the colony: it reveals the zone's intel without anyone going. The battery limits
+/// how far it reaches (<see cref="MaxTravelDays"/>); the flight takes <see cref="DaysPerTravelDay"/> days per travel day
+/// each way, the drone then recharges for <see cref="RechargeDays"/>, and over a dangerous zone it may be shot down
+/// (<see cref="LossByThreat"/>, less <see cref="LossReductionPerSkill"/> per Drone Piloting point of the pilot, relative).
+/// </summary>
+public sealed record DroneScoutRules
+{
+    public double MaxTravelDays { get; init; } = 2.5;
+    public double DaysPerTravelDay { get; init; } = 0.5;
+    public double RechargeDays { get; init; } = 1;
+
+    /// <summary>Chance to lose the drone by zone threat (index = threat; the last entry covers anything higher).</summary>
+    public double[] LossByThreat { get; init; } = [0, 0, 0.05, 0.15, 0.3];
+    public double LossReductionPerSkill { get; init; } = 0.006;
+    public double PilotSkillGain { get; init; } = 2;
+    public double PilotXp { get; init; } = 10;
+}
+
+/// <summary>The kinds of hackable device a zone can hold.</summary>
+public enum DeviceKind
+{
+    /// <summary>Hacked: its data (datashards, blueprints, manuals) and the zone's map intel.</summary>
+    Terminal,
+    /// <summary>A Network sensor that spots hostiles and alerts the Linked; hacked, it sees for the hacker's side.</summary>
+    Camera,
+    /// <summary>A fixed gun that shoots whatever is hostile to the side controlling it.</summary>
+    Turret,
+    /// <summary>A blast door: only the controlling side passes; hacked, a shortcut for you that locks enemies out.</summary>
+    Door,
+    /// <summary>A locked container; hacked, its loot spills out as a cache.</summary>
+    Locker,
+    /// <summary>The zone's uplink: hacked, it cuts the Linked around it off the Network and stops reinforcements.</summary>
+    Relay,
+}
+
+/// <summary>
+/// One device kind: how long a hack takes (<see cref="Work"/> progress points), how much harder than baseline
+/// (<see cref="Difficulty"/>, off the chance), whether it is on the Network (harder, and a failed hack alerts the Linked
+/// over it), the enemy definition of its unit for devices that act (camera, turret), loot for terminals and lockers, and
+/// a radius (camera: how far its alert carries; relay: the jam field once hacked).
+/// </summary>
+public sealed record DeviceKindDef
+{
+    public int Work { get; init; } = 2;
+    public double Difficulty { get; init; }
+    public bool Networked { get; init; } = true;
+    public string? Enemy { get; init; }
+    public List<WeightedId> Loot { get; init; } = new();
+
+    /// <summary>Lockers: also draw from the zone's own loot table.</summary>
+    public bool ZoneLoot { get; init; }
+    public int[] LootCount { get; init; } = [0, 0];
+    public int Radius { get; init; }
+}
+
+/// <summary>
+/// Hacking (<see cref="Hacking"/>): AP cost, the chance formula, what a failure does, skill and XP gains, and Override
+/// (hacking a Linked unit, with the <c>can_hack_linked</c> perk).
+/// </summary>
+public sealed record HackingRules
+{
+    public int ApCost { get; init; } = 2;
+    public int MinApCost { get; init; } = 1;
+
+    /// <summary>chance = base + Hacking·perSkill + (Intellect − 50)·perIntellect + tool + perks − difficulty − Network penalty.</summary>
+    public double BaseChance { get; init; } = 0.55;
+    public double PerSkill { get; init; } = 0.005;
+    public double PerIntellect { get; init; } = 0.004;
+    public double MinChance { get; init; } = 0.05;
+    public double MaxChance { get; init; } = 0.95;
+
+    /// <summary>Taken off the chance for a device on the Network, unless a jammer hostile to the Network covers it.</summary>
+    public double NetworkPenalty { get; init; } = 0.15;
+
+    /// <summary>A failure is heard this far (less <c>hack_alarm_reduction</c>).</summary>
+    public int AlarmRadius { get; init; } = 8;
+
+    /// <summary>Rounds the side cannot try the device again after a failure.</summary>
+    public int LockoutRounds { get; init; } = 3;
+
+    /// <summary>Feedback shock damage [min, max] to the hacker's arm on a failure.</summary>
+    public double[] ShockDamage { get; init; } = [4, 10];
+    public double SkillOnSuccess { get; init; } = 2;
+    public double SkillOnFailure { get; init; } = 0.75;
+    public double XpOnSuccess { get; init; } = 8;
+    public double XpOnFailure { get; init; } = 2;
+
+    /// <summary>Override: harder than a device, and turns the Linked for this many rounds.</summary>
+    public double OverrideDifficulty { get; init; } = 0.25;
+    public int OverrideRounds { get; init; } = 2;
+}
+
+/// <summary>
+/// The player's scout drone (<see cref="Drones"/>): a flying unit its operator flies with their own AP. It ignores
+/// terrain, sees far, has little HP, and a battery counted in rounds; recalled, it recharges in the pack.
+/// </summary>
+public sealed record DroneRules
+{
+    public double Hp { get; init; } = 14;
+    public Dictionary<AttributeKind, double> Attributes { get; init; } = new();
+
+    /// <summary>Natural items of the flying unit (its frame: sight, dodge, stealth).</summary>
+    public List<string> Equipment { get; init; } = new();
+    public int DeployApCost { get; init; } = 1;
+    public int FlyApCost { get; init; } = 1;
+    public int RecallApCost { get; init; } = 1;
+    public int MarkApCost { get; init; } = 1;
+    public int PayloadApCost { get; init; } = 1;
+
+    /// <summary>Control range grows by this per Drone Piloting point (25 → +1 at 0.04).</summary>
+    public double ControlPerSkill { get; init; } = 0.04;
+
+    /// <summary>Least battery (rounds) a drone needs to take off.</summary>
+    public int MinBattery { get; init; } = 2;
+    public int RechargePerRound { get; init; } = 1;
+
+    /// <summary>A drone inside any working jammer's field drains this many rounds of battery per round and flies 1 tile.</summary>
+    public int JammedDrain { get; init; } = 2;
+
+    /// <summary>Rounds a mark lasts (the current one counts) and what it adds to the side's hit chance.</summary>
+    public int MarkRounds { get; init; } = 2;
+    public double MarkHitBonus { get; init; } = 0.1;
+    public double SkillPerFlight { get; init; } = 0.4;
+    public double XpPerFlight { get; init; } = 1;
 }
 
 /// <summary>
@@ -410,6 +547,11 @@ public sealed record ScavengeRules
     public FogRules Fog { get; init; } = new();
     public CoopRules Coop { get; init; } = new();
     public WorldRules World { get; init; } = new();
+    public HackingRules Hacking { get; init; } = new();
+
+    /// <summary>Hackable device kinds (terminal, camera, turret, door, locker, relay node).</summary>
+    public Dictionary<DeviceKind, DeviceKindDef> Devices { get; init; } = new();
+    public DroneRules Drone { get; init; } = new();
 
     /// <summary>Followers within this many tiles leave with the unit that extracts.</summary>
     public int EscortRadius { get; init; } = 2;

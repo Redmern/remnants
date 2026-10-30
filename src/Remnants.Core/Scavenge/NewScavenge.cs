@@ -19,7 +19,8 @@ public sealed record ZoneConditions(double Depletion = 0);
 
 /// <summary>
 /// Builds a scavenge instance: generates the zone map from its template and a seed, places every party
-/// along the spawn edge, then enemies, loot caches and NPC survivors. Survivors are copied in; the colony's
+/// along the spawn edge, then enemies, loot caches, NPC survivors and hackable devices. Each survivor's perks become its
+/// unit's hooks (<see cref="ScavengeData.HooksFor"/>). Survivors are copied in; the colony's
 /// own records are never touched (the <see cref="ExtractionResult"/> carries changes back).
 /// </summary>
 public static class NewScavenge
@@ -112,6 +113,8 @@ public static class NewScavenge
             state.Units.Add(NpcUnit(data, state, rng, spot.Value, usedNames));
         }
 
+        Hacking.PlaceZoneDevices(data, state, zone, seed, anchors, generated.Reachable);
+
         state.RngState = rng.State;
         var sim = new ScavengeSim(data, state);
         sim.Start();
@@ -167,6 +170,7 @@ public static class NewScavenge
             Equipment = new(member.Equipment ?? new()),
             Pack = new(member.Pack ?? []),
             Origin = origin,
+            Hooks = data.HooksFor(origin.Perks),
         };
     }
 

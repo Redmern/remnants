@@ -79,8 +79,16 @@ public static class ScavengeTestData
     /// The turn order is exactly the units in the given order (not initiative), and the first one is up
     /// with full AP, so tests control who acts. Optional rows draw terrain: . floor, # wall, P pylon, r rubble, c cover, ~ water, E exit.
     /// </summary>
-    public static ScavengeSim Arena(int width, int height, IEnumerable<Unit> units, string[]? rows = null, ulong seed = 1, string zoneId = "outskirts")
+    /// <summary>The real data with scavenge rules changed (e.g. a fixed hack chance).</summary>
+    public static ScavengeData With(Func<ScavengeRules, ScavengeRules> change) =>
+        new(Real.Items.Values.Where(i => i.BaseId is null), Real.Enemies.Values, Real.Zones.Values, change(Real.Rules), Real.PerkHooks);
+
+    /// <param name="setup">Runs on the state before the turn order is made (place devices, ...).</param>
+    /// <param name="data">Data to run on (default <see cref="Real"/>).</param>
+    public static ScavengeSim Arena(int width, int height, IEnumerable<Unit> units, string[]? rows = null, ulong seed = 1, string zoneId = "outskirts",
+        Action<ScavengeData, ScavengeState>? setup = null, ScavengeData? data = null)
     {
+        data ??= Real;
         var map = new TileMap(width, height);
         if (rows is not null)
             for (var y = 0; y < rows.Length; y++)
@@ -102,8 +110,9 @@ public static class ScavengeTestData
             if (u.PlayerId is { } pid && state.FindParty(pid) is null)
                 state.Parties.Add(new Party { PlayerId = pid, Side = Unit.PlayerSide(pid) });
         }
-        state.TurnOrder = state.Units.Where(u => u.IsActive && u.Side != Unit.NeutralSide).Select(u => u.Id).ToList();
-        var sim = new ScavengeSim(Real, state);
+        setup?.Invoke(data, state);
+        state.TurnOrder = state.Units.Where(u => u.IsActive && u.Side != Unit.NeutralSide && u.Kind != UnitKind.Drone).Select(u => u.Id).ToList();
+        var sim = new ScavengeSim(data, state);
         foreach (var u in state.Units) u.Ap = sim.Profile(u).MaxAp;
         return sim;
     }

@@ -3,7 +3,11 @@ using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Scavenge;
 
-public enum UnitKind { Survivor, Enemy, Npc }
+/// <summary>
+/// What a unit is. <see cref="Drone"/>: a player's scout drone, flown by its operator (no turns of its own).
+/// <see cref="Device"/>: a hackable machine that acts as a unit (a camera, a turret; see <see cref="ZoneDevice"/>).
+/// </summary>
+public enum UnitKind { Survivor, Enemy, Npc, Drone, Device }
 
 public enum UnitStatus
 {
@@ -100,6 +104,37 @@ public sealed class Unit
     /// <summary>Team pings used this turn (see <see cref="CoopRules.PingsPerTurn"/>).</summary>
     public int PingsUsed { get; set; }
 
+    /// <summary>
+    /// The survivor's perk hooks (id → summed value, see <c>PerkHooks</c>), resolved from <see cref="Survivor.Perks"/> when
+    /// the party enters the zone, so the field reads them without the colony's data.
+    /// </summary>
+    public Dictionary<string, double> Hooks { get; set; } = new(StringComparer.Ordinal);
+
+    /// <summary>XP earned in the field beyond skill gains (hacks, drone flights); paid out when the survivor gets home.</summary>
+    public double FieldXp { get; set; }
+
+    /// <summary>Operator: the scout drone they have deployed.</summary>
+    public int? DroneId { get; set; }
+
+    /// <summary>Operator: battery (rounds) of their drone while it is packed; null = full. It recharges each round.</summary>
+    public int? DroneBattery { get; set; }
+
+    /// <summary>Drone: the unit flying it.</summary>
+    public int? OperatorId { get; set; }
+
+    /// <summary>Drone: battery left in rounds.</summary>
+    public int Battery { get; set; }
+
+    /// <summary>Drone: the item it was deployed from (goes back on recall); whether it came out of the Tool slot.</summary>
+    public string? DroneItemId { get; set; }
+    public bool DroneFromTool { get; set; }
+
+    /// <summary>Device units (camera, turret): the <see cref="ZoneDevice"/> this unit is.</summary>
+    public int? DeviceId { get; set; }
+
+    /// <summary>A Linked turned by Override: fights for its hacker's side through this round, then goes back to the Network.</summary>
+    public int? OverrideUntilRound { get; set; }
+
     public Dictionary<AttributeKind, double> Attributes { get; set; } = new();
     public Dictionary<Skill, double> Skills { get; set; } = new();
     public Body Body { get; set; } = new();
@@ -125,10 +160,22 @@ public sealed class Unit
     public bool OnMap => Status is UnitStatus.Active or UnitStatus.Downed;
 
     /// <summary>Takes orders from a player rather than the AI.</summary>
-    public bool PlayerControlled => PlayerId is not null && FollowingId is null && Kind != UnitKind.Npc;
+    public bool PlayerControlled => PlayerId is not null && FollowingId is null && Kind is UnitKind.Survivor or UnitKind.Enemy;
 
     public double Get(AttributeKind attribute) => Attributes.GetValueOrDefault(attribute, 50);
     public double Get(Skill skill) => Skills.GetValueOrDefault(skill);
+
+    /// <summary>A perk hook's value (0 without the perk).</summary>
+    public double Hook(string id) => Hooks.GetValueOrDefault(id);
+
+    /// <summary>Field practice, diminishing like <see cref="Survivor.GainSkill"/>; returns the gain.</summary>
+    public double GainSkill(Skill skill, double amount)
+    {
+        if (amount <= 0) return 0;
+        var before = Get(skill);
+        Skills[skill] = Math.Min(Survivor.MaxStat, before + amount * (1 - before / Survivor.MaxStat));
+        return Skills[skill] - before;
+    }
 
     public bool HostileTo(Unit other) =>
         Side != other.Side && Side != NeutralSide && other.Side != NeutralSide;

@@ -24,6 +24,7 @@ internal static class ScavengeAi
     public static void TakeTurn(ScavengeSim sim, Unit unit)
     {
         if (unit.FollowingId is not null) Follow(sim, unit);
+        else if (unit.Kind == UnitKind.Device) Machine(sim, unit);
         else if (unit.Kind != UnitKind.Enemy) return;
         else if (Network.GroupOf(sim, unit) is { } group) Squad(sim, unit, group);
         else Fight(sim, unit);
@@ -53,6 +54,13 @@ internal static class ScavengeAi
             if (TryAttack(sim, unit, target)) continue;
             if (!StepToward(sim, unit, target.Pos)) return;
         }
+    }
+
+    /// <summary>A turret: fires at the nearest hostile of its side's it sees, never moves. A camera does nothing on a turn.</summary>
+    private static void Machine(ScavengeSim sim, Unit unit)
+    {
+        for (var step = 0; step < MaxStepsPerTurn && unit.IsActive && unit.Ap > 0; step++)
+            if (Spot(sim, unit) is not { } target || !TryAttack(sim, unit, target)) return;
     }
 
     /// <summary>One Linked unit's turn inside its network group (see the class summary).</summary>
@@ -132,7 +140,7 @@ internal static class ScavengeAi
     {
         var map = sim.State.Map;
         var best = sim.Profile(unit).Actions
-            .Where(a => a.ApCost <= unit.Ap && Combat.CheckReach(sim.Data, map, unit.Pos, a, target.Pos) == ScavengeError.None)
+            .Where(a => a.ApCost <= unit.Ap && Drones.CanStrike(a, target) && Combat.CheckReach(sim.Data, map, unit.Pos, a, target.Pos) == ScavengeError.None)
             .Select(a => (Action: a, Chance: Combat.ChanceToHit(sim, unit, a, target)))
             .Where(x => x.Chance + 1e-9 >= minChance)
             .OrderByDescending(x => x.Chance * (x.Action.MinDamage + x.Action.MaxDamage) / 2)
@@ -148,7 +156,7 @@ internal static class ScavengeAi
     {
         if (target.Suppressed) return false;
         var action = sim.Profile(unit).Actions
-            .Where(a => a.Pattern != AttackPattern.Melee && a.ApCost <= unit.Ap
+            .Where(a => a.Pattern != AttackPattern.Melee && a.ApCost <= unit.Ap && Drones.CanStrike(a, target)
                         && Combat.CheckReach(sim.Data, sim.State.Map, unit.Pos, a, target.Pos) == ScavengeError.None)
             .OrderBy(a => a.ApCost).ThenBy(a => a.Id, StringComparer.Ordinal)
             .FirstOrDefault();
@@ -182,7 +190,7 @@ internal static class ScavengeAi
                 || (Detection.ScanRadius(data, t) is var r && r > 0 && t.Pos.Chebyshev(tile) <= r));
             var ambush = hidden ? Combat.AmbushAgainst(data, sim.State, unit, focus, tile) : null;
             var shot = profile.Actions
-                .Where(a => a.ApCost <= ap && Combat.CheckReach(data, map, tile, a, focus.Pos) == ScavengeError.None)
+                .Where(a => a.ApCost <= ap && Drones.CanStrike(a, focus) && Combat.CheckReach(data, map, tile, a, focus.Pos) == ScavengeError.None)
                 .Select(a => Combat.HitChance(data, map, tile, a, focus.Pos, focusProfile, ambush)
                              * Math.Max(1, (a.MinDamage + a.MaxDamage) / 2 * (ambush?.DamageMultiplier ?? 1) - focusProfile.Armor))
                 .DefaultIfEmpty(0).Max();
@@ -225,11 +233,15 @@ internal static class ScavengeAi
         return true;
     }
 
-    /// <summary>Nearest conscious hostile it detects (or lit by a flare); remembers it. Falls back to null (and keeps the memory).</summary>
+    /// <summary>
+    /// Nearest conscious hostile it detects (or lit by a flare) and could hit at all (claws do not reach a drone); remembers
+    /// it. Falls back to null (and keeps the memory).
+    /// </summary>
     private static Unit? Spot(ScavengeSim sim, Unit unit)
     {
+        var actions = sim.Profile(unit).Actions;
         var target = sim.State.Units
-            .Where(u => u.IsActive && unit.HostileTo(u)
+            .Where(u => u.IsActive && unit.HostileTo(u) && actions.Any(a => Drones.CanStrike(a, u))
                         && (Detection.IsLit(sim.State, u.Pos) || Detection.Spots(sim.Data, sim.State, unit, u)))
             .OrderBy(u => u.Pos.Chebyshev(unit.Pos))
             .ThenBy(u => u.Id)
@@ -248,7 +260,7 @@ internal static class ScavengeAi
     {
         var map = sim.State.Map;
         var best = sim.Profile(unit).Actions
-            .Where(a => a.ApCost <= unit.Ap && Combat.CheckReach(sim.Data, map, unit.Pos, a, target.Pos) == ScavengeError.None)
+            .Where(a => a.ApCost <= unit.Ap && Drones.CanStrike(a, target) && Combat.CheckReach(sim.Data, map, unit.Pos, a, target.Pos) == ScavengeError.None)
             .OrderByDescending(a => Combat.ChanceToHit(sim, unit, a, target) * (a.MinDamage + a.MaxDamage) / 2)
             .ThenBy(a => a.Id, StringComparer.Ordinal)
             .FirstOrDefault();

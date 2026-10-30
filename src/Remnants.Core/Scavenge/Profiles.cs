@@ -1,3 +1,4 @@
+using Remnants.Core.Colony;
 using Remnants.Core.Items;
 using Remnants.Core.Survivors;
 
@@ -68,14 +69,17 @@ public static class ProfileDeriver
         var working = equipped.Where(i => MeetsRequirement(unit.Body, i.Requires)).ToList();
 
         var load = unit.AllItems.Sum(id => data.Items[id].Weight);
-        var capacity = rules.Carry.Base + unit.Get(AttributeKind.Strength) * rules.Carry.PerStrength + equipped.Sum(i => i.CarryBonus);
+        var capacity = rules.Carry.Base + unit.Get(AttributeKind.Strength) * rules.Carry.PerStrength + equipped.Sum(i => i.CarryBonus)
+            + unit.Hook(PerkHooks.CarryBonus);
         var agility = unit.Get(AttributeKind.Agility);
         var fog = rules.Fog;
         var head = unit.Body.RegionEfficiency(BodyRegion.Head);
         var enemy = unit.EnemyDefId is { } enemyId ? data.Enemies[enemyId] : null;
 
-        var sight = rules.Sight.Base + unit.Get(AttributeKind.Perception) * rules.Sight.PerPerception + equipped.Sum(i => i.SightBonus);
-        var detection = fog.Detection.Base + (unit.Get(AttributeKind.Perception) - 50) * fog.Detection.PerPerception + working.Sum(i => i.Detection);
+        var sight = rules.Sight.Base + unit.Get(AttributeKind.Perception) * rules.Sight.PerPerception + equipped.Sum(i => i.SightBonus)
+            + unit.Hook(PerkHooks.SightBonus);
+        var detection = fog.Detection.Base + (unit.Get(AttributeKind.Perception) - 50) * fog.Detection.PerPerception + working.Sum(i => i.Detection)
+            + unit.Hook(PerkHooks.DetectionBonus);
         if (unit.Lookout)
         {
             sight += fog.Lookout.SightBonus;
@@ -87,7 +91,8 @@ public static class ProfileDeriver
             - load * fog.Stealth.PerKg
             + equipped.Sum(i => i.Stealth)
             + (enemy?.Stealth ?? 0)
-            + (unit.Body.RegionEfficiency(BodyRegion.Legs) - 1) * fog.Stealth.LegEfficiency;
+            + (unit.Body.RegionEfficiency(BodyRegion.Legs) - 1) * fog.Stealth.LegEfficiency
+            + unit.Hook(PerkHooks.StealthBonus);
 
         return new UnitProfile(
             Movement: DeriveMovement(data, unit, working, capacity > 0 ? load / capacity : double.PositiveInfinity),
@@ -101,7 +106,7 @@ public static class ProfileDeriver
             Dodge: (agility - 50) * rules.Combat.DodgePerAgility + equipped.Sum(i => i.Dodge),
             Stealth: stealth,
             Detection: detection * head,
-            CoverBonus: unit.Stance == Stance.Brace ? fog.Brace.CoverBonus : 0);
+            CoverBonus: unit.Stance == Stance.Brace ? fog.Brace.CoverBonus + unit.Hook(PerkHooks.BraceCoverBonus) : 0);
     }
 
     /// <summary>Equipped item defs in slot order (Weapon, Body, Tool), the order modifiers apply in.</summary>
@@ -193,9 +198,10 @@ public static class ProfileDeriver
                 + (unit.Get(AttributeKind.Perception) - 50) * combat.PerceptionAccuracy;
             accuracy *= arms;
             if (a.Pattern != AttackPattern.Melee) accuracy *= unit.Body.RegionEfficiency(BodyRegion.Head);
+            accuracy += unit.Hook(PerkHooks.AccuracyBonus);
 
             var damageScale = 1 + (unit.Get(AttributeKind.Strength) - 50) / 100 * a.StrengthScaling;
-            if (a.Pattern == AttackPattern.Melee) damageScale *= arms;
+            if (a.Pattern == AttackPattern.Melee) damageScale *= arms * (1 + unit.Hook(PerkHooks.MeleeDamageBonus));
             damageScale = Math.Max(0, damageScale);
 
             result.Add(new ActionProfile(a.Id, a.Name, itemId, a.Pattern, a.Reach,
@@ -205,7 +211,8 @@ public static class ProfileDeriver
         foreach (var item in working)
             foreach (var a in item.Actions)
                 Add(a, item.Id);
-        if (result.All(r => r.Id != combat.Unarmed.Id)) Add(combat.Unarmed, null);
+        // Drones and devices have no fists.
+        if (result.All(r => r.Id != combat.Unarmed.Id) && unit.Kind is not (UnitKind.Drone or UnitKind.Device)) Add(combat.Unarmed, null);
         return result;
     }
 }

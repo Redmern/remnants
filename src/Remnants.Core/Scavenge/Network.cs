@@ -25,7 +25,7 @@ public static class Network
     {
         var data = sim.Data;
         var units = sim.State.Units
-            .Where(u => u.IsActive && IsLinked(data, u) && !Devices.IsJammed(sim, u))
+            .Where(u => u.IsActive && u.Side == Unit.EnemySide && IsLinked(data, u) && !Devices.IsJammed(sim, u))
             .OrderBy(u => u.Id).ToList();
         var pylons = Pylons(sim.State.Map).Where(p => PylonOnline(sim, p)).ToList();
         var pylonRange = data.Rules.Network.PylonRange;
@@ -109,6 +109,8 @@ public static class Network
         var waves = zone.Reinforcements;
         if (state.AlarmRounds < sim.Data.Rules.Network.ReinforceAfterRounds || state.ReinforcementWaves >= waves.Waves || waves.Mix.Count == 0)
             return;
+        // A hacked relay node has taken the zone's uplink down: nobody answers the call.
+        if (Hacking.UplinkDown(state)) return;
 
         state.AlarmRounds = 0;
         state.ReinforcementWaves++;

@@ -4,7 +4,8 @@ using Remnants.Core.Survivors;
 namespace Remnants.Core.Scavenge;
 
 /// <summary>A survivor who made it out, as they are now (injuries, health) and what they bring.</summary>
-public sealed record ReturnedSurvivor(Survivor Survivor, bool Evacuated, Dictionary<EquipSlot, string> Equipment, List<string> Pack);
+/// <see cref="FieldXp"/>: XP earned out there beyond skill gains (hacks, drone flights), paid out at home.
+public sealed record ReturnedSurvivor(Survivor Survivor, bool Evacuated, Dictionary<EquipSlot, string> Equipment, List<string> Pack, double FieldXp = 0);
 
 /// <summary>
 /// What a party's run feeds back into the colony (M5): who came home and in what shape, recruits, the dead,
@@ -37,7 +38,7 @@ public sealed record ExtractionResult(
     }
 
     private static ReturnedSurvivor ToReturned(Unit u) =>
-        new(Snapshot(u, Math.Clamp(u.Hp, 1, Survivor.MaxHealth)), u.Status == UnitStatus.Evacuated, new(u.Equipment), new(u.Pack));
+        new(Snapshot(u, Math.Clamp(u.Hp, 1, Survivor.MaxHealth)), u.Status == UnitStatus.Evacuated, new(u.Equipment), new(u.Pack), u.FieldXp);
 
     /// <summary>The survivor as they entered, with the run's injuries, health and any attribute/skill gains applied.</summary>
     private static Survivor Snapshot(Unit u, double health)

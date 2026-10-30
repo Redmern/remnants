@@ -59,6 +59,27 @@ public sealed record Carry(int PlayerId, int UnitId, int TargetId) : IScavengeCo
 /// <summary>Put the carried unit down on a free tile next to you.</summary>
 public sealed record PutDown(int PlayerId, int UnitId, Pos At) : IScavengeCommand;
 
+/// <summary>
+/// Hack a device (<see cref="DeviceId"/>) or, with the Override perk, a Linked unit (<see cref="TargetId"/>; a camera's or
+/// turret's unit means its device). Needs a hacking tool; each action puts work in, the last one rolls the chance.
+/// </summary>
+public sealed record Hack(int PlayerId, int UnitId, int? DeviceId = null, int? TargetId = null) : IScavengeCommand;
+
+/// <summary>Launch the carried scout drone onto a tile next to the operator (<see cref="UnitId"/>).</summary>
+public sealed record DeployDrone(int PlayerId, int UnitId, Pos At) : IScavengeCommand;
+
+/// <summary>Fly the operator's drone to a tile (over any terrain) within its flight and control range; the operator pays the AP.</summary>
+public sealed record FlyDrone(int PlayerId, int UnitId, Pos To) : IScavengeCommand;
+
+/// <summary>Call the drone back into the operator's pack (it recharges there). It must be within control range.</summary>
+public sealed record RecallDrone(int PlayerId, int UnitId) : IScavengeCommand;
+
+/// <summary>Spotter perk: mark a hostile the drone sees, for the operator's whole side.</summary>
+public sealed record MarkTarget(int PlayerId, int UnitId, int TargetId) : IScavengeCommand;
+
+/// <summary>Payload perk: the drone drops a carried flare or motion sensor on its tile.</summary>
+public sealed record DropPayload(int PlayerId, int UnitId, string ItemId) : IScavengeCommand;
+
 public enum ScavengeError
 {
     None,
@@ -101,6 +122,22 @@ public enum ScavengeError
     PingLimit,
     /// <summary>Carry: the target is not a downed unit on your side, or the carrier's hands are full / empty.</summary>
     CannotCarry,
+    /// <summary>Hack: no hacking kit or cyberdeck carried.</summary>
+    NoHackingTool,
+    UnknownDevice,
+    /// <summary>The device works for your side already (or is destroyed / used up).</summary>
+    AlreadyHacked,
+    /// <summary>A failed hack locked your side out of this device for a few rounds.</summary>
+    LockedOut,
+    /// <summary>The target cannot be hacked (a Husk, or a Linked without the Override perk).</summary>
+    NotHackable,
+    /// <summary>The unit carries no scout drone, or has none deployed.</summary>
+    NoDrone,
+    DroneAlreadyOut,
+    /// <summary>The drone's battery is too low to take off or fly.</summary>
+    LowBattery,
+    /// <summary>The action needs a perk the unit does not have (Spotter, Payload).</summary>
+    MissingPerk,
 }
 
 /// <summary>Outcome of a scavenge command. <see cref="EntityId"/> carries e.g. the attacked unit.</summary>

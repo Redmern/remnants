@@ -73,7 +73,40 @@
     "lookout": { "apCost": 1, "sightBonus": 2, "detectionBonus": 15, "detectionPerPerception": 0.2 },
     "ai": { "hiddenWeight": 4, "linkedLurk": true }
   },
-  "world": { "colonyPos": [0.22, 0.7] },
+  "world": {
+    "colonyPos": [0.22, 0.7],
+    "droneScout": { "maxTravelDays": 2.5, "daysPerTravelDay": 0.5, "rechargeDays": 1, "lossByThreat": [0, 0, 0.05, 0.15, 0.3],
+                    "lossReductionPerSkill": 0.006, "pilotSkillGain": 2, "pilotXp": 10 }
+  },
+  "hacking": {
+    "apCost": 2, "minApCost": 1,
+    "baseChance": 0.55, "perSkill": 0.005, "perIntellect": 0.004, "minChance": 0.05, "maxChance": 0.95,
+    "networkPenalty": 0.15,
+    "alarmRadius": 8, "lockoutRounds": 3, "shockDamage": [4, 10],
+    "skillOnSuccess": 2, "skillOnFailure": 0.75, "xpOnSuccess": 8, "xpOnFailure": 2,
+    "overrideDifficulty": 0.25, "overrideRounds": 2
+  },
+  "devices": {
+    "Terminal": { "work": 2, "difficulty": 0.05, "networked": true, "lootCount": [1, 2],
+                  "loot": [ { "id": "ds_network_ghost", "weight": 1 }, { "id": "ds_override", "weight": 0.6 }, { "id": "ds_drone_payload", "weight": 0.6 },
+                            { "id": "bp_scout_drone", "weight": 1 }, { "id": "bp_cyberdeck", "weight": 0.6 }, { "id": "bp_scanner", "weight": 0.8 },
+                            { "id": "manual_intrusion", "weight": 1.2 }, { "id": "manual_drone_ops", "weight": 1.2 }, { "id": "manual_electronics", "weight": 1.2 },
+                            { "id": "electronics", "weight": 2 } ] },
+    "Camera":   { "work": 1, "difficulty": 0.0, "networked": true, "enemy": "camera", "radius": 10 },
+    "Turret":   { "work": 3, "difficulty": 0.1, "networked": true, "enemy": "turret" },
+    "Door":     { "work": 2, "difficulty": 0.0, "networked": true },
+    "Locker":   { "work": 1, "difficulty": -0.1, "networked": false, "zoneLoot": true, "lootCount": [2, 4],
+                  "loot": [ { "id": "med_kit", "weight": 1 }, { "id": "flare", "weight": 1 }, { "id": "electronics", "weight": 1 },
+                            { "id": "motion_sensor", "weight": 0.5 }, { "id": "drone_parts", "weight": 0.5 }, { "id": "hacking_kit", "weight": 0.3 } ] },
+    "Relay":    { "work": 3, "difficulty": 0.15, "networked": true, "radius": 5 }
+  },
+  "drone": {
+    "hp": 14, "attributes": { "Strength": 10, "Agility": 70, "Endurance": 30, "Perception": 80 },
+    "equipment": ["drone_frame"],
+    "deployApCost": 1, "flyApCost": 1, "recallApCost": 1, "markApCost": 1, "payloadApCost": 1,
+    "controlPerSkill": 0.04, "minBattery": 2, "rechargePerRound": 1, "jammedDrain": 2,
+    "markRounds": 2, "markHitBonus": 0.1, "skillPerFlight": 0.4, "xpPerFlight": 1
+  },
   "npc": {
     "attributeRange": [20, 55],
     "names": ["Wren", "Odile", "Caspar", "Hana", "Milo", "Yara", "Dov", "Tamsin", "Ezra", "Rosa"]

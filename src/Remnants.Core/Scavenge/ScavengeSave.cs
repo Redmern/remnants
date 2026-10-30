@@ -10,10 +10,13 @@ namespace Remnants.Core.Scavenge;
 /// contacts, reveals, flares and motion sensors; older saves load with none (everyone out of stance, nothing placed).
 /// Version 4 adds co-op: alliance offers and breaks, team pings, the next team id, carried units and pings used, and who
 /// placed a motion sensor; older saves load with every player on their own side and nobody carried.
+/// Version 5 adds hacking and drones: devices (with hacks in progress, lockouts and contents), drone marks, units' perk
+/// hooks, field XP, drones and their operators' batteries, overridden Linked; older saves load with no devices, no drones
+/// and no perks in the field.
 /// </summary>
 public static class ScavengeSave
 {
-    public const int Version = 4;
+    public const int Version = 5;
     private const int OldestVersion = 1;
 
     private sealed record Envelope(int Version, ScavengeState Scavenge);
@@ -57,6 +60,13 @@ public static class ScavengeSave
             RequireItem(sensor.ItemId);
             if (!state.Map.InBounds(sensor.Pos)) throw new JsonException($"Sensor {sensor.Id} is off the map at {sensor.Pos}.");
         }
+        foreach (var d in state.Devices)
+        {
+            if (!state.Map.InBounds(d.Pos)) throw new JsonException($"Device {d.Id} is off the map at {d.Pos}.");
+            if (d.UnitId is { } uid && state.FindUnit(uid) is null) throw new JsonException($"Device {d.Id} references unknown unit {uid}.");
+            foreach (var id in d.Items) RequireItem(id);
+        }
+        foreach (var u in state.Units.Where(u => u.DroneItemId is not null)) RequireItem(u.DroneItemId!);
         foreach (var id in state.TurnOrder)
             if (state.FindUnit(id) is null) throw new JsonException($"Turn order references unknown unit {id}.");
     }

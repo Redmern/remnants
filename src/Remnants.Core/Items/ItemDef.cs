@@ -166,6 +166,29 @@ public sealed record DeviceDef
     public int Radius { get; init; } = 3;
 }
 
+/// <summary>
+/// A hacking tool (kit, cyberdeck): carried (equipped or in the pack), it lets its carrier hack devices within
+/// <see cref="Range"/> (beyond 1 tile with line of sight), adds <see cref="ChanceBonus"/> and puts <see cref="Progress"/>
+/// points of work into the hack per action.
+/// </summary>
+public sealed record HackToolDef
+{
+    public int Range { get; init; } = 1;
+    public double ChanceBonus { get; init; }
+    public int Progress { get; init; } = 1;
+}
+
+/// <summary>
+/// A scout drone item: deployed it becomes a flying unit. Battery in rounds, how far one flight goes, and how far from its
+/// operator it can be (before Drone Piloting and perks).
+/// </summary>
+public sealed record DroneItemDef
+{
+    public int Battery { get; init; } = 6;
+    public int FlyRange { get; init; } = 4;
+    public int ControlRange { get; init; } = 6;
+}
+
 /// <summary>A blueprint is studied (and used up) at a building to unlock the recipes that name it.</summary>
 public sealed record BlueprintDef
 {
@@ -230,6 +253,12 @@ public sealed record ItemDef
 
     /// <summary>Equipped devices (Tool slot) with a field effect.</summary>
     public DeviceDef? Device { get; init; }
+
+    /// <summary>Hacking tools (see <see cref="HackToolDef"/>).</summary>
+    public HackToolDef? HackTool { get; init; }
+
+    /// <summary>Scout drones (see <see cref="DroneItemDef"/>).</summary>
+    public DroneItemDef? Drone { get; init; }
 
     /// <summary>Blueprint items: where they are studied.</summary>
     public BlueprintDef? Blueprint { get; init; }

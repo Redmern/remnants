@@ -66,6 +66,12 @@ public sealed class ScavengeSim
             GiveItem c => CoopActions.Give(this, unit!, c),
             Carry c => CoopActions.Carry(this, unit!, c),
             PutDown c => CoopActions.PutDown(this, unit!, c),
+            Hack c => Hacking.Hack(this, unit!, c),
+            DeployDrone c => Drones.Deploy(this, unit!, c),
+            FlyDrone c => Drones.Fly(this, unit!, c),
+            RecallDrone => Drones.Recall(this, unit!),
+            MarkTarget c => Drones.Mark(this, unit!, c),
+            DropPayload c => Drones.Drop(this, unit!, c),
             _ => ScavengeResult.Fail(ScavengeError.UnknownCommand, $"Unknown command {command.GetType().Name}."),
         };
 
@@ -146,10 +152,14 @@ public sealed class ScavengeSim
         UpdateParties();
         Detection.Expire(Data, State);
         Alliances.RoundStarted(this);
+        Hacking.RoundStarted(this);
+        Drones.RoundStarted(this);
         Network.RoundStarted(this);
 
+        // Drones fly on their operator's AP and cameras only watch: neither takes turns.
         State.TurnOrder = State.Units
-            .Where(u => u.IsActive && u.Side != Unit.NeutralSide)
+            .Where(u => u.IsActive && u.Side != Unit.NeutralSide && u.Kind != UnitKind.Drone
+                        && (u.Kind != UnitKind.Device || Profile(u).Actions.Count > 0))
             .Select(u => (u.Id, Profile(u).Initiative))
             .OrderByDescending(t => t.Initiative)
             .ThenBy(t => t.Id)
@@ -226,8 +236,14 @@ public sealed class ScavengeSim
         unit.Hp = Math.Min(unit.Hp, 0);
         unit.Ap = 0;
         State.Log(new(State.Round, type, message, unit.Id, Pos: unit.Pos));
+        if (unit.Kind == UnitKind.Drone)
+        {
+            Drones.Destroyed(State, unit);
+            return;
+        }
+        if (unit.Kind == UnitKind.Device) Hacking.UnitKilled(this, unit);
 
-        var drops = unit.AllItems.Where(id => unit.Kind != UnitKind.Enemy || Data.Items[id].LootWeight > 0).ToList();
+        var drops = unit.AllItems.Where(id => unit.Kind is not (UnitKind.Enemy or UnitKind.Device) || Data.Items[id].LootWeight > 0).ToList();
         if (drops.Count == 0) return;
         var cache = State.Caches.Find(c => c.Pos == unit.Pos);
         if (cache is null)
@@ -276,6 +292,7 @@ public sealed class ScavengeSim
             if (State.Units.Any(u => u.Side == side && u.IsActive && u.Pos.Chebyshev(unit.Pos) <= fog.HearMovement)
                 && !Detection.SideSees(Data, State, side, unit))
                 Detection.AddContact(Data, State, side, unit.Pos, ContactKind.Movement, unit.Id);
+        Hacking.CameraCheck(this, unit);
         CheckOverwatch(unit);
     }
 
@@ -308,7 +325,7 @@ public sealed class ScavengeSim
                 var sees = Detection.Spots(Data, State, watcher, unit) || Detection.SeesRevealed(Data, State, watcher, unit);
                 if (!sees) continue;
                 var action = Profile(watcher).Actions
-                    .Where(a => Combat.CheckReach(Data, State.Map, watcher.Pos, a, unit.Pos) == ScavengeError.None)
+                    .Where(a => Drones.CanStrike(a, unit) && Combat.CheckReach(Data, State.Map, watcher.Pos, a, unit.Pos) == ScavengeError.None)
                     .OrderByDescending(a => Combat.ChanceToHit(this, watcher, a, unit) * (a.MinDamage + a.MaxDamage) / 2)
                     .ThenBy(a => a.Id, StringComparer.Ordinal)
                     .FirstOrDefault();

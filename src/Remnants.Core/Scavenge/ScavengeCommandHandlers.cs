@@ -1,3 +1,6 @@
+using Remnants.Core.Colony;
+using Remnants.Core.Items;
+
 namespace Remnants.Core.Scavenge;
 
 internal static class ScavengeCommandHandlers
@@ -47,6 +50,7 @@ internal static class ScavengeCommandHandlers
         if (action.ApCost > unit.Ap) return NotEnoughAp(unit, action.ApCost);
         var reach = Combat.CheckReach(sim.Data, sim.State.Map, unit.Pos, action, target.Pos);
         if (reach != ScavengeError.None) return ScavengeResult.Fail(reach, $"{target.Name} is not in reach of {action.Name} ({reach}).");
+        if (!Drones.CanStrike(action, target)) return ScavengeResult.Fail(ScavengeError.OutOfRange, $"{action.Name} cannot reach a flying drone.");
 
         Combat.Resolve(sim, unit, action, target);
         return ScavengeResult.Success($"{unit.Name} used {action.Name} on {target.Name}.", target.Id);
@@ -75,18 +79,19 @@ internal static class ScavengeCommandHandlers
         else if (downed && use.Stabilize)
         {
             target.Stabilized = true;
+            target.BleedOut += (int)Math.Round(unit.Hook(PerkHooks.BleedoutRoundsBonus));
             sim.Log(ScavengeEventType.Stabilized, $"{unit.Name} stabilized {target.Name}.", unit, target);
             if (use.ReviveHp > 0)
             {
                 target.Status = UnitStatus.Active;
-                target.Hp = Math.Min(target.MaxHp, use.ReviveHp);
+                target.Hp = Math.Min(target.MaxHp, use.ReviveHp + unit.Hook(PerkHooks.ReviveHpBonus));
                 target.Stabilized = false;
                 sim.Log(ScavengeEventType.Revived, $"{target.Name} is back on their feet.", unit, target);
             }
         }
         else if (!downed && use.Heal > 0)
         {
-            target.Hp = Math.Min(target.MaxHp, target.Hp + use.Heal);
+            target.Hp = Math.Min(target.MaxHp, target.Hp + use.Heal * (1 + unit.Hook(PerkHooks.FieldHealBonus)));
             sim.Log(ScavengeEventType.Healed, $"{unit.Name} treated {target.Name} with {item.Name}.", unit, target);
         }
         else
@@ -106,12 +111,19 @@ internal static class ScavengeCommandHandlers
         if (c.At is not { } at || !state.Map.InBounds(at))
             return ScavengeResult.Fail(ScavengeError.InvalidTile, $"{item.Name} needs a tile on the map.");
         if (unit.Pos.Chebyshev(at) > use.Range) return ScavengeResult.Fail(ScavengeError.TooFar, $"{at} is out of {item.Name}'s reach.");
-        if (use.SensorRadius > 0 && !sim.Data.Terrain(state.Map[at]).Passable)
+        if (use.SensorRadius > 0 && (!sim.Data.Terrain(state.Map[at]).Passable || state.DeviceAt(at) is not null))
             return ScavengeResult.Fail(ScavengeError.InvalidTile, $"{item.Name} cannot be placed on {state.Map[at]}.");
         if (use.ApCost > unit.Ap) return NotEnoughAp(unit, use.ApCost);
+        PlaceOnTile(sim, unit, item, use, at);
+        return ScavengeResult.Success($"{unit.Name} used {item.Name} at {at}.");
+    }
 
+    /// <summary>Pays, uses up and sets off a flare or motion sensor at a tile (by hand, or dropped by a drone).</summary>
+    internal static void PlaceOnTile(ScavengeSim sim, Unit unit, ItemDef item, UseEffect use, Pos at)
+    {
+        var state = sim.State;
         unit.Ap -= use.ApCost;
-        if (use.Consumed) unit.Pack.Remove(c.ItemId);
+        if (use.Consumed) unit.Pack.Remove(item.Id);
         if (use.LightRadius > 0)
         {
             state.Flares.Add(new Flare(at, use.LightRadius, state.Round + use.LightRounds - 1));
@@ -130,7 +142,6 @@ internal static class ScavengeCommandHandlers
                                                      && u.Pos.Chebyshev(at) <= sensor.Radius).OrderBy(u => u.Id).ToList())
                 sim.Trip(sensor, u);
         }
-        return ScavengeResult.Success($"{unit.Name} used {item.Name} at {at}.");
     }
 
     /// <summary>Overwatch or brace: pays the AP and ends the turn (see <see cref="ScavengeSim"/>).</summary>
@@ -161,7 +172,8 @@ internal static class ScavengeCommandHandlers
     internal static void Enter(ScavengeSim sim, Unit unit, Stance stance, int apLeft)
     {
         unit.Stance = stance;
-        unit.Reactions = stance == Stance.Overwatch ? Math.Clamp(apLeft, 1, sim.Data.Rules.Fog.Overwatch.Reactions) : 0;
+        var max = sim.Data.Rules.Fog.Overwatch.Reactions + (int)Math.Round(unit.Hook(PerkHooks.OverwatchReactionsBonus));
+        unit.Reactions = stance == Stance.Overwatch ? Math.Clamp(apLeft + (max - sim.Data.Rules.Fog.Overwatch.Reactions), 1, max) : 0;
         if (stance == Stance.Overwatch)
             sim.State.Log(new(sim.State.Round, ScavengeEventType.Overwatch, $"{unit.Name} goes on overwatch.", unit.Id, Pos: unit.Pos));
         else
@@ -198,6 +210,13 @@ internal static class ScavengeCommandHandlers
         unit.Pack.Add(c.ItemId);
         if (cache.Items.Count == 0) sim.State.Caches.Remove(cache);
         sim.Log(ScavengeEventType.PickedUp, $"{unit.Name} picked up {item.Name}.", unit);
+        // Scavenger: a sharp eye turns up a second lot of a material.
+        if (item.Kind == ItemKind.Material && unit.Hook(PerkHooks.LootBonus) is var bonus and > 0
+            && profile.Load + 2 * item.Weight <= profile.CarryCapacity + 1e-9 && sim.Rng.NextDouble() < bonus)
+        {
+            unit.Pack.Add(c.ItemId);
+            sim.Log(ScavengeEventType.PickedUp, $"{unit.Name} finds more {item.Name}.", unit);
+        }
         return ScavengeResult.Success($"{unit.Name} picked up {item.Name}.", cache.Id);
     }
 
@@ -226,6 +245,8 @@ internal static class ScavengeCommandHandlers
     {
         if (!sim.State.Map.IsExit(unit.Pos)) return ScavengeResult.Fail(ScavengeError.NotOnExit, $"{unit.Name} is not on an exit tile.");
 
+        // A drone still in the air comes home with its operator.
+        if (Drones.DroneOf(sim.State, unit) is { } drone) Drones.Stow(sim.State, unit, drone);
         unit.Status = UnitStatus.Extracted;
         sim.Log(ScavengeEventType.Extracted, $"{unit.Name} extracted.", unit);
         if (unit.CarryingId is { } carriedId && sim.State.FindUnit(carriedId) is { Status: UnitStatus.Downed } carried)

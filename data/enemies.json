@@ -28,5 +28,16 @@
     "attributes": { "Strength": 85, "Agility": 20, "Endurance": 90, "Perception": 55 },
     "skills": { "Firearms": 45, "Melee": 50 },
     "equipment": ["warden_pulse", "warden_shell"]
+  },
+  {
+    "id": "camera", "name": "Camera", "hp": 12, "ai": "Linked", "relayRange": 6, "stealth": -15,
+    "attributes": { "Strength": 10, "Agility": 10, "Endurance": 30, "Perception": 70 },
+    "equipment": ["camera_lens"]
+  },
+  {
+    "id": "turret", "name": "Turret", "hp": 45, "ai": "Device", "stealth": -15,
+    "attributes": { "Strength": 50, "Agility": 30, "Endurance": 80, "Perception": 60 },
+    "skills": { "Firearms": 40 },
+    "equipment": ["turret_gun", "turret_mount"]
   }
 ]

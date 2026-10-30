@@ -18,10 +18,11 @@ public static class Devices
     public static bool IsJammed(ScavengeSim sim, Unit unit) =>
         Network.IsLinked(sim.Data, unit) && JamsTile(sim, unit.Pos, unit.Side);
 
-    /// <summary>Whether a jammer carried by someone hostile to <paramref name="side"/> covers the tile.</summary>
+    /// <summary>Whether a jammer carried by someone hostile to <paramref name="side"/>, or a relay node such a side hacked, covers the tile.</summary>
     public static bool JamsTile(ScavengeSim sim, Pos tile, string side) =>
         Carriers(sim, DeviceEffect.Jammer).Any(c =>
-            c.Unit.Side != side && c.Unit.Side != Unit.NeutralSide && c.Unit.Pos.Chebyshev(tile) <= c.Device.Radius);
+            c.Unit.Side != side && c.Unit.Side != Unit.NeutralSide && c.Unit.Pos.Chebyshev(tile) <= c.Device.Radius)
+        || Hacking.RelayJams(sim.State, sim.Data, tile, side);
 
     /// <summary>Tiles within a scanner's radius of this unit (empty without a working scanner).</summary>
     public static IEnumerable<Pos> ScannedBy(ScavengeSim sim, Unit unit)

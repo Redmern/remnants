@@ -37,8 +37,9 @@ public static class Movement
     private static bool Free(ScavengeState state, Unit mover, Pos p) =>
         state.UnitAt(p) is not { } other || other.Id == mover.Id;
 
+    /// <summary>No hostile unit in the way and no device blocking the tile (a door lets its own side through).</summary>
     private static bool CanPass(ScavengeState state, Unit mover, Pos p) =>
-        state.UnitAt(p) is not { } other || !other.HostileTo(mover);
+        (state.UnitAt(p) is not { } other || !other.HostileTo(mover)) && !Hacking.Blocks(state, mover, p);
 
     /// <summary>
     /// Multi-step walk in 8 directions, summing terrain costs up to the range (Dijkstra). One step is always allowed,
@@ -100,7 +101,7 @@ public static class Movement
     private static IEnumerable<Pos> Jumps(ScavengeState state, Unit unit, MovementProfile profile) =>
         Pos.KnightJumps
             .Select(d => unit.Pos + d)
-            .Where(n => state.Map.InBounds(n) && profile.Cost(state.Map[n]) is not null && Free(state, unit, n));
+            .Where(n => state.Map.InBounds(n) && profile.Cost(state.Map[n]) is not null && Free(state, unit, n) && !Hacking.Blocks(state, unit, n));
 
     /// <summary>
     /// Walking distance (terrain-cost weighted, ignoring units) from every tile to <paramref name="target"/>.

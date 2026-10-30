@@ -14,8 +14,16 @@ public sealed class ScavengeData
     public IReadOnlyDictionary<string, ZoneDef> Zones { get; }
     public ScavengeRules Rules { get; }
 
-    public ScavengeData(IEnumerable<ItemDef> items, IEnumerable<EnemyDef> enemies, IEnumerable<ZoneDef> zones, ScavengeRules rules)
+    /// <summary>
+    /// Perk id → its scavenge hooks (from perks.json when loaded with it), so a party's perks reach the field with the
+    /// survivors alone (<see cref="HooksFor"/>), locally and on a server.
+    /// </summary>
+    public IReadOnlyDictionary<string, IReadOnlyDictionary<string, double>> PerkHooks { get; }
+
+    public ScavengeData(IEnumerable<ItemDef> items, IEnumerable<EnemyDef> enemies, IEnumerable<ZoneDef> zones, ScavengeRules rules,
+        IReadOnlyDictionary<string, IReadOnlyDictionary<string, double>>? perkHooks = null)
     {
+        PerkHooks = perkHooks ?? new Dictionary<string, IReadOnlyDictionary<string, double>>();
         // Variants are always derived (so data built from another ScavengeData's items gets them fresh).
         Items = Index(WithQualityVariants(items.Where(i => i.BaseId is null).ToList(), rules.Quality), i => i.Id, "item");
         Enemies = Index(enemies, e => e.Id, "enemy");
@@ -25,6 +33,18 @@ public sealed class ScavengeData
     }
 
     public TerrainDef Terrain(Terrain terrain) => Rules.Terrain[terrain];
+
+    /// <summary>The summed hooks of these perks (unknown perk ids are ignored).</summary>
+    public Dictionary<string, double> HooksFor(IEnumerable<string> perkIds)
+    {
+        var result = new Dictionary<string, double>(StringComparer.Ordinal);
+        foreach (var id in perkIds)
+            if (PerkHooks.TryGetValue(id, out var hooks))
+                foreach (var (k, v) in hooks) result[k] = result.GetValueOrDefault(k) + v;
+        return result;
+    }
+
+    public DeviceKindDef Device(DeviceKind kind) => Rules.Devices.TryGetValue(kind, out var def) ? def : new DeviceKindDef();
 
     /// <summary>The item id of <paramref name="itemId"/> at a quality tier (the defined id for the base tier).</summary>
     public string QualityVariant(string itemId, string tierId)
@@ -142,6 +162,30 @@ public sealed class ScavengeData
                     throw new GameDataException($"Item '{item.Id}': added move modes need range and AP cost of at least 1.");
         }
 
+        foreach (var (kind, def) in Rules.Devices)
+        {
+            if (def.Work < 1) throw new GameDataException($"Scavenge rules: device '{kind}' needs work of at least 1.");
+            RequireRange(def.LootCount, $"Scavenge rules device '{kind}' lootCount");
+            if (def.Enemy is { } e && (!Enemies.TryGetValue(e, out var unit) || unit.Ai != AiKind.Device && unit.Ai != AiKind.Linked))
+                throw new GameDataException($"Scavenge rules: device '{kind}' names unknown device unit '{e}'.");
+            if (kind is DeviceKind.Camera or DeviceKind.Turret && def.Enemy is null)
+                throw new GameDataException($"Scavenge rules: device '{kind}' needs an enemy definition for its unit.");
+            foreach (var l in def.Loot)
+                if (!Items.ContainsKey(l.Id)) throw new GameDataException($"Scavenge rules: device '{kind}' loot names unknown item '{l.Id}'.");
+        }
+        foreach (var id in Rules.Drone.Equipment)
+            if (!Items.TryGetValue(id, out var frame) || frame.Slot is null)
+                throw new GameDataException($"Scavenge rules: drone equipment '{id}' is not an equippable item.");
+        if (Rules.Hacking.ShockDamage.Length != 2 || Rules.Hacking.ShockDamage[0] > Rules.Hacking.ShockDamage[1])
+            throw new GameDataException("Scavenge rules: hacking.shockDamage must be [min, max].");
+        foreach (var item in Items.Values)
+        {
+            if (item.HackTool is { } tool && (tool.Range < 1 || tool.Progress < 1))
+                throw new GameDataException($"Item '{item.Id}': a hacking tool needs range and progress of at least 1.");
+            if (item.Drone is { } drone && (drone.Battery < 1 || drone.FlyRange < 1 || drone.ControlRange < 1))
+                throw new GameDataException($"Item '{item.Id}': a scout drone needs battery, flyRange and controlRange of at least 1.");
+        }
+
         foreach (var enemy in Enemies.Values)
         {
             if (enemy.Hp <= 0) throw new GameDataException($"Enemy '{enemy.Id}' needs positive hp.");
@@ -178,6 +222,7 @@ public sealed class ScavengeData
                 throw new GameDataException($"{where}: mapPos must be [x, y] with both in 0..1.");
             foreach (var other in zone.Reveals)
                 if (!Zones.ContainsKey(other)) throw new GameDataException($"{where} reveals unknown zone '{other}'.");
+            foreach (var (kind, range) in zone.Devices) RequireRange(range, $"{where} devices.{kind}");
             if (zone.Caches[1] > 0 && !Items.Values.Any(i => i.LootWeight > 0 && i.Tier <= zone.LootTier))
                 throw new GameDataException($"{where} has caches but no items at loot tier {zone.LootTier}.");
         }
@@ -210,15 +255,20 @@ public static class ScavengeDataLoader
             return File.ReadAllText(path);
         }
 
-        return LoadFromJson(Read("items.json"), Read("enemies.json"), Read("zones.json"), Read("scavenge.json"));
+        var perks = Path.Combine(directory, "perks.json");
+        return LoadFromJson(Read("items.json"), Read("enemies.json"), Read("zones.json"), Read("scavenge.json"),
+            File.Exists(perks) ? File.ReadAllText(perks) : null);
     }
 
-    public static ScavengeData LoadFromJson(string items, string enemies, string zones, string rules) =>
+    /// <param name="perks">perks.json (optional): only each perk's scavenge hooks are read (see <see cref="ScavengeData.PerkHooks"/>).</param>
+    public static ScavengeData LoadFromJson(string items, string enemies, string zones, string rules, string? perks = null) =>
         new(
             Parse<List<ItemDef>>(items, "items"),
             Parse<List<EnemyDef>>(enemies, "enemies"),
             Parse<List<ZoneDef>>(zones, "zones"),
-            Parse<ScavengeRules>(rules, "scavenge"));
+            Parse<ScavengeRules>(rules, "scavenge"),
+            perks is null ? null : Parse<ProgressionDef>(perks, "perks").Perks
+                .ToDictionary(p => p.Id, p => (IReadOnlyDictionary<string, double>)new Dictionary<string, double>(p.Effects.Hooks, StringComparer.Ordinal)));
 
     private static T Parse<T>(string json, string name)
     {

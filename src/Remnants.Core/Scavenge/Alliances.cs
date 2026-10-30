@@ -133,6 +133,18 @@ public static class Alliances
         foreach (var side in old)
             if (state.Explored.Remove(side, out var tiles)) explored.UnionWith(tiles);
         state.Explored[team] = explored;
+        // Hacked devices, hacks in progress, lockouts, drone marks and overridden Linked are the team's now.
+        foreach (var d in state.Devices)
+        {
+            if (old.Contains(d.Controller)) d.Controller = team;
+            d.Progress = d.Progress.Select(p => old.Contains(p.Side) ? p with { Side = team } : p)
+                .GroupBy(p => p.Side).Select(g => g.MaxBy(p => p.Done)!).ToList();
+            d.Lockouts = d.Lockouts.Select(l => old.Contains(l.Side) ? l with { Side = team } : l)
+                .GroupBy(l => l.Side).Select(g => g.MaxBy(l => l.UntilRound)!).ToList();
+        }
+        state.Marks = state.Marks.Select(m => old.Contains(m.Side) ? m with { Side = team } : m)
+            .GroupBy(m => (m.UnitId, m.Side)).Select(g => g.MaxBy(m => m.UntilRound)!).ToList();
+        foreach (var u in state.Units.Where(u => u.OverrideUntilRound is not null && old.Contains(u.Side))) u.Side = team;
         return team;
     }
 
@@ -156,6 +168,9 @@ public static class Alliances
             if (state.Explored.TryGetValue(team, out var tiles)) state.Explored[side] = new SortedSet<int>(tiles);
             state.Sensors = state.Sensors.Select(s => s.Side == team && s.PlayerId == id ? s with { Side = side } : s).ToList();
             state.Pings = state.Pings.Select(p => p.Side == team && p.PlayerId == id ? p with { Side = side } : p).ToList();
+            state.Marks.AddRange(state.Marks.Where(m => m.Side == team).Select(m => m with { Side = side }).ToList());
+            // A device goes with whoever hacked it (a camera's or turret's unit already moved with its player).
+            foreach (var d in state.Devices.Where(d => d.Controller == team && d.ControllerPlayerId == id)) d.Controller = side;
         }
         if (!state.Parties.Any(p => p.Side == team))
         {
@@ -164,6 +179,13 @@ public static class Alliances
             state.Explored.Remove(team);
             state.Sensors.RemoveAll(s => s.Side == team);
             state.Pings.RemoveAll(p => p.Side == team);
+            state.Marks.RemoveAll(m => m.Side == team);
+            foreach (var d in state.Devices)
+            {
+                d.Progress.RemoveAll(p => p.Side == team);
+                d.Lockouts.RemoveAll(l => l.Side == team);
+            }
+            foreach (var u in state.Units.Where(u => u.OverrideUntilRound is not null && u.Side == team)) u.Side = Unit.PlayerSide(playerId);
         }
         state.Breaks.RemoveAll(b => leaving.Contains(b.PlayerId) && b.PlayerId != playerId);
         // Ex-allies put down each other's downed: nobody walks off with a former ally.

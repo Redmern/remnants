@@ -7,6 +7,7 @@
     "width": 24, "height": 24, "threat": 1, "lootTier": 1,
     "terrain": { "rooms": [2, 3], "roomSize": [4, 7], "rubble": 0.06, "cover": 0.04, "water": 0.0 },
     "spawnEdge": "South", "exitEdge": "North", "exits": 2,
+    "devices": { "Locker": [1, 2], "Terminal": [0, 1] },
     "enemies": [2, 4], "enemyMix": [ { "id": "husk", "weight": 1 } ],
     "caches": [3, 5], "itemsPerCache": [1, 3], "npcs": [0, 1]
   },
@@ -18,6 +19,7 @@
     "width": 26, "height": 24, "threat": 1, "lootTier": 1,
     "terrain": { "rooms": [1, 3], "roomSize": [4, 6], "rubble": 0.1, "cover": 0.07, "water": 0.0 },
     "spawnEdge": "East", "exitEdge": "West", "exits": 2,
+    "devices": { "Locker": [1, 2], "Terminal": [0, 1], "Door": [0, 1] },
     "enemies": [3, 5], "enemyMix": [ { "id": "husk", "weight": 3 }, { "id": "husk_crawler", "weight": 2 } ],
     "caches": [4, 6], "itemsPerCache": [1, 3], "npcs": [0, 1]
   },
@@ -30,6 +32,7 @@
     "terrain": { "rooms": [3, 5], "roomSize": [4, 8], "rubble": 0.08, "cover": 0.05, "water": 0.02 },
     "spawnEdge": "South", "exitEdge": "North", "exits": 2,
     "enemies": [5, 7],
+    "devices": { "Locker": [1, 2], "Terminal": [1, 1], "Camera": [0, 1], "Door": [0, 1] },
     "enemyMix": [ { "id": "husk", "weight": 6 }, { "id": "husk_crawler", "weight": 2 }, { "id": "linked", "weight": 0.5, "max": 1 } ],
     "caches": [4, 6], "itemsPerCache": [1, 3], "npcs": [1, 1]
   },
@@ -42,6 +45,7 @@
     "terrain": { "rooms": [3, 5], "roomSize": [5, 8], "rubble": 0.05, "cover": 0.06, "water": 0.08 },
     "spawnEdge": "South", "exitEdge": "North", "exits": 2,
     "enemies": [6, 8],
+    "devices": { "Locker": [1, 2], "Terminal": [1, 1], "Camera": [1, 2], "Door": [1, 1], "Relay": [0, 1] },
     "enemyMix": [ { "id": "husk", "weight": 4 }, { "id": "husk_crawler", "weight": 3 }, { "id": "linked_drone", "weight": 1, "max": 1 }, { "id": "linked", "weight": 1, "max": 1 } ],
     "caches": [5, 7], "itemsPerCache": [1, 3], "npcs": [0, 2]
   },
@@ -54,6 +58,7 @@
     "terrain": { "rooms": [3, 5], "roomSize": [5, 8], "rubble": 0.07, "cover": 0.07, "water": 0.0 },
     "spawnEdge": "West", "exitEdge": "East", "exits": 2,
     "enemies": [6, 8],
+    "devices": { "Locker": [1, 2], "Terminal": [1, 1], "Camera": [1, 2], "Turret": [0, 1], "Door": [1, 2], "Relay": [0, 1] },
     "enemyMix": [ { "id": "husk", "weight": 3 }, { "id": "linked", "weight": 3 }, { "id": "linked_drone", "weight": 1, "max": 2 } ],
     "pylons": [1, 1], "reinforcements": { "waves": 1, "count": [2, 2], "mix": [ { "id": "linked", "weight": 2 }, { "id": "linked_drone", "weight": 1 } ] },
     "caches": [5, 7], "itemsPerCache": [2, 3], "npcs": [0, 1]
@@ -67,6 +72,7 @@
     "terrain": { "rooms": [4, 6], "roomSize": [5, 9], "rubble": 0.07, "cover": 0.07, "water": 0.0 },
     "spawnEdge": "West", "exitEdge": "East", "exits": 2,
     "enemies": [7, 10],
+    "devices": { "Locker": [1, 1], "Terminal": [1, 2], "Camera": [2, 3], "Turret": [1, 1], "Door": [1, 2], "Relay": [1, 1] },
     "enemyMix": [ { "id": "husk", "weight": 2 }, { "id": "linked", "weight": 4 }, { "id": "linked_drone", "weight": 2 }, { "id": "linked_warden", "weight": 1, "max": 1 } ],
     "pylons": [2, 2], "reinforcements": { "waves": 2, "count": [2, 3], "mix": [ { "id": "linked", "weight": 3 }, { "id": "linked_drone", "weight": 2 } ] },
     "caches": [5, 7], "itemsPerCache": [2, 3], "npcs": [0, 2]
@@ -80,6 +86,7 @@
     "terrain": { "rooms": [5, 7], "roomSize": [5, 9], "rubble": 0.06, "cover": 0.09, "water": 0.0 },
     "spawnEdge": "South", "exitEdge": "North", "exits": 2,
     "enemies": [10, 13],
+    "devices": { "Locker": [1, 2], "Terminal": [2, 2], "Camera": [2, 3], "Turret": [1, 2], "Door": [2, 2], "Relay": [1, 2] },
     "enemyMix": [ { "id": "linked", "weight": 5 }, { "id": "linked_drone", "weight": 3 }, { "id": "linked_warden", "weight": 2, "max": 3 }, { "id": "husk", "weight": 1 } ],
     "pylons": [3, 3], "reinforcements": { "waves": 3, "count": [2, 3], "mix": [ { "id": "linked", "weight": 3 }, { "id": "linked_drone", "weight": 2 }, { "id": "linked_warden", "weight": 1 } ] },
     "caches": [7, 9], "itemsPerCache": [2, 4], "npcs": [0, 1]

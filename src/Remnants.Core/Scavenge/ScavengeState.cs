@@ -23,6 +23,8 @@ public enum ScavengeEventType
     Ambushed, Overwatch, Braced, Lookout, Revealed, FlareLit, SensorPlaced, SensorTripped,
     AllianceProposed, AllianceAccepted, AllianceDeclined, AllianceBreakWarning, AllianceBroken,
     Pinged, ItemGiven, PickedUpBody, PutDown,
+    HackProgress, Hacked, HackFailed, Alarm, Overridden, OverrideEnded, DeviceDisabled,
+    DroneDeployed, DroneFlown, DroneRecalled, DroneLanded, Marked, PayloadDropped,
 }
 
 /// <summary>
@@ -68,6 +70,51 @@ public sealed record Flare(Pos Pos, double Radius, int UntilRound);
 /// (who placed it) decides which side keeps it when an alliance breaks.
 /// </summary>
 public sealed record Sensor(int Id, string Side, Pos Pos, int Radius, string ItemId, int? PlayerId = null);
+
+/// <summary>A target marked by a side's scout drone: the side sees it through walls and stealth and hits it more easily.</summary>
+public sealed record Mark(int UnitId, string Side, int UntilRound);
+
+/// <summary>One side's hack in progress on a device: progress points done of those needed, and who is working on it.</summary>
+public sealed record HackProgress(string Side, int HackerId, int Done, int Needed);
+
+/// <summary>A side locked out of a device after a failed hack, through <see cref="UntilRound"/>.</summary>
+public sealed record Lockout(string Side, int UntilRound);
+
+/// <summary>
+/// A hackable device on the map (see <see cref="Hacking"/>). Devices that act (a camera, a turret) are also units
+/// (<see cref="UnitId"/>, <see cref="UnitKind.Device"/>), so sight, fire, fog and being shot work as for anyone; their
+/// side is the controller. The others (terminal, door, locker, relay node) block their tile (a door only for sides other
+/// than its controller). Everything starts working for the Network (<see cref="Unit.EnemySide"/>); a hack hands the
+/// device to the hacker's side (<see cref="Controller"/>; <see cref="ControllerPlayerId"/> decides who keeps it when an
+/// alliance breaks). Per-side state (progress, lockouts) and contents are private: the multiplayer fog never sends them
+/// to other sides.
+/// </summary>
+public sealed class ZoneDevice
+{
+    public int Id { get; set; }
+    public DeviceKind Kind { get; set; }
+    public Pos Pos { get; set; }
+    public bool Networked { get; set; }
+
+    /// <summary>The side it works for (for unit devices this mirrors the unit's side).</summary>
+    public string Controller { get; set; } = Unit.EnemySide;
+    public int? ControllerPlayerId { get; set; }
+    public int? UnitId { get; set; }
+
+    /// <summary>Destroyed (its unit was shot down): no longer works or can be hacked.</summary>
+    public bool Disabled { get; set; }
+
+    /// <summary>A terminal downloaded, a locker opened.</summary>
+    public bool Used { get; set; }
+
+    /// <summary>What a terminal or locker holds until it is hacked.</summary>
+    public List<string> Items { get; set; } = new();
+    public List<HackProgress> Progress { get; set; } = new();
+    public List<Lockout> Lockouts { get; set; } = new();
+
+    /// <summary>Whether a side other than the Network controls it.</summary>
+    public bool Hacked => Controller != Unit.EnemySide;
+}
 
 /// <summary>What a team ping says.</summary>
 public enum PingKind { Danger, GoHere, Loot }
@@ -132,11 +179,20 @@ public sealed class ScavengeState
     public List<Ping> Pings { get; set; } = new();
     public int NextTeamId { get; set; } = 1;
 
+    /// <summary>Hackable devices (<see cref="Hacking"/>) and drone marks (<see cref="Drones"/>).</summary>
+    public List<ZoneDevice> Devices { get; set; } = new();
+    public int NextDeviceId { get; set; } = 1;
+    public List<Mark> Marks { get; set; } = new();
+
     public List<ScavengeEvent> Events { get; set; } = new();
 
     public Unit? FindUnit(int id) => Units.Find(u => u.Id == id);
     public LootCache? FindCache(int id) => Caches.Find(c => c.Id == id);
     public Party? FindParty(int playerId) => Parties.Find(p => p.PlayerId == playerId);
+    public ZoneDevice? FindDevice(int id) => Devices.Find(d => d.Id == id);
+
+    /// <summary>The device on a tile (a camera may sit in a wall), if any.</summary>
+    public ZoneDevice? DeviceAt(Pos p) => Devices.Find(d => d.Pos == p);
 
     /// <summary>The unit standing on a tile, if any (alive or downed; the dead leave a cache instead).</summary>
     public Unit? UnitAt(Pos p) => Units.Find(u => u.OnMap && u.Pos == p && u.CarriedById is null);

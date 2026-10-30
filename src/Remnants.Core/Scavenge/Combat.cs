@@ -49,8 +49,12 @@ public static class Combat
 
     /// <summary>The hit chance of this attack as it would resolve now, ambush included (for previews and the AI).</summary>
     public static double ChanceToHit(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, Pos? from = null) =>
-        HitChance(sim.Data, sim.State.Map, from ?? attacker.Pos, action, target.Pos, sim.Profile(target),
-            AmbushAgainst(sim.Data, sim.State, attacker, target, from));
+        HitChance(sim.Data, sim.State.Map, from ?? attacker.Pos, action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) },
+            target.Pos, sim.Profile(target), AmbushAgainst(sim.Data, sim.State, attacker, target, from));
+
+    /// <summary>What a drone's mark on the target adds to the attacker's side's hit chance.</summary>
+    public static double MarkBonus(ScavengeSim sim, Unit attacker, Unit target) =>
+        Drones.IsMarked(sim.State, target.Id, attacker.Side) ? sim.Data.Rules.Drone.MarkHitBonus : 0;
 
     /// <summary>
     /// Whether an attack on <paramref name="target"/> would come from the fog: its side does not see the attacker (at
@@ -138,7 +142,8 @@ public static class Combat
     {
         var data = sim.Data;
         var state = sim.State;
-        var chance = HitChance(data, state.Map, attacker.Pos, action, target.Pos, sim.Profile(target), ambush);
+        var chance = HitChance(data, state.Map, attacker.Pos, action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) },
+            target.Pos, sim.Profile(target), ambush);
         if (ambush is { } a)
             state.Log(new(state.Round, ScavengeEventType.Ambushed,
                 $"{attacker.Name} ambushes {target.Name} from the fog{a.Describe()}.", attacker.Id, target.Id, target.Pos,
