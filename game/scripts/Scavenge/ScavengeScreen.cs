@@ -51,7 +51,7 @@ public partial class ScavengeScreen : Node3D
         Hud.GameSettings.Boot(GetTree());
         _mission = ScavengeSession.TakeMission();
         _presenter = new ScavengePresenter(_mission.Driver);
-        var models = new ScavengeModels(ModelLibrary.Load());
+        var models = new ScavengeModels(ModelLibrary.Load()) { ColonyMap = ColonyBattleDressing.IsColonyMap(_presenter.State) };
         GD.Print($"Scavenge: zone {_presenter.State.ZoneId}, {_presenter.State.Units.Count} units, {models.ModelCount} generated models.");
 
         AddEnvironment();

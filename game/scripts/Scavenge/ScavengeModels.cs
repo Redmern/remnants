@@ -21,6 +21,15 @@ public sealed class ScavengeModels(ModelLibrary library)
 {
     public int ModelCount => library.ModelCount;
 
+    /// <summary>The shared model library (the colony map's buildings and defenses come from it).</summary>
+    public ModelLibrary Library => library;
+
+    /// <summary>
+    /// A fought raid on a colony map: the buildings are drawn by the map (<see cref="ColonyBattleDressing"/>), so their
+    /// structure units are only a small banner on the door tile.
+    /// </summary>
+    public bool ColonyMap { get; set; }
+
     /// <summary>Ground variants that read as road (painted markings); kept off the open ground so it stays calm.</summary>
     private static readonly HashSet<string> RoadVariants = ["asphalt"];
 
@@ -109,6 +118,24 @@ public sealed class ScavengeModels(ModelLibrary library)
         return model;
     }
 
+    /// <summary>A building's structure on a colony map: a short post with a rust pennant (amber for the Town Hall you must hold).</summary>
+    private static Node3D StructureMarker(bool hall)
+    {
+        var root = new Node3D { Name = "Structure" };
+        root.AddChild(new MeshInstance3D
+        {
+            Mesh = new CylinderMesh { TopRadius = 0.04f, BottomRadius = 0.05f, Height = 1.6f, RadialSegments = 6 },
+            MaterialOverride = Placeholders.Material(new Color(0.3f, 0.27f, 0.24f)), Position = new Vector3(0.6f, 0.8f, 0.6f),
+        });
+        root.AddChild(new MeshInstance3D
+        {
+            Mesh = new BoxMesh { Size = new Vector3(0.5f, 0.32f, 0.03f) },
+            MaterialOverride = Placeholders.Material(hall ? Hud.Palette.Amber : Hud.Palette.Rust, unshaded: true),
+            Position = new Vector3(0.87f, 1.42f, 0.6f), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+        });
+        return root;
+    }
+
     /// <summary>A model with its <see cref="CharacterRig"/> when the asset is rigged (manifest v2), else as it is.</summary>
     private Node3D? Rigged(string id)
     {
@@ -123,6 +150,9 @@ public sealed class ScavengeModels(ModelLibrary library)
     /// </summary>
     private Node3D? Story(Unit unit)
     {
+        if (ColonyMap && unit.Kind == UnitKind.Npc && unit.NoRecruit && !unit.CanBeDowned && unit.Tag is { } tag
+            && (tag is RaidBattleTags.Hall or RaidBattleTags.Mast || tag.Length > 1 && tag[0] == 'b' && tag.Skip(1).All(char.IsAsciiDigit)))
+            return StructureMarker(tag == RaidBattleTags.Hall);
         if (unit.Tag == "mast") return library.TryInstance("radio_mast_l1");
         if (unit.CharacterId == "juniper") return library.TryInstance(unit.FollowingId is null ? "story_juniper" : "story_juniper_bandaged");
         if (unit.CharacterId is { } character) return library.TryInstance($"story_{character}");
