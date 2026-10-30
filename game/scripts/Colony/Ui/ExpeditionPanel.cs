@@ -32,6 +32,13 @@ public partial class ExpeditionPanel : PanelContainer
     private readonly OptionButton _zone = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None };
     private readonly RichTextLabel _zoneInfo = Ui.Rich();
     private readonly Label _partyInfo = Ui.Label(color: Ui.Muted);
+    private readonly OptionButton _wait = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None };
+    private readonly TextureRect _arrivalIcon = new() { StretchMode = TextureRect.StretchModeEnum.KeepCentered, CustomMinimumSize = new Vector2(22, 22) };
+    private readonly Label _arrival = Ui.Label();
+    private readonly Label _arrivalNote = Ui.Label(color: Ui.Muted);
+
+    /// <summary>The wait choices, in the order of <see cref="_wait"/>: go now, or wait for a phase.</summary>
+    private static readonly DayPhase?[] WaitChoices = [null, DayPhase.Dawn, DayPhase.Day, DayPhase.Dusk, DayPhase.Night];
     private readonly VBoxContainer _rows = new();
     private readonly MarginContainer _inventory = new();
     private readonly RichTextLabel _away = Ui.Rich();
@@ -85,6 +92,18 @@ public partial class ExpeditionPanel : PanelContainer
         zoneRow.AddChild(Widgets.IconButton("ui_world_map", "World map", "Open the world map", () => WorldMapPressed?.Invoke()));
         planner.AddChild(zoneRow);
         planner.AddChild(_zoneInfo);
+        planner.AddChild(Widgets.SectionHeader("Arrival", "stat_time"));
+        var arrivalRow = Widgets.Row(6);
+        arrivalRow.AddChild(_arrivalIcon);
+        _arrival.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        arrivalRow.AddChild(_arrival);
+        foreach (var choice in WaitChoices) _wait.AddItem(choice is { } p ? $"Wait for {p.ToString().ToLowerInvariant()}" : "Go now");
+        _wait.TooltipText = "Wait outside the zone for another time of day. Each day waited costs extra rations per member.";
+        _wait.CustomMinimumSize = new Vector2(150, 0);
+        arrivalRow.AddChild(_wait);
+        planner.AddChild(arrivalRow);
+        _arrivalNote.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        planner.AddChild(_arrivalNote);
         planner.AddChild(Widgets.SectionHeader("Party", "stat_pop"));
         _partyInfo.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         planner.AddChild(_partyInfo);
@@ -108,6 +127,7 @@ public partial class ExpeditionPanel : PanelContainer
         planner.AddChild(launchRow);
 
         _zone.ItemSelected += _ => RefreshZone();
+        _wait.ItemSelected += _ => RefreshSummary();
     }
 
     public void Toggle()
@@ -343,6 +363,7 @@ public partial class ExpeditionPanel : PanelContainer
     {
         var sim = _session.Sim;
         var perMember = SelectedZone is { } zoneId ? sim.ZoneInfo(zoneId).RationsPerMember : sim.Data.Rules.Expedition.RationFoodPerMember;
+        if (SelectedZone is { } zid) perMember += RefreshArrival(sim, zid);
         var food = perMember * _picked.Count;
         _partyInfo.Text = $"Party {_picked.Count}/{sim.MaxPartySize} (Town Hall L{sim.TownHallLevel}) · rations {food:0} food " +
                           $"(have {sim.State.Stockpile.Get(sim.Data.Rules.Food.ResourceId):0}) · away members don't eat at home";
@@ -364,13 +385,37 @@ public partial class ExpeditionPanel : PanelContainer
         _inventory.AddChild(flow);
     }
 
+    private DayPhase? WaitFor => WaitChoices[Math.Clamp(_wait.Selected, 0, WaitChoices.Length - 1)];
+
+    /// <summary>When the party would arrive and what that phase means in the field; returns the wait's extra food per member.</summary>
+    private float RefreshArrival(ColonySim sim, string zoneId)
+    {
+        var plan = sim.PlanArrival(zoneId, WaitFor);
+        var rules = sim.Data.Rules;
+        var (icon, color) = TopBar.PhaseLook(plan.Phase);
+        _arrivalIcon.Texture = Icons.Get(icon, 20, "stat_time");
+        _arrivalIcon.Modulate = color;
+        _arrival.Text = $"Arrives day {DayNight.Day(plan.ArrivalTick, rules)}, {DayNight.Hour(plan.ArrivalTick, rules):00}:00 · {plan.Phase.ToString().ToUpperInvariant()}";
+        _arrival.AddThemeColorOverride("font_color", color);
+        var wait = plan.WaitTicks > 0 ? $"Waits {plan.WaitTicks} h outside: +{plan.WaitRationsPerMember:0} food each. " : "";
+        _arrivalNote.Text = wait + plan.Phase switch
+        {
+            DayPhase.Night => "Night: your people see much less and are harder to spot — but not by the Linked's sensors or cameras. More Husks, and they hear further. Flares light further; muzzle flashes give shooters away.",
+            DayPhase.Dawn or DayPhase.Dusk => "Half light: sight a little shorter, a little easier to slip by Husks.",
+            _ => "Daylight: everyone sees well.",
+        };
+        _arrivalNote.AddThemeColorOverride("font_color", plan.Phase == DayPhase.Night ? Palette.Night : Ui.Muted);
+        return (float)plan.WaitRationsPerMember;
+    }
+
     private void Launch(bool online)
     {
         if (SelectedZone is not { } zoneId) return;
         var members = _picked.OrderBy(kv => kv.Key)
             .Select(kv => new ExpeditionMember(kv.Key, new(kv.Value.Equipment), new(kv.Value.Pack)))
             .ToList();
-        if (!_session.Execute(new LaunchExpedition(zoneId, members)).Ok) return;
+        if (!_session.Execute(new LaunchExpedition(zoneId, members, WaitFor)).Ok) return;
+        _wait.Select(0);
         _picked.Clear();
         _signature = "";
         // A zone on the doorstep is played right away; a far one waits until the party has arrived.

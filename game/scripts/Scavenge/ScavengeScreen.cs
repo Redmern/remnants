@@ -90,25 +90,16 @@ public partial class ScavengeScreen : Node3D
         if (DebugCapture.HasFlag("--pause-menu")) _hud.Pause.CallDeferred(Hud.Overlay.MethodName.Open);
     }
 
+    /// <summary>
+    /// The colony's sky and light at the run's hour (<see cref="ScavengeState.Environment"/>, the server's in
+    /// multiplayer): dawn and dusk warm, night dark blue with flares and muzzle flashes lighting the ground. No distance
+    /// fog on the tactical map. Weather would plug into <see cref="Colony.DayNightLighting.Weather"/>.
+    /// </summary>
     private void AddEnvironment()
     {
-        var env = new Godot.Environment
-        {
-            BackgroundMode = Godot.Environment.BGMode.Color,
-            BackgroundColor = new Color(0.035f, 0.035f, 0.04f),
-            AmbientLightSource = Godot.Environment.AmbientSource.Color,
-            AmbientLightColor = new Color(0.62f, 0.64f, 0.7f),
-            AmbientLightEnergy = 0.55f,
-            TonemapMode = Godot.Environment.ToneMapper.Filmic,
-        };
-        AddChild(new WorldEnvironment { Environment = env });
-        AddChild(new DirectionalLight3D
-        {
-            RotationDegrees = new Vector3(-55, 35, 0),
-            LightColor = new Color(1f, 0.93f, 0.82f),
-            LightEnergy = 1.1f,
-            ShadowEnabled = true,
-        });
+        var lighting = new Colony.DayNightLighting { Name = "Lighting", UseFog = false };
+        AddChild(lighting);
+        lighting.SetupFixed(_presenter.State.Environment.Hour + 0.5);
     }
 
     private void BuildHud()

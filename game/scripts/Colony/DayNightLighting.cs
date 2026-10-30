@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Godot;
-using Remnants.Core.Colony;
 
 namespace Remnants.Game.Colony;
 
@@ -10,18 +9,20 @@ namespace Remnants.Game.Colony;
 /// registered here (building lamps, floodlights, campfire, torches) come up at dusk and go out at dawn. The shown time
 /// eases toward the sim's tick plus the session's progress into the next one, so the light moves smoothly at any speed,
 /// holds still when paused, and a skip of whole days changes nothing on screen; a jump within the day eases across
-/// in about a second instead of flashing.
+/// in about a second instead of flashing. A scavenge mission uses the same look at its fixed hour
+/// (<see cref="SetupFixed"/>). <see cref="Weather"/> is the slot for weather: it gets each frame's <see cref="SkyLook"/>
+/// and returns it changed (darker, foggier), so weather layers on top of the time of day.
 /// </summary>
 public partial class DayNightLighting : Node3D
 {
-    /// <summary>One look of the scene at an hour; the hours between are blended.</summary>
-    private readonly record struct Key(
+    /// <summary>One look of the scene at an hour; the hours between are blended. <c>Lamps</c> is how far up the night lights are.</summary>
+    public readonly record struct SkyLook(
         float Hour, Color Sun, float SunEnergy, Color Moon, float MoonEnergy, Color Ambient, float AmbientEnergy,
         Color Sky, float Fog, float Lamps);
 
     // Dawn is warm and misty, the day as before this cycle, dusk amber, the night a dark blue-grey that keeps the town
     // readable (moonlight plus a cool ambient).
-    private static readonly Key[] Keys =
+    private static readonly SkyLook[] Keys =
     [
         new(0f, Colors.Black, 0f, new(0.62f, 0.72f, 1f), 0.42f, new(0.36f, 0.43f, 0.58f), 0.62f, new(0.05f, 0.065f, 0.1f), 0.010f, 1f),
         new(4.5f, Colors.Black, 0f, new(0.62f, 0.72f, 1f), 0.36f, new(0.38f, 0.42f, 0.55f), 0.6f, new(0.07f, 0.075f, 0.11f), 0.008f, 1f),
@@ -44,7 +45,9 @@ public partial class DayNightLighting : Node3D
     private DirectionalLight3D _sun = null!;
     private DirectionalLight3D _moon = null!;
     private Godot.Environment _env = null!;
-    private ColonySession _session = null!;
+    private ColonySession? _session;
+    private int _ticksPerDay = 24;
+    private bool _ready;
     private double _shown = double.NaN;
     private long _progressTick = -1;
     private double _progress;
@@ -57,11 +60,39 @@ public partial class DayNightLighting : Node3D
     public float Night { get; private set; }
 
     /// <summary>The hour on screen (eased), for views that want to agree with the light.</summary>
-    public double ShownHour => DayNight.HourOf(_shown, _session.Sim.Data.Rules);
+    public double ShownHour => Hour(_shown);
 
+    /// <summary>Weather: changes the time of day's look each frame (null: clear).</summary>
+    public Func<SkyLook, SkyLook>? Weather { get; set; }
+
+    /// <summary>Whether the scene gets distance fog (off on the tactical map, where it would hide tiles).</summary>
+    public bool UseFog { get; set; } = true;
+
+    /// <summary>Follow a colony's clock.</summary>
     public void Setup(ColonySession session)
     {
         _session = session;
+        _ticksPerDay = session.Sim.Data.Rules.TicksPerDay;
+        Build();
+    }
+
+    /// <summary>Hold one hour (a scavenge mission's): the same sky, lights and lamps as the colony at that hour.</summary>
+    public void SetupFixed(double hour, int ticksPerDay = 24)
+    {
+        FixedHour = hour;
+        _ticksPerDay = ticksPerDay;
+        Build();
+    }
+
+    private double Hour(double time)
+    {
+        var h = time % _ticksPerDay;
+        return h < 0 ? h + _ticksPerDay : h;
+    }
+
+    private void Build()
+    {
+        _ready = true;
         _sun = new DirectionalLight3D { Name = "Sun", ShadowEnabled = true };
         _moon = new DirectionalLight3D { Name = "Moon", RotationDegrees = new Vector3(-48, 150, 0) };
         AddChild(_sun);
@@ -71,7 +102,7 @@ public partial class DayNightLighting : Node3D
             BackgroundMode = Godot.Environment.BGMode.Color,
             AmbientLightSource = Godot.Environment.AmbientSource.Color,
             TonemapMode = Godot.Environment.ToneMapper.Filmic,
-            FogEnabled = true,
+            FogEnabled = UseFog,
             FogLightEnergy = 1f,
             FogSkyAffect = 0f,
         };
@@ -89,7 +120,7 @@ public partial class DayNightLighting : Node3D
 
     public override void _Process(double delta)
     {
-        if (_session is null) return;
+        if (!_ready) return;
         _time += (float)delta;
         var target = Target();
         var diff = target - _shown;
@@ -105,7 +136,7 @@ public partial class DayNightLighting : Node3D
 
     private double Target()
     {
-        if (FixedHour is { } h) return h;
+        if (FixedHour is { } h || _session is null) return FixedHour ?? 12;
         // Pausing or changing speed resets the session's progress into the tick; never step back within a tick for it.
         var tick = _session.Sim.State.Tick;
         if (tick != _progressTick)
@@ -120,8 +151,9 @@ public partial class DayNightLighting : Node3D
     private void Apply(double time)
     {
         if (double.IsNaN(_shown)) _shown = time;
-        var hour = (float)DayNight.HourOf(time, _session.Sim.Data.Rules);
+        var hour = (float)Hour(time);
         var k = Sample(hour);
+        if (Weather is { } weather) k = weather(k);
 
         // The sun rises in the east, climbs to ~62° at midday and sets in the west; it never dips below 6° so its
         // shadows stay sane while it fades.
@@ -156,14 +188,14 @@ public partial class DayNightLighting : Node3D
             g.Material.EmissionEnergyMultiplier = (g.On?.Invoke() ?? true) ? Mathf.Lerp(g.DayEnergy, g.NightEnergy, Night) : 0;
     }
 
-    private static Key Sample(float hour)
+    private static SkyLook Sample(float hour)
     {
         for (var i = 0; i < Keys.Length - 1; i++)
         {
             var (a, b) = (Keys[i], Keys[i + 1]);
             if (hour > b.Hour) continue;
             var f = Mathf.SmoothStep(0f, 1f, (hour - a.Hour) / (b.Hour - a.Hour));
-            return new Key(hour, a.Sun.Lerp(b.Sun, f), Mathf.Lerp(a.SunEnergy, b.SunEnergy, f), a.Moon.Lerp(b.Moon, f),
+            return new SkyLook(hour, a.Sun.Lerp(b.Sun, f), Mathf.Lerp(a.SunEnergy, b.SunEnergy, f), a.Moon.Lerp(b.Moon, f),
                 Mathf.Lerp(a.MoonEnergy, b.MoonEnergy, f), a.Ambient.Lerp(b.Ambient, f), Mathf.Lerp(a.AmbientEnergy, b.AmbientEnergy, f),
                 a.Sky.Lerp(b.Sky, f), Mathf.Lerp(a.Fog, b.Fog, f), Mathf.Lerp(a.Lamps, b.Lamps, f));
         }

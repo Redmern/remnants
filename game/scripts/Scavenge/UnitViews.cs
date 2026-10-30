@@ -145,6 +145,8 @@ public partial class UnitViews : Node3D
                 case ScavengeEventType.Attacked or ScavengeEventType.Missed when actor is not null && target is not null:
                     if (!Seen(TileGrid.FromWorld(actor.Root.Position)) && !Seen(e.Pos) && !Mine(e.TargetId)) break;
                     var home = actor.Root.Position;
+                    // A shot from range lights up the shooter for a moment (it matters most at night).
+                    if (home.DistanceTo(target.Root.Position) > TileGrid.TileSize * 1.5f) MuzzleFlash(home);
                     var lunge = home + (target.Root.Position - home).Normalized() * 0.6f;
                     await TweenTo(actor.Root, lunge, StrikeSeconds);
                     if (e.Type == ScavengeEventType.Attacked)
@@ -226,6 +228,20 @@ public partial class UnitViews : Node3D
     private async Task Wait(float seconds) => await ToSignal(GetTree().CreateTimer(seconds), SceneTreeTimer.SignalName.Timeout);
 
     /// <summary>Tints every mesh of the unit for a moment.</summary>
+    /// <summary>A short warm light at a shooter, fading out in a third of a second.</summary>
+    private void MuzzleFlash(Vector3 at)
+    {
+        var light = new OmniLight3D
+        {
+            Position = at + Vector3.Up * 1.2f, LightColor = new Color(1f, 0.75f, 0.45f), LightEnergy = 5f,
+            OmniRange = TileGrid.TileSize * 4f, ShadowEnabled = false,
+        };
+        AddChild(light);
+        var tween = light.CreateTween();
+        tween.TweenProperty(light, "light_energy", 0f, 0.35f);
+        tween.TweenCallback(Callable.From(light.QueueFree));
+    }
+
     private void Flash(View view, Material overlay)
     {
         var meshes = view.Model.FindChildren("*", nameof(MeshInstance3D), true, false).OfType<MeshInstance3D>().ToList();

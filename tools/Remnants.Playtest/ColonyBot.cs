@@ -306,14 +306,16 @@ public sealed class ColonyBot
             .OrderBy(z => z.Zone.Threat).ThenBy(z => z.Depletion > 0.5 ? 1 : 0).ThenBy(z => z.Zone.TravelDays).ThenBy(z => z.Zone.Id)
             .FirstOrDefault();
         if (zone is null) return;
-        var rations = WorldMap.RationsPerMember(Data, zone.Zone) * size;
+        // A party that would arrive in the dark waits outside for dawn (it costs rations, see PlanArrival).
+        DayPhase? waitFor = _sim.PlanArrival(zone.Zone.Id).Phase == DayPhase.Night ? DayPhase.Dawn : null;
+        var rations = (WorldMap.RationsPerMember(Data, zone.Zone) + _sim.PlanArrival(zone.Zone.Id, waitFor).WaitRationsPerMember) * size;
         var needPerDay = State.Survivors.Count(s => !s.Away) * Data.Rules.Food.AdultPerTick * TicksPerDay;
         if (State.Stockpile.Get("food") < rations + needPerDay * (3 + 2 * zone.Zone.TravelDays)) return;
 
         var party = adults.OrderByDescending(s => s.Get(AttributeKind.Strength) + s.Get(AttributeKind.Agility) + s.Get(AttributeKind.Endurance))
             .Take(size).ToList();
         var members = Gear(party);
-        var launched = _sim.Execute(new LaunchExpedition(zone.Zone.Id, members));
+        var launched = _sim.Execute(new LaunchExpedition(zone.Zone.Id, members, waitFor));
         if (!launched.Ok) Problems.Add($"day {Day:0.0}: launch {zone.Zone.Id}: {launched.Message}");
     }
 

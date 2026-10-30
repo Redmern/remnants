@@ -73,10 +73,16 @@ public static class ScavengeSession
         return mission;
     }
 
-    /// <summary>The debug mission's sim; <c>--fog-demo</c> stages a hidden Linked near the party (<see cref="Fog.FogDemo"/>).</summary>
+    /// <summary>
+    /// The debug mission's sim; <c>--fog-demo</c> stages a hidden Linked near the party (<see cref="Fog.FogDemo"/>),
+    /// <c>--hour=H</c> plays it at that hour (its day phase by the colony's hours).
+    /// </summary>
     private static ScavengeSim DebugSim()
     {
-        var sim = NewScavenge.Create(GameDataPaths.LoadScavenge(), DebugZoneArg, DebugSeedArg, [new PartySetup(LocalPlayerId, DebugParty())]);
+        ZoneConditions? conditions = null;
+        if (int.TryParse(DebugCapture.Value("--hour"), out var hour))
+            conditions = new ZoneConditions(Environment: ScavengeEnvironment.At(hour, Remnants.Core.Colony.DayNight.PhaseAtHour(hour, GameDataPaths.Load().Rules.DayNight)));
+        var sim = NewScavenge.Create(GameDataPaths.LoadScavenge(), DebugZoneArg, DebugSeedArg, [new PartySetup(LocalPlayerId, DebugParty())], conditions);
         if (Fog.FogDemo.Requested) Fog.FogDemo.Stage(sim, LocalPlayerId);
         if (TechDemo.Requested) TechDemo.Stage(sim, LocalPlayerId);
         return sim;

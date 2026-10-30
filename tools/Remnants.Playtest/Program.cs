@@ -3,7 +3,7 @@ using Remnants.Core.Scavenge;
 using Remnants.Playtest;
 
 // Usage: dotnet run --project tools/Remnants.Playtest -- [--days=N] [--seeds=A..B | --seed=N] [--quiet] [--trace] [--no-expeditions] [--data=DIR]
-//        dotnet run --project tools/Remnants.Playtest -- --zone=outskirts|all [--runs=N] [--party=N] [--trace] [--no-defenses] [--kit=fog|geared|tech|hack|drone|hacker] [--carbines=N] [--carbine-quality=fine|crude] [--armor] [--no-tech] [--coop=N]
+//        dotnet run --project tools/Remnants.Playtest -- --zone=outskirts|all [--runs=N] [--party=N] [--trace] [--no-defenses] [--kit=fog|geared|tech|hack|drone|hacker] [--carbines=N] [--carbine-quality=fine|crude] [--armor] [--no-tech] [--coop=N] [--hour=0..23]
 var options = args.Where(a => a.StartsWith("--")).Select(a => a[2..].Split('=', 2)).ToDictionary(p => p[0], p => p.Length > 1 ? p[1] : "");
 var days = int.Parse(options.GetValueOrDefault("days", "40"));
 var dataDir = options.GetValueOrDefault("data", Path.Combine(AppContext.BaseDirectory, "data"));
@@ -24,7 +24,9 @@ if (options.TryGetValue("zone", out var zoneArg))
             defenses: !options.ContainsKey("no-defenses"), kit: options.GetValueOrDefault("kit", ""),
             players: int.Parse(options.GetValueOrDefault("coop", "1")), tech: !options.ContainsKey("no-tech"),
             carbines: int.Parse(options.GetValueOrDefault("carbines", "0")), armor: options.ContainsKey("armor"),
-            carbineQuality: options.GetValueOrDefault("carbine-quality", "")));
+            carbineQuality: options.GetValueOrDefault("carbine-quality", ""),
+            hour: options.TryGetValue("hour", out var hour) ? int.Parse(hour) : null));
+
     return;
 }
 

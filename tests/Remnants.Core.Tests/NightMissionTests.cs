@@ -138,7 +138,8 @@ public class NightMissionTests
             night += Husks(n);
         }
         Assert.Equal(plain, day);
-        Assert.True(night >= day * 1.3, $"night {night} vs day {day}");
+        var mult = Real.Rules.Environment.Phases[DayPhase.Night].HuskCountMultiplier;
+        Assert.True(night >= day * (1 + (mult - 1) * 0.8), $"night {night} vs day {day} (×{mult})");
     }
 
     [Fact]

@@ -107,7 +107,7 @@
       "Night": {
         "sight": { "Human": 0.6, "Husk": 0.8, "Drone": 0.8 },
         "stealthBonus": 15, "stealthIgnoredBy": ["Linked", "Camera", "Turret"],
-        "huskCountMultiplier": 1.5, "huskHearingMultiplier": 1.5, "flareRadiusMultiplier": 1.25, "minSight": 2
+        "huskCountMultiplier": 1.25, "huskHearingMultiplier": 1.5, "flareRadiusMultiplier": 1.25, "minSight": 2
       }
     },
     "weather": {}

@@ -17,6 +17,7 @@ public partial class TurnBar : PanelContainer
     private bool _busy;
     private double _sinceTick;
     private readonly Label _zone = Widgets.Label("", "Display");
+    private readonly PanelContainer _time;
     private readonly Label _round = Widgets.Label("", "Heading");
     private readonly HBoxContainer _order = Widgets.Row(4);
     private readonly Label _ap = Widgets.Label("", "Number");
@@ -40,6 +41,17 @@ public partial class TurnBar : PanelContainer
         title.AddChild(_zone);
         title.AddChild(_round);
         row.AddChild(title);
+        // The run's time of day (fixed for the mission; the server's in multiplayer), with what it means in a tooltip.
+        var env = presenter.State.Environment;
+        var (icon, color) = Colony.Ui.TopBar.PhaseLook(env.Phase);
+        _time = Widgets.Chip(Icons.Get(icon, 16, "stat_time"), $"{env.Hour:00}:00 {env.Phase.ToString().ToUpperInvariant()}", color,
+            env.Phase switch
+            {
+                Remnants.Core.Colony.DayPhase.Night => "Night: short sight and higher stealth, except to the Linked and cameras. More Husks, and they hear further. Flares light further.",
+                Remnants.Core.Colony.DayPhase.Day => "Daylight.",
+                _ => "Half light: sight a little shorter.",
+            }, color);
+        row.AddChild(_time);
         row.AddChild(new VSeparator());
         row.AddChild(Icons.Rect(Icons.Get("stat_initiative", 18), 18, Palette.TextMuted));
         var scroll = new ScrollContainer
