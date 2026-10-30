@@ -1,4 +1,5 @@
 using Remnants.Core.Scavenge;
+using Remnants.Core.Trade;
 
 namespace Remnants.Net.Tests;
 
@@ -110,5 +111,24 @@ public class ProtocolTests
     {
         Assert.ThrowsAny<System.Text.Json.JsonException>(() => ProtocolJson.Deserialize("{\"type\":\"nope\"}"));
         Assert.ThrowsAny<System.Text.Json.JsonException>(() => ProtocolJson.Deserialize("null"));
+    }
+
+    [Fact]
+    public void Trade_and_market_messages_round_trip()
+    {
+        List<TradeGood> goods = [TradeGood.Resource("scrap", 20), TradeGood.Item("pistol") with { Extras = new ItemExtras(["scope"], 2) }];
+        var view = new TradeView(3, TradeVenue.Lobby, true, [new TradeSideView(1, "Ana", goods, true, false), new TradeSideView(2, "Bo", [], false, false)], 42);
+        Message[] messages =
+        [
+            new TradeRequest(2), new TradeRespond(3, true), new TradeOffer(3, goods), new TradeLock(3, true), new TradeConfirm(3), new TradeCancel(3),
+            new TradeInvite(3, 1, "Ana", TradeVenue.Field), new TradeUpdate(view), new TradeCommit(3, "live-x", TradeVenue.Lobby, 2, "Bo", goods, [], 2),
+            new TradeCancelled(3, "timed out"),
+            new MarketHello(Protocol.Version, "Ana", new string('a', 64)), new MarketPost(1, "tx", goods, [TradeGood.Resource("wood", 5)], 24),
+            new MarketList(2, new MarketFilter("rifle", "bp_rifle", null, true)), new MarketAccept(3, "tx2", 7), new MarketCancel(4, 7),
+            new MarketClaim(5), new MarketClaimAck(["claim-1"]), new MarketWelcome(Protocol.Version, "abcd", "Ana", 72, 8),
+            new MarketListings(2, [new MarketListing(7, "Ana", goods, goods, DateTimeOffset.UnixEpoch, DateTimeOffset.UnixEpoch.AddHours(1), false)], 1),
+            new MarketResult(3, false, "gone", null, "gone"), new MarketClaims([new MarketClaimView("claim-1", goods, "sold")]),
+        ];
+        foreach (var m in messages) RoundTrips(m);
     }
 }

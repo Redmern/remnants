@@ -16,8 +16,10 @@ public static class Protocol
     /// drone marks in views).
     /// 5: day and night: the run's environment (hour, phase, weather) in views; the server decides it.
     /// 6: cybernetics (eyes in bodies, units' cybernetic hooks, parts locked by interference, the limb-locked event).
+    /// 8: player trading (live trade messages in the lobby and between allies; the Trading Post's market messages).
+    /// 7 is story-schematics'.
     /// </summary>
-    public const int Version = 6;
+    public const int Version = 8;
     public const int DefaultPort = 7777;
 }
 
@@ -43,6 +45,27 @@ public static class Protocol
 [JsonDerivedType(typeof(AllianceDeclined), "allianceDeclined")]
 [JsonDerivedType(typeof(AllianceBreakWarning), "allianceBreakWarning")]
 [JsonDerivedType(typeof(AllianceBroken), "allianceBroken")]
+[JsonDerivedType(typeof(TradeRequest), "tradeRequest")]
+[JsonDerivedType(typeof(TradeRespond), "tradeRespond")]
+[JsonDerivedType(typeof(TradeOffer), "tradeOffer")]
+[JsonDerivedType(typeof(TradeLock), "tradeLock")]
+[JsonDerivedType(typeof(TradeConfirm), "tradeConfirm")]
+[JsonDerivedType(typeof(TradeCancel), "tradeCancel")]
+[JsonDerivedType(typeof(TradeInvite), "tradeInvite")]
+[JsonDerivedType(typeof(TradeUpdate), "tradeUpdate")]
+[JsonDerivedType(typeof(TradeCommit), "tradeCommit")]
+[JsonDerivedType(typeof(TradeCancelled), "tradeCancelled")]
+[JsonDerivedType(typeof(MarketHello), "marketHello")]
+[JsonDerivedType(typeof(MarketPost), "marketPost")]
+[JsonDerivedType(typeof(MarketList), "marketList")]
+[JsonDerivedType(typeof(MarketAccept), "marketAccept")]
+[JsonDerivedType(typeof(MarketCancel), "marketCancel")]
+[JsonDerivedType(typeof(MarketClaim), "marketClaim")]
+[JsonDerivedType(typeof(MarketClaimAck), "marketClaimAck")]
+[JsonDerivedType(typeof(MarketWelcome), "marketWelcome")]
+[JsonDerivedType(typeof(MarketListings), "marketListings")]
+[JsonDerivedType(typeof(MarketResult), "marketResult")]
+[JsonDerivedType(typeof(MarketClaims), "marketClaims")]
 public abstract record Message;
 
 // ---- client → server ----
