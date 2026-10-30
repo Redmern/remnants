@@ -21,8 +21,10 @@ public static class GameDataLoader
             Optional("perks.json"), Optional("cybernetics.json"));
     }
 
-    /// <summary>Without <paramref name="perks"/> there is no perk tree and no study (XP still counts levels).</summary>
-    /// <summary>Without <paramref name="cybernetics"/> there is no cybernetics tree (prosthetics only strap on).</summary>
+    /// <summary>
+    /// Without <paramref name="perks"/> there is no perk tree and no study (XP still counts levels); without
+    /// <paramref name="cybernetics"/> no cybernetics tree (prosthetics only strap on).
+    /// </summary>
     public static GameData LoadFromJson(string resources, string jobs, string buildings, string rules, string recipes = "[]", string? perks = null,
         string? cybernetics = null) =>
         new(
