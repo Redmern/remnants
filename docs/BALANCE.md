@@ -621,3 +621,23 @@ Watch next pass: T1 at day ~80 feels late for the first amputee (Workshop 2 wait
 bot's order); the runner pair dominates every kit because the bot's answer to danger is running; humanity strain on
 couples is unmeasured in sweeps (no bot augments), so its rates (`partnerStrainPerTick` 0.05, breakup below 40) are a
 first guess.
+
+## Schematics pass
+
+Blueprints became schematics (SCHEMATICS.md). Colony sweep, 20 seeds × 60 days, `main` → this branch (default bot):
+median population 7 → 8, Town Hall 2 day 31.0 → 30.0, House affordable 48.4 → 50.4, Armory 51.8 → 52.6, Lab 57.6 → 59.5,
+expedition deaths 9 → 12 over ~330 runs. No early gate moved. The bot also runs the hardest allowed zone every other
+expedition now (`Stretch`), and `--bold` climbs threat after two runs without a death.
+
+Schematic measures (default bot, which rarely leaves threat 1): first schematic day 11.8 (20/20); known at day
+30/60/90 1 / 3 / 4; 150 days: Town Hall 3 and Armory + Lab L2 in 18/20 colonies with the default set plus loot.
+The default bot reaches tier 2 rarely (2/20 by day 150) because it hardly ever runs Ashgrove. With `--bold`: first tier-2
+schematic day 25.6 (20/20), known at day 90: 8, sources Loot 105 / Trade 27 / Research 5, 74 trader visits; the bolder
+climb costs deaths (30 vs ~13 in 90 days) and delays TH2 to day 34.
+
+Zone trials (schematics brought home per run, 300 runs; target from SCHEMATICS.md): Outskirts 0.24 (0.25), Scrapyard
+0.22 (0.3), Suburb Ruins with a hacker 0.39 (0.5), Flooded Mall with a hacker 0.25 (0.5), Rail Depot (2 carbines,
+plating) 0.36 (0.8), Network Relay 0.31 (1.0). Deeper zones fall short mostly because trial parties die there. Changed:
+tier 1–2 cache odds 2% / 4% → 3% / 5%, locker odds 3% / 5% / 6% → 4% / 6% / 7%.
+Watch next: Research Data piles up (374 gained over 150 days, little researched) because the heard-of list stays
+short without trader visits. A heard-of source for tier-1 zones may be needed.
