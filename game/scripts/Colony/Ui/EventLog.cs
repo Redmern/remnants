@@ -12,7 +12,7 @@ namespace Remnants.Game.Colony.Ui;
 /// each line with time, an icon and a colour by kind, filterable (All / People / Colony / Alerts / Tips) and
 /// collapsible. Important events (a death, a birth, someone leaving, a party home, a level up, a perk learned, a class
 /// finished) are also raised as
-/// <see cref="Important"/> for toasts.
+/// <see cref="Important"/> for toasts, keyed by event type and survivor so a burst about one survivor merges.
 /// </summary>
 public partial class EventLog : PanelContainer
 {
@@ -31,8 +31,13 @@ public partial class EventLog : PanelContainer
     private Kind? _filter;
     private ColonyEvent? _lastSeen;
 
-    /// <summary>Title, text, icon and accent for an event worth a toast.</summary>
-    public event Action<string, string, string, Color>? Important;
+    /// <summary>
+    /// An event worth a toast: title, text, icon, accent, and the merge key and merged title/body for
+    /// <see cref="Toasts.Show"/>.
+    /// </summary>
+    public sealed record Notice(string Title, string Text, string Icon, Color Color, string? Key, Func<int, (string Title, string Body)>? Merged);
+
+    public event Action<Notice>? Important;
 
     public EventLog(ColonySession session)
     {
@@ -101,11 +106,29 @@ public partial class EventLog : PanelContainer
             var e = events[i];
             var (icon, color, kind) = Style(e.Type);
             Add($"D{e.Tick / rules.TicksPerDay + 1} {e.Tick % rules.TicksPerDay:00}h", icon, color, e.Message, kind);
-            if (ToastFor(e.Type) is { } toast) Important?.Invoke(toast.Title, e.Message, icon, color);
+            if (ToastFor(e.Type) is { } toast) Important?.Invoke(NoticeFor(e, toast.Title, icon, color));
         }
         if (events.Count > 0) _lastSeen = events[^1];
         if (Advice.Next(_session.Sim) is { } tip && _tipsShown.Add(tip.Id))
             Add("Tip", "ui_info", Palette.Amber, tip.Text, Kind.Tip);
+    }
+
+    /// <summary>
+    /// The toast for an event: merged with a recent one of the same type about the same survivor; level-ups merge into
+    /// "Juno reached level 3 (+2 perk points)."
+    /// </summary>
+    private Notice NoticeFor(ColonyEvent e, string title, string icon, Color color)
+    {
+        if (e.SurvivorId is not { } id) return new(title, e.Message, icon, color, null, null);
+        var key = $"{e.Type}:{id}";
+        if (e.Type != ColonyEventType.LevelUp || _session.Sim.State.FindSurvivor(id) is not { } s) return new(title, e.Message, icon, color, key, null);
+        var perLevel = _session.Sim.Data.Progression.Xp.PointsPerLevel;
+        var level = s.Level;
+        return new(title, e.Message, icon, color, key, n =>
+        {
+            var points = n * perLevel;
+            return (title, $"{s.Name} reached level {level} (+{points} perk point{(points == 1 ? "" : "s")}).");
+        });
     }
 
     private static (string Title, bool _)? ToastFor(ColonyEventType type) => type switch

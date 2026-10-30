@@ -7,7 +7,7 @@ namespace Remnants.Game.Colony.Ui;
 /// <summary>
 /// The colony HUD's layout and keyboard: top bar; roster and survivor details down the left; the expedition and
 /// item panels in the middle; building, build menu, Med Bay and production down the right above the event log;
-/// toasts under the top bar; world map, after-action report, pause menu and settings on top. Hotkeys
+/// toasts at the town's bottom-right; world map, after-action report, pause menu and settings on top. Hotkeys
 /// (<see cref="Hotkeys"/>) do what their buttons do. <see cref="ColonyScreen"/> wires the panels to the town.
 /// </summary>
 public partial class ColonyHud : CanvasLayer
@@ -99,14 +99,14 @@ public partial class ColonyHud : CanvasLayer
         Log = new EventLog(session);
         right.AddChild(Log);
 
-        // Toasts float over the town at the bottom centre, outside the layout so they never push panels around.
-        var toastLayer = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Theme = HudTheme.Shared };
-        toastLayer.SetAnchorsPreset(Control.LayoutPreset.CenterBottom);
-        toastLayer.GrowHorizontal = Control.GrowDirection.Both;
-        toastLayer.GrowVertical = Control.GrowDirection.Begin;
-        toastLayer.AddThemeConstantOverride("margin_bottom", 24);
-        toastLayer.AddChild(Toasts);
-        AddChild(toastLayer);
+        // Toasts float over the town's bottom-right corner, beside the right column, anchored in a plain Control so
+        // they never push panels around.
+        var toastArea = new Control { SizeFlagsVertical = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
+        center.AddChild(toastArea);
+        Toasts.SetAnchorsPreset(Control.LayoutPreset.BottomRight);
+        Toasts.GrowHorizontal = Control.GrowDirection.Begin;
+        Toasts.GrowVertical = Control.GrowDirection.Begin;
+        toastArea.AddChild(Toasts);
 
         WorldMap = new WorldMapPanel(session) { Theme = HudTheme.Shared };
         AddChild(WorldMap);
@@ -127,7 +127,7 @@ public partial class ColonyHud : CanvasLayer
         AddChild(Pause);
         AddChild(Settings);
 
-        Log.Important += (title, text, icon, color) => Toasts.Show(title, text, icon, color);
+        Log.Important += n => Toasts.Show(n.Title, n.Text, n.Icon, n.Color, n.Key, n.Merged);
         TopBar.MenuPressed += OpenPause;
         TopBar.ItemsPressed += () => Inventory.Toggle();
         TopBar.WorldMapPressed += () => WorldMap.Open();

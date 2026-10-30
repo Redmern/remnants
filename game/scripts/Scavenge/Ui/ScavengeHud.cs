@@ -73,7 +73,14 @@ public partial class ScavengeHud : CanvasLayer
         var bottom = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         bottom.AddThemeConstantOverride("separation", 8);
         column.AddChild(bottom);
-        var toastBox = new CenterContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
+        // Toasts sit at the side, just left of the log, so the middle of the map stays clear.
+        var toastBox = new HBoxContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+            Alignment = BoxContainer.AlignmentMode.End,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        Toasts.SizeFlagsVertical = Control.SizeFlags.ShrinkEnd;
         toastBox.AddChild(Toasts);
         bottom.AddChild(toastBox);
         bottom.AddChild(Log);
