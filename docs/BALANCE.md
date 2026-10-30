@@ -670,7 +670,7 @@ Economy only (`--no-expeditions`): Town Hall 2 day 21.0 → 19.6, House affordab
 - Expedition deaths fell (9 → 2): good meals for the road give +1 AP on the first round. Watch it in zone trials
   before reading too much into 20 colonies.
 - Rot: a bot that over-farms loses ~1 food a day per colony late on. A player has the Smokehouse, Cold Cellar
-  (schematic), beans/corn and the Night Shift-free answer of farming less.
+  (schematic), beans and corn, or simply farming less.
 
 Watch next: the Hunting Lodge and Husk-zone game (the bot never hunts Husk game, so taint is untested in the sweep),
 the Greenhouse and the Cold Cellar (both behind schematics the bot does not find pre-merge), and variety (the bot
