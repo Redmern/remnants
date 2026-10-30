@@ -176,6 +176,9 @@ public partial class SurvivorPanel : PanelContainer
         return scroll;
     }
 
+    /// <summary>Opens a tab by index (0 Overview, 1 Skills, 2 Body, 3 Family).</summary>
+    public void ShowTab(int index) => _tabs.CurrentTab = Mathf.Clamp(index, 0, _tabs.GetTabCount() - 1);
+
     public void Show(int? survivorId)
     {
         var changed = survivorId != SurvivorId;

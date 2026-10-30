@@ -96,11 +96,12 @@ public partial class ColonyHud : CanvasLayer
         Log = new EventLog(session);
         right.AddChild(Log);
 
-        // Toasts float over the town under the top bar, outside the layout so they never push panels around.
+        // Toasts float over the town at the bottom centre, outside the layout so they never push panels around.
         var toastLayer = new MarginContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Theme = HudTheme.Shared };
-        toastLayer.SetAnchorsPreset(Control.LayoutPreset.CenterTop);
+        toastLayer.SetAnchorsPreset(Control.LayoutPreset.CenterBottom);
         toastLayer.GrowHorizontal = Control.GrowDirection.Both;
-        toastLayer.AddThemeConstantOverride("margin_top", 72);
+        toastLayer.GrowVertical = Control.GrowDirection.Begin;
+        toastLayer.AddThemeConstantOverride("margin_bottom", 24);
         toastLayer.AddChild(Toasts);
         AddChild(toastLayer);
 

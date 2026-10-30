@@ -88,7 +88,7 @@ public partial class MainMenu : Control
             ColonySession.Current is not null ? "Back to the colony in progress" : "Load the last save", Continue, primary: true);
         continueButton.Disabled = !canContinue;
         if (!canContinue) continueButton.TooltipText = "No colony yet: start a new game.";
-        Entry(column, "ui_new_game", "New Game", "Found a new colony", NewGamePressed, primary: !canContinue);
+        var newGame = Entry(column, "ui_new_game", "New Game", "Found a new colony", NewGamePressed, primary: !canContinue);
         var load = Entry(column, "ui_load", "Load", "Load the saved colony", Load);
         load.Disabled = !FileAccess.FileExists(ColonySession.SavePath);
         Entry(column, "ui_multiplayer", "Multiplayer", "Join or host a shared scavenge run", OnMultiplayerPressed);
@@ -98,6 +98,7 @@ public partial class MainMenu : Control
         var debug = Widgets.IconButton("ui_attack", "Skirmish (debug mission)", "Play a stand-alone scavenge mission", OnScavengePressed, variation: "Flat");
         debug.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
         column.AddChild(debug);
+        (canContinue ? continueButton : newGame).CallDeferred(Control.MethodName.GrabFocus);
         _status = Widgets.Wrapped("", "Small");
         column.AddChild(_status);
         return margin;
@@ -110,6 +111,7 @@ public partial class MainMenu : Control
         button.Alignment = HorizontalAlignment.Left;
         button.AddThemeFontOverride("font", Fonts.Display);
         button.AddThemeFontSizeOverride("font_size", 22);
+        button.FocusMode = FocusModeEnum.All; // arrow keys / gamepad walk the menu
         column.AddChild(button);
         return button;
     }

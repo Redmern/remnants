@@ -15,6 +15,7 @@ public partial class Toasts : VBoxContainer
     {
         MouseFilter = MouseFilterEnum.Ignore;
         AddThemeConstantOverride("separation", 6);
+        Alignment = AlignmentMode.End;
         CustomMinimumSize = new Vector2(320, 0);
     }
 

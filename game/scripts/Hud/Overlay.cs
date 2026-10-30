@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Godot;
 
 namespace Remnants.Game.Hud;
@@ -92,8 +93,14 @@ public partial class PauseMenu : Overlay
             button.CustomMinimumSize = new Vector2(0, 40);
             button.Alignment = HorizontalAlignment.Left;
             button.AddThemeFontSizeOverride("font_size", 16);
+            button.FocusMode = FocusModeEnum.All;
             Body.AddChild(button);
         }
+    }
+
+    protected override void OnOpened()
+    {
+        if (Body.GetChildren().OfType<Button>().FirstOrDefault() is { } first) first.CallDeferred(Control.MethodName.GrabFocus);
     }
 
     private void Run(Item item)
