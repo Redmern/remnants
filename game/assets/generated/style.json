@@ -1,5 +1,5 @@
 {
-  "style_revision": "efda7377",
+  "style_revision": "9652bb8d",
   "theme": {
     "name": "REMNANTS",
     "pitch": "Post-AI-apocalypse colony-builder seen from an isometric / top-down camera. Low-poly,\nchunky, readable silhouettes with flat-shaded faces and big color blocks. The world is\nrusted metal, cracked concrete and creeping moss under an overcast sky. Anything still\nconnected to the AI Network glows a cold cyan \u2014 it is the only saturated color in the\nworld, so the player learns to read cyan as danger (or as valuable tech).",
@@ -33,6 +33,9 @@
     "hazard_yellow": "#b8962e",
     "med_white": "#c9c6bb",
     "med_red": "#9b3a32",
+    "flare_glow": "#e0582e",
+    "signal_amber": "#d4902c",
+    "marker_neutral": "#e6e6e6",
     "skin_light": "#d2a782",
     "skin_mid": "#a8774f",
     "skin_dark": "#6e4a33",
@@ -57,6 +60,8 @@
   "emission": {
     "network_cyan": 4.0,
     "network_cyan_dim": 1.2,
-    "husk_eye": 1.5
+    "husk_eye": 1.5,
+    "flare_glow": 3.0,
+    "signal_amber": 1.5
   }
 }

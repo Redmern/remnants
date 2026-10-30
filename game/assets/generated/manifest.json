@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "style_revision": "efda7377",
+  "style_revision": "9652bb8d",
   "conventions": {
     "up": "+Y",
     "units": "meters",
@@ -42,7 +42,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Bunker back-left with striped door, sandbag U in front, gun rack under an overhang on the right, ammo crates front-right.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "electronics_lab_l1",
@@ -67,7 +67,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Container lab along the back with a dish on the roof, antenna mast back-right, screen bench under a tarp front, spools/batteries front-right.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "farm_l1",
@@ -92,7 +92,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles (6x6 m). Crop field front, shed back-left, water tank back-right.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "farm_l2",
@@ -117,7 +117,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles. Brick shed with a metal roof, second field under a canvas hoop tunnel, metal-banded tank, taller fence on concrete posts.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "farm_l3",
@@ -142,7 +142,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles. Glass greenhouse with Network grow light, solar shed roof, steel tank with Network pump, irrigation line, concrete front wall with floodlit gate.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "house_l1",
@@ -167,7 +167,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x2 tiles (6x4 m, wide along X). Main house left/center (two rooms) with cross gable + porch at the front, chimney left, bunk lean-to right, yard with fence front.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "kitchen_l1",
@@ -193,7 +193,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Open cook shelter back with range + stovepipe, table and benches under it, cauldron on a tripod front-right, smoke rack front-left.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "med_bay_l1",
@@ -218,7 +218,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Container clinic back-left, triage tent right, awning front.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "med_bay_l2",
@@ -243,7 +243,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Clean container on a concrete foundation, metal canopy, the tent replaced by a gabled brick ward with a red-cross gable.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "med_bay_l3",
@@ -268,7 +268,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Second container module stacked on top (roof cross moves up), roof terrace with floodlight, concrete ward with solar, sandbags, Network diagnostic beacon.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "quarry_l1",
@@ -293,7 +293,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x2 tiles (6x4 m, wide along X). Rock face back-left, derrick right, blocks front.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "quarry_l2",
@@ -318,7 +318,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x2 tiles. Iron-banded derrick on a concrete footing, second (tripod) hoist over the pallet, mine-cart rails along the face, plank fence.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "quarry_l3",
@@ -343,7 +343,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x2 tiles. Steel derrick with a motor winch house (Network core), steel tripod hoist, ore cart on rails, floodlight mast, concrete jersey barriers.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "scrapyard_l1",
@@ -368,7 +368,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles (6x6 m). Heaps left/back, crane back-right, bales front-right.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "scrapyard_l2",
@@ -393,7 +393,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles. Straight metal fence, taller crane, bigger heap, sorting bins under a lean-to, more bales.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "scrapyard_l3",
@@ -418,7 +418,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles. Concrete perimeter wall, crane with floodlights and a Network-charged magnet, hydraulic baler press, solar on the sorting shed.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "shelter_l1",
@@ -443,7 +443,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Hut back-left, tarp lean-to with cots on the right.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "shelter_l2",
@@ -468,7 +468,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Brick hut with a gabled metal roof, tarp on a metal frame over a bunk + cot, brick fire pit, plank fence.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "shelter_l3",
@@ -493,7 +493,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Two-storey concrete bunkhouse, flat roof with solar, two bunks under a framed tarp, sandbags, floodlight, Network heater.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "tailor_l1",
@@ -518,7 +518,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Shack back-left, awning + cutting table front-left, mannequin by the door, drying frame with hanging cloth down the right side.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "town_hall_l1",
@@ -543,7 +543,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles (6x6 m). Hall + porch at front (-Y), bell tower back-right.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "town_hall_l2",
@@ -568,7 +568,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles. Two-storey brick hall, gabled porch, planked bell tower, brick yard wall.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "town_hall_l3",
@@ -593,7 +593,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 3x3 tiles. Concrete HQ with plated walls, roof solar, steel watchtower with floodlights + Network relay, sandbagged concrete perimeter.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "woodcutter_l1",
@@ -618,7 +618,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Open shed at the back, log pile front-right, saw bench left.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "woodcutter_l2",
@@ -643,7 +643,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Gabled timber shed on a brick base with a closed side, taller firewood stacks, bigger trunk pyramid, steel saw table.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "woodcutter_l3",
@@ -668,7 +668,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Steel-framed mill shed with plated walls, roof solar, sawdust cyclone + duct, trunks in a steel rack, guarded powered saw with a Network core, floodlight.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "workshop_l1",
@@ -693,7 +693,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles (4x4 m). Open-front shop back-left, chimney back-right, anvil yard right.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "workshop_l2",
@@ -718,7 +718,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. All-brick shop, taller banded chimney, half-open roller door, steel hoist beam, metal lean-to over the anvil yard.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "workshop_l3",
@@ -743,7 +743,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "footprint 2x2 tiles. Concrete shop with plated walls, chimney with a steel scrubber, hazard-yellow gantry hoist, solar yard roof over a lathe, Network-fed forge, floodlight.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "enemy_husk",
@@ -765,7 +765,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "~1.7 m hunched. Dull amber eye, no cyan. Parts: head/torso/arm_l/arm_r/leg_l/leg_r.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "parts": {
         "head": {
           "joint": [
@@ -838,7 +838,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Legless Husk crawling prone, ~0.85 m tall, ~1.6 m long (head -Y). Dull amber eye, no cyan. Parts: head/torso/arm_l/arm_r/leg_l/leg_r (legs are stumps).",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "parts": {
         "head": {
           "joint": [
@@ -911,7 +911,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "~2.1 m. Glowing cyan (emissive) visor, chest core and seams. Parts: head/torso/arm_l/arm_r/leg_l/leg_r.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "parts": {
         "head": {
           "joint": [
@@ -1023,7 +1023,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Hovering scout, body ~1.3 m up, ~1.2 m across the rotors. Parts: body, eye, rotor_fl/rotor_fr/rotor_bl/rotor_br (pivot at the rotor hub), hover_field (on the ground, pivot at the origin). Eye faces -Y. Bob the body/eye/rotors, not the field.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "parts": {
         "body": {
           "joint": [
@@ -1106,7 +1106,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "~2.4 m heavy Linked. Tower shield on arm_l, cannon gauntlet on arm_r. Cyan (emissive) visor, chest core, seams. Parts: head/torso/arm_l/arm_r/leg_l/leg_r.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "parts": {
         "head": {
           "joint": [
@@ -1219,7 +1219,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Canvas pack with bedroll; shoulder straps on its -Y face (the wearer's back). 0.42 x 0.35 x 0.56 m (w x d x h). Attach: back (strap face), hand_r (top grab loop).",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "back": {
           "point": [
@@ -1262,7 +1262,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Gauze roll with a loose tail, roll 11 cm wide x 10 cm tall, tail out to 18 cm deep. Attach: hand_r, torso (tucked in a chest pouch).",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "hand_r": {
           "point": [
@@ -1305,7 +1305,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Chunky field binoculars, lenses toward -Y. 0.23 x 0.2 x 0.1 m (w x d x h). Attach: hand_r (bridge), torso (hung on the chest, eyepieces to the body).",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "hand_r": {
           "point": [
@@ -1348,7 +1348,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Rolled tube of blue paper with leather ties, 0.45 x 0.17 x 0.11 m (w x d x h, with the loose sheet). Attach: hand_r, back (slung across).",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "hand_r": {
           "point": [
@@ -1365,6 +1365,52 @@
             0.0189
           ],
           "note": "slung across the back in its ties"
+        }
+      }
+    },
+    {
+      "id": "item_camo_cloak",
+      "category": "gear",
+      "file": "gear/item_camo_cloak.glb",
+      "tags": [
+        "gear",
+        "item",
+        "clothing",
+        "apparel",
+        "tier2",
+        "fog",
+        "stealth"
+      ],
+      "params": {
+        "item": "camo_cloak"
+      },
+      "dimensions_m": {
+        "x": 0.702,
+        "y": 1.133,
+        "z": 0.484
+      },
+      "tris": 552,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Camo Cloak. Ragged ghillie cloak in moss and concrete tones: shoulder mantle, lowered hood, long back drape hung with strips and tufts, open front. Sized for adult_male, worn shape. Attach: torso (chest-centre socket) or back (back socket); both land it in the same place.",
+      "style_revision": "9652bb8d",
+      "attach": {
+        "torso": {
+          "point": [
+            0.0,
+            0.8181,
+            0.0034
+          ],
+          "note": "garment chest centre = body torso socket (adult_male rest pose)"
+        },
+        "back": {
+          "point": [
+            0.0,
+            0.8181,
+            -0.1467
+          ],
+          "note": "cloak drape on the back = body back socket (adult_male rest pose)"
         }
       }
     },
@@ -1391,7 +1437,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Three labelled cans, one lying on two, 0.19 x 0.1 x 0.21 m (w x d x h). Attach: hand_r.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "hand_r": {
           "point": [
@@ -1426,7 +1472,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Upright rope coil standing in a harness loop, carabiners clipped on. 0.38 x 0.27 x 0.42 m (w x d x h). Attach: hand_r (lashing on top of the coil), back.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "hand_r": {
           "point": [
@@ -1469,7 +1515,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Folded bolt of three cloth layers tied with a cord, 0.37 x 0.28 x 0.21 m (w x d x h). Attach: hand_r (cord on top), back.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "hand_r": {
           "point": [
@@ -1512,7 +1558,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Salvaged circuit board with chips and coiled wires, 0.26 x 0.19 x 0.1 m (w x d x h). Dead human tech, no cyan. Attach: hand_r.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "hand_r": {
           "point": [
@@ -1547,7 +1593,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Chunky handheld flare/radio beacon: yellow body, red strobe, stub antenna, 0.13 x 0.14 x 0.42 m (w x d x h). Attach: hand_r (rubber grip), torso (belt clip).",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "hand_r": {
           "point": [
@@ -1564,6 +1610,80 @@
             -0.2175
           ],
           "note": "belt/chest clip on the +Y side against the body"
+        }
+      }
+    },
+    {
+      "id": "item_flare",
+      "category": "gear",
+      "file": "gear/item_flare.glb",
+      "tags": [
+        "gear",
+        "item",
+        "consumable",
+        "tier1",
+        "fog"
+      ],
+      "params": {
+        "item": "flare"
+      },
+      "dimensions_m": {
+        "x": 0.068,
+        "y": 0.052,
+        "z": 0.306
+      },
+      "tris": 164,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Red road flare lying on its side, striker cap toward -Y (the lit end), wire stand folded under the back. ~0.07 x 0.31 x 0.05 m. Attach: hand_r (middle of the tube, cap forward), torso (tucked in a chest strap).",
+      "style_revision": "9652bb8d",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.026,
+            -0.043
+          ],
+          "note": "fist round the tube, burning end forward"
+        }
+      }
+    },
+    {
+      "id": "item_flare_lit",
+      "category": "gear",
+      "file": "gear/item_flare_lit.glb",
+      "tags": [
+        "gear",
+        "item",
+        "consumable",
+        "tier1",
+        "fog",
+        "lit",
+        "emissive"
+      ],
+      "params": {
+        "item": "flare_lit"
+      },
+      "dimensions_m": {
+        "x": 0.106,
+        "y": 0.174,
+        "z": 0.388
+      },
+      "tris": 178,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "The same flare burning: cap off, emissive flare_glow head and flame at -Y, propped on its wire stand. Drop it on a tile as the placed/burning flare (the game adds the light), or hold it via hand_r.",
+      "style_revision": "9652bb8d",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0,
+            0.0553,
+            -0.081
+          ],
+          "note": "fist round the tube, burning end forward"
         }
       }
     },
@@ -1590,7 +1710,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Three-prong grapnel standing on its prongs, rope coiled round the shaft. 0.38 x 0.34 x 0.57 m (w x d x h). Attach: hand_r (leather grip on the shaft), back.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "hand_r": {
           "point": [
@@ -1634,7 +1754,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Husk Claws. ~0.5 m: scrap gauntlet with three hooked blades, dull amber (husk_eye) node, no cyan. Attach: hand_r (inside the gauntlet).",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "hand_r": {
           "point": [
@@ -1673,7 +1793,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Linked Carbine. ~0.85 m sleek dark Network gun, cyan (emissive) seams, cell and muzzle. Attach: hand_r (pistol grip), back (mid-length).",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "hand_r": {
           "point": [
@@ -1724,7 +1844,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Linked Plating. Near-black Network chest plating with cyan (emissive) seams, sized for adult_male. Attach: torso.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "torso": {
           "point": [
@@ -1760,7 +1880,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Machete. ~0.6 m, blade upright edge-down, leather-wrapped handle. Attach: hand_r.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "hand_r": {
           "point": [
@@ -1795,7 +1915,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "White case with red crosses and a top handle, 0.35 x 0.16 x 0.32 m (w x d x h). Attach: hand_r (handle), back (strapped on).",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "hand_r": {
           "point": [
@@ -1812,6 +1932,52 @@
             0.0725
           ],
           "note": "strapped flat on the back"
+        }
+      }
+    },
+    {
+      "id": "item_motion_sensor",
+      "category": "gear",
+      "file": "gear/item_motion_sensor.glb",
+      "tags": [
+        "gear",
+        "item",
+        "tool",
+        "tier2",
+        "fog",
+        "placeable",
+        "emissive"
+      ],
+      "params": {
+        "item": "motion_sensor"
+      },
+      "dimensions_m": {
+        "x": 0.301,
+        "y": 0.553,
+        "z": 0.263
+      },
+      "tris": 356,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Survivor-made motion sensor: a taped tin-can head with a dark PIR lens toward -Y and a small amber (emissive) LED on a scrap tripod, battery taped to the mast. Stands on its own, so the same mesh is the placed ground prop. ~0.3 x 0.26 x 0.55 m (antenna tip). Attach: hand_r (mast under the head), back (strapped upright).",
+      "style_revision": "9652bb8d",
+      "attach": {
+        "hand_r": {
+          "point": [
+            0.0012,
+            0.3272,
+            0.0334
+          ],
+          "note": "fist round the mast under the head"
+        },
+        "back": {
+          "point": [
+            0.0012,
+            0.3222,
+            0.1084
+          ],
+          "note": "strapped upright on the back, lens and front legs against it"
         }
       }
     },
@@ -1839,7 +2005,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Padded Vest. Sleeveless quilted vest with tape patches, sized for adult_male. Attach: torso.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "torso": {
           "point": [
@@ -1875,7 +2041,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Lead Pipe. ~0.8 m length of rusty pipe, taped grip, T-fitting head. Attach: hand_r (taped grip), back (mid-length).",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "hand_r": {
           "point": [
@@ -1924,7 +2090,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Pistol. ~0.28 m, upright (grip down), taped grip. Attach: hand_r (grip).",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "hand_r": {
           "point": [
@@ -1960,7 +2126,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Rag Coat. Knee-length patched coat sized for adult_male, worn shape. Attach: torso (body chest-centre socket).",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "torso": {
           "point": [
@@ -1997,7 +2163,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Hunting Rifle. ~1.1 m bolt rifle, wood stock, scope. Attach: hand_r (stock wrist), back (mid-length).",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "hand_r": {
           "point": [
@@ -2047,7 +2213,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Riot Armor. Plate vest + layered shoulder plates + neck guard, sized for adult_male (no helmet: torso only). Attach: torso.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "torso": {
           "point": [
@@ -2083,7 +2249,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Scout Jacket. Hip-length olive field jacket, hood, pockets, bandolier strap. Sized for adult_male. Attach: torso.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "torso": {
           "point": [
@@ -2118,7 +2284,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Lashed stack of rusty scrap plates and a pipe, 0.47 x 0.34 x 0.23 m (w x d x h). Attach: hand_r (lashing on top), back.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "hand_r": {
           "point": [
@@ -2163,7 +2329,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Rebar Spear (reach 2). ~1.8 m rebar shaft, lashed scrap blade, two cloth grips. Attach: hand_r (rear grip), back (mid-length).",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "attach": {
         "hand_r": {
           "point": [
@@ -2208,7 +2374,31 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "3x3 tiles (6x6 m). Walls (0.3 m thick) hug the outer edge of the 8 perimeter tiles; tiles (col,row) from -X/-Y corner. Wall cells: all perimeter tiles except (1,0) front doorway (-Y) and (2,1) east breach (+X); centre (1,1) open floor. Walls 1.2-3.1 m tall with window holes; roof gone.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
+    },
+    {
+      "id": "contact_marker",
+      "category": "prop",
+      "file": "prop/contact_marker.glb",
+      "tags": [
+        "marker_fx",
+        "fog",
+        "ui"
+      ],
+      "params": {
+        "glyph": "contact"
+      },
+      "dimensions_m": {
+        "x": 1.6,
+        "y": 0.025,
+        "z": 1.6
+      },
+      "tris": 220,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Flat ripple ring (1.6 m across) around a '?' glyph, 2.5 cm thick, marker_neutral only: tint it in the game. Readable top-down; '?' top toward +Y.",
+      "style_revision": "9652bb8d"
     },
     {
       "id": "cover_high_container",
@@ -2233,7 +2423,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "High cover (terrain Wall, blocks sight). Rusted cargo container cut down to one tile, ~1.9x1.9 m, ~2.3 m tall; doors face -Y.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "cover_high_wall",
@@ -2258,7 +2448,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "High cover (terrain Wall, blocks sight). Makeshift scrap barricade: corrugated sheets on posts, 2.0 m along X, ~2.3 m tall.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "cover_low_barrier",
@@ -2283,7 +2473,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Low cover (terrain Cover). Chipped concrete road barrier, 2.0 m along X, ~0.85 m tall.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "cover_low_sandbags",
@@ -2308,7 +2498,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Low cover (terrain Cover). Sandbag wall ~1.9 m along X, ~0.9 m tall, one tile.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "dead_tree",
@@ -2330,7 +2520,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "One tile, ~3.6 m tall. Trunk at the origin; crown fits in ~1.9x1.9 m. Blocks movement (terrain Wall or Cover, game's choice).",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "exit_marker",
@@ -2353,7 +2543,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "One tile (1.9x1.9 m deck, top z~0.1). Chevrons point -Y = the way out; rotate so -Y faces the map edge. Flare pole ~3.2 m at the back (+Y).",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "ground_tile",
@@ -2377,7 +2567,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "2x2 m floor tile for the scavenge map, cracked asphalt. Top z~0.07.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "ground_tile_concrete",
@@ -2402,7 +2592,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "2x2 m floor tile, cracked concrete yard / pavement. Top z~0.07.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "ground_tile_dirt",
@@ -2427,7 +2617,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "2x2 m floor tile, packed earth with cart ruts (along Y), stones and weeds. Top z~0.07.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "ground_tile_overgrown",
@@ -2452,7 +2642,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "2x2 m floor tile, broken paving slabs swallowed by moss and grass clumps. Top z~0.07.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "loot_crate",
@@ -2474,7 +2664,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Pickup marker on the tactical map. ~1 m long, sits inside one tile.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "network_pylon",
@@ -2497,7 +2687,31 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "One tile (1.8x1.8 m plinth), ~5 m tall. Emissive cyan rings/core: give the environment glow. Blocks movement and sight (terrain Wall).",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
+    },
+    {
+      "id": "overwatch_marker",
+      "category": "prop",
+      "file": "prop/overwatch_marker.glb",
+      "tags": [
+        "marker_fx",
+        "fog",
+        "ui"
+      ],
+      "params": {
+        "glyph": "overwatch"
+      },
+      "dimensions_m": {
+        "x": 1.739,
+        "y": 0.02,
+        "z": 1.769
+      },
+      "tris": 228,
+      "pivot": "ground_center",
+      "pivot_note": "origin at ground level, centered on the footprint",
+      "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
+      "notes": "Flat thin ring (1.8 m across) with a bold 90-degree watch arc toward -Y (the facing) and an eye glyph at the center, 2 cm thick, marker_neutral only. Origin = the unit; rotate it to the unit's overwatch direction and tint it in the game.",
+      "style_revision": "9652bb8d"
     },
     {
       "id": "rubble",
@@ -2519,7 +2733,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Half cover. Fits one tile (~1.8 m footprint), ~0.8 m tall.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "wall_segment",
@@ -2542,7 +2756,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Full cover. Exactly 2.0 m along X, 0.3 m thick; chain along X for cover lines.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "wrecked_car",
@@ -2565,7 +2779,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Full cover. 2x1 tiles (~4 m along X), ~1.3 m tall. Nose points +X.",
-      "style_revision": "efda7377"
+      "style_revision": "9652bb8d"
     },
     {
       "id": "prosthetic_arm_cyborg_l",
@@ -2593,7 +2807,7 @@
       "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Replaces arm_l on adult bodies; origin at the shoulder joint.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "parts": {
         "arm_l": {
           "joint": [
@@ -2631,7 +2845,7 @@
       "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Replaces arm_r on adult bodies; origin at the shoulder joint.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "parts": {
         "arm_r": {
           "joint": [
@@ -2668,7 +2882,7 @@
       "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Leather upper-arm socket, metal rod forearm and a chunky hook. Replaces arm_l on adult bodies; origin at the shoulder joint.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "parts": {
         "arm_l": {
           "joint": [
@@ -2705,7 +2919,7 @@
       "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Leather upper-arm socket, metal rod forearm and a chunky hook. Replaces arm_r on adult bodies; origin at the shoulder joint.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "parts": {
         "arm_r": {
           "joint": [
@@ -2743,7 +2957,7 @@
       "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Replaces leg_l on adult bodies; origin at the hip joint.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "parts": {
         "leg_l": {
           "joint": [
@@ -2781,7 +2995,7 @@
       "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Replaces leg_r on adult bodies; origin at the hip joint.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "parts": {
         "leg_r": {
           "joint": [
@@ -2818,7 +3032,7 @@
       "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Strapped leather socket on a wooden peg with a rubber foot. Replaces leg_l on adult bodies; origin at the hip joint.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "parts": {
         "leg_l": {
           "joint": [
@@ -2855,7 +3069,7 @@
       "pivot_note": "positioned as on the body it fits; the part node's origin is the joint (see parts[].joint) \u2014 align it to the matching body part's joint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Strapped leather socket on a wooden peg with a rubber foot. Replaces leg_r on adult bodies; origin at the hip joint.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "parts": {
         "leg_r": {
           "joint": [
@@ -2889,7 +3103,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "1.68 m. Rust-red jacket, scarf, ponytail. Swappable limbs: see parts.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "parts": {
         "head": {
           "joint": [
@@ -3001,7 +3215,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "1.80 m. Olive field jacket, backpack, beard. Swappable limbs: see parts.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "parts": {
         "head": {
           "joint": [
@@ -3119,7 +3333,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "Fit check: adult male with prosthetic_leg_cyborg_l + prosthetic_arm_cyborg_r swapped in at the same joints. Reference for the in-game part swap.",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "parts": {
         "head": {
           "joint": [
@@ -3230,7 +3444,7 @@
       "pivot_note": "origin at ground level, centered on the footprint",
       "scale": "1 unit = 1 m, +Y up, front faces +Z, transforms applied",
       "notes": "1.15 m. Oversized hoodie. Grows into an adult body (separate asset).",
-      "style_revision": "efda7377",
+      "style_revision": "9652bb8d",
       "parts": {
         "head": {
           "joint": [
