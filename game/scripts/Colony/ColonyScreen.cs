@@ -67,6 +67,7 @@ public partial class ColonyScreen : Node3D
             _hud.Expedition.Toggle();
             _hud.Expedition.Pick(_session.Sim.State.Survivors.Where(s => !s.IsChild).Select(s => s.Id).Take(2));
         }
+        if (DebugCapture.HasFlag("--cyber-demo") && IsFreshGame) RunCyberDemo();
         if (DebugCapture.HasFlag("--world-demo") && IsFreshGame) RunWorldDemo();
         if (DebugCapture.HasFlag("--night-demo") && IsFreshGame) RunNightDemo();
         if (int.TryParse(DebugCapture.Value("--hour"), out var hour)) JumpToHour(hour);
@@ -246,6 +247,74 @@ public partial class ColonyScreen : Node3D
         _hud.Roster.Select(apprentice.Id);
         _town.Select(l);
         _session.SetSpeed(0);
+    }
+
+    /// <summary>
+    /// Debug (screenshots of cybernetics, <c>--cyber-demo</c>): Town Hall 3 with a Med Bay, Workshop and Electronics Lab
+    /// at level 2; a Cyber-Surgeon at the Med Bay and a Biomech / Neural Interface engineer; Blueprint: Cybernetics
+    /// studied and a few designs and components in the stores; a veteran wearing T3 limbs (a pair of runner legs and a
+    /// hacker arm as replacements, a scope eye as an augmentation, so humanity is low); and the engineer booked for
+    /// surgery on a lost leg. Selects the Med Bay and the veteran; <c>--cyber-tree</c> opens the tree on the legs.
+    /// </summary>
+    private void RunCyberDemo()
+    {
+        var sim = _session.Sim;
+        if (sim.Data.Cybernetics is not { } cyber || sim.Scavenge is not { } items) return;
+        foreach (var res in sim.Data.Resources.Keys) sim.State.Stockpile.Add(res, 2000);
+        var hall = sim.State.Buildings.First(b => b.DefId == sim.Data.Rules.TownHallBuildingId).Id;
+        _session.Execute(new Upgrade(hall));
+        _session.Execute(new Upgrade(hall));
+        int? Build(string defId, int plot, int level)
+        {
+            if (_session.Execute(new Construct(defId, plot)).EntityId is not { } id) return null;
+            for (var l = 1; l < level; l++) _session.Execute(new Upgrade(id));
+            return id;
+        }
+        var bay = Build("med_bay", 8, 2);
+        Build("workshop", 9, 2);
+        var lab = Build("electronics_lab", 10, 2);
+        Build("house", 14, 1);
+        Build("farm", 15, 2);
+        foreach (var id in new[] { "bp_cybernetics", "mech_leg", "mech_arm", "runner_leg", "silent_leg", "precision_arm", "labor_arm",
+                     "servo", "servo", "power_cell", "neural_link", "myomer_bundle", "cyber_leg", "blade_arm" })
+            sim.State.Inventory.Add(id);
+        _session.Execute(new StudyBlueprint("bp_cybernetics"));
+
+        var adults = sim.State.Survivors.Where(s => !s.IsChild).ToList();
+        if (adults.Count < 3 || bay is not { } medBay || lab is not { } l2) return;
+        // Debug only: veterans, as if they had worked for months.
+        var medic = adults[0];
+        medic.Set(Remnants.Core.Survivors.Skill.Medicine, 46);
+        medic.Set(Remnants.Core.Survivors.Skill.Electronics, 18);
+        medic.Perks.UnionWith(["field_medic", "surgery_1", "surgery_2", "cyber_surgeon"]);
+        var engineer = adults[1];
+        engineer.Set(Remnants.Core.Survivors.Skill.Crafting, 34);
+        engineer.Set(Remnants.Core.Survivors.Skill.Electronics, 36);
+        engineer.Perks.UnionWith(["tinkerer", "biomech", "neural_interface"]);
+        var veteran = adults[2];
+        foreach (var (part, item, elective) in new[]
+                 {
+                     (Remnants.Core.Survivors.BodyPart.LeftLeg, "runner_leg_mk2", false),
+                     (Remnants.Core.Survivors.BodyPart.RightLeg, "runner_leg_mk2", false),
+                     (Remnants.Core.Survivors.BodyPart.LeftArm, "hacker_arm", false),
+                     (Remnants.Core.Survivors.BodyPart.Eyes, "scope_eye", true),
+                 })
+        {
+            if (!elective) veteran.Body.Lose(part);
+            Cybernetics.Fit(sim.State, cyber, veteran, part, items.Items[item], elective);
+        }
+        veteran.Body[Remnants.Core.Survivors.BodyPart.RightLeg].ServiceTicks = 6 * sim.Data.Rules.TicksPerDay;
+
+        _session.Execute(new AssignJob(medic.Id, medBay));
+        _session.Execute(new AssignJob(veteran.Id, l2));
+        engineer.Body.Lose(Remnants.Core.Survivors.BodyPart.LeftLeg);
+        _session.Execute(new ScheduleSurgery(engineer.Id, Remnants.Core.Survivors.BodyPart.LeftLeg, "runner_leg"));
+        _session.FastForward(6, _ => false);
+        _hud.Roster.Select(veteran.Id);
+        _town.Select(medBay);
+        _session.SetSpeed(0);
+        if (DebugCapture.HasFlag("--cyber-tree"))
+            _hud.Cybernetics.Open(Remnants.Core.Data.CyberSlot.Leg, veteran.Id, Remnants.Core.Survivors.BodyPart.RightLeg, "jumper_leg");
     }
 
     /// <summary>

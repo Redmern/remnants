@@ -27,6 +27,9 @@ shot survivor_body     200 --colony --family-demo --survivor-tab=2
 shot survivor_family   200 --colony --family-demo --survivor-tab=3
 shot crafting          250 --colony --crafting-demo
 shot perks             250 --colony --perks-demo --survivor-tab=4
+shot cybernetics_tree  250 --colony --cyber-demo --cyber-tree
+shot cybernetics_body  250 --colony --cyber-demo --survivor-tab=2
+shot cybernetics_medbay 250 --colony --cyber-demo
 shot study             250 --colony --perks-demo
 shot expedition        150 --colony --expedition
 shot world_map         150 --colony --world-demo
