@@ -10,7 +10,7 @@ namespace Remnants.Game.Colony.Ui;
 /// The selected building: icon, name, category and level pips; its workers as portraits (empty slots shown);
 /// what it makes per day (tooltip: per worker); beds or patient beds; and the next upgrade as cost chips (missing
 /// resources marked) with the Town Hall cap; for workplaces the Night Shift toggle with its penalty, and for an unlit
-/// outdoor one the Floodlight that lets it run. Core decides whether an upgrade, a night shift or a Floodlight goes through.
+/// outdoor one the Floodlight that lets it run; after a raid its damage (wrecked: "repair it") with the repair button and cost. Core decides whether an upgrade, a night shift or a Floodlight goes through.
 /// </summary>
 public partial class BuildingPanel : PanelContainer
 {
@@ -33,6 +33,11 @@ public partial class BuildingPanel : PanelContainer
     private readonly HBoxContainer _floodRow = Widgets.Row(6);
     private readonly MarginContainer _floodCost = new();
     private readonly Button _flood;
+    private readonly VBoxContainer _damageBox = Widgets.Column(6);
+    private readonly Label _damageTitle = Widgets.Label("", "Heading");
+    private readonly StatBar _damageHp = new("stat_hp");
+    private readonly HBoxContainer _damageRow = Widgets.Row(6);
+    private string _damageSignature = "";
     private string _floodSignature = "";
     private string _workerSignature = "";
     private string _costSignature = "";
@@ -62,6 +67,12 @@ public partial class BuildingPanel : PanelContainer
         close.SizeFlagsVertical = SizeFlags.ShrinkBegin;
         head.AddChild(close);
         box.AddChild(head);
+
+        // Raid damage: shown only when the building is hurt; a wrecked one cannot be worked until repaired.
+        _damageBox.AddChild(_damageTitle);
+        _damageBox.AddChild(_damageHp);
+        _damageBox.AddChild(_damageRow);
+        box.AddChild(_damageBox);
 
         box.AddChild(_workersLabel);
         _workers.AddThemeConstantOverride("h_separation", 4);
@@ -94,7 +105,7 @@ public partial class BuildingPanel : PanelContainer
     public void Show(int? buildingId)
     {
         BuildingId = buildingId;
-        _workerSignature = _costSignature = "";
+        _workerSignature = _costSignature = _damageSignature = "";
         if (buildingId is null) Visible = false;
         else if (_session.Sim.State.FindBuilding(buildingId.Value) is not null) Motion.Reveal(this, new Vector2(12, 0));
         Refresh();
@@ -118,12 +129,48 @@ public partial class BuildingPanel : PanelContainer
         _levels.Set(building.Level, def.MaxLevel);
         _levels.TooltipText = $"Level {building.Level} of {def.MaxLevel}";
 
+        RefreshDamage(sim, building);
         RefreshWorkers(sim, building, def, level.WorkerSlots);
         _output.Text = OutputText(sim, building, def, level, out var tip);
         _output.TooltipText = tip;
         _output.Visible = _output.Text.Length > 0;
         RefreshNight(sim, building, def);
         RefreshUpgrade(sim, building, def);
+    }
+
+    private void RefreshDamage(ColonySim sim, Building building)
+    {
+        var raids = sim.Raids;
+        var damage = raids is null ? 0 : Remnants.Core.Raids.RaidSystem.Damage(sim.State, building);
+        _damageBox.Visible = damage > 0;
+        if (raids is null || damage <= 0) return;
+        var max = Remnants.Core.Raids.RaidSystem.BuildingHp(raids, building);
+        var wrecked = Remnants.Core.Raids.RaidSystem.IsRubble(sim, building);
+        _damageTitle.Text = wrecked ? "⚠ WRECKED — REPAIR IT" : "DAMAGED IN A RAID";
+        _damageTitle.AddThemeColorOverride("font_color", wrecked ? Palette.Danger : Palette.Warn);
+        _damageTitle.TooltipText = wrecked ? "Nobody can work or be assigned here until it is repaired." : "It still works; repair it before the next raid.";
+        _damageHp.Set((max - damage) / max, $"{max - damage:0}/{max:0}");
+        var order = sim.State.Defense.Repairs.FirstOrDefault(r => r.Target == Remnants.Core.Raids.RepairTarget.Building && r.TargetId == building.Id);
+        var cost = Remnants.Core.Raids.RaidSystem.RepairCost(sim, raids, Remnants.Core.Raids.RepairTarget.Building, building.Id);
+        var signature = $"{order?.Id}|{order?.Progress:0}|{order?.Paid}|{damage:0}|" + RaidText.Signature(sim, cost);
+        if (signature == _damageSignature) return;
+        _damageSignature = signature;
+        Widgets.Clear(_damageRow);
+        if (order is not null)
+        {
+            var place = sim.State.Defense.Repairs.IndexOf(order) + 1;
+            _damageRow.AddChild(Widgets.Label(order.Paid ? $"Being repaired ({order.Progress:0} HP done)" : $"Repair queued (#{place})", "Small", Palette.Good));
+            _damageRow.AddChild(Widgets.Spacer());
+            _damageRow.AddChild(Widgets.IconButton("ui_close", "Cancel", "Take it out of the repair queue", () => _session.Execute(new Remnants.Core.Raids.CancelRepair(order.Id))));
+            return;
+        }
+        var repair = Widgets.IconButton("ui_repair", wrecked ? "Repair" : "Queue repair", "Idle adults work the repair queue by day; materials are paid when it starts.",
+            () => _session.Execute(new Remnants.Core.Raids.QueueRepair(Remnants.Core.Raids.RepairTarget.Building, building.Id)), variation: wrecked ? "Primary" : "");
+        repair.Icon = Icons.Get("ui_repair", 18, "skill_crafting");
+        _damageRow.AddChild(repair);
+        var chips = Widgets.CostChips(RaidText.Costs(sim, cost));
+        chips.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _damageRow.AddChild(chips);
     }
 
     private void RefreshNight(ColonySim sim, Building building, Remnants.Core.Data.BuildingDef def)

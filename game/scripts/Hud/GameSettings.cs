@@ -153,6 +153,7 @@ public static class Hotkeys
         new("speed_2", "Fast (2×)", "Colony", [Key.Key2]),
         new("speed_3", "Fastest (4×)", "Colony", [Key.Key3]),
         new("open_build", "Build menu", "Colony", [Key.B]),
+        new("open_defend", "Defend: place defenses", "Colony", [Key.F]),
         new("open_expedition", "Expedition", "Colony", [Key.E]),
         new("open_items", "Items", "Colony", [Key.I]),
         new("open_log", "Event log filters", "Colony", [Key.L]),
@@ -194,6 +195,7 @@ public static class Hotkeys
         ("Rotate camera (scavenge)", "Q / E"),
         ("Cancel aiming (scavenge)", "Right-click / Esc"),
         ("Orbit camera (colony)", "Right-drag"),
+        ("Turn the defense being placed", "R (while placing)"),
     ];
 
     public static void Install()

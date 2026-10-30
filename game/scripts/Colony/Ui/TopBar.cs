@@ -29,8 +29,12 @@ public partial class TopBar : PanelContainer
     private readonly PanelContainer _beds;
     private readonly PanelContainer _food;
     private readonly ResourceHistory _history = new();
+    private readonly Button _defend;
+    private readonly Button _repairs;
 
     public event Action? BuildPressed;
+    public event Action? DefendPressed;
+    public event Action? RepairsPressed;
     public event Action? ExpeditionPressed;
     public event Action? ItemsPressed;
     public event Action? WorldMapPressed;
@@ -98,6 +102,12 @@ public partial class TopBar : PanelContainer
         row.AddChild(new VSeparator());
 
         row.AddChild(Widgets.IconButton("ui_build", "", "Build", () => BuildPressed?.Invoke(), Hotkeys.KeyName("open_build")));
+        _defend = Widgets.IconButton("ui_defend", "", "Defend: walls, posts, lights, traps", () => DefendPressed?.Invoke(), Hotkeys.KeyName("open_defend"));
+        _defend.Icon = Icons.Get("ui_defend", 18, "stat_armor");
+        row.AddChild(_defend);
+        _repairs = Widgets.IconButton("ui_repair", "", "Repairs", () => RepairsPressed?.Invoke());
+        _repairs.Icon = Icons.Get("ui_repair", 18, "skill_crafting");
+        row.AddChild(_repairs);
         row.AddChild(Widgets.IconButton("ui_items", "", "Items and blueprints", () => ItemsPressed?.Invoke(), Hotkeys.KeyName("open_items")));
         row.AddChild(Widgets.IconButton("ui_expedition", "", "Expedition", () => ExpeditionPressed?.Invoke(), Hotkeys.KeyName("open_expedition")));
         row.AddChild(Widgets.IconButton("ui_world_map", "", "World map", () => WorldMapPressed?.Invoke()));
@@ -106,6 +116,22 @@ public partial class TopBar : PanelContainer
 
     /// <summary>The Build hotkey does what the button does.</summary>
     public void EmitBuild() => BuildPressed?.Invoke();
+
+    /// <summary>The Defend hotkey does what the button does.</summary>
+    public void EmitDefend() => DefendPressed?.Invoke();
+
+    /// <summary>Defend and Repairs only with raids loaded; Repairs counts the queue and what is damaged but not queued.</summary>
+    private void RefreshDefense(ColonySim sim)
+    {
+        _defend.Visible = _repairs.Visible = sim.Raids is not null;
+        if (sim.Raids is not { } raids) return;
+        var queued = sim.State.Defense.Repairs.Count;
+        var waiting = RaidText.Unqueued(sim, raids).Count();
+        _repairs.Text = queued + waiting > 0 ? $"{queued + waiting}" : "";
+        _repairs.CustomMinimumSize = new Vector2(_repairs.Text.Length == 0 ? 34 : 0, 32);
+        _repairs.AddThemeColorOverride("font_color", waiting > 0 ? Palette.Warn : Palette.Text);
+        _repairs.TooltipText = $"Repairs: {queued} queued" + (waiting > 0 ? $", {waiting} damaged and not queued" : "");
+    }
 
     private void RefreshPhase(ColonySim sim)
     {
@@ -149,6 +175,7 @@ public partial class TopBar : PanelContainer
             chip.Set(amount, perDay, ResourceTip(sim, id, amount, perDay));
         }
         RefreshPressure(sim);
+        RefreshDefense(sim);
     }
 
     private void RefreshPressure(ColonySim sim)

@@ -6,8 +6,9 @@ namespace Remnants.Game.Colony.Ui;
 
 /// <summary>
 /// The colony HUD's layout and keyboard: top bar; roster and survivor details down the left; the expedition and
-/// item panels in the middle; building, build menu, Med Bay and production down the right above the event log;
-/// toasts at the town's bottom-right; world map, after-action report, pause menu and settings on top. Hotkeys
+/// item panels and the repair queue in the middle; the raid warning under the top bar; building, build menu, defend
+/// catalogue, selected defense, Med Bay and production down the right above the event log;
+/// toasts at the town's bottom-right; world map, after-action and raid reports, raid prep, pause menu and settings on top. Hotkeys
 /// (<see cref="Hotkeys"/>) do what their buttons do. <see cref="ColonyScreen"/> wires the panels to the town.
 /// </summary>
 public partial class ColonyHud : CanvasLayer
@@ -28,6 +29,14 @@ public partial class ColonyHud : CanvasLayer
     public StudyPanel Study { get; }
     public InventoryPanel Inventory { get; }
     public AfterActionDialog Report { get; }
+
+    /// <summary>Defend mode's catalogue, the selected defense, the repair queue, the raid warning, prep and report.</summary>
+    public DefenseCatalog Defend { get; }
+    public DefensePanel Defense { get; }
+    public RepairPanel Repairs { get; }
+    public RaidBanner Banner { get; }
+    public RaidPrepDialog RaidPrep { get; }
+    public RaidReportDialog RaidReport { get; }
     public Toasts Toasts { get; } = new();
     public PauseMenu Pause { get; }
     public SettingsPanel Settings { get; } = new();
@@ -59,6 +68,11 @@ public partial class ColonyHud : CanvasLayer
         root.AddChild(column);
         TopBar = new TopBar(session);
         column.AddChild(TopBar);
+        // The raid warning sits under the top bar, centred, only while a raid is seen coming.
+        var bannerRow = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
+        Banner = new RaidBanner(session);
+        bannerRow.AddChild(Banner);
+        column.AddChild(bannerRow);
 
         var middle = new HBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
         middle.AddThemeConstantOverride("separation", 8);
@@ -74,8 +88,10 @@ public partial class ColonyHud : CanvasLayer
         var floating = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
         Inventory = new InventoryPanel(session);
         Expedition = new ExpeditionPanel(session);
+        Repairs = new RepairPanel(session);
         floating.AddChild(Inventory);
         floating.AddChild(Expedition);
+        floating.AddChild(Repairs);
         center.AddChild(floating);
 
         var right = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(360, 0) };
@@ -92,11 +108,15 @@ public partial class ColonyHud : CanvasLayer
         stack.AddThemeConstantOverride("separation", 8);
         scroll.AddChild(stack);
         BuildMenu = new BuildMenu(session);
+        Defend = new DefenseCatalog(session);
+        Defense = new DefensePanel(session);
         Building = new BuildingPanel(session);
         MedBay = new MedBayPanel(session);
         Production = new ProductionPanel(session);
         Study = new StudyPanel(session);
         stack.AddChild(BuildMenu);
+        stack.AddChild(Defense);
+        stack.AddChild(Defend);
         stack.AddChild(Building);
         stack.AddChild(MedBay);
         stack.AddChild(Study);
@@ -119,6 +139,15 @@ public partial class ColonyHud : CanvasLayer
         AddChild(WorldMap);
         Report = new AfterActionDialog(session);
         AddChild(Report);
+        RaidPrep = new RaidPrepDialog(session);
+        AddChild(RaidPrep);
+        RaidReport = new RaidReportDialog(session);
+        AddChild(RaidReport);
+        // Time stands still while the colony prepares.
+        RaidPrep.Closed += ResumeTime;
+        Banner.PreparePressed += OpenPrep;
+        Defend.RepairsPressed += () => Repairs.Toggle();
+        TopBar.RepairsPressed += () => Repairs.Toggle();
 
         Pause = new PauseMenu(
         [
@@ -154,6 +183,8 @@ public partial class ColonyHud : CanvasLayer
     public void Refresh()
     {
         TopBar.Refresh();
+        Banner.Refresh();
+        RaidPrep.Refresh();
         Roster.Refresh();
         Survivor.Refresh();
         Building.Refresh();
@@ -166,6 +197,9 @@ public partial class ColonyHud : CanvasLayer
         WorldMap.Refresh();
         Story.Refresh();
         if (BuildMenu.Visible) BuildMenu.Refresh();
+        if (Defend.Visible) Defend.Refresh();
+        Defense.Refresh();
+        Repairs.Refresh();
         Log.Refresh();
     }
 
@@ -179,6 +213,15 @@ public partial class ColonyHud : CanvasLayer
 
     private void ClosePause() => Pause.Close();
 
+    /// <summary>The prep screen for the warned raid; time pauses until it closes.</summary>
+    public void OpenPrep()
+    {
+        if (RaidPrep.Visible || _session.Sim.State.Defense.Raid is not { Stage: Remnants.Core.Raids.RaidStage.Warned }) return;
+        _speedBeforePause = _session.Speed == 0 ? _speedBeforePause : _session.Speed;
+        _session.SetSpeed(0);
+        RaidPrep.Open();
+    }
+
     private void ResumeTime()
     {
         if (_session.Speed == 0) _session.SetSpeed(_speedBeforePause);
@@ -187,13 +230,14 @@ public partial class ColonyHud : CanvasLayer
     public override void _UnhandledInput(InputEvent e)
     {
         if (e is not InputEventKey { Pressed: true, Echo: false }) return;
-        if (Pause.Visible || Settings.Visible || Cybernetics.Visible) return; // the overlays handle their own Esc
+        if (Pause.Visible || Settings.Visible || Cybernetics.Visible || RaidPrep.Visible || RaidReport.Visible) return; // the overlays handle their own Esc
         if (Hotkeys.Pressed(e, "pause_menu")) Back();
         else if (Hotkeys.Pressed(e, "toggle_pause")) _session.SetSpeed(_session.Speed == 0 ? Math.Max(1, _speedBeforePause) : Remember());
         else if (Hotkeys.Pressed(e, "speed_1")) _session.SetSpeed(1);
         else if (Hotkeys.Pressed(e, "speed_2")) _session.SetSpeed(2);
         else if (Hotkeys.Pressed(e, "speed_3")) _session.SetSpeed(4);
         else if (Hotkeys.Pressed(e, "open_build")) TopBar.EmitBuild();
+        else if (Hotkeys.Pressed(e, "open_defend")) TopBar.EmitDefend();
         else if (Hotkeys.Pressed(e, "open_expedition")) Expedition.Toggle();
         else if (Hotkeys.Pressed(e, "open_items")) Inventory.Toggle();
         else if (Hotkeys.Pressed(e, "open_log")) Log.ToggleCollapsed();
@@ -217,6 +261,7 @@ public partial class ColonyHud : CanvasLayer
         else if (BackRequested?.Invoke() == true) { }
         else if (Expedition.Visible) Expedition.Toggle();
         else if (Inventory.Visible) Inventory.Toggle();
+        else if (Repairs.Visible) Repairs.Toggle();
         else if (BuildMenu.Visible) TopBar.EmitBuild();
         else if (Survivor.Visible) Roster.Select(null);
         else OpenPause();
