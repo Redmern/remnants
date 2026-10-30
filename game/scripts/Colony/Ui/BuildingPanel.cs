@@ -137,7 +137,7 @@ public partial class BuildingPanel : PanelContainer
             var total = sim.OutputPerTick(building) * perDay;
             tip = $"{def.BaseOutput:0.##} {name}/h per worker at full skill × level {Fmt.Factor(level.OutputMultiplier)}\n" +
                   string.Join("\n", sim.State.WorkersAt(building.Id).Select(w =>
-                      $"  {w.Name}: {JobOutput.PerTick(def, building.Level, sim.Data.Jobs[def.Job!], w, sim.Data.Rules.Output) * perDay:0.#}/day")) +
+                      $"  {w.Name}: {JobOutput.PerTick(def, building.Level, sim.Data.Jobs[def.Job!], w, sim.Data.Rules.Output, sim.Data) * perDay:0.#}/day")) +
                   "\nOpen a worker's Overview for the full formula.";
             return $"Makes about {total:0.#} {name} per day";
         }

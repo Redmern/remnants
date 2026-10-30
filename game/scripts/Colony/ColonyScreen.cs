@@ -50,6 +50,7 @@ public partial class ColonyScreen : Node3D
         if ((DebugCapture.HasFlag("--demo") || DebugCapture.HasFlag("--family-demo")) && _session.Sim.State.Tick == 0) RunDemo();
         if (DebugCapture.HasFlag("--family-demo")) RunFamilyDemo();
         if (DebugCapture.HasFlag("--crafting-demo") && _session.Sim.State.Tick == 0) RunCraftingDemo();
+        if (DebugCapture.HasFlag("--perks-demo") && _session.Sim.State.Tick == 0) RunPerksDemo();
         if (DebugCapture.HasFlag("--loop-demo") && _session.Sim.State.NextExpeditionId == 1)
         {
             ScavengeHandoff.UseAutopilot = DebugCapture.HasFlag("--autopilot");
@@ -152,6 +153,57 @@ public partial class ColonyScreen : Node3D
         _session.FastForward(30, _ => false);
         _hud.Roster.Select(woman.Id);
         _session.SetSpeed(1);
+    }
+
+    /// <summary>
+    /// Debug (screenshots of perks and study): Town Hall 2 with an Electronics Lab, a few days of work behind everyone,
+    /// a hacker with the Tech perks and a studied datashard, two classes at the Lab (Hacking with a mentor, a child on
+    /// Drone Piloting with a manual); selects the hacker's apprentice and the Lab.
+    /// </summary>
+    private void RunPerksDemo()
+    {
+        var sim = _session.Sim;
+        foreach (var res in sim.Data.Resources.Keys) sim.State.Stockpile.Add(res, 500);
+        var hall = sim.State.Buildings.First(b => b.DefId == sim.Data.Rules.TownHallBuildingId).Id;
+        _session.Execute(new Upgrade(hall));
+        var lab = _session.Execute(new Construct("electronics_lab", 8)).EntityId;
+        var farm = _session.Execute(new Construct("farm", 9)).EntityId;
+        if (lab is not { } l) return;
+        _session.Execute(new Upgrade(l));
+        sim.State.Inventory.Add("ds_network_ghost");
+        sim.State.Inventory.Add("manual_drone_ops");
+        _session.Execute(new StudyBlueprint("ds_network_ghost"));
+
+        var adults = sim.State.Survivors.Where(s => !s.IsChild).ToList();
+        var children = sim.State.Survivors.Where(s => s.IsChild && !s.IsInfant).ToList();
+        if (adults.Count < 3) return;
+        // Debug only: a veteran hacker, as if they had worked the Lab for weeks.
+        var hacker = adults[0];
+        hacker.Set(Remnants.Core.Survivors.Skill.Electronics, 42);
+        hacker.Set(Remnants.Core.Survivors.Skill.Hacking, 38);
+        hacker.Set(Remnants.Core.Survivors.AttributeKind.Intellect, 55);
+        hacker.Set(Remnants.Core.Survivors.AttributeKind.Perception, 50);
+        Progression.GrantXp(sim.State, sim.Data, hacker, 900, Remnants.Core.Survivors.XpSource.Work);
+        foreach (var perk in new[] { "hacking_1", "jury_rig", "hacking_2" })
+        {
+            hacker.PerkPoints = System.Math.Max(hacker.PerkPoints, 1);
+            _session.Execute(new ChoosePerk(hacker.Id, perk));
+        }
+        var apprentice = adults[1];
+        apprentice.Set(Remnants.Core.Survivors.Skill.Hacking, 14);
+        apprentice.Set(Remnants.Core.Survivors.AttributeKind.Intellect, 48);
+        apprentice.Set(Remnants.Core.Survivors.AttributeKind.Perception, 46);
+        Progression.GrantXp(sim.State, sim.Data, apprentice, 260, Remnants.Core.Survivors.XpSource.Work);
+        _session.Execute(new ChoosePerk(apprentice.Id, "hacking_1"));
+        _session.Execute(new StartStudy(apprentice.Id, l, Remnants.Core.Survivors.Skill.Hacking, MentorId: hacker.Id));
+        if (children.FirstOrDefault() is { } kid)
+            _session.Execute(new StartStudy(kid.Id, l, Remnants.Core.Survivors.Skill.DronePiloting, ManualItemId: "manual_drone_ops"));
+        if (farm is { } f)
+            foreach (var s in adults.Skip(2)) _session.Execute(new AssignJob(s.Id, f));
+        _session.FastForward(30, _ => false);
+        _hud.Roster.Select(apprentice.Id);
+        _town.Select(l);
+        _session.SetSpeed(0);
     }
 
     /// <summary>
@@ -268,6 +320,7 @@ public partial class ColonyScreen : Node3D
             _hud.Building.Show(id);
             _hud.MedBay.Show(id);
             _hud.Production.Show(id);
+            _hud.Study.Show(id);
         };
         _hud.Building.Closed += () => _town.Select(null);
         _hud.Roster.SelectionChanged += id => _walkers.SelectedSurvivorId = id;

@@ -10,7 +10,8 @@ namespace Remnants.Game.Colony.Ui;
 /// <summary>
 /// The colony feed: Core events, command feedback and first-time tips (<see cref="Advice"/>, each once per session),
 /// each line with time, an icon and a colour by kind, filterable (All / People / Colony / Alerts / Tips) and
-/// collapsible. Important events (a death, a birth, someone leaving, a party home) are also raised as
+/// collapsible. Important events (a death, a birth, someone leaving, a party home, a level up, a perk learned, a class
+/// finished) are also raised as
 /// <see cref="Important"/> for toasts.
 /// </summary>
 public partial class EventLog : PanelContainer
@@ -116,6 +117,9 @@ public partial class EventLog : PanelContainer
         ColonyEventType.ExpeditionArrived => ("The party has arrived", true),
         ColonyEventType.LimbLost => ("A limb is lost", true),
         ColonyEventType.Recruited => ("A new face", true),
+        ColonyEventType.LevelUp => ("Level up", true),
+        ColonyEventType.PerkLearned => ("Perk learned", true),
+        ColonyEventType.StudyFinished => ("Class finished", true),
         _ => null,
     };
 
@@ -138,6 +142,10 @@ public partial class EventLog : PanelContainer
         ColonyEventType.Admitted or ColonyEventType.Discharged or ColonyEventType.Healed or ColonyEventType.ProstheticFitted
             => ("job_patient", Palette.Good, Kind.People),
         ColonyEventType.Crafted => ("skill_crafting", Palette.Text, Kind.Colony),
+        ColonyEventType.LevelUp => ("stat_xp", Palette.Amber, Kind.People),
+        ColonyEventType.PerkLearned => ("stat_perk", Palette.Good, Kind.People),
+        ColonyEventType.StudyStarted or ColonyEventType.StudyFinished => ("ui_study", Palette.Amber, Kind.People),
+        ColonyEventType.StudyEnded => ("ui_study", Palette.TextMuted, Kind.People),
         _ => ("ui_info", Palette.TextMuted, Kind.Colony),
     };
 

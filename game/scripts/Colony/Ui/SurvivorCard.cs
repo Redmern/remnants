@@ -8,8 +8,9 @@ using Remnants.Game.Hud;
 namespace Remnants.Game.Colony.Ui;
 
 /// <summary>
-/// One survivor in the roster: portrait, name, life stage, job (icon and name), health and mood bars, and status
-/// badges (injured / worsening, patient, pregnant, away, homeless with its timer, starving), each with a tooltip.
+/// One survivor in the roster: portrait, name, life stage, job (icon and name), health and mood bars, an XP bar with the
+/// level, and status badges (injured / worsening, patient, pregnant, away, homeless with its timer, starving, in class,
+/// perk points to spend), each with a tooltip.
 /// Compact mode shows only the portrait (the collapsed roster).
 /// </summary>
 public partial class SurvivorCard : PanelContainer
@@ -21,6 +22,7 @@ public partial class SurvivorCard : PanelContainer
     private readonly Label _job = Widgets.Label("", "Small");
     private readonly StatBar _health = new("stat_health", 0, false);
     private readonly StatBar _mood = new("stat_mood", 0, false);
+    private readonly StatBar _xp = new("stat_xp");
     private readonly HBoxContainer _badges = Widgets.Row(2);
     private readonly VBoxContainer _text = Widgets.Column(1);
     private bool _hover;
@@ -68,6 +70,8 @@ public partial class SurvivorCard : PanelContainer
         bars.AddChild(_health);
         bars.AddChild(_mood);
         _text.AddChild(bars);
+        _xp.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _text.AddChild(_xp);
 
         MouseEntered += () => { _hover = true; Restyle(); };
         MouseExited += () => { _hover = false; Restyle(); };
@@ -113,6 +117,11 @@ public partial class SurvivorCard : PanelContainer
         _mood.Set(s.Mood / Survivor.MaxMood, $"{s.Mood:0}");
         _health.TooltipText = $"Health {s.Health:0}/{Survivor.MaxHealth:0}";
         _mood.TooltipText = $"Mood {s.Mood:0}/{Survivor.MaxMood:0}: {ColonyText.Mood(s)}";
+        var xp = sim.Data.Progression.Xp;
+        _xp.Visible = !s.IsInfant;
+        _xp.Set(Progression.LevelProgress(s, xp), $"L{s.Level}", Palette.Amber);
+        _xp.TooltipText = s.Level >= xp.MaxLevel ? $"Level {s.Level} (max)"
+            : $"Level {s.Level}: {Fmt.Amount(s.Xp)}/{Fmt.Amount(Progression.XpForLevel(s.Level + 1, xp))} XP to the next";
         RefreshBadges(sim, s);
         TooltipText = $"{s.Name}, {s.LifeStage.ToString().ToLowerInvariant()} · {ColonyText.Job(sim, s)}\nClick for details.";
     }
@@ -127,6 +136,9 @@ public partial class SurvivorCard : PanelContainer
         if (s.Pregnancy is not null) badges.Add(("stat_pregnant", Palette.Amber, "Expecting"));
         if (s.Away) badges.Add(("job_away", Palette.TextMuted, "Away on an expedition"));
         if (s.StarvingTicks > 0) badges.Add(("stat_starving", Palette.Danger, "Starving"));
+        if (sim.ClassOf(s) is { } study) badges.Add(("ui_study", Palette.Amber, study.StudentId == s.Id ? "In class (studying)" : "Teaching a class"));
+        if (s.PerkPoints > 0)
+            badges.Add(("stat_perk", Palette.Amber, $"{s.PerkPoints} perk point{(s.PerkPoints == 1 ? "" : "s")} to spend: open Perks"));
         var left = Math.Max(0, rules.Housing.HomelessGraceTicks - s.HomelessTicks);
         if (!s.HasBed) badges.Add(("stat_homeless", Palette.Danger, "No bed: leaves when the timer runs out unless a bed frees up"));
         var signature = string.Join(",", badges.Select(b => b.Icon + b.Color.ToHtml()));
@@ -156,6 +168,7 @@ public partial class SurvivorCard : PanelContainer
         if (s.Away) return Icons.Get("job_away", 14);
         if (s.IsInfant) return Icons.Get("job_baby", 14);
         if (s.PatientAtBuildingId is not null) return Icons.Get("job_patient", 14);
+        if (sim.ClassOf(s) is not null) return Icons.Get("ui_study", 14);
         if (s.AssignedBuildingId is { } id && sim.State.FindBuilding(id) is { } b && sim.Data.Buildings[b.DefId].Job is { } job)
             return Icons.Get($"skill_{job}", 14, $"job_{job}", "skill_crafting");
         return Icons.Get("job_idle", 14);

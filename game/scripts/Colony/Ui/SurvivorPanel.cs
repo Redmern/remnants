@@ -12,8 +12,8 @@ namespace Remnants.Game.Colony.Ui;
 /// <summary>
 /// The selected survivor in detail, in tabs: <b>Overview</b> (health, mood, needs, job with an output breakdown and
 /// the job picker), <b>Skills</b> (attributes and skills as bars), <b>Body</b> (each part: healthy, injured with
-/// severity, missing, prosthetic) and <b>Family</b> (growth, pregnancy, partner, parents, children, closest bonds and
-/// matchmaking). Reads Core; job and matchmaking go through the session as commands.
+/// severity, missing, prosthetic), <b>Family</b> (growth, pregnancy, partner, parents, children, closest bonds and
+/// matchmaking) and <b>Perks</b> (level, XP, the perk tree; see <see cref="PerksTab"/>). Reads Core; job and matchmaking go through the session as commands.
 /// </summary>
 public partial class SurvivorPanel : PanelContainer
 {
@@ -48,6 +48,9 @@ public partial class SurvivorPanel : PanelContainer
     private readonly Button _discourage;
     private readonly Button _neutral;
 
+    // Perks
+    private readonly PerksTab _perks;
+
     public int? SurvivorId { get; private set; }
 
     public event Action? Closed;
@@ -55,7 +58,7 @@ public partial class SurvivorPanel : PanelContainer
     public SurvivorPanel(ColonySession session)
     {
         _session = session;
-        CustomMinimumSize = new Vector2(350, 0);
+        CustomMinimumSize = new Vector2(390, 0);
         SizeFlagsVertical = SizeFlags.ShrinkBegin;
         Visible = false;
         var box = Ui.Panel(this, 8);
@@ -83,6 +86,8 @@ public partial class SurvivorPanel : PanelContainer
         _discourage = Ui.Button("Apart", () => Matchmake(PairStance.Discourage), 60);
         _neutral = Ui.Button("Let be", () => Matchmake(PairStance.Neutral), 60);
         _tabs.AddChild(FamilyTab());
+        _perks = new PerksTab(session);
+        _tabs.AddChild(Scroll(_perks, "Perks"));
     }
 
     private Control Overview()
@@ -112,7 +117,12 @@ public partial class SurvivorPanel : PanelContainer
         box.AddChild(Widgets.SectionHeader("Attributes", "attr_strength"));
         foreach (var a in Enum.GetValues<AttributeKind>()) box.AddChild(Labelled(a.ToString(), Icons.Attribute(a.ToString(), 16), _attributes[a] = new StatBar(null)));
         box.AddChild(Widgets.SectionHeader("Skills", "skill_crafting"));
-        foreach (var k in Enum.GetValues<Skill>()) box.AddChild(Labelled(k.ToString(), Icons.Skill(k.ToString(), 16), _skills[k] = new StatBar(null)));
+        foreach (var k in Enum.GetValues<Skill>())
+        {
+            var row = Labelled(_session.Sim.Data.SkillInfo(k).Name, Icons.Skill(k.ToString(), 16), _skills[k] = new StatBar(null));
+            row.TooltipText = SkillTip(k);
+            box.AddChild(row);
+        }
         return Scroll(box, "Skills");
     }
 
@@ -156,6 +166,16 @@ public partial class SurvivorPanel : PanelContainer
         return Scroll(box, "Family");
     }
 
+    private string SkillTip(Skill k)
+    {
+        var info = _session.Sim.Data.SkillInfo(k);
+        var learn = string.Join(" + ", info.Attributes.Keys);
+        var at = _session.Sim.Data.Progression.Study.Buildings.Where(kv => kv.Value.Skills.Contains(k))
+            .Select(kv => _session.Sim.Data.Buildings[kv.Key].Name).FirstOrDefault();
+        return $"{info.Name}{(info.Description.Length > 0 ? "\n" + info.Description : "")}" +
+               (learn.Length > 0 ? $"\nLearned faster with {learn}." : "") + (at is null ? "" : $"\nStudied at the {at}.");
+    }
+
     private static Control Labelled(string name, Texture2D icon, StatBar bar)
     {
         var row = Widgets.Row(6);
@@ -176,7 +196,7 @@ public partial class SurvivorPanel : PanelContainer
         return scroll;
     }
 
-    /// <summary>Opens a tab by index (0 Overview, 1 Skills, 2 Body, 3 Family).</summary>
+    /// <summary>Opens a tab by index (0 Overview, 1 Skills, 2 Body, 3 Family, 4 Perks).</summary>
     public void ShowTab(int index) => _tabs.CurrentTab = Mathf.Clamp(index, 0, _tabs.GetTabCount() - 1);
 
     public void Show(int? survivorId)
@@ -217,6 +237,8 @@ public partial class SurvivorPanel : PanelContainer
         RefreshBody(sim, s);
         _family.Text = FamilyText(sim, s);
         RefreshPairs(sim, s);
+        _perks.Refresh(s.Id);
+        _tabs.SetTabTitle(4, s.PerkPoints > 0 ? $"Perks ({s.PerkPoints})" : "Perks");
     }
 
     private static string OverviewText(ColonySim sim, Survivor s)
@@ -230,8 +252,24 @@ public partial class SurvivorPanel : PanelContainer
             lines.Add($"In the Med Bay, healed in {(sim.HealEta(s) is { } eta ? ColonyText.Duration(eta, rules) : "—")}.");
         else if (sim.IsWorsening(s)) lines.Add(Palette.Paint("⚠ A severe wound is getting worse: admit to the Med Bay.", Palette.Danger));
         if (s.Pregnancy is not null) lines.Add(Palette.Paint("Expecting — see Family.", Palette.Amber));
+        if (sim.ClassOf(s) is { } study) lines.Add(ClassLine(sim, s, study));
+        var xp = sim.Data.Progression.Xp;
+        lines.Add($"Level {s.Level} · {Fmt.Amount(s.Xp)} XP" + (s.PerkPoints > 0 ? "  " + Palette.Paint($"★ {s.PerkPoints} perk point{(s.PerkPoints == 1 ? "" : "s")} — see Perks", Palette.Amber) : "")
+                  + (s.Level < xp.MaxLevel ? Palette.Paint($"  (next at {Fmt.Amount(Progression.XpForLevel(s.Level + 1, xp))})", Palette.TextMuted) : ""));
         if (s.IsChild) lines.Add($"Growing: {ColonyText.Stage(s, rules)}");
         return string.Join("\n", lines);
+    }
+
+    /// <summary>"In class: studying Hacking with Bram at the Electronics Lab, done in 2d 3h" (or teaching, for a mentor).</summary>
+    internal static string ClassLine(ColonySim sim, Survivor s, StudyOrder study)
+    {
+        var subject = study.Skill is { } k ? sim.Data.SkillInfo(k).Name : sim.Data.Perks[study.PerkId!].Name;
+        var at = sim.State.FindBuilding(study.BuildingId) is { } b ? sim.Data.Buildings[b.DefId].Name : "class";
+        var eta = sim.StudyEta(study) is { } t ? ColonyText.Duration(t, sim.Data.Rules) : "—";
+        if (study.StudentId != s.Id)
+            return Palette.Paint($"Teaching {ColonyText.PersonName(sim.State, study.StudentId)} {subject} at the {at} (done in {eta}).", Palette.Amber);
+        var mentor = ColonyText.PersonName(sim.State, study.MentorId);
+        return Palette.Paint($"In class: studying {subject}{(mentor is null ? "" : $" with {mentor}")} at the {at} (done in {eta}).", Palette.Amber);
     }
 
     /// <summary>
@@ -241,6 +279,7 @@ public partial class SurvivorPanel : PanelContainer
     private static string OutputLine(ColonySim sim, Survivor s, out string breakdown)
     {
         breakdown = "";
+        if (sim.ClassOf(s) is not null) return "";
         if (s.AssignedBuildingId is not { } id || sim.State.FindBuilding(id) is not { } b) return s.IsInfant ? "" : "No job. Pick a building and Assign.";
         var def = sim.Data.Buildings[b.DefId];
         if (def.Job is null) return "";
@@ -251,11 +290,12 @@ public partial class SurvivorPanel : PanelContainer
         var health = JobOutput.HealthFactor(job, s, rules);
         var life = JobOutput.LifeFactor(s, rules);
         var mood = JobOutput.MoodFactor(s, rules);
+        var perks = JobOutput.PerkFactor(job, s, sim.Data);
         var level = def.Level(b.Level).OutputMultiplier;
-        var perTick = JobOutput.PerTick(def, b.Level, job, s, rules);
+        var perTick = JobOutput.PerTick(def, b.Level, job, s, rules, sim.Data);
         var unit = def.Produces is { } res ? sim.Data.Resources[res].Name : "work";
         var attrs = string.Join(", ", job.Attributes.Select(kv => $"{kv.Key} {s.Get(kv.Key):0}"));
-        breakdown = $"Output per hour = base × level × performance × tool × health × life × mood\n" +
+        breakdown = $"Output per hour = base × level × performance × tool × health × life × mood × perks\n" +
                     $"  base {def.BaseOutput:0.##}\n" +
                     $"  level {b.Level}: {Fmt.Factor(level)}\n" +
                     $"  performance {Fmt.Factor(perf)}  ({attrs}; {job.Skill} skill {s.Get(job.Skill):0})\n" +
@@ -263,6 +303,7 @@ public partial class SurvivorPanel : PanelContainer
                     $"  health {Fmt.Factor(health)}  (HP {s.Health:0}, body)\n" +
                     $"  life stage {Fmt.Factor(life)}\n" +
                     $"  mood {Fmt.Factor(mood)}  (mood {s.Mood:0})\n" +
+                    $"  perks {Fmt.Factor(perks)}\n" +
                     $"= {perTick:0.###} {unit}/h · {perTick * sim.Data.Rules.TicksPerDay:0.#}/day\nWorking trains {job.Skill}.";
         return $"Makes {perTick:0.##} {unit}/h ({perTick * sim.Data.Rules.TicksPerDay:0.#}/day). Hover for the breakdown.";
     }
@@ -358,7 +399,7 @@ public partial class SurvivorPanel : PanelContainer
             _jobs.Select(index >= 0 ? index : _jobBuildingIds.Count > 0 ? 0 : -1);
         }
 
-        _jobs.Disabled = s.Away || s.IsInfant || s.PatientAtBuildingId is not null || _jobBuildingIds.Count == 0;
+        _jobs.Disabled = s.Away || s.IsInfant || s.PatientAtBuildingId is not null || sim.ClassOf(s) is not null || _jobBuildingIds.Count == 0;
         _assign.Disabled = _jobs.Disabled;
         _unassign.Disabled = s.AssignedBuildingId is null;
     }

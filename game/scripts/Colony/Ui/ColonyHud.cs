@@ -25,6 +25,7 @@ public partial class ColonyHud : CanvasLayer
     public WorldMapPanel WorldMap { get; }
     public MedBayPanel MedBay { get; }
     public ProductionPanel Production { get; }
+    public StudyPanel Study { get; }
     public InventoryPanel Inventory { get; }
     public AfterActionDialog Report { get; }
     public Toasts Toasts { get; } = new();
@@ -89,9 +90,11 @@ public partial class ColonyHud : CanvasLayer
         Building = new BuildingPanel(session);
         MedBay = new MedBayPanel(session);
         Production = new ProductionPanel(session);
+        Study = new StudyPanel(session);
         stack.AddChild(BuildMenu);
         stack.AddChild(Building);
         stack.AddChild(MedBay);
+        stack.AddChild(Study);
         stack.AddChild(Production);
         Log = new EventLog(session);
         right.AddChild(Log);
@@ -140,6 +143,7 @@ public partial class ColonyHud : CanvasLayer
         Building.Refresh();
         MedBay.Refresh();
         Production.Refresh();
+        Study.Refresh();
         Inventory.Refresh();
         Expedition.Refresh();
         WorldMap.Refresh();
