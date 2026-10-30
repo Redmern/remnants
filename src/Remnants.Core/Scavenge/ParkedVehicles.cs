@@ -16,6 +16,9 @@ public sealed record FieldVehicle(string TierId, string Name, int Tier, double H
     public bool Winch { get; init; }
     public bool Workbench { get; init; }
     public bool SolarCharger { get; init; }
+
+    /// <summary>The working upgrade ids, for drawing them on the parked vehicle (no rules read them).</summary>
+    public List<string> Upgrades { get; init; } = new();
 }
 
 /// <summary>
@@ -47,6 +50,9 @@ public sealed class ParkedVehicle
     public bool Winch { get; set; }
     public bool Workbench { get; set; }
     public bool SolarCharger { get; set; }
+
+    /// <summary>The working upgrade ids, for drawing (see <see cref="FieldVehicle.Upgrades"/>).</summary>
+    public List<string> Upgrades { get; set; } = new();
 }
 
 /// <summary>What became of a party's vehicle in the run: its HP at the end, wrecked or not, and the stash it carries home.</summary>
@@ -77,7 +83,7 @@ public static class ParkedVehicles
             PlayerId = playerId, TierId = field.TierId, Name = field.Name, Tier = field.Tier, Pos = pos,
             Hp = Math.Clamp(field.Hp, 1, field.MaxHp), MaxHp = field.MaxHp, Armor = field.Armor, CargoKg = field.CargoKg, Armored = field.Armored,
             DamageMultiplier = Math.Max(0, field.DamageMultiplier), TurretDamage = Math.Max(0, field.TurretDamage), TurretRange = field.TurretRange,
-            Winch = field.Winch, Workbench = field.Workbench, SolarCharger = field.SolarCharger,
+            Winch = field.Winch, Workbench = field.Workbench, SolarCharger = field.SolarCharger, Upgrades = new(field.Upgrades),
         };
         map[pos] = field.Armored ? Terrain.ArmoredVehicle : Terrain.Vehicle;
         state.Vehicles.Add(vehicle);

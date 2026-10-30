@@ -223,6 +223,7 @@ public static class VehicleRules
         {
             DamageMultiplier = stats.FieldDamageMultiplier, TurretDamage = stats.TurretDamage, TurretRange = stats.TurretRange,
             Winch = stats.Winch, Workbench = stats.Workbench, SolarCharger = stats.SolarCharger,
+            Upgrades = vehicle.Upgrades.Where(u => !IsBroken(data, u)).Select(u => u.UpgradeId).ToList(),
         };
     }
 

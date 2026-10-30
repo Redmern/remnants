@@ -23,6 +23,7 @@ public partial class GaragePanel : PanelContainer
     private readonly HFlowContainer _parts = new();
     private readonly VBoxContainer _repairs = new();
     private readonly Label _title = Widgets.Label("", "Heading");
+    private readonly VehiclePreview _preview3d = new(new Vector2(420, 190));
     private int? _vehicleId;
     private string? _preview;
     private string _shown = "";
@@ -139,11 +140,15 @@ public partial class GaragePanel : PanelContainer
 
     private void RebuildDetail(ColonySim sim)
     {
+        if (_preview3d.GetParent() == _detail) _detail.RemoveChild(_preview3d);
         Widgets.Clear(_detail);
         if (_vehicleId is not { } id || sim.FindVehicle(id) is not { } v) return;
         var tier = sim.Data.VehicleTiers[v.TierId];
         var now = sim.VehicleStats(v);
         _detail.AddChild(Widgets.SectionHeader($"{v.Name} · {tier.Name}", "ui_vehicle"));
+        if (_preview3d.GetParent() is { } old) old.RemoveChild(_preview3d);
+        _detail.AddChild(_preview3d);
+        _preview3d.Show(sim.Data, v);
 
         // Before → after when an upgrade is being considered.
         VehicleStats? after = null;

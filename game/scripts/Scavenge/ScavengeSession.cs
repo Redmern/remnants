@@ -63,8 +63,9 @@ public static class ScavengeSession
         var data = GameDataPaths.Load();
         if (DebugCapture.Value("--vehicle") is not { } tierId || !data.VehicleTiers.TryGetValue(tierId, out var tier)) return null;
         var vehicle = new Remnants.Core.Colony.Vehicle { TierId = tier.Id, Name = tier.Name };
-        foreach (var u in new[] { "roof_turret", "winch" })
-            if (data.VehicleUpgrades.TryGetValue(u, out var def) && tier.Tier >= def.MinTier && tier.Slots.GetValueOrDefault(def.Slot) > vehicle.Upgrades.Count)
+        foreach (var u in new[] { "roof_turret", "winch", "cargo_rack", "turbo", "armor_plates" })
+            if (data.VehicleUpgrades.TryGetValue(u, out var def) && tier.Tier >= def.MinTier
+                && tier.Slots.GetValueOrDefault(def.Slot) > vehicle.Upgrades.Count(f => data.VehicleUpgrades[f.UpgradeId].Slot == def.Slot))
                 vehicle.Upgrades.Add(Remnants.Core.Colony.FittedUpgrade.Standard(u));
         vehicle.Condition = Remnants.Core.Colony.VehicleRules.Stats(data, vehicle).MaxCondition * 0.8;
         return Remnants.Core.Colony.VehicleRules.Field(data, vehicle);
@@ -88,7 +89,7 @@ public static class ScavengeSession
     /// <summary>
     /// The debug mission's sim; <c>--fog-demo</c> stages a hidden Linked near the party (<see cref="Fog.FogDemo"/>),
     /// <c>--hour=H</c> plays it at that hour (its day phase by the colony's hours), <c>--vehicle=TIER</c> parks a vehicle of
-    /// that tier (with a roof turret and a winch where they fit, a little stash) at the party's spawn point.
+    /// that tier (with a roof turret, winch, cargo rack, turbo and plates where they fit) at the party's spawn point.
     /// </summary>
     private static ScavengeSim DebugSim()
     {

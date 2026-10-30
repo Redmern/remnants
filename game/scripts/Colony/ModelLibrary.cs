@@ -28,6 +28,7 @@ public sealed class ModelLibrary
     private readonly Dictionary<string, Dictionary<string, ClipInfo>> _clips = new();
     private readonly Dictionary<string, Dictionary<string, string[]>> _limbBones = new();
     private readonly Dictionary<string, Vector3> _dimensions = new();
+    private readonly Dictionary<string, Dictionary<string, UpgradeSlot>> _upgradeSlots = new();
     private readonly Dictionary<string, PackedScene?> _scenes = new();
     private readonly Dictionary<string, GltfState?> _gltf = new();
 
@@ -76,6 +77,7 @@ public sealed class ModelLibrary
                     && dx.ValueKind == JsonValueKind.Number && dy.ValueKind == JsonValueKind.Number && dz.ValueKind == JsonValueKind.Number)
                     _dimensions[key] = new Vector3(dx.GetSingle(), dy.GetSingle(), dz.GetSingle());
                 if (Points(entry, "sockets") is { } sockets) _sockets[key] = sockets;
+                if (UpgradeSlots(entry) is { } slots) _upgradeSlots[key] = slots;
                 if (Points(entry, "attach") is { } attach) _attach[key] = attach;
                 if (ReadClips(entry) is { Count: > 0 } clips) _clips[key] = clips;
                 if (entry.TryGetProperty("limb_bones", out var limbs) && limbs.ValueKind == JsonValueKind.Object)
@@ -128,6 +130,31 @@ public sealed class ModelLibrary
         if (!obj.TryGetProperty(property, out var v) || v.ValueKind != JsonValueKind.Array || v.GetArrayLength() != 3) return null;
         var xyz = v.EnumerateArray().Select(n => n.ValueKind == JsonValueKind.Number ? n.GetSingle() : float.NaN).ToArray();
         return xyz.Any(float.IsNaN) ? null : new Vector3(xyz[0], xyz[1], xyz[2]);
+    }
+
+    /// <summary>
+    /// A vehicle's upgrade slot nodes (<c>upg_engine</c>, <c>upg_armor</c>, <c>upg_utility_N</c>, <c>tow_hitch</c>; the manifest's
+    /// <c>upgrade_slots</c>): where the node is, how much to scale an upgrade hung on it, and for <c>upg_tyres</c> each wheel's
+    /// scale for a swapped tyre.
+    /// </summary>
+    public IReadOnlyDictionary<string, UpgradeSlot> VehicleSlots(string id) =>
+        _upgradeSlots.GetValueOrDefault(id) ?? new Dictionary<string, UpgradeSlot>();
+
+    private static Dictionary<string, UpgradeSlot>? UpgradeSlots(JsonElement entry)
+    {
+        if (!entry.TryGetProperty("upgrade_slots", out var slots) || slots.ValueKind != JsonValueKind.Object) return null;
+        var result = new Dictionary<string, UpgradeSlot>();
+        foreach (var slot in slots.EnumerateObject())
+        {
+            if (slot.Value.ValueKind != JsonValueKind.Object) continue;
+            var scale = slot.Value.TryGetProperty("scale", out var s) && s.ValueKind == JsonValueKind.Number ? s.GetSingle() : 1f;
+            var wheels = new Dictionary<string, Vector3>();
+            if (slot.Value.TryGetProperty("wheels", out var w) && w.ValueKind == JsonValueKind.Object)
+                foreach (var wheel in w.EnumerateObject())
+                    if (wheel.Value.ValueKind == JsonValueKind.Object && Vector(wheel.Value, "scale") is { } ws) wheels[wheel.Name] = ws;
+            result[slot.Name] = new UpgradeSlot(Vector(slot.Value, "point") ?? Vector3.Zero, scale, wheels);
+        }
+        return result;
     }
 
     /// <summary>The model's size in metres from the manifest (<c>dimensions_m</c>), if it says.</summary>
@@ -212,6 +239,8 @@ public sealed class ModelLibrary
 /// A socket on a body or an attach point on an item (manifest <c>sockets</c> / <c>attach</c>). <see cref="Bone"/> is the
 /// socket bone of a rigged body (v2), identity at rest at <see cref="Point"/>.
 /// </summary>
+public sealed record UpgradeSlot(Vector3 Point, float Scale, IReadOnlyDictionary<string, Vector3> Wheels);
+
 public readonly record struct AttachPoint(Vector3 Point, Vector3 RotationDegrees, string? Part, string? Bone = null);
 
 /// <summary>An animation clip of a rigged model: length, whether it loops, and its events in seconds from the start.</summary>

@@ -114,7 +114,10 @@ public sealed record VehicleUpgradeDef
     public Dictionary<string, double> Cost { get; init; } = new();
     public Dictionary<string, int> Parts { get; init; } = new();
 
-    /// <summary>Model of the fitted upgrade (<c>vehicle_upgrade_{model}</c>), drawn on the vehicle when the asset exists.</summary>
+    /// <summary>
+    /// The upgrade's mesh (<c>upg_*</c> in the asset manifest), hung on the vehicle's slot node; armor adds the vehicle's
+    /// tier (<c>{model}_t{tier}</c>). None for upgrades with nothing to see (a tuned engine).
+    /// </summary>
     public string? Model { get; init; }
 
     public double SpeedMultiplier { get; init; } = 1;

@@ -89,6 +89,10 @@ public sealed class ScavengeModels(ModelLibrary library)
             id = $"vehicle_{vehicle.TierId}";
             node = library.TryInstance(id) ?? Box(new Vector3(1.4f, 1.1f, 2.4f), new Color(0.6f, 0.45f, 0.25f));
         }
+        var data = GameDataPaths.Load();
+        Colony.VehicleDressing.Dress(library, node, id, vehicle.Tier,
+            vehicle.Upgrades.Select(u => data.VehicleUpgrades.GetValueOrDefault(u)).OfType<Remnants.Core.Data.VehicleUpgradeDef>(),
+            swapTyres: !id.StartsWith("vehicle_parked_extraction"));
         if (library.Dimensions(id) is { } d && Mathf.Max(d.X, d.Z) > maxLength)
             node.Scale = Vector3.One * (maxLength / Mathf.Max(d.X, d.Z));
         return node;
