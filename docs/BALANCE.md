@@ -279,6 +279,40 @@ Economy only (`--no-expeditions`): Town Hall 2 day 20.7 → 21.0, House affordab
 - Sleep restores 0.2 mood and 0.3 health per hour in a bed; evenings at the campfire 0.15 mood per hour; a cooked meal
   between dusk and dawn +0.1. Mood only falls from grief and night work, so these mostly speed up recovery after a loss.
 
+### Night missions
+
+A mission is played at the hour its party arrives (`scavenge.json environment`; ARCHITECTURE.md "Day and night"). Night:
+people see ×0.6 (drones ×0.8, Husks ×0.8, Linked and cameras unaffected), +15 stealth except against the Linked's
+sensors, cameras and turrets, ×1.25 Husks who hear ×1.5 further, flares ×1.25 radius. Dawn and dusk: people ×0.8, +5
+stealth. A first try at ×1.5 Husks made night Outskirts 12% deadly and Suburb Ruins 41%; ×1.25 keeps the early zones
+inside their targets while night stays the riskier hour for a party that fights its way to every cache.
+
+Zone trials, 300 runs each, two adults with starting gear (`--zone=… --runs=300 --hour=12` vs `--hour=23`):
+
+| zone | someone dies: day → night | wipe | ambushed / run | lose someone when a Linked shows | ...when none does |
+|---|---|---|---|---|---|
+| Town Outskirts | 6% → 7% | 1% → 1% | 0.00 → 0.01 | — | 6% → 7% |
+| Scrapyard Flats | 8% → 10% | 2% → 3% | 0.00 → 0.00 | — | 8% → 10% |
+| Suburb Ruins | 33% → 37% | 12% → 16% | 0.36 → 0.44 | 82% → 68% | 21% → 30% |
+| Flooded Mall | 52% → 57% | 22% → 24% | 1.21 → 1.58 | 59% → 68% | 26% → 27% |
+| Rail Depot | 92% → 93% | 63% → 62% | 4.47 → 5.37 | 94% → 93% | — |
+| Network Relay | 99% → 99% | 86% → 85% | 6.35 → 8.10 | 99% → 99% | — |
+| Core Spire | 100% → 100% | 96% → 96% | 6.49 → 9.23 | 100% → 100% | — |
+
+- Against the Linked the night shows as **ambushes**: their sensors still pick the party out while the party's own sight
+  shrinks and the Linked's +15 night stealth hides them, so ambushes per run rise by 20–40% from Suburb Ruins up. Flooded
+  Mall with a Linked about goes 59% → 68%. Suburb Ruins with a Linked reads 82% → 68%, but that is ~60 runs out of 300 and
+  within the noise; the overall Suburb figure (33% → 37%) and its ambushes go up.
+- Husk zones get a little worse for this bot (more Husks that hear further), which fights what it finds and walks to
+  every cache. The night's upside, slipping past Husks (+15 stealth against them, Husk sight ×0.8), is only partly used:
+  the bot does not route around enemies. `Night_hides_people_from_husks_but_not_from_the_Linked` pins the rule.
+- Waiting for dawn costs `rationFoodPerMemberPerDay` (2) per day waited per member: a doorstep party leaving at 22:00
+  waits 7 h for 0.6 food each, rounded up to 1.
+
+Colony sweep (20 seeds × 60 days) with the bot waiting for dawn rather than arriving at night, vs the day/night pass
+above: median population 8 → 7, Town Hall 2 day 32.0 → 31.6, House affordable 48.5 → 48.4, Armory 51.0 → 51.8, min food
+4.2 → 3.8 days (the waits' rations), expedition deaths 7 → 9 over 337 → 336 runs, starvation 0.
+
 ## Watch next pass
 
 - Late food surplus: by day 60 the bot's colonies sit on 100–150 food; Kitchen meals and more mouths absorb some of it.

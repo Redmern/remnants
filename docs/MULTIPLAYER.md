@@ -11,7 +11,7 @@ single-player.
 dotnet run --project src/Remnants.Server -- --port 7777
 #    options: --zone ID (default suburb_ruins) --seed N --players 2 (min to start) --max-players 4
 #             --turn-seconds 60 (0 = no AFK timer) --reconnect-seconds 120 --max-party N --bind 0.0.0.0 --data DIR
-#             --coop (everyone on one team; default versus)
+#             --coop (everyone on one team; default versus) --hour 0-23 (time of day; default: from the seed)
 
 # 2. two game clients: main menu → Multiplayer → name + server address → Join → Ready
 godot-mono --path game
@@ -277,6 +277,18 @@ map), Accept (Y) / Decline (U) an offer, Offer an alliance (Y) to a rival you se
   own data (perks.json next to the other data files). The usual trust gap applies (a modified client can claim perks).
 - `NetFixture.CheckFog` checks all of it on every message; `HackNetTests` stage the cases.
 
+## Night over the wire
+
+- **The server decides the hour** (`HostOptions.Hour`, `--hour`; without it `seed % 24`) and makes the instance with it
+  (`ZoneConditions.Environment`, phase by the default colony hours). Clients never choose it; the colony's own expedition
+  arrival time does not travel (an online mission is played at the server's hour).
+- **Every view carries the environment** (hour, phase, weather slot): it is public, the same for everyone, so every
+  client lights the map alike. Protocol version 5.
+- **Fog follows the dark on the server.** `SideFog` asks the same `Detection` / `Visibility` that the night changes
+  (shorter human sight, stealth bonus except against the Linked and cameras), so a party seen by day is not sent at night,
+  and flares (which every side sees) show the same lit ground to all. `NightNetTests` stage it with `CheckFog` on every
+  message: server-decided hour in both views, a day/night standoff (sent by day, not at night, nothing leaked), a flare.
+
 ## Parties and results — the trust gap
 
 - **Party in.** `MultiplayerSession.PickParty` takes the party of the colony's expedition when one is in its zone and
@@ -311,6 +323,8 @@ map), Accept (Y) / Decline (U) an offer, Offer an alliance (Y) to a rival you se
   a new link with the same `NetClient`; the reconnect window; nobody connected → the instance holds; AFK timeout;
   per-player extraction results; ending with a player gone; snapshot size.
 - `TcpTests`: two clients join, start and play over localhost TCP.
+- `NightNetTests`: the server's hour in every view; a party seen at noon is not sent at night; a flare lights the same
+  ground for both sides.
 - `CoopNetTests` (loopback): a co-op lobby (everyone team 1, shared sight, the ally's colony record cut); two allies play a
   whole mission (ping, give an item and friendly fire over the wire) and each gets their own result; two allies against a
   third player (teams picked in a versus lobby) play to the end with nothing of the team reaching the rival; an alliance

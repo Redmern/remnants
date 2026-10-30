@@ -677,6 +677,24 @@ An hour is a tick (`hour = tick % ticksPerDay`); a new game starts at `newGame.s
   at dusk. HUD: phase icon and name in the `TopBar` (tooltip: hours, who works or sleeps, night shifts), Night Shift
   toggle with its penalty and the Floodlight on the `BuildingPanel`, asleep / night shift / tired badges on survivor
   cards, a toast on a shift's first night (later nights only log).
+- **Night missions** (`Scavenge/FieldEnvironment.cs`): every run has a `ScavengeEnvironment` (`Hour`, `Phase`,
+  `Weather` slot) in `ScavengeState.Environment`, fixed when it is made (`ZoneConditions.Environment`). The colony gives
+  a mission the hour its party arrives (`ColonySim.MissionEnvironment(expedition.ArrivalTick)`); `LaunchExpedition(…,
+  WaitFor)` lets the party wait outside for a phase, at `rationFoodPerMemberPerDay` per day waited (`ColonySim.PlanArrival`
+  previews arrival, phase, wait and food; the planner shows it). Effects are data (`scavenge.json environment.phases`,
+  `environment.weather`): per `SenseKind` (Human, Husk, Linked, Drone, Camera, Turret) a sight multiplier (floored at
+  `minSight`), a stealth bonus against every observer kind not in `stealthIgnoredBy`, Husk count and hearing multipliers,
+  a flare radius multiplier. A weather entry combines with the phase (multipliers multiply, bonuses add), so the weather
+  pass only adds data and sets `Weather`. Night: people see ×0.6, Husks ×0.8, drones ×0.8, the Linked and cameras ×1;
+  +15 stealth except to the Linked's sensors, cameras and turrets (a hacked camera still sees for its side); ×1.25 Husks
+  (extra Husks from the Husk part of the mix, so day runs are unchanged) who hear ×1.5 further; flares light ×1.25 further.
+  A muzzle flash or sensor reveal is seen with the observer's sight before the dark (`Detection.SeesRevealed`).
+  Applied in `Detection.Spots`, `Visibility.SideVisible`, `ScavengeSim.Profile` (sight shown in the HUD), `MakeNoise`,
+  flare use and `NewScavenge`. Scavenge save version 6 (older runs: midday), colony save 11 (`Expedition.WaitTicks`).
+  Multiplayer: the server decides the hour (see MULTIPLAYER.md "Night over the wire"). Presentation: the scavenge screen
+  uses `DayNightLighting.SetupFixed(hour)` (no distance fog), a short OmniLight per ranged shot, flares' lights as
+  before, the hour and phase on the turn bar. `DayNightLighting.Weather` takes the sampled `SkyLook` and returns it
+  changed, for the weather pass. `--scavenge --hour=H` plays the debug mission at an hour.
 - **For audio**: switch on `ColonySession.Phase` / `PhaseChanged(DayPhase)` (raised after the tick that crossed into a
   phase, after a fast-forward and after a load), or `DayNight.PhaseAt(tick, rules)` in Core — not on raw hours.
   `ColonyAudio.IsNight(DayPhase)` does: the night bed and music for Night, the day ones for Dawn, Day and Dusk.
@@ -706,7 +724,8 @@ An hour is a tick (`hour = tick % ticksPerDay`); a new game starts at `newGame.s
   banes) and `drops` (what a kill leaves behind).
 - `zones.json` — size, threat, loot tier, terrain densities, spawn/exit edges, enemy count + mix,
   caches, NPC count, hackable devices per kind.
-- `scavenge.json` — `hacking`, `devices`, `drone`, `world.droneScout` (see "Hacking and scout drones"), `coop` (alliance offer / break-warning rounds, pings, give and carry costs, carry movement penalty,
+- `scavenge.json` — `environment` (per day phase and per weather: sight per sense kind, stealth bonus and who ignores it,
+  Husk count and hearing, flare radius; see "Day and night"), `hacking`, `devices`, `drone`, `world.droneScout` (see "Hacking and scout drones"), `coop` (alliance offer / break-warning rounds, pings, give and carry costs, carry movement penalty,
   enemies per extra player), `fog` (stealth, detection, contacts, ambush, overwatch, brace, lookout, Linked fog AI), `network` (Linked squad tuning), `world.colonyPos`, terrain table, movement derivation (base pattern/range, Agility per range,
   encumbrance steps, body rules such as "missing leg → King 1"), AP, sight, carry, combat numbers,
   AI, NPC names, escort radius, gear quality tiers.
