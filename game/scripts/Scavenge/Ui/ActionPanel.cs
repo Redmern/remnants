@@ -12,8 +12,9 @@ namespace Remnants.Game.Scavenge.Ui;
 /// <summary>
 /// What the acting unit can do besides moving, as <see cref="ActionButton"/>s with icons, AP-cost pips and hotkeys:
 /// pick the attack for map clicks (1–3), use a consumable (4–6, then click a target), loot a cache in reach (F),
-/// recruit a stranger (T), extract on an exit (X). Every button sends a Core command through the screen; Core decides
-/// whether it works.
+/// recruit a stranger (T), strip a wreck for parts (I), load loot into the party's vehicle (R) or take it back out at a
+/// workbench, extract on an exit or beside the vehicle (X). The party's vehicle shows as a chip (HP, stash load). Every
+/// button sends a Core command through the screen; Core decides whether it works.
 /// </summary>
 public partial class ActionPanel : PanelContainer
 {
@@ -135,9 +136,56 @@ public partial class ActionPanel : PanelContainer
             button.SetBlocked(cost > unit.Ap, cost > unit.Ap);
         }
 
-        if (_presenter.State.Map.IsExit(unit.Pos))
-            Add(new ActionButton("ui_extract", "Extract here", "leave the zone with what you carry", 0, "scav_extract"),
+        foreach (var wreck in Salvaging.Beside(_presenter.State, unit).Take(1))
+        {
+            var cost = data.Rules.Salvage.ApCost;
+            var at = wreck.A;
+            var button = Add(new ActionButton("ui_salvage", "Salvage the wreck", "strip it for vehicle parts · loud", cost, "scav_salvage",
+                    "Strip the wrecked car for parts. Better wrecks in harder zones; engines only with your vehicle at the edge to haul them; a winch finds more. The noise carries."),
+                () => CommandRequested?.Invoke(new Salvage(_presenter.PlayerId, unit.Id, at)));
+            button.SetBlocked(cost > unit.Ap, cost > unit.Ap);
+        }
+
+        VehicleActions(unit);
+
+        var beside = ParkedVehicles.Beside(_presenter.State, unit);
+        if (_presenter.State.Map.IsExit(unit.Pos) || beside is not null)
+            Add(new ActionButton("ui_extract", beside is not null ? $"Extract by the {beside.Name}" : "Extract here",
+                    "leave the zone with what you carry" + (beside is not null ? "; the vehicle takes its stash home" : ""), 0, "scav_extract"),
                 () => CommandRequested?.Invoke(new Extract(_presenter.PlayerId, unit.Id))).ThemeTypeVariation = "Primary";
+    }
+
+    /// <summary>The party's vehicle: a status chip, and beside it Stash (heaviest loot first) and, with a workbench, Take.</summary>
+    private void VehicleActions(Unit unit)
+    {
+        var state = _presenter.State;
+        var data = _presenter.Sim.Data;
+        if (ParkedVehicles.Of(state, _presenter.PlayerId) is not { } vehicle) return;
+        _content.AddChild(Widgets.Label("VEHICLE", "Heading"));
+        var load = ParkedVehicles.Load(data, vehicle);
+        var status = vehicle.Wrecked ? $"{vehicle.Name}: wrecked, its cargo lost"
+            : $"{vehicle.Name}  {vehicle.Hp:0}/{vehicle.MaxHp:0} HP · stash {load:0.#}/{vehicle.CargoKg:0} kg";
+        _content.AddChild(Widgets.Chip(Icons.Get("ui_vehicle", 14), status, vehicle.Wrecked ? Palette.Danger : Palette.Gauge(vehicle.Hp / vehicle.MaxHp),
+            "Parked at the zone's edge: extract beside it, load loot into it (it goes home with the vehicle). Enemies next to it damage it."));
+        if (vehicle.Wrecked || vehicle.Pos.Chebyshev(unit.Pos) > 1) return;
+        var cost = data.Rules.Turn.PickUpApCost;
+        var haul = unit.Pack.Where(id => data.Items[id].Weight <= vehicle.CargoKg - load + 1e-9)
+            .OrderByDescending(id => data.Items[id].Kind is ItemKind.Material or ItemKind.Blueprint)
+            .ThenByDescending(id => data.Items[id].Weight).ThenBy(id => id, StringComparer.Ordinal).FirstOrDefault();
+        if (haul is not null)
+        {
+            var button = Add(new ActionButton("ui_stash", $"Load {ScavengeText.Item(data, haul)}", $"{data.Items[haul].Weight:0.#} kg into the {vehicle.Name}", cost, "scav_stash"),
+                () => CommandRequested?.Invoke(new StashItem(_presenter.PlayerId, unit.Id, haul)));
+            button.SetBlocked(cost > unit.Ap, cost > unit.Ap);
+        }
+        if (vehicle.Workbench)
+            foreach (var id in vehicle.Stash.Distinct().Take(3))
+            {
+                var item = id;
+                var button = Add(new ActionButton("stat_loot", $"Take {ScavengeText.Item(data, id)}", "out of the stash (workbench)", cost, null),
+                    () => CommandRequested?.Invoke(new TakeFromStash(_presenter.PlayerId, unit.Id, item)));
+                button.SetBlocked(cost > unit.Ap, cost > unit.Ap);
+            }
     }
 
     private ActionButton Add(ActionButton button, Action onPressed)

@@ -172,6 +172,8 @@ public static class Hotkeys
         new("scav_loot", "Take the first loot", "Scavenge", [Key.F]),
         new("scav_recruit", "Recruit", "Scavenge", [Key.T]),
         new("scav_extract", "Extract", "Scavenge", [Key.X]),
+        new("scav_stash", "Load loot into the party's vehicle", "Scavenge", [Key.R]),
+        new("scav_salvage", "Salvage a wreck", "Scavenge", [Key.I]),
         new("scav_give", "Give an item to an ally", "Scavenge", [Key.G]),
         new("scav_carry", "Carry / put down a downed ally", "Scavenge", [Key.C]),
         new("scav_ping_danger", "Ping: danger", "Scavenge", [Key.Z]),

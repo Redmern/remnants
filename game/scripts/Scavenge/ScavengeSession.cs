@@ -58,6 +58,18 @@ public static class ScavengeSession
         Begin(tree, NewScavenge.Create(GameDataPaths.LoadScavenge(), zoneId, seed, [new PartySetup(LocalPlayerId, party.ToList())]),
             LocalPlayerId, onFinished, returnScene);
 
+    private static FieldVehicle? DebugVehicle()
+    {
+        var data = GameDataPaths.Load();
+        if (DebugCapture.Value("--vehicle") is not { } tierId || !data.VehicleTiers.TryGetValue(tierId, out var tier)) return null;
+        var vehicle = new Remnants.Core.Colony.Vehicle { TierId = tier.Id, Name = tier.Name };
+        foreach (var u in new[] { "roof_turret", "winch" })
+            if (data.VehicleUpgrades.TryGetValue(u, out var def) && tier.Tier >= def.MinTier && tier.Slots.GetValueOrDefault(def.Slot) > vehicle.Upgrades.Count)
+                vehicle.Upgrades.Add(Remnants.Core.Colony.FittedUpgrade.Standard(u));
+        vehicle.Condition = Remnants.Core.Colony.VehicleRules.Stats(data, vehicle).MaxCondition * 0.8;
+        return Remnants.Core.Colony.VehicleRules.Field(data, vehicle);
+    }
+
     /// <summary>A debug mission with <see cref="DebugParty"/>, returning to the main menu. --zone=ID / --seed=N pick another.</summary>
     public static void BeginDebug(SceneTree tree) => Begin(tree, DebugSim());
 
@@ -75,7 +87,8 @@ public static class ScavengeSession
 
     /// <summary>
     /// The debug mission's sim; <c>--fog-demo</c> stages a hidden Linked near the party (<see cref="Fog.FogDemo"/>),
-    /// <c>--hour=H</c> plays it at that hour (its day phase by the colony's hours).
+    /// <c>--hour=H</c> plays it at that hour (its day phase by the colony's hours), <c>--vehicle=TIER</c> parks a vehicle of
+    /// that tier (with a roof turret and a winch where they fit, a little stash) at the party's spawn point.
     /// </summary>
     private static ScavengeSim DebugSim()
     {
@@ -83,7 +96,8 @@ public static class ScavengeSession
         ZoneConditions? conditions = null;
         if (int.TryParse(DebugCapture.Value("--hour"), out var hour))
             conditions = new ZoneConditions(Environment: ScavengeEnvironment.At(hour, Remnants.Core.Colony.DayNight.PhaseAtHour(hour, GameDataPaths.Load().Rules.DayNight)));
-        var sim = NewScavenge.Create(GameDataPaths.LoadScavenge(), DebugZoneArg, DebugSeedArg, [new PartySetup(LocalPlayerId, DebugParty())], conditions);
+        var sim = NewScavenge.Create(GameDataPaths.LoadScavenge(), DebugZoneArg, DebugSeedArg,
+            [new PartySetup(LocalPlayerId, DebugParty()) { Vehicle = DebugVehicle() }], conditions);
         if (Fog.FogDemo.Requested) Fog.FogDemo.Stage(sim, LocalPlayerId);
         if (TechDemo.Requested) TechDemo.Stage(sim, LocalPlayerId);
         if (AnimDemo.Requested) AnimDemo.Stage(sim, LocalPlayerId);

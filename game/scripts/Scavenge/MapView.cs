@@ -115,6 +115,9 @@ public partial class MapView : Node3D
                 case Terrain.Pylon:
                     tile.AddChild(_models.Pylon());
                     break;
+                case Terrain.Vehicle or Terrain.ArmoredVehicle:
+                    AddParked(tile, map, p);
+                    break;
                 case Terrain.Water:
                     tile.AddChild(new MeshInstance3D
                     {
@@ -231,6 +234,24 @@ public partial class MapView : Node3D
         });
     }
 
+    private readonly Dictionary<Pos, Node3D> _parked = new();
+
+    /// <summary>
+    /// A party's parked vehicle on its tile, lengthwise along the map edge it stands on (it reaches into the neighbouring
+    /// edge tiles a little, as a vehicle would), turned to face into the zone.
+    /// </summary>
+    private void AddParked(Node3D tile, TileMap map, Pos p)
+    {
+        if (ParkedVehicles.At(_presenter.State, p) is not { } vehicle) return;
+        var model = _models.ParkedVehicle(vehicle, TileGrid.TileSize * 1.6f);
+        var alongX = p.Y == 0 || p.Y == map.Height - 1;
+        model.RotationDegrees = new Vector3(0, alongX ? 90 : 0, 0);
+        tile.AddChild(model);
+        _parked[p] = model;
+    }
+
+    private StandardMaterial3D? _wreckMaterial;
+
     /// <summary>Fog and crates from the latest state.</summary>
     public void Sync()
     {
@@ -245,6 +266,14 @@ public partial class MapView : Node3D
             var overlay = seen && !visible.Contains(i) ? _fogMaterial : null;
             foreach (var mesh in _tileMeshes[i]) mesh.MaterialOverlay = overlay ?? _ground.GetValueOrDefault(mesh);
         }
+
+        // A wrecked vehicle stays as a burnt-out hulk.
+        foreach (var v in _presenter.State.Vehicles.Where(v => v.Wrecked))
+            if (_parked.TryGetValue(v.Pos, out var hulk))
+            {
+                _wreckMaterial ??= Placeholders.Material(new Color(0.12f, 0.08f, 0.06f, 0.75f), unshaded: true);
+                foreach (var mesh in Meshes(hulk)) mesh.MaterialOverlay = _wreckMaterial;
+            }
 
         var caches = _presenter.State.Caches;
         foreach (var id in _crates.Keys.Where(id => caches.All(c => c.Id != id)).ToList())

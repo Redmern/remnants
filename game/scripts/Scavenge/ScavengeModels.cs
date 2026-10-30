@@ -75,6 +75,24 @@ public sealed class ScavengeModels(ModelLibrary library)
 
     /// <summary>A generated model by id, or null (set pieces such as the watchtower).</summary>
     public Node3D? Instance(string id) => library.TryInstance(id);
+    /// <summary>
+    /// A party's parked vehicle: the <c>vehicle_parked_extraction_t{tier}</c> model (motorbike and up) or the plain
+    /// <c>vehicle_{tier id}</c> (handcart, bicycle cart), scaled down to about <paramref name="maxLength"/> metres so a big
+    /// truck stays near its tile; a box if neither model exists.
+    /// </summary>
+    public Node3D ParkedVehicle(ParkedVehicle vehicle, float maxLength)
+    {
+        var id = $"vehicle_parked_extraction_t{vehicle.Tier}";
+        var node = library.TryInstance(id);
+        if (node is null)
+        {
+            id = $"vehicle_{vehicle.TierId}";
+            node = library.TryInstance(id) ?? Box(new Vector3(1.4f, 1.1f, 2.4f), new Color(0.6f, 0.45f, 0.25f));
+        }
+        if (library.Dimensions(id) is { } d && Mathf.Max(d.X, d.Z) > maxLength)
+            node.Scale = Vector3.One * (maxLength / Mathf.Max(d.X, d.Z));
+        return node;
+    }
 
     public Node3D Crate() => library.TryInstance("loot_crate") ?? Box(new Vector3(1.1f, 0.65f, 0.65f), new Color(0.6f, 0.5f, 0.25f));
 

@@ -27,6 +27,7 @@ public sealed class ModelLibrary
     private readonly Dictionary<string, Dictionary<string, AttachPoint>> _attach = new();
     private readonly Dictionary<string, Dictionary<string, ClipInfo>> _clips = new();
     private readonly Dictionary<string, Dictionary<string, string[]>> _limbBones = new();
+    private readonly Dictionary<string, Vector3> _dimensions = new();
     private readonly Dictionary<string, PackedScene?> _scenes = new();
     private readonly Dictionary<string, GltfState?> _gltf = new();
 
@@ -70,6 +71,10 @@ public sealed class ModelLibrary
                 if (entry.TryGetProperty("params", out var ps) && ps.ValueKind == JsonValueKind.Object)
                     _params[key] = ps.EnumerateObject().Where(kv => kv.Value.ValueKind == JsonValueKind.String)
                         .ToDictionary(kv => kv.Name, kv => kv.Value.GetString()!);
+                if (entry.TryGetProperty("dimensions_m", out var dims) && dims.ValueKind == JsonValueKind.Object
+                    && dims.TryGetProperty("x", out var dx) && dims.TryGetProperty("y", out var dy) && dims.TryGetProperty("z", out var dz)
+                    && dx.ValueKind == JsonValueKind.Number && dy.ValueKind == JsonValueKind.Number && dz.ValueKind == JsonValueKind.Number)
+                    _dimensions[key] = new Vector3(dx.GetSingle(), dy.GetSingle(), dz.GetSingle());
                 if (Points(entry, "sockets") is { } sockets) _sockets[key] = sockets;
                 if (Points(entry, "attach") is { } attach) _attach[key] = attach;
                 if (ReadClips(entry) is { Count: > 0 } clips) _clips[key] = clips;
@@ -124,6 +129,9 @@ public sealed class ModelLibrary
         var xyz = v.EnumerateArray().Select(n => n.ValueKind == JsonValueKind.Number ? n.GetSingle() : float.NaN).ToArray();
         return xyz.Any(float.IsNaN) ? null : new Vector3(xyz[0], xyz[1], xyz[2]);
     }
+
+    /// <summary>The model's size in metres from the manifest (<c>dimensions_m</c>), if it says.</summary>
+    public Vector3? Dimensions(string id) => _dimensions.TryGetValue(id, out var d) ? d : null;
 
     /// <summary>A body's gear sockets (<c>hand_r</c>, <c>back</c>, <c>torso</c>, <c>head</c>), in model space, with the part each rides on.</summary>
     public IReadOnlyDictionary<string, AttachPoint> Sockets(string id) =>
