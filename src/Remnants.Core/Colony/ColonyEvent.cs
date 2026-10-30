@@ -15,6 +15,7 @@ public enum ColonyEventType
     StoryMission, RadioCall,
     WeatherChanged, Storm, LightningStruck, Repaired,
     HarvestChanged, FoodRotted, FoodPoisoning,
+    Brownout, PowerRestored, BreakerTripped, PowerSwitched, DeviceCharged, Disassembled,
 }
 
 /// <summary>Something notable the UI can show in a log. Purely informational.</summary>

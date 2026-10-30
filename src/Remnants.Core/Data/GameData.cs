@@ -30,6 +30,9 @@ public sealed class GameData
     /// <summary>Food and cooking (data/food.json); null when not loaded (nobody eats, nothing is harvested).</summary>
     public FoodData? Food { get; }
 
+    /// <summary>Electronics and power (data/electronics.json); null when not loaded (no grid, no charging bench).</summary>
+    public ElectronicsDef? Electronics { get; }
+
     private readonly Dictionary<string, List<RecipeDef>> _recipesByBuilding;
 
     public GameData(
@@ -42,7 +45,8 @@ public sealed class GameData
         CyberneticsDef? cybernetics = null,
         SchematicCatalog? schematics = null,
         WeatherRules? weather = null,
-        FoodDef? food = null)
+        FoodDef? food = null,
+        ElectronicsDef? electronics = null)
     {
         Schematics = schematics ?? SchematicCatalog.Empty;
         Resources = Index(resources, r => r.Id, "resource");
@@ -58,12 +62,14 @@ public sealed class GameData
         Cybernetics = cybernetics is null ? null : new CyberneticsData(cybernetics);
         Weather = weather ?? new WeatherRules();
         Food = food is null ? null : new FoodData(food);
+        Electronics = electronics;
         Validate();
         ValidateWeather();
         Food?.Validate(this);
         ValidateProgression();
         ValidateCybernetics();
         Schematics.ValidateAgainst(this);
+        if (Electronics is not null) ElectronicsValidation.Validate(Electronics, this);
     }
 
     /// <summary>One Decrypt order per encrypted schematic, at the Decrypt building: its chip in, the schematic learned.</summary>

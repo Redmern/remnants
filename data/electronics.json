@@ -1,0 +1,152 @@
+{
+  // Electronics and power (ARCHITECTURE.md "Electronics and power", BALANCE.md "Electronics and power").
+  // Items join items.json, recipes join recipes.json (plus one "disassemble_<item>" recipe per disassembly entry),
+  // buildings join buildings.json. Gates come from the schematics.electronics.json catalogue extension.
+  // Scanner Mk I is default knowledge now ("defaults"); the old Scanner blueprint (bp_scanner) unlocks Scanner Mk II.
+
+  "items": [
+    {"id": "wiring", "name": "Wiring", "kind": "Material", "weight": 0.2, "tier": 1, "lootWeight": 0.5},
+    {"id": "circuit_board", "name": "Circuit Board", "kind": "Material", "weight": 0.3, "tier": 1, "lootWeight": 0.3},
+    {"id": "sensor_module", "name": "Sensor Module", "kind": "Material", "weight": 0.3, "tier": 2, "lootWeight": 0.4},
+    {"id": "antenna", "name": "Antenna", "kind": "Material", "weight": 0.3, "tier": 2, "lootWeight": 0.4},
+    {"id": "microchip", "name": "Microchip", "kind": "Material", "weight": 0.1, "tier": 3, "lootWeight": 0.15},
+    {"id": "network_chip", "name": "Network Chip", "kind": "Material", "weight": 0.1, "tier": 3, "networkGrade": true},
+
+    {"id": "broken_gadget", "name": "Broken Gadget", "kind": "Material", "weight": 0.6, "tier": 1, "lootWeight": 0.9},
+    {"id": "dead_radio", "name": "Dead Radio", "kind": "Material", "weight": 0.8, "tier": 1, "lootWeight": 0.4},
+    {"id": "smashed_drone", "name": "Smashed Drone", "kind": "Material", "weight": 1.5, "tier": 2, "lootWeight": 0.5},
+    {"id": "linked_circuitry", "name": "Linked Circuitry", "kind": "Material", "weight": 0.4, "tier": 3, "networkGrade": true},
+
+    {"id": "scanner_mk2", "name": "Scanner Mk II", "kind": "Tool", "weight": 1.1, "tier": 3, "sightBonus": 6, "detection": 18, "device": {"effect": "Scanner", "radius": 8}},
+    {"id": "scanner_mk3", "name": "Scanner Mk III", "kind": "Tool", "weight": 1.0, "tier": 3, "sightBonus": 7, "detection": 22, "device": {"effect": "Scanner", "radius": 10}},
+    {"id": "motion_sensor_mk2", "name": "Sensor Kit Mk II", "kind": "Consumable", "weight": 0.8, "tier": 2, "use": {"range": 2, "apCost": 1, "sensorRadius": 4, "charges": 3}},
+    {"id": "motion_sensor_mk3", "name": "Sensor Kit Mk III", "kind": "Consumable", "weight": 0.8, "tier": 3, "use": {"range": 3, "apCost": 1, "sensorRadius": 5, "charges": 4}},
+    {"id": "handheld_radio", "name": "Handheld Radio", "kind": "Tool", "weight": 0.6, "tier": 1, "lootWeight": 0.2, "radio": {"range": 8, "accuracyBonus": 0.03, "extraPings": 1}},
+    {"id": "squad_radio", "name": "Squad Radio", "kind": "Tool", "weight": 0.9, "tier": 2, "radio": {"range": 12, "accuracyBonus": 0.05, "extraPings": 2, "shareOverwatch": true}},
+    {"id": "rangefinder", "name": "Rangefinder", "kind": "Tool", "weight": 0.9, "tier": 2, "sightBonus": 4, "detection": 12, "rangedAccuracy": 0.06},
+
+    {"id": "jammer_mk2", "name": "Signal Jammer Mk II", "kind": "Tool", "weight": 2, "tier": 3, "device": {"effect": "Jammer", "radius": 6}},
+    {"id": "jammer_mk3", "name": "Signal Jammer Mk III", "kind": "Tool", "weight": 1.8, "tier": 3, "networkGrade": true, "device": {"effect": "Jammer", "radius": 8}},
+    {"id": "emp_grenade", "name": "EMP Grenade", "kind": "Consumable", "weight": 0.6, "tier": 3, "lootWeight": 0.15, "use": {"range": 4, "apCost": 2, "emp": {"radius": 2, "rounds": 2}}},
+    {"id": "holo_decoy", "name": "Holo-decoy", "kind": "Consumable", "weight": 0.5, "tier": 2, "use": {"range": 4, "apCost": 1, "decoy": {"rounds": 2, "hp": 4, "lureRadius": 6}}},
+    {"id": "noise_decoy", "name": "Noise Decoy", "kind": "Consumable", "weight": 0.3, "tier": 1, "lootWeight": 0.3, "use": {"range": 5, "apCost": 1, "noiseRadius": 8}},
+
+    {"id": "scout_drone_mk2", "name": "Scout Drone Mk II", "kind": "Tool", "weight": 3, "tier": 3, "drone": {"battery": 9, "flyRange": 5, "controlRange": 8}},
+    {"id": "scout_drone_mk3", "name": "Scout Drone Mk III", "kind": "Tool", "weight": 2.8, "tier": 3, "drone": {"battery": 12, "flyRange": 6, "controlRange": 10}},
+    {"id": "medic_drone", "name": "Medic Drone", "kind": "Tool", "weight": 3.2, "tier": 3, "drone": {"battery": 7, "flyRange": 4, "controlRange": 6, "role": "Medic", "hp": 12}},
+    {"id": "cargo_drone", "name": "Cargo Drone", "kind": "Tool", "weight": 3.5, "tier": 3, "drone": {"battery": 8, "flyRange": 4, "controlRange": 7, "role": "Cargo", "hp": 10, "cargo": 3}},
+    {"id": "combat_drone", "name": "Combat Drone", "kind": "Tool", "weight": 3.8, "tier": 3, "drone": {"battery": 6, "flyRange": 4, "controlRange": 6, "role": "Combat", "hp": 18, "weapon": "drone_gun", "requiresHook": "drone_range_bonus"}},
+    {"id": "drone_gun", "name": "Drone Gun", "kind": "Weapon", "weight": 0, "natural": true, "actions": [{"id": "drone_burst", "name": "Drone burst", "pattern": "Ranged", "reach": 5, "minDamage": 5, "maxDamage": 9, "apCost": 2, "accuracy": 0.62, "skill": "Firearms", "noise": 7, "reveal": 2}]},
+
+    {"id": "network_deck", "name": "Network Deck", "kind": "Tool", "weight": 1.6, "tier": 3, "networkGrade": true, "hackTool": {"range": 4, "chanceBonus": 0.25, "progress": 3, "traceChance": 0.2}}
+  ],
+
+  "drops": {
+    "linked": [{"item": "linked_circuitry", "chance": 0.5}, {"item": "sch_emp_grenade", "chance": 0.02}, {"item": "sch_jammer_mk2", "chance": 0.02}],
+    "linked_drone": [{"item": "linked_circuitry", "chance": 0.35}, {"item": "smashed_drone", "chance": 0.3}, {"item": "sch_combat_drone", "chance": 0.03}],
+    "linked_warden": [{"item": "linked_circuitry", "chance": 1}, {"item": "sch_network_chip", "chance": 0.05}, {"item": "sch_network_deck", "chance": 0.05}]
+  },
+
+  "recipes": [
+    {"id": "wiring", "name": "Wiring", "group": "Components", "building": "electronics_lab", "minLevel": 1, "work": 3, "inputs": {"scrap": 2}, "item": "wiring", "amount": 2},
+    {"id": "circuit_board", "name": "Circuit Board", "group": "Components", "building": "electronics_lab", "minLevel": 1, "work": 5, "inputs": {"electronics": 1}, "itemInputs": {"wiring": 1}, "item": "circuit_board"},
+    {"id": "antenna", "name": "Antenna", "group": "Components", "building": "electronics_lab", "minLevel": 1, "work": 5, "inputs": {"scrap": 3}, "itemInputs": {"wiring": 1}, "item": "antenna", "minSkill": 10},
+    {"id": "sensor_module", "name": "Sensor Module", "group": "Components", "building": "electronics_lab", "minLevel": 2, "work": 8, "inputs": {"electronics": 1, "scrap": 1}, "itemInputs": {"circuit_board": 1, "wiring": 1}, "item": "sensor_module", "minSkill": 15},
+    {"id": "microchip", "name": "Microchip", "group": "Components", "building": "electronics_lab", "minLevel": 3, "work": 12, "inputs": {"electronics": 3}, "itemInputs": {"circuit_board": 1}, "item": "microchip", "minSkill": 30, "needsPower": true},
+    {"id": "network_chip", "name": "Network Chip", "group": "Components", "building": "electronics_lab", "minLevel": 3, "work": 16, "inputs": {"electronics": 2}, "itemInputs": {"linked_circuitry": 2, "microchip": 1}, "item": "network_chip", "minSkill": 35, "needsPower": true},
+
+    {"id": "handheld_radio", "name": "Handheld Radio", "group": "Devices", "building": "electronics_lab", "minLevel": 1, "work": 8, "inputs": {"scrap": 2}, "itemInputs": {"antenna": 1, "circuit_board": 1}, "item": "handheld_radio", "minSkill": 10},
+    {"id": "noise_decoy", "name": "Noise Decoys", "group": "Devices", "building": "electronics_lab", "minLevel": 1, "work": 4, "inputs": {"scrap": 2}, "itemInputs": {"wiring": 1}, "item": "noise_decoy", "amount": 2},
+    {"id": "holo_decoy", "name": "Holo-decoy", "group": "Devices", "building": "electronics_lab", "minLevel": 2, "work": 10, "inputs": {"electronics": 1}, "itemInputs": {"circuit_board": 1, "power_cell": 1}, "item": "holo_decoy", "minSkill": 20},
+    {"id": "emp_grenade", "name": "EMP Grenade", "group": "Devices", "building": "electronics_lab", "minLevel": 3, "work": 14, "inputs": {"electronics": 2}, "itemInputs": {"power_cell": 1, "circuit_board": 1}, "item": "emp_grenade", "minSkill": 30},
+    {"id": "medic_drone", "name": "Medic Drone", "group": "Devices", "building": "electronics_lab", "minLevel": 2, "work": 24, "inputs": {"electronics": 2}, "itemInputs": {"drone_parts": 2, "sensor_module": 1, "power_cell": 1}, "item": "medic_drone", "minSkill": 25},
+    {"id": "cargo_drone", "name": "Cargo Drone", "group": "Devices", "building": "electronics_lab", "minLevel": 2, "work": 22, "inputs": {"scrap": 4}, "itemInputs": {"drone_parts": 2, "servo": 1, "power_cell": 1}, "item": "cargo_drone", "minSkill": 20},
+    {"id": "combat_drone", "name": "Combat Drone", "group": "Devices", "building": "electronics_lab", "minLevel": 3, "work": 30, "inputs": {"scrap": 6, "electronics": 2}, "itemInputs": {"drone_parts": 2, "microchip": 1, "power_cell": 1}, "item": "combat_drone", "minSkill": 35, "needsPower": true},
+    {"id": "network_deck", "name": "Network Deck", "group": "Devices", "building": "electronics_lab", "minLevel": 3, "work": 34, "inputs": {"electronics": 4}, "itemInputs": {"cyberdeck": 1, "network_chip": 2}, "item": "network_deck", "minSkill": 40, "needsPower": true},
+
+    {"id": "scanner_mk2", "name": "Scanner Mk II", "group": "Upgrades", "building": "electronics_lab", "minLevel": 2, "work": 18, "inputs": {"electronics": 2}, "itemInputs": {"scanner": 1, "sensor_module": 1, "circuit_board": 1}, "item": "scanner_mk2", "minSkill": 25},
+    {"id": "scanner_mk3", "name": "Scanner Mk III", "group": "Upgrades", "building": "electronics_lab", "minLevel": 3, "work": 24, "inputs": {"electronics": 3}, "itemInputs": {"scanner_mk2": 1, "microchip": 1, "power_cell": 1}, "item": "scanner_mk3", "minSkill": 35, "needsPower": true},
+    {"id": "motion_sensor_mk2", "name": "Sensor Kit Mk II", "group": "Upgrades", "building": "electronics_lab", "minLevel": 2, "work": 12, "inputs": {"scrap": 2}, "itemInputs": {"motion_sensor": 1, "sensor_module": 1, "power_cell": 1}, "item": "motion_sensor_mk2", "minSkill": 20},
+    {"id": "motion_sensor_mk3", "name": "Sensor Kit Mk III", "group": "Upgrades", "building": "electronics_lab", "minLevel": 3, "work": 16, "inputs": {"electronics": 1}, "itemInputs": {"motion_sensor_mk2": 1, "microchip": 1}, "item": "motion_sensor_mk3", "minSkill": 30, "needsPower": true},
+    {"id": "squad_radio", "name": "Squad Radio", "group": "Upgrades", "building": "electronics_lab", "minLevel": 2, "work": 14, "inputs": {"electronics": 1}, "itemInputs": {"handheld_radio": 1, "antenna": 1, "circuit_board": 1}, "item": "squad_radio", "minSkill": 20},
+    {"id": "rangefinder", "name": "Rangefinder", "group": "Upgrades", "building": "electronics_lab", "minLevel": 2, "work": 12, "inputs": {"electronics": 1}, "itemInputs": {"binoculars": 1, "sensor_module": 1}, "item": "rangefinder", "minSkill": 20},
+    {"id": "jammer_mk2", "name": "Signal Jammer Mk II", "group": "Upgrades", "building": "electronics_lab", "minLevel": 3, "work": 26, "inputs": {"electronics": 2}, "itemInputs": {"signal_jammer": 1, "antenna": 2, "power_cell": 1}, "item": "jammer_mk2", "minSkill": 30},
+    {"id": "jammer_mk3", "name": "Signal Jammer Mk III", "group": "Upgrades", "building": "electronics_lab", "minLevel": 3, "work": 30, "inputs": {"electronics": 2}, "itemInputs": {"jammer_mk2": 1, "microchip": 1, "network_chip": 1}, "item": "jammer_mk3", "minSkill": 40, "needsPower": true},
+    {"id": "scout_drone_mk2", "name": "Scout Drone Mk II", "group": "Upgrades", "building": "electronics_lab", "minLevel": 2, "work": 22, "inputs": {"electronics": 1}, "itemInputs": {"scout_drone": 1, "power_cell": 1, "antenna": 1}, "item": "scout_drone_mk2", "minSkill": 25},
+    {"id": "scout_drone_mk3", "name": "Scout Drone Mk III", "group": "Upgrades", "building": "electronics_lab", "minLevel": 3, "work": 28, "inputs": {"electronics": 2}, "itemInputs": {"scout_drone_mk2": 1, "microchip": 1, "power_cell": 1}, "item": "scout_drone_mk3", "minSkill": 35, "needsPower": true}
+  ],
+
+  "disassembly": {
+    "building": "electronics_lab",
+    "minLevel": 1,
+    "skillYieldPerPoint": 0.002,
+    "items": {
+      "broken_gadget": {"name": "Broken Gadget", "work": 3, "yields": {"wiring": 1, "circuit_board": 1}, "researchChance": 0.03},
+      "dead_radio": {"name": "Dead Radio", "work": 3, "yields": {"antenna": 1, "wiring": 1}, "researchChance": 0.02},
+      "smashed_drone": {"name": "Smashed Drone", "work": 5, "yields": {"servo": 1, "wiring": 1, "power_cell": 1}, "researchChance": 0.06},
+      "linked_circuitry": {"name": "Linked Circuitry", "work": 6, "yields": {"microchip": 1}, "researchChance": 0.12},
+      "binoculars": {"name": "Binoculars", "work": 3, "yields": {"sensor_module": 1}, "researchChance": 0.02},
+      "motion_sensor": {"name": "Motion Sensor", "work": 3, "yields": {"sensor_module": 1, "wiring": 1}, "researchChance": 0.03},
+      "handheld_radio": {"name": "Handheld Radio", "work": 3, "yields": {"antenna": 1, "circuit_board": 1}, "researchChance": 0.02},
+      "hacking_kit": {"name": "Hacking Kit", "work": 4, "yields": {"circuit_board": 2, "wiring": 1}, "researchChance": 0.05},
+      "scanner": {"name": "Scanner", "work": 5, "yields": {"sensor_module": 1, "circuit_board": 2}, "researchChance": 0.08},
+      "signal_jammer": {"name": "Signal Jammer", "work": 6, "yields": {"antenna": 2, "power_cell": 1, "circuit_board": 1}, "researchChance": 0.1},
+      "evac_beacon": {"name": "Evac Beacon", "work": 5, "yields": {"antenna": 1, "power_cell": 1}, "researchChance": 0.06},
+      "scout_drone": {"name": "Scout Drone", "work": 6, "yields": {"drone_parts": 1, "power_cell": 1, "antenna": 1}, "researchChance": 0.08},
+      "cyberdeck": {"name": "Cyberdeck", "work": 8, "yields": {"microchip": 1, "circuit_board": 2}, "researchChance": 0.15},
+      "linked_core": {"name": "Linked Core", "work": 8, "yields": {"linked_circuitry": 2, "power_cell": 1}, "researchChance": 0.2}
+    }
+  },
+
+  "buildings": [
+    {
+      "id": "fuel_generator", "name": "Fuel Generator", "category": "Power", "minTownHallLevel": 2,
+      "levels": [
+        {"cost": {"wood": 30, "stone": 20, "scrap": 30, "electronics": 4}},
+        {"cost": {"wood": 20, "scrap": 40, "electronics": 8}},
+        {"cost": {"scrap": 60, "electronics": 14}}
+      ]
+    },
+    {
+      "id": "solar_array", "name": "Solar Array", "category": "Power", "minTownHallLevel": 2,
+      "levels": [
+        {"cost": {"stone": 10, "scrap": 30, "electronics": 10}},
+        {"cost": {"scrap": 40, "electronics": 16}},
+        {"cost": {"scrap": 60, "electronics": 24}}
+      ]
+    },
+    {
+      "id": "battery_bank", "name": "Battery Bank", "category": "Power", "minTownHallLevel": 2,
+      "levels": [
+        {"cost": {"stone": 10, "scrap": 25, "electronics": 8}},
+        {"cost": {"scrap": 35, "electronics": 12}},
+        {"cost": {"scrap": 50, "electronics": 20}}
+      ]
+    }
+  ],
+
+  "power": {
+    "generators": {
+      "fuel_generator": {"output": [6, 9, 12], "fuel": [{"resource": "fuel", "perPower": 0.05}, {"resource": "wood", "perPower": 0.15}]},
+      "solar_array": {"output": [3, 5, 8], "solar": true}
+    },
+    "storage": {
+      "battery_bank": {"capacity": [30, 60, 100], "rate": [3, 5, 8]}
+    },
+    "solarByPhase": {"Dawn": 0.4, "Day": 1, "Dusk": 0.3, "Night": 0},
+    "consumers": [
+      {"building": "med_bay", "minLevel": 3, "draw": [0, 0, 2], "effect": "SurgeryBonus", "value": 0.05, "describe": "+5% surgery success"},
+      {"building": "electronics_lab", "draw": [2, 3, 4], "effect": "CraftSpeed", "value": 0.25, "describe": "+25% crafting speed; tier 3 parts need it"},
+      {"building": "charging", "draw": [0.5], "effect": "Charging", "describe": "charges drained devices 5x faster"},
+      {"building": "radio_mast", "draw": [1, 2, 3], "describe": "longer reach (Radio Mast)"},
+      {"building": "cold_cellar", "draw": [1, 1, 2], "describe": "keeps food from spoiling (Cold Cellar)"},
+      {"building": "turret", "draw": [1, 1, 1], "describe": "powered turret (defenses)"},
+      {"building": "floodlight", "draw": [1], "effect": "NightShiftBonus", "value": 0.15, "describe": "+15% Night Shift output"}
+    ],
+    "overloadRatio": 1.5,
+    "overloadTicks": 6,
+    "breakerTicks": 2
+  },
+
+  "charging": {"workPerCharge": 3, "poweredRate": 1, "unpoweredRate": 0.2, "drawPerItem": 0.5, "maxAtOnce": 4}
+}

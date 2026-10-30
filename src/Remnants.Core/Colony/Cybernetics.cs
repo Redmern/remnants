@@ -174,6 +174,7 @@ public static class Cybernetics
         var chance = rules.BaseChance
             + (lead?.Get(Skill.Medicine) ?? 0) * rules.PerMedicine
             + (lead is null ? 0 : PerkEffects.For(lead, sim.Data).Hook(PerkHooks.SurgerySuccessBonus))
+            + Power.Bonus(sim.State, sim.Data, bay, PowerEffect.SurgeryBonus)
             - rules.TierPenalty[tier]
             - (elective ? rules.ElectivePenalty : 0);
         return Math.Clamp(chance, rules.MinChance, rules.MaxChance);

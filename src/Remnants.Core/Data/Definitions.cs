@@ -28,7 +28,7 @@ public sealed record JobDef
     public bool ChildrenAllowed { get; init; }
 }
 
-public enum BuildingCategory { Core, Housing, Gathering, Production, Care }
+public enum BuildingCategory { Core, Housing, Gathering, Production, Care, Power }
 
 public sealed record BuildingLevelDef
 {
@@ -76,6 +76,18 @@ public sealed record RecipeDef
 
     /// <summary>Decrypt orders: the schematic learned when the batch is done (its item is the one input).</summary>
     public string? Learns { get; init; }
+
+    /// <summary>Only worked while the building is on a powered grid (<c>Power.IsPowered</c>): tier 3 electronics.</summary>
+    public bool NeedsPower { get; init; }
+
+    /// <summary>Further items a batch yields besides <see cref="Item"/> (a disassembly's other components).</summary>
+    public Dictionary<string, int> Byproducts { get; init; } = new();
+
+    /// <summary>Chance per batch of one Research Data on top (disassembled tech; the Schematics module).</summary>
+    public double ResearchChance { get; init; }
+
+    /// <summary>A heading for the bench UI ("Components", "Devices", "Upgrades", "Disassembly"); null = none.</summary>
+    public string? Group { get; init; }
 }
 
 public sealed record BuildingDef

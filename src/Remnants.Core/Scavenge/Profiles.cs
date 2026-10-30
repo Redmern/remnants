@@ -215,6 +215,7 @@ public static class ProfileDeriver
             accuracy *= arms;
             if (a.Pattern != AttackPattern.Melee) accuracy *= unit.Body.RegionEfficiency(BodyRegion.Head);
             accuracy += unit.Hook(PerkHooks.AccuracyBonus);
+            if (a.Pattern != AttackPattern.Melee) accuracy += unit.Equipment.Values.Sum(id => data.Items.TryGetValue(id, out var gear) ? gear.RangedAccuracy : 0);
 
             var damageScale = 1 + (unit.Get(AttributeKind.Strength) - 50) / 100 * a.StrengthScaling;
             if (a.Pattern == AttackPattern.Melee) damageScale *= arms * (1 + unit.Hook(PerkHooks.MeleeDamageBonus));
@@ -232,7 +233,7 @@ public static class ProfileDeriver
             foreach (var a in item.Actions)
                 Add(a, item.Id, unit.Body[part].Efficiency);
         // Drones and devices have no fists.
-        if (result.All(r => r.Id != combat.Unarmed.Id) && unit.Kind is not (UnitKind.Drone or UnitKind.Device)) Add(combat.Unarmed, null);
+        if (result.All(r => r.Id != combat.Unarmed.Id) && unit.Kind is not (UnitKind.Drone or UnitKind.Device or UnitKind.Decoy)) Add(combat.Unarmed, null);
         return result;
     }
 }

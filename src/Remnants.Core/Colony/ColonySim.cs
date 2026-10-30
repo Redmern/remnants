@@ -216,6 +216,15 @@ public sealed class ColonySim
     public IReadOnlyList<(string Tier, double Chance)> QualityChances(Building building, RecipeDef recipe) =>
         CraftingSystem.QualityChances(State, Data, Scavenge, building, recipe);
 
+    /// <summary>Whether a consumer building is fed by the grid now (the hook other features read; see <see cref="Colony.Power"/>).</summary>
+    public bool IsPowered(Building building) => Colony.Power.IsPowered(State, building);
+
+    /// <summary>The grid's generators, banks and consumers with what each did last tick (empty without electronics data).</summary>
+    public List<PowerNode> PowerNodes() => Colony.Power.Nodes(State, Data);
+
+    /// <summary>Total battery capacity on the grid.</summary>
+    public double PowerStorageCapacity => Colony.Power.StorageCapacity(State, Data);
+
     /// <summary>The scavenge party for the active expedition, from the members' current colony state.</summary>
     /// <summary>The active expedition's phase now, or null when no party is out.</summary>
     public ExpeditionPhase? CurrentExpeditionPhase => State.Expedition?.PhaseAt(State.Tick);
@@ -313,6 +322,7 @@ public sealed class ColonySim
 
     public void Tick()
     {
+        Colony.Power.Run(State, Data);
         ProductionSystem.Run(State, Data);
         HarvestSystem.Run(State, Data);
         CraftingSystem.Run(State, Data, Scavenge, _rng, this);
@@ -365,6 +375,7 @@ public sealed class ColonySim
             SetNightShift c => DayNightHandlers.SetNightShift(this, c),
             SetHarvest c => HarvestHandlers.Set(this, c),
             InstallFloodlight c => DayNightHandlers.InstallFloodlight(this, c),
+            SetPower c => Colony.Power.SetPower(this, c),
             RepairBuilding c => WeatherHandlers.Repair(this, c),
             global::Remnants.Core.Story.TakeCall or global::Remnants.Core.Story.AdvanceDialogue or global::Remnants.Core.Story.ChooseDialogue
                 or global::Remnants.Core.Story.LaunchStoryMission => global::Remnants.Core.Story.Campaign.Execute(this, command),
@@ -387,6 +398,8 @@ public sealed class ColonySim
             if (r.Item is not null && !scavenge.Items.ContainsKey(r.Item)) throw new GameDataException($"Recipe '{r.Id}': unknown item '{r.Item}'.");
             foreach (var id in r.ItemInputs.Keys)
                 if (!scavenge.Items.ContainsKey(id)) throw new GameDataException($"Recipe '{r.Id}': unknown input item '{id}'.");
+            foreach (var id in r.Byproducts.Keys)
+                if (!scavenge.Items.ContainsKey(id)) throw new GameDataException($"Recipe '{r.Id}': unknown byproduct item '{id}'.");
         }
         if (data.Schematics.All.Keys.Where(id => !scavenge.Schematics.All.ContainsKey(id)).FirstOrDefault() is { } missing)
             throw new GameDataException($"Schematic '{missing}' is in the colony data but not in the scavenge data (load both from one schematics.json).");

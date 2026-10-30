@@ -82,6 +82,10 @@ public sealed class ScavengeSim
             RecallDrone => Drones.Recall(this, unit!),
             MarkTarget c => Drones.Mark(this, unit!, c),
             DropPayload c => Drones.Drop(this, unit!, c),
+            DroneHeal c => DroneRoles.Heal(this, unit!, c),
+            DroneLoad c => DroneRoles.Load(this, unit!, c),
+            DroneFerry => DroneRoles.Ferry(this, unit!),
+            DroneFire c => DroneRoles.Fire(this, unit!, c),
             _ => ScavengeResult.Fail(ScavengeError.UnknownCommand, $"Unknown command {command.GetType().Name}."),
         };
 
@@ -150,6 +154,11 @@ public sealed class ScavengeSim
         unit.Ap = Profile(unit).MaxAp;
         if (State.Round == 1 && unit.FirstRoundAp != 0) unit.Ap = Math.Max(1, unit.Ap + unit.FirstRoundAp);
         if (braced) unit.Ap = Math.Max(1, unit.Ap - Data.Rules.Fog.Brace.NextTurnApPenalty);
+        if (unit.EmpUntilRound >= State.Round)
+        {
+            unit.Ap = 0;
+            State.Log(new(State.Round, ScavengeEventType.EmpBurst, $"{unit.Name} is still down from the EMP.", unit.Id, Pos: unit.Pos));
+        }
     }
 
     /// <summary>Bleeding ticks down, then everyone conscious (except idle NPCs) is ordered by initiative.</summary>
@@ -170,12 +179,13 @@ public sealed class ScavengeSim
         Drones.RoundStarted(this);
         Network.RoundStarted(this);
         Interference.RoundStarted(this);
+        ElectronicWarfare.RoundStarted(this);
         MissionRules.RoundStarted(this);
         if (State.Finished) return;
 
         // Drones fly on their operator's AP and cameras only watch: neither takes turns.
         State.TurnOrder = State.Units
-            .Where(u => u.IsActive && u.Side != Unit.NeutralSide && u.Kind != UnitKind.Drone
+            .Where(u => u.IsActive && u.Side != Unit.NeutralSide && u.Kind is not (UnitKind.Drone or UnitKind.Decoy)
                         && (u.Kind != UnitKind.Device || Profile(u).Actions.Count > 0))
             .Select(u => (u.Id, Profile(u).Initiative))
             .OrderByDescending(t => t.Initiative)
@@ -262,6 +272,7 @@ public sealed class ScavengeSim
             Drones.Destroyed(State, unit);
             return;
         }
+        if (unit.Kind == UnitKind.Decoy) return;
         if (unit.Kind == UnitKind.Device) Hacking.UnitKilled(this, unit);
 
         var drops = unit.Kind == UnitKind.Enemy && unit.EnemyDefId is { } enemyId
@@ -352,7 +363,8 @@ public sealed class ScavengeSim
             {
                 if (!unit.IsActive) break;
                 if (!watcher.IsActive || watcher.Reactions <= 0) continue;
-                var sees = Detection.Spots(Data, State, watcher, unit) || Detection.SeesRevealed(Data, State, watcher, unit);
+                var sees = Detection.Spots(Data, State, watcher, unit) || Detection.SeesRevealed(Data, State, watcher, unit)
+                           || ElectronicWarfare.SharesOverwatch(this, watcher, unit);
                 if (!sees) continue;
                 var action = Profile(watcher).Actions
                     .Where(a => Drones.CanStrike(a, unit) && Combat.CheckReach(Data, State.Map, watcher.Pos, a, unit.Pos) == ScavengeError.None)

@@ -52,13 +52,20 @@ namespace Remnants.Core.Serialization;
 /// are converted by <see cref="MigrateFood"/>: the single food pool becomes a mix of potatoes, beans, corn and canned
 /// food of the same food value, Simple Meals become Boiled Potatoes and Hearty Stew becomes Stew (by food value), their
 /// Kitchen orders follow (a paid batch gives its food back), and farms keep growing potatoes, already ripe.
+/// Version <see cref="ElectronicsVersion"/> (18) adds electronics and power: the grid (<see cref="ColonyState.Power"/>: switched-off buildings, battery charge,
+/// the breaker) and the charging bench (<see cref="ColonyState.Charging"/>), and carries the scavenge run's decoys,
+/// EMP stuns, spent charges and secured cargo (<see cref="ScavengeSave"/> version 10). The migration is keyed on the data,
+/// not the number: a save without them loads with an empty grid (everything on, batteries empty) and nothing charging.
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 17;
+    public const int Version = 18;
 
     /// <summary>The save version that brought food and cooking (one constant so a renumbering on merge is one edit).</summary>
     public const int FoodVersion = 17;
+
+    /// <summary>The save version that brought electronics and power.</summary>
+    public const int ElectronicsVersion = 18;
     private const int OldestVersion = 1;
 
     /// <summary>Old blueprint and datashard item ids and the schematics they became (version 13).</summary>
