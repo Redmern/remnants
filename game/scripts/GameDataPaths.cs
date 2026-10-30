@@ -102,7 +102,7 @@ public static class GameDataPaths
                 return ScavengeDataLoader.LoadFromDirectory(dir);
         return ScavengeDataLoader.LoadFromJson(ReadEmbedded("items.json"), ReadEmbedded("enemies.json"),
             ReadEmbedded("zones.json"), ReadEmbedded("scavenge.json"), ReadEmbedded("perks.json"), ReadEmbedded("cybernetics.json"), ReadEmbedded("electronics.json"),
-            ReadEmbedded("schematics.json"), ReadEmbedded("schematics.electronics.json"));
+            ReadEmbedded("gear_mods.json"), [ReadEmbedded("schematics.json"), ReadEmbedded("schematics.electronics.json"), ReadEmbedded("schematics.gearmods.json")]);
     }
 
     private static GameData LoadFresh()
@@ -128,8 +128,9 @@ public static class GameDataPaths
     private static GameData LoadEmbedded() =>
         GameDataLoader.LoadFromJson(ReadEmbedded("resources.json"), ReadEmbedded("jobs.json"), ReadEmbedded("buildings.json"), ReadEmbedded("rules.json"),
             ReadEmbedded("recipes.json"), ReadEmbedded("perks.json"), ReadEmbedded("cybernetics.json"), ReadEmbedded("weather.json"),
-            ReadEmbedded("food.json"), ReadEmbedded("electronics.json"), ReadEmbedded("schematics.json"), ReadEmbedded("schematics.food.json"),
-            ReadEmbedded("schematics.electronics.json"));
+            ReadEmbedded("food.json"), ReadEmbedded("electronics.json"), ReadEmbedded("gear_mods.json"),
+            [ReadEmbedded("schematics.json"), ReadEmbedded("schematics.electronics.json"), ReadEmbedded("schematics.food.json"),
+             ReadEmbedded("schematics.gearmods.json")]);
 
     private static string ReadEmbedded(string file)
     {

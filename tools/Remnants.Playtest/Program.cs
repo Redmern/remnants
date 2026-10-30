@@ -2,8 +2,8 @@ using Remnants.Core.Data;
 using Remnants.Core.Scavenge;
 using Remnants.Playtest;
 
-// Usage: dotnet run --project tools/Remnants.Playtest -- [--story [--prompt=N]] [--days=N] [--seeds=A..B | --seed=N] [--quiet] [--trace] [--no-expeditions] [--bold] [--no-raids | --fight] [--data=DIR]
-//        dotnet run --project tools/Remnants.Playtest -- --zone=outskirts|all [--runs=N] [--party=N] [--trace] [--no-defenses] [--kit=fog|geared|tech|hack|drone|hacker|peg|mech|powered|cyborg|network] [--carbines=N] [--carbine-quality=fine|crude] [--armor] [--no-tech] [--coop=N] [--hour=H[,H...]] [--weather=KIND[,KIND...]|all]
+// Usage: dotnet run --project tools/Remnants.Playtest -- [--story [--prompt=N]] [--days=N] [--seeds=A..B | --seed=N] [--quiet] [--trace] [--no-expeditions] [--bold] [--no-mods] [--no-raids | --fight] [--data=DIR]
+//        dotnet run --project tools/Remnants.Playtest -- --zone=outskirts|all [--runs=N] [--party=N] [--trace] [--no-defenses] [--kit=fog|geared|tech|hack|drone|hacker|peg|mech|powered|cyborg|network] [--carbines=N] [--carbine-quality=fine|crude] [--armor] [--no-tech] [--coop=N] [--hour=H[,H...]] [--weather=KIND[,KIND...]|all] [--mods=basic|full|stealth|network]
 var options = args.Where(a => a.StartsWith("--")).Select(a => a[2..].Split('=', 2)).ToDictionary(p => p[0], p => p.Length > 1 ? p[1] : "");
 var days = int.Parse(options.GetValueOrDefault("days", "40"));
 var dataDir = options.GetValueOrDefault("data", Path.Combine(AppContext.BaseDirectory, "data"));
@@ -13,7 +13,7 @@ var seeds = options.TryGetValue("seed", out var one) ? [ulong.Parse(one)]
 var quiet = options.ContainsKey("quiet");
 var bot = new BotOptions
 {
-    Expeditions = !options.ContainsKey("no-expeditions"), Bold = options.ContainsKey("bold"),
+    Expeditions = !options.ContainsKey("no-expeditions"), Bold = options.ContainsKey("bold"), Mods = !options.ContainsKey("no-mods"),
     StoryPrompt = int.Parse(options.GetValueOrDefault("prompt", "0")), FightRaids = options.ContainsKey("fight"),
 };
 
@@ -41,7 +41,7 @@ if (options.TryGetValue("zone", out var zoneArg))
             players: int.Parse(options.GetValueOrDefault("coop", "1")), tech: !options.ContainsKey("no-tech"),
             carbines: int.Parse(options.GetValueOrDefault("carbines", "0")), armor: options.ContainsKey("armor"),
             carbineQuality: options.GetValueOrDefault("carbine-quality", ""),
-            hour: hour, weather: weather));
+            hour: hour, weather: weather, mods: options.GetValueOrDefault("mods", "")));
     return;
 }
 

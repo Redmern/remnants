@@ -96,6 +96,14 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   `rot_deg`, scaled by chest height for bodies other than the adult male). Body → torso; weapon → hand, else back (a
   missing arm drops it to the back; a prosthetic arm holds it); tool → back, else chest, else hand. Colony survivors
   carry no gear in Core, so the colony shows prosthetics only.
+- `GearModels` (purely visual, used by `SurvivorDressing` for field units, portraits and the Gear Bench render): a modded
+  item id resolves to its base model `item_{definedId}`; each mod's model (a code-side map from mod item id to the
+  asset id, else the data's `model`, else nothing) is parented under the gear's `mod_{slot}` node (the glb node, else the
+  manifest `mod_slots` point), offset by minus its `attach.mount`. Node choice: the mod model's `params.slots`, then the
+  data slot (`stock` → `mod_stock` else `mod_grip`; `visor` → `mod_visor` else `mod_filter`, a filter the other way).
+  Mods with `params.apply = "recolor"` (camo, waterproofing) recolour the garment's materials named in `params.recolor`
+  to `style.json` `palette[value]` (and `params.roughness`). Headgear hangs on the `head` socket. Missing models,
+  nodes or a manifest without `mod_slots` leave the gear plain.
 - `scripts/HudTheme` — the one `Theme` for every screen's HUD: worn-metal 9-slice panels, bevelled buttons with hover /
   pressed / disabled / focus states, tabs, lists, sliders, tooltips, scrollbars, progress bars, the bundled fonts; type
   variations (`Card`, `CardSelected`, `Inset`, `Chip`, `Toast` panels; `Title`, `Display`, `Heading`, `Muted`, `Small`,
@@ -129,7 +137,7 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   `BuildingPanel` (level pips, worker portraits, upgrade cost chips and Town Hall cap), `BuildMenu` (category filter,
   grid with costs, locks and tooltips), `EventLog` (filterable, collapsible feed with icons; first-time tips from
   `Advice`; raises toasts for deaths, births, departures, a party's arrival and return, lost limbs, recruits),
-  `ExpeditionPanel`, `WorldMapPanel`, `MedBayPanel`, `ProductionPanel`, `InventoryPanel`, `AfterActionDialog` (who came
+  `ExpeditionPanel` (Weapon / Body / Head / Tool per member), `WorldMapPanel`, `MedBayPanel`, `ProductionPanel`, `InventoryPanel`, `GearBenchPanel` (below), `AfterActionDialog` (who came
   home with injury chips, who was lost, recruits, loot). Esc closes the topmost panel, then opens the pause menu
   (resume, save, load, settings, main menu, quit). Read Core state, call the session; no rules. Where the UI
   needs a rule Core exposes a query (`MaxUpgradeLevel`, `MaxPartySize`, `HealPerTick`/`HealEta`, `IsWorsening`,
@@ -415,6 +423,22 @@ All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `fo
 - **Saves**: version 3 adds partners, parents, mood, pregnancies, growth, homes and `ColonyState.Relationships`.
   Version 2 (and 1) saves load: their children are placed on the growth track by age (no aptitude, so they change
   only by training) and everything else starts empty/content.
+
+### Gear Bench (UI)
+
+`GearBenchPanel` (an overlay, from the "Gear Bench" button on the production panel of a `rules.benches` building):
+the colony's moddable gear grouped (weapons, armor and clothing, headgear) plus survivors' fitted gun arms, each with its
+mod chips; the picked piece's model with its mods (`PortraitStudio.Object`), Mk pips, the Mk kit upgrade (needs the kit
+and a `rules.upgradeAt` building), and every slot of its type: the mod in it with Remove, the fitting mods in the stores
+(hover previews, click fits; `GearBench.Install` says why one cannot), or locked with the Mk that opens one more. The
+compare column puts `GearBench.Stats` of the build next to the previewed one with good/bad deltas (weapons: accuracy,
+damage, range, AP, noise, reveal; worn gear: armor per region, melee armor, injury resist, move noise, stealth, carry;
+weight and slots for both), the gained and lost effect tags, and a body silhouette of armor per region. A strip lists
+the mod and kit orders in every building's queue (right-click cancels) with a picker to queue one (`CanQueue` reasons).
+Network-grade mods are cyan (`GearText`), nothing else is. In the field `UnitPanel` shows each piece as "Pistol Mk II"
+with mod chips, and with Jury-rig (`rules.fieldHook`) on the unit's turn Fit / Remove buttons (`FieldMod`); attack
+previews add mod tags under the hit chance: true AP from `Combat.ApCost` ("+1 AP close"), extra banes that apply to
+the target (EMP, SHOCK, INCENDIARY) and armor pierce.
 
 ## Crafting tiers
 
@@ -1125,6 +1149,75 @@ buildings join the colony data (`GameData.Electronics`). Core: `Data/Electronics
 - **Saves**: colony 18 (`Power`, `Charging`), scavenge 10 (decoys, EMP stuns, charges, secured cargo); keyed on presence, so
   older saves load with an empty grid and nothing charging.
 - Tests: `ElectronicsTests.cs` (data, power, disassembly, field devices, drone roles, saves), `ElectronicsNetTests`.
+## Gear mods
+
+Weapon, armor and clothing mods and Mk II / III upgrades, one framework for all gear. Data: `gear_mods.json` (rules, slots,
+gear types with their slots and slot counts per Mk, the moddable gear and its upgrade family, the marks, the mods and their
+effects, upgrade kits, headgear, zone biomes, extra enemy tags / drops / terminal loot, recipes) and
+`schematics.gearmods.json` (the gated recipes' schematics, in the Schematics module's catalogue format). Core:
+`Items/GearMods.cs`, `Items/ItemCatalog.cs`, `Items/GearBench.cs`, `Items/GearModSchematics.cs`, `Scavenge/GearEffects.cs`,
+`Colony/GearBenchHandlers.cs`. Balance: BALANCE.md "Gear mods".
+
+- **A modded piece is an item id**: `base[@quality][+mk2|+mk3][+mod[@quality]]...`, mods in the type's slot order
+  (`GearModsData.Canonical`), so the same build always has the same id and stacks. `ScavengeData.Items` is an `ItemCatalog`:
+  defined items and quality variants as before, and any valid modded id resolved on demand (`GearModsData.Check` + `Build`;
+  cached, pure); enumerating it lists only the defined items, so modded gear is never loot. Everything that stores item ids —
+  the colony inventory, expeditions, units' equipment and packs, caches, fitted prosthetics, saves, the wire, trades between
+  players — carries the mods with no extra state, and `Items.ContainsKey` is the validation (a save or a joining party with a
+  build gear_mods.json does not allow is refused like an unknown item). `ItemDef` gains `Mk`, `Mods`, `UnmoddedId` /
+  `IsModded`; `DefinedId` stays the base item (models, icons, recipe inputs). Recipe item inputs never take modded gear.
+- **Types and slots**: firearm (sight, muzzle, stock, underbarrel: 1 / 2 / 3 at Mk I / II / III), melee (edge, grip, coil:
+  1 / 2 / 3), integrated (a fitted gun arm: one of sight, muzzle, underbarrel), armor (plating, lining, outer, webbing:
+  1 / 2 / 3), clothing (lining, outer, webbing: 1 / 2 / 3), helmet (plating, lining, visor: 1 / 2 / 3), mask (visor: 1).
+  Families (sidearm, long gun, carbine, melee, clothing, armor, plating) name the kit per Mk.
+- **Effects** (`ModEffect`): on attacks (ranged mods change ranged attacks, melee mods melee ones) accuracy (per action id
+  too: a compensator on bursts), damage, reach, noise, reveal, AP, strength scaling, armor pierce, injury multiplier, a
+  scope's close-range AP (`ActionDef.CloseRange` / `CloseApPenalty`, `Combat.ApCost`), a stock's share of the after-moving
+  penalty, extra banes (`ActionDef.ExtraBanes`: EMP coil vs `network` and `device`, incendiary rounds vs `husk`, a shock
+  coil's `stun`), EMP feedback; on the piece armor, melee armor, injury resist, stealth, carry, sight, detection, move noise,
+  camo, weather protection, thermal mask, Network weave, a light. A mod's quality scales it: benefits × the tier's
+  multiplier, drawbacks ÷ it (`ModEffect.AtQuality`). A Mk adds damage and accuracy to weapons, armor (base + bonus, × a
+  multiplier) and coverage to worn gear, and a little weight, and stacks with quality.
+- **Coverage and the Head slot**: `EquipSlot.Head` (`ItemKind.Headgear`: scrap helmet, riot helmet, gas mask, and the
+  weather's dust mask, which the colony still counts as a mask with the gas mask, `weather.json maskItems`). Gear with
+  `coverage` counts its armor only on hits to those regions (`UnitProfile.RegionArmor`, `ArmorAgainst(region, melee)`);
+  gear without it protects every part as before. `Combat.Strike` takes armor for the part hit (after the hit location
+  roll, so the RNG stream is unchanged), less the attack's pierce; injury severity × the attack's injury multiplier ×
+  (1 − the wearer's injury resist).
+- **In the field** (`GearEffects`): a ranged attack after moving this turn (`Unit.Moved`) loses
+  `rules.movedAccuracyPenalty` (the Linked and machines do not), less a stock's share; a **weapon light** in the dark (human
+  sight below `darkBelowSight`: night, or blinding weather) lets its carrier see in a cone toward `Unit.Facing` (set by
+  moves and attacks) as by day (`Detection.Spots`, `Visibility.SideVisible`), costs it stealth, and as a beacon shows it to
+  anyone with line of sight in their pre-dark sight; **camo** adds stealth in zones of its biome (`zoneBiomes`); **thermal
+  masking** adds stealth in the dark against the senses that see through it and hides from thermal eyes (not scanners);
+  **Network weave** adds stealth against the Linked's senses, takes its share off Network interference and EMP feedback,
+  and Husks hear its wearer further (`HuskLure`); **plates** clank (`MoveNoise`: idle enemies in earshot of a move come
+  looking, and parties hear it further; quiet fabric takes it off); **weather protection** keeps a weather's effects off the
+  wearer's senses (`FieldEnvironment.EffectsFor`: waterproofing rain and thunderstorms, a dust filter, the dust mask and
+  the gas mask dust storms, the gas mask fog too); an **EMP shot** may lock up Network-grade
+  parts of the shooter's side within 1 tile (`GearEffects.Feedback`, one roll per part).
+- **Gear Bench** (`GearBench`: pure; `InstallMod`, `RemoveMod`, `UpgradeGear` colony commands): mods go on and come off
+  gear in the inventory (or a survivor's fitted gun arm: `SurvivorId` + `Part`) at an Armory, Workshop or Tailor; fitting
+  into a taken slot swaps the old mod out; removing returns it intact; kits are fitted at the Armory or Tailor, one Mk at a
+  time. Errors `NoBench`, `NotModdable`, `ModDoesNotFit`, `NoFreeModSlot`, `EmptyModSlot`, `WrongKit`, `MaxMk`; event
+  `GearModded`. In the field `FieldMod` (Jury-rig, `field_repair`; `rules.fieldApCost` AP) fits a mod from the pack to an
+  equipped piece or takes one off into the pack (scavenge event `GearModded`).
+- **Crafting**: mod and kit recipes at the Workshop (simple mods, scrap helmet), Tailor (clothing mods, gas mask, clothing
+  kits), Armory (firearm mods, plates, visor, riot helmet, weapon and armor kits) and Electronics Lab (light, laser, shock
+  coil, thermal masking, and the Network-grade EMP coil and weave from Linked cores). Crafted mods roll a quality from the
+  crafter's skill like gear. Mods, kits and schematics are loot; the EMP coil, weave and carbine/plating kit schematics also
+  drop from the Linked and come from terminals.
+- **Schematics** (`GearModSchematics`): the gear schematics are `data/schematics.gearmods.json`, merged into the catalogue
+  by the Schematics module (see "Schematics"); each unlocks the mod and kit recipes it names, so `CheckRecipe` gates them
+  like any other. The default set (iron sights, wrapped grip, sharpened edge, padding, webbing, scrap plates, visor, dust
+  filter, helmets, gas mask, Mk II for sidearms, melee, clothing and armor) has no entry. `GearModSchematics.Has` /
+  `RecipeUnlocked` are `Schematics.Has` / `Schematics.RecipeUnlocked`. Caches, lockers and terminals roll gear schematics
+  from the catalogue by their sources; the EMP coil, weave, shock coil and carbine / plating kit schematics also drop from
+  the Linked (`gear_mods.json drops`, kept in step with the `Kill` sources).
+- **Multiplayer**: the server's party check (`Items.TryGetValue` + slot) validates every build; `fieldMod` is an intent;
+  views carry equipment as ids (a visible unit's mods are as visible as its weapon). Protocol 11.
+- **Saves**: colony 20 (`SaveGame.GearModsVersion`), scavenge 11 (units' `Moved` and `Facing`); older saves load unchanged. Tests: `GearModsTests`,
+  `GearModsNetTests`.
 
 ## Raids and defenses
 
@@ -1183,8 +1276,8 @@ their RNG draws), so the game, the playtest bot and raid tests set it after `New
   approach from the north named after the script's spawn marker (`treeline`) — when it has every marker the script names and
   every structure a Defend objective needs (M5: a built Radio Mast); otherwise on the handmade `perimeter_thN`.
 - **Auto-resolve** (`AutoResolve.Assess` → `RaidAssessment`, `Consequences.Apply`): the formula is in the class remarks and
-  BALANCE.md; gear is handed out from the inventory best-first (`AutoResolve.GearModPower` adds weapon-mod power once that
-  lands). Consequences, from the pressure p: traps spring (re-armable ones wait, used-up ones go), walls on the approach take
+  BALANCE.md; gear is handed out from the inventory best-first per slot (weapon, body, head); modded gear resolves through the
+  item catalogue with its mods applied, so gear mods count as in the field. Consequences, from the pressure p: traps spring (re-armable ones wait, used-up ones go), walls on the approach take
   damage first, then (if they got in) the nearest buildings (`DefenseState.BuildingDamage`; a building at 0 HP is **wrecked**:
   workers leave, `AssignJob` fails with `Wrecked`), spoils (raiders steal the listed resources; Husks trample food through the
   `CropDamage` adapter, which will call the Pantry once food-cooking lands), injuries (p² per defender) and deaths, the Linked
@@ -1208,7 +1301,7 @@ their RNG draws), so the game, the playtest bot and raid tests set it after `New
   and the prep screen (time pauses; defenders, shelter, gates, recall, lead sources, strength bar and breakdown); the raid
   report; the repair queue (TopBar Repairs). `--colony --raid-demo=placement|warning|prep|report` stages each for
   `--screenshot=PATH --quit`.
-- **Saves**: colony version 20 (`SaveGame.RaidsVersion`) adds `Defense`; older saves load with none, and the gap since "the
+- **Saves**: colony version 21 (`SaveGame.RaidsVersion`) adds `Defense`; older saves load with none, and the gap since "the
   last raid" counts from the save's tick. Guards of missing survivors and repairs of missing targets are dropped on load, and
   defense schematics a pre-merge raids save kept in `Defense.KnownSchematics` move into `ColonyState.Schematics`.
 
@@ -1231,6 +1324,7 @@ their RNG draws), so the game, the playtest bot and raid tests set it after `New
   disciplines and the perk tree (see "Perks and study").
 - `electronics.json` / `schematics.electronics.json` — components, devices, drone variants, disassembly, power buildings,
   grid and charging rules; electronics schematics (see "Electronics and power").
+- `gear_mods.json`, `schematics.gearmods.json` — gear mods, Mk kits, headgear and their schematics (see "Gear mods").
 - `cybernetics.json` — tiers, specialisations, the tree's nodes (one per prosthetic item), paired sets, surgery, humanity,
   upkeep and interference (see "Cybernetics" and CYBERNETICS.md).
 - `trade.json` — player trading: offer caps and suspicious amounts, courier timing and building factors, market limits
@@ -1294,8 +1388,8 @@ screenshots); `--scavenge --zone=ID --seed=N` plays the debug mission in another
 selected), `--hour=H` runs to the next H:00, pauses and puts sleepers indoors, `--no-select` clears the selection for
 scenery shots. Schematics: `--schematics-demo` (the crafting town plus a Radio Mast, a Lab L2, known / heard-of / encrypted
 schematics, a research running and the trader parked) with `--archive [--archive-filter=known|todecrypt|heard|unknown]`,
-`--research` (selects the Town Hall), `--radio=calls|trader|contracts` (selects the Radio Mast) and `--collapse-log`.
-HUD shots: `--pause-menu`, `--settings`, `--build-menu`, `--select-survivor=ID`, `--survivor-tab=N` (colony), `--menu-settings` (main menu). Needs a display; on
+`--research` (selects the Town Hall), `--radio=calls|trader|contracts` (selects the Radio Mast) and `--collapse-log`. HUD shots: `--pause-menu`, `--settings`, `--build-menu`, `--select-survivor=ID`, `--survivor-tab=N` (colony), `--menu-settings` (main menu). `--gear-demo` (colony): a town with an Armory, Workshop and Tailor, gear, mods and kits in the stores, the Gear Bench open on a Mk II pistol with a Reflex Sight previewed (`--gear-item=ID`, `--gear-preview=MOD` pick others).
+`--scavenge --gear-demo`: the debug mission with a modded unit (Mk III pistol with scope, suppressor, EMP coil; plated vest; scrap helmet; Jury-rig) aiming at a revealed Linked two tiles off (saves its own still with `--screenshot`). Needs a display; on
 Wayland pass `--display-driver wayland --disable-vsync` so an unfocused window still renders:
 
 ```sh

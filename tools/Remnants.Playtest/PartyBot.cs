@@ -182,11 +182,13 @@ public static class PartyBot
         if (tech && Electronics(sim, unit, playerId, hostiles) is { } device) return device;
 
         // 2. Hit what gives the most expected damage per AP.
-        var attack = profile.Actions.Where(a => a.ApCost <= unit.Ap)
+        // The true AP counts (a scope costs more up close).
+        var attack = profile.Actions
             .SelectMany(a => hostiles
-                .Where(t => Combat.CheckReach(sim.Data, map, unit.Pos, a, t.Pos) == ScavengeError.None)
+                .Where(t => Combat.ApCost(a, unit.Pos, t.Pos) <= unit.Ap && Combat.CheckReach(sim.Data, map, unit.Pos, a, t.Pos) == ScavengeError.None)
                 .Select(t => (Action: a, Target: t, Chance: Combat.ChanceToHit(sim, unit, a, t))))
-            .OrderByDescending(o => o.Chance * (o.Action.MinDamage + o.Action.MaxDamage) / 2 / o.Action.ApCost).ThenBy(o => o.Target.Hp).FirstOrDefault();
+            .OrderByDescending(o => o.Chance * (o.Action.MinDamage + o.Action.MaxDamage) / 2 / Combat.ApCost(o.Action, unit.Pos, o.Target.Pos))
+            .ThenBy(o => o.Target.Hp).FirstOrDefault();
         if (attack.Target is not null && attack.Chance >= 0.2 && (fightLinked || !(IsLinked(sim, attack.Target) && attack.Target.Hp > 25)))
             return new Attack(playerId, unit.Id, attack.Target.Id, attack.Action.Id);
 

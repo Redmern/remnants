@@ -6,7 +6,7 @@ using Remnants.Core.Survivors;
 namespace Remnants.Core.Raids;
 
 /// <summary>A defender in the strength calculation, with the gear handed out from the inventory.</summary>
-public sealed record DefenderStrength(Survivor Survivor, double Strength, string? Weapon, string? Armor, bool Guard, bool Asleep);
+public sealed record DefenderStrength(Survivor Survivor, double Strength, string? Weapon, string? Armor, bool Guard, bool Asleep, string? Helmet = null);
 
 /// <summary>
 /// The strength calculation of a raid (<see cref="AutoResolve.Assess"/>), before any dice. Attack is what reaches the
@@ -32,9 +32,6 @@ public sealed record RaidAssessment(
 /// </summary>
 public static class AutoResolve
 {
-    /// <summary>Extra weapon power from gear mods (weapon-mods branch): item id → power. Null until that lands.</summary>
-    public static Func<string, double>? GearModPower { get; set; }
-
     public static RaidAssessment Assess(ColonySim sim, RaidData raids, Raid raid)
     {
         var state = sim.State;
@@ -59,8 +56,9 @@ public static class AutoResolve
 
         // Defenders and gear.
         var defenders = Defenders(sim, raid).ToList();
-        var weapons = GearPool(sim, ItemKind.Weapon);
-        var armors = GearPool(sim, ItemKind.Armor);
+        var weapons = GearPool(sim, EquipSlot.Weapon);
+        var armors = GearPool(sim, EquipSlot.Body);
+        var helmets = GearPool(sim, EquipSlot.Head);
         var list = new List<DefenderStrength>();
         foreach (var d in defenders.OrderByDescending(Stats.Combat).ThenBy(d => d.Id))
         {
@@ -71,9 +69,10 @@ public static class AutoResolve
                          && DayNight.InWindow(DayNight.Hour(raid.ArrivalTick, sim.Data.Rules), Schedule.SleepWindow(d, sim.Data.Rules.DayNight));
             var weapon = Take(weapons);
             var armor = Take(armors);
+            var helmet = Take(helmets);
             var v = s.PerDefender * (1 - s.SkillWeight + s.SkillWeight * Stats.Combat(d) / 50)
                     * (d.Health / Survivor.MaxHealth) * Math.Max(0.3, d.Body.RegionEfficiency(BodyRegion.Arms));
-            v += (weapon?.Power ?? 0) * s.PerWeaponPower + (armor?.Power ?? 0) * s.PerArmor;
+            v += (weapon?.Power ?? 0) * s.PerWeaponPower + ((armor?.Power ?? 0) + (helmet?.Power ?? 0)) * s.PerArmor;
             if (Schedule.IsTired(d, sim.Data.Rules.DayNight)) v *= sim.Data.Rules.DayNight.Tired.OutputMultiplier;
             if (guard)
             {
@@ -82,7 +81,7 @@ public static class AutoResolve
             }
             if (asleep && !alarm) v *= mods.AsleepShare;
             v *= night * weather.Defense;
-            list.Add(new DefenderStrength(d, v, weapon?.Id, armor?.Id, guard, asleep && !alarm));
+            list.Add(new DefenderStrength(d, v, weapon?.Id, armor?.Id, guard, asleep && !alarm, helmet?.Id));
             lines.Add(new($"{d.Name}{(guard ? " (guard)" : "")}{(weapon is null ? "" : $", {weapon.Name}")}{(asleep && !alarm ? ", woken late" : "")}", v));
         }
         var defense = list.Sum(l => l.Strength);
@@ -123,16 +122,19 @@ public static class AutoResolve
 
     private sealed record Gear(string Id, string Name, double Power);
 
-    /// <summary>The inventory's gear of a kind, best first (weapon: average damage × accuracy, plus mods; armor: armor).</summary>
-    private static List<Gear> GearPool(ColonySim sim, ItemKind kind)
+    /// <summary>
+    /// The inventory's gear for a slot, best first (weapon: average damage × accuracy; body and head: armor). Modded gear ids
+    /// resolve through the item catalogue with their mods applied, so gear mods count as they do in the field.
+    /// </summary>
+    private static List<Gear> GearPool(ColonySim sim, EquipSlot slot)
     {
         var pool = new List<Gear>();
         if (sim.Scavenge is not { } data) return pool;
         foreach (var (id, count) in sim.State.Inventory.Counts)
         {
-            if (!data.Items.TryGetValue(id, out var item) || item.Kind != kind) continue;
-            var power = kind == ItemKind.Weapon
-                ? item.Actions.Select(a => (a.MinDamage + a.MaxDamage) / 2.0 * a.Accuracy).DefaultIfEmpty(0).Max() + (GearModPower?.Invoke(id) ?? 0)
+            if (!data.Items.TryGetValue(id, out var item) || item.Slot != slot || item.Kind is not (ItemKind.Weapon or ItemKind.Armor or ItemKind.Clothing)) continue;
+            var power = slot == EquipSlot.Weapon
+                ? item.Actions.Select(a => (a.MinDamage + a.MaxDamage) / 2.0 * a.Accuracy).DefaultIfEmpty(0).Max()
                 : item.Armor;
             for (var i = 0; i < count; i++) pool.Add(new Gear(id, item.Name, power));
         }

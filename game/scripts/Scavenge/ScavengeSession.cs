@@ -95,6 +95,7 @@ public static class ScavengeSession
         if (Fog.FogDemo.Requested) Fog.FogDemo.Stage(sim, LocalPlayerId);
         if (TechDemo.Requested) TechDemo.Stage(sim, LocalPlayerId);
         if (AnimDemo.Requested) AnimDemo.Stage(sim, LocalPlayerId);
+        if (GearDemo.Requested) GearDemo.Stage(sim, LocalPlayerId);
         return sim;
     }
 

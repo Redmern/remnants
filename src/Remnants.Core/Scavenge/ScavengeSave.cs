@@ -23,10 +23,13 @@ namespace Remnants.Core.Scavenge;
 /// older runs load with steady weather.
 /// Version 10 adds electronics: holo-decoy units and their fade round, EMP stuns, charges spent per device and a party's
 /// secured cargo; an older run loads with none of them.
+/// Version 11 adds gear mods: modded gear ids in equipment, packs and caches, the Head slot, and per unit whether it moved
+/// this turn (<see cref="Unit.Moved"/>) and where it faces (<see cref="Unit.Facing"/>); older runs load with nobody moved
+/// and no facing (a weapon light shines all round until its carrier moves or shoots).
 /// </summary>
 public static class ScavengeSave
 {
-    public const int Version = 10;
+    public const int Version = 11;
     private const int OldestVersion = 1;
 
     private sealed record Envelope(int Version, ScavengeState Scavenge);

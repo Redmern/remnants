@@ -293,24 +293,39 @@ public partial class UnitPanel : PanelContainer
         _profile.AddChild(ProfileChips.Build(profile));
     }
 
+    /// <summary>A Jury-rig order (fit a mod from the pack, or take one off): the screen runs it.</summary>
+    public event Action<IScavengeCommand>? CommandRequested;
+
+    private static readonly EquipSlot[] GearSlots = [EquipSlot.Weapon, EquipSlot.Body, EquipSlot.Head, EquipSlot.Tool];
+
     private void RefreshGear(ScavengeData data, Unit unit, UnitProfile profile)
     {
         Widgets.Clear(_gear);
-        foreach (var slot in new[] { EquipSlot.Weapon, EquipSlot.Body, EquipSlot.Tool })
+        foreach (var slot in GearSlots)
         {
-            var row = Widgets.Row(6);
             var has = unit.Equipment.TryGetValue(slot, out var id);
+            // An empty head slot stays out of the way (most survivors go bare-headed).
+            if (!has && slot == EquipSlot.Head) continue;
+            var row = Widgets.Row(6);
             var def = has ? data.Items.GetValueOrDefault(id!) : null;
-            var fallback = slot switch { EquipSlot.Weapon => "item_weapon", EquipSlot.Body => "item_armor", _ => "item_tool" };
-            row.AddChild(Icons.Rect(def is null ? Icons.Get(fallback, 18) : Icons.Item(def.DefinedId, def.Kind.ToString(), 18), 18,
+            row.AddChild(Icons.Rect(def is null ? Icons.Get(Colony.Ui.ExpeditionPanel.SlotIcon(slot), 18) : Icons.Item(def.DefinedId, def.Kind.ToString(), 18), 18,
                 has ? Palette.Text : Palette.TextDim));
             row.AddChild(Widgets.Label(slot.ToString().ToUpperInvariant(), "Heading"));
-            var name = Widgets.Label(has ? ScavengeText.Item(data, id!) : "—", "", has ? Palette.Text : Palette.TextDim, 14);
+            var name = Widgets.Label(def is not null ? GearText.Title(data, def) : has ? ScavengeText.Item(data, id!) : "—", "", has ? Palette.Text : Palette.TextDim, 14);
             name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             name.HorizontalAlignment = HorizontalAlignment.Right;
             name.ClipText = true;
+            name.MouseFilter = MouseFilterEnum.Stop;
+            name.TooltipText = def is null ? "" : GearText.Line(data, def);
             row.AddChild(name);
             _gear.AddChild(row);
+            if (def is { Mods.Count: > 0 })
+            {
+                var chips = GearText.ModChips(data, def, 12);
+                chips.Alignment = FlowContainer.AlignmentMode.End;
+                _gear.AddChild(chips);
+            }
+            if (def is not null) JuryRig(data, unit, slot, def);
         }
         if (unit.Pack.Count > 0)
         {
@@ -333,5 +348,48 @@ public partial class UnitPanel : PanelContainer
         load.Set(fraction, $"{profile.Load:0.#}/{profile.CarryCapacity:0} kg", fraction > 1 ? Palette.Danger : fraction > 0.85 ? Palette.Warn : Palette.Rust);
         load.TooltipText = "Load / carry capacity. Overloaded units move and fight worse.";
         _gear.AddChild(load);
+    }
+
+    /// <summary>
+    /// Jury-rig (the field_repair perk hook): on the unit's own turn, Fit buttons for the mods in its pack that fit this
+    /// piece and Remove buttons for the mods on it (FieldMod; Core checks the AP and the slots).
+    /// </summary>
+    private void JuryRig(ScavengeData data, Unit unit, EquipSlot slot, ItemDef item)
+    {
+        if (data.GearMods is not { } mods || unit.Hook(mods.Def.Rules.FieldHook) <= 0) return;
+        if (_presenter.ActingUnit?.Id != unit.Id || mods.Moddable(item.DefinedId) is null) return;
+        var fits = GearBench.FittingMods(data, item.Id, unit.Pack).ToList();
+        if (fits.Count == 0 && item.Mods.Count == 0) return;
+        var cost = mods.Def.Rules.FieldApCost;
+        var flow = new HFlowContainer { Alignment = FlowContainer.AlignmentMode.End };
+        flow.AddThemeConstantOverride("h_separation", 4);
+        flow.AddThemeConstantOverride("v_separation", 4);
+        var pid = _presenter.PlayerId;
+        var tag = Widgets.Label($"JURY-RIG {cost} AP", "Small", Palette.TextMuted);
+        tag.CustomMinimumSize = new Vector2(0, 22);
+        flow.AddChild(tag);
+        foreach (var mod in fits)
+        {
+            var outcome = GearBench.Install(data, item.Id, mod);
+            var b = Widgets.TextButton($"+ {ScavengeText.Item(data, mod)}",
+                () => CommandRequested?.Invoke(new FieldMod(pid, unit.Id, ModItemId: mod, Slot: slot)), $"Jury-rig ({cost} AP): {outcome.Message}", "Flat");
+            b.CustomMinimumSize = new Vector2(0, 22);
+            b.AddThemeFontSizeOverride("font_size", 12);
+            b.Disabled = !outcome.Ok || unit.Ap < cost;
+            b.AddThemeColorOverride("font_color", GearText.ModColor(data, mod, Palette.Amber));
+            flow.AddChild(b);
+        }
+        foreach (var mod in item.Mods)
+        {
+            var modSlot = mods.SlotOf(mod)!;
+            var b = Widgets.TextButton($"− {ScavengeText.Item(data, mod)}",
+                () => CommandRequested?.Invoke(new FieldMod(pid, unit.Id, RemoveSlot: modSlot, Slot: slot)), $"Jury-rig ({cost} AP): take it off into the pack", "Flat");
+            b.CustomMinimumSize = new Vector2(0, 22);
+            b.AddThemeFontSizeOverride("font_size", 12);
+            b.Disabled = unit.Ap < cost;
+            b.AddThemeColorOverride("font_color", Palette.TextMuted);
+            flow.AddChild(b);
+        }
+        _gear.AddChild(flow);
     }
 }

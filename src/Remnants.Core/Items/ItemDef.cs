@@ -3,10 +3,10 @@ using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Items;
 
-public enum ItemKind { Weapon, Armor, Clothing, Tool, Consumable, Material, Prosthetic, Schematic, Food }
+public enum ItemKind { Weapon, Armor, Clothing, Tool, Consumable, Material, Prosthetic, Schematic, Food, Mod, Headgear }
 
 /// <summary>Where an item sits when equipped. Anything not equipped is carried in the pack.</summary>
-public enum EquipSlot { Weapon, Body, Tool }
+public enum EquipSlot { Weapon, Body, Tool, Head }
 
 /// <summary>How a unit may move in one move action (chess-like).</summary>
 public enum MovePattern
@@ -110,6 +110,25 @@ public sealed record ActionDef
     /// same way). Gear whose handling depends on the build: a fine Linked carbine shoots straighter, not just harder.
     /// </summary>
     public double QualityAccuracy { get; init; }
+
+    /// <summary>Armor on the target counts for this much less (spikes; gear mods).</summary>
+    public double ArmorPierce { get; init; }
+
+    /// <summary>Injury severity a hit causes × this (a serrated edge's wounds; gear mods).</summary>
+    public double InjuryMultiplier { get; init; } = 1;
+
+    /// <summary>Within this many tiles (Chebyshev) the attack costs <see cref="CloseApPenalty"/> more AP (a scope up close).</summary>
+    public int CloseRange { get; init; }
+    public int CloseApPenalty { get; init; }
+
+    /// <summary>Share of the after-moving accuracy penalty this attack ignores (a stock).</summary>
+    public double MovedPenaltyReduction { get; init; }
+
+    /// <summary>Banes added by gear mods (an EMP coil, incendiary rounds), on top of <see cref="Bane"/>.</summary>
+    public List<BaneDef> ExtraBanes { get; init; } = new();
+
+    /// <summary>Chance per Network-grade prosthetic of the attacker's side within 1 tile to lock up this round when it fires (EMP).</summary>
+    public double NetworkFeedback { get; init; }
 }
 
 /// <summary>
@@ -125,6 +144,41 @@ public sealed record BaneDef
     public double DamageMultiplier { get; init; } = 1;
     public double ArmorPierce { get; init; }
     public int DisruptRounds { get; init; }
+
+    /// <summary>A hit stuns: the target loses AP at the start of its next turn, as if pinned (a shock coil).</summary>
+    public bool Stun { get; init; }
+}
+
+/// <summary>Camo pattern: stealth while in a zone of <see cref="Biome"/> (gear_mods.json zoneBiomes).</summary>
+public sealed record CamoDef
+{
+    public string Biome { get; init; } = "";
+    public double Stealth { get; init; }
+}
+
+/// <summary>
+/// Network weave: the wearer's Network-grade prosthetics lock up less (<see cref="InterferenceReduction"/>, EMP feedback
+/// too), the Linked's sensors and cameras find the wearer harder (<see cref="LinkedStealth"/>), but Husks hear the wearer
+/// <see cref="HuskLure"/> tiles further.
+/// </summary>
+public sealed record WeaveDef
+{
+    public double InterferenceReduction { get; init; }
+    public double LinkedStealth { get; init; }
+    public int HuskLure { get; init; }
+}
+
+/// <summary>
+/// A weapon light. In the dark the carrier sees hostiles within <see cref="Range"/> in a cone of <see cref="ConeDegrees"/>
+/// toward where it last faced, as by day; it loses <see cref="StealthPenalty"/> stealth, and with <see cref="Beacon"/> it is
+/// seen by anyone with line of sight to it within their sight before the dark.
+/// </summary>
+public sealed record LightDef
+{
+    public double Range { get; init; } = 6;
+    public double ConeDegrees { get; init; } = 90;
+    public double StealthPenalty { get; init; }
+    public bool Beacon { get; init; }
 }
 
 /// <summary>What using a consumable does.</summary>
@@ -380,6 +434,47 @@ public sealed record ItemDef
 
     /// <summary>A story quest item (the relay antenna): placed by a mission's map, never looted or crafted.</summary>
     public bool Quest { get; init; }
+    /// <summary>
+    /// Worn gear: share of its armor that counts per body region (missing regions: none). Null protects every part with
+    /// all of it (the gear before coverage existed).
+    /// </summary>
+    public Dictionary<BodyRegion, double>? Coverage { get; init; }
+
+    /// <summary>Worn: injury severity the wearer takes × (1 − this) (padding).</summary>
+    public double InjuryResist { get; init; }
+
+    /// <summary>Worn: extra armor against melee attacks (stab-proof lining).</summary>
+    public double MeleeArmor { get; init; }
+
+    /// <summary>Worn: tiles added to how far hostiles hear this unit move (plates clank; quiet fabric takes it off).</summary>
+    public int MoveNoise { get; init; }
+
+    /// <summary>Worn: stealth in zones of a biome (camo patterns).</summary>
+    public CamoDef? Camo { get; init; }
+
+    /// <summary>Weather ids whose effects do not reach the wearer's senses (waterproofing: rain; filters: dust).</summary>
+    public List<string> WeatherProtection { get; init; } = new();
+
+    /// <summary>Worn: stealth in the dark against the senses that see through it (the Linked, cameras), and no thermal scan.</summary>
+    public double ThermalMask { get; init; }
+
+    /// <summary>Worn: Linked-fibre cloth (see <see cref="WeaveDef"/>).</summary>
+    public WeaveDef? NetworkWeave { get; init; }
+
+    /// <summary>A light (weapon light): in the dark the carrier sees in a cone, and is seen.</summary>
+    public LightDef? Light { get; init; }
+
+    /// <summary>Gear mods: the Mk (1 = as built).</summary>
+    public int Mk { get; init; } = 1;
+
+    /// <summary>Gear mods: the mod item ids fitted, in slot order (empty for unmodded gear).</summary>
+    public List<string> Mods { get; init; } = new();
+
+    /// <summary>Gear mods: the item without its Mk and mods (its quality variant), or null for unmodded gear.</summary>
+    public string? UnmoddedId { get; init; }
+
+    /// <summary>Modded or upgraded gear (an instance with its own id; never stacked with the plain item).</summary>
+    public bool IsModded => UnmoddedId is not null;
 
     /// <summary>Quality variants: the item they are a variant of (null for a defined item).</summary>
     public string? BaseId { get; init; }
@@ -391,13 +486,14 @@ public sealed record ItemDef
     public string DefinedId => BaseId ?? Id;
 
     /// <summary>Gear that comes in quality tiers when crafted.</summary>
-    public bool HasQuality => Slot is not null && !Natural;
+    public bool HasQuality => (Slot is not null || Kind == ItemKind.Mod) && !Natural;
 
     public EquipSlot? Slot => Kind switch
     {
         ItemKind.Weapon => EquipSlot.Weapon,
         ItemKind.Armor or ItemKind.Clothing => EquipSlot.Body,
         ItemKind.Tool => EquipSlot.Tool,
+        ItemKind.Headgear => EquipSlot.Head,
         _ => null,
     };
 }

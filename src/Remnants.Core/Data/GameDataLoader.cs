@@ -4,7 +4,7 @@ using Remnants.Core.Serialization;
 
 namespace Remnants.Core.Data;
 
-/// <summary>Loads definitions from the data/ folder (resources.json, jobs.json, buildings.json, rules.json, recipes.json, perks.json, cybernetics.json, schematics.json, weather.json, food.json).</summary>
+/// <summary>Loads definitions from the data/ folder (resources.json, jobs.json, buildings.json, rules.json, recipes.json, perks.json, cybernetics.json, schematics.json, weather.json, food.json, electronics.json, gear_mods.json).</summary>
 public static class GameDataLoader
 {
     public static GameData LoadFromDirectory(string directory)
@@ -20,7 +20,7 @@ public static class GameDataLoader
 
         return LoadFromJson(Read("resources.json"), Read("jobs.json"), Read("buildings.json"), Read("rules.json"), Read("recipes.json"),
             Optional("perks.json"), Optional("cybernetics.json"), Optional("weather.json"), Optional("food.json"), Optional("electronics.json"),
-            SchematicCatalogLoader.Files(directory).Select(File.ReadAllText).ToArray());
+            Optional("gear_mods.json"), SchematicCatalogLoader.Files(directory).Select(File.ReadAllText).ToArray());
     }
 
     /// <summary>
@@ -31,7 +31,12 @@ public static class GameDataLoader
     /// <param name="electronics">electronics.json (optional): its buildings and recipes join the others (its schematics are a
     /// <c>schematics.electronics.json</c> catalogue extension), and it runs the power grid.</param>
     public static GameData LoadFromJson(string resources, string jobs, string buildings, string rules, string recipes = "[]", string? perks = null,
-        string? cybernetics = null, string? weather = null, string? food = null, string? electronics = null, params string[]? schematics)
+        string? cybernetics = null, string? weather = null, string? food = null, string? electronics = null, params string[]? schematics) =>
+        LoadFromJson(resources, jobs, buildings, rules, recipes, perks, cybernetics, weather, food, electronics, gearMods: null, schematics ?? []);
+
+    /// <summary>As above, with gear_mods.json: its recipes join the others (their schematics are in the catalogue files).</summary>
+    public static GameData LoadFromJson(string resources, string jobs, string buildings, string rules, string recipes, string? perks,
+        string? cybernetics, string? weather, string? food, string? electronics, string? gearMods, string[] schematics)
     {
         var elec = electronics is null ? null : Parse<ElectronicsDef>(electronics, "electronics");
         return new(
@@ -39,7 +44,8 @@ public static class GameDataLoader
             Parse<List<JobDef>>(jobs, "jobs"),
             Parse<List<BuildingDef>>(buildings, "buildings").Concat(elec?.Buildings ?? []),
             Parse<RulesDef>(rules, "rules"),
-            Parse<List<RecipeDef>>(recipes, "recipes").Concat(elec?.AllRecipes() ?? []),
+            Parse<List<RecipeDef>>(recipes, "recipes").Concat(elec?.AllRecipes() ?? [])
+                .Concat(gearMods is null ? [] : Parse<Items.GearModsDef>(gearMods, "gear_mods").Recipes),
             perks is null ? null : Parse<ProgressionDef>(perks, "perks"),
             cybernetics is null ? null : Parse<CyberneticsDef>(cybernetics, "cybernetics"),
             SchematicCatalogLoader.LoadFromJson(schematics ?? []),

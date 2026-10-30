@@ -885,6 +885,113 @@ Kit: two handheld radios, an EMP, a holo-decoy, a noise decoy and a medic (or co
   practice, move it before Town Hall 3 in the build order.
 - Once the weather branch feeds `Power.SolarWeatherFactor`, check solar arrays at dusk and in storms against the bank size.
 - With story-schematics merged, recheck the electronics drop odds against the "first tier-2 schematic by day ~35" target.
+## Gear mods
+
+Weapon, armor and clothing mods, Mk II / III kits and helmets (ARCHITECTURE.md "Gear mods"). The aims: **the early game
+and the Linked carbine pass stay where they were** (mods are something a colony grows into); **mods are the answer to
+the geared kit's known weakness, the Husk fights** (BALANCE.md "Linked carbine pass": a two-handed gun losing accuracy once
+claws injure an arm); **the stealth choices are real choices**, a weapon light or a suppressor each paying for itself
+and costing something; and a fully modded party still loses people in the Iron Corridor and the Black Grid.
+
+The bot (`GearModder`) fits mods the way a careful player would: per slot the mod that scores best for the run (expected
+damage per AP with banes where they bite, noise for a party trying to stay hidden, a light only at night and never
+for a stealthy party, worn gear by armor, padding, carry and stealth against plates' weight and noise). The colony bot
+crafts default-set mods (iron sights, sharpened edges, padding, webbing) once it is armed and has scrap and cloth to spare,
+fits them and any kits at a bench before each expedition, and takes a helmet when it has one. Zone trials take
+`--mods=basic` (the default set and a scrap helmet), `full` (Mk II where a kit exists, every survivor-made mod), `stealth`
+(the same chosen to stay hidden) or `network` (full plus the EMP coil and Network weave).
+
+Tuning on the way (300 runs, `--kit=geared --carbines=2 --mods=full`, runs with a death / wipes):
+
+| pass | Suburb Ruins | Flooded Mall | Rail Depot | Network Relay |
+|---|---|---|---|---|
+| unmodded (this branch) | 22% / 11% | 35% / 17% | 62% / 38% | 83% / 70% |
+| first numbers (2 / 3 / 4 slots, plates +1.5 / +3, reflex +0.08, Mk II +12%) | 1% / 0% | 2% / 0% | 26% / 6% | 47% / 26% |
+| plates halved, smaller accuracy and Mk steps | 3% / 0% | 4% / 0% | 35% / 15% | 60% / 41% |
+| **one slot at Mk I (firearm, armor, clothing 1 / 2 / 3)** | **5% / 0%** | **5% / 0%** | **37% / 15%** | **63% / 45%** |
+
+Ablations on the last line (200 runs, one effect switched off at a time: incendiary rounds, armor from plates / Mk /
+helmet, every accuracy bonus, reach, the Mk damage step, padding, camo, camo + quiet fabric) all land within 1–4 points of
+it; with every effect neutral (the same builds, no numbers) it is back at 26% / 35%. The mods overlap: armor, padding,
+accuracy and stealth each fix the same weakness (Husk fights: runs without a Linked go 21–31% → 0–4%), so no single
+number is the lever. The Linked are not overcome by mods alone (below).
+
+### Results (300 runs each; "before" = this branch without mods, which matches the carbine and night passes)
+
+**Starting kit** — unchanged by the branch (melee: the after-moving penalty is for ranged attacks):
+
+| zone | someone dies | wipe | with basic mods + scrap helmet |
+|---|---|---|---|
+| Town Outskirts | 6% | 2% | 4% / 1% |
+| Scrapyard Flats | 7% | 1% | 6% / 0% |
+| Suburb Ruins | 33% | 10% | 28% / 9% |
+| Flooded Mall | 51% | 22% | 46% / 19% |
+| Rail Depot | 93% | 65% | 92% / 62% |
+| Network Relay | 99% | 86% | — |
+| Core Spire | 100% | 97% | — |
+
+**Geared kit** (no carbine; before → full mods): Outskirts 5% → 0%, Scrapyard Flats 12% → 1%, Suburb Ruins 57% / 40% →
+22% / 12%, Flooded Mall 79% / 64% → 54% / 36%, Rail Depot 99% / 98% → 95% / 90%. Losing someone when a Linked shows stays
+73% (Suburb) and 64% (Mall): without a carbine the Linked still win.
+
+**2 carbines** (before → full → network):
+
+| zone | before | full mods | network mods (EMP coil, weave) |
+|---|---|---|---|
+| Suburb Ruins | 22% / 11% | 5% / 0% | 2% / 0% |
+| Flooded Mall | 35% / 17% | 5% / 0% | 8% / 0% |
+| Rail Depot | 62% / 38% | 37% / 15% | 30% / 9% |
+| Network Relay | 83% / 70% | 63% / 45% | 51% / 28% |
+| Core Spire | — | — | 76% / 62% |
+
+**2 carbines + Linked plating**: Rail Depot 48% / 22% → 14% / 6% with full mods, Network Relay 69% / 52% → 35% / 23%,
+Core Spire → 68% / 57%.
+
+**Stealth trade-offs** (geared kit, full mods vs stealth mods, which take a suppressor and quiet fabric and never a light):
+
+| | Suburb Ruins | Flooded Mall | ambushed / run (Suburb, Mall) |
+|---|---|---|---|
+| day, full | 22% / 12% | 54% / 36% | 0.22, 0.50 |
+| day, stealth | 23% / 13% | 56% / 40% | 0.20, 0.50 |
+| night, unmodded | 89% / 78% | 98% / 92% | 0.23, 0.89 |
+| night, full (weapon light) | 55% / 41% | 80% / 67% | 0.27, 0.81 |
+| night, stealth (no light) | 54% / 36% | 81% / 68% | 0.25, 0.98 |
+
+### Against the targets
+
+| target | result |
+|---|---|
+| Starting kit unchanged | **met**: within 1 point of the carbine pass in every zone (Outskirts 6% / 2%, Suburb 33% / 10%, Mall 51% / 22%) |
+| Carbine pass targets intact (the same kits without mods) | **met** within the noise: 2 carbines Suburb 22% / 11% (22% / 10%), Mall 35% / 17% (31% / 11%: the after-moving penalty costs a shooting party ~4 points), Rail Depot + plating 48% / 22% (45% / 27%) |
+| Default-set mods are a step, not a leap | **met**: Suburb 33% → 28%, Mall 51% → 46% |
+| Stealth trade-offs meaningful | **met**: a light and staying dark are level at night (55% vs 54%, 80% vs 81%), each by a different road (the light sees what comes; the dark is not seen, but is ambushed more in the Mall: 0.98 vs 0.81 a run); by day the suppressor build and the loud one are level |
+| Iron Corridor and Black Grid stay dangerous | **met**: fully modded 2-carbine parties lose someone in 37% of Rail Depot runs and 63% of Network Relay runs; with plating 14% / 35%; Core Spire 68–76% |
+
+Colony sweep after rebasing onto `main` (schematics, story, weather), 60 seeds × 60 days in three blocks of 20, the same
+data without the gear-mod files → with them (the bot crafting and fitting default-set mods; `--no-mods` turns that off):
+expedition deaths 32 over 977 runs → 34 over 966, departures 53 → 60, births 112 → 112, starvation 0 → 0; per block
+median population 8 / 7 / 8 → 7 / 8 / 8, Town Hall 2 day 29.5 / 31.5 / 28.6 → 32.5 / 31.8 / 27.8, Lab 59.0 / 57.5 / 58.6
+→ 60.1 / 59.0 / 59.3, min food 4.1 / 3.7 / 4.2 → 4.0 / 3.7 / 4.0 days. One block of 20 alone swings by more than this
+(expedition deaths 6–19 per block on the same data), so nothing moved outside the noise. The mods cost a few scrap and
+cloth once the colony is armed.
+
+Rerun after the rebase (300 runs): starting kit Outskirts 4% / 1%, Scrapyard Flats 10% / 2%, Suburb Ruins 34% / 11%, Flooded
+Mall 51% / 23%, Rail Depot 92% / 63%; basic mods 3% / 1%, 6% / 1%, 26% / 8%, 48% / 17%; 2 carbines 20% / 8%, 34% / 16%,
+63% / 41% → full mods 3% / 0%, 4% / 0%, 37% / 15% (Network Relay 57% / 39%); geared full mods Suburb 21% / 14%, Mall 54% /
+35%; at night full (light) 55% / 35% and 80% / 69% vs stealth (dark) 53% / 36% and 84% / 72%. All within a few points of the
+tables above.
+
+After the second rebase (food and cooking, electronics and power; 300 runs): starting kit Outskirts 4% / 1%, Scrapyard
+Flats 10% / 2%, Suburb Ruins 34% / 10%, Flooded Mall 50% / 23%; basic mods Suburb 27% / 9%, Mall 49% / 19%; 2 carbines 21% /
+8%, 37% / 17%, Rail Depot 64% / 37% → full mods 2% / 0%, 5% / 0%, 35% / 10%. Colony sweep (20 seeds × 60 days, `--no-mods`
+→ the bot modding): expedition deaths 12 over 331 → 9 over 330, departures 23 → 24, Town Hall 2 day 31.8 → 30.8, Lab 59.5 →
+58.1, min food 3.7 → 3.7 days, starvation 0 → 0.
+
+Watch next: a fully modded mid-game party with two carbines makes Suburb Ruins and Flooded Mall routine (5%). That
+needs Armory 3, two carbines, Mk II kits and tier-2 schematics, so it is late by design, but if it feels too safe the
+levers are the slot counts (Mk II 2 → 1 for firearms) and the Mk II armor step. The weapon light is never turned off (no
+toggle yet). The bot does not use Jury-rig in the field.
+
 
 ## Raids
 

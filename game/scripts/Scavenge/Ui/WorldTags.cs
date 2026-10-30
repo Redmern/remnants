@@ -17,7 +17,8 @@ public partial class WorldTags : Control
 {
     private const float HeadHeight = 2.15f;
 
-    public sealed record Preview(string Text, bool Ambush, bool Unaffordable);
+    /// <summary>An attack preview: the main line, and optional gear-mod tags under it (cyan when they are Network effects).</summary>
+    public sealed record Preview(string Text, bool Ambush, bool Unaffordable, string? Effects = null, bool NetworkEffects = false);
 
     private sealed class Stack
     {
@@ -122,6 +123,8 @@ public partial class WorldTags : Control
         if (_previews.TryGetValue(unit.Id, out var preview))
             lines.Add(new(preview.Text, preview.Ambush ? Palette.Danger : Palette.Text, "ui_attack", 17,
                 Fade: preview.Unaffordable ? 0.6f : 1f, Strong: true));
+        if (preview?.Effects is { } effects)
+            lines.Add(new(effects, preview.NetworkEffects ? Palette.Network : Palette.Amber, "stat_quality", 12, Fade: preview.Unaffordable ? 0.6f : 1f));
 
         var tags = new List<Line>();
         if (unit.Stance == Stance.Overwatch)

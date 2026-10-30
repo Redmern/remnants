@@ -58,13 +58,17 @@ namespace Remnants.Core.Serialization;
 /// not the number: a save without them loads with an empty grid (everything on, batteries empty) and nothing charging.
 /// Version 19 adds player trading (<see cref="ColonyState.Trade"/>: goods in escrow with their food lots, couriers on the
 /// road, settled transaction ids). Older saves load with none of it.
-/// Version <see cref="RaidsVersion"/> (20) adds colony defense and raids (<see cref="ColonyState.Defense"/>: placed defenses,
+/// Version <see cref="GearModsVersion"/> (20) adds gear mods: modded and upgraded gear as item ids
+/// (<c>base[@quality][+mkN][+mod]...</c>, see <see cref="Items.GearModsData"/>) in the inventory, on fitted gun arms and in
+/// the expedition, the Head equipment slot, and the run's <see cref="ScavengeSave"/> version 11. Nothing to migrate: older
+/// saves hold no modded ids and load unchanged; every modded id is checked against gear_mods.json like any item.
+/// Version <see cref="RaidsVersion"/> (21) adds colony defense and raids (<see cref="ColonyState.Defense"/>: placed defenses,
 /// guards, the raid on its way, repairs, building damage, raid reports). Older saves load with no defenses and no raid
 /// pressure, so the grace period applies from the day they are loaded on.
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 20;
+    public const int Version = 21;
 
     /// <summary>The save version that brought food and cooking (one constant so a renumbering on merge is one edit).</summary>
     public const int FoodVersion = 17;
@@ -72,8 +76,10 @@ public static class SaveGame
     /// <summary>The save version that brought electronics and power.</summary>
     public const int ElectronicsVersion = 18;
 
+    /// <summary>The save version that brought gear mods (nothing to migrate; see the remarks).</summary>
+    public const int GearModsVersion = 20;
     /// <summary>The save version that added raids (keyed, so a rebase only renumbers it).</summary>
-    public const int RaidsVersion = 20;
+    public const int RaidsVersion = 21;
     private const int OldestVersion = 1;
 
     /// <summary>Old blueprint and datashard item ids and the schematics they became (version 13).</summary>

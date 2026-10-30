@@ -28,6 +28,8 @@ public sealed record BotOptions
 
     /// <summary>Climb threat after two runs without a death (default: two runs without a death or a new injury).</summary>
     public bool Bold { get; init; }
+    /// <summary>Craft and fit gear mods (off: <c>--no-mods</c>, to measure what they change).</summary>
+    public bool Mods { get; init; } = true;
     /// <summary>Story mode: which option the party bot picks on a field prompt (0 = the first, e.g. talk to the Tally).</summary>
     public int StoryPrompt { get; init; }
 
@@ -175,6 +177,9 @@ public sealed class ColonyBot
             else if (weapons < 3 && State.Stockpile.Get("scrap") >= 6) Queue(workshop, "spear");
             else if (workshop.Level >= 2 && Count("med_kit") < 2 && State.Stockpile.Get("cloth") >= 2 && State.Stockpile.Get("medicine") >= 3)
                 Queue(workshop, "med_kit");
+            // Gear mods from the default set once the colony is armed and has scrap to spare: an edge for each blade, sights for guns.
+            else if (_options.Mods && weapons >= 3 && State.Stockpile.Get("scrap") >= 25 && ModsOnHand() < 2)
+                Queue(workshop, Count("pistol") + Count("rifle") > Count("mod_iron_sight") ? "mod_iron_sight" : "mod_sharpened_edge");
         }
         if (Find("tailor") is { } tailor && tailor.Queue.Count == 0)
         {
@@ -184,6 +189,7 @@ public sealed class ColonyBot
             // A couple of dust masks keep the woodcutter and quarry going (and healthy) in a dust storm.
             else if (Weather.Enabled(Data) && Count("dust_mask") < 2 && State.Stockpile.Get("cloth") >= 4 && State.Stockpile.Get("scrap") >= 3)
                 Queue(tailor, "dust_mask");
+            else if (_options.Mods && State.Stockpile.Get("cloth") >= 12 && ModsOnHand() < 2) Queue(tailor, Count("mod_armor_padding") <= Count("mod_armor_webbing") ? "mod_armor_padding" : "mod_armor_webbing");
         }
         Cook();
         if (Find("armory") is { } armory && armory.Queue.Count == 0 && Count("machete") < 2 && State.Stockpile.Get("scrap") >= 10)
@@ -299,6 +305,40 @@ public sealed class ColonyBot
                 return;
             }
         if (State.Stockpile.Get("scrap") >= 20) Queue(lab, "salvage_circuits");
+    }
+
+    /// <summary>Spare mods in the stores (not fitted).</summary>
+    private int ModsOnHand() => State.Inventory.Counts.Where(kv => _sim.Scavenge!.Items.TryGetValue(kv.Key, out var d) && d.Kind == ItemKind.Mod).Sum(kv => kv.Value);
+
+    /// <summary>
+    /// At a bench, fit the mods and kits in the stores to the gear the next party will take (<see cref="GearModder"/>):
+    /// kits first, then per piece the best build from the spare mods, freed mods back to the stores.
+    /// </summary>
+    private void GearUp(bool night)
+    {
+        var data = _sim.Scavenge!;
+        if (!_options.Mods || data.GearMods is not { } mods || !State.Buildings.Any(b => mods.Def.Rules.Benches.Contains(b.DefId))) return;
+        var context = new ModContext(Night: night);
+        var moddable = State.Inventory.Counts.Keys.Where(id => mods.Moddable(data.Items[id].DefinedId) is not null && data.Items[id].Slot is not null)
+            .OrderByDescending(id => GearModder.Score(data, id, context)).ToList();
+        foreach (var gear in moddable)
+        {
+            var id = gear;
+            if (State.Inventory.Counts.Keys.FirstOrDefault(k => mods.KitFor(data.Items[id].DefinedId, data.Items[id].Mk) == k) is { } kit
+                && _sim.Execute(new UpgradeGear(id, kit)) is { Ok: true })
+                id = GearModsData.Parse(id) is var p ? mods.Canonical(p.BaseId, p.Mk + 1, p.Mods) : id;
+            var spare = State.Inventory.Counts.Where(kv => data.Items[kv.Key].Kind == ItemKind.Mod).SelectMany(kv => Enumerable.Repeat(kv.Key, kv.Value));
+            var (best, used, freed) = GearModder.Best(data, id, spare, context);
+            if (best == id) continue;
+            foreach (var m in freed)
+                if (_sim.Execute(new RemoveMod(id, mods.SlotOf(m)!)) is { Ok: true }) id = mods.Canonical(GearModsData.Parse(id).BaseId, GearModsData.Parse(id).Mk, GearModsData.Parse(id).Mods.Where(x => x != m));
+            foreach (var m in used)
+            {
+                var r = _sim.Execute(new InstallMod(id, m));
+                if (!r.Ok) { Problems.Add($"day {Day:0.0}: fit {m} to {id}: {r.Message}"); break; }
+                id = GearBench.Install(data, id, m) is { Ok: true } o ? o.ItemId! : id;
+            }
+        }
     }
 
     private int Count(string baseId) =>
@@ -558,6 +598,7 @@ public sealed class ColonyBot
 
         var party = adults.OrderByDescending(s => s.Get(AttributeKind.Strength) + s.Get(AttributeKind.Agility) + s.Get(AttributeKind.Endurance))
             .Take(size).ToList();
+        GearUp(night: waitFor is null && _sim.Phase == Remnants.Core.Colony.DayPhase.Night);
         var members = Gear(party);
         // Light, long-keeping field rations when there are any, else a good hot meal for the road.
         var prefer = new[] { "field_rations", "stew", "pie", "preserved_rations" }.FirstOrDefault(id => State.Inventory.Count(id) >= size);
@@ -647,6 +688,7 @@ public sealed class ColonyBot
             if (Take(d => d.Slot == EquipSlot.Body && d.Kind == ItemKind.Armor, d => d.Armor) is { } a) equipment[EquipSlot.Body] = a;
             else if (Take(d => d.Slot == EquipSlot.Body, d => d.Armor) is { } c) equipment[EquipSlot.Body] = c;
             if (Take(d => d.Id == "backpack", _ => 1) is { } bag) equipment[EquipSlot.Tool] = bag;
+            if (Take(d => d.Slot == EquipSlot.Head, d => d.Armor) is { } head) equipment[EquipSlot.Head] = head;
             members.Add(new ExpeditionMember(s.Id, equipment, []));
         }
         // Tech: a hacking kit for the best hacker, a scout drone for the best pilot (pack: the Tool slot holds the backpack).

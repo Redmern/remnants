@@ -236,7 +236,7 @@ public static class RaidBattle
         raid.BattleAttackers = attackers;
         var map = ColonyMap(sim, raids, raid.Approach, gatesClosed: raid.GatesClosed);
         var members = a.Defenders.Select(d => new PartyMember(d.Survivor,
-            new Dictionary<EquipSlot, string>(new[] { (EquipSlot.Weapon, d.Weapon), (EquipSlot.Body, d.Armor) }
+            new Dictionary<EquipSlot, string>(new[] { (EquipSlot.Weapon, d.Weapon), (EquipSlot.Body, d.Armor), (EquipSlot.Head, d.Helmet) }
                 .Where(g => g.Item2 is not null).Select(g => KeyValuePair.Create(g.Item1, g.Item2!))))).ToList();
         if (raid.BattleSeed == 0) raid.BattleSeed = sim.Rng.NextULong() | 1;
         var setup = new MissionSetup(Script(raids, raid, attackers), map, Towers: TowerCount(map));

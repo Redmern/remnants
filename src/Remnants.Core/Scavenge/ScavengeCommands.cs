@@ -26,6 +26,14 @@ public sealed record SetStance(int PlayerId, int UnitId, Stance Stance) : IScave
 /// <summary>Scan the surroundings: more sight and detection until the unit's next turn. Does not end the turn.</summary>
 public sealed record Lookout(int PlayerId, int UnitId) : IScavengeCommand;
 
+/// <summary>
+/// Jury-rig gear in the field (needs <c>gear_mods.json rules.fieldHook</c>, the Jury-rig perk): fit a mod from the pack to an
+/// equipped item (<paramref name="ModItemId"/>), or take the mod in <paramref name="RemoveSlot"/> off it into the pack.
+/// <paramref name="Slot"/> picks the equipped item (default: the weapon). Costs <c>rules.fieldApCost</c> AP.
+/// </summary>
+public sealed record FieldMod(int PlayerId, int UnitId, string? ModItemId = null, string? RemoveSlot = null, Items.EquipSlot Slot = Items.EquipSlot.Weapon)
+    : IScavengeCommand;
+
 /// <summary>Take one item from a cache on or next to the unit's tile.</summary>
 public sealed record PickUp(int PlayerId, int UnitId, int CacheId, string ItemId) : IScavengeCommand;
 
@@ -155,6 +163,8 @@ public enum ScavengeError
     /// <summary>No such prompt is waiting.</summary>
     NoPrompt,
     DroneGrounded,
+    /// <summary>Gear mods: the mod does not fit, the slot is full or empty, or there is no gear there.</summary>
+    CannotMod,
 }
 
 /// <summary>Outcome of a scavenge command. <see cref="EntityId"/> carries e.g. the attacked unit.</summary>

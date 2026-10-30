@@ -21,8 +21,10 @@ public static class Protocol
     /// 9: electronics (droneHeal / droneLoad / droneFerry / droneFire commands, decoy units, device charges, secured
     /// cargo in results, the new events).
     /// 10: player trading (live trade messages in the lobby and between allies; the Trading Post's market messages).
+    /// 11: gear mods: the fieldMod command, modded gear ids and the Head slot in parties and views, units' moved flag and
+    /// facing, the gear-modded event.
     /// </summary>
-    public const int Version = 10;
+    public const int Version = 11;
     public const int DefaultPort = 7777;
 }
 

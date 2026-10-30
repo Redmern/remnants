@@ -17,6 +17,7 @@ public enum ColonyEventType
     HarvestChanged, FoodRotted, FoodPoisoning,
     Brownout, PowerRestored, BreakerTripped, PowerSwitched, DeviceCharged, Disassembled,
     TradeReceived, CourierDispatched, CourierArrived,
+    GearModded,
     RaidWarned, RaidRepelled, RaidBreached, DefenseBuilt, DefenseDestroyed, DefenseUnpaid, BuildingWrecked, GuardPosted,
     ExpeditionRecalled, RaidAtTheFence,
 }

@@ -95,6 +95,19 @@ public sealed record SetNightShift(int BuildingId, bool On) : IColonyCommand;
 /// <summary>Fit a Floodlight (<c>dayNight.floodlightCost</c>) to an outdoor building so it can run a Night Shift at level 1.</summary>
 public sealed record InstallFloodlight(int BuildingId) : IColonyCommand;
 
+/// <summary>
+/// Gear Bench: fit a mod from the inventory to a piece of gear in the inventory, or to a survivor's fitted prosthetic
+/// (<paramref name="SurvivorId"/> + <paramref name="Part"/>: a gun arm). A mod already in that slot comes off into the
+/// inventory. Needs a bench building (<c>gear_mods.json rules.benches</c>).
+/// </summary>
+public sealed record InstallMod(string ItemId, string ModItemId, int? SurvivorId = null, BodyPart? Part = null) : IColonyCommand;
+
+/// <summary>Gear Bench: take the mod in a slot off (it goes back to the inventory intact).</summary>
+public sealed record RemoveMod(string ItemId, string Slot, int? SurvivorId = null, BodyPart? Part = null) : IColonyCommand;
+
+/// <summary>Fit an upgrade kit from the inventory to gear in the inventory: it goes up one Mk (<c>rules.upgradeAt</c>).</summary>
+public sealed record UpgradeGear(string ItemId, string KitItemId) : IColonyCommand;
+
 public enum CommandError
 {
     None,
@@ -224,6 +237,14 @@ public enum CommandError
     DronesGrounded,
     /// <summary>Power: the building neither makes, stores nor draws power.</summary>
     NotOnGrid,
+    /// <summary>Gear mods: no bench (or upgrade) building; the gear or mod or kit does not work that way.</summary>
+    NoBench,
+    NotModdable,
+    ModDoesNotFit,
+    NoFreeModSlot,
+    EmptyModSlot,
+    WrongKit,
+    MaxMk,
 }
 
 /// <summary>

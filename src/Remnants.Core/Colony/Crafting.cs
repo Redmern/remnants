@@ -160,13 +160,13 @@ internal static class CraftingSystem
     public static bool HasItemInputs(ColonyState state, ScavengeData? items, RecipeDef recipe) =>
         recipe.ItemInputs.All(kv => Matching(state, items, kv.Key).Sum(id => state.Inventory.Count(id)) >= kv.Value);
 
-    /// <summary>Inventory ids that satisfy an item input: the item at any quality, worst quality first.</summary>
+    /// <summary>Inventory ids that satisfy an item input: the item at any quality, worst quality first (never modded gear).</summary>
     private static List<string> Matching(ColonyState state, ScavengeData? items, string itemId)
     {
         if (items is null) return [itemId];
         int Rank(string id) => items.Rules.Quality.FindIndex(q => q == items.QualityOf(items.Items[id]));
         return state.Inventory.Counts.Keys
-            .Where(id => items.Items.TryGetValue(id, out var def) && def.DefinedId == itemId)
+            .Where(id => items.Items.TryGetValue(id, out var def) && def.DefinedId == itemId && !def.IsModded)
             .OrderBy(Rank).ThenBy(id => id, StringComparer.Ordinal)
             .ToList();
     }

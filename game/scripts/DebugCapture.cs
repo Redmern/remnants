@@ -32,8 +32,9 @@ public partial class DebugCapture : Node
 
     public static DebugCapture? FromCommandLine()
     {
-        // --fog-demo and --tech-demo save their own stills at the right moment (ScavengeScreen.FogDemo / TechDemo).
-        if (Value("--screenshot") is not { Length: > 0 } path || HasFlag("--fog-demo") || Value("--tech-demo") is { Length: > 0 }) return null;
+        // --fog-demo, --tech-demo and --scavenge --gear-demo save their own stills at the right moment (ScavengeScreen.FogDemo / TechDemo / GearDemo).
+        if (Value("--screenshot") is not { Length: > 0 } path || HasFlag("--fog-demo") || Value("--tech-demo") is { Length: > 0 }
+            || HasFlag("--gear-demo") && HasFlag("--scavenge")) return null;
         return new DebugCapture
         {
             Name = "DebugCapture",

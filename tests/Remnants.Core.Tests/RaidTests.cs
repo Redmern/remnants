@@ -680,4 +680,19 @@ public class RaidIntegrationTests
         Assert.Empty(loaded.State.Defense.KnownSchematics);
         Assert.True(DefenseSchematics.Unlocked(loaded, "barricade"));
     }
+
+    [Fact]
+    public void Gear_mods_count_in_a_defender_s_strength()
+    {
+        var plain = RaidTestData.Colony();
+        plain.AddSurvivor();
+        plain.State.Inventory.Add("pistol");
+        var modded = RaidTestData.Colony();
+        modded.AddSurvivor();
+        modded.State.Inventory.Add("pistol+mk2+mod_iron_sight+mod_suppressor");
+        var a = AutoResolve.Assess(plain, RaidTestData.Real, RaidTestData.Raid(plain, ThreatKind.Husk, 3, Side.North));
+        var b = AutoResolve.Assess(modded, RaidTestData.Real, RaidTestData.Raid(modded, ThreatKind.Husk, 3, Side.North));
+        Assert.Equal("pistol+mk2+mod_iron_sight+mod_suppressor", b.Defenders[0].Weapon);
+        Assert.True(b.Defense > a.Defense);
+    }
 }

@@ -36,6 +36,7 @@ public enum ScavengeEventType
     ObjectiveUpdated, Chatter, MissionPrompt, MissionEnded,
     WeatherChanged, Thunder, Lightning,
     EmpBurst, DecoyDeployed, DecoyGone, NoiseDecoy, DroneHealed, DroneLoaded, DroneFerried, DroneFired, Traced,
+    GearModded,
 }
 
 /// <summary>
