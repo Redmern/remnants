@@ -273,7 +273,7 @@ internal static class ScavengeAi
     private static bool StepToward(ScavengeSim sim, Unit unit, Pos goal)
     {
         var profile = sim.Profile(unit).Movement;
-        var field = Movement.DistanceField(sim.State.Map, profile, goal);
+        var field = Movement.DistanceField(sim.State, unit, profile, goal);
         var here = field.GetValueOrDefault(unit.Pos, int.MaxValue);
         var options = sim.Reachable(unit)
             .Where(kv => kv.Value <= unit.Ap && field.ContainsKey(kv.Key))

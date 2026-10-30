@@ -107,7 +107,13 @@ public static class Movement
     /// Walking distance (terrain-cost weighted, ignoring units) from every tile to <paramref name="target"/>.
     /// The AI uses it to pick the move that closes in best.
     /// </summary>
-    public static Dictionary<Pos, int> DistanceField(TileMap map, MovementProfile profile, Pos target)
+    public static Dictionary<Pos, int> DistanceField(TileMap map, MovementProfile profile, Pos target) => DistanceField(map, profile, target, null);
+
+    /// <summary>The walking distance field around the devices that block <paramref name="mover"/> (a locked door, a locker...).</summary>
+    public static Dictionary<Pos, int> DistanceField(ScavengeState state, Unit mover, MovementProfile profile, Pos target) =>
+        DistanceField(state.Map, profile, target, state.Devices.Count == 0 ? null : p => p != target && Hacking.Blocks(state, mover, p));
+
+    private static Dictionary<Pos, int> DistanceField(TileMap map, MovementProfile profile, Pos target, Func<Pos, bool>? blocked)
     {
         var dist = new Dictionary<Pos, int> { [target] = 0 };
         var queue = new PriorityQueue<Pos, (int, int)>();
@@ -118,7 +124,7 @@ public static class Movement
             foreach (var d in Pos.Neighbours8)
             {
                 var n = p + d;
-                if (!map.InBounds(n) || profile.Cost(map[n]) is null) continue;
+                if (!map.InBounds(n) || profile.Cost(map[n]) is null || blocked?.Invoke(n) == true) continue;
                 if (d.X != 0 && d.Y != 0 && !CornerOpen(map, profile, p, d)) continue;
                 // Cost of stepping onto p from n, so the field reads "cost to walk from n to the target".
                 var cost = key.Item1 + (profile.Cost(map[p]) ?? 1);

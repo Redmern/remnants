@@ -37,11 +37,16 @@ public static class ZoneTrial
     /// <param name="kit">"fog": each member also carries two flares and the first a motion sensor. "geared": a crafted
     /// mid-game kit instead of starting gear — pistol / rifle, padded vest / camo cloak, binoculars, med-kit, bandages,
     /// flares and a motion sensor — and the bot stands and fights the Linked.</param>
+    /// <param name="kit">... "tech": starting gear plus a hacking kit (first member) and a scout drone (second); "hack" / "drone":
+    /// only the one. "hacker": the
+    /// same with a trained crew: Hacking 35 and the Hacking I perk, Drone Piloting 25 with Drone Operator I and Spotter.</param>
+    /// <param name="tech">The bot hacks and flies the drone when it has the gear (off: it carries them and does nothing).</param>
     /// <param name="players">Co-op: this many parties (each a fresh colony's first party, different seeds) on one team;
     /// the zone scales its enemies to the player count. Per-party rates are per party, "someone dies" per mission.</param>
     public static string Run(GameData data, ScavengeData scavenge, string zoneId, int runs, int partySize = 2, Action<string>? trace = null,
-        bool defenses = true, string kit = "", int players = 1)
+        bool defenses = true, string kit = "", int players = 1, bool tech = true)
     {
+        int hacked = 0, hackFailed = 0, flights = 0, dronesLost = 0, marks = 0, fromDevices = 0;
         int partyRuns = 0, partyWipes = 0, partyDeathRuns = 0;
         int ambushed = 0, reactions = 0, defended = 0;
         int deaths = 0, runsWithDeath = 0, wipes = 0, injuredRuns = 0, limbs = 0, items = 0, linkedSeen = 0, runsWithLinked = 0, kills = 0, rounds = 0, stuck = 0;
@@ -66,6 +71,21 @@ public static class ZoneTrial
                 bodies = new Queue<string>(["padded_vest", "camo_cloak", "camo_cloak"]);
                 packs = [["med_kit", "bandage"], ["med_kit", "bandage"], ["bandage"]];
             }
+            if (kit is "tech" or "hacker" or "hack" or "drone")
+            {
+                if (kit != "drone") packs[0].Add("hacking_kit");
+                if (packs.Count > 1 && kit != "hack") packs[1].Add("scout_drone");
+                if (kit == "hacker")
+                {
+                    adults[0].Set(Remnants.Core.Survivors.Skill.Hacking, 35);
+                    adults[0].Perks.Add("hacking_1");
+                    if (adults.Count > 1)
+                    {
+                        adults[1].Set(Remnants.Core.Survivors.Skill.DronePiloting, 25);
+                        adults[1].Perks.UnionWith(["drone_operator_1", "spotter"]);
+                    }
+                }
+            }
             if (fogKit)
             {
                 foreach (var pack in packs) pack.AddRange(["flare", "flare"]);
@@ -81,7 +101,7 @@ public static class ZoneTrial
             allAdults.AddRange(adults);
             }
             var sim = NewScavenge.Create(scavenge, zoneId, (ulong)(seed * 7919), setups);
-            var (results, stats) = PartyBot.PlayAll(sim, setups.Select(s => s.PlayerId).ToList(), trace, defenses: defenses, fightLinked: kit == "geared");
+            var (results, stats) = PartyBot.PlayAll(sim, setups.Select(s => s.PlayerId).ToList(), trace, defenses: defenses, fightLinked: kit == "geared", tech: tech);
             var adultsById = allAdults;
             var result = results.Count == 1 ? results[0] : results[0] with
             {
@@ -120,10 +140,16 @@ public static class ZoneTrial
             ambushed += stats.AmbushedTimes;
             reactions += stats.OverwatchShots;
             defended += stats.DefensesUsed;
+            hacked += stats.Hacked;
+            hackFailed += stats.HackFailed;
+            flights += stats.DroneFlights;
+            dronesLost += stats.DronesLost;
+            marks += stats.Marks;
+            fromDevices += stats.FromDevices;
         }
         var n = Math.Max(1, runs - stuck);
         var sb = new StringBuilder();
-        sb.AppendLine($"zone {zoneId}: {runs} runs, {(players > 1 ? $"{players} allied parties of" : "party")} {partySize} ({(kit == "geared" ? "geared" : "starting gear")}{(kit == "fog" ? " + flares, sensor" : "")}{(defenses ? "" : ", no defenses")}){(stuck > 0 ? $", {stuck} stuck" : "")}");
+        sb.AppendLine($"zone {zoneId}: {runs} runs, {(players > 1 ? $"{players} allied parties of" : "party")} {partySize} ({(kit == "geared" ? "geared" : "starting gear")}{(kit == "fog" ? " + flares, sensor" : "")}{(kit is "tech" or "hacker" or "hack" or "drone" ? $" + {kit} kit{(tech ? "" : " (unused)")}" : "")}{(defenses ? "" : ", no defenses")}){(stuck > 0 ? $", {stuck} stuck" : "")}");
         sb.AppendLine($"  runs with a death {100.0 * runsWithDeath / n:0}%  wipes {100.0 * wipes / n:0}%  deaths/run {deaths / (double)n:0.00}");
         sb.AppendLine($"  runs with new injuries {100.0 * injuredRuns / n:0}%  injuries/run {injuries / (double)n:0.0}  limbs lost/run {limbs / (double)n:0.00}");
         sb.AppendLine($"  items/run {items / (double)n:0.0}  kills/run {kills / (double)n:0.0}  rounds/run {rounds / (double)n:0}");
@@ -131,6 +157,9 @@ public static class ZoneTrial
         var otherRuns = n - runsWithLinked;
         sb.AppendLine($"  runs seeing Linked {100.0 * runsWithLinked / n:0}%  Linked seen/run {linkedSeen / (double)n:0.00}" +
                       (runsWithLinked > 0 ? $"  death rate with Linked {100.0 * deadWithLinked / runsWithLinked:0}% vs without {100.0 * (runsWithDeath - deadWithLinked) / Math.Max(1, otherRuns):0}%" : ""));
+        if (kit is "tech" or "hacker" or "hack" or "drone")
+            sb.AppendLine($"  hacks/run {hacked / (double)n:0.00}  failed (alarms)/run {hackFailed / (double)n:0.00}  lockers+terminals opened/run {fromDevices / (double)n:0.0}" +
+                          $"  drone flights/run {flights / (double)n:0.0}  drones lost {100.0 * dronesLost / n:0}% of runs  marks/run {marks / (double)n:0.00}");
         if (players > 1)
             sb.AppendLine($"  per party: a death in {100.0 * partyDeathRuns / Math.Max(1, partyRuns):0}%  wiped {100.0 * partyWipes / Math.Max(1, partyRuns):0}%  (enemies x{NewScavenge.EnemyScale(scavenge, players):0.##})");
         return sb.ToString();

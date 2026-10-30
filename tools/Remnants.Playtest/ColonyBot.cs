@@ -290,6 +290,7 @@ public sealed class ColonyBot
             return;
         }
 
+        ScoutAhead();
         if (Day < _options.FirstExpeditionDay || State.Tick < _lastReturnTick + _options.ExpeditionCooldownDays * TicksPerDay) return;
         var adults = State.Survivors.Where(s => !s.IsChild && !s.Away && s.PatientAtBuildingId is null && s.Pregnancy is null
                                                 && !s.IsInjured && s.Health >= 80).ToList();
@@ -312,6 +313,20 @@ public sealed class ColonyBot
         var members = Gear(party);
         var launched = _sim.Execute(new LaunchExpedition(zone.Zone.Id, members));
         if (!launched.Ok) Problems.Add($"day {Day:0.0}: launch {zone.Zone.Id}: {launched.Message}");
+    }
+
+    /// <summary>A scout drone in the stores flies over the nearest rumored zone in reach (flown by the best pilot at home).</summary>
+    private void ScoutAhead()
+    {
+        var scavenge = _sim.Scavenge!;
+        if (WorldMap.DroneItem(State, scavenge) is null) return;
+        var target = _sim.WorldZones().Where(z => z.Intel == ZoneIntel.Rumored && z.Zone.TravelDays <= scavenge.Rules.World.DroneScout.MaxTravelDays
+                                                  && State.DroneFlights.All(f => f.ZoneId != z.Zone.Id))
+            .OrderBy(z => z.Zone.Threat).ThenBy(z => z.Zone.TravelDays).ThenBy(z => z.Zone.Id).FirstOrDefault();
+        if (target is null) return;
+        var pilot = State.Survivors.Where(s => !s.IsChild && !s.Away).MaxBy(s => s.Get(Skill.DronePiloting));
+        var sent = _sim.Execute(new SendScoutDrone(target.Zone.Id, pilot?.Id));
+        if (!sent.Ok) Problems.Add($"day {Day:0.0}: scout drone: {sent.Message}");
     }
 
     /// <summary>Hand out the best weapon, body armor and clothing, a backpack, and medical items from the inventory.</summary>
@@ -338,6 +353,11 @@ public sealed class ColonyBot
             if (Take(d => d.Id == "backpack", _ => 1) is { } bag) equipment[EquipSlot.Tool] = bag;
             members.Add(new ExpeditionMember(s.Id, equipment, []));
         }
+        // Tech: a hacking kit for the best hacker, a scout drone for the best pilot (pack: the Tool slot holds the backpack).
+        if (Take(d => d.HackTool is not null, d => d.HackTool!.ChanceBonus) is { } kit)
+            members[party.IndexOf(party.MaxBy(s => s.Get(Skill.Hacking) + s.Get(AttributeKind.Intellect) / 10)!)].Pack!.Add(kit);
+        if (Take(d => d.Drone is not null, _ => 1) is { } drone)
+            members[party.IndexOf(party.MaxBy(s => s.Get(Skill.DronePiloting) + s.Get(AttributeKind.Perception) / 10)!)].Pack!.Add(drone);
         // Medical: one med-kit and bandages spread over the party.
         for (var i = 0; ; i++)
         {

@@ -1,3 +1,4 @@
+using Remnants.Core.Colony;
 using Remnants.Core.Items;
 using Remnants.Core.Scavenge;
 
@@ -5,7 +6,8 @@ namespace Remnants.Playtest;
 
 /// <summary>What one scavenge run looked like from the party's side.</summary>
 public sealed record RunStats(int Rounds, int Kills, int LinkedSeen, int LinkedKills, int ItemsLooted, int Reinforcements,
-    int AmbushedTimes = 0, int OverwatchShots = 0, int DefensesUsed = 0);
+    int AmbushedTimes = 0, int OverwatchShots = 0, int DefensesUsed = 0,
+    int Hacked = 0, int HackFailed = 0, int Overrides = 0, int DroneFlights = 0, int DronesLost = 0, int Marks = 0, int FromDevices = 0);
 
 /// <summary>
 /// Plays the colony's party in a scavenge run through Core commands only, roughly like a careful player:
@@ -14,6 +16,11 @@ public sealed record RunStats(int Rounds, int Kills, int LinkedSeen, int LinkedK
 /// only fights what its side actually sees (stealth hides the Linked). Against the fog (unless <c>defenses</c> is off)
 /// it scans (Lookout) when it hears something it cannot see, throws a flare at where an ambush came from, keeps close to
 /// an ally, and ends idle turns on overwatch, or braced once it has been shot at from the fog.
+/// With a hacking tool (unless <c>tech</c> is off) it hacks lockers and terminals it can reach when nothing hostile is in
+/// sight and the chance is decent (<see cref="HackFloor"/>), a camera that watches it, a relay node once the Linked are
+/// about, and with Override a Linked next to it; it walks to devices worth hacking like to caches. With a scout drone it
+/// launches it when the coast is clear, flies it ahead toward the next goal once a turn, marks a Linked it sees (Spotter),
+/// and recalls it before the battery runs flat or when leaving.
 /// </summary>
 public static class PartyBot
 {
@@ -36,7 +43,7 @@ public static class PartyBot
     /// Allies count as the bot's own for healing and keeping close (it treats its side, not its player, as "us").
     /// </summary>
     public static (List<ExtractionResult> Results, RunStats Stats) PlayAll(ScavengeSim sim, IReadOnlyList<int> playerIds, Action<string>? trace = null,
-        bool recruit = true, bool defenses = true, bool fightLinked = false)
+        bool recruit = true, bool defenses = true, bool fightLinked = false, bool tech = true)
     {
         ScavengeEvent? last = null;
         void Flush()
@@ -62,7 +69,7 @@ public static class PartyBot
             if (state.CurrentUnit is not { PlayerId: { } playerId } unit || !playerIds.Contains(playerId) || !unit.PlayerControlled || state.Round > StallRounds) break;
             foreach (var u in state.Units.Where(u => IsLinked(sim, u) && Detection.SideSees(sim.Data, state, unit.Side, u)))
                 linkedSeen.Add(u.Id);
-            var command = Decide(sim, unit, playerId, recruit, stalls.GetValueOrDefault(unit.Id), defenses, fightLinked);
+            var command = Decide(sim, unit, playerId, recruit, stalls.GetValueOrDefault(unit.Id), defenses, fightLinked, tech);
             // A turn ended without doing anything counts as a stall; any action resets it.
             var ends = command is EndTurn or SetStance;
             if (ends && !acted.Contains(unit.Id)) stalls[unit.Id] = stalls.GetValueOrDefault(unit.Id) + 1;
@@ -85,13 +92,51 @@ public static class PartyBot
         var defended = state.Events.Count(e => e.UnitId is { } d && mine.Contains(d) && e.Type is ScavengeEventType.Braced
             or ScavengeEventType.Lookout or ScavengeEventType.FlareLit or ScavengeEventType.SensorPlaced
             || (e.Type == ScavengeEventType.Overwatch && e.TargetId is null && e.UnitId is { } o && mine.Contains(o)));
-        return (playerIds.Select(sim.ResultFor).ToList(), new RunStats(state.Round, kills, linkedSeen.Count, linkedKills, looted, reinforcements, ambushed, reactions, defended));
+        int Count(ScavengeEventType type) => state.Events.Count(e => e.Type == type && e.UnitId is { } u && mine.Contains(u));
+        var dronesLost = state.Units.Count(u => u.Kind == UnitKind.Drone && u.Status == UnitStatus.Dead && u.PlayerId is { } p && playerIds.Contains(p));
+        var fromDevices = state.Devices.Count(d => d.Used && d.Hacked);
+        return (playerIds.Select(sim.ResultFor).ToList(), new RunStats(state.Round, kills, linkedSeen.Count, linkedKills, looted, reinforcements, ambushed, reactions, defended,
+            state.Events.Count(e => e.Type == ScavengeEventType.Hacked && e.Side is null && e.UnitId is { } h && mine.Contains(h)),
+            Count(ScavengeEventType.HackFailed), Count(ScavengeEventType.Overridden),
+            state.Events.Count(e => e.Type == ScavengeEventType.DroneFlown && e.UnitId is { } d && state.FindUnit(d)?.PlayerId is { } p && playerIds.Contains(p)),
+            dronesLost,
+            state.Events.Count(e => e.Type == ScavengeEventType.Marked && e.UnitId is { } m && state.FindUnit(m)?.PlayerId is { } p && playerIds.Contains(p)),
+            fromDevices));
     }
 
     private static bool IsLinked(ScavengeSim sim, Unit u) =>
         u.Kind == UnitKind.Enemy && u.EnemyDefId is { } id && sim.Data.Enemies[id].Ai == AiKind.Linked;
 
-    private static IScavengeCommand Decide(ScavengeSim sim, Unit unit, int playerId, bool recruit, int stalled, bool defenses, bool fightLinked)
+    /// <summary>The least hack chance the bot takes a try at, by device (a failure shocks, alarms and locks it out).</summary>
+    private static double HackFloor(DeviceKind kind) => kind switch
+    {
+        DeviceKind.Locker => 0.45,
+        DeviceKind.Terminal => 0.45,
+        DeviceKind.Camera => 0.4,
+        DeviceKind.Relay => 0.5,
+        _ => 0.6,
+    };
+
+    /// <summary>Devices this unit could usefully hack now (in reach, not ours, not locked out, chance over the floor).</summary>
+    private static IEnumerable<ZoneDevice> Hackable(ScavengeSim sim, Unit unit, bool linkedAbout)
+    {
+        if (Hacking.Tool(sim.Data, unit) is null) yield break;
+        var state = sim.State;
+        foreach (var d in state.Devices.OrderBy(d => d.Id))
+        {
+            if (!Hacking.Working(state, d) || d.Used || Hacking.ControllerOf(state, d) == unit.Side || Hacking.LockedOut(state, d, unit.Side)) continue;
+            var wanted = d.Kind switch
+            {
+                DeviceKind.Locker or DeviceKind.Terminal => true,
+                DeviceKind.Camera => true,
+                DeviceKind.Relay => linkedAbout,
+                _ => false,
+            };
+            if (wanted && Hacking.Chance(sim, unit, d) >= HackFloor(d.Kind)) yield return d;
+        }
+    }
+
+    private static IScavengeCommand Decide(ScavengeSim sim, Unit unit, int playerId, bool recruit, int stalled, bool defenses, bool fightLinked, bool tech)
     {
         var state = sim.State;
         var map = state.Map;
@@ -137,6 +182,25 @@ public static class PartyBot
         if (attack.Target is not null && attack.Chance >= 0.2 && (fightLinked || !(IsLinked(sim, attack.Target) && attack.Target.Hp > 25)))
             return new Attack(playerId, unit.Id, attack.Target.Id, attack.Action.Id);
 
+        // 2a. Tech: hack what is worth it in reach, work the drone.
+        var linkedAbout = hostiles.Any(h => IsLinked(sim, h)) || state.Units.Any(u => IsLinked(sim, u) && u.Ai.Mode == AiMode.Hunting);
+        var hackTool = Hacking.Tool(sim.Data, unit)?.HackTool;
+        if (tech && hackTool is not null && unit.Ap >= Hacking.ApCost(sim.Data, unit))
+        {
+            var visibleNow = sim.VisibleTo(playerId);
+            var inReach = Hackable(sim, unit, linkedAbout)
+                .Where(d => visibleNow.Contains(map.Index(d.Pos)) && d.Pos.Chebyshev(unit.Pos) <= hackTool.Range
+                            && (d.Pos.Chebyshev(unit.Pos) <= 1 || map.HasLineOfSight(sim.Data, unit.Pos, d.Pos)))
+                .FirstOrDefault(d => hostiles.Count == 0 || d.Kind is DeviceKind.Camera or DeviceKind.Relay);
+            if (inReach is not null) return new Hack(playerId, unit.Id, inReach.Id);
+            if (unit.Hook(PerkHooks.CanHackLinked) > 0
+                && hostiles.FirstOrDefault(h => IsLinked(sim, h) && h.Pos.Chebyshev(unit.Pos) <= hackTool.Range) is { } turn
+                && Hacking.Chance(sim, unit, null, turn) >= 0.4)
+                return new Hack(playerId, unit.Id, TargetId: turn.Id);
+        }
+        // The drone gets the last AP of a turn (or the turn when there is nowhere to walk), so it never slows the party.
+        if (tech && TryDrone(sim, unit, playerId, hostiles, lastAp: unit.Ap <= 1) is { } droneOrder) return droneOrder;
+
         // 2b. Against the fog when not fleeing: a Linked in view but out of reach is left to come to us on overwatch;
         // shot at from the fog with nothing to see, brace (the next ambush gains nothing).
         if (defenses && fightLinked && unit.Ap == profile.MaxAp)
@@ -151,13 +215,7 @@ public static class PartyBot
 
         // 3. Decide where to go: out when hurt, loaded, late or out of caches; else the nearest cache.
         // A Linked in sight is beyond a starting party: break off and head out.
-        var leaving = (!fightLinked && hostiles.Any(h => IsLinked(sim, h)))
-                      || unit.Hp < unit.MaxHp * 0.5
-                      || unit.CarryingId is not null
-                      || profile.Load >= profile.CarryCapacity * 0.8
-                      || state.Round >= MaxRounds
-                      || allies.Any(a => a.Status == UnitStatus.Downed)
-                      || state.Caches.Count == 0;
+        var leaving = Leaving(sim, unit, hostiles, allies, fightLinked, tech);
         if (leaving && map.IsExit(unit.Pos)) return new Extract(playerId, unit.Id);
 
         var strangers = recruit
@@ -186,13 +244,17 @@ public static class PartyBot
             goals.AddRange(strangers.OrderBy(n => n.Pos.Chebyshev(unit.Pos)).Select(n => n.Pos));
             goals.AddRange(state.Caches.Where(c => c.Items.Any(id => profile.Load + sim.Data.Items[id].Weight <= profile.CarryCapacity + 1e-9))
                 .OrderBy(c => c.Pos.Chebyshev(unit.Pos)).Select(c => c.Pos));
+            if (tech)
+                goals.AddRange(Hackable(sim, unit, linkedAbout).Where(d => d.Kind is DeviceKind.Locker or DeviceKind.Terminal
+                                                                           && state.Explored.GetValueOrDefault(unit.Side)?.Contains(map.Index(d.Pos)) == true)
+                    .OrderBy(d => d.Pos.Chebyshev(unit.Pos)).Select(d => d.Pos));
         }
         goals.AddRange(map.Exits.OrderBy(e => e.Chebyshev(unit.Pos)));
 
         var reachable = sim.Reachable(unit).Where(kv => kv.Value <= unit.Ap).ToList();
         foreach (var goal in goals.Take(6))
         {
-            var field = Movement.DistanceField(map, profile.Movement, goal);
+            var field = Movement.DistanceField(state, unit, profile.Movement, goal);
             if (!field.TryGetValue(unit.Pos, out var here)) continue;
             // Among equally good steps, one next to an ally (backs covered against ambushes).
             bool Covered(Pos p) => defenses && allies.Any(x => x.Id != unit.Id && x.IsActive && x.Pos.Chebyshev(p) <= 1);
@@ -207,7 +269,59 @@ public static class PartyBot
                 return new Move(playerId, unit.Id, aside);
         }
         if (map.IsExit(unit.Pos) && (leaving || state.Round > MaxRounds / 2)) return new Extract(playerId, unit.Id);
+        if (tech && TryDrone(sim, unit, playerId, hostiles, lastAp: true) is { } idleDrone) return idleDrone;
         return defenses ? Hold(sim, unit, playerId, hostiles, contacts, shotAt) : new EndTurn(playerId, unit.Id);
+    }
+
+    /// <summary>Out when hurt, loaded, late, an ally is down, or nothing is left to loot (or hack); a starting party also on sighting a Linked.</summary>
+    private static bool Leaving(ScavengeSim sim, Unit unit, List<Unit> hostiles, List<Unit> allies, bool fightLinked, bool tech)
+    {
+        var state = sim.State;
+        var profile = sim.Profile(unit);
+        return (!fightLinked && hostiles.Any(h => IsLinked(sim, h)))
+               || unit.Hp < unit.MaxHp * 0.5
+               || unit.CarryingId is not null
+               || profile.Load >= profile.CarryCapacity * 0.8
+               || state.Round >= MaxRounds
+               || allies.Any(a => a.Status == UnitStatus.Downed)
+               || (state.Caches.Count == 0 && !(tech && Hackable(sim, unit, false).Any(d => d.Kind is DeviceKind.Locker or DeviceKind.Terminal)));
+    }
+
+    /// <summary>
+    /// The scout drone: recall it when leaving or nearly flat; mark a Linked it sees (Spotter); with the turn's last AP
+    /// (<paramref name="lastAp"/>) fly it once ahead toward the nearest cache (else an exit), keeping out of reach of known
+    /// hostiles, or launch it when nothing hostile is in sight and the battery is up.
+    /// </summary>
+    private static IScavengeCommand? TryDrone(ScavengeSim sim, Unit unit, int playerId, List<Unit> hostiles, bool lastAp)
+    {
+        var state = sim.State;
+        var rules = sim.Data.Rules.Drone;
+        var allies = state.Units.Where(t => t.Side == unit.Side && t.PlayerId is not null && t.OnMap && t.Kind == UnitKind.Survivor).ToList();
+        var leaving = Leaving(sim, unit, hostiles, allies, false, true);
+        if (Drones.DroneOf(state, unit) is { } drone)
+        {
+            var range = Drones.ControlRange(sim.Data, unit, drone.DroneItemId!);
+            if ((leaving || drone.Battery <= 1) && unit.Ap >= rules.RecallApCost && unit.Pos.Chebyshev(drone.Pos) <= range)
+                return new RecallDrone(playerId, unit.Id);
+            if (unit.Hook(PerkHooks.DroneCanMark) > 0 && unit.Ap >= rules.MarkApCost
+                && state.Units.FirstOrDefault(t => t.IsActive && IsLinked(sim, t) && drone.HostileTo(t) && !Drones.IsMarked(state, t.Id, unit.Side)
+                                                   && Detection.Spots(sim.Data, state, drone, t)) is { } mark)
+                return new MarkTarget(playerId, unit.Id, mark.Id);
+            if (!lastAp || hostiles.Count > 0 || unit.Ap < rules.FlyApCost || state.Events.Any(e => e.Round == state.Round && e.Type == ScavengeEventType.DroneFlown && e.UnitId == drone.Id))
+                return null;
+            var goal = state.Caches.OrderBy(c => c.Pos.Chebyshev(unit.Pos)).Select(c => (Pos?)c.Pos).FirstOrDefault()
+                       ?? state.Map.Exits.OrderBy(e => e.Chebyshev(unit.Pos)).First();
+            var best = Drones.FlightTargets(sim, unit)
+                .Where(p => !hostiles.Any(h => h.Pos.Chebyshev(p) <= 2))
+                .OrderBy(p => p.Chebyshev(goal)).ThenBy(p => state.Map.Index(p))
+                .Select(p => (Pos?)p).FirstOrDefault();
+            if (best is { } to && to.Chebyshev(goal) < drone.Pos.Chebyshev(goal)) return new FlyDrone(playerId, unit.Id, to);
+            return null;
+        }
+        if (!lastAp || leaving || hostiles.Count > 0 || unit.Ap < rules.DeployApCost || Drones.CarriedDrone(sim.Data, unit) is not { } item) return null;
+        if (Drones.PackedBattery(sim.Data, unit, item) < Math.Max(rules.MinBattery, 3)) return null;
+        var spot = Pos.Neighbours8.Select(d => unit.Pos + d).Where(p => Drones.CanHover(sim, p)).OrderBy(state.Map.Index).Select(p => (Pos?)p).FirstOrDefault();
+        return spot is { } at ? new DeployDrone(playerId, unit.Id, at) : null;
     }
 
     /// <summary>
