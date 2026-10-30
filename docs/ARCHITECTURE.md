@@ -210,7 +210,7 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
     kind, drone hum; zone ambience; combat/explore music and the Linked layer), `UiAudio` (buttons, overlays, side
     panels and toasts hooked as nodes enter the tree; menu and lobby music), `SoundCues` (accessibility: chips at the
     screen edge toward off-screen ambush/contact/alarm sounds), `WeatherAudio` (`Set(kind, intensity)`,
-    `Lightning(distance)`, `Gust()`; nothing drives it yet).
+    `Lightning(distance)`, `Gust()`; driven by the weather, see "Weather").
   - `--audio-trace` logs every fired event and its sound; `--audio-selftest` (run by `run-tests.sh --godot`) checks
     every Core event type is mapped and replays a scripted colony, an autopiloted scavenge run and the hack/drone
     events, failing when key events pick the wrong id; `--weather=KIND[:INTENSITY]` sets the weather bed; `--audio-meter` prints each bus's peak every second. Once the
@@ -262,9 +262,9 @@ models still load and fall back to tweens.
 - **Commands only.** The UI changes the sim only via `ColonySim.Execute(IColonyCommand)`
   (`AssignJob`, `Unassign`, `Construct`, `Upgrade`, `LaunchExpedition`, `ApplyExtractionResult`, `AdmitPatient`,
   `Discharge`, `FitProsthetic`, `SetRecipe`, `QueueRecipe`, `CancelOrder`, `StudyBlueprint`, `Matchmake`, `ChoosePerk`,
-  `StartStudy`, `CancelStudy`, `SetNightShift`, `InstallFloodlight`). Core validates and returns a `CommandResult`
+  `StartStudy`, `CancelStudy`, `SetNightShift`, `InstallFloodlight`, `RepairBuilding`). Core validates and returns a `CommandResult`
   with a `CommandError` code. This is also the future client→server intent format.
-- **Tick order:** production (+training) → crafting → study → medical → food → day/night (sleep, night work, evenings) →
+- **Tick order:** production (+training) → crafting → study → medical → food → day/night (sleep, night work, evenings) → weather (mood, dust, lightning) →
   relationships (mood, affinity, couples) →
   family (births, conception) → housing → growth (aging, growing up).
 - **Scavenge commands** (`Move`, `Attack`, `UseItem` (on a unit, or a tile with `At`), `PickUp`, `Recruit`, `SetStance`
@@ -796,6 +796,66 @@ An hour is a tick (`hour = tick % ticksPerDay`); a new game starts at `newGame.s
   phase, after a fast-forward and after a load), or `DayNight.PhaseAt(tick, rules)` in Core — not on raw hours.
   `ColonyAudio.IsNight(DayPhase)` does: the night bed and music for Night, the day ones for Dawn, Day and Dusk.
 
+## Weather
+
+Colony and world in `data/weather.json`, field effects in `scavenge.json environment.weather` (same ids); Core is
+`Colony/Weather.cs` and `Data/Weather.cs`, game-side `Weather/WeatherView.cs` and `Weather/ColonyWeather.cs` (namespace
+`Remnants.Game.WeatherFx`, so it does not shadow Core's `Weather`).
+
+- **Spells** (`WeatherSpell`: index, kind, start, end, intensity): per region a Markov chain; the next kind is weighted by
+  `next[previous]` × `regions[region]` (the wastes get more dust), its hours and intensity drawn from the kind's ranges.
+  Each spell comes from a hash of (`WeatherState.Seed`, region, index), so the weather never depends on when it was asked
+  for and never touches the colony RNG (lightning strikes are the one draw from it, only in a storm).
+  `ColonyState.Weather` keeps the seed and a cache of spells (pruned three days back). The seed comes from the colony's
+  RNG state the first time (new games and older saves). Disabled (no file, or `enabled: false`) is always clear.
+  `TestData.Real` and `RealWithNights` have weather off; `RealWithWeather` is the data as shipped.
+- **Queries**: `Weather.Current`, `SpellAt(region, tick)`, `SpellsBetween`, `RegionOf(zone)`, `GroundsDrones`,
+  `Forecast` (days by Town Hall level, +1 with an Electronics Lab L2; the next call's accuracy from base, Lab level and a
+  scanner in the stores (`instrumentItems`), less per day ahead; a miss names the kind's `confusedWith`; stable per
+  spell), `Masks`, `Masked`, `OutdoorCrew`.
+- **At home** (`WeatherSystem`, after day and night; `Schedule.Crew` multiplies `Weather.WorkFactor`, so the Night Shift
+  and the weather stack): outdoor work × `outdoorOutput`; in a dust storm a worker with a mask works at `maskedOutput`,
+  without one at `outdoorOutput` and loses health (never below 25); children stay in; mood per tick; no campfire;
+  lightning damages a building (`Building.Damaged`: × `repair.damagedOutput` until `RepairBuilding`, `repair.cost`;
+  error `NotDamaged`). Logs `WeatherChanged`, `Storm` (a severe kind starting or ending: toasts), `LightningStruck`,
+  `Repaired`.
+- **Crops: one hook.** `Crops.Modifiers(data, spell)` returns `CropModifier(Source, Reason, Multiplier)` terms (now only
+  the weather's `cropOutput`: rain 1.3, storm 1.1, dust 0.6); `WorkFactor` applies them to `cropJobs` workers. A per-crop
+  food system applies the same terms per crop instead.
+- **Dust masks**: `dust_mask` ("Dust Mask & Goggles", Tailor L1, no blueprint, so default-known; see SCHEMATICS.md). It is
+  a Material for now and counted through `weather.json maskItems`, so moving it to a Headgear slot is a data change.
+- **On the road: the travel planner.** `WorldMap.Travel(sim, zone, departTick, homeward)` gives a `TravelPlan`: the zone's
+  base ticks and the `TravelModifier(Source, Reason, ExtraTicks, Multiplier, Blocks)` terms from every source in
+  `WorldMap.TravelTerms`; multipliers multiply the base, extra ticks add, any block blocks. Weather is one source
+  (`Weather.TravelTerm`): the worse of home and the zone's weather at departure adds `travel.extraDays`; a kind with
+  `travel.blocksFromDays`, raging over the zone, closes routes that long or longer (only outbound). Vehicles add their own
+  term, independently. `PlanArrival` returns the plan (`Travel`, `DelayRationsPerMember`, `ExtraRationsPerMember`,
+  `Blocked`); `LaunchExpedition` fails with `RouteBlocked`, and pays rations for the delay; `Expedition.TravelTicks` is the
+  way out, then the way home (planned when the run ends). `SendScoutDrone` fails with `DronesGrounded` in a dust storm or
+  heavy rain at home or over the zone (`WorldMap.DronesGrounded`).
+- **In the field**: `ColonySim.MissionEnvironment(tick, zone)` sets the weather over the zone's region at arrival and the
+  spells starting within `field.lookaheadHours` as `ScavengeEnvironment.Shifts` (round `1 + hours × roundsPerHour`).
+  `FieldEnvironment.RoundStarted` applies a shift due (`WeatherChanged`), then rolls thunder (`Thunder`: no movement
+  contacts this round) and lightning (`Lightning`: every unit on the map seen by every side this round) from the run's RNG,
+  only when the weather has them. `EnvironmentEffects` adds `hearingMultiplier` (noise and footsteps), `flareRoundsMultiplier`,
+  `rangedAccuracyPenalty` (`Combat.WeatherPenalty`), `dronesGrounded` (Deploy / Fly fail with `DroneGrounded`; Recall
+  works), `relayRangeMultiplier` (`Network.Groups`), `thunderChance`, `lightningChance`. Rain: shorter hearing and flares,
+  a little stealth; fog: sight much lower; dust: sight and aim down, drones grounded, the Linked's links halved, Husks unaffected
+  (their sight stays, and they see through its stealth); thunderstorm: rain plus thunder, lightning and grounded drones.
+  Scavenge save 7, colony save 12.
+- **Presentation** (no rules): `WeatherView` (made by `ColonyScreen` and `ScavengeScreen`) keeps GPU particles (rain
+  streaks, dust puffs, debris) over the ground point the camera looks at, grades the time of day's `SkyLook`
+  (`DayNightLighting.Weather`: wet and dark under rain, grey overcast, a brown cast and haze in dust, ground mist
+  (`SkyLook.GroundFog`, height fog that also works on the tactical map) in fog), crossfades between kinds over 3 s, and
+  flashes for lightning (`Strike`; the colony strikes on its own in a thunderstorm, the field on Core's `Lightning`).
+  `GameSettings.WeatherEffects`: Full; Reduced (a third of the particles, no flashes); Off (tint only). `ColonyWeather`
+  follows `Weather.Current` into the view and `WeatherAudio` (`WeatherSounds.AudioKind`: rain, heavy rain from 0.75 and in
+  storms, dust storm, wind when overcast); gusts rattle debris in dust. HUD: the top bar's weather chip (tooltip: what it
+  does, masks, the forecast), toasts for storms and lightning, Repair on the building panel, the planner's travel terms and
+  closed routes, the turn bar's weather chip (tooltip: field effects), log icons. `--weather=KIND[:INTENSITY]` forces it
+  in the colony (from now on) and in the debug mission. Not done yet: wind on trees and flags, a wet-surface shader.
+- **Multiplayer**: the server decides it (see MULTIPLAYER.md "Weather over the wire").
+
 ## Data files
 
 - `resources.json` — resource ids and names.
@@ -824,6 +884,9 @@ An hour is a tick (`hour = tick % ticksPerDay`); a new game starts at `newGame.s
   banes) and `drops` (what a kill leaves behind; Linked and Wardens always leave Linked cores).
 - `zones.json` — size, threat, loot tier, terrain densities, spawn/exit edges, enemy count + mix,
   caches, NPC count, hackable devices per kind.
+- `weather.json` — weather kinds (hours, intensity, forecast confusion, drones, colony and travel effects), the Markov
+  `next` weights, per-region multipliers, the forecast, field changes (`roundsPerHour`, `lookaheadHours`), repair, mask
+  items and crop jobs (see "Weather"). Optional: without it the weather is always clear.
 - `scavenge.json` — `environment` (per day phase and per weather: sight per sense kind, stealth bonus and who ignores it,
   Husk count and hearing, flare radius; see "Day and night"), `hacking`, `devices`, `drone`, `world.droneScout` (see "Hacking and scout drones"), `coop` (alliance offer / break-warning rounds, pings, give and carry costs, carry movement penalty,
   enemies per extra player), `fog` (stealth, detection, contacts, ambush, overwatch, brace, lookout, Linked fog AI), `network` (Linked squad tuning), `world.colonyPos`, terrain table, movement derivation (base pattern/range, Agility per range,
