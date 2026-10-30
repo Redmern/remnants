@@ -967,10 +967,19 @@ Core Spire → 68% / 57%.
 | Stealth trade-offs meaningful | **met**: a light and staying dark are level at night (55% vs 54%, 80% vs 81%), each by a different road (the light sees what comes; the dark is not seen, but is ambushed more in the Mall: 0.98 vs 0.81 a run); by day the suppressor build and the loud one are level |
 | Iron Corridor and Black Grid stay dangerous | **met**: fully modded 2-carbine parties lose someone in 37% of Rail Depot runs and 63% of Network Relay runs; with plating 14% / 35%; Core Spire 68–76% |
 
-Colony sweep (20 seeds × 60 days, the bot crafting and fitting default-set mods) against the cybernetics rerun: median
-population 8 → 7, starvation 0, expedition deaths 9 over 338 → 8 over 322 runs, births 36 → 35, Town Hall 2 day 32.0 →
-32.5, House affordable 48.5, Armory 51.8, Lab 60.0 → 55.5 (fewer seeds reach it in 60 days either way), min food 4.2 → 3.8
-days. The mods cost a few scrap and cloth once the colony is armed; nothing moved outside the noise of expedition outcomes.
+Colony sweep after rebasing onto `main` (schematics, story, weather), 60 seeds × 60 days in three blocks of 20, the same
+data without the gear-mod files → with them (the bot crafting and fitting default-set mods; `--no-mods` turns that off):
+expedition deaths 32 over 977 runs → 34 over 966, departures 53 → 60, births 112 → 112, starvation 0 → 0; per block
+median population 8 / 7 / 8 → 7 / 8 / 8, Town Hall 2 day 29.5 / 31.5 / 28.6 → 32.5 / 31.8 / 27.8, Lab 59.0 / 57.5 / 58.6
+→ 60.1 / 59.0 / 59.3, min food 4.1 / 3.7 / 4.2 → 4.0 / 3.7 / 4.0 days. One block of 20 alone swings by more than this
+(expedition deaths 6–19 per block on the same data), so nothing moved outside the noise. The mods cost a few scrap and
+cloth once the colony is armed.
+
+Rerun after the rebase (300 runs): starting kit Outskirts 4% / 1%, Scrapyard Flats 10% / 2%, Suburb Ruins 34% / 11%, Flooded
+Mall 51% / 23%, Rail Depot 92% / 63%; basic mods 3% / 1%, 6% / 1%, 26% / 8%, 48% / 17%; 2 carbines 20% / 8%, 34% / 16%,
+63% / 41% → full mods 3% / 0%, 4% / 0%, 37% / 15% (Network Relay 57% / 39%); geared full mods Suburb 21% / 14%, Mall 54% /
+35%; at night full (light) 55% / 35% and 80% / 69% vs stealth (dark) 53% / 36% and 84% / 72%. All within a few points of the
+tables above.
 
 Watch next: a fully modded mid-game party with two carbines makes Suburb Ruins and Flooded Mall routine (5%). That
 needs Armory 3, two carbines, Mk II kits and tier-2 schematics, so it is late by design, but if it feels too safe the

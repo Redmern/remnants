@@ -11,7 +11,7 @@ var seeds = options.TryGetValue("seed", out var one) ? [ulong.Parse(one)]
     : options.GetValueOrDefault("seeds", "1..1").Split("..") is [var a, var b] ? Enumerable.Range(int.Parse(a), int.Parse(b) - int.Parse(a) + 1).Select(i => (ulong)i).ToList()
     : [1UL];
 var quiet = options.ContainsKey("quiet");
-var bot = new BotOptions { Expeditions = !options.ContainsKey("no-expeditions"), Bold = options.ContainsKey("bold"), StoryPrompt = int.Parse(options.GetValueOrDefault("prompt", "0")) };
+var bot = new BotOptions { Expeditions = !options.ContainsKey("no-expeditions"), Bold = options.ContainsKey("bold"), Mods = !options.ContainsKey("no-mods"), StoryPrompt = int.Parse(options.GetValueOrDefault("prompt", "0")) };
 
 var data = GameDataLoader.LoadFromDirectory(dataDir);
 var scavenge = ScavengeDataLoader.LoadFromDirectory(dataDir);

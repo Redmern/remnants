@@ -28,6 +28,8 @@ public sealed record BotOptions
 
     /// <summary>Climb threat after two runs without a death (default: two runs without a death or a new injury).</summary>
     public bool Bold { get; init; }
+    /// <summary>Craft and fit gear mods (off: <c>--no-mods</c>, to measure what they change).</summary>
+    public bool Mods { get; init; } = true;
     /// <summary>Story mode: which option the party bot picks on a field prompt (0 = the first, e.g. talk to the Tally).</summary>
     public int StoryPrompt { get; init; }
 }
@@ -168,7 +170,7 @@ public sealed class ColonyBot
             else if (workshop.Level >= 2 && Count("med_kit") < 2 && State.Stockpile.Get("cloth") >= 2 && State.Stockpile.Get("medicine") >= 3)
                 Queue(workshop, "med_kit");
             // Gear mods from the default set once the colony is armed and has scrap to spare: an edge for each blade, sights for guns.
-            else if (weapons >= 3 && State.Stockpile.Get("scrap") >= 25 && ModsOnHand() < 2)
+            else if (_options.Mods && weapons >= 3 && State.Stockpile.Get("scrap") >= 25 && ModsOnHand() < 2)
                 Queue(workshop, Count("pistol") + Count("rifle") > Count("mod_iron_sight") ? "mod_iron_sight" : "mod_sharpened_edge");
         }
         if (Find("tailor") is { } tailor && tailor.Queue.Count == 0)
@@ -179,7 +181,7 @@ public sealed class ColonyBot
             // A couple of dust masks keep the woodcutter and quarry going (and healthy) in a dust storm.
             else if (Weather.Enabled(Data) && Count("dust_mask") < 2 && State.Stockpile.Get("cloth") >= 4 && State.Stockpile.Get("scrap") >= 3)
                 Queue(tailor, "dust_mask");
-            else if (State.Stockpile.Get("cloth") >= 12 && ModsOnHand() < 2) Queue(tailor, Count("mod_armor_padding") <= Count("mod_armor_webbing") ? "mod_armor_padding" : "mod_armor_webbing");
+            else if (_options.Mods && State.Stockpile.Get("cloth") >= 12 && ModsOnHand() < 2) Queue(tailor, Count("mod_armor_padding") <= Count("mod_armor_webbing") ? "mod_armor_padding" : "mod_armor_webbing");
         }
         Cook();
         if (Find("armory") is { } armory && armory.Queue.Count == 0 && Count("machete") < 2 && State.Stockpile.Get("scrap") >= 10)
@@ -307,7 +309,7 @@ public sealed class ColonyBot
     private void GearUp(bool night)
     {
         var data = _sim.Scavenge!;
-        if (data.GearMods is not { } mods || !State.Buildings.Any(b => mods.Def.Rules.Benches.Contains(b.DefId))) return;
+        if (!_options.Mods || data.GearMods is not { } mods || !State.Buildings.Any(b => mods.Def.Rules.Benches.Contains(b.DefId))) return;
         var context = new ModContext(Night: night);
         var moddable = State.Inventory.Counts.Keys.Where(id => mods.Moddable(data.Items[id].DefinedId) is not null && data.Items[id].Slot is not null)
             .OrderByDescending(id => GearModder.Score(data, id, context)).ToList();
