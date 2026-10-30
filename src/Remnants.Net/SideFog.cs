@@ -124,6 +124,11 @@ public sealed class SideFog(int playerId, string side)
             Breaks = state.Breaks.Where(b => b.Side == Side).ToList(),
             Devices = _knownDevices.Values.OrderBy(d => d.Id).Select(d => ProtocolCopy.Clone(d)).ToList(),
             Marks = state.Marks.Where(m => m.Side == Side && known.Contains(m.UnitId)).ToList(),
+            // Our side's vehicles in full; another party's only where we have seen its tile, and never its stash.
+            Vehicles = state.Vehicles
+                .Where(x => state.FindParty(x.PlayerId)?.Side == Side || explored?.Contains(state.Map.Index(x.Pos)) == true)
+                .Select(x => ProtocolCopy.Clone(x).Also(c => { if (state.FindParty(x.PlayerId)?.Side != Side) c.Stash = new(); }))
+                .ToList(),
         }.Also(v =>
         {
             // A device's unit only while that unit is sent; links to drones / operators the side does not know are cut.

@@ -16,8 +16,9 @@ public static class Protocol
     /// drone marks in views).
     /// 5: day and night: the run's environment (hour, phase, weather) in views; the server decides it.
     /// 6: cybernetics (eyes in bodies, units' cybernetic hooks, parts locked by interference, the limb-locked event).
+    /// 7: vehicles: a party's vehicle on <see cref="Join"/>, the stashItem command, parked vehicles in views.
     /// </summary>
-    public const int Version = 6;
+    public const int Version = 7;
     public const int DefaultPort = 7777;
 }
 
@@ -49,9 +50,10 @@ public abstract record Message;
 
 /// <summary>
 /// Take a seat with a party (lobby only), or with <paramref name="ReconnectToken"/> retake the seat a dropped
-/// connection left during a mission (the party is then ignored).
+/// connection left during a mission (the party is then ignored). <paramref name="Vehicle"/>: the colony vehicle the party
+/// drives in (each player brings their own; it parks at their spawn point).
 /// </summary>
-public sealed record Join(int Version, string Name, List<PartyMember> Party, string? ReconnectToken = null) : Message;
+public sealed record Join(int Version, string Name, List<PartyMember> Party, string? ReconnectToken = null, FieldVehicle? Vehicle = null) : Message;
 
 /// <summary>Lobby: ready (or not) to start. The mission starts once every seated player is ready.</summary>
 public sealed record Ready(bool IsReady) : Message;

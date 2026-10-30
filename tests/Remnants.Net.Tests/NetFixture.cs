@@ -79,10 +79,10 @@ public sealed class NetFixture
         return player;
     }
 
-    public TestPlayer Join(string name, List<PartyMember>? party = null)
+    public TestPlayer Join(string name, List<PartyMember>? party = null, FieldVehicle? vehicle = null)
     {
         var p = Connect(name);
-        p.Client.Join(name, party ?? Party(name[..1]));
+        p.Client.Join(name, party ?? Party(name[..1]), vehicle: vehicle);
         return p;
     }
 

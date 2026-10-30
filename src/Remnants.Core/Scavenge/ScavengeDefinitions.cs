@@ -613,4 +613,8 @@ public sealed record VehicleFieldRules
 {
     public double DamagePerEnemy { get; init; } = 6;
     public double MinDamage { get; init; } = 1;
+
+    /// <summary>A multiplayer server refuses a joining vehicle with more HP or cargo than any tier can have.</summary>
+    public double MaxHp { get; init; } = 250;
+    public double MaxCargoKg { get; init; } = 300;
 }
