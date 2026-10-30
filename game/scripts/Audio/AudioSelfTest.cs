@@ -35,8 +35,6 @@ public partial class AudioSelfTest : Node
             if (!map.Music.ContainsKey(state)) Fail($"music state {state} has no track");
         foreach (var id in map.AllSoundIds())
             if (id.Any(c => !(char.IsAsciiLetterLower(c) || char.IsAsciiDigit(c) || c == '_'))) Fail($"sound id '{id}' is not snake_case");
-        foreach (var id in new[] { "hack_start", "hack_success", "hack_fail_alarm", "turret_activate", "door_open", "drone_deploy", "drone_loop", "drone_destroyed", "drone_mark" })
-            if (!map.AllSoundIds().Contains(id)) Fail($"hacking / drone sound '{id}' is not used by any event");
 
         Colony();
         Scavenge();
@@ -48,6 +46,21 @@ public partial class AudioSelfTest : Node
         Expect("scavenge.moved.survivor", "sfx_step_survivor");
         Expect("scavenge.extracted", "sfx_extract");
         Expect("ui.click", "ui_click");
+        Expect("scavenge.hack_progress", "hack_start");
+        Expect("scavenge.hacked", "hack_success");
+        Expect("scavenge.device.turret", "turret_activate");
+        Expect("scavenge.device.door", "door_open");
+        Expect("scavenge.hack_failed", "hack_fail_alarm");
+        Expect("scavenge.drone_deployed", "drone_deploy");
+        Expect("scavenge.marked", "drone_mark");
+        Expect("scavenge.died.drone", "drone_destroyed");
+        if (map.Ambience.GetValueOrDefault("drone") != "drone_loop") Fail("the drone hum is not drone_loop");
+
+        WeatherAudio.Set("heavy_rain", 0.7f);
+        WeatherAudio.Lightning(0);
+        Expect("weather.lightning", "lightning_crack");
+        foreach (var id in new[] { "rain_loop", "rain_heavy_loop", "rain_on_roof_loop", "thunder", "lightning_crack", "wind_loop", "dust_storm_loop", "debris_rattle" })
+            if (!map.AllSoundIds().Contains(id)) Fail($"weather sound '{id}' is not mapped");
         if (!_fired.Any(f => f.Event == "ui.click" && f.Audible)) Fail("ui.click did not play (its placeholder should)");
 
         var missing = map.AllSoundIds().Where(id => !audio.Manifest.TryGet(id, out _) && !PlaceholderSounds.Has(id)).ToList();
@@ -93,10 +106,38 @@ public partial class AudioSelfTest : Node
         foreach (var type in Enum.GetValues<ScavengeEventType>())
             foreach (var name in ScavengeAudio.EventNames(sim, new ScavengeEvent(1, type, "")))
                 if (AudioManager.Instance!.Map.Resolve(name) is null) Fail($"scavenge event {type} ({name}) is not mapped");
+        HackAndDrone(sim);
         Autopilot.Play(sim, 1);
         foreach (var e in sim.State.Events)
             foreach (var name in ScavengeAudio.EventNames(sim, e))
                 AudioManager.Fire(name);
+    }
+
+    /// <summary>Hacking and scout-drone events as Core logs them, against a turret and a door placed on the map.</summary>
+    private static void HackAndDrone(ScavengeSim sim)
+    {
+        var state = sim.State;
+        var hacker = state.Units.First(u => u.PlayerId == 1);
+        var turretAt = new Pos(1, 1);
+        var doorAt = new Pos(2, 1);
+        Hacking.Place(sim.Data, state, DeviceKind.Turret, turretAt);
+        Hacking.Place(sim.Data, state, DeviceKind.Door, doorAt);
+        var drone = new Unit { Id = 90_000, Name = "Drone", Kind = UnitKind.Drone, Side = hacker.Side, PlayerId = 1, OperatorId = hacker.Id, Pos = new Pos(3, 3) };
+        state.Units.Add(drone);
+        ScavengeEvent[] script =
+        [
+            new(1, ScavengeEventType.HackProgress, "", hacker.Id, Pos: turretAt),
+            new(1, ScavengeEventType.Hacked, "", hacker.Id, Pos: turretAt),
+            new(1, ScavengeEventType.Hacked, "", hacker.Id, Pos: doorAt),
+            new(1, ScavengeEventType.HackFailed, "", hacker.Id, Pos: doorAt),
+            new(1, ScavengeEventType.DroneDeployed, "", hacker.Id, Pos: drone.Pos),
+            new(1, ScavengeEventType.Marked, "", drone.Id, Pos: drone.Pos),
+            new(1, ScavengeEventType.Died, "", drone.Id, Pos: drone.Pos),
+        ];
+        foreach (var e in script)
+            foreach (var name in ScavengeAudio.EventNames(sim, e))
+                AudioManager.Fire(name);
+        state.Units.Remove(drone);
     }
 
     private void Expect(string evt, string sound)

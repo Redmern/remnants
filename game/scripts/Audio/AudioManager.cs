@@ -74,6 +74,7 @@ public partial class AudioManager : Node
         AddChild(Music);
         AddChild(new UiAudio { Name = "UiAudio" });
         AddChild(new SoundCues { Name = "SoundCues" });
+        AddChild(new WeatherAudio { Name = "Weather" });
         if (DebugCapture.HasFlag("--audio-selftest")) AddChild(new AudioSelfTest { Name = "AudioSelfTest" });
     }
 

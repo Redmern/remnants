@@ -95,8 +95,9 @@ public partial class ScavengeAudio : Node3D
                 break;
             default:
                 yield return $"scavenge.{type}";
-                // Hacking (the hacking-drones branch): turrets and doors also sound as they come over to the hacker.
-                if (type == "hacked" && Device(e.Message) is { } device) yield return $"scavenge.device.{device}";
+                // A hacked device also sounds as it comes over to the hacker: a turret powering up, a door opening.
+                if (e.Type == ScavengeEventType.Hacked && e.Pos is { } at && state.DeviceAt(at) is { } device)
+                    yield return $"scavenge.device.{AudioNames.Snake(device.Kind.ToString())}";
                 break;
         }
     }
@@ -113,13 +114,6 @@ public partial class ScavengeAudio : Node3D
             .OrderByDescending(a => a.Name.Length).FirstOrDefault()?.Id
             ?? (attacker.Equipment.GetValueOrDefault(EquipSlot.Weapon) is { } weapon && sim.Data.Items.TryGetValue(weapon, out var item)
                 ? item.Actions.FirstOrDefault()?.Id : null);
-    }
-
-    private static string? Device(string message)
-    {
-        foreach (var kind in new[] { "turret", "door", "camera", "terminal", "locker", "relay" })
-            if (message.Contains(kind, System.StringComparison.OrdinalIgnoreCase)) return kind;
-        return null;
     }
 
     public override void _Process(double delta)
@@ -177,11 +171,11 @@ public partial class ScavengeAudio : Node3D
                 AudioManager.Fire($"scavenge.contact.{AudioNames.Snake(c.Kind.ToString())}", TileGrid.ToWorld(c.Pos) + Vector3.Up);
     }
 
-    /// <summary>A hum on each scout drone in flight that the side can see (hacking-drones adds the drone unit kind).</summary>
+    /// <summary>A hum on each scout drone in flight that the side can see.</summary>
     private void SyncDrones()
     {
         if (AudioManager.Instance?.Map.Ambience.GetValueOrDefault("drone") is not { } id) return;
-        var flying = _presenter.State.Units.Where(u => u.OnMap && u.Kind.ToString() == "Drone" && _presenter.CanSee(u)).ToDictionary(u => u.Id);
+        var flying = _presenter.State.Units.Where(u => u.OnMap && u.Kind == UnitKind.Drone && _presenter.CanSee(u)).ToDictionary(u => u.Id);
         foreach (var (unitId, unit) in flying)
         {
             if (!_drones.TryGetValue(unitId, out var loop)) _drones[unitId] = loop = new AmbientLoop(this, id, fadeSeconds: 0.5f);

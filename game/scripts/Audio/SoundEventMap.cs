@@ -30,7 +30,8 @@ public sealed record SoundEvent(string Name, IReadOnlyList<string> Sounds, strin
 /// <item><c>sounds</c>: per-id <see cref="SoundTuning"/>.</item>
 /// <item><c>music</c>: music state → track id; <c>layers</c>: layer name → track id played on top.</item>
 /// <item><c>ambience</c>: <c>colony_day</c>, <c>colony_night</c>, <c>campfire</c>, <c>work</c> (building def id → loop,
-/// with <c>default</c>); <c>zones</c>: zone id → ambience tags; <c>zoneAmbience</c>: tag → loop id.</item>
+/// with <c>default</c>); <c>zones</c>: zone id → ambience tags; <c>zoneAmbience</c>: tag → loop id;
+/// <c>weather</c>: weather kind → loop ids (<see cref="WeatherAudio"/>).</item>
 /// </list>
 /// </summary>
 public sealed class SoundEventMap
@@ -47,6 +48,7 @@ public sealed class SoundEventMap
     public Dictionary<string, string> WorkLoops { get; } = new();
     public Dictionary<string, string[]> ZoneTags { get; } = new();
     public Dictionary<string, string> ZoneAmbience { get; } = new();
+    public Dictionary<string, string[]> Weather { get; } = new();
 
     public static SoundEventMap Load(string path = Path)
     {
@@ -83,6 +85,8 @@ public sealed class SoundEventMap
             foreach (var a in amb.EnumerateObject())
                 if (a.Value.ValueKind == JsonValueKind.String) Ambience[a.Name] = a.Value.GetString()!;
                 else if (a.Name == "work") Strings(amb, "work", WorkLoops);
+        if (root.TryGetProperty("weather", out var weather))
+            foreach (var w in weather.EnumerateObject()) Weather[w.Name] = Ids(w.Value);
         if (root.TryGetProperty("zones", out var zones))
             foreach (var z in zones.EnumerateObject())
                 ZoneTags[z.Name] = z.Value.ValueKind == JsonValueKind.Array
@@ -108,7 +112,7 @@ public sealed class SoundEventMap
     /// <summary>Every sound id the map can ask for, for checks (each should be in the manifest once it lands).</summary>
     public IEnumerable<string> AllSoundIds() =>
         _events.Values.SelectMany(e => e.Sounds).Concat(Music.Values).Concat(Layers.Values).Concat(Ambience.Values)
-            .Concat(WorkLoops.Values).Concat(ZoneAmbience.Values).Where(id => id.Length > 0).Distinct();
+            .Concat(WorkLoops.Values).Concat(ZoneAmbience.Values).Concat(Weather.Values.SelectMany(w => w)).Where(id => id.Length > 0).Distinct();
 
     private static SoundEvent? ParseEvent(string name, JsonElement v)
     {

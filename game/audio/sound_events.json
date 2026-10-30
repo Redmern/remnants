@@ -47,6 +47,9 @@
     "colony.miscarried": "sfx_alert_soft",
     "colony.study_started": [],
     "colony.study_ended": [],
+    "colony.drone_scouted": "sfx_map_reveal",
+    "colony.drone_lost": "drone_destroyed",
+    "colony.drone_returned": "drone_deploy",
 
     "scavenge.round_started": [],
     "scavenge.party_done": [],
@@ -127,12 +130,16 @@
     "scavenge.alliance_break_warning": "sfx_alert_soft",
     "scavenge.alliance_broken": "sting_betrayal",
 
-    "//hacking": "Hacking and drones (hacking-drones branch): event names follow its ScavengeEventType values.",
+    "//hacking": "Hacking and scout drones. scavenge.device.{kind} sounds as a hacked device comes over (turret, door, camera, terminal, locker, relay).",
     "scavenge.hack_progress": "hack_start",
     "scavenge.hacked": "hack_success",
-    "scavenge.hacked.turret": "hack_success",
     "scavenge.device.turret": "turret_activate",
     "scavenge.device.door": "door_open",
+    "scavenge.device": [],
+    "scavenge.attack.turret_burst": "sfx_shot_turret",
+    "scavenge.moved.turret": [],
+    "scavenge.died.turret": "drone_destroyed",
+    "scavenge.hit.turret": "sfx_hit_metal",
     "scavenge.hack_failed": { "sounds": ["hack_fail_alarm"], "cue": "alarm" },
     "scavenge.alarm": { "sounds": ["hack_fail_alarm"], "cue": "alarm" },
     "scavenge.overridden": "hack_success",
@@ -145,8 +152,13 @@
     "scavenge.marked": "drone_mark",
     "scavenge.payload_dropped": "sfx_loot",
     "scavenge.moved.drone": [],
+    "scavenge.hit.drone": "sfx_hit_metal",
 
-    "music.extraction_sting": "music_extraction_sting"
+    "music.extraction_sting": "music_extraction_sting",
+
+    "weather.lightning": "lightning_crack",
+    "weather.thunder": "thunder",
+    "weather.debris": "debris_rattle"
   },
 
   "sounds": {
@@ -202,6 +214,10 @@
     "drone_destroyed": { "cooldown": 0.3, "maxVoices": 2 },
     "drone_mark": { "bus": "UI", "cooldown": 0.3, "maxVoices": 1 },
 
+    "lightning_crack": { "bus": "Ambience", "cooldown": 0.5, "maxVoices": 1, "pitchJitter": 0.05 },
+    "thunder": { "bus": "Ambience", "cooldown": 1.0, "maxVoices": 2, "pitchJitter": 0.08, "volumeJitter": 3 },
+    "debris_rattle": { "bus": "Ambience", "cooldown": 0.8, "maxVoices": 2, "pitchJitter": 0.1 },
+
     "amb_campfire": { "unitSize": 6, "maxDistance": 60, "volumeDb": -2 },
     "amb_work_default": { "unitSize": 6, "maxDistance": 55, "volumeDb": -8 }
   },
@@ -243,6 +259,15 @@
       "shelter": [],
       "house": []
     }
+  },
+
+  "//weather": "WeatherAudio.Set(kind, intensity) crossfades to these loops; no weather system drives it yet.",
+  "weather": {
+    "none": [],
+    "rain": ["rain_loop", "rain_on_roof_loop"],
+    "heavy_rain": ["rain_heavy_loop", "rain_on_roof_loop", "wind_loop"],
+    "wind": ["wind_loop"],
+    "dust_storm": ["dust_storm_loop", "wind_loop"]
   },
 
   "zones": {
