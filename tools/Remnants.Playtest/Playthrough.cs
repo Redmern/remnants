@@ -17,7 +17,15 @@ public sealed record PlaythroughSummary(
     int Departures, int Births, double? FirstBirthDay, double? FirstPregnancyDay, double? HouseAffordableDay, double? HouseBuiltDay,
     double? TownHall2Day, double? FirstStarvingDay, double MinFoodDays, int Expeditions, int ExpeditionsWithDeaths,
     int LinkedEncountersEarly, double? WorkshopDay, double? ArmoryDay, double? LabDay, int CraftedItems, int Recruits,
-    double? FirstPerkPointDay, int LevelUps, double SurvivorDays, int PerksLearned, double MeanLevel, int MaxLevel, int UnspentPoints);
+    double? FirstPerkPointDay, int LevelUps, double SurvivorDays, int PerksLearned, double MeanLevel, int MaxLevel, int UnspentPoints,
+    CyberSummary? Cyber = null);
+
+/// <summary>
+/// Cybernetics: the first day a design of each tier could be queued (requirements met, building there), limbs lost,
+/// parts fitted by tier, surgeries and complications, and the lowest humanity at the end.
+/// </summary>
+public sealed record CyberSummary(double?[] TierDay, int LimbsLost, int[] FittedByTier, int Surgeries, int Complications,
+    int MissingAtEnd, double MinHumanity);
 
 /// <summary>Runs <see cref="ColonyBot"/> on a fresh New Game and records a daily timeline.</summary>
 public sealed class Playthrough
@@ -40,6 +48,8 @@ public sealed class Playthrough
     private double _survivorTicks;
     private double? _firstBirth, _firstPregnancy, _houseAffordable, _houseBuilt, _townHall2, _firstStarving, _workshop, _armory, _lab;
     private double _minFoodDays = double.MaxValue;
+    private readonly double?[] _tierDay = new double?[5];
+    private int _limbsLost, _surgeries, _complications;
 
     public PlaythroughSummary Run(int days, int actEveryTicks = 4)
     {
@@ -59,6 +69,7 @@ public sealed class Playthrough
                 Collect();
                 Track();
             }
+            TrackCyber();
             var s = Sim.State;
             Timeline.Add(new DaySnapshot(day + 1,
                 s.Survivors.Count(x => !x.IsChild), s.Survivors.Count(x => x.LifeStage == LifeStage.Child), s.Survivors.Count(x => x.IsInfant),
@@ -74,7 +85,7 @@ public sealed class Playthrough
             _departures, _births, _firstBirth, _firstPregnancy, _houseAffordable, _houseBuilt, _townHall2, _firstStarving,
             _minFoodDays, Bot.Expeditions.Count, Bot.Expeditions.Count(e => e.Dead > 0), linkedEarly, _workshop, _armory, _lab, _crafted, _recruits,
             _firstPerkPoint, _levelUps, _survivorTicks / tpd, _perks, grown.Count == 0 ? 0 : grown.Average(x => x.Level),
-            grown.Select(x => x.Level).DefaultIfEmpty(1).Max(), grown.Sum(x => x.PerkPoints));
+            grown.Select(x => x.Level).DefaultIfEmpty(1).Max(), grown.Sum(x => x.PerkPoints), Cyber());
     }
 
     /// <summary>Where people are right now: workers per building, patients, away, idle.</summary>
@@ -117,6 +128,9 @@ public sealed class Playthrough
                 case ColonyEventType.Recruited: _recruits++; break;
                 case ColonyEventType.LevelUp: _levelUps++; _firstPerkPoint ??= Day; break;
                 case ColonyEventType.PerkLearned: _perks++; break;
+                case ColonyEventType.LimbLost: _limbsLost++; break;
+                case ColonyEventType.SurgeryDone: _surgeries++; break;
+                case ColonyEventType.SurgeryComplication: _surgeries++; _complications++; break;
             }
         }
         if (log.Count > 0) _last = log[^1];
@@ -143,10 +157,30 @@ public sealed class Playthrough
         if (Day >= 1 && need > 0) _minFoodDays = Math.Min(_minFoodDays, s.Stockpile.Get("food") / need);
     }
 
+    /// <summary>Once a day: which tiers of the tree the colony could make now.</summary>
+    private void TrackCyber()
+    {
+        if (Sim.Data.Cybernetics is not { } cyber) return;
+        foreach (var node in cyber.Nodes.Values.Where(n => _tierDay[n.Tier] is null))
+            if (Cybernetics.Status(Sim, node).State != CyberNodeState.Locked) _tierDay[node.Tier] = Day;
+    }
+
+    private CyberSummary? Cyber()
+    {
+        if (Sim.Data.Cybernetics is not { } cyber) return null;
+        var parts = Sim.State.Survivors.SelectMany(x => x.Body.Parts.Values).ToList();
+        var fitted = new int[5];
+        foreach (var p in parts.Where(p => p.Condition == PartCondition.Prosthetic)) fitted[cyber.TierOf(p)]++;
+        return new CyberSummary(_tierDay, _limbsLost, fitted, _surgeries, _complications,
+            parts.Count(p => p.Condition == PartCondition.Missing),
+            Sim.State.Survivors.Select(x => x.Body.Humanity).DefaultIfEmpty(100).Min());
+    }
+
     private static bool Notable(ColonyEvent e) => e.Type is ColonyEventType.Constructed or ColonyEventType.Upgraded or ColonyEventType.Died
         or ColonyEventType.Left or ColonyEventType.Born or ColonyEventType.Pregnant or ColonyEventType.NewCouple or ColonyEventType.Starving
         or ColonyEventType.ExpeditionLaunched or ColonyEventType.ExpeditionReturned or ColonyEventType.Recruited or ColonyEventType.BecameAdult
-        or ColonyEventType.LimbLost or ColonyEventType.BlueprintStudied or ColonyEventType.PerkLearned or ColonyEventType.ZoneRevealed or ColonyEventType.Homeless;
+        or ColonyEventType.LimbLost or ColonyEventType.ProstheticFitted or ColonyEventType.SurgeryBooked or ColonyEventType.SurgeryDone
+        or ColonyEventType.SurgeryComplication or ColonyEventType.ProstheticNeedsService or ColonyEventType.BlueprintStudied or ColonyEventType.PerkLearned or ColonyEventType.ZoneRevealed or ColonyEventType.Homeless;
 
     public static string Short(string defId) => defId switch
     {
@@ -173,6 +207,12 @@ public sealed class Playthrough
             sb.AppendLine($"  day {e.Day,5:0.0} {e.Zone,-16} party {e.Party.Count} → back {e.Returned} (evac {e.Evacuated}), dead {e.Dead}, " +
                           $"new injuries {e.NewInjuries}, recruits {e.Recruits}, items {e.ItemsBack}, rounds {e.Stats.Rounds}, kills {e.Stats.Kills}, " +
                           $"linked seen {e.Stats.LinkedSeen}{(e.Error is null ? "" : $" ERROR {e.Error}")}");
+        if (Sim.Data.Cybernetics is { } cyber)
+            foreach (var tier in Enumerable.Range(1, 4).Where(t => _tierDay[t] is null))
+            {
+                var closest = cyber.Nodes.Values.Where(n => n.Tier == tier).Select(n => Cybernetics.Status(Sim, n)).MinBy(st => st.Missing.Count)!;
+                sb.AppendLine($"cybernetics T{tier} not reached; closest {closest.Node.Id} misses: {string.Join("; ", closest.Missing)}");
+            }
         if (Bot.Problems.Count > 0)
         {
             sb.AppendLine("bot problems:");

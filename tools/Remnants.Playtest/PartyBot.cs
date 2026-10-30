@@ -7,7 +7,8 @@ namespace Remnants.Playtest;
 /// <summary>What one scavenge run looked like from the party's side.</summary>
 public sealed record RunStats(int Rounds, int Kills, int LinkedSeen, int LinkedKills, int ItemsLooted, int Reinforcements,
     int AmbushedTimes = 0, int OverwatchShots = 0, int DefensesUsed = 0,
-    int Hacked = 0, int HackFailed = 0, int Overrides = 0, int DroneFlights = 0, int DronesLost = 0, int Marks = 0, int FromDevices = 0);
+    int Hacked = 0, int HackFailed = 0, int Overrides = 0, int DroneFlights = 0, int DronesLost = 0, int Marks = 0, int FromDevices = 0,
+    int LimbLocks = 0);
 
 /// <summary>
 /// Plays the colony's party in a scavenge run through Core commands only, roughly like a careful player:
@@ -101,7 +102,7 @@ public static class PartyBot
             state.Events.Count(e => e.Type == ScavengeEventType.DroneFlown && e.UnitId is { } d && state.FindUnit(d)?.PlayerId is { } p && playerIds.Contains(p)),
             dronesLost,
             state.Events.Count(e => e.Type == ScavengeEventType.Marked && e.UnitId is { } m && state.FindUnit(m)?.PlayerId is { } p && playerIds.Contains(p)),
-            fromDevices));
+            fromDevices, Count(ScavengeEventType.LimbLocked)));
     }
 
     private static bool IsLinked(ScavengeSim sim, Unit u) =>

@@ -35,7 +35,7 @@ public sealed class ColonyBot
         ("farm", 1), ("woodcutter", 1), ("quarry", 1), ("workshop", 1), ("scrapyard", 1), ("med_bay", 1),
         ("farm", 2), ("woodcutter", 2), ("quarry", 2), ("kitchen", 1), ("tailor", 1), ("town_hall", 2),
         ("house", 1), ("armory", 1), ("scrapyard", 2), ("workshop", 2), ("farm", 3), ("electronics_lab", 1),
-        ("tailor", 2), ("med_bay", 2), ("armory", 2), ("woodcutter", 3), ("quarry", 3), ("town_hall", 3), ("house", 2),
+        ("tailor", 2), ("med_bay", 2), ("armory", 2), ("woodcutter", 3), ("quarry", 3), ("town_hall", 3), ("house", 2), ("electronics_lab", 2),
     ];
 
     private readonly ColonySim _sim;
@@ -67,6 +67,7 @@ public sealed class ColonyBot
         Build();
         Craft();
         Care();
+        Cyber();
         Staff();
         Perks();
         if (_options.Expeditions) Expedition();
@@ -175,6 +176,90 @@ public sealed class ColonyBot
                      && s.Body.Parts.Values.Any(p => p.Condition == PartCondition.Injured && p.Severity >= natural)).ToList())
             if (_sim.MedBays.Any(b => _sim.FreePatientSlots(b) > 0))
                 _sim.Execute(new AdmitPatient(s.Id));
+    }
+
+    // ---- cybernetics -----------------------------------------------------------------------------------------
+
+    private static readonly BodyPart[] Limbs = [BodyPart.LeftArm, BodyPart.RightArm, BodyPart.LeftLeg, BodyPart.RightLeg];
+
+    /// <summary>
+    /// Replacements only (no elective augmentation): fit the best part the inventory has for a missing limb, or for a
+    /// crude / mechanical one once something better is in hand — straps on below the surgery tier, else surgery when the
+    /// Med Bay can operate. A limb still without a part gets the best design the tree allows crafted, components first.
+    /// </summary>
+    private void Cyber()
+    {
+        if (Data.Cybernetics is not { } cyber || _sim.Scavenge is not { } items || _sim.MedBays.FirstOrDefault() is not { } bay) return;
+        var wanted = new HashSet<CyberSlot>();
+        foreach (var s in State.Survivors.Where(s => !s.Away && !s.IsInfant).OrderBy(s => s.Id).ToList())
+            foreach (var part in Limbs)
+            {
+                var limb = s.Body[part];
+                if (limb.Condition is not (PartCondition.Missing or PartCondition.Prosthetic)) continue;
+                if (State.Surgeries.Any(o => o.SurvivorId == s.Id && o.Part == part)) continue;
+                var tierNow = limb.Condition == PartCondition.Prosthetic ? cyber.TierOf(limb) : -1;
+                if (tierNow >= 2) continue;
+                var best = State.Inventory.Counts.Keys.Select(id => items.Items[id])
+                    .Where(i => i.Prosthetic is { } p && p.Region == Body.RegionOf(part) && p.MinMedBayLevel <= bay.Level
+                                && cyber.Node(i.DefinedId) is { } n && n.Tier > tierNow)
+                    .OrderByDescending(i => cyber.Node(i.DefinedId)!.Tier).ThenByDescending(i => i.Prosthetic!.Quality).ThenBy(i => i.Id, StringComparer.Ordinal)
+                    .FirstOrDefault();
+                if (best is null)
+                {
+                    if (CyberneticsData.SlotOf(part) is { } slot) wanted.Add(slot);
+                    continue;
+                }
+                var tier = cyber.Node(best.DefinedId)!.Tier;
+                CommandResult r;
+                if (tier < cyber.Surgery.FromTier && limb.Condition == PartCondition.Missing)
+                    r = _sim.Execute(new FitProsthetic(s.Id, part, best.Id));
+                else if (tier < cyber.Surgery.CyberSurgeonFromTier
+                         || State.Survivors.Any(m => !m.Away && PerkEffects.For(m, Data).Has(PerkHooks.CyberSurgery)))
+                    r = _sim.Execute(new ScheduleSurgery(s.Id, part, best.Id));
+                else continue;
+                if (!r.Ok && r.Error != CommandError.MedBayFull) Problems.Add($"day {Day:0.0}: fit {best.Id}: {r.Message}");
+            }
+        foreach (var slot in wanted) CraftBest(cyber, slot);
+        if (wanted.Count == 0) Explore(cyber);
+    }
+
+    /// <summary>
+    /// A curious player builds one part of each tier as it opens up (the next tier needs one known), while the stock is
+    /// comfortable: the cheapest open design of the lowest tier the colony does not know yet, arms and legs first.
+    /// </summary>
+    private void Explore(CyberneticsData cyber)
+    {
+        if (State.Stockpile.Get("scrap") < 40 || State.Stockpile.Get("food") < 30) return;
+        var next = cyber.Nodes.Values.Where(n => n.Slot != CyberSlot.Eye)
+            .Select(n => Cybernetics.Status(_sim, n))
+            .Where(st => st.State == CyberNodeState.Available && st.Recipe is not null && Find(st.Recipe.Building) is not null)
+            .GroupBy(st => st.Node.Tier).OrderBy(g => g.Key).FirstOrDefault(g => cyber.Nodes.Values.Where(n => n.Tier == g.Key).All(n => !Cybernetics.IsKnown(State, n)));
+        if (next is null) return;
+        var slot = next.OrderBy(st => st.Recipe!.Inputs.Values.Sum() + st.Recipe.ItemInputs.Values.Sum() * 5).ThenBy(st => st.Node.Id, StringComparer.Ordinal).First().Node.Slot;
+        CraftBest(cyber, slot, next.Key);
+    }
+
+    /// <summary>Queues the best open design for the slot (its missing components first) unless one is already on the way.</summary>
+    private void CraftBest(CyberneticsData cyber, CyberSlot slot, int? tier = null)
+    {
+        bool Queued(string recipeId) => State.Buildings.Any(b => b.Queue.Any(o => o.RecipeId == recipeId));
+        var options = cyber.Nodes.Values.Where(n => n.Slot == slot && (tier is null || n.Tier == tier))
+            .Select(n => Cybernetics.Status(_sim, n))
+            .Where(st => st.State != CyberNodeState.Locked && st.Recipe is not null && Find(st.Recipe.Building) is not null)
+            .OrderByDescending(st => st.Node.Tier).ThenByDescending(st => st.Node.Spec is null).ThenBy(st => st.Node.Id, StringComparer.Ordinal)
+            .ToList();
+        if (options.Any(st => Queued(st.Recipe!.Id))) return;
+        foreach (var st in options)
+        {
+            var recipe = st.Recipe!;
+            var missing = recipe.ItemInputs.Where(kv => Count(kv.Key) < kv.Value).Select(kv => kv.Key).ToList();
+            var parts = missing.Select(id => Data.Recipes.Values.FirstOrDefault(r => r.Item == id)).ToList();
+            if (parts.Any(r => r is null || Find(r.Building) is not { } at || at.Level < r.MinLevel)) continue;
+            foreach (var r in parts)
+                if (!Queued(r!.Id)) Queue(Find(r.Building)!, r.Id);
+            if (missing.Count == 0) Queue(Find(recipe.Building)!, recipe.Id);
+            return;
+        }
     }
 
     // ---- staffing -------------------------------------------------------------------------------------------

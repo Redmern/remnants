@@ -3,6 +3,7 @@ using Remnants.Core.Colony;
 using Remnants.Core.Data;
 using Remnants.Core.Items;
 using Remnants.Core.Scavenge;
+using Remnants.Core.Survivors;
 
 namespace Remnants.Playtest;
 
@@ -33,6 +34,18 @@ public static class ZoneTrial
         return sb.ToString();
     }
 
+    private static (BodyPart, string)[] Legs(string item) => [(BodyPart.LeftLeg, item), (BodyPart.RightLeg, item)];
+
+    /// <summary>Cybernetic kits per party member (the last entry repeats): limbs fitted before the run, starting gear.</summary>
+    private static readonly Dictionary<string, (BodyPart Part, string Item)[][]> CyberKits = new()
+    {
+        ["peg"] = [[(BodyPart.LeftLeg, "peg_leg")]],
+        ["mech"] = [[(BodyPart.LeftLeg, "mech_leg")]],
+        ["powered"] = [[.. Legs("runner_leg"), (BodyPart.RightArm, "blade_arm")], [.. Legs("silent_leg"), (BodyPart.RightArm, "precision_arm")]],
+        ["cyborg"] = [[.. Legs("runner_leg_mk2"), (BodyPart.RightArm, "blade_arm_mk2")], [.. Legs("jumper_leg"), (BodyPart.LeftArm, "gun_arm"), (BodyPart.Eyes, "scope_eye")]],
+        ["network"] = [[.. Legs("network_leg"), (BodyPart.RightArm, "network_arm")], [.. Legs("network_leg"), (BodyPart.LeftArm, "network_arm"), (BodyPart.Eyes, "network_eye")]],
+    };
+
     /// <param name="defenses">The bot uses Overwatch / Brace / Lookout / flares (off = the old bot, for comparison).</param>
     /// <param name="kit">"fog": each member also carries two flares and the first a motion sensor. "geared": a crafted
     /// mid-game kit instead of starting gear — pistol / rifle, padded vest / camo cloak, binoculars, med-kit, bandages,
@@ -51,6 +64,7 @@ public static class ZoneTrial
     {
         // --hour=H plays every run at that hour of day (its phase by the colony's hours); without it, midday as before.
         var conditions = hour is { } h ? new ZoneConditions(Environment: ScavengeEnvironment.At(h, DayNight.PhaseAtHour(h, data.Rules.DayNight))) : null;
+        int limbLocks = 0;
         int hacked = 0, hackFailed = 0, flights = 0, dronesLost = 0, marks = 0, fromDevices = 0;
         int partyRuns = 0, partyWipes = 0, partyDeathRuns = 0;
         int ambushed = 0, reactions = 0, defended = 0;
@@ -94,6 +108,10 @@ public static class ZoneTrial
                     }
                 }
             }
+            if (CyberKits.TryGetValue(kit, out var fitted))
+                foreach (var (adult, i) in adults.Select((a, i) => (a, i)))
+                    foreach (var (part, item) in fitted[Math.Min(i, fitted.Length - 1)])
+                        Cybernetics.Fit(colony.State, data.Cybernetics, adult, part, scavenge.Items[item], adult.Body[part].Condition == PartCondition.Healthy);
             if (fogKit)
             {
                 foreach (var pack in packs) pack.AddRange(["flare", "flare"]);
@@ -155,10 +173,11 @@ public static class ZoneTrial
             dronesLost += stats.DronesLost;
             marks += stats.Marks;
             fromDevices += stats.FromDevices;
+            limbLocks += stats.LimbLocks;
         }
         var n = Math.Max(1, runs - stuck);
         var sb = new StringBuilder();
-        sb.AppendLine($"zone {zoneId}: {runs} runs, {(players > 1 ? $"{players} allied parties of" : "party")} {partySize} ({(kit == "geared" ? "geared" + (carbines > 0 ? $", {carbines} {carbineQuality}{(carbineQuality == "" ? "" : " ")}carbine{(carbines > 1 ? "s" : "")}" : "") + (armor ? ", plating" : "") : "starting gear")}{(kit == "fog" ? " + flares, sensor" : "")}{(kit is "tech" or "hacker" or "hack" or "drone" ? $" + {kit} kit{(tech ? "" : " (unused)")}" : "")}{(defenses ? "" : ", no defenses")}){(conditions?.Environment is { } env ? $" at {env.Hour:00}:00 ({env.Phase})" : "")}{(stuck > 0 ? $", {stuck} stuck" : "")}");
+        sb.AppendLine($"zone {zoneId}: {runs} runs, {(players > 1 ? $"{players} allied parties of" : "party")} {partySize} ({(kit == "geared" ? "geared" + (carbines > 0 ? $", {carbines} {carbineQuality}{(carbineQuality == "" ? "" : " ")}carbine{(carbines > 1 ? "s" : "")}" : "") + (armor ? ", plating" : "") : "starting gear")}{(kit == "fog" ? " + flares, sensor" : "")}{(kit is "tech" or "hacker" or "hack" or "drone" ? $" + {kit} kit{(tech ? "" : " (unused)")}" : "")}{(CyberKits.ContainsKey(kit) ? $" + {kit} cybernetics" : "")}{(defenses ? "" : ", no defenses")}){(conditions?.Environment is { } env ? $" at {env.Hour:00}:00 ({env.Phase})" : "")}{(stuck > 0 ? $", {stuck} stuck" : "")}");
         sb.AppendLine($"  runs with a death {100.0 * runsWithDeath / n:0}%  wipes {100.0 * wipes / n:0}%  deaths/run {deaths / (double)n:0.00}");
         sb.AppendLine($"  runs with new injuries {100.0 * injuredRuns / n:0}%  injuries/run {injuries / (double)n:0.0}  limbs lost/run {limbs / (double)n:0.00}");
         sb.AppendLine($"  items/run {items / (double)n:0.0}  kills/run {kills / (double)n:0.0}  Linked kills/run {linkedKills / (double)n:0.00}  rounds/run {rounds / (double)n:0}");
@@ -169,6 +188,8 @@ public static class ZoneTrial
         if (kit is "tech" or "hacker" or "hack" or "drone")
             sb.AppendLine($"  hacks/run {hacked / (double)n:0.00}  failed (alarms)/run {hackFailed / (double)n:0.00}  lockers+terminals opened/run {fromDevices / (double)n:0.0}" +
                           $"  drone flights/run {flights / (double)n:0.0}  drones lost {100.0 * dronesLost / n:0}% of runs  marks/run {marks / (double)n:0.00}");
+        if (CyberKits.ContainsKey(kit))
+            sb.AppendLine($"  limb lock-ups (interference)/run {limbLocks / (double)n:0.00}");
         if (players > 1)
             sb.AppendLine($"  per party: a death in {100.0 * partyDeathRuns / Math.Max(1, partyRuns):0}%  wiped {100.0 * partyWipes / Math.Max(1, partyRuns):0}%  (enemies x{NewScavenge.EnemyScale(scavenge, players):0.##})");
         return sb.ToString();
