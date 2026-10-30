@@ -45,6 +45,14 @@ public static class PartyBot
 
     private static bool RoomToSalvage(UnitProfile profile) => profile.CarryCapacity * SalvageLoad - profile.Load >= SalvageRoom;
 
+    /// <summary>
+    /// Salvage is loud and slow, so a careful player works a node only when the unit is in good shape, nothing has been
+    /// heard for a couple of rounds and the run is not getting late.
+    /// </summary>
+    private static bool SafeToSalvage(ScavengeState state, Unit unit) =>
+        unit.Hp >= unit.MaxHp * 0.75 && state.Round <= MaxRounds * 0.6
+        && !state.Contacts.Any(c => c.Side == unit.Side && c.Round >= state.Round - 2);
+
     private const int MaxCommands = 20000;
     private const int MaxRounds = 40;
 
@@ -270,7 +278,7 @@ public static class PartyBot
                     .OrderByDescending(id => Value(sim.Data.Items[id])).FirstOrDefault();
                 if (item is not null) return new PickUp(playerId, unit.Id, cache.Id, item);
             }
-            if (Salvage && hostiles.Count == 0 && RoomToSalvage(profile)
+            if (Salvage && hostiles.Count == 0 && RoomToSalvage(profile) && SafeToSalvage(state, unit)
                 && state.SalvageNodes.FirstOrDefault(n => !n.Depleted && n.Pos.Chebyshev(unit.Pos) <= 1
                                                           && sim.Data.Salvage.Node(n.Kind) is { } d && d.ApCost <= unit.Ap) is { } node)
                 return new Salvage(playerId, unit.Id, node.Id);
@@ -285,7 +293,7 @@ public static class PartyBot
             goals.AddRange(strangers.OrderBy(n => n.Pos.Chebyshev(unit.Pos)).Select(n => n.Pos));
             goals.AddRange(state.Caches.Where(c => Carriable(sim, profile, c))
                 .OrderBy(c => c.Pos.Chebyshev(unit.Pos)).Select(c => c.Pos));
-            if (Salvage && hostiles.Count == 0 && RoomToSalvage(profile))
+            if (Salvage && hostiles.Count == 0 && RoomToSalvage(profile) && SafeToSalvage(state, unit))
                 goals.AddRange(KnownNodes(sim, unit).OrderBy(n => n.Pos.Chebyshev(unit.Pos)).Select(n => n.Pos));
             if (tech)
                 goals.AddRange(Hackable(sim, unit, linkedAbout).Where(d => d.Kind is DeviceKind.Locker or DeviceKind.Terminal
@@ -339,7 +347,7 @@ public static class PartyBot
                || state.Round >= MaxRounds
                || allies.Any(a => a.Status == UnitStatus.Downed)
                || (!state.Caches.Any(c => Carriable(sim, profile, c))
-                   && !(Salvage && RoomToSalvage(profile) && KnownNodes(sim, unit).Any())
+                   && !(Salvage && RoomToSalvage(profile) && SafeToSalvage(state, unit) && KnownNodes(sim, unit).Any())
                    && !(tech && Hackable(sim, unit, false).Any(d => d.Kind is DeviceKind.Locker or DeviceKind.Terminal)));
     }
 

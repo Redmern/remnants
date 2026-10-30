@@ -52,12 +52,12 @@ public partial class SalvageViews : Node3D
                 foreach (var mesh in shown.FindChildren("*", nameof(MeshInstance3D), true, false).OfType<MeshInstance3D>()) mesh.MaterialOverlay = dim;
             }
             if (node.Depleted) continue;
-            var ring = Arc(1, new Color(Hud.Palette.Amber, 0.35f), 0.04f);
+            var ring = Arc(1, new Color(Hud.Palette.Amber, 0.45f), 0.06f);
             ring.Position = at + Vector3.Up * 0.12f;
             _root.AddChild(ring);
             if (node.Progress > 0)
             {
-                var arc = Arc((float)node.Progress / def.Work, Hud.Palette.Amber, 0.1f);
+                var arc = Arc((float)node.Progress / def.Work, Hud.Palette.Amber, 0.16f);
                 arc.Position = at + Vector3.Up * 0.14f;
                 _root.AddChild(arc);
             }
@@ -74,8 +74,8 @@ public partial class SalvageViews : Node3D
         {
             var a = -Mathf.Pi / 2 + Mathf.Tau * fraction * i / steps;
             var dir = new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a));
-            mesh.SurfaceAddVertex(dir * 0.82f);
-            mesh.SurfaceAddVertex(dir * (0.82f + width));
+            mesh.SurfaceAddVertex(dir * 0.9f);
+            mesh.SurfaceAddVertex(dir * (0.9f + width));
         }
         mesh.SurfaceEnd();
         return new MeshInstance3D

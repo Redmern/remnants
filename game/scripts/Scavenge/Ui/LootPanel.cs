@@ -12,7 +12,8 @@ namespace Remnants.Game.Scavenge.Ui;
 /// The pickup panel, up while the acting unit stands at a pile, on an exit with something in the pack, or loaded enough
 /// to be slowed: its carry weight against the encumbrance steps (a warning before it bites), each pile in reach as item
 /// chips to take one by one (greyed when too heavy) and Take all (F: what fits, lightest first, one pick-up's AP), and
-/// the pack with Drop and, on an exit, Stash (it waits there for the next run). Every button sends a Core command.
+/// the pack with Drop and, on an exit, Stash (it waits there for the next run) while slowed or on an exit. Every button
+/// sends a Core command.
 /// </summary>
 public partial class LootPanel : PanelContainer
 {
@@ -104,7 +105,8 @@ public partial class LootPanel : PanelContainer
             first = false;
         }
 
-        if (unit.Pack.Count == 0) return;
+        // The pack, to lighten it or stash things: only when that matters (slowed, or on an exit).
+        if (unit.Pack.Count == 0 || !(slowed || onExit)) return;
         _content.AddChild(Widgets.Label("YOUR PACK", "Heading"));
         var stashCost = data.Salvage.StashApCost;
         foreach (var group in unit.Pack.GroupBy(id => id).OrderByDescending(g => data.Items[g.Key].Weight * g.Count()))

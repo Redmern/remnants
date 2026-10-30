@@ -14,7 +14,7 @@
     {
       "id": "husk", "nothing": 0.2, "rolls": [1, 2],
       "entries": [
-        { "item": "scrap", "weight": 3 },
+        { "item": "scrap", "weight": 2 },
         { "item": "cloth", "weight": 4 },
         { "item": "canned_food", "weight": 2 },
         { "item": "bandage", "weight": 3 },
@@ -158,9 +158,9 @@
     {
       "id": "salvage_car", "nothing": 0.05, "rolls": [1, 2],
       "entries": [
-        { "item": "scrap", "weight": 6 },
-        { "item": "electronics", "weight": 1.5 },
-        { "item": "cloth", "weight": 1 },
+        { "item": "scrap", "weight": 5 },
+        { "item": "electronics", "weight": 1.2 },
+        { "item": "cloth", "weight": 1.5 },
         { "item": "servo", "weight": 0.3 },
         { "item": "power_cell", "weight": 0.3 }
       ],

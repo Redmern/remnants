@@ -282,16 +282,24 @@ public partial class MapView : Node3D
         crate.Position = cache.Kind == LootPileKind.Stash ? Vector3.Zero : new Vector3(0.45f, 0, 0.35f);
         if (cache.Kind == LootPileKind.Stash)
             foreach (var mesh in Meshes(crate)) mesh.MaterialOverride = Placeholders.Material(Hud.Palette.Amber);
-        var glint = new Label3D
+        // The glint: a small amber gem bobbing and turning over the pile.
+        var top = crate.Position + new Vector3(0, 1.0f, 0);
+        var glint = new MeshInstance3D
         {
-            Name = "Glint", Text = "✦", FontSize = 64, PixelSize = 0.01f, Font = Hud.Fonts.DisplayBold, NoDepthTest = true,
-            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Modulate = Hud.Palette.Amber,
-            OutlineSize = 8, OutlineModulate = new Color(Hud.Palette.Void, 0.7f), Position = crate.Position + new Vector3(0, 0.9f, 0),
+            Name = "Glint", Mesh = new SphereMesh { Radius = 0.14f, Height = 0.34f, RadialSegments = 4, Rings = 1 },
+            MaterialOverride = new StandardMaterial3D
+            {
+                AlbedoColor = Hud.Palette.Amber, ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                EmissionEnabled = true, Emission = Hud.Palette.Amber,
+            },
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Position = top,
         };
         root.AddChild(glint);
-        var tween = glint.CreateTween().SetLoops();
-        tween.TweenProperty(glint, "modulate:a", 0.25f, 0.9f).SetTrans(Tween.TransitionType.Sine);
-        tween.TweenProperty(glint, "modulate:a", 1f, 0.9f).SetTrans(Tween.TransitionType.Sine);
+        var bob = glint.CreateTween().SetLoops();
+        bob.TweenProperty(glint, "position:y", top.Y + 0.25f, 0.9f).SetTrans(Tween.TransitionType.Sine);
+        bob.TweenProperty(glint, "position:y", top.Y, 0.9f).SetTrans(Tween.TransitionType.Sine);
+        var spin = glint.CreateTween().SetLoops();
+        spin.TweenProperty(glint, "rotation:y", Mathf.Tau, 2.4f).From(0f);
         return root;
     }
 
