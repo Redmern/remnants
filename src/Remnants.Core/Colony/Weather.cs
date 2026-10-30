@@ -48,11 +48,22 @@ public static class Weather
     {
         var rules = data.Weather;
         if (!rules.Enabled) return new WeatherSpell(0, WeatherRules.Clear, long.MinValue / 4, long.MaxValue / 4, 0);
-        var spells = Chain(state, rules, region);
-        Extend(state.Weather.Seed, rules, region, spells, tick);
+        var spells = Spells(state, rules, region, tick, tick);
         for (var i = spells.Count - 1; i >= 0; i--)
             if (spells[i].Start <= tick) return spells[i];
         return spells[0];
+    }
+
+    /// <summary>
+    /// The region's chain covering [from, to]: the cache, extended; or, for a tick before what the cache still holds (it
+    /// is trimmed), the chain worked out again from spell 0 and not kept, so the answer never depends on the cache.
+    /// </summary>
+    private static List<WeatherSpell> Spells(ColonyState state, WeatherRules rules, string region, long from, long to)
+    {
+        var spells = Chain(state, rules, region);
+        if (spells.Count > 0 && from < spells[0].Start) spells = new List<WeatherSpell>();
+        Extend(state.Weather.Seed, rules, region, spells, to);
+        return spells;
     }
 
     /// <summary>The spells over a region that overlap [from, to).</summary>
@@ -60,8 +71,7 @@ public static class Weather
     {
         var first = SpellAt(state, data, region, from);
         if (!data.Weather.Enabled) return [first];
-        var spells = Chain(state, data.Weather, region);
-        Extend(state.Weather.Seed, data.Weather, region, spells, to);
+        var spells = Spells(state, data.Weather, region, from, to);
         return spells.Where(s => s.End > from && s.Start < to && s.Index >= first.Index).ToList();
     }
 
@@ -161,10 +171,12 @@ public static class Weather
     /// </summary>
     public static HashSet<int> Masked(ColonyState state, GameData data, WeatherSpell spell)
     {
-        if (KindOf(data, spell).Colony.MaskedOutput is null) return [];
+        var colony = KindOf(data, spell).Colony;
+        if (colony.MaskedOutput is null) return [];
         var masks = Masks(state, data);
         if (masks <= 0) return [];
-        return OutdoorCrew(state, data).Take(masks).Select(s => s.Id).ToHashSet();
+        // Children who stay in need no mask.
+        return OutdoorCrew(state, data).Where(s => !(colony.ChildrenStayIn && s.IsChild)).Take(masks).Select(s => s.Id).ToHashSet();
     }
 
     /// <summary>Workers on shift at outdoor buildings now (by the clock only), by id.</summary>
@@ -199,7 +211,7 @@ public static class Weather
         var blocks = !homeward && KindOf(data, there).Travel.BlocksFromDays is { } from && zone.TravelDays + 1e-9 >= from;
         if (extra == 0 && !blocks) return null;
         var reason = blocks
-            ? $"{KindOf(data, there).Name} over {zone.Region}: the route is closed"
+            ? $"{KindOf(data, there).Name} over {RegionOf(data, zone)}: the route is closed"
             : $"{KindOf(data, worst).Name}: +{extra / (double)data.Rules.TicksPerDay:0.#} days on the road";
         return new TravelModifier("weather", reason, ExtraTicks: extra, Blocks: blocks);
     }

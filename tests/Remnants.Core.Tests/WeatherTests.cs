@@ -85,6 +85,31 @@ public class WeatherTests
         string.Join(",", Weather.SpellsBetween(sim.State, sim.Data, region, 0, 24 * 30).Select(s => s.Kind));
 
     [Fact]
+    public void A_tick_before_the_trimmed_cache_gets_the_spell_that_was_overhead()
+    {
+        var a = Colony(Shipped);
+        var b = Colony(Shipped);
+        b.State.Weather.Seed = a.State.Weather.Seed;
+        var early = Weather.SpellAt(a.State, Shipped, "Home Valley", 30);
+        b.State.Tick = 24 * 20;
+        b.Tick();  // trims the cache to the last few days
+        Assert.True(b.State.Weather.Spells["Home Valley"][0].Start > 30);
+        Assert.Equal(early, Weather.SpellAt(b.State, Shipped, "Home Valley", 30));
+    }
+
+    [Fact]
+    public void Children_who_stay_in_take_no_mask()
+    {
+        var sim = Colony(Always("dust_storm"));
+        var b = sim.Build("farm");
+        var child = sim.AddSurvivor(LifeStage.Child);
+        var adult = sim.AddSurvivor();
+        child.AssignedBuildingId = adult.AssignedBuildingId = b.Id;
+        sim.State.Inventory.Add("dust_mask");
+        Assert.Equal([adult.Id], Weather.Masked(sim.State, sim.Data, Weather.Current(sim.State, sim.Data)));
+    }
+
+    [Fact]
     public void The_wastes_get_more_dust_than_the_valley()
     {
         var sim = Colony(Shipped);
