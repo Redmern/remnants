@@ -100,6 +100,23 @@ public static class ParkedVehicles
             .OrderBy(v => v.PlayerId == unit.PlayerId ? 0 : 1).FirstOrDefault();
 
     /// <summary>
+    /// The stash API for other field systems (loot nodes, scripted rewards): puts an item into a player's working parked
+    /// vehicle, within its cargo. No AP, no adjacency; returns false when there is no vehicle in play or no room. What is
+    /// in the stash goes home with the vehicle.
+    /// </summary>
+    public static bool Deposit(ScavengeSim sim, int playerId, string itemId)
+    {
+        if (Of(sim.State, playerId) is not { } v || !InPlay(sim.State, v) || !sim.Data.Items.TryGetValue(itemId, out var item)) return false;
+        if (Load(sim.Data, v) + item.Weight > v.CargoKg + 1e-9) return false;
+        v.Stash.Add(itemId);
+        return true;
+    }
+
+    /// <summary>Takes an item back out of a player's parked vehicle (the counterpart of <see cref="Deposit"/>); false if it is not there.</summary>
+    public static bool Withdraw(ScavengeSim sim, int playerId, string itemId) =>
+        Of(sim.State, playerId) is { } v && InPlay(sim.State, v) && v.Stash.Remove(itemId);
+
+    /// <summary>
     /// Unloads a carried item into the party's own vehicle next to the unit (<see cref="TurnRules.PickUpApCost"/> AP), within
     /// the vehicle's cargo limit.
     /// </summary>

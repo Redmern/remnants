@@ -29,7 +29,9 @@ public sealed record SalvageRules
 }
 
 /// <summary>
-/// Wrecked cars on a scavenge map and stripping them. A wreck is two cover tiles side by side, paired the way the map
+/// Wrecked cars on a scavenge map and stripping them. The whole action is <see cref="Salvage"/> (rules in
+/// <c>scavenge.json salvage</c>); a generic field-salvage system can take over by calling <see cref="Roll"/> for a wreck's
+/// parts and dropping this command. A wreck is two cover tiles side by side, paired the way the map
 /// draws them (row by row, each cover tile with the free one east of it, else south), so what the player sees as a car is
 /// what can be salvaged. Each wreck is salvaged once (<see cref="ScavengeState.SalvagedWrecks"/>); its parts drop as a loot
 /// cache on the unit's side of it, to be picked up as usual.
@@ -66,6 +68,29 @@ public static class Salvaging
         Wrecks(state.Map).Where(w => !state.SalvagedWrecks.Contains(state.Map.Index(w.A))
                                      && (w.A.Chebyshev(unit.Pos) <= 1 || w.B.Chebyshev(unit.Pos) <= 1));
 
+    /// <summary>
+    /// The parts one wreck gives a player in this zone: the zone tier's rolls on the table at its quality, big parts only
+    /// with the player's vehicle parked, a winch adding rolls. Draws from the sim RNG.
+    /// </summary>
+    public static List<string> Roll(ScavengeSim sim, int playerId)
+    {
+        var state = sim.State;
+        var rules = sim.Data.Rules.Salvage;
+        var tier = sim.Data.Zones.TryGetValue(state.ZoneId, out var zone) ? zone.LootTier : 1;
+        var vehicle = ParkedVehicles.Of(state, playerId) is { } v && ParkedVehicles.InPlay(state, v) ? v : null;
+        var rolls = rules.RollsByLootTier.Count == 0 ? 1 : rules.RollsByLootTier[Math.Clamp(tier - 1, 0, rules.RollsByLootTier.Count - 1)];
+        if (vehicle is { Winch: true }) rolls += rules.WinchExtraRolls;
+        var table = rules.Table.Where(e => e.MinTier <= tier && (!e.Big || vehicle is not null)).ToList();
+        var quality = rules.QualityByLootTier.Count == 0 ? null : rules.QualityByLootTier[Math.Clamp(tier - 1, 0, rules.QualityByLootTier.Count - 1)];
+        var parts = new List<string>();
+        for (var i = 0; i < rolls && table.Count > 0; i++)
+        {
+            var entry = NewScavenge.PickWeighted(sim.Rng, table, e => e.Weight);
+            parts.Add(quality is null ? entry.Item : sim.Data.QualityVariant(entry.Item, quality));
+        }
+        return parts;
+    }
+
     internal static ScavengeResult Salvage(ScavengeSim sim, Unit unit, Salvage c)
     {
         var state = sim.State;
@@ -78,18 +103,7 @@ public static class Salvaging
 
         unit.Ap -= rules.ApCost;
         state.SalvagedWrecks.Add(state.Map.Index(wreck.A));
-        var tier = sim.Data.Zones.TryGetValue(state.ZoneId, out var zone) ? zone.LootTier : 1;
-        var vehicle = ParkedVehicles.Of(state, unit.PlayerId ?? -1) is { Wrecked: false } v ? v : null;
-        var rolls = rules.RollsByLootTier.Count == 0 ? 1 : rules.RollsByLootTier[Math.Clamp(tier - 1, 0, rules.RollsByLootTier.Count - 1)];
-        if (vehicle is { Winch: true }) rolls += rules.WinchExtraRolls;
-        var table = rules.Table.Where(e => e.MinTier <= tier && (!e.Big || vehicle is not null)).ToList();
-        var quality = rules.QualityByLootTier.Count == 0 ? null : rules.QualityByLootTier[Math.Clamp(tier - 1, 0, rules.QualityByLootTier.Count - 1)];
-        var parts = new List<string>();
-        for (var i = 0; i < rolls && table.Count > 0; i++)
-        {
-            var entry = NewScavenge.PickWeighted(sim.Rng, table, e => e.Weight);
-            parts.Add(quality is null ? entry.Item : sim.Data.QualityVariant(entry.Item, quality));
-        }
+        var parts = Roll(sim, unit.PlayerId ?? -1);
 
         sim.MakeNoise(unit, rules.NoiseRadius);
         var spot = new[] { wreck.A, wreck.B }.SelectMany(p => Pos.Neighbours8.Select(d => p + d))
