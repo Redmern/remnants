@@ -55,7 +55,7 @@ public static class Progression
         _ = source;
         if (amount <= 0 || s.IsInfant) return 0;
         var rules = data.Progression.Xp;
-        var mult = (s.IsChild ? rules.ChildMultiplier : 1) * (1 + PerkEffects.For(s, data).XpBonus);
+        var mult = (s.IsChild ? rules.ChildMultiplier : 1) * (s.Perks.Count == 0 ? 1 : 1 + PerkEffects.For(s, data).XpBonus);
         s.Xp += amount * mult;
         var level = LevelFor(s.Xp, rules);
         if (level <= s.Level) return 0;
@@ -129,6 +129,8 @@ internal static class ProgressionHandlers
         if (s is null) return CommandResult.Fail(CommandError.UnknownSurvivor, $"No survivor {c.SurvivorId}.");
         if (!sim.Data.Perks.TryGetValue(c.PerkId, out var perk))
             return CommandResult.Fail(CommandError.UnknownPerk, $"No perk '{c.PerkId}'.");
+        // The field reads perks through the party's survivors, so they are fixed while a run is out.
+        if (s.Away) return CommandResult.Fail(CommandError.SurvivorAway, $"{s.Name} is away; choose perks when they are home.");
         var status = Progression.Status(sim, s, perk);
         switch (status.Block)
         {
@@ -145,6 +147,7 @@ internal static class ProgressionHandlers
         }
         s.PerkPoints -= perk.Cost;
         Progression.Learn(sim.State, s, perk, "");
+        sim.State.Studies.RemoveAll(o => o.StudentId == s.Id && o.PerkId == perk.Id);
         return CommandResult.Success($"{s.Name} learned {perk.Name}.", s.Id);
     }
 }

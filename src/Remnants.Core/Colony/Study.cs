@@ -55,23 +55,21 @@ public static class StudySystem
                 continue;
             }
             if (order.MentorId is { } mid && state.FindSurvivor(mid) is not { Away: false, PatientAtBuildingId: null })
-            {
-                order.MentorId = null;
-                if (order.PerkId is not null)
-                {
-                    End(state, order, $"{student.Name}'s {data.Perks[order.PerkId].Name} lessons stopped: the mentor is not here.");
-                    continue;
-                }
-            }
+                if (!DropMentor(state, data, order, student.Name)) continue;
             var mentor = order.MentorId is { } m ? state.FindSurvivor(m) : null;
             var rate = Rate(data, student, mentor, order.Skill, order.PerkId, order.ManualItemId, items);
             if (order.Skill is { } skill)
             {
                 var cap = Cap(data, items, mentor, skill, order.ManualItemId);
-                student.GainSkill(skill, rate, XpSource.Study);
-                if (student.Get(skill) > cap) student.Set(skill, cap);
+                var before = student.Get(skill);
+                // Never below where they started: a class that lost its mentor may now cap lower than they already are.
+                if (before < cap)
+                {
+                    student.GainSkill(skill, rate, XpSource.Study);
+                    if (student.Get(skill) > cap) student.Set(skill, cap);
+                }
                 if (student.Get(skill) + 1e-6 >= cap)
-                    End(state, order, $"{student.Name} finished studying {data.SkillInfo(skill).Name} ({cap:0}).", ColonyEventType.StudyFinished);
+                    End(state, order, $"{student.Name} finished studying {data.SkillInfo(skill).Name} ({student.Get(skill):0}).", ColonyEventType.StudyFinished);
             }
             else if (order.PerkId is { } perkId)
             {
@@ -85,6 +83,43 @@ public static class StudySystem
             }
             Progression.GrantXp(state, data, student, data.Progression.Xp.PerStudyTick, XpSource.Study);
             if (mentor is not null) Progression.GrantXp(state, data, mentor, data.Progression.Xp.PerTeachTick, XpSource.Teaching);
+        }
+    }
+
+    /// <summary>
+    /// The mentor left the class: a skill class carries on alone (logged), a perk class ends. Returns whether the class
+    /// is still running.
+    /// </summary>
+    private static bool DropMentor(ColonyState state, GameData data, StudyOrder order, string studentName)
+    {
+        order.MentorId = null;
+        if (order.PerkId is not null)
+        {
+            End(state, order, $"{studentName}'s {data.Perks[order.PerkId].Name} lessons stopped: the mentor is not here.");
+            return false;
+        }
+        state.Log(new(state.Tick, ColonyEventType.StudyEnded, $"{studentName}'s mentor left; they study on alone.", order.StudentId, order.BuildingId));
+        return true;
+    }
+
+    /// <summary>Someone died or left the colony: their classes end (as student) or lose their mentor, right away.</summary>
+    internal static void OnGone(ColonyState state, GameData data, Survivor gone)
+    {
+        foreach (var order in state.Studies.Where(o => o.StudentId == gone.Id || o.MentorId == gone.Id).OrderBy(o => o.Id).ToList())
+        {
+            if (order.StudentId == gone.Id) state.Studies.Remove(order);
+            else DropMentor(state, data, order, state.FindSurvivor(order.StudentId)?.Name ?? "A student");
+        }
+    }
+
+    /// <summary>Loading: drop classes whose student is gone and mentors who are gone (saves from before the fix).</summary>
+    internal static void Repair(ColonyState state)
+    {
+        state.Studies.RemoveAll(o => state.FindSurvivor(o.StudentId) is null);
+        foreach (var o in state.Studies.Where(o => o.MentorId is { } m && state.FindSurvivor(m) is null).ToList())
+        {
+            o.MentorId = null;
+            if (o.PerkId is not null) state.Studies.Remove(o);
         }
     }
 
@@ -115,11 +150,11 @@ public static class StudySystem
     private static ManualDef? Manual(ScavengeData? items, string? id) =>
         id is not null && items is not null && items.Items.TryGetValue(id, out var item) ? item.Manual : null;
 
-    /// <summary>Where a skill study stops: the mentor's level, else the self-study cap (or the manual's, if higher).</summary>
+    /// <summary>Where a skill study stops: the self-study cap (or the manual's, if higher), or the mentor's level when that is higher.</summary>
     public static double Cap(GameData data, ScavengeData? items, Survivor? mentor, Skill skill, string? manualItemId)
     {
-        if (mentor is not null) return mentor.Get(skill);
-        return Math.Max(data.Progression.Study.SelfStudyCap, Manual(items, manualItemId)?.Cap ?? 0);
+        var alone = Math.Max(data.Progression.Study.SelfStudyCap, Manual(items, manualItemId)?.Cap ?? 0);
+        return mentor is null ? alone : Math.Max(alone, mentor.Get(skill));
     }
 
     /// <summary>Students a study building takes at its level (0 for buildings that teach nothing).</summary>

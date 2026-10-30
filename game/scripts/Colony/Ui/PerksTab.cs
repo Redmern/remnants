@@ -115,7 +115,7 @@ public partial class PerksTab : VBoxContainer
         var perks = sim.Data.PerksOf(_discipline).ToList();
         var statuses = perks.Select(p => sim.PerkStatus(s, p)).ToList();
         _picked ??= statuses.FirstOrDefault(st => st.Block == PerkBlock.Ok)?.Perk.Id ?? perks.FirstOrDefault()?.Id;
-        var signature = $"{s.Id}|{_discipline}|{_picked}|{s.PerkPoints}|" + string.Join(",", statuses.Select(st => $"{st.Block}:{st.Missing.Count}"));
+        var signature = $"{s.Id}|{_discipline}|{_picked}|{s.PerkPoints}|" + string.Join(",", statuses.Select(st => $"{st.Block}:{string.Join(";", st.Missing)}"));
         if (signature == _signature) return;
         _signature = signature;
 

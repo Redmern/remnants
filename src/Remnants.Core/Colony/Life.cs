@@ -103,6 +103,7 @@ public static class Bonds
     /// </summary>
     internal static void OnGone(ColonyState state, GameData data, Survivor gone, bool died)
     {
+        StudySystem.OnGone(state, data, gone);
         var mood = data.Rules.Mood;
         if (gone.PartnerId is { } partnerId && state.FindSurvivor(partnerId) is { } partner)
         {

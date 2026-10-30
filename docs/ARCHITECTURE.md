@@ -513,11 +513,14 @@ All numbers live in `data/perks.json` (`skills`, `xp`, `study`, `disciplines`, `
   the colony skills; Electronics Lab: Electronics, Hacking, Drone Piloting, and the Tech and Drones perks). Student and
   mentor leave their jobs and cannot be assigned while in class (`InClass`). A skill grows by
   `skillPerTick · aptitude · (mentor ? mentorMultiplier : 1) · (child ? training.childMultiplier : 1) · (1 + studySpeed +
-  manual studyBonus)` (diminishing), up to the mentor's level, or `selfStudyCap` alone, or a **field manual**'s cap
-  (Material items with `manual: { skill, studyBonus, cap }`, used up at the start). A mentor must lead by `mentorLead`
+  manual studyBonus)` (diminishing), up to `selfStudyCap` alone (a **field manual**'s cap if higher), or the mentor's
+  level when that is higher; it never lowers a skill. A **field manual**
+  is a Material item with `manual: { skill, studyBonus, cap }`, used up at the start. A mentor must lead by `mentorLead`
   and teaches at most `maxStudentsPerMentor`. A perk is studied only from a mentor who has it (`NeedsMentor`), taking
   `perkWorkPerTier · tier` effort, and is learned without a point; its requirements still apply. A class ends when the
-  student is gone, away or admitted; a skill class whose mentor goes carries on alone, a perk class stops.
+  student is gone, away or admitted; a skill class whose mentor goes carries on alone (logged), a perk class stops.
+  Deaths and departures clean up classes at once (`Bonds.OnGone`), and loading drops classes left dangling. Perks cannot
+  be chosen while away (the field reads them), and choosing a perk ends a class for it.
   `ColonySim.PlanStudy` previews cap, rate and ETA (or the error); `StudyEta`, `StudySlots`, `ClassOf` serve the UI.
   Errors: `NotAStudyBuilding`, `InvalidStudy`, `StudyFull`, `CannotStudyHere`, `InClass`, `NeedsMentor`, `MentorNotAhead`,
   `MentorBusy`, `AlreadyAtCap`, `NotAManual`, `WrongManual`, `UnknownStudy`.

@@ -57,6 +57,7 @@ public static class SaveGame
         foreach (var s in colony.Survivors)
             if (envelope.Version < 8) Progression.Migrate(data, s);
             else foreach (var skill in Enum.GetValues<Survivors.Skill>()) s.Skills.TryAdd(skill, 0);
+        StudySystem.Repair(colony);
         Validate(data, colony);
         if (scavenge is not null) Validate(scavenge, colony);
         return new ColonySim(data, colony, scavenge);

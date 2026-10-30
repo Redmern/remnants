@@ -304,4 +304,23 @@ public class ProgressionTests
         var ex = Assert.Throws<System.Text.Json.JsonException>(() => SaveGame.Load(sim.Data, SaveGame.Save(sim.State)));
         Assert.Contains("removed_perk", ex.Message);
     }
+
+    [Fact]
+    public void Perks_cannot_be_chosen_while_away_and_choosing_one_ends_its_class()
+    {
+        var sim = Colony(townHallLevel: 2);
+        var lab = sim.Build("electronics_lab");
+        var s = sim.AddSurvivor();
+        var mentor = sim.AddSurvivor();
+        mentor.Perks.Add("hacking_1");
+        s.Set(Skill.Hacking, 12);
+        s.PerkPoints = 1;
+        Assert.True(sim.Execute(new StartStudy(s.Id, lab.Id, PerkId: "hacking_1", MentorId: mentor.Id)).Ok);
+
+        s.Away = true;
+        Assert.Equal(CommandError.SurvivorAway, sim.Execute(new ChoosePerk(s.Id, "hacking_1")).Error);
+        s.Away = false;
+        Assert.True(sim.Execute(new ChoosePerk(s.Id, "hacking_1")).Ok);
+        Assert.Empty(sim.State.Studies);
+    }
 }

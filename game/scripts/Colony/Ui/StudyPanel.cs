@@ -202,9 +202,13 @@ public partial class StudyPanel : PanelContainer
     {
         var idList = newIds.ToList();
         var labelList = labels.ToList();
-        var same = picker.ItemCount == labelList.Count && labelList.Select((l, i) => picker.GetItemText(i) == l).All(x => x)
-                   && ids.SequenceEqual(idList);
-        if (same && picker.Selected >= 0) return;
+        // Same items: only refresh their texts (live skill values), which keeps an open dropdown open.
+        if (picker.ItemCount == labelList.Count && ids.SequenceEqual(idList) && (picker.Selected >= 0 || ids.Count == 0))
+        {
+            for (var i = 0; i < labelList.Count; i++)
+                if (picker.GetItemText(i) != labelList[i]) picker.SetItemText(i, labelList[i]);
+            return;
+        }
         var previous = picker.Selected >= 0 && picker.Selected < ids.Count ? ids[picker.Selected] : default;
         var hadPrevious = picker.Selected >= 0 && picker.Selected < ids.Count;
         ids.Clear();

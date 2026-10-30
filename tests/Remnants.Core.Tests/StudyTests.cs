@@ -235,4 +235,73 @@ public class StudyTests
         }
         Assert.Equal(Run(), Run());
     }
+
+    [Fact]
+    public void A_student_who_dies_ends_the_class_at_once_so_the_save_still_loads()
+    {
+        var sim = Colony(townHallLevel: 2);
+        var s = sim.AddSurvivor();
+        var mentor = sim.AddSurvivor();
+        var other = sim.AddSurvivor();
+        mentor.Set(Skill.Melee, 50);
+        var th = TownHall(sim);
+        sim.Execute(new StartStudy(s.Id, th.Id, Skill.Melee));
+        sim.Execute(new StartStudy(other.Id, th.Id, Skill.Melee, MentorId: mentor.Id));
+        s.Body.Injure(BodyPart.Head, 0.9);
+        s.Health = 0.1;
+        mentor.Body.Injure(BodyPart.Torso, 0.9);
+        mentor.Health = 0.1;
+
+        sim.Tick();
+
+        Assert.Null(sim.State.FindSurvivor(s.Id));
+        Assert.Null(sim.State.FindSurvivor(mentor.Id));
+        var left = Assert.Single(sim.State.Studies);
+        Assert.Null(left.MentorId);
+        var loaded = Serialization.SaveGame.Load(sim.Data, Serialization.SaveGame.Save(sim.State), ScavengeTestData.Real);
+        Assert.Single(loaded.State.Studies);
+    }
+
+    [Fact]
+    public void Saves_with_a_dangling_class_are_repaired_on_load()
+    {
+        var sim = Colony();
+        var s = sim.AddSurvivor();
+        sim.Execute(new StartStudy(s.Id, TownHall(sim).Id, Skill.Melee));
+        sim.State.Survivors.Remove(s);
+
+        var loaded = Serialization.SaveGame.Load(sim.Data, Serialization.SaveGame.Save(sim.State), ScavengeTestData.Real);
+
+        Assert.Empty(loaded.State.Studies);
+    }
+
+    [Fact]
+    public void Losing_the_mentor_never_lowers_the_students_skill()
+    {
+        var sim = Colony(townHallLevel: 2);
+        var s = sim.AddSurvivor();
+        var mentor = sim.AddSurvivor();
+        mentor.Set(Skill.Melee, 60);
+        s.Set(Skill.Melee, 30);
+        sim.Execute(new StartStudy(s.Id, TownHall(sim).Id, Skill.Melee, MentorId: mentor.Id));
+        mentor.Away = true;
+
+        sim.Tick();
+
+        Assert.True(s.Get(Skill.Melee) >= 30);
+        Assert.Empty(sim.State.Studies);
+    }
+
+    [Fact]
+    public void A_weak_mentor_does_not_cap_below_studying_alone()
+    {
+        var sim = Colony();
+        var s = sim.AddSurvivor();
+        var mentor = sim.AddSurvivor();
+        mentor.Set(Skill.Melee, 12);
+
+        var plan = sim.PlanStudy(new StartStudy(s.Id, TownHall(sim).Id, Skill.Melee, MentorId: mentor.Id));
+
+        Assert.Equal(sim.Data.Progression.Study.SelfStudyCap, plan.Cap);
+    }
 }
