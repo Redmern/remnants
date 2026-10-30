@@ -52,14 +52,13 @@ internal static class ExpeditionHandlers
         var plan = sim.PlanArrival(zone.Id, c.WaitFor);
         if (plan.Blocked)
             return CommandResult.Fail(CommandError.RouteBlocked, $"{plan.Travel!.Modifiers.First(m => m.Blocks).Reason}. Wait for it to pass.");
-        var rations = new Dictionary<string, double>
-        {
-            [sim.Data.Rules.Food.ResourceId] = (WorldMap.RationsPerMember(sim.Data, zone) + plan.ExtraRationsPerMember) * c.Members.Count,
-        };
-        if (!state.Stockpile.CanAfford(rations))
-            return CommandResult.Fail(CommandError.CannotAfford, $"Not enough rations: {CommandHandlers.Describe(state.Stockpile.Shortfall(rations))}.");
+        var need = (WorldMap.RationsPerMember(sim.Data, zone) + plan.ExtraRationsPerMember) * c.Members.Count;
+        var trip = WorldMap.TravelTicks(sim.Data, zone) * 2 + plan.WaitTicks;
+        var bill = Rations.Plan(sim, need, c.Members.Count, trip, c.Rations);
+        if (!bill.Enough)
+            return CommandResult.Fail(CommandError.CannotAfford, $"Not enough food for rations: need {need:0.#}, the pantry has {bill.Covered:0.#}.");
 
-        state.Stockpile.Spend(rations);
+        Rations.Take(sim, need, trip, c.Rations);
         foreach (var id in gear) state.Inventory.TryTake(id);
         foreach (var m in c.Members)
         {
@@ -80,7 +79,9 @@ internal static class ExpeditionHandlers
             ArrivalTick = plan.ArrivalTick,
             Depletion = state.Zones.GetValueOrDefault(zone.Id)?.Depletion ?? 0,
             Members = c.Members.Select(m => m with { Equipment = new(m.Equipment ?? new()), Pack = new(m.Pack ?? []) }).ToList(),
+            Rations = bill.Items,
         };
+        Rations.SetOut(sim, bill, c.Members.Select(m => state.FindSurvivor(m.SurvivorId)!), plan.ArrivalTick, sim.Rng);
         state.Expedition = expedition;
         var names = string.Join(", ", c.Members.Select(m => state.FindSurvivor(m.SurvivorId)!.Name));
         var road = travel > 0 ? $" ({travel / (double)sim.Data.Rules.TicksPerDay:0.#} days on the road)" : "";
@@ -91,10 +92,12 @@ internal static class ExpeditionHandlers
 
     /// <summary>The scavenge parties for the active expedition, built from the members' current state.</summary>
     public static PartySetup Party(ColonySim sim, Expedition expedition) =>
-        new(ColonySim.ExpeditionPlayerId, expedition.Members.Select(m => new PartyMember(
-            sim.State.FindSurvivor(m.SurvivorId) ?? throw new InvalidOperationException($"Expedition member {m.SurvivorId} is gone."),
-            new(m.Equipment ?? new()),
-            new(m.Pack ?? []))).ToList());
+        new(ColonySim.ExpeditionPlayerId, expedition.Members.Select(m =>
+        {
+            var s = sim.State.FindSurvivor(m.SurvivorId) ?? throw new InvalidOperationException($"Expedition member {m.SurvivorId} is gone.");
+            return new PartyMember(s, new(m.Equipment ?? new()), new(m.Pack ?? []),
+                sim.Data.Food is null ? 0 : FoodEffects.FieldFirstRoundAp(s, sim.Data, sim.State.Tick));
+        }).ToList());
 
     public static CommandResult Apply(ColonySim sim, ApplyExtractionResult c)
     {
@@ -109,7 +112,7 @@ internal static class ExpeditionHandlers
             || result.Returned.Concat(result.Recruits).Select(r => r.Survivor).Concat(result.Deaths).Any(s => s is null)
             || result.Returned.Select(r => r.Survivor.Id).Concat(result.Deaths.Select(d => d.Id)).Any(id => !memberIds.Contains(id)))
             return CommandResult.Fail(CommandError.ResultMismatch, "That result is not from this expedition.");
-        var allItems = result.Returned.Concat(result.Recruits).SelectMany(r => r.Equipment.Values.Concat(r.Pack));
+        var allItems = result.Returned.Concat(result.Recruits).SelectMany(r => r.Equipment.Values.Concat(r.Pack)).Concat(result.Secured ?? []);
         if (allItems.FirstOrDefault(id => !data.Items.ContainsKey(id)) is { } unknown)
             return CommandResult.Fail(CommandError.UnknownItem, $"The result carries unknown item '{unknown}'.");
 
@@ -202,6 +205,14 @@ internal static class ExpeditionHandlers
             report.Recruits.Add(s.Name);
         }
 
+        // What a cargo drone ferried out is home whatever became of the party.
+        foreach (var id in result.Secured ?? [])
+        {
+            if (data.Items[id].Schematic is { } schematic) ReceiveSchematic(sim, schematic, report);
+            else if (data.Items[id].Salvage is { } salvage) state.Stockpile.Add(salvage.Resource, salvage.Amount);
+            else state.Inventory.Add(id);
+            if (!expedition.Members.Any(m => m.AllItems.Contains(id))) report.Loot[id] = report.Loot.GetValueOrDefault(id) + 1;
+        }
         // Co-op: copies of what allies carried out; what the party saw but left behind becomes researchable.
         foreach (var id in result.SharedSchematics) ReceiveSchematic(sim, id, report);
         foreach (var (id, where) in result.HeardOf) Schematics.Schematics.HearOf(sim, id, where);
@@ -223,21 +234,36 @@ internal static class ExpeditionHandlers
     }
 
     /// <summary>
-    /// Worn gear goes back to the inventory; carried items too, except salvage, which becomes stockpile resources, and
-    /// schematics, which the colony learns (or queues for decrypting, or turns into Research Data when known).
+    /// Worn gear goes back to the inventory; carried items too, except salvage, which becomes stockpile resources,
+    /// schematics, which the colony learns (or queues for decrypting, or turns into Research Data when known), and food,
+    /// which goes into the pantry as a fresh lot. Devices
+    /// with charges spent out there go on the charging bench instead (see <see cref="Power"/>), as many as the spent charges fill.
     /// </summary>
     private static void Stow(ColonySim sim, ReturnedSurvivor r, ExpeditionReport report)
     {
         var data = sim.Scavenge!;
-        foreach (var id in r.Equipment.Values) sim.State.Inventory.Add(id);
-        foreach (var id in r.Pack) Deposit(sim, id, report);
+        var spent = new Dictionary<string, int>(r.ChargesUsed ?? [], StringComparer.Ordinal);
+        void Put(string id)
+        {
+            var max = data.Items[id].Use?.Charges ?? 0;
+            if (max > 0 && spent.GetValueOrDefault(id) is var used and > 0)
+            {
+                var drained = Math.Min(max, used);
+                spent[id] = used - drained;
+                Power.Drained(sim.State, sim.Data, id, drained);
+                return;
+            }
+            sim.State.Inventory.Add(id);
+        }
+        foreach (var id in r.Equipment.Values) Put(id);
+        foreach (var id in r.Pack) Deposit(sim, id, report, Put);
     }
 
     /// <summary>
     /// One item reaching the colony (a pack, raid spoils): salvage becomes stockpile resources, a schematic is received,
-    /// anything else goes into the inventory.
+    /// food goes into the pantry, anything else into the inventory (through <paramref name="put"/> when given).
     /// </summary>
-    internal static void Deposit(ColonySim sim, string id, ExpeditionReport? report = null)
+    internal static void Deposit(ColonySim sim, string id, ExpeditionReport? report = null, Action<string>? put = null)
     {
         var data = sim.Scavenge!;
         if (data.Items[id].Schematic is { } schematic)
@@ -250,6 +276,8 @@ internal static class ExpeditionHandlers
             }
         }
         else if (data.Items[id].Salvage is { } salvage) sim.State.Stockpile.Add(salvage.Resource, salvage.Amount);
+        else if (sim.Data.Food?.IsFood(id) == true) Pantry.Add(sim.State, sim.Data, id, 1);
+        else if (put is not null) put(id);
         else sim.State.Inventory.Add(id);
     }
 

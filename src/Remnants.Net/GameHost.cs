@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Remnants.Core.Scavenge;
+using Remnants.Core.Trade;
 
 namespace Remnants.Net;
 
@@ -48,6 +49,15 @@ public sealed record HostOptions
         env.Shifts = WeatherShifts.ToList();
         return env;
     }
+
+    /// <summary>Player trading rules (data/trade.json).</summary>
+    public TradeRules Trade { get; init; } = new();
+
+    /// <summary>
+    /// Resource ids players may trade in the lobby (the colony's resources.json). Null: the ids item salvage names, plus
+    /// Research Data.
+    /// </summary>
+    public IReadOnlyCollection<string>? Resources { get; init; }
 }
 
 public enum HostPhase { Lobby, Playing, Ended }
@@ -66,7 +76,7 @@ public enum HostPhase { Lobby, Playing, Ended }
 /// A seat whose party is done gets its <see cref="MissionEnded"/>; the host ends when every seat is done or gone.
 /// </para>
 /// </summary>
-public sealed class GameHost : IHostSink
+public sealed class GameHost : IHostSink, TradeDesk.IVenue
 {
     private readonly ScavengeData _data;
     private readonly TimeProvider _clock;
@@ -83,7 +93,13 @@ public sealed class GameHost : IHostSink
         Options = options ?? new HostOptions();
         _clock = clock ?? TimeProvider.System;
         if (!data.Zones.ContainsKey(Options.ZoneId)) throw new ArgumentException($"Unknown zone '{Options.ZoneId}'.");
+        var resources = (Options.Resources ?? data.Items.Values.Select(i => i.Salvage?.Resource).OfType<string>().Append("research_data").ToList())
+            .ToHashSet(StringComparer.Ordinal);
+        Trades = new TradeDesk(this, Options.Trade, resources.Contains, data, _clock);
     }
+
+    /// <summary>Live trades between the seated players (lobby: colony goods; mission: allies' packs).</summary>
+    public TradeDesk Trades { get; }
 
     public HostOptions Options { get; }
     public HostPhase Phase { get; private set; } = HostPhase.Lobby;
@@ -92,7 +108,17 @@ public sealed class GameHost : IHostSink
     public ScavengeSim? Sim { get; private set; }
 
     /// <summary>Diagnostics for the console.</summary>
-    public Action<string>? Log { get; set; }
+    public Action<string>? Log
+    {
+        get => _log;
+        set
+        {
+            _log = value;
+            Trades.Log = value;
+        }
+    }
+
+    private Action<string>? _log;
 
     /// <summary>Raised once when the mission is over for everyone.</summary>
     public event Action? Ended;
@@ -125,6 +151,7 @@ public sealed class GameHost : IHostSink
     public void Received(IConnection connection, Message message)
     {
         _byConnection.TryGetValue(connection.Id, out var seat);
+        if (seat is not null && Trades.Handle(seat.PlayerId, message)) return;
         switch (message)
         {
             case Join join when seat is null:
@@ -161,6 +188,7 @@ public sealed class GameHost : IHostSink
     /// <summary>Timers: a player who sits on their turn too long waits it out; a seat dropped too long is given up.</summary>
     public void Tick()
     {
+        Trades.Tick();
         if (Phase != HostPhase.Playing || Sim is null) return;
         var now = _clock.GetUtcNow();
         foreach (var seat in _seats.Where(s => s.Connection is null && !s.Gone && s.LeftAt is { } t && (now - t).TotalSeconds >= Options.ReconnectSeconds))
@@ -282,6 +310,7 @@ public sealed class GameHost : IHostSink
             return;
         }
         Phase = HostPhase.Playing;
+        Trades.VenueChanged();
         Log?.Invoke($"mission started in {Options.ZoneId} (seed {Options.Seed}, {Sim.State.Environment.Hour:00}:00 {Sim.State.Environment.Phase}, {FieldEnvironment.Name(Sim.State.Environment.Weather)}) with {_seats.Count} players");
         foreach (var seat in _seats) seat.Connection?.Send(Started());
         _lastPublished = null;
@@ -423,6 +452,7 @@ public sealed class GameHost : IHostSink
         {
             Phase = HostPhase.Ended;
             _deadline = null;
+            Trades.VenueChanged();
             foreach (var seat in _seats.Where(s => !s.ResultSent)) SendResult(seat, "The mission is over.");
             Log?.Invoke("mission over");
             Ended?.Invoke();
@@ -454,6 +484,7 @@ public sealed class GameHost : IHostSink
         _byConnection.Remove(connection.Id);
         if (seat.Connection?.Id != connection.Id) return;
         seat.Connection = null;
+        Trades.Dropped(seat.PlayerId);
         if (Phase == HostPhase.Lobby)
         {
             _seats.Remove(seat);
@@ -488,6 +519,40 @@ public sealed class GameHost : IHostSink
         Broadcast(new Notice($"{seat.Name} is back."));
         SendTurn(seat);
         if (Phase == HostPhase.Ended || Sim.State.FindParty(seat.PlayerId) is { Done: true }) SendResult(seat, "Your party is out of the zone.");
+    }
+
+    // ---- TradeDesk.IVenue ----
+
+    TradeVenue? TradeDesk.IVenue.Venue => Phase switch { HostPhase.Lobby => TradeVenue.Lobby, HostPhase.Playing => TradeVenue.Field, _ => null };
+
+    bool TradeDesk.IVenue.IsConnected(int playerId) => SeatOf(playerId) is { Connection: not null, Gone: false };
+
+    string TradeDesk.IVenue.NameOf(int playerId) => SeatOf(playerId)?.Name ?? $"Player {playerId}";
+
+    void TradeDesk.IVenue.Send(int playerId, Message message) => SeatOf(playerId)?.Connection?.Send(message);
+
+    string? TradeDesk.IVenue.CheckPair(int a, int b)
+    {
+        if (SeatOf(a) is not { Connection: not null } || SeatOf(b) is not { Connection: not null }) return "The other trader is not connected.";
+        return Phase switch
+        {
+            HostPhase.Lobby => null,
+            HostPhase.Playing when Sim is not null => FieldTrade.CheckPair(Sim, a, b),
+            _ => "The mission is over.",
+        };
+    }
+
+    /// <summary>Lobby offers are the client's colony goods (trusted, shape-checked by the desk); field offers must be in the packs.</summary>
+    string? TradeDesk.IVenue.CheckOffer(int playerId, IReadOnlyList<TradeGood> goods) =>
+        Phase == HostPhase.Playing && Sim is not null ? FieldTrade.CheckOffer(Sim, playerId, goods) : null;
+
+    string? TradeDesk.IVenue.CommitField(int a, IReadOnlyList<TradeGood> aGives, int b, IReadOnlyList<TradeGood> bGives)
+    {
+        if (Sim is null) return "No mission is running.";
+        var result = FieldTrade.Swap(Sim, a, aGives, b, bGives);
+        if (!result.Ok) return result.Message;
+        Publish();
+        return null;
     }
 
     private void Broadcast(Message message)

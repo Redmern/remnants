@@ -24,8 +24,17 @@ public sealed class GameData
     /// <summary>The schematics catalogue (data/schematics.json); empty = nothing is gated.</summary>
     public SchematicCatalog Schematics { get; }
 
+    /// <summary>The medicine system (data/medicine.json); null when not loaded (no conditions, no infections, no auto-treatment).</summary>
+    public MedicineData? Medicine { get; }
+
     /// <summary>Weather at home and over the world (data/weather.json); disabled when absent.</summary>
     public WeatherRules Weather { get; }
+
+    /// <summary>Food and cooking (data/food.json); null when not loaded (nobody eats, nothing is harvested).</summary>
+    public FoodData? Food { get; }
+
+    /// <summary>Electronics and power (data/electronics.json); null when not loaded (no grid, no charging bench).</summary>
+    public ElectronicsDef? Electronics { get; }
 
     private readonly Dictionary<string, List<RecipeDef>> _recipesByBuilding;
 
@@ -38,7 +47,10 @@ public sealed class GameData
         ProgressionDef? progression = null,
         CyberneticsDef? cybernetics = null,
         SchematicCatalog? schematics = null,
-        WeatherRules? weather = null)
+        WeatherRules? weather = null,
+        FoodDef? food = null,
+        ElectronicsDef? electronics = null,
+        MedicineDef? medicine = null)
     {
         Schematics = schematics ?? SchematicCatalog.Empty;
         Resources = Index(resources, r => r.Id, "resource");
@@ -53,11 +65,16 @@ public sealed class GameData
         Disciplines = Index(Progression.Disciplines, d => d.Id, "discipline");
         Cybernetics = cybernetics is null ? null : new CyberneticsData(cybernetics);
         Weather = weather ?? new WeatherRules();
+        Food = food is null ? null : new FoodData(food);
+        Electronics = electronics;
+        Medicine = medicine is null ? null : new MedicineData(medicine);
         Validate();
         ValidateWeather();
+        Food?.Validate(this);
         ValidateProgression();
         ValidateCybernetics();
         Schematics.ValidateAgainst(this);
+        if (Electronics is not null) ElectronicsValidation.Validate(Electronics, this);
     }
 
     /// <summary>One Decrypt order per encrypted schematic, at the Decrypt building: its chip in, the schematic learned.</summary>
@@ -152,12 +169,6 @@ public sealed class GameData
         var c = Rules.Crafting;
         if (c.MaxQueue < 1 || c.MaxBatches < 1 || c.QualitySpread < 0)
             throw new GameDataException("Rules.crafting needs maxQueue and maxBatches of at least 1 and a non-negative qualitySpread.");
-        foreach (var meal in Rules.Food.Meals)
-        {
-            RequireResource(meal.Resource, "Rules.food.meals");
-            if (meal.FoodValue <= 0) throw new GameDataException($"Rules.food.meals '{meal.Resource}' needs a positive foodValue.");
-        }
-        RequireResource(Rules.Food.ResourceId, "Rules.food");
         foreach (var res in Rules.NewGame.Stock.Keys) RequireResource(res, "Rules.newGame.stock");
         foreach (var b in Rules.NewGame.Buildings)
             if (!Buildings.ContainsKey(b)) throw new GameDataException($"Rules.newGame: unknown building '{b}'.");
@@ -311,8 +322,6 @@ public sealed class GameData
         foreach (var (region, mults) in w.Regions)
             foreach (var (kind, m) in mults)
                 if (!w.Kinds.ContainsKey(kind) || m < 0) throw new GameDataException($"weather.regions.{region}.{kind}: a known kind with a multiplier ≥ 0.");
-        foreach (var job in w.CropJobs)
-            if (!Jobs.ContainsKey(job)) throw new GameDataException($"weather.cropJobs: unknown job '{job}'.");
         if (w.Forecast.DaysByTownHallLevel.Count == 0) throw new GameDataException("weather.forecast.daysByTownHallLevel is empty.");
         if (w.Field.RoundsPerHour < 1) throw new GameDataException("weather.field.roundsPerHour must be at least 1.");
         foreach (var res in w.Repair.Cost.Keys)

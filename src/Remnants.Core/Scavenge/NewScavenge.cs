@@ -7,7 +7,8 @@ using Remnants.Core.Survivors;
 namespace Remnants.Core.Scavenge;
 
 /// <summary>A survivor sent on a run, with the gear they wear and carry.</summary>
-public sealed record PartyMember(Survivor Survivor, Dictionary<EquipSlot, string>? Equipment = null, List<string>? Pack = null);
+/// <summary>A survivor going into a zone with their gear. <paramref name="FirstRoundAp"/>: AP added (or taken) on the first round, from what they ate on the way (food buffs).</summary>
+public sealed record PartyMember(Survivor Survivor, Dictionary<EquipSlot, string>? Equipment = null, List<string>? Pack = null, int FirstRoundAp = 0);
 
 /// <summary>
 /// One player's party entering a zone. Parties with the same <see cref="Team"/> start allied (one side, see
@@ -253,9 +254,22 @@ public static class NewScavenge
                 if (cache is null) state.Caches.Add(cache = new LootCache { Id = state.NextCacheId++, Pos = p });
                 cache.Items.AddRange(c.Items);
             }
+        var host = state.Parties.Count > 0 ? state.Parties[0] : null;
         foreach (var d in def.Devices)
             if (FreeAt(d.Marker) is { } p)
-                Hacking.Place(data, state, d.Kind, p, d.Items).Tag = d.Tag;
+            {
+                var device = Hacking.Place(data, state, d.Kind, p, d.Items);
+                device.Tag = d.Tag;
+                if (!d.Party || host is null) continue;
+                device.Controller = host.Side;
+                device.ControllerPlayerId = host.PlayerId;
+                if (device.UnitId is { } uid && state.FindUnit(uid) is { } machine)
+                {
+                    machine.Side = host.Side;
+                    machine.PlayerId = host.PlayerId;
+                    machine.Ai = new AiMemory();
+                }
+            }
         var lots = FieldLoot.Rng(state, -1);
         foreach (var s in def.Salvage ?? [])
             if (data.Salvage.Node(s.Kind) is { } node)
@@ -340,6 +354,7 @@ public static class NewScavenge
             Origin = origin,
             Hooks = data.HooksFor(origin.Perks),
             CyberHooks = data.CyberHooksFor(origin.Body),
+            FirstRoundAp = member.FirstRoundAp,
         };
     }
 

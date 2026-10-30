@@ -1,0 +1,25 @@
+{
+  // Electronics schematics: a Schematics catalogue extension (SCHEMATICS.md; merged with schematics.json in name order).
+  // Not listed (open from the start): wiring, circuit boards, antennas, the power cell as the basic battery, flares, the
+  // motion sensor, the hacking kit, handheld radios, noise decoys, the fuel generator. Iris's missions hand out the
+  // advanced ones reliably (storyMissions), but every one also drops, sits in terminals, trades or can be researched.
+  "traders": [],
+  "schematics": [
+    {"id": "sch_sensor_module", "name": "Sensor Module", "tier": 1, "unlocks": [{"kind": "Recipe", "id": "sensor_module"}, {"kind": "Recipe", "id": "motion_sensor_mk2"}], "sources": ["Loot", "Terminal", "Trade", "Research", "Story"], "storyMissions": ["M2"], "description": "How to make a cheap sensor see further: the heart of every Mk II device."},
+    {"id": "sch_squad_radio", "name": "Squad Radio", "tier": 1, "unlocks": [{"kind": "Recipe", "id": "squad_radio"}], "sources": ["Loot", "Trade", "Research", "Story"], "storyMissions": ["M2"], "description": "Iris's own net: radios that talk to each other and share what they see."},
+    {"id": "sch_rangefinder", "name": "Rangefinder", "tier": 1, "unlocks": [{"kind": "Recipe", "id": "rangefinder"}], "sources": ["Loot", "Trade", "Research"], "description": "A laser rangefinder in a pair of binoculars."},
+    {"id": "sch_holo_decoy", "name": "Holo-decoy", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "holo_decoy"}], "sources": ["Loot", "Terminal", "Trade", "Research", "Story"], "storyMissions": ["M10"], "description": "A flickering figure the Linked cannot tell from a person — for a round."},
+    {"id": "sch_scanner_mk2", "name": "Scanner Mk II", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "scanner_mk2"}], "sources": ["Loot", "Terminal", "Trade", "Research", "Story"], "storyMissions": ["M3"], "description": "A wider sweep and a cleaner signal."},
+    {"id": "sch_scout_drone_mk2", "name": "Scout Drone Mk II", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "scout_drone_mk2"}], "sources": ["Loot", "Terminal", "Trade", "Research", "Story"], "storyMissions": ["M8"], "description": "A bigger battery and a better antenna for the scout drone."},
+    {"id": "sch_medic_drone", "name": "Medic Drone", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "medic_drone"}], "sources": ["Loot", "Terminal", "Trade", "Research", "Story"], "storyMissions": ["M8"], "description": "A drone that carries a bandage to whoever needs it."},
+    {"id": "sch_cargo_drone", "name": "Cargo Drone", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "cargo_drone"}], "sources": ["Loot", "Trade", "Research"], "description": "A winch and a hold: loot flies home on its own."},
+    {"id": "sch_solar_array", "name": "Solar Array", "tier": 2, "unlocks": [{"kind": "Building", "id": "solar_array"}], "sources": ["Loot", "Terminal", "Trade", "Research"], "description": "Panels and a regulator: free power while the sun is up."},
+    {"id": "sch_battery_bank", "name": "Battery Bank", "tier": 2, "unlocks": [{"kind": "Building", "id": "battery_bank"}], "sources": ["Loot", "Trade", "Research"], "description": "Racks of cells that carry the day's power into the night."},
+    {"id": "sch_microchip", "name": "Microchip Fab", "tier": 3, "unlocks": [{"kind": "Recipe", "id": "microchip"}, {"kind": "Recipe", "id": "scanner_mk3"}, {"kind": "Recipe", "id": "motion_sensor_mk3"}, {"kind": "Recipe", "id": "scout_drone_mk3"}], "sources": ["Loot", "Terminal", "Research", "Story"], "storyMissions": ["M11"], "description": "Etching a chip on a powered bench: the step to every Mk III device."},
+    {"id": "sch_jammer_mk2", "name": "Signal Jammer Mk II", "tier": 3, "unlocks": [{"kind": "Recipe", "id": "jammer_mk2"}], "sources": ["Loot", "Terminal", "Kill", "Research"], "description": "Twice the jamming field."},
+    {"id": "sch_emp_grenade", "name": "EMP Grenade", "tier": 3, "unlocks": [{"kind": "Recipe", "id": "emp_grenade"}], "sources": ["Loot", "Terminal", "Kill", "Research", "Story"], "storyMissions": ["M10"], "description": "A capacitor that dumps everything at once. Mind your own implants."},
+    {"id": "sch_combat_drone", "name": "Combat Drone", "tier": 3, "unlocks": [{"kind": "Recipe", "id": "combat_drone"}], "sources": ["Loot", "Terminal", "Kill", "Research"], "description": "A light gun on a drone frame. Loud, and the Linked hate it."},
+    {"id": "sch_network_chip", "name": "Network Chip", "tier": 3, "encrypted": true, "unlocks": [{"kind": "Recipe", "id": "network_chip"}, {"kind": "Recipe", "id": "jammer_mk3"}], "sources": ["Loot", "Terminal", "Kill", "Research", "Story"], "storyMissions": ["M11"], "description": "Linked circuitry, re-etched to speak the Network's tongue."},
+    {"id": "sch_network_deck", "name": "Network Deck", "tier": 3, "encrypted": true, "unlocks": [{"kind": "Recipe", "id": "network_deck"}], "sources": ["Loot", "Terminal", "Kill", "Research", "Story"], "storyMissions": ["M11"], "description": "Iris's deck: it hacks like the Network itself — and the Network can trace it."}
+  ]
+}

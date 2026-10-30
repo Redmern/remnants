@@ -29,11 +29,16 @@ public static class Detection
         var from = observerAt ?? observer.Pos;
         var to = targetAt ?? target.Pos;
         var seer = ProfileDeriver.Derive(data, observer);
-        if (!Visibility.CanSee(data, state.Map, from, FieldEnvironment.Sight(data, state, observer, seer.Sight), to)) return false;
+        // A weapon light shows what it falls on as by day: full sight out to its range, and the dark hides nothing there.
+        var lit = GearEffects.Illuminates(data, state, observer, from, to);
+        var sight = FieldEnvironment.Sight(data, state, observer, seer.Sight);
+        if (lit) sight = Math.Max(sight, seer.Sight);
+        if (!Visibility.CanSee(data, state.Map, from, sight, to)) return false;
         var fog = data.Rules.Fog;
         if (from.Chebyshev(to) <= fog.CloseRange) return true;
         var distance = Math.Sqrt(from.DistanceSquared(to));
-        var stealth = ProfileDeriver.Derive(data, target).Stealth + FieldEnvironment.StealthBonusAgainst(data, state, observer);
+        var stealth = ProfileDeriver.Derive(data, target).Stealth + (lit ? 0 : FieldEnvironment.StealthBonusAgainst(data, state, observer))
+            + GearEffects.StealthAgainst(data, state, target, observer);
         return seer.Detection - stealth - (distance - fog.CloseRange) * fog.PerTile >= -1e-9;
     }
 
@@ -47,7 +52,9 @@ public static class Detection
         if (IsLit(state, target.Pos) || FieldEnvironment.LightningNow(state)) return true;
         if (Drones.IsMarked(state, target.Id, side)) return true;
         if (IsRevealed(state, target.Id, side) && observers.Any(o => SeesRevealed(data, state, o, target))) return true;
-        if (observers.Any(o => o.HostileTo(target) && ScanRadius(data, o) is var r && r > 0 && o.Pos.Chebyshev(target.Pos) <= r))
+        if (observers.Any(o => GearEffects.BeaconSeenBy(data, state, o, target))) return true;
+        var masked = GearEffects.ThermalMasked(data, target);
+        if (observers.Any(o => o.HostileTo(target) && ScanRadius(data, o, thermal: !masked) is var r && r > 0 && o.Pos.Chebyshev(target.Pos) <= r))
             return true;
         return observers.Any(o => Spots(data, state, o, target));
     }
@@ -87,9 +94,10 @@ public static class Detection
     }
 
     /// <summary>Radius of the unit's working scanner or thermal eye (<c>thermal_radius</c>), 0 without either.</summary>
-    public static int ScanRadius(ScavengeData data, Unit unit) =>
+    /// <param name="thermal">False against a target in thermal masking: only a scanner device counts.</param>
+    public static int ScanRadius(ScavengeData data, Unit unit, bool thermal = true) =>
         Devices.Working(data, unit).Where(d => d.Effect == DeviceEffect.Scanner).Select(d => d.Radius)
-            .Append(unit.IsActive ? (int)unit.Hook(Colony.PerkHooks.ThermalRadius) : 0).Max();
+            .Append(unit.IsActive && thermal ? (int)unit.Hook(Colony.PerkHooks.ThermalRadius) : 0).Max();
 
     /// <summary>Reveals a unit to a side through <paramref name="untilRound"/> (keeps the later of two reveals).</summary>
     internal static void Reveal(ScavengeState state, Unit unit, string side, int untilRound)

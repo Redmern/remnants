@@ -18,7 +18,7 @@ public static class TestData
     {
         var rules = d.Rules with { DayNight = d.Rules.DayNight with { Enabled = nights && d.Rules.DayNight.Enabled } };
         return new GameData(d.Resources.Values, d.Jobs.Values, d.Buildings.Values, rules, d.Recipes.Values, d.Progression, d.Cybernetics?.Def, d.Schematics,
-            d.Weather with { Enabled = weather && d.Weather.Enabled });
+            d.Weather with { Enabled = weather && d.Weather.Enabled }, d.Food?.Def, d.Electronics, d.Medicine?.Def);
     }
 
     /// <summary>
@@ -60,9 +60,28 @@ public static class TestData
     {
         var state = new ColonyState();
         state.Buildings.Add(new Building { Id = state.NextBuildingId++, DefId = "town_hall", Level = townHallLevel });
-        foreach (var (res, amount) in stock ?? new()) state.Stockpile.Add(res, amount);
+        foreach (var (res, amount) in stock ?? new())
+            if (res == Food) state.AddFood(amount);
+            else state.Stockpile.Add(res, amount);
         return new ColonySim(Real, state);
     }
+
+    /// <summary>Stock key the helpers read as "this much food value" (the old food pool): it becomes potatoes (1 food each).</summary>
+    public const string Food = "food";
+    public const string Potato = "potato";
+
+    /// <summary>Exactly <paramref name="value"/> food (an opened potato with that much left), for tests of scarcity.</summary>
+    public static void AddOpenFood(this ColonyState state, double value) =>
+        state.Food.Open.Add(new OpenPortion { ItemId = Potato, Left = value });
+
+    /// <summary>
+    /// Adds whole potatoes worth at least <paramref name="value"/> food that never spoil (so long tests of other rules
+    /// keep a steady pantry; spoilage has its own tests).
+    /// </summary>
+    public static void AddFood(this ColonyState state, double value) =>
+        Pantry.Add(state, Real, Potato, (int)Math.Ceiling(value - 1e-9), shelfMultiplier: 0);
+
+    public static void AddFood(this ColonySim sim, double value) => sim.State.AddFood(value);
 
     public static Survivor AddSurvivor(this ColonySim sim, LifeStage stage = LifeStage.Adult, double attributes = 50)
     {

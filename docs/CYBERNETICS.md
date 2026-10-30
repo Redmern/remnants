@@ -133,6 +133,12 @@ bed on medicine until it heals. **Nobody dies on the table.** A replaced prosthe
 Examples: a fresh medic (Medicine 15, no perks) fitting a powered leg: 76%; Medicine 40 with Surgeon I + II and
 Cyber-Surgeon fitting a cyborg arm: 0.75 + 0.16 + 0.21 − 0.15 = 97% (the cap).
 
+
+Surgery kits (medicine.json `surgery.kits`): a booked surgery uses the best kit in stock when it finishes, a Surgical
+Kit (+0.12, any tier) or a Suture Kit (+0.05, up to T2), times the kit's quality (Fine ×1.25). The odds shown at the
+bay include it. A failure also leaves a surgical infection on the fitted part (severity 0.3): antibiotics cure it, and
+a patient on Medicine holds it back. See ARCHITECTURE.md "Medicine".
+
 ## Elective augmentation
 
 Replacing a **healthy** part (or a part that was already replaced electively) is an augmentation: only T3 and up, only

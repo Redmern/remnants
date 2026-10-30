@@ -175,17 +175,17 @@ public static class FieldLoot
 
     /// <summary>
     /// Raids: the spoils of the raiders a colony killed in a battle at home, rolled from their loot tables at
-    /// <paramref name="tier"/> on the colony's RNG and put into the stockpile and inventory (salvage → resources,
-    /// schematics → learned or queued). Returns item id → count, for the battle report.
+    /// <paramref name="tier"/> on <paramref name="rng"/> (the colony's by default) and put into the colony (salvage →
+    /// resources, schematics → learned or queued, food → the pantry). Returns item id → count, for the battle report.
     /// </summary>
-    public static SortedDictionary<string, int> RaidSpoils(ColonySim sim, IEnumerable<string> enemyIds, int tier = 1)
+    public static SortedDictionary<string, int> RaidSpoils(ColonySim sim, IEnumerable<string> enemyIds, int tier = 1, DeterministicRng? rng = null)
     {
         var data = sim.Scavenge ?? throw new InvalidOperationException("Scavenge data is not loaded.");
         var spoils = new SortedDictionary<string, int>(StringComparer.Ordinal);
         foreach (var id in enemyIds)
         {
             if (!data.Enemies.TryGetValue(id, out var def) || data.Loot.Find(def.Loot) is not { } table) continue;
-            foreach (var item in data.Loot.Roll(data, table, new LootContext(tier), sim.Rng))
+            foreach (var item in data.Loot.Roll(data, table, new LootContext(tier), rng ?? sim.Rng))
                 spoils[item] = spoils.GetValueOrDefault(item) + 1;
         }
         foreach (var (item, n) in spoils)

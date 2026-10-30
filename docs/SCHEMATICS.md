@@ -76,6 +76,22 @@ That is three melee weapons, a gun, two armors, scouting and fog tools, a hackin
 a full early game. What it lacks on purpose: long guns, heavy armor, drones, Network tech, good prosthetics, anything
 with an engine, and the third level of the production buildings.
 
+**Medicine** (`data/schematics.medicine.json`, see ARCHITECTURE.md "Medicine"): Bandages, Splint, Herbal Remedy,
+Antiseptic and the basic Med-kit are defaults, so the first days are covered and infection is answerable from day one.
+The advanced supplies are found, traded, researched, and given reliably by Doc Hale's missions; none is story-only:
+
+| Schematic | Tier | Unlocks | Story |
+|---|---|---|---|
+| `sch_field_dressings` | 1 | Clean Dressings, Suture Kit (Med Bay 1) | M7 |
+| `sch_painkillers` | 1 | Painkillers (Med Bay 1) | M7 |
+| `sch_antidote` | 1 | Antidote (Med Bay 1) | — |
+| `sch_antibiotics` | 2 | Antibiotics (Med Bay 2) | M7 |
+| `sch_blood_transfusion` | 2 | Blood Bag (Med Bay 2) | M15 |
+| `sch_combat_stims` | 2 | Combat Stims (Med Bay 2) | — |
+| `sch_surgical_kit` | 2 | Surgical Kit (Med Bay 3) | M15 |
+| `sch_trauma_kit` | 3 | Field Trauma Kit (Med Bay 3) | M15 |
+| `sch_calm_injector` | 3, encrypted | Linked "Calm" Injector (Med Bay 3) | — (terminals, loot, research; Doc Hale will not make it) |
+
 ## The catalogue
 
 Tier says where it is normally found: **1** = Home Valley (Outskirts, Scrapyard Flats), **2** = Ashgrove (Suburb

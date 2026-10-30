@@ -1,12 +1,12 @@
 [
-  { "id": "wood",        "name": "Wood" },
-  { "id": "stone",       "name": "Stone" },
-  { "id": "scrap",       "name": "Scrap Metal" },
-  { "id": "food",        "name": "Food" },
-  { "id": "cloth",       "name": "Cloth" },
-  { "id": "electronics", "name": "Electronics" },
-  { "id": "medicine",    "name": "Medicine" },
-  { "id": "meal",        "name": "Meals" },
-  { "id": "stew",        "name": "Hearty Stew" },
-  { "id": "research_data", "name": "Research Data" }
+  {"id": "wood", "name": "Wood"},
+  {"id": "stone", "name": "Stone"},
+  {"id": "scrap", "name": "Scrap Metal"},
+  {"id": "cloth", "name": "Cloth"},
+  {"id": "electronics", "name": "Electronics"},
+  {"id": "medicine", "name": "Medicine"},
+  {"id": "research_data", "name": "Research Data"},
+  {"id": "alcohol", "name": "Alcohol"},
+  {"id": "chemicals", "name": "Chemicals"},
+  {"id": "pharma", "name": "Pharma"}
 ]

@@ -21,13 +21,13 @@ public class LootTableTests
     {
         const string main = """{ "tables": [ { "id": "t", "rolls": [1, 1], "entries": [ { "item": "scrap" } ] } ] }""";
         const string feature = """
-            { "tables": [ { "id": "u", "entries": [ { "item": "herbs" }, { "item": "cloth" } ] } ],
+            { "tables": [ { "id": "u", "entries": [ { "item": "not_yet_herb" }, { "item": "cloth" } ] } ],
               "extend": [ { "table": "t", "entries": [ { "item": "cloth" }, { "item": "engine_block" } ] }, { "table": "nope", "entries": [] } ] }
             """;
         var data = ScavengeDataLoader.WithLoot(Real, [main, feature], null);
         Assert.Equal(["scrap", "cloth"], data.Loot.Tables["t"].Entries.Select(e => e.Item));
         Assert.Equal(["cloth"], data.Loot.Tables["u"].Entries.Select(e => e.Item));
-        Assert.Contains(data.LootWarnings, w => w.Contains("herbs"));
+        Assert.Contains(data.LootWarnings, w => w.Contains("not_yet_herb"));
         Assert.Contains(data.LootWarnings, w => w.Contains("engine_block"));
         Assert.Contains(data.LootWarnings, w => w.Contains("'nope'"));
         // Enemies naming a table that is not there drop only their schematics, with a warning.
@@ -88,7 +88,7 @@ public class FieldLootTests
         for (ulong seed = 1; seed < 50; seed++)
         {
             var (sim, killer, husk) = HuskArena(seed);
-            Combat.ApplyDamage(sim, husk, BodyPart.Torso, 999, killer);
+            Combat.ApplyDamage(sim, husk, BodyPart.Torso, 999, attacker: killer);
             if (sim.State.Caches.Count == 0) continue;
             var pile = Assert.Single(sim.State.Caches);
             Assert.Equal((LootPileKind.Remains, "Husk", husk.Pos), (pile.Kind, pile.Source, pile.Pos));
@@ -109,13 +109,13 @@ public class FieldLootTests
         var killer = SurvivorUnit(1, new Pos(0, 0), weapon: "pipe");
         var husk = EnemyUnit("husk", new Pos(1, 0));
         var without = Arena(6, 4, [killer, husk], seed: 5, data: bare);
-        Combat.ApplyDamage(withLoot, h1, BodyPart.Torso, 999, k1);
-        Combat.ApplyDamage(without, husk, BodyPart.Torso, 999, killer);
+        Combat.ApplyDamage(withLoot, h1, BodyPart.Torso, 999, attacker: k1);
+        Combat.ApplyDamage(without, husk, BodyPart.Torso, 999, attacker: killer);
         Assert.Equal(withLoot.Rng.State, without.Rng.State);
 
         // Same seed, same loot.
         var (again, k2, h2) = HuskArena(5);
-        Combat.ApplyDamage(again, h2, BodyPart.Torso, 999, k2);
+        Combat.ApplyDamage(again, h2, BodyPart.Torso, 999, attacker: k2);
         Assert.Equal(withLoot.State.Caches.SelectMany(c => c.Items), again.State.Caches.SelectMany(c => c.Items));
     }
 

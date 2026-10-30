@@ -239,7 +239,8 @@ public sealed class CyberneticsData
 
     public CyberTierDef Tier(int tier) => Def.Tiers.Find(t => t.Tier == tier) ?? new CyberTierDef { Tier = tier, Name = $"T{tier}" };
 
-    public CyberNodeDef? Node(string? itemId) => itemId is not null && Nodes.TryGetValue(itemId, out var n) ? n : null;
+    /// <summary>The node of a prosthetic item (a modded gun arm counts as its plain item).</summary>
+    public CyberNodeDef? Node(string? itemId) => itemId is not null && Nodes.TryGetValue(itemId.Split(Items.ModdedId.Separator)[0], out var n) ? n : null;
 
     public static IEnumerable<BodyPart> Parts(CyberSlot slot) => slot switch
     {

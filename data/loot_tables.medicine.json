@@ -1,0 +1,10 @@
+{
+  "//": "Medicine's loot: medical supplies on the people who carried them (see ARCHITECTURE.md 'Field loot and salvage', how a feature adds loot).",
+  "extend": [
+    { "table": "tally_scav",
+      "entries": [ { "item": "clean_dressing", "weight": 1.5 }, { "item": "antiseptic", "weight": 1 }, { "item": "painkiller", "weight": 1 } ],
+      "rare": [ { "item": "splint", "chance": 0.08 }, { "item": "antibiotics", "chance": 0.04 } ] },
+    { "table": "cole", "guaranteed": [ { "item": "painkiller" } ] },
+    { "table": "husk", "rare": [ { "item": "painkiller", "chance": 0.03 } ] }
+  ]
+}

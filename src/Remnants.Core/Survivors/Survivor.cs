@@ -86,6 +86,21 @@ public sealed class Survivor
     /// <summary>Perk ids this survivor has learned (data/perks.json).</summary>
     public SortedSet<string> Perks { get; set; } = new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// 0..1: a running average of how good their food is (data/food.json <c>nutrition</c>). Low nutrition is
+    /// Malnourished; children grow weaker on it.
+    /// </summary>
+    public double Nutrition { get; set; } = 0.6;
+
+    /// <summary>Timed food effects: meal buffs and the debuffs of going without (see <c>FoodEffects</c>).</summary>
+    public List<ActiveBuff> Buffs { get; set; } = new();
+
+    /// <summary>A fading record of food value eaten per dish (variety: the same dish over and over costs mood).</summary>
+    public SortedDictionary<string, double> Diet { get; set; } = new(StringComparer.Ordinal);
+
+    /// <summary>Ticks since they last ate a cooked meal (a Bland diet sets in after <c>blandAfterHours</c>).</summary>
+    public int TicksSinceCooked { get; set; }
+
     /// <summary>Not an adult yet: an infant or a child. Children stay home from expeditions and eat first.</summary>
     public bool IsChild => LifeStage != LifeStage.Adult;
 
@@ -115,4 +130,12 @@ public sealed class Survivor
         Set(skill, before + amount * (1 - before / MaxStat));
         return Get(skill) - before;
     }
+}
+
+/// <summary>A buff or debuff until <see cref="Until"/> (a colony tick); <see cref="Strength"/> scales it (a meal's quality).</summary>
+public sealed class ActiveBuff
+{
+    public string Id { get; set; } = "";
+    public long Until { get; set; }
+    public double Strength { get; set; } = 1;
 }

@@ -144,6 +144,9 @@ public partial class SurvivorCard : PanelContainer
             badges.Add(("ui_night_shift", Palette.Night, $"On the night shift at {sim.Data.Buildings[shift.DefId].Name}: losing sleep"));
         if (sim.IsTired(s))
             badges.Add(("stat_tired", Palette.Warn, $"Tired: missed sleep ({s.SleepDebt:0} h to make up). −{(int)Math.Round((1 - rules.DayNight.Tired.OutputMultiplier) * 100)}% output and a slow mood drain until they sleep."));
+        foreach (var (buff, active) in FoodEffects.Active(s, sim.Data).OrderBy(x => x.Def.Debuff).ThenBy(x => x.Def.Id))
+            badges.Add((FoodText.BuffIcon(buff.Id), buff.Debuff ? (buff.Id == "sick" ? Palette.Danger : Palette.Warn) : Palette.Good,
+                FoodText.BuffTip(buff) + (active.Until - sim.State.Tick > 1 ? $"\n{ColonyText.Duration((int)(active.Until - sim.State.Tick), rules)} left" : "")));
         if (s.PerkPoints > 0)
             badges.Add(("stat_perk", Palette.Amber, $"{s.PerkPoints} perk point{(s.PerkPoints == 1 ? "" : "s")} to spend: open Perks"));
         var left = Math.Max(0, rules.Housing.HomelessGraceTicks - s.HomelessTicks);

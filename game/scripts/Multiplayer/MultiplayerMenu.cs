@@ -5,6 +5,7 @@ using Remnants.Core.Scavenge;
 using Remnants.Game.Colony.Ui;
 using Remnants.Game.Hud;
 using Remnants.Game.Scavenge;
+using Remnants.Game.Trade;
 using Remnants.Net;
 
 namespace Remnants.Game.Multiplayer;
@@ -37,6 +38,11 @@ public partial class MultiplayerMenu : Control
     private List<string> _zoneIds = new();
     private NetClient? _client;
     private bool _started;
+    private TradeDock? _dock;
+    private HBoxContainer _tradeRow = null!;
+    private OptionButton _tradeWith = null!;
+    private readonly List<int> _tradeIds = new();
+    private bool _debugTradeSent, _debugOfferSent;
 
     public override void _Ready()
     {
@@ -140,6 +146,16 @@ public partial class MultiplayerMenu : Control
         _team.ItemSelected += i => _client?.SetTeam(i == 0 ? null : (int)i);
         _teamRow.AddChild(_team);
         box.AddChild(_teamRow);
+        _tradeRow = Widgets.Row(8);
+        _tradeRow.Visible = false;
+        _tradeRow.AddChild(Ui.Label("Trade with"));
+        _tradeWith = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill, TooltipText = "Barter colony goods with another player; they reach home by courier" };
+        _tradeRow.AddChild(_tradeWith);
+        _tradeRow.AddChild(Widgets.IconButton("ui_trade", "Trade", "Open a trade window with this player", () =>
+        {
+            if (_tradeWith.Selected >= 0 && _tradeWith.Selected < _tradeIds.Count) _dock?.Request(_tradeIds[_tradeWith.Selected]);
+        }));
+        box.AddChild(_tradeRow);
         _ready = Widgets.IconButton("stat_check", "Ready", "Toggle ready: the mission starts when everyone is", () => _client?.SetReady(!IsReady()));
         _ready.Disabled = true;
         box.AddChild(_ready);
@@ -208,6 +224,14 @@ public partial class MultiplayerMenu : Control
         }
         _client = client;
         client.Changed += Refresh;
+        if (DebugCapture.HasFlag("--mp-trade-colony") && Colony.ColonySession.Current is null)
+        {
+            Colony.ColonySession.Current = new Colony.ColonySession(Remnants.Core.Colony.NewGame.Create(GameDataPaths.Load(), 7, GameDataPaths.LoadScavenge()));
+            TradeUi.EnsureMastForDebug(Colony.ColonySession.Current.Sim);
+        }
+        _dock = new TradeDock(client, null);
+        AddChild(_dock);
+        client.TradeNews += DebugOffer;
         if (int.TryParse(DebugCapture.Value("--mp-team"), out var team) && team is >= 1 and <= 4)
         {
             _team.Select(team);
@@ -222,6 +246,55 @@ public partial class MultiplayerMenu : Control
         MultiplayerSession.Disconnect();
         MultiplayerSession.StopServer();
         GetTree().ChangeSceneToFile(ScavengeSession.MenuScene);
+    }
+
+    private void RefreshTrade(NetClient client, LobbyState lobby)
+    {
+        var others = lobby.Players.Where(p => p.PlayerId != client.PlayerId && p.Connected).ToList();
+        _tradeRow.Visible = client.Phase == ClientPhase.Lobby && others.Count > 0;
+        if (!others.Select(p => p.PlayerId).SequenceEqual(_tradeIds))
+        {
+            _tradeIds.Clear();
+            _tradeWith.Clear();
+            foreach (var p in others)
+            {
+                _tradeIds.Add(p.PlayerId);
+                _tradeWith.AddIconItem(Icons.Get("ui_trade", 16), p.Name);
+            }
+        }
+        // Debug: `--mp-trade-with=NAME` opens a trade with that player as soon as they are in the lobby.
+        if (!_debugTradeSent && DebugCapture.Value("--mp-trade-with") is { Length: > 0 } name && others.Find(p => p.Name == name) is { } target)
+        {
+            _debugTradeSent = true;
+            _dock?.Request(target.PlayerId);
+        }
+    }
+
+    /// <summary>
+    /// Debug: `--mp-trade-offer=scrap:20,bandage` puts that on the table once the trade is open; `--mp-trade-lock` then
+    /// locks it, and `--mp-trade-confirm` confirms once both sides are locked.
+    /// </summary>
+    private void DebugOffer(Message message)
+    {
+        if (message is not TradeUpdate { Trade.Accepted: true } update || _client is null) return;
+        var (me, them) = _client.SidesOf(update.Trade);
+        if (_debugOfferSent && me.Goods.Count > 0 && !me.Locked && !me.Confirmed && DebugCapture.HasFlag("--mp-trade-lock"))
+            _client.LockTrade(update.Trade.TradeId, true);
+        if (me.Locked && them.Locked && !me.Confirmed && DebugCapture.HasFlag("--mp-trade-confirm"))
+            Callable.From(() => _dock?.Window.ConfirmFromDebug()).CallDeferred();
+        if (_debugOfferSent) return;
+        if (DebugCapture.Value("--mp-trade-offer") is not { Length: > 0 } spec) return;
+        _debugOfferSent = true;
+        var game = GameDataPaths.Load();
+        var items = GameDataPaths.LoadScavenge();
+        var goods = spec.Split(',', System.StringSplitOptions.RemoveEmptyEntries).Select(part =>
+        {
+            var bits = part.Split(':');
+            var count = bits.Length > 1 && int.TryParse(bits[1], out var n) ? n : 1;
+            return game.Resources.ContainsKey(bits[0]) ? Remnants.Core.Trade.TradeGood.Resource(bits[0], count) : Remnants.Core.Trade.TradeGood.Item(bits[0], count);
+        }).Where(g => g.Kind == Remnants.Core.Trade.GoodKind.Resource || items.Items.ContainsKey(g.Id))
+            .Select(g => Colony.ColonySession.Current is { } c ? Remnants.Core.Trade.FoodGoods.WithLots(c.Sim.State, c.Sim.Data, g) : g).ToList();
+        _client.OfferTrade(update.Trade.TradeId, goods);
     }
 
     private bool IsReady() => _client?.Lobby?.Players.Find(p => p.PlayerId == _client.PlayerId)?.Ready ?? false;
@@ -259,6 +332,7 @@ public partial class MultiplayerMenu : Control
             _mode.Disabled = true;
             if (_status.Text.StartsWith("Connecting")) _status.Text = $"In the lobby as player {client.PlayerId}.";
             _ready.Disabled = client.Phase != ClientPhase.Lobby;
+            RefreshTrade(client, lobby);
             _ready.Text = IsReady() ? "Not ready" : "Ready";
         }
 
@@ -266,6 +340,7 @@ public partial class MultiplayerMenu : Control
         {
             _started = true;
             client.Changed -= Refresh;
+            client.TradeNews -= DebugOffer;
             MultiplayerSession.BeginMission(GetTree());
         }
     }

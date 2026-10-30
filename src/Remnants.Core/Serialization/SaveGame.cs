@@ -47,14 +47,50 @@ namespace Remnants.Core.Serialization;
 /// Version 16 adds the weather (<see cref="ColonyState.Weather"/>: its seed and spells) and lightning damage
 /// (<see cref="Building.Damaged"/>), and carries the run's changing weather (<see cref="ScavengeSave"/> version 9). Older
 /// saves get a weather seed from their RNG state and nothing damaged.
-/// <see cref="LootVersion"/> adds each zone's exit stash (<see cref="ZoneStatus.Stash"/>) and carries the run's field loot
+/// Version <see cref="FoodVersion"/> (17) adds food and cooking: food is inventory items with lots (<see cref="ColonyState.Food"/>),
+/// buildings harvest (farm crops, greenhouse, hunting lodge), survivors carry nutrition, buffs and a diet. Older saves
+/// are converted by <see cref="MigrateFood"/>: the single food pool becomes a mix of potatoes, beans, corn and canned
+/// food of the same food value, Simple Meals become Boiled Potatoes and Hearty Stew becomes Stew (by food value), their
+/// Kitchen orders follow (a paid batch gives its food back), and farms keep growing potatoes, already ripe.
+/// Version <see cref="ElectronicsVersion"/> (18) adds electronics and power: the grid (<see cref="ColonyState.Power"/>: switched-off buildings, battery charge,
+/// the breaker) and the charging bench (<see cref="ColonyState.Charging"/>), and carries the scavenge run's decoys,
+/// EMP stuns, spent charges and secured cargo (<see cref="ScavengeSave"/> version 10). The migration is keyed on the data,
+/// not the number: a save without them loads with an empty grid (everything on, batteries empty) and nothing charging.
+/// Version 19 adds player trading (<see cref="ColonyState.Trade"/>: goods in escrow with their food lots, couriers on the
+/// road, settled transaction ids). Older saves load with none of it.
+/// Version <see cref="GearModsVersion"/> (20) adds gear mods: modded and upgraded gear as item ids
+/// (<c>base[@quality][+mkN][+mod]...</c>, see <see cref="Items.GearModsData"/>) in the inventory, on fitted gun arms and in
+/// the expedition, the Head equipment slot, and the run's <see cref="ScavengeSave"/> version 11. Nothing to migrate: older
+/// saves hold no modded ids and load unchanged; every modded id is checked against gear_mods.json like any item.
+/// Version <see cref="RaidsVersion"/> (21) adds colony defense and raids (<see cref="ColonyState.Defense"/>: placed defenses,
+/// guards, the raid on its way, repairs, building damage, raid reports). Older saves load with no defenses and no raid
+/// pressure, so the grace period applies from the day they are loaded on.
+/// Version <see cref="MedicineVersion"/> (22) adds medicine: bodies carry conditions, dressings and painkiller doses, the colony its
+/// Med Bay priorities (<see cref="ColonyState.MedicalCare"/>). Older saves load with no conditions and the default priorities,
+/// and <see cref="MigrateMedicine"/> turns part of the old medicine stock into antiseptic (medicine.json <c>migration</c>).
+/// Version <see cref="LootVersion"/> (23) adds each zone's exit stash (<see cref="ZoneStatus.Stash"/>) and carries the run's field loot
 /// and salvage (<see cref="ScavengeSave.LootVersion"/>); older saves load with no stash.
 /// </summary>
 public static class SaveGame
 {
-    /// <summary>Field loot and salvage (keyed: renumber to the next free version at merge).</summary>
-    public const int LootVersion = 17;
     public const int Version = LootVersion;
+
+    /// <summary>The save version that brought food and cooking (one constant so a renumbering on merge is one edit).</summary>
+    public const int FoodVersion = 17;
+
+    /// <summary>The save version that brought electronics and power.</summary>
+    public const int ElectronicsVersion = 18;
+
+    /// <summary>The save version that brought gear mods (nothing to migrate; see the remarks).</summary>
+    public const int GearModsVersion = 20;
+    /// <summary>The save version that added raids (keyed, so a rebase only renumbers it).</summary>
+    public const int RaidsVersion = 21;
+
+    /// <summary>The version that added medicine (keyed so a merge renumbers it in one place).</summary>
+    public const int MedicineVersion = 22;
+
+    /// <summary>The version that added field loot and salvage (keyed so a merge renumbers it in one place).</summary>
+    public const int LootVersion = 23;
     private const int OldestVersion = 1;
 
     /// <summary>Old blueprint and datashard item ids and the schematics they became (version 13).</summary>
@@ -168,6 +204,10 @@ public static class SaveGame
             else foreach (var skill in Enum.GetValues<Survivors.Skill>()) s.Skills.TryAdd(skill, 0);
         StudySystem.Repair(colony);
         if (envelope.Version < 12) MigrateCybernetics(data, scavenge, colony);
+        if (envelope.Version < FoodVersion) MigrateFood(data, colony);
+        if (envelope.Version < RaidsVersion) MigrateRaids(colony);
+        RepairDefense(data, colony);
+        if (envelope.Version < MedicineVersion) MigrateMedicine(data, scavenge, colony);
         Validate(data, colony);
         if (scavenge is not null) Validate(scavenge, colony);
         var sim = new ColonySim(data, colony, scavenge);
@@ -263,7 +303,100 @@ public static class SaveGame
         if (scavenge is not null && colony.Expedition?.Scavenge is { } run) ScavengeSave.MigrateCybernetics(scavenge, run);
     }
 
+    /// <summary>
+    /// Before medicine: the old medicine stock was every kind of care at once. Part of it (<c>shareConverted</c>) becomes
+    /// antiseptic, <c>medicinePerAntiseptic</c> each, rounded down; the rest stays as medicine (herbal remedies).
+    /// </summary>
+    internal static void MigrateMedicine(GameData data, ScavengeData? scavenge, ColonyState colony)
+    {
+        if (data.Medicine is not { } med) return;
+        var rules = med.Def.Migration;
+        if (scavenge is not null && !scavenge.Items.ContainsKey(rules.AntisepticItem)) return;
+        var medicineId = data.Rules.Medical.MedicineResourceId;
+        var count = (int)Math.Floor(colony.Stockpile.Get(medicineId) * rules.ShareConverted / rules.MedicinePerAntiseptic + 1e-9);
+        if (count <= 0 || !colony.Stockpile.TryTake(medicineId, count * rules.MedicinePerAntiseptic)) return;
+        colony.Inventory.Add(rules.AntisepticItem, count);
+    }
+
+    /// <summary>Before raids: an empty defense layer; the grace period counts from the day the save was made.</summary>
+    private static void MigrateRaids(ColonyState colony)
+    {
+        colony.Defense = new Raids.DefenseState { LastRaidTick = colony.Tick };
+    }
+
+    /// <summary>
+    /// Guard posts of survivors who are gone, and repairs of things that are gone, are dropped. Defense schematics learned
+    /// before the schematics merge (kept in <c>Defense.KnownSchematics</c>) move into <see cref="ColonyState.Schematics"/>.
+    /// </summary>
+    private static void RepairDefense(GameData data, ColonyState colony)
+    {
+        colony.Defense ??= new();
+        foreach (var id in colony.Defense.KnownSchematics.Where(id => data.Schematics.Find(id) is not null))
+            if (colony.Schematics.Known.Add(id))
+            {
+                colony.Schematics.LearnedFrom[id] = Remnants.Core.Schematics.SchematicSource.Migration;
+                colony.Schematics.LearnedAt[id] = colony.Tick;
+            }
+        colony.Defense.KnownSchematics.Clear();
+        foreach (var (id, post) in colony.Defense.Guards.ToList())
+            if (colony.FindSurvivor(id) is null || colony.Defense.Find(post) is null) colony.Defense.Guards.Remove(id);
+        colony.Defense.Repairs.RemoveAll(r => r.Target == Raids.RepairTarget.Building ? colony.FindBuilding(r.TargetId) is null : colony.Defense.Find(r.TargetId) is null);
+    }
+
     /// <summary>Before version 3 children grew up by age in years; put them at the same share of the growth track.</summary>
+    /// <summary>Old food pool: share of its food value per new item (the rest of the rounding goes to potatoes).</summary>
+    private static readonly (string Item, double Share)[] LegacyFoodMix = [("beans", 0.25), ("corn", 0.15), ("canned_food", 0.10)];
+
+    /// <summary>Old Kitchen resources and recipes → the new dish (item, recipe) and its food value per old unit.</summary>
+    private static readonly Dictionary<string, (string Item, string OldRecipe, string Recipe, double OldValue, double OldFood)> LegacyMeals =
+        new(StringComparer.Ordinal)
+        {
+            ["meal"] = ("boiled_potatoes", "simple_meal", "boiled_potatoes", 2.0, 4),
+            ["stew"] = ("stew", "hearty_stew", "stew", 2.5, 5),
+        };
+
+    private static void MigrateFood(GameData data, ColonyState colony)
+    {
+        var amounts = colony.Stockpile.Amounts;
+        var pool = amounts.GetValueOrDefault("food");
+        amounts.Remove("food");
+        foreach (var b in colony.Buildings)
+            foreach (var order in b.Queue)
+            {
+                var old = LegacyMeals.Values.FirstOrDefault(m => m.OldRecipe == order.RecipeId);
+                if (old.Item is null) continue;
+                order.RecipeId = old.Recipe;
+                if (!order.Paid) continue;
+                pool += old.OldFood;
+                order.Paid = false;
+                order.Progress = 0;
+                order.PaidItems.Clear();
+            }
+
+        void Give(string item, int count)
+        {
+            if (count <= 0) return;
+            if (data.Food is not null) Pantry.Add(colony, data, item, count);
+            else colony.Inventory.Add(item, count);
+        }
+        foreach (var (resource, meal) in LegacyMeals)
+        {
+            var units = amounts.GetValueOrDefault(resource);
+            amounts.Remove(resource);
+            var value = data.Food?.Items.GetValueOrDefault(meal.Item)?.FoodValue ?? 1;
+            Give(meal.Item, (int)Math.Round(units * meal.OldValue / value));
+        }
+        var given = 0.0;
+        foreach (var (item, share) in LegacyFoodMix)
+        {
+            var value = data.Food?.Items.GetValueOrDefault(item)?.FoodValue ?? 1;
+            var count = (int)Math.Floor(pool * share / value);
+            Give(item, count);
+            given += count * value;
+        }
+        Give("potato", (int)Math.Ceiling(pool - given - 1e-9));
+    }
+
     private static void MigrateGrowth(GameData data, ColonyState colony)
     {
         foreach (var s in colony.Survivors.Where(s => s.IsChild))
@@ -354,6 +487,7 @@ public static class SaveGame
         foreach (var part in colony.Survivors.SelectMany(s => s.Body.Parts.Values))
             if (part.ProstheticItemId is { } id) RequireItem(id);
         foreach (var op in colony.Surgeries) RequireItem(op.ItemId);
+        if (colony.Defense.Raid?.Battle is { } battle) ScavengeSave.Validate(data, battle);
         if (colony.Expedition is not { } expedition) return;
         if (!data.Zones.ContainsKey(expedition.ZoneId)) throw new JsonException($"Save references unknown zone '{expedition.ZoneId}'.");
         foreach (var id in expedition.Members.SelectMany(m => m.AllItems)) RequireItem(id);

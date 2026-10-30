@@ -15,7 +15,8 @@ public class CraftingDataTests
     {
         var made = TestData.Real.Recipes.Values.Where(r => r.Item is not null).Select(r => r.Item!)
             .Concat(ScavengeTestData.Real.Enemies.Values.SelectMany(e => e.Drops).Select(d => d.Item))
-            .Concat(ScavengeTestData.Real.Loot.Tables.Values.SelectMany(t => t.Entries.Concat(t.Guaranteed).Select(e => e.Item).Concat(t.Rare.Select(r => r.Item)))).ToHashSet();
+            .Concat(ScavengeTestData.Real.Loot.Tables.Values.SelectMany(t => t.Entries.Concat(t.Guaranteed).Select(e => e.Item).Concat(t.Rare.Select(r => r.Item))))
+            .Concat(TestData.Real.Food!.Harvests.Values.SelectMany(h => h.Outputs.Keys)).ToHashSet();
         var orphans = ScavengeTestData.Real.Items.Values
             .Where(i => i.BaseId is null && !i.Natural && !i.Quest && i.Kind != ItemKind.Schematic && i.LootWeight <= 0 && !made.Contains(i.Id))
             .Select(i => i.Id).ToList();
@@ -51,7 +52,8 @@ public class CraftingDataTests
         Assert.True(fine.Weight < items["riot_armor"].Weight);
         Assert.True(crude.Actions[0].MaxDamage < items["pipe"].Actions[0].MaxDamage);
         Assert.Equal(0, fine.LootWeight);
-        Assert.DoesNotContain("bandage@fine", items.Keys);  // only equippable gear has quality
+        Assert.DoesNotContain("flare@fine", items.Keys);  // only equippable gear and medical supplies have quality
+        Assert.Contains("bandage@fine", items.Keys);
         Assert.DoesNotContain("husk_claws@fine", items.Keys);
     }
 
@@ -102,6 +104,9 @@ public class ProductionQueueTests
         Assert.True(worker.Get(AttributeKind.Creativity) > 60);  // tailoring trains Creativity and Agility
     }
 
+    /// <summary>Crafted bandages at any quality.</summary>
+    private static int Bandages(ColonySim sim) => sim.State.Inventory.Counts.Where(kv => kv.Key.Split('@')[0] == "bandage").Sum(kv => kv.Value);
+
     [Fact]
     public void Orders_run_in_turn_and_skip_one_that_cannot_start()
     {
@@ -112,7 +117,7 @@ public class ProductionQueueTests
 
         RunUntilDone(sim, shop, 50);
 
-        Assert.Equal(2, sim.State.Inventory.Count("bandage"));
+        Assert.Equal(2, Bandages(sim));
         Assert.Equal("padded_vest", Assert.Single(shop.Queue).RecipeId);
         Assert.Equal(CraftStatus.WaitingForInputs, sim.CraftStatus(shop));
     }
@@ -125,7 +130,7 @@ public class ProductionQueueTests
         var repeat = sim.Execute(new QueueRecipe(shop.Id, "bandage", Repeat: true)).EntityId;
         var coat = sim.Execute(new QueueRecipe(shop.Id, "rag_coat")).EntityId;
 
-        for (var i = 0; i < 200 && sim.State.Inventory.Count("bandage") == 0; i++) sim.Tick();
+        for (var i = 0; i < 200 && Bandages(sim) == 0; i++) sim.Tick();
 
         Assert.Equal([coat!.Value, repeat!.Value], shop.Queue.Select(o => o.Id));
     }
@@ -298,12 +303,12 @@ public class KitchenTests
         sim.Build("shelter");
         var s = sim.AddSurvivor();
         s.Mood = 50;
-        var meal = sim.Data.Rules.Food.Meals.Single(m => m.Resource == "meal");
-        sim.State.Stockpile.Add("meal", 1);
+        var meal = sim.Data.Food!.Items["boiled_potatoes"];
+        Pantry.Add(sim.State, sim.Data, "boiled_potatoes", 1);
 
         sim.Tick();
 
-        Assert.Equal(1 - sim.Data.Rules.Food.AdultPerTick / meal.FoodValue, sim.State.Stockpile.Get("meal"), 6);
+        Assert.Equal(1 - sim.Data.Rules.Food.AdultPerTick / meal.FoodValue, sim.State.Food.Open.Single().Left, 6);
         Assert.Equal(0, s.StarvingTicks);
         Assert.True(s.Mood > 50 + sim.Data.Rules.Mood.RecoveryPerTick - 1e-9);
     }
@@ -311,17 +316,20 @@ public class KitchenTests
     [Fact]
     public void The_kitchen_cooks_more_food_value_than_it_uses()
     {
-        var recipe = TestData.Real.Recipes["simple_meal"];
-        var value = TestData.Real.Rules.Food.Meals.Single(m => m.Resource == recipe.Resource).FoodValue;
-        Assert.True(recipe.Amount * value > recipe.Inputs["food"]);
+        var food = TestData.Real.Food!;
+        var recipe = TestData.Real.Recipes["boiled_potatoes"];
+        var used = recipe.Ingredients.Sum(kv => kv.Value * food.Items[kv.Key].FoodValue);
+        Assert.True(recipe.Amount * food.Items[recipe.Item!].FoodValue > used);
 
         var sim = LoopTestData.Colony(food: 100);
         var kitchen = sim.Build("kitchen");
+        sim.State.Stockpile.Add("wood", 5);
         var cook = sim.AddSurvivor(attributes: 60);
         Assert.True(sim.Execute(new AssignJob(cook.Id, kitchen.Id)).Ok);
-        Assert.True(sim.Execute(new QueueRecipe(kitchen.Id, "simple_meal")).Ok);
+        Assert.True(sim.Execute(new QueueRecipe(kitchen.Id, "purify_water")).Ok);
+        Assert.True(sim.Execute(new QueueRecipe(kitchen.Id, "boiled_potatoes")).Ok);
         for (var i = 0; i < 100 && kitchen.Queue.Count > 0; i++) sim.Tick();
-        Assert.True(sim.State.Stockpile.Get("meal") > 0);
+        Assert.True(sim.State.Inventory.Count("boiled_potatoes") + sim.State.Food.Open.Count(p => p.ItemId == "boiled_potatoes") > 0);
         Assert.True(cook.Get(Skill.Cooking) > 0);
     }
 }

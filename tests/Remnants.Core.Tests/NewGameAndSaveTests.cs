@@ -33,7 +33,8 @@ public class NewGameTests
 
         Assert.Contains(sim.State.Buildings, b => b is { DefId: "town_hall", Level: 1 });
         Assert.Contains(sim.State.Buildings, b => b is { DefId: "shelter", Level: 1 });
-        foreach (var res in new[] { "wood", "stone", "food" }) Assert.True(sim.State.Stockpile.Get(res) > 0);
+        foreach (var res in new[] { "wood", "stone" }) Assert.True(sim.State.Stockpile.Get(res) > 0);
+        Assert.True(sim.FoodStock > 0);
         Assert.All(sim.State.Survivors, s => Assert.True(s.HasBed));
     }
 

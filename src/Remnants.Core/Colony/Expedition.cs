@@ -43,6 +43,9 @@ public sealed class Expedition
     /// <summary>Hours the party waits outside the zone for a better time (included in <see cref="ArrivalTick"/>).</summary>
     public long WaitTicks { get; set; }
 
+    /// <summary>Food packed as rations at launch (item id → count), eaten on the way.</summary>
+    public SortedDictionary<string, int> Rations { get; set; } = new(StringComparer.Ordinal);
+
     /// <summary>The zone's depletion at launch; the run is generated with it.</summary>
     public double Depletion { get; set; }
 

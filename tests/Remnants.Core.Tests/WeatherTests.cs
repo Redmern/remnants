@@ -24,15 +24,17 @@ public class WeatherTests
         var kinds = new Dictionary<string, WeatherKindDef>(w.Kinds) { [kind] = only };
         var rules = d.Rules with { DayNight = d.Rules.DayNight with { Enabled = nights } };
         return new GameData(d.Resources.Values, d.Jobs.Values, d.Buildings.Values, rules, d.Recipes.Values, d.Progression, d.Cybernetics?.Def, d.Schematics,
-            w with { Start = kind, Kinds = kinds });
+            w with { Start = kind, Kinds = kinds }, d.Food?.Def);
     }
 
     private static ColonySim Colony(GameData data, Dictionary<string, double>? stock = null)
     {
         var state = new ColonyState();
         state.Buildings.Add(new Building { Id = state.NextBuildingId++, DefId = "town_hall", Level = 1 });
-        state.Stockpile.Add("food", 100);
-        foreach (var (res, amount) in stock ?? new()) state.Stockpile.Add(res, amount);
+        state.AddFood(100);
+        foreach (var (res, amount) in stock ?? new())
+            if (res == TestData.Food) state.AddFood(amount);
+            else state.Stockpile.Add(res, amount);
         return new ColonySim(data, state, Real);
     }
 
@@ -203,10 +205,15 @@ public class WeatherTests
         var clear = Always("clear");
         var rain = Always("rain");
         var kind = rain.Weather.Kind("rain").Colony;
-        Assert.Equal(Produced(clear, "farm") * kind.OutdoorOutput * kind.CropOutput, Produced(rain, "farm"), 6);
+        // Rain slows outdoor work for everyone, and waters the crops: the crop term is per harvest (HarvestSystem).
+        Assert.Equal(Produced(clear, "farm") * kind.OutdoorOutput, Produced(rain, "farm"), 6);
         Assert.Equal(Produced(clear, "woodcutter") * kind.OutdoorOutput, Produced(rain, "woodcutter"), 6);
         var crop = Assert.Single(Crops.Modifiers(rain, Weather.SpellAt(new ColonyState(), rain, "Home Valley", 0)));
         Assert.Equal(("weather", kind.CropOutput), (crop.Source, crop.Multiplier));
+        var sim = Colony(rain);
+        var farm = sim.Build("farm");
+        Assert.Equal(kind.CropOutput, Harvesting.WeatherMultiplier(sim.State, sim.Data, farm, Harvesting.Current(sim.Data, farm)!), 9);
+        Assert.Equal(1, Harvesting.WeatherMultiplier(sim.State, sim.Data, farm, sim.Data.Food!.Harvests["game"]), 9);
     }
 
     [Fact]
@@ -343,9 +350,10 @@ public class WeatherTests
         sim.State.Zones[near.Id] = new ZoneStatus { Intel = ZoneIntel.Scouted };
         var plan = sim.PlanArrival(near.Id);
         Assert.True(plan.DelayRationsPerMember > 0);
-        var food = sim.State.Stockpile.Get("food");
+        var food = sim.FoodStock;
         Assert.True(sim.Execute(new LaunchExpedition(near.Id, [new(a.Id)])).Ok);
-        Assert.Equal(WorldMap.RationsPerMember(sim.Data, near) + plan.ExtraRationsPerMember, food - sim.State.Stockpile.Get("food"), 9);
+        // Rations are whole items (potatoes, 1 food each): the need, rounded up.
+        Assert.Equal(Math.Ceiling(WorldMap.RationsPerMember(sim.Data, near) + plan.ExtraRationsPerMember - 1e-9), food - sim.FoodStock, 9);
         Assert.Equal(WorldMap.TravelTicks(sim.Data, near) + 24, sim.State.Expedition!.TravelTicks);
     }
 

@@ -24,6 +24,9 @@ public enum UnlockKind
 
     /// <summary>A vehicle chassis, engine or upgrade (checked by a registered validator, see <see cref="SchematicCatalog.UnlockValidators"/>).</summary>
     Vehicle,
+
+    /// <summary>A colony defense or trap of data/raids.json (checked by <c>RaidData.Validate</c>, which owns that catalogue).</summary>
+    Defense,
 }
 
 /// <summary>Where a schematic can come from. Every schematic lists at least one source that is not <see cref="Story"/>.</summary>
@@ -384,7 +387,8 @@ public sealed class SchematicCatalog
         foreach (var res in radio.Prices.SelectMany(p => p).SelectMany(o => o.Cost.Keys)
                      .Concat(radio.SellPrices.SelectMany(p => p.Keys)).Concat(radio.ResearchDataPrice.Keys)
                      .Concat(radio.ContractRewards.SelectMany(p => p.Keys)))
-            if (!data.Resources.ContainsKey(res)) throw new GameDataException($"Schematics rules.radio: unknown resource '{res}'.");
+            if (res != Colony.Pantry.FoodKey && !data.Resources.ContainsKey(res))
+                throw new GameDataException($"Schematics rules.radio: unknown resource '{res}'.");
         foreach (var needs in Rules.Research.Needs)
             foreach (var (b, level) in needs)
                 if (!data.Buildings.TryGetValue(b, out var def) || level < 1 || level > def.MaxLevel)

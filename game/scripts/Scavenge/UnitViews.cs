@@ -336,6 +336,58 @@ public partial class UnitViews : Node3D
                     if (actor.Rig?.Once("use_item") == true) await Wait(0.5f);
                     break;
 
+                // The first EmpBurst line is the blast (its follow-up names what it knocked out).
+                case ScavengeEventType.EmpBurst when e.Pos is { } empAt && (Seen(empAt) || Mine(e.UnitId))
+                                                     && previous is not { Type: ScavengeEventType.EmpBurst }:
+                    if (actor is not null && actor.Root.Visible)
+                    {
+                        Face(actor, TileGrid.ToWorld(empAt));
+                        if (actor.Rig is { } throwRig && throwRig.Once("throw")) await Wait(throwRig.EventDelay("throw", "release"));
+                    }
+                    Beat();
+                    EmpRing(TileGrid.ToWorld(empAt), EmpRadius());
+                    FloatText(TileGrid.ToWorld(empAt), "EMP", Hud.Palette.Network);
+                    await Wait(0.6f);
+                    break;
+
+                case ScavengeEventType.DecoyDeployed when actor is not null && (Seen(e.Pos) || Mine(e.UnitId)):
+                    Beat();
+                    actor.Root.Visible = true;
+                    Flash(actor, _networkFlash, 0.3f);
+                    FloatText(actor.Root.Position, "decoy", Hud.Palette.Network);
+                    await Wait(0.3f);
+                    break;
+
+                case ScavengeEventType.DecoyGone when actor is not null:
+                    Beat();
+                    var fade = CreateTween();
+                    fade.TweenProperty(actor.Root, "scale", new Vector3(0.05f, 1.4f, 0.05f), 0.3);
+                    await ToSignal(fade, Tween.SignalName.Finished);
+                    actor.Root.Visible = false;
+                    actor.Root.Scale = Vector3.One;
+                    break;
+
+                case ScavengeEventType.DroneHealed when target is not null:
+                    if (actor is not null) Face(actor, target.Root.Position);
+                    Beat();
+                    Flash(target, _healFlash);
+                    FloatText(target.Root.Position, "treated", Hud.Palette.Good);
+                    await Wait(0.35f);
+                    break;
+
+                case ScavengeEventType.DroneLoaded when actor is not null:
+                    Beat();
+                    FloatText(actor.Root.Position + Vector3.Up, "loaded", Hud.Palette.Amber);
+                    await Wait(0.3f);
+                    break;
+
+                case ScavengeEventType.DroneFerried when actor is not null:
+                    Beat();
+                    FloatText(actor.Root.Position + Vector3.Up, "ferried out", Hud.Palette.Good);
+                    await TweenTo(actor.Root, actor.Root.Position + Vector3.Up * 4, 0.5f);
+                    actor.Root.Visible = false;
+                    break;
+
                 default:
                     Beat();
                     break;
@@ -507,6 +559,7 @@ public partial class UnitViews : Node3D
     public override void _Process(double delta)
     {
         if (_presenter is null) return;
+        FlickerDecoys();
         foreach (var view in _views.Values)
         {
             if (_presenter.State.FindUnit(view.Id) is not { CarriedById: { } carrierId } ||
@@ -531,6 +584,91 @@ public partial class UnitViews : Node3D
     private async Task Wait(float seconds) => await ToSignal(GetTree().CreateTimer(Mathf.Max(0.01f, seconds)), SceneTreeTimer.SignalName.Timeout);
 
     /// <summary>A short warm light at a shooter, fading out in a third of a second.</summary>
+    /// <summary>The widest EMP burst in the data (the event does not say which device went off).</summary>
+    private int EmpRadius() =>
+        _presenter.Sim.Data.Items.Values.Select(i => i.Use?.Emp?.Radius ?? 0).DefaultIfEmpty(2).Max() is > 0 and var r ? r : 2;
+
+    /// <summary>
+    /// An EMP going off: a cyan flash and light at the tile, and a flat ring that sweeps out to the burst's edge
+    /// (<paramref name="radius"/> tiles, Chebyshev, so a square reads truer than a circle) while it fades.
+    /// </summary>
+    public void EmpRing(Vector3 at, int radius)
+    {
+        var cyan = Hud.Palette.Network;
+        var root = new Node3D { Name = "EmpBurst", Position = at };
+        AddChild(root);
+        var ringMaterial = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(cyan, 0.9f), ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha, EmissionEnabled = true, Emission = cyan, EmissionEnergyMultiplier = 2,
+            CullMode = BaseMaterial3D.CullModeEnum.Disabled, NoDepthTest = false,
+        };
+        var ring = new MeshInstance3D
+        {
+            Mesh = new TorusMesh { InnerRadius = 0.92f, OuterRadius = 1f, Rings = 48, RingSegments = 4 },
+            MaterialOverride = ringMaterial, Position = new Vector3(0, 0.25f, 0), Scale = new Vector3(0.2f, 0.4f, 0.2f),
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+        };
+        root.AddChild(ring);
+        var edge = (radius + 0.5f) * TileGrid.TileSize;
+        var areaMaterial = new StandardMaterial3D
+        {
+            AlbedoColor = new Color(cyan, 0.0f), ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+            Transparency = BaseMaterial3D.TransparencyEnum.Alpha, CullMode = BaseMaterial3D.CullModeEnum.Disabled,
+        };
+        var area = new MeshInstance3D
+        {
+            Mesh = new PlaneMesh { Size = new Vector2(edge * 2, edge * 2) }, MaterialOverride = areaMaterial,
+            Position = new Vector3(0, 0.15f, 0), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+        };
+        root.AddChild(area);
+        var flash = new MeshInstance3D
+        {
+            Mesh = new SphereMesh { Radius = 0.9f, Height = 1.8f, RadialSegments = 16, Rings = 8 },
+            MaterialOverride = new StandardMaterial3D
+            {
+                AlbedoColor = new Color(0.85f, 1f, 1f, 0.85f), ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+                Transparency = BaseMaterial3D.TransparencyEnum.Alpha, EmissionEnabled = true, Emission = cyan,
+            },
+            Position = new Vector3(0, 1f, 0), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+        };
+        root.AddChild(flash);
+        var light = new OmniLight3D
+        {
+            Position = new Vector3(0, 2f, 0), LightColor = cyan, LightEnergy = 8f, OmniRange = edge * 1.6f, ShadowEnabled = false,
+        };
+        root.AddChild(light);
+
+        // Kept (Hold) for a still: --tech-demo=emp freezes it at its widest.
+        var tween = root.CreateTween().SetParallel();
+        tween.TweenProperty(ring, "scale", new Vector3(edge, 1.2f, edge), 0.55).SetEase(Tween.EaseType.Out).SetTrans(Tween.TransitionType.Cubic);
+        tween.TweenProperty(areaMaterial, "albedo_color", new Color(cyan, 0.22f), 0.35);
+        tween.TweenProperty(flash, "scale", Vector3.One * 2.6f, 0.3);
+        tween.TweenProperty((StandardMaterial3D)flash.MaterialOverride, "albedo_color", new Color(0.85f, 1f, 1f, 0f), 0.5);
+        if (HoldEffects) return;
+        tween.Chain().TweenProperty(ringMaterial, "albedo_color", new Color(cyan, 0f), 0.6);
+        tween.TweenProperty(areaMaterial, "albedo_color", new Color(cyan, 0f), 0.6);
+        tween.TweenProperty(light, "light_energy", 0f, 0.6);
+        tween.Chain().TweenCallback(Callable.From(root.QueueFree));
+    }
+
+    /// <summary>Debug stills: effects stay at their peak instead of fading.</summary>
+    public bool HoldEffects { get; set; }
+
+    /// <summary>Holo-decoys flicker: their shared material's alpha jitters, with the odd drop-out.</summary>
+    private void FlickerDecoys()
+    {
+        var t = (float)Time.GetTicksMsec() / 1000f;
+        foreach (var view in _views.Values)
+        {
+            if (!view.Model.HasMeta(ScavengeModels.HologramMeta) || view.Model.GetMeta(ScavengeModels.HologramMeta).As<StandardMaterial3D>() is not { } holo) continue;
+            var phase = t * 9f + view.Id * 1.7f;
+            var dropout = Mathf.Sin(phase * 0.37f) > 0.93f;
+            var alpha = dropout ? 0.12f : 0.34f + 0.1f * Mathf.Sin(phase) + 0.05f * Mathf.Sin(phase * 2.9f);
+            holo.AlbedoColor = new Color(holo.AlbedoColor, alpha);
+        }
+    }
+
     private void MuzzleFlash(Vector3 at)
     {
         var light = new OmniLight3D

@@ -1,0 +1,15 @@
+{
+  "_comment": "Medical schematics (ARCHITECTURE.md \"Medicine\"). Bandages, splint, herbal remedy, antiseptic and the basic med-kit have no schematic: they are the default set.",
+  "schematics": [
+    {"id": "sch_field_dressings", "name": "Field Dressings", "tier": 1, "unlocks": [{"kind": "Recipe", "id": "clean_dressing"}, {"kind": "Recipe", "id": "suture_kit"}], "sources": ["Loot", "Trade", "Research", "Story"], "storyMissions": ["M7"], "description": "Doc Hale's way: boil it, soak it, stitch it."},
+    {"id": "sch_painkillers", "name": "Painkillers", "tier": 1, "unlocks": [{"kind": "Recipe", "id": "painkiller"}], "sources": ["Loot", "Trade", "Research", "Story"], "storyMissions": ["M7"], "description": "Takes the edge off. Not too many."},
+    {"id": "sch_antidote", "name": "Antidote", "tier": 1, "unlocks": [{"kind": "Recipe", "id": "antidote"}], "sources": ["Loot", "Trade", "Research"], "description": "Charcoal and bitter roots for bad food and Husk rot."},
+    {"id": "sch_antibiotics", "name": "Antibiotics", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "antibiotics"}], "sources": ["Loot", "Terminal", "Trade", "Research", "Story"], "storyMissions": ["M7"], "description": "Cultured from pharmacy stock. Cures an infection."},
+    {"id": "sch_blood_transfusion", "name": "Blood Transfusion", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "blood_bag"}], "sources": ["Loot", "Trade", "Research", "Story"], "storyMissions": ["M15"], "description": "A donor at home, a bag in the field: the downed get up stronger."},
+    {"id": "sch_combat_stims", "name": "Combat Stims", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "stim"}], "sources": ["Loot", "Terminal", "Trade", "Research"], "description": "One more step now, a crash later."},
+    {"id": "sch_surgical_kit", "name": "Surgical Kit", "tier": 2, "unlocks": [{"kind": "Recipe", "id": "surgical_kit"}], "sources": ["Loot", "Trade", "Research", "Story"], "storyMissions": ["M15"], "description": "Real instruments: surgery goes right more often."},
+    {"id": "sch_trauma_kit", "name": "Field Trauma Kit", "tier": 3, "unlocks": [{"kind": "Recipe", "id": "trauma_kit"}], "sources": ["Loot", "Trade", "Research", "Story"], "storyMissions": ["M15"], "description": "Everything a medic needs to keep someone alive until extraction."},
+    {"id": "sch_calm_injector", "name": "Calm Injector", "tier": 3, "encrypted": true, "unlocks": [{"kind": "Recipe", "id": "calm_injector"}], "sources": ["Terminal", "Loot", "Research"], "description": "Network-grade: what Halcyon gives the Linked so they never feel fear. Doc Hale wants nothing to do with it."}
+  ],
+  "traders": []
+}

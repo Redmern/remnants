@@ -12,7 +12,8 @@ public enum HighlightKind { Move, Attack, Use, Selected, Hover }
 
 /// <summary>
 /// The tactical map: terrain props per tile (ground, walls, rubble, wrecked cars), exit markers, loot crates,
-/// fog of war for the local side (hidden / seen before, dimmed / visible) and the tile highlights.
+/// fog of war for the local side (hidden / seen before, dimmed / visible) and the tile highlights. On a fought raid's
+/// colony map the buildings and defenses are drawn as in the town (<see cref="ColonyBattleDressing"/>).
 /// Reads Core state; never changes it.
 /// </summary>
 public partial class MapView : Node3D
@@ -86,6 +87,7 @@ public partial class MapView : Node3D
         var gridMesh = new PlaneMesh { Size = new Vector2(TileGrid.TileSize, TileGrid.TileSize) };
         var gridMaterial = Framed(TileFrame(border: 1, fill: 0f), GridColor);
         var waterMaterial = Placeholders.Material(WaterColor, unshaded: true);
+        var colony = ColonyBattleDressing.For(_presenter.State, _models.Library);
 
         foreach (var p in map.AllPositions)
         {
@@ -98,9 +100,13 @@ public partial class MapView : Node3D
             if (GroundPattern.Flip(seed, p)) ground.RotationDegrees = new Vector3(0, 180, 0);
             tile.AddChild(ground);
             foreach (var mesh in Meshes(ground)) _ground[mesh] = variant == 0 ? _groundShade : _patchShade;
+            var dressed = colony?.Dress(tile, p, map[p]) ?? false;
 
             switch (map[p])
             {
+                case Terrain.Wall when dressed:
+                case Terrain.Cover when dressed:
+                    break;
                 case Terrain.Wall:
                     AddWall(tile, map, p, seed);
                     break;

@@ -1,3 +1,4 @@
+using Remnants.Core.Random;
 using Remnants.Core.Items;
 using Remnants.Core.Survivors;
 
@@ -21,6 +22,10 @@ public static class Combat
         if (from.Chebyshev(target) > 1 && !map.HasLineOfSight(data, from, target)) return ScavengeError.NoLineOfSight;
         return ScavengeError.None;
     }
+
+    /// <summary>AP the attack costs from <paramref name="from"/> at <paramref name="target"/>: more up close for a scope.</summary>
+    public static int ApCost(ActionProfile action, Pos from, Pos target) =>
+        action.ApCost + (action.CloseApPenalty > 0 && from.Chebyshev(target) <= action.CloseRange ? action.CloseApPenalty : 0);
 
     /// <summary>Cover a target gets from the tile next to it on the attacker's side. Nothing at point-blank range.</summary>
     public static double CoverAgainst(ScavengeData data, TileMap map, Pos target, Pos attacker)
@@ -51,7 +56,7 @@ public static class Combat
     /// <summary>The hit chance of this attack as it would resolve now, ambush included (for previews and the AI).</summary>
     public static double ChanceToHit(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, Pos? from = null) =>
         HitChance(sim.Data, sim.State.Map, from ?? attacker.Pos,
-            action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) - WeatherPenalty(sim, action) },
+            action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) - WeatherPenalty(sim, action) + ElectronicWarfare.RadioAccuracy(sim, attacker) },
             target.Pos, sim.Profile(target), AmbushAgainst(sim.Data, sim.State, attacker, target, from), Bane(sim.Data, action, target));
 
     /// <summary>What the weather takes off a ranged attack's hit chance (dust in the air; melee is unaffected).</summary>
@@ -96,7 +101,8 @@ public static class Combat
     /// </summary>
     internal static void Resolve(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, bool reaction = false)
     {
-        if (!reaction) attacker.Ap -= action.ApCost;
+        if (!reaction) attacker.Ap -= ApCost(action, attacker.Pos, target.Pos);
+        attacker.Facing = Face(attacker.Pos, target.Pos);
         sim.MakeNoise(attacker, action.Noise);
         var center = target.Pos;
         var targets = new List<Unit> { target };
@@ -109,7 +115,11 @@ public static class Combat
         for (var i = 0; i < targets.Count; i++)
             Strike(sim, attacker, action with { Accuracy = action.Accuracy - penalty }, targets[i], ambushes[i]);
         AfterAttack(sim, attacker, action, targets);
+        GearEffects.Feedback(sim, attacker, action);
     }
+
+    /// <summary>The direction from one tile to another as a sign per axis.</summary>
+    public static Pos Face(Pos from, Pos to) => new(Math.Sign(to.X - from.X), Math.Sign(to.Y - from.Y));
 
     /// <summary>
     /// Suppressing fire: no damage roll, but the target is pinned and loses AP next turn. Needs a ranged action that
@@ -119,7 +129,7 @@ public static class Combat
     {
         attacker.Ap -= action.ApCost;
         sim.MakeNoise(attacker, action.Noise);
-        target.Suppressed = true;
+        target.Suppressed = target.CalmUntilRound < sim.State.Round;
         sim.State.Log(new(sim.State.Round, ScavengeEventType.Suppressed,
             $"{attacker.Name} pins {target.Name} down with suppressing fire ({action.Name}).", attacker.Id, target.Id, target.Pos,
             Anonymous: $"{target.Name} is pinned down by fire from the fog."));
@@ -149,7 +159,7 @@ public static class Combat
         var data = sim.Data;
         var state = sim.State;
         var bane = Bane(data, action, target);
-        var chance = HitChance(data, state.Map, attacker.Pos, action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) },
+        var chance = HitChance(data, state.Map, attacker.Pos, action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + ElectronicWarfare.RadioAccuracy(sim, attacker) },
             target.Pos, sim.Profile(target), ambush, bane);
         if (ambush is { } a)
             state.Log(new(state.Round, ScavengeEventType.Ambushed,
@@ -165,18 +175,25 @@ public static class Combat
         }
 
         var raw = (action.MinDamage + (action.MaxDamage - action.MinDamage) * sim.Rng.NextDouble()) * (ambush?.DamageMultiplier ?? 1);
-        var armor = sim.Profile(target).Armor;
+        var part = PickHitLocation(sim, target);
+        var defense = sim.Profile(target);
+        var armor = Math.Max(0, defense.ArmorAgainst(Body.RegionOf(part), action.Pattern == AttackPattern.Melee) - action.ArmorPierce);
         if (bane is not null)
         {
             raw *= bane.DamageMultiplier;
             armor = Math.Max(0, armor - bane.ArmorPierce);
         }
         var damage = Math.Max(1, raw - armor);
-        var part = PickHitLocation(sim, target);
         state.Log(new(state.Round, ScavengeEventType.Attacked,
             $"{attacker.Name} hit {target.Name}'s {part} for {damage:0} ({action.Name}).", attacker.Id, target.Id, target.Pos,
             Anonymous: $"{target.Name} was hit in the {part} for {damage:0} from the fog."));
-        ApplyDamage(sim, target, part, damage, attacker);
+        ApplyDamage(sim, target, part, damage, action.InjuryMultiplier * (1 - Math.Clamp(defense.InjuryResist, 0, 1)), attacker);
+        if (bane is { Stun: true } && target.IsActive && !target.Suppressed)
+        {
+            target.Suppressed = true;
+            state.Log(new(state.Round, ScavengeEventType.Suppressed, $"{target.Name} is stunned ({action.Name}).", attacker.Id, target.Id, target.Pos,
+                Anonymous: $"{target.Name} is stunned."));
+        }
         if (bane is { DisruptRounds: > 0 } && target.IsActive && Network.IsLinked(data, target))
         {
             target.OffRelayUntilRound = Math.Max(target.OffRelayUntilRound, state.Round + bane.DisruptRounds - 1);
@@ -185,9 +202,26 @@ public static class Combat
         }
     }
 
-    /// <summary>The action's bane when the target is an enemy carrying its tag, else null.</summary>
-    public static BaneDef? Bane(ScavengeData data, ActionProfile action, Unit target) =>
-        action.Bane is { } bane && target.EnemyDefId is { } id && data.Enemies[id].Tags.Contains(bane.Tag) ? bane : null;
+    /// <summary>
+    /// The action's banes against an enemy carrying their tags, merged into one (hit bonuses and armor pierce add, damage
+    /// bonuses add up, the longest relay knock-off, any stun), else null.
+    /// </summary>
+    public static BaneDef? Bane(ScavengeData data, ActionProfile action, Unit target)
+    {
+        if (target.EnemyDefId is not { } id) return null;
+        var tags = data.Enemies[id].Tags;
+        var matching = (action.Bane is { } b ? [b] : Enumerable.Empty<BaneDef>()).Concat(action.ExtraBanes ?? []).Where(x => tags.Contains(x.Tag)).ToList();
+        if (matching.Count <= 1) return matching.FirstOrDefault();
+        return new BaneDef
+        {
+            Tag = matching[0].Tag,
+            HitBonus = matching.Sum(x => x.HitBonus),
+            DamageMultiplier = 1 + matching.Sum(x => x.DamageMultiplier - 1),
+            ArmorPierce = matching.Sum(x => x.ArmorPierce),
+            DisruptRounds = matching.Max(x => x.DisruptRounds),
+            Stun = matching.Any(x => x.Stun),
+        };
+    }
 
     /// <summary>Weighted by rules.combat.hitLocations; a hit on a missing limb lands on the torso.</summary>
     private static BodyPart PickHitLocation(ScavengeSim sim, Unit target)
@@ -204,7 +238,7 @@ public static class Combat
     }
 
     /// <summary>Damage to one body part: injury severity, possible limb loss, then HP and Downed/Dead (by <paramref name="attacker"/>, for loot perks).</summary>
-    public static void ApplyDamage(ScavengeSim sim, Unit target, BodyPart part, double damage, Unit? attacker = null)
+    public static void ApplyDamage(ScavengeSim sim, Unit target, BodyPart part, double damage, double severityScale = 1, Unit? attacker = null)
     {
         var data = sim.Data;
         var state = sim.State;
@@ -213,7 +247,7 @@ public static class Combat
         var bodyPart = target.Body[part];
         if (bodyPart.Condition is PartCondition.Healthy or PartCondition.Injured)
         {
-            var severity = bodyPart.Severity + damage / c.PartToughness[Body.RegionOf(part)];
+            var severity = bodyPart.Severity + damage / c.PartToughness[Body.RegionOf(part)] * severityScale;
             target.Body.Injure(part, severity);
             state.Log(new(state.Round, ScavengeEventType.Injured,
                 $"{target.Name}'s {part} is injured ({target.Body[part].Severity:P0}).", target.Id, Pos: target.Pos));
@@ -223,6 +257,9 @@ public static class Combat
                 target.Body.Lose(part);
                 state.Log(new(state.Round, ScavengeEventType.LimbLost, $"{target.Name} lost their {part}.", target.Id, Pos: target.Pos));
             }
+            else if (target.Kind == UnitKind.Survivor
+                     && Treatment.MaybeFracture(data.Medicine, target.Body, part, SideRoll.Next(sim.Rng, state.Round, target.Id, (long)part, (long)(damage * 1000))))
+                state.Log(new(state.Round, ScavengeEventType.Fractured, $"{target.Name}'s {part} is broken.", target.Id, Pos: target.Pos));
         }
 
         var wasDowned = target.Status == UnitStatus.Downed;
@@ -232,6 +269,15 @@ public static class Combat
         if (wasDowned || !target.CanBeDowned || target.Hp <= c.InstantDeathHp)
         {
             sim.Kill(target, ScavengeEventType.Died, $"{target.Name} is dead.", attacker);
+            return;
+        }
+        if (state.Mission?.Def.RescueDowned == true && target.Kind == UnitKind.Survivor && target.PlayerId is not null)
+        {
+            target.Hp = 1;
+            target.Status = UnitStatus.Evacuated;
+            target.CarriedById = null;
+            state.Log(new(state.Round, ScavengeEventType.Downed, $"{target.Name} is down and dragged to safety.", target.Id, Pos: target.Pos));
+            sim.UpdateParties();
             return;
         }
         target.Status = UnitStatus.Downed;

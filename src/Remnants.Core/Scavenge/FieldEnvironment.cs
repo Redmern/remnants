@@ -144,6 +144,15 @@ public static class FieldEnvironment
         return env.Weather is { } w && rules.Weather.TryGetValue(w, out var weather) ? effects.Combine(weather) : effects;
     }
 
+    /// <summary>The effects on one unit's senses: the weather's are left out when its gear protects it from that weather.</summary>
+    public static EnvironmentEffects EffectsFor(ScavengeData data, ScavengeState state, Unit unit)
+    {
+        var env = state.Environment;
+        if (env.Weather is { } w && GearEffects.Protected(data, unit, w))
+            return data.Rules.Environment.Phases.GetValueOrDefault(env.Phase) ?? new EnvironmentEffects();
+        return Effects(data, state);
+    }
+
     public static SenseKind SenseOf(ScavengeData data, ScavengeState state, Unit unit) => unit.Kind switch
     {
         UnitKind.Drone => SenseKind.Drone,
@@ -155,7 +164,7 @@ public static class FieldEnvironment
     /// <summary>Sight after the environment: base × the kind's multiplier, never below <see cref="EnvironmentEffects.MinSight"/> (unless it was already).</summary>
     public static double Sight(ScavengeData data, ScavengeState state, Unit unit, double baseSight)
     {
-        var effects = Effects(data, state);
+        var effects = EffectsFor(data, state, unit);
         var mult = effects.SightFor(SenseOf(data, state, unit));
         return mult >= 1 ? baseSight * mult : Math.Max(Math.Min(baseSight, effects.MinSight), baseSight * mult);
     }

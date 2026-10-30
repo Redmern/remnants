@@ -35,6 +35,7 @@ internal static class Bot
         var inbox = Channel.CreateUnbounded<Action>();
         var client = new NetClient(transport, data, work => inbox.Writer.TryWrite(work));
         client.Noticed += text => Program.Print($"{name}: {text}");
+        if (a.Flag("--trade")) BotTrade.Attach(client, name, BotTrade.ParseGoods(a.Value("--trade-offer") ?? "scrap:20,bandage", game, data));
         transport.Start();
 
         var survivors = NewGame.Create(game, (ulong)name.Sum(c => c)).State.Survivors.Where(s => !s.IsChild).Take(2).ToList();
@@ -100,8 +101,9 @@ internal static class Bot
         var allies = state.Units.Where(u => u.Side == unit.Side && u.PlayerId != pid && u.Kind == UnitKind.Survivor && u.OnMap).ToList();
         if (Help(view, unit, allies) is { } help) return help;
 
-        var shot = profile.Actions.Where(x => x.ApCost <= unit.Ap)
-            .SelectMany(x => state.Units.Where(t => t.OnMap && unit.HostileTo(t) && !Talking(t) && Combat.CheckReach(view.Data, map, unit.Pos, x, t.Pos) == ScavengeError.None)
+        var shot = profile.Actions
+            .SelectMany(x => state.Units.Where(t => t.OnMap && unit.HostileTo(t) && !Talking(t) && Combat.ApCost(x, unit.Pos, t.Pos) <= unit.Ap
+                                                    && Combat.CheckReach(view.Data, map, unit.Pos, x, t.Pos) == ScavengeError.None)
                 .Select(t => (Action: x, Target: t, Chance: Combat.HitChance(view.Data, map, unit.Pos, x, t.Pos, view.Profile(t)))))
             .OrderByDescending(o => o.Chance).FirstOrDefault();
         if (shot.Target is not null) return new Attack(pid, unit.Id, shot.Target.Id, shot.Action.Id);

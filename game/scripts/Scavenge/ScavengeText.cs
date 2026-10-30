@@ -96,8 +96,52 @@ public static class ScavengeText
         UnitKind.Npc => "Stranger",
         UnitKind.Drone => "Scout drone",
         UnitKind.Device => u.EnemyDefId is "turret" ? "Turret (device)" : "Camera (device)",
+        UnitKind.Decoy => "Holo-decoy",
         _ => u.Origin is { IsChild: true } ? "Survivor (child)" : "Survivor",
     };
+
+    /// <summary>A unit's kind with the drone variant named ("Medic drone · Medic").</summary>
+    public static string Kind(ScavengeData data, Unit u) =>
+        u.Kind == UnitKind.Drone && DroneRoles.Spec(data, u) is { } spec
+            ? $"{Item(data, u.DroneItemId!)}{(spec.Role == DroneRole.Scout ? "" : $" · {spec.Role} role")}"
+            : Kind(u);
+
+    /// <summary>Line icon for a usable item: EMP, decoys, flares and sensors by what they do, else by kind.</summary>
+    public static string UseIcon(ItemDef def) => def.Use switch
+    {
+        { Emp: not null } => "item_emp",
+        { Decoy: not null } => "item_decoy",
+        { NoiseRadius: > 0 } => "item_noise",
+        { SensorRadius: > 0 } or { LightRadius: > 0 } => "stat_sight",
+        _ => $"item_{def.Kind.ToString().ToLowerInvariant()}",
+    };
+
+    /// <summary>The use button's detail line.</summary>
+    public static string UseDetail(UseEffect use) => use switch
+    {
+        { Emp: { } emp } => $"tile within {use.Range} · burst {emp.Radius} · stuns the Network {emp.Rounds} rounds",
+        { Decoy: { } d } => $"tile within {use.Range} · draws fire {d.Rounds} rounds",
+        { NoiseRadius: > 0 } => $"tile within {use.Range} · lures enemies within {use.NoiseRadius}",
+        { TargetsTile: true } => $"on a tile within {use.Range}",
+        _ => "on yourself or someone next to you",
+    };
+
+    /// <summary>The use button's tooltip: what the device does and, for a reusable one, its charges.</summary>
+    public static string UseTip(ScavengeData data, ItemDef def, int? chargesLeft)
+    {
+        var use = def.Use!;
+        var what = use switch
+        {
+            { Emp: { } emp } => $"Throw it at a tile: every Linked within {emp.Radius} tiles drops off the relay and loses its turns for {emp.Rounds} rounds, "
+                                + "drones in the air fall, cameras and turrets are fried. Network-grade implants nearby lock up, yours too.",
+            { Decoy: { } d } => $"A flickering fake of you on the tile for {d.Rounds} rounds: it calls enemies within {d.LureRadius} tiles and soaks the Linked's fire.",
+            { NoiseRadius: > 0 } => $"A rattling box on the tile: idle enemies within {use.NoiseRadius} tiles come to look.",
+            _ => def.Medical ? Hud.MedicalText.ItemTip(data, def) : def.Name,
+        };
+        if (chargesLeft is { } c)
+            what += $"\nReusable: {c} of {use.Charges} charge{(use.Charges == 1 ? "" : "s")} left (each carried kit adds {use.Charges}); recharged at the colony's charging bench.";
+        return what;
+    }
 
     /// <summary>Short, player-facing name for a command error code.</summary>
     public static string Error(ScavengeError error) => error switch

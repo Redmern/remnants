@@ -36,7 +36,7 @@ public class LootNetTests
             var bobSide = Unit.PlayerSide(b.Id);
             if (Visibility.SideVisible(f.Sim.Data, f.Sim.State, bobSide).Contains(f.Sim.State.Map.Index(husk.Pos))) continue;
             Assert.True(a.Do(new Lookout(a.Id, killer.Id)).Ok); // Alice sees the husk first
-            Combat.ApplyDamage(f.Sim, husk, BodyPart.Torso, 999, killer);
+            Combat.ApplyDamage(f.Sim, husk, BodyPart.Torso, 999, attacker: killer);
             if (f.Sim.State.Caches.Count == 0) continue;
             Assert.True(a.Do(new EndTurn(a.Id, killer.Id)).Ok);
 

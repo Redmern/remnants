@@ -7,7 +7,8 @@ namespace Remnants.Core.Scavenge;
 /// What a unit is. <see cref="Drone"/>: a player's scout drone, flown by its operator (no turns of its own).
 /// <see cref="Device"/>: a hackable machine that acts as a unit (a camera, a turret; see <see cref="ZoneDevice"/>).
 /// </summary>
-public enum UnitKind { Survivor, Enemy, Npc, Drone, Device }
+/// <see cref="Decoy"/>: a holo-decoy (a fake survivor that draws fire for a few rounds; no turns, nobody controls it).
+public enum UnitKind { Survivor, Enemy, Npc, Drone, Device, Decoy }
 
 public enum UnitStatus
 {
@@ -86,8 +87,23 @@ public sealed class Unit
     /// <summary>Linked: knocked off the relay (as if jammed) through this round (see <see cref="Items.BaneDef.DisruptRounds"/>).</summary>
     public int OffRelayUntilRound { get; set; }
 
+    /// <summary>AP added (negative: taken, never below 1) at the start of its first-round turn: a good meal or bad rations on the way.</summary>
+    public int FirstRoundAp { get; set; }
+
     /// <summary>Pinned by suppressing fire: loses AP at the start of its next turn.</summary>
     public bool Suppressed { get; set; }
+
+    /// <summary>A stim wears off: its next turn starts this many AP short.</summary>
+    public int CrashAp { get; set; }
+
+    /// <summary>Under a Linked "Calm" injector: cannot be pinned down through this round.</summary>
+    public int CalmUntilRound { get; set; }
+
+    /// <summary>Moved this turn (a ranged attack after it loses accuracy, see <see cref="GearEffects.MovedPenalty"/>).</summary>
+    public bool Moved { get; set; }
+
+    /// <summary>The direction it last moved or attacked in (sign per axis; a weapon light points there). Null until then.</summary>
+    public Pos? Facing { get; set; }
 
     /// <summary>Held until this unit's next turn starts.</summary>
     public Stance Stance { get; set; }
@@ -159,6 +175,15 @@ public sealed class Unit
 
     /// <summary>Stands on a raised tile (a watchtower): more sight and detection (see <see cref="StoryFieldRules"/>).</summary>
     public bool Raised { get; set; }
+
+    /// <summary>Hit by an EMP: a Linked loses its turns' AP through this round (see <see cref="ElectronicWarfare"/>).</summary>
+    public int EmpUntilRound { get; set; }
+
+    /// <summary>A holo-decoy: it fades at the start of the round after this one.</summary>
+    public int DecoyUntilRound { get; set; }
+
+    /// <summary>Charges spent this mission per device item id (reusable devices, see <see cref="Items.UseEffect.Charges"/>).</summary>
+    public Dictionary<string, int> ChargesUsed { get; set; } = new(StringComparer.Ordinal);
 
     public Dictionary<AttributeKind, double> Attributes { get; set; } = new();
     public Dictionary<Skill, double> Skills { get; set; } = new();

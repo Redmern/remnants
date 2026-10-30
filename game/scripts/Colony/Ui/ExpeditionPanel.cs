@@ -26,7 +26,7 @@ public partial class ExpeditionPanel : PanelContainer
         public List<string> Pack { get; } = new();
     }
 
-    private static readonly EquipSlot[] Slots = [EquipSlot.Weapon, EquipSlot.Body, EquipSlot.Tool];
+    private static readonly EquipSlot[] Slots = [EquipSlot.Weapon, EquipSlot.Body, EquipSlot.Head, EquipSlot.Tool];
 
     private readonly ColonySession _session;
     private readonly OptionButton _zone = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None };
@@ -36,6 +36,10 @@ public partial class ExpeditionPanel : PanelContainer
     private readonly TextureRect _arrivalIcon = new() { StretchMode = TextureRect.StretchModeEnum.KeepCentered, CustomMinimumSize = new Vector2(22, 22) };
     private readonly Label _arrival = Ui.Label();
     private readonly Label _arrivalNote = Ui.Label(color: Ui.Muted);
+    private readonly OptionButton _ration = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, ClipText = true };
+    private readonly RichTextLabel _rationInfo = Ui.Rich();
+    private readonly List<string?> _rationIds = new();
+    private string _rationsShown = "";
 
     /// <summary>The wait choices, in the order of <see cref="_wait"/>: go now, or wait for a phase.</summary>
     private static readonly DayPhase?[] WaitChoices = [null, DayPhase.Dawn, DayPhase.Day, DayPhase.Dusk, DayPhase.Night];
@@ -104,6 +108,10 @@ public partial class ExpeditionPanel : PanelContainer
         planner.AddChild(arrivalRow);
         _arrivalNote.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         planner.AddChild(_arrivalNote);
+        planner.AddChild(Widgets.SectionHeader("Rations", "res_food"));
+        _ration.TooltipText = "What to pack first; the rest is filled from the pantry (food that keeps until they are home first).";
+        planner.AddChild(_ration);
+        planner.AddChild(_rationInfo);
         planner.AddChild(Widgets.SectionHeader("Party", "stat_pop"));
         _partyInfo.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         planner.AddChild(_partyInfo);
@@ -128,6 +136,7 @@ public partial class ExpeditionPanel : PanelContainer
 
         _zone.ItemSelected += _ => RefreshZone();
         _wait.ItemSelected += _ => RefreshSummary();
+        _ration.ItemSelected += _ => RefreshSummary();
     }
 
     public void Toggle()
@@ -312,7 +321,7 @@ public partial class ExpeditionPanel : PanelContainer
         var data = sim.Scavenge!;
         var picker = new OptionButton { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, ClipText = true, FitToLongestItem = false };
         var ids = new List<string?> { null };
-        picker.AddIconItem(Icons.Get(slot switch { EquipSlot.Weapon => "item_weapon", EquipSlot.Body => "item_armor", _ => "item_tool" }, 16), $"no {slot.ToString().ToLowerInvariant()}");
+        picker.AddIconItem(Icons.Get(SlotIcon(slot), 16), $"no {slot.ToString().ToLowerInvariant()}");
         var current = loadout.Equipment.GetValueOrDefault(slot);
         foreach (var (itemId, _) in sim.State.Inventory.Counts.Where(kv => data.Items[kv.Key].Slot == slot))
         {
@@ -333,6 +342,15 @@ public partial class ExpeditionPanel : PanelContainer
         };
         return picker;
     }
+
+    /// <summary>The line icon for an empty equipment slot.</summary>
+    public static string SlotIcon(EquipSlot slot) => slot switch
+    {
+        EquipSlot.Weapon => "item_weapon",
+        EquipSlot.Body => "item_armor",
+        EquipSlot.Head => "body_head",
+        _ => "item_tool",
+    };
 
     private Control PackPicker(ColonySim sim, Loadout loadout)
     {
@@ -385,7 +403,8 @@ public partial class ExpeditionPanel : PanelContainer
         var cap = Math.Max(sim.MaxPartySize, MissionId is { } m ? sim.Story?.Mission(m)?.MaxParty ?? 0 : 0);
         var mission = MissionId is { } mid && sim.Story?.Mission(mid) is { } md ? $"Mission: {md.Name} · " : "";
         _partyInfo.Text = $"{mission}Party {_picked.Count}/{cap} (Town Hall L{sim.TownHallLevel}) · rations {food:0} food " +
-                          $"(have {sim.State.Stockpile.Get(sim.Data.Rules.Food.ResourceId):0}) · away members don't eat at home";
+                          $"(have {sim.FoodStock:0}) · away members don't eat at home";
+        RefreshRations(sim, food);
         _launch.Disabled = _launchOnline.Disabled = _picked.Count == 0 || _blocked;
         var data = sim.Scavenge!;
         var signature = string.Join(",", sim.State.Inventory.Counts.Select(kv => $"{kv.Key}:{kv.Value}"));
@@ -408,6 +427,55 @@ public partial class ExpeditionPanel : PanelContainer
     private bool _blocked;
 
     private DayPhase? WaitFor => WaitChoices[Math.Clamp(_wait.Selected, 0, WaitChoices.Length - 1)];
+
+    private RationChoice? Rations => _ration.Selected > 0 && _ration.Selected < _rationIds.Count ? new RationChoice(_rationIds[_ration.Selected]) : null;
+
+    /// <summary>
+    /// The ration picker: "Pack automatically" plus every food that can go on the road (dishes, preserved food, raw food
+    /// that is eaten as it is), then what the pantry would pack for this party: items, weight, whether any of it is risky
+    /// (spoiled, tainted, or spoiling before they are home), and the road buff a good meal gives.
+    /// </summary>
+    private void RefreshRations(ColonySim sim, double need)
+    {
+        if (sim.Data.Food is not { } foodData) return;
+        var travel = SelectedZone is { } zid ? sim.ZoneInfo(zid).TravelTicks * 2 + sim.PlanArrival(zid, WaitFor).WaitTicks : 0;
+        var options = Pantry.Entries(sim).Where(e => e.Fresh > 0 && foodData.Items[e.ItemId] is { FoodValue: > 0 } d && (d.Edible || d.Meal is not null))
+            .OrderBy(e => foodData.Items[e.ItemId].Meal?.FieldBuff is null ? 1 : 0).ThenBy(e => e.ItemId).ToList();
+        var signature = string.Join(",", options.Select(e => $"{e.ItemId}:{e.Fresh}"));
+        if (signature != _rationsShown)
+        {
+            _rationsShown = signature;
+            var keep = Rations?.Prefer;
+            _ration.Clear();
+            _rationIds.Clear();
+            _ration.AddItem("Pack automatically");
+            _rationIds.Add(null);
+            foreach (var e in options)
+            {
+                var def = foodData.Items[e.ItemId];
+                var road = def.Meal?.FieldBuff is { } fb ? $" · {FoodText.BuffName(sim, fb)}" : "";
+                _ration.AddIconItem(FoodText.Icon(sim, e.ItemId, 16), $"{FoodText.ItemName(sim, e.ItemId)} ×{e.Fresh} ({def.FoodValue:0.#} food each){road}");
+                _rationIds.Add(e.ItemId);
+            }
+            _ration.Select(Math.Max(0, _rationIds.IndexOf(keep)));
+        }
+        if (_picked.Count == 0)
+        {
+            _rationInfo.Text = $"[color=#{Ui.Hex(Ui.Muted)}]Pick a party to see what it packs.[/color]";
+            return;
+        }
+        var bill = Remnants.Core.Colony.Rations.Plan(sim, need, _picked.Count, travel, Rations);
+        var items = string.Join(", ", bill.Items.Select(kv => $"{kv.Value} {FoodText.ItemName(sim, kv.Key)}"));
+        var lines = new List<string>
+        {
+            bill.Enough ? $"Packs {items} · {bill.Weight:0.#} kg" : $"[color=#{Ui.Hex(Ui.Bad)}]Not enough food: {bill.Covered:0.#} of {need:0.#}.[/color]",
+        };
+        if (bill.FieldBuff is { } buff && foodData.Buffs.GetValueOrDefault(buff) is { } b)
+            lines.Add($"[color=#{Ui.Hex(Palette.Good)}]{b.Name}[/color]: {b.Description}");
+        if (bill.RiskShare > 0)
+            lines.Add($"[color=#{Ui.Hex(Palette.Warn)}]{bill.RiskShare * 100:0}% of it is spoiled, tainted or will spoil on the road: someone may get sick.[/color]");
+        _rationInfo.Text = string.Join("\n", lines);
+    }
 
     /// <summary>When the party would arrive and what that phase means in the field; returns the wait's extra food per member.</summary>
     private float RefreshArrival(ColonySim sim, string zoneId)
@@ -445,7 +513,7 @@ public partial class ExpeditionPanel : PanelContainer
             .ToList();
         IColonyCommand command = MissionId is { } missionId
             ? new Remnants.Core.Story.LaunchStoryMission(missionId, members)
-            : new LaunchExpedition(zoneId, members, WaitFor);
+            : new LaunchExpedition(zoneId, members, WaitFor, Rations);
         if (!_session.Execute(command).Ok) return;
         _wait.Select(0);
         MissionId = null;

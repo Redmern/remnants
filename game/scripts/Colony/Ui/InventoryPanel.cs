@@ -126,7 +126,9 @@ public partial class InventoryPanel : PanelContainer
                     row.AddChild(quality);
                 }
                 row.AddChild(Widgets.Label($"×{count}", "Number"));
-                row.TooltipText = $"{def.Name} · {def.Kind}{(stars > 0 ? $" · {tier} quality" : "")}";
+                row.TooltipText = def.Medical && _session.Sim.Scavenge is { } medItems
+                    ? MedicalText.ItemTip(medItems, def)
+                    : $"{def.Name} · {def.Kind}{(stars > 0 ? $" · {tier} quality" : "")}";
                 _items.AddChild(row);
             }
         }

@@ -146,8 +146,8 @@ public static class Weather
 
     /// <summary>
     /// The weather's share of a worker's output this tick at a building: outdoor work slows or stops (a mask lets it go on
-    /// in a dust storm), children stay in when the kind says so, crops take <see cref="Crops.Modifiers"/> (rain on the
-    /// farm), and a building struck by lightning works at <see cref="RepairRules.DamagedOutput"/> until repaired.
+    /// in a dust storm), children stay in when the kind says so (crop yield is per harvest, see <see cref="Crops"/> and
+    /// <c>HarvestSystem</c>), and a building struck by lightning works at <see cref="RepairRules.DamagedOutput"/> until repaired.
     /// </summary>
     public static double WorkFactor(GameData data, WeatherSpell spell, Building building, BuildingDef def, Survivor worker, bool masked)
     {
@@ -158,7 +158,6 @@ public static class Weather
             if (colony.ChildrenStayIn && worker.IsChild) return 0;
             f *= masked && colony.MaskedOutput is { } m ? m : colony.OutdoorOutput;
         }
-        if (def.Job is { } job && data.Weather.CropJobs.Contains(job)) f *= Crops.Multiplier(Crops.Modifiers(data, spell));
         return f;
     }
 
@@ -296,9 +295,8 @@ public static class Weather
 public sealed record CropModifier(string Source, string Reason, double Multiplier);
 
 /// <summary>
-/// The one hook for what changes crop yield (rain waters the fields, a dust storm buries them). Today it is applied to the
-/// output of <see cref="WeatherRules.CropJobs"/> workers in <see cref="Weather.WorkFactor"/>; a per-crop food system
-/// applies the same terms per crop instead. Terms multiply.
+/// The one hook for what changes crop yield (rain waters the fields, a dust storm buries them). The food system applies it per
+/// weather-sensitive harvest at outdoor buildings (<c>HarvestSystem</c>; a Greenhouse is indoors). Terms multiply.
 /// </summary>
 public static class Crops
 {

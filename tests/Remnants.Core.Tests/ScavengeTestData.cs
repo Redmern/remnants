@@ -81,7 +81,7 @@ public static class ScavengeTestData
     /// </summary>
     /// <summary>The real data with scavenge rules changed (e.g. a fixed hack chance).</summary>
     public static ScavengeData With(Func<ScavengeRules, ScavengeRules> change) =>
-        new(Real.Items.Values.Where(i => i.BaseId is null), Real.Enemies.Values, Real.Zones.Values, change(Real.Rules), Real.PerkHooks, Real.Cybernetics?.Def,
+        new(Real.Items.Values.Where(i => i.BaseId is null), Real.Enemies.Values, Real.Zones.Values, change(Real.Rules), Real.PerkHooks, Real.Cybernetics?.Def, Real.Schematics, Real.Electronics, medicine: Real.Medicine?.Def,
             loot: Real.LootFiles, salvage: Real.Salvage);
 
     /// <summary>The data with other loot tables (and optionally salvage rules) in place of the real ones.</summary>

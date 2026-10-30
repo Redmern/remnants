@@ -33,8 +33,6 @@ public sealed record WeatherRules
     /// <summary>Lightning damage to buildings and its repair.</summary>
     public RepairRules Repair { get; init; } = new();
 
-    /// <summary>Jobs that grow crops (their output takes the crop modifiers, <c>Crops.Modifiers</c>).</summary>
-    public List<string> CropJobs { get; init; } = new();
 
     /// <summary>Items in the stores that count as dust masks for outdoor workers (one each).</summary>
     public List<string> MaskItems { get; init; } = new();

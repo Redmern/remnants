@@ -20,6 +20,14 @@ public sealed class Building
 
     /// <summary>Struck by lightning: works at reduced output until repaired (see <c>RepairBuilding</c>).</summary>
     public bool Damaged { get; set; }
+    /// <summary>Farms, greenhouses, hunting lodges: the harvest worked (data/food.json); null = the building's default.</summary>
+    public string? Harvest { get; set; }
+
+    /// <summary>The standing crop: effort so far per output item, in items (whole ones come in once it is ready).</summary>
+    public SortedDictionary<string, double> HarvestProgress { get; set; } = new(StringComparer.Ordinal);
+
+    /// <summary>Tick the harvest is ready from (planted or switched at <c>tick − growDays</c>); 0 = ready.</summary>
+    public long HarvestReadyTick { get; set; }
 }
 
 /// <summary>
@@ -41,4 +49,7 @@ public sealed class CraftOrder
 
     /// <summary>Item ids (with their quality) taken for the current batch, so a cancel gives back the same items.</summary>
     public List<string> PaidItems { get; set; } = new();
+
+    /// <summary>The current batch was paid with tainted (Husk-zone) food: the dish may stay tainted (see food.json quality.taintKept).</summary>
+    public bool Tainted { get; set; }
 }

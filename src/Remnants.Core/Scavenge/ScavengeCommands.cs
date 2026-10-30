@@ -26,6 +26,14 @@ public sealed record SetStance(int PlayerId, int UnitId, Stance Stance) : IScave
 /// <summary>Scan the surroundings: more sight and detection until the unit's next turn. Does not end the turn.</summary>
 public sealed record Lookout(int PlayerId, int UnitId) : IScavengeCommand;
 
+/// <summary>
+/// Jury-rig gear in the field (needs <c>gear_mods.json rules.fieldHook</c>, the Jury-rig perk): fit a mod from the pack to an
+/// equipped item (<paramref name="ModItemId"/>), or take the mod in <paramref name="RemoveSlot"/> off it into the pack.
+/// <paramref name="Slot"/> picks the equipped item (default: the weapon). Costs <c>rules.fieldApCost</c> AP.
+/// </summary>
+public sealed record FieldMod(int PlayerId, int UnitId, string? ModItemId = null, string? RemoveSlot = null, Items.EquipSlot Slot = Items.EquipSlot.Weapon)
+    : IScavengeCommand;
+
 /// <summary>Take one item from a cache on or next to the unit's tile.</summary>
 public sealed record PickUp(int PlayerId, int UnitId, int CacheId, string ItemId) : IScavengeCommand;
 
@@ -91,6 +99,18 @@ public sealed record MarkTarget(int PlayerId, int UnitId, int TargetId) : IScave
 
 /// <summary>Payload perk: the drone drops a carried flare or motion sensor on its tile.</summary>
 public sealed record DropPayload(int PlayerId, int UnitId, string ItemId) : IScavengeCommand;
+
+/// <summary>Medic drone: apply a healing item from the operator's pack to a friendly unit next to the drone.</summary>
+public sealed record DroneHeal(int PlayerId, int UnitId, int TargetId) : IScavengeCommand;
+
+/// <summary>Cargo drone: take one item from a cache on or next to the drone into its hold.</summary>
+public sealed record DroneLoad(int PlayerId, int UnitId, int CacheId, string ItemId) : IScavengeCommand;
+
+/// <summary>Cargo drone next to an exit: fly the hold (and the drone) out of the zone; it is home whatever happens.</summary>
+public sealed record DroneFerry(int PlayerId, int UnitId) : IScavengeCommand;
+
+/// <summary>Combat drone: fire its gun at a hostile it sees; the operator pays the gun's AP.</summary>
+public sealed record DroneFire(int PlayerId, int UnitId, int TargetId) : IScavengeCommand;
 
 public enum ScavengeError
 {
@@ -158,6 +178,8 @@ public enum ScavengeError
     /// <summary>Salvage: no such node, or nothing left on it.</summary>
     UnknownNode,
     NodeDepleted,
+    /// <summary>Gear mods: the mod does not fit, the slot is full or empty, or there is no gear there.</summary>
+    CannotMod,
 }
 
 /// <summary>Outcome of a scavenge command. <see cref="EntityId"/> carries e.g. the attacked unit.</summary>

@@ -51,6 +51,16 @@ public static class Advice
         }
         if (!Has("workshop"))
             return new("workshop", $"A {Name("workshop")} makes weapons, Herbal Remedy (medicine) and prosthetics.");
+        if (data.Food is { } food)
+        {
+            var day = data.Rules.TicksPerDay;
+            if (!Has(food.Rules.CampfireBuilding) && !Has("kitchen") && state.Tick >= 2 * day)
+                return new("campfire", $"Raw food keeps people alive; cooked food goes further and lifts mood. Build a {Name(food.Rules.CampfireBuilding)}, " +
+                                       "queue Purified Water and Boiled Potatoes, and give it a cook.");
+            if (!Has("smokehouse") && !Has(food.Rules.CellarBuilding)
+                && state.Events.Any(e => e.Type == ColonyEventType.FoodRotted && e.Tick >= state.Tick - 2 * day))
+                return new("spoilage", $"Food is rotting in the pantry: a {Name("smokehouse")} smokes, salts and dries it; beans and corn keep longer than potatoes.");
+        }
         if (state.Survivors.Count >= sim.BedCapacity)
             return new("beds", $"Every bed is taken: no babies are conceived and newcomers leave after a while. Upgrade the {Name("shelter")} or build a House.");
         if (sim.TownHallLevel == 1 && Has("med_bay"))
