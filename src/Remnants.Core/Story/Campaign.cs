@@ -68,7 +68,7 @@ public static class Campaign
     public static ISchematicGrants Schematics { get; set; } = new CampaignLedger();
 
     /// <summary>
-    /// Turns a fresh colony into a Story game: one of the starting children is Pell (he/him, 9), and the first missions
+    /// Turns a fresh colony into a Story game: one of the starting children is Pell (he/him), at the start of his childhood, and the first missions
     /// unlock at once.
     /// </summary>
     public static void Start(ColonySim sim, string difficulty = "remnant")
@@ -80,7 +80,10 @@ public static class Campaign
             pell.Name = "Pell";
             pell.Sex = Sex.Male;
             pell.UniqueId = PellId;
-            pell.AgeTicks = 9 * sim.Data.Rules.TicksPerYear;
+            // At the start of childhood, so he grows up during the campaign, not before it starts.
+            pell.GrowthTicks = sim.Data.Rules.Life.InfantTicks;
+            pell.LifeStage = Bonds.StageAt(pell.GrowthTicks, sim.Data.Rules.Life);
+            pell.AgeTicks = Bonds.AgeTicksAt(pell.GrowthTicks, sim.Data.Rules);
         }
         foreach (var m in sim.Story?.Missions ?? []) state.Campaign.Progress(m.Id);
         Tick(sim);

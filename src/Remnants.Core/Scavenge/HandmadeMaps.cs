@@ -154,9 +154,11 @@ public static class HandmadeMaps
         if (def.Towers is { } towers && !Known(towers)) errors.Add($"{def.Id}: towers at unknown marker '{towers}'.");
         if (errors.Count > 0 || def.Room) return errors;
 
-        // Connected: every passable tile, marker and exit can be walked to from the first spawn (devices block their tiles).
+        // Connected: every passable tile, marker and exit can be walked to from the first spawn. Devices block their
+        // tiles, except cameras and turrets (in walls or standing aside) and doors (a door is hacked or opened).
         var map = built.Map;
-        var blocked = def.Devices.Where(d => d.Kind is not (DeviceKind.Camera or DeviceKind.Turret)).SelectMany(d => built.Markers[d.Marker]).ToHashSet();
+        var blocked = def.Devices.Where(d => d.Kind is not (DeviceKind.Camera or DeviceKind.Turret or DeviceKind.Door))
+            .SelectMany(d => built.Markers[d.Marker]).ToHashSet();
         var reach = Flood(data, map, built.Spawns[0], blocked);
         foreach (var p in map.AllPositions.Where(p => data.Terrain(map[p]).Passable && !blocked.Contains(p) && !reach.Contains(p)))
         {

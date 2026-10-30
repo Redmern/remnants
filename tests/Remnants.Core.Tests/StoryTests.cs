@@ -50,6 +50,18 @@ public class StoryDataTests
     }
 
     [Fact]
+    public void A_room_behind_a_door_device_is_reachable_but_one_behind_a_terminal_is_not()
+    {
+        HandmadeMapDef Map(DeviceKind kind) => new()
+        {
+            Id = "door", Zone = "outskirts", Rows = ["#####", "#S..#", "##d##", "#...#", "##E##"], Markers = new() { ["d"] = "door" },
+            Devices = [new MapDeviceDef(kind, "door")],
+        };
+        Assert.Empty(HandmadeMaps.Validate(ScavengeTestData.Real, Map(DeviceKind.Door)));
+        Assert.Contains(HandmadeMaps.Validate(ScavengeTestData.Real, Map(DeviceKind.Terminal)), e => e.Contains("cannot be reached"));
+    }
+
+    [Fact]
     public void A_fixed_room_is_stamped_whole_and_reachable_from_the_spawn_and_exits()
     {
         foreach (var seed in new ulong[] { 1, 2, 3, 4, 5 })
@@ -81,6 +93,8 @@ public class CampaignTests
         var sim = NewStory();
         var pell = Assert.Single(sim.State.Survivors, s => s.UniqueId == Campaign.PellId);
         Assert.Equal("Pell", pell.Name);
+        Assert.True(pell.IsChild);
+        sim.Advance(7 * 24);
         Assert.True(pell.IsChild);
         Assert.Equal(MissionStatus.Active, sim.State.Campaign!.Progress("m1").Status);
         Assert.Equal(MissionStatus.Locked, sim.State.Campaign.Progress("m2").Status);
