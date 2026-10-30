@@ -62,6 +62,12 @@ public sealed class ColonyState
     /// <summary>The weather's seed and the spells worked out so far (see <see cref="Colony.Weather"/>).</summary>
     public WeatherState Weather { get; set; } = new();
 
+    /// <summary>The power grid as of the last tick (see <see cref="Colony.Power"/>); empty in saves from before the grid.</summary>
+    public PowerState Power { get; set; } = new();
+
+    /// <summary>Devices home with spent charges, in arrival order, until the charging bench has them full again.</summary>
+    public List<ChargingItem> Charging { get; set; } = new();
+
     /// <summary>The after-action report of the last expedition that came home (for the UI).</summary>
     public ExpeditionReport? LastReport { get; set; }
 

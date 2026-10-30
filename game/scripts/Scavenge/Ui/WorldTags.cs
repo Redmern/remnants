@@ -129,6 +129,9 @@ public partial class WorldTags : Control
         else if (unit.Stance == Stance.Brace && mine) tags.Add(new("BRACED", Palette.Text, "stance_brace", 12));
         if (unit.Lookout && mine) tags.Add(new("LOOKOUT", Palette.Text, "stance_scan", 12));
         if (!mine && _presenter.IsRevealed(unit)) tags.Add(new("REVEALED", Palette.Danger, "stat_sight", 12));
+        if (unit.EmpUntilRound >= _presenter.State.Round && unit.IsActive) tags.Add(new("EMP · OFF RELAY", Palette.Network, "item_emp", 12));
+        if (unit.Kind == UnitKind.Decoy && mine)
+            tags.Add(new($"DECOY · {Mathf.Max(0, unit.DecoyUntilRound - _presenter.State.Round + 1)}r", Palette.Network, "item_decoy", 12));
         lines.AddRange(tags);
 
         var downed = unit.Status == UnitStatus.Downed;

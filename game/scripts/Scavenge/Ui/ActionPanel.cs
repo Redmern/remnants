@@ -72,7 +72,8 @@ public partial class ActionPanel : PanelContainer
         if (ActionId is null || profile.Action(ActionId) is null) ActionId = profile.Actions.FirstOrDefault()?.Id;
         _hint.Text = usingItem is { } item
             ? data.Items[item].Use is { TargetsTile: true } onTile
-                ? $"Click a tile within {onTile.Range} for the {ScavengeText.Item(data, item)}. Right-click or Esc cancels."
+                ? $"Click a tile within {onTile.Range} for the {ScavengeText.Item(data, item)}"
+                  + (onTile.Emp is { } emp ? $": it bursts {emp.Radius} tiles around" : "") + ". Right-click or Esc cancels."
                 : $"Click who gets the {ScavengeText.Item(data, item)} (yourself or someone next to you). Right-click or Esc cancels."
             : "Click a lit tile to move, a red target to attack with the chosen action.";
 
@@ -100,11 +101,13 @@ public partial class ActionPanel : PanelContainer
                 var use = def.Use!;
                 var count = unit.Pack.Count(p => p == id);
                 var hotkey = i < 3 ? $"scav_item_{++i}" : null;
-                var button = Add(new ActionButton($"item_{def.Kind.ToString().ToLowerInvariant()}", $"{ScavengeText.Item(data, id)} ×{count}",
-                    use.TargetsTile ? $"on a tile within {use.Range}" : "on yourself or someone next to you", use.ApCost, hotkey), () => UseItemChosen?.Invoke(id));
+                var charges = ElectronicWarfare.ChargesLeft(data, unit, id);
+                var title = charges is { } c ? $"{ScavengeText.Item(data, id)} · {c} charge{(c == 1 ? "" : "s")}" : $"{ScavengeText.Item(data, id)} ×{count}";
+                var button = Add(new ActionButton(ScavengeText.UseIcon(def), title, ScavengeText.UseDetail(use),
+                    use.ApCost, hotkey, ScavengeText.UseTip(data, def, charges)), () => UseItemChosen?.Invoke(id));
                 button.ToggleMode = true;
                 button.ButtonPressed = id == usingItem;
-                button.SetBlocked(use.ApCost > unit.Ap, use.ApCost > unit.Ap);
+                button.SetBlocked(use.ApCost > unit.Ap || charges is 0, use.ApCost > unit.Ap);
             }
         }
 

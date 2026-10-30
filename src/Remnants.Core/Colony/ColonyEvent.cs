@@ -15,6 +15,7 @@ public enum ColonyEventType
     StoryMission, RadioCall,
     WeatherChanged, Storm, LightningStruck, Repaired,
     HarvestChanged, FoodRotted, FoodPoisoning,
+    Brownout, PowerRestored, BreakerTripped, PowerSwitched, DeviceCharged, Disassembled,
     TradeReceived, CourierDispatched, CourierArrived,
 }
 

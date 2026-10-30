@@ -16,6 +16,8 @@ public static class PerkHooks
     public const string CanHackLinked = "can_hack_linked";
     public const string FieldRepair = "field_repair";
     public const string HackApDiscount = "hack_ap_discount";
+    public const string PowerEfficiency = "power_efficiency";
+    public const string DisassemblyYieldBonus = "disassembly_yield_bonus";
 
     // Drones
     public const string DroneRangeBonus = "drone_range_bonus";
@@ -61,6 +63,8 @@ public static class PerkHooks
         [CanHackLinked] = "Flag: can hack Linked units, not only Husks and devices.",
         [FieldRepair] = "Flag/strength: can jury-rig gear and devices in the field (value = repair strength).",
         [HackApDiscount] = "AP taken off the cost of a hack.",
+        [PowerEfficiency] = "Colony: share taken off every consumer's power draw while this survivor is home (the best one counts; 0.15 = −15%).",
+        [DisassemblyYieldBonus] = "Colony: chance per component of one more when this survivor is the bench's best worker at a disassembly (0.25 = +25%).",
         [DroneRangeBonus] = "Tiles added to a scout drone's control range.",
         [DroneBatteryBonus] = "Rounds added to a scout drone's battery.",
         [DroneCanMark] = "Flag: the drone marks targets it sees for the whole party (revealed to the side).",

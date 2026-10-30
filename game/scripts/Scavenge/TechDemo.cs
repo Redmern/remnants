@@ -59,6 +59,47 @@ public static class TechDemo
                 var lurker = NewScavenge.EnemyUnit(sim.Data, state, sim.Data.Enemies["husk"], hidden);
                 state.Units.Add(lurker);
                 break;
+            case "medic":
+                acting.Pack.Add("medic_drone");
+                acting.Pack.Add("bandage");
+                acting.Pack.Add("bandage");
+                if (state.Units.FirstOrDefault(u => u.Side == acting.Side && u.Kind == UnitKind.Survivor && u.Id != acting.Id && u.OnMap) is { } hurt)
+                {
+                    hurt.Pos = Near(acting.Pos, 2, 2);
+                    hurt.Hp = System.Math.Round(hurt.MaxHp * 0.35);
+                }
+                break;
+            case "cargo":
+            {
+                // The party a few tiles in from an exit, with a cache between them and it.
+                var exit = map.Exits.OrderBy(x => x.Chebyshev(acting.Pos)).First();
+                acting.Pos = Near(exit, 3, 3);
+                acting.Pack.Add("cargo_drone");
+                var spot = map.AllPositions.Where(p => Free(p) && p.Chebyshev(acting.Pos) == 2 && p.Chebyshev(exit) <= 2).OrderBy(map.Index).FirstOrDefault(Near(acting.Pos, 2, 2));
+                state.Caches.Add(new LootCache { Id = state.NextCacheId++, Pos = spot, Items = ["med_kit", "scanner", "power_cell"] });
+                break;
+            }
+            case "combat":
+            {
+                acting.Pack.Add("combat_drone");
+                acting.Hooks[Remnants.Core.Colony.PerkHooks.DroneRangeBonus] = 1;
+                // In the open, in line of sight: the drone sees it as soon as it is up.
+                var open = map.AllPositions.Where(p => Free(p) && p.Chebyshev(acting.Pos) is >= 3 and <= 4 && map.HasLineOfSight(sim.Data, acting.Pos, p))
+                    .OrderBy(p => p.Chebyshev(acting.Pos)).ThenBy(map.Index).FirstOrDefault(Near(acting.Pos, 3, 4));
+                var target = NewScavenge.EnemyUnit(sim.Data, state, sim.Data.Enemies["husk"], open);
+                state.Units.Add(target);
+                break;
+            }
+            case "emp":
+            {
+                acting.Pack.Add("emp_grenade");
+                var at = Near(acting.Pos, 3, 3);
+                var linked = NewScavenge.EnemyUnit(sim.Data, state, sim.Data.Enemies["linked"], at);
+                state.Units.Add(linked);
+                var flyer = map.AllPositions.Where(p => Free(p) && p.Chebyshev(at) == 1 && p.Chebyshev(acting.Pos) >= 2).OrderBy(map.Index).First();
+                state.Units.Add(NewScavenge.EnemyUnit(sim.Data, state, sim.Data.Enemies["linked_drone"], flyer));
+                break;
+            }
         }
         Visibility.UpdateExplored(sim.Data, state);
     }

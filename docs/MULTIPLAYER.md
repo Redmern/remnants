@@ -92,7 +92,7 @@ the discriminator), `giveItem`, `carry`, `putDown`, and pings, alliance offers a
 called this "v2"; 2 was already the fog of war, so co-op is 3.) **4: hacking and drones** — the command kinds `hack`,
 `deployDrone`, `flyDrone`, `recallDrone`, `markTarget`, `dropPayload`, and devices and drone marks in views. **6: cybernetics** — bodies carry the eyes and each
 part's humanity, upkeep and `interfered` flag, units carry `cyberHooks` (stripped from other players' views like perk
-hooks), and the `limbLocked` event. **7: schematics** — schematic items (`sch_*`, kind `Schematic`) in packs and caches; `MissionEnded.result` carries `sharedSchematics` (co-op: what allies on the side carried out, copied to each ally who got home; versus: none) and `heardOf` (schematics the side saw but left behind, or glimpsed on a terminal it failed to hack). **9: trading** — the live trade messages and the Trading Post's market messages (see
+hooks), and the `limbLocked` event. **7: schematics** — schematic items (`sch_*`, kind `Schematic`) in packs and caches; `MissionEnded.result` carries `sharedSchematics` (co-op: what allies on the side carried out, copied to each ally who got home; versus: none) and `heardOf` (schematics the side saw but left behind, or glimpsed on a terminal it failed to hack). **10: trading** — the live trade messages and the Trading Post's market messages (see
 "Trading").
 
 | Direction | Message | Meaning |
@@ -347,6 +347,9 @@ of an item's id, so a Fine pistol stays Fine; `ItemExtras` carries weapon mods a
 weapon-mods work fills them in; the colony inventory, which only counts ids, keeps them once it can). **Food** trades as
 Pantry items with their lots: fresh units only, soonest to spoil first, and they arrive with the same quality, taint and
 time left (`ItemExtras.Lots`; chips show "keeps 2.5d", the quality and "tainted"); spoiled food cannot be offered.
+**Devices** keep their charge: in the colony only fully charged devices are in the stores (spent ones wait at the
+charging bench), so lobby and market trades move full devices; in the field a traded device takes its spent charges
+(`Unit.ChargesUsed`) with it, the most-spent copy first, so a trade never recharges one.
 **Schematic copies** are items: a colony that knows a schematic makes a copy (Radio Mast or archive → Copy,
 `Schematics.MakeCopy`, Research Data) and keeps the knowledge; the buyer's copy is received the normal way on arrival
 (`Schematics.Receive`: learned, to decrypt, or Research Data when already known). Reference values are the trader's

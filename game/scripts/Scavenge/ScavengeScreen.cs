@@ -51,7 +51,7 @@ public partial class ScavengeScreen : Node3D
         Hud.GameSettings.Boot(GetTree());
         _mission = ScavengeSession.TakeMission();
         _presenter = new ScavengePresenter(_mission.Driver);
-        var models = new ScavengeModels(ModelLibrary.Load());
+        var models = new ScavengeModels(ModelLibrary.Load()) { Data = _presenter.Sim.Data };
         GD.Print($"Scavenge: zone {_presenter.State.ZoneId}, {_presenter.State.Units.Count} units, {models.ModelCount} generated models.");
 
         AddEnvironment();
@@ -263,6 +263,19 @@ public partial class ScavengeScreen : Node3D
         var acting = _presenter.ActingUnit;
         var pid = _presenter.PlayerId;
 
+        if (_aim is TechAim.Heal or TechAim.Fire && acting is not null)
+        {
+            if (clicked is null)
+            {
+                Toast(_aim == TechAim.Heal ? "Click a friendly unit next to the drone." : "Click a hostile the drone sees.");
+                return;
+            }
+            var aimed = _aim;
+            _aim = TechAim.None;
+            _ = Run(aimed == TechAim.Heal ? new DroneHeal(pid, acting.Id, clicked.Id) : new DroneFire(pid, acting.Id, clicked.Id));
+            return;
+        }
+
         if (_aim != TechAim.None && acting is not null)
         {
             var aim = _aim;
@@ -459,6 +472,25 @@ public partial class ScavengeScreen : Node3D
 
         var acting = _presenter.ActingUnit;
         var isActing = acting is not null && acting.Id == selected.Id;
+        if (isActing && _aim is TechAim.Heal && Drones.DroneOf(_presenter.State, acting!) is { } medic)
+        {
+            _map.Highlight(medic.Pos, HighlightKind.Selected);
+            foreach (var u in _techPanel.HealTargets(acting!, medic)) _map.Highlight(u.Pos, HighlightKind.Use, u.Name);
+            return;
+        }
+        if (isActing && _aim is TechAim.Fire && Drones.DroneOf(_presenter.State, acting!) is { } gunship)
+        {
+            _map.Highlight(gunship.Pos, HighlightKind.Selected);
+            var gun = _presenter.Sim.Profile(gunship).Actions.FirstOrDefault();
+            foreach (var t in DroneRoles.FireTargets(_presenter.Sim, acting!).Where(_presenter.CanSee))
+            {
+                _map.Highlight(t.Pos, HighlightKind.Attack);
+                if (gun is not null)
+                    previews[t.Id] = new WorldTags.Preview($"DRONE {Combat.ChanceToHit(_presenter.Sim, gunship, gun, t) * 100:0}% · {gun.MinDamage:0}–{gun.MaxDamage:0}",
+                        false, gun.ApCost > acting!.Ap);
+            }
+            return;
+        }
         if (isActing && _aim != TechAim.None)
         {
             var targets = _aim == TechAim.Deploy ? _presenter.DeployTiles(acting!) : Drones.FlightTargets(_presenter.Sim, acting!);

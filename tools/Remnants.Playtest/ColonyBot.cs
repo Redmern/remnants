@@ -47,6 +47,8 @@ public sealed class ColonyBot
         ("house", 1), ("armory", 1), ("scrapyard", 2), ("workshop", 2), ("farm", 3), ("electronics_lab", 1),
         ("hunting_lodge", 1), ("smokehouse", 1), ("kitchen", 2),
         ("tailor", 2), ("med_bay", 2), ("armory", 2), ("woodcutter", 3), ("quarry", 3), ("town_hall", 3), ("house", 2), ("electronics_lab", 2),
+        // Power is a mid-game boost: a generator once the Lab is up and the town is grown, solar and a bank when their schematics turn up.
+        ("fuel_generator", 1), ("solar_array", 1), ("battery_bank", 1), ("electronics_lab", 3),
     ];
 
     private readonly ColonySim _sim;
@@ -115,6 +117,7 @@ public sealed class ColonyBot
             if (have >= level) continue;
             var def = Data.Buildings[id];
             if (level == 1 && def.MinTownHallLevel > _sim.TownHallLevel) continue;
+            if (level == 1 && !Remnants.Core.Schematics.Schematics.LevelUnlocked(_sim, id, 1)) continue;
             if (level > 1 && level > _sim.MaxUpgradeLevel(def)) continue;
             if (!Remnants.Core.Schematics.Schematics.LevelUnlocked(_sim, id, level)) continue;
             return (id, level);
@@ -177,8 +180,7 @@ public sealed class ColonyBot
         Cook();
         if (Find("armory") is { } armory && armory.Queue.Count == 0 && Count("machete") < 2 && State.Stockpile.Get("scrap") >= 10)
             Queue(armory, "machete");
-        if (Find("electronics_lab") is { } lab && lab.Queue.Count == 0 && State.Stockpile.Get("scrap") >= 20)
-            Queue(lab, "salvage_circuits");
+        if (Find("electronics_lab") is { } bench && bench.Queue.Count == 0) Bench(bench);
         HandleSchematics();
     }
 
@@ -254,6 +256,41 @@ public sealed class ColonyBot
             if (Pantry.Available(State, Data, "tag:fresh_meat") >= 6) Queue(smoke, "smoke_meat");
             else if (soon >= 6 && _sim.FoodDays > 6) Queue(smoke, "dry_food");
         }
+    }
+
+    /// <summary>
+    /// The Electronics Lab: strip found junk first (never Linked cores: the limbs want them), keep a few components in
+    /// stock, then the field devices a sensible player takes along (two radios, decoys, EMPs, a drone variant), else
+    /// circuits from scrap as before. One order at a time, so the old circuits work never starves.
+    /// </summary>
+    private void Bench(Building lab)
+    {
+        if (Data.Electronics is null)
+        {
+            if (State.Stockpile.Get("scrap") >= 20) Queue(lab, "salvage_circuits");
+            return;
+        }
+        bool Open(string recipe) => Data.Recipes.TryGetValue(recipe, out var r) && _sim.CanQueue(lab, r).Ok
+                                    && (!r.NeedsPower || _sim.IsPowered(lab) || State.Power.Capacity > 0)
+                                    && State.Stockpile.CanAfford(r.Inputs) && r.ItemInputs.All(kv => Count(kv.Key) >= kv.Value);
+        var junk = State.Inventory.Counts.Keys.Where(id => id != "linked_core" && Data.Recipes.ContainsKey(DisassemblyDef.RecipePrefix + id)
+                                                          && _sim.Scavenge!.Items[id].Kind == ItemKind.Material)
+            .OrderBy(id => id, StringComparer.Ordinal).FirstOrDefault();
+        if (junk is not null && Open(DisassemblyDef.RecipePrefix + junk)) { Queue(lab, DisassemblyDef.RecipePrefix + junk); return; }
+        var wants = new (string Recipe, string Item, int Keep)[]
+        {
+            ("wiring", "wiring", 4), ("circuit_board", "circuit_board", 2), ("antenna", "antenna", 1),
+            ("handheld_radio", "handheld_radio", 2), ("noise_decoy", "noise_decoy", 2), ("holo_decoy", "holo_decoy", 1),
+            ("emp_grenade", "emp_grenade", 2), ("medic_drone", "medic_drone", 1), ("cargo_drone", "cargo_drone", 1),
+            ("squad_radio", "squad_radio", 1), ("sensor_module", "sensor_module", 1),
+        };
+        foreach (var (recipe, item, keep) in wants)
+            if (Count(item) < keep && Open(recipe))
+            {
+                Queue(lab, recipe);
+                return;
+            }
+        if (State.Stockpile.Get("scrap") >= 20) Queue(lab, "salvage_circuits");
     }
 
     private int Count(string baseId) =>
@@ -607,8 +644,26 @@ public sealed class ColonyBot
         // Tech: a hacking kit for the best hacker, a scout drone for the best pilot (pack: the Tool slot holds the backpack).
         if (Take(d => d.HackTool is not null, d => d.HackTool!.ChanceBonus) is { } kit)
             members[party.IndexOf(party.MaxBy(s => s.Get(Skill.Hacking) + s.Get(AttributeKind.Intellect) / 10)!)].Pack!.Add(kit);
-        if (Take(d => d.Drone is not null, _ => 1) is { } drone)
-            members[party.IndexOf(party.MaxBy(s => s.Get(Skill.DronePiloting) + s.Get(AttributeKind.Perception) / 10)!)].Pack!.Add(drone);
+        var pilot = party.MaxBy(s => s.Get(Skill.DronePiloting) + s.Get(AttributeKind.Perception) / 10)!;
+        var pilotHooks = _sim.Scavenge!.HooksFor(pilot.Perks);
+        // A medic drone first (it keeps people up), then the longest battery; never one the pilot lacks the perk for.
+        if (Take(d => d.Drone is { } dr && (dr.RequiresHook is not { } hook || pilotHooks.GetValueOrDefault(hook) > 0),
+                d => (d.Drone!.Role == DroneRole.Medic ? 100 : 0) + d.Drone!.Battery) is { } drone)
+            members[party.IndexOf(pilot)].Pack!.Add(drone);
+        // Electronics: radios work in pairs, so two or none; EMPs and decoys spread over the party.
+        if (Take(d => d.Radio is not null, d => d.Radio!.AccuracyBonus) is { } radio1)
+        {
+            if (members.Count > 1 && Take(d => d.Radio is not null, d => d.Radio!.AccuracyBonus) is { } radio2)
+            {
+                members[0].Pack!.Add(radio1);
+                members[1].Pack!.Add(radio2);
+            }
+            else stock[radio1]++;
+        }
+        var spread = 0;
+        foreach (var kind in new Func<ItemDef, bool>[] { d => d.Use?.Emp is not null, d => d.Use?.Decoy is not null, d => d.Use is { NoiseRadius: > 0 } })
+            for (var n = 0; n < members.Count; n++)
+                if (Take(kind, _ => 1) is { } device) members[spread++ % members.Count].Pack!.Add(device);
         // Medical: one med-kit and bandages spread over the party.
         for (var i = 0; ; i++)
         {

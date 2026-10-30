@@ -61,6 +61,7 @@ internal static class ScavengeCommandHandlers
         if (!unit.Pack.Contains(c.ItemId)) return ScavengeResult.Fail(ScavengeError.ItemNotCarried, $"{unit.Name} carries no '{c.ItemId}'.");
         var item = sim.Item(c.ItemId);
         if (item.Use is not { } use) return ScavengeResult.Fail(ScavengeError.NotUsable, $"{item.Name} cannot be used.");
+        if (ElectronicWarfare.CheckCharges(sim.Data, unit, item) is { } flat) return flat;
         if (use.TargetsTile) return UseOnTile(sim, unit, c, item, use);
 
         var target = c.TargetId is { } id ? sim.State.FindUnit(id) : unit;
@@ -102,7 +103,7 @@ internal static class ScavengeCommandHandlers
         }
 
         unit.Ap -= use.ApCost;
-        if (use.Consumed) unit.Pack.Remove(c.ItemId);
+        ElectronicWarfare.Spend(unit, item, use);
         return ScavengeResult.Success($"{unit.Name} used {item.Name} on {target.Name}.", target.Id);
     }
 
@@ -115,6 +116,8 @@ internal static class ScavengeCommandHandlers
         if (unit.Pos.Chebyshev(at) > use.Range) return ScavengeResult.Fail(ScavengeError.TooFar, $"{at} is out of {item.Name}'s reach.");
         if (use.SensorRadius > 0 && (!sim.Data.Terrain(state.Map[at]).Passable || state.DeviceAt(at) is not null))
             return ScavengeResult.Fail(ScavengeError.InvalidTile, $"{item.Name} cannot be placed on {state.Map[at]}.");
+        if (use.Decoy is not null && !ElectronicWarfare.CanPlaceDecoy(sim, at))
+            return ScavengeResult.Fail(ScavengeError.InvalidTile, $"{item.Name} needs a free floor tile.");
         if (use.ApCost > unit.Ap) return NotEnoughAp(unit, use.ApCost);
         PlaceOnTile(sim, unit, item, use, at);
         return ScavengeResult.Success($"{unit.Name} used {item.Name} at {at}.");
@@ -125,7 +128,10 @@ internal static class ScavengeCommandHandlers
     {
         var state = sim.State;
         unit.Ap -= use.ApCost;
-        if (use.Consumed) unit.Pack.Remove(item.Id);
+        ElectronicWarfare.Spend(unit, item, use);
+        if (use.Emp is { } emp) ElectronicWarfare.Emp(sim, unit, item, emp, at);
+        if (use.Decoy is { } decoy && ElectronicWarfare.CanPlaceDecoy(sim, at)) ElectronicWarfare.Decoy(sim, unit, item, decoy, at);
+        if (use.NoiseRadius > 0) ElectronicWarfare.Noise(sim, unit, item, use.NoiseRadius, at);
         if (use.LightRadius > 0)
         {
             var effects = FieldEnvironment.Effects(sim.Data, state);

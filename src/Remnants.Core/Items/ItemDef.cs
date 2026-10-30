@@ -156,8 +156,56 @@ public sealed record UseEffect
     /// <summary>Motion sensor: placed on a tile within <see cref="Range"/>; reveals hostiles that move within this radius (Chebyshev).</summary>
     public int SensorRadius { get; init; }
 
+    /// <summary>
+    /// Reusable devices (a motion sensor kit): uses per mission before it is flat. The item is not used up; spent charges
+    /// come home with it and recharge at the colony (see <c>Power</c>). 0 = a one-shot item (<see cref="Consumed"/> applies).
+    /// </summary>
+    public int Charges { get; init; }
+
+    /// <summary>EMP grenade: thrown at a tile; disables the Network's machines in a radius (see <see cref="EmpDef"/>).</summary>
+    public EmpDef? Emp { get; init; }
+
+    /// <summary>Holo-decoy: a fake survivor on the tile that draws Husks and the Linked's fire (see <see cref="DecoyDef"/>).</summary>
+    public DecoyDef? Decoy { get; init; }
+
+    /// <summary>Noise decoy: a racket at the tile; idle enemies within this radius come to look.</summary>
+    public int NoiseRadius { get; init; }
+
     /// <summary>Used on a tile (<see cref="Remnants.Core.Scavenge.UseItem.At"/>) rather than on a unit.</summary>
-    public bool TargetsTile => LightRadius > 0 || SensorRadius > 0;
+    public bool TargetsTile => LightRadius > 0 || SensorRadius > 0 || Emp is not null || Decoy is not null || NoiseRadius > 0;
+}
+
+/// <summary>
+/// An EMP burst (Chebyshev <see cref="Radius"/>): Linked units drop off the relay and lose their next turn's AP, drones in
+/// the air (anyone's) fall, cameras and turrets are fried, and Network-grade implants nearby (your own too) lock for the round.
+/// </summary>
+public sealed record EmpDef
+{
+    public int Radius { get; init; } = 2;
+
+    /// <summary>Rounds the Linked stay off the relay and stunned (this one and the next N − 1).</summary>
+    public int Rounds { get; init; } = 2;
+}
+
+/// <summary>A holo-decoy: a fake unit of the user's side with <see cref="Hp"/> that lasts <see cref="Rounds"/> and calls out to enemies within <see cref="LureRadius"/>.</summary>
+public sealed record DecoyDef
+{
+    public int Rounds { get; init; } = 2;
+    public double Hp { get; init; } = 4;
+    public int LureRadius { get; init; } = 6;
+}
+
+/// <summary>
+/// A handheld radio, carried anywhere: every unit of its side within <see cref="Range"/> of a carrier coordinates
+/// (<see cref="AccuracyBonus"/>), team pings reach <see cref="PingRangeBonus"/> further, and with
+/// <see cref="ShareOverwatch"/> a carrier on overwatch also fires at hostiles its side sees.
+/// </summary>
+public sealed record RadioDef
+{
+    public int Range { get; init; } = 8;
+    public double AccuracyBonus { get; init; }
+    public int ExtraPings { get; init; }
+    public bool ShareOverwatch { get; init; }
 }
 
 /// <summary>A replacement limb fitted at the Med Bay. Quality is the part's efficiency (above 1 beats the original).</summary>
@@ -200,17 +248,52 @@ public sealed record HackToolDef
     public int Range { get; init; } = 1;
     public double ChanceBonus { get; init; }
     public int Progress { get; init; } = 1;
+
+    /// <summary>
+    /// A Network deck talks the Network's own protocol: each hack action with it has this chance to be traced (the Linked
+    /// hunt the hacker and the alarm rises, as on a failed hack, without the shock or lockout).
+    /// </summary>
+    public double TraceChance { get; init; }
+}
+
+/// <summary>What a drone does beyond scouting (see <c>Scavenge.DroneRoles</c>).</summary>
+public enum DroneRole
+{
+    Scout,
+    /// <summary>Applies a carried bandage or med-kit to a friendly unit next to it.</summary>
+    Medic,
+    /// <summary>Loads items from caches and ferries them out of the zone (secured even if the party falls).</summary>
+    Cargo,
+    /// <summary>Fires a light gun at hostiles it sees: loud, and it draws fire.</summary>
+    Combat,
 }
 
 /// <summary>
 /// A scout drone item: deployed it becomes a flying unit. Battery in rounds, how far one flight goes, and how far from its
-/// operator it can be (before Drone Piloting and perks).
+/// operator it can be (before Drone Piloting and perks). Variants (medic, cargo, combat) add a <see cref="Role"/>.
 /// </summary>
 public sealed record DroneItemDef
 {
     public int Battery { get; init; } = 6;
     public int FlyRange { get; init; } = 4;
     public int ControlRange { get; init; } = 6;
+
+    public DroneRole Role { get; init; } = DroneRole.Scout;
+
+    /// <summary>Overrides <c>drone.hp</c> (a combat drone is a little sturdier, a cargo drone frailer).</summary>
+    public double? Hp { get; init; }
+
+    /// <summary>Cargo drones: items it can hold.</summary>
+    public int Cargo { get; init; }
+
+    /// <summary>Combat drones: the natural weapon item it is fitted with.</summary>
+    public string? Weapon { get; init; }
+
+    /// <summary>AP the operator pays for the role's action (heal, load, ferry; a combat drone's shot costs its weapon's AP).</summary>
+    public int ActionApCost { get; init; } = 1;
+
+    /// <summary>A perk hook the operator needs (above 0) to deploy it (e.g. a combat drone needs Drone Operator I).</summary>
+    public string? RequiresHook { get; init; }
 }
 
 /// <summary>
@@ -254,6 +337,12 @@ public sealed record ItemDef
     /// <summary>Added to the carrier's detection (binoculars, scanner).</summary>
     public double Detection { get; init; }
 
+    /// <summary>Equipped: added to the hit chance of ranged attacks (a rangefinder).</summary>
+    public double RangedAccuracy { get; init; }
+
+    /// <summary>Network-grade gear (cyan): built round Linked parts; an EMP or the Network may bite it.</summary>
+    public bool NetworkGrade { get; init; }
+
     /// <summary>Movement and action modifiers only apply when this body requirement holds.</summary>
     public BodyRequirement? Requires { get; init; }
 
@@ -275,6 +364,10 @@ public sealed record ItemDef
 
     /// <summary>Scout drones (see <see cref="DroneItemDef"/>).</summary>
     public DroneItemDef? Drone { get; init; }
+
+    /// <summary>Handheld radios (see <see cref="RadioDef"/>).</summary>
+    public RadioDef? Radio { get; init; }
+
 
     /// <summary>Schematic items: the schematic (data/schematics.json) they carry. Made from the catalogue, never in items.json.</summary>
     public string? Schematic { get; init; }

@@ -146,6 +146,8 @@ public static class Schedule
             if (f <= 0) continue;
             if (def.Outdoor) masked ??= Weather.Masked(state, data, spell);
             f *= Weather.WorkFactor(data, spell, building, def, w, masked?.Contains(w.Id) == true);
+            // A powered Floodlight makes night work easier (see Power).
+            if (IsNightShiftHour(w, building, def, hour, data.Rules.DayNight)) f *= 1 + Power.NightShiftBonus(state, data, building);
             if (f > 0) yield return (w, f);
         }
     }

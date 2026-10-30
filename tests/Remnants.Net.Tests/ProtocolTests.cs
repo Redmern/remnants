@@ -25,6 +25,8 @@ public class ProtocolTests
             new PingTile(1, 2, new Pos(1, 1), PingKind.Loot), new GiveItem(1, 2, 4, "scrap"), new Carry(1, 2, 4), new PutDown(1, 2, new Pos(2, 2)),
             new Hack(1, 2, 7), new Hack(1, 2, TargetId: 5), new DeployDrone(1, 2, new Pos(3, 3)), new FlyDrone(1, 2, new Pos(6, 6)),
             new RecallDrone(1, 2), new MarkTarget(1, 2, 9), new DropPayload(1, 2, "flare"),
+            new DroneHeal(1, 2, 4), new DroneLoad(1, 2, 3, "rifle"), new DroneFerry(1, 2), new DroneFire(1, 2, 9),
+            new UseItem(1, 2, "emp_grenade", At: new Pos(4, 4)),
         ];
         foreach (var intent in intents)
         {

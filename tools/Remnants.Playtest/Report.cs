@@ -25,6 +25,14 @@ public static class Report
                       $"{runs.Sum(r => r.SurvivorDays) / Math.Max(1, runs.Sum(r => r.LevelUps)):0.0}, perks learned {runs.Sum(r => r.PerksLearned)} " +
                       $"({(double)runs.Sum(r => r.PerksLearned) / runs.Count:0.0}/colony), mean level at the end {Median(r => r.MeanLevel):0.0} (median), " +
                       $"max level {runs.Max(r => r.MaxLevel)}, unspent points {runs.Sum(r => r.UnspentPoints)}");
+        if (runs.All(r => r.Power is not null))
+        {
+            var withGen = runs.Where(r => r.Power!.GeneratorDay is not null).ToList();
+            sb.AppendLine($"power: generator built in {withGen.Count}/{runs.Count} (median day {D(Median(r => r.Power!.GeneratorDay)).Trim()}), " +
+                          $"components {runs.Sum(r => r.Power!.Components)}, devices {runs.Sum(r => r.Power!.Devices)}, disassembled {runs.Sum(r => r.Power!.Disassembled)}, " +
+                          $"brownouts {runs.Sum(r => r.Power!.Brownouts)}, breaker trips {runs.Sum(r => r.Power!.Breakers)}, " +
+                          $"lab powered hours {runs.Sum(r => r.Power!.LabPoweredTicks)}, still charging {runs.Sum(r => r.Power!.Charging)}");
+        }
         if (runs.All(r => r.Cyber is not null))
         {
             var tiers = string.Join(", ", Enumerable.Range(0, 5).Select(t =>

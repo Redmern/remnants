@@ -208,7 +208,15 @@ public enum CommandError
     NotDamaged,
     RouteBlocked,
     DronesGrounded,
+    /// <summary>Power: the building neither makes, stores nor draws power.</summary>
+    NotOnGrid,
 }
+
+/// <summary>
+/// Switch a building's power draw on or off (see <c>Power</c>): a switched-off consumer never draws (and gets no bonus);
+/// a switched-off generator stays cold (no fuel burnt).
+/// </summary>
+public sealed record SetPower(int BuildingId, bool On) : IColonyCommand;
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>
 public sealed record CommandResult(CommandError Error, string Message, int? EntityId = null)

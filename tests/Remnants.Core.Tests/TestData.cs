@@ -18,7 +18,7 @@ public static class TestData
     {
         var rules = d.Rules with { DayNight = d.Rules.DayNight with { Enabled = nights && d.Rules.DayNight.Enabled } };
         return new GameData(d.Resources.Values, d.Jobs.Values, d.Buildings.Values, rules, d.Recipes.Values, d.Progression, d.Cybernetics?.Def, d.Schematics,
-            d.Weather with { Enabled = weather && d.Weather.Enabled }, d.Food?.Def);
+            d.Weather with { Enabled = weather && d.Weather.Enabled }, d.Food?.Def, d.Electronics);
     }
 
     /// <summary>

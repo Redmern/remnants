@@ -38,6 +38,9 @@ public partial class UnitPanel : PanelContainer
     private PanelContainer _gearCard = null!;
     private readonly Pips _battery = new();
     private readonly Label _droneText = Widgets.Wrapped("", "Small");
+    private readonly HFlowContainer _cargoRow = new();
+    private Label _droneHeading = null!;
+    private string _cargoSignature = "";
     private string _profileSignature = "";
 
     public UnitPanel(ScavengePresenter presenter)
@@ -80,7 +83,9 @@ public partial class UnitPanel : PanelContainer
         batteryRow.AddChild(_battery);
         drone.AddChild(batteryRow);
         drone.AddChild(_droneText);
+        drone.AddChild(_cargoRow);
         _droneCard = Section("Scout drone", "skill_dronepiloting", drone);
+        _droneHeading = _droneCard.GetChild(0).GetChild(0).GetChild<Label>(1);
         _sections.AddChild(_droneCard);
         _bodyCard = Section("Body", "body_full", BodyRows());
         _sections.AddChild(_bodyCard);
@@ -139,7 +144,7 @@ public partial class UnitPanel : PanelContainer
         _portrait.Alert = unit!.Status == UnitStatus.Downed;
         _title.Text = unit.Name;
         _title.AddThemeColorOverride("font_color", side.Lightened(0.2f));
-        _kind.Text = ScavengeText.Kind(unit);
+        _kind.Text = ScavengeText.Kind(data, unit);
         _status.Text = ScavengeText.Status(unit).ToUpperInvariant();
         _status.AddThemeColorOverride("font_color", unit.Status switch
         {
@@ -165,7 +170,7 @@ public partial class UnitPanel : PanelContainer
         _allyText.Text = string.Join("\n", lines);
         RefreshDrone(data, unit);
         // Machines have no limbs or pack worth a card.
-        _bodyCard.Visible = _gearCard.Visible = unit.Kind is not (UnitKind.Drone or UnitKind.Device);
+        _bodyCard.Visible = _gearCard.Visible = unit.Kind is not (UnitKind.Drone or UnitKind.Device or UnitKind.Decoy);
 
         RefreshBody(data, unit);
         RefreshProfile(profile);
@@ -182,7 +187,10 @@ public partial class UnitPanel : PanelContainer
         _droneCard.Visible = drone is not null || packed is not null;
         if (!_droneCard.Visible) return;
         var item = drone?.DroneItemId ?? packed!;
-        var max = op is not null && op.PlayerId == _presenter.PlayerId ? Drones.MaxBattery(data, op, item) : data.Items[item].Drone!.Battery;
+        var spec = data.Items[item].Drone!;
+        _droneHeading.Text = ScavengeText.Item(data, item).ToUpperInvariant();
+        RefreshCargo(data, drone, spec);
+        var max =op is not null && op.PlayerId == _presenter.PlayerId ? Drones.MaxBattery(data, op, item) : data.Items[item].Drone!.Battery;
         var charge = drone?.Battery ?? (op is not null ? Drones.PackedBattery(data, op, item) : max);
         var low = charge <= 1 ? Palette.Danger : charge < data.Rules.Drone.MinBattery ? Palette.Warn : Palette.Network.Lerp(Palette.Amber, 0.85f);
         _battery.Set(charge, Math.Max(max, charge), low);
@@ -196,7 +204,34 @@ public partial class UnitPanel : PanelContainer
             lines.Add(Drones.Jammed(_presenter.Sim, drone.Pos) ? "Jammed: 1 tile a flight, battery drains fast." : $"Flies {data.Items[item].Drone!.FlyRange} tiles over anything.");
             if (drone.Id == unit.Id) lines.Add("Flies on its operator's AP; melee cannot reach it, the Linked shoot it down.");
         }
+        lines.Add(spec.Role switch
+        {
+            DroneRole.Medic => "Medic: drops a bandage or med-kit from the operator's pack on someone next to it (R).",
+            DroneRole.Cargo => $"Cargo: loads up to {spec.Cargo} items from a cache next to it (R), ferries them out from an exit (I).",
+            DroneRole.Combat => "Combat: fires its gun at a hostile it sees (R), aimed with the operator's Drone Piloting.",
+            _ => "Scout: sees far and shares its sight with the team.",
+        });
         _droneText.Text = string.Join("\n", lines);
+    }
+
+    /// <summary>A cargo drone's hold: one chip per item and an empty slot per free place.</summary>
+    private void RefreshCargo(ScavengeData data, Unit? drone, DroneItemDef spec)
+    {
+        _cargoRow.Visible = spec.Role == DroneRole.Cargo;
+        if (!_cargoRow.Visible) return;
+        var hold = drone?.Pack ?? [];
+        var signature = string.Join(",", hold) + $"/{spec.Cargo}";
+        if (signature == _cargoSignature) return;
+        _cargoSignature = signature;
+        Widgets.Clear(_cargoRow);
+        _cargoRow.AddThemeConstantOverride("h_separation", 4);
+        _cargoRow.AddThemeConstantOverride("v_separation", 4);
+        _cargoRow.AddChild(Widgets.Label($"HOLD {hold.Count}/{spec.Cargo}", "Heading"));
+        foreach (var id in hold)
+            _cargoRow.AddChild(Widgets.Chip(Icons.Item(data.Items[id].DefinedId, data.Items[id].Kind.ToString(), 16), ScavengeText.Item(data, id),
+                tooltip: $"{ScavengeText.Item(data, id)} in the hold: ferried home from an exit, safe whatever happens."));
+        for (var i = hold.Count; i < spec.Cargo; i++)
+            _cargoRow.AddChild(Widgets.Chip(null, "empty", Palette.TextDim, "A free place in the hold."));
     }
 
     private void RefreshBody(ScavengeData data, Unit unit)
@@ -285,8 +320,11 @@ public partial class UnitPanel : PanelContainer
             foreach (var group in unit.Pack.GroupBy(p => p))
             {
                 var def = data.Items.GetValueOrDefault(group.Key);
+                var charges = def is null || !_presenter.IsMine(unit) ? null : ElectronicWarfare.ChargesLeft(data, unit, group.Key);
+                var text = $"{ScavengeText.Item(data, group.Key)}{(group.Count() > 1 ? $" ×{group.Count()}" : "")}" + (charges is { } c ? $" · {c} chg" : "");
+                var tip = def?.Use is not null ? ScavengeText.UseTip(data, def, charges) + "\nIn the pack" : "In the pack";
                 flow.AddChild(Widgets.Chip(def is null ? Icons.Get("item_generic", 14) : Icons.Item(def.DefinedId, def.Kind.ToString(), 14),
-                    $"{ScavengeText.Item(data, group.Key)}{(group.Count() > 1 ? $" ×{group.Count()}" : "")}", null, "In the pack"));
+                    text, charges is 0 ? Palette.Danger : null, tip, def?.NetworkGrade == true ? Palette.Network : null));
             }
             _gear.AddChild(flow);
         }

@@ -84,6 +84,7 @@ public static class ZoneTrial
         var conditions = environment is null ? null : new ZoneConditions(Environment: environment);
         int limbLocks = 0;
         int hacked = 0, hackFailed = 0, flights = 0, dronesLost = 0, marks = 0, fromDevices = 0;
+        int emps = 0, decoys = 0, noises = 0, heals = 0, ferried = 0, droneShots = 0;
         int partyRuns = 0, partyWipes = 0, partyDeathRuns = 0;
         int ambushed = 0, reactions = 0, defended = 0;
         int deaths = 0, runsWithDeath = 0, wipes = 0, injuredRuns = 0, limbs = 0, items = 0, schematics = 0, linkedSeen = 0, runsWithLinked = 0, kills = 0, rounds = 0, stuck = 0;
@@ -123,6 +124,21 @@ public static class ZoneTrial
                     {
                         adults[1].Set(Remnants.Core.Survivors.Skill.DronePiloting, 25);
                         adults[1].Perks.UnionWith(["drone_operator_1", "spotter"]);
+                    }
+                }
+            }
+            // "electronics": starting gear plus a radio pair, an EMP and a holo-decoy (first), a noise decoy and a medic
+            // drone (second); "electronics-combat" swaps in a combat drone flown by a Drone Operator.
+            if (kit is "electronics" or "electronics-combat")
+            {
+                packs[0].AddRange(["handheld_radio", "emp_grenade", "holo_decoy"]);
+                if (packs.Count > 1)
+                {
+                    packs[1].AddRange(["handheld_radio", "noise_decoy", kit == "electronics" ? "medic_drone" : "combat_drone"]);
+                    if (kit == "electronics-combat")
+                    {
+                        adults[1].Set(Remnants.Core.Survivors.Skill.DronePiloting, 25);
+                        adults[1].Perks.Add("drone_operator_1");
                     }
                 }
             }
@@ -193,10 +209,16 @@ public static class ZoneTrial
             marks += stats.Marks;
             fromDevices += stats.FromDevices;
             limbLocks += stats.LimbLocks;
+            emps += stats.Emps;
+            decoys += stats.Decoys;
+            noises += stats.NoiseDecoys;
+            heals += stats.DroneHeals;
+            ferried += stats.Ferried;
+            droneShots += stats.DroneShots;
         }
         var n = Math.Max(1, runs - stuck);
         var sb = new StringBuilder();
-        sb.AppendLine($"zone {zoneId}: {runs} runs, {(players > 1 ? $"{players} allied parties of" : "party")} {partySize} ({(kit == "geared" ? "geared" + (carbines > 0 ? $", {carbines} {carbineQuality}{(carbineQuality == "" ? "" : " ")}carbine{(carbines > 1 ? "s" : "")}" : "") + (armor ? ", plating" : "") : "starting gear")}{(kit == "fog" ? " + flares, sensor" : "")}{(kit is "tech" or "hacker" or "hack" or "drone" ? $" + {kit} kit{(tech ? "" : " (unused)")}" : "")}{(CyberKits.ContainsKey(kit) ? $" + {kit} cybernetics" : "")}{(defenses ? "" : ", no defenses")}){(conditions?.Environment is { } env ? $" at {env.Hour:00}:00 ({env.Phase}{(env.Weather is { } w ? $", {w}" : "")})" : "")}{(stuck > 0 ? $", {stuck} stuck" : "")}");
+        sb.AppendLine($"zone {zoneId}: {runs} runs, {(players > 1 ? $"{players} allied parties of" : "party")} {partySize} ({(kit == "geared" ? "geared" + (carbines > 0 ? $", {carbines} {carbineQuality}{(carbineQuality == "" ? "" : " ")}carbine{(carbines > 1 ? "s" : "")}" : "") + (armor ? ", plating" : "") : "starting gear")}{(kit == "fog" ? " + flares, sensor" : "")}{(kit is "tech" or "hacker" or "hack" or "drone" or "electronics" or "electronics-combat" ? $" + {kit} kit{(tech ? "" : " (unused)")}" : "")}{(CyberKits.ContainsKey(kit) ? $" + {kit} cybernetics" : "")}{(defenses ? "" : ", no defenses")}){(conditions?.Environment is { } env ? $" at {env.Hour:00}:00 ({env.Phase}{(env.Weather is { } w ? $", {w}" : "")})" : "")}{(stuck > 0 ? $", {stuck} stuck" : "")}");
         sb.AppendLine($"  runs with a death {100.0 * runsWithDeath / n:0}%  wipes {100.0 * wipes / n:0}%  deaths/run {deaths / (double)n:0.00}");
         sb.AppendLine($"  runs with new injuries {100.0 * injuredRuns / n:0}%  injuries/run {injuries / (double)n:0.0}  limbs lost/run {limbs / (double)n:0.00}");
         sb.AppendLine($"  items/run {items / (double)n:0.0}  schematics/run {schematics / (double)n:0.00}  kills/run {kills / (double)n:0.0}  Linked kills/run {linkedKills / (double)n:0.00}  rounds/run {rounds / (double)n:0}");
@@ -207,6 +229,9 @@ public static class ZoneTrial
         if (kit is "tech" or "hacker" or "hack" or "drone")
             sb.AppendLine($"  hacks/run {hacked / (double)n:0.00}  failed (alarms)/run {hackFailed / (double)n:0.00}  lockers+terminals opened/run {fromDevices / (double)n:0.0}" +
                           $"  drone flights/run {flights / (double)n:0.0}  drones lost {100.0 * dronesLost / n:0}% of runs  marks/run {marks / (double)n:0.00}");
+        if (kit is "electronics" or "electronics-combat")
+            sb.AppendLine($"  EMPs/run {emps / (double)n:0.00}  holo-decoys/run {decoys / (double)n:0.00}  noise decoys/run {noises / (double)n:0.00}" +
+                          $"  drone heals/run {heals / (double)n:0.00}  drone shots/run {droneShots / (double)n:0.00}  drone flights/run {flights / (double)n:0.0}");
         if (CyberKits.ContainsKey(kit))
             sb.AppendLine($"  limb lock-ups (interference)/run {limbLocks / (double)n:0.00}");
         if (players > 1)

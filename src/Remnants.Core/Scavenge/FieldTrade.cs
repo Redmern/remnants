@@ -7,6 +7,8 @@ namespace Remnants.Core.Scavenge;
 /// items out of the party's packs; they swap atomically into the other party's packs (each item to the conscious
 /// survivor with the most room) and go home to that player's colony on extraction, like any loot. No AP and no turn:
 /// it is bartering over the radio while the fight goes on. Deterministic: the host calls it in its single-threaded order.
+/// A reusable device keeps its charge: its spent charges (<see cref="Unit.ChargesUsed"/>) move with it, the most-spent
+/// copy going first, so no trade recharges a device or drains the giver's other copies.
 /// </summary>
 public static class FieldTrade
 {
@@ -45,11 +47,19 @@ public static class FieldTrade
         var bTaken = Take(sim, b, bIds);
         if (Place(sim, b, aIds) is not { } aPlaced || Place(sim, a, bIds) is not { } bPlaced)
         {
-            foreach (var (unit, id) in aTaken) unit.Pack.Add(id);
-            foreach (var (unit, id) in bTaken) unit.Pack.Add(id);
+            foreach (var (unit, id, spent) in aTaken.Concat(bTaken)) Restore(unit, id, spent);
             return ScavengeResult.Fail(ScavengeError.CarryLimitExceeded, "The other party cannot carry all of that.");
         }
-        foreach (var (unit, id) in aPlaced.Concat(bPlaced)) unit.Pack.Add(id);
+        // Each placed device takes the spent charges of the copy that left (matched by item id, in order).
+        foreach (var (placed, taken) in new[] { (aPlaced, aTaken), (bPlaced, bTaken) })
+        {
+            var spentById = taken.GroupBy(t => t.Id).ToDictionary(g => g.Key, g => new Queue<int>(g.Select(t => t.Spent)));
+            foreach (var (unit, id) in placed)
+            {
+                unit.Pack.Add(id);
+                if (spentById[id].Dequeue() is var s and > 0) unit.ChargesUsed[id] = unit.ChargesUsed.GetValueOrDefault(id) + s;
+            }
+        }
         var state = sim.State;
         var sides = new List<string> { state.FindParty(a)!.Side, state.FindParty(b)!.Side }.Distinct().ToList();
         string Names(List<string> ids) => ids.Count == 0 ? "nothing" : string.Join(", ", ids.Select(id => sim.Data.Items[id].Name));
@@ -62,16 +72,30 @@ public static class FieldTrade
         sim.State.Units.Where(u => u.PlayerId == playerId && u.Kind == UnitKind.Survivor && u.OnMap)
             .OrderBy(u => u.Id);
 
-    private static List<(Unit Unit, string Id)> Take(ScavengeSim sim, int playerId, List<string> ids)
+    /// <summary>Takes the items out of the packs; a device takes the most-spent copy's charges with it (Spent).</summary>
+    private static List<(Unit Unit, string Id, int Spent)> Take(ScavengeSim sim, int playerId, List<string> ids)
     {
-        var taken = new List<(Unit, string)>();
+        var taken = new List<(Unit, string, int)>();
         foreach (var id in ids)
         {
             var unit = Holders(sim, playerId).First(u => u.Pack.Contains(id));
             unit.Pack.Remove(id);
-            taken.Add((unit, id));
+            var spent = 0;
+            if (sim.Data.Items[id].Use is { Charges: > 0 } use && unit.ChargesUsed.GetValueOrDefault(id) is var used and > 0)
+            {
+                spent = Math.Min(used, use.Charges);
+                if (used - spent > 0) unit.ChargesUsed[id] = used - spent;
+                else unit.ChargesUsed.Remove(id);
+            }
+            taken.Add((unit, id, spent));
         }
         return taken;
+    }
+
+    private static void Restore(Unit unit, string id, int spent)
+    {
+        unit.Pack.Add(id);
+        if (spent > 0) unit.ChargesUsed[id] = unit.ChargesUsed.GetValueOrDefault(id) + spent;
     }
 
     /// <summary>Where each item would go (the conscious survivor with the most room), or null if one does not fit.</summary>
