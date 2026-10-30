@@ -258,7 +258,7 @@ public static class Consequences
                 continue;
             }
             if (rng.NextDouble() >= p * p * rules.InjuryChance) continue;
-            var part = Hurt(s, 0.2 + p * 0.6 * rng.NextDouble(), rng);
+            var part = Hurt(sim.Data, s, 0.2 + p * 0.6 * rng.NextDouble(), rng);
             if (p > rules.DeathFrom && rng.NextDouble() < (p - rules.DeathFrom) * 2)
             {
                 dead.Add(s.Name);
@@ -270,7 +270,7 @@ public static class Consequences
         if (!holds && !raid.ChildrenSheltered)
             foreach (var c in state.Survivors.Where(c => c.IsChild && !c.Away).OrderBy(c => c.Id).ToList())
                 if (rng.NextDouble() < p * p * raids.Def.Strength.ChildRisk * rules.InjuryChance)
-                    injured.Add(new(c.Name, Hurt(c, 0.2 + p * 0.4 * rng.NextDouble(), rng)));
+                    injured.Add(new(c.Name, Hurt(sim.Data, c, 0.2 + p * 0.4 * rng.NextDouble(), rng)));
 
         // Mood, XP.
         var mood = holds ? rules.WinMood : -rules.LossMood * Math.Clamp(p * 2 - 1, 0.25, 1);
@@ -308,13 +308,18 @@ public static class Consequences
         return report;
     }
 
-    private static string Hurt(Survivor s, double severity, DeterministicRng rng)
+    /// <summary>
+    /// A raid wound: an open (undressed) injury that can get infected like any (medicine.json), and on an arm or leg a
+    /// fracture by the same rule as a hit in the field (a side roll, so the raid's own dice do not shift).
+    /// </summary>
+    private static string Hurt(Data.GameData data, Survivor s, double severity, DeterministicRng rng)
     {
         BodyPart[] parts = [BodyPart.Torso, BodyPart.LeftArm, BodyPart.RightArm, BodyPart.LeftLeg, BodyPart.RightLeg, BodyPart.Head];
         var part = parts[rng.Next(0, parts.Length)];
         s.Body.Injure(part, Math.Clamp(severity, 0, 0.9));
         s.Health = Math.Max(1, s.Health - severity * 40);
-        return $"{MedicalSystem.Describe(part)} {(severity >= 0.6 ? "badly hurt" : "hurt")}";
+        var broken = Treatment.MaybeFracture(data.Medicine, s.Body, part, SideRoll.Next(rng, s.Id, (long)part, (long)(severity * 1000)));
+        return $"{MedicalSystem.Describe(part)} {(broken ? "broken" : severity >= 0.6 ? "badly hurt" : "hurt")}";
     }
 
     private static string Summary(RaidReport r, ThreatDef threat)

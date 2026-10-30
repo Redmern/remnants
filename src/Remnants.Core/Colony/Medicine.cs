@@ -99,14 +99,14 @@ public static class Medicine
 /// </summary>
 public static class Sickness
 {
-    public static BodyCondition? Apply(ColonyState state, GameData data, Survivor survivor, string kind, double severity)
+    public static BodyCondition? Apply(ColonyState state, GameData data, Survivor survivor, string kind, double severity, bool log = true)
     {
         if (data.Medicine is not { } med || severity <= 0) return null;
         var id = med.Def.SicknessKinds.GetValueOrDefault(kind, kind);
         if (med.Condition(id) is not { } def) return null;
         var had = survivor.Body.Has(id);
         var c = Treatment.Afflict(survivor.Body, id, severity);
-        if (!had) state.Log(new(state.Tick, ColonyEventType.FellSick, $"{survivor.Name} is down with {def.Name.ToLowerInvariant()}.", survivor.Id));
+        if (!had && log) state.Log(new(state.Tick, ColonyEventType.FellSick, $"{survivor.Name} is down with {def.Name.ToLowerInvariant()}.", survivor.Id));
         return c;
     }
 }

@@ -427,9 +427,15 @@ condition the rules name exists). Without the file nothing changes (no condition
   `painRelief`/`painRounds`/`painTicks`, `stimAp`/`crashAp`, `calmRounds`, `humanityCost`; `Treats` says it is a treatment.
   Recipes may need a blood donor (`donorHealth`: the order waits for `Medicine.Donor`, who gives health when the batch
   starts). Surgery uses the best kit in stock (`surgery.kits`: odds × its quality, used up) and a failed one also leaves a
-  `surgical_infection` on the part. Ingredients other features own go through `medicine.json` `ingredients`: a recipe
-  input `herbs` becomes food × 1.5 while no `herbs` resource is loaded (food-cooking's Pantry takes over at merge);
-  `alcohol` is a resource of its own with a Kitchen fallback (`spirits`), and the vehicles' still is to output it too.
+  `surgical_infection` on the part. Herbal supplies take the Pantry item `herbs` as a recipe ingredient (food-cooking); `alcohol`
+  is a resource of its own with a Kitchen fallback (`spirits`) until the vehicles' still outputs it. Alcohol, chemicals and
+  pharma are priced in `schematics.json` `resourceValues`, so supplies trade at their quality (`base@quality` ids).
+- **Merged features**: `FoodSickness.Apply` (bad, spoiled, raw food, bad rations; tainted food is Husk sickness) forwards to
+  `Sickness.Apply` at `foodSicknessScale` and keeps the `FoodPoisoning` event; without medicine.json food's own "sick"
+  buff applies. The electronics medic drone (`DroneRoles.HealItem`) drops the least medical item that does the job,
+  dressings, splints and cures included, never a stim or the Calm injector, and applies it with `Treatment.Apply`.
+  Auto-resolved raid wounds (`AutoResolve.Hurt`) are open wounds that can get infected and can fracture by the field
+  rule; raid battles on the map go through `Combat` like any fight.
 - **Field** (`FieldMedicine`): `UseItem` on a conscious unit heals, dresses, cures, splints and numbs (`Treatment.Apply`),
   a stim adds AP now and sets `Unit.CrashAp` for the next turn, the Calm injector sets `Unit.CalmUntilRound` (suppression
   cannot pin them) and costs humanity. Downed units are stabilized / revived as before (a blood bag revives with 45 HP).

@@ -56,7 +56,9 @@
 
   "painkiller": { "doseDecayPerTick": 0.02, "dependencyDoses": 3, "dependencyCondition": "dependency", "dependencySeverity": 0.4 },
 
-  "sicknessKinds": { "food": "food_sickness", "spoiled": "food_sickness", "raw": "food_sickness", "husk": "husk_sickness" },
+  "sicknessKinds": { "food": "food_sickness", "spoiled": "food_sickness", "raw": "food_sickness", "bad rations": "food_sickness",
+                     "husk": "husk_sickness", "tainted": "husk_sickness" },
+  "foodSicknessScale": 0.4,
 
   "medBay": {
     "defaultPriorities": ["Bleeding", "Infection", "Fracture", "Sickness", "Pain"],

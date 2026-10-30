@@ -25,6 +25,9 @@ public sealed record MedicineDef
     /// <summary>Sickness kinds (what <c>Sickness.Apply</c> is called with: food, spoiled, husk) → condition id.</summary>
     public Dictionary<string, string> SicknessKinds { get; init; } = new(StringComparer.Ordinal);
 
+    /// <summary>Food sickness comes in food's scale (1 = an ordinary case); this turns it into a condition severity.</summary>
+    public double FoodSicknessScale { get; init; } = 0.4;
+
     public MedBayCareRules MedBay { get; init; } = new();
     public SurgeryKitRules Surgery { get; init; } = new();
     public DonorRules Donor { get; init; } = new();

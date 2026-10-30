@@ -32,12 +32,12 @@ public class MedicineDataTests
     }
 
     [Fact]
-    public void Herbs_fall_back_to_food_until_food_cooking_brings_them()
+    public void Herbal_supplies_take_herbs_from_the_pantry()
     {
-        Assert.False(TestData.Real.Resources.ContainsKey("herbs"));
         var antiseptic = TestData.Real.Recipes["antiseptic"];
+        Assert.Equal(1, antiseptic.Ingredients["herbs"]);
         Assert.False(antiseptic.Inputs.ContainsKey("herbs"));
-        Assert.Equal(1.5, antiseptic.Inputs["food"], 9);
+        Assert.Equal(2, TestData.Real.Recipes["painkiller"].Ingredients["herbs"]);
     }
 
     [Fact]
@@ -434,5 +434,60 @@ public class FieldMedicineTests
             if (a.Body.Has("fracture")) broke++;
         }
         Assert.InRange(broke, 5, 40);
+    }
+}
+
+/// <summary>How medicine meets the features merged around it: food, drones, raids and trading.</summary>
+public class MedicineIntegrationTests
+{
+    [Fact]
+    public void Food_sickness_becomes_a_medicine_condition_and_tainted_food_is_husk_sickness()
+    {
+        var sim = CyberTestColony.Make();
+        var a = sim.AddSurvivor();
+        var b = sim.AddSurvivor();
+        FoodSickness.Apply(sim.State, sim.Data, a, "spoiled", 1);
+        FoodSickness.Apply(sim.State, sim.Data, b, "tainted", 1);
+        Assert.Equal(sim.Data.Medicine!.Def.FoodSicknessScale, a.Body.Find("food_sickness")!.Severity, 9);
+        Assert.True(b.Body.Has("husk_sickness"));
+        Assert.Equal(2, sim.State.Events.Count(e => e.Type == ColonyEventType.FoodPoisoning));
+        Assert.DoesNotContain(sim.State.Events, e => e.Type == ColonyEventType.FellSick);
+        sim.State.Inventory.Add("antidote");
+        Assert.True(sim.Execute(new TreatSurvivor(b.Id, "antidote")).Ok);
+        Assert.False(b.Body.Has("husk_sickness"));
+    }
+
+    [Fact]
+    public void A_medic_drone_splints_with_the_operators_supplies()
+    {
+        var op = SurvivorUnit(1, new Pos(1, 1), pack: ["medic_drone", "splint"]);
+        var hurt = SurvivorUnit(1, new Pos(3, 1));
+        var sim = Arena(12, 8, [op, hurt]);
+        hurt.Body.Injure(BodyPart.LeftLeg, 0.5);
+        Treatment.Fracture(sim.Data.Medicine!, hurt.Body, BodyPart.LeftLeg);
+        Assert.True(sim.Execute(new DeployDrone(1, op.Id, new Pos(2, 1))).Ok);
+        var r = sim.Execute(new DroneHeal(1, op.Id, hurt.Id));
+        Assert.True(r.Ok, r.Message);
+        Assert.True(hurt.Body.Find("fracture")!.Treated);
+        Assert.DoesNotContain("splint", op.Pack);
+    }
+
+    [Fact]
+    public void A_medic_drone_never_drops_a_stim_or_the_calm_injector()
+    {
+        var op = SurvivorUnit(1, new Pos(1, 1), pack: ["medic_drone", "stim", "calm_injector"]);
+        var hurt = SurvivorUnit(1, new Pos(3, 1));
+        hurt.Hp = 40;
+        var sim = Arena(12, 8, [op, hurt]);
+        Assert.Null(DroneRoles.HealItem(sim.Data, op, hurt));
+    }
+
+    [Fact]
+    public void Medical_supplies_trade_at_their_quality()
+    {
+        var rules = Trade.TradeRules.Load(Path.Combine(AppContext.BaseDirectory, "data"));
+        Assert.Null(Trade.TradeGoods.Validate([new Trade.TradeGood(Trade.GoodKind.Item, "antibiotics@fine", 2)], rules, TestData.Real, ScavengeTestData.Real));
+        Assert.True(Schematics.TradeValues.Of(TestData.Real, ScavengeTestData.Real, "antibiotics@fine")
+                    > Schematics.TradeValues.Of(TestData.Real, ScavengeTestData.Real, "antibiotics"));
     }
 }

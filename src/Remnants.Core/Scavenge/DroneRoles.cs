@@ -8,9 +8,10 @@ namespace Remnants.Core.Scavenge;
 /// What the drone variants do beyond scouting (<see cref="DroneItemDef.Role"/>); the operator pays the AP and the drone
 /// must be in the air and within control range, as for a flight.
 /// <list type="bullet">
-/// <item><b>Medic</b> (<see cref="DroneHeal"/>): a healing item from the operator's pack (a bandage first; the medicine
-/// branch's items work the same way through <see cref="HealItem"/>) on a friendly unit next to the drone: it heals a
-/// conscious one, stabilizes (and with a med-kit revives) a downed one, with the operator's medic perks.</item>
+/// <item><b>Medic</b> (<see cref="DroneHeal"/>): a medical item from the operator's pack (the least that does the job, a
+/// bandage first; see <see cref="HealItem"/>) on a friendly unit next to the drone: it heals and treats a conscious one
+/// (dressings, splints, cures as by hand, <see cref="Treatment.Apply"/>), stabilizes (and with a med-kit or blood bag
+/// revives) a downed one, with the operator's medic perks. Never a stim or the Calm injector.</item>
 /// <item><b>Cargo</b> (<see cref="DroneLoad"/>, <see cref="DroneFerry"/>): loads items from a cache on or next to its tile,
 /// up to its cargo; next to an exit (or the parked vehicle, see <see cref="FerryPoint"/>) it flies them out: they are
 /// <see cref="Party.Secured"/>, home whatever happens to the party, and so is the drone.</item>
@@ -37,7 +38,9 @@ public static class DroneRoles
         var downed = target.Status == UnitStatus.Downed;
         return operatorUnit.Pack.Distinct()
             .Select(id => (Id: id, Use: data.Items[id].Use))
-            .Where(t => t.Use is { TargetsTile: false, Evacuate: false } u && (downed ? u.Stabilize : u.Heal > 0))
+            // Medical supplies count when they would do something (a dressing, splint or cure); never a stim or an injector.
+            .Where(t => t.Use is { TargetsTile: false, Evacuate: false, StimAp: 0, HumanityCost: 0 } u
+                        && (downed ? u.Stabilize : u.Heal > 0 && target.Hp < target.MaxHp || Treatment.Helps(data.Medicine, target.Body, u)))
             // The least that does the job: a bandage before a med-kit.
             .OrderBy(t => t.Use!.Heal + t.Use.ReviveHp).ThenBy(t => t.Id, StringComparer.Ordinal)
             .Select(t => t.Id).FirstOrDefault();
@@ -107,7 +110,11 @@ public static class DroneRoles
                 target.Stabilized = false;
             }
         }
-        else target.Hp = Math.Min(target.MaxHp, target.Hp + use.Heal * (1 + unit.Hook(PerkHooks.FieldHealBonus)));
+        else
+        {
+            target.Hp = Math.Min(target.MaxHp, target.Hp + use.Heal * (1 + unit.Hook(PerkHooks.FieldHealBonus)));
+            Treatment.Apply(sim.Data.Medicine, target.Body, use, field: true);
+        }
         unit.GainSkill(Skill.DronePiloting, sim.Data.Rules.Drone.SkillPerFlight);
         unit.GainSkill(Skill.Medicine, sim.Data.Rules.Drone.SkillPerFlight / 2);
         state.Log(new(state.Round, ScavengeEventType.DroneHealed, $"{drone.Name} drops a {item.Name} on {target.Name}.", drone.Id, target.Id, target.Pos));
