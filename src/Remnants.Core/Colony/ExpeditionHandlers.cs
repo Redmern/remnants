@@ -191,6 +191,8 @@ internal static class ExpeditionHandlers
                 else loot.Remove(id);
             }
         var report = new ExpeditionReport(expedition.Id, expedition.ZoneId, state.Tick, [], [], [], loot, new(StringComparer.Ordinal));
+        // Survivors the Linked carried off go to the story, not the memorial.
+        if (result.Mission?.Taken is { Count: > 0 } taken) global::Remnants.Core.Story.StoryWorld.TakeAway(sim, taken);
 
         foreach (var r in result.Returned)
         {
@@ -259,6 +261,8 @@ internal static class ExpeditionHandlers
         }
         // Co-op: copies of what allies carried out; what the party saw but left behind becomes researchable.
         foreach (var id in result.SharedSchematics) ReceiveSchematic(sim, id, report);
+        // Co-op story: a guest's copies of the host's mission rewards.
+        foreach (var id in result.Mission?.GuestSchematics ?? []) ReceiveSchematic(sim, id, report);
         foreach (var (id, where) in result.HeardOf) Schematics.Schematics.HearOf(sim, id, where);
         RadioMast.PartyHome(sim, expedition.ZoneId);
         // A plain run's exit stash stays in the zone for next time (a story map is not the zone's usual ground).
@@ -270,7 +274,8 @@ internal static class ExpeditionHandlers
 
         state.Expedition = null;
         state.LastReport = report;
-        if (expedition.MissionId is { } missionId) global::Remnants.Core.Story.Campaign.Returned(sim, missionId, result.Mission);
+        if (expedition.MissionId is { } missionId) global::Remnants.Core.Story.Campaign.Returned(sim, missionId, result.Mission,
+            expedition.Members.Select(m => m.SurvivorId).ToList());
         if (zone is not null) WorldMap.Visited(state, data, zone);
         var summary = $"The party is back from {zoneName}: {report.Returned.Count} returned, {report.Dead.Count} dead, {report.Recruits.Count} recruited.";
         state.Log(new(state.Tick, ColonyEventType.ExpeditionReturned, summary));

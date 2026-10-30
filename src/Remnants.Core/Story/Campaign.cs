@@ -55,11 +55,21 @@ public static class Campaign
         if (sim.State.Campaign is not { } campaign || sim.Story is not { } story) return;
         var now = sim.State.Tick;
         foreach (var call in campaign.Inbox.Where(c => !c.Rung && !c.Taken && c.Tick <= now).ToList()) Ring(sim, call);
+        StoryCharacters.Tick(sim);
+        StoryWorld.Tick(sim);
+        if (campaign.Over) return;
         foreach (var def in story.Missions)
         {
             var p = campaign.Progress(def.Id);
             switch (p.Status)
             {
+                case MissionStatus.Done when p.RepeatTick <= now:
+                    p.Status = MissionStatus.Available;
+                    p.RepeatTick = null;
+                    p.AvailableTick = now;
+                    if (def.Briefing is { } again) QueueCall(sim, again);
+                    Log(sim, $"{def.Name} is open again.");
+                    break;
                 case MissionStatus.Failed when p.RetryTick <= now:
                     p.Status = MissionStatus.Available;
                     p.RetryTick = null;
@@ -130,6 +140,19 @@ public static class Campaign
         }
         if (c.Item is { } item && state.Inventory.Count(item) < c.Count) return false;
         if (c.Alive is { } who && campaign?.Characters.GetValueOrDefault(who)?.Dead == true) return false;
+        if (c.Dead is { } dead && campaign?.Characters.GetValueOrDefault(dead)?.Dead != true) return false;
+        if (c.Joined is { } joined && (campaign?.Characters.GetValueOrDefault(joined) is not { Joined: true, Dead: false } || StoryCharacters.SurvivorOf(sim, joined) is null)) return false;
+        if (c.Adult is { } adult && StoryCharacters.SurvivorOf(sim, adult) is not { IsChild: false }) return false;
+        if (c.HumanityMin is not null || c.HumanityMax is not null)
+        {
+            double? humanity = c.Of is { } of ? StoryCharacters.SurvivorOf(sim, of)?.Body.Humanity : StoryCharacters.ColonyHumanity(sim);
+            if (humanity is not { } h) return false;
+            if (c.HumanityMin is { } hmin && h < hmin) return false;
+            if (c.HumanityMax is { } hmax && h > hmax) return false;
+        }
+        if (c.Skill is { } skill && !state.Survivors.Any(s => !s.IsChild && !s.Away && s.Get(Enum.Parse<Skill>(skill)) >= c.SkillMin)) return false;
+        if (c.Any is { Count: > 0 } any && !any.Any(a => Holds(sim, a))) return false;
+        if (c.Not is { } not && Holds(sim, not)) return false;
         return true;
     }
 
@@ -190,6 +213,43 @@ public static class Campaign
 
     // ---- Field missions ---------------------------------------------------------------------------------------------
 
+    /// <summary>
+    /// Why this party cannot go on the mission, or null: a chain floor takes only who came back from the floor before;
+    /// a mission that needs a story character (or the key-carrier) needs them in the party; a survivor whose trait keeps
+    /// them home (Iris) goes only where the mission needs them.
+    /// </summary>
+    public static string? CannotTake(ColonySim sim, MissionDef def, IReadOnlyList<int> party)
+    {
+        var campaign = sim.State.Campaign!;
+        if (def.ChainFrom is { } from && campaign.ChainParties.TryGetValue(from, out var chain) && party.Any(id => !chain.Contains(id)))
+            return "Only the survivors who came out of the floor below can go on.";
+        var needed = new HashSet<int>();
+        foreach (var who in def.MustBring)
+        {
+            var id = who == "key" ? KeyCarrierSurvivor(sim)?.Id : StoryCharacters.SurvivorOf(sim, who)?.Id;
+            if (id is null) continue;
+            if (!party.Contains(id.Value)) return $"{sim.State.FindSurvivor(id.Value)!.Name} must be in the party.";
+            needed.Add(id.Value);
+        }
+        foreach (var id in party.Where(i => !needed.Contains(i)))
+            if (sim.State.FindSurvivor(id) is { } s && s.TraitHooks.GetValueOrDefault(PerkHooks.NoScavenge) > 0)
+                return $"{s.Name} does not go out unless the mission needs them.";
+        return null;
+    }
+
+    /// <summary>The colony survivor carrying the key (M16): Iris, Seven, or the one who took the port.</summary>
+    public static Survivor? KeyCarrierSurvivor(ColonySim sim)
+    {
+        var campaign = sim.State.Campaign!;
+        return campaign.Flag("key_carrier") switch
+        {
+            1 => StoryCharacters.SurvivorOf(sim, "iris"),
+            2 => StoryCharacters.SurvivorOf(sim, StoryCharacters.Seven),
+            3 => sim.State.FindSurvivor(campaign.Flag("key_survivor")),
+            _ => null,
+        };
+    }
+
     /// <summary>Why a field mission cannot be launched now, or null.</summary>
     public static string? CannotLaunch(ColonySim sim, string missionId)
     {
@@ -204,6 +264,12 @@ public static class Campaign
         if (sim.State.Campaign is null || sim.Story is null) return CommandResult.Fail(CommandError.NoCampaign, "This is a Sandbox colony.");
         if (sim.Story.Mission(c.MissionId) is not { Type: MissionType.Field } def) return CommandResult.Fail(CommandError.UnknownMission, $"No mission '{c.MissionId}'.");
         if (CannotLaunch(sim, c.MissionId) is { } why) return CommandResult.Fail(CommandError.MissionNotAvailable, why);
+        if (CannotTake(sim, def, c.Members.Select(m => m.SurvivorId).ToList()) is { } party) return CommandResult.Fail(CommandError.MissionNotAvailable, party);
+        if (StoryWorld.BreaksTruce(sim, def))
+        {
+            StoryWorld.BreakTruce(sim);
+            return CommandResult.Fail(CommandError.MissionNotAvailable, "Going there breaks the truce. Halcyon is coming: hold the colony first.");
+        }
         // A mission in a generated zone goes in by daylight (the party waits for it), since night fills those zones with
         // more Husks; a handmade place keeps its fixed cast, and a defense is fought when it comes.
         var wait = def.HandmadeId is not null || def.Perimeter || sim.Phase == DayPhase.Day ? (DayPhase?)null : DayPhase.Day;
@@ -224,6 +290,8 @@ public static class Campaign
         var def = story.Mission(missionId) ?? throw new InvalidOperationException($"Unknown mission '{missionId}'.");
         var p = sim.State.Campaign!.Progress(missionId);
         var towers = sim.State.Buildings.Where(b => b.DefId == "watchtower").Sum(b => b.Level);
+        var extra = p.Attempts > 1 ? def.Fail.ExtraEnemies.ToList() : [];
+        var party = sim.State.Expedition?.Members.Select(m => sim.State.FindSurvivor(m.SurvivorId)).OfType<Survivor>().ToList() ?? [];
         var map = story.MapFor(def, sim.TownHallLevel);
         // A perimeter defense is fought on the real colony when it has what the script needs; the handmade map is the fallback.
         if (def.Perimeter && sim.Raids is { } raids && Raids.RaidBattle.StoryMap(sim, raids, def.Field!) is { } colony)
@@ -231,21 +299,36 @@ public static class Campaign
             map = colony;
             towers = Raids.RaidBattle.TowerCount(colony);
         }
-        return new MissionSetup(
-            def.Field!,
-            map,
-            def.Room is { } room ? story.Maps[room] : null,
-            towers,
-            p.Attempts > 1 ? def.Fail.ExtraEnemies : null);
+        // Seven's Network Echo: now and then the Linked notice it, and send a patrol.
+        var echo = party.Sum(s => s.TraitHooks.GetValueOrDefault(PerkHooks.NetworkEchoChance));
+        if (echo > 0 && new Random.DeterministicRng(sim.State.Expedition?.Seed ?? 0).NextDouble() < echo
+            && (map ?? (def.Room is { } r ? story.Maps[r] : null))?.Enemies.FirstOrDefault() is { } near)
+            extra.Add(new MapEnemyDef("linked", near.Marker, "echo", 1));
+        var tags = new Dictionary<int, string>();
+        foreach (var s in party.Where(s => s.UniqueId is not null)) tags[s.Id] = s.UniqueId!;
+        if (KeyCarrierSurvivor(sim) is { } key && party.Contains(key)) tags[key.Id] = "key";
+        return new MissionSetup(def.Field!, map, def.Room is { } room ? story.Maps[room] : null, towers, extra.Count > 0 ? extra : null)
+        {
+            CampaignFlags = new Dictionary<string, int>(sim.State.Campaign.Flags),
+            Tags = tags,
+            GuestSchematics = GuestSchematics(def),
+        };
     }
 
+    /// <summary>What a co-op guest copies from a mission: its schematic rewards (STORY.md "Co-op").</summary>
+    public static List<string> GuestSchematics(MissionDef def) =>
+        def.Rewards.Where(e => e.Kind == EffectKind.Schematic).Select(e => e.Id).Distinct().ToList();
+
     /// <summary>The party is home from a story mission: rewards on success, the fail branch on failure, else it stays open.</summary>
-    internal static void Returned(ColonySim sim, string missionId, ObjectiveResult? result)
+    internal static void Returned(ColonySim sim, string missionId, ObjectiveResult? result, IReadOnlyList<int>? party = null)
     {
         if (sim.State.Campaign is not { } campaign || sim.Story?.Mission(missionId) is not { } def) return;
         var p = campaign.Progress(missionId);
         foreach (var (flag, value) in result?.Flags ?? new()) campaign.Flags[flag] = campaign.Flag(flag) + value;
         foreach (var who in result?.Escorted ?? []) campaign.Character(who).Met = true;
+        // A chain floor: who came out may go on to the next floor (and only they).
+        if (result?.Outcome == MissionOutcome.Done && sim.Story!.Missions.Any(m => m.ChainFrom == missionId))
+            campaign.ChainParties[missionId] = (party ?? []).Where(id => sim.State.FindSurvivor(id) is not null).ToList();
         var outcome = result?.Outcome ?? MissionOutcome.Incomplete;
         var objectives = def.Field?.Objectives.Select(o =>
             $"{(result?.Objectives.GetValueOrDefault(o.Id) == ObjectiveStatus.Done ? "✓" : result?.Objectives.GetValueOrDefault(o.Id) == ObjectiveStatus.Failed ? "✗" : "·")} {o.Text}").ToList() ?? [];
@@ -274,6 +357,7 @@ public static class Campaign
             p.DoneTick = sim.State.Tick;
             foreach (var e in def.Rewards) Apply(sim, e, $"{def.Name}", lines);
             if (def.Debrief is { } debrief) QueueCall(sim, debrief);
+            if (def.RepeatDays is { } every) p.RepeatTick = sim.State.Tick + every * sim.Data.Rules.TicksPerDay;
             Log(sim, $"Mission complete: {def.Name}.");
         }
         else
@@ -346,7 +430,7 @@ public static class Campaign
             case EffectKind.Character:
                 var c = campaign.Character(e.Id);
                 c.Met = true;
-                if (e.Value >= 2) c.Joined = true;
+                if (e.Value >= 2 && StoryCharacters.Join(sim, e.Id) is { } joinedSurvivor) lines?.Add($"{joinedSurvivor.Name} joins the colony");
                 break;
             case EffectKind.Fallback:
                 lines?.Add(e.Text ?? "A reward for later");
@@ -354,6 +438,48 @@ public static class Campaign
             case EffectKind.Note:
                 Log(sim, e.Text ?? "");
                 lines?.Add(e.Text ?? "");
+                break;
+            case EffectKind.Mood:
+                if (StoryCharacters.SurvivorOf(sim, e.Id) is { } moody) moody.Mood = Math.Clamp(moody.Mood + e.Value, 0, Survivor.MaxMood);
+                break;
+            case EffectKind.Humanity:
+                if (StoryCharacters.SurvivorOf(sim, e.Id) is { } changed)
+                    changed.Body.HumanityLoss = Math.Clamp(changed.Body.HumanityLoss - e.Value, 0, Body.MaxHumanity);
+                break;
+            case EffectKind.Leaves:
+                StoryCharacters.Leave(sim, e.Id, e.Text);
+                break;
+            case EffectKind.Dies:
+                StoryCharacters.Die(sim, e.Id, e.Text);
+                break;
+            case EffectKind.Close:
+                var closing = campaign.Progress(e.Id);
+                if (closing.Status is not MissionStatus.Done)
+                {
+                    closing.Status = MissionStatus.Done;
+                    closing.Outcome = e.Text ?? "done";
+                    closing.DoneTick = state.Tick;
+                    closing.RetryTick = null;
+                }
+                break;
+            case EffectKind.WorldEffect:
+                StoryWorld.Start(sim, e.Id, e.Value);
+                break;
+            case EffectKind.EndWorldEffect:
+                StoryWorld.End(sim, e.Id);
+                break;
+            case EffectKind.Ending:
+                StoryWorld.End(sim, e.Id, ending: true);
+                break;
+            case EffectKind.Recruit:
+                var recruit = StoryCharacters.Recruit(sim, e.Text ?? "Stranger", e.Id == "child", e.Value <= 1 ? Body.MaxHumanity : e.Value);
+                lines?.Add($"{recruit.Name} joins the colony");
+                break;
+            case EffectKind.ReturnTaken:
+                foreach (var name in StoryWorld.ReturnTaken(sim, e.Value)) lines?.Add($"{name} came home");
+                break;
+            case EffectKind.Rename:
+                if (StoryCharacters.SurvivorOf(sim, e.Id) is { } renamed && e.Text is { Length: > 0 } newName) renamed.Name = newName;
                 break;
         }
     }

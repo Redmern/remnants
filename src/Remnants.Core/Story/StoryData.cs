@@ -18,13 +18,27 @@ public sealed class StoryData
     public IReadOnlyDictionary<string, DialogueDef> Dialogues { get; }
     public IReadOnlyDictionary<string, HandmadeMapDef> Maps { get; }
 
-    public StoryData(IEnumerable<CharacterDef> characters, IEnumerable<MissionDef> missions, IEnumerable<DialogueDef> dialogues, IEnumerable<HandmadeMapDef> maps)
+    /// <summary>Unique survivors' traits (traits.json).</summary>
+    public IReadOnlyDictionary<string, TraitDef> Traits { get; }
+
+    /// <summary>Codex pages in display order (codex.json).</summary>
+    public IReadOnlyList<CodexEntryDef> Codex { get; }
+
+    /// <summary>The endings, their epilogues and world effects (endings.json).</summary>
+    public IReadOnlyDictionary<string, EndingDef> Endings { get; }
+
+    public StoryData(IEnumerable<CharacterDef> characters, IEnumerable<MissionDef> missions, IEnumerable<DialogueDef> dialogues, IEnumerable<HandmadeMapDef> maps,
+        IEnumerable<TraitDef>? traits = null, IEnumerable<CodexEntryDef>? codex = null, IEnumerable<EndingDef>? endings = null)
     {
         Characters = Index(characters, c => c.Id, "character");
         Missions = missions.ToList();
         Index(Missions, m => m.Id, "mission");
         Dialogues = Index(dialogues, d => d.Id, "dialogue");
         Maps = Index(maps, m => m.Id, "map");
+        Traits = Index(traits ?? [], t => t.Id, "trait");
+        Codex = (codex ?? []).ToList();
+        Index(Codex, c => c.Id, "codex entry");
+        Endings = Index(endings ?? [], e => e.Id, "ending");
     }
 
     public MissionDef? Mission(string id) => Missions.FirstOrDefault(m => m.Id == id);
@@ -62,7 +76,11 @@ public sealed class StoryData
                     EffectKind.Resource => e.Id != Colony.Pantry.FoodKey && !game.Resources.ContainsKey(e.Id),
                     EffectKind.RevealZone => !scavenge.Zones.ContainsKey(e.Id),
                     EffectKind.Call => !Dialogues.ContainsKey(e.Id),
-                    EffectKind.Character => !Characters.ContainsKey(e.Id),
+                    EffectKind.Character or EffectKind.Mood or EffectKind.Humanity or EffectKind.Leaves or EffectKind.Dies or EffectKind.Rename
+                        => !Characters.ContainsKey(e.Id),
+                    EffectKind.Close => !missionIds.Contains(e.Id),
+                    EffectKind.Ending => !Endings.ContainsKey(e.Id),
+                    EffectKind.WorldEffect or EffectKind.EndWorldEffect => !StoryWorld.Known.Contains(e.Id),
                     EffectKind.Schematic or EffectKind.Fallback => !e.Id.StartsWith("sch_", StringComparison.Ordinal) && e.Kind == EffectKind.Schematic,
                     _ => false,
                 };
@@ -75,7 +93,11 @@ public sealed class StoryData
             if (c.Mission is { } m && !missionIds.Contains(m)) errors.Add($"{where}: requires unknown mission '{m}'.");
             if (c.Building is { } b && !game.Buildings.ContainsKey(b)) errors.Add($"{where}: requires unknown building '{b}'.");
             if (c.Item is { } i && !scavenge.Items.ContainsKey(i)) errors.Add($"{where}: requires unknown item '{i}'.");
-            if (c.Alive is { } a && !Characters.ContainsKey(a)) errors.Add($"{where}: requires unknown character '{a}'.");
+            foreach (var who in new[] { c.Alive, c.Dead, c.Joined, c.Adult, c.Of }.OfType<string>().Where(w => !Characters.ContainsKey(w)))
+                errors.Add($"{where}: requires unknown character '{who}'.");
+            if (c.Skill is { } sk && !Enum.TryParse<Survivors.Skill>(sk, out _)) errors.Add($"{where}: requires unknown skill '{sk}'.");
+            foreach (var any in c.Any ?? []) Condition(where, any);
+            if (c.Not is { } not) Condition(where, not);
         }
 
         foreach (var d in Dialogues.Values)
@@ -147,6 +169,36 @@ public sealed class StoryData
             }
         }
 
+        foreach (var m in Missions)
+        {
+            if (m.ChainFrom is { } from && !missionIds.Contains(from)) errors.Add($"Mission {m.Id}: chained from unknown mission '{from}'.");
+            foreach (var who in m.MustBring.Where(w => w != "key" && !Characters.ContainsKey(w))) errors.Add($"Mission {m.Id}: must bring unknown character '{who}'.");
+            foreach (var t in m.Field?.Triggers ?? [])
+                if (t.When.Kind is TriggerKind.After && t.When.Objective is null) errors.Add($"Mission {m.Id}: trigger {t.Id} waits after no objective.");
+        }
+        foreach (var c in Characters.Values)
+        {
+            if (c.Successor is { } heir && !Characters.ContainsKey(heir)) errors.Add($"Character {c.Id}: unknown successor '{heir}'.");
+            if (c.Survivor is not { } u) continue;
+            foreach (var t in u.Traits.Where(t => !Traits.ContainsKey(t))) errors.Add($"Character {c.Id}: unknown trait '{t}'.");
+            foreach (var p in u.Perks.Where(p => !game.Perks.ContainsKey(p))) errors.Add($"Character {c.Id}: unknown perk '{p}'.");
+            foreach (var a in u.Attributes.Keys.Where(a => !Enum.TryParse<Survivors.AttributeKind>(a, out _))) errors.Add($"Character {c.Id}: unknown attribute '{a}'.");
+            foreach (var k in u.Skills.Keys.Where(k => !Enum.TryParse<Survivors.Skill>(k, out _))) errors.Add($"Character {c.Id}: unknown skill '{k}'.");
+        }
+        foreach (var t in Traits.Values)
+            foreach (var h in t.Hooks.Keys.Where(h => !Colony.PerkHooks.All.ContainsKey(h))) errors.Add($"Trait {t.Id}: unknown hook '{h}'.");
+        foreach (var e in Codex)
+        {
+            if (e.When is { } w) Condition($"Codex {e.Id}", w);
+            foreach (var l in e.Lines.Where(l => l.When is not null)) Condition($"Codex {e.Id}", l.When!);
+        }
+        foreach (var e in Endings.Values)
+        {
+            foreach (var r in e.Requires) Condition($"Ending {e.Id}", r);
+            foreach (var w in e.WorldEffects.Where(w => !StoryWorld.Known.Contains(w))) errors.Add($"Ending {e.Id}: unknown world effect '{w}'.");
+            foreach (var v in e.Slides.SelectMany(s => s.Variants).Where(v => v.When is not null)) Condition($"Ending {e.Id}", v.When!);
+        }
+
         foreach (var map in Maps.Values) errors.AddRange(HandmadeMaps.Validate(scavenge, map));
         return errors;
     }
@@ -169,20 +221,28 @@ public static class StoryDataLoader
             return Directory.GetFiles(path, "*.json").OrderBy(f => Path.GetFileName(f), StringComparer.Ordinal)
                 .SelectMany(f => parse(File.ReadAllText(f), $"story/{folder}/{Path.GetFileName(f)}")).ToList();
         }
+        List<T> Optional<T>(string file) => File.Exists(Path.Combine(directory, file))
+            ? Parse<List<T>>(File.ReadAllText(Path.Combine(directory, file)), $"story/{file}") : [];
         return new StoryData(
             characters,
             All("missions", (json, name) => Parse<List<MissionDef>>(json, name)),
             All("dialogue", (json, name) => Parse<List<DialogueDef>>(json, name)),
-            All<HandmadeMapDef>("maps", (json, name) => [HandmadeMaps.Parse(json, name)]));
+            All<HandmadeMapDef>("maps", (json, name) => [HandmadeMaps.Parse(json, name)]),
+            Optional<TraitDef>("traits.json"), Optional<CodexEntryDef>("codex.json"), Optional<EndingDef>("endings.json"));
     }
 
     /// <summary>From file contents (an exported game's embedded copy): each list is (file name, json) in load order.</summary>
+    /// <param name="traits">traits.json, codex.json, endings.json: optional (null = none).</param>
     public static StoryData LoadFromJson(string characters, IEnumerable<(string Name, string Json)> missions,
-        IEnumerable<(string Name, string Json)> dialogues, IEnumerable<(string Name, string Json)> maps) =>
+        IEnumerable<(string Name, string Json)> dialogues, IEnumerable<(string Name, string Json)> maps,
+        string? traits = null, string? codex = null, string? endings = null) =>
         new(Parse<List<CharacterDef>>(characters, "story/characters.json"),
             missions.OrderBy(f => f.Name, StringComparer.Ordinal).SelectMany(f => Parse<List<MissionDef>>(f.Json, f.Name)).ToList(),
             dialogues.OrderBy(f => f.Name, StringComparer.Ordinal).SelectMany(f => Parse<List<DialogueDef>>(f.Json, f.Name)).ToList(),
-            maps.OrderBy(f => f.Name, StringComparer.Ordinal).Select(f => HandmadeMaps.Parse(f.Json, f.Name)).ToList());
+            maps.OrderBy(f => f.Name, StringComparer.Ordinal).Select(f => HandmadeMaps.Parse(f.Json, f.Name)).ToList(),
+            traits is null ? null : Parse<List<TraitDef>>(traits, "story/traits.json"),
+            codex is null ? null : Parse<List<CodexEntryDef>>(codex, "story/codex.json"),
+            endings is null ? null : Parse<List<EndingDef>>(endings, "story/endings.json"));
 
     private static T Parse<T>(string json, string name)
     {

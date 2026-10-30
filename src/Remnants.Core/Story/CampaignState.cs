@@ -22,6 +22,9 @@ public sealed class MissionProgress
 
     /// <summary>The run was opened (the field result decides from here).</summary>
     public bool New { get; set; }
+
+    /// <summary>A repeatable mission done comes back (Available) at this tick.</summary>
+    public long? RepeatTick { get; set; }
 }
 
 /// <summary>A call waiting on the Radio Mast (or taken, kept for replay).</summary>
@@ -53,6 +56,27 @@ public sealed class CharacterState
     public bool Met { get; set; }
     public bool Joined { get; set; }
     public bool Dead { get; set; }
+
+    /// <summary>Joined once and then left the colony alive (Doc's oath).</summary>
+    public bool Left { get; set; }
+
+    /// <summary>The colony survivor they became when they joined.</summary>
+    public int? SurvivorId { get; set; }
+}
+
+/// <summary>A change to the world that lasts (<see cref="UntilTick"/> null: for good). See <see cref="WorldEffects"/>.</summary>
+public sealed class WorldEffectState
+{
+    public string Id { get; set; } = "";
+    public long StartTick { get; set; }
+    public long? UntilTick { get; set; }
+}
+
+/// <summary>A survivor the Linked carried off (M14): kept whole, so they can come home (Terms, the Choir).</summary>
+public sealed class TakenSurvivor
+{
+    public long Tick { get; set; }
+    public Remnants.Core.Survivors.Survivor Survivor { get; set; } = new();
 }
 
 /// <summary>
@@ -79,6 +103,18 @@ public sealed class CampaignState
     /// <summary>The last mission result, for the debrief panel.</summary>
     public MissionDebrief? LastDebrief { get; set; }
     public string? Ending { get; set; }
+
+    /// <summary>The ending closed the game (the Calm): no free play, the save is kept for the epilogue.</summary>
+    public bool Over { get; set; }
+
+    public List<WorldEffectState> WorldEffects { get; set; } = new();
+    public List<TakenSurvivor> Taken { get; set; } = new();
+
+    /// <summary>The survivors who came back from each chain floor (M17), who alone may go on to the next.</summary>
+    public SortedDictionary<string, List<int>> ChainParties { get; set; } = new(StringComparer.Ordinal);
+
+    /// <summary>Network-grade (tier 4) parts seen fitted in the colony so far (Doc's oath counts them).</summary>
+    public SortedSet<string> T4Seen { get; set; } = new(StringComparer.Ordinal);
 
     public MissionProgress Progress(string id) => Missions.TryGetValue(id, out var p) ? p : Missions[id] = new MissionProgress();
     public int Flag(string id) => Flags.GetValueOrDefault(id);

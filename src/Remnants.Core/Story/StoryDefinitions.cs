@@ -13,6 +13,41 @@ public sealed record CharacterDef
 
     /// <summary>The name a radio call shows ("Lantern").</summary>
     public string? CallSign { get; init; }
+
+    /// <summary>Who takes over the character's role once they are dead ("dee" for Marrow): <c>{name:marrow}</c> then names them.</summary>
+    public string? Successor { get; init; }
+
+    /// <summary>A character who can join the colony: the survivor they become (see <see cref="Campaign.Join"/>).</summary>
+    public UniqueSurvivorDef? Survivor { get; init; }
+}
+
+/// <summary>
+/// The survivor a story character becomes when they join: fixed sex and age, attributes and skills (the rest rolled
+/// as for a recruit), perks, story traits (<c>data/story/traits.json</c>) and a starting humanity below 100 for
+/// someone who was never quite all flesh (Seven: 0).
+/// </summary>
+public sealed record UniqueSurvivorDef
+{
+    public string Sex { get; init; } = "Female";
+    public int AgeYears { get; init; } = 30;
+    public Dictionary<string, double> Attributes { get; init; } = new();
+    public Dictionary<string, double> Skills { get; init; } = new();
+    public List<string> Perks { get; init; } = new();
+    public List<string> Traits { get; init; } = new();
+    public double Humanity { get; init; } = 100;
+}
+
+/// <summary>
+/// A unique survivor's trait: a name, a line, and hooks (the perk hook ids of <c>PerkHooks</c>, colony and field
+/// alike). The hooks are copied onto the survivor when they join (<c>Survivor.TraitHooks</c>), so the colony and a
+/// scavenge server read them without the story data.
+/// </summary>
+public sealed record TraitDef
+{
+    public string Id { get; init; } = "";
+    public string Name { get; init; } = "";
+    public string Text { get; init; } = "";
+    public Dictionary<string, double> Hooks { get; init; } = new();
 }
 
 /// <summary>
@@ -34,6 +69,33 @@ public sealed record ConditionDef
     public string? Item { get; init; }
     public int Count { get; init; } = 1;
     public string? Alive { get; init; }
+
+    /// <summary>The character is dead.</summary>
+    public string? Dead { get; init; }
+
+    /// <summary>The character has joined the colony and is in it now (not dead, not left).</summary>
+    public string? Joined { get; init; }
+
+    /// <summary>The colony's unique survivor (Pell) is an adult.</summary>
+    public string? Adult { get; init; }
+
+    /// <summary>
+    /// Humanity in a range: the average of the colony's adults, or with <see cref="Of"/> one unique survivor's own
+    /// (false if they are not in the colony).
+    /// </summary>
+    public int? HumanityMin { get; init; }
+    public int? HumanityMax { get; init; }
+    public string? Of { get; init; }
+
+    /// <summary>An adult at home has <see cref="Skill"/> at <see cref="SkillMin"/> or more.</summary>
+    public string? Skill { get; init; }
+    public int SkillMin { get; init; }
+
+    /// <summary>At least one of these holds.</summary>
+    public List<ConditionDef>? Any { get; init; }
+
+    /// <summary>This does not hold.</summary>
+    public ConditionDef? Not { get; init; }
 }
 
 public enum EffectKind
@@ -62,6 +124,31 @@ public enum EffectKind
     Fallback,
     /// <summary>A line in the colony log and a toast.</summary>
     Note,
+    /// <summary>Character <see cref="EffectDef.Id"/>'s mood (as a colony survivor) changes by <see cref="EffectDef.Value"/>.</summary>
+    Mood,
+    /// <summary>Character <see cref="EffectDef.Id"/>'s humanity changes by <see cref="EffectDef.Value"/>.</summary>
+    Humanity,
+    /// <summary>Character <see cref="EffectDef.Id"/> leaves the colony (alive; <see cref="EffectDef.Text"/> is the log line).</summary>
+    Leaves,
+    /// <summary>Character <see cref="EffectDef.Id"/> is dead (and leaves the roster, to the memorial, if they had joined).</summary>
+    Dies,
+    /// <summary>Mission <see cref="EffectDef.Id"/> closes as done with outcome <see cref="EffectDef.Text"/> (default "done"), no rewards.</summary>
+    Close,
+    /// <summary>World effect <see cref="EffectDef.Id"/> for <see cref="EffectDef.Value"/> days (0 = for good). See <see cref="WorldEffects"/>.</summary>
+    WorldEffect,
+    /// <summary>World effect <see cref="EffectDef.Id"/> ends now.</summary>
+    EndWorldEffect,
+    /// <summary>The campaign ends with ending <see cref="EffectDef.Id"/> (silence, terms, voice, calm): the epilogue plays.</summary>
+    Ending,
+    /// <summary>
+    /// A new adult recruit named <see cref="EffectDef.Text"/> (rolled as any recruit) joins; <see cref="EffectDef.Value"/>
+    /// is their humanity (100 = untouched). With <see cref="EffectDef.Id"/> "child", a child.
+    /// </summary>
+    Recruit,
+    /// <summary>The survivors Halcyon took come home, each with <see cref="EffectDef.Value"/> humanity lost.</summary>
+    ReturnTaken,
+    /// <summary>Character <see cref="EffectDef.Id"/> (a unique survivor) is renamed <see cref="EffectDef.Text"/>.</summary>
+    Rename,
 }
 
 /// <summary>
@@ -201,6 +288,62 @@ public sealed record MissionDef
     public List<EffectDef> Rewards { get; init; } = new();
     public FailDef Fail { get; init; } = new();
 
+    /// <summary>A repeatable mission (Doc's Rounds) comes back this many days after it is done.</summary>
+    public int? RepeatDays { get; init; }
+
+    /// <summary>
+    /// A floor of a multi-floor assault: the mission before it in the chain. It opens as soon as that one is done, and
+    /// only the survivors who came back from it may go in (wounds and all; see <see cref="Campaign.ChainParty"/>).
+    /// </summary>
+    public string? ChainFrom { get; init; }
+
+    /// <summary>Story characters from the colony who must be in the party (by character id, or "key" for the key-carrier).</summary>
+    public List<string> MustBring { get; init; } = new();
+
+    /// <summary>A story character who never goes in a guest's co-op party and makes this a host-only mission when in the party.</summary>
+    public bool HostOnly { get; init; }
+
     public bool Perimeter => Map == "perimeter";
     public string? HandmadeId => Map.StartsWith("handmade:", StringComparison.Ordinal) ? Map["handmade:".Length..] : null;
+}
+
+/// <summary>
+/// A Codex page (data/story/codex.json): unlocked once <see cref="When"/> holds (a mission done, a flag from a hacked
+/// terminal), and it grows by its <see cref="Lines"/> whose conditions hold. <see cref="Tab"/>: people, logs or story.
+/// </summary>
+public sealed record CodexEntryDef
+{
+    public string Id { get; init; } = "";
+    public string Tab { get; init; } = "people";
+    public string Title { get; init; } = "";
+    public string Text { get; init; } = "";
+    public ConditionDef? When { get; init; }
+    public List<CodexLineDef> Lines { get; init; } = new();
+}
+
+public sealed record CodexLineDef(string Text, ConditionDef? When = null);
+
+/// <summary>One still of an ending's epilogue: the first variant whose condition holds is shown (none: the slide is skipped).</summary>
+public sealed record EpilogueSlideDef
+{
+    public string Still { get; init; } = "";
+    public List<CodexLineDef> Variants { get; init; } = new();
+}
+
+/// <summary>An ending (data/story/endings.json): its title, epilogue slides and the world effects it leaves behind.</summary>
+public sealed record EndingDef
+{
+    public string Id { get; init; } = "";
+    public string Title { get; init; } = "";
+
+    /// <summary>The ending closes the game: no free play after the epilogue (the Calm).</summary>
+    public bool Final { get; init; }
+
+    /// <summary>When the ending is open at the core (all must hold).</summary>
+    public List<ConditionDef> Requires { get; init; } = new();
+
+    /// <summary>Why it is closed, shown greyed out (null: a hidden ending, never shown closed).</summary>
+    public string? ClosedText { get; init; }
+    public List<string> WorldEffects { get; init; } = new();
+    public List<EpilogueSlideDef> Slides { get; init; } = new();
 }

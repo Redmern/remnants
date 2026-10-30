@@ -62,7 +62,9 @@ public static class GameDataPaths
         IEnumerable<(string, string)> In(string folder) => names
             .Where(n => n[prefix.Length..].Replace('\\', '/').StartsWith(folder + "/", StringComparison.Ordinal))
             .Select(n => (n, Read(n)));
-        return Remnants.Core.Story.StoryDataLoader.LoadFromJson(Read(prefix + "characters.json"), In("missions"), In("dialogue"), In("maps"));
+        string? Optional(string name) => names.Contains(prefix + name) ? Read(prefix + name) : null;
+        return Remnants.Core.Story.StoryDataLoader.LoadFromJson(Read(prefix + "characters.json"), In("missions"), In("dialogue"), In("maps"),
+            Optional("traits.json"), Optional("codex.json"), Optional("endings.json"));
     }
 
     /// <summary>

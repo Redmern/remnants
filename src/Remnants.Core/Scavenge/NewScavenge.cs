@@ -28,7 +28,17 @@ public sealed record PartySetup(int PlayerId, List<PartyMember> Members, int? Te
 /// <see cref="ExtraEnemies"/>: more fixed enemies (a retry's harder variant).
 /// </summary>
 public sealed record MissionSetup(FieldMission Mission, HandmadeMapDef? Map = null, HandmadeMapDef? Room = null, int Towers = 0,
-    List<MapEnemyDef>? ExtraEnemies = null);
+    List<MapEnemyDef>? ExtraEnemies = null)
+{
+    /// <summary>The campaign's flags at launch, for trigger and prompt guards.</summary>
+    public IReadOnlyDictionary<string, int>? CampaignFlags { get; init; }
+
+    /// <summary>Script tags for party survivors by survivor id ("iris", "key"): objectives and triggers can name them.</summary>
+    public IReadOnlyDictionary<int, string>? Tags { get; init; }
+
+    /// <summary>Co-op: what a guest copies when the mission is done.</summary>
+    public List<string>? GuestSchematics { get; init; }
+}
 
 /// <summary>
 /// How a zone is found: its depletion (0..1 thins out the loot caches), the time of day and weather the run is played in
@@ -38,7 +48,17 @@ public sealed record MissionSetup(FieldMission Mission, HandmadeMapDef? Map = nu
 /// <see cref="HuskMultiplier"/>: more Husks drawn by an arriving vehicle's noise (1 = none).
 /// </summary>
 public sealed record ZoneConditions(double Depletion = 0, ScavengeEnvironment? Environment = null, IReadOnlyCollection<string>? KnownSchematics = null,
-    IReadOnlyCollection<string>? Stash = null, string? Difficulty = null, double HuskMultiplier = 1);
+    IReadOnlyCollection<string>? Stash = null, string? Difficulty = null, double HuskMultiplier = 1)
+{
+    /// <summary>The story's world effects: the zone's Network enemies (tag "network") weigh this much in its mix (0 = none).</summary>
+    public double NetworkWeight { get; init; } = 1;
+
+    /// <summary>The story's world effects: Husks in the zone's mix, times this many (Silence: 1.5).</summary>
+    public double HuskCountMultiplier { get; init; } = 1;
+
+    /// <summary>The story's world effects: the zone's own Network enemies stand neutral (attack only if attacked).</summary>
+    public bool NetworkNeutral { get; init; }
+}
 
 /// <summary>
 /// Builds a scavenge instance: generates the zone map from its template and a seed, places every party
@@ -112,7 +132,11 @@ public static class NewScavenge
         bool FarFromSpawn(Pos p, int distance) => anchors.All(a => a.Chebyshev(p) >= distance);
 
         var enemySpots = open.Where(p => map[p] == Terrain.Floor && FarFromSpawn(p, data.Rules.Ai.MinSpawnDistance)).ToList();
-        var mix = zone.EnemyMix.OrderBy(e => e.Id, StringComparer.Ordinal).ToList();
+        bool Network(string id) => data.Enemies[id].Tags.Contains("network");
+        var networkWeight = conditions?.NetworkWeight ?? 1;
+        var mix = zone.EnemyMix.OrderBy(e => e.Id, StringComparer.Ordinal)
+            .Where(e => networkWeight > 0 || !Network(e.Id))
+            .Select(e => Network(e.Id) && networkWeight != 1 ? e with { Weight = e.Weight * networkWeight } : e).ToList();
         // More players, more enemies (and higher caps), so a shared zone is not just easier.
         var scale = EnemyScale(data, parties.Count);
         var enemyCount = (int)Math.Round(rng.NextInclusive(zone.Enemies[0], zone.Enemies[1]) * scale);
@@ -131,7 +155,7 @@ public static class NewScavenge
 
         // The dark brings out more Husks: extra ones from the Husk part of the mix (none by day, so day runs are as before).
         var huskMix = mix.Where(e => data.Enemies[e.Id].Ai == AiKind.Husk).ToList();
-        var huskMult = FieldEnvironment.Effects(data, state).HuskCountMultiplier * Math.Max(1, conditions?.HuskMultiplier ?? 1);
+        var huskMult = FieldEnvironment.Effects(data, state).HuskCountMultiplier * Math.Max(1, conditions?.HuskMultiplier ?? 1) * (conditions?.HuskCountMultiplier ?? 1);
         if (huskMult > 1 && huskMix.Count > 0)
         {
             var husks = spawned.Where(kv => data.Enemies[kv.Key].Ai == AiKind.Husk).Sum(kv => kv.Value);
@@ -147,6 +171,10 @@ public static class NewScavenge
                 state.Units.Add(EnemyUnit(data, state, def, spot.Value));
             }
         }
+
+        if (conditions?.NetworkNeutral == true)
+            foreach (var u in state.Units.Where(u => u.Kind == UnitKind.Enemy && u.EnemyDefId is { } e && Network(e)))
+                u.Side = Unit.NeutralSide;
 
         var lootTable = data.Items.Values.Where(i => i.LootWeight > 0 && i.Tier <= zone.LootTier)
             .OrderBy(i => i.Id, StringComparer.Ordinal).ToList();
@@ -247,9 +275,18 @@ public static class NewScavenge
     /// <summary>The mission's run state, and the fixtures of its map or room at their markers.</summary>
     private static void AddMission(ScavengeData data, ScavengeState state, MissionSetup setup, HandmadeMapDef? def, SortedDictionary<string, List<Pos>> markers)
     {
-        var run = new MissionRun { Def = setup.Mission, MapId = def?.Id, MapHash = def is null ? null : HandmadeMaps.Hash(def), Markers = markers };
+        var run = new MissionRun
+        {
+            Def = setup.Mission, MapId = def?.Id, MapHash = def is null ? null : HandmadeMaps.Hash(def), Markers = markers,
+            Campaign = new(setup.CampaignFlags?.ToDictionary() ?? new(), StringComparer.Ordinal),
+            GuestSchematics = setup.GuestSchematics?.ToList() ?? [],
+        };
         state.Mission = run;
         MissionRules.Init(run);
+        var hostId = state.Parties.Count > 0 ? state.Parties[0].PlayerId : -1;
+        foreach (var u in state.Units.Where(u => u.Kind == UnitKind.Survivor && u.PlayerId == hostId))
+            if (u.Origin is { } o && setup.Tags?.GetValueOrDefault(o.Id) is { } tag) u.Tag = tag;
+        run.StartSurvivors = state.Units.Count(u => u.Kind == UnitKind.Survivor && u.PlayerId == hostId);
         List<Pos> At(string marker) => markers.TryGetValue(marker, out var tiles) ? tiles : [];
         Pos? FreeAt(string marker) => At(marker).Where(p => state.UnitAt(p) is null && state.DeviceAt(p) is null).Cast<Pos?>().FirstOrDefault();
         if (def is null) return;
@@ -311,6 +348,12 @@ public static class NewScavenge
                 });
     }
 
+    private static Dictionary<string, double> WithTraits(Dictionary<string, double> hooks, Dictionary<string, double> traits)
+    {
+        foreach (var (k, v) in traits) hooks[k] = hooks.GetValueOrDefault(k) + v;
+        return hooks;
+    }
+
     /// <summary>How many times the zone's enemies a mission with <paramref name="players"/> parties gets (1 for one).</summary>
     public static double EnemyScale(ScavengeData data, int players) =>
         1 + data.Rules.Coop.EnemiesPerExtraPlayer * Math.Max(0, players - 1);
@@ -364,7 +407,7 @@ public static class NewScavenge
             Equipment = new(member.Equipment ?? new()),
             Pack = new(member.Pack ?? []),
             Origin = origin,
-            Hooks = data.HooksFor(origin.Perks),
+            Hooks = WithTraits(data.HooksFor(origin.Perks), origin.TraitHooks),
             CyberHooks = data.CyberHooksFor(origin.Body),
             FirstRoundAp = member.FirstRoundAp,
         };

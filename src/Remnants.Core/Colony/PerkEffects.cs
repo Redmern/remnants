@@ -65,6 +65,23 @@ public static class PerkHooks
     // Food
     public const string ShelfLifeBonus = "shelf_life_bonus";
 
+    // Story traits (unique survivors; docs/story/survivors.md)
+    public const string DecryptWorkMult = "decrypt_work_mult";
+    public const string NoScavenge = "no_scavenge";
+    public const string LinkPort = "link_port";
+    public const string RefusesTier = "refuses_tier";
+    public const string Mentor = "mentor";
+    public const string PartyCarryMult = "party_carry_mult";
+    public const string MoodFoodSurplus = "mood_food_surplus";
+    public const string HackRange = "hack_range";
+    public const string HackWithoutKit = "hack_without_kit";
+    public const string OverrideImmune = "override_immune";
+    public const string HumanityGrowthPerDay = "humanity_growth_per_day";
+    public const string NearbyMood = "nearby_mood";
+    public const string NetworkEchoChance = "network_echo_chance";
+    public const string MoodFollowsHumanity = "mood_follows_humanity";
+    public const string MoodOnLinkedKilled = "mood_on_linked_killed";
+
     /// <summary>Every hook id with what it means; perks.json may only name these.</summary>
     public static readonly IReadOnlyDictionary<string, string> All = new Dictionary<string, string>(StringComparer.Ordinal)
     {
@@ -106,6 +123,21 @@ public static class PerkHooks
         [RepairSpeedBonus] = "Colony: repairs go this much faster while this survivor is home (best counts; 0.3 = +30%).",
         [PostDefenseBonus] = "Colony raids: a guard on duty at a post fights this much better (0.25 = +25%).",
         [SentryLeadHours] = "Colony raids: hours of warning added while this survivor is on guard duty.",
+        [DecryptWorkMult] = "Colony: decrypt orders take this share less work while this survivor is home (0.5 = half the work).",
+        [NoScavenge] = "Colony flag: never goes on a scavenge unless the story mission needs them.",
+        [LinkPort] = "Story flag: has a Link port, so can carry the key (M16).",
+        [RefusesTier] = "Colony: will not lead surgery on parts of this tier or higher.",
+        [Mentor] = "Colony: teaches Medicine up to this skill level at the Med Bay (as a Study teacher).",
+        [PartyCarryMult] = "Field: carry capacity bonus for every unit in this survivor's party (0.15 = +15%).",
+        [MoodFoodSurplus] = "Colony: mood this much higher while the colony has a day's food per mouth, this much lower when not.",
+        [HackRange] = "Field: can hack a device this many tiles away (1 = adjacent, as everyone).",
+        [HackWithoutKit] = "Field flag: hacks with no kit, as if carrying a hacking kit.",
+        [OverrideImmune] = "Field flag: the Linked cannot Override this unit.",
+        [HumanityGrowthPerDay] = "Colony: humanity regained per day at home (Seven), up to the trait's cap of 60.",
+        [NearbyMood] = "Colony: everyone else's mood changes by this much while this survivor's humanity is under 30.",
+        [NetworkEchoChance] = "Field: chance a story mission gets an extra Linked patrol when this survivor is in the party.",
+        [MoodFollowsHumanity] = "Colony flag: mood is capped at the colony's average humanity + 30.",
+        [MoodOnLinkedKilled] = "Colony: mood change when this survivor's party kills Linked (once per mission).",
     };
 }
 
@@ -132,13 +164,13 @@ public sealed class PerkEffects
     }
 
     /// <summary>The effects of every perk this survivor has (perks missing from the data are ignored).</summary>
-    public static PerkEffects For(Survivor s, GameData data) => For(s.Perks, data, s.Body);
+    public static PerkEffects For(Survivor s, GameData data) => For(s.Perks, data, s.Body, s.TraitHooks);
 
     /// <summary>
     /// The effects of these perks, plus (with a <paramref name="body"/> and the cybernetics tree loaded) those of the
     /// body's working prosthetics and paired-limb sets (<c>cybernetics.json</c> node and set effects).
     /// </summary>
-    public static PerkEffects For(IEnumerable<string> perkIds, GameData data, Body? body = null)
+    public static PerkEffects For(IEnumerable<string> perkIds, GameData data, Body? body = null, IReadOnlyDictionary<string, double>? traitHooks = null)
     {
         var jobOutput = new Dictionary<string, double>(StringComparer.Ordinal);
         var craftQuality = new Dictionary<string, double>(StringComparer.Ordinal);
@@ -161,6 +193,7 @@ public sealed class PerkEffects
                 foreach (var (k, v) in e.CraftQuality) craftQuality[k] = craftQuality.GetValueOrDefault(k) + v;
                 foreach (var (k, v) in e.Hooks) hooks[k] = hooks.GetValueOrDefault(k) + v;
             }
+        foreach (var (k, v) in traitHooks ?? new Dictionary<string, double>()) hooks[k] = hooks.GetValueOrDefault(k) + v;
         return new PerkEffects(jobOutput, craftQuality, hooks, study, xp);
     }
 

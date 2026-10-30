@@ -39,6 +39,8 @@ public static class MissionRules
         if (sim.State.Mission is not { } run) return;
         var round = sim.State.Round;
         Fire(sim, t => t.When.Kind == TriggerKind.Round && t.When.Round == round);
+        Seize(sim, run);
+        Carry(sim, run);
         foreach (var (o, s) in Pairs(run).Where(p => p.Def.Kind == ObjectiveKind.Survive && p.State.Status == ObjectiveStatus.Active))
         {
             s.Progress = Math.Max(0, round - s.StartRound);
@@ -115,7 +117,11 @@ public static class MissionRules
                 switch (o.Kind)
                 {
                     case ObjectiveKind.Reach:
-                        if (run.Marker(o.Marker).Any(m => survivors.Any(u => u.Pos.Chebyshev(m) <= o.Radius))) to = ObjectiveStatus.Done;
+                        var reachers = o.By is { } by ? state.Units.Where(u => u.Side == side && u.IsActive && u.Tag == by).ToList() : survivors;
+                        if (run.Marker(o.Marker).Any(m => reachers.Any(u => u.Pos.Chebyshev(m) <= o.Radius))) to = ObjectiveStatus.Done;
+                        break;
+                    case ObjectiveKind.Keep:
+                        if (run.Taken.Count * 100 > o.Count * Math.Max(1, run.StartSurvivors)) to = ObjectiveStatus.Failed;
                         break;
                     case ObjectiveKind.Hack:
                         var device = state.Devices.Find(d => d.Tag == o.Tag);
@@ -154,6 +160,8 @@ public static class MissionRules
                 TriggerKind.Sees => state.Units.Any(u => u.Tag == t.When.Tag && u.OnMap && Detection.SideSees(sim.Data, state, side, u)),
                 TriggerKind.ObjectiveDone => run.Find(t.When.Objective ?? "")?.Status == ObjectiveStatus.Done,
                 TriggerKind.ObjectiveFailed => run.Find(t.When.Objective ?? "")?.Status == ObjectiveStatus.Failed,
+                TriggerKind.After => run.Find(t.When.Objective ?? "") is { Status: not ObjectiveStatus.Inactive } after && state.Round >= after.StartRound + t.When.Round,
+                TriggerKind.Hurt => state.Units.Any(u => u.Tag == t.When.Tag && u.OnMap && u.Hp <= u.MaxHp * t.When.Below),
                 _ => false,
             });
             if (!changed) break;
@@ -172,10 +180,10 @@ public static class MissionRules
             sim.State.Log(new(sim.State.Round, ScavengeEventType.MissionEnded, $"Mission failed: {run.Def.Name}.", Side: PartySide(sim.State)));
         }
         else if (run.Def.AtHome && Pairs(run).Where(p => !p.Def.Optional).All(p => p.State.Status == ObjectiveStatus.Done
-                     || p.Def.Kind is ObjectiveKind.Defend or ObjectiveKind.Undetected && p.State.Status == ObjectiveStatus.Active))
+                     || p.Def.Kind is ObjectiveKind.Defend or ObjectiveKind.Undetected or ObjectiveKind.Keep && p.State.Status == ObjectiveStatus.Active))
         {
             run.Outcome = MissionOutcome.Done;
-            foreach (var (o, s) in Pairs(run).Where(p => p.State.Status == ObjectiveStatus.Active && p.Def.Kind is ObjectiveKind.Defend or ObjectiveKind.Undetected))
+            foreach (var (o, s) in Pairs(run).Where(p => p.State.Status == ObjectiveStatus.Active && p.Def.Kind is ObjectiveKind.Defend or ObjectiveKind.Undetected or ObjectiveKind.Keep))
                 Set(sim, o, s, ObjectiveStatus.Done);
             sim.State.Log(new(sim.State.Round, ScavengeEventType.MissionEnded, $"Mission complete: {run.Def.Name}.", Side: PartySide(sim.State)));
         }
@@ -222,7 +230,7 @@ public static class MissionRules
         var any = false;
         foreach (var t in run.Def.Triggers)
         {
-            if (run.Fired.Contains(t.Id) || !match(t)) continue;
+            if (run.Fired.Contains(t.Id) || !match(t) || !run.Holds(t.When.If)) continue;
             run.Fired.Add(t.Id);
             any = true;
             foreach (var a in t.Actions) Do(sim, run, a);
@@ -279,7 +287,7 @@ public static class MissionRules
                 }
                 break;
             case TriggerActionKind.Prompt:
-                run.Pending = a.Prompt;
+                run.Pending = a.Prompt! with { Options = a.Prompt.Options.Where(o => run.Holds(o.If)).ToList() };
                 state.Log(new(state.Round, ScavengeEventType.MissionPrompt, $"{a.Prompt!.Speaker}: {a.Prompt.Text}", Side: side));
                 break;
             case TriggerActionKind.Split:
@@ -287,6 +295,21 @@ public static class MissionRules
                 {
                     var keep = (dev.Items.Count + 1) / 2;
                     dev.Items.RemoveRange(keep, dev.Items.Count - keep);
+                }
+                break;
+            case TriggerActionKind.Leave:
+                foreach (var u in Tagged())
+                {
+                    u.Status = UnitStatus.Extracted;
+                    u.CarriedById = null;
+                    state.Log(new(state.Round, ScavengeEventType.Chatter, $"{u.Name} is gone.", u.Id, Pos: u.Pos, Side: side));
+                }
+                break;
+            case TriggerActionKind.Lock:
+                foreach (var d in state.Devices.Where(d => d.Tag == a.Tag))
+                {
+                    d.Lockouts.RemoveAll(l => l.Side == side);
+                    d.Lockouts.Add(new Lockout(side, int.MaxValue));
                 }
                 break;
             case TriggerActionKind.Wake:
@@ -308,6 +331,59 @@ public static class MissionRules
         null or "enemies" => Unit.EnemySide,
         _ => name,
     };
+
+    /// <summary>
+    /// The Linked carry off the downed (<see cref="FieldMission.TakeTag"/>): a downed party survivor nobody carries, with a
+    /// taker next to it at the start of <see cref="FieldMission.TakeRounds"/> rounds in a row, is gone from the map —
+    /// taken, not dead (the result lists them; the story keeps them).
+    /// </summary>
+    private static void Seize(ScavengeSim sim, MissionRun run)
+    {
+        if (run.Def.TakeTag is not { } tag) return;
+        var state = sim.State;
+        var side = PartySide(state);
+        foreach (var u in state.Units.Where(u => u.Side == side && u.Kind == UnitKind.Survivor).OrderBy(u => u.Id).ToList())
+        {
+            var held = u.Status == UnitStatus.Downed && u.CarriedById is null
+                       && state.Units.Any(t => t.IsActive && t.Tag == tag && t.HostileTo(u) && t.Pos.Chebyshev(u.Pos) <= 1);
+            if (!held)
+            {
+                run.Seized.Remove(u.Id);
+                continue;
+            }
+            var rounds = run.Seized[u.Id] = run.Seized.GetValueOrDefault(u.Id) + 1;
+            if (rounds < run.Def.TakeRounds || u.Origin is null) continue;
+            run.Seized.Remove(u.Id);
+            u.Status = UnitStatus.Dead;
+            u.CarryingId = null;
+            run.Taken.Add(u.Origin.Id);
+            state.Log(new(state.Round, ScavengeEventType.Chatter, $"The Linked carry {u.Name} away. Gently.", u.Id, Pos: u.Pos, Side: side));
+            Fire(sim, t => t.When.Kind == TriggerKind.Taken);
+        }
+    }
+
+    /// <summary>
+    /// Heavy work (<see cref="ObjectiveKind.Carry"/>): each round that starts with enough party survivors next to the
+    /// marker counts; when it is done the item goes into the strongest carrier's pack.
+    /// </summary>
+    private static void Carry(ScavengeSim sim, MissionRun run)
+    {
+        var state = sim.State;
+        var side = PartySide(state);
+        foreach (var (o, s) in Pairs(run).Where(p => p.Def.Kind == ObjectiveKind.Carry && p.State.Status == ObjectiveStatus.Active).ToList())
+        {
+            var at = run.Marker(o.Marker);
+            var carriers = state.Units.Where(u => u.Side == side && u.IsActive && u.Kind == UnitKind.Survivor && at.Any(m => u.Pos.Chebyshev(m) <= 1))
+                .OrderByDescending(u => u.Attributes.GetValueOrDefault(Survivors.AttributeKind.Strength)).ThenBy(u => u.Id).ToList();
+            if (carriers.Count < o.Carriers) continue;
+            s.Progress++;
+            state.Log(new(state.Round, ScavengeEventType.ObjectiveUpdated, $"{o.Text} ({s.Progress}/{o.Count})", Side: side));
+            if (s.Progress < o.Count) continue;
+            if (o.Item is { } item) carriers[0].Pack.Add(item);
+            Set(sim, o, s, ObjectiveStatus.Done);
+            if (o.Item is { } picked) Fire(sim, t => t.When.Kind == TriggerKind.PickedUp && t.When.Item == picked);
+        }
+    }
 
     public static void Say(ScavengeSim sim, string speaker, string text)
     {
@@ -363,7 +439,7 @@ public static class MissionRules
                 {
                     ObjectiveKind.Retrieve => home.Any(u => u.Pack.Contains(o.Item!)) ? ObjectiveStatus.Done : s,
                     ObjectiveKind.Escort => state.Units.Any(u => u.Tag == o.Tag && Out(u)) ? ObjectiveStatus.Done : s,
-                    ObjectiveKind.Defend or ObjectiveKind.Undetected => home.Any(u => u.Kind == UnitKind.Survivor) ? ObjectiveStatus.Done : s,
+                    ObjectiveKind.Defend or ObjectiveKind.Undetected or ObjectiveKind.Keep => home.Any(u => u.Kind == UnitKind.Survivor) ? ObjectiveStatus.Done : s,
                     _ => s,
                 };
             statuses[o.Id] = s;
@@ -373,6 +449,17 @@ public static class MissionRules
             : run.Def.Objectives.Where(o => !o.Optional).All(o => statuses[o.Id] == ObjectiveStatus.Done) ? MissionOutcome.Done
             : MissionOutcome.Incomplete;
         var escorted = state.Units.Where(u => u.CharacterId is not null && Out(u)).Select(u => u.CharacterId!).Distinct().ToList();
-        return new ObjectiveResult(run.Def.Id, outcome, statuses, new(run.Flags, StringComparer.Ordinal), new(run.Choices, StringComparer.Ordinal), escorted);
+        var host = HostPlayerId(state) == playerId;
+        // Co-op: a guest's result never advances a campaign; it carries copies of the schematics the host's mission pays.
+        if (!host)
+            return new ObjectiveResult(run.Def.Id, MissionOutcome.Incomplete, statuses, new(StringComparer.Ordinal), new(StringComparer.Ordinal), [])
+            {
+                GuestSchematics = outcome == MissionOutcome.Done ? run.GuestSchematics.ToList() : [],
+            };
+        var taken = state.Units.Where(u => u.PlayerId == playerId && u.Origin is { } o && run.Taken.Contains(o.Id)).Select(u => u.Origin!.Id).ToList();
+        return new ObjectiveResult(run.Def.Id, outcome, statuses, new(run.Flags, StringComparer.Ordinal), new(run.Choices, StringComparer.Ordinal), escorted)
+        {
+            Taken = taken,
+        };
     }
 }

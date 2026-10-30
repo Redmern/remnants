@@ -11,6 +11,12 @@ public sealed class Survivor
 
     /// <summary>Story mode: the named character this survivor is ("pell"); null for everyone else.</summary>
     public string? UniqueId { get; set; }
+
+    /// <summary>Story traits (a unique survivor's): ids, for the UI.</summary>
+    public List<string> Traits { get; set; } = new();
+
+    /// <summary>The traits' hooks (perk hook ids), copied in when the survivor joined; read like perk hooks, colony and field.</summary>
+    public Dictionary<string, double> TraitHooks { get; set; } = new(StringComparer.Ordinal);
     public Sex Sex { get; set; }
 
     /// <summary>Age in sim ticks; years and life stage derive from it plus the rules.</summary>

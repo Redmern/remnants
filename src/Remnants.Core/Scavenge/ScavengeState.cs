@@ -121,6 +121,9 @@ public sealed class ZoneDevice
     /// <summary>A terminal downloaded, a locker opened.</summary>
     public bool Used { get; set; }
 
+    /// <summary>Failed hacks on it so far (a story device may fuse, see <see cref="FieldMission.FuseAfter"/>).</summary>
+    public int Failures { get; set; }
+
     /// <summary>What a terminal or locker holds until it is hacked.</summary>
     public List<string> Items { get; set; } = new();
     public List<HackProgress> Progress { get; set; } = new();

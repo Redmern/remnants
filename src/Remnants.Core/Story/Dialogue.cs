@@ -116,11 +116,23 @@ public static class Dialogue
         SurvivorOf(sim, speaker)?.Name
         ?? (speaker == "narration" ? "" : sim.Story?.Characters.GetValueOrDefault(speaker) is { } c ? c.CallSign ?? c.Name : speaker);
 
-    private static readonly Regex Placeholder = new(@"\{([a-z_]+)[:.]([a-z_]+)\}", RegexOptions.Compiled);
+    private static readonly Regex Placeholder = new(@"\{([a-z_]+)(?:[:.]([a-z_0-9]+))?\}", RegexOptions.Compiled);
+
+    /// <summary>A character's name as the colony knows it: the survivor's, or their successor's once they are dead (Marrow → Dee).</summary>
+    public static string NameOf(ColonySim sim, string id)
+    {
+        if (sim.State.Survivors.Find(s => s.UniqueId == id) is { } s) return s.Name;
+        var def = sim.Story?.Characters.GetValueOrDefault(id);
+        if (def?.Successor is { } heir && sim.State.Campaign?.Characters.GetValueOrDefault(id)?.Dead == true) return NameOf(sim, heir);
+        return def?.Name ?? id;
+    }
 
     /// <summary>
-    /// Resolves <c>{survivor:leader}</c>, <c>{survivor:best_medic}</c>, <c>{survivor:best_shot}</c>, <c>{name:pell}</c>,
-    /// <c>{colony.population}</c>, <c>{colony.dead_last_month}</c>, <c>{colony.day}</c>; unknown ones stay as they are.
+    /// Resolves <c>{survivor:leader}</c>, <c>{survivor:best_medic}</c>, <c>{survivor:best_shot}</c>,
+    /// <c>{survivor:most_injured}</c>, <c>{survivor:last_dead}</c>, <c>{survivor:taken_1}</c>, <c>{name:pell}</c> (a dead
+    /// character's successor), <c>{key_carrier}</c>, <c>{seven}</c> and <c>{seven.they|them|their}</c>,
+    /// <c>{colony.population}</c>, <c>{colony.dead_last_month}</c>, <c>{colony.dead_total}</c>, <c>{colony.limbs_fitted}</c>,
+    /// <c>{colony.taken}</c>, <c>{colony.day}</c>; unknown ones stay as they are.
     /// </summary>
     public static string Resolve(ColonySim sim, string text) => Placeholder.Replace(text, m =>
     {
@@ -132,7 +144,21 @@ public static class Dialogue
             ("survivor", "leader") => Leader(sim)?.Name ?? "someone",
             ("survivor", "best_medic") => Best(Skill.Medicine),
             ("survivor", "best_shot") => Best(Skill.Firearms),
-            ("name", var id) => state.Survivors.Find(s => s.UniqueId == id)?.Name ?? sim.Story?.Characters.GetValueOrDefault(id)?.Name ?? id,
+            ("survivor", "most_injured") => adults.Where(s => s.Body.Parts.Values.Any(p => p.Condition is PartCondition.Missing or PartCondition.Prosthetic))
+                .Select(s => s.Name).FirstOrDefault() ?? Leader(sim)?.Name ?? "someone",
+            ("survivor", "last_dead") => state.Memorial.LastOrDefault()?.Name ?? "nobody",
+            ("survivor", "taken_1") => state.Campaign?.Taken.FirstOrDefault()?.Survivor.Name ?? "nobody",
+            ("key_carrier", "") => Campaign.KeyCarrierSurvivor(sim)?.Name ?? "the carrier",
+            ("seven", "") => StoryCharacters.SurvivorOf(sim, StoryCharacters.Seven)?.Name ?? "Seven",
+            ("seven", var form) => (state.Campaign?.Flag("seven_pronoun") == 1, form) switch
+            {
+                (true, "they") => "they", (true, "them") => "them", (true, "their") => "their",
+                (false, "they") => "it", (false, "them") => "it", _ => "its",
+            },
+            ("name", var id) => NameOf(sim, id),
+            ("colony", "dead_total") => state.Memorial.Count.ToString(),
+            ("colony", "limbs_fitted") => state.Survivors.Sum(s => s.Body.Parts.Values.Count(p => p.Condition == PartCondition.Prosthetic)).ToString(),
+            ("colony", "taken") => (state.Campaign?.Flag("taken") ?? 0).ToString(),
             ("colony", "population") => state.Survivors.Count.ToString(),
             ("colony", "dead_last_month") => state.Memorial.Count(e => e.Tick >= state.Tick - 30 * sim.Data.Rules.TicksPerDay).ToString(),
             ("colony", "day") => Campaign.Day(sim).ToString(),

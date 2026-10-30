@@ -34,7 +34,9 @@ public static class Hacking
             .Concat(data.FittedParts(unit.Body).Select(f => f.Item))
             .Where(i => i.HackTool is not null)
             .OrderByDescending(i => i.HackTool!.ChanceBonus).ThenByDescending(i => i.HackTool!.Range).ThenBy(i => i.Id, StringComparer.Ordinal)
-            .FirstOrDefault();
+            .FirstOrDefault()
+        // Seven hacks with no kit at all (its Ghost in the Wire trait): as if it carried a plain hacking kit.
+        ?? (unit.Hook(Colony.PerkHooks.HackWithoutKit) > 0 ? data.Items.GetValueOrDefault("hacking_kit") : null);
 
     /// <summary>AP one hack action costs this unit (perks take some off).</summary>
     public static int ApCost(ScavengeData data, Unit unit)
@@ -134,7 +136,7 @@ public static class Hacking
         var tool = Tool(data, unit);
         if (tool?.HackTool is not { } kit) return ScavengeResult.Fail(ScavengeError.NoHackingTool, $"{unit.Name} carries no hacking tool.");
         var at = device?.Pos ?? target!.Pos;
-        if (unit.Pos.Chebyshev(at) > kit.Range || (unit.Pos.Chebyshev(at) > 1 && !state.Map.HasLineOfSight(data, unit.Pos, at)))
+        if (unit.Pos.Chebyshev(at) > Math.Max(kit.Range, (int)unit.Hook(Colony.PerkHooks.HackRange)) || (unit.Pos.Chebyshev(at) > 1 && !state.Map.HasLineOfSight(data, unit.Pos, at)))
             return ScavengeResult.Fail(ScavengeError.TooFar, $"The {name} is out of reach of {tool.Name} ({kit.Range} tiles).");
         var cost = ApCost(data, unit);
         if (cost > unit.Ap) return ScavengeResult.Fail(ScavengeError.NotEnoughAp, $"{unit.Name} needs {cost} AP (has {unit.Ap}).");
@@ -169,6 +171,13 @@ public static class Hacking
         }
         device.Lockouts.RemoveAll(l => l.Side == unit.Side);
         device.Lockouts.Add(new Lockout(unit.Side, state.Round + data.Rules.Hacking.LockoutRounds));
+        device.Failures++;
+        // A story mission's tagged device fuses after too many failed hacks (M13's relay nodes).
+        if (device.Tag is not null && state.Mission?.Def.FuseAfter is { } fuse && device.Failures >= fuse)
+        {
+            device.Disabled = true;
+            state.Log(new(state.Round, ScavengeEventType.HackFailed, $"The {name} fuses. Nobody is hacking it now.", unit.Id, Pos: device.Pos, Side: unit.Side));
+        }
         return ScavengeResult.Success($"{unit.Name} failed to hack the {name}.", device.Id);
     }
 

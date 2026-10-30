@@ -14,7 +14,12 @@ namespace Remnants.Core.Scavenge;
 /// <item><see cref="Undetected"/>: stealth-only; fails as soon as a hostile picks out a party unit.</item>
 /// </list>
 /// </summary>
-public enum ObjectiveKind { Reach, Hack, Retrieve, Escort, Aid, Survive, Defend, KillTag, Undetected }
+/// <item><see cref="Carry"/>: <see cref="ObjectiveDef.Carriers"/> party survivors stand next to the <see cref="ObjectiveDef.Marker"/>
+/// at the start of <see cref="ObjectiveDef.Count"/> rounds (heavy work, M12's engine); then <see cref="ObjectiveDef.Item"/> goes into the
+/// strongest carrier's pack.</item>
+/// <item><see cref="Keep"/>: fails once more than <see cref="ObjectiveDef.Count"/> in 100 of the party's survivors are taken by the
+/// Linked (see <see cref="FieldMission.TakeTag"/>); holds otherwise.</item>
+public enum ObjectiveKind { Reach, Hack, Retrieve, Escort, Aid, Survive, Defend, KillTag, Undetected, Carry, Keep }
 
 public enum ObjectiveStatus { Inactive, Active, Done, Failed }
 
@@ -34,6 +39,24 @@ public sealed record ObjectiveDef
 
     /// <summary>Starts inactive (hidden from the panel) until a trigger activates it.</summary>
     public bool Hidden { get; init; }
+
+    /// <summary><see cref="ObjectiveKind.Reach"/>: only a unit with this tag counts (the key-carrier, Seven).</summary>
+    public string? By { get; init; }
+
+    /// <summary><see cref="ObjectiveKind.Carry"/>: how many survivors it takes.</summary>
+    public int Carriers { get; init; } = 2;
+}
+
+/// <summary>
+/// A guard on a trigger or a prompt option: a flag (the run's own, else the campaign's as it was at launch) in a range;
+/// with neither bound, non-zero. <see cref="Not"/> turns it round.
+/// </summary>
+public sealed record FieldCondition
+{
+    public string Flag { get; init; } = "";
+    public int? Min { get; init; }
+    public int? Max { get; init; }
+    public bool Not { get; init; }
 }
 
 /// <summary>When a trigger fires. Each fires once.</summary>
@@ -55,6 +78,12 @@ public enum TriggerKind
     Alarm,
     /// <summary>A prompt's option was chosen (<see cref="TriggerWhen.Choice"/> = "promptId:option").</summary>
     Chosen,
+    /// <summary><see cref="TriggerWhen.Round"/> rounds after <see cref="TriggerWhen.Objective"/> became active (a wave while holding).</summary>
+    After,
+    /// <summary>A unit tagged <see cref="TriggerWhen.Tag"/> is down to <see cref="TriggerWhen.Below"/> of its health or less (Cole runs).</summary>
+    Hurt,
+    /// <summary>A party survivor is taken by the Linked.</summary>
+    Taken,
 }
 
 public sealed record TriggerWhen
@@ -67,6 +96,10 @@ public sealed record TriggerWhen
     public string? Item { get; init; }
     public string? Tag { get; init; }
     public string? Choice { get; init; }
+    public double Below { get; init; } = 0.5;
+
+    /// <summary>The trigger fires only while this holds (checked when its event happens).</summary>
+    public FieldCondition? If { get; init; }
 }
 
 /// <summary>What a trigger does.</summary>
@@ -91,6 +124,10 @@ public enum TriggerActionKind
     Split,
     /// <summary>Idle units tagged <see cref="TriggerAction.Tag"/> start hunting toward <see cref="TriggerAction.Goal"/>.</summary>
     Wake,
+    /// <summary>The units tagged <see cref="TriggerAction.Tag"/> leave the map (Cole gets away; a freed Linked walks off).</summary>
+    Leave,
+    /// <summary>The device tagged <see cref="TriggerAction.Tag"/> is locked for good (a sealed hatch).</summary>
+    Lock,
 }
 
 public sealed record TriggerAction
@@ -128,7 +165,7 @@ public sealed record PromptDef
 }
 
 /// <summary><see cref="Hint"/>: the known consequence, shown when it is obvious ("Cole will remember this"), never numbers.</summary>
-public sealed record PromptOption(string Id, string Text, string? Hint = null);
+public sealed record PromptOption(string Id, string Text, string? Hint = null, FieldCondition? If = null);
 
 /// <summary>
 /// The script of a story mission in the field: objectives, triggers and how it ends. <see cref="AtHome"/>: fought at
@@ -149,6 +186,16 @@ public sealed record FieldMission
 
     /// <summary>A generated zone's own enemies with any of these tags are left out ("network": no Linked in M4).</summary>
     public List<string> ExcludeEnemyTags { get; init; } = new();
+
+    /// <summary>
+    /// Enemies with this tag carry off downed survivors (M14): a downed party survivor with one of them next to it at
+    /// the start of <see cref="TakeRounds"/> rounds in a row is gone (taken, not dead). Null: nobody is taken.
+    /// </summary>
+    public string? TakeTag { get; init; }
+    public int TakeRounds { get; init; } = 2;
+
+    /// <summary>A tagged device fuses (is destroyed, failing its hack objective) after this many failed hacks. Null: never.</summary>
+    public int? FuseAfter { get; init; }
 }
 
 /// <summary>A chatter line said in the field (radio, or someone on the map).</summary>
@@ -196,6 +243,31 @@ public sealed class MissionRun
 
     public MissionOutcome Outcome { get; set; }
 
+    /// <summary>The campaign's flags as they were at launch (read by trigger and prompt guards; never sent home).</summary>
+    public SortedDictionary<string, int> Campaign { get; set; } = new(StringComparer.Ordinal);
+
+    /// <summary>Survivor ids the Linked carried off, in order.</summary>
+    public List<int> Taken { get; set; } = new();
+
+    /// <summary>Downed party unit id → rounds in a row with a taker next to it.</summary>
+    public SortedDictionary<int, int> Seized { get; set; } = new();
+
+    /// <summary>Party survivors at the start (for <see cref="ObjectiveKind.Keep"/>).</summary>
+    public int StartSurvivors { get; set; }
+
+    /// <summary>Co-op: the schematics a guest copies when the mission is done (the host's rewards; STORY.md "Co-op").</summary>
+    public List<string> GuestSchematics { get; set; } = new();
+
+    public int Flag(string id) => Flags.TryGetValue(id, out var v) ? v : Campaign.GetValueOrDefault(id);
+
+    public bool Holds(FieldCondition? c)
+    {
+        if (c is null) return true;
+        var v = Flag(c.Flag);
+        var ok = c.Min is null && c.Max is null ? v != 0 : (c.Min is not { } min || v >= min) && (c.Max is not { } max || v <= max);
+        return ok != c.Not;
+    }
+
     public ObjectiveState? Find(string id) => Objectives.Find(o => o.Id == id);
     public ObjectiveDef? DefOf(string id) => Def.Objectives.Find(o => o.Id == id);
     public List<Pos> Marker(string? name) => name is not null && Markers.TryGetValue(name, out var tiles) ? tiles : [];
@@ -208,4 +280,11 @@ public sealed record ObjectiveResult(
     SortedDictionary<string, ObjectiveStatus> Objectives,
     SortedDictionary<string, int> Flags,
     SortedDictionary<string, string> Choices,
-    List<string> Escorted);
+    List<string> Escorted)
+{
+    /// <summary>Survivor ids the Linked carried off (M14): gone from the colony, kept by the story.</summary>
+    public List<int> Taken { get; init; } = new();
+
+    /// <summary>Co-op: a guest's copies of the mission's schematic rewards (done missions only).</summary>
+    public List<string> GuestSchematics { get; init; } = new();
+}
