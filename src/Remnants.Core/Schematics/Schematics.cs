@@ -146,6 +146,7 @@ public static class Schematics
         UnlockKind.BuildingLevel => $"{data.Buildings.GetValueOrDefault(u.Id)?.Name ?? u.Id} L{u.Level}",
         UnlockKind.Recipe => data.Recipes.GetValueOrDefault(u.Id)?.Name ?? u.Id,
         UnlockKind.Perk => $"perk {data.Perks.GetValueOrDefault(u.Id)?.Name ?? u.Id}",
+        UnlockKind.Prosthetic => ProstheticName(data, u.Id),
         _ => Humanize(u.Id),
     });
 
@@ -202,6 +203,16 @@ public static class Schematics
     }
 
     internal static string BuildingName(ColonySim colony, string id) => colony.Data.Buildings.GetValueOrDefault(id)?.Name ?? id;
+
+    /// <summary>"tier:2" → "Powered prosthetics (T2)", "spec:blade" → "Blade specialisation".</summary>
+    private static string ProstheticName(GameData data, string id)
+    {
+        if (id.StartsWith("tier:") && int.TryParse(id[5..], out var tier))
+            return $"{data.Cybernetics?.Def.Tiers.Find(t => t.Tier == tier)?.Name ?? "Tier"} prosthetics (T{tier})";
+        if (id.StartsWith("spec:"))
+            return $"{data.Cybernetics?.Specs.GetValueOrDefault(id[5..])?.Name ?? Humanize(id[5..])} specialisation";
+        return Humanize(id);
+    }
 
     private static string Humanize(string id) => id.Length == 0 ? id : char.ToUpperInvariant(id[0]) + id[1..].Replace('_', ' ');
 }

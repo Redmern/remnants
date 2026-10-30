@@ -52,7 +52,7 @@ public static class SchematicText
     };
 
     /// <summary>"Hunting Rifle, Workshop L3".</summary>
-    public static string Unlocks(ColonySim sim, SchematicDef def) => string.Join(", ", Schematics.DescribeUnlocks(sim.Data, def).Select(Pretty));
+    public static string Unlocks(ColonySim sim, SchematicDef def) => string.Join(", ", Schematics.DescribeUnlocks(sim.Data, def));
 
     /// <summary>" → Hunting Rifle", or "" when the unlock is named like the schematic (Watchtower → Watchtower).</summary>
     public static string Arrow(ColonySim sim, SchematicDef def)
@@ -60,12 +60,6 @@ public static class SchematicText
         var unlocks = Unlocks(sim, def);
         return unlocks == def.Name ? "" : $" → {unlocks}";
     }
-
-    /// <summary>Prosthetic unlock ids ("tier:3", "spec:runner") as words.</summary>
-    private static string Pretty(string text) =>
-        text.StartsWith("Tier:") ? $"Prosthetics tier {text[5..]}"
-        : text.StartsWith("Spec:") ? $"{char.ToUpperInvariant(text[5]) + text[6..]} specialisation"
-        : text;
 
     /// <summary>One line per source: "Loot: caches and lockers in Ashgrove or deeper", "Story: M6, M9".</summary>
     public static IEnumerable<string> Sources(SchematicDef def)

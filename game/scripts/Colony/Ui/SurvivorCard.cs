@@ -137,6 +137,7 @@ public partial class SurvivorCard : PanelContainer
         if (s.Away) badges.Add(("job_away", Palette.TextMuted, "Away on an expedition"));
         if (s.StarvingTicks > 0) badges.Add(("stat_starving", Palette.Danger, "Starving"));
         if (sim.ClassOf(s) is { } study) badges.Add(("ui_study", Palette.Amber, study.StudentId == s.Id ? "In class (studying)" : "Teaching a class"));
+        if (Remnants.Core.Schematics.Research.IsResearching(sim.State, s.Id)) badges.Add(("ui_research", Palette.Amber, "Researching at the Town Hall"));
         if (sim.IsAsleep(s)) badges.Add(("stat_sleep", Palette.Night, "Asleep"));
         else if (sim.OnShift(s) && !Schedule.IsDayShiftHour(s, sim.Hour, rules.DayNight)
                  && s.AssignedBuildingId is { } at && sim.State.FindBuilding(at) is { } shift)
@@ -175,6 +176,7 @@ public partial class SurvivorCard : PanelContainer
         if (s.IsInfant) return Icons.Get("job_baby", 14);
         if (s.PatientAtBuildingId is not null) return Icons.Get("job_patient", 14);
         if (sim.ClassOf(s) is not null) return Icons.Get("ui_study", 14);
+        if (Remnants.Core.Schematics.Research.IsResearching(sim.State, s.Id)) return Icons.Get("ui_research", 14);
         if (s.AssignedBuildingId is { } id && sim.State.FindBuilding(id) is { } b && sim.Data.Buildings[b.DefId].Job is { } job)
             return Icons.Get($"skill_{job}", 14, $"job_{job}", "skill_crafting");
         return Icons.Get("job_idle", 14);

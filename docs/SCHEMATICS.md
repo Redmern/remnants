@@ -382,7 +382,7 @@ differs from the design above:
 - **Heard of** comes from the trader's stock, a schematic left lying on a tile the party saw, a terminal it failed to
   hack (the side glimpses what the terminal held), and `Schematics.HearOf` (story dialogue).
 - **Research** takes one researcher (off their job) on their day shift; factor `0.4 + Intellect·0.006 +
-  Electronics·0.006`, work 42 / 84 / 168 (about 3 / 6 / 12 days for an average researcher). Tier 3 needs Town Hall 3 and
+  Electronics·0.006`, work 42 / 84 / 168 (about 4 / 8 / 16 days for an average researcher on a 14-hour day shift). Tier 3 needs Town Hall 3 and
   an Electronics Lab L2.
 - **Decrypt** is a synthesized Electronics Lab recipe per encrypted schematic (`decrypt:<id>`, its chip as the one
   input), at the existing queue. The minimum is Electronics 20 (Hacking does not count).
