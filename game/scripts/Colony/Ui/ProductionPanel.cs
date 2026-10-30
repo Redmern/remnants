@@ -46,7 +46,7 @@ public partial class ProductionPanel : PanelContainer
     private readonly VBoxContainer _book = Widgets.Column(6);
     private string _bookShown = "";
     private string? _selected;
-    private readonly Button _bench;
+    private readonly Button _gearBench;
 
     public int? BuildingId { get; private set; }
 
@@ -68,11 +68,11 @@ public partial class ProductionPanel : PanelContainer
         _cyber = Widgets.IconButton("body_prosthetic", "Cybernetics", "The cybernetics tree: which limbs can be made here and what they need",
             () => CyberneticsPressed?.Invoke(), variation: "Flat");
         _cyber.CustomMinimumSize = new Vector2(0, 26);
-        _bench = Widgets.IconButton("bld_armory", "Gear Bench", "Fit and remove gear mods, fit Mk kits, compare builds",
+        _gearBench = Widgets.IconButton("bld_armory", "Gear Bench", "Fit and remove gear mods, fit Mk kits, compare builds",
             () => GearBenchPressed?.Invoke(), variation: "Flat");
-        _bench.CustomMinimumSize = new Vector2(0, 26);
+        _gearBench.CustomMinimumSize = new Vector2(0, 26);
         var buttons = Widgets.Row(4);
-        buttons.AddChild(_bench);
+        buttons.AddChild(_gearBench);
         buttons.AddChild(_cyber);
         var header = Widgets.SectionHeader("Production", "skill_crafting", buttons);
         _title = header.GetChildren().OfType<Label>().First();
@@ -131,7 +131,7 @@ public partial class ProductionPanel : PanelContainer
         var recipes = building is null ? [] : sim.Data.RecipesFor(building.DefId);
         Visible = recipes.Count > 0;
         if (!Visible) return;
-        _bench.Visible = sim.Scavenge?.GearMods is { } gear && gear.Def.Rules.Benches.Contains(building!.DefId);
+        _gearBench.Visible = sim.Scavenge?.GearMods is { } gear && gear.Def.Rules.Benches.Contains(building!.DefId);
         _cyber.Visible = sim.Data.Cybernetics is { } cyber && recipes.Any(r => cyber.Node(r.Item) is not null);
 
         var cooking = IsCooking(sim, building!);

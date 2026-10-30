@@ -574,6 +574,9 @@ public partial class ColonyScreen : Node3D
     {
         for (var i = 0; i < 3; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         if (IsInstanceValid(_hud)) _hud.ScrollRightTo(_hud.Production.Book);
+    }
+
+    /// <summary>
     /// Debug (screenshots of gear mods, <c>--gear-demo</c>): Town Hall 2 with an Armory, Workshop and Tailor (staffed,
     /// a few mod and kit orders under way); a pistol, rifle, padded vest and scrap helmet in the stores with mods and kits;
     /// the pistol taken to Mk II with a suppressor, the vest given scrap plates. Opens the Gear Bench on the pistol with a
