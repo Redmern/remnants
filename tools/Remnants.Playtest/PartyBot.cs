@@ -27,6 +27,17 @@ public static class PartyBot
     public static (ExtractionResult Result, RunStats Stats) Play(ScavengeSim sim, int playerId, Action<string>? trace = null, bool recruit = true,
         bool defenses = true, bool fightLinked = false)
     {
+        var (results, stats) = PlayAll(sim, [playerId], trace, recruit, defenses, fightLinked);
+        return (results[0], stats);
+    }
+
+    /// <summary>
+    /// Plays several parties (co-op: allies on one team) until all are done, each turn for whichever of them is up.
+    /// Allies count as the bot's own for healing and keeping close (it treats its side, not its player, as "us").
+    /// </summary>
+    public static (List<ExtractionResult> Results, RunStats Stats) PlayAll(ScavengeSim sim, IReadOnlyList<int> playerIds, Action<string>? trace = null,
+        bool recruit = true, bool defenses = true, bool fightLinked = false)
+    {
         ScavengeEvent? last = null;
         void Flush()
         {
@@ -46,9 +57,9 @@ public static class PartyBot
         var stalls = new Dictionary<int, int>();
         var acted = new HashSet<int>();
         var looted = 0;
-        for (var i = 0; i < MaxCommands && !(state.FindParty(playerId)?.Done ?? true) && !state.Finished; i++)
+        for (var i = 0; i < MaxCommands && playerIds.Any(id => !(state.FindParty(id)?.Done ?? true)) && !state.Finished; i++)
         {
-            if (state.CurrentUnit is not { } unit || unit.PlayerId != playerId || !unit.PlayerControlled || state.Round > StallRounds) break;
+            if (state.CurrentUnit is not { PlayerId: { } playerId } unit || !playerIds.Contains(playerId) || !unit.PlayerControlled || state.Round > StallRounds) break;
             foreach (var u in state.Units.Where(u => IsLinked(sim, u) && Detection.SideSees(sim.Data, state, unit.Side, u)))
                 linkedSeen.Add(u.Id);
             var command = Decide(sim, unit, playerId, recruit, stalls.GetValueOrDefault(unit.Id), defenses, fightLinked);
@@ -68,13 +79,13 @@ public static class PartyBot
         var kills = enemies.Count(u => u.Status == UnitStatus.Dead);
         var linkedKills = enemies.Count(u => u.Status == UnitStatus.Dead && IsLinked(sim, u));
         var reinforcements = enemies.Count(u => !enemiesAtStart.Contains(u.Id));
-        var mine = state.Units.Where(u => u.PlayerId == playerId).Select(u => u.Id).ToHashSet();
+        var mine = state.Units.Where(u => u.PlayerId is { } p && playerIds.Contains(p)).Select(u => u.Id).ToHashSet();
         var ambushed = state.Events.Count(e => e.Type == ScavengeEventType.Ambushed && e.TargetId is { } t && mine.Contains(t));
         var reactions = state.Events.Count(e => e.Type == ScavengeEventType.Overwatch && e.TargetId is not null && e.UnitId is { } w && mine.Contains(w));
         var defended = state.Events.Count(e => e.UnitId is { } d && mine.Contains(d) && e.Type is ScavengeEventType.Braced
             or ScavengeEventType.Lookout or ScavengeEventType.FlareLit or ScavengeEventType.SensorPlaced
             || (e.Type == ScavengeEventType.Overwatch && e.TargetId is null && e.UnitId is { } o && mine.Contains(o)));
-        return (sim.ResultFor(playerId), new RunStats(state.Round, kills, linkedSeen.Count, linkedKills, looted, reinforcements, ambushed, reactions, defended));
+        return (playerIds.Select(sim.ResultFor).ToList(), new RunStats(state.Round, kills, linkedSeen.Count, linkedKills, looted, reinforcements, ambushed, reactions, defended));
     }
 
     private static bool IsLinked(ScavengeSim sim, Unit u) =>
@@ -91,12 +102,15 @@ public static class PartyBot
         // What the side heard but cannot see, freshest first; attack contacts are where shots came from.
         var contacts = state.Contacts.Where(c => c.Side == unit.Side).OrderByDescending(c => c.Round).ToList();
         var shotAt = contacts.Where(c => c.Kind == ContactKind.Attack && c.Round >= state.Round - 1).ToList();
-        var allies = state.Units.Where(t => t.PlayerId == playerId && t.OnMap && t.Kind == UnitKind.Survivor).ToList();
+        var allies = state.Units.Where(t => t.Side == unit.Side && t.PlayerId is not null && t.OnMap && t.Kind == UnitKind.Survivor).ToList();
 
         // 1. A downed ally next to us gets the med-kit; a badly hurt one (or we) a bandage when nobody is adjacent.
         foreach (var ally in allies.Where(a => a.Status == UnitStatus.Downed && a.Pos.Chebyshev(unit.Pos) <= 1))
             if (Usable(sim, unit, "med_kit", u => u.ReviveHp > 0 || u.Stabilize) is { } kit)
                 return new UseItem(playerId, unit.Id, kit, ally.Id);
+            // Co-op: no med-kit, so carry them out (Core says whether we can).
+            else if (ally.PlayerId != playerId && CoopActions.CheckCarry(sim, unit, ally) is null)
+                return new Carry(playerId, unit.Id, ally.Id);
         var hurt = allies.Where(a => a.IsActive && a.Hp < a.MaxHp * 0.5 && a.Pos.Chebyshev(unit.Pos) <= 1).OrderBy(a => a.Hp).FirstOrDefault();
         if (hurt is not null && !hostiles.Any(h => h.Pos.Chebyshev(unit.Pos) <= 1)
             && Usable(sim, unit, "bandage", u => u.Heal > 0) is { } bandage)
@@ -139,6 +153,7 @@ public static class PartyBot
         // A Linked in sight is beyond a starting party: break off and head out.
         var leaving = (!fightLinked && hostiles.Any(h => IsLinked(sim, h)))
                       || unit.Hp < unit.MaxHp * 0.5
+                      || unit.CarryingId is not null
                       || profile.Load >= profile.CarryCapacity * 0.8
                       || state.Round >= MaxRounds
                       || allies.Any(a => a.Status == UnitStatus.Downed)

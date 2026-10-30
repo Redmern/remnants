@@ -241,7 +241,10 @@ public partial class MultiplayerMenu : Control
                 : "VERSUS · every party for itself unless it teams up";
             _lobby.Text = $"{zone} · {mode}\n{lobby.Players.Count}/{lobby.MaxPlayers} players (starts with {lobby.MinPlayers}+ when all are ready)\n" + string.Join("\n", lines);
             _teamRow.Visible = lobby.Mode == MissionMode.Versus && client.Phase == ClientPhase.Lobby;
+            // Joined: the picker shows the server's mode and is fixed.
+            _mode.Select(lobby.Mode == MissionMode.Coop ? 1 : 0);
             _mode.Disabled = true;
+            if (_status.Text.StartsWith("Connecting")) _status.Text = $"In the lobby as player {client.PlayerId}.";
             _ready.Disabled = client.Phase != ClientPhase.Lobby;
             _ready.Text = IsReady() ? "Not ready" : "Ready";
         }

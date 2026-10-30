@@ -11,7 +11,7 @@ namespace Remnants.Server;
 /// <code>
 /// dotnet run --project src/Remnants.Server -- --port 7777 [--zone ID] [--seed N] [--players 2] [--max-players 4]
 ///     [--turn-seconds 60] [--reconnect-seconds 120] [--bind 0.0.0.0] [--data DIR] [--coop]
-/// dotnet run --project src/Remnants.Server -- --bot 127.0.0.1:7777 [--name Bot] [--rounds 30] [--team N] [--hostile]
+/// dotnet run --project src/Remnants.Server -- --bot 127.0.0.1:7777 [--name Bot] [--rounds 30] [--team N] [--hostile] [--propose]
 /// </code>
 /// The server runs one mission, then exits once every player's run is over. <c>--bot</c> instead joins a server
 /// as a scripted headless client (for smoke tests).

@@ -37,16 +37,23 @@ public static class ZoneTrial
     /// <param name="kit">"fog": each member also carries two flares and the first a motion sensor. "geared": a crafted
     /// mid-game kit instead of starting gear — pistol / rifle, padded vest / camo cloak, binoculars, med-kit, bandages,
     /// flares and a motion sensor — and the bot stands and fights the Linked.</param>
+    /// <param name="players">Co-op: this many parties (each a fresh colony's first party, different seeds) on one team;
+    /// the zone scales its enemies to the player count. Per-party rates are per party, "someone dies" per mission.</param>
     public static string Run(GameData data, ScavengeData scavenge, string zoneId, int runs, int partySize = 2, Action<string>? trace = null,
-        bool defenses = true, string kit = "")
+        bool defenses = true, string kit = "", int players = 1)
     {
+        int partyRuns = 0, partyWipes = 0, partyDeathRuns = 0;
         int ambushed = 0, reactions = 0, defended = 0;
         int deaths = 0, runsWithDeath = 0, wipes = 0, injuredRuns = 0, limbs = 0, items = 0, linkedSeen = 0, runsWithLinked = 0, kills = 0, rounds = 0, stuck = 0;
         var injuries = 0;
         var deadWithLinked = 0;
         for (var seed = 1; seed <= runs; seed++)
         {
-            var colony = NewGame.Create(data, (ulong)seed, scavenge);
+            var setups = new List<PartySetup>();
+            var allAdults = new List<Remnants.Core.Survivors.Survivor>();
+            for (var p = 0; p < players; p++)
+            {
+            var colony = NewGame.Create(data, (ulong)(seed + 10007 * p), scavenge);
             var adults = colony.State.Survivors.Where(s => !s.IsChild).Take(partySize).ToList();
             var gear = new Queue<string>(colony.State.Inventory.Counts.SelectMany(kv => Enumerable.Repeat(kv.Key, kv.Value)));
             var weapons = new Queue<string>(new[] { "spear", "pipe", "pipe" }.Where(colony.State.Inventory.Has));
@@ -70,15 +77,34 @@ public static class ZoneTrial
                 if (kit == "geared") gearSet[EquipSlot.Tool] = "binoculars";
                 return new PartyMember(s, gearSet, packs[i]);
             }).ToList();
-            var sim = NewScavenge.Create(scavenge, zoneId, (ulong)(seed * 7919), [new PartySetup(ColonySim.ExpeditionPlayerId, party)]);
-            var (result, stats) = PartyBot.Play(sim, ColonySim.ExpeditionPlayerId, trace, defenses: defenses, fightLinked: kit == "geared");
+            setups.Add(new PartySetup(ColonySim.ExpeditionPlayerId + p, party, players > 1 ? 1 : null));
+            allAdults.AddRange(adults);
+            }
+            var sim = NewScavenge.Create(scavenge, zoneId, (ulong)(seed * 7919), setups);
+            var (results, stats) = PartyBot.PlayAll(sim, setups.Select(s => s.PlayerId).ToList(), trace, defenses: defenses, fightLinked: kit == "geared");
+            var adultsById = allAdults;
+            var result = results.Count == 1 ? results[0] : results[0] with
+            {
+                Complete = results.All(r => r.Complete),
+                Returned = results.SelectMany(r => r.Returned).ToList(),
+                Recruits = results.SelectMany(r => r.Recruits).ToList(),
+                Deaths = results.SelectMany(r => r.Deaths).ToList(),
+                Loot = new SortedDictionary<string, int>(results.SelectMany(r => r.Loot).GroupBy(kv => kv.Key).ToDictionary(g => g.Key, g => g.Sum(kv => kv.Value))),
+            };
+            foreach (var r in results.Where(r => r.Complete))
+            {
+                partyRuns++;
+                if (r.Returned.Count == 0) partyWipes++;
+                if (r.Deaths.Count > 0) partyDeathRuns++;
+            }
             if (!result.Complete) { stuck++; trace?.Invoke($"seed {seed} stalled"); Console.Error.WriteLine($"{zoneId} seed {seed} stalled at round {stats.Rounds}: " + string.Join(", ", sim.State.Units.Where(u => u.PlayerId == ColonySim.ExpeditionPlayerId).Select(u => $"{u.Name} {u.Kind} {u.Status} at {u.Pos} following {u.FollowingId}")));
                 Console.Error.WriteLine(Picture(sim));
                 continue; }
             deaths += result.Deaths.Count;
             if (result.Deaths.Count > 0) runsWithDeath++;
             if (result.Returned.Count == 0) wipes++;
-            var hurt = result.Returned.Sum(r => BodyDiff.Describe(adults.First(a => a.Id == r.Survivor.Id).Body, r.Survivor.Body).Count);
+            // Colonies number survivors alike, so match a returned survivor by name too.
+            var hurt = result.Returned.Sum(r => BodyDiff.Describe(adultsById.First(a => a.Id == r.Survivor.Id && a.Name == r.Survivor.Name).Body, r.Survivor.Body).Count);
             injuries += hurt;
             if (hurt > 0) injuredRuns++;
             limbs += result.Returned.Sum(r => r.Survivor.Body.Parts.Values.Count(p => p.Condition == Remnants.Core.Survivors.PartCondition.Missing));
@@ -97,7 +123,7 @@ public static class ZoneTrial
         }
         var n = Math.Max(1, runs - stuck);
         var sb = new StringBuilder();
-        sb.AppendLine($"zone {zoneId}: {runs} runs, party {partySize} ({(kit == "geared" ? "geared" : "starting gear")}{(kit == "fog" ? " + flares, sensor" : "")}{(defenses ? "" : ", no defenses")}){(stuck > 0 ? $", {stuck} stuck" : "")}");
+        sb.AppendLine($"zone {zoneId}: {runs} runs, {(players > 1 ? $"{players} allied parties of" : "party")} {partySize} ({(kit == "geared" ? "geared" : "starting gear")}{(kit == "fog" ? " + flares, sensor" : "")}{(defenses ? "" : ", no defenses")}){(stuck > 0 ? $", {stuck} stuck" : "")}");
         sb.AppendLine($"  runs with a death {100.0 * runsWithDeath / n:0}%  wipes {100.0 * wipes / n:0}%  deaths/run {deaths / (double)n:0.00}");
         sb.AppendLine($"  runs with new injuries {100.0 * injuredRuns / n:0}%  injuries/run {injuries / (double)n:0.0}  limbs lost/run {limbs / (double)n:0.00}");
         sb.AppendLine($"  items/run {items / (double)n:0.0}  kills/run {kills / (double)n:0.0}  rounds/run {rounds / (double)n:0}");
@@ -105,6 +131,8 @@ public static class ZoneTrial
         var otherRuns = n - runsWithLinked;
         sb.AppendLine($"  runs seeing Linked {100.0 * runsWithLinked / n:0}%  Linked seen/run {linkedSeen / (double)n:0.00}" +
                       (runsWithLinked > 0 ? $"  death rate with Linked {100.0 * deadWithLinked / runsWithLinked:0}% vs without {100.0 * (runsWithDeath - deadWithLinked) / Math.Max(1, otherRuns):0}%" : ""));
+        if (players > 1)
+            sb.AppendLine($"  per party: a death in {100.0 * partyDeathRuns / Math.Max(1, partyRuns):0}%  wiped {100.0 * partyWipes / Math.Max(1, partyRuns):0}%  (enemies x{NewScavenge.EnemyScale(scavenge, players):0.##})");
         return sb.ToString();
     }
 }

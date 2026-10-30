@@ -13,7 +13,7 @@ namespace Remnants.Server;
 /// nearest exit and extracts. It only uses what its fog-filtered view shows, like a real client.
 /// <para>
 /// As an ally (a co-op mission, <c>--team N</c> in a versus lobby, or an alliance it accepted: it accepts every offer
-/// unless <c>--hostile</c>) it patches up and revives allies next to it, carries a downed one it cannot revive to the
+/// unless <c>--hostile</c>; with <c>--propose</c> it also offers one to every rival party it is in contact with) it patches up and revives allies next to it, carries a downed one it cannot revive to the
 /// exit, follows the nearest ally instead of the map centre, and covers them on overwatch when there is nothing to
 /// shoot; it leaves once the rounds are up or its allies are gone.
 /// </para>
@@ -28,6 +28,8 @@ internal static class Bot
         var name = a.Value("--name") ?? "Bot";
         var rounds = a.Int("--rounds", 30);
         var hostile = a.Flag("--hostile");
+        var propose = a.Flag("--propose") && !hostile;
+        var offered = new HashSet<int>();
 
         var transport = await TcpClientTransport.ConnectAsync(host, port);
         var inbox = Channel.CreateUnbounded<Action>();
@@ -52,8 +54,8 @@ internal static class Bot
                 busy = false;
                 if (t.Result.Ok) return;
                 Program.Print($"{name}: rejected {command.GetType().Name}: {t.Result.Message}");
-                // A rejected order falls back to waiting so the bot never stalls its own turn.
-                if (command is not EndTurn) Send(new EndTurn(command.PlayerId, command.UnitId));
+                // A rejected order falls back to waiting so the bot never stalls its own turn (talk is free: just go on).
+                if (command is not EndTurn and not ProposeAlliance) Send(new EndTurn(command.PlayerId, command.UnitId));
             }));
         }
 
@@ -61,7 +63,7 @@ internal static class Bot
         {
             work();
             if (client.Phase is ClientPhase.Ended or ClientPhase.Disconnected || client.RefusedReason is not null) break;
-            if (!busy && client.View is { } view && Decide(client, view, rounds, hostile) is { } command) Send(command);
+            if (!busy && client.View is { } view && Decide(client, view, rounds, hostile, propose ? offered : null) is { } command) Send(command);
         }
 
         var result = client.Result;
@@ -72,7 +74,7 @@ internal static class Bot
         return client.RefusedReason is null ? 0 : 2;
     }
 
-    private static IScavengeCommand? Decide(NetClient client, ScavengeSim view, int rounds, bool hostile)
+    private static IScavengeCommand? Decide(NetClient client, ScavengeSim view, int rounds, bool hostile, HashSet<int>? offered)
     {
         var state = view.State;
         if (state.CurrentUnit is not { } unit || unit.PlayerId != client.PlayerId || !unit.PlayerControlled) return null;
@@ -83,11 +85,23 @@ internal static class Bot
         if (!hostile && state.Proposals.Find(p => p.ToPlayerId == pid) is { } offer)
             return new RespondAlliance(pid, unit.Id, offer.FromPlayerId, Accept: true);
 
+        if (offered is not null && state.CurrentUnit is { } speaker)
+            foreach (var rival in state.Parties.Where(p => p.PlayerId != pid && !p.Done && p.Side != speaker.Side && !offered.Contains(p.PlayerId)))
+                if (state.Units.Any(u => u.PlayerId == rival.PlayerId && u.IsActive))
+                {
+                    offered.Add(rival.PlayerId);
+                    return new ProposeAlliance(pid, speaker.Id, rival.PlayerId);
+                }
+
+        // Hold fire on a player with an open alliance offer either way.
+        bool Talking(Unit t) => t.PlayerId is { } other && state.Proposals.Any(p =>
+            (p.FromPlayerId, p.ToPlayerId) == (pid, other) || (p.FromPlayerId, p.ToPlayerId) == (other, pid));
+
         var allies = state.Units.Where(u => u.Side == unit.Side && u.PlayerId != pid && u.Kind == UnitKind.Survivor && u.OnMap).ToList();
         if (Help(view, unit, allies) is { } help) return help;
 
         var shot = profile.Actions.Where(x => x.ApCost <= unit.Ap)
-            .SelectMany(x => state.Units.Where(t => t.OnMap && unit.HostileTo(t) && Combat.CheckReach(view.Data, map, unit.Pos, x, t.Pos) == ScavengeError.None)
+            .SelectMany(x => state.Units.Where(t => t.OnMap && unit.HostileTo(t) && !Talking(t) && Combat.CheckReach(view.Data, map, unit.Pos, x, t.Pos) == ScavengeError.None)
                 .Select(t => (Action: x, Target: t, Chance: Combat.HitChance(view.Data, map, unit.Pos, x, t.Pos, view.Profile(t)))))
             .OrderByDescending(o => o.Chance).FirstOrDefault();
         if (shot.Target is not null) return new Attack(pid, unit.Id, shot.Target.Id, shot.Action.Id);

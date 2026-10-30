@@ -46,6 +46,8 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   - `Devices` — field effects of equipped devices (signal jammer; scanner).
   - `Detection` — who sees whom inside sight: stealth vs detection, flares, reveals, scanners, contacts (see "Fog of war").
   - `FogLog` — which events a side hears and how (hidden actors become anonymous); shared by single player and `SideFog`.
+  - `Alliances` (teams of players as one shared side: offers, merges, breaks with a warning round) and `CoopActions`
+    (give an item, carry / put down the downed, team pings) — see "Co-op" below.
   - `TileMap`/`Pos` (terrain grid, exits, symmetric Bresenham LOS), `MapGenerator` (zone template +
     seed → rooms, scatter, exits, carved route), `NewScavenge` (places parties, enemies, caches, NPCs).
   - `Unit` (party survivor, enemy or NPC: side, owner player, body, gear, pack, AI memory).
@@ -196,11 +198,12 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
 - **Tick order:** production (+training) → crafting → medical → food → relationships (mood, affinity, couples) →
   family (births, conception) → housing → growth (aging, growing up).
 - **Scavenge commands** (`Move`, `Attack`, `UseItem` (on a unit, or a tile with `At`), `PickUp`, `Recruit`, `SetStance`
-  (Overwatch / Brace), `Lookout`, `EndTurn`, `Extract`) carry a
+  (Overwatch / Brace), `Lookout`, `EndTurn`, `Extract`; co-op: `ProposeAlliance`, `RespondAlliance`, `BreakAlliance`,
+  `PingTile`, `GiveItem`, `Carry`, `PutDown`) carry a
   `PlayerId` + `UnitId`; Core checks ownership and whose turn it is and returns a `ScavengeResult`
   with a `ScavengeError`. Several players' parties can share one instance (each party is a side).
-  A party is done when it has no conscious controllable unit left (its downed die, recruits stay);
-  the instance finishes when every party is done.
+  A party is done when it has no conscious controllable unit left (its downed die, recruits stay or go over to an ally),
+  unless an ally is still up to carry its downed out; the instance finishes when every party is done.
 
 ## Colony ↔ scavenge loop
 
@@ -368,11 +371,44 @@ positions and gear always give the same answer), and per side.
   ("Ana was ambushed from the fog (+20% hit)", "Ana was hit in the Torso for 12 from the fog"), or not at all; side-only
   events stay with their side. The local driver and the server's `SideFog` both use it.
 - **Saves**: scavenge save version 3 (stances, lookout, contacts, reveals, flares, sensors); colony save version 6 carries
-  it; older saves load with none of it.
+  it; older saves load with none of it (co-op state came with versions 4 / 7, see "Co-op").
 - Scenario tests: `FogTests` (stealth derivation, detection range, lookout, NotVisible, ambush + reveal + contact +
   anonymous log, brace, backs, overwatch reactions incl. on a revealed ambusher, flares, sensors, scanner, noise
   contacts, contact expiry, Linked lurking, drone spotting with and without a jammer, determinism, save migration);
   `FogNetTests` (no-leak multiplayer cases).
+
+## Co-op
+
+Players scavenge together as teams (details, protocol and how to run it: MULTIPLAYER.md "Co-op and alliances").
+
+- **A team is a side.** Allied parties share `Party.Side` = `team:N` (`Unit.TeamSide`; alone, `player:N`), and every
+  unit a player owns carries it. Everything keyed by side then works for the team with no special cases: hostility
+  (`Unit.HostileTo`, so no friendly fire, overwatch ignores allies, AoE spares them), sight and detection (`Visibility`,
+  `Detection`), contacts, reveals, sensors, explored tiles, "watching each other's backs", the log (`FogLog`: an ally's
+  events are the team's). Ownership, turns, loot and results stay on `Unit.PlayerId`.
+- `Alliances`: `Merge` moves two sides' parties, units, contacts, reveals, sensors, pings and explored tiles onto a new team
+  side (`ScavengeState.NextTeamId`); `Split` takes one player off (a team left with one dissolves), copying what the team
+  knew to each side and handing sensors / pings back by owner. Offers (`ScavengeState.Proposals`) need mutual sight and
+  an answer on the other player's turn; breaks (`ScavengeState.Breaks`) take effect at the start of round announced +
+  1 + `breakWarningRounds`. Round start (`Alliances.RoundStarted`) lapses offers, fades pings and applies breaks.
+  Alliance events carry `ScavengeEvent.Sides` (sent to exactly those sides).
+- `CoopActions`: give (into the other unit's pack, so it goes home with its player), carry (`Unit.CarryingId` /
+  `CarriedById`: the carried unit shares the carrier's tile, `UnitAt` skips it, `ProfileDeriver` takes
+  `carryRangePenalty` off the carrier's move and drops special moves; `Sync` keeps it on the carrier and lets go when the
+  carrier falls), pings (`ScavengeState.Pings`, per side, limited per turn by `Unit.PingsUsed`).
+- `ScavengeSim.UpdateParties` keeps an all-downed party in play while an ally is up; `Extract` takes the carried unit
+  (home to its own player) and every follower on the side within the escort radius, re-owned to the extractor.
+- `NewScavenge`: `PartySetup.Team` starts parties allied and spawned together; `EnemyScale` multiplies the enemy count
+  and per-type caps by `1 + enemiesPerExtraPlayer × (players − 1)`.
+- Net: `SideFog` follows the party's live side (team fog, split at the break), filters pings / offers / breaks;
+  `GameHost` has `MissionMode` (Versus / Coop) and `SetTeam`, and turns alliance changes into the alliance messages for
+  the players involved. Game: `Palette.Ally` / `SidePalette.Ally`, `CoopPanel` (Team), `AllianceBanner`, the Ally card
+  section, ping pins in `FogOverlay`, lobby mode / team, Expedition → Online / Co-op.
+- **Saves**: scavenge save version 4 (offers, breaks, pings, next team id, carrying, pings used, sensor owner) and colony
+  save version 7 carry it; older saves load with everyone on their own side and nobody carried.
+- Tests: `CoopTests` (no friendly fire and overwatch, team fog and contacts, backs, offers and answers, decline and
+  lapse, break timing and split sight, carry out and per-player results, put down / let go, left behind, give, heal an
+  ally, per-player extraction and recruit hand-over, pings, co-op spawn and enemy scaling, saves); Net: `CoopNetTests`.
 
 ## Linked squad AI
 
@@ -436,7 +472,8 @@ positions and gear always give the same answer), and per side.
 - `enemies.json` — hp, AI kind, attributes, skills, equipment (a Husk's claws are an item too).
 - `zones.json` — size, threat, loot tier, terrain densities, spawn/exit edges, enemy count + mix,
   caches, NPC count.
-- `scavenge.json` — `fog` (stealth, detection, contacts, ambush, overwatch, brace, lookout, Linked fog AI), `network` (Linked squad tuning), `world.colonyPos`, terrain table, movement derivation (base pattern/range, Agility per range,
+- `scavenge.json` — `coop` (alliance offer / break-warning rounds, pings, give and carry costs, carry movement penalty,
+  enemies per extra player), `fog` (stealth, detection, contacts, ambush, overwatch, brace, lookout, Linked fog AI), `network` (Linked squad tuning), `world.colonyPos`, terrain table, movement derivation (base pattern/range, Agility per range,
   encumbrance steps, body rules such as "missing leg → King 1"), AP, sight, carry, combat numbers,
   AI, NPC names, escort radius, gear quality tiers.
 
@@ -450,6 +487,7 @@ godot-mono -e --path game # open in the editor
 dotnet run --project src/Remnants.Server -- --port 7777   # multiplayer server; then Multiplayer → Join in two games
 dotnet run --project tools/Remnants.Playtest -- --data=data --seeds=1..20 --days=60 --quiet   # balance sweep (BALANCE.md)
 dotnet run --project tools/Remnants.Playtest -- --data=data --zone=all --runs=300            # zone lethality
+dotnet run --project tools/Remnants.Playtest -- --data=data --zone=suburb_ruins --runs=300 --coop=2   # co-op trial
 ```
 
 Data lookup (`GameDataPaths`): `data/` next to the executable in exported builds (lets players override
@@ -465,7 +503,7 @@ production building, some at level 2–3) with staffed, queued Armory and Tailor
 (`--zone=ID` selects a marker), `--fog-demo` (with `--scavenge`) stages a fog ambush (`--select-unit=watcher` shows the unit on overwatch with its range;
 `--select-unit=ID` and `--pause-menu` work in any scavenge run), `--world-demo` fakes a few weeks of scouting and sends a party on the road (for
 screenshots); `--scavenge --zone=ID --seed=N` plays the debug mission in another zone, `--multiplayer` opens the multiplayer menu and
-`--mp-host[=PORT]` / `--mp-join=ADDR` with `--mp-name`, `--mp-ready`, … script it (see `MULTIPLAYER.md`), `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG (any scene). HUD shots: `--pause-menu`, `--settings`, `--build-menu`, `--select-survivor=ID`, `--survivor-tab=N` (colony), `--menu-settings` (main menu). Needs a display; on
+`--mp-host[=PORT]` / `--mp-join=ADDR` with `--mp-name`, `--mp-ready`, `--mp-coop`, `--mp-team=N`, … script it (see `MULTIPLAYER.md`), `--screenshot=PATH [--frames=N] [--quit]` saves the viewport as PNG (any scene). HUD shots: `--pause-menu`, `--settings`, `--build-menu`, `--select-survivor=ID`, `--survivor-tab=N` (colony), `--menu-settings` (main menu). Needs a display; on
 Wayland pass `--display-driver wayland --disable-vsync` so an unfocused window still renders:
 
 ```sh

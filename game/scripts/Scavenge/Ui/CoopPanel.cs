@@ -116,17 +116,15 @@ public partial class CoopPanel : PanelContainer
         {
             var left = coop.PingsPerTurn - unit.PingsUsed;
             _content.AddChild(Widgets.Label($"PING ({left}/{coop.PingsPerTurn} LEFT)", "Heading"));
-            var row = Widgets.Row(4);
-            _content.AddChild(row);
             foreach (var (kind, hotkey) in new[] { (PingKind.Danger, "scav_ping_danger"), (PingKind.GoHere, "scav_ping_go"), (PingKind.Loot, "scav_ping_loot") })
             {
                 var k = kind;
-                var button = new ActionButton(PingIcon(kind), PingName(kind), "", 0, hotkey, $"Mark a tile \"{PingName(kind)}\" for your team") { ToggleMode = true };
+                var button = new ActionButton(PingIcon(kind), PingName(kind), "", 0, hotkey, $"Mark a tile \"{PingName(kind)}\" for your team (then click it)") { ToggleMode = true };
                 button.ButtonPressed = pinging == kind;
                 button.SetBlocked(left <= 0);
                 button.Pressed += () => PingChosen?.Invoke(k);
                 _buttons.Add(button);
-                row.AddChild(button);
+                _content.AddChild(button);
             }
         }
 
