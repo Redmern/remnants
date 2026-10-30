@@ -71,6 +71,13 @@ public partial class ColonyScreen : Node3D
         }
         if (DebugCapture.HasFlag("--cyber-demo") && IsFreshGame) RunCyberDemo();
         if (DebugCapture.HasFlag("--world-demo") && IsFreshGame) RunWorldDemo();
+        if (DebugCapture.HasFlag("--garage-demo") && IsFreshGame) RunGarageDemo();
+        if (DebugCapture.HasFlag("--expedition"))
+        {
+            if (DebugCapture.HasFlag("--garage-demo")) _town.Select(null);
+            if (DebugCapture.Value("--zone") is { } planZone) _hud.Expedition.PlanFor(planZone);
+            if (DebugCapture.Value("--vehicle") is { } pickTier) _hud.Expedition.PickVehicle(pickTier);
+        }
         if (DebugCapture.HasFlag("--night-demo") && IsFreshGame) RunNightDemo();
         if (int.TryParse(DebugCapture.Value("--hour"), out var hour)) JumpToHour(hour);
         // `--anim-demo=colony` (with --demo): close on the Woodcutter and Farm so the work loops read (FrameRecorder).
@@ -147,6 +154,55 @@ public partial class ColonyScreen : Node3D
         var adults = sim.State.Survivors.Where(s => !s.IsChild).Take(2)
             .Select(s => new ExpeditionMember(s.Id, new() { [Remnants.Core.Items.EquipSlot.Weapon] = "pipe" })).ToList();
         if (_session.Execute(new LaunchExpedition("suburb_ruins", adults)).Ok) _session.FastForward(10, _ => false);
+    }
+
+    /// <summary>
+    /// Debug (screenshots of vehicles): a Garage at level 3 with a mechanic and parts of every quality, a buggy with
+    /// tyres, a muffler and headlights (one part worn), a truck and the handcart; the Garage selected with the buggy and a
+    /// cargo-rack preview open, and fuel in the stores. With <c>--expedition</c> the planner can then pick a vehicle
+    /// (<c>--vehicle=TIER</c>).
+    /// </summary>
+    private void RunGarageDemo()
+    {
+        var sim = _session.Sim;
+        foreach (var res in sim.Data.Resources.Keys) sim.State.Stockpile.Add(res, 400);
+        sim.State.KnownBlueprints.UnionWith(sim.Data.Vehicles.Upgrades.Select(u => u.Schematic).OfType<string>());
+        sim.State.KnownBlueprints.UnionWith(["sch_garage_2", "sch_garage_3", "sch_buggy", "sch_truck", "sch_motorbike", "sch_small_engine", "sch_biofuel_still"]);
+        var hall = sim.State.Buildings.First(b => b.DefId == sim.Data.Rules.TownHallBuildingId).Id;
+        _session.Execute(new Upgrade(hall));
+        _session.Execute(new Upgrade(hall));
+        if (_session.Execute(new Construct("garage", 8)).EntityId is not { } garage) return;
+        _session.Execute(new Upgrade(garage));
+        _session.Execute(new Upgrade(garage));
+        _session.Execute(new Construct("fuel_still", 9));
+        foreach (var (item, n) in new[] { ("wheel@fine", 4), ("wheel", 6), ("wheel@crude", 2), ("spare_parts", 5), ("spare_parts@fine", 2),
+                     ("armor_plate", 5), ("chassis_frame@crude", 1), ("engine_small", 1), ("fuel_can", 2) })
+            sim.State.Inventory.Add(item, n);
+        var mechanic = sim.State.Survivors.First(s => !s.IsChild);
+        mechanic.Set(Remnants.Core.Survivors.Skill.Mechanics, 40);
+        _session.Execute(new AssignJob(mechanic.Id, garage));
+        _session.Execute(new QueueRecipe(garage, "build_motorbike"));
+        // Debug only: the vehicles a few weeks of work would have built.
+        var buggy = VehicleDemo(sim, "buggy", "Dust Devil");
+        var truck = VehicleDemo(sim, "truck", "Old Faithful");
+        _session.Execute(new FitUpgrade(buggy.Id, "offroad_tyres"));
+        _session.Execute(new FitUpgrade(buggy.Id, "muffler"));
+        _session.Execute(new FitUpgrade(buggy.Id, "headlights"));
+        _session.Execute(new FitUpgrade(truck.Id, "armor_plates"));
+        buggy.Upgrades.First(u => u.UpgradeId == "muffler").Condition = 0.45;
+        buggy.Condition *= 0.7;
+        truck.Condition *= 0.4;
+        _session.FastForward(6, _ => false);
+        _town.Select(garage);
+        _hud.Garage.Focus(buggy.Id, "cargo_rack");
+        _session.SetSpeed(0);
+    }
+
+    private static Vehicle VehicleDemo(ColonySim sim, string tier, string name)
+    {
+        var v = new Vehicle { Id = sim.State.NextVehicleId++, TierId = tier, Name = name, Condition = sim.Data.VehicleTiers[tier].MaxCondition };
+        sim.State.Vehicles.Add(v);
+        return v;
     }
 
     /// <summary>Debug: build a farm and woodcutter, put the adults to work and open the panels (for screenshots).</summary>
@@ -446,6 +502,7 @@ public partial class ColonyScreen : Node3D
             _hud.MedBay.Show(id);
             _hud.Production.Show(id);
             _hud.Study.Show(id);
+            _hud.Garage.Show(id);
         };
         _hud.Building.Closed += () => _town.Select(null);
         _hud.Roster.SelectionChanged += id => _walkers.SelectedSurvivorId = id;

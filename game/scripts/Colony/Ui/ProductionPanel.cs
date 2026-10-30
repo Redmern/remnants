@@ -179,7 +179,9 @@ public partial class ProductionPanel : PanelContainer
     }
 
     private static string Output(ColonySim sim, RecipeDef r) =>
-        r.Item is { } item ? $"{r.Amount:0} {sim.Scavenge?.Items.GetValueOrDefault(item)?.Name ?? item}" : $"{r.Amount:0.#} {sim.Data.Resources[r.Resource!].Name}";
+        r.Item is { } item ? $"{r.Amount:0} {sim.Scavenge?.Items.GetValueOrDefault(item)?.Name ?? item}"
+        : r.Vehicle is { } tier ? $"a {sim.Data.VehicleTiers[tier].Name}"
+        : $"{r.Amount:0.#} {sim.Data.Resources[r.Resource!].Name}";
 
     private static string RecipeInfo(ColonySim sim, Building building, RecipeDef r)
     {
@@ -208,5 +210,5 @@ public partial class ProductionPanel : PanelContainer
     private static Texture2D OutputIcon(ColonySim sim, RecipeDef r) =>
         r.Item is { } item && sim.Scavenge?.Items.GetValueOrDefault(item) is { } def
             ? Icons.Item(def.DefinedId, def.Kind.ToString(), 18)
-            : Icons.Resource(r.Resource ?? "", 18);
+            : r.Vehicle is not null ? Icons.Get("ui_vehicle", 18) : Icons.Resource(r.Resource ?? "", 18);
 }

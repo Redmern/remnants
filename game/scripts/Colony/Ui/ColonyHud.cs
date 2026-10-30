@@ -27,6 +27,7 @@ public partial class ColonyHud : CanvasLayer
     public ProductionPanel Production { get; }
     public StudyPanel Study { get; }
     public InventoryPanel Inventory { get; }
+    public GaragePanel Garage { get; }
     public AfterActionDialog Report { get; }
     public Toasts Toasts { get; } = new();
     public PauseMenu Pause { get; }
@@ -74,8 +75,10 @@ public partial class ColonyHud : CanvasLayer
         var floating = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
         Inventory = new InventoryPanel(session);
         Expedition = new ExpeditionPanel(session);
+        Garage = new GaragePanel(session);
         floating.AddChild(Inventory);
         floating.AddChild(Expedition);
+        floating.AddChild(Garage);
         center.AddChild(floating);
 
         var right = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(360, 0) };
@@ -163,6 +166,7 @@ public partial class ColonyHud : CanvasLayer
         Cybernetics.Refresh();
         Inventory.Refresh();
         Expedition.Refresh();
+        Garage.Refresh();
         WorldMap.Refresh();
         Story.Refresh();
         if (BuildMenu.Visible) BuildMenu.Refresh();

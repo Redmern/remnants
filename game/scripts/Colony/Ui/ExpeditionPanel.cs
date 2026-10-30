@@ -16,7 +16,9 @@ namespace Remnants.Game.Colony.Ui;
 /// colony inventory and the field profile that gear gives them (movement mode, AP, attacks). While a party is out it
 /// shows who and where they are (on the road, in the zone, heading home) and offers to play (or resume) the mission
 /// once they have arrived, or to take the party online (Online / Co-op: the multiplayer menu brings exactly these
-/// survivors and their gear; launched under the same rules, rations included). Core validates the launch.
+/// survivors and their gear; launched under the same rules, rations included). The vehicle picker shows what each colony
+/// vehicle makes of the trip (days, fuel, seats, cargo, noise, and every speed term), or why it cannot go. Core validates
+/// the launch.
 /// </summary>
 public partial class ExpeditionPanel : PanelContainer
 {
@@ -36,6 +38,9 @@ public partial class ExpeditionPanel : PanelContainer
     private readonly TextureRect _arrivalIcon = new() { StretchMode = TextureRect.StretchModeEnum.KeepCentered, CustomMinimumSize = new Vector2(22, 22) };
     private readonly Label _arrival = Ui.Label();
     private readonly Label _arrivalNote = Ui.Label(color: Ui.Muted);
+    private readonly OptionButton _vehicle = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, ClipText = true, FitToLongestItem = false };
+    private readonly RichTextLabel _vehicleInfo = Ui.Rich();
+    private readonly List<int?> _vehicleIds = new();
 
     /// <summary>The wait choices, in the order of <see cref="_wait"/>: go now, or wait for a phase.</summary>
     private static readonly DayPhase?[] WaitChoices = [null, DayPhase.Dawn, DayPhase.Day, DayPhase.Dusk, DayPhase.Night];
@@ -92,6 +97,10 @@ public partial class ExpeditionPanel : PanelContainer
         zoneRow.AddChild(Widgets.IconButton("ui_world_map", "World map", "Open the world map", () => WorldMapPressed?.Invoke()));
         planner.AddChild(zoneRow);
         planner.AddChild(_zoneInfo);
+        planner.AddChild(Widgets.SectionHeader("Vehicle", "ui_vehicle"));
+        _vehicle.TooltipText = "Drive a colony vehicle: faster on the road and fewer rations, but it burns fuel, its seats cap the party and it is loud on arrival. It parks at the zone's edge as an extraction point and a stash.";
+        planner.AddChild(_vehicle);
+        planner.AddChild(_vehicleInfo);
         planner.AddChild(Widgets.SectionHeader("Arrival", "stat_time"));
         var arrivalRow = Widgets.Row(6);
         arrivalRow.AddChild(_arrivalIcon);
@@ -127,6 +136,7 @@ public partial class ExpeditionPanel : PanelContainer
         planner.AddChild(launchRow);
 
         _zone.ItemSelected += _ => RefreshZone();
+        _vehicle.ItemSelected += _ => RefreshSummary();
         _wait.ItemSelected += _ => RefreshSummary();
     }
 
@@ -235,6 +245,64 @@ public partial class ExpeditionPanel : PanelContainer
         sim.State.Present.Where(s => !s.IsChild && s.PatientAtBuildingId is null && s.Pregnancy is null).OrderBy(s => s.Id);
 
     private string? SelectedZone => _zone.Selected >= 0 && _zone.Selected < _zoneIds.Count ? _zoneIds[_zone.Selected] : null;
+
+    private int? SelectedVehicle => _vehicle.Selected >= 0 && _vehicle.Selected < _vehicleIds.Count ? _vehicleIds[_vehicle.Selected] : null;
+
+    /// <summary>Debug / screenshots: pick a vehicle by tier.</summary>
+    public void PickVehicle(string tierId)
+    {
+        RefreshVehicles(_session.Sim);
+        var v = _session.Sim.State.Vehicles.Find(x => x.TierId == tierId && !x.Away);
+        if (v is null) return;
+        _vehicle.Select(_vehicleIds.IndexOf(v.Id));
+        RefreshSummary();
+    }
+
+    /// <summary>The picker: on foot, then every vehicle at home (broken ones listed but disabled).</summary>
+    private void RefreshVehicles(ColonySim sim)
+    {
+        var home = sim.State.Vehicles.Where(v => !v.Away).OrderByDescending(v => sim.Data.VehicleTiers[v.TierId].Tier).ThenBy(v => v.Id).ToList();
+        var ids = new List<int?> { null };
+        ids.AddRange(home.Select(v => (int?)v.Id));
+        var labels = new List<string> { "On foot" };
+        labels.AddRange(home.Select(v => $"{v.Name}  ({sim.Data.VehicleTiers[v.TierId].Name}, {v.Condition:0}/{sim.VehicleStats(v).MaxCondition:0})"));
+        if (ids.SequenceEqual(_vehicleIds) && Enumerable.Range(0, labels.Count).All(i => i < _vehicle.ItemCount && _vehicle.GetItemText(i) == labels[i])) return;
+        var selected = SelectedVehicle;
+        _vehicleIds.Clear();
+        _vehicleIds.AddRange(ids);
+        _vehicle.Clear();
+        for (var i = 0; i < ids.Count; i++)
+        {
+            _vehicle.AddIconItem(Icons.Get(i == 0 ? "stat_move" : "ui_vehicle", 16, "ui_expedition"), labels[i]);
+            if (ids[i] is { } vid && sim.FindVehicle(vid) is { } v && Remnants.Core.Colony.VehicleRules.Broken(sim.Data, v))
+                _vehicle.SetItemDisabled(i, true);
+        }
+        _vehicle.Select(Math.Max(0, _vehicleIds.IndexOf(selected)));
+    }
+
+    /// <summary>The trip by the chosen vehicle: days each way (vs on foot), fuel, seats, cargo, noise and the speed terms.</summary>
+    private void RefreshVehicleInfo(ColonySim sim, string zoneId)
+    {
+        var walk = sim.PlanTravel(zoneId);
+        if (SelectedVehicle is not { } id || sim.FindVehicle(id) is not { } v)
+        {
+            _vehicleInfo.Text = $"On foot: {ColonyText.Trip(walk.Days)} each way, no fuel, no stash at the edge.";
+            return;
+        }
+        var plan = sim.PlanTravel(zoneId, id);
+        var stats = sim.VehicleStats(v);
+        var fuelId = sim.Data.Vehicles.FuelResource;
+        var have = sim.State.Stockpile.Get(fuelId);
+        var bad = Ui.Hex(Ui.Bad);
+        var lines = new List<string>();
+        if (plan.Blocked is { } why) lines.Add($"[color=#{bad}]{why}[/color]");
+        var faster = walk.Days > 0 ? $" (on foot {ColonyText.Trip(walk.Days)})" : "";
+        lines.Add($"[b]{ColonyText.Trip(plan.Days)}[/b] each way{faster} · fuel [color=#{Ui.Hex(have + 1e-9 >= plan.FuelRoundTrip ? Ui.Good : Ui.Bad)}]{plan.FuelRoundTrip:0}[/color] (have {have:0})");
+        lines.Add($"Seats {(stats.Seats is { } s ? s.ToString() : "any")} · cargo {stats.CargoKg:0} kg · noise {stats.Noise * 100:0}% more Husks{(stats.SmokeLauncher ? " (smoke: none)" : "")} · condition {v.Condition:0}/{stats.MaxCondition:0}");
+        if (plan.Terms.Count > 0)
+            lines.Add("[color=#999]" + string.Join(" · ", plan.Terms.Select(t => $"{t.Label} ×{t.SpeedMultiplier:0.##}")) + "[/color]");
+        _vehicleInfo.Text = string.Join("\n", lines);
+    }
 
     private void RefreshZone()
     {
@@ -379,14 +447,24 @@ public partial class ExpeditionPanel : PanelContainer
     private void RefreshSummary()
     {
         var sim = _session.Sim;
-        var perMember = SelectedZone is { } zoneId ? sim.ZoneInfo(zoneId).RationsPerMember : sim.Data.Rules.Expedition.RationFoodPerMember;
-        if (SelectedZone is { } zid) perMember += RefreshArrival(sim, zid);
+        RefreshVehicles(sim);
+        var perMember = SelectedZone is { } zoneId
+            ? WorldMap.RationsPerMember(sim.Data, sim.PlanTravel(zoneId, SelectedVehicle).Days)
+            : sim.Data.Rules.Expedition.RationFoodPerMember;
+        if (SelectedZone is { } zid)
+        {
+            perMember += RefreshArrival(sim, zid);
+            RefreshVehicleInfo(sim, zid);
+        }
         var food = perMember * _picked.Count;
-        var cap = Math.Max(sim.MaxPartySize, MissionId is { } m ? sim.Story?.Mission(m)?.MaxParty ?? 0 : 0);
+        // A story mission sets its own party size and goes on foot; otherwise the vehicle's seats cap the Town Hall's party.
+        var cap = MissionId is { } m ? Math.Max(sim.MaxPartySize, sim.Story?.Mission(m)?.MaxParty ?? 0) : sim.MaxPartySizeWith(SelectedVehicle);
+        var capNote = MissionId is null && cap < sim.MaxPartySize ? $", {cap} seats" : "";
         var mission = MissionId is { } mid && sim.Story?.Mission(mid) is { } md ? $"Mission: {md.Name} · " : "";
-        _partyInfo.Text = $"{mission}Party {_picked.Count}/{cap} (Town Hall L{sim.TownHallLevel}) · rations {food:0} food " +
+        _partyInfo.Text = $"{mission}Party {_picked.Count}/{cap} (Town Hall L{sim.TownHallLevel}{capNote}) · rations {food:0} food " +
                           $"(have {sim.State.Stockpile.Get(sim.Data.Rules.Food.ResourceId):0}) · away members don't eat at home";
-        _launch.Disabled = _launchOnline.Disabled = _picked.Count == 0;
+        _launch.Disabled = _launchOnline.Disabled = _picked.Count == 0 || _picked.Count > cap
+                                                    || SelectedZone is { } z && sim.PlanTravel(z, SelectedVehicle).Blocked is not null;
         var data = sim.Scavenge!;
         var signature = string.Join(",", sim.State.Inventory.Counts.Select(kv => $"{kv.Key}:{kv.Value}"));
         if (signature == _inventoryShown) return;
@@ -409,7 +487,7 @@ public partial class ExpeditionPanel : PanelContainer
     /// <summary>When the party would arrive and what that phase means in the field; returns the wait's extra food per member.</summary>
     private float RefreshArrival(ColonySim sim, string zoneId)
     {
-        var plan = sim.PlanArrival(zoneId, WaitFor);
+        var plan = sim.PlanArrival(zoneId, WaitFor, SelectedVehicle);
         var rules = sim.Data.Rules;
         var (icon, color) = TopBar.PhaseLook(plan.Phase);
         _arrivalIcon.Texture = Icons.Get(icon, 20, "stat_time");
@@ -435,7 +513,7 @@ public partial class ExpeditionPanel : PanelContainer
             .ToList();
         IColonyCommand command = MissionId is { } missionId
             ? new Remnants.Core.Story.LaunchStoryMission(missionId, members)
-            : new LaunchExpedition(zoneId, members, WaitFor);
+            : new LaunchExpedition(zoneId, members, WaitFor, SelectedVehicle);
         if (!_session.Execute(command).Ok) return;
         _wait.Select(0);
         MissionId = null;

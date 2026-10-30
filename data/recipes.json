@@ -73,6 +73,7 @@
   { "id": "network_leg",       "name": "Network-grade Leg",    "building": "electronics_lab", "minLevel": 3, "work": 40, "inputs": { "electronics": 6 }, "itemInputs": { "linked_core": 2, "neural_link": 1, "myomer_bundle": 2, "power_cell": 2 }, "item": "network_leg", "minSkill": 40 },
   { "id": "network_eye",       "name": "Network-grade Eye",    "building": "electronics_lab", "minLevel": 3, "work": 34, "inputs": { "electronics": 5 }, "itemInputs": { "linked_core": 1, "neural_link": 1, "power_cell": 1 }, "item": "network_eye", "minSkill": 40 },
   { "id": "biofuel",        "name": "Biofuel",         "building": "fuel_still", "minLevel": 1, "work": 6,  "inputs": { "food": 5 },  "resource": "fuel", "amount": 3 },
+  { "id": "spirits",        "name": "Spirits",         "building": "fuel_still", "minLevel": 1, "work": 8,  "inputs": { "food": 6 },  "resource": "alcohol", "amount": 2 },
   { "id": "wood_gas",       "name": "Wood Gas Fuel",   "building": "fuel_still", "minLevel": 2, "work": 8,  "inputs": { "wood": 8 },  "resource": "fuel", "amount": 3 },
   { "id": "wheel",          "name": "Wheel",           "building": "garage", "minLevel": 1, "work": 6,  "inputs": { "wood": 4, "scrap": 4 },  "item": "wheel" },
   { "id": "spare_parts",    "name": "Spare Parts",     "building": "garage", "minLevel": 1, "work": 5,  "inputs": { "scrap": 5 },             "item": "spare_parts" },

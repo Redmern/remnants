@@ -54,7 +54,7 @@
     { "id": "combat",   "name": "Combat",   "icon": "combat",  "studyAt": "town_hall",       "description": "Shooting, close quarters and holding a position." },
     { "id": "survival", "name": "Survival", "icon": "scout",   "studyAt": "town_hall",       "description": "Scouting, moving unseen, carrying and finding more." },
     { "id": "medic",    "name": "Medic",    "icon": "medic",   "studyAt": "town_hall",       "description": "Patching people up in the field and at the Med Bay." },
-    { "id": "mechanics", "name": "Mechanics", "icon": "craft", "studyAt": "garage", "description": "Vehicles: cheaper repairs, tuned engines." }
+    { "id": "mechanics", "name": "Mechanics", "icon": "mechanics", "studyAt": "garage", "description": "Vehicles: cheaper repairs, tuned engines." }
   ],
 
   "perks": [
