@@ -57,24 +57,28 @@ public static class WorldMap
     /// <summary>
     /// The travel planner: a trip to (or, <paramref name="homeward"/>, back from) a zone setting out at
     /// <paramref name="departTick"/>, as the base time and the terms on it from every source in <see cref="TravelTerms"/>.
+    /// A party's vehicle adds its own terms on top (<see cref="VehicleRules.Plan"/>).
     /// </summary>
     public static TravelPlan Travel(ColonySim sim, ZoneDef zone, long departTick, bool homeward = false) =>
         new(TravelTicks(sim.Data, zone), TravelTerms.Select(t => t(sim, zone, departTick, homeward)).OfType<TravelModifier>().ToList());
 
     /// <summary>
-    /// Sources of travel terms, each independent of the others (weather; a vehicle's speed goes here too). A source returns
-    /// null when it changes nothing for this trip.
+    /// Sources of travel terms, each independent of the others (weather). A source returns null when it changes nothing for
+    /// this trip. The vehicle's terms depend on the party's vehicle, so <see cref="VehicleRules.Plan"/> adds them.
     /// </summary>
     public static readonly IReadOnlyList<Func<ColonySim, ZoneDef, long, bool, TravelModifier?>> TravelTerms =
     [
         Weather.TravelTerm,
     ];
 
-    /// <summary>Food per member: the base ration plus the per-day ration for the trip out and back.</summary>
-    public static double RationsPerMember(GameData data, ZoneDef zone)
+    /// <summary>Food per member: the base ration plus the per-day ration for the trip out and back (on foot).</summary>
+    public static double RationsPerMember(GameData data, ZoneDef zone) => RationsPerMember(data, zone.TravelDays);
+
+    /// <summary>Food per member for a trip of <paramref name="oneWayDays"/> each way (a vehicle makes it shorter).</summary>
+    public static double RationsPerMember(GameData data, double oneWayDays)
     {
         var rules = data.Rules.Expedition;
-        return rules.RationFoodPerMember + rules.RationFoodPerMemberPerDay * zone.TravelDays * 2;
+        return rules.RationFoodPerMember + rules.RationFoodPerMemberPerDay * oneWayDays * 2;
     }
 
     public static LinkedPresence Presence(ScavengeData data, ZoneDef zone)
@@ -127,6 +131,14 @@ public static class WorldMap
         scavenge.Items.Values.Where(i => i.Drone is not null && state.Inventory.Has(i.Id)).Select(i => i.Id)
             .OrderBy(id => id, StringComparer.Ordinal).FirstOrDefault();
 
+    /// <summary>
+    /// How far out a scouting drone reaches: its battery (<see cref="DroneScoutRules.MaxTravelDays"/>), plus the best
+    /// <see cref="Data.VehicleTierDef.DroneRangeDays"/> of a working vehicle at home, which drives it out to launch.
+    /// </summary>
+    public static double DroneReachDays(ColonySim sim) =>
+        sim.Scavenge!.Rules.World.DroneScout.MaxTravelDays
+        + sim.State.Vehicles.Where(v => !v.Away && !VehicleRules.Broken(sim.Data, v))
+            .Select(v => VehicleRules.Stats(sim.Data, v).DroneRangeDays).DefaultIfEmpty(0).Max();
     /// <summary>Why a scout drone cannot fly to the zone now (a dust storm or heavy rain at home or over it), or null.</summary>
     public static string? DronesGrounded(ColonySim sim, ZoneDef zone)
     {
@@ -166,8 +178,9 @@ public static class WorldMap
         if (intel == ZoneIntel.Unknown) return CommandResult.Fail(CommandError.ZoneUnknown, "Nobody knows where that is to send a drone.");
         if (intel == ZoneIntel.Scouted || state.DroneFlights.Any(f => f.ZoneId == zone.Id && !f.Arrived))
             return CommandResult.Fail(CommandError.AlreadyScouted, $"{zone.Name} is already scouted.");
-        if (zone.TravelDays > rules.MaxTravelDays + 1e-9)
-            return CommandResult.Fail(CommandError.OutOfDroneRange, $"{zone.Name} is beyond a drone's battery ({rules.MaxTravelDays:0.#} days out).");
+        var reach = DroneReachDays(sim);
+        if (zone.TravelDays > reach + 1e-9)
+            return CommandResult.Fail(CommandError.OutOfDroneRange, $"{zone.Name} is beyond a drone's battery ({reach:0.#} days out).");
         if (DroneItem(state, scavenge) is not { } item) return CommandResult.Fail(CommandError.NoDrone, "There is no scout drone in the stores.");
         if (DronesGrounded(sim, zone) is { } why) return CommandResult.Fail(CommandError.DronesGrounded, why);
         Survivor? pilot = null;

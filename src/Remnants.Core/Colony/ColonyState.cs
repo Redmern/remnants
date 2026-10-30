@@ -59,6 +59,9 @@ public sealed class ColonyState
     /// next tier needs one of its requirements in here.
     /// </summary>
     public SortedSet<string> KnownCybernetics { get; set; } = new(StringComparer.Ordinal);
+    /// <summary>The colony's vehicles (see <see cref="VehicleRules"/>), at home or out with the party.</summary>
+    public List<Vehicle> Vehicles { get; set; } = new();
+    public int NextVehicleId { get; set; } = 1;
     /// <summary>The weather's seed and the spells worked out so far (see <see cref="Colony.Weather"/>).</summary>
     public WeatherState Weather { get; set; } = new();
 

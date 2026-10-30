@@ -112,10 +112,9 @@ public static class Power
     public static double SolarWeatherFactor(ColonyState state, GameData data) => 1;
 
     /// <summary>
-    /// Vehicles adapter: charge work per tick a powered parked vehicle adds to the charging bench (0 until the vehicles
-    /// feature reports one here).
+    /// Vehicles adapter: charge work per tick the vehicles at home add to the charging bench (their solar chargers).
     /// </summary>
-    public static double VehicleChargeRate(ColonyState state, GameData data) => 0;
+    public static double VehicleChargeRate(ColonyState state, GameData data) => VehicleRules.ChargeRate(state, data);
 
     /// <summary>The grid's parts for the overlay and the top bar.</summary>
     public static List<PowerNode> Nodes(ColonyState state, GameData data)

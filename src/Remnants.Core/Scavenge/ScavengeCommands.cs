@@ -43,10 +43,13 @@ public sealed record TakeAll(int PlayerId, int UnitId, int CacheId) : IScavengeC
 /// <summary>Drop a carried item on the unit's tile.</summary>
 public sealed record DropItem(int PlayerId, int UnitId, string ItemId) : IScavengeCommand;
 
-/// <summary>Stash a carried item in the parked vehicle, or on the exit tile the unit stands on (it waits there for the next run).</summary>
+/// <summary>
+/// Stash a carried item: into the party's parked vehicle next to the unit (it goes home with the vehicle), else on the exit
+/// tile the unit stands on (it waits there for the next run).
+/// </summary>
 public sealed record StashItem(int PlayerId, int UnitId, string ItemId) : IScavengeCommand;
 
-/// <summary>Work an adjacent salvage node: AP and noise; every few actions a lot comes off into the pack.</summary>
+/// <summary>Work an adjacent salvage node (a wrecked car gives vehicle parts too): AP and noise; every few actions a lot comes off into the pack.</summary>
 public sealed record Salvage(int PlayerId, int UnitId, int NodeId) : IScavengeCommand;
 
 /// <summary>Talk an adjacent NPC survivor into following the unit to the exit.</summary>
@@ -55,8 +58,11 @@ public sealed record Recruit(int PlayerId, int UnitId, int NpcId) : IScavengeCom
 /// <summary>Wait: end this unit's turn, forfeiting remaining AP.</summary>
 public sealed record EndTurn(int PlayerId, int UnitId) : IScavengeCommand;
 
-/// <summary>Leave the map from an exit tile, taking nearby followers along.</summary>
+/// <summary>Leave the map from an exit tile or next to the side's parked vehicle, taking nearby followers along.</summary>
 public sealed record Extract(int PlayerId, int UnitId) : IScavengeCommand;
+
+/// <summary>Take an item back out of the party's vehicle next to the unit (needs a mobile workbench on it).</summary>
+public sealed record TakeFromStash(int PlayerId, int UnitId, string ItemId) : IScavengeCommand;
 
 /// <summary>Co-op: offer an alliance to another player whose party and yours can see each other. Free; on your turn.</summary>
 public sealed record ProposeAlliance(int PlayerId, int UnitId, int ToPlayerId) : IScavengeCommand;
@@ -174,6 +180,10 @@ public enum ScavengeError
     ChoicePending,
     /// <summary>No such prompt is waiting.</summary>
     NoPrompt,
+    /// <summary>The parked vehicle's stash is at its cargo limit.</summary>
+    CargoFull,
+    /// <summary>Salvage: no wreck there, or it was stripped already.</summary>
+    NothingToSalvage,
     DroneGrounded,
     /// <summary>Salvage: no such node, or nothing left on it.</summary>
     UnknownNode,

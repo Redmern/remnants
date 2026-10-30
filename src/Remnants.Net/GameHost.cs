@@ -131,6 +131,7 @@ public sealed class GameHost : IHostSink, TradeDesk.IVenue
         public string Name = "";
         public string Token = "";
         public List<PartyMember> Party = new();
+        public FieldVehicle? Vehicle;
         public bool Ready;
         public IConnection? Connection;
         public DateTimeOffset? LeftAt;
@@ -250,6 +251,7 @@ public sealed class GameHost : IHostSink, TradeDesk.IVenue
             Name = name.Length > 24 ? name[..24] : name,
             Token = Convert.ToHexString(RandomNumberGenerator.GetBytes(16)),
             Party = join.Party,
+            Vehicle = join.Vehicle,
             Connection = connection,
         };
         seat.Fog = new SideFog(seat.PlayerId, Unit.PlayerSide(seat.PlayerId));
@@ -278,6 +280,14 @@ public sealed class GameHost : IHostSink, TradeDesk.IVenue
             foreach (var id in m.Pack ?? [])
                 if (!_data.Items.ContainsKey(id)) return $"{m.Survivor.Name}: unknown item '{id}'.";
         }
+        if (join.Vehicle is { } v)
+        {
+            var limits = _data.Rules.Vehicle;
+            if (v.Seats is { } seats && join.Party.Count > seats) return $"The {v.Name} seats {seats}, not {join.Party.Count}.";
+            if (v.MaxHp is <= 0 || v.MaxHp > limits.MaxHp || v.Hp > v.MaxHp || v.CargoKg is < 0 || v.CargoKg > limits.MaxCargoKg || v.Armor < 0
+                || v.DamageMultiplier is < 0 or > 1 || v.TurretDamage < 0 || v.TurretDamage > limits.MaxTurretDamage || v.TurretRange is < 0 or > 12)
+                return $"The {v.Name} does not add up (HP, cargo or armor out of range).";
+        }
         return null;
     }
 
@@ -298,7 +308,7 @@ public sealed class GameHost : IHostSink, TradeDesk.IVenue
         try
         {
             Sim = NewScavenge.Create(_data, Options.ZoneId, Options.Seed,
-                _seats.Select(s => new PartySetup(s.PlayerId, s.Party, s.StartTeam(Options.Mode), s.Name)).ToList(),
+                _seats.Select(s => new PartySetup(s.PlayerId, s.Party, s.StartTeam(Options.Mode), s.Name) { Vehicle = s.Vehicle }).ToList(),
                 new ZoneConditions(Environment: Options.MissionEnvironment(_data)));
         }
         catch (ArgumentException e)

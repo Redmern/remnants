@@ -4,7 +4,7 @@ using Remnants.Core.Serialization;
 
 namespace Remnants.Core.Data;
 
-/// <summary>Loads definitions from the data/ folder (resources.json, jobs.json, buildings.json, rules.json, recipes.json, perks.json, cybernetics.json, schematics.json, weather.json, food.json, electronics.json, gear_mods.json, medicine.json).</summary>
+/// <summary>Loads definitions from the data/ folder (resources.json, jobs.json, buildings.json, rules.json, recipes.json, perks.json, cybernetics.json, schematics.json, weather.json, food.json, electronics.json, vehicles.json, gear_mods.json, medicine.json).</summary>
 public static class GameDataLoader
 {
     public static GameData LoadFromDirectory(string directory)
@@ -20,7 +20,8 @@ public static class GameDataLoader
 
         return LoadFromJson(Read("resources.json"), Read("jobs.json"), Read("buildings.json"), Read("rules.json"), Read("recipes.json"),
             Optional("perks.json"), Optional("cybernetics.json"), Optional("weather.json"), Optional("food.json"), Optional("electronics.json"),
-            Optional("gear_mods.json"), Optional("medicine.json"), SchematicCatalogLoader.Files(directory).Select(File.ReadAllText).ToArray());
+            Optional("gear_mods.json"), Optional("medicine.json"), SchematicCatalogLoader.Files(directory).Select(File.ReadAllText).ToArray(),
+            vehicles: Optional("vehicles.json"));
     }
 
     /// <summary>
@@ -39,9 +40,13 @@ public static class GameDataLoader
         string? cybernetics, string? weather, string? food, string? electronics, string? gearMods, string[] schematics) =>
         LoadFromJson(resources, jobs, buildings, rules, recipes, perks, cybernetics, weather, food, electronics, gearMods, medicine: null, schematics);
 
-    /// <summary>As above, with medicine.json (optional: without it, no conditions and no auto-treatment).</summary>
+    /// <summary>
+    /// As above, with medicine.json (optional: without it, no conditions and no auto-treatment) and vehicles.json (optional:
+    /// without it, no vehicles and every party walks).
+    /// </summary>
     public static GameData LoadFromJson(string resources, string jobs, string buildings, string rules, string recipes, string? perks,
-        string? cybernetics, string? weather, string? food, string? electronics, string? gearMods, string? medicine, string[] schematics)
+        string? cybernetics, string? weather, string? food, string? electronics, string? gearMods, string? medicine, string[] schematics,
+        string? vehicles = null)
     {
         var elec = electronics is null ? null : Parse<ElectronicsDef>(electronics, "electronics");
         return new(
@@ -57,7 +62,8 @@ public static class GameDataLoader
             weather is null ? null : Parse<WeatherRules>(weather, "weather"),
             food is null ? null : Parse<FoodDef>(food, "food"),
             elec,
-            medicine is null ? null : Parse<MedicineDef>(medicine, "medicine"));
+            medicine is null ? null : Parse<MedicineDef>(medicine, "medicine"),
+            vehicles is null ? null : Parse<VehicleData>(vehicles, "vehicles"));
     }
 
     private static T Parse<T>(string json, string name)

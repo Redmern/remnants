@@ -111,10 +111,11 @@ public sealed class NetClient
     public double TurnSecondsLeft(DateTimeOffset now) =>
         Turn is { SecondsLeft: > 0 } t ? Math.Max(0, t.SecondsLeft - (now - _turnReceived).TotalSeconds) : 0;
 
-    public void Join(string name, List<PartyMember> party, string? reconnectToken = null)
+    /// <summary>Take a seat with a party, driving <paramref name="vehicle"/> in if the colony sent one.</summary>
+    public void Join(string name, List<PartyMember> party, string? reconnectToken = null, FieldVehicle? vehicle = null)
     {
         _name = name;
-        _transport.Send(new Join(Protocol.Version, name, party, reconnectToken));
+        _transport.Send(new Join(Protocol.Version, name, party, reconnectToken, vehicle));
     }
 
     /// <summary>

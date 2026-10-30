@@ -104,6 +104,7 @@ public sealed class ScavengeData
         LootWarnings = warnings;
         Validate();
         ValidateCybernetics();
+        ValidateSalvage();
         if (Electronics is not null) ElectronicsValidation.Validate(Electronics, this);
         GearMods?.Validate(index, this);
         FieldSalvage.Validate(this);
@@ -251,6 +252,16 @@ public sealed class ScavengeData
             if (!result.TryAdd(key, item)) throw new GameDataException($"Duplicate {kind} id '{key}'.");
         }
         return result;
+    }
+
+    /// <summary>The salvage table names items, so it is checked after everything else.</summary>
+    private void ValidateSalvage()
+    {
+        foreach (var e in Rules.Salvage.Table)
+            if (!Items.TryGetValue(e.Item, out var part) || e.Weight <= 0 || e.MinTier < 1)
+                throw new GameDataException($"Scavenge rules: salvage entry '{e.Item}' needs a known item, a positive weight and minTier ≥ 1.");
+        foreach (var q in Rules.Salvage.QualityByLootTier)
+            if (Rules.Quality.Count > 0 && Rules.Quality.All(t => t.Id != q)) throw new GameDataException($"Scavenge rules: salvage quality '{q}' is not a quality tier.");
     }
 
     private void Validate()

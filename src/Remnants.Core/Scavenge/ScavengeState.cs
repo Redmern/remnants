@@ -34,10 +34,11 @@ public enum ScavengeEventType
     RelayDisrupted,
     LimbLocked,
     ObjectiveUpdated, Chatter, MissionPrompt, MissionEnded,
+    Stashed, VehicleHit, VehicleWrecked, VehicleTurret, Salvaged,
     WeatherChanged, Thunder, Lightning,
     EmpBurst, DecoyDeployed, DecoyGone, NoiseDecoy, DroneHealed, DroneLoaded, DroneFerried, DroneFired, Traced,
     GearModded,
-    LootDropped, ItemDropped, Stashed, SalvageProgress, Salvaged,
+    LootDropped, ItemDropped, SalvageProgress,
 }
 
 /// <summary>
@@ -221,6 +222,11 @@ public sealed class ScavengeState
 
     /// <summary>A story mission's objectives, triggers and chatter (<see cref="MissionRules"/>); null on a plain run.</summary>
     public MissionRun? Mission { get; set; }
+    /// <summary>Parties' parked vehicles: extraction points and loot stashes (<see cref="ParkedVehicles"/>).</summary>
+    public List<ParkedVehicle> Vehicles { get; set; } = new();
+
+    /// <summary>Wrecks already stripped for parts, by the map index of their first tile (<see cref="Salvaging"/>).</summary>
+    public SortedSet<int> SalvagedWrecks { get; set; } = new();
 
     public List<ScavengeEvent> Events { get; set; } = new();
 

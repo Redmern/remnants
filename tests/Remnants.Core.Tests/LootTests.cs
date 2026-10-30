@@ -162,29 +162,6 @@ public class FieldLootTests
     }
 
     [Fact]
-    public void A_registered_vehicle_stash_takes_items_anywhere()
-    {
-        var unit = SurvivorUnit(1, new Pos(2, 2), pack: ["stone"]);
-        var sim = Arena(4, 4, [unit]);
-        var loaded = new List<string>();
-        FieldLoot.VehicleStash = (_, _, id) =>
-        {
-            loaded.Add(id);
-            return true;
-        };
-        try
-        {
-            Assert.True(sim.Execute(new StashItem(1, unit.Id, "stone")).Ok);
-        }
-        finally
-        {
-            FieldLoot.VehicleStash = null;
-        }
-        Assert.Equal(["stone"], loaded);
-        Assert.Empty(unit.Pack);
-    }
-
-    [Fact]
     public void An_exit_stash_waits_in_the_zone_for_the_next_run()
     {
         var sim = LoopTestData.Colony();
@@ -283,6 +260,7 @@ public class SalvageTests
         var room = sim.Profile(worker).CarryCapacity - sim.Profile(worker).Load;
         worker.Pack.AddRange(Enumerable.Repeat("scrap", (int)Math.Floor(room)));
         node.Progress = 1;
+        var parts = FieldSalvage.Extras["wrecked_car"];
         FieldSalvage.Extras["wrecked_car"] = (_, _, _) => ["electronics"];
         try
         {
@@ -290,7 +268,7 @@ public class SalvageTests
         }
         finally
         {
-            FieldSalvage.Extras.Remove("wrecked_car");
+            FieldSalvage.Extras["wrecked_car"] = parts;
         }
         var pile = Assert.Single(sim.State.Caches);
         Assert.Equal(node.Pos, pile.Pos);

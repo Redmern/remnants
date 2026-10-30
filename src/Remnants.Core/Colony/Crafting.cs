@@ -262,6 +262,11 @@ internal static class CraftingSystem
                 made += " and Research Data";
             }
         }
+        else if (recipe.Vehicle is { } tier)
+        {
+            VehicleRules.Built(state, data, tier, building.Id);
+            made = $"a {data.VehicleTiers[tier].Name}";
+        }
         else
         {
             state.Stockpile.Add(recipe.Resource!, recipe.Amount);

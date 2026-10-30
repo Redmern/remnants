@@ -32,6 +32,11 @@ public sealed record BotOptions
     public bool Mods { get; init; } = true;
     /// <summary>Story mode: which option the party bot picks on a field prompt (0 = the first, e.g. talk to the Tally).</summary>
     public int StoryPrompt { get; init; }
+    /// <summary>Build vehicles at the Garage and drive them out (else every party walks).</summary>
+    public bool Vehicles { get; init; } = true;
+
+    /// <summary>Schematics the colony starts with (as if found or traded early), to sweep vehicle tiers.</summary>
+    public IReadOnlyList<string> Schematics { get; init; } = [];
 
     /// <summary>Fight every raid it can on the tactical map (StoryBot plays the defenders) instead of auto-resolving.</summary>
     public bool FightRaids { get; init; }
@@ -50,8 +55,9 @@ public sealed class ColonyBot
         ("farm", 1), ("woodcutter", 1), ("quarry", 1), ("workshop", 1), ("scrapyard", 1), ("med_bay", 1),
         ("farm", 2), ("woodcutter", 2), ("quarry", 2), ("kitchen", 1), ("tailor", 1), ("town_hall", 2), ("radio_mast", 1),
         ("house", 1), ("armory", 1), ("scrapyard", 2), ("workshop", 2), ("farm", 3), ("electronics_lab", 1),
-        ("hunting_lodge", 1), ("smokehouse", 1), ("kitchen", 2),
-        ("tailor", 2), ("med_bay", 2), ("armory", 2), ("woodcutter", 3), ("quarry", 3), ("town_hall", 3), ("house", 2), ("electronics_lab", 2),
+        ("hunting_lodge", 1), ("smokehouse", 1), ("kitchen", 2), ("garage", 1),
+        ("tailor", 2), ("med_bay", 2), ("fuel_still", 1), ("garage", 2), ("armory", 2), ("woodcutter", 3), ("quarry", 3), ("town_hall", 3), ("garage", 3), ("house", 2),
+        ("electronics_lab", 2),
         // Power is a mid-game boost: a generator once the Lab is up and the town is grown, solar and a bank when their schematics turn up.
         ("fuel_generator", 1), ("solar_array", 1), ("battery_bank", 1), ("electronics_lab", 3),
     ];
@@ -67,6 +73,7 @@ public sealed class ColonyBot
     {
         _sim = sim;
         _options = options ?? new BotOptions();
+        foreach (var id in _options.Schematics) _sim.State.Schematics.Known.Add(id);
         Defense = new DefenseBot(sim, this, _options.FightRaids);
     }
 
@@ -129,6 +136,9 @@ public sealed class ColonyBot
             if (level == 1 && def.MinTownHallLevel > _sim.TownHallLevel) continue;
             if (level == 1 && !Remnants.Core.Schematics.Schematics.LevelUnlocked(_sim, id, 1)) continue;
             if (level > 1 && level > _sim.MaxUpgradeLevel(def)) continue;
+            // Vehicle buildings: only with vehicles on, and a level whose schematic is still missing waits.
+            if (id is "garage" or "fuel_still" && !_options.Vehicles) continue;
+            if (!VehicleSchematics.LevelUnlocked(_sim, id, level)) continue;
             if (!Remnants.Core.Schematics.Schematics.LevelUnlocked(_sim, id, level)) continue;
             return (id, level);
         }
@@ -199,6 +209,7 @@ public sealed class ColonyBot
             Queue(armory, "machete");
         if (Find("electronics_lab") is { } bench && bench.Queue.Count == 0) Bench(bench);
         HandleSchematics();
+        if (_options.Vehicles) Garage();
     }
 
     /// <summary>
@@ -240,6 +251,63 @@ public sealed class ColonyBot
         if (State.Radio.Contract is { Accepted: false } contract && _sim.ZoneInfo(contract.ZoneId).Zone.Threat <= 2)
             _sim.Execute(new AcceptContract(contract.Id));
         foreach (var call in State.Radio.Calls.ToList()) _sim.Execute(new AnswerCall(call.Id));
+    }
+
+    // ---- vehicles -------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// The Garage: repair what is broken (spare parts first), then build the next vehicle tier the colony can (parts
+    /// first, one batch at a time), then fit headlights; the still makes fuel while it runs low and food is plentiful.
+    /// </summary>
+    private void Garage()
+    {
+        if (Find("fuel_still") is { } still && still.Queue.Count == 0 && State.Stockpile.Get("fuel") < 40 && _sim.FoodStock > 80)
+            Queue(still, "biofuel");
+        if (Find("garage") is not { } garage) return;
+        foreach (var v in State.Vehicles.Where(v => !v.Away && v.Condition < _sim.VehicleStats(v).MaxCondition * 0.6))
+            if (State.Inventory.Has("spare_parts")) _sim.Execute(new RepairVehicle(v.Id));
+            else if (garage.Queue.Count == 0 && State.Stockpile.Get("scrap") >= 5) Queue(garage, "spare_parts");
+        // Upgrades, in the bot's order of preference, while the stores can spare it (it never takes anything off).
+        foreach (var v in State.Vehicles.Where(v => !v.Away))
+            foreach (var id in UpgradeOrder)
+                if (Data.VehicleUpgrades.TryGetValue(id, out var up) && VehicleRules.CanFit(_sim, v, up) is null
+                    && up.Cost.All(kv => State.Stockpile.Get(kv.Key) >= kv.Value + GoalCost().GetValueOrDefault(kv.Key) + 10))
+                    _sim.Execute(new FitUpgrade(v.Id, id));
+        // Vehicles are a luxury: the Garage only builds while the stores have scrap to spare for the build order.
+        if (garage.Queue.Count > 0 || State.Stockpile.Get("scrap") < GoalCost().GetValueOrDefault("scrap") + 30) return;
+
+        var best = State.Vehicles.Select(v => Data.VehicleTiers[v.TierId].Tier).DefaultIfEmpty(-1).Max();
+        var next = Data.RecipesFor("garage").Where(r => r.Vehicle is { } t && Data.VehicleTiers[t].Tier > best && _sim.CanQueue(garage, r).Ok)
+            .OrderByDescending(r => Data.VehicleTiers[r.Vehicle!].Tier).FirstOrDefault();
+        if (next is null) return;
+        // Parts the build is short of come first, one batch at a time.
+        foreach (var (part, count) in next.ItemInputs)
+            if (Count(part) < count)
+            {
+                if (Data.Recipes.TryGetValue(part, out var r) && _sim.CanQueue(garage, r).Ok && State.Stockpile.CanAfford(r.Inputs)) Queue(garage, part);
+                return;
+            }
+        if (State.Stockpile.CanAfford(next.Inputs)) Queue(garage, next.Id);
+    }
+
+    private static readonly string[] UpgradeOrder =
+    [
+        "headlights", "cargo_rack", "fuel_cans", "muffler", "offroad_tyres", "tuned_engine", "medkit_locker", "winch", "armor_plates", "cage",
+        "trailer", "roof_turret",
+    ];
+
+    /// <summary>
+    /// The vehicle a party of <paramref name="size"/> takes to a zone: the fastest working one whose trip is not blocked and
+    /// whose fuel the colony has, with at least two seats (seats then cap the party). Null = on foot.
+    /// </summary>
+    private Vehicle? PickVehicle(string zoneId)
+    {
+        if (!_options.Vehicles) return null;
+        return State.Vehicles.Where(v => !v.Away && !VehicleRules.Broken(Data, v) && (_sim.VehicleStats(v).Seats ?? 99) >= 2)
+            .Select(v => (Vehicle: v, Plan: _sim.PlanTravel(zoneId, v.Id)))
+            .Where(x => x.Plan.Blocked is null && State.Stockpile.Get(Data.Vehicles.FuelResource) >= x.Plan.FuelRoundTrip)
+            .OrderBy(x => x.Plan.Days).ThenByDescending(x => _sim.VehicleStats(x.Vehicle).CargoKg).ThenBy(x => x.Vehicle.Id)
+            .Select(x => x.Vehicle).FirstOrDefault();
     }
 
     /// <summary>
@@ -587,13 +655,19 @@ public sealed class ColonyBot
                 var zoneId = out_.ZoneId;
                 var names = out_.Members.Select(m => before[m.SurvivorId]).ToList();
                 var injuries = result.Returned.Sum(r => BodyDiff.Describe(State.FindSurvivor(r.Survivor.Id)!.Body, r.Survivor.Body).Count);
+                // The tier before the result is applied: a vehicle lost out there is gone from the colony after.
+                var vehicleName = out_.VehicleId is { } vid ? State.Vehicles.Find(v => v.Id == vid)?.TierId : null;
                 var applied = _sim.Execute(new ApplyExtractionResult(result));
                 var outcome = new ExpeditionOutcome(Day, zoneId, names, result.Returned.Count, result.Deaths.Count,
                     result.Returned.Count(r => r.Evacuated), result.Recruits.Count, injuries,
-                    result.Loot.Sum(kv => kv.Value), stats, applied.Ok ? null : applied.Message);
+                    result.Loot.Sum(kv => kv.Value), stats, applied.Ok ? null : applied.Message)
+                {
+                    Vehicle = vehicleName, TravelDays = out_.TravelTicks / (double)TicksPerDay, Fuel = out_.Fuel,
+                    StashedItems = result.Vehicle?.Stash.Count ?? 0, VehicleLost = result.Vehicle is { Wrecked: true },
+                };
                 Expeditions.Add(outcome);
                 OnReturn(outcome);
-                _lastReturnTick = State.Tick + out_.TravelTicks;
+                _lastReturnTick = State.Expedition?.ReturnTick ?? State.Tick;
             }
             return;
         }
@@ -615,14 +689,17 @@ public sealed class ColonyBot
             .OrderBy(z => stretch ? -z.Zone.Threat : z.Zone.Threat).ThenBy(z => z.Depletion > 0.5 ? 1 : 0).ThenBy(z => z.Zone.TravelDays).ThenBy(z => z.Zone.Id)
             .FirstOrDefault();
         if (zone is null) return;
+        var vehicle = PickVehicle(zone.Zone.Id);
+        if (vehicle is not null) size = Math.Min(size, _sim.MaxPartySizeWith(vehicle.Id));
+        var travel = _sim.PlanTravel(zone.Zone.Id, vehicle?.Id);
         // A party that would arrive in the dark waits outside for dawn (it costs rations, see PlanArrival).
-        DayPhase? waitFor = _sim.PlanArrival(zone.Zone.Id).Phase == DayPhase.Night ? DayPhase.Dawn : null;
-        var plan = _sim.PlanArrival(zone.Zone.Id, waitFor);
+        DayPhase? waitFor = _sim.PlanArrival(zone.Zone.Id, null, vehicle?.Id).Phase == DayPhase.Night ? DayPhase.Dawn : null;
+        var plan = _sim.PlanArrival(zone.Zone.Id, waitFor, vehicle?.Id);
         // A dust storm over the zone closes the route: wait for it to pass rather than pick another zone.
         if (plan.Blocked) return;
-        var rations = (WorldMap.RationsPerMember(Data, zone.Zone) + plan.ExtraRationsPerMember) * size;
+        var rations = (WorldMap.RationsPerMember(Data, travel.MovingTicks / (double)TicksPerDay) + plan.ExtraRationsPerMember) * size;
         var needPerDay = State.Survivors.Count(s => !s.Away) * Data.Rules.Food.AdultPerTick * TicksPerDay;
-        if (_sim.FoodStock < rations + needPerDay * (3 + 2 * zone.Zone.TravelDays)) return;
+        if (_sim.FoodStock < rations + needPerDay * (3 + 2 * travel.Days)) return;
 
         var party = adults.OrderByDescending(s => s.Get(AttributeKind.Strength) + s.Get(AttributeKind.Agility) + s.Get(AttributeKind.Endurance))
             .Take(size).ToList();
@@ -630,7 +707,7 @@ public sealed class ColonyBot
         var members = Gear(party);
         // Light, long-keeping field rations when there are any, else a good hot meal for the road.
         var prefer = new[] { "field_rations", "stew", "pie", "preserved_rations" }.FirstOrDefault(id => State.Inventory.Count(id) >= size);
-        var launched = _sim.Execute(new LaunchExpedition(zone.Zone.Id, members, waitFor, new RationChoice(prefer)));
+        var launched = _sim.Execute(new LaunchExpedition(zone.Zone.Id, members, waitFor, new RationChoice(prefer), vehicle?.Id));
         if (!launched.Ok) Problems.Add($"day {Day:0.0}: launch {zone.Zone.Id}: {launched.Message}");
     }
 
@@ -769,4 +846,12 @@ public sealed class ColonyBot
 
 public sealed record ExpeditionOutcome(
     double Day, string Zone, List<string> Party, int Returned, int Dead, int Evacuated, int Recruits, int NewInjuries,
-    int ItemsBack, RunStats Stats, string? Error);
+    int ItemsBack, RunStats Stats, string? Error)
+{
+    /// <summary>The vehicle tier driven (null = on foot), one-way days on the road, fuel burnt, items brought home in it.</summary>
+    public string? Vehicle { get; init; }
+    public double TravelDays { get; init; }
+    public double Fuel { get; init; }
+    public int StashedItems { get; init; }
+    public bool VehicleLost { get; init; }
+}

@@ -25,12 +25,16 @@ public static class Protocol
     /// facing, the gear-modded event.
     /// 12 (<see cref="MedicineVersion"/>): medicine (conditions and dressings in bodies, stim crash and calm on units, medical
     /// item effects decided by the server, the fractured / treated / crashed events).
-    /// 13 (<see cref="LootVersion"/>): field loot and salvage (takeAll / dropItem / stashItem / salvage commands, pile kinds and
+    /// 13: vehicles: a party's vehicle on <see cref="Join"/>, the stashItem / takeFromStash / salvage commands, parked
+    /// vehicles and stripped wrecks in views.
+    /// 14 (<see cref="LootVersion"/>): field loot and salvage (takeAll / dropItem / stashItem / salvage commands, pile kinds and
     /// sources, salvage nodes in views, the result's stash).
     /// </summary>
     public const int MedicineVersion = 12;
 
-    public const int LootVersion = 13;
+    public const int VehiclesVersion = 13;
+
+    public const int LootVersion = 14;
 
     public const int Version = LootVersion;
     public const int DefaultPort = 7777;
@@ -85,9 +89,10 @@ public abstract record Message;
 
 /// <summary>
 /// Take a seat with a party (lobby only), or with <paramref name="ReconnectToken"/> retake the seat a dropped
-/// connection left during a mission (the party is then ignored).
+/// connection left during a mission (the party is then ignored). <paramref name="Vehicle"/>: the colony vehicle the party
+/// drives in (each player brings their own; it parks at their spawn point).
 /// </summary>
-public sealed record Join(int Version, string Name, List<PartyMember> Party, string? ReconnectToken = null) : Message;
+public sealed record Join(int Version, string Name, List<PartyMember> Party, string? ReconnectToken = null, FieldVehicle? Vehicle = null) : Message;
 
 /// <summary>Lobby: ready (or not) to start. The mission starts once every seated player is ready.</summary>
 public sealed record Ready(bool IsReady) : Message;

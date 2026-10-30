@@ -6,17 +6,12 @@ namespace Remnants.Core.Scavenge;
 /// <summary>
 /// Loot in the field (ARCHITECTURE.md "Field loot and salvage"): what a kill leaves (its enemy's loot table, plus the
 /// schematic drops of SCHEMATICS.md), piles on tiles, taking everything that fits, dropping and stashing, and the hooks
-/// other features call (raids: <see cref="RaidSpoils"/>; vehicles: <see cref="VehicleStash"/>).
+/// other features call (raids: <see cref="RaidSpoils"/>). Stashing next to the party's parked vehicle loads it
+/// (<see cref="ParkedVehicles"/>).
 /// Loot rolls use their own RNG per kill or lot (<see cref="Rng"/>), so they never shift combat rolls.
 /// </summary>
 public static class FieldLoot
 {
-    /// <summary>
-    /// Vehicles: put an item into the player's parked vehicle (no AP, within its cargo). Returns false with no vehicle in
-    /// reach or no room; the stash then falls back to the exit tile. Register at startup.
-    /// </summary>
-    public static Func<ScavengeSim, Unit, string, bool>? VehicleStash { get; set; }
-
     /// <summary>The find tier of the run's zone: its threat, 1..4 (as for schematics).</summary>
     public static int FindTier(ScavengeSim sim) =>
         sim.Data.Zones.TryGetValue(sim.State.ZoneId, out var zone) ? Schematics.SchematicDrops.FindTier(zone) : 1;
@@ -138,20 +133,20 @@ public static class FieldLoot
     }
 
     /// <summary>
-    /// Stash a carried item for later: in the player's parked vehicle when one is in reach (<see cref="VehicleStash"/>),
-    /// else on the exit tile the unit stands on. An exit stash stays in the zone and is there again on the next run.
+    /// Stash a carried item for later: into the party's parked vehicle when it is next to the unit (it goes home with the
+    /// vehicle, within its cargo: <see cref="ParkedVehicles"/>), else on the exit tile the unit stands on. An exit stash
+    /// stays in the zone and is there again on the next run.
     /// </summary>
     public static ScavengeResult Stash(ScavengeSim sim, Unit unit, StashItem c)
     {
+        var vehicle = ParkedVehicles.Of(sim.State, unit.PlayerId ?? -1) is { Wrecked: false } v ? v : null;
+        if (vehicle is not null && vehicle.Pos.Chebyshev(unit.Pos) <= 1) return ParkedVehicles.Stash(sim, unit, c);
         if (!unit.Pack.Contains(c.ItemId)) return ScavengeResult.Fail(ScavengeError.ItemNotCarried, $"{unit.Name} does not carry '{c.ItemId}'.");
         var name = sim.Item(c.ItemId).Name;
-        if (VehicleStash is { } vehicle && vehicle(sim, unit, c.ItemId))
-        {
-            unit.Pack.Remove(c.ItemId);
-            sim.Log(ScavengeEventType.Stashed, $"{unit.Name} loaded {name} into the vehicle.", unit);
-            return ScavengeResult.Success($"{unit.Name} loaded {name}.");
-        }
-        if (!sim.State.Map.IsExit(unit.Pos)) return ScavengeResult.Fail(ScavengeError.NotOnExit, $"{unit.Name} must stand on an exit tile to stash.");
+        if (!sim.State.Map.IsExit(unit.Pos))
+            return vehicle is not null
+                ? ScavengeResult.Fail(ScavengeError.TooFar, $"{unit.Name} is not next to the party's vehicle or on an exit.")
+                : ScavengeResult.Fail(ScavengeError.NotOnExit, $"{unit.Name} must stand on an exit tile to stash.");
         var cost = sim.Data.Salvage.StashApCost;
         if (cost > unit.Ap) return ScavengeResult.Fail(ScavengeError.NotEnoughAp, $"{unit.Name} needs {cost} AP (has {unit.Ap}).");
         unit.Ap -= cost;

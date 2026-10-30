@@ -43,6 +43,14 @@ public sealed class Expedition
     /// <summary>Hours the party waits outside the zone for a better time (included in <see cref="ArrivalTick"/>).</summary>
     public long WaitTicks { get; set; }
 
+    /// <summary>The colony vehicle the party drives (null = on foot). It is away until the party is home.</summary>
+    public int? VehicleId { get; set; }
+
+    /// <summary>The vehicle's noise at launch: that share more Husks come to the zone when it arrives.</summary>
+    public double VehicleNoise { get; set; }
+
+    /// <summary>Fuel taken for the round trip.</summary>
+    public double Fuel { get; set; }
     /// <summary>Food packed as rations at launch (item id → count), eaten on the way.</summary>
     public SortedDictionary<string, int> Rations { get; set; } = new(StringComparer.Ordinal);
 
@@ -55,6 +63,9 @@ public sealed class Expedition
     /// <summary>The finished run, carried home; applied at <see cref="ReturnTick"/>.</summary>
     public ExtractionResult? PendingResult { get; set; }
     public long ReturnTick { get; set; }
+
+    /// <summary>How long the way home takes (set when the run is over; a vehicle may drive it faster or slower than the way out).</summary>
+    public long ReturnTravelTicks { get; set; }
 
     public ExpeditionPhase PhaseAt(long tick) =>
         PendingResult is not null ? ExpeditionPhase.Returning : tick < ArrivalTick ? ExpeditionPhase.Outbound : ExpeditionPhase.InZone;
@@ -118,6 +129,12 @@ public sealed record ExpeditionReport(
 {
     /// <summary>Schematics that came home and what became of each (learned, to decrypt, Research Data).</summary>
     public SortedDictionary<string, Schematics.ReceiveOutcome> Schematics { get; init; } = new(StringComparer.Ordinal);
+
+    /// <summary>The vehicle that came home with the party, if one went.</summary>
+    public string? Vehicle { get; set; }
+
+    /// <summary>The vehicle that was wrecked or left behind, if one was.</summary>
+    public string? LostVehicle { get; set; }
 }
 
 public sealed record MemorialEntry(int SurvivorId, string Name, long Tick, string Cause);

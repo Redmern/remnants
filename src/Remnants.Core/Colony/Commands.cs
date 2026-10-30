@@ -18,12 +18,23 @@ public sealed record Upgrade(int BuildingId) : IColonyCommand;
 /// <summary>
 /// Send adults into a zone with gear from the colony inventory. They are away until the result is applied. With
 /// <paramref name="WaitFor"/> the party waits outside the zone until that phase starts (if they would arrive in another),
-/// taking extra rations for the wait (see <see cref="ColonySim.PlanArrival"/>).
+/// taking extra rations for the wait (see <see cref="ColonySim.PlanArrival"/>). With <paramref name="VehicleId"/> the party
+/// drives a colony vehicle: faster on the road, its seats cap the party, it burns fuel and parks at the zone's edge.
 /// </summary>
-public sealed record LaunchExpedition(string ZoneId, List<ExpeditionMember> Members, DayPhase? WaitFor = null, RationChoice? Rations = null) : IColonyCommand;
+public sealed record LaunchExpedition(string ZoneId, List<ExpeditionMember> Members, DayPhase? WaitFor = null, RationChoice? Rations = null,
+    int? VehicleId = null) : IColonyCommand;
 
 /// <summary>Pick what a Farm, Greenhouse or Hunting Lodge works on (data/food.json harvests). The standing crop is lost.</summary>
 public sealed record SetHarvest(int BuildingId, string HarvestId) : IColonyCommand;
+
+/// <summary>Fit an upgrade (data/vehicles.json) to a vehicle at the Garage, paying its resources and parts.</summary>
+public sealed record FitUpgrade(int VehicleId, string UpgradeId) : IColonyCommand;
+
+/// <summary>Take an upgrade off a vehicle at the Garage; some of its parts come back.</summary>
+public sealed record RemoveUpgrade(int VehicleId, string UpgradeId) : IColonyCommand;
+
+/// <summary>Repair a vehicle at the Garage with spare parts from the stores (as many as it needs, or as there are).</summary>
+public sealed record RepairVehicle(int VehicleId) : IColonyCommand;
 
 /// <summary>
 /// Fly a scout drone from the inventory over a rumored zone: it reveals the zone's intel without anyone going (see
@@ -224,6 +235,18 @@ public enum CommandError
     MissionNotAvailable,
     NoDialogue,
     InvalidChoice,
+    /// <summary>Vehicles: unknown, out with a party, broken down, too few seats, blocked by weather or range, no Garage.</summary>
+    UnknownVehicle,
+    UnknownUpgrade,
+    VehicleAway,
+    VehicleBroken,
+    NotEnoughSeats,
+    NoGarage,
+    AlreadyFitted,
+    UpgradeDoesNotFit,
+    /// <summary>Every slot of the upgrade's kind on the vehicle is taken.</summary>
+    SlotFull,
+    /// <summary>Nothing to repair (a building or a vehicle).</summary>
     /// <summary>Medicine: the item is not a treatment used at home, or would do nothing for them now.</summary>
     NotATreatment,
     NothingToTreat,
@@ -242,6 +265,7 @@ public enum CommandError
     /// <summary>The raid cannot be fought on the map (no field units, no Town Hall, nobody able).</summary>
     CannotFight,
     NotDamaged,
+    /// <summary>The road is closed: the weather over the zone, or the vehicle cannot make it (dust, range).</summary>
     RouteBlocked,
     DronesGrounded,
     /// <summary>Power: the building neither makes, stores nor draws power.</summary>

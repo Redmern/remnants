@@ -20,7 +20,7 @@ public sealed record PlaythroughSummary(
     double? FirstPerkPointDay, int LevelUps, double SurvivorDays, int PerksLearned, double MeanLevel, int MaxLevel, int UnspentPoints,
     IReadOnlyDictionary<string, int> WeatherHours, int LightningStrikes, int Repairs,
     CyberSummary? Cyber = null, SchematicSummary? Schematics = null, FoodSummary? Food = null, PowerSummary? Power = null, RaidSummary? Raids = null,
-    MedicineSummary? Medicine = null);
+    MedicineSummary? Medicine = null, IReadOnlyList<ExpeditionOutcome>? Runs = null);
 
 /// <summary>Food and cooking: units that rotted, food poisonings, batches cooked or preserved, mean nutrition at the end.</summary>
 public sealed record FoodSummary(int Rotted, int Poisonings, int Cooked, double MeanNutrition, double CookedShareEaten);
@@ -136,7 +136,7 @@ public sealed class Playthrough
             grown.Select(x => x.Level).DefaultIfEmpty(1).Max(), grown.Sum(x => x.PerkPoints), _weatherHours, _lightning, _repairs, Cyber(), SchematicStats(),
             new FoodSummary(_rotted, _poisonings, _cooked, Sim.State.Survivors.Select(x => x.Nutrition).DefaultIfEmpty(0).Average(),
                 _eaten <= 0 ? 0 : _cookedEaten / _eaten),
-            new PowerSummary(_generator, _components, _devices, _disassembled, _brownouts, _breakers, _labPowered, Sim.State.Charging.Count), RaidStats(), Medicine());
+            new PowerSummary(_generator, _components, _devices, _disassembled, _brownouts, _breakers, _labPowered, Sim.State.Charging.Count), RaidStats(), Medicine(), Bot.Expeditions.ToList());
     }
 
     /// <summary>Where people are right now: workers per building, patients, away, idle.</summary>
@@ -342,7 +342,8 @@ public sealed class Playthrough
         foreach (var e in Bot.Expeditions)
             sb.AppendLine($"  day {e.Day,5:0.0} {e.Zone,-16} party {e.Party.Count} → back {e.Returned} (evac {e.Evacuated}), dead {e.Dead}, " +
                           $"new injuries {e.NewInjuries}, recruits {e.Recruits}, items {e.ItemsBack}, rounds {e.Stats.Rounds}, kills {e.Stats.Kills}, " +
-                          $"linked seen {e.Stats.LinkedSeen}{(e.Error is null ? "" : $" ERROR {e.Error}")}");
+                          $"linked seen {e.Stats.LinkedSeen}, {(e.Vehicle is null ? "on foot" : $"{e.Vehicle} ({e.Fuel:0} fuel, {e.StashedItems} stashed{(e.VehicleLost ? ", LOST" : "")})")} " +
+                          $"{e.TravelDays:0.0} d each way{(e.Error is null ? "" : $" ERROR {e.Error}")}");
         if (Sim.Data.Cybernetics is { } cyber)
             foreach (var tier in Enumerable.Range(1, 4).Where(t => _tierDay[t] is null))
             {

@@ -54,6 +54,9 @@ public static class MultiplayerSession
     /// <summary>The colony the party comes from, when it is a real expedition (its result is applied there).</summary>
     public static ColonySession? Colony { get; private set; }
 
+    /// <summary>The colony expedition's vehicle, joined with the party (each player brings their own); null on foot or for a debug party.</summary>
+    public static FieldVehicle? Vehicle { get; private set; }
+
     /// <summary>
     /// The party to bring: the colony's expedition if one waits in its zone (the colony in memory, else the save),
     /// otherwise the debug party.
@@ -61,10 +64,12 @@ public static class MultiplayerSession
     public static (List<PartyMember> Party, string Description) PickParty(string playerName)
     {
         Colony = null;
+        Vehicle = null;
         var session = ColonySession.Current ?? LoadSavedColony();
         if (session?.MultiplayerParty() is { } setup)
         {
             Colony = session;
+            Vehicle = setup.Vehicle;
             ColonySession.Current = session;
             var zone = session.Sim.State.Expedition!.ZoneId;
             return (setup.Members, $"Your colony's expedition ({string.Join(", ", setup.Members.Select(m => m.Survivor.Name))}, out to {zone}).");
@@ -114,7 +119,7 @@ public static class MultiplayerSession
                 if (client.CanReconnect && client.RefusedReason is null) _ = Reconnect(client, hostName, port);
             };
             transport.Start();
-            client.Join(name, party);
+            client.Join(name, party, vehicle: Vehicle);
             return null;
         }
         catch (Exception e) when (e is System.Net.Sockets.SocketException or ArgumentException or OperationCanceledException)

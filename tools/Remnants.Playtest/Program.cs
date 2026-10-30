@@ -3,6 +3,7 @@ using Remnants.Core.Scavenge;
 using Remnants.Playtest;
 
 // Usage: dotnet run --project tools/Remnants.Playtest -- [--story [--prompt=N]] [--days=N] [--seeds=A..B | --seed=N] [--quiet] [--trace] [--no-expeditions] [--bold] [--no-mods] [--no-raids | --fight] [--data=DIR]
+//        [--no-vehicles] [--schematics=sch_a,sch_b|vehicles]   --travel-table   --zone=ID --vehicle=TIER   (vehicles: every vehicle schematic, to sweep the tiers)
 //        dotnet run --project tools/Remnants.Playtest -- --zone=outskirts|all [--runs=N] [--party=N] [--trace] [--no-defenses] [--kit=fog|geared|tech|hack|drone|hacker|peg|mech|powered|cyborg|network] [--carbines=N] [--carbine-quality=fine|crude] [--armor] [--no-tech] [--coop=N] [--hour=H[,H...]] [--weather=KIND[,KIND...]|all] [--mods=basic|full|stealth|network] [--no-salvage]
 var options = args.Where(a => a.StartsWith("--")).Select(a => a[2..].Split('=', 2)).ToDictionary(p => p[0], p => p.Length > 1 ? p[1] : "");
 var days = int.Parse(options.GetValueOrDefault("days", "40"));
@@ -13,10 +14,17 @@ var seeds = options.TryGetValue("seed", out var one) ? [ulong.Parse(one)]
 var quiet = options.ContainsKey("quiet");
 // --no-salvage: the party bot leaves salvage nodes alone (before/after comparisons of field loot).
 PartyBot.Salvage = !options.ContainsKey("no-salvage");
+var schematics = options.GetValueOrDefault("schematics", "") is { Length: > 0 } list
+    ? list == "vehicles"
+        ? ["sch_bicycle_cart", "sch_garage_2", "sch_biofuel_still", "sch_motorbike", "sch_small_engine", "sch_buggy",
+            "sch_garage_3", "sch_truck", "sch_diesel_engine", "sch_armor_plates", "sch_armored_rig"]
+        : list.Split(',').ToList()
+    : new List<string>();
 var bot = new BotOptions
 {
     Expeditions = !options.ContainsKey("no-expeditions"), Bold = options.ContainsKey("bold"), Mods = !options.ContainsKey("no-mods"),
     StoryPrompt = int.Parse(options.GetValueOrDefault("prompt", "0")), FightRaids = options.ContainsKey("fight"),
+    Vehicles = !options.ContainsKey("no-vehicles"), Schematics = schematics,
 };
 
 var data = GameDataLoader.LoadFromDirectory(dataDir);
@@ -44,7 +52,13 @@ if (options.TryGetValue("zone", out var zoneArg))
             players: int.Parse(options.GetValueOrDefault("coop", "1")), tech: !options.ContainsKey("no-tech"),
             carbines: int.Parse(options.GetValueOrDefault("carbines", "0")), armor: options.ContainsKey("armor"),
             carbineQuality: options.GetValueOrDefault("carbine-quality", ""),
-            hour: hour, weather: weather, mods: options.GetValueOrDefault("mods", "")));
+            hour: hour, weather: weather, mods: options.GetValueOrDefault("mods", ""), vehicle: options.GetValueOrDefault("vehicle")));
+    return;
+}
+if (options.ContainsKey("travel-table"))
+{
+    // Days each way, rations per member (round trip) and fuel per trip, per zone and vehicle tier (new, motor vehicles with headlights).
+    Console.Write(TravelTable.Render(data, scavenge));
     return;
 }
 

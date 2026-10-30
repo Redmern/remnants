@@ -251,7 +251,8 @@ internal static class ScavengeCommandHandlers
     /// </summary>
     public static ScavengeResult Extract(ScavengeSim sim, Unit unit)
     {
-        if (!sim.State.Map.IsExit(unit.Pos)) return ScavengeResult.Fail(ScavengeError.NotOnExit, $"{unit.Name} is not on an exit tile.");
+        if (!sim.State.Map.IsExit(unit.Pos) && ParkedVehicles.Beside(sim.State, unit) is null)
+            return ScavengeResult.Fail(ScavengeError.NotOnExit, $"{unit.Name} is not on an exit tile or next to the party's vehicle.");
 
         // A drone still in the air comes home with its operator.
         if (Drones.DroneOf(sim.State, unit) is { } drone) Drones.Stow(sim.State, unit, drone);

@@ -12,6 +12,7 @@ public enum Skill
     Woodcutting, Mining, Crafting, Tailoring, Electronics,
     Medicine, Firearms, Melee, Cooking, Farming,
     Hacking, DronePiloting,
+    Mechanics,
 }
 
 /// <summary>Where a skill gain or XP came from (for the log and for the scavenge side's own calls).</summary>

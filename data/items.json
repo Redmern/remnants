@@ -238,5 +238,12 @@
     "prosthetic": { "region": "Legs", "quality": 1.6, "minMedBayLevel": 3 }, "initiative": 4, "stealth": 6 },
   { "id": "network_eye", "name": "Network-grade Eye", "kind": "Prosthetic", "weight": 0.2, "tier": 3, "lootWeight": 0.05,
     "prosthetic": { "region": "Head", "quality": 1.3, "minMedBayLevel": 3 }, "sightBonus": 2, "detection": 10 },
-  { "id": "relay_antenna", "name": "Relay Antenna", "kind": "Material", "weight": 4, "tier": 1, "quest": true }
+  { "id": "relay_antenna", "name": "Relay Antenna", "kind": "Material", "weight": 4, "tier": 1, "quest": true },
+  { "id": "wheel", "name": "Wheel", "kind": "Material", "vehiclePart": true, "weight": 4, "tier": 1, "lootWeight": 1.5 },
+  { "id": "spare_parts", "name": "Spare Parts", "kind": "Material", "vehiclePart": true, "weight": 2, "tier": 1, "lootWeight": 2 },
+  { "id": "chassis_frame", "name": "Chassis Frame", "kind": "Material", "vehiclePart": true, "weight": 12, "tier": 2, "lootWeight": 0.3 },
+  { "id": "fuel_can", "name": "Fuel Can", "kind": "Material", "vehiclePart": true, "weight": 3, "tier": 1, "lootWeight": 1 },
+  { "id": "engine_small", "name": "Small Engine", "kind": "Material", "vehiclePart": true, "weight": 15, "tier": 2, "lootWeight": 0.2 },
+  { "id": "engine_v8", "name": "Freight Diesel", "kind": "Material", "vehiclePart": true, "weight": 40, "tier": 3, "lootWeight": 0.1 },
+  { "id": "armor_plate", "name": "Armor Plate", "kind": "Material", "vehiclePart": true, "weight": 8, "tier": 3, "lootWeight": 0.3 }
 ]

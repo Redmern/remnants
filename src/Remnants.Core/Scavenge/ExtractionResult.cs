@@ -24,6 +24,8 @@ public sealed record ExtractionResult(
     ObjectiveResult? Mission = null,
     List<string>? Secured = null)
 {
+    /// <summary>The party's parked vehicle at the end (null when it came on foot). Its stash is in <see cref="Loot"/> unless it was lost.</summary>
+    public VehicleResult? Vehicle { get; init; }
     /// <summary>
     /// Co-op: schematics allied players carried out; every ally who got home receives a copy (knowledge copies).
     /// Not the player's own (those are in the packs).
@@ -51,6 +53,10 @@ public sealed record ExtractionResult(
         var loot = new SortedDictionary<string, int>(StringComparer.Ordinal);
         foreach (var id in returned.Concat(recruits).SelectMany(r => r.Pack).Concat(party.Secured))
             loot[id] = loot.GetValueOrDefault(id) + 1;
+        // The vehicle drives home with its stash when someone made it out to drive it.
+        var vehicle = ParkedVehicles.Result(state, playerId);
+        if (vehicle is { Wrecked: false } && returned.Count > 0)
+            foreach (var id in vehicle.Stash) loot[id] = loot.GetValueOrDefault(id) + 1;
 
         var shared = new List<string>();
         var heard = new SortedDictionary<string, string>(StringComparer.Ordinal);
@@ -68,7 +74,7 @@ public sealed record ExtractionResult(
                 heard.TryAdd(id, $"on a terminal in {zone}");
         }
         return new ExtractionResult(playerId, party.Done, returned, recruits, deaths, loot, MissionRules.Result(state, playerId),
-            party.Secured.Count > 0 ? new(party.Secured) : null) { SharedSchematics = shared, HeardOf = heard, Stash = FieldLoot.StashOf(state, playerId) };
+            party.Secured.Count > 0 ? new(party.Secured) : null) { SharedSchematics = shared, HeardOf = heard, Vehicle = vehicle, Stash = FieldLoot.StashOf(state, playerId) };
     }
 
     private static ReturnedSurvivor ToReturned(Unit u) =>

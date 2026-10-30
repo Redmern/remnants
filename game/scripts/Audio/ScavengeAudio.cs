@@ -31,6 +31,7 @@ public partial class ScavengeAudio : Node3D
     private readonly HashSet<(Pos, int, ContactKind)> _contacts = [];
     private readonly HashSet<Pos> _hacking = [];
     private readonly Dictionary<Pos, AmbientLoop> _flares = new();
+    private readonly Dictionary<Pos, AmbientLoop> _vehicles = new();
     private int _attackRound = -1, _combatRound = -10;
     private bool _linkedSeen, _stung;
     private double _since;
@@ -223,6 +224,22 @@ public partial class ScavengeAudio : Node3D
             }
             foreach (var (unitId, loop) in _drones)
                 if (!flying.ContainsKey(unitId)) loop.Level = 0;
+        }
+        // The parked vehicles idle where the side has seen them (motor tiers only); a wreck falls silent.
+        foreach (var v in _presenter.State.Vehicles)
+        {
+            var idle = v.TierId switch
+            {
+                "motorbike" => "vehicle_motorbike_idle_loop",
+                "buggy" => "vehicle_buggy_idle_loop",
+                "truck" => "vehicle_truck_idle_loop",
+                "armored_rig" => "vehicle_rig_idle_loop",
+                _ => null,
+            };
+            if (idle is null) continue;
+            if (!_vehicles.TryGetValue(v.Pos, out var loop))
+                _vehicles[v.Pos] = loop = new AmbientLoop(this, idle, TileGrid.ToWorld(v.Pos) + Vector3.Up, fadeSeconds: 1f);
+            loop.Level = v.Wrecked || !_presenter.IsExplored(v.Pos) ? 0 : 0.6f;
         }
         if (map?.Ambience.GetValueOrDefault("flare") is { Length: > 0 } hiss)
         {

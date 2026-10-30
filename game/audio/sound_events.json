@@ -70,6 +70,11 @@
     "colony.story_mission": [],
     "colony.radio_call": "ui_toast",
     "colony.schematic_learned": "ui_perk_learned",
+    "colony.vehicle_built": "vehicle_start",
+    "colony.vehicle_upgraded": "ui_upgrade",
+    "colony.vehicle_repaired": "ui_craft_complete",
+    "colony.vehicle_damaged": "vehicle_breakdown",
+    "colony.vehicle_lost": "vehicle_breakdown",
     "colony.weather_changed": [],
     "colony.storm": [],
     "colony.lightning_struck": "lightning_crack",
@@ -212,6 +217,9 @@
     "scavenge.stashed": "loot_pickup",
     "scavenge.salvage_progress": "debris_rattle",
     "scavenge.salvaged": "debris_rattle",
+    "scavenge.vehicle_hit": "hit_metal",
+    "scavenge.vehicle_wrecked": "vehicle_breakdown",
+    "scavenge.vehicle_turret": "linked_burst",
     "scavenge.item_given": "loot_pickup",
     "scavenge.gear_modded": "loot_pickup",
     "scavenge.payload_dropped": "loot_pickup",
@@ -279,7 +287,7 @@
     "weather.thunder": "thunder",
     "weather.debris": "debris_rattle",
 
-    "//vehicles": "Reserved for a vehicles feature: positional one-shots (vehicle.start at the vehicle). Engine loops are ids for AmbientLoop: vehicle_{buggy,motorbike,rig,truck}_{idle,drive}_loop, vehicle_{bicycle,cart}_*_loop.",
+    "//vehicles": "Positional one-shots (vehicle.start at the vehicle; the scavenge screen also loops the parked vehicle's idle). Engine loops are ids for AmbientLoop: vehicle_{buggy,motorbike,rig,truck}_{idle,drive}_loop, vehicle_{bicycle,cart}_*_loop.",
     "vehicle.start": "vehicle_start",
     "vehicle.horn": "vehicle_horn",
     "vehicle.breakdown": "vehicle_breakdown"
@@ -423,6 +431,7 @@
       "electronics_lab": "work_lab",
       "med_bay": "work_medbay",
       "garage": "garage_work_loop",
+      "fuel_still": "work_lab",
       "town_hall": [],
       "shelter": [],
       "house": []

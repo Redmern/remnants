@@ -294,6 +294,7 @@ public class QualityTests
     }
 }
 
+
 public class KitchenTests
 {
     [Fact]

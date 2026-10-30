@@ -16,7 +16,7 @@ namespace Remnants.Game;
 /// </summary>
 public static class GameDataPaths
 {
-    private static readonly string[] Files = ["resources.json", "jobs.json", "buildings.json", "rules.json", "recipes.json", "perks.json", "cybernetics.json", "schematics.json", "food.json"];
+    private static readonly string[] Files = ["resources.json", "jobs.json", "buildings.json", "rules.json", "recipes.json", "perks.json", "cybernetics.json", "schematics.json", "food.json", "vehicles.json"];
     private static readonly string[] ScavengeFiles = ["items.json", "enemies.json", "zones.json", "scavenge.json"];
     private const string EmbeddedPrefix = "Remnants.Data.";
 
@@ -102,7 +102,9 @@ public static class GameDataPaths
                 return ScavengeDataLoader.LoadFromDirectory(dir);
         return ScavengeDataLoader.LoadFromJson(ReadEmbedded("items.json"), ReadEmbedded("enemies.json"),
             ReadEmbedded("zones.json"), ReadEmbedded("scavenge.json"), ReadEmbedded("perks.json"), ReadEmbedded("cybernetics.json"), ReadEmbedded("electronics.json"),
-            ReadEmbedded("gear_mods.json"), [ReadEmbedded("schematics.json"), ReadEmbedded("schematics.electronics.json"), ReadEmbedded("schematics.gearmods.json")]);
+            ReadEmbedded("gear_mods.json"), [ReadEmbedded("schematics.json"), ReadEmbedded("schematics.electronics.json"), ReadEmbedded("schematics.food.json"),
+             ReadEmbedded("schematics.gearmods.json"), ReadEmbedded("schematics.defense.json"), ReadEmbedded("schematics.medicine.json"),
+             ReadEmbedded("schematics.vehicles.json")]);
     }
 
     private static GameData LoadFresh()
@@ -128,9 +130,11 @@ public static class GameDataPaths
     private static GameData LoadEmbedded() =>
         GameDataLoader.LoadFromJson(ReadEmbedded("resources.json"), ReadEmbedded("jobs.json"), ReadEmbedded("buildings.json"), ReadEmbedded("rules.json"),
             ReadEmbedded("recipes.json"), ReadEmbedded("perks.json"), ReadEmbedded("cybernetics.json"), ReadEmbedded("weather.json"),
-            ReadEmbedded("food.json"), ReadEmbedded("electronics.json"), ReadEmbedded("gear_mods.json"),
+            ReadEmbedded("food.json"), ReadEmbedded("electronics.json"), ReadEmbedded("gear_mods.json"), ReadEmbedded("medicine.json"),
             [ReadEmbedded("schematics.json"), ReadEmbedded("schematics.electronics.json"), ReadEmbedded("schematics.food.json"),
-             ReadEmbedded("schematics.gearmods.json")]);
+             ReadEmbedded("schematics.gearmods.json"), ReadEmbedded("schematics.defense.json"), ReadEmbedded("schematics.medicine.json"),
+             ReadEmbedded("schematics.vehicles.json")],
+            vehicles: ReadEmbedded("vehicles.json"));
 
     private static string ReadEmbedded(string file)
     {

@@ -101,6 +101,9 @@ public static class ColonyText
         return tip;
     }
 
+    /// <summary>A trip's length: hours under a day, else days ("16 h", "1.3 days").</summary>
+    public static string Trip(double days) => days <= 0 ? "no time" : days < 1 ? $"{days * 24:0} h" : $"{days:0.#} day{(Math.Abs(days - 1) < 0.05 ? "" : "s")}";
+
     public static string Travel(double days) => days <= 0 ? "on the doorstep" : days == 1 ? "1 day away" : $"{days:0.#} days away";
 
     public static Godot.Color ThreatColor(int threat) => threat switch

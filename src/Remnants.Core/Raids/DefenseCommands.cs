@@ -282,6 +282,7 @@ public static class DefenseHandlers
             foreach (var id in m.AllItems) state.Inventory.Add(id);
             if (state.FindSurvivor(m.SurvivorId) is { } s) s.Away = false;
         }
+        VehicleRules.Recalled(sim, e);
         state.Expedition = null;
         state.Defense.WatchedExpedition = null;
         state.Log(new(state.Tick, ColonyEventType.ExpeditionRecalled, "The party turned back to defend the colony."));

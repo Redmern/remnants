@@ -30,6 +30,7 @@ public partial class ColonyHud : CanvasLayer
     public ResearchPanel Research { get; }
     public RadioPanel Radio { get; }
     public InventoryPanel Inventory { get; }
+    public GaragePanel Garage { get; }
     public PantryPanel Pantry { get; }
     public HarvestPanel Harvest { get; }
     public AfterActionDialog Report { get; }
@@ -126,11 +127,13 @@ public partial class ColonyHud : CanvasLayer
         var floating = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
         Inventory = new InventoryPanel(session);
         Expedition = new ExpeditionPanel(session);
+        Garage = new GaragePanel(session);
         Repairs = new RepairPanel(session);
         floating.AddChild(Inventory);
         Pantry = new PantryPanel(session);
         floating.AddChild(Pantry);
         floating.AddChild(Expedition);
+        floating.AddChild(Garage);
         floating.AddChild(Repairs);
         center.AddChild(floating);
 
@@ -257,6 +260,7 @@ public partial class ColonyHud : CanvasLayer
         Pantry.Refresh();
         Harvest.Refresh();
         Expedition.Refresh();
+        Garage.Refresh();
         WorldMap.Refresh();
         Story.Refresh();
         if (BuildMenu.Visible) BuildMenu.Refresh();

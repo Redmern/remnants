@@ -5,7 +5,9 @@
     "Cover":  { "moveCost": 2, "cover": 0.3 },
     "Water":  { "moveCost": 3 },
     "Wall":   { "passable": false, "blocksSight": true, "cover": 0.4 },
-    "Pylon":  { "passable": false, "cover": 0.3 }
+    "Pylon":  { "passable": false, "cover": 0.3 },
+    "Vehicle": { "passable": false, "cover": 0.25 },
+    "ArmoredVehicle": { "passable": false, "cover": 0.45 }
   },
   "movement": {
     "basePattern": "King",
@@ -141,6 +143,21 @@
   "npc": {
     "attributeRange": [20, 55],
     "names": ["Wren", "Odile", "Caspar", "Hana", "Milo", "Yara", "Dov", "Tamsin", "Ezra", "Rosa"]
+  },
+  "vehicle": { "damagePerEnemy": 6, "minDamage": 1, "workbenchRepairPerRound": 2 },
+  "salvage": {
+    "apCost": 2, "noiseRadius": 6, "rollsByLootTier": [1, 2, 2], "winchExtraRolls": 1,
+    "qualityByLootTier": ["crude", "standard", "standard"],
+    "table": [
+      { "item": "spare_parts", "weight": 6 },
+      { "item": "scrap", "weight": 4 },
+      { "item": "wheel", "weight": 3 },
+      { "item": "fuel_can", "weight": 2 },
+      { "item": "chassis_frame", "weight": 1, "minTier": 2, "big": true },
+      { "item": "armor_plate", "weight": 1, "minTier": 2 },
+      { "item": "engine_small", "weight": 1, "minTier": 2, "big": true },
+      { "item": "engine_v8", "weight": 0.5, "minTier": 3, "big": true }
+    ]
   },
   "escortRadius": 2,
   "quality": [

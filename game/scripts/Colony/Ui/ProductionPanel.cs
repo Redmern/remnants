@@ -439,6 +439,7 @@ public partial class ProductionPanel : PanelContainer
     {
         string Name(string id) => sim.Scavenge?.Items.GetValueOrDefault(id)?.Name ?? id;
         if (r.Learns is { } learns) return $"the {sim.Data.Schematics.All[learns].Name} schematic";
+        if (r.Vehicle is { } tier) return $"a {sim.Data.VehicleTiers[tier].Name}";
         if (r.Item is not { } item) return $"{r.Amount:0.#} {sim.Data.Resources[r.Resource!].Name}";
         var main = $"{r.Amount:0} {Name(item)}";
         return r.Byproducts.Count == 0 ? main : main + ", " + string.Join(", ", r.Byproducts.Select(kv => $"{kv.Value} {Name(kv.Key)}"));
@@ -497,5 +498,5 @@ public partial class ProductionPanel : PanelContainer
         : r.Item is { } food && sim.Data.Food?.IsFood(food) == true ? FoodText.Icon(sim, food, 18)
         : r.Item is { } item && sim.Scavenge?.Items.GetValueOrDefault(item) is { } def
             ? Icons.Item(def.DefinedId, def.Kind.ToString(), 18)
-            : Icons.Resource(r.Resource ?? "", 18);
+            : r.Vehicle is not null ? Icons.Get("ui_vehicle", 18) : Icons.Resource(r.Resource ?? "", 18);
 }

@@ -297,6 +297,15 @@ map), Accept (Y) / Decline (U) an offer, Offer an alliance (Y) to a rival you se
   and flares (which every side sees) show the same lit ground to all. `NightNetTests` stage it with `CheckFog` on every
   message: server-decided hour in both views, a day/night standoff (sent by day, not at night, nothing leaked), a flare.
 
+## Vehicles over the wire
+
+- **Each player brings their own vehicle**: `Join` carries the party's `FieldVehicle` (from the colony's chosen vehicle). The
+  server parks it at that player's spawn point and refuses a party larger than its seats or a vehicle that does not add up
+  (HP, cargo, turret over `scavenge.json vehicle` limits). Cargo is enforced by the sim: `stashItem` fails past the limit.
+- Commands `stashItem` (also the exit stash), `takeFromStash`, `salvage` (a salvage node; a wrecked car's lot brings its parts). Views carry the parked vehicles: the side's own in full, another
+  party's only once its tile is explored, never with its stash; stripped wrecks are public. Protocol version 13.
+- `VehicleNetTests`: two players with their own vehicles (stash hidden from the other), seat and stat refusals, stash over
+  the wire.
 ## Weather over the wire
 
 - **The server decides the weather** like the hour: `HostOptions.Weather` / `WeatherIntensity` / `WeatherShifts`
@@ -502,3 +511,12 @@ Allies trade in a mission the same way (`--coop` server, `--bot … --trade`: th
 - Core `TradeTests`: escrow / refund / settle / receive once, quality variants, couriers and their modifiers, schematic
   copies (seller keeps it, buyer studies it, Research Data first), offer validation, item extras on the wire, reference
   values, the ledger in saves, stale live escrows, field swaps (atomic, allies only, carry limits).
+
+## Field loot and salvage
+
+- Piles (a kill's remains, dropped items, stashes) and salvage nodes are per side as last seen (`SideFog`): a pile's
+  contents and a node's progress refresh only while the tile is in sight, nothing about a tile the side never saw is
+  sent, and the "Husk 3 dropped: …" line goes only to sides that see the tile (it names the tile, not the dead unit). The
+  loot seed never leaves the server. Co-op piles and nodes are shared, first come first served.
+- Commands `takeAll`, `dropItem`, `stashItem`, `salvage`. Protocol version 14 (`Protocol.LootVersion`).
+- Tests: `LootNetTests` (no pile or line for a rival who never saw the tile; salvage over the wire).

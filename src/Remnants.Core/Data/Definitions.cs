@@ -69,6 +69,9 @@ public sealed record RecipeDef
     public Dictionary<string, int> Ingredients { get; init; } = new();
     public string? Item { get; init; }
     public string? Resource { get; init; }
+
+    /// <summary>A vehicle tier id (data/vehicles.json): a finished batch rolls a new vehicle out of the Garage.</summary>
+    public string? Vehicle { get; init; }
     public double Amount { get; init; } = 1;
 
     /// <summary>At least one worker needs this much of the job's skill, or the building idles.</summary>

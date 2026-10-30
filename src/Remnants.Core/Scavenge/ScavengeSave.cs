@@ -26,13 +26,15 @@ namespace Remnants.Core.Scavenge;
 /// Version 11 adds gear mods: modded gear ids in equipment, packs and caches, the Head slot, and per unit whether it moved
 /// this turn (<see cref="Unit.Moved"/>) and where it faces (<see cref="Unit.Facing"/>); older runs load with nobody moved
 /// and no facing (a weapon light shines all round until its carrier moves or shoots).
+/// Version 12 adds parked vehicles (<see cref="ScavengeState.Vehicles"/>, their stash, HP and upgrades) and stripped wrecks
+/// (<see cref="ScavengeState.SalvagedWrecks"/>); older runs have none.
 /// <see cref="LootVersion"/> adds field loot and salvage: pile kinds, sources and stash owners, salvage nodes, the loot
 /// seed and the difficulty; older runs load with plain caches, no nodes and a loot seed from their RNG state.
 /// </summary>
 public static class ScavengeSave
 {
     /// <summary>Field loot and salvage (keyed: renumber to the next free version at merge).</summary>
-    public const int LootVersion = 12;
+    public const int LootVersion = 13;
     public const int Version = LootVersion;
     private const int OldestVersion = 1;
 
@@ -111,6 +113,11 @@ public static class ScavengeSave
             foreach (var o in mission.Def.Objectives.Where(o => o.Item is not null)) RequireItem(o.Item!);
             foreach (var p in mission.Markers.Values.SelectMany(t => t).Concat(mission.Raised))
                 if (!state.Map.InBounds(p)) throw new JsonException($"Save's mission marks {p}, off the map.");
+        }
+        foreach (var v in state.Vehicles)
+        {
+            if (!state.Map.InBounds(v.Pos)) throw new JsonException($"The {v.Name} is parked off the map at {v.Pos}.");
+            foreach (var id in v.Stash) RequireItem(id);
         }
         foreach (var id in state.TurnOrder)
             if (state.FindUnit(id) is null) throw new JsonException($"Turn order references unknown unit {id}.");

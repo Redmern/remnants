@@ -76,10 +76,14 @@ public static class FieldSalvage
     public const string FileName = "salvage.json";
 
     /// <summary>
-    /// Extra rolls per node kind from other features (vehicles: engine parts off a <c>wrecked_car</c>, winch-gated):
-    /// called when a lot comes off, after the node's own table. Register once at startup; return item ids.
+    /// Extra rolls per node kind from other features, called when a lot comes off, after the node's own table; return item
+    /// ids. A <c>wrecked_car</c> gives vehicle parts (<see cref="Salvaging.Roll"/>: big ones with the player's vehicle
+    /// parked, more with a winch).
     /// </summary>
-    public static readonly Dictionary<string, Func<ScavengeSim, Unit, SalvageNode, IEnumerable<string>>> Extras = new(StringComparer.Ordinal);
+    public static readonly Dictionary<string, Func<ScavengeSim, Unit, SalvageNode, IEnumerable<string>>> Extras = new(StringComparer.Ordinal)
+    {
+        ["wrecked_car"] = (sim, unit, _) => Salvaging.Roll(sim, unit.PlayerId ?? -1),
+    };
 
     /// <summary>Puts the zone's salvage nodes on the map from their own seed, so the rest of the map rolls as before.</summary>
     public static void Place(ScavengeData data, ScavengeState state, ZoneDef zone, ulong seed, IReadOnlyCollection<Pos> reachable, IReadOnlyList<Pos> anchors)

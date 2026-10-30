@@ -2,7 +2,7 @@
   "rules": {
     "researchDataResource": "research_data",
     "copyCost": [1, 2, 3, 5],
-    "resourceValues": {"scrap": 1, "wood": 0.5, "stone": 0.5, "food": 0.6, "cloth": 1.5, "electronics": 4, "medicine": 4, "research_data": 7.5, "alcohol": 1.5, "chemicals": 2, "pharma": 4},
+    "resourceValues": {"scrap": 1, "wood": 0.5, "stone": 0.5, "food": 0.6, "cloth": 1.5, "electronics": 4, "medicine": 4, "research_data": 7.5, "alcohol": 1.5, "fuel": 1.2, "chemicals": 2, "pharma": 4},
     "drops": {
       "cache": [0.03, 0.05, 0.06, 0.08],
       "locker": [0.04, 0.06, 0.07, 0.08],
@@ -87,20 +87,6 @@
     {"id": "sch_network_grade", "name": "Network-grade Limbs", "tier": 4, "encrypted": true, "unlocks": [{"kind": "Prosthetic", "id": "tier:4"}, {"kind": "Perk", "id": "linked_salvage"}], "sources": ["Loot", "Kill", "Story"], "storyMissions": ["M16"], "description": "Prosthetics T4, and the Linked Salvage perk."},
     {"id": "sch_spec_gun", "name": "Gun Arm", "tier": 4, "encrypted": true, "unlocks": [{"kind": "Prosthetic", "id": "spec:gun"}], "sources": ["Loot", "Kill", "Story"], "storyMissions": ["Cole's Last Job"], "description": "The gun specialisation of the arm tree."},
     {"id": "sch_spec_thermal_eye", "name": "Thermal Eye", "tier": 4, "encrypted": true, "unlocks": [{"kind": "Prosthetic", "id": "spec:thermal"}], "sources": ["Loot", "Terminal", "Story"], "storyMissions": ["M17"], "description": "The thermal eye."},
-    {"id": "sch_pulse_rifle", "name": "Pulse Rifle", "tier": 4, "encrypted": true, "unlocks": [{"kind": "Recipe", "id": "pulse_rifle"}], "sources": ["Loot", "Kill", "Story"], "storyMissions": ["M17"], "description": "A Warden pulse cannon you can carry."},
-    {"id": "sch_garage_2", "name": "Garage L2", "tier": 1, "planned": true, "unlocks": [{"kind": "Vehicle", "id": "garage_2"}], "sources": ["Loot", "Trade", "Research", "Story"], "storyMissions": ["M6"], "description": "Engine work: motorbike and buggy builds."},
-    {"id": "sch_bicycle_cart", "name": "Bicycle Cart", "tier": 1, "planned": true, "unlocks": [{"kind": "Vehicle", "id": "bicycle_cart"}], "sources": ["Loot", "Trade", "Research", "Story"], "storyMissions": ["M4"], "description": "Vehicle T1 chassis."},
-    {"id": "sch_biofuel_still", "name": "Biofuel Still", "tier": 1, "planned": true, "unlocks": [{"kind": "Vehicle", "id": "biofuel_still"}], "sources": ["Loot", "Trade", "Research", "Story"], "storyMissions": ["M6"], "description": "Food or wood into fuel."},
-    {"id": "sch_cargo_rack", "name": "Cargo Rack", "tier": 1, "planned": true, "unlocks": [{"kind": "Vehicle", "id": "cargo_rack"}], "sources": ["Loot", "Trade", "Research"], "description": "Vehicle upgrade: carry more home."},
-    {"id": "sch_motorbike", "name": "Motorbike", "tier": 2, "planned": true, "unlocks": [{"kind": "Vehicle", "id": "motorbike"}], "sources": ["Loot", "Trade", "Research", "Story"], "storyMissions": ["M6"], "description": "Vehicle T2 chassis."},
-    {"id": "sch_small_engine", "name": "Small Engine", "tier": 2, "planned": true, "unlocks": [{"kind": "Vehicle", "id": "small_engine"}], "sources": ["Loot", "Trade", "Research", "Story"], "storyMissions": ["M6"], "description": "Engine for the motorbike and buggy."},
-    {"id": "sch_muffler", "name": "Muffler", "tier": 2, "planned": true, "unlocks": [{"kind": "Vehicle", "id": "muffler"}], "sources": ["Loot", "Trade", "Research", "Story"], "storyMissions": ["Marrow's Debt"], "description": "Vehicle upgrade: quieter arrivals."},
-    {"id": "sch_offroad_tyres", "name": "Off-road Tyres", "tier": 2, "planned": true, "unlocks": [{"kind": "Vehicle", "id": "offroad_tyres"}], "sources": ["Loot", "Trade", "Research"], "description": "Vehicle upgrade: ignores rain and mud."},
-    {"id": "sch_buggy", "name": "Buggy", "tier": 2, "planned": true, "unlocks": [{"kind": "Vehicle", "id": "buggy"}], "sources": ["Loot", "Trade", "Research", "Story"], "storyMissions": ["M9"], "description": "Vehicle T3 chassis."},
-    {"id": "sch_garage_3", "name": "Garage L3", "tier": 3, "planned": true, "unlocks": [{"kind": "Vehicle", "id": "garage_3"}], "sources": ["Loot", "Trade", "Research", "Story"], "storyMissions": ["M12"], "description": "Heavy chassis: truck and rig builds."},
-    {"id": "sch_truck", "name": "Truck", "tier": 3, "planned": true, "unlocks": [{"kind": "Vehicle", "id": "truck"}], "sources": ["Loot", "Trade", "Research", "Story"], "storyMissions": ["M12"], "description": "Vehicle T4 chassis."},
-    {"id": "sch_diesel_engine", "name": "Freight Diesel", "tier": 3, "planned": true, "unlocks": [{"kind": "Vehicle", "id": "diesel_engine"}], "sources": ["Loot", "Research", "Story"], "storyMissions": ["M12"], "description": "Engine for the truck and rig."},
-    {"id": "sch_armor_plates", "name": "Armor Plates", "tier": 3, "planned": true, "unlocks": [{"kind": "Vehicle", "id": "armor_plates"}], "sources": ["Loot", "Kill", "Research", "Story"], "storyMissions": ["M13"], "description": "Vehicle upgrade: a parked vehicle is hard cover."},
-    {"id": "sch_armored_rig", "name": "Armored Rig", "tier": 4, "planned": true, "unlocks": [{"kind": "Vehicle", "id": "armored_rig"}], "sources": ["Loot", "Kill", "Story"], "storyMissions": ["M16"], "description": "Vehicle T5 chassis."}
+    {"id": "sch_pulse_rifle", "name": "Pulse Rifle", "tier": 4, "encrypted": true, "unlocks": [{"kind": "Recipe", "id": "pulse_rifle"}], "sources": ["Loot", "Kill", "Story"], "storyMissions": ["M17"], "description": "A Warden pulse cannon you can carry."}
   ]
 }

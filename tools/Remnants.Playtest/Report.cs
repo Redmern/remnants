@@ -91,6 +91,18 @@ public static class Report
             sb.AppendLine($"weather at home: {string.Join(", ", hours.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} {100 * kv.Value / total:0}%"))}; " +
                           $"lightning strikes {runs.Sum(r => r.LightningStrikes)} ({(double)runs.Sum(r => r.LightningStrikes) / runs.Count:0.0}/colony), repairs {runs.Sum(r => r.Repairs)}");
         }
+        sb.Append(Vehicles(runs.SelectMany(r => r.Runs ?? []).ToList()));
+        return sb.ToString();
+    }
+
+    /// <summary>Expeditions by how the party travelled: runs, days on the road each way, items home per run, fuel, losses.</summary>
+    public static string Vehicles(IReadOnlyList<ExpeditionOutcome> runs)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("vehicles: how      runs  days/way  items/run  stashed/run  fuel/run  deaths  lost  first day");
+        foreach (var g in runs.GroupBy(e => e.Vehicle ?? "on foot").OrderBy(g => g.Min(e => e.Day)))
+            sb.AppendLine($"          {g.Key,-14} {g.Count(),4}  {g.Average(e => e.TravelDays),8:0.00}  {g.Average(e => e.ItemsBack),9:0.0}  " +
+                          $"{g.Average(e => e.StashedItems),11:0.0}  {g.Average(e => e.Fuel),8:0.0}  {g.Sum(e => e.Dead),6}  {g.Count(e => e.VehicleLost),4}  {g.Min(e => e.Day),9:0.0}");
         return sb.ToString();
     }
 }

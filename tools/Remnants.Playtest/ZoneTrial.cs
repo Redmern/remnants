@@ -91,7 +91,7 @@ public static class ZoneTrial
     }
 
     public static string Run(GameData data, ScavengeData scavenge, string zoneId, int runs, int partySize = 2, Action<string>? trace = null,
-        bool defenses = true, string kit = "", int players = 1, bool tech = true, int carbines = 0, bool armor = false, string carbineQuality = "", int? hour = null, string? weather = null, string mods = "")
+        bool defenses = true, string kit = "", int players = 1, bool tech = true, int carbines = 0, bool armor = false, string carbineQuality = "", int? hour = null, string? weather = null, string mods = "", string? vehicle = null)
     {
         // --hour=H plays every run at that hour of day (its phase by the colony's hours); without it, midday as before.
         // --weather=KIND holds that weather for the whole run ("clear" is the same as none).
@@ -104,6 +104,17 @@ public static class ZoneTrial
         }
         var conditions = environment is null ? null : new ZoneConditions(Environment: environment);
         int limbLocks = 0;
+        // --vehicle=TIER parks that vehicle (new, no upgrades) at each party's spawn point; its noise draws more Husks.
+        FieldVehicle? field = null;
+        if (vehicle is { Length: > 0 })
+        {
+            var tier = data.VehicleTiers[vehicle];
+            var stats = VehicleRules.Stats(data, tier, Array.Empty<string>());
+            field = new FieldVehicle(tier.Id, tier.Name, tier.Tier, stats.MaxCondition, stats.MaxCondition, stats.Armor, stats.CargoKg, stats.Armored, stats.Seats);
+            conditions = (conditions ?? new ZoneConditions()) with { HuskMultiplier = 1 + stats.Noise };
+            if (stats.Seats is { } seats && partySize > seats) partySize = seats;
+        }
+        int stashed = 0, wrecked = 0;
         int hacked = 0, hackFailed = 0, flights = 0, dronesLost = 0, marks = 0, fromDevices = 0;
         int emps = 0, decoys = 0, noises = 0, heals = 0, ferried = 0, droneShots = 0;
         int partyRuns = 0, partyWipes = 0, partyDeathRuns = 0;
@@ -181,7 +192,7 @@ public static class ZoneTrial
                 if (mods != "") Mod(scavenge, gearSet, mods, new ModContext(conditions?.Environment?.IsDark == true, kit == "geared", mods == "stealth"));
                 return new PartyMember(s, gearSet, packs[i]);
             }).ToList();
-            setups.Add(new PartySetup(ColonySim.ExpeditionPlayerId + p, party, players > 1 ? 1 : null));
+            setups.Add(new PartySetup(ColonySim.ExpeditionPlayerId + p, party, players > 1 ? 1 : null) { Vehicle = field });
             allAdults.AddRange(adults);
             }
             var sim = NewScavenge.Create(scavenge, zoneId, (ulong)(seed * 7919), setups, conditions);
@@ -217,6 +228,8 @@ public static class ZoneTrial
                 if (scavenge.Items[id].Salvage is { } s) resources[s.Resource] = resources.GetValueOrDefault(s.Resource) + s.Amount * count;
             salvaged += stats.Salvaged;
             piles += stats.PilesLooted;
+            stashed += results.Sum(r => r.Returned.Count > 0 && r.Vehicle is { Wrecked: false } v ? v.Stash.Count : 0);
+            wrecked += results.Count(r => r.Vehicle is { Wrecked: true });
             schematics += result.Loot.Where(kv => scavenge.Items[kv.Key].Schematic is not null).Sum(kv => kv.Value);
             linkedSeen += stats.LinkedSeen;
             if (stats.LinkedSeen > 0)
@@ -249,6 +262,8 @@ public static class ZoneTrial
         sb.AppendLine($"zone {zoneId}: {runs} runs, {(players > 1 ? $"{players} allied parties of" : "party")} {partySize} ({(kit == "geared" ? "geared" + (carbines > 0 ? $", {carbines} {carbineQuality}{(carbineQuality == "" ? "" : " ")}carbine{(carbines > 1 ? "s" : "")}" : "") + (armor ? ", plating" : "") : "starting gear")}{(kit == "fog" ? " + flares, sensor" : "")}{(kit is "tech" or "hacker" or "hack" or "drone" or "electronics" or "electronics-combat" ? $" + {kit} kit{(tech ? "" : " (unused)")}" : "")}{(CyberKits.ContainsKey(kit) ? $" + {kit} cybernetics" : "")}{(mods != "" ? $", {mods} mods" : "")}{(defenses ? "" : ", no defenses")}){(conditions?.Environment is { } env ? $" at {env.Hour:00}:00 ({env.Phase}{(env.Weather is { } w ? $", {w}" : "")})" : "")}{(stuck > 0 ? $", {stuck} stuck" : "")}");
         sb.AppendLine($"  runs with a death {100.0 * runsWithDeath / n:0}%  wipes {100.0 * wipes / n:0}%  deaths/run {deaths / (double)n:0.00}");
         sb.AppendLine($"  runs with new injuries {100.0 * injuredRuns / n:0}%  injuries/run {injuries / (double)n:0.0}  limbs lost/run {limbs / (double)n:0.00}");
+        if (field is not null)
+            sb.AppendLine($"  vehicle {field.Name}: stashed items/run {stashed / (double)n:0.0}  wrecked {100.0 * wrecked / n:0}%  (noise ×{conditions!.HuskMultiplier:0.00} Husks)");
         sb.AppendLine($"  items/run {items / (double)n:0.0}  schematics/run {schematics / (double)n:0.00}  kills/run {kills / (double)n:0.0}  Linked kills/run {linkedKills / (double)n:0.00}  rounds/run {rounds / (double)n:0}");
         sb.AppendLine($"  carried home/run: {string.Join("  ", resources.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => $"{kv.Key} {kv.Value / (double)n:0.0}"))}  pick-ups/run {piles / (double)n:0.0}  salvage actions/run {salvaged / (double)n:0.0}");
         sb.AppendLine($"  ambushed/run {ambushed / (double)n:0.00}  overwatch shots/run {reactions / (double)n:0.00}  defenses used/run {defended / (double)n:0.0}");
