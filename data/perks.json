@@ -77,7 +77,7 @@
       "effects": { "hooks": { "hack_chance_bonus": 0.1, "hack_ap_discount": 1 } } },
     { "id": "network_ghost", "name": "Network Ghost", "discipline": "tech", "tier": 2,
       "description": "Slips in and out of the Network quietly: hacks raise half the alarm.",
-      "requires": { "skills": { "Hacking": 20 }, "attributes": { "Perception": 40 }, "perks": ["hacking_1"], "blueprint": "ds_network_ghost" },
+      "requires": { "skills": { "Hacking": 20 }, "attributes": { "Perception": 40 }, "perks": ["hacking_1"] },
       "effects": { "hooks": { "hack_alarm_reduction": 0.5 } } },
     { "id": "bench_engineer", "name": "Bench Engineer", "discipline": "tech", "tier": 2,
       "description": "A careful hand with circuits: better devices out of the Lab.",
@@ -89,7 +89,7 @@
       "effects": { "hooks": { "hack_chance_bonus": 0.15 } } },
     { "id": "override", "name": "Override", "discipline": "tech", "tier": 3,
       "description": "Can hack Linked units themselves, not only Husks and devices.",
-      "requires": { "skills": { "Hacking": 40 }, "perks": ["hacking_2", "network_ghost"], "level": 6, "blueprint": "ds_override", "adultsOnly": true },
+      "requires": { "skills": { "Hacking": 40 }, "perks": ["hacking_2", "network_ghost"], "level": 6, "adultsOnly": true },
       "effects": { "hooks": { "can_hack_linked": 1 } } },
 
     { "id": "drone_operator_1", "name": "Drone Operator I", "discipline": "drones", "tier": 1,
@@ -106,7 +106,7 @@
       "effects": { "hooks": { "drone_can_mark": 1 } } },
     { "id": "payload", "name": "Payload", "discipline": "drones", "tier": 3,
       "description": "Rigs the drone to carry and drop a flare or a motion sensor.",
-      "requires": { "skills": { "DronePiloting": 35, "Electronics": 20 }, "perks": ["drone_operator_2"], "level": 5, "blueprint": "ds_drone_payload" },
+      "requires": { "skills": { "DronePiloting": 35, "Electronics": 20 }, "perks": ["drone_operator_2"], "level": 5 },
       "effects": { "hooks": { "drone_payload": 1 } } },
 
     { "id": "steady_aim", "name": "Steady Aim", "discipline": "combat", "tier": 1,
@@ -210,7 +210,7 @@
       "effects": { "jobOutput": { "electronics": 0.05 } } },
     { "id": "linked_salvage", "name": "Linked Salvage", "discipline": "tech", "tier": 3,
       "description": "Strips Linked cores into Network-grade limbs, and shields their own from the Network's reach.",
-      "requires": { "skills": { "Electronics": 40, "Hacking": 20 }, "perks": ["neural_interface"], "level": 7, "blueprint": "bp_network_grade" },
+      "requires": { "skills": { "Electronics": 40, "Hacking": 20 }, "perks": ["neural_interface"], "level": 7 },
       "effects": { "hooks": { "cyber_interference_reduction": 0.5 } } }
   ]
 }

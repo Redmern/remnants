@@ -19,7 +19,7 @@ public static class GameDataLoader
         string? Optional(string file) => File.Exists(Path.Combine(directory, file)) ? File.ReadAllText(Path.Combine(directory, file)) : null;
 
         return LoadFromJson(Read("resources.json"), Read("jobs.json"), Read("buildings.json"), Read("rules.json"), Read("recipes.json"),
-            Optional("perks.json"), Optional("cybernetics.json"), Optional(SchematicCatalogLoader.FileName));
+            Optional("perks.json"), Optional("cybernetics.json"), SchematicCatalogLoader.Files(directory).Select(File.ReadAllText).ToArray());
     }
 
     /// <summary>
@@ -27,7 +27,7 @@ public static class GameDataLoader
     /// <paramref name="cybernetics"/> no cybernetics tree (prosthetics only strap on).
     /// </summary>
     public static GameData LoadFromJson(string resources, string jobs, string buildings, string rules, string recipes = "[]", string? perks = null,
-        string? cybernetics = null, string? schematics = null) =>
+        string? cybernetics = null, params string[]? schematics) =>
         new(
             Parse<List<ResourceDef>>(resources, "resources"),
             Parse<List<JobDef>>(jobs, "jobs"),
@@ -36,7 +36,7 @@ public static class GameDataLoader
             Parse<List<RecipeDef>>(recipes, "recipes"),
             perks is null ? null : Parse<ProgressionDef>(perks, "perks"),
             cybernetics is null ? null : Parse<CyberneticsDef>(cybernetics, "cybernetics"),
-            SchematicCatalogLoader.LoadFromJson(schematics));
+            SchematicCatalogLoader.LoadFromJson(schematics ?? []));
 
     private static T Parse<T>(string json, string name)
     {

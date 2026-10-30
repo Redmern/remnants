@@ -324,13 +324,13 @@ public static class ScavengeDataLoader
         string? Optional(string file) => File.Exists(Path.Combine(directory, file)) ? File.ReadAllText(Path.Combine(directory, file)) : null;
 
         return LoadFromJson(Read("items.json"), Read("enemies.json"), Read("zones.json"), Read("scavenge.json"),
-            Optional("perks.json"), Optional("cybernetics.json"), Optional(SchematicCatalogLoader.FileName));
+            Optional("perks.json"), Optional("cybernetics.json"), SchematicCatalogLoader.Files(directory).Select(File.ReadAllText).ToArray());
     }
 
     /// <param name="perks">perks.json (optional): only each perk's scavenge hooks are read (see <see cref="ScavengeData.PerkHooks"/>).</param>
     /// <param name="cybernetics">cybernetics.json (optional; see <see cref="ScavengeData.Cybernetics"/>).</param>
     public static ScavengeData LoadFromJson(string items, string enemies, string zones, string rules, string? perks = null, string? cybernetics = null,
-        string? schematics = null) =>
+        params string[]? schematics) =>
         new(
             Parse<List<ItemDef>>(items, "items"),
             Parse<List<EnemyDef>>(enemies, "enemies"),
@@ -339,7 +339,7 @@ public static class ScavengeDataLoader
             perks is null ? null : Parse<ProgressionDef>(perks, "perks").Perks
                 .ToDictionary(p => p.Id, p => (IReadOnlyDictionary<string, double>)new Dictionary<string, double>(p.Effects.Hooks, StringComparer.Ordinal)),
             cybernetics is null ? null : Parse<CyberneticsDef>(cybernetics, "cybernetics"),
-            SchematicCatalogLoader.LoadFromJson(schematics));
+            SchematicCatalogLoader.LoadFromJson(schematics ?? []));
 
     private static T Parse<T>(string json, string name)
     {

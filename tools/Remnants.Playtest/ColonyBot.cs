@@ -2,6 +2,7 @@ using Remnants.Core.Colony;
 using Remnants.Core.Data;
 using Remnants.Core.Items;
 using Remnants.Core.Scavenge;
+using Remnants.Core.Schematics;
 using Remnants.Core.Survivors;
 
 namespace Remnants.Playtest;
@@ -152,8 +153,47 @@ public sealed class ColonyBot
             Queue(armory, "machete");
         if (Find("electronics_lab") is { } lab && lab.Queue.Count == 0 && State.Stockpile.Get("scrap") >= 20)
             Queue(lab, "salvage_circuits");
-        foreach (var bp in State.Inventory.Counts.Keys.Where(id => _sim.Scavenge!.Items[id].Kind == ItemKind.Blueprint).ToList())
-            _sim.Execute(new StudyBlueprint(bp));
+        HandleSchematics();
+    }
+
+    /// <summary>
+    /// Schematics: decrypt chips at the Lab when it can; research the cheapest heard-of schematic at the Town Hall with a
+    /// spare adult; buy from the trader with Research Data, else scrap, keeping a reserve; sell chips it cannot decrypt.
+    /// </summary>
+    private void HandleSchematics()
+    {
+        var catalog = _sim.Data.Schematics;
+        if (Find("electronics_lab") is { } lab)
+            foreach (var id in State.Inventory.Counts.Keys.Where(id => catalog.Find(id) is not null).ToList())
+            {
+                var recipe = _sim.Data.Recipes.GetValueOrDefault(Remnants.Core.Schematics.Schematics.DecryptRecipeId(id));
+                if (recipe is not null && lab.Queue.All(o => o.RecipeId != recipe.Id) && _sim.CanQueue(lab, recipe).Ok)
+                    _sim.Execute(new QueueRecipe(lab.Id, recipe.Id, 1));
+            }
+        if (State.Schematics.Research is null)
+        {
+            var target = State.Schematics.HeardOf.Keys.Select(catalog.Find).OfType<SchematicDef>()
+                .Where(s => Research.Check(_sim, s.Id).Ok).OrderBy(s => s.Tier).ThenBy(s => s.Id, StringComparer.Ordinal).FirstOrDefault();
+            var researcher = State.Survivors.Where(s => !s.IsChild && !s.IsInfant && !s.Away && s.PatientAtBuildingId is null
+                    && _sim.ClassOf(s) is null && s.AssignedBuildingId is null)
+                .OrderByDescending(s => s.Get(AttributeKind.Intellect)).FirstOrDefault();
+            if (target is not null && researcher is not null) _sim.Execute(new StartResearch(target.Id, researcher.Id));
+        }
+        if (State.Radio.TraderHere)
+            foreach (var id in State.Radio.Stock.ToList())
+            {
+                var prices = RadioMast.Prices(_sim, catalog.All[id]);
+                for (var o = prices.Count - 1; o >= 0; o--)
+                {
+                    var cost = prices[o].Cost;
+                    var keep = cost.Keys.Any(k => k == "scrap") ? 40 : cost.Keys.Any(k => k == "food") ? 60 : 0;
+                    if (cost.All(kv => State.Stockpile.Get(kv.Key) >= kv.Value + (kv.Key is "scrap" or "food" ? keep : 0))
+                        && _sim.Execute(new BuyFromTrader(id, o)).Ok) break;
+                }
+            }
+        if (State.Radio.Contract is { Accepted: false } contract && _sim.ZoneInfo(contract.ZoneId).Zone.Threat <= 2)
+            _sim.Execute(new AcceptContract(contract.Id));
+        foreach (var call in State.Radio.Calls.ToList()) _sim.Execute(new AnswerCall(call.Id));
     }
 
     private int Count(string baseId) =>

@@ -379,29 +379,50 @@ public sealed class SchematicCatalog
     }
 }
 
-/// <summary>Reads data/schematics.json.</summary>
+/// <summary>
+/// Reads data/schematics.json plus any per-feature extension files <c>data/schematics.*.json</c> (vehicles, weapon mods,
+/// story…). The main file holds the rules; an extension adds <c>schematics</c> and <c>traders</c> only (its
+/// <c>rules</c> are ignored). Files merge in name order; an id used twice is an error.
+/// </summary>
 public static class SchematicCatalogLoader
 {
     public const string FileName = "schematics.json";
 
-    /// <summary>The catalogue in <paramref name="directory"/>, or <see cref="SchematicCatalog.Empty"/> when there is no file.</summary>
-    public static SchematicCatalog LoadFromDirectory(string directory)
+    /// <summary>The main file then the extensions (<c>schematics.*.json</c>, by name) in a directory.</summary>
+    public static IReadOnlyList<string> Files(string directory)
     {
-        var path = Path.Combine(directory, FileName);
-        return File.Exists(path) ? LoadFromJson(File.ReadAllText(path)) : SchematicCatalog.Empty;
+        var main = Path.Combine(directory, FileName);
+        if (!File.Exists(main)) return [];
+        var extensions = Directory.GetFiles(directory, "schematics.*.json").Where(f => Path.GetFileName(f) != FileName).OrderBy(f => Path.GetFileName(f), StringComparer.Ordinal);
+        return [main, .. extensions];
     }
 
-    public static SchematicCatalog LoadFromJson(string? json)
+    /// <summary>The catalogue in <paramref name="directory"/>, or <see cref="SchematicCatalog.Empty"/> when there is no file.</summary>
+    public static SchematicCatalog LoadFromDirectory(string directory) =>
+        LoadFromJson(Files(directory).Select(File.ReadAllText).ToArray());
+
+    /// <summary>Main file first, then extensions; none = the empty catalogue.</summary>
+    public static SchematicCatalog LoadFromJson(params string?[] files)
     {
-        if (json is null) return SchematicCatalog.Empty;
+        var parsed = files.OfType<string>().Select((json, i) => Parse(json, i)).ToList();
+        if (parsed.Count == 0) return SchematicCatalog.Empty;
+        return new SchematicCatalog(parsed[0] with
+        {
+            Traders = parsed.SelectMany(f => f.Traders).ToList(),
+            Schematics = parsed.SelectMany(f => f.Schematics).ToList(),
+        });
+    }
+
+    private static SchematicFile Parse(string json, int index)
+    {
         try
         {
-            return new SchematicCatalog(JsonSerializer.Deserialize<SchematicFile>(json, Json.Options)
-                ?? throw new GameDataException("schematics.json is empty."));
+            return JsonSerializer.Deserialize<SchematicFile>(json, Json.Options)
+                ?? throw new GameDataException($"schematics file {index} is empty.");
         }
         catch (JsonException e)
         {
-            throw new GameDataException($"schematics.json is invalid: {e.Message}");
+            throw new GameDataException($"schematics file {index} is invalid: {e.Message}");
         }
     }
 }
