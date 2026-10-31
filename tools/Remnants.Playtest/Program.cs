@@ -2,9 +2,9 @@ using Remnants.Core.Data;
 using Remnants.Core.Scavenge;
 using Remnants.Playtest;
 
-// Usage: dotnet run --project tools/Remnants.Playtest -- [--story [--prompt=N]] [--days=N] [--seeds=A..B | --seed=N] [--quiet] [--trace] [--no-expeditions] [--bold] [--no-mods] [--no-raids | --fight] [--data=DIR]
+// Usage: dotnet run --project tools/Remnants.Playtest -- [--story [--prompt=N] [--story-missions=all|main|none]] [--days=N] [--seeds=A..B | --seed=N] [--quiet] [--trace] [--no-expeditions] [--bold] [--no-mods] [--no-raids | --fight] [--data=DIR]
 //        [--no-vehicles] [--schematics=sch_a,sch_b|vehicles]   --travel-table   --zone=ID --vehicle=TIER   (vehicles: every vehicle schematic, to sweep the tiers)
-//        dotnet run --project tools/Remnants.Playtest -- --mission=ID [--runs=N] [--hour=H[,H...]] [--weather=KIND[,KIND...]] [--th=N]
+//        dotnet run --project tools/Remnants.Playtest -- --mission=ID [--runs=N] [--hour=H[,H...]] [--weather=KIND[,KIND...]] [--th=N] [--party=N] [--kit=armed]
 //        dotnet run --project tools/Remnants.Playtest -- --story-acts[=terms|silence|voice|calm|all] [--seed=N] [--trace]
 //        dotnet run --project tools/Remnants.Playtest -- --zone=outskirts|all [--runs=N] [--party=N] [--trace] [--no-defenses] [--kit=fog|geared|tech|hack|drone|hacker|peg|mech|powered|cyborg|network] [--carbines=N] [--carbine-quality=fine|crude] [--armor] [--no-tech] [--coop=N] [--hour=H[,H...]] [--weather=KIND[,KIND...]|all] [--mods=basic|full|stealth|network] [--no-salvage]
 var options = args.Where(a => a.StartsWith("--")).Select(a => a[2..].Split('=', 2)).ToDictionary(p => p[0], p => p.Length > 1 ? p[1] : "");
@@ -26,7 +26,7 @@ var bot = new BotOptions
 {
     Expeditions = !options.ContainsKey("no-expeditions"), Bold = options.ContainsKey("bold"), Mods = !options.ContainsKey("no-mods"),
     StoryPrompt = int.Parse(options.GetValueOrDefault("prompt", "0")), FightRaids = options.ContainsKey("fight"),
-    Vehicles = !options.ContainsKey("no-vehicles"), Schematics = schematics,
+    Vehicles = !options.ContainsKey("no-vehicles"), Schematics = schematics, StoryMissions = options.GetValueOrDefault("story-missions", "all"),
 };
 
 var data = GameDataLoader.LoadFromDirectory(dataDir);
@@ -56,7 +56,8 @@ if (options.TryGetValue("mission", out var missionArg))
     foreach (var hour in hours)
     foreach (var weather in weathers)
         Console.Write(MissionTrial.Run(data, scavenge, storyData, missionArg, int.Parse(options.GetValueOrDefault("runs", "100")), hour, weather,
-            int.Parse(options.GetValueOrDefault("th", "1")), options.ContainsKey("trace") ? line => Console.WriteLine($"    {line}") : null));
+            int.Parse(options.GetValueOrDefault("th", "1")), options.ContainsKey("trace") ? line => Console.WriteLine($"    {line}") : null,
+            int.Parse(options.GetValueOrDefault("party", "2")), options.GetValueOrDefault("kit", "")));
     return;
 }
 if (options.TryGetValue("zone", out var zoneArg))

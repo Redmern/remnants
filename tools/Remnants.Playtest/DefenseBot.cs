@@ -7,9 +7,10 @@ namespace Remnants.Playtest;
 /// <summary>
 /// The bot's defense: as the grace period ends it puts up a Lookout Tower with a guard, an Alarm Bell and spike strips on
 /// every side; then a gate and wooden walls across the side raids came from, more strips and guards as the colony grows,
-/// and tier upgrades it has schematics for. It re-arms traps and queues every repair, and on a warning shuts the gates,
-/// shelters the children and recalls a party that can make it home. Raids auto-resolve, or with <c>fight</c> are fought
-/// on the tactical map with <see cref="StoryBot"/> playing the defenders. Spends only what the build order does not need.
+/// and tier upgrades it has schematics for. It re-arms traps and queues every repair, and on a warning puts barricades
+/// and strips across the side it names, shuts the gates, shelters the children and recalls a party that can make it home.
+/// Raids auto-resolve, or with <c>fight</c> are fought on the tactical map with <see cref="StoryBot"/> playing the
+/// defenders. Spends only what the build order does not need (a warning's barricades and strips excepted).
 /// </summary>
 public sealed class DefenseBot(ColonySim sim, ColonyBot colony, bool fight = false)
 {
@@ -144,6 +145,12 @@ public sealed class DefenseBot(ColonySim sim, ColonyBot colony, bool fight = fal
     {
         if (State.Defense.Raid is not { Stage: RaidStage.Warned } raid || raid.Id == _preppedRaid) return;
         _preppedRaid = raid.Id;
+        // The warning names the side: barricades (once known) and strips across it, from whatever is in the stores.
+        foreach (var o in new[] { 0, 2, -2 })
+        {
+            TryPlace("barricade", Edge(raid.Approach, 2, o), raid.Approach, essential: true);
+            TryPlace("spike_strip", Edge(raid.Approach, 1, o + 1), raid.Approach, essential: true);
+        }
         sim.Execute(new CloseGates(true));
         sim.Execute(new ShelterChildren(true));
         if (DefenseHandlers.CanRecall(State, raid)) sim.Execute(new RecallExpedition());

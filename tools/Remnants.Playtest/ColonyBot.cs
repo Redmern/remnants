@@ -32,6 +32,8 @@ public sealed record BotOptions
     public bool Mods { get; init; } = true;
     /// <summary>Story mode: which option the party bot picks on a field prompt (0 = the first, e.g. talk to the Tally).</summary>
     public int StoryPrompt { get; init; }
+    /// <summary>Story mode: which field missions to go on: "all", "main" (no side jobs), or "none" (calls and colony tasks only).</summary>
+    public string StoryMissions { get; init; } = "all";
     /// <summary>Build vehicles at the Garage and drive them out (else every party walks).</summary>
     public bool Vehicles { get; init; } = true;
 
@@ -128,7 +130,10 @@ public sealed class ColonyBot
     /// <summary>The next build-order step not done yet, skipping ones the Town Hall does not allow yet.</summary>
     public (string Building, int Level)? NextGoal()
     {
-        foreach (var (id, level) in BuildOrder)
+        // A threat-2 story mission waits on weapons: the Armory jumps the queue (a player gears up before the fight).
+        var order = GearingUp && Find("armory") is null && _sim.TownHallLevel >= Data.Buildings["armory"].MinTownHallLevel
+            ? BuildOrder.Prepend(("armory", 1)) : BuildOrder;
+        foreach (var (id, level) in order)
         {
             var have = State.Buildings.Where(b => b.DefId == id).Select(b => b.Level).DefaultIfEmpty(0).Max();
             if (have >= level) continue;
@@ -205,7 +210,7 @@ public sealed class ColonyBot
         if (Find("kitchen") is { } kitchen && kitchen.Queue.Count == 0 && State.Stockpile.Get("alcohol") < 2 && Find("med_bay") is not null && _sim.FoodDays > 6)
             Queue(kitchen, "spirits");
         if (Find("med_bay") is { } bay && bay.Queue.Count == 0) CraftMedicine(bay);
-        if (Find("armory") is { } armory && armory.Queue.Count == 0 && Count("machete") < 2 && State.Stockpile.Get("scrap") >= 10)
+        if (Find("armory") is { } armory && armory.Queue.Count == 0 && Count("machete") < (GearingUp ? 4 : 2) && State.Stockpile.Get("scrap") >= 10)
             Queue(armory, "machete");
         if (Find("electronics_lab") is { } bench && bench.Queue.Count == 0) Bench(bench);
         HandleSchematics();
@@ -641,6 +646,9 @@ public sealed class ColonyBot
                 var run = _sim.OpenExpeditionScavenge();
                 var before = State.Survivors.ToDictionary(s => s.Id, s => s.Name);
                 if (_stuck) return;
+                if (out_.MissionId is { } traced)
+                    Trace?.Invoke($"== story {traced} day {Day:0.0}: " + string.Join("; ", run.State.Units.Where(u => u.PlayerId == ColonySim.ExpeditionPlayerId)
+                        .Select(u => $"{u.Name} hp {u.Hp:0}/{u.MaxHp:0} {string.Join(",", u.Equipment.Values)} pack {u.Pack.Count}")));
                 var (result, stats) = out_.MissionId is not null
                     ? (StoryBot.Play(run, ColonySim.ExpeditionPlayerId, _options.StoryPrompt, Trace).Result, new RunStats(run.State.Round, 0, 0, 0, 0, 0, 0, 0, 0, 0))
                     : PartyBot.Play(run, ColonySim.ExpeditionPlayerId, Trace);
@@ -713,6 +721,12 @@ public sealed class ColonyBot
 
     // ---- story --------------------------------------------------------------------------------------------------
 
+    /// <summary>A main story mission is waiting for better weapons than the colony has (see <see cref="StoryLaunch"/>).</summary>
+    public bool GearingUp { get; private set; }
+
+    /// <summary>The day the bot first wanted to launch each mission (its gear wait counts from there).</summary>
+    private readonly Dictionary<string, double> _waitingSince = new(StringComparer.Ordinal);
+
     /// <summary>Story runs: day, mission, outcome, back, dead, rounds.</summary>
     public List<(double Day, string Mission, string Outcome, int Back, int Dead, int Rounds)> StoryRuns { get; } = [];
 
@@ -738,26 +752,50 @@ public sealed class ColonyBot
     }
 
     /// <summary>
-    /// Sends the strongest healthy adults (health 90+: a half-healed arm is what lost most M2 runs) on the first available
-    /// story mission (it waits for its own party size).
+    /// Sends the strongest healthy adults (health 90+ and no open wound: a hurt arm is what lost most M2 runs) on the first
+    /// story mission that is ready to go, as a player reading the briefing would: a side job only with hands to spare and
+    /// nothing in its briefing to warn about, a main field mission never with fewer than the briefing asks for (threat 1
+    /// and a defense at home: for 10 days), nor with starting-tier weapons into a stand-up fight (the Armory jumps the
+    /// build order meanwhile; after 20 days the party goes as it is).
     /// </summary>
     private bool StoryLaunch()
     {
         if (State.Campaign is null || _sim.Story is null || State.Expedition is not null) return false;
-        var mission = Campaign.Visible(_sim).Where(m => m.Def.Type == MissionType.Field && m.Progress.Status == MissionStatus.Available)
-            .Select(m => m.Def).FirstOrDefault();
-        if (mission is null) return false;
-        var adults = State.Survivors.Where(s => !s.IsChild && !s.Away && s.PatientAtBuildingId is null && s.Pregnancy is null && s.Health >= 90).ToList();
-        var size = Math.Min(Math.Max(_sim.MaxPartySize, mission.MaxParty ?? 0), adults.Count);
-        if (size < 2) return false;
-        // A mission that needs someone treated waits for something to treat them with.
-        if (mission.Field!.Objectives.Any(o => o.Kind == ObjectiveKind.Aid) && Count("bandage") + Count("med_kit") == 0) return false;
-        var zone = _sim.Scavenge!.Zones[mission.Zone!];
-        if (_sim.FoodStock < WorldMap.RationsPerMember(Data, zone) * size + 5) return false;
-        var party = adults.OrderByDescending(s => s.Get(AttributeKind.Strength) + s.Get(AttributeKind.Agility) + s.Get(AttributeKind.Endurance)).Take(size).ToList();
-        var launched = _sim.Execute(new LaunchStoryMission(mission.Id, Gear(party)));
-        if (!launched.Ok) Problems.Add($"day {Day:0.0}: launch {mission.Id}: {launched.Message}");
-        return launched.Ok;
+        var gearing = false;
+        try
+        {
+            foreach (var mission in Campaign.Visible(_sim).Where(m => m.Def.Type == MissionType.Field && m.Progress.Status == MissionStatus.Available)
+                         .Select(m => m.Def).Where(m => _options.StoryMissions == "all" || _options.StoryMissions == "main" && m.Main).ToList())
+            {
+                var adults = State.Survivors.Where(s => !s.IsChild && !s.Away && s.PatientAtBuildingId is null && s.Pregnancy is null && s.Health >= 90
+                                                        && !s.IsInjured).ToList();
+                var size = Math.Min(Math.Max(_sim.MaxPartySize, mission.MaxParty ?? 0), adults.Count);
+                if (size < 2) return false;
+                // A side job (a contract) only with hands to spare: three adults stay home beyond the party. A stealth job the
+                // bot cannot play (it walks in plain sight) it leaves alone (Marrow's Debt: BALANCE.md "Full-game pass 2").
+                var home = State.Survivors.Count(s => !s.IsChild && !s.Away);
+                if (!mission.Main && home - size < 3) continue;
+                if (!mission.Main && mission.Field!.Objectives.Any(o => o.Kind == ObjectiveKind.Undetected)) continue;
+                // A mission that needs someone treated waits for something to treat them with.
+                if (mission.Field!.Objectives.Any(o => o.Kind == ObjectiveKind.Aid) && Count("bandage") + Count("med_kit") == 0) continue;
+                var zone = _sim.Scavenge!.Zones[mission.Zone!];
+                if (_sim.FoodStock < WorldMap.RationsPerMember(Data, zone) * size + 5) continue;
+                var party = adults.OrderByDescending(s => s.Get(AttributeKind.Strength) + s.Get(AttributeKind.Agility) + s.Get(AttributeKind.Endurance)).Take(size).ToList();
+                GearUp(night: false);
+                var members = Gear(party);
+                var warnings = MissionReadiness.Check(_sim, mission, members);
+                var waited = Day - (_waitingSince.TryGetValue(mission.Id, out var since) ? since : _waitingSince[mission.Id] = Day);
+                if (!mission.Main && warnings.Count > 0) continue;
+                if (mission.Main && warnings.Any(w => w.Id == "gear") && waited < 20) { gearing = true; continue; }
+                // Never short-handed into a main fight: two into M7 was most of its dead.
+                if (mission.Main && warnings.Any(w => w.Id == "party") && (mission.Threat >= 2 && !mission.Field!.AtHome || waited < 10)) continue;
+                var launched = _sim.Execute(new LaunchStoryMission(mission.Id, members));
+                if (!launched.Ok) Problems.Add($"day {Day:0.0}: launch {mission.Id}: {launched.Message}");
+                return launched.Ok;
+            }
+            return false;
+        }
+        finally { GearingUp = gearing; }
     }
 
     /// <summary>A scout drone in the stores flies over the nearest rumored zone in reach (flown by the best pilot at home).</summary>

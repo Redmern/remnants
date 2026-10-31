@@ -75,13 +75,26 @@ public static class StoryBot
             if (Heal(sim, u, friend, revive: true) is { } c) return c;
         if (u.Hp < u.MaxHp * 0.4 && Heal(sim, u, u, revive: false) is { } self) return self;
 
-        // Fight what is in reach.
+        // A worn-out party breaks off, as a player would: the mission stays open ("not done yet") and they come back healed.
+        if (!run.Def.AtHome && !_leaveAll && run.Outcome != MissionOutcome.Done && Worn(ours)) _leaveAll = true;
+
+        // Fight what is in reach; on the way out, only a blow worth taking (a wounded arm that can barely hit runs instead).
         var target = state.Units.Where(t => t.IsActive && u.HostileTo(t) && Detection.SideSees(sim.Data, state, side, t))
             .SelectMany(t => profile.Actions.Where(a => a.ApCost <= u.Ap && Combat.CheckReach(sim.Data, state.Map, u.Pos, a, t.Pos) == ScavengeError.None
                                                         && Drones.CanStrike(a, t)).Select(a => (t, a)))
             .OrderByDescending(x => Combat.ChanceToHit(sim, u, x.a, x.t) * (x.a.MinDamage + x.a.MaxDamage) / 2)
             .ThenBy(x => x.t.Id).FirstOrDefault();
-        if (target.t is not null) return new Attack(pid, u.Id, target.t.Id, target.a.Id);
+        if (target.t is not null && (!_leaveAll || Combat.ChanceToHit(sim, u, target.a, target.t) >= 0.4 || !CanStepOut(sim, u)))
+            return new Attack(pid, u.Id, target.t.Id, target.a.Id);
+
+        // A friend is in a fight we can see: join it, two on one (a Husk claws three times a round; one alone loses the trade).
+        if (!_leaveAll && run.Outcome != MissionOutcome.Failed)
+        {
+            var brawl = state.Units.Where(t => t.IsActive && u.HostileTo(t) && Detection.SideSees(sim.Data, state, side, t)
+                                               && ours.Any(f => f.Id != u.Id && f.IsActive && f.Pos.Chebyshev(t.Pos) <= 2))
+                .OrderBy(t => t.Pos.Chebyshev(u.Pos)).ThenBy(t => t.Id).FirstOrDefault();
+            if (brawl is not null && brawl.Pos.Chebyshev(u.Pos) <= 8 && Toward(sim, u, brawl.Pos) is { } join) return join;
+        }
 
         // Objectives, in order.
         Pos? goal = null;
@@ -179,8 +192,28 @@ public static class StoryBot
             return end;
         }
 
+        // Stick together: the one out in front waits for a friend who has fallen behind (a lone survivor is the one who dies).
+        if (!run.Def.AtHome && Straggler(sim, u, ours, goal!.Value) is not null)
+            return u.Ap >= 1 && u.Stance != Stance.Overwatch ? new SetStance(pid, u.Id, Stance.Overwatch) : end;
         return Toward(sim, u, goal!.Value, exact: leave) ?? (run.Def.AtHome && u.Ap >= 1 ? new SetStance(pid, u.Id, Stance.Overwatch) : end);
     }
+
+    /// <summary>The party has taken too much: under half its health in all, or someone is down or close to it.</summary>
+    private static bool Worn(List<Unit> ours)
+    {
+        var party = ours.Where(x => x.Kind == UnitKind.Survivor).ToList();
+        if (party.Count == 0) return false;
+        return party.Sum(x => x.Hp) < party.Sum(x => x.MaxHp) * 0.5 || party.Any(x => x.Status == UnitStatus.Downed || x.Hp < x.MaxHp * 0.3);
+    }
+
+    /// <summary>A friend more than 3 tiles back who is further from the goal than this unit (it walks; we wait for it).</summary>
+    private static Unit? Straggler(ScavengeSim sim, Unit u, List<Unit> ours, Pos goal) =>
+        ours.Where(f => f.Id != u.Id && f.IsActive && f.Kind == UnitKind.Survivor && f.Pos.Chebyshev(u.Pos) > 3
+                        && f.Pos.Chebyshev(goal) > u.Pos.Chebyshev(goal))
+            .OrderBy(f => f.Id).FirstOrDefault();
+
+    /// <summary>Whether the unit can take a step at all (boxed in, it might as well swing).</summary>
+    private static bool CanStepOut(ScavengeSim sim, Unit u) => sim.Reachable(u).Any(kv => kv.Key != u.Pos && kv.Value <= u.Ap);
 
     /// <summary>A move to the affordable reachable tile closest (walking) to a tile next to the goal, if that gets closer.</summary>
     private static IScavengeCommand? Toward(ScavengeSim sim, Unit u, Pos goal, bool exact = false)
