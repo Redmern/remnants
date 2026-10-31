@@ -38,16 +38,22 @@ public partial class StancePanel : PanelContainer
         return button is not null;
     }
 
+    private string? _signature;
+
     public void Refresh(bool busy)
     {
+        var unit = _presenter.ActingUnit;
+        var pid = _presenter.PlayerId;
+        // The buttons only change with the acting unit and its AP and stances; the HUD refreshes after every event.
+        var signature = unit is null || busy ? "" : $"{pid}|{unit.Id}|{unit.Name}|{unit.Ap}|{unit.Stance}|{unit.Lookout}";
+        if (signature == _signature && _content.GetChildCount() == _buttons.Count) return;
+        _signature = signature;
         Widgets.Clear(_content);
         _buttons.Clear();
-        var unit = _presenter.ActingUnit;
         Visible = unit is not null && !busy;
         if (unit is null || busy) return;
 
         var fog = _presenter.Sim.Data.Rules.Fog;
-        var pid = _presenter.PlayerId;
         Add("stance_overwatch", "Overwatch", "ends the turn", "scav_overwatch",
             "Fire at the first hostile that moves or reveals itself in sight and reach (once).",
             fog.Overwatch.ApCost, new SetStance(pid, unit.Id, Stance.Overwatch), unit, unit.Stance == Stance.Overwatch);

@@ -349,32 +349,50 @@ public partial class MapView : Node3D
     private static MeshInstance3D[] Meshes(Node node) =>
         node.FindChildren("*", nameof(MeshInstance3D), true, false).OfType<MeshInstance3D>().ToArray();
 
+    // Highlights are pooled: a refresh after every command would otherwise make (and free) a mesh and node per tile.
+    private static readonly PlaneMesh HighlightQuad = new() { Size = new Vector2(1.9f, 1.9f) };
+    private readonly List<MeshInstance3D> _quads = new();
+    private readonly List<Label3D> _labels = new();
+    private int _quadsUsed, _labelsUsed;
+
     public void ClearHighlights()
     {
-        foreach (var child in _highlights.GetChildren()) child.QueueFree();
+        for (var i = 0; i < _quadsUsed; i++) _quads[i].Visible = false;
+        for (var i = 0; i < _labelsUsed; i++) _labels[i].Visible = false;
+        _quadsUsed = _labelsUsed = 0;
     }
 
     /// <summary>Marks a tile; an optional label floats above it (AP cost, hit chance).</summary>
     public void Highlight(Pos p, HighlightKind kind, string? label = null)
     {
-        var quad = new MeshInstance3D
+        if (_quadsUsed == _quads.Count)
         {
-            Mesh = new PlaneMesh { Size = new Vector2(1.9f, 1.9f) },
-            MaterialOverride = _highlightMaterials[kind],
-            Position = TileGrid.ToWorld(p) + new Vector3(0, kind == HighlightKind.Selected ? 0.13f : 0.12f, 0),
-            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
-        };
-        _highlights.AddChild(quad);
+            var made = new MeshInstance3D { Mesh = HighlightQuad, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+            _quads.Add(made);
+            _highlights.AddChild(made);
+        }
+        var quad = _quads[_quadsUsed++];
+        quad.MaterialOverride = _highlightMaterials[kind];
+        quad.Position = TileGrid.ToWorld(p) + new Vector3(0, kind == HighlightKind.Selected ? 0.13f : 0.12f, 0);
+        quad.Visible = true;
         if (label is null) return;
-        _highlights.AddChild(new Label3D
+        if (_labelsUsed == _labels.Count)
         {
             // Tile notes sit low (move cost, who an item reaches); text over units is the HUD's (Ui.WorldTags).
-            Text = label, FontSize = 30, PixelSize = 0.01f, OutlineSize = 12, Font = Hud.Fonts.BodyBold,
-            OutlineModulate = new Color(Hud.Palette.Void, 0.9f),
-            Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, NoDepthTest = true,
-            Position = TileGrid.ToWorld(p) + new Vector3(0, 0.5f, 0),
-            Modulate = kind == HighlightKind.Use ? Hud.Palette.Good : Hud.Palette.Text,
-        });
+            var made = new Label3D
+            {
+                FontSize = 30, PixelSize = 0.01f, OutlineSize = 12, Font = Hud.Fonts.BodyBold,
+                OutlineModulate = new Color(Hud.Palette.Void, 0.9f),
+                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, NoDepthTest = true,
+            };
+            _labels.Add(made);
+            _highlights.AddChild(made);
+        }
+        var text = _labels[_labelsUsed++];
+        text.Text = label;
+        text.Position = TileGrid.ToWorld(p) + new Vector3(0, 0.5f, 0);
+        text.Modulate = kind == HighlightKind.Use ? Hud.Palette.Good : Hud.Palette.Text;
+        text.Visible = true;
     }
 
     public void SetHover(Pos? p)

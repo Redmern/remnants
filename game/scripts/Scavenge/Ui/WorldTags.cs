@@ -25,7 +25,24 @@ public partial class WorldTags : Control
         public VBoxContainer Box = null!;
         public string Signature = "";
         public Vector3 World;
+        public bool Visible = true;
+        public Vector2 Position = new(float.NaN, float.NaN);
     }
+
+    /// <summary>A rising pop-up: kept here, not as metadata on the node, so placing them each frame stays in managed code.</summary>
+    private sealed class Popup
+    {
+        public Control Chip = null!;
+        public Vector3 World;
+        public float Offset;
+        public float Rise;
+    }
+
+    private readonly List<Popup> _popups = new();
+    private readonly Dictionary<int, string> _unitKeys = new();
+    private readonly HashSet<string> _wanted = new();
+    private readonly List<string> _gone = new();
+    private readonly System.Text.StringBuilder _signature = new();
 
     private ScavengePresenter _presenter = null!;
     private UnitViews _units = null!;
@@ -60,25 +77,29 @@ public partial class WorldTags : Control
         var chip = Chip(text, color, null, big ? 22 : 17, strong: true);
         var anchor = world + Vector3.Up * (HeadHeight + 0.6f);
         // Pop-ups over the same spot queue upwards instead of covering each other.
-        var stacked = GetChildren().OfType<Control>().Count(c => c.HasMeta("rise") && c.GetMeta("world").AsVector3().DistanceTo(anchor) < 0.5f);
-        chip.SetMeta("world", anchor);
-        chip.SetMeta("offset", stacked * 30f);
-        chip.SetMeta("rise", 0f);
+        var stacked = _popups.Count(p => p.World.DistanceTo(anchor) < 0.5f);
+        var popup = new Popup { Chip = chip, World = anchor, Offset = stacked * 30f };
+        _popups.Add(popup);
         AddChild(chip);
         var tween = chip.CreateTween();
-        tween.TweenMethod(Callable.From<float>(v => chip.SetMeta("rise", v)), 0f, 46f, 1.1);
+        tween.TweenMethod(Callable.From<float>(v => popup.Rise = v), 0f, 46f, 1.1);
         tween.Parallel().TweenProperty(chip, "modulate:a", 0f, 0.5).SetDelay(0.7);
-        tween.TweenCallback(Callable.From(chip.QueueFree));
+        tween.TweenCallback(Callable.From(() =>
+        {
+            _popups.Remove(popup);
+            chip.QueueFree();
+        }));
     }
 
     public override void _Process(double delta)
     {
         if (_presenter is null || !IsVisibleInTree()) return;
-        var wanted = new HashSet<string>();
+        var wanted = _wanted;
+        wanted.Clear();
         foreach (var unit in _presenter.State.Units)
         {
             if (!unit.OnMap || !_presenter.CanSee(unit) || _units.WorldOf(unit.Id) is not { } at) continue;
-            var key = $"u{unit.Id}";
+            if (!_unitKeys.TryGetValue(unit.Id, out var key)) _unitKeys[unit.Id] = key = $"u{unit.Id}";
             wanted.Add(key);
             Place(key, at + Vector3.Up * HeadHeight, UnitContent(unit));
         }
@@ -98,18 +119,22 @@ public partial class WorldTags : Control
             Place(key, TileGrid.ToWorld(contact.Pos) + Vector3.Up * 1.1f,
                 [new(text + (age > 0 ? $" {age}r" : ""), color, "stat_sight", 16, Fade: Mathf.Clamp(1f - age * 0.3f, 0.4f, 1f), Tip: tip)]);
         }
-        foreach (var gone in _stacks.Keys.Where(k => !wanted.Contains(k)).ToList())
+        _gone.Clear();
+        foreach (var k in _stacks.Keys)
+            if (!wanted.Contains(k)) _gone.Add(k);
+        foreach (var gone in _gone)
         {
             _stacks[gone].Box.QueueFree();
             _stacks.Remove(gone);
         }
 
-        foreach (var child in GetChildren().OfType<Control>().Where(c => c.HasMeta("rise")))
+        _popups.RemoveAll(p => !IsInstanceValid(p.Chip));
+        foreach (var popup in _popups)
         {
-            var world = child.GetMeta("world").AsVector3();
-            if (_camera.IsPositionBehind(world)) continue;
-            var p = _camera.UnprojectPosition(world);
-            child.Position = p - new Vector2(child.Size.X / 2, child.Size.Y + child.GetMeta("rise").AsSingle() + child.GetMeta("offset").AsSingle());
+            if (_camera.IsPositionBehind(popup.World)) continue;
+            var p = _camera.UnprojectPosition(popup.World);
+            var chip = popup.Chip;
+            chip.Position = p - new Vector2(chip.Size.X / 2, chip.Size.Y + popup.Rise + popup.Offset);
         }
     }
 
@@ -159,7 +184,15 @@ public partial class WorldTags : Control
             _stacks[key] = stack;
         }
         stack.World = world;
-        var signature = string.Join("|", lines.Select(l => $"{l.Text}{l.Color.ToHtml()}{l.Fade:0.0}{l.Hp:0.00}"));
+        var sb = _signature.Clear();
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var l = lines[i];
+            if (i > 0) sb.Append('|');
+            // The colour as its packed int: same distinction as its html code, no string per line.
+            sb.Append(l.Text).Append(l.Color.ToRgba32()).Append(l.Fade.ToString("0.0")).Append(l.Hp?.ToString("0.00"));
+        }
+        var signature = sb.ToString();
         if (signature != stack.Signature)
         {
             stack.Signature = signature;
@@ -173,10 +206,12 @@ public partial class WorldTags : Control
             }
             stack.Box.ResetSize();
         }
-        stack.Box.Visible = lines.Count > 0 && !_camera.IsPositionBehind(world);
-        if (!stack.Box.Visible) return;
+        var visible = lines.Count > 0 && !_camera.IsPositionBehind(world);
+        if (visible != stack.Visible) stack.Box.Visible = stack.Visible = visible;
+        if (!visible) return;
         var p = _camera.UnprojectPosition(world);
-        stack.Box.Position = (p - new Vector2(stack.Box.Size.X / 2, stack.Box.Size.Y)).Round();
+        var at = (p - new Vector2(stack.Box.Size.X / 2, stack.Box.Size.Y)).Round();
+        if (at != stack.Position) stack.Box.Position = stack.Position = at;
     }
 
     private static PanelContainer Chip(string text, Color color, string? icon, int size, bool strong = false, float? hp = null)
