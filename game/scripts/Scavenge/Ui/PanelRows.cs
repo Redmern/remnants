@@ -49,7 +49,12 @@ public sealed class PanelRows(VBoxContainer box)
         if (_next < _rows.Count && _rows[_next] is T same)
         {
             _next++;
-            if (!same.Visible) same.Visible = true;
+            if (!same.Visible)
+            {
+                // A row coming back (a salvage node in reach again, another unit's extra attack) eases in.
+                same.Visible = true;
+                Motion.Enter(same, _next);
+            }
             Place(same);
             return same;
         }
@@ -69,14 +74,12 @@ public sealed class PanelRows(VBoxContainer box)
         return made;
     }
 
-    public Label Heading(string text)
+    /// <summary>A sub-heading ("SALVAGE"), with an (i) for the help <paramref name="topic"/> when given.</summary>
+    public TipHeading Heading(string text, string? topic = null, string tooltip = "")
     {
-        var label = Take(() => Widgets.Label("", "Heading"));
-        label.ThemeTypeVariation = "Heading";
-        label.AutowrapMode = TextServer.AutowrapMode.Off;
-        label.SizeFlagsHorizontal = Control.SizeFlags.Fill;
-        label.Text = text;
-        return label;
+        var heading = Take(() => new TipHeading());
+        heading.Configure(text, topic, tooltip);
+        return heading;
     }
 
     public Label Note(string text, string variation = "Small")
@@ -109,5 +112,94 @@ public sealed class PanelRows(VBoxContainer box)
         Place(control);
         _fresh.Add(control);
         return control;
+    }
+
+    /// <summary>A pooled row of the caller's own kind (the ping buttons, a status chip): made once, re-used in place.</summary>
+    public T Row<T>(Func<T> make) where T : Control => Take(make);
+
+    /// <summary>A status chip (icon, text, tint, tooltip), updated in place.</summary>
+    public RowChip Chip(string icon, string text, Color tint, string tooltip)
+    {
+        var chip = Take(() => new RowChip());
+        chip.Configure(icon, text, tint, tooltip);
+        return chip;
+    }
+}
+
+/// <summary>A pooled sub-heading of an order panel: caps label, and an <see cref="Hud.Help.InfoTip"/> when it has a help topic.</summary>
+public partial class TipHeading : HBoxContainer
+{
+    private readonly Label _label = Widgets.Label("", "Heading");
+    private readonly Hud.Help.InfoTip _tip = new("");
+
+    public TipHeading()
+    {
+        MouseFilter = MouseFilterEnum.Ignore;
+        AddThemeConstantOverride("separation", 4);
+        _label.AutowrapMode = TextServer.AutowrapMode.Off;
+        _label.MouseFilter = MouseFilterEnum.Pass;
+        AddChild(_label);
+        AddChild(_tip);
+    }
+
+    public void Configure(string text, string? topic, string tooltip = "")
+    {
+        _label.Text = text;
+        _label.TooltipText = tooltip;
+        _tip.Topic = topic ?? "";
+        _tip.Visible = topic is not null;
+    }
+}
+
+/// <summary>A pooled status chip: icon and text in an inset, tinted.</summary>
+public partial class RowChip : PanelContainer
+{
+    private readonly TextureRect _icon = Icons.Rect(Icons.Get("ui_info", 14), 16, Palette.TextMuted);
+    private readonly Label _text = Widgets.Label("", "Number");
+    private string _iconId = "ui_info";
+
+    public RowChip()
+    {
+        ThemeTypeVariation = "Chip";
+        MouseFilter = MouseFilterEnum.Stop;
+        SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        var row = Widgets.Row(4);
+        row.MouseFilter = MouseFilterEnum.Ignore;
+        AddChild(row);
+        row.AddChild(_icon);
+        _text.ClipText = true;
+        _text.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _text.AddThemeFontSizeOverride("font_size", 15);
+        row.AddChild(_text);
+    }
+
+    public void Configure(string icon, string text, Color tint, string tooltip)
+    {
+        if (icon != _iconId)
+        {
+            _iconId = icon;
+            _icon.Texture = Icons.Get(icon, 14);
+        }
+        _text.Text = text;
+        _text.AddThemeColorOverride("font_color", tint);
+        TooltipText = tooltip;
+    }
+}
+
+/// <summary>
+/// Panels of the scavenge HUD arrive and leave with <see cref="Motion.Reveal"/> / <see cref="Motion.Conceal"/> when
+/// what they show comes or goes, and are left alone otherwise (the HUD refreshes after every event).
+/// </summary>
+public static class Presence
+{
+    private static readonly StringName Shown = "presence_shown";
+
+    public static void Set(Control control, bool shown)
+    {
+        var was = control.HasMeta(Shown) ? control.GetMeta(Shown).AsBool() : control.Visible;
+        if (was == shown) return;
+        control.SetMeta(Shown, shown);
+        if (shown) Motion.Reveal(control);
+        else Motion.Conceal(control);
     }
 }

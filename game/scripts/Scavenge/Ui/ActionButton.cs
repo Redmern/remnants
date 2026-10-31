@@ -83,8 +83,10 @@ public partial class ActionButton : Button
         _apCost = apCost;
         CustomMinimumSize = new Vector2(0, detail.Length > 0 ? 44 : 36);
         var key = hotkey is null ? "" : Hotkeys.KeyName(hotkey);
-        TooltipText = Widgets.Tip(tooltip.Length > 0 ? tooltip : text, key.Length > 0 ? key : null)
-                      + (apCost > 0 ? $"\nCosts {apCost} AP" : "");
+        // A long detail line is clipped on the button: the tooltip carries it whole.
+        TooltipText = Widgets.Tip((tooltip.Length > 0 ? tooltip : text) + (detail.Length > 34 && !tooltip.Contains(detail) ? $"\n{detail}" : ""),
+                          key.Length > 0 ? key : null)
+                      + (apCost > 0 ? $"\nCosts {apCost} AP ({new string('■', apCost)}: one pip per AP)" : "");
         if (icon != _iconId)
         {
             _iconId = icon;
@@ -99,8 +101,33 @@ public partial class ActionButton : Button
         _cap.Visible = key.Length > 0;
         ToggleMode = false;
         ButtonPressed = false;
+        ActionMode = ActionModeEnum.Release;
+        SetWarning(false);
         ThemeTypeVariation = "";
         SetBlocked(false);
+    }
+
+    /// <summary>
+    /// Makes it a toggle (the chosen attack, an item or drone order being aimed), shown pressed when
+    /// <paramref name="pressed"/>. Toggles act on press (<see cref="Motion.OnPress"/>): nothing a slip of the mouse would regret.
+    /// </summary>
+    public ActionButton Toggle(bool pressed)
+    {
+        ToggleMode = true;
+        ButtonPressed = pressed;
+        Motion.OnPress(this);
+        return this;
+    }
+
+    private bool _warning;
+
+    /// <summary>An amber title: the order works but costs something (Take all that slows you).</summary>
+    public void SetWarning(bool warning)
+    {
+        if (warning == _warning) return;
+        _warning = warning;
+        if (warning) _title.AddThemeColorOverride("font_color", Palette.Warn);
+        else _title.RemoveThemeColorOverride("font_color");
     }
 
     /// <summary>Greys the button out; the cost pips turn red when <paramref name="tooExpensive"/>.</summary>

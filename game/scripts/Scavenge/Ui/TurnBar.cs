@@ -23,7 +23,6 @@ public partial class TurnBar : PanelContainer
     private readonly Label _ap = Widgets.Label("", "Number");
     private readonly Pips _apPips = new();
     private readonly Button _endTurn;
-    private string _orderSignature = "";
 
     public event Action? EndTurnPressed;
     public event Action? LeavePressed;
@@ -56,7 +55,10 @@ public partial class TurnBar : PanelContainer
         _weather = Widgets.Chip(Icons.Get("weather_clear", 16), "", Palette.TextMuted);
         row.AddChild(_weather);
         row.AddChild(new VSeparator());
-        row.AddChild(Icons.Rect(Icons.Get("stat_initiative", 18), 18, Palette.TextMuted));
+        var orderIcon = Icons.Rect(Icons.Get("stat_initiative", 18), 18, Palette.TextMuted);
+        orderIcon.MouseFilter = MouseFilterEnum.Stop;
+        orderIcon.TooltipText = "Turn order this round, by initiative: the acting unit is large and named, those that already acted are faded.";
+        row.AddChild(orderIcon);
         var scroll = new ScrollContainer
         {
             SizeFlagsHorizontal = SizeFlags.ExpandFill, CustomMinimumSize = new Vector2(0, 52),
@@ -69,7 +71,12 @@ public partial class TurnBar : PanelContainer
         ap.Alignment = BoxContainer.AlignmentMode.Center;
         _ap.AddThemeFontSizeOverride("font_size", 14);
         ap.AddChild(_ap);
-        ap.AddChild(_apPips);
+        var pips = Widgets.Row(4);
+        pips.AddChild(_apPips);
+        pips.AddChild(new Hud.Help.InfoTip("controls"));
+        ap.AddChild(pips);
+        ap.MouseFilter = MouseFilterEnum.Pass;
+        ap.TooltipText = "Action points of the unit whose turn it is. Moving and every order cost AP (■ = 1 AP);\nwhat is left is lost at End turn.";
         row.AddChild(ap);
         _endTurn = Widgets.IconButton("ui_end_turn", "End turn", "End this unit's turn", () => EndTurnPressed?.Invoke(), Hotkeys.KeyName("end_turn"), "Primary");
         _endTurn.CustomMinimumSize = new Vector2(120, 38);
@@ -106,37 +113,48 @@ public partial class TurnBar : PanelContainer
         _zone.Text = _presenter.Sim.Data.Zones.TryGetValue(state.ZoneId, out var z) ? z.Name : state.ZoneId;
         _round.Text = $"ROUND {state.Round}";
 
-        var entries = state.TurnOrder.Select((id, i) => (Unit: state.FindUnit(id), Index: i)).Where(e => e.Unit is { OnMap: true }).ToList();
-        var signature = string.Join(",", entries.Select(e => $"{e.Unit!.Id}:{_presenter.CanSee(e.Unit)}:{e.Unit.Hp:0}"))
-                        + $"|{state.TurnIndex}|{state.Finished}";
-        if (signature != _orderSignature)
+        // One chip per unit, kept across rounds and updated in place (side, acting, acted, HP tint); only a unit never
+        // seen in the order before gets a new chip.
+        var at = 0;
+        _inOrder.Clear();
+        for (var i = 0; i < state.TurnOrder.Count; i++)
         {
-            _orderSignature = signature;
-            Widgets.Clear(_order);
-            foreach (var (u, i) in entries)
+            if (state.FindUnit(state.TurnOrder[i]) is not { OnMap: true } u) continue;
+            if (!_chips.TryGetValue(u.Id, out var chip))
             {
-                var current = i == state.TurnIndex && !state.Finished;
-                var chip = Chip(u!, current, _presenter.CanSee(u!));
-                if (i < state.TurnIndex) chip.Modulate = new Color(1, 1, 1, 0.45f);
+                chip = new OrderChip(u.Id);
+                chip.Clicked += id => UnitClicked?.Invoke(id);
+                _chips[u.Id] = chip;
                 _order.AddChild(chip);
             }
+            _inOrder.Add(u.Id);
+            if (!chip.Visible) chip.Visible = true;
+            if (chip.GetIndex() != at) _order.MoveChild(chip, at);
+            at++;
+            chip.Set(_presenter, u, current: i == state.TurnIndex && !state.Finished, acted: i < state.TurnIndex, _presenter.CanSee(u));
         }
+        foreach (var (id, chip) in _chips)
+            if (!_inOrder.Contains(id) && chip.Visible) chip.Visible = false;
 
         _busy = busy;
         _ap.Text = Status();
         var acting = _presenter.ActingUnit;
         _apPips.Visible = acting is not null;
-        if (acting is not null) _apPips.Set(acting.Ap, _presenter.Sim.Profile(acting).MaxAp);
+        if (acting is not null) _apPips.Set(acting.Ap, _presenter.Sim.Profile(acting).MaxAp, acting.Suppressed ? Palette.Warn : Palette.Amber);
         _endTurn.Disabled = acting is null || busy;
     }
+
+    private readonly System.Collections.Generic.Dictionary<int, OrderChip> _chips = new();
+    private readonly System.Collections.Generic.HashSet<int> _inOrder = new();
 
     /// <summary>AP of the acting unit; in multiplayer also whose turn it is and the turn timer.</summary>
     private string Status()
     {
         var acting = _presenter.ActingUnit;
         var remote = _presenter.Driver.TurnStatus();
+        // The acting chip names the unit; this is its AP, next to End turn.
         if (acting is not null)
-            return $"{acting.Name.ToUpperInvariant()} · {acting.Ap}/{_presenter.Sim.Profile(acting).MaxAp} AP" + (remote is null ? "" : $" · {remote}");
+            return $"{acting.Ap}/{_presenter.Sim.Profile(acting).MaxAp} AP LEFT" + (remote is null ? "" : $" · {remote}");
         if (_presenter.Done) return "RUN OVER";
         return remote ?? (_busy ? "ENEMY TURN…" : "WAITING…");
     }
@@ -149,44 +167,90 @@ public partial class TurnBar : PanelContainer
         _sinceTick = 0;
         _ap.Text = Status();
     }
+}
 
-    /// <summary>A turn-order chip: portrait with a side-colour edge; the acting unit larger and named.</summary>
-    private Control Chip(Unit u, bool current, bool known)
+/// <summary>
+/// A turn-order chip, kept for its unit across rounds: portrait with a side-colour edge (a "?" while unseen), the acting
+/// unit larger, framed and named, those that already acted faded, the bottom edge tinted by HP. Updated in place.
+/// </summary>
+public partial class OrderChip : PanelContainer
+{
+    private readonly int _unitId;
+    private readonly Portrait _portrait = new(32) { MouseFilter = MouseFilterEnum.Ignore };
+    private readonly CenterContainer _unknown = new() { CustomMinimumSize = new Vector2(32, 32), MouseFilter = MouseFilterEnum.Ignore };
+    private readonly Label _name = Widgets.Label("", "", Colors.White, 15);
+    private readonly StyleBoxFlat _box;
+    private readonly Unchanged _set = new();
+    private string _look = "";
+    private string _portraitKey = "";
+
+    public event Action<int>? Clicked;
+
+    public OrderChip() : this(0) { }
+
+    public OrderChip(int unitId)
     {
-        var side = known ? SidePalette.For(_presenter, u) : SidePalette.Unknown;
-        var chip = new PanelContainer { MouseFilter = MouseFilterEnum.Stop, MouseDefaultCursorShape = CursorShape.PointingHand };
-        var box = HudTheme.Box(current ? side.Darkened(0.6f) : Palette.Inset, side, current ? 2 : 1, radius: 3, padX: 3, padY: 3);
-        box.BorderWidthBottom = 4;
-        chip.AddThemeStyleboxOverride("panel", box);
+        _unitId = unitId;
+        MouseFilter = MouseFilterEnum.Stop;
+        MouseDefaultCursorShape = CursorShape.PointingHand;
+        _box = HudTheme.Box(Palette.Inset, SidePalette.Unknown, 1, radius: 3, padX: 3, padY: 3);
+        _box.BorderWidthBottom = 4;
+        AddThemeStyleboxOverride("panel", _box);
         var row = Widgets.Row(6);
         row.MouseFilter = MouseFilterEnum.Ignore;
-        chip.AddChild(row);
+        AddChild(row);
+        row.AddChild(_portrait);
+        _unknown.AddChild(Widgets.Label("?", "Display", Palette.TextMuted));
+        row.AddChild(_unknown);
+        _name.AddThemeFontOverride("font", Fonts.BodyBold);
+        row.AddChild(_name);
+    }
+
+    public override void _GuiInput(InputEvent e)
+    {
+        if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) Clicked?.Invoke(_unitId);
+    }
+
+    public void Set(ScavengePresenter presenter, Unit u, bool current, bool acted, bool known)
+    {
+        var side = known ? SidePalette.For(presenter, u) : SidePalette.Unknown;
+        // The bottom edge shades from the side colour toward red as a seen unit loses HP.
+        var health = known && u.MaxHp > 0 ? Mathf.Clamp((float)(u.Hp / u.MaxHp), 0, 1) : 1;
+        var edge = health >= 0.999f ? side : side.Lerp(Palette.Danger, 1 - health);
+        var look = $"{side}|{edge}|{current}";
+        if (look != _look)
+        {
+            _look = look;
+            _box.BgColor = current ? side.Darkened(0.6f) : Palette.Inset;
+            _box.BorderColor = edge;
+            _box.SetBorderWidthAll(current ? 2 : 1);
+            _box.BorderWidthBottom = 4;
+            _box.BorderBlend = false;
+            QueueRedraw();
+        }
         var size = current ? 40 : 32;
+        var square = new Vector2(size, size);
+        if (_portrait.CustomMinimumSize != square) _portrait.CustomMinimumSize = square;
+        if (_unknown.CustomMinimumSize != square) _unknown.CustomMinimumSize = square;
+        _set.Visible(_portrait, known);
+        _set.Visible(_unknown, !known);
         if (known)
         {
-            var portrait = new Portrait(size) { MouseFilter = MouseFilterEnum.Ignore };
-            portrait.Set(UnitPortrait.For(GetTree(), u), side.Darkened(0.55f));
-            portrait.Alert = u.Status == UnitStatus.Downed;
-            row.AddChild(portrait);
+            var key = $"{u.Id}|{string.Join(",", u.Equipment.Values)}|{side}";
+            if (key != _portraitKey)
+            {
+                _portraitKey = key;
+                _portrait.Set(UnitPortrait.For(GetTree(), u), side.Darkened(0.55f));
+            }
+            _portrait.Alert = u.Status == UnitStatus.Downed || health < 0.35f;
         }
-        else
-        {
-            var unknown = new CenterContainer { CustomMinimumSize = new Vector2(size, size), MouseFilter = MouseFilterEnum.Ignore };
-            unknown.AddChild(Widgets.Label("?", "Display", Palette.TextMuted));
-            row.AddChild(unknown);
-        }
-        if (current)
-        {
-            var name = Widgets.Label(known ? u.Name : "Unseen", "", Colors.White, 15);
-            name.AddThemeFontOverride("font", Fonts.BodyBold);
-            row.AddChild(name);
-        }
-        chip.TooltipText = known ? $"{u.Name} · {ScavengeText.Kind(u)} · {ScavengeText.Status(u)} · HP {u.Hp:0}/{u.MaxHp:0}\nClick to select" : "Unseen";
-        var id = u.Id;
-        chip.GuiInput += e =>
-        {
-            if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) UnitClicked?.Invoke(id);
-        };
-        return chip;
+        _set.Visible(_name, current);
+        _set.Text(_name, known ? u.Name : "Unseen");
+        _set.Modulate(this, acted ? new Color(1, 1, 1, 0.45f) : Colors.White);
+        _set.Tooltip(this, known
+            ? $"{u.Name} · {ScavengeText.Kind(u)} · {ScavengeText.Status(u)} · HP {u.Hp:0}/{u.MaxHp:0}"
+              + (acted ? "\nActed this round" : current ? "\nActing now" : "") + "\nClick to select"
+            : "Unseen: heard or known to be there, but not in sight. It acts at this place in the order.");
     }
 }
+

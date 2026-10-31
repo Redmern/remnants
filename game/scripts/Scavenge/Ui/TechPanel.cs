@@ -17,8 +17,8 @@ public enum TechAim { None, Deploy, Fly, Heal, Fire }
 /// Hacking and the scout drone for the acting unit, as <see cref="ActionButton"/>s with AP pips and hotkeys: Hack (H) each
 /// device in the tool's reach with its chance and progress (or Override a Linked), Deploy (K, then click a tile next to
 /// the unit), Fly (J, then click a lit tile), Recall (K), Mark (M) a hostile the drone sees, and drop a payload (P); the
-/// drone variants' role (R): a medic drone's Heal and a combat drone's Fire arm a click on a highlighted unit, a cargo
-/// drone loads from a cache next to it, and Ferry (I) flies its hold out from next to an exit.
+/// drone variants' role (Shift+R): a medic drone's Heal and a combat drone's Fire arm a click on a highlighted unit, a cargo
+/// drone loads from a cache next to it, and Ferry (Shift+I) flies its hold out from next to an exit.
 /// Hidden when the unit has neither a hacking tool nor a drone. Core decides whether anything works.
 /// </summary>
 public partial class TechPanel : PanelContainer
@@ -35,14 +35,15 @@ public partial class TechPanel : PanelContainer
     {
         _rows = new PanelRows(_content);
         _presenter = presenter;
-        CustomMinimumSize = new Vector2(300, 0);
-        var box = UiKit.Panel(this);
+        CustomMinimumSize = new Vector2(ScavengeHud.ColumnWidth, 0);
+        var box = UiKit.Panel(this, 4);
         box.AddChild(Widgets.SectionHeader("Tech", "skill_hacking"));
         box.AddChild(_content);
     }
 
     public bool PressHotkey(InputEvent e)
     {
+        if (!Visible) return false;
         var button = _buttons.FirstOrDefault(b => b.Hotkey is { } k && !b.Disabled && Hotkeys.Pressed(e, k));
         if (button is null) return false;
         if (button.ToggleMode) button.ButtonPressed = !button.ButtonPressed;
@@ -66,23 +67,26 @@ public partial class TechPanel : PanelContainer
         var hasKit = unit is not null && Hacking.Tool(data, unit) is not null;
         var drone = unit is null ? null : Drones.DroneOf(_presenter.State, unit);
         var carried = unit is null ? null : Drones.CarriedDrone(data, unit);
-        Visible = unit is not null && !busy && (hasKit || drone is not null || carried is not null);
-        if (!Visible) return;
+        var shown = unit is not null && !busy && (hasKit || drone is not null || carried is not null);
+        Presence.Set(this, shown);
+        if (!shown) return;
         var pid = _presenter.PlayerId;
 
         if (hasKit)
         {
-            _rows.Heading("HACK");
+            _rows.Heading("HACK", "hacking");
             var cost = Hacking.ApCost(data, unit!);
             var options = _presenter.HackOptions(unit!);
             if (options.Count == 0) _rows.Note($"Nothing in reach of the {Hacking.Tool(data, unit!)!.Name}.");
             var first = true;
             foreach (var o in options)
             {
-                var progress = o.Needed > 1 ? $" · {o.Done}/{o.Needed} done" : "";
+                var step = Math.Min(o.Done + 1, o.Needed);
+                var progress = o.Needed <= 1 ? $"{o.Chance * 100:0}% success"
+                    : step == o.Needed ? $"step {step} of {o.Needed} · {o.Chance * 100:0}% success" : $"step {step} of {o.Needed} · last one {o.Chance * 100:0}%";
                 var what = o.Device is { } d ? ScavengeText.HackEffect(d.Kind) : "it fights for you for a few rounds";
                 var locked = o.Device is { } dev && Hacking.LockedOut(_presenter.State, dev, _presenter.Side);
-                var button = Add("skill_hacking", $"Hack {o.Name}", locked ? "locked out after a failed hack" : $"{o.Chance * 100:0}% on the last step{progress}",
+                var button = Add("skill_hacking", $"Hack {o.Name}", locked ? "locked out after a failed hack" : progress,
                         cost, first ? "scav_hack" : null,
                         $"Hack the {o.Name.ToLowerInvariant()}: {what}. Each try puts work in; the last rolls {o.Chance * 100:0}%. A failure sets off an alarm, shocks you and locks you out for a while.",
                     () => CommandRequested?.Invoke(new Hack(pid, unit!.Id, o.Device?.Id, o.Target?.Id)));
@@ -95,7 +99,7 @@ public partial class TechPanel : PanelContainer
         var rules = data.Rules.Drone;
         var droneItem = drone?.DroneItemId ?? carried!;
         var spec = data.Items[droneItem].Drone!;
-        _rows.Heading(ScavengeText.Item(data, droneItem).ToUpperInvariant());
+        _rows.Heading(ScavengeText.Item(data, droneItem).ToUpperInvariant(), "drones", $"Flies on {unit!.Name}'s AP ({unit.Ap} left). Melee cannot reach it; the Linked shoot it down.");
         if (drone is null)
         {
             var battery = Drones.PackedBattery(data, unit!, carried!);
@@ -103,8 +107,7 @@ public partial class TechPanel : PanelContainer
             var deploy = Add("skill_dronepiloting", "Deploy drone", $"battery {battery}/{max} rounds · then click a tile next to you",
                 rules.DeployApCost, "scav_drone", "Launch the scout drone: it flies over anything, sees far, and shares its sight with your team.",
                 () => AimChosen?.Invoke(aim == TechAim.Deploy ? TechAim.None : TechAim.Deploy));
-            deploy.ToggleMode = true;
-            deploy.ButtonPressed = aim == TechAim.Deploy;
+            deploy.Toggle(aim == TechAim.Deploy);
             deploy.SetBlocked(battery < rules.MinBattery || rules.DeployApCost > unit!.Ap, rules.DeployApCost > unit!.Ap);
             return;
         }
@@ -113,8 +116,7 @@ public partial class TechPanel : PanelContainer
         var fly = Add("ui_move", "Fly drone", $"{Drones.FlyRange(sim, drone)} tiles · range {range} · {drone.Battery} rounds left",
             rules.FlyApCost, "scav_fly", "Fly the drone over walls and water to a lit tile; you pay the AP.",
             () => AimChosen?.Invoke(aim == TechAim.Fly ? TechAim.None : TechAim.Fly));
-        fly.ToggleMode = true;
-        fly.ButtonPressed = aim == TechAim.Fly;
+        fly.Toggle(aim == TechAim.Fly);
         fly.SetBlocked(drone.Battery <= 0 || rules.FlyApCost > unit!.Ap, rules.FlyApCost > unit!.Ap);
 
         var inRange = unit!.Pos.Chebyshev(drone.Pos) <= range;
@@ -173,8 +175,7 @@ public partial class TechPanel : PanelContainer
                 var heal = Add("ui_heal", "Drone: heal", detail, cost, "scav_drone_action",
                         "Medic drone: drops a bandage or med-kit from your pack on a friendly unit next to it (stabilizes the downed).",
                     () => AimChosen?.Invoke(aim == TechAim.Heal ? TechAim.None : TechAim.Heal));
-                heal.ToggleMode = true;
-                heal.ButtonPressed = aim == TechAim.Heal;
+                heal.Toggle(aim == TechAim.Heal);
                 heal.SetBlocked(!inRange || kit is null || patients.Count == 0 || cost > unit.Ap, cost > unit.Ap);
                 break;
             }
@@ -211,13 +212,22 @@ public partial class TechPanel : PanelContainer
                 var fire = Add("skill_firearms", "Drone: fire", detail, ap, "scav_drone_action",
                         "Combat drone: its gun at a hostile it sees, aimed with your Drone Piloting. Loud: it draws fire.",
                     () => AimChosen?.Invoke(aim == TechAim.Fire ? TechAim.None : TechAim.Fire));
-                fire.ToggleMode = true;
-                fire.ButtonPressed = aim == TechAim.Fire;
+                fire.Toggle(aim == TechAim.Fire);
                 fire.SetBlocked(!inRange || targets.Count == 0 || ap > unit.Ap, ap > unit.Ap);
                 break;
             }
         }
     }
+
+    /// <summary>What the next map click does while a drone order is armed (the right column's header line).</summary>
+    public static string AimHint(TechAim aim) => aim switch
+    {
+        TechAim.Deploy => "Click a lit tile next to you to launch the drone. Right-click or Esc cancels.",
+        TechAim.Fly => "Click a lit tile to fly the drone there; you pay the AP. Right-click or Esc cancels.",
+        TechAim.Heal => "Click a highlighted friend next to the drone to patch them up. Right-click or Esc cancels.",
+        TechAim.Fire => "Click a red target the drone sees. Right-click or Esc cancels.",
+        _ => "",
+    };
 
     /// <summary>Friendly people next to the drone the medic could treat (hurt or downed).</summary>
     public List<Unit> HealTargets(Unit operatorUnit, Unit drone) =>

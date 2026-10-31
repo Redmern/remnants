@@ -182,6 +182,9 @@ public partial class ScavengeScreen : Node3D
             if (error) Toast(message);
         };
         _hud.EndTurnRequested += OnEndTurn;
+        _hud.NextUnitRequested += SelectNextUnit;
+        _hud.CenterRequested += CenterOnActing;
+        _hud.Acting.ActingClicked += CenterOnActing;
         _hud.LeaveRequested += () =>
         {
             _presenter.Driver.Leave();
@@ -498,14 +501,77 @@ public partial class ScavengeScreen : Node3D
         RefreshFocus();
         _turnBar.Refresh(_busy);
         _unitPanel.Present(selected);
-        _actionPanel.Refresh(_busy, _usingItem);
-        _hud.Loot.Refresh(_busy);
-        _stancePanel.Refresh(_busy);
-        _techPanel.Refresh(_busy, _aim);
-        _coopPanel.Refresh(_busy, selected, _pinging);
+        // While a turn replays the orders stay as they are (dimmed, nothing moves); they catch up when it is over.
+        if (!_busy)
+        {
+            _actionPanel.Refresh(false, _usingItem);
+            _hud.Loot.Refresh(false);
+            _stancePanel.Refresh(false);
+            _techPanel.Refresh(false, _aim);
+            _coopPanel.Refresh(false, selected, _pinging);
+        }
+        RefreshActingHeader(selected);
         _hud.Banner.Refresh();
         _hud.RefreshStory();
         RefreshHighlights(selected);
+    }
+
+    private bool _autoplaying;
+
+    /// <summary>
+    /// Whose orders the right column shows and what a click does now (the header's reserved line), and the column
+    /// dimmed while it is not about what the player looks at (an enemy turn, another unit selected).
+    /// </summary>
+    private void RefreshActingHeader(Unit? selected)
+    {
+        var acting = _presenter.ActingUnit;
+        var ownDrone = acting is not null && selected is { Kind: UnitKind.Drone } d && d.OperatorId == acting.Id;
+        var other = acting is not null && selected is not null && selected.Id != acting.Id && !ownDrone;
+        string title, hint;
+        var color = Hud.Palette.TextMuted;
+        if (acting is null)
+        {
+            title = _presenter.Done ? "Run over" : _busy ? "Enemy turn" : "Waiting";
+            hint = _presenter.Done ? "The run is over." : _busy ? "The others are moving. Watch the map." : _presenter.Driver.TurnStatus() ?? "Waiting for the other units to act…";
+        }
+        else
+        {
+            title = $"{acting.Name}'s turn";
+            var round = _presenter.State.Round;
+            (hint, color) = (_busy, _autoplaying) switch
+            {
+                (true, _) => ("Playing out the last order…", Hud.Palette.TextMuted),
+                (_, true) => ("Autoplay is giving the orders (debug).", Hud.Palette.Warn),
+                _ when _pinging is { } ping => (CoopPanel.PingHint(ping), Hud.Palette.Amber),
+                _ when _aim != TechAim.None => (TechPanel.AimHint(_aim), Hud.Palette.Amber),
+                _ when _usingItem is { } item => (_actionPanel.ItemHint(item), Hud.Palette.Amber),
+                _ when ownDrone => ($"The drone flies on {acting.Name}'s AP: its orders are under Tech.", Hud.Palette.TextMuted),
+                _ when other => ($"{selected!.Name} is selected; these are {acting.Name}'s orders. {Hud.Hotkeys.KeyName("scav_center")} goes back.", Hud.Palette.Warn),
+                _ when round <= 3 => ("Click a lit tile to move, a red target to attack with the chosen action.", Hud.Palette.TextMuted),
+                _ => ($"{acting.Ap} AP left · {Hud.Hotkeys.KeyName("end_turn")} ends the turn · {Hud.Hotkeys.KeyName("scav_next_unit")} next unit.", Hud.Palette.TextMuted),
+            };
+        }
+        _hud.Acting.Refresh(_presenter, acting, title, hint, color);
+        _hud.DimOrders(_busy || acting is null || other);
+    }
+
+    /// <summary>Tab: the next of your units on the map after the selected one (the camera glides to it).</summary>
+    private void SelectNextUnit()
+    {
+        var mine = _presenter.State.Units.Where(u => u.OnMap && u.IsActive && _presenter.IsMine(u) && u.Kind != UnitKind.Device)
+            .OrderBy(u => u.Id).ToList();
+        if (mine.Count == 0) return;
+        var next = mine.FirstOrDefault(u => u.Id > (_selectedId ?? int.MinValue)) ?? mine[0];
+        Select(next.Id);
+        _camera.GlideTo(TileGrid.ToWorld(next.Pos));
+    }
+
+    /// <summary>Home / the header's portrait: back to the acting unit, camera on it.</summary>
+    private void CenterOnActing()
+    {
+        if (_presenter.ActingUnit is not { } acting) return;
+        Select(acting.Id);
+        _camera.GlideTo(TileGrid.ToWorld(acting.Pos));
     }
 
     /// <summary>Move tiles (Core's Reachable), attack targets with Core's hit chance, or who an item can reach.</summary>
@@ -617,6 +683,7 @@ public partial class ScavengeScreen : Node3D
     private async Task Autoplay(int steps)
     {
         await ToSignal(GetTree().CreateTimer(0.5), SceneTreeTimer.SignalName.Timeout);
+        _autoplaying = true;
         for (var i = 0; i < steps && !_presenter.Done; i++)
         {
             while (_busy) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
@@ -646,5 +713,7 @@ public partial class ScavengeScreen : Node3D
             if (!await Run(command) && command is not EndTurn) await Run(new EndTurn(pid, u.Id));
             await ToSignal(GetTree().CreateTimer(0.2), SceneTreeTimer.SignalName.Timeout);
         }
+        _autoplaying = false;
+        RefreshHud();
     }
 }

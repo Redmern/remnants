@@ -19,7 +19,6 @@ public partial class CoopPanel : PanelContainer
 {
     private readonly ScavengePresenter _presenter;
     private readonly VBoxContainer _content = Widgets.Column(4);
-    private readonly Label _hint = Widgets.Wrapped("", "Small");
     private readonly List<ActionButton> _buttons = new();
     private readonly PanelRows _rows;
 
@@ -38,15 +37,18 @@ public partial class CoopPanel : PanelContainer
     {
         _rows = new PanelRows(_content);
         _presenter = presenter;
-        CustomMinimumSize = new Vector2(300, 0);
-        var box = UiKit.Panel(this);
-        box.AddChild(Widgets.SectionHeader("Team", "stat_ally"));
-        box.AddChild(_hint);
+        CustomMinimumSize = new Vector2(ScavengeHud.ColumnWidth, 0);
+        var box = UiKit.Panel(this, 4);
+        box.AddChild(Widgets.SectionHeader("Team", "stat_ally", new Hud.Help.InfoTip("coop")));
         box.AddChild(_content);
     }
 
+    /// <summary>What the next map click does while a ping is being placed (the right column's header line).</summary>
+    public static string PingHint(PingKind kind) => $"Click a tile to ping \"{PingName(kind)}\" for your team. Right-click or Esc cancels.";
+
     public bool PressHotkey(InputEvent e)
     {
+        if (!Visible) return false;
         var button = _buttons.FirstOrDefault(b => b.Hotkey is { } k && !b.Disabled && Hotkeys.Pressed(e, k));
         if (button is null) return false;
         if (button.ToggleMode) button.ButtonPressed = !button.ButtonPressed;
@@ -69,17 +71,15 @@ public partial class CoopPanel : PanelContainer
         var unit = _presenter.ActingUnit;
         if (unit is null || busy)
         {
-            Visible = false;
+            Presence.Set(this, false);
             return;
         }
         var sim = _presenter.Sim;
         var coop = sim.Data.Rules.Coop;
         var pid = _presenter.PlayerId;
         var allies = _presenter.Allies.ToList();
-        _hint.Text = pinging is { } placing ? $"Click a tile to ping \"{PingName(placing)}\" for your team. Right-click or Esc cancels."
-            : allies.Count > 0 ? $"Allied with {string.Join(", ", allies.Select(_presenter.PlayerName))}: shared sight, no friendly fire."
-            : "";
-        _hint.Visible = _hint.Text.Length > 0;
+        if (allies.Count > 0)
+            _rows.Note($"Allied with {string.Join(", ", allies.Select(_presenter.PlayerName))}: shared sight, no friendly fire.");
 
         // Alliance offers to answer come first: they are why the panel shows up.
         foreach (var offer in _presenter.OffersToMe)
@@ -96,7 +96,7 @@ public partial class CoopPanel : PanelContainer
             : _presenter.GiveTargetsNear(unit).FirstOrDefault(u => _presenter.IsAlly(u));
         if (target is not null && unit.Pack.Count > 0)
         {
-            _rows.Heading($"GIVE TO {target.Name.ToUpperInvariant()}");
+            _rows.Heading($"GIVE TO {target.Name.ToUpperInvariant()}", "coop");
             var first = true;
             foreach (var id in unit.Pack.Distinct())
             {
@@ -112,6 +112,7 @@ public partial class CoopPanel : PanelContainer
 
         if (unit.CarryingId is { } carriedId && _presenter.State.FindUnit(carriedId) is { } carried)
         {
+            _rows.Heading("CARRY", "carry_downed");
             var spot = _presenter.PutDownSpot(unit);
             var button = Add("ui_move", $"Put {carried.Name} down", "on a free tile next to you", 0, "scav_carry",
                 () => { if (spot is { } at) CommandRequested?.Invoke(new PutDown(pid, unit.Id, at)); });
@@ -120,6 +121,7 @@ public partial class CoopPanel : PanelContainer
         else
             foreach (var downed in _presenter.CarryableNear(unit).Take(1))
             {
+                _rows.Heading("CARRY", "carry_downed");
                 var id = downed.Id;
                 var button = Add("stat_injured", $"Carry {downed.Name}", $"slower (-{coop.CarryRangePenalty} move) · out with you",
                     coop.CarryApCost, "scav_carry", () => CommandRequested?.Invoke(new Carry(pid, unit.Id, id)));
@@ -129,18 +131,26 @@ public partial class CoopPanel : PanelContainer
         if (allies.Count > 0)
         {
             var left = coop.PingsPerTurn - unit.PingsUsed;
-            _rows.Heading($"PING ({left}/{coop.PingsPerTurn} LEFT)");
-            var pings = Widgets.Row(4);
-            _rows.Fresh(pings);
-            foreach (var (kind, hotkey) in new[] { (PingKind.Danger, "scav_ping_danger"), (PingKind.GoHere, "scav_ping_go"), (PingKind.Loot, "scav_ping_loot") })
+            _rows.Heading($"PING ({left}/{coop.PingsPerTurn} LEFT)", "pings");
+            // One row of three icon buttons, made once and kept.
+            var pings = _rows.Row(() =>
             {
-                var k = kind;
-                var button = new ActionButton(PingIcon(kind), "", "", 0, hotkey, $"Ping \"{PingName(kind)}\": mark a tile for your team (then click it)") { ToggleMode = true };
-                button.ButtonPressed = pinging == kind;
+                var row = Widgets.Row(4);
+                foreach (var (kind, hotkey) in Pings)
+                {
+                    var k = kind;
+                    var b = new ActionButton(PingIcon(kind), "", "", 0, hotkey, $"Ping \"{PingName(kind)}\": mark a tile for your team (then click it)");
+                    b.OnPressed = () => PingChosen?.Invoke(k);
+                    row.AddChild(b);
+                }
+                return row;
+            });
+            for (var i = 0; i < Pings.Length; i++)
+            {
+                var button = pings.GetChild<ActionButton>(i);
+                button.Toggle(pinging == Pings[i].Kind);
                 button.SetBlocked(left <= 0);
-                button.Pressed += () => PingChosen?.Invoke(k);
                 _buttons.Add(button);
-                pings.AddChild(button);
             }
         }
 
@@ -177,8 +187,11 @@ public partial class CoopPanel : PanelContainer
             button.ThemeTypeVariation = "Flat";
         }
 
-        Visible = _buttons.Count > 0;
+        Presence.Set(this, _buttons.Count > 0);
     }
+
+    private static readonly (PingKind Kind, string Hotkey)[] Pings =
+        [(PingKind.Danger, "scav_ping_danger"), (PingKind.GoHere, "scav_ping_go"), (PingKind.Loot, "scav_ping_loot")];
 
     public static string PingName(PingKind kind) => kind switch
     {

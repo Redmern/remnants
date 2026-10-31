@@ -7,17 +7,66 @@ using Remnants.Game.Hud;
 namespace Remnants.Game.Scavenge.Ui;
 
 /// <summary>
-/// The scavenge HUD's layout and keyboard: turn bar on top; the selected unit's card on the left; actions and stances
-/// on the right; toasts and the log at the bottom; world tags (<see cref="WorldTags"/>) under everything; the run
-/// summary, pause menu and settings on top; the alliance banner (<see cref="AllianceBanner"/>) under the turn bar, the Tech
-/// panel (<see cref="TechPanel"/>: hacking and the scout drone) and the Team panel (<see cref="CoopPanel"/>) under the
-/// stances, and a device tooltip (<see cref="DeviceTip"/>) at the cursor. Hotkeys: Space/Enter end the turn, 1–3 attacks, 4–6 items,
-/// O/B/L stances, F loot, T recruit, X extract, H hack, K deploy / recall the drone, J fly it, M mark, P payload, G give, C carry,
-/// Z/V/N pings, Y/U alliance, Esc cancels aiming or opens
-/// the menu. <see cref="ScavengeScreen"/> wires it to the map.
+/// The scavenge HUD's layout and keyboard: turn bar on top; the selected unit's card on the left with the loot panel
+/// docked under it; the right column (one fixed width) with whose turn it is (<see cref="ActingHeader"/>: portrait, name,
+/// what a click does now), the story mission, then the orders in a fixed order: Attack · Use, Stance, what is in reach
+/// here (<see cref="ActionPanel.Context"/>), Tech (<see cref="TechPanel"/>: hacking and the drone), Team
+/// (<see cref="CoopPanel"/>); toasts and the log at the bottom; world tags (<see cref="WorldTags"/>) under everything;
+/// the run summary, pause menu and settings on top; the alliance banner (<see cref="AllianceBanner"/>) under the turn
+/// bar, and a device tooltip (<see cref="DeviceTip"/>) at the cursor. Hotkeys (GameSettings' table): Space/Enter end the
+/// turn, 1–9 attacks then items, O/B/L stances, F loot, I salvage, T recruit, R load the vehicle, X extract, H hack,
+/// K deploy / recall the drone, J fly it, M mark, P payload, Shift+R the drone's role, Shift+I ferry, G give, C carry,
+/// Z/V/N pings, Y/U alliance, Tab next unit, Home centre on the acting unit, Backspace cancels aiming, Esc cancels aiming
+/// or opens the menu. <see cref="ScavengeScreen"/> wires it to the map.
 /// </summary>
 public partial class ScavengeHud : CanvasLayer
 {
+    /// <summary>The right column's one width (the design system's narrow panel).</summary>
+    public const int ColumnWidth = 300;
+
+    /// <summary>The right column: whose turn, the mission, then the orders.</summary>
+    public VBoxContainer Orders { get; }
+
+    /// <summary>The acting unit's name and portrait, and what a click does now.</summary>
+    public ActingHeader Acting { get; }
+
+    private readonly Control[] _orderPanels;
+    private bool _dimmed;
+
+    /// <summary>
+    /// Dims the order panels while they do not belong to what the player looks at: an enemy turn replaying, or another
+    /// unit selected than the one acting (the header says whose orders they are). They stay where they are.
+    /// </summary>
+    public void DimOrders(bool dim)
+    {
+        if (dim == _dimmed) return;
+        _dimmed = dim;
+        var alpha = dim ? 0.5f : 1f;
+        foreach (var panel in _orderPanels)
+        {
+            var target = new Color(1, 1, 1, alpha);
+            if (!panel.IsInsideTree() || GameSettings.ReduceMotion) SetFade(panel, target);
+            else Motion.Tween(panel).TweenMethod(Callable.From<Color>(c => SetFade(panel, c)), Fade(panel), target, Motion.Fast);
+        }
+    }
+
+    private static readonly StringName FadeMeta = "orders_fade";
+
+    private static Color Fade(Control panel) => panel.HasMeta(FadeMeta) ? panel.GetMeta(FadeMeta).AsColor() : Colors.White;
+
+    /// <summary>The fade lives on the panel's first child (the content box), so Reveal / Conceal keep the panel's own modulate.</summary>
+    private static void SetFade(Control panel, Color color)
+    {
+        panel.SetMeta(FadeMeta, color);
+        if (panel.GetChildCount() > 0 && panel.GetChild(0) is CanvasItem content) content.Modulate = color;
+    }
+
+    /// <summary>Tab: select the next of your units.</summary>
+    public event Action? NextUnitRequested;
+
+    /// <summary>Home: select the acting unit and centre the camera on it.</summary>
+    public event Action? CenterRequested;
+
     public WorldTags Tags { get; } = new() { Name = "Tags" };
     public TurnBar TurnBar { get; }
     public UnitPanel UnitPanel { get; }
@@ -36,7 +85,7 @@ public partial class ScavengeHud : CanvasLayer
     public LootPanel Loot { get; }
     public CoopPanel Coop { get; }
     public AllianceBanner Banner { get; }
-    public ScavengeLog Log { get; } = new() { CustomMinimumSize = new Vector2(440, 150) };
+    public ScavengeLog Log { get; } = new();
     public Toasts Toasts { get; } = new();
     public ResultPanel Result { get; } = new();
     public PauseMenu Pause { get; }
@@ -72,27 +121,38 @@ public partial class ScavengeHud : CanvasLayer
         var middle = new HBoxContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
         column.AddChild(middle);
         // Panels hug their content (unit top-left, orders top-right, log bottom-right) so the map stays open.
+        var left = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
+        left.AddThemeConstantOverride("separation", 8);
+        middle.AddChild(Scrolling(left));
         UnitPanel = new UnitPanel(presenter);
-        middle.AddChild(UnitPanel);
-        // The pickup panel sits low in the middle, between the unit card and the orders.
-        var centre = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
-        centre.AddChild(new Control { SizeFlagsVertical = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore });
-        Loot = new LootPanel(presenter) { SizeFlagsHorizontal = Control.SizeFlags.ShrinkCenter };
-        centre.AddChild(Loot);
-        middle.AddChild(centre);
-        var right = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
-        right.AddThemeConstantOverride("separation", 8);
-        middle.AddChild(right);
+        left.AddChild(UnitPanel);
+        // The pickup panel docks under the unit card, off the map's middle.
+        Loot = new LootPanel(presenter);
+        left.AddChild(Loot);
+        middle.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore });
+        // The right column: whose turn (and what a click does), then a fixed order: Attack · Use, Stance, what is in
+        // reach here, Tech, Team. It is one fixed width; panels that come and go only move what is below them.
+        Orders = new VBoxContainer
+        {
+            MouseFilter = Control.MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(ColumnWidth, 0),
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill,
+        };
+        Orders.AddThemeConstantOverride("separation", 8);
+        middle.AddChild(Scrolling(Orders));
+        Acting = new ActingHeader();
+        Orders.AddChild(Acting);
         Mission = new MissionPanel(presenter);
-        right.AddChild(Mission);
+        Orders.AddChild(Mission);
         Actions = new ActionPanel(presenter) { SizeFlagsVertical = Control.SizeFlags.ShrinkBegin };
-        right.AddChild(Actions);
+        Orders.AddChild(Actions);
         Stances = new StancePanel(presenter) { SizeFlagsVertical = Control.SizeFlags.ShrinkBegin };
-        right.AddChild(Stances);
+        Orders.AddChild(Stances);
+        Orders.AddChild(Actions.Context);
         Tech = new TechPanel(presenter) { SizeFlagsVertical = Control.SizeFlags.ShrinkBegin };
-        right.AddChild(Tech);
+        Orders.AddChild(Tech);
         Coop = new CoopPanel(presenter) { SizeFlagsVertical = Control.SizeFlags.ShrinkBegin };
-        right.AddChild(Coop);
+        Orders.AddChild(Coop);
+        _orderPanels = [Actions, Stances, Actions.Context, Tech, Coop];
 
         var bottom = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         bottom.AddThemeConstantOverride("separation", 8);
@@ -136,6 +196,33 @@ public partial class ScavengeHud : CanvasLayer
         TurnBar.LeavePressed += () => LeaveRequested?.Invoke();
     }
 
+    /// <summary>
+    /// A side column that scrolls on a short screen (720p, a long unit card or many orders) instead of pushing the log
+    /// off. The scroller ignores the mouse itself, so the map under the column's empty part stays clickable; the panels
+    /// in it hand it the wheel.
+    /// </summary>
+    private static ScrollContainer Scrolling(VBoxContainer column)
+    {
+        var scroll = new ScrollContainer
+        {
+            HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, SizeFlagsVertical = Control.SizeFlags.ExpandFill,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        scroll.AddChild(column);
+        column.ChildEnteredTree += child =>
+        {
+            if (child is not Control panel) return;
+            panel.GuiInput += e =>
+            {
+                if (e is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.WheelUp or MouseButton.WheelDown } wheel) return;
+                if (scroll.GetVScrollBar() is not { Visible: true }) return;
+                scroll.ScrollVertical += wheel.ButtonIndex == MouseButton.WheelUp ? -48 : 48;
+                panel.AcceptEvent();
+            };
+        };
+        return scroll;
+    }
+
     /// <summary>A field prompt (the Tally at the terminal) as a dialogue line; it pauses the turn until answered.</summary>
     private static Remnants.Game.Story.DialogueLine? PromptLine(ScavengePresenter presenter)
     {
@@ -169,6 +256,12 @@ public partial class ScavengeHud : CanvasLayer
             if (BackRequested?.Invoke() != true) Pause.Open();
         }
         else if (Hotkeys.Pressed(e, "end_turn")) EndTurnRequested?.Invoke();
+        else if (Hotkeys.Pressed(e, "scav_cancel"))
+        {
+            if (BackRequested?.Invoke() != true) return;
+        }
+        else if (Hotkeys.Pressed(e, "scav_next_unit")) NextUnitRequested?.Invoke();
+        else if (Hotkeys.Pressed(e, "scav_center")) CenterRequested?.Invoke();
         else if (!Loot.PressHotkey(e) && !Actions.PressHotkey(e) && !Stances.PressHotkey(e) && !Tech.PressHotkey(e) && !Coop.PressHotkey(e)) return;
         GetViewport().SetInputAsHandled();
     }

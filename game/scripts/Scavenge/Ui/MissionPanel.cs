@@ -16,6 +16,10 @@ public partial class MissionPanel : PanelContainer
 {
     private readonly ScavengePresenter _presenter;
     private readonly VBoxContainer _box;
+    private readonly Label _title = Widgets.Label("", "Heading");
+    private readonly Label _outcome = Widgets.Label("", "Small");
+    private readonly List<(HBoxContainer Row, TextureRect Icon, Label Text)> _rows = new();
+    private readonly Unchanged _set = new();
     private string _shown = "";
 
     public MissionPanel() : this(null!) { }
@@ -23,28 +27,33 @@ public partial class MissionPanel : PanelContainer
     public MissionPanel(ScavengePresenter presenter)
     {
         _presenter = presenter;
-        CustomMinimumSize = new Vector2(300, 0);
+        CustomMinimumSize = new Vector2(ScavengeHud.ColumnWidth, 0);
         SizeFlagsVertical = SizeFlags.ShrinkBegin;
         _box = Remnants.Game.Colony.Ui.Ui.Panel(this, 4);
+        var head = Widgets.Row(6);
+        head.AddChild(Icons.Rect(Icons.Get("story_main", 16), 16, Palette.Amber));
+        _title.ClipText = true;
+        _title.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        head.AddChild(_title);
+        _box.AddChild(head);
+        _box.AddChild(_outcome);
         Visible = false;
     }
 
+    /// <summary>Objective rows are kept and updated in place; a new one (an objective unlocking) eases in.</summary>
     public void Refresh()
     {
         var state = _presenter.State;
-        Visible = state.Mission is not null;
+        Presence.Set(this, state.Mission is not null);
         if (state.Mission is not { } run) return;
         var key = $"{state.Round}|{run.Outcome}|" + string.Join(",", run.Objectives.Select(o => $"{o.Id}{o.Status}{o.Progress}"));
         if (key == _shown) return;
         _shown = key;
-        Widgets.Clear(_box);
-        var head = Widgets.Row(6);
-        head.AddChild(Icons.Rect(Icons.Get("story_main", 16), 16, Palette.Amber));
-        head.AddChild(Widgets.Label(run.Def.Name, "Heading"));
-        _box.AddChild(head);
-        if (run.Outcome != MissionOutcome.Incomplete)
-            _box.AddChild(Widgets.Label(run.Outcome == MissionOutcome.Done ? "Mission complete" : "Mission failed — you can still get out",
-                "Small", run.Outcome == MissionOutcome.Done ? Palette.Good : Palette.Danger));
+        _set.Text(_title, run.Def.Name);
+        _set.Visible(_outcome, run.Outcome != MissionOutcome.Incomplete);
+        _set.Text(_outcome, run.Outcome == MissionOutcome.Done ? "Mission complete" : "Mission failed — you can still get out");
+        _set.FontColor(_outcome, run.Outcome == MissionOutcome.Done ? Palette.Good : Palette.Danger);
+        var n = 0;
         foreach (var def in run.Def.Objectives)
         {
             var s = run.Find(def.Id)!;
@@ -55,15 +64,29 @@ public partial class MissionPanel : PanelContainer
                 ObjectiveStatus.Failed => ("story_failed", Palette.Danger),
                 _ => ("story_objective", def.FailsMission ? Palette.Warn : Palette.Amber),
             };
-            var row = Widgets.Row(6);
-            row.AddChild(Icons.Rect(Icons.Get(icon, 14), 14, color));
+            if (n == _rows.Count)
+            {
+                var made = Widgets.Row(6);
+                var mark = Icons.Rect(Icons.Get(icon, 14), 14, color);
+                made.AddChild(mark);
+                var line = Widgets.Wrapped("", "Small");
+                line.MouseFilter = MouseFilterEnum.Pass;
+                made.AddChild(line);
+                _box.AddChild(made);
+                _rows.Add((made, mark, line));
+                Motion.Enter(made, n);
+            }
+            var (row, iconRect, label) = _rows[n++];
+            _set.Visible(row, true);
+            _set.Texture(iconRect, Icons.Get(icon, 14));
+            _set.Modulate(iconRect, color);
             var text = def.Text + Progress(def, s, state);
             if (def.Optional) text += " (optional)";
-            var label = Widgets.Label(text, "Small", s.Status == ObjectiveStatus.Done ? Palette.TextMuted : Palette.Text);
-            if (def.FailsMission && s.Status == ObjectiveStatus.Active) label.TooltipText = "If this fails, the mission fails.";
-            row.AddChild(label);
-            _box.AddChild(row);
+            _set.Text(label, text);
+            _set.FontColor(label, s.Status == ObjectiveStatus.Done ? Palette.TextMuted : Palette.Text);
+            _set.Tooltip(label, def.FailsMission && s.Status == ObjectiveStatus.Active ? "If this fails, the mission fails." : "");
         }
+        for (var i = n; i < _rows.Count; i++) _set.Visible(_rows[i].Row, false);
     }
 
     private static string Progress(ObjectiveDef def, ObjectiveState s, ScavengeState state) => def.Kind switch

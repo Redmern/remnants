@@ -1,3 +1,4 @@
+using System;
 using Godot;
 using Remnants.Core.Scavenge;
 using Remnants.Game.Hud;
@@ -15,13 +16,33 @@ public partial class ScavengeLog : PanelContainer
     private readonly RichTextLabel _text = UiKit.Rich(scroll: true);
     private int _lines;
 
+    /// <summary>Folded: about three lines, so it covers few map tiles. Under the mouse it opens to read back.</summary>
+    private static readonly Vector2 Folded = new(440, 96);
+    private static readonly Vector2 Unfolded = new(440, 260);
+    private bool _open;
+    private double _away;
+
     public ScavengeLog()
     {
-        CustomMinimumSize = new Vector2(0, 120);
+        CustomMinimumSize = Folded;
+        SizeFlagsVertical = SizeFlags.ShrinkEnd;
         var box = UiKit.Panel(this, 4);
         box.AddChild(Widgets.SectionHeader("Log", "ui_log"));
         _text.ScrollFollowing = true;
+        _text.SizeFlagsVertical = SizeFlags.ExpandFill;
         box.AddChild(_text);
+    }
+
+    public override void _Process(double delta)
+    {
+        // Polled rather than mouse_entered/exited: the text inside takes the mouse too.
+        var over = GetGlobalRect().HasPoint(GetGlobalMousePosition());
+        _away = over ? 0 : _away + delta;
+        var open = over || (_open && _away < 0.4);
+        if (open == _open) return;
+        _open = open;
+        CustomMinimumSize = open ? Unfolded : Folded;
+        if (!open) _text.ScrollToLine(Math.Max(0, _text.GetLineCount() - 1));
     }
 
     public void Feedback(string message, bool error) =>
@@ -76,7 +97,7 @@ public partial class ScavengeLog : PanelContainer
             ScavengeEventType.PickedUpBody or ScavengeEventType.PutDown => ("stat_injured", Palette.Ally),
             _ => ("ui_info", Palette.Text),
         };
-        Append($"R{e.Round}", icon, color, e.Message);
+        Append($"R{Math.Max(1, e.Round)}", icon, color, e.Message); // setup events carry round 0; the header counts from 1
     }
 
     private void Append(string round, string icon, Color color, string message)

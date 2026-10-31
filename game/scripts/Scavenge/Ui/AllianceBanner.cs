@@ -35,6 +35,7 @@ public partial class AllianceBanner : PanelContainer
         col.AddChild(_title);
         col.AddChild(_text);
         row.AddChild(col);
+        row.AddChild(new Hud.Help.InfoTip("alliances"));
         presenter.AllianceNews += text =>
         {
             _news = text;
@@ -81,16 +82,24 @@ public partial class AllianceBanner : PanelContainer
         }
         else
         {
-            Visible = false;
+            Presence.Set(this, false);
             return;
         }
-        _title.Text = title;
-        _title.AddThemeColorOverride("font_color", color);
-        _text.Text = text;
-        _icon.Modulate = color;
-        var box = HudTheme.Box(Palette.Panel, color, 1, radius: 3, padX: 14, padY: 8);
-        box.BorderWidthLeft = 4;
-        AddThemeStyleboxOverride("panel", box);
-        Visible = true;
+        _set.Text(_title, title);
+        _set.FontColor(_title, color);
+        _set.Text(_text, text);
+        _set.Modulate(_icon, color);
+        // The HUD refreshes after every event: restyle only when the colour changes.
+        if (color != _styled)
+        {
+            _styled = color;
+            var box = HudTheme.Box(Palette.Panel, color, 1, radius: 3, padX: 14, padY: 8);
+            box.BorderWidthLeft = 4;
+            AddThemeStyleboxOverride("panel", box);
+        }
+        Presence.Set(this, true);
     }
+
+    private readonly Unchanged _set = new();
+    private Color? _styled;
 }
