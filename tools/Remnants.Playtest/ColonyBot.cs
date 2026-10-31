@@ -135,7 +135,9 @@ public sealed class ColonyBot
             ? BuildOrder.Prepend(("armory", 1)) : BuildOrder;
         foreach (var (id, level) in order)
         {
-            var have = State.Buildings.Where(b => b.DefId == id).Select(b => b.Level).DefaultIfEmpty(0).Max();
+            // A site counts as done: its builders are on it.
+            var have = State.Buildings.Where(b => b.DefId == id).Select(b => b.Level)
+                .Concat(State.Construction.Sites.Where(s => s.DefId == id).Select(s => s.Level)).DefaultIfEmpty(0).Max();
             if (have >= level) continue;
             var def = Data.Buildings[id];
             if (level == 1 && def.MinTownHallLevel > _sim.TownHallLevel) continue;
@@ -155,7 +157,17 @@ public sealed class ColonyBot
 
     private void Build()
     {
+        // Past the first month, food running out with every farm slot taken: a second (or third) Farm is cheap and quick.
+        if (Day >= 30 && _sim.FoodDays < 4 && !State.Construction.Sites.Any(s => s.DefId == "farm")
+            && State.Buildings.Where(b => b.DefId == "farm").ToList() is { Count: > 0 and < 3 } farms
+            && farms.All(f => _sim.FreeSlots(f) == 0) && State.Stockpile.CanAfford(Data.Buildings["farm"].Level(1).Cost))
+        {
+            var extra = _sim.Execute(new Construct("farm"));
+            if (!extra.Ok) Problems.Add($"day {Day:0.0}: extra farm: {extra.Message}");
+        }
         if (NextGoal() is not { } goal) return;
+        // A sensible player keeps a couple of sites going at most, so builders are not spread thin.
+        if (State.Construction.Sites.Count >= MaxSites) return;
         var cost = Data.Buildings[goal.Building].Level(goal.Level).Cost;
         // Keep a little food-making wood in reserve only for the first farm; otherwise build as soon as affordable.
         if (!State.Stockpile.CanAfford(cost)) return;
@@ -167,6 +179,12 @@ public sealed class ColonyBot
     }
 
     public List<string> Problems { get; } = [];
+
+    /// <summary>Construction sites the bot keeps open at once.</summary>
+    private const int MaxSites = 2;
+
+    /// <summary>One builder per this many hands at home (rounded up), across all sites.</summary>
+    private static readonly int BuilderShare = int.TryParse(Environment.GetEnvironmentVariable("BOT_BUILDER_SHARE"), out var n) && n > 0 ? n : 4;
 
     /// <summary>Buildings struck by lightning are repaired as soon as the repair is affordable, before any new build.</summary>
     private void Repair()
@@ -556,7 +574,8 @@ public sealed class ColonyBot
     /// </summary>
     private void Staff()
     {
-        var workers = State.Survivors.Where(s => !s.Away && !s.IsInfant && s.PatientAtBuildingId is null && !Research.IsResearching(State, s.Id) && !State.Defense.Guards.ContainsKey(s.Id)).ToList();
+        var workers = State.Survivors.Where(s => !s.Away && !s.IsInfant && s.PatientAtBuildingId is null && !Research.IsResearching(State, s.Id) && !State.Defense.Guards.ContainsKey(s.Id)
+                                                 && StudySystem.ClassOf(State, s.Id) is null).ToList();
         var slots = State.Buildings.Where(b => Data.Buildings[b.DefId].Job is not null)
             .ToDictionary(b => b.Id, b => Data.Buildings[b.DefId].Level(b.Level).WorkerSlots);
         var plan = new Dictionary<int, int>(); // survivor -> building
@@ -601,12 +620,34 @@ public sealed class ColonyBot
                 free.Remove(best);
             }
 
+        // Builders, the best at it first (children too once food is safe): one on every site before anyone else gets
+        // hands, so a site never stands still and blocks the build order; about a quarter of the hands in all, so wood
+        // and stone keep coming in.
+        var builders = new Dictionary<int, int>(); // survivor -> site building id
+        var budget = Math.Max(1, (workers.Count + BuilderShare - 1) / BuilderShare);
+        void Builders(ConstructionSite site, int want)
+        {
+            while (builders.Count < budget && builders.Values.Count(id => id == site.BuildingId) < want)
+            {
+                var pick = free.Where(s => !s.IsChild || days > 5).OrderBy(s => s.IsChild ? 1 : 0)
+                    .ThenByDescending(s => ConstructionSystem.WorkRate(_sim, s)).ThenBy(s => s.Id).FirstOrDefault();
+                if (pick is null) return;
+                builders[pick.Id] = site.BuildingId;
+                free.Remove(pick);
+            }
+        }
+        foreach (var site in ConstructionSystem.Ordered(State).Where(s => !s.Paused)) Builders(site, 1);
+
         // A medic while anyone is in a bed, crafters for queues (one each), then gatherers by shortage of the goal.
         foreach (var b in State.Buildings.Where(b => b.Queue.Count > 0 || State.PatientsAt(b.Id).Any()).OrderBy(b => b.Id))
         {
             var pick = free.OrderByDescending(s => Output(s, b)).FirstOrDefault(s => !s.IsChild || Data.Jobs[Data.Buildings[b.DefId].Job!].ChildrenAllowed);
             if (pick is not null && Take(pick, b)) free.Remove(pick);
         }
+
+        // More builders: up to two a site (three on an upgrade once there are hands to spare).
+        foreach (var site in ConstructionSystem.Ordered(State).Where(s => !s.Paused))
+            Builders(site, Math.Min(_sim.MaxBuilders(site), site.IsUpgrade && free.Count > 3 ? 3 : 2));
 
         var goal = GoalCost();
         double Short(string res) => Math.Max(0, goal.GetValueOrDefault(res) - State.Stockpile.Get(res)) + 5;
@@ -627,10 +668,18 @@ public sealed class ColonyBot
         // Free everyone who moves first, so nobody blocks the slot they are leaving.
         var moving = workers.Where(s => s.AssignedBuildingId != (plan.TryGetValue(s.Id, out var b) ? b : (int?)null)).ToList();
         foreach (var s in moving.Where(s => s.AssignedBuildingId is not null)) _sim.Execute(new Unassign(s.Id));
+        foreach (var s in workers.Where(s => !builders.ContainsKey(s.Id) && State.Construction.Sites.Any(c => c.Builders.Contains(s.Id))))
+            _sim.Execute(new Unassign(s.Id));
         foreach (var s in moving.Where(s => plan.ContainsKey(s.Id)))
         {
             var r = _sim.Execute(new AssignJob(s.Id, plan[s.Id]));
             if (!r.Ok) Problems.Add($"day {Day:0.0}: assign {s.Name}: {r.Message}");
+        }
+        foreach (var (id, site) in builders)
+        {
+            if (State.Construction.Find(site)?.Builders.Contains(id) == true) continue;
+            var r = _sim.Execute(new AssignBuilder(id, site));
+            if (!r.Ok) Problems.Add($"day {Day:0.0}: build {State.FindSurvivor(id)?.Name}: {r.Message}");
         }
     }
 

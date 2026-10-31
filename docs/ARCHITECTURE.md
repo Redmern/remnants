@@ -418,11 +418,11 @@ models still load and fall back to tweens.
 - **Deterministic.** Fixed `Tick()`, no wall-clock, no `System.Random`. Randomness goes through
   `ColonySim.Rng`. Same seed + same commands = identical save JSON (tested).
 - **Commands only.** The UI changes the sim only via `ColonySim.Execute(IColonyCommand)`
-  (`AssignJob`, `Unassign`, `Construct`, `Upgrade`, `LaunchExpedition`, `ApplyExtractionResult`, `AdmitPatient`,
+  (`AssignJob`, `Unassign`, `Construct`, `Upgrade`; sites: `AssignBuilder`, `CancelConstruction`, `PauseConstruction`, `SetConstructionPriority`, `SetSiteNightShift`; `LaunchExpedition`, `ApplyExtractionResult`, `AdmitPatient`,
   `Discharge`, `FitProsthetic`, `SetRecipe`, `QueueRecipe`, `CancelOrder`, `Matchmake`, `ChoosePerk`,
   `StartStudy`, `CancelStudy`, `SetNightShift`, `InstallFloodlight`, `RepairBuilding`, `SetPower`; vehicles: `FitUpgrade`, `RemoveUpgrade`, `RepairVehicle`; schematics: `StartResearch`, `CancelResearch`, `SalvageSchematic`, `CopySchematic`, `BuyFromTrader`, `SellToTrader`, `AnswerCall`, `AcceptContract`; defenses: see "Raids and defenses"). Core validates and returns a `CommandResult`
   with a `CommandError` code. This is also the future client→server intent format.
-- **Tick order:** power grid (and the charging bench) → production (+training) → crafting → study → research → medical → food → day/night (sleep, night work, evenings) → weather (mood, dust, lightning) →
+- **Tick order:** power grid (and the charging bench) → production (+training) → construction sites → crafting → study → research → medical → food → day/night (sleep, night work, evenings) → weather (mood, dust, lightning) →
   relationships (mood, affinity, couples) →
   family (births, conception) → housing → growth (aging, growing up) → world map → raids (upkeep, guards, repairs, scheduler).
 - **Scavenge commands** (`Move`, `Attack`, `UseItem` (on a unit, or a tile with `At`), `PickUp`, `Recruit`, `SetStance`
@@ -1651,6 +1651,65 @@ Core: `Scavenge/LootTables.cs` (tables, rolls), `Scavenge/FieldLoot.cs` (kills, 
   vehicle adapter, stash between runs, raid spoils, salvage work / tools / noise / overflow / extras, placement, saves);
   Net: `LootNetTests` (no pile or line for a rival who never saw the tile; salvage round trip).
 
+## Construction
+
+Construct and Upgrade place a **construction site** instead of finishing at once (`rules.json` `construction`; off in code
+by default, so hand-built test rules and `TestData.Real` keep instant building). Core is `Colony/Construction.cs`
+(`ConstructionState`, `ConstructionSite`, `ConstructionSystem`) and `Colony/ConstructionHandlers.cs`; balance in BALANCE.md
+"Construction".
+
+- **Site** (`ColonyState.Construction.Sites`): the building's id (a new building's future id, handed out at placement, so
+  `Construct` still returns the id the building will have; an upgrade's is the standing building), type, plot, target
+  level, `Work`/`WorkNeeded` (`buildWork` of the level), `Materials` (the level's cost, taken from the stockpile when the
+  site is placed: Construct and Upgrade still check affordability up front) and `Delivered`, `Builders`, `Helpers`,
+  `Paused`, `Priority` (Low / Normal / High), `NightShift`. A site holds its plot (`IsPlotFree`), counts for `unique`, and
+  blocks a second upgrade (`UnderConstruction`).
+- **Work** (each tick after production): every site not paused gets its crew — assigned builders at full rate, then idle
+  survivors (no job, post, site, bed, class or research) as **helpers** at `helperShare`, filling the open places of the
+  Normal/High sites, High first. A builder on shift hauls `haulPerHour` (× health × child rate) while the delivered share
+  is less than the work share + `haulLead` (or work has caught up with it), else builds `workPerHour` × the `construction`
+  job's output formula (`JobOutput`: Strength/Endurance/Intellect/Creativity + the new **Construction** skill, tools, body,
+  health, mood, conditions, perks — `engineer` +15%, `pack_mule` +10% — and food). Work never passes `WorkNeeded ×
+  delivered share`. Training (`Training.Work`) trains Construction. Children may build (`childrenAllowed`) at the child rate.
+- **Schedule and weather**: the day shift as for any job (`Schedule.OnShift` counts builders and helpers as working, so
+  sleep and night work apply); a site's Night Shift only where it is lit — an upgrade of a lit building (indoors, level ≥
+  `litMinLevel` or a Floodlight); a new building's site is dark (`NeedsLight`). Weather: a kind's `colony.buildOutput`
+  (rain 0.8, thunderstorm 0.4, **dust storm 0: building halts**), else its outdoor rate; dust masks left after the
+  outdoor crew cover builders where masks matter; children stay in when the kind says so.
+- **Done**: when the work is done and everything is delivered, a new building appears (`Constructed`, crops planted) or
+  the standing one reaches its level (`Upgraded`); builders become idle. **An upgrade keeps the building working at its
+  old level** (its workers, output, beds, Town Hall cap) until then — a site's builders are not its workers.
+- **Commands**: `AssignBuilder(survivor, building)` (leaves their job or guard post; `CanBuild`: home, not a patient, baby,
+  student or researcher; `NoFreeSlot` past `maxBuilders`, default `defaultMaxBuilders`); `Unassign` also takes a builder
+  off; `AssignJob`, guard duty, an expedition, a Med Bay bed, a class or research release them. `CancelConstruction` gives
+  back what was not hauled in full and the hauled materials at `refundShare` (80%), rounded down. `PauseConstruction`,
+  `SetConstructionPriority`, `SetSiteNightShift`. Queries: `ColonySim.Site(id)`, `SiteForecast(site)` (crew, rates per
+  hour averaged over the day, ETA, why it stands still), `BuildHours(def, level)` (clock hours with two typical
+  builders: the build menu), `MaxBuilders`.
+- **Raids**: a new building's site has its progress share of level-1 HP (at least a tenth). Auto-resolve picks sites near
+  the approach among its targets: a hit knocks work back by the HP taken (materials stay); an upgrade under way loses work
+  with its building's damage. On the battle map (`RaidBattle.ColonyMap`) a site from 15% stands as a frame (`=`, low
+  cover) and from 60% as walls (`#`), with a structure (`s{id}`) at its HP; what it loses comes off its work.
+- **Bonds**: builders at one site share a workplace for affinity (as co-workers do).
+- **Setup without sites**: `ColonySim.InstantConstruction` (not saved) or `sim.Instantly(() => …)` finishes Construct and
+  Upgrade at once — story gifts (`EffectKind.Building`), debug scenes, the menu backdrop and the audio self-test use it.
+- **Save** version 26 adds `ColonyState.Construction`. Older saves had nothing pending (building was instant): every
+  building stays finished, no sites, Construction skill 0. Loading a save with sites on data with construction off
+  finishes them; a site whose type or level no longer exists is dropped and refunded.
+- **Presentation** (no rules): `ConstructionSites` (made by `TownView`) draws each site — the level-1 model rising with
+  progress through `BuildReveal` (a clip shader made in code from each surface's own material, a fresh-timber band at the
+  cut), a procedural scaffold (one multimesh of boxes, bottom-up so a prefix is a lower scaffold), delivered materials as
+  piles (logs in code, `rubble` for stone, `loot_crate` for the rest; they shrink as the work uses them), dust while the
+  crew works and a progress ring (rust when nobody works it). The footprint outline shows on a new site's plot. Upgrades
+  get a full scaffold round the standing model; when the level comes, `TownView` hands the old model to
+  `ConstructionSites.Finish` (it sinks away, the new one settles in, a dust puff). `SurvivorWalkers` send builders and
+  helpers to the site plot (hauling: between the Town Hall and the site with `carry_walk`; then `work_hammer`, sometimes
+  `work_craft`); `ColonyAudio` plays `ambience.work.construction_site` (the workshop loop) by crew size. UI:
+  `ConstructionSitePanel` (its own control inside `BuildingPanel`: materials hauled/needed, work bar, builder
+  `WorkerSlots`, helpers, ETA, Pause, Priority, Night shift, Cancel), `SiteTooltip` (hover card), the build menu's time
+  chip and the upgrade box's build time. Raid battles draw sites with `ColonyBattleDressing` (reveal + scaffold).
+- **Debug**: `--colony --construction-demo=0|50|100|upgrade|assign|levels [--site-tip] [--level-types=a,b,c,d]`.
+
 ## Data files
 
 - `resources.json` — resource ids and names.
@@ -1659,7 +1718,8 @@ Core: `Scavenge/LootTables.cs` (tables, rolls), `Scavenge/FieldLoot.cs` (kills, 
 - `jobs.json` — per job: skill + weight, attribute weights, body-region weights, tool bonus, `childrenAllowed`.
 - `buildings.json` — category, job, produced resource, base output (per worker-hour on shift), `outdoor` (a Night Shift
   needs light), `minTownHallLevel`, and per-level
-  cost / worker slots / output multiplier / beds / patients. Level 1 cost = construction cost.
+  cost / worker slots / output multiplier / beds / patients / `buildWork` / `maxBuilders`. Level 1 cost = construction cost
+  (see "Construction").
 - `recipes.json` — what production buildings make (see "Crafting tiers"); food recipes take `ingredients`.
 - `food.json` — food items (food value, nutrition, shelf, tags, meal effects and buffs), harvests, buffs and the food
   rules (see "Food and cooking"); `schematics.food.json` — the food schematics.

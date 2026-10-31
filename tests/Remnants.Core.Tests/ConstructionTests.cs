@@ -235,6 +235,23 @@ public class ConstructionTests
     }
 
     [Fact]
+    public void Builders_on_one_site_grow_closer_like_coworkers()
+    {
+        var sim = Colony();
+        var id = Place(sim, "house");
+        var a = sim.AddSurvivor();
+        var b = sim.AddSurvivor();
+        b.Sex = Sex.Female;
+        sim.Execute(new AssignBuilder(a.Id, id));
+        sim.Execute(new AssignBuilder(b.Id, id));
+        var rules = sim.Data.Rules.Relationships;
+        var together = Bonds.AffinityPerTick(a, b, PairStance.Neutral, rules, id, id);
+        Assert.Equal(Bonds.AffinityPerTick(a, b, PairStance.Neutral, rules) + rules.SharedWorkplacePerTick, together, 9);
+        sim.Tick();
+        Assert.Equal(together, Bonds.Affinity(sim.State, a.Id, b.Id), 6);
+    }
+
+    [Fact]
     public void A_site_takes_only_so_many_builders()
     {
         var sim = Colony();

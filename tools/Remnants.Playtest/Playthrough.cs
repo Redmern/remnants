@@ -123,7 +123,8 @@ public sealed class Playthrough
                 s.Survivors.Count(x => !x.IsChild), s.Survivors.Count(x => x.LifeStage == LifeStage.Child), s.Survivors.Count(x => x.IsInfant),
                 Sim.BedCapacity, Sim.FoodStock, Sim.FoodStock - foodStart,
                 new SortedDictionary<string, double>(s.Stockpile.Amounts.Where(kv => kv.Value > 0.05).ToDictionary(kv => kv.Key, kv => kv.Value)),
-                string.Join(" ", s.Buildings.OrderBy(b => b.Id).Select(b => $"{Short(b.DefId)}{b.Level}")),
+                string.Join(" ", s.Buildings.OrderBy(b => b.Id).Select(b => $"{Short(b.DefId)}{b.Level}")
+                    .Concat(s.Construction.Sites.Select(c => $"{Short(c.DefId)}>{c.Level}({c.Progress * 100:0}%)"))),
                 Jobs(),
                 _events.Skip(dayStart).Where(Notable).Select(e => e.Message).ToList()));
         }
@@ -146,7 +147,10 @@ public sealed class Playthrough
         var parts = s.Buildings.Select(b => (b, n: s.WorkersAt(b.Id).Count())).Where(x => x.n > 0).Select(x => $"{Short(x.b.DefId)}:{x.n}").ToList();
         var patients = s.Survivors.Count(x => x.PatientAtBuildingId is not null);
         var away = s.Survivors.Count(x => x.Away);
-        var idle = s.Survivors.Count(x => !x.Away && !x.IsInfant && x.PatientAtBuildingId is null && x.AssignedBuildingId is null);
+        var building = s.Construction.Sites.Sum(c => c.Builders.Count);
+        var idle = s.Survivors.Count(x => !x.Away && !x.IsInfant && x.PatientAtBuildingId is null && x.AssignedBuildingId is null
+                                          && !s.Construction.Sites.Any(c => c.Builders.Contains(x.Id)));
+        if (building > 0) parts.Add($"bld:{building}");
         if (patients > 0) parts.Add($"pat:{patients}");
         if (away > 0) parts.Add($"away:{away}");
         if (idle > 0) parts.Add($"idle:{idle}");

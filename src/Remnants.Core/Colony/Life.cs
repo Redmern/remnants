@@ -18,11 +18,12 @@ public static class Bonds
     public static bool CanBond(Survivor a, Survivor b) =>
         a.Id != b.Id && !a.IsChild && !b.IsChild && a.PartnerId is null && b.PartnerId is null && !a.Away && !b.Away;
 
-    public static double AffinityPerTick(Survivor a, Survivor b, PairStance stance, RelationshipRules rules)
+    /// <param name="workA">Where <paramref name="a"/> works (a job's building or a construction site's id); default their job.</param>
+    public static double AffinityPerTick(Survivor a, Survivor b, PairStance stance, RelationshipRules rules, int? workA = null, int? workB = null)
     {
         if (stance == PairStance.Discourage) return 0;
         var gain = rules.BasePerTick + rules.CompatibilityPerTick * Similarity(a, b);
-        if (a.AssignedBuildingId is { } work && work == b.AssignedBuildingId) gain += rules.SharedWorkplacePerTick;
+        if ((workA ?? a.AssignedBuildingId) is { } work && work == (workB ?? b.AssignedBuildingId)) gain += rules.SharedWorkplacePerTick;
         if (a.HomeBuildingId is { } home && home == b.HomeBuildingId) gain += rules.SharedHomePerTick;
         return stance == PairStance.Encourage ? gain * rules.EncourageMultiplier : gain;
     }
@@ -144,6 +145,10 @@ public static class Bonds
 /// </summary>
 internal static class RelationshipSystem
 {
+    /// <summary>A job's building, or the construction site a builder (or helper) works at: who works side by side.</summary>
+    private static int? Workplace(ColonyState state, Survivor s) =>
+        s.AssignedBuildingId ?? (state.Construction.Sites.Count == 0 ? null : state.Construction.SiteOf(s.Id)?.BuildingId);
+
     public static void Run(ColonyState state, GameData data)
     {
         var rules = data.Rules.Relationships;
@@ -156,7 +161,7 @@ internal static class RelationshipSystem
             {
                 var (a, b) = (singles[i], singles[j]);
                 var r = state.FindRelationship(a.Id, b.Id);
-                var gain = Bonds.AffinityPerTick(a, b, r?.Stance ?? PairStance.Neutral, rules);
+                var gain = Bonds.AffinityPerTick(a, b, r?.Stance ?? PairStance.Neutral, rules, Workplace(state, a), Workplace(state, b));
                 if (gain <= 0) continue;
                 if (r is null) state.Relationships.Add(r = new Relationship { A = a.Id, B = b.Id });
                 r.Affinity = Math.Min(rules.CoupleThreshold, r.Affinity + gain);

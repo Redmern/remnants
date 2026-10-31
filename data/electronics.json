@@ -102,24 +102,24 @@
     {
       "id": "fuel_generator", "name": "Fuel Generator", "category": "Power", "minTownHallLevel": 2,
       "levels": [
-        {"cost": {"wood": 30, "stone": 20, "scrap": 30, "electronics": 4}, "buildWork": 5.6, "maxBuilders": 2},
-        {"cost": {"wood": 20, "scrap": 40, "electronics": 8}, "buildWork": 10.5, "maxBuilders": 3},
+        {"cost": {"wood": 30, "stone": 20, "scrap": 30, "electronics": 4}, "buildWork": 3.4, "maxBuilders": 2},
+        {"cost": {"wood": 20, "scrap": 40, "electronics": 8}, "buildWork": 8.4, "maxBuilders": 3},
         {"cost": {"scrap": 60, "electronics": 14}, "buildWork": 21.7, "maxBuilders": 4}
       ]
     },
     {
       "id": "solar_array", "name": "Solar Array", "category": "Power", "minTownHallLevel": 2,
       "levels": [
-        {"cost": {"stone": 10, "scrap": 30, "electronics": 10}, "buildWork": 3.3, "maxBuilders": 2},
-        {"cost": {"scrap": 40, "electronics": 16}, "buildWork": 9.7, "maxBuilders": 3},
+        {"cost": {"stone": 10, "scrap": 30, "electronics": 10}, "buildWork": 2, "maxBuilders": 2},
+        {"cost": {"scrap": 40, "electronics": 16}, "buildWork": 7.8, "maxBuilders": 3},
         {"cost": {"scrap": 60, "electronics": 24}, "buildWork": 22.2, "maxBuilders": 4}
       ]
     },
     {
       "id": "battery_bank", "name": "Battery Bank", "category": "Power", "minTownHallLevel": 2,
       "levels": [
-        {"cost": {"stone": 10, "scrap": 25, "electronics": 8}, "buildWork": 2.9, "maxBuilders": 2},
-        {"cost": {"scrap": 35, "electronics": 12}, "buildWork": 9.1, "maxBuilders": 3},
+        {"cost": {"stone": 10, "scrap": 25, "electronics": 8}, "buildWork": 1.7, "maxBuilders": 2},
+        {"cost": {"scrap": 35, "electronics": 12}, "buildWork": 7.3, "maxBuilders": 3},
         {"cost": {"scrap": 50, "electronics": 20}, "buildWork": 21.5, "maxBuilders": 4}
       ]
     }
