@@ -4,19 +4,22 @@ using System.Linq;
 using Godot;
 using Remnants.Core.Colony;
 using Remnants.Game.Hud;
+using Remnants.Game.Hud.Help;
 
 namespace Remnants.Game.Colony.Ui;
 
 /// <summary>
-/// The colony's top bar: clock and speed, a chip per resource (amount, change over the last day, a tooltip that
-/// explains it: what makes it and, for food, what is eaten), population, beds and food pressure, the power grid once
-/// there is one (used / supply, battery charge, tinted on a brownout or a tripped breaker; its button opens the grid
-/// overlay), and the Build / Items / Expedition / World map / Menu buttons with their hotkeys.
+/// The colony's top bar, one row at every size (UX audit 4.1): phase, the weather now and one forecast chip ("Rain in
+/// 6h", the full forecast in its tooltip), clock and speed; the core resources (food, wood, stone, scrap) as chips with
+/// a ▲ / ▼ trend and the rest folded into a "+N" drawer; population, beds and food-days pressure chips and the power grid
+/// once there is one (used / supply, battery, tinted on a brownout or a tripped breaker; its button opens the grid
+/// overlay), each with an (i); and the actions (Build, Defend, Repairs, Items, Pantry, Expedition, World map, Menu):
+/// labelled when the bar has room, else icons with the hotkey in the corner, else a 4×2 grid of icons.
 /// </summary>
 public partial class TopBar : PanelContainer
 {
-    /// <summary>Resources always shown; others appear once the colony has some.</summary>
-    private static readonly HashSet<string> Staples = ["wood", "stone", "scrap", "food", "medicine"];
+    /// <summary>The resources always on the bar; the others fold into the "+N" drawer.</summary>
+    private static readonly string[] Core = ["food", "wood", "stone", "scrap"];
 
     private readonly ColonySession _session;
     private readonly Label _day = Widgets.Label("", "Display");
@@ -27,11 +30,12 @@ public partial class TopBar : PanelContainer
     private readonly TextureRect _weatherIcon = new() { StretchMode = TextureRect.StretchModeEnum.KeepCentered, CustomMinimumSize = new Vector2(26, 26) };
     private readonly Label _weather = Widgets.Label("", "Small");
     private readonly Control _weatherBox;
-    private readonly HBoxContainer _forecast = Widgets.Row(2);
-    private string _forecastShown = "";
+    private readonly Control _weatherRow;
+    private readonly PanelContainer _forecast;
     private (string Kind, double Intensity)? _shownWeather;
     private readonly Dictionary<int, Button> _speedButtons = new();
-    private readonly Dictionary<string, ResourceChip> _chips = new();
+    private readonly Dictionary<string, StockChip> _chips = new();
+    private readonly ResourceDrawer _drawer = new();
     private readonly PanelContainer _pop;
     private readonly PanelContainer _beds;
     private readonly PanelContainer _food;
@@ -42,6 +46,12 @@ public partial class TopBar : PanelContainer
     private readonly PanelContainer _battery;
     private readonly Button _grid;
     private readonly VSeparator _powerRule = new();
+    private readonly GridContainer _actions = new() { SizeFlagsVertical = SizeFlags.ShrinkCenter };
+    private readonly List<(Button Button, string Label)> _actionButtons = new();
+    private readonly HBoxContainer _row;
+    private int _layout = -1;
+    private string _fitKey = "";
+    private readonly Unchanged _set = new();
 
     public event Action? BuildPressed;
     public event Action? DefendPressed;
@@ -61,7 +71,8 @@ public partial class TopBar : PanelContainer
     {
         _session = session;
         AddThemeStyleboxOverride("panel", PanelArt.Box(new(Palette.Panel, Palette.EdgeDark, 0.05f, Rivets: true, Strip: Palette.RustDark), 10, 4));
-        var row = Widgets.Row(10);
+        var row = Widgets.Row(Space.Sm);
+        _row = row;
         AddChild(row);
 
         // Sun / moon and the phase, then day and hour; the tooltip says what the hour means for the colony.
@@ -69,34 +80,29 @@ public partial class TopBar : PanelContainer
         phaseBox.MouseFilter = MouseFilterEnum.Pass;
         phaseBox.AddChild(_phaseIcon);
         _phase.HorizontalAlignment = HorizontalAlignment.Center;
-        _phase.AddThemeFontSizeOverride("font_size", 11);
+        _phase.AddThemeFontSizeOverride("font_size", 13);
         phaseBox.AddChild(_phase);
         row.AddChild(phaseBox);
 
-        // The weather now; the tooltip says what it does and gives the forecast.
+        // The weather now (the tooltip says what it does) and the next change as one chip with the full forecast.
         _weatherBox = Widgets.Column(-2);
         _weatherBox.MouseFilter = MouseFilterEnum.Stop;
         _weatherIcon.MouseFilter = MouseFilterEnum.Ignore;
         _weather.MouseFilter = MouseFilterEnum.Ignore;
         _weatherBox.AddChild(_weatherIcon);
         _weather.HorizontalAlignment = HorizontalAlignment.Center;
-        _weather.AddThemeFontSizeOverride("font_size", 11);
+        _weather.AddThemeFontSizeOverride("font_size", 13);
         _weatherBox.AddChild(_weather);
-        // The forecast as small icons beside it (what the colony expects next, as far as it sees).
-        var weatherRow = Widgets.Row(6);
+        var weatherRow = Widgets.Row(Space.Xs);
         weatherRow.MouseFilter = MouseFilterEnum.Pass;
         weatherRow.AddChild(_weatherBox);
-        var next = Widgets.Column(0);
-        next.MouseFilter = MouseFilterEnum.Ignore;
-        var nextLabel = Widgets.Label("NEXT", "Small");
-        nextLabel.AddThemeFontSizeOverride("font_size", 10);
-        nextLabel.AddThemeColorOverride("font_color", Palette.TextMuted);
-        next.AddChild(nextLabel);
-        _forecast.MouseFilter = MouseFilterEnum.Ignore;
-        next.AddChild(_forecast);
-        weatherRow.AddChild(next);
+        _forecast = Widgets.Chip(Icons.Get("weather_clear", 16), "");
+        _forecast.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        _forecast.GetChild(0).AddChild(new InfoTip("weather"));
+        weatherRow.AddChild(_forecast);
         weatherRow.Visible = session.Sim.Data.Weather.Enabled;
         _weatherBox.Visible = weatherRow.Visible;
+        _weatherRow = weatherRow;
         row.AddChild(weatherRow);
 
         var clock = Widgets.Column(-4);
@@ -117,8 +123,9 @@ public partial class TopBar : PanelContainer
                  })
         {
             // 4× and 8× share the double-arrow icon; the fastest says its speed so the two tell apart.
-            var button = Widgets.IconButton(icon, speed == 8 ? "8×" : "", label, () => _session.SetSpeed(speed), Hotkeys.KeyName(action), "Tab");
+            var button = Motion.OnPress(Widgets.IconButton(icon, speed == 8 ? "8×" : "", label, () => _session.SetSpeed(speed), Hotkeys.KeyName(action), "Tab"));
             button.ToggleMode = true;
+            button.FocusMode = FocusModeEnum.All;
             button.CustomMinimumSize = new Vector2(30, 30);
             _speedButtons[speed] = button;
             speeds.AddChild(button);
@@ -126,57 +133,110 @@ public partial class TopBar : PanelContainer
         row.AddChild(speeds);
         row.AddChild(new VSeparator());
 
-        var chips = new HFlowContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill, Alignment = FlowContainer.AlignmentMode.Center };
-        chips.AddThemeConstantOverride("h_separation", 4);
-        chips.AddThemeConstantOverride("v_separation", 4);
-        foreach (var res in session.Sim.Data.Resources.Keys)
+        // One fixed row of resources: the core four, then "+N" for the rest (eleven chips used to wrap to two rows).
+        var chips = Widgets.Row(Space.Xs);
+        chips.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        chips.Alignment = BoxContainer.AlignmentMode.Center;
+        foreach (var res in Core.Where(session.Sim.Data.Resources.ContainsKey))
         {
-            var chip = new ResourceChip(res);
+            var chip = new StockChip(res);
             _chips[res] = chip;
             chips.AddChild(chip);
         }
+        chips.AddChild(_drawer);
         row.AddChild(chips);
         row.AddChild(new VSeparator());
 
-        _pop = Widgets.Chip(Icons.Get("stat_pop", 16), "");
-        _beds = Widgets.Chip(Icons.Get("stat_beds", 16), "");
-        _food = Widgets.Chip(Icons.Get("res_food", 16), "");
+        _pop = PressureChip("stat_pop", "mood");
+        _beds = PressureChip("stat_beds", "housing");
+        _food = PressureChip("res_food", "food");
         row.AddChild(_pop);
         row.AddChild(_beds);
         row.AddChild(_food);
-        _food.MouseFilter = MouseFilterEnum.Stop;
+        _food.MouseDefaultCursorShape = CursorShape.PointingHand;
         _food.GuiInput += e =>
         {
             if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) PantryPressed?.Invoke();
         };
-        _power = Widgets.Chip(Icons.Get("stat_power", 16), "");
+        _power = PressureChip("stat_power", "power");
         _battery = Widgets.Chip(Icons.Get("stat_battery", 16), "");
         _grid = Widgets.IconButton("ui_power_grid", "", "Power grid overlay: who is fed, and switches", () => PowerPressed?.Invoke(), Hotkeys.KeyName("open_power"));
         _grid.ToggleMode = true;
+        _grid.FocusMode = FocusModeEnum.All;
+        KeyBadge.Attach(_grid, Hotkeys.KeyName("open_power"));
         row.AddChild(_powerRule);
         row.AddChild(_power);
         row.AddChild(_battery);
         row.AddChild(_grid);
         row.AddChild(new VSeparator());
 
-        // The actions two rows high, so the resource chips keep their room: in one row they left the chips ~150 px once the
-        // power chips showed, and eleven chips stacked into a column that pushed every panel half way down the screen.
-        var actions = new GridContainer { Columns = 4, SizeFlagsVertical = SizeFlags.ShrinkCenter };
-        actions.AddThemeConstantOverride("h_separation", 2);
-        actions.AddThemeConstantOverride("v_separation", 2);
-        actions.AddChild(Widgets.IconButton("ui_build", "", "Build", () => BuildPressed?.Invoke(), Hotkeys.KeyName("open_build")));
-        _defend = Widgets.IconButton("ui_defend", "", "Defend: walls, posts, lights, traps", () => DefendPressed?.Invoke(), Hotkeys.KeyName("open_defend"));
+        _actions.AddThemeConstantOverride("h_separation", 2);
+        _actions.AddThemeConstantOverride("v_separation", 2);
+        Action("ui_build", "Build", "Build", () => BuildPressed?.Invoke(), "open_build");
+        _defend = Action("ui_defend", "Defend", "Defend: walls, posts, lights, traps", () => DefendPressed?.Invoke(), "open_defend");
         _defend.Icon = Icons.Get("ui_defend", 18, "stat_armor");
-        actions.AddChild(_defend);
-        _repairs = Widgets.IconButton("ui_repair", "", "Repairs", () => RepairsPressed?.Invoke());
+        _repairs = Action("ui_repair", "Repairs", "Repairs", () => RepairsPressed?.Invoke(), null);
         _repairs.Icon = Icons.Get("ui_repair", 18, "skill_crafting");
-        actions.AddChild(_repairs);
-        actions.AddChild(Widgets.IconButton("ui_items", "", "Items and blueprints", () => ItemsPressed?.Invoke(), Hotkeys.KeyName("open_items")));
-        actions.AddChild(Widgets.IconButton("res_food", "", "Pantry: food, spoilage and food days", () => PantryPressed?.Invoke()));
-        actions.AddChild(Widgets.IconButton("ui_expedition", "", "Expedition", () => ExpeditionPressed?.Invoke(), Hotkeys.KeyName("open_expedition")));
-        actions.AddChild(Widgets.IconButton("ui_world_map", "", "World map", () => WorldMapPressed?.Invoke()));
-        actions.AddChild(Widgets.IconButton("ui_menu", "", "Menu: save, load, settings", () => MenuPressed?.Invoke(), Hotkeys.KeyName("pause_menu")));
-        row.AddChild(actions);
+        Action("ui_items", "Items", "Items and blueprints", () => ItemsPressed?.Invoke(), "open_items");
+        Action("res_food", "Pantry", "Pantry: food, spoilage and food days", () => PantryPressed?.Invoke(), null);
+        Action("ui_expedition", "Expedition", "Expedition", () => ExpeditionPressed?.Invoke(), "open_expedition");
+        Action("ui_world_map", "Map", "World map", () => WorldMapPressed?.Invoke(), null);
+        Action("ui_menu", "Menu", "Menu: save, load, settings", () => MenuPressed?.Invoke(), "pause_menu");
+        row.AddChild(_actions);
+        Resized += () => Callable.From(FitActions).CallDeferred();
+    }
+
+    /// <summary>A top-bar action: icon (and a label when there is room), the hotkey in its tooltip and corner.</summary>
+    private Button Action(string icon, string label, string tooltip, Action pressed, string? hotkey)
+    {
+        var key = hotkey is null ? null : Hotkeys.KeyName(hotkey);
+        var button = Widgets.IconButton(icon, "", tooltip, pressed, key);
+        button.FocusMode = FocusModeEnum.All;
+        KeyBadge.Attach(button, key);
+        _actionButtons.Add((button, label));
+        _actions.AddChild(button);
+        return button;
+    }
+
+    /// <summary>A pressure chip (people, beds, food days, power) with its (i) inside.</summary>
+    private static PanelContainer PressureChip(string icon, string topic)
+    {
+        var chip = Widgets.Chip(Icons.Get(icon, 16), "");
+        chip.GetChild(0).AddChild(new InfoTip(topic));
+        return chip;
+    }
+
+    /// <summary>
+    /// The richest action layout that keeps the bar on one line: labelled buttons in a row, icons in a row, or icons in
+    /// a 4×2 grid. Measured again only when the width or what the bar shows changes.
+    /// </summary>
+    private void FitActions()
+    {
+        var width = GetParentAreaSize().X;
+        var key = $"{width:0}|{_drawer.Visible}|{_power.Visible}|{_battery.Visible}|{_defend.Visible}|{_weatherRow.Visible}";
+        if (key == _fitKey || width <= 0) return;
+        _fitKey = key;
+        for (var layout = 0; layout < 3; layout++)
+        {
+            ApplyLayout(layout);
+            if (GetCombinedMinimumSize().X <= width) return;
+        }
+    }
+
+    private void ApplyLayout(int layout)
+    {
+        if (layout == _layout) return;
+        _layout = layout;
+        var shown = _actionButtons.Count(b => b.Button.Visible);
+        _actions.Columns = layout == 2 ? (shown + 1) / 2 : Math.Max(1, _actionButtons.Count);
+        foreach (var (button, label) in _actionButtons)
+        {
+            var text = layout == 0 ? label : "";
+            if (button == _repairs && _repairCount > 0) text = layout == 0 ? $"{label} {_repairCount}" : $"{_repairCount}";
+            button.Text = text;
+            button.CustomMinimumSize = new Vector2(text.Length == 0 ? 34 : 0, 32);
+            foreach (var badge in button.GetChildren().OfType<KeyBadge>()) badge.Visible = layout != 0;
+        }
     }
 
     /// <summary>The power overlay hotkey does what the grid button does.</summary>
@@ -189,16 +249,29 @@ public partial class TopBar : PanelContainer
     public void EmitDefend() => DefendPressed?.Invoke();
 
     /// <summary>Defend and Repairs only with raids loaded; Repairs counts the queue and what is damaged but not queued.</summary>
+    private int _repairCount;
+    private bool _repairsWarn;
+
     private void RefreshDefense(ColonySim sim)
     {
-        _defend.Visible = _repairs.Visible = sim.Raids is not null;
+        _set.Visible(_defend, sim.Raids is not null);
+        _set.Visible(_repairs, sim.Raids is not null);
         if (sim.Raids is not { } raids) return;
         var queued = sim.State.Defense.Repairs.Count;
         var waiting = RaidText.Unqueued(sim, raids).Count();
-        _repairs.Text = queued + waiting > 0 ? $"{queued + waiting}" : "";
-        _repairs.CustomMinimumSize = new Vector2(_repairs.Text.Length == 0 ? 34 : 0, 32);
-        _repairs.AddThemeColorOverride("font_color", waiting > 0 ? Palette.Warn : Palette.Text);
-        _repairs.TooltipText = $"Repairs: {queued} queued" + (waiting > 0 ? $", {waiting} damaged and not queued" : "");
+        if (_repairCount != queued + waiting)
+        {
+            _repairCount = queued + waiting;
+            var layout = _layout;
+            _layout = -1;
+            ApplyLayout(Math.Max(0, layout));
+        }
+        _set.Tooltip(_repairs, Widgets.Tip($"Repairs: {queued} queued" + (waiting > 0 ? $", {waiting} damaged and not queued" : ""), null));
+        if (_repairsWarn != waiting > 0)
+        {
+            _repairsWarn = waiting > 0;
+            _repairs.AddThemeColorOverride("font_color", _repairsWarn ? Palette.Warn : Palette.Text);
+        }
     }
 
     private void RefreshPhase(ColonySim sim)
@@ -214,7 +287,7 @@ public partial class TopBar : PanelContainer
             _phase.AddThemeColorOverride("font_color", color);
         }
         var tip = ColonyText.PhaseTip(sim);
-        _phaseIcon.TooltipText = _phase.TooltipText = _day.TooltipText = _hour.TooltipText = tip;
+        foreach (var c in new Control[] { _phaseIcon, _phase, _day, _hour }) _set.Tooltip(c, tip);
     }
 
     private void RefreshWeather(ColonySim sim)
@@ -230,22 +303,18 @@ public partial class TopBar : PanelContainer
             _weather.Text = ColonyText.WeatherName(sim, now.Kind, now.Intensity).ToUpperInvariant();
             _weather.AddThemeColorOverride("font_color", color);
         }
-        // Rebuilt hourly: the forecast and hours left move with the clock.
-        _weatherBox.TooltipText = ColonyText.WeatherTip(sim);
-        var forecast = Weather.Forecast(sim.State, sim.Data).Entries.Where(e => !e.Current).Take(4).ToList();
-        var signature = string.Join(",", forecast.Select(e => $"{e.Start}:{e.Called}"));
-        if (signature == _forecastShown) return;
-        _forecastShown = signature;
-        Widgets.Clear(_forecast);
-        foreach (var e in forecast)
-        {
-            var rules = sim.Data.Rules;
-            var icon = Icons.Rect(Icons.Get($"weather_{e.Called}", 14, "weather_clear"), 14, WeatherColor(e.Called));
-            icon.TooltipText = $"Day {DayNight.Day(e.Start, rules)} {DayNight.Hour(e.Start, rules):00}:00: {ColonyText.WeatherName(sim, e.Called, e.Intensity)}";
-            icon.MouseFilter = MouseFilterEnum.Pass;
-            _forecast.AddChild(icon);
-        }
-        if (forecast.Count == 0) _forecast.AddChild(Widgets.Label("—", "Small"));
+        // The forecast and hours left move with the clock: the next change as "Rain in 6h", the rest in the tooltip.
+        var tip = ColonyText.WeatherTip(sim);
+        _set.Tooltip(_weatherBox, tip);
+        var forecast = Weather.Forecast(sim.State, sim.Data);
+        var next = forecast.Entries.FirstOrDefault(e => !e.Current && e.Called != now.Kind);
+        var rules = sim.Data.Rules;
+        var text = next is null ? (forecast.Days > 0 ? "Settled" : "No forecast")
+            : $"{ColonyText.WeatherName(sim, next.Called, next.Intensity)} in {ColonyText.Duration((int)Math.Max(1, next.Start - sim.State.Tick), rules)}";
+        SetChip(_forecast, text, next is null ? Palette.TextMuted : Palette.Text,
+            (next is null ? "No change in sight.\n" : "") + tip + (forecast.Days > 0 ? $"\nForecast: {forecast.Days} day{(forecast.Days == 1 ? "" : "s")} ahead, {forecast.Accuracy * 100:0}% sure." : ""),
+            next is null ? "weather_clear" : $"weather_{next.Called}");
+        if (next is not null) _set.Modulate(_forecast.GetChild(0).GetChild<TextureRect>(0), WeatherColor(next.Called));
     }
 
     /// <summary>Calm weather muted, wet weather cool, storms in warning colours.</summary>
@@ -293,12 +362,23 @@ public partial class TopBar : PanelContainer
         {
             var amount = sim.State.Stockpile.Get(id);
             var perDay = _history.PerDay(id, amount, sim.State.Tick, rules.TicksPerDay);
-            chip.Visible = Staples.Contains(id) || amount >= 0.5 || perDay is { } d && Math.Abs(d) > 0.05;
             chip.Set(amount, perDay, ResourceTip(sim, id, amount, perDay));
         }
+        var folded = new List<string>();
+        foreach (var (id, def) in sim.Data.Resources)
+        {
+            if (_chips.ContainsKey(id)) continue;
+            var amount = sim.State.Stockpile.Get(id);
+            var perDay = _history.PerDay(id, amount, sim.State.Tick, rules.TicksPerDay);
+            var shown = amount >= 0.5 || perDay is { } d && Math.Abs(d) > 0.05;
+            if (shown) folded.Add(def.Name);
+            _drawer.Set(id, def.Name, amount, perDay, ResourceTip(sim, id, amount, perDay), shown);
+        }
+        _drawer.SetCount(folded.Count, string.Join(", ", folded));
         RefreshPressure(sim);
         RefreshDefense(sim);
         RefreshPower(sim);
+        FitActions();
     }
 
     /// <summary>Shows the overlay toggle as pressed or not.</summary>
@@ -340,7 +420,7 @@ public partial class TopBar : PanelContainer
         var people = sim.State.Survivors.Count;
         var away = sim.State.Survivors.Count(s => s.Away);
         SetChip(_pop, away > 0 ? $"{people} ({away} away)" : $"{people}", Palette.Text,
-            $"Population {people}" + (away > 0 ? $", {away} away on an expedition (they eat rations, not colony food)" : ""));
+            $"Population: {people}" + (away > 0 ? $", {away} away on an expedition (they eat rations, not colony food)" : ""));
 
         var homeless = sim.State.Survivors.Count(s => !s.HasBed);
         var expecting = sim.State.Survivors.Count(s => s.Pregnancy is not null);
@@ -353,18 +433,16 @@ public partial class TopBar : PanelContainer
             : $"{free} bed{(free == 1 ? "" : "s")} free.";
         SetChip(_beds, $"{sim.State.Survivors.Count(s => s.HasBed)}/{sim.BedCapacity}{(bedsBad ? " !" : "")}",
             bedsBad ? Palette.Danger : bedsTight ? Palette.Warn : Palette.Text,
-            $"Beds taken / beds\n{bedNote}\nCouples only have children when a bed is free.", bedsBad ? "stat_warning" : "stat_beds");
+            $"Beds: {sim.State.Survivors.Count(s => s.HasBed)} taken of {sim.BedCapacity}\n{bedNote}\nCouples only have children when a bed is free.", bedsBad ? "stat_warning" : "stat_beds");
 
         var days = sim.FoodDays;
         var foodColor = days < 3 ? Palette.Danger : days < 7 ? Palette.Warn : Palette.Good;
         var daysText = double.IsInfinity(days) ? "∞" : days >= 99 ? "99+d" : $"{days:0.#}d";
         SetChip(_food, daysText + (days < 3 ? " !" : ""), foodColor,
-            $"Food lasts about {daysText} at {sim.FoodPerDay:0.#} eaten per day ({sim.FoodStock:0} food in the pantry).\n" +
+            $"Food days: food lasts about {daysText} at {sim.FoodPerDay:0.#} eaten per day ({sim.FoodStock:0} food in the pantry).\n" +
             "Infants and children are fed first; the hungry lose health. Click for the pantry.",
             days < 3 ? "stat_starving" : "res_food");
     }
-
-    private readonly Unchanged _set = new();
 
     private void SetChip(PanelContainer chip, string text, Color color, string tooltip, string? icon = null)
     {
