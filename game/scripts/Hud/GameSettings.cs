@@ -41,6 +41,11 @@ public static class GameSettings
 
     /// <summary>The window lost focus (set by the audio autoload); mutes Master when <see cref="MuteWhenUnfocused"/>.</summary>
     public static bool Unfocused { get; set; }
+    /// <summary>Accessibility: HUD tweens (panels, lists, counters, toasts) finish at once instead of animating (<see cref="Motion"/>).</summary>
+    public static bool ReduceMotion { get; set; }
+
+    /// <summary>Debug: the UI frame-time overlay (<see cref="FrameTimeOverlay"/>; also F3 or <c>--frame-overlay</c>).</summary>
+    public static bool ShowFrameTime { get; set; }
     public static float CameraPanSpeed { get; set; } = 1f;
 
     /// <summary>
@@ -68,6 +73,8 @@ public static class GameSettings
         Load();
         EnsureBuses();
         Hotkeys.Install();
+        Help.HelpLayer.Attach(tree);
+        FrameTimeOverlay.Attach(tree);
         // A screenshot run (DebugCapture) keeps the window it was given, so captures match the asked size.
         Apply(window: !DebugCapture.HasFlag("--keep-window") && Godot.OS.GetCmdlineUserArgs().All(a => !a.StartsWith("--screenshot") && !a.StartsWith("--record")));
         _root.SizeChanged += ApplyScale;
@@ -120,6 +127,8 @@ public static class GameSettings
         cfg.SetValue("audio", "mute_unfocused", MuteWhenUnfocused);
         cfg.SetValue("audio", "visual_cues", VisualSoundCues);
         cfg.SetValue("display", "weather", (int)WeatherEffects);
+        cfg.SetValue("ui", "reduce_motion", ReduceMotion);
+        cfg.SetValue("ui", "frame_time", ShowFrameTime);
         cfg.SetValue("camera", "pan", CameraPanSpeed);
         cfg.SetValue("camera", "zoom", CameraZoomSpeed);
         cfg.SetValue("game", "day_minutes", DayLengthMinutes);
@@ -141,6 +150,8 @@ public static class GameSettings
         MuteWhenUnfocused = (bool)cfg.GetValue("audio", "mute_unfocused", MuteWhenUnfocused);
         VisualSoundCues = (bool)cfg.GetValue("audio", "visual_cues", VisualSoundCues);
         WeatherEffects = (WeatherEffects)Math.Clamp((int)cfg.GetValue("display", "weather", (int)WeatherEffects), 0, 2);
+        ReduceMotion = (bool)cfg.GetValue("ui", "reduce_motion", ReduceMotion);
+        ShowFrameTime = (bool)cfg.GetValue("ui", "frame_time", ShowFrameTime);
         CameraPanSpeed = (float)cfg.GetValue("camera", "pan", CameraPanSpeed);
         CameraZoomSpeed = (float)cfg.GetValue("camera", "zoom", CameraZoomSpeed);
         DayLengthMinutes = Math.Clamp((int)cfg.GetValue("game", "day_minutes", DayLengthMinutes), DayLengths[0], DayLengths[^1]);
@@ -168,6 +179,8 @@ public static class Hotkeys
     public static readonly IReadOnlyList<Binding> All =
     [
         new("pause_menu", "Pause menu / back", "Everywhere", [Key.Escape]),
+        new("open_help", "Help: every topic, searchable", "Everywhere", [Key.F1]),
+        new("toggle_frame_time", "Show / hide the frame-time overlay", "Everywhere", [Key.F3]),
         new("toggle_pause", "Pause / resume time", "Colony", [Key.Space]),
         new("speed_1", "Normal speed", "Colony", [Key.Key1]),
         new("speed_2", "Fast (2×)", "Colony", [Key.Key2]),

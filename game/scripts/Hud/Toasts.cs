@@ -103,9 +103,9 @@ public partial class Toasts : VBoxContainer
         s.Life?.Kill();
         var toast = s.Panel;
         var tween = s.Life = toast.CreateTween();
-        tween.TweenProperty(toast, "modulate:a", 1f, Motion.Normal);
+        tween.TweenProperty(toast, "modulate:a", 1f, Motion.D(Motion.Normal));
         tween.TweenInterval(Seconds);
-        tween.TweenProperty(toast, "modulate:a", 0f, 0.6f);
+        tween.TweenProperty(toast, "modulate:a", 0f, Motion.D(0.6f));
         tween.TweenCallback(Callable.From(toast.QueueFree));
     }
 
@@ -113,7 +113,7 @@ public partial class Toasts : VBoxContainer
     {
         s.Life?.Kill();
         var tween = s.Life = s.Panel.CreateTween();
-        tween.TweenProperty(s.Panel, "modulate:a", 0f, Motion.Fast);
+        tween.TweenProperty(s.Panel, "modulate:a", 0f, Motion.D(Motion.Fast));
         tween.TweenCallback(Callable.From(s.Panel.QueueFree));
     }
 }

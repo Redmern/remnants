@@ -166,6 +166,7 @@ public partial class Pips : Control
 
     public void Set(int filled, int total, Color? on = null)
     {
+        if (filled == _filled && total == _total && (on is null || on == _on) && CustomMinimumSize.Y > 0) return;
         _filled = filled;
         _total = total;
         if (on is { } c) _on = c;

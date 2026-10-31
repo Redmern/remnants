@@ -15,4 +15,5 @@ if [[ "${1:-}" == "--godot" ]]; then
   godot-mono --headless --path game --build-solutions --quit
   godot-mono --headless --path game -- --audio-selftest | grep -E '^\[audio-selftest\]'
   godot-mono --headless --path game -- --anim-selftest | grep -E '^\[anim-selftest\]'
+  godot-mono --headless --path game -- --colony --demo --help-selftest | grep -E '^\[help-selftest\]'
 fi

@@ -189,7 +189,19 @@ public partial class ColonyScreen : Node3D
         RefreshAll();
     }
 
-    public override void _ExitTree() => _session.DetachViews();
+    public override void _ExitTree()
+    {
+        _session.DetachViews();
+        Hud.Help.HelpLibrary.Ambient = null;
+    }
+
+    /// <summary>What help breakdowns read here: the colony and the survivor or building whose panel is open.</summary>
+    private Remnants.Core.Help.HelpContext HelpContext() => new()
+    {
+        Colony = _session.Sim,
+        Survivor = _hud.Survivor.SurvivorId is { } s ? _session.Sim.State.FindSurvivor(s) : null,
+        Building = _hud.Building.BuildingId is { } b ? _session.Sim.State.FindBuilding(b) : null,
+    };
 
     private void ShowUnseenReport()
     {
@@ -966,6 +978,7 @@ public partial class ColonyScreen : Node3D
     private void BuildHud()
     {
         _hud = new ColonyHud(_session);
+        Hud.Help.HelpLibrary.Ambient = HelpContext;
         AddChild(_hud);
         _hud.Log.Reset();
     }

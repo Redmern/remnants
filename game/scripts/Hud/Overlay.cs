@@ -40,11 +40,14 @@ public partial class Overlay : Control
     public void Open()
     {
         Visible = true;
-        Modulate = new Color(1, 1, 1, 0);
-        CreateTween().TweenProperty(this, "modulate:a", 1f, Motion.Fast);
-        _panel.PivotOffset = _panel.Size / 2;
-        _panel.Scale = new Vector2(0.97f, 0.97f);
-        CreateTween().SetEase(Tween.EaseType.Out).TweenProperty(_panel, "scale", Vector2.One, Motion.Normal);
+        if (!GameSettings.ReduceMotion)
+        {
+            Modulate = new Color(1, 1, 1, 0);
+            Motion.Tween(this).TweenProperty(this, "modulate:a", 1f, Motion.Fast);
+            _panel.PivotOffset = _panel.Size / 2;
+            _panel.Scale = new Vector2(0.97f, 0.97f);
+            Motion.Tween(_panel).TweenProperty(_panel, "scale", Vector2.One, Motion.Slow);
+        }
         OnOpened();
     }
 

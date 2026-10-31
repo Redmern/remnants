@@ -41,6 +41,8 @@ public partial class MainMenu : Control
         else if (DebugCapture.HasFlag("--multiplayer") || OS.GetCmdlineUserArgs().Any(a => a.StartsWith("--mp-")))
             CallDeferred(MethodName.OnMultiplayerPressed);
         else if (DebugCapture.HasFlag("--menu-settings")) _settings.CallDeferred(Overlay.MethodName.Open);
+        // `-- --new-game-choice` opens the Story / Sandbox choice (for screenshots).
+        else if (DebugCapture.HasFlag("--new-game-choice")) CallDeferred(MethodName.NewGame);
         // `-- --new-game=story` (or sandbox) clicks New Game for you: the export smoke test boots straight into a fresh colony.
         else if (DebugCapture.Value("--new-game") is { Length: > 0 } mode) CallDeferred(MethodName.StartColony, mode == "story");
     }

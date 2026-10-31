@@ -123,6 +123,7 @@ public partial class ScavengeHud : CanvasLayer
         [
             new("Resume", "ui_play", () => Pause!.Close(), Hint: "Back to the mission (Esc)"),
             new("Settings", "ui_settings", () => Settings.Open(), Hint: "Display, audio, camera, controls"),
+            new("Help", "ui_info", () => Hud.Help.HelpLayer.Instance?.Index.OpenAt(null), Hint: "Every topic, searchable (F1)"),
             new("Leave the zone", "ui_leave", () => LeaveRequested?.Invoke(),
                 "Leave now? The run is suspended and the party stays out; Expedition → Play mission resumes it.", "Suspend the run"),
             new("Quit", "ui_quit", () => GetTree().Quit(), "Quit the game? The run is lost unless the colony was saved.", "Quit to the desktop"),

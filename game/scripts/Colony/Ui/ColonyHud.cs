@@ -207,6 +207,7 @@ public partial class ColonyHud : CanvasLayer
             new("Save", "ui_save", () => { session.Save(); ClosePause(); }, Hint: "Save the colony"),
             new("Load", "ui_load", () => { session.Load(); ClosePause(); }, "Load the last save? Progress since then is lost.", "Load the last save"),
             new("Settings", "ui_settings", () => Settings.Open(), Hint: "Display, audio, camera, controls"),
+            new("Help", "ui_info", () => Hud.Help.HelpLayer.Instance?.Index.OpenAt(null), Hint: "Every topic, searchable (F1)"),
             new("Main menu", "ui_menu", () => MainMenuRequested?.Invoke(),
                 "Go to the main menu? The colony waits: Continue picks it up. Save to keep it after you quit.", "Back to the title screen"),
             new("Quit", "ui_quit", () => GetTree().Quit(), "Quit the game? Unsaved progress is lost.", "Quit to the desktop"),

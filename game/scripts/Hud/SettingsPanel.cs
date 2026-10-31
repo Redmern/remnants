@@ -5,7 +5,7 @@ using Godot;
 namespace Remnants.Game.Hud;
 
 /// <summary>
-/// Settings, in tabs: Game (day length), Display (UI scale, fullscreen, window size, vsync), Audio (master / music / effects / ambience
+/// Settings, in tabs: Game (day length), Display (UI scale, fullscreen, window size, vsync, weather effects, reduce motion, frame time), Audio (master / music / effects / ambience
 /// volume on their buses, mute when unfocused, visual sound cues), Camera (pan and zoom speed) and Controls (the hotkey list). Changes apply at once and are saved
 /// when the panel closes (<see cref="GameSettings"/>).
 /// </summary>
@@ -87,6 +87,21 @@ public partial class SettingsPanel : Overlay
         weather.Select((int)GameSettings.WeatherEffects);
         weather.ItemSelected += i => GameSettings.WeatherEffects = (WeatherEffects)(int)i;
         box.AddChild(Row("Weather effects", weather, "Rain, dust and lightning on screen. Reduced draws less and never flashes; the weather's effects on play stay the same."));
+
+        var motion = new CheckBox
+        {
+            Text = "Reduce motion", ButtonPressed = GameSettings.ReduceMotion, FocusMode = FocusModeEnum.None,
+            TooltipText = "Panels, lists, counters and notices appear at once instead of sliding and fading.",
+        };
+        motion.Toggled += on => GameSettings.ReduceMotion = on;
+        box.AddChild(motion);
+        var frames = new CheckBox
+        {
+            Text = "Show frame time", ButtonPressed = GameSettings.ShowFrameTime, FocusMode = FocusModeEnum.None,
+            TooltipText = Widgets.Tip("A small graph of how long each frame takes (60 fps = 16.7 ms), top right.", Hotkeys.KeyName("toggle_frame_time")),
+        };
+        frames.Toggled += FrameTimeOverlay.SetShown;
+        box.AddChild(frames);
         return Scroll(box);
     }
 
