@@ -32,7 +32,10 @@ badly or confuses you. Section 5 says which notes help most.
 1. **New game.** Main menu → New Game → **Story**. Look at the colony from above: can you tell the buildings apart?
    Can you tell who is who? Turn the camera with **Q** / **R**.
 2. **Colony basics.** Click a survivor (or press **Tab** to step through them): read their panel (health, mood, body
-   parts, job). Open the build menu (**B**) and place something cheap, such as a farm. Unpause with **Space** and speed
+   parts, job). Open the build menu (**B**) and place something cheap, such as a farm: it becomes a **construction site** (an outline,
+   a scaffold, the materials in piles). Select it and click "+" under Builders to put someone on it (idle people lend a
+   hand too), then watch it rise; hover the site for the time left. Upgrades take days and the building keeps working
+   meanwhile. Unpause with **Space** and speed
    time up with **1 / 2 / 3 / 4** (normal, 2×, 4×, 8×). A day takes 2 minutes at normal speed (Settings → Game → Day
    length: 1 / 2 / 4 / 8 minutes). Watch people walk to work, eat and sleep, and the light glide from dawn to dusk.
    Click a building with jobs (e.g. the Woodcutter): a "+" on a free worker slot lists everyone with their job fit
@@ -118,6 +121,7 @@ godot-mono --path ~/repos/newgamev2/remnants/main/game -- --colony --raid-demo=b
 |---|---|
 | `--new-game=story` / `--new-game=sandbox` | Skips the menu and starts a new game |
 | `--colony --demo` | A small colony with a farm and woodcutter, people at work |
+| `--colony --construction-demo=50` | A Workshop half built, two builders on it (`=0`, `=100`, `=upgrade` for the Woodcutter on scaffolding) |
 | `--colony --crafting-demo` | A grown town with every workshop, the Armory open with a queue |
 | `--colony --gear-demo` | The Gear Bench open on a pistol with a sight previewed |
 | `--colony --food-demo --food-view=kitchen` | The Kitchen |

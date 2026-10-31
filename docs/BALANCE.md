@@ -1633,3 +1633,89 @@ of the extra dead are in M10, M11 and Doc's Rounds, which few colonies reached b
   warnings and the bot's wait for gear, as pass 2 did for M6/M7.
 - **Doc's Rounds** got deadlier as more colonies reach it (21 dead in 71 runs on seeds 61–120).
 - **M6** still loses 11–19 dead in 42–47 runs.
+
+## Construction
+
+Buildings are built by people over time (see ARCHITECTURE.md "Construction"): Construct and Upgrade place a site, its
+materials leave the stockpile, builders haul them over and put in work. Asked for: level 1 quick and cheap ("a simple
+shed"), upgrades much longer, early pacing near pass 3. Measured as pass 3 with 120 seeds (1–120) because the 60-seed
+medians swung by up to 6 days between near-identical runs: `dotnet run --project tools/Remnants.Playtest -c Release --
+--data=data --days=90 --seeds=1..120 [--story]`. "Before" is `main` at d53ec21 (pass 3 and review fixes 1), "after" is this
+branch.
+
+### The numbers
+
+| | rule |
+|---|---|
+| builder work / hour | `workPerHour` 1 × the `construction` job's output (Strength 0.4, Endurance 0.3, Intellect 0.15, Creativity 0.15 + the Construction skill; arms/legs/torso; tools +40%): a fresh adult (stats ~45, skill 0) puts in about **0.45 an hour**, a trained one 0.6–0.7 |
+| hauling | 30 units an hour (health, child rate); builders keep the materials 25% ahead of the work |
+| L1 `buildWork` | cost / 25, 1–4: Farm, Woodcutter, Quarry 1 (about 1–2 h with two builders, hauling included); Workshop 1.4, Med Bay 1.8, House 4 |
+| L2 `buildWork` | 5 + cost / 20, up to 12: Woodcutter 7.5, Town Hall 9.5 (6.4 on the old cost), House/Armory/Lab 12 — **one builder 1–2 days** on the work schedule, two about a day |
+| L3 `buildWork` | 18 + cost / 20, up to 32: Woodcutter 23.5, Town Hall 32 — **one builder 3–5 days** |
+| `maxBuilders` | 2 / 3 / 4 by level (House 3 / 4 / 4) |
+| idle helpers | 50% of a builder, at Normal and High priority sites |
+| weather | rain ×0.8, thunderstorm ×0.4, dust storm **0** (halts) |
+| perks | Engineer +15% construction, Pack Mule +10% |
+| cancel | not yet hauled: all back; hauled: 80% back |
+| Town Hall L2 | **48 wood / 30 stone** (was 55 / 35): the labour the upgrade now takes is paid back in materials |
+
+Build menu estimates (two typical builders on the day shift, clock time): Farm L1 ~1–2 h, Woodcutter L2 ~1 day, L3 ~3 days.
+The test `Upgrades_take_days_and_the_building_keeps_working_at_its_old_level` pins one average builder at 1–2.5 days for
+Woodcutter L2 and 3–6 days for L3.
+
+**An upgrade keeps the building working at its old level** until it is done (workers, output, beds, the Town Hall cap):
+nothing stops while the scaffold is up, and the cost of an upgrade is the builders' time and the wait for the new level.
+
+### The bot
+
+The bot (a sensible first-time player) now: counts a site as its goal reached; keeps at most two sites open; puts one
+builder on every site before crafters and medics, the best at it first (children too once food is safe), up to two (three
+on an upgrade) with about a quarter of its hands in all (`BOT_BUILDER_SHARE`, default 4; 3 and 6 measured the same within
+noise); and from day 30, with food under 4 days and every farm slot taken, puts up another Farm (quick and cheap now).
+Daily lines show sites (`Fm>2(40%)`) and builders (`bld:2`).
+
+### 120 seeds × 90 days
+
+| | Sandbox before | Sandbox after | Story before | Story after |
+|---|---|---|---|---|
+| Workshop (4th building) built, median day | 0.8 | 1.5 | 0.8 | 1.5 |
+| Town Hall 2: median day (colonies) | 34.6 (115) | **35.8** (114) | 35.8 (108) | **35.8** (106) |
+| House built: median day (colonies) | 57.5 (110) | 60.5 (102) | 36.8 (105) | 37.5 (103) |
+| median population at day 90 (mean, wiped) | 11 (10.96, 1) | 10 (10.22, 2) | 11 (10.38, 5) | 10 (10.26, 6) |
+| births / recruits / left | 511 / 478 / 192 | 441 / 489 / 215 | 446 / 597 / 105 | 430 / 656 / 164 |
+| first pregnancy, median day | 36 | 45 | 35 | 37 |
+| expedition deaths / runs | 73 / 2916 | 68 / 2886 | 244 / 2819 | 227 / 2834 |
+| starvation deaths | 0 | 0 | 0 | 9 (one colony, seed 72) |
+| raids held | 86% | 82% | 70% | 65% |
+
+Variants on the way (120 seeds, Town Hall 2 median, Sandbox / Story):
+
+| variant | Sandbox | Story |
+|---|---|---|
+| L1 cost/15 (1–6), L2 5+cost/20, Town Hall 55/35 | 39.3 | 37.3 |
+| L1 cost/25 (1–4), same L2, Town Hall 55/35 | 38.3 | 37.3 |
+| same, bot builder share 3 / 4 / 6 | 38.7 / 38.4 / 38.4 | 37.3 / 36.8 / 38.4 |
+| **same, Town Hall 48/30 (taken)** | **35.8** | **35.8** |
+
+The first buildings go up within the first day (Farm, Woodcutter and Quarry in the first hours, the Workshop on day 1.5
+instead of 0.8). Town Hall 2 is back on pass 3 (Story equal, Sandbox +1.2 days) once its own cost pays for the labour. A
+seed-by-seed comparison is noisy: the median paired difference before the Town Hall change was +2.6 days with a
+quartile range of −4 to +9, because a site moves the random stream (who is home when a raid or a party leaves).
+
+### Against the goals
+
+| Goal | Result |
+|---|---|
+| L1 quick and cheap (tens of minutes to a few hours, 1–2 builders) | Met: 1–4 work, 1–2 h for a gathering shed with two builders, up to ~5 h for a House. |
+| L2 ≈ 1–2 days, L3 ≈ 3–5 days of builder work | Met for one average builder (tested); two builders halve it. |
+| Town Hall 2 and early pacing near pass 3 | Met: Town Hall 2 35.8 / 35.8 (pass 3: 34.6 / 35.8); Workshop +0.7 days. |
+| Population | Story equal (mean 10.3 vs 10.4); Sandbox −0.7 on the mean: the House comes 3 days later and the Shelter's 6 beds hold births back (first pregnancy day 45 vs 36). |
+
+### Watch next pass
+
+- **Sandbox housing**: births wait for the House (beds full). A Shelter upgrade is now the quick fix a player would make;
+  the bot never upgrades the Shelter (pass 3 found the same in Story).
+- **Death spirals**: Story seed 72 starves with a full L1 Farm, 1 wood and half the adults in bed or away; the bot
+  keeps its Workshop crafter instead of cutting wood. Base has the same shape in its wiped colonies.
+- **Raids held** dipped (86 → 82%, 70 → 65%): builders are not guards, and the upgrades that would add worker slots come
+  later. Worth a look with the defense numbers.
