@@ -12,6 +12,7 @@ See `PLAN.md` for the design. This file is the short "where does what live" map.
 | `tests/Remnants.Core.Tests` | xUnit tests for Core, run headless. | Core |
 | `tests/Remnants.Net.Tests` | Protocol round-trips, scripted 2-player loopback games, a localhost TCP game. | Net |
 | `tools/Remnants.Playtest` | Headless bot playthroughs of a fresh colony and zone trials, for balancing. See `BALANCE.md`. | Core |
+| `tools/Remnants.Bench` | Headless performance baselines: colony tick, scavenge AI turns, save/load. See `PERFORMANCE.md`. | Core, Playtest |
 | `game/` | Godot 4.7 C# project: presentation + input only. | Core, Net |
 | `data/` | JSON definitions loaded by Core. Balancing is a data edit. | — |
 
@@ -126,7 +127,10 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
     visual sound cues, camera pan/zoom speed.
     `Hotkeys` installs the InputMap actions (Esc menu, Space pause, 1/2/3 speed, B build, E expedition, I items,
     L log, Tab next survivor, Q/R colony camera rotation; Space/Enter end turn in scavenge). `GameSettings.Boot` runs
-    once from whichever scene starts first and also attaches `DebugCapture`.
+    once from whichever scene starts first and also attaches `DebugCapture`. `DebugCapture` also attaches `PerfMonitor` for
+    `--perf-log` (frame time, draw calls, memory, hitches; see `PERFORMANCE.md`).
+  - `Unchanged` — sets a control's text / tooltip / texture / visibility / colour only when it changed; HUD panels
+    that refresh every tick use it so unchanged values cost no engine call or relayout.
 - `scripts/MainMenu` + `MenuBackdrop` — the title screen over a throwaway grown colony circled by a slow camera:
   Continue (the session's colony, else the save), New Game, Load, Multiplayer, Settings, Quit, debug skirmish.
 - `scripts/Colony/Ui/` — `ColonyHud` lays the colony HUD out and owns its hotkeys: `TopBar` (clock, speed, resource
