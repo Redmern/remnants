@@ -109,6 +109,7 @@ public partial class ColonyHud : CanvasLayer
         {
             root.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
             root.Size = new Vector2(hudW, hudH);
+            _hudSize = root.Size;
         }
 
         var column = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
@@ -203,9 +204,10 @@ public partial class ColonyHud : CanvasLayer
         Log = new EventLog(session);
         right.AddChild(Log);
         Log.Resized += () => Building.Refresh();
-        // The building panel grows to its content, up to the column less the log (and room for the build or defend
-        // panel when one is open beside it).
-        Building.MaxHeight = () => right.Size.Y - Log.Size.Y - Space.Sm * 2
+        // The building panel grows to its content, up to the screen's bottom less the log (and room for the build or
+        // defend panel when one is open beside it). Measured from the screen, not the column: an over-tall panel
+        // stretches the column, which must not raise its own limit.
+        Building.MaxHeight = () => HudBottom(root) - right.GlobalPosition.Y - Log.Size.Y - Space.Sm * 2
                                    - (stack.GetChildren().OfType<Control>().Any(c => c.Visible) ? 260 : 0);
 
         // Toasts float over the town's bottom-right corner, beside the right column, anchored in a plain Control so
@@ -275,6 +277,12 @@ public partial class ColonyHud : CanvasLayer
         Survivor.Closed += () => Roster.Select(null);
         Roster.SelectionChanged += Survivor.Show;
     }
+
+    /// <summary>The bottom edge the HUD lays out to: the screen (logical units), or the debug --hud-size area.</summary>
+    private float HudBottom(Control root) =>
+        (_hudSize?.Y ?? GetViewport().GetVisibleRect().Size.Y) - root.GetThemeConstant("margin_bottom");
+
+    private Vector2? _hudSize;
 
     public void Refresh()
     {

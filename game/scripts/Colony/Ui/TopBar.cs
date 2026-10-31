@@ -216,6 +216,7 @@ public partial class TopBar : PanelContainer
         var key = $"{width:0}|{_drawer.Visible}|{_power.Visible}|{_battery.Visible}|{_defend.Visible}|{_weatherRow.Visible}";
         if (key == _fitKey || width <= 0) return;
         _fitKey = key;
+        _layout = -1; // what is shown may have changed: re-apply even the same layout
         for (var layout = 0; layout < 3; layout++)
         {
             ApplyLayout(layout);
@@ -248,10 +249,10 @@ public partial class TopBar : PanelContainer
     /// <summary>The Defend hotkey does what the button does.</summary>
     public void EmitDefend() => DefendPressed?.Invoke();
 
-    /// <summary>Defend and Repairs only with raids loaded; Repairs counts the queue and what is damaged but not queued.</summary>
     private int _repairCount;
     private bool _repairsWarn;
 
+    /// <summary>Defend and Repairs only with raids loaded; Repairs counts the queue and what is damaged but not queued.</summary>
     private void RefreshDefense(ColonySim sim)
     {
         _set.Visible(_defend, sim.Raids is not null);
