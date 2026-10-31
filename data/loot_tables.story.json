@@ -1,0 +1,14 @@
+{
+  "//": "Story enemies' loot (docs/story): the Tally's cutters carry what a scavenger band carries, Cole always goes down with good gear and his band's best. Seven and Halcyon have no loot table: Seven never fights, and its plating is a story reward (M10).",
+  "tables": [
+    { "id": "tally_blade", "nothing": 0.1, "rolls": [1, 3],
+      "entries": [ { "item": "canned_food", "weight": 4 }, { "item": "bandage", "weight": 3 }, { "item": "scrap", "weight": 3 },
+                   { "item": "cloth", "weight": 2 }, { "item": "flare", "weight": 1 }, { "item": "med_supplies", "weight": 1 } ],
+      "rare": [ { "item": "machete", "chance": 0.3, "quality": { "crude": 2, "standard": 1 } },
+                { "item": "padded_vest", "chance": 0.1, "quality": { "crude": 2, "standard": 1 } } ] }
+  ],
+  "extend": [
+    { "table": "cole",
+      "guaranteed": [ { "item": "rifle", "quality": { "standard": 1, "fine": 2 } }, { "item": "binoculars" }, { "item": "hacking_kit" } ] }
+  ]
+}
