@@ -46,8 +46,9 @@ public sealed record ExtractionResult(
         bool Out(Unit u) => u.Status is UnitStatus.Extracted or UnitStatus.Evacuated;
 
         var returned = mine.Where(u => u.Kind == UnitKind.Survivor && Out(u)).Select(ToReturned).ToList();
-        // A story character who walks out with the party (an escort) goes home to the story, not into the colony.
-        var recruits = mine.Where(u => u.Kind == UnitKind.Npc && u.CharacterId is null && Out(u)).Select(ToReturned).ToList();
+        // A story character who walks out with the party (an escort) goes home to the story, not into the colony; nor does
+        // anything the map marks as no recruit (M6's trucks drive on to Marrow's camp).
+        var recruits = mine.Where(u => u.Kind == UnitKind.Npc && u.CharacterId is null && !u.NoRecruit && Out(u)).Select(ToReturned).ToList();
         var deaths = mine.Where(u => u.Kind == UnitKind.Survivor && u.Status == UnitStatus.Dead).Select(u => Snapshot(u, 0)).ToList();
 
         var loot = new SortedDictionary<string, int>(StringComparer.Ordinal);

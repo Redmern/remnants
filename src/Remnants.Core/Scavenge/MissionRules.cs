@@ -286,7 +286,6 @@ public static class MissionRules
                     u.Side = side;
                     u.PlayerId = leader.PlayerId;
                     u.FollowingId = leader.Id;
-                    u.NoRecruit = false;
                     state.Log(new(state.Round, ScavengeEventType.Recruited, $"{u.Name} follows {leader.Name}.", leader.Id, u.Id, u.Pos));
                 }
                 break;

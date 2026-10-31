@@ -489,6 +489,27 @@ public class ObjectiveTests
     }
 
     [Fact]
+    public void An_escorted_truck_drives_on_but_an_escorted_stranger_joins_the_colony()
+    {
+        // M6's trucks follow the party (noRecruit on the map); M7's patient follows and joins. A follow keeps the map's word.
+        var sim = Field(Open, new() { ["a"] = "scout", ["h"] = "stranger" }, [],
+            [new TriggerDef { Id = "f", When = new TriggerWhen { Kind = TriggerKind.Start },
+                Actions = [new TriggerAction { Kind = TriggerActionKind.Follow, Tag = "truck" }, new TriggerAction { Kind = TriggerActionKind.Follow, Tag = "patient" }] }],
+            npcs: [new MapNpcDef("Cargo truck", "scout", "truck", NoRecruit: true), new MapNpcDef("Tomas", "stranger", "patient")]);
+        MissionRules.Update(sim);
+        var me = sim.Mine();
+        var truck = sim.State.Units.Single(u => u.Tag == "truck");
+        var patient = sim.State.Units.Single(u => u.Tag == "patient");
+        Assert.Equal(me.Id, truck.FollowingId);
+        Assert.Equal(me.Id, patient.FollowingId);
+        me.Pos = new Pos(1, 6);
+        truck.Pos = new Pos(1, 5);
+        patient.Pos = new Pos(2, 5);
+        Assert.True(sim.Execute(new Extract(1, me.Id)).Ok);
+        Assert.Equal(["Tomas"], sim.ResultFor(1).Recruits.Select(r => r.Survivor.Name));
+    }
+
+    [Fact]
     public void Escort_fails_the_mission_when_the_escorted_unit_dies()
     {
         var sim = Field(Open, new() { ["a"] = "scout" }, [new ObjectiveDef { Id = "out", Kind = ObjectiveKind.Escort, Tag = "j", FailsMission = true }],
