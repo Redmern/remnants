@@ -66,6 +66,9 @@ public partial class ColonyHud : CanvasLayer
     /// <summary>The archive's "Research" on a heard-of schematic: the screen selects the Town Hall.</summary>
     public event Action? ResearchRequested;
 
+    /// <summary>A hotkey asks for the panel of a building type (G garage, Y radio): the screen selects the best one.</summary>
+    public event Action<string>? BuildingRequested;
+
     private Remnants.Core.Colony.ColonySim? _watched;
 
     /// <summary>Toasts for schematics learned (<see cref="Remnants.Core.Colony.ColonySim.SchematicUnlocked"/>), on the current sim.</summary>
@@ -382,6 +385,11 @@ public partial class ColonyHud : CanvasLayer
         else if (Hotkeys.Pressed(e, "open_log")) Log.ToggleExpanded();
         else if (Hotkeys.Pressed(e, "cycle_survivor")) Roster.SelectNext();
         else if (Hotkeys.Pressed(e, "open_power")) TopBar.EmitPower();
+        else if (Hotkeys.Pressed(e, "open_world_map")) WorldMap.Toggle();
+        else if (Hotkeys.Pressed(e, "open_pantry")) Pantry.Toggle();
+        else if (Hotkeys.Pressed(e, "open_garage")) BuildingRequested?.Invoke("garage");
+        else if (Hotkeys.Pressed(e, "open_radio")) BuildingRequested?.Invoke("radio_mast");
+        else if (Hotkeys.Pressed(e, "open_research")) ResearchRequested?.Invoke();
         else return;
         GetViewport().SetInputAsHandled();
     }

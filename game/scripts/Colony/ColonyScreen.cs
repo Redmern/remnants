@@ -1052,6 +1052,7 @@ public partial class ColonyScreen : Node3D
             _hud.Radio.Show(id);
         };
         _hud.ResearchRequested += () => SelectFirst(_session.Sim.Data.Schematics.Rules.Research.Building);
+        _hud.BuildingRequested += SelectFirst;
         _hud.Building.Closed += () => _town.Select(null);
 
         // Defend mode: catalogue ↔ the town's ghost; selecting a defense opens its panel.
