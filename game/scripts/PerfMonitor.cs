@@ -131,6 +131,6 @@ public partial class PerfMonitor : Node
         var sorted = ms.OrderBy(x => x).ToList();
         // Frames over a 60 Hz budget (16.7 ms) and two of them: what a player sees as hitches.
         return $"fps={1000 / ms.Average():F0} frame_ms mean={ms.Average():F2} p95={sorted[(int)(sorted.Count * 0.95)]:F2} " +
-            $"p99={sorted[(int)(sorted.Count * 0.99)]:F2} max={sorted[^1]:F2} over16.7={ms.Count(x => x > 1000 / 60.0)} over33={ms.Count(x => x > 1000 / 30.0)}";
+            $"p99={sorted[(int)(sorted.Count * 0.99)]:F2} max={sorted[^1]:F2} over16.7={ms.Count(x => x > 1000 / 60.0)} over20={ms.Count(x => x > 20)} over33={ms.Count(x => x > 1000 / 30.0)}";
     }
 }
