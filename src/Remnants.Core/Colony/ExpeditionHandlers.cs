@@ -211,6 +211,8 @@ internal static class ExpeditionHandlers
             report.Returned.Add(new(s.Id, s.Name, r.Evacuated, s.Health, injuries));
         }
 
+        MedicalHandlers.Triage(sim, result.Returned.Select(r => r.Survivor.Id));
+
         // Anyone who neither came back nor is listed dead did not make it either (e.g. an unfinished result's leftovers).
         var returnedIds = result.Returned.Select(r => r.Survivor.Id).ToHashSet();
         foreach (var member in expedition.Members.Where(m => !returnedIds.Contains(m.SurvivorId)))

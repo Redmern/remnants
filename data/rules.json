@@ -48,7 +48,8 @@
     "naturalHealMaxSeverity": 0.3,
     "worsenThreshold": 0.6,
     "worsenPerTick": 0.002,
-    "severeHealthDrainPerTick": 0.5
+    "severeHealthDrainPerTick": 0.5,
+    "triageOnReturn": true
   },
   "life": {
     "infantTicks": 120,

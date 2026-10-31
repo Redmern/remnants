@@ -222,6 +222,47 @@ public class ApplyExtractionResultTests
     }
 
     [Fact]
+    public void A_worsening_wound_is_carried_straight_into_a_med_bay_bed()
+    {
+        var (sim, a, b) = Launched();
+        var bay = sim.Build("med_bay");
+        var result = LoopTestData.Result(returned:
+        [
+            LoopTestData.Returned(a, s => { s.Health = 3; s.Body.Injure(BodyPart.Torso, 0.75); }),
+            LoopTestData.Returned(b, s => s.Body.Injure(BodyPart.LeftLeg, 0.4)),
+        ]);
+
+        Assert.True(sim.Execute(new ApplyExtractionResult(result)).Ok);
+
+        Assert.Equal(bay.Id, a.PatientAtBuildingId);
+        Assert.Null(b.PatientAtBuildingId);  // a wound that is not getting worse waits for the player
+        sim.Advance(24);
+        Assert.Contains(a, sim.State.Survivors);
+    }
+
+    [Fact]
+    public void A_full_med_bay_makes_room_for_the_worst_case_home()
+    {
+        var (sim, a, b) = Launched();
+        var bay = sim.Build("med_bay");
+        sim.State.Stockpile.Add("medicine", 10);
+        var light = new[] { sim.AddSurvivor(), sim.AddSurvivor() };
+        light[0].Body.Injure(BodyPart.LeftArm, 0.4);
+        light[1].Body.Injure(BodyPart.LeftArm, 0.4);
+        light[1].Health = 70;
+        foreach (var s in light) Assert.True(sim.Execute(new AdmitPatient(s.Id)).Ok);
+        var result = LoopTestData.Result(returned:
+            [LoopTestData.Returned(a, s => { s.Health = 3; s.Body.Injure(BodyPart.Torso, 0.75); }), LoopTestData.Returned(b)]);
+
+        Assert.True(sim.Execute(new ApplyExtractionResult(result)).Ok);
+
+        Assert.Equal(bay.Id, a.PatientAtBuildingId);
+        Assert.Null(light[0].PatientAtBuildingId);  // the healthiest light case gives up the bed
+        Assert.Equal(bay.Id, light[1].PatientAtBuildingId);
+        Assert.Contains(sim.State.Events, e => e.Type == ColonyEventType.Discharged && e.SurvivorId == light[0].Id && e.Message.Contains(a.Name));
+    }
+
+    [Fact]
     public void Report_loot_leaves_out_what_the_party_took_from_home()
     {
         var (sim, a, b) = Launched("bandage");

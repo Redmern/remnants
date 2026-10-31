@@ -177,6 +177,34 @@ internal static class MedicalHandlers
         return CommandResult.Success($"{s.Name} was admitted to the {name}.", bay.Id);
     }
 
+    /// <summary>
+    /// A party is home: whoever has a wound that is getting worse is carried straight into a Med Bay bed, the weakest
+    /// first, before it bleeds them out. When the beds are full, a patient with nothing worsening and their health above
+    /// half gives up the bed to them (they mend at the natural rate meanwhile). Nobody else is admitted.
+    /// </summary>
+    public static void Triage(ColonySim sim, IEnumerable<int> survivorIds)
+    {
+        var state = sim.State;
+        var rules = sim.Data.Rules.Medical;
+        if (!rules.TriageOnReturn || !sim.MedBays.Any()) return;
+        bool Worsening(Survivor s) => s.Body.Parts.Values.Any(p => p.Condition == PartCondition.Injured && p.Severity + 1e-9 >= rules.WorsenThreshold);
+        var hurt = survivorIds.Select(state.FindSurvivor).OfType<Survivor>()
+            .Where(s => !s.Away && s.PatientAtBuildingId is null && Worsening(s)).OrderBy(s => s.Health).ThenBy(s => s.Id).ToList();
+        foreach (var s in hurt)
+        {
+            if (!sim.MedBays.Any(b => sim.FreePatientSlots(b) > 0))
+            {
+                var room = state.Survivors.Where(p => p.PatientAtBuildingId is not null && !Worsening(p) && p.Health > Survivor.MaxHealth / 2
+                                                      && state.Surgeries.All(o => o.SurvivorId != p.Id))
+                    .OrderByDescending(p => p.Health).ThenBy(p => p.Id).FirstOrDefault();
+                if (room is null) return;
+                room.PatientAtBuildingId = null;
+                state.Log(new(state.Tick, ColonyEventType.Discharged, $"{room.Name} gave up their bed for {s.Name}.", room.Id));
+            }
+            Admit(sim, new AdmitPatient(s.Id));
+        }
+    }
+
     public static CommandResult Discharge(ColonySim sim, Discharge c)
     {
         var s = sim.State.FindSurvivor(c.SurvivorId);

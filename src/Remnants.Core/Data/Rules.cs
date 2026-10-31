@@ -108,7 +108,8 @@ public sealed record ExpeditionRules
 /// </code>
 /// Without medicine an admitted patient only heals at the natural rate. Outside the Med Bay injuries up to
 /// <see cref="NaturalHealMaxSeverity"/> heal naturally, and those at or above <see cref="WorsenThreshold"/> worsen:
-/// a limb that reaches severity 1 is lost; head/torso injuries drain health.
+/// a limb that reaches severity 1 is lost; head/torso injuries drain health. With <see cref="TriageOnReturn"/> a party
+/// that comes home with a worsening wound is carried straight into a Med Bay bed (see <c>MedicalHandlers.Triage</c>).
 /// </summary>
 public sealed record MedicalRules
 {
@@ -123,6 +124,7 @@ public sealed record MedicalRules
     public double WorsenThreshold { get; init; } = 0.6;
     public double WorsenPerTick { get; init; } = 0.002;
     public double SevereHealthDrainPerTick { get; init; } = 0.5;
+    public bool TriageOnReturn { get; init; } = true;
 }
 
 /// <summary>
