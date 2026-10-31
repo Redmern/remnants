@@ -1707,8 +1707,11 @@ by default, so hand-built test rules and `TestData.Real` keep instant building).
   `ConstructionSites.Finish` (it sinks away, the new one settles in, a dust puff). `SurvivorWalkers` send builders and
   helpers to the site plot (hauling: between the Town Hall and the site with `carry_walk`; then `work_hammer`, sometimes
   `work_craft`); `ColonyAudio` plays `ambience.work.construction_site` (the workshop loop) by crew size. UI:
-  `ConstructionSitePanel` (its own control inside `BuildingPanel`: materials hauled/needed, work bar, builder
-  `WorkerSlots`, helpers, ETA, Pause, Priority, Night shift, Cancel), `SiteTooltip` (hover card), the build menu's time
+  `ConstructionSitePanel` (the building panel's **Construction** tab, its first hosted tab, so a site opens on it; a new
+  building's site shows only the pinned header and this tab; materials hauled/needed as chips kept by id, work bar, builder
+  `WorkerSlots`, helpers, ETA, Pause, Priority, Night shift, Cancel; updated in place; a survivor card dropped on it makes a
+  builder), help topics `construction`, `builders`, `hauling`, `upgrade_time` (data/help/colony.json) with the live
+  `construction_site` breakdown (`HelpContext.Site`), `SiteTooltip` (hover card), the build menu's time
   chip and the upgrade box's build time. Raid battles draw sites with `ColonyBattleDressing` (reveal + scaffold).
 - **Debug**: `--colony --construction-demo=0|50|100|upgrade|assign|levels [--site-tip] [--level-types=a,b,c,d]`.
 

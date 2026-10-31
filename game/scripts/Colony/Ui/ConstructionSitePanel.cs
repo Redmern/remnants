@@ -71,7 +71,7 @@ public partial class ConstructionSitePanel : PanelContainer
         box.AddChild(InfoTip.Beside(_eta, "upgrade_time", Context));
 
         var row = Widgets.Row(Space.Sm);
-        _pause = Motion.OnPress(Widgets.IconButton("ui_close", "Pause", "Stop work here (builders stand by)", TogglePause, variation: "Flat"));
+        _pause = Motion.OnPress(Widgets.TextButton("Pause", TogglePause, "Stop work here (builders stand by)"));
         _pause.FocusMode = FocusModeEnum.All;
         _priority = Widgets.TextButton("Priority: Normal", CyclePriority, "Which site idle hands help first (Low: assigned builders only)");
         _priority.FocusMode = FocusModeEnum.All;
