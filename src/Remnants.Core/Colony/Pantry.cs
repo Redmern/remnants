@@ -88,9 +88,15 @@ public static class Pantry
         Reconcile(state, data);
         var total = 0.0;
         foreach (var (id, lots) in state.Food.Lots)
-            if (food.Items.TryGetValue(id, out var def)) total += def.FoodValue * lots.Where(l => !l.Spoiled).Sum(l => l.Count);
-        foreach (var p in state.Food.Open.Where(p => !p.Spoiled))
-            if (food.Items.TryGetValue(p.ItemId, out var def)) total += def.FoodValue * p.Left;
+            if (food.Items.TryGetValue(id, out var def))
+            {
+                var fresh = 0;
+                foreach (var l in lots)
+                    if (!l.Spoiled) fresh += l.Count;
+                total += def.FoodValue * fresh;
+            }
+        foreach (var p in state.Food.Open)
+            if (!p.Spoiled && food.Items.TryGetValue(p.ItemId, out var def)) total += def.FoodValue * p.Left;
         return total;
     }
 
@@ -150,6 +156,11 @@ public static class Pantry
     public static void Reconcile(ColonyState state, GameData data)
     {
         if (data.Food is not { } food) return;
+        if (InStep(state, food))
+        {
+            Prune(state);
+            return;
+        }
         var ids = state.Food.Lots.Keys.Concat(state.Inventory.Counts.Keys.Where(food.IsFood)).Distinct().ToList();
         foreach (var id in ids)
         {
@@ -173,6 +184,20 @@ public static class Pantry
                 }
         }
         Prune(state);
+    }
+
+    /// <summary>Whether every lot list already sums to its inventory count and every food in the inventory has lots (the usual case).</summary>
+    private static bool InStep(ColonyState state, FoodData food)
+    {
+        foreach (var (id, lots) in state.Food.Lots)
+        {
+            var inLots = 0;
+            foreach (var l in lots) inLots += l.Count;
+            if (inLots != state.Inventory.Count(id)) return false;
+        }
+        foreach (var (id, have) in state.Inventory.Counts)
+            if (have > 0 && !state.Food.Lots.ContainsKey(id) && food.IsFood(id)) return false;
+        return true;
     }
 
     /// <summary>Per food item in stock: counts, food value, how soon the next unit spoils, quality mix.</summary>
@@ -255,11 +280,43 @@ public static class Pantry
 
     internal static void Prune(ColonyState state)
     {
+        if (!NeedsPrune(state)) return;
         foreach (var (id, lots) in state.Food.Lots.ToList())
         {
             lots.RemoveAll(l => l.Count <= 0);
             if (lots.Count == 0) state.Food.Lots.Remove(id);
         }
+    }
+
+    private static bool NeedsPrune(ColonyState state)
+    {
+        foreach (var lots in state.Food.Lots.Values)
+        {
+            if (lots.Count == 0) return true;
+            foreach (var l in lots)
+                if (l.Count <= 0) return true;
+        }
+        return false;
+    }
+
+    /// <summary>The lot <see cref="Candidates"/> would list first among an item's lots that still hold a unit, without sorting them all.</summary>
+    internal static FoodLot? FirstLot(ColonyState state, string itemId)
+    {
+        if (!state.Food.Lots.TryGetValue(itemId, out var lots)) return null;
+        FoodLot? best = null;
+        foreach (var l in lots)
+        {
+            if (l.Count <= 0) continue;
+            if (best is null) { best = l; continue; }
+            int spoiled = l.Spoiled ? 1 : 0, bestSpoiled = best.Spoiled ? 1 : 0;
+            if (spoiled != bestSpoiled)
+            {
+                if (spoiled < bestSpoiled) best = l;
+                continue;
+            }
+            if ((l.TicksLeft ?? double.MaxValue).CompareTo(best.TicksLeft ?? double.MaxValue) < 0) best = l;
+        }
+        return best;
     }
 }
 

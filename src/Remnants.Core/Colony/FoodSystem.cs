@@ -127,7 +127,8 @@ internal static class FoodSystem
     private static (string Id, FoodItemDef Def)? Choose(ColonyState state, GameData data, FoodData food, Survivor s)
     {
         var day = data.Rules.TicksPerDay;
-        var diet = s.Diet.Values.Sum();
+        var diet = 0.0;
+        foreach (var v in s.Diet.Values) diet += v;
         (string, FoodItemDef)? best = null;
         var bestScore = double.NegativeInfinity;
         void Consider(string id, bool spoiled, string quality, double? ticksLeft)
@@ -149,7 +150,8 @@ internal static class FoodSystem
         }
         foreach (var p in state.Food.Open) Consider(p.ItemId, p.Spoiled, p.Quality, p.Shelf <= 0 ? null : p.Shelf - p.Age);
         foreach (var (id, lots) in state.Food.Lots)
-            foreach (var lot in lots.Where(l => l.Count > 0)) Consider(id, lot.Spoiled, lot.Quality, lot.TicksLeft);
+            foreach (var lot in lots)
+                if (lot.Count > 0) Consider(id, lot.Spoiled, lot.Quality, lot.TicksLeft);
         return best;
     }
 
@@ -163,7 +165,7 @@ internal static class FoodSystem
     /// <summary>The open portion of an item, opening a unit (best lot: fresh and soonest to spoil) when none is.</summary>
     private static OpenPortion? Open(ColonyState state, GameData data, string id)
     {
-        var lot = Pantry.Candidates(state, data, i => i == id).Select(x => x.Lot).FirstOrDefault(l => l.Count > 0);
+        var lot = Pantry.FirstLot(state, id);
         if (state.Food.Open.Find(p => p.ItemId == id) is { } open)
         {
             // A spoiled leftover is thrown out when there is a fresh unit of the same food to open instead.

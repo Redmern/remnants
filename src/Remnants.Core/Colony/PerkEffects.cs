@@ -172,29 +172,50 @@ public sealed class PerkEffects
     /// </summary>
     public static PerkEffects For(IEnumerable<string> perkIds, GameData data, Body? body = null, IReadOnlyDictionary<string, double>? traitHooks = null)
     {
-        var jobOutput = new Dictionary<string, double>(StringComparer.Ordinal);
-        var craftQuality = new Dictionary<string, double>(StringComparer.Ordinal);
-        var hooks = new Dictionary<string, double>(StringComparer.Ordinal);
+        // Called many times a tick: the maps are made only when something goes in them, and a body without prosthetics
+        // skips the cybernetics walk (its effects need a working prosthetic).
+        Dictionary<string, double>? jobOutput = null, craftQuality = null, hooks = null;
         double study = 0, xp = 0;
+        static void Add(ref Dictionary<string, double>? to, Dictionary<string, double> from)
+        {
+            if (from.Count == 0) return;
+            to ??= new Dictionary<string, double>(StringComparer.Ordinal);
+            foreach (var (k, v) in from) to[k] = to.GetValueOrDefault(k) + v;
+        }
         foreach (var id in perkIds)
         {
             if (!data.Perks.TryGetValue(id, out var perk)) continue;
             var e = perk.Effects;
-            foreach (var (k, v) in e.JobOutput) jobOutput[k] = jobOutput.GetValueOrDefault(k) + v;
-            foreach (var (k, v) in e.CraftQuality) craftQuality[k] = craftQuality.GetValueOrDefault(k) + v;
-            foreach (var (k, v) in e.Hooks) hooks[k] = hooks.GetValueOrDefault(k) + v;
+            Add(ref jobOutput, e.JobOutput);
+            Add(ref craftQuality, e.CraftQuality);
+            Add(ref hooks, e.Hooks);
             study += e.StudySpeed;
             xp += e.XpBonus;
         }
-        if (body is not null && data.Cybernetics is { } cyber)
+        if (body is not null && data.Cybernetics is { } cyber && HasProsthetic(body))
             foreach (var e in Cybernetics.WorkingEffects(cyber, body))
             {
-                foreach (var (k, v) in e.JobOutput) jobOutput[k] = jobOutput.GetValueOrDefault(k) + v;
-                foreach (var (k, v) in e.CraftQuality) craftQuality[k] = craftQuality.GetValueOrDefault(k) + v;
-                foreach (var (k, v) in e.Hooks) hooks[k] = hooks.GetValueOrDefault(k) + v;
+                Add(ref jobOutput, e.JobOutput);
+                Add(ref craftQuality, e.CraftQuality);
+                Add(ref hooks, e.Hooks);
             }
-        foreach (var (k, v) in traitHooks ?? new Dictionary<string, double>()) hooks[k] = hooks.GetValueOrDefault(k) + v;
-        return new PerkEffects(jobOutput, craftQuality, hooks, study, xp);
+        if (traitHooks is { Count: > 0 })
+        {
+            hooks ??= new Dictionary<string, double>(StringComparer.Ordinal);
+            foreach (var (k, v) in traitHooks) hooks[k] = hooks.GetValueOrDefault(k) + v;
+        }
+        if (jobOutput is null && craftQuality is null && hooks is null && study == 0 && xp == 0) return None;
+        return new PerkEffects(jobOutput ?? Empty, craftQuality ?? Empty, hooks ?? Empty, study, xp);
+    }
+
+    /// <summary>Shared by every effects set with nothing of a kind; never written.</summary>
+    private static readonly Dictionary<string, double> Empty = new(StringComparer.Ordinal);
+
+    private static bool HasProsthetic(Body body)
+    {
+        foreach (var part in body.Parts.Values)
+            if (part.Condition == PartCondition.Prosthetic) return true;
+        return false;
     }
 
     public double StudySpeed { get; }
