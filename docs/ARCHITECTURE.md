@@ -1602,6 +1602,12 @@ Export: `godot-mono --headless --path game --export-release Linux ../build/linux
 `game/export_presets.cfg`; `build/` is ignored). Smoke test: `build/linux/remnants.x86_64 --headless --quit-after 1200 --
 --new-game=story` (or `sandbox`) clicks New Game for you and should log nothing but "Colony: data from the data embedded…".
 
+Playthrough smoke test: `DISPLAY=:0 tools/smoke-playthrough.sh` launches the real game once per step (New Game → Story,
+the radio call, the journal and M1 briefing, the Garage and an expedition with a vehicle, the world map, a field run with a
+vehicle, a fight's loot pile, salvage, the return, the gear bench, Armory, kitchen, dispensary, Electronics Lab, a raid
+warning, prep, a defense battle and its report) via the debug flags, with a screenshot and a log each in `build/smoke`,
+and prints each step's error count. `--disable-vsync` keeps a window on a hidden workspace from stalling.
+
 Debug flags (after `--`): `--colony` skips the menu, `--scavenge` starts the debug mission (`--autoplay=N` plays N
 orders with a simple bot so enemy turns replay, `--zoom=SIZE` sets the ortho camera size), `--demo` builds a farm and woodcutter and assigns
 the adults, `--loop-demo` sends the adults on an expedition to the outskirts (scavenge screen, or resolved in place with

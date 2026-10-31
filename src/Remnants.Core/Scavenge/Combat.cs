@@ -184,9 +184,10 @@ public static class Combat
             armor = Math.Max(0, armor - bane.ArmorPierce);
         }
         var damage = Math.Max(1, raw - armor);
+        var where = target.Structure ? target.Name : $"{target.Name}'s {part}";
         state.Log(new(state.Round, ScavengeEventType.Attacked,
-            $"{attacker.Name} hit {target.Name}'s {part} for {damage:0} ({action.Name}).", attacker.Id, target.Id, target.Pos,
-            Anonymous: $"{target.Name} was hit in the {part} for {damage:0} from the fog."));
+            $"{attacker.Name} hit {where} for {damage:0} ({action.Name}).", attacker.Id, target.Id, target.Pos,
+            Anonymous: target.Structure ? $"{target.Name} was hit for {damage:0} from the fog." : $"{target.Name} was hit in the {part} for {damage:0} from the fog."));
         ApplyDamage(sim, target, part, damage, action.InjuryMultiplier * (1 - Math.Clamp(defense.InjuryResist, 0, 1)), attacker);
         if (bane is { Stun: true } && target.IsActive && !target.Suppressed)
         {
@@ -245,7 +246,7 @@ public static class Combat
         var c = data.Rules.Combat;
 
         var bodyPart = target.Body[part];
-        if (bodyPart.Condition is PartCondition.Healthy or PartCondition.Injured)
+        if (!target.Structure && bodyPart.Condition is PartCondition.Healthy or PartCondition.Injured)
         {
             var severity = bodyPart.Severity + damage / c.PartToughness[Body.RegionOf(part)] * severityScale;
             target.Body.Injure(part, severity);
@@ -268,7 +269,7 @@ public static class Combat
 
         if (wasDowned || !target.CanBeDowned || target.Hp <= c.InstantDeathHp)
         {
-            sim.Kill(target, ScavengeEventType.Died, $"{target.Name} is dead.", attacker);
+            sim.Kill(target, ScavengeEventType.Died, target.Structure ? $"{target.Name} is destroyed." : $"{target.Name} is dead.", attacker);
             return;
         }
         if (state.Mission?.Def.RescueDowned == true && target.Kind == UnitKind.Survivor && target.PlayerId is not null)

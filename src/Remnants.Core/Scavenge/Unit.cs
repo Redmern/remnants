@@ -169,6 +169,12 @@ public sealed class Unit
     /// <summary>Story missions: cannot be recruited (until a trigger makes it follow).</summary>
     public bool NoRecruit { get; set; }
 
+    /// <summary>
+    /// A building to defend (a handmade map's or a raid battle's structure): it only has HP. Hits name no body part and
+    /// injure nothing, and at 0 HP it is destroyed.
+    /// </summary>
+    public bool Structure { get; set; }
+
     /// <summary>Story missions: waypoints an idle unit walks in a loop (a patrol the player can watch), and the next one.</summary>
     public List<Pos> Patrol { get; set; } = new();
     public int PatrolIndex { get; set; }

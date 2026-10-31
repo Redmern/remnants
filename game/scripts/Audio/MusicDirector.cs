@@ -56,6 +56,16 @@ public partial class MusicDirector : Node
 
     public IReadOnlySet<string> LayersOn => _layersOn;
 
+    public override void _ExitTree()
+    {
+        // Stop the decks before the tree goes (see AudioManager._ExitTree): a track playing at quit leaks its playback.
+        foreach (var deck in _decks.Concat(_layers.Values).Where(d => d?.Player is not null))
+        {
+            deck.Player.Stop();
+            deck.Player.Stream = null;
+        }
+    }
+
     public string? CurrentTrack => _pendingTrack ?? _decks[_front].TrackId;
 
     public override void _Ready()

@@ -369,7 +369,10 @@ public partial class ExpeditionPanel : PanelContainer
             row.AddChild(head);
             if (!picked) continue;
 
-            var gear = Widgets.Row(4);
+            // Two by two: four slots in one row clipped every name ("no wea", "Pipe (2 l…").
+            var gear = new GridContainer { Columns = 2 };
+            gear.AddThemeConstantOverride("h_separation", 4);
+            gear.AddThemeConstantOverride("v_separation", 4);
             foreach (var slot in Slots) gear.AddChild(SlotPicker(sim, loadout!, slot));
             row.AddChild(gear);
             row.AddChild(PackPicker(sim, loadout!));

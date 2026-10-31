@@ -86,6 +86,12 @@ public partial class AudioManager : Node
     public override void _ExitTree()
     {
         if (Instance == this) Instance = null;
+        // Stop what is still playing and let go of the cached streams now, not when the C# side unloads after the engine's
+        // resource check: a sound playing at quit otherwise shows up as leaked playback objects in the log.
+        foreach (var p in _players2D) { p.Stop(); p.Stream = null; }
+        foreach (var p in _players3D) { p.Stop(); p.Stream = null; }
+        _playing.Clear();
+        _streams.Clear();
     }
 
     public override void _Notification(int what)

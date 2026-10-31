@@ -350,7 +350,7 @@ public static class NewScavenge
                 state.Units.Add(new Unit
                 {
                     Id = state.NextUnitId++, Name = s.Name, Kind = UnitKind.Npc, Side = partySide, Pos = p, Hp = s.Hp, MaxHp = s.Hp,
-                    CanBeDowned = false, Tag = s.Tag, NoRecruit = true,
+                    CanBeDowned = false, Tag = s.Tag, NoRecruit = true, Structure = true,
                     Attributes = Enum.GetValues<AttributeKind>().ToDictionary(a => a, _ => 10.0),
                 });
     }

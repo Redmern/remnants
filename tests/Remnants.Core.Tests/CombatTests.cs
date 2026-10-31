@@ -236,4 +236,24 @@ public class CombatTests
         }
         Assert.InRange(100 - target.Hp, 1, 12 - 6);
     }
+
+    [Fact]
+    public void A_structure_takes_hits_on_its_hp_without_a_body()
+    {
+        var hall = EnemyUnit("husk", new(3, 3));
+        hall.Kind = UnitKind.Npc;
+        hall.Name = "Town Hall";
+        hall.Structure = true;
+        hall.CanBeDowned = false;
+        hall.Hp = hall.MaxHp = 30;
+        var sim = Arena(6, 6, [SurvivorUnit(pos: new(1, 1)), hall]);
+
+        Combat.ApplyDamage(sim, hall, BodyPart.LeftArm, 12);
+        Assert.Equal(18, hall.Hp);
+        Assert.All(hall.Body.Parts.Values, p => Assert.Equal(PartCondition.Healthy, p.Condition));
+        Assert.DoesNotContain(sim.State.Events, e => e.Type is ScavengeEventType.Injured or ScavengeEventType.LimbLost);
+
+        Combat.ApplyDamage(sim, hall, BodyPart.Head, 20);
+        Assert.Contains(sim.State.Events, e => e.Message == "Town Hall is destroyed.");
+    }
 }

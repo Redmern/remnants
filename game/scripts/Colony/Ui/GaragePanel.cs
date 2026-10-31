@@ -138,6 +138,12 @@ public partial class GaragePanel : PanelContainer
         }
     }
 
+    public override void _Notification(int what)
+    {
+        // The preview is kept out of the tree while no vehicle is shown; free it with the panel so it does not leak.
+        if (what == NotificationPredelete && IsInstanceValid(_preview3d) && _preview3d.GetParent() is null) _preview3d.Free();
+    }
+
     private void RebuildDetail(ColonySim sim)
     {
         if (_preview3d.GetParent() == _detail) _detail.RemoveChild(_preview3d);

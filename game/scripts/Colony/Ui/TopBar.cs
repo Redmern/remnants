@@ -157,18 +157,24 @@ public partial class TopBar : PanelContainer
         row.AddChild(_grid);
         row.AddChild(new VSeparator());
 
-        row.AddChild(Widgets.IconButton("ui_build", "", "Build", () => BuildPressed?.Invoke(), Hotkeys.KeyName("open_build")));
+        // The actions two rows high, so the resource chips keep their room: in one row they left the chips ~150 px once the
+        // power chips showed, and eleven chips stacked into a column that pushed every panel half way down the screen.
+        var actions = new GridContainer { Columns = 4, SizeFlagsVertical = SizeFlags.ShrinkCenter };
+        actions.AddThemeConstantOverride("h_separation", 2);
+        actions.AddThemeConstantOverride("v_separation", 2);
+        actions.AddChild(Widgets.IconButton("ui_build", "", "Build", () => BuildPressed?.Invoke(), Hotkeys.KeyName("open_build")));
         _defend = Widgets.IconButton("ui_defend", "", "Defend: walls, posts, lights, traps", () => DefendPressed?.Invoke(), Hotkeys.KeyName("open_defend"));
         _defend.Icon = Icons.Get("ui_defend", 18, "stat_armor");
-        row.AddChild(_defend);
+        actions.AddChild(_defend);
         _repairs = Widgets.IconButton("ui_repair", "", "Repairs", () => RepairsPressed?.Invoke());
         _repairs.Icon = Icons.Get("ui_repair", 18, "skill_crafting");
-        row.AddChild(_repairs);
-        row.AddChild(Widgets.IconButton("ui_items", "", "Items and blueprints", () => ItemsPressed?.Invoke(), Hotkeys.KeyName("open_items")));
-        row.AddChild(Widgets.IconButton("res_food", "", "Pantry: food, spoilage and food days", () => PantryPressed?.Invoke()));
-        row.AddChild(Widgets.IconButton("ui_expedition", "", "Expedition", () => ExpeditionPressed?.Invoke(), Hotkeys.KeyName("open_expedition")));
-        row.AddChild(Widgets.IconButton("ui_world_map", "", "World map", () => WorldMapPressed?.Invoke()));
-        row.AddChild(Widgets.IconButton("ui_menu", "", "Menu: save, load, settings", () => MenuPressed?.Invoke(), Hotkeys.KeyName("pause_menu")));
+        actions.AddChild(_repairs);
+        actions.AddChild(Widgets.IconButton("ui_items", "", "Items and blueprints", () => ItemsPressed?.Invoke(), Hotkeys.KeyName("open_items")));
+        actions.AddChild(Widgets.IconButton("res_food", "", "Pantry: food, spoilage and food days", () => PantryPressed?.Invoke()));
+        actions.AddChild(Widgets.IconButton("ui_expedition", "", "Expedition", () => ExpeditionPressed?.Invoke(), Hotkeys.KeyName("open_expedition")));
+        actions.AddChild(Widgets.IconButton("ui_world_map", "", "World map", () => WorldMapPressed?.Invoke()));
+        actions.AddChild(Widgets.IconButton("ui_menu", "", "Menu: save, load, settings", () => MenuPressed?.Invoke(), Hotkeys.KeyName("pause_menu")));
+        row.AddChild(actions);
     }
 
     /// <summary>The power overlay hotkey does what the grid button does.</summary>
