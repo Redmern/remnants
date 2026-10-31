@@ -320,7 +320,8 @@ it actually wants.
 
 - New `data/schematics.json`: one entry per schematic with `id`, `name`, `tier`, `encrypted` (bool), `unlocks` (list of
   `{ kind: building | buildingLevel | recipe | prosthetic | perk, id, level? }`), `sources` (`loot`, `terminal`,
-  `trade`, `research`, `story`, drop tables reference it from `enemies.json`) and `default` (bool).
+  `trade`, `research`, `story`, drop tables reference it from `enemies.json`). (A `default` flag was planned; as built
+  there is none, see below: the default set is simply what no schematic unlocks.)
 - `recipes.json`: `blueprint` becomes `schematic`; default recipes have no field.
 - `buildings.json`: per level an optional `schematic`; per building an optional `schematic` for the building itself.
 - `perks.json`: `requires.blueprint` becomes `requires.schematic`.
@@ -379,7 +380,8 @@ differs from the design above:
 
 - **One source of gating.** What a schematic unlocks is written only in `data/schematics.json` (`unlocks`); recipes,
   buildings, perks and the cybernetics tree carry no `schematic`/`blueprint` field. Core indexes the catalogue the other
-  way (`SchematicCatalog.GateOf…`). Anything no schematic unlocks is in the default set.
+  way (`SchematicCatalog.GateOf…`). Anything no schematic unlocks is in the default set, and that is the only way to be
+  in it: there is no `default` flag on a schematic (a schematic always gates what it unlocks).
 - **Rules in the schematics file.** The drop odds, duplicate values, research costs, decrypt rules, trader prices,
   contracts, copy cost and trade values are the `rules` block of `schematics.json`, not `rules.json`, so the module
   stays in one file. Features add their own entries in `data/schematics.<feature>.json` (only `schematics` and

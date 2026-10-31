@@ -29,12 +29,12 @@ public enum UnlockKind
     Defense,
 }
 
-/// <summary>Where a schematic can come from. Every schematic lists at least one source that is not <see cref="Story"/>.</summary>
+/// <summary>
+/// Where a schematic can come from. Every schematic lists at least one source that is not <see cref="Story"/>. There is
+/// no "default" source: the default set is whatever no schematic unlocks (ungated from day one).
+/// </summary>
 public enum SchematicSource
 {
-    /// <summary>Known from day one (the default set).</summary>
-    Default,
-
     /// <summary>Caches and lockers in zones of its find tier or higher.</summary>
     Loot,
 
@@ -81,9 +81,6 @@ public sealed record SchematicDef
 
     /// <summary>A Network chip: comes home as an item and needs a Decrypt order at the Electronics Lab.</summary>
     public bool Encrypted { get; init; }
-
-    /// <summary>Every new colony knows it (the default set beyond what simply has no schematic).</summary>
-    public bool Default { get; init; }
 
     /// <summary>
     /// Its content is not in the game yet (vehicles, the prosthetics tree): listed in the archive as coming, never
