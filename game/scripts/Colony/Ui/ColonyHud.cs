@@ -139,7 +139,7 @@ public partial class ColonyHud : CanvasLayer
         middle.AddChild(center);
         var floating = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
         Inventory = new InventoryPanel(session);
-        Expedition = new ExpeditionPanel(session);
+        Expedition = new ExpeditionPanel(session) { Blocked = () => OverlayOpen || WorldMap?.Visible == true };
         Garage = new GaragePanel(session);
         Repairs = new RepairPanel(session);
         floating.AddChild(Inventory);
@@ -368,10 +368,14 @@ public partial class ColonyHud : CanvasLayer
         if (_session.Speed == 0) _session.SetSpeed(_speedBeforePause);
     }
 
+    /// <summary>Something modal is over the HUD (pause, settings, a full-screen bench, a raid dialog, help): HUD keys wait.</summary>
+    public bool OverlayOpen => Pause.Visible || Settings.Visible || Cybernetics.Visible || GearBench.Visible || RaidPrep.Visible
+                               || RaidReport.Visible || Hud.Help.HelpLayer.Blocking;
+
     public override void _UnhandledInput(InputEvent e)
     {
         if (e is not InputEventKey { Pressed: true, Echo: false }) return;
-        if (Pause.Visible || Settings.Visible || Cybernetics.Visible || GearBench.Visible || RaidPrep.Visible || RaidReport.Visible) return; // the overlays handle their own Esc
+        if (OverlayOpen) return; // the overlays handle their own Esc
         if (Hotkeys.Pressed(e, "pause_menu")) Back();
         else if (Hotkeys.Pressed(e, "toggle_pause")) _session.SetSpeed(_session.Speed == 0 ? Math.Max(1, _speedBeforePause) : Remember());
         else if (Hotkeys.Pressed(e, "speed_1")) _session.SetSpeed(1);

@@ -41,7 +41,13 @@ public partial class ExpeditionPanel : PanelContainer
     private sealed record LastPlan(string ZoneId, IReadOnlyList<(int Id, Dictionary<EquipSlot, string> Equipment, List<string> Pack)> Members,
         int? VehicleId, string? Ration, int Wait);
 
-    private static LastPlan? _last;
+    /// <summary>The last plan per colony (a loaded save or a new game is another sim and starts without one).</summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ColonySim, LastPlan> Last = new();
+
+    private LastPlan? _last => Last.TryGetValue(_session.Sim, out var plan) ? plan : null;
+
+    /// <summary>Something modal is over the planner (set by the HUD): its keys wait.</summary>
+    public Func<bool>? Blocked { get; init; }
 
     private static readonly EquipSlot[] Slots = [EquipSlot.Weapon, EquipSlot.Body, EquipSlot.Head, EquipSlot.Tool];
     private static readonly string[] StepNames = ["Destination", "Party", "Gear", "Vehicle & supplies", "Review"];
@@ -233,6 +239,7 @@ public partial class ExpeditionPanel : PanelContainer
         if (_session.Sim.Story?.Mission(missionId) is not { Zone: { } zone }) return;
         PlanFor(zone);
         MissionId = missionId;
+        _repeat.Visible = false;
         Go(Party);
     }
 
@@ -240,6 +247,7 @@ public partial class ExpeditionPanel : PanelContainer
     public void PlanFor(string zoneId)
     {
         MissionId = null;
+        _repeatNote = null;
         if (!Visible) Motion.Reveal(this);
         Refresh();
         var index = _zoneIds.IndexOf(zoneId);
@@ -301,6 +309,7 @@ public partial class ExpeditionPanel : PanelContainer
     /// <summary>Something the player changed: the step on screen and the summary, now (no rebuild of other steps).</summary>
     private void Changed()
     {
+        _repeatNote = null;
         RefreshStep(force: true);
         RefreshSummary();
     }
@@ -320,6 +329,7 @@ public partial class ExpeditionPanel : PanelContainer
         var candidates = Candidates(sim).Select(s => s.Id).ToHashSet();
         foreach (var id in _picked.Keys.Where(id => !candidates.Contains(id)).ToList()) _picked.Remove(id);
         if (_gearFor is { } g && !_picked.ContainsKey(g)) _gearFor = _picked.Keys.Cast<int?>().FirstOrDefault();
+        ClampLoadouts(sim);
         RefreshStep();
         RefreshSummary();
     }
@@ -344,6 +354,29 @@ public partial class ExpeditionPanel : PanelContainer
         // A run already started locally stays local; a fresh one can go online instead.
         _online.Disabled = phase != ExpeditionPhase.InZone || expedition.Scavenge is not null;
         return true;
+    }
+
+    /// <summary>
+    /// Takes out of the loadouts what the stores no longer hold (sold, used, or modded at the Gear Bench, which gives the
+    /// item a new id), packs first, so Launch never fails on missing items; the Gear step then shows the empty slot.
+    /// </summary>
+    private void ClampLoadouts(ColonySim sim)
+    {
+        var used = new Dictionary<string, int>();
+        foreach (var l in _picked.Values)
+            foreach (var item in l.Equipment.Values.Concat(l.Pack))
+                used[item] = used.GetValueOrDefault(item) + 1;
+        foreach (var (item, count) in used)
+        {
+            var extra = count - sim.State.Inventory.Count(item);
+            foreach (var l in _picked.Values)
+            {
+                while (extra > 0 && l.Pack.Remove(item)) extra--;
+            }
+            foreach (var l in _picked.Values)
+                foreach (var slot in l.Equipment.Where(kv => kv.Value == item).Select(kv => kv.Key).ToList())
+                    if (extra > 0 && l.Equipment.Remove(slot)) extra--;
+        }
     }
 
     private static IEnumerable<Survivor> Candidates(ColonySim sim) =>
@@ -465,6 +498,8 @@ public partial class ExpeditionPanel : PanelContainer
                 : settled ? ("stat_check", Palette.Good) : ("", Palette.TextMuted);
             var texture = icon.Length == 0 ? null : Icons.Get(icon, 14);
             if (_tabs[i].Icon != texture) _tabs[i].Icon = texture;
+            if (_tabColors[i] == color) continue;
+            _tabColors[i] = color;
             _tabs[i].AddThemeColorOverride("icon_normal_color", color);
             _tabs[i].AddThemeColorOverride("icon_pressed_color", color);
             _tabs[i].AddThemeColorOverride("icon_hover_color", color);
@@ -489,14 +524,22 @@ public partial class ExpeditionPanel : PanelContainer
         _set.Tooltip(_launch, stop is null ? "Send the party out (Enter)" : $"Cannot launch: {stop.Text}");
     }
 
+    private readonly Color?[] _tabColors = new Color?[StepNames.Length];
+
     private void JumpToWarning()
     {
         if (_warnings.OrderByDescending(w => w.Blocks).FirstOrDefault() is { } w) Go(w.Step);
     }
 
-    public override void _UnhandledInput(InputEvent e)
+    /// <summary>
+    /// The planner's keys, ahead of focus navigation (Tab) and a focused button or dropdown (Enter), but never while
+    /// something is typed into, a dropdown's list is open, or a modal sits over the planner.
+    /// </summary>
+    public override void _Input(InputEvent e)
     {
         if (!Visible || !_planner.Visible || e is not InputEventKey { Pressed: true, Echo: false } key) return;
+        if (Blocked?.Invoke() == true || GetViewport().GuiGetFocusOwner() is LineEdit or TextEdit) return;
+        if (_steps.SelectMany(OpenPopups).Any()) return;
         if (key.Keycode is >= Key.Key1 and <= Key.Key5 && !key.CtrlPressed && !key.AltPressed) Go((int)(key.Keycode - Key.Key1));
         else if (key.Keycode == Key.Tab) Go(_step + (key.ShiftPressed ? -1 : 1));
         else if (key.Keycode is Key.Enter or Key.KpEnter)
@@ -507,6 +550,9 @@ public partial class ExpeditionPanel : PanelContainer
         else return;
         GetViewport().SetInputAsHandled();
     }
+
+    private static IEnumerable<OptionButton> OpenPopups(Node node) =>
+        node is OptionButton { } o && o.GetPopup().Visible ? [o] : node.GetChildren().SelectMany(OpenPopups);
 
     // ── Launch and repeat ────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -519,10 +565,11 @@ public partial class ExpeditionPanel : PanelContainer
             : new LaunchExpedition(zoneId, members, WaitFor, Rations, SelectedVehicle);
         if (!_session.Execute(command).Ok) return;
         if (MissionId is null)
-            _last = new LastPlan(zoneId, _picked.Select(kv => (kv.Key, new Dictionary<EquipSlot, string>(kv.Value.Equipment), new List<string>(kv.Value.Pack))).ToList(),
-                SelectedVehicle, Rations?.Prefer, _wait.Selected);
+            Last.AddOrUpdate(_session.Sim, new LastPlan(zoneId, _picked.Select(kv => (kv.Key, new Dictionary<EquipSlot, string>(kv.Value.Equipment), new List<string>(kv.Value.Pack))).ToList(),
+                SelectedVehicle, Rations?.Prefer, _wait.Selected));
         _wait.Select(0);
         MissionId = null;
+        _repeatNote = null;
         _picked.Clear();
         _gearFor = null;
         Go(Destination, animate: false);

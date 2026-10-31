@@ -259,13 +259,17 @@ public partial class HelpLayer : CanvasLayer
 
     // ── Keys: Esc closes the popover first; F1 the index; F3 the frame-time overlay ─────────────────────────────────
 
+    /// <summary>The help index or a popover is open: screens leave their hotkeys alone (they would act behind it).</summary>
+    public static bool Blocking => Instance is { } layer && (layer.Index.Visible || layer.DetailOpen);
+
     public override void _Input(InputEvent e)
     {
-        if (_popover.Visible && Hotkeys.Pressed(e, "pause_menu"))
-        {
-            GetViewport().SetInputAsHandled();
-            CloseDetail();
-        }
+        // Before the scene sees Esc (scenes are added after this layer, so their unhandled input runs first).
+        if (!Hotkeys.Pressed(e, "pause_menu")) return;
+        if (_popover.Visible) CloseDetail();
+        else if (Index.Visible) Index.Close();
+        else return;
+        GetViewport().SetInputAsHandled();
     }
 
     public override void _UnhandledInput(InputEvent e)

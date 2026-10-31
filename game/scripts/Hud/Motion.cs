@@ -36,6 +36,9 @@ public static class Motion
     private static readonly ConditionalWeakTable<GodotObject, Tween> Counting = new();
     private static readonly ConditionalWeakTable<GodotObject, Tween> Flashing = new();
 
+    // Controls fading out right now: still visible, but a toggle should bring them back, not close them again.
+    private static readonly ConditionalWeakTable<GodotObject, object> Closing = new();
+
     private static Tween Fresh(ConditionalWeakTable<GodotObject, Tween> table, Node node, bool parallel = false)
     {
         if (table.TryGetValue(node, out var old) && GodotObject.IsInstanceValid(old)) old.Kill();
@@ -47,6 +50,7 @@ public static class Motion
     /// <summary>Shows <paramref name="control"/> with a short fade and a slide from <paramref name="from"/> pixels away.</summary>
     public static void Reveal(Control control, Vector2? from = null)
     {
+        Closing.Remove(control);
         var wasVisible = control.Visible && control.Modulate.A > 0.99f;
         control.Visible = true;
         if (wasVisible || !control.IsInsideTree() || GameSettings.ReduceMotion)
@@ -102,6 +106,7 @@ public static class Motion
             return;
         }
         var tween = Fresh(Running, control, parallel: true);
+        Closing.AddOrUpdate(control, control);
         tween.TweenProperty(control, "modulate:a", 0f, Fast);
         Vector2? home = null;
         if (to is { } offset && control.GetParent() is not Container)
@@ -111,6 +116,7 @@ public static class Motion
         }
         tween.Chain().TweenCallback(Callable.From(() =>
         {
+            Closing.Remove(control);
             control.Visible = false;
             control.Modulate = Colors.White;
             if (home is { } p) control.Position = p;
@@ -121,7 +127,7 @@ public static class Motion
     /// <summary>Toggles visibility, revealing with <see cref="Reveal"/> when it opens and <see cref="Conceal"/> when it closes.</summary>
     public static void Toggle(Control control, Vector2? from = null)
     {
-        if (control.Visible) Conceal(control);
+        if (control.Visible && !Closing.TryGetValue(control, out _)) Conceal(control);
         else Reveal(control, from);
     }
 

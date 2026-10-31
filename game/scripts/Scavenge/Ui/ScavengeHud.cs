@@ -250,7 +250,7 @@ public partial class ScavengeHud : CanvasLayer
     public override void _UnhandledInput(InputEvent e)
     {
         if (e is not InputEventKey { Pressed: true, Echo: false }) return;
-        if (Pause.Visible || Settings.Visible || Result.Visible) return; // the overlays handle their own keys
+        if (Pause.Visible || Settings.Visible || Result.Visible || Hud.Help.HelpLayer.Blocking) return; // the overlays handle their own keys
         if (Hotkeys.Pressed(e, "pause_menu"))
         {
             if (BackRequested?.Invoke() != true) Pause.Open();
