@@ -205,7 +205,7 @@ public partial class TabStrip : HBoxContainer
 /// A section that folds: a header row (chevron, caps title, an optional summary on the right, an optional (i)) and a
 /// body revealed with <see cref="Motion"/>. Summary first, details on demand.
 /// </summary>
-public partial class Expander : VBoxContainer
+public partial class FoldSection : VBoxContainer
 {
     private readonly Button _header;
     private readonly Label _summary = Widgets.Label("", "Small");
@@ -217,7 +217,7 @@ public partial class Expander : VBoxContainer
     /// <summary>Opened (true) or folded (false) by the player or <see cref="SetOpen"/>.</summary>
     public event Action<bool>? Toggled;
 
-    public Expander(string title, Control body, bool open = false, Control? extra = null)
+    public FoldSection(string title, Control body, bool open = false, Control? extra = null)
     {
         Body = body;
         AddThemeConstantOverride("separation", Space.Xs);

@@ -44,15 +44,15 @@ public partial class SurvivorPanel : PanelContainer
     private readonly List<int?> _jobBuildingIds = new();
     private readonly Label _output = Widgets.Wrapped("", "");
     private readonly HBoxContainer _outputRow;
-    private readonly Expander _body;
-    private readonly Expander _familyBox;
+    private readonly FoldSection _body;
+    private readonly FoldSection _familyBox;
 
     // Skills
     private readonly Dictionary<AttributeKind, Label> _attributes = new();
     private readonly Dictionary<Skill, (Control Row, StatBar Bar)> _skills = new();
     private readonly VBoxContainer _trained = Widgets.Column(Space.Xs);
     private readonly VBoxContainer _untrained = Widgets.Column(Space.Xs);
-    private readonly Expander _untrainedBox;
+    private readonly FoldSection _untrainedBox;
     private string _skillOrder = "";
 
     // Body
@@ -110,9 +110,9 @@ public partial class SurvivorPanel : PanelContainer
         _nutritionRow = InfoTip.Beside(_nutrition, "food_buffs", Context);
         _outputRow = InfoTip.Beside(_output, "jobs_output", Context);
         _humanityRow = Widgets.Row(Space.Sm);
-        _body = new Expander("Body", BodySection(), extra: new InfoTip("injuries", Context));
-        _familyBox = new Expander("Family", FamilySection(), extra: new InfoTip("family", Context));
-        _untrainedBox = new Expander("Untrained", _untrained);
+        _body = new FoldSection("Body", BodySection(), extra: new InfoTip("injuries", Context));
+        _familyBox = new FoldSection("Family", FamilySection(), extra: new InfoTip("family", Context));
+        _untrainedBox = new FoldSection("Untrained", _untrained);
         _body.Toggled += _ => Refresh();
         _familyBox.Toggled += _ => Refresh();
         _untrainedBox.Toggled += _ => FitHeight();
