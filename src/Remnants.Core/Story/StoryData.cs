@@ -215,22 +215,15 @@ public static class StoryDataLoader
     public static StoryData LoadFromDirectory(string directory)
     {
         if (!Directory.Exists(directory)) throw new GameDataException($"Missing story data folder '{directory}'.");
-        var characters = Parse<List<CharacterDef>>(File.ReadAllText(Path.Combine(directory, "characters.json")), "story/characters.json");
-        IEnumerable<T> All<T>(string folder, Func<string, string, IEnumerable<T>> parse)
-        {
-            var path = Path.Combine(directory, folder);
-            if (!Directory.Exists(path)) return [];
-            return Directory.GetFiles(path, "*.json").OrderBy(f => Path.GetFileName(f), StringComparer.Ordinal)
-                .SelectMany(f => parse(File.ReadAllText(f), $"story/{folder}/{Path.GetFileName(f)}")).ToList();
-        }
-        List<T> Optional<T>(string file) => File.Exists(Path.Combine(directory, file))
-            ? Parse<List<T>>(File.ReadAllText(Path.Combine(directory, file)), $"story/{file}") : [];
-        return new StoryData(
-            characters,
-            All("missions", (json, name) => Parse<List<MissionDef>>(json, name)),
-            All("dialogue", (json, name) => Parse<List<DialogueDef>>(json, name)),
-            All<HandmadeMapDef>("maps", (json, name) => [HandmadeMaps.Parse(json, name)]),
-            Optional<TraitDef>("traits.json"), Optional<CodexEntryDef>("codex.json"), Optional<EndingDef>("endings.json"));
+        return Load(DataSource.FromDirectory(directory));
+    }
+
+    /// <summary>The story in <paramref name="story"/> (a source rooted at data/story; see <see cref="DataSource.Sub"/>).</summary>
+    public static StoryData Load(DataSource story)
+    {
+        IEnumerable<(string, string)> All(string folder) => story.List(folder).Select(p => ($"story/{p}", story.Read(p)));
+        return LoadFromJson(story.Read("characters.json"), All("missions"), All("dialogue"), All("maps"),
+            story.TryRead("traits.json"), story.TryRead("codex.json"), story.TryRead("endings.json"));
     }
 
     /// <summary>From file contents (an exported game's embedded copy): each list is (file name, json) in load order.</summary>

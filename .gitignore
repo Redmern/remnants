@@ -2,7 +2,7 @@
 .godot/
 game/.godot/
 *.import.tmp
-export_presets.cfg
+/build/
 /android/
 
 # .NET

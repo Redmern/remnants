@@ -14,11 +14,9 @@ public sealed record TradeRules
     public MarketRules Market { get; init; } = new();
     public LiveTradeRules Live { get; init; } = new();
 
-    public static TradeRules Load(string dataDirectory)
-    {
-        var path = Path.Combine(dataDirectory, "trade.json");
-        return File.Exists(path) ? Parse(File.ReadAllText(path)) : new TradeRules();
-    }
+    public static TradeRules Load(string dataDirectory) => Load(DataSource.FromDirectory(dataDirectory));
+
+    public static TradeRules Load(DataSource data) => data.TryRead("trade.json") is { } json ? Parse(json) : new TradeRules();
 
     public static TradeRules Parse(string json)
     {

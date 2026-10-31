@@ -88,11 +88,10 @@ public sealed class RaidData
 public static class RaidDataLoader
 {
     /// <summary>Null when raids.json is missing (no raids).</summary>
-    public static RaidData? LoadFromDirectory(string directory)
-    {
-        var path = Path.Combine(directory, "raids.json");
-        return File.Exists(path) ? LoadFromJson(File.ReadAllText(path)) : null;
-    }
+    public static RaidData? LoadFromDirectory(string directory) => Load(DataSource.FromDirectory(directory));
+
+    /// <summary>Null when raids.json is missing (no raids).</summary>
+    public static RaidData? Load(DataSource data) => data.TryRead("raids.json") is { } raids ? LoadFromJson(raids) : null;
 
     public static RaidData LoadFromJson(string raids)
     {

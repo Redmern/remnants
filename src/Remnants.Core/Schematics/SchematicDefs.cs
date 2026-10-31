@@ -405,18 +405,9 @@ public static class SchematicCatalogLoader
 {
     public const string FileName = "schematics.json";
 
-    /// <summary>The main file then the extensions (<c>schematics.*.json</c>, by name) in a directory.</summary>
-    public static IReadOnlyList<string> Files(string directory)
-    {
-        var main = Path.Combine(directory, FileName);
-        if (!File.Exists(main)) return [];
-        var extensions = Directory.GetFiles(directory, "schematics.*.json").Where(f => Path.GetFileName(f) != FileName).OrderBy(f => Path.GetFileName(f), StringComparer.Ordinal);
-        return [main, .. extensions];
-    }
-
     /// <summary>The catalogue in <paramref name="directory"/>, or <see cref="SchematicCatalog.Empty"/> when there is no file.</summary>
     public static SchematicCatalog LoadFromDirectory(string directory) =>
-        LoadFromJson(Files(directory).Select(File.ReadAllText).ToArray());
+        LoadFromJson(DataSource.FromDirectory(directory).ReadCatalogue(FileName));
 
     /// <summary>Main file first, then extensions; none = the empty catalogue.</summary>
     public static SchematicCatalog LoadFromJson(params string?[] files)

@@ -409,21 +409,15 @@ public sealed class ScavengeData
 /// <summary>Loads items.json, enemies.json, zones.json and scavenge.json (plus perks.json and cybernetics.json if there) from the data/ folder.</summary>
 public static class ScavengeDataLoader
 {
-    public static ScavengeData LoadFromDirectory(string directory)
+    public static ScavengeData LoadFromDirectory(string directory) => Load(DataSource.FromDirectory(directory));
+
+    /// <summary>The scavenge definitions in <paramref name="data"/>, with the schematic catalogue, loot tables and salvage rules.</summary>
+    public static ScavengeData Load(DataSource data)
     {
-        string Read(string file)
-        {
-            var path = Path.Combine(directory, file);
-            if (!File.Exists(path)) throw new GameDataException($"Missing data file '{path}'.");
-            return File.ReadAllText(path);
-        }
-
-        string? Optional(string file) => File.Exists(Path.Combine(directory, file)) ? File.ReadAllText(Path.Combine(directory, file)) : null;
-
-        var data = LoadFromJson(Read("items.json"), Read("enemies.json"), Read("zones.json"), Read("scavenge.json"),
-            Optional("perks.json"), Optional("cybernetics.json"), Optional("electronics.json"), Optional("gear_mods.json"), Optional("medicine.json"),
-            SchematicCatalogLoader.Files(directory).Select(File.ReadAllText).ToArray());
-        return WithLoot(data, LootTableLoader.Files(directory).Select(File.ReadAllText), Optional(FieldSalvage.FileName));
+        var loaded = LoadFromJson(data.Read("items.json"), data.Read("enemies.json"), data.Read("zones.json"), data.Read("scavenge.json"),
+            data.TryRead("perks.json"), data.TryRead("cybernetics.json"), data.TryRead("electronics.json"), data.TryRead("gear_mods.json"), data.TryRead("medicine.json"),
+            data.ReadCatalogue(SchematicCatalogLoader.FileName));
+        return WithLoot(loaded, data.ReadCatalogue(LootTableLoader.FileName), data.TryRead(FieldSalvage.FileName));
     }
 
     /// <summary>

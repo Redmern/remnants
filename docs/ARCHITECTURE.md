@@ -1585,7 +1585,15 @@ dotnet run --project tools/Remnants.Playtest -- --data=data --zone=suburb_ruins 
 
 Data lookup (`GameDataPaths`): `data/` next to the executable in exported builds (lets players override
 balancing), the repo's `data/` (`res://../data`) in dev, else the copy embedded in `Remnants.Game.dll`
-at build time — so exports work with nothing copied.
+at build time (`EmbeddedData.props`: every `data/**/*.json` as `Remnants.Data.<path>`) — so exports work with nothing
+copied. The choice is one `DataSource` (Core), and every loader (`GameDataLoader.Load`, `ScavengeDataLoader.Load`,
+`StoryDataLoader.Load`, `RaidDataLoader.Load`, `TradeRules.Load`) reads its files through it, including catalogues
+split over files (`DataSource.Catalogue("loot_tables.json")` = the main file then `loot_tables.*.json` by name), so the
+folder and the embedded copy can't load different files. `EmbeddedDataTests` imports the same props and checks parity.
+
+Export: `godot-mono --headless --path game --export-release Linux ../build/linux/remnants.x86_64` (preset in
+`game/export_presets.cfg`; `build/` is ignored). Smoke test: `build/linux/remnants.x86_64 --headless --quit-after 1200 --
+--new-game=story` (or `sandbox`) clicks New Game for you and should log nothing but "Colony: data from the data embedded…".
 
 Debug flags (after `--`): `--colony` skips the menu, `--scavenge` starts the debug mission (`--autoplay=N` plays N
 orders with a simple bot so enemy turns replay, `--zoom=SIZE` sets the ortho camera size), `--demo` builds a farm and woodcutter and assigns

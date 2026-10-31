@@ -1,0 +1,10 @@
+<Project>
+  <!--
+    Embeds every file under data/ (story/ included) as "Remnants.Data.<relative path>", which DataSource.FromAssembly
+    reads back. The game imports it so an exported build can run without ../data; the Core tests import it to check that
+    the embedded copy loads exactly what the folder does.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="$(MSBuildThisFileDirectory)data\**\*.json" LogicalName="Remnants.Data.%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>

@@ -7,22 +7,14 @@ namespace Remnants.Core.Data;
 /// <summary>Loads definitions from the data/ folder (resources.json, jobs.json, buildings.json, rules.json, recipes.json, perks.json, cybernetics.json, schematics.json, weather.json, food.json, electronics.json, vehicles.json, gear_mods.json, medicine.json).</summary>
 public static class GameDataLoader
 {
-    public static GameData LoadFromDirectory(string directory)
-    {
-        string Read(string file)
-        {
-            var path = Path.Combine(directory, file);
-            if (!File.Exists(path)) throw new GameDataException($"Missing data file '{path}'.");
-            return File.ReadAllText(path);
-        }
+    public static GameData LoadFromDirectory(string directory) => Load(DataSource.FromDirectory(directory));
 
-        string? Optional(string file) => File.Exists(Path.Combine(directory, file)) ? File.ReadAllText(Path.Combine(directory, file)) : null;
-
-        return LoadFromJson(Read("resources.json"), Read("jobs.json"), Read("buildings.json"), Read("rules.json"), Read("recipes.json"),
-            Optional("perks.json"), Optional("cybernetics.json"), Optional("weather.json"), Optional("food.json"), Optional("electronics.json"),
-            Optional("gear_mods.json"), Optional("medicine.json"), SchematicCatalogLoader.Files(directory).Select(File.ReadAllText).ToArray(),
-            vehicles: Optional("vehicles.json"));
-    }
+    /// <summary>The colony definitions in <paramref name="data"/>: the required files, the optional feature files and the schematic catalogue.</summary>
+    public static GameData Load(DataSource data) =>
+        LoadFromJson(data.Read("resources.json"), data.Read("jobs.json"), data.Read("buildings.json"), data.Read("rules.json"), data.Read("recipes.json"),
+            data.TryRead("perks.json"), data.TryRead("cybernetics.json"), data.TryRead("weather.json"), data.TryRead("food.json"), data.TryRead("electronics.json"),
+            data.TryRead("gear_mods.json"), data.TryRead("medicine.json"), data.ReadCatalogue(SchematicCatalogLoader.FileName),
+            vehicles: data.TryRead("vehicles.json"));
 
     /// <summary>
     /// Without <paramref name="perks"/> there is no perk tree and no study (XP still counts levels); without

@@ -264,15 +264,6 @@ public static class LootTableLoader
 {
     public const string FileName = "loot_tables.json";
 
-    /// <summary>The main file then the extensions in a directory (none when there is no main file).</summary>
-    public static IReadOnlyList<string> Files(string directory)
-    {
-        var main = Path.Combine(directory, FileName);
-        if (!File.Exists(main)) return [];
-        var extensions = Directory.GetFiles(directory, "loot_tables.*.json").Where(f => Path.GetFileName(f) != FileName).OrderBy(f => Path.GetFileName(f), StringComparer.Ordinal);
-        return [main, .. extensions];
-    }
-
     public static List<LootTableFile> Parse(IEnumerable<string> jsons) => jsons.Select((json, i) =>
     {
         try

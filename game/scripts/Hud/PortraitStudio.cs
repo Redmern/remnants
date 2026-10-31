@@ -127,7 +127,8 @@ public partial class PortraitStudio : Node
                 _pending = (pending.Target, pending.Frames - 1);
                 return;
             }
-            pending.Target.SetImage(_viewport.GetTexture().GetImage());
+            // Headless (the dummy renderer) has no pixels to read back: the portrait just stays blank.
+            if (DisplayServer.GetName() != "headless") pending.Target.SetImage(_viewport.GetTexture().GetImage());
             foreach (var child in _stage.GetChildren()) child.QueueFree();
             _pending = null;
         }
