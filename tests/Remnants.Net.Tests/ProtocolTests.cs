@@ -14,6 +14,15 @@ public class ProtocolTests
     }
 
     [Fact]
+    public void The_version_is_the_highest_keyed_feature_version()
+    {
+        var keyed = typeof(Protocol).GetFields().Where(f => f.IsLiteral && f.Name.EndsWith("Version") && f.Name != nameof(Protocol.Version))
+            .Select(f => (int)f.GetRawConstantValue()!).ToList();
+        Assert.NotEmpty(keyed);
+        Assert.Equal(Protocol.Version, keyed.Max());
+    }
+
+    [Fact]
     public void Every_command_kind_round_trips_inside_a_command_message()
     {
         IScavengeCommand[] intents =

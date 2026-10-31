@@ -1064,12 +1064,18 @@ The spec is STORY.md. The data format, field by field, is docs/story/FORMAT.md. 
     downed); `fuseAfter` (failed hacks destroy a node); `Reach` `by` a tag; party survivors tagged by `MissionSetup.Tags`.
   - *Co-op story v1*: `HostOptions.Mission` (`--story-mission ID` on the server, `Campaign.CoopSetup`): the first seat
     is the host; the mission goes to the host's team only (`SideFog`), without campaign flags; a guest's result
-    carries `GuestSchematics` and no campaign progress. Handmade maps put a team on one side.
+    carries `GuestSchematics` and no campaign progress. Handmade maps put a team on one side. Protocol 15
+    (`Protocol.StoryVersion`; added in stabilisation pass 1, the feature had shipped without a bump).
   - *Game*: `CodexPanel` and `EpiloguePanel` in the story HUD; `--story-demo=offer|join|codex|epilogue
     [--ending=ID] [--slide=N] [--codex-tab=people|logs|story]`.
   - *Playtest*: `--story-acts[=terms|silence|voice|calm|all] [--seed=N] [--trace]` plays Acts 2–4 from Act 1 done to an
     ending with a strong, kept-up colony; each variant picks its dialogue choices and field prompt options.
   - *Saves*: colony version 25, scavenge version 14.
+- **Save migration chain**: `SaveMigrationChainTests` loads real old saves (`tests/Remnants.Core.Tests/Fixtures/saves`:
+  colony v1 from 80b13f7, colony v2 with a scavenge v1 run in progress from 6b1a2d4^, and that run alone), written by
+  the code of the time, through every migration to the current version with all data on; each plays three days (or
+  three rounds) and saves and loads again. Pre-grid v1 saves get plots in building order (`SaveGame.MigratePlots`).
+  To add a fixture: `git archive <commit>` into a scratch folder, write a save there with a few lines against its Core.
 - **Playtest**: `--story [--prompt=N]` plays a Story game. The colony bot takes calls (first choice), builds the Radio
   Mast and a Watchtower, and launches open story missions; `StoryBot` plays them by their objectives. See BALANCE.md
   "Story Act 1 pass".

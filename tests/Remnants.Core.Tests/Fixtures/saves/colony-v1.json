@@ -1,0 +1,414 @@
+{
+  "version": 1,
+  "colony": {
+    "tick": 78,
+    "rngState": 494573710892916820,
+    "nextSurvivorId": 6,
+    "nextBuildingId": 4,
+    "survivors": [
+      {
+        "id": 1,
+        "name": "Jonah",
+        "sex": "Male",
+        "ageTicks": 14915,
+        "lifeStage": "Adult",
+        "attributes": {
+          "Strength": 37.11330139722613,
+          "Agility": 46,
+          "Endurance": 57.051570083170056,
+          "Intellect": 43,
+          "Creativity": 45,
+          "Perception": 25
+        },
+        "skills": {
+          "Woodcutting": 1.4891755791631553,
+          "Mining": 0,
+          "Crafting": 0,
+          "Tailoring": 0,
+          "Electronics": 0,
+          "Medicine": 0,
+          "Firearms": 0,
+          "Melee": 0,
+          "Cooking": 0,
+          "Farming": 0
+        },
+        "body": {
+          "parts": {
+            "Head": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "Torso": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "LeftArm": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "RightArm": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "LeftLeg": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "RightLeg": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            }
+          }
+        },
+        "health": 100,
+        "toolQuality": 0,
+        "assignedBuildingId": 3,
+        "hasBed": true,
+        "homelessTicks": 0,
+        "starvingTicks": 0,
+        "isChild": false
+      },
+      {
+        "id": 2,
+        "name": "Mara",
+        "sex": "Female",
+        "ageTicks": 18361,
+        "lifeStage": "Adult",
+        "attributes": {
+          "Strength": 57,
+          "Agility": 53,
+          "Endurance": 40,
+          "Intellect": 46,
+          "Creativity": 47,
+          "Perception": 31
+        },
+        "skills": {
+          "Woodcutting": 0,
+          "Mining": 0,
+          "Crafting": 0,
+          "Tailoring": 0,
+          "Electronics": 0,
+          "Medicine": 0,
+          "Firearms": 0,
+          "Melee": 0,
+          "Cooking": 0,
+          "Farming": 0
+        },
+        "body": {
+          "parts": {
+            "Head": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "Torso": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "LeftArm": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "RightArm": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "LeftLeg": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "RightLeg": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            }
+          }
+        },
+        "health": 100,
+        "toolQuality": 0,
+        "assignedBuildingId": null,
+        "hasBed": true,
+        "homelessTicks": 0,
+        "starvingTicks": 0,
+        "isChild": false
+      },
+      {
+        "id": 3,
+        "name": "Ines",
+        "sex": "Female",
+        "ageTicks": 30480,
+        "lifeStage": "Adult",
+        "attributes": {
+          "Strength": 53,
+          "Agility": 27,
+          "Endurance": 42,
+          "Intellect": 37,
+          "Creativity": 43,
+          "Perception": 34
+        },
+        "skills": {
+          "Woodcutting": 0,
+          "Mining": 0,
+          "Crafting": 0,
+          "Tailoring": 0,
+          "Electronics": 0,
+          "Medicine": 0,
+          "Firearms": 0,
+          "Melee": 0,
+          "Cooking": 0,
+          "Farming": 0
+        },
+        "body": {
+          "parts": {
+            "Head": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "Torso": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "LeftArm": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "RightArm": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "LeftLeg": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "RightLeg": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            }
+          }
+        },
+        "health": 100,
+        "toolQuality": 0,
+        "assignedBuildingId": null,
+        "hasBed": true,
+        "homelessTicks": 0,
+        "starvingTicks": 0,
+        "isChild": false
+      },
+      {
+        "id": 4,
+        "name": "Arlo",
+        "sex": "Male",
+        "ageTicks": 6996,
+        "lifeStage": "Child",
+        "attributes": {
+          "Strength": 19,
+          "Agility": 15,
+          "Endurance": 14,
+          "Intellect": 26,
+          "Creativity": 27,
+          "Perception": 35
+        },
+        "skills": {
+          "Woodcutting": 0,
+          "Mining": 0,
+          "Crafting": 0,
+          "Tailoring": 0,
+          "Electronics": 0,
+          "Medicine": 0,
+          "Firearms": 0,
+          "Melee": 0,
+          "Cooking": 0,
+          "Farming": 0
+        },
+        "body": {
+          "parts": {
+            "Head": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "Torso": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "LeftArm": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "RightArm": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "LeftLeg": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "RightLeg": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            }
+          }
+        },
+        "health": 100,
+        "toolQuality": 0,
+        "assignedBuildingId": null,
+        "hasBed": true,
+        "homelessTicks": 0,
+        "starvingTicks": 0,
+        "isChild": true
+      },
+      {
+        "id": 5,
+        "name": "Sana",
+        "sex": "Female",
+        "ageTicks": 5994,
+        "lifeStage": "Child",
+        "attributes": {
+          "Strength": 21,
+          "Agility": 31,
+          "Endurance": 35,
+          "Intellect": 15,
+          "Creativity": 25,
+          "Perception": 26
+        },
+        "skills": {
+          "Woodcutting": 0,
+          "Mining": 0,
+          "Crafting": 0,
+          "Tailoring": 0,
+          "Electronics": 0,
+          "Medicine": 0,
+          "Firearms": 0,
+          "Melee": 0,
+          "Cooking": 0,
+          "Farming": 0
+        },
+        "body": {
+          "parts": {
+            "Head": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "Torso": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "LeftArm": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "RightArm": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "LeftLeg": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            },
+            "RightLeg": {
+              "condition": "Healthy",
+              "severity": 0,
+              "prostheticQuality": 0,
+              "efficiency": 1
+            }
+          }
+        },
+        "health": 100,
+        "toolQuality": 0,
+        "assignedBuildingId": null,
+        "hasBed": true,
+        "homelessTicks": 0,
+        "starvingTicks": 0,
+        "isChild": true
+      }
+    ],
+    "buildings": [
+      {
+        "id": 1,
+        "defId": "town_hall",
+        "level": 1
+      },
+      {
+        "id": 2,
+        "defId": "shelter",
+        "level": 1
+      },
+      {
+        "id": 3,
+        "defId": "woodcutter",
+        "level": 1
+      }
+    ],
+    "stockpile": {
+      "amounts": {
+        "wood": 56.32425132070912,
+        "stone": 25,
+        "food": 23.62000000000006
+      }
+    },
+    "events": [
+      {
+        "tick": 0,
+        "type": "Constructed",
+        "message": "Built Woodcutter.",
+        "survivorId": null,
+        "buildingId": 3
+      }
+    ]
+  }
+}

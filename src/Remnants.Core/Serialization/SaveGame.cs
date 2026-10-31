@@ -181,6 +181,7 @@ public static class SaveGame
         var node = JsonNode.Parse(json, documentOptions: new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true })
             ?? throw new JsonException("Save file is empty.");
         if (node["version"]?.GetValue<int>() is < 4 and >= OldestVersion && node["colony"] is JsonObject old) MigrateCrafting(old);
+        if (node["version"]?.GetValue<int>() == 1 && node["colony"] is JsonObject v1) MigratePlots(v1);
         var oldKnown = new List<string>();
         var storyGranted = new List<string>();
         var storyResearchData = 0;
@@ -223,6 +224,24 @@ public static class SaveGame
         var sim = new ColonySim(data, colony, scavenge);
         if (envelope.Version < 15) MigrateSchematics(sim, oldKnown, storyGranted, storyResearchData);
         return sim;
+    }
+
+    /// <summary>
+    /// The first version 1 saves predate the town grid (plots came within version 1): buildings without a plot get one in
+    /// building order, as New Game and Construct hand them out (the first free plot), so they load instead of all
+    /// claiming plot 0.
+    /// </summary>
+    private static void MigratePlots(JsonObject colony)
+    {
+        if (colony["buildings"] is not JsonArray buildings) return;
+        var taken = buildings.Select(b => b?["plot"]?.GetValue<int>()).OfType<int>().ToHashSet();
+        var next = 0;
+        foreach (var b in buildings.OfType<JsonObject>().Where(b => b["plot"] is null).OrderBy(b => b["id"]?.GetValue<int>() ?? 0))
+        {
+            while (taken.Contains(next)) next++;
+            b["plot"] = next;
+            taken.Add(next);
+        }
     }
 
     /// <summary>
