@@ -40,4 +40,27 @@ public class ElectronicsNetTests
         Assert.Equal(UnitKind.Decoy, aliceView.Units.Single(u => u.Id == decoy.Id).Kind);
         Assert.Equal(2, aliceView.Units.Single(u => u.Id == alice.Id).ChargesUsed["motion_sensor_mk2"]);
     }
+
+    [Fact]
+    public void A_device_given_over_the_wire_arrives_with_its_spent_charges()
+    {
+        var f = new NetFixture(new HostOptions { Mode = MissionMode.Coop, MinPlayers = 2, TurnSeconds = 30, ReconnectSeconds = 60 });
+        var a = f.Join("Alice");
+        var b = f.Join("Bob");
+        a.Client.SetReady(true);
+        b.Client.SetReady(true);
+        var up = f.PlayerUp(a, b)!;
+        var mine = f.Sim.State.CurrentUnit!;
+        var other = f.Sim.State.Units.First(u => u.PlayerControlled && u.PlayerId != up.Id);
+        other.Pos = f.FreeNeighbour(mine.Pos);
+        mine.Pack.Add("motion_sensor_mk2");
+        mine.ChargesUsed["motion_sensor_mk2"] = 2;
+
+        Assert.True(up.Do(new GiveItem(up.Id, mine.Id, other.Id, "motion_sensor_mk2")).Ok);
+        Assert.False(mine.ChargesUsed.ContainsKey("motion_sensor_mk2"));
+        Assert.Equal(2, other.ChargesUsed["motion_sensor_mk2"]);
+        var mate = up == a ? b : a;
+        Assert.Equal(2, mate.View.FindUnit(other.Id)!.ChargesUsed["motion_sensor_mk2"]); // the ally's own view shows the spent charges
+        f.AssertNoLeaks();
+    }
 }

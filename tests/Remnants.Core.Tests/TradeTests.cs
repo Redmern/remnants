@@ -372,4 +372,21 @@ public class TradeTests
         Assert.Equal(0, Left(b)); // the most-spent copy went over: flat
         Assert.Equal(2, Left(a));
     }
+
+    [Fact]
+    public void A_device_given_to_an_ally_keeps_its_spent_charges()
+    {
+        var sim = AlliedPair(out var a, out var b);
+        b.Pos = new(2, 1);
+        a.Pack.AddRange(["motion_sensor_mk2", "motion_sensor_mk2"]);
+        a.ChargesUsed["motion_sensor_mk2"] = 4; // 6 charges carried, 2 left
+        int Left(Unit u) => ElectronicWarfare.ChargesLeft(Real, u, "motion_sensor_mk2") ?? 0;
+        var before = Left(a) + Left(b);
+
+        Assert.True(sim.Execute(new GiveItem(1, a.Id, b.Id, "motion_sensor_mk2")).Ok);
+        Assert.Equal(before, Left(a) + Left(b)); // the old Give handed over a full one: 2 + 3
+        Assert.Equal(0, Left(b));
+        Assert.Equal(2, Left(a));
+        Assert.Equal(3, b.ChargesUsed["motion_sensor_mk2"]);
+    }
 }

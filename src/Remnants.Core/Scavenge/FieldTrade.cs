@@ -54,11 +54,7 @@ public static class FieldTrade
         foreach (var (placed, taken) in new[] { (aPlaced, aTaken), (bPlaced, bTaken) })
         {
             var spentById = taken.GroupBy(t => t.Id).ToDictionary(g => g.Key, g => new Queue<int>(g.Select(t => t.Spent)));
-            foreach (var (unit, id) in placed)
-            {
-                unit.Pack.Add(id);
-                if (spentById[id].Dequeue() is var s and > 0) unit.ChargesUsed[id] = unit.ChargesUsed.GetValueOrDefault(id) + s;
-            }
+            foreach (var (unit, id) in placed) PutItem(unit, id, spentById[id].Dequeue());
         }
         var state = sim.State;
         var sides = new List<string> { state.FindParty(a)!.Side, state.FindParty(b)!.Side }.Distinct().ToList();
@@ -79,20 +75,30 @@ public static class FieldTrade
         foreach (var id in ids)
         {
             var unit = Holders(sim, playerId).First(u => u.Pack.Contains(id));
-            unit.Pack.Remove(id);
-            var spent = 0;
-            if (sim.Data.Items[id].Use is { Charges: > 0 } use && unit.ChargesUsed.GetValueOrDefault(id) is var used and > 0)
-            {
-                spent = Math.Min(used, use.Charges);
-                if (used - spent > 0) unit.ChargesUsed[id] = used - spent;
-                else unit.ChargesUsed.Remove(id);
-            }
-            taken.Add((unit, id, spent));
+            taken.Add((unit, id, TakeItem(sim, unit, id)));
         }
         return taken;
     }
 
-    private static void Restore(Unit unit, string id, int spent)
+    private static void Restore(Unit unit, string id, int spent) => PutItem(unit, id, spent);
+
+    /// <summary>
+    /// Takes one <paramref name="id"/> out of <paramref name="unit"/>'s pack and returns the charges spent on it: a device
+    /// leaves with the most-spent copy's charges (up to one device's worth), so the giver's other copies keep theirs.
+    /// Every hand-over (a field trade, a co-op Give) moves items with this and <see cref="PutItem"/>.
+    /// </summary>
+    internal static int TakeItem(ScavengeSim sim, Unit unit, string id)
+    {
+        unit.Pack.Remove(id);
+        if (sim.Data.Items[id].Use is not { Charges: > 0 } use || unit.ChargesUsed.GetValueOrDefault(id) is not (var used and > 0)) return 0;
+        var spent = Math.Min(used, use.Charges);
+        if (used - spent > 0) unit.ChargesUsed[id] = used - spent;
+        else unit.ChargesUsed.Remove(id);
+        return spent;
+    }
+
+    /// <summary>Puts one <paramref name="id"/> in <paramref name="unit"/>'s pack with the charges spent on it (see <see cref="TakeItem"/>).</summary>
+    internal static void PutItem(Unit unit, string id, int spent)
     {
         unit.Pack.Add(id);
         if (spent > 0) unit.ChargesUsed[id] = unit.ChargesUsed.GetValueOrDefault(id) + spent;

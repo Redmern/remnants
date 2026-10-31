@@ -25,11 +25,12 @@ public static class CoopActions
 
     internal static ScavengeResult Give(ScavengeSim sim, Unit unit, GiveItem c)
     {
-        var target = sim.State.FindUnit(c.TargetId);
-        if (CheckGive(sim, unit, target, c.ItemId) is { } problem) return problem;
+        var found = sim.State.FindUnit(c.TargetId);
+        if (CheckGive(sim, unit, found, c.ItemId) is { } problem) return problem;
+        var target = found!;
         unit.Ap -= sim.Data.Rules.Coop.GiveApCost;
-        unit.Pack.Remove(c.ItemId);
-        target!.Pack.Add(c.ItemId);
+        // A device goes with its spent charges, the same rule as a field trade.
+        FieldTrade.PutItem(target, c.ItemId, FieldTrade.TakeItem(sim, unit, c.ItemId));
         sim.Log(ScavengeEventType.ItemGiven, $"{unit.Name} hands {sim.Item(c.ItemId).Name} to {target.Name}.", unit, target);
         return ScavengeResult.Success($"{unit.Name} gave {sim.Item(c.ItemId).Name} to {target.Name}.", target.Id);
     }
