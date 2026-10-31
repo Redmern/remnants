@@ -305,7 +305,7 @@ public class StoryActsTests
     }
 
     [Fact]
-    public void Docs_rounds_comes_back_ten_days_after_it_is_done()
+    public void Docs_rounds_comes_back_fourteen_days_after_it_is_done()
     {
         var sim = Joined("hale");
         var campaign = sim.State.Campaign!;
@@ -315,7 +315,7 @@ public class StoryActsTests
         Campaign.Returned(sim, def.Id, new ObjectiveResult(def.Id, MissionOutcome.Done, new(), new(), new(), []));
         Assert.Equal(MissionStatus.Done, p.Status);
         Assert.Equal(1, campaign.Flag("rounds_done"));
-        Days(sim, 9);
+        Days(sim, 13);
         Assert.Equal(MissionStatus.Done, p.Status);
         Days(sim, 2);
         Assert.Equal(MissionStatus.Available, p.Status);
