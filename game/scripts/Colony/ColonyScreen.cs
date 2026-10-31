@@ -109,6 +109,8 @@ public partial class ColonyScreen : Node3D
             if (DebugCapture.HasFlag("--garage-demo")) _town.Select(null);
             if (DebugCapture.Value("--zone") is { } planZone) _hud.Expedition.PlanFor(planZone);
             if (DebugCapture.Value("--vehicle") is { } pickTier) _hud.Expedition.PickVehicle(pickTier);
+            // `--expedition-step=1..5` shows that step of the planner (screenshots).
+            if (int.TryParse(DebugCapture.Value("--expedition-step"), out var step)) _hud.Expedition.ShowStep(step - 1);
         }
         if (DebugCapture.Value("--worker-demo") is { Length: > 0 } workerDemo && IsFreshGame) RunWorkerDemo(workerDemo);
         if (DebugCapture.HasFlag("--placing-demo")) RunPlacingDemo();
@@ -1008,6 +1010,7 @@ public partial class ColonyScreen : Node3D
         };
         _hud.TopBar.ExpeditionPressed += _hud.Expedition.Toggle;
         _hud.Expedition.WorldMapPressed += () => _hud.WorldMap.Open();
+        _hud.Expedition.GearBenchPressed += item => _hud.GearBench.Open(item);
         _hud.WorldMap.PlanPressed += _hud.Expedition.PlanFor;
         _hud.Expedition.OnlinePressed += () =>
         {
