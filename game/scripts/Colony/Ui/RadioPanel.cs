@@ -28,7 +28,7 @@ public partial class RadioPanel : PanelContainer
     ];
 
     private readonly ColonySession _session;
-    private readonly TabContainer _tabs = new() { CustomMinimumSize = new Vector2(0, 160) };
+    private readonly TabContainer _tabs = new() { CustomMinimumSize = new Vector2(0, 160), FocusMode = FocusModeEnum.All };
     private readonly List<RadioTab> _built = new();
     private readonly Label _level = Widgets.Label("", "Small");
 
@@ -40,7 +40,10 @@ public partial class RadioPanel : PanelContainer
         CustomMinimumSize = new Vector2(300, 0);
         Visible = false;
         var box = Ui.Panel(this);
-        box.AddChild(Widgets.SectionHeader("Radio", "ui_radio", _level));
+        var head = Widgets.Row(4);
+        head.AddChild(_level);
+        head.AddChild(new Hud.Help.InfoTip("trading"));
+        box.AddChild(Widgets.SectionHeader("Radio", "ui_radio", head));
         foreach (var (title, build) in Tabs)
         {
             var tab = build(session, this);
@@ -75,7 +78,8 @@ public partial class RadioPanel : PanelContainer
         var building = BuildingId is { } id ? sim.State.FindBuilding(id) : null;
         Visible = building is not null && sim.Data.Schematics.All.Count > 0 && building.DefId == sim.Data.Schematics.Rules.Radio.Building;
         if (!Visible) return;
-        _level.Text = $"visits every {RadioMast.VisitEveryDays(sim):0} days";
+        var level = $"trader visits every {RadioMast.VisitEveryDays(sim):0} days";
+        if (_level.Text != level) _level.Text = level;
         for (var i = 0; i < _built.Count; i++)
         {
             var title = Tabs[i].Title + (_built[i].Badge(sim) is { } badge ? $" ({badge})" : "");
@@ -135,13 +139,32 @@ public abstract partial class RadioTab : VBoxContainer
 
     public void Refresh(ColonySim sim)
     {
-        Status.Text = StatusText(sim);
-        Status.Visible = Status.Text.Length > 0;
+        var status = StatusText(sim);
+        if (Status.Text != status) Status.Text = status;
+        if (Status.Visible != status.Length > 0) Status.Visible = status.Length > 0;
         var signature = Signature(sim);
-        if (signature == _signature) return;
-        _signature = signature;
-        Widgets.Clear(Body);
-        Build(sim);
+        if (signature != _signature)
+        {
+            _signature = signature;
+            Widgets.Clear(Body);
+            Build(sim);
+            var index = 0;
+            foreach (var child in Body.GetChildren())
+                if (child is PanelContainer card) Motion.Enter(card, index++);
+        }
+        Update(sim);
+    }
+
+    /// <summary>Every refresh, after any rebuild: values that change with time (a fade countdown) update in place here.</summary>
+    protected virtual void Update(ColonySim sim) { }
+
+    /// <summary>An action button the keyboard can reach: Primary for the main action, "" (secondary) for the alternative.</summary>
+    protected static Button Action(string icon, string text, string tooltip, System.Action pressed, string variation = "")
+    {
+        var button = Widgets.IconButton(icon, text, tooltip, pressed, variation: variation);
+        button.FocusMode = FocusModeEnum.All;
+        button.CustomMinimumSize = new Vector2(0, 30);
+        return button;
     }
 
     protected abstract string StatusText(ColonySim sim);
@@ -163,9 +186,29 @@ public abstract partial class RadioTab : VBoxContainer
 /// <summary>The call queue.</summary>
 public partial class CallsTab : RadioTab
 {
+    private static readonly StringName Urgent = "urgent";
+    private readonly List<(PanelContainer Chip, Label Text, long Expires)> _fades = new();
+
     public CallsTab(ColonySession session, RadioPanel panel) : base(session, panel) { }
 
     public CallsTab() { }
+
+    protected override void Update(ColonySim sim)
+    {
+        foreach (var (chip, text, expires) in _fades)
+        {
+            var left = expires - sim.State.Tick;
+            var label = $"Fades out {RadioPanel.When(sim, expires)}";
+            if (text.Text != label) text.Text = label;
+            // Under a day left: the key urgency reads as an amber chip, not grey small print.
+            var urgent = left < sim.Data.Rules.TicksPerDay;
+            if (chip.HasMeta(Urgent) && chip.GetMeta(Urgent).AsBool() == urgent) continue;
+            chip.SetMeta(Urgent, urgent);
+            if (urgent) chip.RemoveThemeStyleboxOverride("panel");
+            else chip.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
+            text.AddThemeColorOverride("font_color", urgent ? Palette.Amber : Palette.TextMuted);
+        }
+    }
 
     public override string? Badge(ColonySim sim) => sim.State.Radio.Calls.Count > 0 ? sim.State.Radio.Calls.Count.ToString() : null;
 
@@ -176,6 +219,7 @@ public partial class CallsTab : RadioTab
 
     protected override void Build(ColonySim sim)
     {
+        _fades.Clear();
         var calls = RadioMast.Calls(sim);
         if (calls.Count == 0)
         {
@@ -205,28 +249,35 @@ public partial class CallsTab : RadioTab
             head.AddChild(Widgets.Label($"D{call.Tick / tpd + 1} {call.Tick % tpd:00}h", "Small", Palette.TextDim));
             col.AddChild(head);
             col.AddChild(Widgets.Wrapped(call.Text, "Small", Palette.Text));
-            if (call.ExpiresTick is { } expires) col.AddChild(Widgets.Label($"Fades out {RadioPanel.When(sim, expires)}", "Small", Palette.TextDim));
+            if (call.ExpiresTick is { } expires)
+            {
+                var chip = new PanelContainer { ThemeTypeVariation = "Chip", SizeFlagsHorizontal = SizeFlags.ShrinkBegin, TooltipText = "The call leaves the queue then, unanswered." };
+                var fade = Widgets.Label("", "Small", Palette.TextMuted);
+                chip.AddChild(fade);
+                col.AddChild(chip);
+                _fades.Add((chip, fade, expires));
+            }
             var buttons = Widgets.Row(4);
             var id = call.Id;
             switch (call.Kind)
             {
                 case RadioCallKind.Trader:
-                    buttons.AddChild(Widgets.IconButton("ui_trade", "Answer", "Talk to the trader: opens the Trader tab.", () =>
+                    buttons.AddChild(Action("ui_trade", "Answer", "Talk to the trader: opens the Trader tab.", () =>
                     {
                         Session.Execute(new AnswerCall(id));
                         Panel.ShowTab("Trader");
                     }, variation: "Primary"));
                     break;
                 case RadioCallKind.Contract when int.TryParse(call.Tag, out var contract):
-                    buttons.AddChild(Widgets.IconButton("stat_check", "Accept", "Take the contract (see the Contracts tab).", () =>
+                    buttons.AddChild(Action("stat_check", "Accept", "Take the contract (see the Contracts tab).", () =>
                     {
                         Session.Execute(new AcceptContract(contract));
                         Panel.ShowTab("Contracts");
                     }, variation: "Primary"));
-                    buttons.AddChild(Widgets.IconButton("ui_close", "Decline", "Let it go: the call leaves the queue.", () => Session.Execute(new AnswerCall(id)), variation: "Flat"));
+                    buttons.AddChild(Action("ui_close", "Decline", "Let it go: the call leaves the queue.", () => Session.Execute(new AnswerCall(id))));
                     break;
                 default:
-                    buttons.AddChild(Widgets.IconButton("ui_radio", "Answer", "Answer the call.", () => Session.Execute(new AnswerCall(id)), variation: "Primary"));
+                    buttons.AddChild(Action("ui_radio", "Answer", "Answer the call.", () => Session.Execute(new AnswerCall(id)), "Primary"));
                     break;
             }
             col.AddChild(buttons);
@@ -286,12 +337,12 @@ public partial class TraderTab : RadioTab
         }
         if (trader?.Greeting is { Length: > 0 } greeting) Body.AddChild(Widgets.Wrapped($"“{greeting}”", "Muted"));
 
-        Body.AddChild(Widgets.SectionHeader("For sale", "item_schematic"));
+        Body.AddChild(PanelKit.Header("For sale", "item_schematic", "trading"));
         if (radio.Stock.Count == 0) Body.AddChild(Widgets.Label("Nothing you do not know already.", "Muted"));
         foreach (var id in radio.Stock)
             if (sim.Data.Schematics.Find(id) is { } def) Body.AddChild(Offer(sim, def));
 
-        Body.AddChild(Widgets.SectionHeader("Sell", "ui_trade"));
+        Body.AddChild(PanelKit.Header("Sell", "ui_trade", "trading"));
         var items = SellableItems(sim);
         foreach (var id in items)
         {
@@ -308,8 +359,8 @@ public partial class TraderTab : RadioTab
             var gains = RadioPanel.GainChips(sim, RadioMast.SellPrice(sim, def));
             gains.SizeFlagsHorizontal = SizeFlags.ExpandFill;
             bottom.AddChild(gains);
-            bottom.AddChild(Widgets.IconButton("ui_trade", "Sell", Schematics.Has(sim, id) ? "Sell this copy." : "Sell it: the colony does not learn it.",
-                () => Session.Execute(new SellToTrader(ItemId: id)), variation: "Flat"));
+            bottom.AddChild(Action("ui_trade", "Sell", Schematics.Has(sim, id) ? "Sell this copy." : "Sell it: the colony does not learn it.",
+                () => Session.Execute(new SellToTrader(ItemId: id))));
             col.AddChild(bottom);
             card.TooltipText = SchematicText.Tooltip(sim, def);
             Body.AddChild(card);
@@ -333,6 +384,7 @@ public partial class TraderTab : RadioTab
             var sell = Widgets.TextButton($"Sell ×{n}", () => Session.Execute(new SellToTrader(ResearchData: n)),
                 $"Sell {n} Research Data.", "Flat");
             sell.Disabled = data + 1e-9 < n;
+            sell.FocusMode = FocusModeEnum.All;
             dataRow.AddChild(sell);
         }
         dataCol.AddChild(dataRow);
@@ -340,6 +392,13 @@ public partial class TraderTab : RadioTab
         if (items.Count == 0) Body.AddChild(Widgets.Label("No schematic copies or chips in the stores to sell.", "Small"));
     }
 
+    /// <summary>The price option picked per schematic (survives the tab's rebuilds).</summary>
+    private readonly Dictionary<string, int> _choice = new();
+
+    /// <summary>
+    /// One card per schematic for sale: what it is, "Pay with" as a segmented choice of the trader's price options (each a
+    /// row of cost chips whose tooltips give the colony's stock), and one Buy for the picked option.
+    /// </summary>
     private Control Offer(ColonySim sim, SchematicDef def)
     {
         var card = Card();
@@ -354,22 +413,75 @@ public partial class TraderTab : RadioTab
         col.AddChild(Widgets.Wrapped($"Tier {def.Tier}{SchematicText.Arrow(sim, def)}" + (def.Encrypted ? " · encrypted: decrypt at the Electronics Lab" : ""), "Small",
             def.Encrypted ? Palette.Network.Lerp(Palette.TextMuted, 0.3f) : Palette.TextMuted));
         var prices = RadioMast.Prices(sim, def);
+        if (prices.Count == 0) return card;
+        if (!_choice.TryGetValue(def.Id, out var picked) || picked >= prices.Count)
+        {
+            picked = Enumerable.Range(0, prices.Count).FirstOrDefault(i => sim.State.Stockpile.CanAfford(prices[i].Cost), 0);
+            _choice[def.Id] = picked;
+        }
+        col.AddChild(Widgets.Label(prices.Count > 1 ? "PAY WITH (pick one)" : "PRICE", "Heading", Palette.TextMuted));
+        var options = new HFlowContainer();
+        options.AddThemeConstantOverride("h_separation", 4);
+        options.AddThemeConstantOverride("v_separation", 4);
+        col.AddChild(options);
+        var segments = new List<PanelContainer>();
+        var buyRow = Widgets.Row(6);
+        var worth = Widgets.Label("", "Small", Palette.TextMuted);
+        worth.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        buyRow.AddChild(worth);
+        var buy = Action("ui_trade", "Buy", "", () => Session.Execute(new BuyFromTrader(def.Id, _choice[def.Id])), "Primary");
+        buy.CustomMinimumSize = new Vector2(84, 30);
+        buyRow.AddChild(buy);
+        void Pick(int option)
+        {
+            _choice[def.Id] = option;
+            for (var i = 0; i < segments.Count; i++) segments[i].ThemeTypeVariation = i == option ? "CardSelected" : "Inset";
+            var cost = prices[option].Cost;
+            var afford = sim.State.Stockpile.CanAfford(cost);
+            buy.Disabled = !afford;
+            buy.TooltipText = afford ? "Buy it with the picked option." : "Not enough of what is marked with ! (hover a chip for the stock).";
+            worth.Text = $"worth about {TradeValues.Of(sim.Data, cost):0} scrap" + (afford ? "" : " · short");
+            worth.AddThemeColorOverride("font_color", afford ? Palette.TextMuted : Palette.Danger);
+        }
         for (var i = 0; i < prices.Count; i++)
         {
             var option = i;
-            var cost = prices[i].Cost;
-            var row = Widgets.Row(6);
-            var chips = RadioPanel.CostChips(sim, cost);
-            chips.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            row.AddChild(chips);
-            var afford = sim.State.Stockpile.CanAfford(cost);
-            var buy = Widgets.IconButton("ui_trade", "Buy", (afford ? "Buy it" : "Not enough (marked with !)") + $" · worth about {TradeValues.Of(sim.Data, cost):0} scrap",
-                () => Session.Execute(new BuyFromTrader(def.Id, option)), variation: afford ? "Primary" : "");
-            buy.Disabled = !afford;
-            buy.CustomMinimumSize = new Vector2(64, 28);
-            row.AddChild(buy);
-            col.AddChild(row);
+            if (i > 0) options.AddChild(Widgets.Label("or", "Small", Palette.TextDim));
+            var segment = new PanelContainer
+            {
+                ThemeTypeVariation = "Inset",
+                FocusMode = FocusModeEnum.All,
+                MouseFilter = MouseFilterEnum.Stop,
+                MouseDefaultCursorShape = CursorShape.PointingHand,
+                TooltipText = prices.Count > 1 ? "Pay with this option" : "",
+            };
+            // One row per option (a flow inside a segment would shrink to a chip per line).
+            var flow = RadioPanel.CostChips(sim, prices[i].Cost);
+            var chips = Widgets.Row(4);
+            chips.MouseFilter = MouseFilterEnum.Pass;
+            foreach (var chip in flow.GetChildren())
+            {
+                flow.RemoveChild(chip);
+                chips.AddChild(chip);
+            }
+            flow.Free();
+            segment.AddChild(chips);
+            segment.GuiInput += e =>
+            {
+                if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }
+                    or InputEventKey { Pressed: true, Keycode: Key.Enter or Key.KpEnter or Key.Space })
+                {
+                    Pick(option);
+                    segment.AcceptEvent();
+                }
+            };
+            segment.FocusEntered += () => segment.SelfModulate = new Color(1.25f, 1.15f, 0.95f);
+            segment.FocusExited += () => segment.SelfModulate = Colors.White;
+            segments.Add(segment);
+            options.AddChild(segment);
         }
+        col.AddChild(buyRow);
+        Pick(picked);
         return card;
     }
 }
@@ -393,6 +505,8 @@ public partial class ContractsTab : RadioTab
     protected override string Signature(ColonySim sim) =>
         sim.State.Radio.Contract is { } c ? $"{c.Id}:{c.Accepted}:{sim.State.Radio.ContractsDone}" : $"none:{sim.State.Radio.ContractsDone}";
 
+    private static HBoxContainer InfoTip_(Label text) => Hud.Help.InfoTip.Beside(text, "expeditions");
+
     protected override void Build(ColonySim sim)
     {
         var radio = sim.State.Radio;
@@ -413,14 +527,14 @@ public partial class ContractsTab : RadioTab
             top.AddChild(Widgets.Chip(null, contract.Accepted ? "TAKEN" : "OFFERED", contract.Accepted ? Palette.Good : Palette.Amber));
             col.AddChild(top);
             var tpd = sim.Data.Rules.TicksPerDay;
-            col.AddChild(Widgets.Wrapped($"Bring a party home from {zone?.Name ?? contract.ZoneId}" + (zone is null ? "" : $" (threat {zone.Threat})")
-                + $" by day {contract.DueTick / tpd + 1}.", "Small", Palette.Text));
+            col.AddChild(InfoTip_(Widgets.Wrapped($"Bring a party home from {zone?.Name ?? contract.ZoneId}" + (zone is null ? "" : $" (threat {zone.Threat})")
+                + $" by day {contract.DueTick / tpd + 1}.", "Small", Palette.Text)));
             col.AddChild(Widgets.Label("REWARD", "Heading"));
             col.AddChild(RadioPanel.GainChips(sim, contract.Reward));
             if (!contract.Accepted)
             {
                 var id = contract.Id;
-                col.AddChild(Widgets.IconButton("stat_check", "Accept", "Take the contract.", () => Session.Execute(new AcceptContract(id)), variation: "Primary"));
+                col.AddChild(Action("stat_check", "Accept", "Take the contract.", () => Session.Execute(new AcceptContract(id)), "Primary"));
             }
             Body.AddChild(card);
         }
