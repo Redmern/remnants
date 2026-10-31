@@ -312,8 +312,17 @@ public partial class UnitPanel : PanelContainer
 
     private static readonly EquipSlot[] GearSlots = [EquipSlot.Weapon, EquipSlot.Body, EquipSlot.Head, EquipSlot.Tool];
 
+    private string? _gearSignature;
+
     private void RefreshGear(ScavengeData data, Unit unit, UnitProfile profile)
     {
+        // The card only changes with the gear, pack, load and (for Jury-rig) whose turn it is and the AP; Present runs
+        // after every event, and rebuilding the rows each time cost a frame.
+        var signature = $"{unit.Id}|{unit.Ap}|{_presenter.ActingUnit?.Id}|{_presenter.IsMine(unit)}|{profile.Load:0.##}|{profile.CarryCapacity:0.##}|"
+                        + string.Join(",", GearSlots.Select(s => unit.Equipment.GetValueOrDefault(s))) + "|" + string.Join(",", unit.Pack)
+                        + "|" + string.Join(",", unit.Pack.Distinct().Select(id => ElectronicWarfare.ChargesLeft(data, unit, id)));
+        if (signature == _gearSignature) return;
+        _gearSignature = signature;
         Widgets.Clear(_gear);
         foreach (var slot in GearSlots)
         {

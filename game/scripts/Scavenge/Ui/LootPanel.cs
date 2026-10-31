@@ -42,11 +42,19 @@ public partial class LootPanel : PanelContainer
         return true;
     }
 
+    private string? _signature;
+
     public void Refresh(bool busy)
     {
+        var unit = _presenter.ActingUnit;
+        // Rebuild only when what it shows changed: the acting unit, its AP, pack and load, the piles in reach.
+        var signature = unit is null || busy || _presenter.Done ? ""
+            : $"{unit.Id}|{unit.Ap}|{unit.Pos}|{string.Join(",", unit.Pack)}|"
+              + string.Join(";", _presenter.CachesInReach(unit).Select(c => $"{c.Id}:{_presenter.IsExplored(c.Pos)}:{string.Join(",", c.Items)}"));
+        if (signature == _signature) return;
+        _signature = signature;
         Widgets.Clear(_content);
         _buttons.Clear();
-        var unit = _presenter.ActingUnit;
         if (unit is null || busy || _presenter.Done)
         {
             Visible = false;

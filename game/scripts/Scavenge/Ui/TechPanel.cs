@@ -26,12 +26,14 @@ public partial class TechPanel : PanelContainer
     private readonly ScavengePresenter _presenter;
     private readonly VBoxContainer _content = Widgets.Column(4);
     private readonly List<ActionButton> _buttons = new();
+    private readonly PanelRows _rows;
 
     public event Action<IScavengeCommand>? CommandRequested;
     public event Action<TechAim>? AimChosen;
 
     public TechPanel(ScavengePresenter presenter)
     {
+        _rows = new PanelRows(_content);
         _presenter = presenter;
         CustomMinimumSize = new Vector2(300, 0);
         var box = UiKit.Panel(this);
@@ -50,8 +52,14 @@ public partial class TechPanel : PanelContainer
 
     public void Refresh(bool busy, TechAim aim)
     {
-        Widgets.Clear(_content);
+        _rows.Begin();
         _buttons.Clear();
+        Build(busy, aim);
+        _rows.End();
+    }
+
+    private void Build(bool busy, TechAim aim)
+    {
         var unit = _presenter.ActingUnit;
         var sim = _presenter.Sim;
         var data = sim.Data;
@@ -64,19 +72,19 @@ public partial class TechPanel : PanelContainer
 
         if (hasKit)
         {
-            _content.AddChild(Widgets.Label("HACK", "Heading"));
+            _rows.Heading("HACK");
             var cost = Hacking.ApCost(data, unit!);
             var options = _presenter.HackOptions(unit!);
-            if (options.Count == 0) _content.AddChild(Widgets.Wrapped($"Nothing in reach of the {Hacking.Tool(data, unit!)!.Name}.", "Small"));
+            if (options.Count == 0) _rows.Note($"Nothing in reach of the {Hacking.Tool(data, unit!)!.Name}.");
             var first = true;
             foreach (var o in options)
             {
                 var progress = o.Needed > 1 ? $" · {o.Done}/{o.Needed} done" : "";
                 var what = o.Device is { } d ? ScavengeText.HackEffect(d.Kind) : "it fights for you for a few rounds";
                 var locked = o.Device is { } dev && Hacking.LockedOut(_presenter.State, dev, _presenter.Side);
-                var button = Add(new ActionButton("skill_hacking", $"Hack {o.Name}", locked ? "locked out after a failed hack" : $"{o.Chance * 100:0}% on the last step{progress}",
+                var button = Add("skill_hacking", $"Hack {o.Name}", locked ? "locked out after a failed hack" : $"{o.Chance * 100:0}% on the last step{progress}",
                         cost, first ? "scav_hack" : null,
-                        $"Hack the {o.Name.ToLowerInvariant()}: {what}. Each try puts work in; the last rolls {o.Chance * 100:0}%. A failure sets off an alarm, shocks you and locks you out for a while."),
+                        $"Hack the {o.Name.ToLowerInvariant()}: {what}. Each try puts work in; the last rolls {o.Chance * 100:0}%. A failure sets off an alarm, shocks you and locks you out for a while.",
                     () => CommandRequested?.Invoke(new Hack(pid, unit!.Id, o.Device?.Id, o.Target?.Id)));
                 button.SetBlocked(locked || cost > unit!.Ap, cost > unit!.Ap);
                 first = false;
@@ -87,13 +95,13 @@ public partial class TechPanel : PanelContainer
         var rules = data.Rules.Drone;
         var droneItem = drone?.DroneItemId ?? carried!;
         var spec = data.Items[droneItem].Drone!;
-        _content.AddChild(Widgets.Label(ScavengeText.Item(data, droneItem).ToUpperInvariant(), "Heading"));
+        _rows.Heading(ScavengeText.Item(data, droneItem).ToUpperInvariant());
         if (drone is null)
         {
             var battery = Drones.PackedBattery(data, unit!, carried!);
             var max = Drones.MaxBattery(data, unit!, carried!);
-            var deploy = Add(new ActionButton("skill_dronepiloting", "Deploy drone", $"battery {battery}/{max} rounds · then click a tile next to you",
-                rules.DeployApCost, "scav_drone", "Launch the scout drone: it flies over anything, sees far, and shares its sight with your team."),
+            var deploy = Add("skill_dronepiloting", "Deploy drone", $"battery {battery}/{max} rounds · then click a tile next to you",
+                rules.DeployApCost, "scav_drone", "Launch the scout drone: it flies over anything, sees far, and shares its sight with your team.",
                 () => AimChosen?.Invoke(aim == TechAim.Deploy ? TechAim.None : TechAim.Deploy));
             deploy.ToggleMode = true;
             deploy.ButtonPressed = aim == TechAim.Deploy;
@@ -102,16 +110,16 @@ public partial class TechPanel : PanelContainer
         }
 
         var range = Drones.ControlRange(data, unit!, drone.DroneItemId!);
-        var fly = Add(new ActionButton("ui_move", "Fly drone", $"{Drones.FlyRange(sim, drone)} tiles · range {range} · {drone.Battery} rounds left",
-            rules.FlyApCost, "scav_fly", "Fly the drone over walls and water to a lit tile; you pay the AP."),
+        var fly = Add("ui_move", "Fly drone", $"{Drones.FlyRange(sim, drone)} tiles · range {range} · {drone.Battery} rounds left",
+            rules.FlyApCost, "scav_fly", "Fly the drone over walls and water to a lit tile; you pay the AP.",
             () => AimChosen?.Invoke(aim == TechAim.Fly ? TechAim.None : TechAim.Fly));
         fly.ToggleMode = true;
         fly.ButtonPressed = aim == TechAim.Fly;
         fly.SetBlocked(drone.Battery <= 0 || rules.FlyApCost > unit!.Ap, rules.FlyApCost > unit!.Ap);
 
         var inRange = unit!.Pos.Chebyshev(drone.Pos) <= range;
-        var recall = Add(new ActionButton("ui_extract", "Recall drone", inRange ? "back into the pack to recharge" : "out of control range: fly it closer",
-            rules.RecallApCost, "scav_drone", "Call the drone back; it recharges in the pack."),
+        var recall = Add("ui_extract", "Recall drone", inRange ? "back into the pack to recharge" : "out of control range: fly it closer",
+            rules.RecallApCost, "scav_drone", "Call the drone back; it recharges in the pack.",
             () => CommandRequested?.Invoke(new RecallDrone(pid, unit.Id)));
         recall.SetBlocked(!inRange || rules.RecallApCost > unit.Ap, rules.RecallApCost > unit.Ap);
 
@@ -124,8 +132,8 @@ public partial class TechPanel : PanelContainer
                                                                 && Detection.Spots(data, _presenter.State, drone, t)).OrderBy(t => t.Pos.Chebyshev(drone.Pos)))
             {
                 var marked = Drones.IsMarked(_presenter.State, t.Id, _presenter.Side);
-                var mark = Add(new ActionButton("stance_scan", $"Mark {t.Name}", marked ? "marked" : $"seen through walls, +{rules.MarkHitBonus * 100:0}% to hit",
-                    rules.MarkApCost, first ? "scav_mark" : null, "Spotter: your whole team sees the target and hits it more easily for a while."),
+                var mark = Add("stance_scan", $"Mark {t.Name}", marked ? "marked" : $"seen through walls, +{rules.MarkHitBonus * 100:0}% to hit",
+                    rules.MarkApCost, first ? "scav_mark" : null, "Spotter: your whole team sees the target and hits it more easily for a while.",
                     () => CommandRequested?.Invoke(new MarkTarget(pid, unit.Id, t.Id)));
                 mark.SetBlocked(marked || rules.MarkApCost > unit.Ap, rules.MarkApCost > unit.Ap);
                 first = false;
@@ -136,8 +144,8 @@ public partial class TechPanel : PanelContainer
             var first = true;
             foreach (var id in unit.Pack.Distinct().Where(id => data.Items[id].Use is { TargetsTile: true }))
             {
-                var drop = Add(new ActionButton($"item_{data.Items[id].Kind.ToString().ToLowerInvariant()}", $"Drop {ScavengeText.Item(data, id)}",
-                    "where the drone hovers", rules.PayloadApCost, first ? "scav_payload" : null, "Payload: the drone drops it on its tile."),
+                var drop = Add($"item_{data.Items[id].Kind.ToString().ToLowerInvariant()}", $"Drop {ScavengeText.Item(data, id)}",
+                    "where the drone hovers", rules.PayloadApCost, first ? "scav_payload" : null, "Payload: the drone drops it on its tile.",
                     () => CommandRequested?.Invoke(new DropPayload(pid, unit.Id, id)));
                 drop.SetBlocked(rules.PayloadApCost > unit.Ap, rules.PayloadApCost > unit.Ap);
                 first = false;
@@ -162,8 +170,8 @@ public partial class TechPanel : PanelContainer
                 var detail = !inRange ? "out of control range" : kit is null ? "no bandage or med-kit in your pack"
                     : patients.Count == 0 ? $"fly it next to someone hurt · {ScavengeText.Item(data, kit)}"
                     : $"{patients.Count} in reach · then click who · {ScavengeText.Item(data, kit)}";
-                var heal = Add(new ActionButton("ui_heal", "Drone: heal", detail, cost, "scav_drone_action",
-                        "Medic drone: drops a bandage or med-kit from your pack on a friendly unit next to it (stabilizes the downed)."),
+                var heal = Add("ui_heal", "Drone: heal", detail, cost, "scav_drone_action",
+                        "Medic drone: drops a bandage or med-kit from your pack on a friendly unit next to it (stabilizes the downed).",
                     () => AimChosen?.Invoke(aim == TechAim.Heal ? TechAim.None : TechAim.Heal));
                 heal.ToggleMode = true;
                 heal.ButtonPressed = aim == TechAim.Heal;
@@ -178,16 +186,16 @@ public partial class TechPanel : PanelContainer
                     foreach (var id in cache.Items.Distinct().ToList())
                     {
                         var cacheId = cache.Id;
-                        var load = Add(new ActionButton("stat_loot", $"Drone: load {ScavengeText.Item(data, id)}", $"hold {hold}/{spec.Cargo}", cost,
-                                first ? "scav_drone_action" : null, "Cargo drone: winch an item from the cache into the drone's hold."),
+                        var load = Add("stat_loot", $"Drone: load {ScavengeText.Item(data, id)}", $"hold {hold}/{spec.Cargo}", cost,
+                                first ? "scav_drone_action" : null, "Cargo drone: winch an item from the cache into the drone's hold.",
                             () => CommandRequested?.Invoke(new DroneLoad(pid, unit.Id, cacheId, id)));
                         load.SetBlocked(!inRange || hold >= spec.Cargo || cost > unit.Ap, cost > unit.Ap);
                         first = false;
                     }
                 var ferryPoint = DroneRoles.FerryPoint(sim, drone.Pos);
-                var ferry = Add(new ActionButton("ui_extract", "Drone: ferry out",
+                var ferry = Add("ui_extract", "Drone: ferry out",
                         ferryPoint ? $"{hold} item{(hold == 1 ? "" : "s")} home, safe whatever happens" : "fly it next to an exit first", cost, "scav_ferry",
-                        "Cargo drone: flies its hold (and itself) out of the zone. They come home even if the party falls."),
+                        "Cargo drone: flies its hold (and itself) out of the zone. They come home even if the party falls.",
                     () => CommandRequested?.Invoke(new DroneFerry(pid, unit.Id)));
                 ferry.SetBlocked(!inRange || !ferryPoint || cost > unit.Ap, cost > unit.Ap);
                 if (ferryPoint && inRange) ferry.ThemeTypeVariation = "Primary";
@@ -200,8 +208,8 @@ public partial class TechPanel : PanelContainer
                 var ap = gun?.ApCost ?? cost;
                 var detail = !inRange ? "out of control range" : targets.Count == 0 ? "no hostile in its sights"
                     : $"{targets.Count} target{(targets.Count == 1 ? "" : "s")} · {gun?.MinDamage:0}–{gun?.MaxDamage:0} dmg · then click one";
-                var fire = Add(new ActionButton("skill_firearms", "Drone: fire", detail, ap, "scav_drone_action",
-                        "Combat drone: its gun at a hostile it sees, aimed with your Drone Piloting. Loud: it draws fire."),
+                var fire = Add("skill_firearms", "Drone: fire", detail, ap, "scav_drone_action",
+                        "Combat drone: its gun at a hostile it sees, aimed with your Drone Piloting. Loud: it draws fire.",
                     () => AimChosen?.Invoke(aim == TechAim.Fire ? TechAim.None : TechAim.Fire));
                 fire.ToggleMode = true;
                 fire.ButtonPressed = aim == TechAim.Fire;
@@ -217,11 +225,13 @@ public partial class TechPanel : PanelContainer
                                           && u.Status is UnitStatus.Active or UnitStatus.Downed && u.Pos.Chebyshev(drone.Pos) <= 1
                                           && (u.Status == UnitStatus.Downed || u.Hp < u.MaxHp)).OrderBy(u => u.Id).ToList();
 
-    private ActionButton Add(ActionButton button, Action onPressed)
+    private ActionButton Add(string icon, string text, string detail, int apCost, string? hotkey, Action onPressed) =>
+        Add(icon, text, detail, apCost, hotkey, "", onPressed);
+
+    private ActionButton Add(string icon, string text, string detail, int apCost, string? hotkey, string tooltip, Action onPressed)
     {
-        button.Pressed += onPressed;
+        var button = _rows.Button(icon, text, detail, apCost, hotkey, tooltip, onPressed);
         _buttons.Add(button);
-        _content.AddChild(button);
         return button;
     }
 }

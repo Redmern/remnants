@@ -21,6 +21,7 @@ public partial class CoopPanel : PanelContainer
     private readonly VBoxContainer _content = Widgets.Column(4);
     private readonly Label _hint = Widgets.Wrapped("", "Small");
     private readonly List<ActionButton> _buttons = new();
+    private readonly PanelRows _rows;
 
     public event Action<IScavengeCommand>? CommandRequested;
 
@@ -35,6 +36,7 @@ public partial class CoopPanel : PanelContainer
 
     public CoopPanel(ScavengePresenter presenter)
     {
+        _rows = new PanelRows(_content);
         _presenter = presenter;
         CustomMinimumSize = new Vector2(300, 0);
         var box = UiKit.Panel(this);
@@ -56,8 +58,14 @@ public partial class CoopPanel : PanelContainer
     /// <param name="pinging">The ping kind being placed, if any.</param>
     public void Refresh(bool busy, Unit? selected, PingKind? pinging)
     {
-        Widgets.Clear(_content);
+        _rows.Begin();
         _buttons.Clear();
+        Build(busy, selected, pinging);
+        _rows.End();
+    }
+
+    private void Build(bool busy, Unit? selected, PingKind? pinging)
+    {
         var unit = _presenter.ActingUnit;
         if (unit is null || busy)
         {
@@ -77,9 +85,9 @@ public partial class CoopPanel : PanelContainer
         foreach (var offer in _presenter.OffersToMe)
         {
             var from = offer.FromPlayerId;
-            Add(new ActionButton("stat_check", $"Accept {_presenter.PlayerName(from)}'s alliance", "shared sight, no friendly fire", 0, "scav_ally"),
+            Add("stat_check", $"Accept {_presenter.PlayerName(from)}'s alliance", "shared sight, no friendly fire", 0, "scav_ally",
                 () => CommandRequested?.Invoke(new RespondAlliance(pid, unit.Id, from, true))).ThemeTypeVariation = "Primary";
-            Add(new ActionButton("ui_close", "Decline", $"stay hostile to {_presenter.PlayerName(from)}", 0, "scav_decline"),
+            Add("ui_close", "Decline", $"stay hostile to {_presenter.PlayerName(from)}", 0, "scav_decline",
                 () => CommandRequested?.Invoke(new RespondAlliance(pid, unit.Id, from, false)));
         }
 
@@ -88,14 +96,14 @@ public partial class CoopPanel : PanelContainer
             : _presenter.GiveTargetsNear(unit).FirstOrDefault(u => _presenter.IsAlly(u));
         if (target is not null && unit.Pack.Count > 0)
         {
-            _content.AddChild(Widgets.Label($"GIVE TO {target.Name.ToUpperInvariant()}", "Heading"));
+            _rows.Heading($"GIVE TO {target.Name.ToUpperInvariant()}");
             var first = true;
             foreach (var id in unit.Pack.Distinct())
             {
                 var itemId = id;
                 var targetId = target.Id;
-                var button = Add(new ActionButton($"item_{sim.Data.Items[id].Kind.ToString().ToLowerInvariant()}", $"Give {ScavengeText.Item(sim.Data, id)}",
-                        $"goes home with {_presenter.PlayerName(target.PlayerId!.Value)}", coop.GiveApCost, first ? "scav_give" : null),
+                var button = Add($"item_{sim.Data.Items[id].Kind.ToString().ToLowerInvariant()}", $"Give {ScavengeText.Item(sim.Data, id)}",
+                        $"goes home with {_presenter.PlayerName(target.PlayerId!.Value)}", coop.GiveApCost, first ? "scav_give" : null,
                     () => CommandRequested?.Invoke(new GiveItem(pid, unit.Id, targetId, itemId)));
                 button.SetBlocked(CoopActions.CheckGive(sim, unit, target, id) is not null, coop.GiveApCost > unit.Ap);
                 first = false;
@@ -105,7 +113,7 @@ public partial class CoopPanel : PanelContainer
         if (unit.CarryingId is { } carriedId && _presenter.State.FindUnit(carriedId) is { } carried)
         {
             var spot = _presenter.PutDownSpot(unit);
-            var button = Add(new ActionButton("ui_move", $"Put {carried.Name} down", "on a free tile next to you", 0, "scav_carry"),
+            var button = Add("ui_move", $"Put {carried.Name} down", "on a free tile next to you", 0, "scav_carry",
                 () => { if (spot is { } at) CommandRequested?.Invoke(new PutDown(pid, unit.Id, at)); });
             button.SetBlocked(spot is null);
         }
@@ -113,17 +121,17 @@ public partial class CoopPanel : PanelContainer
             foreach (var downed in _presenter.CarryableNear(unit).Take(1))
             {
                 var id = downed.Id;
-                var button = Add(new ActionButton("stat_injured", $"Carry {downed.Name}", $"slower (-{coop.CarryRangePenalty} move) · out with you",
-                    coop.CarryApCost, "scav_carry"), () => CommandRequested?.Invoke(new Carry(pid, unit.Id, id)));
+                var button = Add("stat_injured", $"Carry {downed.Name}", $"slower (-{coop.CarryRangePenalty} move) · out with you",
+                    coop.CarryApCost, "scav_carry", () => CommandRequested?.Invoke(new Carry(pid, unit.Id, id)));
                 button.SetBlocked(coop.CarryApCost > unit.Ap, coop.CarryApCost > unit.Ap);
             }
 
         if (allies.Count > 0)
         {
             var left = coop.PingsPerTurn - unit.PingsUsed;
-            _content.AddChild(Widgets.Label($"PING ({left}/{coop.PingsPerTurn} LEFT)", "Heading"));
+            _rows.Heading($"PING ({left}/{coop.PingsPerTurn} LEFT)");
             var pings = Widgets.Row(4);
-            _content.AddChild(pings);
+            _rows.Fresh(pings);
             foreach (var (kind, hotkey) in new[] { (PingKind.Danger, "scav_ping_danger"), (PingKind.GoHere, "scav_ping_go"), (PingKind.Loot, "scav_ping_loot") })
             {
                 var k = kind;
@@ -143,9 +151,9 @@ public partial class CoopPanel : PanelContainer
             var pending = _presenter.State.Proposals.Any(p => p.FromPlayerId == pid && p.ToPlayerId == to);
             var seen = _presenter.State.Units.Any(u => u.PlayerId == to && u.IsActive && _presenter.CanSee(u));
             if (!seen && !pending) continue;
-            var button = Add(new ActionButton("stat_ally", pending ? $"Offer sent to {_presenter.PlayerName(to)}" : $"Offer {_presenter.PlayerName(to)} an alliance",
+            var button = Add("stat_ally", pending ? $"Offer sent to {_presenter.PlayerName(to)}" : $"Offer {_presenter.PlayerName(to)} an alliance",
                 pending ? "they answer on their turn" : "both parties must see each other", 0,
-                    pending || _presenter.OffersToMe.Any() ? null : "scav_ally"), // Y accepts an open offer first
+                    pending || _presenter.OffersToMe.Any() ? null : "scav_ally", // Y accepts an open offer first
                 () => CommandRequested?.Invoke(new ProposeAlliance(pid, unit.Id, to)));
             button.SetBlocked(pending);
         }
@@ -154,16 +162,16 @@ public partial class CoopPanel : PanelContainer
             foreach (var ally in allies)
             {
                 var other = ally;
-                Add(new ActionButton("ui_trade", $"Trade with {_presenter.PlayerName(other)}", "swap pack items · free, any time", 0, null),
+                Add("ui_trade", $"Trade with {_presenter.PlayerName(other)}", "swap pack items · free, any time", 0, null,
                     () => TradeRequested?.Invoke(other));
             }
 
         if (allies.Count > 0)
         {
             var leaving = _presenter.TeamBreaks.FirstOrDefault(b => b.PlayerId == pid);
-            var button = Add(new ActionButton("ui_leave", leaving is null ? "Leave the alliance" : $"Leaving at round {leaving.EffectiveRound}",
+            var button = Add("ui_leave", leaving is null ? "Leave the alliance" : $"Leaving at round {leaving.EffectiveRound}",
                     $"after {coop.BreakWarningRounds} round's warning both sides see", 0, null,
-                    "Announce that you leave the team. Shared sight and the truce end when the warning is over."),
+                    "Announce that you leave the team. Shared sight and the truce end when the warning is over.",
                 () => CommandRequested?.Invoke(new BreakAlliance(pid, unit.Id)));
             button.SetBlocked(leaving is not null);
             button.ThemeTypeVariation = "Flat";
@@ -193,11 +201,13 @@ public partial class CoopPanel : PanelContainer
         _ => Palette.Amber,
     };
 
-    private ActionButton Add(ActionButton button, Action onPressed)
+    private ActionButton Add(string icon, string text, string detail, int apCost, string? hotkey, Action onPressed) =>
+        Add(icon, text, detail, apCost, hotkey, "", onPressed);
+
+    private ActionButton Add(string icon, string text, string detail, int apCost, string? hotkey, string tooltip, Action onPressed)
     {
-        button.Pressed += onPressed;
+        var button = _rows.Button(icon, text, detail, apCost, hotkey, tooltip, onPressed);
         _buttons.Add(button);
-        _content.AddChild(button);
         return button;
     }
 }

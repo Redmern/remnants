@@ -23,6 +23,10 @@ public partial class PerfMonitor : Node
     private static PerfMonitor? _active;
     private readonly Dictionary<string, double> _spent = new();
 
+    // Per label, the time spent in each frame it ran; and the wall-clock of those frames (the summary's span lines).
+    private readonly Dictionary<string, List<double>> _spans = new();
+    private readonly List<double> _spanFrames = new();
+
     /// <summary>
     /// Times a block for the hitch lines (<c>using var _ = PerfMonitor.Measure("sync");</c>): the frame's time per label
     /// is printed with each hitch. Free when the monitor is off.
@@ -88,6 +92,15 @@ public partial class PerfMonitor : Node
                 $"ticks+{tick - _tick} draws={Monitor(Performance.Monitor.RenderTotalDrawCallsInFrame):F0} " +
                 $"pipelines={Monitor(Performance.Monitor.PipelineCompilationsDraw) + Monitor(Performance.Monitor.PipelineCompilationsSpecialization):F0}" +
                 string.Concat(_spent.Select(kv => $" {kv.Key}={kv.Value:F1}ms")));
+        if (_clock >= WarmUp && _spent.Count > 0)
+        {
+            foreach (var (label, spent) in _spent)
+            {
+                if (!_spans.TryGetValue(label, out var list)) _spans[label] = list = new List<double>();
+                list.Add(spent);
+            }
+            _spanFrames.Add(ms);
+        }
         _spent.Clear();
         _gcs = gcs;
         _tick = tick;
@@ -118,6 +131,13 @@ public partial class PerfMonitor : Node
             GD.Print($"[perf] summary {_clock - WarmUp:F0}s: {Line(_frames)} draws mean={_draws.Average():F0} max={_draws.Max():F0} " +
                 $"nodes {_firstNodes:F0}->{Monitor(Performance.Monitor.ObjectNodeCount):F0} " +
                 $"static {_firstStatic:F0}->{Mb(Monitor(Performance.Monitor.MemoryStatic)):F0}MB managed {_firstManaged:F0}->{Mb(GC.GetTotalMemory(false)):F0}MB");
+            // The frames that ran a measured span (scavenge: a command, a sync, a HUD refresh) and each span's cost.
+            if (_spanFrames.Count > 0) GD.Print($"[perf] span-frames {Line(_spanFrames)}");
+            foreach (var (label, list) in _spans.OrderBy(kv => kv.Key, StringComparer.Ordinal))
+            {
+                var sorted = list.OrderBy(x => x).ToList();
+                GD.Print($"[perf] span {label}: n={list.Count} mean={list.Average():F2}ms p95={sorted[(int)(sorted.Count * 0.95)]:F2}ms max={sorted[^1]:F2}ms");
+            }
             GetTree().Quit();
         }
     }

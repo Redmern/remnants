@@ -23,6 +23,7 @@ public partial class ActionPanel : PanelContainer
     private readonly Label _hint = Widgets.Wrapped("", "Small");
     private readonly VBoxContainer _content = Widgets.Column(4);
     private readonly List<ActionButton> _buttons = new();
+    private readonly PanelRows _rows;
 
     /// <summary>The attack map clicks on enemies will use.</summary>
     public string? ActionId { get; private set; }
@@ -33,6 +34,7 @@ public partial class ActionPanel : PanelContainer
 
     public ActionPanel(ScavengePresenter presenter)
     {
+        _rows = new PanelRows(_content);
         _presenter = presenter;
         CustomMinimumSize = new Vector2(300, 0);
         var box = UiKit.Panel(this);
@@ -59,8 +61,14 @@ public partial class ActionPanel : PanelContainer
 
     public void Refresh(bool busy, string? usingItem)
     {
-        Widgets.Clear(_content);
+        _rows.Begin();
         _buttons.Clear();
+        Build(busy, usingItem);
+        _rows.End();
+    }
+
+    private void Build(bool busy, string? usingItem)
+    {
         var unit = _presenter.ActingUnit;
         if (unit is null || busy)
         {
@@ -79,16 +87,16 @@ public partial class ActionPanel : PanelContainer
                 : $"Click who gets the {ScavengeText.Item(data, item)} (yourself or someone next to you). Right-click or Esc cancels."
             : "Click a lit tile to move, a red target to attack with the chosen action.";
 
-        _content.AddChild(Widgets.Label("ATTACK WITH", "Heading"));
+        _rows.Heading("ATTACK WITH");
         var n = 0;
         foreach (var a in profile.Actions)
         {
             var icon = a.Pattern == AttackPattern.Melee ? "skill_melee" : "skill_firearms";
             var hotkey = n < 3 ? $"scav_attack_{++n}" : null;
-            var button = Add(new ActionButton(icon, a.Name, $"{a.Pattern} {a.Reach} · {a.MinDamage:0}–{a.MaxDamage:0} dmg · {Fmt.Percent(a.Accuracy)}",
+            var button = Add(icon, a.Name, $"{a.Pattern} {a.Reach} · {a.MinDamage:0}–{a.MaxDamage:0} dmg · {Fmt.Percent(a.Accuracy)}",
                 a.ApCost, hotkey, $"{a.Name}: choose it for clicks on targets. Hover a target for its hit chance."
                     + (a.CloseApPenalty > 0 ? $"\n+{a.CloseApPenalty} AP within {a.CloseRange} tiles (scope)." : "")
-                    + (a.ArmorPierce > 0 ? $"\nPierces {a.ArmorPierce:0.#} armor." : "")), () => SetAction(a.Id));
+                    + (a.ArmorPierce > 0 ? $"\nPierces {a.ArmorPierce:0.#} armor." : ""), () => SetAction(a.Id));
             button.ToggleMode = true;
             button.ButtonPressed = a.Id == ActionId;
             button.SetBlocked(a.ApCost > unit.Ap, a.ApCost > unit.Ap);
@@ -97,7 +105,7 @@ public partial class ActionPanel : PanelContainer
         var usable = unit.Pack.Distinct().Where(id => data.Items[id].Use is not null).ToList();
         if (usable.Count > 0)
         {
-            _content.AddChild(Widgets.Label("USE", "Heading"));
+            _rows.Heading("USE");
             var i = 0;
             foreach (var id in usable)
             {
@@ -108,8 +116,8 @@ public partial class ActionPanel : PanelContainer
                 var ap = FieldMedicine.ApCost(unit, use);
                 var charges = ElectronicWarfare.ChargesLeft(data, unit, id);
                 var title = charges is { } c ? $"{ScavengeText.Item(data, id)} · {c} charge{(c == 1 ? "" : "s")}" : $"{ScavengeText.Item(data, id)} ×{count}";
-                var button = Add(new ActionButton(ScavengeText.UseIcon(def), title, ScavengeText.UseDetail(use),
-                    ap, hotkey, ScavengeText.UseTip(data, def, charges)), () => UseItemChosen?.Invoke(id));
+                var button = Add(ScavengeText.UseIcon(def), title, ScavengeText.UseDetail(use),
+                    ap, hotkey, ScavengeText.UseTip(data, def, charges), () => UseItemChosen?.Invoke(id));
                 button.ToggleMode = true;
                 button.ButtonPressed = id == usingItem;
                 button.SetBlocked(ap > unit.Ap || charges is 0, ap > unit.Ap);
@@ -119,7 +127,7 @@ public partial class ActionPanel : PanelContainer
         var nodes = _presenter.NodesInReach(unit).ToList();
         if (nodes.Count > 0)
         {
-            _content.AddChild(Widgets.Label("SALVAGE", "Heading"));
+            _rows.Heading("SALVAGE");
             var first = true;
             foreach (var node in nodes)
             {
@@ -128,8 +136,8 @@ public partial class ActionPanel : PanelContainer
                 var actions = FieldSalvage.ActionsLeft(def, node, unit);
                 var yield = FieldSalvage.Estimate(sim, node, unit).OrderByDescending(kv => kv.Value).FirstOrDefault();
                 var detail = $"{(yield.Key is null ? "" : $"~{yield.Value:0.#} {ScavengeText.Item(data, yield.Key)} · ")}{actions} action{(actions == 1 ? "" : "s")} · noise {def.Noise}";
-                var button = Add(new ActionButton("stat_loot", $"Salvage {def.Name}", detail, def.ApCost, first ? "scav_salvage" : null,
-                    $"Salvage the {def.Name.ToLowerInvariant()}: a lot comes off every few actions into your pack (what does not fit stays on the ground). Loud: enemies within {def.Noise} tiles hear it."),
+                var button = Add("stat_loot", $"Salvage {def.Name}", detail, def.ApCost, first ? "scav_salvage" : null,
+                    $"Salvage the {def.Name.ToLowerInvariant()}: a lot comes off every few actions into your pack (what does not fit stays on the ground). Loud: enemies within {def.Noise} tiles hear it.",
                     () => CommandRequested?.Invoke(new Salvage(_presenter.PlayerId, unit.Id, nodeId)));
                 button.SetBlocked(def.ApCost > unit.Ap, def.ApCost > unit.Ap);
                 first = false;
@@ -140,7 +148,7 @@ public partial class ActionPanel : PanelContainer
         {
             var npcId = npc.Id;
             var cost = data.Rules.Turn.RecruitApCost;
-            var button = Add(new ActionButton("stat_recruit", $"Recruit {npc.Name}", "they follow you and join the colony", cost, "scav_recruit"),
+            var button = Add("stat_recruit", $"Recruit {npc.Name}", "they follow you and join the colony", cost, "scav_recruit",
                 () => CommandRequested?.Invoke(new Recruit(_presenter.PlayerId, unit.Id, npcId)));
             button.SetBlocked(cost > unit.Ap, cost > unit.Ap);
         }
@@ -149,8 +157,8 @@ public partial class ActionPanel : PanelContainer
 
         var beside = ParkedVehicles.Beside(_presenter.State, unit);
         if (_presenter.State.Map.IsExit(unit.Pos) || beside is not null)
-            Add(new ActionButton("ui_extract", beside is not null ? $"Extract by the {beside.Name}" : "Extract here",
-                    "leave the zone with what you carry" + (beside is not null ? "; the vehicle takes its stash home" : ""), 0, "scav_extract"),
+            Add("ui_extract", beside is not null ? $"Extract by the {beside.Name}" : "Extract here",
+                    "leave the zone with what you carry" + (beside is not null ? "; the vehicle takes its stash home" : ""), 0, "scav_extract",
                 () => CommandRequested?.Invoke(new Extract(_presenter.PlayerId, unit.Id))).ThemeTypeVariation = "Primary";
     }
 
@@ -160,11 +168,11 @@ public partial class ActionPanel : PanelContainer
         var state = _presenter.State;
         var data = _presenter.Sim.Data;
         if (ParkedVehicles.Of(state, _presenter.PlayerId) is not { } vehicle) return;
-        _content.AddChild(Widgets.Label("VEHICLE", "Heading"));
+        _rows.Heading("VEHICLE");
         var load = ParkedVehicles.Load(data, vehicle);
         var status = vehicle.Wrecked ? $"{vehicle.Name}: wrecked, its cargo lost"
             : $"{vehicle.Name}  {vehicle.Hp:0}/{vehicle.MaxHp:0} HP · stash {load:0.#}/{vehicle.CargoKg:0} kg";
-        _content.AddChild(Widgets.Chip(Icons.Get("ui_vehicle", 14), status, vehicle.Wrecked ? Palette.Danger : Palette.Gauge(vehicle.Hp / vehicle.MaxHp),
+        _rows.Fresh(Widgets.Chip(Icons.Get("ui_vehicle", 14), status, vehicle.Wrecked ? Palette.Danger : Palette.Gauge(vehicle.Hp / vehicle.MaxHp),
             "Parked at the zone's edge: extract beside it, load loot into it (it goes home with the vehicle). Enemies next to it damage it."));
         if (vehicle.Wrecked || vehicle.Pos.Chebyshev(unit.Pos) > 1) return;
         var cost = data.Rules.Turn.PickUpApCost;
@@ -173,7 +181,7 @@ public partial class ActionPanel : PanelContainer
             .ThenByDescending(id => data.Items[id].Weight).ThenBy(id => id, StringComparer.Ordinal).FirstOrDefault();
         if (haul is not null)
         {
-            var button = Add(new ActionButton("ui_stash", $"Load {ScavengeText.Item(data, haul)}", $"{data.Items[haul].Weight:0.#} kg into the {vehicle.Name}", cost, "scav_stash"),
+            var button = Add("ui_stash", $"Load {ScavengeText.Item(data, haul)}", $"{data.Items[haul].Weight:0.#} kg into the {vehicle.Name}", cost, "scav_stash",
                 () => CommandRequested?.Invoke(new StashItem(_presenter.PlayerId, unit.Id, haul)));
             button.SetBlocked(cost > unit.Ap, cost > unit.Ap);
         }
@@ -181,17 +189,19 @@ public partial class ActionPanel : PanelContainer
             foreach (var id in vehicle.Stash.Distinct().Take(3))
             {
                 var item = id;
-                var button = Add(new ActionButton("stat_loot", $"Take {ScavengeText.Item(data, id)}", "out of the stash (workbench)", cost, null),
+                var button = Add("stat_loot", $"Take {ScavengeText.Item(data, id)}", "out of the stash (workbench)", cost, null,
                     () => CommandRequested?.Invoke(new TakeFromStash(_presenter.PlayerId, unit.Id, item)));
                 button.SetBlocked(cost > unit.Ap, cost > unit.Ap);
             }
     }
 
-    private ActionButton Add(ActionButton button, Action onPressed)
+    private ActionButton Add(string icon, string text, string detail, int apCost, string? hotkey, Action onPressed) =>
+        Add(icon, text, detail, apCost, hotkey, "", onPressed);
+
+    private ActionButton Add(string icon, string text, string detail, int apCost, string? hotkey, string tooltip, Action onPressed)
     {
-        button.Pressed += onPressed;
+        var button = _rows.Button(icon, text, detail, apCost, hotkey, tooltip, onPressed);
         _buttons.Add(button);
-        _content.AddChild(button);
         return button;
     }
 }

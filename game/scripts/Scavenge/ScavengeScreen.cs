@@ -149,6 +149,15 @@ public partial class ScavengeScreen : Node3D
     private void BuildHud()
     {
         _hud = new ScavengeHud(_presenter);
+        Hud.Help.HelpLibrary.Ambient = () =>
+        {
+            // The attack being previewed: the acting unit, its chosen action, and the selected or hovered hostile.
+            var acting = _presenter.ActingUnit;
+            var action = acting is not null && _actionPanel.ActionId is { } id ? _presenter.Sim.Profile(acting).Action(id) : null;
+            var target = _hover is { } p && _presenter.State.UnitAt(p) is { } u && acting is not null && acting.HostileTo(u) && _presenter.CanSee(u) ? u : null;
+            return new Remnants.Core.Help.HelpContext { Scavenge = _presenter.Sim, Attacker = acting, Action = action, Target = target };
+        };
+        TreeExiting += () => Hud.Help.HelpLibrary.Ambient = null;
         AddChild(_hud);
         _hud.Tags.Setup(_presenter, _units, _camera.Camera);
         (_turnBar, _unitPanel, _actionPanel, _stancePanel, _log, _result) =
@@ -467,8 +476,23 @@ public partial class ScavengeScreen : Node3D
         _fog.SetFocus(_selectedId, hovered);
     }
 
+    private bool _hudQueued;
+
+    /// <summary>
+    /// Refreshes the HUD once at the end of this frame, however many events and commands asked for it in the frame
+    /// (a replay step, a sync and a selection change often land together).
+    /// </summary>
     private void RefreshHud()
     {
+        if (_hudQueued) return;
+        _hudQueued = true;
+        Callable.From(RefreshHudNow).CallDeferred();
+    }
+
+    private void RefreshHudNow()
+    {
+        _hudQueued = false;
+        if (!IsInsideTree()) return;
         using var _ = PerfMonitor.Measure("hud");
         var selected = _selectedId is { } id ? _presenter.State.FindUnit(id) : null;
         RefreshFocus();
