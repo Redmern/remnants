@@ -31,18 +31,20 @@ public class MissionReadinessTests
     }
 
     [Fact]
-    public void A_threat_2_mission_wants_three_and_a_threat_1_mission_two()
+    public void A_threat_1_mission_wants_two_and_a_threat_2_mission_as_many_as_may_go()
     {
         var sim = NewStory();
         sim.State.Buildings.First(b => b.DefId == "town_hall").Level = 2;
         var m2 = Real.Mission("m2")!;
         var m7 = Real.Mission("m7")!;
         Assert.Equal(2, MissionReadiness.RecommendedParty(m2));
-        Assert.Equal(3, MissionReadiness.RecommendedParty(m7));
+        Assert.Equal(4, MissionReadiness.RecommendedParty(m7));
+        Assert.Equal(3, MissionReadiness.RecommendedParty(Real.Mission("m4")!));
 
+        sim.AddSurvivor();
         Assert.DoesNotContain(MissionReadiness.Check(sim, m2, Party(sim, "pipe", 2)), w => w.Id == "party");
-        Assert.Contains(MissionReadiness.Check(sim, m7, Party(sim, "machete", 2)), w => w.Id == "party");
-        Assert.DoesNotContain(MissionReadiness.Check(sim, m7, Party(sim, "machete", 3)), w => w.Id == "party");
+        Assert.Contains(MissionReadiness.Check(sim, m7, Party(sim, "machete", 3)), w => w.Id == "party");
+        Assert.DoesNotContain(MissionReadiness.Check(sim, m7, Party(sim, "machete", 4)), w => w.Id == "party");
     }
 
     [Fact]
@@ -55,6 +57,12 @@ public class MissionReadinessTests
         Assert.DoesNotContain(MissionReadiness.Check(sim, m7, Party(sim, "machete")), w => w.Id == "gear");
         // A Mk II pipe counts a tier up.
         Assert.DoesNotContain(MissionReadiness.Check(sim, m7, Party(sim, "pipe+mk2")), w => w.Id == "gear");
+        // Below it, every wave of two or more comes one lighter.
+        var lighter = MissionReadiness.Lighter(m7.Field!);
+        int Spawned(Remnants.Core.Scavenge.FieldMission f) => f.Triggers.SelectMany(t => t.Actions)
+            .Where(a => a.Kind == Remnants.Core.Scavenge.TriggerActionKind.Spawn).Sum(a => a.Count);
+        Assert.True(Spawned(lighter) < Spawned(m7.Field!));
+        Assert.All(lighter.Triggers.SelectMany(t => t.Actions).Where(a => a.Kind == Remnants.Core.Scavenge.TriggerActionKind.Spawn), a => Assert.True(a.Count >= 1));
         // M4 is threat 2 too, but a sneak-and-carry: no gear warning (the Armory is not even open before Town Hall 2).
         Assert.Null(Real.Mission("m4")!.GearTier);
         Assert.DoesNotContain(MissionReadiness.Check(sim, Real.Mission("m4")!, Party(sim, "pipe")), w => w.Id == "gear");

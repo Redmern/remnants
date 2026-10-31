@@ -323,7 +323,10 @@ public static class Campaign
         var tags = new Dictionary<int, string>();
         foreach (var s in party.Where(s => s.UniqueId is not null)) tags[s.Id] = s.UniqueId!;
         if (KeyCarrierSurvivor(sim) is { } key && party.Contains(key)) tags[key.Id] = "key";
-        return new MissionSetup(def.Field!, map, def.Room is { } room ? story.Maps[room] : null, towers, extra.Count > 0 ? extra : null)
+        // A party short of hands or below the mission's gear tier meets every scripted wave one enemy lighter (MissionReadiness.Lighter).
+        var field = sim.State.Expedition is { } expedition && MissionReadiness.Check(sim, def, expedition.Members).Any(w => w.Id is "gear" or "party")
+            ? MissionReadiness.Lighter(def.Field!) : def.Field!;
+        return new MissionSetup(field, map, def.Room is { } room ? story.Maps[room] : null, towers, extra.Count > 0 ? extra : null)
         {
             CampaignFlags = new Dictionary<string, int>(sim.State.Campaign.Flags),
             Tags = tags,

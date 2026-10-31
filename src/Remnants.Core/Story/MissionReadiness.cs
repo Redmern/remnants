@@ -1,5 +1,6 @@
 using Remnants.Core.Colony;
 using Remnants.Core.Items;
+using Remnants.Core.Scavenge;
 using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Story;
@@ -9,13 +10,13 @@ public sealed record ReadinessWarning(string Id, string Text);
 
 /// <summary>
 /// What the briefing and the expedition planner warn about before a story mission (BALANCE.md "Full-game pass 2"): a
-/// wounded survivor (with what the wound does to their aim), a party too small for the threat, and weapons below the
+/// wounded survivor (with what the wound does to their aim), a party too small for the mission, and weapons below the
 /// mission's <see cref="MissionDef.GearTier"/>. Pure: reads the colony, changes nothing. A colony mission only warns about wounds.
 /// </summary>
 public static class MissionReadiness
 {
-    /// <summary>The party a mission of this threat wants: two for threat 1, three from threat 2.</summary>
-    public static int RecommendedParty(MissionDef def) => def.Threat >= 2 ? 3 : 2;
+    /// <summary>The party a mission wants: two for threat 1; from threat 2 as many as may go (three when it sets no cap).</summary>
+    public static int RecommendedParty(MissionDef def) => def.Threat >= 2 ? def.MaxParty ?? 3 : 2;
 
     /// <summary>
     /// Warnings for <paramref name="party"/> (the members picked in the planner) or, with none picked, for the adults at
@@ -36,7 +37,7 @@ public static class MissionReadiness
         var fit = candidates.Count(s => !s.IsInjured && s.Health >= 70);
         if (picked is not null ? picked.Count < want : fit < want)
             warnings.Add(new("party", $"Threat {def.Threat}: send at least {want}. {(picked is not null ? $"You picked {picked.Count}." : $"Only {fit} adults are fit to go.")} " +
-                                      "Someone has to be there to patch up whoever goes down."));
+                                      "Someone has to be there to patch up whoever goes down. (The waves come a little lighter for a small party; not enough to make it safe.)"));
 
         if (def.GearTier is { } tier && sim.Scavenge is { } scavenge)
         {
@@ -48,11 +49,23 @@ public static class MissionReadiness
                 .OrderByDescending(t => t).Take(Math.Max(1, picked?.Count ?? want)).ToList();
             if (tiers.Count == 0 || tiers.Average() < tier)
                 warnings.Add(new("gear", $"Threat {def.Threat}: a stand-up fight, and the party carries {(tier <= 2 ? "starting-tier weapons" : "weapons a tier below it")}. " +
-                                         (tier <= 2 ? "Machetes from the Armory, or a Mk II upgrade at the Gear Bench, even it out."
-                                                    : "Rifles and carbines from the Armory, or Mk upgrades at the Gear Bench, even it out.")));
+                                         (tier <= 2 ? "Machetes from the Armory, or a Mk II upgrade at the Gear Bench, even it out. (The waves come a little lighter for a light party; not enough to make it safe.)"
+                                                    : "Rifles and carbines from the Armory, or Mk upgrades at the Gear Bench, even it out. (The waves come a little lighter for a light party; not enough to make it safe.)")));
         }
         return warnings;
     }
+
+    /// <summary>
+    /// The script as a party short of hands or below the gear tier meets it: every Spawn of two or more brings one fewer.
+    /// The fight scales down a little for a light party, not enough to make it safe (the briefing says so).
+    /// </summary>
+    public static FieldMission Lighter(FieldMission field) => field with
+    {
+        Triggers = field.Triggers.Select(t => t with
+        {
+            Actions = t.Actions.Select(a => a.Kind == TriggerActionKind.Spawn && a.Count >= 2 ? a with { Count = a.Count - 1 } : a).ToList(),
+        }).ToList(),
+    };
 
     /// <summary>A weapon's tier, plus one for a Mk upgrade.</summary>
     private static int GearTier(ItemDef d) => d.Tier + (GearModsData.Parse(d.Id).Mk > 1 ? 1 : 0);
