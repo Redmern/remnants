@@ -5,6 +5,7 @@ using Remnants.Core.Colony;
 using Remnants.Core.Data;
 using Remnants.Core.Survivors;
 using Remnants.Game.Hud;
+using Remnants.Game.Hud.Help;
 
 namespace Remnants.Game.Colony.Ui;
 
@@ -21,7 +22,7 @@ public partial class PerksTab : VBoxContainer
     private readonly StatBar _xp = new("stat_xp");
     private readonly PanelContainer _points = new() { ThemeTypeVariation = "Chip" };
     private readonly Label _pointsText = Widgets.Label("", "Number", Palette.Amber, 15);
-    private readonly HBoxContainer _disciplines = Widgets.Row(4);
+    private readonly GridContainer _disciplines = new() { Columns = 3 };
     private readonly Label _disciplineText = Widgets.Wrapped("", "Small");
     private readonly PerkTree _tree = new();
     private readonly RichTextLabel _detail = Ui.Rich();
@@ -50,6 +51,7 @@ public partial class PerksTab : VBoxContainer
         _points.AddChild(pointsRow);
         _points.TooltipText = "Perk points to spend. Pick an open perk below and Learn it.";
         head.AddChild(_points);
+        head.AddChild(new InfoTip("study_perks"));
         AddChild(head);
 
         var group = new ButtonGroup();
@@ -57,20 +59,36 @@ public partial class PerksTab : VBoxContainer
         foreach (var d in session.Sim.Data.Progression.Disciplines)
         {
             var id = d.Id;
-            var button = Widgets.IconButton($"perk_{d.Icon}", "", $"{d.Name}: {d.Description}", () => SetDiscipline(id), variation: "Tab");
+            // Icon and label in two rows of three: the category reads without hovering.
+            var button = PanelKit.Focusable(Motion.OnPress(Widgets.IconButton($"perk_{d.Icon}", d.Name, $"{d.Name}: {d.Description}", () => SetDiscipline(id), variation: "Tab")));
             button.ToggleMode = true;
             button.ButtonGroup = group;
             button.ButtonPressed = first;
             button.CustomMinimumSize = new Vector2(0, 28);
             button.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-            button.IconAlignment = HorizontalAlignment.Center;
+            button.ClipText = true;
+            button.AddThemeFontSizeOverride("font_size", 13);
+            button.AddThemeConstantOverride("h_separation", 2);
+            button.IconAlignment = HorizontalAlignment.Left;
             if (first) _discipline = d.Id;
             first = false;
             _disciplines.AddChild(button);
         }
+        _disciplines.AddThemeConstantOverride("h_separation", 4);
+        _disciplines.AddThemeConstantOverride("v_separation", 4);
         AddChild(_disciplines);
         _disciplineText.AddThemeColorOverride("font_color", Palette.TextMuted);
-        AddChild(_disciplineText);
+        AddChild(InfoTip.Beside(_disciplineText, "skills"));
+        AddChild(Legend());
+
+        // The picked perk and Learn sit above the tree, so the action never scrolls out of view under a tall tree.
+        var detail = new PanelContainer { ThemeTypeVariation = "Inset" };
+        var col = Widgets.Column(6);
+        detail.AddChild(col);
+        col.AddChild(_detail);
+        _learn = PanelKit.Focusable(Widgets.IconButton("stat_perk", "Learn", "Spend a perk point on this perk", Learn, variation: "Primary"));
+        col.AddChild(_learn);
+        AddChild(detail);
 
         _tree.Picked += id =>
         {
@@ -79,14 +97,23 @@ public partial class PerksTab : VBoxContainer
             Refresh(_survivorId);
         };
         AddChild(_tree);
+    }
 
-        var detail = new PanelContainer { ThemeTypeVariation = "Inset" };
-        var col = Widgets.Column(6);
-        detail.AddChild(col);
-        col.AddChild(_detail);
-        _learn = Widgets.IconButton("stat_perk", "Learn", "Spend a perk point on this perk", Learn, variation: "Primary");
-        col.AddChild(_learn);
-        AddChild(detail);
+    /// <summary>What a node's look means: learned (filled), open (amber outline, with its point cost), locked (dim).</summary>
+    private static Control Legend()
+    {
+        var row = Widgets.Row(10);
+        void Mark(string icon, Color tint, string text)
+        {
+            var item = Widgets.Row(3);
+            item.AddChild(Icons.Rect(Icons.Get(icon, 12), 12, tint));
+            item.AddChild(Widgets.Label(text, "Small", Palette.TextMuted));
+            row.AddChild(item);
+        }
+        Mark("stat_check", Palette.Good, "Learned");
+        Mark("stat_perk", Palette.Amber, "Open (cost in pt)");
+        Mark("stat_lock", Palette.TextDim, "Locked");
+        return row;
     }
 
     private void SetDiscipline(string id)
@@ -216,7 +243,7 @@ public partial class PerksTab : VBoxContainer
 /// </summary>
 public partial class PerkTree : Control
 {
-    private readonly VBoxContainer _rows = Widgets.Column(14);
+    private readonly VBoxContainer _rows = Widgets.Column(10);
     private readonly Dictionary<string, PerkNode> _nodes = new();
     private List<(string From, string To)> _links = new();
 
@@ -292,14 +319,18 @@ public partial class PerkNode : Button
     public PerkNode(PerkStatus st, bool picked)
     {
         Owned = st.Owned;
-        FocusMode = FocusModeEnum.None;
+        FocusMode = FocusModeEnum.All;
+        ActionMode = ActionModeEnum.Press;
         MouseDefaultCursorShape = CursorShape.PointingHand;
-        CustomMinimumSize = new Vector2(72, 44);
+        CustomMinimumSize = new Vector2(72, 40);
         SizeFlagsHorizontal = SizeFlags.ExpandFill;
         ToggleMode = true;
         ButtonPressed = picked;
         AutowrapMode = TextServer.AutowrapMode.Word;
-        Text = st.Perk.Name;
+        // Open perks carry their price: "Quick Study\n1 pt".
+        var open = st.Block is PerkBlock.Ok or PerkBlock.NoPoints;
+        Text = open ? $"{st.Perk.Name}\n{st.Perk.Cost} pt" : st.Perk.Name;
+        if (open) CustomMinimumSize = new Vector2(72, 54);
         AddThemeFontSizeOverride("font_size", 13);
         var (icon, tint) = st.Block switch
         {
@@ -329,7 +360,19 @@ public partial class PerkNode : Button
         AddThemeColorOverride("font_hover_color", text.Lightened(0.2f));
         AddThemeColorOverride("font_pressed_color", Palette.Text);
         AddThemeColorOverride("font_hover_pressed_color", Palette.Text);
-        if (st.Owned) AddThemeStyleboxOverride("normal", HudTheme.CardSelectedStyle);
+        // Learned = filled moss, open = amber outline, locked = dim; the picked one gets a thick amber border.
+        var (fill, edge) = st.Block switch
+        {
+            PerkBlock.Owned => (Palette.Good.Darkened(0.62f), Palette.Good.Darkened(0.2f)),
+            PerkBlock.Ok => (Palette.Raised, Palette.Amber),
+            PerkBlock.NoPoints => (Palette.Raised, Palette.Amber.Darkened(0.45f)),
+            _ => (Palette.Inset, Palette.Edge),
+        };
+        AddThemeStyleboxOverride("normal", HudTheme.Box(fill, edge, 1, 2, 6, 4));
+        AddThemeStyleboxOverride("hover", HudTheme.Box(fill.Lightened(0.08f), edge.Lightened(0.15f), 1, 2, 6, 4));
+        AddThemeStyleboxOverride("pressed", HudTheme.Box(fill.Lightened(0.05f), Palette.Amber, 3, 2, 6, 4));
+        AddThemeStyleboxOverride("hover_pressed", HudTheme.Box(fill.Lightened(0.1f), Palette.Amber, 3, 2, 6, 4));
+        AddThemeStyleboxOverride("focus", HudTheme.Box(Colors.Transparent, Palette.Amber.Lightened(0.3f), 1, 2, 6, 4));
     }
 
     public override void _Notification(int what)
@@ -342,7 +385,7 @@ public partial class PerkNode : Button
     {
         var font = GetThemeFont("font");
         var size = GetThemeFontSize("font_size");
-        var word = Text.Split(' ').Max(w => font.GetStringSize(w, HorizontalAlignment.Left, -1, size).X);
+        var word = Text.Split(' ', '\n').Max(w => font.GetStringSize(w, HorizontalAlignment.Left, -1, size).X);
         var width = Mathf.Ceil(word + GetThemeStylebox("normal").GetMinimumSize().X + 4);
         CustomMinimumSize = new Vector2(Mathf.Max(72, width), CustomMinimumSize.Y);
     }
