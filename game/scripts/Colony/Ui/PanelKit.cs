@@ -347,8 +347,52 @@ public static class PanelKit
     {
         var chip = Widgets.Chip(null, text, color, tooltip);
         chip.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
-        foreach (var label in chip.FindChildren("*", "Label", true, false))
-            if (label is Label l) l.AddThemeFontSizeOverride("font_size", 13);
+        ChipText(chip).AddThemeFontSizeOverride("font_size", 13);
         return chip;
+    }
+
+    /// <summary>The text label inside a <see cref="Widgets.Chip"/>, to update it in place.</summary>
+    public static Label ChipText(PanelContainer chip)
+    {
+        foreach (var child in chip.GetChild(0).GetChildren())
+            if (child is Label label) return label;
+        throw new InvalidOperationException("Not a chip");
+    }
+
+    /// <summary>
+    /// Makes a card act like a button: a left click or Enter / Space picks it, it takes keyboard focus (Up / Down move to
+    /// the card above / below in its list) and shows focus with a warm tint.
+    /// </summary>
+    public static T Clickable<T>(T card, Action onClick) where T : Control
+    {
+        card.FocusMode = Control.FocusModeEnum.All;
+        card.MouseFilter = Control.MouseFilterEnum.Stop;
+        card.MouseDefaultCursorShape = Control.CursorShape.PointingHand;
+        card.FocusEntered += () => card.SelfModulate = new Color(1.25f, 1.12f, 0.95f);
+        card.FocusExited += () => card.SelfModulate = Colors.White;
+        card.GuiInput += e =>
+        {
+            switch (e)
+            {
+                case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }:
+                    onClick();
+                    break;
+                case InputEventKey { Pressed: true, Echo: false, Keycode: Key.Enter or Key.KpEnter or Key.Space }:
+                    card.AcceptEvent();
+                    onClick();
+                    break;
+                case InputEventKey { Pressed: true, Keycode: Key.Up or Key.Down } key when card.GetParent() is { } list:
+                    var step = key.Keycode == Key.Down ? 1 : -1;
+                    for (var i = card.GetIndex() + step; i >= 0 && i < list.GetChildCount(); i += step)
+                        if (list.GetChild(i) is Control { Visible: true, FocusMode: Control.FocusModeEnum.All } next)
+                        {
+                            card.AcceptEvent();
+                            next.GrabFocus();
+                            break;
+                        }
+                    break;
+            }
+        };
+        return card;
     }
 }
