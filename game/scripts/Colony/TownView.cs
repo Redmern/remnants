@@ -7,21 +7,25 @@ using Remnants.Core.Colony;
 namespace Remnants.Game.Colony;
 
 /// <summary>
-/// Renders the town from Core state: ground and scenery (<see cref="TownDressing"/>), plot grid and one node per building. Handles plot
-/// picking (select a building, or choose a plot while placing a new one). Sends no commands itself.
+/// Renders the town from Core state: ground and scenery (<see cref="TownDressing"/>), one node per building on a soft patch
+/// of trodden earth, and the plot grid, which is drawn only while placing (a faint footprint on each free plot, the hovered
+/// one green or red). Handles plot picking (select a building, or choose a plot while placing a new one). Sends no
+/// commands itself.
 /// </summary>
 public partial class TownView : Node3D
 {
-    private static readonly Color PlotColor = new(0.42f, 0.39f, 0.33f);
-    private static readonly Color FreeHover = new(0.35f, 0.6f, 0.3f);
-    private static readonly Color BlockedHover = new(0.65f, 0.25f, 0.2f);
-    private static readonly Color SelectedColor = new(0.85f, 0.65f, 0.25f);
+    private static readonly Color PatchColor = new(0.3f, 0.27f, 0.22f, 0.55f);
+    private static readonly Color FreeHover = new(0.55f, 0.9f, 0.45f, 0.9f);
+    private static readonly Color BlockedHover = new(0.95f, 0.35f, 0.25f, 0.9f);
+    private static readonly Color FreeFootprint = new(0.85f, 0.82f, 0.7f, 0.22f);
+    private static readonly Color SelectedColor = new(0.85f, 0.65f, 0.25f, 0.6f);
 
     /// <summary>Most lamp OmniLights the town runs at once; lamps past it glow without casting light.</summary>
     private const int MaxLampLights = 12;
 
     private readonly Dictionary<int, (Node3D Node, string DefId, int Level, int Plot, Label3D Label, bool Lit, int Lights, int Wreck)> _buildings = new();
-    private readonly List<StandardMaterial3D> _plotMaterials = new();
+    private readonly List<(MeshInstance3D Mesh, StandardMaterial3D Material)> _footprints = new();
+    private readonly List<(MeshInstance3D Mesh, StandardMaterial3D Material)> _patches = new();
 
     private ColonySession _session = null!;
     private TownLayout _layout = null!;
@@ -322,35 +326,60 @@ public partial class TownView : Node3D
 
     private void RefreshPlots()
     {
-        if (_plotMaterials.Count == 0) return;
+        if (_footprints.Count == 0) return;
         var sim = _session.Sim;
         var selectedPlot = SelectedBuildingId is { } id ? sim.State.FindBuilding(id)?.Plot ?? -1 : -1;
-        for (var plot = 0; plot < _plotMaterials.Count; plot++)
+        var placing = PlacingDefId is not null;
+        for (var plot = 0; plot < _footprints.Count; plot++)
         {
-            var color = PlotColor;
-            if (PlacingDefId is not null && plot == _hoverPlot) color = sim.IsPlotFree(plot) ? FreeHover : BlockedHover;
-            else if (PlacingDefId is not null && sim.IsPlotFree(plot)) color = PlotColor.Lerp(FreeHover, 0.25f);
-            else if (plot == selectedPlot) color = SelectedColor;
-            else if (plot == _hoverPlot) color = PlotColor.Lightened(0.15f);
-            _plotMaterials[plot].AlbedoColor = color;
+            var free = sim.IsPlotFree(plot);
+            // Footprints only in build mode: free plots faintly, the hovered one green (free) or red (taken).
+            var (footprint, footMaterial) = _footprints[plot];
+            footprint.Visible = placing && (free || plot == _hoverPlot);
+            if (footprint.Visible) footMaterial.AlbedoColor = plot == _hoverPlot ? free ? FreeHover : BlockedHover : FreeFootprint;
+            // The soft earth patch sits under each building; it warms for the selected one and lifts for the hovered one.
+            var (patch, patchMaterial) = _patches[plot];
+            patch.Visible = !free;
+            if (patch.Visible)
+                patchMaterial.AlbedoColor = plot == selectedPlot ? SelectedColor : plot == _hoverPlot && !placing ? PatchColor.Lightened(0.2f) : PatchColor;
         }
         foreach (var (buildingId, entry) in _buildings)
             entry.Label.Visible = buildingId == SelectedBuildingId || entry.Plot == _hoverPlot;
     }
 
-    /// <summary>The plot top: a light kerb a few texels wide round a plain inside (the albedo colour tints both).</summary>
-    private static ImageTexture PlotFrame()
+    /// <summary>The build-mode footprint: a thin rounded outline with a barely-there fill, transparent outside.</summary>
+    private static ImageTexture Footprint()
     {
-        const int size = 128, border = 2;
-        var image = Image.CreateEmpty(size, size, false, Image.Format.Rgb8);
+        const int size = 128;
+        const float border = 3f, radius = 14f;
+        var image = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
         for (var y = 0; y < size; y++)
         for (var x = 0; x < size; x++)
         {
-            var edge = x < border || y < border || x >= size - border || y >= size - border;
-            image.SetPixel(x, y, edge ? Colors.White : new Color(0.78f, 0.78f, 0.78f));
+            // Distance inside a rounded square, so the corners are soft and nothing reads as a hard tile.
+            var qx = Mathf.Max(Mathf.Abs(x + 0.5f - size / 2f) - (size / 2f - radius), 0);
+            var qy = Mathf.Max(Mathf.Abs(y + 0.5f - size / 2f) - (size / 2f - radius), 0);
+            var inside = radius - Mathf.Sqrt(qx * qx + qy * qy);
+            var edge = Mathf.Clamp(1 - Mathf.Abs(inside - border) / border, 0, 1);
+            var alpha = inside < 0 ? 0 : Mathf.Max(edge, 0.12f);
+            image.SetPixel(x, y, new Color(1, 1, 1, alpha));
         }
         image.GenerateMipmaps();
         return ImageTexture.CreateFromImage(image);
+    }
+
+    /// <summary>The ground under a building: a round patch of darker trodden earth that fades out into the ground.</summary>
+    private static GradientTexture2D Patch()
+    {
+        var gradient = new Gradient();
+        gradient.SetColor(0, Colors.White);
+        gradient.SetColor(1, new Color(1, 1, 1, 0));
+        gradient.AddPoint(0.55f, new Color(1, 1, 1, 0.75f));
+        return new GradientTexture2D
+        {
+            Gradient = gradient, Width = 128, Height = 128, Fill = GradientTexture2D.FillEnum.Radial,
+            FillFrom = new Vector2(0.5f, 0.5f), FillTo = new Vector2(0.5f, 0f),
+        };
     }
 
     private void BuildGround()
@@ -360,21 +389,35 @@ public partial class TownView : Node3D
         var (campfire, playground) = hall is null ? (new Vector3(0, 0, -_layout.Extent.Y / 2 - 4), Vector3.Zero) : _layout.Commons(hall.Plot);
         var fires = TownDressing.Build(this, _layout, _models, campfire, playground);
 
-        // Plots are cleared, packed-earth lots with a pale kerb, a step lighter than the ground around them.
-        var frame = PlotFrame();
-        var tile = new BoxMesh { Size = new Vector3(TownLayout.PlotSize - 0.6f, 0.1f, TownLayout.PlotSize - 0.6f) };
+        // No lots on the ground: each building stands on a soft patch of earth, and the grid shows only in build mode.
+        var footprint = Footprint();
+        var patch = Patch();
+        var footMesh = new PlaneMesh { Size = new Vector2(TownLayout.PlotSize - 0.5f, TownLayout.PlotSize - 0.5f) };
+        var patchMesh = new PlaneMesh { Size = new Vector2(TownLayout.PlotSize * 1.05f, TownLayout.PlotSize * 1.05f) };
         for (var plot = 0; plot < _layout.Count; plot++)
         {
-            var material = Placeholders.Material(PlotColor);
-            material.AlbedoTexture = frame;
-            _plotMaterials.Add(material);
-            AddChild(new MeshInstance3D
+            var foot = Placeholders.Material(FreeFootprint, unshaded: true);
+            foot.AlbedoTexture = footprint;
+            var footNode = new MeshInstance3D
             {
-                Name = $"Plot{plot}",
-                Mesh = tile,
-                MaterialOverride = material,
-                Position = _layout.Center(plot) + new Vector3(0, 0.05f, 0),
-            });
+                Name = $"Footprint{plot}", Mesh = footMesh, MaterialOverride = foot, Visible = false,
+                Position = _layout.Center(plot) + new Vector3(0, 0.06f, 0), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            };
+            AddChild(footNode);
+            _footprints.Add((footNode, foot));
+
+            var earth = Placeholders.Material(PatchColor);
+            earth.AlbedoTexture = patch;
+            // Round in plan, turned per plot so neighbouring patches do not repeat.
+            var patchNode = new MeshInstance3D
+            {
+                Name = $"Patch{plot}", Mesh = patchMesh, MaterialOverride = earth, Visible = false,
+                Position = _layout.Center(plot) + new Vector3(0, 0.02f, 0), Rotation = new Vector3(0, plot * 1.3f, 0),
+                Scale = new Vector3(1 + plot % 3 * 0.06f, 1, 1 - plot % 2 * 0.05f),
+                CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            };
+            AddChild(patchNode);
+            _patches.Add((patchNode, earth));
         }
 
         Lighting = new DayNightLighting { Name = "Lighting" };

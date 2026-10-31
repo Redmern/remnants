@@ -79,7 +79,8 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   per tick by default; pausing keeps the way into the tick; `RealSecondsPerTick` at the current speed), sends every command, saves/loads `user://colony.json`. `Phase` +
   `PhaseChanged` and `TickProgress` serve the day/night presentation (see "Day and night").
 - `scripts/Colony/ColonyScreen` — builds the scene in code and wires views to the session.
-- `TownView` (plot grid as kerbed packed-earth lots, building nodes, plot picking; building names only for the hovered
+- `TownView` (no visible lots: a soft round earth patch under each building, warmer when selected; the plot grid only as
+  faint rounded footprints while placing, the hovered plot green or red; building nodes, plot picking; building names only for the hovered
   and selected building), `TownDressing` (purely visual scenery from the kit: noise-varied earth, a campfire on the
   commons, a loose fence of barriers/sandbags with a gate and a rutted road, dead trees, rubble and ruined shells
   outside), `SurvivorWalkers` (purely visual ambient life: workers circle their workplace with the odd break at home,
