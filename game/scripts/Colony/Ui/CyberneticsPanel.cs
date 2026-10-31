@@ -7,6 +7,7 @@ using Remnants.Core.Data;
 using Remnants.Core.Items;
 using Remnants.Core.Survivors;
 using Remnants.Game.Hud;
+using Remnants.Game.Hud.Help;
 
 namespace Remnants.Game.Colony.Ui;
 
@@ -24,10 +25,16 @@ public partial class CyberneticsPanel : Overlay
     private readonly Label _slotText = Widgets.Wrapped("", "Small");
     private readonly CyberTree _tree = new();
     private readonly RichTextLabel _detail = Ui.Rich();
+    private readonly RichTextLabel _effects = Ui.Rich();
+    private readonly RichTextLabel _needs = Ui.Rich();
+    private readonly Label _humanity = Widgets.Label("", "Number");
+    private readonly Label _upkeep = Widgets.Label("", "Number");
     private readonly VBoxContainer _components = Widgets.Column(4);
+    private readonly Label _queueNote = Widgets.Wrapped("", "Small", Palette.TextMuted);
+    private string _treeSignature = "";
     private readonly Button _queue;
-    private readonly OptionButton _who = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, ClipText = true, FitToLongestItem = false };
-    private readonly OptionButton _part = new() { FocusMode = FocusModeEnum.None, CustomMinimumSize = new Vector2(110, 0) };
+    private readonly OptionButton _who = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.All, ClipText = true, FitToLongestItem = false };
+    private readonly OptionButton _part = new() { FocusMode = FocusModeEnum.All, CustomMinimumSize = new Vector2(110, 0) };
     private readonly GridContainer _compare = new() { Columns = 3 };
     private readonly Button _fit;
     private readonly List<int> _whoIds = new();
@@ -50,7 +57,7 @@ public partial class CyberneticsPanel : Overlay
         var group = new ButtonGroup();
         foreach (var (slot, label, icon) in new[] { (CyberSlot.Arm, "Arms", "body_left_arm"), (CyberSlot.Leg, "Legs", "body_left_leg"), (CyberSlot.Eye, "Eyes", "stat_sight") })
         {
-            var button = Widgets.IconButton(icon, label, $"{label}: the {label.ToLowerInvariant()} tree", () => SetSlot(slot), variation: "Tab");
+            var button = PanelKit.Focusable(Motion.OnPress(Widgets.IconButton(icon, label, $"{label}: the {label.ToLowerInvariant()} tree", () => SetSlot(slot), variation: "Tab")));
             button.ToggleMode = true;
             button.ButtonGroup = group;
             button.ButtonPressed = slot == _slot;
@@ -60,6 +67,7 @@ public partial class CyberneticsPanel : Overlay
         _slots.AddChild(_slotText);
         _slotText.AddThemeColorOverride("font_color", Palette.TextMuted);
         Body.AddChild(_slots);
+        Body.AddChild(Legend());
 
         var main = Widgets.Row(14);
         var left = Widgets.Column(8);
@@ -78,15 +86,31 @@ public partial class CyberneticsPanel : Overlay
             Refresh();
         };
 
-        var side = new ScrollContainer { CustomMinimumSize = new Vector2(360, 500), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
-        var col = Widgets.Column(6);
+        // The picked design: what it is, what it does, what it costs (humanity, upkeep, components), what it needs; the
+        // Queue button stays pinned under the scroll so it is never clipped.
+        var sideCard = Widgets.Column(6);
+        sideCard.CustomMinimumSize = new Vector2(360, 0);
+        var side = new ScrollContainer { CustomMinimumSize = new Vector2(360, 420), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, SizeFlagsVertical = SizeFlags.ExpandFill };
+        var col = Widgets.Column(8);
         col.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         side.AddChild(col);
         col.AddChild(_detail);
+        col.AddChild(Widgets.SectionHeader("Effects", "stat_perk"));
+        col.AddChild(_effects);
+        var costs = Widgets.Row(6);
+        costs.AddChild(CostChip("stat_mood", "Humanity", _humanity, "humanity"));
+        costs.AddChild(CostChip("skill_mechanics", "Upkeep", _upkeep, "prosthetic_tiers"));
+        col.AddChild(costs);
         col.AddChild(_components);
-        _queue = Widgets.IconButton("ui_plus", "Queue", "Queue one at the building that makes it", Queue, variation: "Primary");
-        col.AddChild(_queue);
-        main.AddChild(side);
+        col.AddChild(Widgets.SectionHeader("Requirements", "stat_lock"));
+        col.AddChild(_needs);
+        sideCard.AddChild(side);
+        var footer = Widgets.Column(2);
+        _queue = PanelKit.Focusable(Widgets.IconButton("ui_plus", "Queue", "Queue one at the building that makes it", Queue, variation: "Primary"));
+        footer.AddChild(_queue);
+        footer.AddChild(_queueNote);
+        sideCard.AddChild(footer);
+        main.AddChild(sideCard);
 
         // Compare under the tree: a survivor's limb now against the picked design.
         var compareCard = new PanelContainer { ThemeTypeVariation = "Card" };
@@ -96,7 +120,7 @@ public partial class CyberneticsPanel : Overlay
         pick.AddChild(Widgets.Label("COMPARE", "Heading"));
         pick.AddChild(_who);
         pick.AddChild(_part);
-        _fit = Widgets.IconButton("body_prosthetic", "Book surgery", "Fit one from the stores on this part", Fit, variation: "Primary");
+        _fit = PanelKit.Focusable(Widgets.IconButton("body_prosthetic", "Book surgery", "Fit one from the stores on this part", Fit, variation: "Primary"));
         pick.AddChild(_fit);
         compare.AddChild(pick);
         _compare.Columns = 3;
@@ -157,17 +181,29 @@ public partial class CyberneticsPanel : Overlay
             CyberSlot.Eye => "Eyes are never lost: an eye implant is always an elective augmentation (T3+).",
             _ => $"{statuses.Count(st => st.State == CyberNodeState.Known)} of {statuses.Count} designs known. Specialisations branch from T2 Powered.",
         };
-        _tree.Build(cyber, statuses, specs, _picked, id => sim.Scavenge.Items[id].Name, st => Tooltip(sim, cyber, st));
+        // The tree is rebuilt only when what it draws changed (a design learned, one more owned, another pick), not
+        // when the stores or the compare picker moved.
+        var treeSignature = $"{_slot}|{_picked}|" + string.Join(",", statuses.Select(st => $"{st.Node.Id}{st.State}{st.Owned + st.Fitted}{st.Missing.Count}"));
+        if (treeSignature != _treeSignature)
+        {
+            _treeSignature = treeSignature;
+            _tree.Build(cyber, statuses, specs, _picked, id => sim.Scavenge.Items[id].Name, st => Tooltip(sim, cyber, st));
+        }
         var picked = statuses.FirstOrDefault(st => st.Node.Id == _picked);
         if (picked is null) return;
-        _detail.Text = Detail(sim, cyber, picked);
+        Detail(sim, cyber, picked);
         RefreshComponents(sim, picked);
         var at = MakerBuilding(sim, picked.Recipe);
         _queue.Visible = picked.Recipe is not null;
-        _queue.Disabled = at is null || picked.State == CyberNodeState.Locked || !sim.CanQueue(at, picked.Recipe!).Ok;
+        var check = at is null || picked.Recipe is null ? null : sim.CanQueue(at, picked.Recipe);
+        _queue.Disabled = at is null || picked.State == CyberNodeState.Locked || check is { Ok: false };
         _queue.Text = at is null ? "Queue" : $"Queue at {sim.Data.Buildings[at.DefId].Name}";
-        _queue.TooltipText = picked.State == CyberNodeState.Locked ? "Locked: see what is missing above." : at is null
-            ? $"Build a {sim.Data.Buildings[picked.Recipe!.Building].Name} first." : "Add one to that building's production queue.";
+        _queueNote.Text = picked.Recipe is null ? "No recipe: found or salvaged only."
+            : picked.State == CyberNodeState.Locked ? "Locked: see the ✗ requirements above."
+            : at is null ? $"Build a {sim.Data.Buildings[picked.Recipe.Building].Name} first."
+            : check is { Ok: false } c ? c.Message : $"{picked.Recipe.Work:0} work at the {sim.Data.Buildings[at.DefId].Name}.";
+        _queueNote.AddThemeColorOverride("font_color", _queue.Disabled ? Palette.Warn : Palette.TextMuted);
+        _queue.TooltipText = "Add one to that building's production queue.";
         RefreshCompare(sim, cyber, picked.Node, who, part);
     }
 
@@ -219,35 +255,38 @@ public partial class CyberneticsPanel : Overlay
         _ => Palette.Paint("Locked", Palette.Danger),
     };
 
-    private static string Detail(ColonySim sim, CyberneticsData cyber, CyberNodeStatus st)
+    /// <summary>Fills the detail sections in reading order: what it is, Effects, the Humanity / Upkeep chips, Requirements.</summary>
+    private void Detail(ColonySim sim, CyberneticsData cyber, CyberNodeStatus st)
     {
         var node = st.Node;
         var item = sim.Scavenge!.Items[node.Id];
         var tier = cyber.Tier(node.Tier);
-        var lines = new List<string>
+        var head = new List<string>
         {
             $"[font_size=20][b]{item.Name}[/b][/font_size]",
             $"{CyberText.TierAndSpec(cyber, node)}  ·  {StateText(st.State)}" + (st.Owned + st.Fitted > 0 ? Palette.Paint($"  ·  {st.Owned} in stores, {st.Fitted} fitted", Palette.TextMuted) : ""),
             Palette.Paint(node.Description, Palette.TextMuted),
         };
-        if (node.Spec is { } spec && cyber.Specs.TryGetValue(spec, out var s)) lines.Add(Palette.Paint($"{s.Name}: {s.Description}", Palette.TextMuted));
+        if (node.Spec is { } spec && cyber.Specs.TryGetValue(spec, out var s)) head.Add(Palette.Paint($"{s.Name}: {s.Description}", Palette.TextMuted));
+        _detail.Text = string.Join("\n", head);
 
-        var effects = CyberText.ItemStats(item).Concat(CyberText.Effects(node.Effects, sim.Data)).ToList();
-        lines.Add($"[b]Efficiency[/b] {ColonyText.Percent(item.Prosthetic!.Quality)}" + (effects.Count > 0 ? "  ·  " + Palette.Paint(string.Join(" · ", effects), Palette.Amber) : ""));
+        var fx = new List<string> { $"Efficiency {Palette.Paint(ColonyText.Percent(item.Prosthetic!.Quality), Palette.Amber)}" };
+        fx.AddRange(CyberText.ItemStats(item).Concat(CyberText.Effects(node.Effects, sim.Data)).Select(e => "• " + Palette.Paint(e, Palette.Amber)));
         foreach (var set in cyber.Def.Sets.Where(x => x.Spec == node.Spec && x.Slot == node.Slot && node.Tier >= x.MinTier))
-            lines.Add(Palette.Paint($"Pair: {set.Name} — {set.Description}", Palette.Amber.Lerp(Palette.Text, 0.3f)));
-        var elective = tier.ElectiveHumanity is { } e && node.Tier >= cyber.Surgery.ElectiveFromTier ? $"−{e:0} on a healthy limb" : "never on a healthy limb";
-        lines.Add($"[b]Humanity[/b] −{tier.Humanity:0} as a replacement · {elective}");
-        lines.Add(tier.ServiceDays > 0
-            ? $"[b]Upkeep[/b] every {tier.ServiceDays:0} days: {string.Join(", ", tier.ServiceCost.Select(kv => $"{kv.Value:0.#} {sim.Data.Resources[kv.Key].Name}"))}"
-            : "[b]Upkeep[/b] none");
-        if (tier.Interference) lines.Add(Palette.Paint("Network-grade: Linked within 6 tiles, an Override hacker or any jammer can lock it up in the field.", Palette.Network));
-        var surgery = node.Tier >= cyber.Surgery.FromTier
-            ? $"Surgery at a Med Bay L{item.Prosthetic.MinMedBayLevel}" + (node.Tier >= cyber.Surgery.CyberSurgeonFromTier ? " by a Cyber-Surgeon" : "")
-            : $"Straps on at a Med Bay L{item.Prosthetic.MinMedBayLevel}";
-        lines.Add($"[b]Fitting[/b] {surgery}");
+            fx.Add(Palette.Paint($"Pair: {set.Name} — {set.Description}", Palette.Amber.Lerp(Palette.Text, 0.3f)));
+        if (tier.Interference) fx.Add(Palette.Paint("Network-grade: Linked within 6 tiles, an Override hacker or any jammer can lock it up in the field.", Palette.Network));
+        _effects.Text = string.Join("\n", fx);
 
-        lines.Add("[b]Needs[/b]");
+        var electiveOk = tier.ElectiveHumanity is not null && node.Tier >= cyber.Surgery.ElectiveFromTier;
+        _humanity.Text = $"−{tier.Humanity:0}" + (electiveOk ? $" / −{tier.ElectiveHumanity:0}" : "");
+        _humanity.TooltipText = $"−{tier.Humanity:0} humanity as a replacement for a lost limb; "
+            + (electiveOk ? $"−{tier.ElectiveHumanity:0} as an augmentation of a healthy one." : "never fitted on a healthy limb.");
+        _upkeep.Text = tier.ServiceDays > 0 ? $"every {tier.ServiceDays:0}d" : "none";
+        _upkeep.TooltipText = tier.ServiceDays > 0
+            ? $"Every {tier.ServiceDays:0} days: {string.Join(", ", tier.ServiceCost.Select(kv => $"{kv.Value:0.#} {sim.Data.Resources[kv.Key].Name}"))}"
+            : "No upkeep.";
+
+        var lines = new List<string>();
         if (node.Requires.Count > 0)
         {
             var know = "know " + string.Join(" or ", node.Requires.Select(r => sim.Scavenge.Items[r].Name));
@@ -264,7 +303,47 @@ public partial class CyberneticsPanel : Overlay
             if (r.MinSkill > 0) lines.Add(Palette.Paint($"   a worker with {sim.Data.Jobs[sim.Data.Buildings[r.Building].Job!].Skill} {r.MinSkill:0} · {r.Work:0} work", Palette.TextMuted));
         }
         else lines.Add(Palette.Paint("   no recipe: found or salvaged only", Palette.TextMuted));
-        return string.Join("\n", lines);
+        var surgery = node.Tier >= cyber.Surgery.FromTier
+            ? $"Surgery at a Med Bay L{item.Prosthetic.MinMedBayLevel}" + (node.Tier >= cyber.Surgery.CyberSurgeonFromTier ? " by a Cyber-Surgeon" : "")
+            : $"Straps on at a Med Bay L{item.Prosthetic.MinMedBayLevel}";
+        lines.Add(Palette.Paint($"Fitting: {surgery}", Palette.TextMuted));
+        _needs.Text = string.Join("\n", lines);
+    }
+
+    /// <summary>"[icon] HUMANITY −15 (i)": one of the two cost chips under Effects.</summary>
+    private static Control CostChip(string icon, string title, Label value, string topic)
+    {
+        var chip = new PanelContainer { ThemeTypeVariation = "Chip", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var row = Widgets.Row(4);
+        chip.AddChild(row);
+        row.AddChild(Icons.Rect(Icons.Get(icon, 14), 14, Palette.TextMuted));
+        row.AddChild(Widgets.Label(title.ToUpperInvariant(), "Small", Palette.TextMuted));
+        value.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        value.MouseFilter = MouseFilterEnum.Stop;
+        row.AddChild(value);
+        row.AddChild(new InfoTip(topic));
+        return chip;
+    }
+
+    /// <summary>What the node marks mean: ✓ known, ☆ can be made, lock, ×N owned or fitted; and what a tier is.</summary>
+    private static Control Legend()
+    {
+        var row = Widgets.Row(12);
+        void Mark(string icon, Color tint, string text)
+        {
+            var item = Widgets.Row(4);
+            item.AddChild(Icons.Rect(Icons.Get(icon, 14), 14, tint));
+            item.AddChild(Widgets.Label(text, "Small", Palette.TextMuted));
+            row.AddChild(item);
+        }
+        Mark("stat_check", Palette.Good, "Known");
+        Mark("stat_perk", Palette.Amber, "Can be made");
+        Mark("stat_lock", Palette.TextDim, "Locked");
+        row.AddChild(Widgets.Label("×N  owned or fitted", "Small", Palette.TextMuted));
+        row.AddChild(Widgets.Spacer());
+        row.AddChild(PanelKit.Tip("Tiers", "prosthetic_tiers"));
+        row.AddChild(PanelKit.Tip("Humanity", "humanity"));
+        return row;
     }
 
     private static string Mark(bool ok, string text) => Palette.Paint((ok ? "✓ " : "✗ ") + text, ok ? Palette.Good : Palette.Danger);
@@ -325,11 +404,15 @@ public partial class CyberneticsPanel : Overlay
         Row("Part", nowName, elective ? "augmentation" : "replacement", elective ? Palette.Warn : null);
         Row("Tier", nowNode is null ? "—" : CyberText.Tier(cyber, nowNode.Tier), CyberText.TierAndSpec(cyber, node));
         var optEff = option.Prosthetic!.Quality;
-        Row("Efficiency", ColonyText.Percent(now.Efficiency), ColonyText.Percent(optEff), optEff > now.Efficiency + 1e-9 ? Palette.Good : optEff < now.Efficiency - 1e-9 ? Palette.Danger : null);
+        var effDelta = (optEff - now.Efficiency) * 100;
+        Row("Efficiency", ColonyText.Percent(now.Efficiency),
+            $"→ {ColonyText.Percent(optEff)}" + (Math.Abs(effDelta) < 0.5 ? "" : $" ({(effDelta > 0 ? "+" : "−")}{Math.Abs(effDelta):0}%)"),
+            effDelta > 0.5 ? Palette.Good : effDelta < -0.5 ? Palette.Danger : null);
         var after = optionCost is { } c ? Math.Max(0, who.Body.Humanity + nowCost - c) : (double?)null;
-        Row("Humanity", $"{who.Body.Humanity:0} (−{nowCost:0} here)",
-            after is { } h ? $"{h:0} (−{optionCost:0} here)" : "not allowed",
-            after is { } hh ? CyberText.Humanity(cyber.Humanity, hh).Color : Palette.Danger);
+        var humanityDelta = after is { } a2 ? a2 - who.Body.Humanity : 0;
+        Row("Humanity", $"{who.Body.Humanity:0}" + (nowCost > 0 ? $" (this part −{nowCost:0})" : ""),
+            after is { } h ? $"→ {h:0}" + (Math.Abs(humanityDelta) < 0.5 ? "" : $" ({(humanityDelta > 0 ? "+" : "−")}{Math.Abs(humanityDelta):0})") : "not allowed on this limb",
+            after is null ? Palette.Danger : humanityDelta < -0.5 ? Palette.Danger : humanityDelta > 0.5 ? Palette.Good : null);
         var nowStats = nowItem is null ? new List<string>() : CyberText.ItemStats(nowItem).Concat(CyberText.Effects(nowNode!.Effects, sim.Data)).ToList();
         var optStats = CyberText.ItemStats(option).Concat(CyberText.Effects(node.Effects, sim.Data)).ToList();
         Row("Effects", nowStats.Count == 0 ? "—" : string.Join(" · ", nowStats), optStats.Count == 0 ? "—" : string.Join(" · ", optStats));
@@ -467,7 +550,8 @@ public partial class CyberNode : Button
     public CyberNode(CyberneticsData cyber, CyberNodeStatus st, string name, bool picked)
     {
         Known = st.State == CyberNodeState.Known;
-        FocusMode = FocusModeEnum.None;
+        FocusMode = FocusModeEnum.All;
+        ActionMode = ActionModeEnum.Press;
         MouseDefaultCursorShape = CursorShape.PointingHand;
         CustomMinimumSize = new Vector2(152, 44);
         ToggleMode = true;
