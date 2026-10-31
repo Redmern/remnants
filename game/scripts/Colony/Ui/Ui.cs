@@ -57,5 +57,26 @@ public static class Ui
         return row;
     }
 
+    /// <summary>
+    /// Sets a bar fed once per sim tick so it glides across the next tick instead of stepping (a tick is seconds of real
+    /// time): it trails the sim by at most one tick. A drop (a new order) or a paused game sets it at once.
+    /// </summary>
+    public static void Glide(Godot.Range bar, double value, ColonySession session)
+    {
+        if (bar.HasMeta(GlideTo) && bar.GetMeta(GlideTo).AsDouble() == value) return;
+        bar.SetMeta(GlideTo, value);
+        if (bar.HasMeta(GlideTween) && bar.GetMeta(GlideTween).AsGodotObject() is Tween old && GodotObject.IsInstanceValid(old)) old.Kill();
+        if (value < bar.Value || session.Speed == 0 || !bar.IsInsideTree())
+        {
+            bar.Value = value;
+            return;
+        }
+        var tween = bar.CreateTween();
+        tween.TweenProperty(bar, "value", value, System.Math.Min(session.RealSecondsPerTick, 10));
+        bar.SetMeta(GlideTween, tween);
+    }
+
+    private static readonly StringName GlideTo = "glide_to", GlideTween = "glide_tween";
+
     public static string Hex(Color c) => c.ToHtml(false);
 }

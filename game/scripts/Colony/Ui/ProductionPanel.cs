@@ -397,7 +397,7 @@ public partial class ProductionPanel : PanelContainer
         {
             if (building.Queue.Find(o => o.Id == orderId) is not { } order) continue;
             var recipe = sim.Data.Recipes[order.RecipeId];
-            bar.Value = order.Progress / recipe.Work;
+            Ui.Glide(bar, order.Progress / recipe.Work, _session);
             var amount = order.Repeat ? "repeat" : order.Remaining > 1 ? $"×{order.Remaining}" : "";
             text.Text = $"{recipe.Name} {amount}  {(order.Paid ? $"{order.Progress:0.#}/{recipe.Work:0.#}" : "not started")}";
         }

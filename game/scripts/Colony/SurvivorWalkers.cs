@@ -240,8 +240,9 @@ public partial class SurvivorWalkers : Node3D
     public override void _Process(double delta)
     {
         if (_session is null) return;
-        // At 4x the town would scurry; figures go at most double speed (they are not tied to ticks anyway).
-        var pace = Mathf.Min(_session.Speed, 2);
+        // At 4x the town would scurry; figures go at most double speed (they are not tied to ticks anyway), triple at 8x
+        // so the evening walk home still lands before bedtime.
+        var pace = Mathf.Min(_session.Speed, _session.Speed >= 8 ? 3 : 2);
         var dt = (float)delta * pace;
         if (dt > 0)
         {

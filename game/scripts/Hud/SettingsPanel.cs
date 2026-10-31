@@ -5,7 +5,7 @@ using Godot;
 namespace Remnants.Game.Hud;
 
 /// <summary>
-/// Settings, in tabs: Display (UI scale, fullscreen, window size, vsync), Audio (master / music / effects / ambience
+/// Settings, in tabs: Game (day length), Display (UI scale, fullscreen, window size, vsync), Audio (master / music / effects / ambience
 /// volume on their buses, mute when unfocused, visual sound cues), Camera (pan and zoom speed) and Controls (the hotkey list). Changes apply at once and are saved
 /// when the panel closes (<see cref="GameSettings"/>).
 /// </summary>
@@ -19,12 +19,13 @@ public partial class SettingsPanel : Overlay
         Body.AddChild(Title("SETTINGS"));
         var tabs = new TabContainer { CustomMinimumSize = new Vector2(0, 360) };
         Body.AddChild(tabs);
+        tabs.AddChild(Game());
         tabs.AddChild(Display());
         tabs.AddChild(Audio());
         tabs.AddChild(Camera());
         tabs.AddChild(Controls());
         for (var i = 0; i < tabs.GetTabCount(); i++)
-            tabs.SetTabIcon(i, Icons.Get(new[] { "ui_settings", "stat_sight", "ui_world_map", "ui_menu" }[i], 16));
+            tabs.SetTabIcon(i, Icons.Get(new[] { "ui_play", "ui_settings", "stat_sight", "ui_world_map", "ui_menu" }[i], 16));
 
         var close = Widgets.IconButton("stat_check", "Done", "Save and close", Close, Hotkeys.KeyName("pause_menu"), "Primary");
         close.SizeFlagsHorizontal = SizeFlags.ShrinkEnd;
@@ -39,6 +40,18 @@ public partial class SettingsPanel : Overlay
     }
 
     protected override void OnOpened() => UpdateScaleNote();
+
+    private static Control Game()
+    {
+        var box = Page("Game");
+        var day = new OptionButton { FocusMode = FocusModeEnum.None };
+        foreach (var m in GameSettings.DayLengths) day.AddItem(m == 1 ? "1 minute" : $"{m} minutes");
+        day.Select(Math.Max(0, Array.IndexOf(GameSettings.DayLengths, GameSettings.DayLengthMinutes)));
+        day.ItemSelected += i => GameSettings.DayLengthMinutes = GameSettings.DayLengths[i];
+        box.AddChild(Row("Day length", day,
+            "Real time for one in-game day at normal speed; 2×, 4× and 8× go faster from there. Only the pace changes: work, food and healing still count in-game hours."));
+        return Scroll(box);
+    }
 
     private Control Display()
     {

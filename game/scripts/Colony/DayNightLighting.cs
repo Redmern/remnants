@@ -141,14 +141,14 @@ public partial class DayNightLighting : Node3D
     private double Target()
     {
         if (FixedHour is { } h || _session is null) return FixedHour ?? 12;
-        // Pausing or changing speed resets the session's progress into the tick; never step back within a tick for it.
+        // Never step back within a tick (a load, a changed day length).
         var tick = _session.Sim.State.Tick;
         if (tick != _progressTick)
         {
             _progressTick = tick;
             _progress = 0;
         }
-        _progress = Math.Max(_progress, _session.Speed == 0 ? 0 : _session.TickProgress);
+        _progress = Math.Max(_progress, _session.TickProgress);
         return tick + _progress;
     }
 

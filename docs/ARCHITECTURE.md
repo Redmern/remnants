@@ -74,8 +74,9 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
 
 ## Game layout (`game/`)
 
-- `scripts/Colony/ColonySession` — presenter: owns the `ColonySim`, runs fixed ticks at pause/1x/2x/4x
-  (`SecondsPerTick` real seconds per tick at 1x), sends every command, saves/loads `user://colony.json`. `Phase` +
+- `scripts/Colony/ColonySession` — presenter: owns the `ColonySim`, runs fixed ticks at pause/1x/2x/4x/8x
+  (`SecondsPerTick` real seconds per tick at 1x, from the `GameSettings.DayLengthMinutes` setting, 2 min per day = 5 s
+  per tick by default; pausing keeps the way into the tick; `RealSecondsPerTick` at the current speed), sends every command, saves/loads `user://colony.json`. `Phase` +
   `PhaseChanged` and `TickProgress` serve the day/night presentation (see "Day and night").
 - `scripts/Colony/ColonyScreen` — builds the scene in code and wires views to the session.
 - `TownView` (plot grid as kerbed packed-earth lots, building nodes, plot picking; building names only for the hovered
@@ -83,7 +84,7 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   commons, a loose fence of barriers/sandbags with a gate and a rutted road, dead trees, rubble and ruined shells
   outside), `SurvivorWalkers` (purely visual ambient life: workers circle their workplace with the odd break at home,
   idle adults potter near home or sit at the campfire, children play by the Town Hall, patients sit outside the Med
-  Bay, infants stay home; long walks follow the gutters between plots, figures keep apart, at most 2x speed),
+  Bay, infants stay home; long walks follow the gutters between plots, figures keep apart, at most 2x speed, 3x at 8x),
   `OrbitCamera` (WASD/arrows/middle-drag pan, wheel zoom, Q/R/right-drag rotate; speeds from `GameSettings`). `TownLayout.Commons` puts the
   campfire and playground just outside the grid beside the Town Hall, so they never take a plot.
 - `ModelLibrary` — reads `assets/generated/manifest.json`; buildings map to `{type}_l{level}` (nearest
@@ -124,8 +125,8 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
     their gear) in a private `SubViewport`, one per frame, cached by look; lives on the tree root.
   - `GameSettings` — `user://settings.cfg`: UI scale (root `ContentScaleFactor` = auto by window height × the
     setting), window mode/size, vsync, master/music/sfx/ambience bus volumes (buses made at boot), mute when unfocused,
-    visual sound cues, camera pan/zoom speed.
-    `Hotkeys` installs the InputMap actions (Esc menu, Space pause, 1/2/3 speed, B build, E expedition, I items,
+    visual sound cues, camera pan/zoom speed, day length (Game tab: real minutes per in-game day at 1x).
+    `Hotkeys` installs the InputMap actions (Esc menu, Space pause, 1/2/3/4 speed, B build, E expedition, I items,
     L log, Tab next survivor, Q/R colony camera rotation; Space/Enter end turn in scavenge). `GameSettings.Boot` runs
     once from whichever scene starts first and also attaches `DebugCapture`. `DebugCapture` also attaches `PerfMonitor` for
     `--perf-log` (frame time, draw calls, memory, hitches; see `PERFORMANCE.md`).
@@ -133,7 +134,7 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
     that refresh every tick use it so unchanged values cost no engine call or relayout.
 - `scripts/MainMenu` + `MenuBackdrop` — the title screen over a throwaway grown colony circled by a slow camera:
   Continue (the session's colony, else the save), New Game, Load, Multiplayer, Settings, Quit, debug skirmish.
-- `scripts/Colony/Ui/` — `ColonyHud` lays the colony HUD out and owns its hotkeys: `TopBar` (clock, speed, resource
+- `scripts/Colony/Ui/` — `ColonyHud` lays the colony HUD out and owns its hotkeys: `TopBar` (clock in 10-minute steps between ticks, speed, resource
   chips with the change over the last day and what makes/eats each, population / beds / food-days pressure chips,
   Build / Items / Expedition / World map / Menu), `RosterPanel` of `SurvivorCard`s (portrait, job, health and mood
   bars, badges: injured / worsening, patient, pregnant, away, starving, homeless with its timer; collapsible),
@@ -147,7 +148,7 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   needs a rule Core exposes a query (`MaxUpgradeLevel`, `MaxPartySize`, `HealPerTick`/`HealEta`, `IsWorsening`,
   `CraftEffortPerTick`, `CraftStatus`, `SkillGap`, `CanQueue`, `QualityChances`, `PreviewProfile` for a survivor's field profile with
   a given loadout, `FoodPerDay`/`FoodDays`, `OutputPerTick`); the per-survivor output breakdown uses `JobOutput`'s
-  public factors.
+  public factors. Bars fed once a tick (production queue, research) glide across the next tick (`Ui.Glide`).
 - Electronics and power UI: `ProductionPanel` groups a bench's recipes into tabs by `RecipeDef.Group` (Electronics Lab:
   Components / Devices / Upgrades / Disassembly / Other), badges `NeedsPower` recipes and orders, shows disassembly yields and
   research chance, the lab's powered line and the charging bench (`ColonyState.Charging`, `Power.ChargeEta`); `TopBar`
@@ -233,7 +234,7 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
     sync group (scavenge explore / combat / layers), never restarts a state's track, stems by `Intensity`, layers on
     top (`linked_layer`, `contact_layer` while something is heard but not seen), one-shot stings (`music.extraction_sting`).
   - Scene hooks, one node each: `ColonyAudio` (colony events at their buildings, day/night bed — the one day/night
-    decision is `ColonyAudio.IsNight(ColonySession.Phase)`, refreshed on `PhaseChanged`; the music holds day or night 90 s, since a day passes in seconds —, campfire, work loops at staffed buildings, listener height follows zoom,
+    decision is `ColonyAudio.IsNight(ColonySession.Phase)`, refreshed on `PhaseChanged`; the music holds day or night 45 s, since a day passes in a couple of minutes —, campfire, work loops at staffed buildings, listener height follows zoom,
     music state), `ScavengeAudio` (each replayed event via `ScavengeScreen`'s replay step, so sound lands with the
     animation: attacks by action, moves/deaths/hits by who, barks, overwatch shots, contacts, hacked devices by
     kind, drone hum; zone ambience; combat/explore music and the Linked layer), `UiAudio` (buttons, overlays, side
@@ -913,7 +914,7 @@ An hour is a tick (`hour = tick % ticksPerDay`); a new game starts at `newGame.s
 - **Save** version 10 adds `Building.NightShift`, `Building.Floodlight`, `Survivor.SleepDebt`; older saves load with none
   on and everyone rested.
 - **Presentation** (no rules): `DayNightLighting` (made by `TownView`, so the menu backdrop has it too) eases a shown time
-  toward `Tick + session.TickProgress` and samples keyframes for the sun (east to west, warm low light at dawn and dusk),
+  toward `Tick + session.TickProgress` (so it glides through each multi-second tick) and samples keyframes for the sun (east to west, warm low light at dawn and dusk),
   moonlight, sky colour, ambient and fog; whole days skipped are dropped, so fast-forward and loads never flash, and a
   paused game holds still. Lights register with `AddLight` / `AddGlow` and fade with `Night`: a lantern per building,
   an inside glow in homes and the Town Hall, a floodlight mast on lit outdoor workplaces that burns while the Night Shift

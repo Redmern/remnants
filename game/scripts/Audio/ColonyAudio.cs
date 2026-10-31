@@ -29,7 +29,7 @@ public partial class ColonyAudio : Node3D
     private ColonyEvent? _lastSeen;
 
     /// <summary>Real seconds the colony music keeps to day or night before following the clock again.</summary>
-    private const double MusicDwellSeconds = 90;
+    private const double MusicDwellSeconds = 45;
 
     private bool _musicNight;
     private double _musicFlippedAt = double.NegativeInfinity;
@@ -113,7 +113,8 @@ public partial class ColonyAudio : Node3D
         var night = IsNight(_session.Phase);
         if (_day is not null) _day.Level = night ? 0 : 1;
         if (_night is not null) _night.Level = night ? 1 : 0;
-        // A colony day is a few real minutes at most (12 s at 1x), so the music only turns day/night after holding.
+        // A colony day is a couple of real minutes (less at 4x and 8x), so the music only turns day/night after holding
+        // long enough to be heard; the night is 45 s at the default day length.
         var now = Time.GetTicksMsec() / 1000.0;
         if (night != _musicNight && now - _musicFlippedAt >= MusicDwellSeconds)
         {

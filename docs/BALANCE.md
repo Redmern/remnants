@@ -6,9 +6,12 @@ any data edit and compare.
 
 ## Time scale
 
-One in-game day is 24 ticks; at 1x a tick is 0.5 s, so **a day is 12 s at 1x, 3 s at 4x**. Missions pause colony
-time. With pauses, a few missions and mixed speeds, the first hour of play covers roughly the first 60–120 days, so
-the targets below are in days.
+One in-game day is 24 ticks (a tick is an in-game hour). Real time per tick comes from the **Day length** setting
+(Settings → Game: 1 / 2 / 4 / 8 minutes per day at 1x; default 2, so a tick is 5 s): **a day is 2 min at 1x, 1 min at
+2x, 30 s at 4x, 15 s at 8x**. Only the real-time pacing changes with the setting; every rule counts ticks, so the
+balance in in-game days below holds at any day length and speed. (Before review fixes 1 a tick was 0.5 s, a day 12 s at
+1x; the day counts were measured then and are unchanged.) Missions pause colony time. At the default length, an hour of
+play at mostly 4x–8x with pauses and a few missions covers roughly 60–120 days; at 1x about 30.
 
 ## Targets (pass 1)
 

@@ -112,10 +112,12 @@ public partial class TopBar : PanelContainer
         foreach (var (speed, icon, label, action) in new[]
                  {
                      (0, "ui_pause", "Pause", "toggle_pause"), (1, "ui_play", "Normal speed", "speed_1"),
-                     (2, "ui_fast", "Fast (2×)", "speed_2"), (4, "ui_faster", "Fastest (4×)", "speed_3"),
+                     (2, "ui_fast", "Fast (2×)", "speed_2"), (4, "ui_faster", "Faster (4×)", "speed_3"),
+                     (8, "ui_faster", "Fastest (8×): for long waits", "speed_4"),
                  })
         {
-            var button = Widgets.IconButton(icon, "", label, () => _session.SetSpeed(speed), Hotkeys.KeyName(action), "Tab");
+            // 4× and 8× share the double-arrow icon; the fastest says its speed so the two tell apart.
+            var button = Widgets.IconButton(icon, speed == 8 ? "8×" : "", label, () => _session.SetSpeed(speed), Hotkeys.KeyName(action), "Tab");
             button.ToggleMode = true;
             button.CustomMinimumSize = new Vector2(30, 30);
             _speedButtons[speed] = button;
@@ -264,12 +266,24 @@ public partial class TopBar : PanelContainer
         _ => ("phase_night", Palette.Night),
     };
 
+    /// <summary>The clock runs between ticks too (in 10-minute steps), so a slow day does not sit on one hour.</summary>
+    public override void _Process(double delta) => RefreshClock();
+
+    private void RefreshClock()
+    {
+        var sim = _session.Sim;
+        var hour = sim.State.Tick % sim.Data.Rules.TicksPerDay;
+        var minutes = (int)(_session.TickProgress * 6) * 10;
+        var text = $"{hour:00}:{minutes:00}";
+        if (_hour.Text != text) _hour.Text = text;
+    }
+
     public void Refresh()
     {
         var sim = _session.Sim;
         var rules = sim.Data.Rules;
         _day.Text = $"DAY {sim.State.Tick / rules.TicksPerDay + 1}";
-        _hour.Text = $"{sim.State.Tick % rules.TicksPerDay:00}:00";
+        RefreshClock();
         RefreshPhase(sim);
         RefreshWeather(sim);
         foreach (var (speed, button) in _speedButtons) button.SetPressedNoSignal(speed == _session.Speed);

@@ -4,6 +4,7 @@ using FileAccess = Godot.FileAccess;
 using Remnants.Core.Colony;
 using Remnants.Core.Scavenge;
 using Remnants.Core.Serialization;
+using Remnants.Game.Hud;
 
 namespace Remnants.Game.Colony;
 
@@ -15,15 +16,22 @@ namespace Remnants.Game.Colony;
 /// </summary>
 public sealed class ColonySession
 {
-    /// <summary>Real seconds per sim tick at 1x (one tick is one in-game hour).</summary>
-    public const double SecondsPerTick = 0.5;
+    /// <summary>
+    /// Real seconds per sim tick at 1x (one tick is one in-game hour), from the Day length setting
+    /// (<see cref="GameSettings.DayLengthMinutes"/>, 2 min per day by default: 5 s per tick). Only the real-time pacing
+    /// changes with it; the rules count in ticks.
+    /// </summary>
+    public double SecondsPerTick => GameSettings.DayLengthMinutes * 60.0 / Math.Max(1, Sim.Data.Rules.TicksPerDay);
+
+    /// <summary>Real seconds one tick takes at the current speed (infinite while paused): how long a tick's change takes to show.</summary>
+    public double RealSecondsPerTick => Speed == 0 ? double.PositiveInfinity : SecondsPerTick / Speed;
 
     /// <summary>Upper bound on ticks run in one frame, so a long hitch cannot stall the game.</summary>
     private const int MaxTicksPerFrame = 16;
 
     public const string SavePath = "user://colony.json";
 
-    public static readonly int[] Speeds = [0, 1, 2, 4];
+    public static readonly int[] Speeds = [0, 1, 2, 4, 8];
 
     private double _accumulator;
 
@@ -188,8 +196,9 @@ public sealed class ColonySession
 
     public void SetSpeed(int speed)
     {
+        // The way into the current tick is kept (it counts 1x seconds, so it holds at any speed): with ticks several
+        // seconds long, pausing or changing speed would otherwise throw away part of an hour and the light would stall.
         Speed = Math.Max(0, speed);
-        _accumulator = 0;
         Changed?.Invoke();
     }
 
@@ -199,9 +208,10 @@ public sealed class ColonySession
         _accumulator += delta * Speed;
         var ticks = 0;
         var report = Sim.State.LastReport;
-        while (_accumulator >= SecondsPerTick && ticks < MaxTicksPerFrame)
+        var perTick = SecondsPerTick;
+        while (_accumulator >= perTick && ticks < MaxTicksPerFrame)
         {
-            _accumulator -= SecondsPerTick;
+            _accumulator -= perTick;
             Sim.Tick();
             ticks++;
         }

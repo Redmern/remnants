@@ -324,6 +324,7 @@ public partial class ColonyHud : CanvasLayer
         else if (Hotkeys.Pressed(e, "speed_1")) _session.SetSpeed(1);
         else if (Hotkeys.Pressed(e, "speed_2")) _session.SetSpeed(2);
         else if (Hotkeys.Pressed(e, "speed_3")) _session.SetSpeed(4);
+        else if (Hotkeys.Pressed(e, "speed_4")) _session.SetSpeed(8);
         else if (Hotkeys.Pressed(e, "open_build")) TopBar.EmitBuild();
         else if (Hotkeys.Pressed(e, "open_defend")) TopBar.EmitDefend();
         else if (Hotkeys.Pressed(e, "open_expedition")) Expedition.Toggle();

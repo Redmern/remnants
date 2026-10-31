@@ -8,7 +8,7 @@ namespace Remnants.Game.Hud;
 /// <summary>
 /// Player settings in <c>user://settings.cfg</c>: UI scale, window mode and size, vsync, master / music / sfx /
 /// ambience volume (on the buses of <see cref="Audio.AudioBuses"/>), mute when unfocused, visual sound cues, camera
-/// pan and zoom speed. Also owns the hotkey
+/// pan and zoom speed, day length. Also owns the hotkey
 /// actions (<see cref="Hotkeys"/>), added to the InputMap at boot. <see cref="Boot"/> runs once per process from
 /// whichever scene starts first.
 /// <para>The UI scale is the root window's content scale: <c>auto × UiScale</c>, where auto follows the window height
@@ -42,6 +42,14 @@ public static class GameSettings
     /// <summary>The window lost focus (set by the audio autoload); mutes Master when <see cref="MuteWhenUnfocused"/>.</summary>
     public static bool Unfocused { get; set; }
     public static float CameraPanSpeed { get; set; } = 1f;
+
+    /// <summary>
+    /// Real minutes one in-game day takes at 1x (2x and up scale from it); see <see cref="Colony.ColonySession.SecondsPerTick"/>.
+    /// Pacing only: the rules count in-game hours, so balance is the same at every length.
+    /// </summary>
+    public static int DayLengthMinutes { get; set; } = 2;
+
+    public static readonly int[] DayLengths = [1, 2, 4, 8];
     public static float CameraZoomSpeed { get; set; } = 1f;
 
     public static readonly Vector2I[] Resolutions = [new(1280, 720), new(1600, 900), new(1920, 1080), new(2560, 1440), new(3840, 2160)];
@@ -114,6 +122,7 @@ public static class GameSettings
         cfg.SetValue("display", "weather", (int)WeatherEffects);
         cfg.SetValue("camera", "pan", CameraPanSpeed);
         cfg.SetValue("camera", "zoom", CameraZoomSpeed);
+        cfg.SetValue("game", "day_minutes", DayLengthMinutes);
         cfg.Save(Path);
     }
 
@@ -134,6 +143,7 @@ public static class GameSettings
         WeatherEffects = (WeatherEffects)Math.Clamp((int)cfg.GetValue("display", "weather", (int)WeatherEffects), 0, 2);
         CameraPanSpeed = (float)cfg.GetValue("camera", "pan", CameraPanSpeed);
         CameraZoomSpeed = (float)cfg.GetValue("camera", "zoom", CameraZoomSpeed);
+        DayLengthMinutes = Math.Clamp((int)cfg.GetValue("game", "day_minutes", DayLengthMinutes), DayLengths[0], DayLengths[^1]);
     }
 
     private static void EnsureBuses() => Audio.AudioBuses.Ensure();
@@ -161,7 +171,8 @@ public static class Hotkeys
         new("toggle_pause", "Pause / resume time", "Colony", [Key.Space]),
         new("speed_1", "Normal speed", "Colony", [Key.Key1]),
         new("speed_2", "Fast (2×)", "Colony", [Key.Key2]),
-        new("speed_3", "Fastest (4×)", "Colony", [Key.Key3]),
+        new("speed_3", "Faster (4×)", "Colony", [Key.Key3]),
+        new("speed_4", "Fastest (8×)", "Colony", [Key.Key4]),
         new("open_build", "Build menu", "Colony", [Key.B]),
         new("open_defend", "Defend: place defenses", "Colony", [Key.F]),
         new("open_expedition", "Expedition", "Colony", [Key.E]),

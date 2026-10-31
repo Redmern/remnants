@@ -33,7 +33,8 @@ badly or confuses you. Section 5 says which notes help most.
    Can you tell who is who? Turn the camera with **Q** / **R**.
 2. **Colony basics.** Click a survivor (or press **Tab** to step through them): read their panel (health, mood, body
    parts, job). Open the build menu (**B**) and place something cheap, such as a farm. Unpause with **Space** and speed
-   time up with **1 / 2 / 3** (normal, 2×, 4×). Watch people walk to work, eat and sleep.
+   time up with **1 / 2 / 3 / 4** (normal, 2×, 4×, 8×). A day takes 2 minutes at normal speed (Settings → Game → Day
+   length: 1 / 2 / 4 / 8 minutes). Watch people walk to work, eat and sleep, and the light glide from dawn to dusk.
 3. **Story calls.** Before long the radio crackles: a toast says someone is calling. Open the call. Look at the
    portrait, the dialogue frame and the text. Press **Space** or **Enter** to move the conversation on. The journal
    (story panel) lists the missions, and the first one is **M1 "Home"**.
@@ -58,7 +59,7 @@ badly or confuses you. Section 5 says which notes help most.
 ### Sandbox (about 10 minutes)
 
 9. Main menu → New Game → **Sandbox**. You get a random start and no radio story. Is it clear what to do first without
-   the story to guide you? Build, run time at 4×, send one expedition and see how the first few days feel.
+   the story to guide you? Build, run time at 4× or 8×, send one expedition and see how the first few days feel.
 
 ### Multiplayer with the bot (about 10 minutes)
 
@@ -90,7 +91,7 @@ badly or confuses you. Section 5 says which notes help most.
 |---|---|---|
 | Everywhere | **Esc** | Pause menu / back |
 | Colony | **Space** | Pause / resume time |
-| Colony | **1 / 2 / 3** | Normal speed / 2× / 4× (fast-forward) |
+| Colony | **1 / 2 / 3 / 4** | Normal speed / 2× / 4× / 8× (fast-forward; a day is 2 min at normal speed by default) |
 | Colony | **B / F / E / I / P** | Build menu / place defenses / expedition / items / power overlay |
 | Colony | **Tab**, **Q / R** | Next survivor, turn the camera |
 | Field | **Space** or **Enter** | End turn |

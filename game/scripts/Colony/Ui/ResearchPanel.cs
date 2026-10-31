@@ -112,10 +112,11 @@ public partial class ResearchPanel : PanelContainer
         var who = sim.State.FindSurvivor(order.ResearcherId);
         _runningTitle.Text = def?.Name ?? order.SchematicId;
         _runningTitle.TooltipText = def is null ? "" : SchematicText.Tooltip(sim, def);
-        _bar.Value = order.Work > 0 ? order.Progress / order.Work : 0;
+        var done = order.Work > 0 ? order.Progress / order.Work : 0;
+        Ui.Glide(_bar, done, _session);
         var eta = Research.Eta(sim) is { } t ? ColonyText.Duration(t, sim.Data.Rules) : "—";
         var where = who is null ? "" : who.Away ? " (away: paused)" : who.PatientAtBuildingId is not null ? " (a patient: paused)" : "";
-        _runningText.Text = $"{who?.Name ?? "Nobody"}{where} · ×{(who is null ? 0 : Research.Factor(sim, who)):0.00} · {Fmt.Percent(_bar.Value)} · ETA {eta}";
+        _runningText.Text = $"{who?.Name ?? "Nobody"}{where} · ×{(who is null ? 0 : Research.Factor(sim, who)):0.00} · {Fmt.Percent(done)} · ETA {eta}";
         _runningText.TooltipText = "Works on their day shift only. Intellect and Electronics speed it up.";
         if (who is not null && _portraitFor != who.Id)
         {
