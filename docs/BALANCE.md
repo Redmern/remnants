@@ -1344,6 +1344,8 @@ Seeds 61–120 confirm the raid change: 44.8 ± 1.7 → 41.2 ± 1.5.
 
 ### Still open (next Story balance pass)
 
+Taken up in "Full-game pass 2" below.
+
 The Story colony is far weaker than the Sandbox one with the same bot. Median population is 3 against 10. Expedition
 deaths are 79 in 362 runs against 19 in 481, and raids held 21% against 62%. What we know:
 
@@ -1357,3 +1359,150 @@ deaths are 79 in 362 runs against 19 in 481, and raids held 21% against 62%. Wha
   the next build goal does not need.
 - The repeatable Dead Drop contract (every 7 days) ties up 2–3 adults about four times per colony. Taking it only once
   changed little: Town Hall 2 68.6 → 59, still median population 2.
+
+## Full-game pass 2
+
+Story survival and early pacing, from pass 1's "Still open". Measured with
+`dotnet run --project tools/Remnants.Playtest -c Release -- --data=data --days=90 --seeds=1..60 [--story]`, 60 seeds
+(20 were too noisy for Town Hall 2 in pass 1), and confirmed on seeds 61–120. "Before" is `main` at 6075bd1, "after"
+is the end of this pass. Each change below is marked **game** (data or rules, what a player gets) or **bot** (the
+playtest bot, changed only so it plays like a careful player would; none of it is in the game).
+
+### 60 seeds × 90 days
+
+| | Sandbox before | Sandbox after | Story before | Story after |
+|---|---|---|---|---|
+| median population at day 90 (mean) | 11 (10.9) | 11 (11.0) | 4 (3.2) | **6** (5.8) |
+| colonies wiped out | 0 | 0 | 17 | **1** |
+| Town Hall 2: median day of those that got there (how many) | 38.0 (57) | **34.6** (55) | 65.7 (16) | **41.6** (49) |
+| Town Hall 2: median day, never = 91 | 38.5 | **35.6** | 91 | **43.8** |
+| expedition deaths / runs | 37 / 1467 | 41 / 1459 | 193 / 1096 | **101 / 1424** |
+| raids / held / first held | 545 / 372 (68%) / 57 | 543 / 477 (**88%**) / 57 | 376 / 88 (23%) / 33 | 468 / 265 (**57%**) / 40 |
+| raid dead / taken / wrecked | 12 / 0 / 10 | 4 / 0 / 6 | 39 / 13 / 86 | 14 / 14 / 29 |
+| starvation deaths | 0 | 0 | 6 | 1 |
+
+Sandbox raids held 68% → 88% is mostly the bot: on a warning it now lays barricades and strips on that side.
+
+Seeds 61–120, same builds:
+
+| | Sandbox before | Sandbox after | Story before | Story after |
+|---|---|---|---|---|
+| median population (wiped) | 11 (0) | 10 (0) | 3 (19) | **6** (1) |
+| Town Hall 2 median, never = 91 (reached) | 37.8 (56) | **34.6** (59) | 91 (21) | **45.7** (52) |
+| expedition deaths / runs | 43 / 1459 | 38 / 1461 | 211 / 1107 | **85 / 1452** |
+| raids held / first held | 71% / 53 | 82% / 54 | 19% / 24 | **60%** / 48 |
+
+Story missions (seeds 1–60; median day a mission closes, colonies that close it, deaths over all runs):
+
+| Mission | before | after |
+|---|---|---|
+| M1 Home | 7.0 (59) | 6.8 (59) |
+| M2 First Light | 8.7 (54), 43 dead in 66 runs | 8.9 (58), 8 dead in 64 |
+| M3 Signal in the Rust | 12.4 (51), 30 in 57 | 13.5 (58), 6 in 76 |
+| M4 The Stranger | 20.4 (35), 6 in 49 | 17.1 (48), 13 in 64 |
+| M5 Hold the Line (end of Act 1) | 66.0 (16), 10 in 16 | **41.9** (46), 4 in 46 |
+| M6 The Long Haul | 68.2 (8), 21 in 16 | 61.4 (39), 14 in 42 |
+| M7 The Drowned Clinic | 70.9 (5), 22 in 12 | 70.5 (38), 3 in 38 |
+| M9 The Tally | 70.4 (5) | 73.4 (23) |
+| Dead Drop (repeatable) | 261 runs, 19 dead | 123 runs, 1 dead |
+| The Fence Line (new task) | — | 17.0 (57) |
+
+### Against the goals
+
+| Goal | Result |
+|---|---|
+| 1 Story population within ~20% of Sandbox; expedition deaths close | **Not met.** 6 against 11 (was 4 against 11; wipes 17 → 1). Deaths per run 0.18 → 0.07 (Sandbox 0.03). |
+| 2 Sandbox TH2 ≈ 32–35, Story ≈ 35–40; Act 1 by ~30–40, Act 2 by ~70 | Sandbox **met** (34.6 / 35.6). Story 41.6 among those that get there (65.7 before), 44 with the late ones: close, not met. Act 1 ends at M5 on day 42–46; Act 2 (M6, M7, M9) on days 61–73. |
+| 3 Raids held ≥ 60% in both; first raid survivable | Sandbox **met** (88%). Story 57% / 60% on the two seed ranges (was 23%), first raid held 40 and 48 of 60. |
+| 4 Keep tension | Deaths still happen in every mission and every mode; nothing is free: a short party meets lighter waves but trials still lose 1 a run in M7 with three. |
+
+What is left of the gap: with field missions off (`--story-missions=none`) a Story colony plays exactly like a Sandbox
+one (population 11, Town Hall 2 38.5, raids 83% held), so all of it is the missions themselves. They take two to four
+adults away about every other day through Act 1, and the colony's own scavenging runs go on as before. The bot does not
+trade a scavenging run for a story mission the way a player might. Next pass: look at Act 1's travel and party sizes, and
+let the bot skip a scavenging run when a mission is waiting.
+
+### Bisect: what pushed Sandbox Town Hall 2 from ~30 to ~40
+
+Sandbox, 60 seeds × 60 days (a colony that never gets there counts as day 61), `main` with one system off at a time:
+
+| variant | TH2 mean ± s.e. | median |
+|---|---|---|
+| main | 41.2 ± 1.4 | 38.5 |
+| weather off | 40.5 ± 1.5 | 38.6 |
+| food spoilage off (shelf life ×∞) | 40.7 ± 1.4 | 38.3 |
+| gear mods off | 42.4 ± 1.6 | 38.6 |
+| vehicles off | 41.9 ± 1.5 | 38.6 |
+| raids off | 38.6 ± 1.6 | 34.9 |
+| medicine off (no medicine.json) | **37.0 ± 1.2** | **34.5** |
+| — infection off | 39.4 ± 1.5 | 34.9 |
+| — fractures off / pain off | 42.3 / 41.8 | 38.7 / 38.8 |
+| salvage off | 46.0 ± 1.4 | 43.7 (salvage helps) |
+| expeditions off | 26.3 ± 0.2 | 26.5 |
+| expeditions off, medicine off | 26.3 ± 0.2 | 26.5 |
+| expeditions off, raids off | 25.0 ± 0.2 | 24.8 |
+| night off | 24.1 ± 1.4 | 20.3 (not a fair toggle: the night pass scaled every work rate ×1.71) |
+
+- **Medicine (~4 days) and raids (~2.5 days) are the merges that cost the most.** Medicine costs nothing without
+  expeditions: all of it comes through expedition wounds (infections, Med Bay time). Weather, spoilage, vehicles and mods
+  are within noise.
+- Expeditions as a whole are still the big lever (+15 days), as in pass 1.
+
+Fixes tried (same sweep): Town Hall 2 cost 55/35: 38.2 (median 34.3); 50/30: 37.4 (33.8); infection chance 0.003:
+40.6 (36.2); **55/35 + infection 0.003: 37.7 (32.9)**, taken; 50/30 + 0.003: 36.9 (32.6).
+
+### What changed
+
+Game:
+
+- **Town Hall L2 70 wood / 45 stone → 55 / 35; infection chance 0.005 → 0.003 per hour** (BALANCE.md "Medicine" said ~1
+  in 8 untreated wounds goes bad in a day; now ~1 in 14).
+- **Bed rest beats an infection** (`medBay.bedRestEasesInfection` 0.25): a Med Bay patient with no medicine in the
+  stores now gets over an infection at a quarter of the treated rate, instead of growing it while bed rest holds their
+  health up (a patient could stay in bed for good while the colony had no wood for Herbal Remedy). No change in the
+  sweeps; it closes a trap.
+- **Readiness warnings** in the mission briefing and the expedition planner (`MissionReadiness`): each wounded survivor
+  and what the wound does ("right arm 45%: hits about 55% as often", or the two-handed figure when one arm is fine),
+  also for plain expeditions; a party smaller than the mission wants (two for threat 1, from threat 2 as many as may
+  go); weapons below a mission's new `gearTier` (M6, M7, M9 and the Act 3–4 holds: a Mk upgrade counts one tier up).
+- **Story waves scale down for a light party**: a party the briefing warns about (too few, or under the gear tier)
+  meets every scripted wave of two or more one enemy lighter. M7 trial deaths per run (`--mission=m7 --party=4`):
+  starting gear 3.15 → 0.31, Armory gear 0.44 → 0.34. With three, still 1–2 a run.
+- **Story defenses:** a new Act 1 task, **The Fence Line** (after M2: a Lookout Tower and two spike strips; pays
+  `sch_barricade` and 8 scrap), on a new `Defense` colony-objective kind; 57 of 60 colonies do it by day 17. M5 now also
+  pays a barricade kit (12 wood, 8 scrap) and `sch_sandbag_nest`. `Advice.Next` tips every player to build defenses a
+  few days before the raid grace ends.
+- **Contracts don't drain the colony:** Dead Drop needs Town Hall 2 (it is Act 2 content) and repeats every 10 days
+  (was 7); Doc's Rounds every 14 (was 10). Dead Drop alone cost Story colonies about 7 days of Town Hall 2 (main
+  missions only: 43.6 against 51.0). Story calls never force a launch; every side job stays optional.
+- **Act 1 missions pay toward the colony:** M2 20 wood, M3 10 wood + 15 stone, M4 20 wood + 15 stone (Town Hall 2
+  mean 60.3 → 53.1 in the Story sweep; half the amounts: 56.2).
+- **Marrow's Debt is threat 2** (was 1): if the Tally see the party it is a firefight with three armed scavs and Cole
+  (an armed party of three lost 0.9 a run in trials).
+- **Bug:** M6's trucks came home as colony survivors ("Cargo truck", carrying carbines into M7), because the `Follow`
+  trigger cleared the map's no-recruit flag. Fixed; M7's patient still joins.
+
+Bot (playtest only):
+
+- StoryBot keeps the party together (the one in front waits), joins a friend's fight two on one, breaks off when worn
+  (under half its health, or someone down or nearly so; the mission stays "not done yet"), and on the way out swings only
+  when the blow is worth it. M2 trial deaths (2 starting adults) 0.26 → 0.04 a run, M3 0.28 → 0.05. The trace showed
+  why: one survivor ran ahead and fought three Husks alone, down to a 5% hit chance with both arms hurt.
+- No wounded survivor goes on a story mission (pass 1 only checked health 90+). Gear mods are fitted before a mission.
+- A main mission waits for the party its briefing asks for, and for Armory weapons before a stand-up fight (the Armory
+  moves up the build order and makes machetes for four; after 20 days it goes as it is). Two-person M7 parties were
+  most of its dead: M7 deaths 60 → 3.
+- A side job goes only with three adults spare and nothing in its briefing to warn about; stealth jobs (Marrow's Debt)
+  are left alone, since the bot walks in plain sight. Marrow's Debt is not measured.
+- On a raid warning DefenseBot puts barricades (once known) and strips across the warned side.
+- Tools: `--mission=ID --party=N --kit=armed`, `--story-missions=all|main|none`; the story trace prints each party.
+
+### What a player has to learn (and where the game says it)
+
+| Lesson | Where |
+|---|---|
+| A wounded arm costs most of the hit chance; heal first | briefing and planner warnings (with the figure); "Bed Rest" task |
+| Threat-2 fights want a full party and Armory weapons | briefing warnings; the waves come a little lighter for a light party, and the briefing says that is not safe |
+| Raiders come after about two weeks: tower, strips, barricades on the warned side | The Fence Line task; `Advice.Next` "defenses" tip; M5's barricade kit |
+| Contracts are optional; take them with hands to spare | side missions are hollow diamonds; Dead Drop opens at Town Hall 2 |
+| Stealth jobs are fights if you are seen | Marrow's Debt is threat 2 on its card |

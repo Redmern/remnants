@@ -159,13 +159,15 @@ Seven named characters. Pronouns are given for each so writers and the voice/tex
 ## Structure
 
 Four acts, 17 main missions and 6 side missions. Colony time does not pass during a mission (as today), so days are
-the colony days when the mission becomes available.
+the colony days when the mission becomes available. The Act 1–2 days are the bot's (BALANCE.md "Full-game pass 2"):
+M5 closes around day 42–46, M6, M7 and M9 around days 61–73. A Story colony reaches Town Hall 2 later than a Sandbox
+one (~42 against ~35), since the missions take hands away.
 
 | Act | Name | Days (BALANCE.md timeline) | Zones | Colony milestone it rides on |
 |---|---|---|---|---|
-| 1 | Static | 1–30 | Outskirts, Scrapyard Flats, Suburb Ruins | first buildings → Med Bay (~7) → Kitchen, Tailor → Town Hall 2 (~30) |
-| 2 | Ashgrove | 30–65 | Suburb Ruins, Flooded Mall | House (~45), Armory (~50), Electronics Lab (~58) |
-| 3 | Iron Corridor | 65–110 | Rail Depot, Network Relay | Town Hall 3, Lab L2–3, T2–T3 limbs, a truck |
+| 1 | Static | 1–40 | Outskirts, Scrapyard Flats, Suburb Ruins | first buildings → Med Bay (~7) → Kitchen, Tailor → Town Hall 2 (~35–45) |
+| 2 | Ashgrove | 40–75 | Suburb Ruins, Flooded Mall | Armory (first, for M6/M7), House, Electronics Lab |
+| 3 | Iron Corridor | 75–110 | Rail Depot, Network Relay | Town Hall 3, Lab L2–3, T2–T3 limbs, a truck |
 | 4 | The Black Grid | 110–150 | Network Relay, Core Spire | Hospital, cyborgs, the end |
 
 A story mission is **never** the only thing to do. Normal scavenge runs, building and trading carry on between them.
@@ -216,7 +218,7 @@ General rules:
 - Objectives: reach the shed; loot the antenna from its cache (always there); extract. Three Husks scripted on a
   patrol line the player can see coming; one more wakes up when the antenna is pulled.
 - Fails if: the party wipes (the antenna is lost; the mission comes back in 3 days with the shed now full of Husks).
-- Rewards: `sch_watchtower`; Radio range covers Ashgrove; a free Herbal Remedy batch.
+- Rewards: `sch_watchtower`; Radio range covers Ashgrove; a free Herbal Remedy batch; 20 wood (the shed's timbers).
 - Teaches: move, attack, AP, loot, extract; first schematic toast on return.
 
 **M3 Signal in the Rust** · Type: hack · Map: generated Scrapyard Flats + a fixed terminal room · Threat 1 · Needs: M2, a Workshop
@@ -225,7 +227,7 @@ General rules:
   at the terminal room on round 4. They are a neutral side (an alliance offer is on the table, using co-op alliance
   rules). Talk (accept the offer, split the terminal's loot), or fight, or hack faster and leave.
 - Fails if: the terminal is destroyed (a stray AoE) or the party wipes.
-- Rewards: `sch_camo_cloak`; a hacking kit; `Cole: Met` flag with *respect* +1 (talked), 0 (left), −1 (fought).
+- Rewards: `sch_camo_cloak`; a hacking kit; 10 wood and 15 stone; `Cole: Met` flag with *respect* +1 (talked), 0 (left), −1 (fought).
 - Teaches: hacking, chance, alarms, lockouts; a non-hostile human side.
 
 **M4 The Stranger** · Type: rescue / escort · Map: generated Suburb Ruins, with a fixed house · Threat 2 (no Linked) · Needs: M3, Town Hall 1, a Med Bay
@@ -234,8 +236,8 @@ General rules:
   or bandage); escort them to the exit (they follow, as recruits do, at walking pace). The scout is **Juniper** (she/her),
   Marrow's outrider.
 - Fails if: Juniper dies.
-- Rewards: `sch_bicycle_cart`; Marrow's caravan unlocked (first visit in 2 days, trading opens); Juniper's handcart
-  left at the colony (a free T0 vehicle); Field Manual: Electronics.
+- Rewards: `sch_bicycle_cart`; 20 wood and 15 stone; Marrow's caravan unlocked (first visit in 2 days, trading opens);
+  Juniper's handcart left at the colony (a free T0 vehicle); Field Manual: Electronics.
 - If failed: Marrow comes anyway four days later, angry and grieving; trading opens at worse prices for 20 days.
 - Teaches: fog, Lookout, flares, ambush, carrying/escorting a recruit; vehicles exist.
 
