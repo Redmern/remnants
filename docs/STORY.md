@@ -182,7 +182,7 @@ gets the same colony tasks as optional tips from the existing advice line (`Advi
 |---|---|
 | M1 Home | building, jobs, food, the clock, the Radio Mast |
 | M2 First Light | moving, attacking, AP, looting, extracting; a schematic learned on return |
-| colony tasks | Med Bay, patients, crafting queue, Tailor |
+| colony tasks | Med Bay, patients, crafting queue, Tailor; The Fence Line (a Lookout Tower and spike strips before the first raid) |
 | M3 Signal in the Rust | hacking a locker and a terminal; a non-hostile human party |
 | M4 The Stranger | fog of war, Lookout, flares, recruiting and escorting; the handcart and cart |
 | colony tasks | Town Hall 2, House, perks |
@@ -245,7 +245,8 @@ level, see Implementation) · Threat 2 · Needs: M4, Town Hall 2 (~day 30)
 - Objectives: up to 4 survivors defend the perimeter; 3 waves of Husks; keep the Radio Mast standing and nobody
   carried off. Each Watchtower the colony has built is a raised overwatch tile on the map.
 - Fails if: the Radio Mast is destroyed (it is rebuilt at cost, and Iris is off-air for 5 days), or every defender is down.
-- Rewards: `sch_workshop_3`; 6 Research Data from the wrecked Husks' Link chips; end of Act 1 card.
+- Rewards: `sch_workshop_3`; 6 Research Data from the wrecked Husks' Link chips; Marrow's barricade kit (wood and scrap for
+  four barricades) and `sch_sandbag_nest`; end of Act 1 card.
 - Teaches: Overwatch, Brace, defense, why the Watchtower matters.
 
 ### Act 2 — Ashgrove
@@ -395,8 +396,8 @@ carries over between them, wounds and all) · Threat 4 · Needs: M16
 
 | Mission | Type | Needs | Rewards | Notes |
 |---|---|---|---|---|
-| **Marrow's Debt** | retrieve, generated Scrapyard Flats | M6 | `sch_radio_mast_2`, `sch_muffler`, fuel | Marrow owes the Tally; get his ledger back before Cole reads it. |
-| **Doc's Rounds** (repeatable) | rescue, generated Ashgrove | M7 | medicine, a recruit with an injury, Research Data | Every 10 days a patient radios Doc; bring them in alive. |
+| **Marrow's Debt** | stealth retrieve (threat 2 if seen: the Tally and Cole), generated Scrapyard Flats | M6 | `sch_radio_mast_2`, `sch_muffler`, fuel | Marrow owes the Tally; get his ledger back before Cole reads it. |
+| **Doc's Rounds** (repeatable) | rescue, generated Ashgrove | M7 | medicine, a recruit with an injury, Research Data | Every 14 days a patient radios Doc; bring them in alive. |
 | **Seven's Name** | stealth, generated Suburb Ruins | Seven in colony, Act 3 | `sch_spec_hacker`, `sch_spec_silent`; Seven chooses a name and pronouns | Seven leads the party to the yellow-tiled kitchen. Whose it was stays open. |
 | **Cole's Last Job** | ally: escort; enemy: duel (defend colony) | M9, Act 3 | ally: `sch_spec_gun`, Cole joins; enemy: `sch_spec_blade` from his body | The Tally's last stand against the Linked, or against you. |
 | **Children of the Choir** | rescue, generated Network Relay | M14, Pell an adult | 2–3 child recruits (de-Linked, Humanity 60) | Linked children are kept at the Relay. Getting them out is the most human thing in the game. Shown only if colony Humanity ≥ 50. |
@@ -605,7 +606,10 @@ keeps everything, the Radio Mast keeps giving contracts, and Marrow (or Dee) kee
 > - **Pell:** he starts at the beginning of his childhood, so he grows up during Act 1. A starting age of 9 would make
 >   him an adult within the first week.
 > - **Colony tasks:** they are small task missions in the journal: Med Bay, bandages, a patient, Tailor, Town Hall 2,
->   a child on the Farm.
+>   a child on the Farm, The Fence Line (a Lookout Tower and two spike strips; pays `sch_barricade`).
+> - **Briefing warnings:** the briefing and the planner warn about wounded survivors (with what the wound does to
+>   their aim), a party smaller than the threat wants (2, or 3 from threat 2) and weapons below a mission's `gearTier`
+>   (`MissionReadiness`; BALANCE.md "Full-game pass 2").
 > - **M3:** a toolbox in the terminal room holds a hacking kit, so a first-time party can hack.
 > - **M4:** a crawler ambushes once Juniper is moved.
 > - **M5:** waves come on rounds 1, 4 and 6. Each built Watchtower level is one raised post. Up to 4 survivors may go.

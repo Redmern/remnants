@@ -6,7 +6,7 @@
     "unique": true,
     "levels": [
       { "cost": {},                                      "workerSlots": 0, "beds": 0 },
-      { "cost": { "wood": 70,  "stone": 45 },            "workerSlots": 0, "beds": 0 },
+      { "cost": { "wood": 55,  "stone": 35 },            "workerSlots": 0, "beds": 0 },
       { "cost": { "wood": 160, "stone": 140, "scrap": 40 }, "workerSlots": 0, "beds": 0 }
     ]
   },

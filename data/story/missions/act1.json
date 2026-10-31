@@ -44,6 +44,7 @@
       ]
     },
     "rewards": [
+      { "kind": "Resource", "id": "wood", "value": 20 },
       { "kind": "Schematic", "id": "sch_watchtower" },
       { "kind": "RevealZone", "id": "suburb_ruins", "text": "Radio range now covers Ashgrove" },
       { "kind": "Resource", "id": "medicine", "value": 3 },
@@ -148,6 +149,8 @@
       ]
     },
     "rewards": [
+      { "kind": "Resource", "id": "wood", "value": 10 },
+      { "kind": "Resource", "id": "stone", "value": 15 },
       { "kind": "Schematic", "id": "sch_camo_cloak" },
       { "kind": "Item", "id": "hacking_kit", "value": 1 },
       { "kind": "Character", "id": "cole", "value": 1, "when": { "flag": "cole_met" } }
@@ -186,6 +189,8 @@
       ]
     },
     "rewards": [
+      { "kind": "Resource", "id": "wood", "value": 20 },
+      { "kind": "Resource", "id": "stone", "value": 15 },
       { "kind": "Schematic", "id": "sch_bicycle_cart" },
       { "kind": "Vehicle", "id": "handcart" },
       { "kind": "Item", "id": "manual_electronics", "value": 1 },

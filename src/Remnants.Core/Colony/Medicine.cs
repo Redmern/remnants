@@ -136,9 +136,10 @@ internal static class MedicineSystem
                     case ConditionKind.Fracture:
                         continue;
                     case ConditionKind.Infection:
-                        c.Severity += onMedicine
-                            ? -def.TreatedRecoverPerTick * med.Def.MedBay.MedicineEasesInfection
-                            : def.GrowPerTick - def.RecoverPerTick;
+                        c.Severity += onMedicine ? -def.TreatedRecoverPerTick * med.Def.MedBay.MedicineEasesInfection
+                            : s.PatientAtBuildingId is not null && med.Def.MedBay.BedRestEasesInfection > 0
+                                ? -def.TreatedRecoverPerTick * med.Def.MedBay.BedRestEasesInfection
+                                : def.GrowPerTick - def.RecoverPerTick;
                         break;
                     default:
                         c.Severity -= onMedicine ? Math.Max(def.RecoverPerTick, def.TreatedRecoverPerTick) : def.RecoverPerTick;

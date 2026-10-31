@@ -141,6 +141,12 @@ public sealed record MedBayCareRules
 
     /// <summary>A patient on medicine (the stockpile resource) has infections fade at this share of their treated rate even without antibiotics.</summary>
     public double MedicineEasesInfection { get; init; } = 0.5;
+
+    /// <summary>
+    /// A patient in a Med Bay bed with no medicine in the stores: infections fade at this share of their treated rate
+    /// (slowly, but a patient is no longer kept in bed for good while the colony has no wood for Herbal Remedy).
+    /// </summary>
+    public double BedRestEasesInfection { get; init; }
 }
 
 /// <summary>A kit used up by a surgery that has one in stock: better odds (times the kit's quality) and fewer infections.</summary>

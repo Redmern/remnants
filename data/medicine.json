@@ -35,7 +35,7 @@
     "condition": "infection",
     "surgicalCondition": "surgical_infection",
     "minSeverity": 0.25,
-    "chancePerTick": 0.005,
+    "chancePerTick": 0.003,
     "bandagedMultiplier": 0.35,
     "cleanMultiplier": 0,
     "patientMultiplier": 0.5,
@@ -63,7 +63,8 @@
   "medBay": {
     "defaultPriorities": ["Bleeding", "Infection", "Fracture", "Sickness", "Pain"],
     "treatmentsPerTick": 1,
-    "medicineEasesInfection": 0.5
+    "medicineEasesInfection": 0.5,
+    "bedRestEasesInfection": 0.25
   },
 
   "surgery": {

@@ -110,6 +110,23 @@ public class ColonyMedicineTests
     }
 
     [Fact]
+    public void Bed_rest_without_medicine_slowly_beats_an_infection_instead_of_keeping_the_patient_for_good()
+    {
+        var (sim, bay) = Colony();
+        sim.State.Stockpile.Amounts["medicine"] = 0;
+        var s = Hurt(sim, BodyPart.Torso, 0.5);
+        Treatment.Afflict(s.Body, "infection", 0.5, BodyPart.Torso);
+        Assert.True(sim.Execute(new AdmitPatient(s.Id, bay.Id)).Ok);
+        sim.Advance(24);
+        var severity = s.Body.Find("infection")!.Severity;
+        Assert.True(severity < 0.5, $"{severity}");
+        // Out of bed it grows again.
+        s.PatientAtBuildingId = null;
+        sim.Advance(24);
+        Assert.True(s.Body.Find("infection")!.Severity > severity);
+    }
+
+    [Fact]
     public void The_med_bay_treats_bleeding_before_infection_and_follows_the_players_order()
     {
         var (sim, bay) = Colony();
