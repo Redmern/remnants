@@ -35,6 +35,8 @@ public static class PartyBot
 
     /// <summary>Whether the bot salvages (<c>--no-salvage</c> turns it off, for before/after comparisons).</summary>
     public static bool Salvage { get; set; } = true;
+    /// <summary>Benchmarks: called after every command the bot sends, with the wall-clock milliseconds its Execute took (AI turns included).</summary>
+    public static Action<IScavengeCommand, double>? Timed { get; set; }
 
     /// <summary>Room (kg) the bot wants free under <see cref="SalvageLoad"/> of its capacity before it starts on a salvage node.</summary>
     private const double SalvageRoom = 5;
@@ -109,7 +111,9 @@ public static class PartyBot
             else if (!ends) stalls[unit.Id] = 0;
             if (ends) acted.Remove(unit.Id);
             else acted.Add(unit.Id);
+            var started = System.Diagnostics.Stopwatch.GetTimestamp();
             var result = sim.Execute(command);
+            Timed?.Invoke(command, System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds);
             if (result.Ok && command is PickUp or TakeAll) looted++;
             if (result.Ok && command is Salvage) salvaged++;
             if (!result.Ok && command is not EndTurn)
