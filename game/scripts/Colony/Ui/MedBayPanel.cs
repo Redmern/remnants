@@ -213,7 +213,8 @@ public partial class MedBayPanel : PanelContainer
     }
 
     private static string Lasts(int ticks, RulesDef rules) =>
-        ticks >= 2 * rules.TicksPerDay ? $"enough for ~{ticks / rules.TicksPerDay} days" : $"enough for ~{ColonyText.Duration(ticks, rules)}";
+        ticks >= 999 * rules.TicksPerDay ? "enough for 999+ days"
+        : ticks >= 2 * rules.TicksPerDay ? $"enough for ~{ticks / rules.TicksPerDay} days" : $"enough for ~{ColonyText.Duration(ticks, rules)}";
 
     private void RefreshPatients(ColonySim sim, List<Survivor> patients)
     {
