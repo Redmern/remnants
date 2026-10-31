@@ -8,6 +8,7 @@ using Remnants.Core.Items;
 using Remnants.Core.Scavenge;
 using Remnants.Core.Survivors;
 using Remnants.Game.Hud;
+using Remnants.Game.Hud.Help;
 using ScavengeText = Remnants.Game.Scavenge.ScavengeText;
 
 namespace Remnants.Game.Colony.Ui;
@@ -36,8 +37,17 @@ public partial class GearBenchPanel : Overlay
     private readonly VBoxContainer _list = Widgets.Column(4);
     private readonly VBoxContainer _slots = Widgets.Column(6);
     private readonly VBoxContainer _compare = Widgets.Column(6);
-    private readonly HBoxContainer _orders = Widgets.Row(6);
-    private readonly OptionButton _recipes = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, ClipText = true, FitToLongestItem = false };
+    private readonly VBoxContainer _orders = Widgets.Column(4);
+    private readonly KeyedRows<(int, int)> _orderRows;
+    private readonly Dictionary<(int, int), (PanelContainer Card, Label Name, Label Where, ProgressBar Bar)> _orderRefs = new();
+    private readonly Label _noOrders = Widgets.Wrapped("Nothing queued. Mods and kits are made at the Workshop, Armory, Tailor and Electronics Lab.", "Muted");
+    private readonly PanelTabs _tabs = new();
+    private readonly Stepper _count = new(1, 20, 1, "How many to queue (Shift: ±5)");
+    private readonly Unchanged _set = new();
+    private bool _allStats;
+    private string _listSignature = "";
+    private string _compareSignature = "";
+    private readonly OptionButton _recipes = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.All, ClipText = true, FitToLongestItem = false };
     private readonly Label _recipeNote = Widgets.Label("", "Small", Palette.TextMuted);
     private readonly Button _queue;
     private readonly Label _benchNote = Widgets.Label("", "Small", Palette.TextMuted);
@@ -58,34 +68,39 @@ public partial class GearBenchPanel : Overlay
         var tag = Widgets.Row(8);
         tag.AddChild(Widgets.Label("STRIP IT. BOLT IT ON. MAKE IT YOURS.", "Small", Palette.TextMuted));
         tag.AddChild(Widgets.Spacer());
-        tag.AddChild(_benchNote);
+        tag.AddChild(InfoTip.Beside(_benchNote, "gear_mods"));
         Body.AddChild(tag);
+        Body.AddChild(_tabs);
 
         var main = Widgets.Row(10);
         main.AddChild(Column("Gear", "ui_items", _list, 270, scroll: true));
         main.AddChild(Column("Mod slots", "skill_crafting", _slots, 420, scroll: true));
         main.AddChild(Column("Compare", "stat_quality", _compare, 400, scroll: true));
-        Body.AddChild(main);
+        _tabs.Add("bench", "Bench", main, "Fit and remove mods, fit Mk kits, compare");
 
-        var strip = new PanelContainer { ThemeTypeVariation = "Card" };
-        var stripCol = Widgets.Column(6);
-        strip.AddChild(stripCol);
-        stripCol.AddChild(Widgets.SectionHeader("Mods and kits in production", "skill_crafting"));
-        var ordersScroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 44), VerticalScrollMode = ScrollContainer.ScrollMode.Disabled };
-        ordersScroll.AddChild(_orders);
-        stripCol.AddChild(ordersScroll);
+        // Queue tab: a picker to queue more, and what the bench buildings are making.
+        var queuePage = Widgets.Column(8);
         var queueRow = Widgets.Row(6);
         queueRow.AddChild(Widgets.Label("QUEUE", "Heading"));
-        _recipes.CustomMinimumSize = new Vector2(360, 0);
+        _recipes.CustomMinimumSize = new Vector2(420, 0);
         _recipes.SizeFlagsHorizontal = SizeFlags.Fill;
         queueRow.AddChild(_recipes);
-        _queue = Widgets.IconButton("ui_plus", "Queue", "Add one to that building's production queue", Queue, variation: "Primary");
+        queueRow.AddChild(_count);
+        _queue = PanelKit.Focusable(Widgets.IconButton("ui_plus", "Queue", "Add to that building's production queue", Queue, variation: "Primary"));
         queueRow.AddChild(_queue);
+        queuePage.AddChild(queueRow);
         _recipeNote.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _recipeNote.ClipText = true;
-        queueRow.AddChild(_recipeNote);
-        stripCol.AddChild(queueRow);
-        Body.AddChild(strip);
+        _recipeNote.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        queuePage.AddChild(_recipeNote);
+        queuePage.AddChild(PanelKit.Header("Mods and kits in production", "skill_crafting", "crafting"));
+        _orders.AddChild(_noOrders);
+        _orderRows = new KeyedRows<(int, int)>(_orders, offset: 1);
+        var ordersScroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 360), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+        _orders.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        ordersScroll.AddChild(_orders);
+        queuePage.AddChild(ordersScroll);
+        _tabs.Add("queue", "Queue", queuePage, "Mods and kits in production at the Armory, Workshop, Tailor and Electronics Lab");
+        _tabs.Changed += _ => Refresh();
         _recipes.ItemSelected += _ => RefreshRecipeNote();
     }
 
@@ -112,8 +127,9 @@ public partial class GearBenchPanel : Overlay
     {
         if (itemId is not null) _selected = $"inv:{itemId}";
         _preview = null;
-        _signature = _recipeSignature = "";
+        _signature = _recipeSignature = _listSignature = _compareSignature = "";
         base.Open();
+        if (DebugCapture.Value("--gear-tab") is { Length: > 0 } tab) _tabs.Select(tab);
         Refresh();
     }
 
@@ -136,19 +152,41 @@ public partial class GearBenchPanel : Overlay
             _selected = pieces.FirstOrDefault()?.Key;
             _preview = null;
         }
-        var signature = $"{_selected}|{_preview?.Label}|{string.Join(",", pieces.Select(p => p.Key + p.Count))}|"
-                        + string.Join(",", sim.State.Inventory.Counts.Select(kv => kv.Key + kv.Value)) + "|"
+        var orders = sim.State.Buildings.Sum(b => b.Queue.Count(o => sim.Data.Recipes.TryGetValue(o.RecipeId, out var r) && IsGearRecipe(data, r)));
+        _tabs.SetLabel("queue", orders > 0 ? $"Queue {orders}" : "Queue");
+        RefreshRecipes(sim, data);
+        RefreshBenchNote(sim, mods);
+        if (_tabs.Selected == "queue")
+        {
+            RefreshOrders(sim, data);
+            return;
+        }
+        // The list follows the pieces; the slots follow the picked piece, the mods and kits in the stores and the benches.
+        var listSignature = $"{_selected}|{string.Join(",", pieces.Select(p => p.Key + p.Count))}";
+        if (listSignature != _listSignature)
+        {
+            _listSignature = listSignature;
+            RefreshList(data, pieces);
+        }
+        var picked = pieces.FirstOrDefault(p => p.Key == _selected);
+        var relevant = picked is null ? "" : string.Join(",", sim.State.Inventory.Counts
+            .Where(kv => kv.Value > 0 && data.Items.TryGetValue(kv.Key, out var i) && (i.Kind == ItemKind.Mod || mods.Kit(kv.Key) is not null))
+            .Select(kv => kv.Key + kv.Value));
+        var signature = $"{_selected}|{picked?.ItemId}|{picked?.Count}|{relevant}|"
                         + string.Join(",", sim.State.Buildings.Select(b => $"{b.DefId}{b.Level}"));
         if (signature != _signature)
         {
             _signature = signature;
-            RefreshList(data, pieces);
             RefreshSlots(sim, data, mods);
-            RefreshCompare(data);
-            RefreshBenchNote(sim, mods);
+
+            _compareSignature = "";
         }
-        RefreshOrders(sim, data);
-        RefreshRecipes(sim, data);
+        var compareSignature = $"{_selected}|{picked?.ItemId}|{_preview?.Label}";
+        if (compareSignature != _compareSignature)
+        {
+            _compareSignature = compareSignature;
+            RefreshCompare(data);
+        }
     }
 
     private Piece? Picked()
@@ -208,7 +246,7 @@ public partial class GearBenchPanel : Overlay
     private Control PieceButton(ScavengeData data, Piece piece, ItemDef item)
     {
         var picked = piece.Key == _selected;
-        var card = new PanelContainer { ThemeTypeVariation = picked ? "CardSelected" : "Card", MouseFilter = MouseFilterEnum.Stop, MouseDefaultCursorShape = CursorShape.PointingHand };
+        var card = new PanelContainer { ThemeTypeVariation = picked ? "CardSelected" : "Card" };
         var row = Widgets.Row(6);
         row.MouseFilter = MouseFilterEnum.Ignore;
         card.AddChild(row);
@@ -235,14 +273,17 @@ public partial class GearBenchPanel : Overlay
         row.AddChild(col);
         if (piece.Count > 1) row.AddChild(Widgets.Label($"×{piece.Count}", "Number", Palette.TextMuted));
         var key = piece.Key;
-        card.GuiInput += e =>
+        card.SetMeta("piece", key);
+        PanelKit.Clickable(card, () =>
         {
-            if (e is not InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) return;
+            if (_selected == key) return;
             _selected = key;
             _preview = null;
-            _signature = "";
             Refresh();
-        };
+            // The list was rebuilt: keep the keyboard on the picked piece.
+            foreach (var child in _list.GetChildren())
+                if (child is Control c && c.HasMeta("piece") && c.GetMeta("piece").AsString() == key) c.CallDeferred(Control.MethodName.GrabFocus);
+        });
         return card;
     }
 
@@ -277,9 +318,13 @@ public partial class GearBenchPanel : Overlay
         title.ClipText = true;
         names.AddChild(title);
         var marks = Widgets.Row(6);
-        marks.AddChild(Widgets.Label("MK", "Heading"));
+        var mark = Widgets.Label(mods.Mark(item.Mk)?.Name ?? $"Mk {item.Mk}", "Heading");
+        mark.TooltipText = "The gear's mark: each Mk kit raises it, opening a mod slot and lifting its numbers";
+        mark.MouseFilter = MouseFilterEnum.Stop;
+        marks.AddChild(mark);
         marks.AddChild(new Pips(item.Mk, Math.Max(item.Mk, mods.Moddable(item.DefinedId)?.Family is null ? 1 : mods.MaxMk), Palette.Amber));
-        marks.AddChild(Widgets.Label($"{item.Mods.Count}/{open} slots used", "Small", Palette.TextMuted));
+        marks.AddChild(Widgets.Label("·", "Small", Palette.TextDim));
+        marks.AddChild(PanelKit.Tip($"Mods {item.Mods.Count} of {open}", "gear_mods"));
         names.AddChild(marks);
         if (piece.SurvivorId is { } sid && sim.State.FindSurvivor(sid) is { } who)
             names.AddChild(Widgets.Label($"Fitted on {who.Name}'s {ScavengeText.Part(piece.Part!.Value).ToLowerInvariant()}", "Small", Palette.TextMuted));
@@ -333,11 +378,12 @@ public partial class GearBenchPanel : Overlay
         {
             row.AddChild(GearText.ModChip(data, mod, 13));
             row.AddChild(Widgets.Spacer());
-            var remove = Widgets.IconButton("ui_minus", "Remove", "Take it off: it goes back to the stores intact", () => Remove(piece, slot), variation: "Flat");
+            var remove = PanelKit.Focusable(Widgets.IconButton("ui_minus", "Remove", "Take it off: it goes back to the stores intact", () => Remove(piece, slot), variation: "Flat"));
             remove.CustomMinimumSize = new Vector2(0, 26);
             var outcome = GearBench.Remove(data, piece.ItemId, slot);
             remove.MouseEntered += () => SetPreview(new Change($"− {ScavengeText.Item(data, mod)}", outcome));
             remove.MouseExited += () => SetPreview(null);
+            remove.FocusEntered += () => SetPreview(new Change($"− {ScavengeText.Item(data, mod)}", outcome));
             row.AddChild(remove);
         }
         else if (locked)
@@ -375,6 +421,8 @@ public partial class GearBenchPanel : Overlay
             button.AddThemeColorOverride("font_color", tint);
             button.AddThemeColorOverride("font_hover_color", tint.Lightened(0.25f));
             button.Disabled = !outcome.Ok;
+            button.FocusMode = FocusModeEnum.All;
+            button.FocusEntered += () => SetPreview(new Change($"+ {name}", outcome));
             button.MouseEntered += () => SetPreview(new Change($"+ {name}", outcome));
             button.MouseExited += () => SetPreview(null);
             flow.AddChild(button);
@@ -407,7 +455,7 @@ public partial class GearBenchPanel : Overlay
         var place = GearBenchHandlersView.Bench(sim, at);
         var row = Widgets.Row(6);
         var outcome = GearBench.Upgrade(data, piece.ItemId, kit);
-        var button = Widgets.IconButton("ui_chevron_up", $"Fit {kitName}", outcome.Message, () => Upgrade(piece, kit), variation: "Primary");
+        var button = PanelKit.Focusable(Widgets.IconButton("ui_chevron_up", $"Fit {kitName}", outcome.Message, () => Upgrade(piece, kit), variation: "Primary"));
         button.Disabled = have == 0 || place is null || piece.Count < 1;
         button.MouseEntered += () => SetPreview(new Change($"→ {next?.Name}", outcome));
         button.MouseExited += () => SetPreview(null);
@@ -420,15 +468,40 @@ public partial class GearBenchPanel : Overlay
             : place is null ? $"Needs a {string.Join(" or ", at.Select(b => sim.Data.Buildings.TryGetValue(b, out var d) ? d.Name : b))}."
             : $"{have} in the stores. {next?.Name}: {gains}, +1 slot.", "Small", have == 0 || place is null ? Palette.Warn : Palette.TextMuted);
         row.AddChild(note);
+        // No kit in the stores: queue one where it is made, right here.
+        if (have == 0 && KitMaker(sim, kit) is { } maker)
+        {
+            var (makerId, recipe) = maker;
+            var queueKit = PanelKit.Focusable(Widgets.IconButton("ui_plus", "Queue kit",
+                $"Queue a {kitName} at the {sim.Data.Buildings[sim.State.FindBuilding(makerId)!.DefId].Name}",
+                () =>
+                {
+                    _session.Execute(new QueueRecipe(makerId, recipe));
+                    Refresh();
+                }, variation: "Flat"));
+            queueKit.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+            row.AddChild(queueKit);
+        }
         col.AddChild(row);
         return card;
+    }
+
+    /// <summary>A building that can queue a kit's recipe now (and the recipe), or null.</summary>
+    private static (int Building, string Recipe)? KitMaker(ColonySim sim, string kit)
+    {
+        foreach (var r in sim.Data.Recipes.Values.Where(r => r.Item == kit))
+            foreach (var b in sim.State.Buildings.Where(b => b.DefId == r.Building).OrderByDescending(b => b.Level))
+                if (sim.CanQueue(b, r).Ok) return (b.Id, r.Id);
+        return null;
     }
 
     private void SetPreview(Change? change)
     {
         if (_preview == change) return;
         _preview = change;
-        if (_session.Sim.Scavenge is { } data) RefreshCompare(data);
+        if (_session.Sim.Scavenge is not { } data) return;
+        _compareSignature = $"{_selected}|{Picked()?.ItemId}|{_preview?.Label}";
+        RefreshCompare(data);
     }
 
     private void RefreshCompare(ScavengeData data)
@@ -454,15 +527,23 @@ public partial class GearBenchPanel : Overlay
         var grid = new GridContainer { Columns = 4 };
         grid.AddThemeConstantOverride("h_separation", 12);
         grid.AddThemeConstantOverride("v_separation", 3);
+        var rest = new GridContainer { Columns = 4 };
+        rest.AddThemeConstantOverride("h_separation", 12);
+        rest.AddThemeConstantOverride("v_separation", 3);
+        var hidden = 0;
         var weapon = item.Actions.Count > 0;
         var worn = item.Kind is ItemKind.Armor or ItemKind.Clothing or ItemKind.Headgear;
+        // Key rows always show; the rest only when the previewed change touches them, else behind "All stats".
+        var keys = new HashSet<string> { "Accuracy", "Damage", "Range", "Armor Torso", "Armor Head", "Weight" };
         void Row(string label, string a, string b, double delta, bool higherIsBetter, string unit = "")
         {
-            grid.AddChild(Widgets.Label(label.ToUpperInvariant(), "Small", Palette.TextMuted));
-            grid.AddChild(Cell(a, Palette.Text));
-            grid.AddChild(Cell(b, Math.Abs(delta) < 1e-6 ? Palette.Text : Palette.Amber.Lerp(Palette.Text, 0.3f)));
+            var into = Math.Abs(delta) > 1e-6 || keys.Contains(label) ? grid : rest;
+            if (into == rest) hidden++;
+            into.AddChild(Widgets.Label(label.ToUpperInvariant(), "Small", Palette.TextMuted));
+            into.AddChild(Cell(a, Palette.Text));
+            into.AddChild(Cell(b, Math.Abs(delta) < 1e-6 ? Palette.Text : Palette.Amber.Lerp(Palette.Text, 0.3f)));
             var good = delta > 0 == higherIsBetter;
-            grid.AddChild(Cell(Math.Abs(delta) < 1e-6 ? "—" : $"{(delta > 0 ? "+" : "−")}{Math.Abs(delta):0.##}{unit}",
+            into.AddChild(Cell(Math.Abs(delta) < 1e-6 ? "—" : $"{(delta > 0 ? "+" : "−")}{Math.Abs(delta):0.##}{unit}",
                 Math.Abs(delta) < 1e-6 ? Palette.TextDim : good ? Palette.Good : Palette.Danger));
         }
         if (weapon)
@@ -495,6 +576,13 @@ public partial class GearBenchPanel : Overlay
         Row("Weight", $"{before.Weight:0.##} kg", $"{after.Weight:0.##} kg", Math.Round(after.Weight - before.Weight, 2), false, " kg");
         Row("Slots", $"{before.SlotsUsed}/{before.SlotsOpen}", $"{after.SlotsUsed}/{after.SlotsOpen}", after.SlotsOpen - before.SlotsOpen, true);
         _compare.AddChild(grid);
+        if (hidden > 0)
+        {
+            var all = new Expander($"All stats ({hidden} more, unchanged)", _allStats);
+            all.Body.AddChild(rest);
+            all.Toggled += open => _allStats = open;
+            _compare.AddChild(all);
+        }
 
         var tags = after.Tags.Select(t => (t, before.Tags.Contains(t) ? Palette.TextMuted : Palette.Good))
             .Concat(before.Tags.Where(t => !after.Tags.Contains(t)).Select(t => ("✗ " + t, Palette.Danger))).ToList();
@@ -540,46 +628,65 @@ public partial class GearBenchPanel : Overlay
     private void RefreshBenchNote(ColonySim sim, GearModsData mods)
     {
         var bench = GearBenchHandlersView.Bench(sim, mods.Def.Rules.Benches);
-        _benchNote.Text = bench is null
+        _set.Text(_benchNote, bench is null
             ? $"No bench: build a {string.Join(", ", mods.Def.Rules.Benches.Select(b => sim.Data.Buildings.TryGetValue(b, out var d) ? d.Name : b))}"
-            : $"Bench at the {sim.Data.Buildings[bench.DefId].Name} (level {bench.Level})";
-        _benchNote.AddThemeColorOverride("font_color", bench is null ? Palette.Danger : Palette.TextMuted);
+            : $"Bench at the {sim.Data.Buildings[bench.DefId].Name} (level {bench.Level})");
+        _set.FontColor(_benchNote, bench is null ? Palette.Danger : Palette.TextMuted);
     }
 
     /// <summary>Recipes that make mods or Mk kits.</summary>
     private static bool IsGearRecipe(ScavengeData data, RecipeDef r) =>
         r.Item is { } item && (data.Items.GetValueOrDefault(item)?.Kind == ItemKind.Mod || data.GearMods?.Kit(item) is not null);
 
+    /// <summary>The mod and kit orders of every building, kept by (building, order) and updated in place.</summary>
     private void RefreshOrders(ColonySim sim, ScavengeData data)
     {
-        Widgets.Clear(_orders);
-        var any = false;
-        foreach (var b in sim.State.Buildings.OrderBy(b => b.Id))
-            foreach (var order in b.Queue)
-            {
-                if (!sim.Data.Recipes.TryGetValue(order.RecipeId, out var recipe) || !IsGearRecipe(data, recipe)) continue;
-                any = true;
-                var chip = new PanelContainer { ThemeTypeVariation = order.Paid ? "CardSelected" : "Card", CustomMinimumSize = new Vector2(190, 0) };
-                var col = Widgets.Column(2);
-                chip.AddChild(col);
-                var name = Widgets.Label($"{recipe.Name}{(order.Repeat ? " ↻" : order.Remaining > 1 ? $" ×{order.Remaining}" : "")}", "", GearText.ModColor(data, recipe.Item!, Palette.Text), 13);
-                name.ClipText = true;
-                col.AddChild(name);
-                var bar = new ProgressBar { ShowPercentage = false, CustomMinimumSize = new Vector2(0, 5), MaxValue = 1, Value = order.Progress / Math.Max(1e-6, recipe.Work) };
-                bar.AddThemeStyleboxOverride("fill", HudTheme.Box(Palette.Amber, radius: 2, padX: 0, padY: 0));
-                col.AddChild(bar);
-                col.AddChild(Widgets.Label($"{sim.Data.Buildings[b.DefId].Name} · {(order.Paid ? $"{order.Progress:0.#}/{recipe.Work:0}" : "waiting")}", "Small", Palette.TextMuted));
-                var orderId = order.Id;
-                var buildingId = b.Id;
-                chip.TooltipText = "Right-click to cancel (a batch in progress gives its inputs back)";
-                chip.MouseFilter = MouseFilterEnum.Stop;
-                chip.GuiInput += e =>
-                {
-                    if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Right }) _session.Execute(new CancelOrder(buildingId, orderId));
-                };
-                _orders.AddChild(chip);
-            }
-        if (!any) _orders.AddChild(Widgets.Label("Nothing queued. Mods and kits are made at the Workshop, Armory, Tailor and Electronics Lab.", "Muted"));
+        var orders = sim.State.Buildings.OrderBy(b => b.Id)
+            .SelectMany(b => b.Queue.Where(o => sim.Data.Recipes.TryGetValue(o.RecipeId, out var r) && IsGearRecipe(data, r)).Select(o => (B: b, O: o)))
+            .ToList();
+        _set.Visible(_noOrders, orders.Count == 0);
+        var keys = orders.Select(x => (x.B.Id, x.O.Id)).ToList();
+        foreach (var gone in _orderRefs.Keys.Except(keys).ToList()) _orderRefs.Remove(gone);
+        _orderRows.Sync<PanelContainer>(keys, key => MakeOrder(sim, data, key), (key, _) =>
+        {
+            var (b, order) = orders.Find(x => x.B.Id == key.Item1 && x.O.Id == key.Item2);
+            if (!_orderRefs.TryGetValue(key, out var row)) return;
+            var recipe = sim.Data.Recipes[order.RecipeId];
+            if (row.Card.ThemeTypeVariation != (order.Paid ? "CardSelected" : "Card")) row.Card.ThemeTypeVariation = order.Paid ? "CardSelected" : "Card";
+            _set.Text(row.Name, $"{recipe.Name}{(order.Repeat ? " ↻" : order.Remaining > 1 ? $" ×{order.Remaining}" : "")}");
+            _set.Text(row.Where, $"{sim.Data.Buildings[b.DefId].Name} · {(order.Paid ? $"{order.Progress:0.#}/{recipe.Work:0} work" : "waiting")}");
+            _set.Visible(row.Bar, order.Paid);
+            if (order.Paid) Ui.Glide(row.Bar, order.Progress / Math.Max(1e-6, recipe.Work), _session);
+        });
+    }
+
+    private PanelContainer MakeOrder(ColonySim sim, ScavengeData data, (int Building, int Order) key)
+    {
+        var b = sim.State.FindBuilding(key.Building)!;
+        var order = b.Queue.Find(o => o.Id == key.Order)!;
+        var recipe = sim.Data.Recipes[order.RecipeId];
+        var card = new PanelContainer { ThemeTypeVariation = "Card" };
+        var row = Widgets.Row(8);
+        card.AddChild(row);
+        var def = data.Items[recipe.Item!];
+        row.AddChild(Icons.Rect(Icons.Item(def.DefinedId, def.Kind.ToString(), 20), 20, GearText.ModColor(data, recipe.Item!, Palette.Amber)));
+        var col = Widgets.Column(2);
+        col.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        var name = Widgets.Label("", "", GearText.ModColor(data, recipe.Item!, Palette.Text));
+        name.ClipText = true;
+        col.AddChild(name);
+        var bar = new ProgressBar { ShowPercentage = false, CustomMinimumSize = new Vector2(0, 5), MaxValue = 1 };
+        bar.AddThemeStyleboxOverride("fill", HudTheme.Box(Palette.Amber, radius: 2, padX: 0, padY: 0));
+        col.AddChild(bar);
+        var where = Widgets.Label("", "Small", Palette.TextMuted);
+        col.AddChild(where);
+        row.AddChild(col);
+        var cancel = PanelKit.Focusable(Widgets.IconButton("ui_close", "", "Cancel (a batch in progress gives its inputs back)",
+            () => _session.Execute(new CancelOrder(key.Building, key.Order)), variation: "Flat"));
+        cancel.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        row.AddChild(cancel);
+        _orderRefs[key] = (card, name, where, bar);
+        return card;
     }
 
     private void RefreshRecipes(ColonySim sim, ScavengeData data)
@@ -635,7 +742,8 @@ public partial class GearBenchPanel : Overlay
     {
         if (_recipes.Selected < 0 || _recipes.Selected >= _recipeIds.Count) return;
         var (building, recipe) = _recipeIds[_recipes.Selected];
-        _session.Execute(new QueueRecipe(building, recipe));
+        _session.Execute(new QueueRecipe(building, recipe, _count.Value));
+        Refresh();
     }
 
     private void Install(Piece piece, string mod)
@@ -661,7 +769,7 @@ public partial class GearBenchPanel : Overlay
     {
         if (newId is not null) _selected = piece.SurvivorId is { } s ? $"arm:{s}:{piece.Part}" : $"inv:{newId}";
         _preview = null;
-        _signature = "";
+        _signature = _listSignature = "";
         Refresh();
     }
 }
