@@ -520,3 +520,9 @@ Allies trade in a mission the same way (`--coop` server, `--bot … --trade`: th
   loot seed never leaves the server. Co-op piles and nodes are shared, first come first served.
 - Commands `takeAll`, `dropItem`, `stashItem`, `salvage`. Protocol version 14 (`Protocol.LootVersion`).
 - Tests: `LootNetTests` (no pile or line for a rival who never saw the tile; salvage over the wire).
+
+## Construction over the wire
+
+The colony's new Construction skill travels in every survivor's skills (parties on `Join`, extraction results), which
+an older peer cannot read. Protocol version 16 (`Protocol.ConstructionVersion`). Sites themselves stay in the colony and
+never go over the wire.

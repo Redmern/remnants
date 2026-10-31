@@ -32,6 +32,8 @@ public static class Protocol
     /// 15 (<see cref="StoryVersion"/>): co-op story: a story mission hosted with a guest (the mission's objectives, chatter
     /// and prompt in the host team's views, the guest's schematic copies in its result) and the Acts 2–4 field state
     /// (scavenge save 14: the run's campaign flags, the taken, devices' failed hacks).
+    /// 16 (<see cref="ConstructionVersion"/>): the Construction skill in every survivor's skills (parties on <see cref="Join"/>,
+    /// extraction results); an older peer cannot read it.
     /// <see cref="Version"/> is always the highest of these keyed versions (ProtocolTests checks it).
     /// </summary>
     public const int MedicineVersion = 12;
@@ -42,7 +44,9 @@ public static class Protocol
 
     public const int StoryVersion = 15;
 
-    public const int Version = StoryVersion;
+    public const int ConstructionVersion = 16;
+
+    public const int Version = ConstructionVersion;
     public const int DefaultPort = 7777;
 }
 

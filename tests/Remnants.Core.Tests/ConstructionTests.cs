@@ -252,6 +252,20 @@ public class ConstructionTests
     }
 
     [Fact]
+    public void The_help_breakdown_shows_a_site_and_its_time_left()
+    {
+        var sim = Colony();
+        var id = Place(sim, "house");
+        sim.Execute(new AssignBuilder(sim.AddSurvivor().Id, id));
+        var b = Remnants.Core.Help.Breakdowns.For(Remnants.Core.Help.Breakdowns.ConstructionSite,
+            new Remnants.Core.Help.HelpContext { Colony = sim, Site = sim.Site(id) });
+        Assert.NotNull(b);
+        Assert.Contains("left", b!.Total);
+        Assert.Contains(b.Rows, r => r.Label == "Builders" && r.Value.StartsWith("1 /"));
+        Assert.Null(Remnants.Core.Help.Breakdowns.For(Remnants.Core.Help.Breakdowns.ConstructionSite, new Remnants.Core.Help.HelpContext { Colony = sim }));
+    }
+
+    [Fact]
     public void A_site_takes_only_so_many_builders()
     {
         var sim = Colony();
