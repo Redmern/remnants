@@ -29,6 +29,7 @@ public partial class DebugCapture : Node
         if (HasFlag("--anim-selftest")) tree.Root.CallDeferred(Node.MethodName.AddChild, new Anim.AnimSelfTest { Name = "AnimSelfTest" });
         if (PerfMonitor.FromCommandLine() is { } perf) tree.Root.CallDeferred(Node.MethodName.AddChild, perf);
         if (Hud.Help.HelpSelfTest.FromCommandLine() is { } help) tree.Root.CallDeferred(Node.MethodName.AddChild, help);
+        if (Hud.Help.HelpDemo.FromCommandLine() is { } helpDemo) tree.Root.CallDeferred(Node.MethodName.AddChild, helpDemo);
         if (FromCommandLine() is { } capture) tree.Root.CallDeferred(Node.MethodName.AddChild, capture);
     }
 

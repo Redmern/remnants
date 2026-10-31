@@ -59,6 +59,7 @@ public static class Breakdowns
         Providers.TryGetValue(id, out var provider) ? provider(context) : null;
 
     private static string Times(double f) => $"×{f:0.00}";
+    private static string Days(double d) => $"{d:0.#} day{(Math.Abs(d - 1) < 0.05 ? "" : "s")}";
     private static string Pct(double f) => $"{f * 100:0}%";
     private static string Signed(double f) => f >= 0 ? $"+{f * 100:0}%" : $"−{-f * 100:0}%";
 
@@ -122,11 +123,11 @@ public static class Breakdowns
         if (c.Colony is not { } sim || c.Zone is not { } zone) return null;
         var plan = WorldMap.Travel(sim, zone, sim.State.Tick);
         var perDay = (double)sim.Data.Rules.TicksPerDay;
-        var rows = new List<BreakdownRow> { new("On foot", $"{plan.BaseTicks / perDay:0.#} days", zone.Name) };
+        var rows = new List<BreakdownRow> { new("On foot", Days(plan.BaseTicks / perDay), zone.Name) };
         rows.AddRange(plan.Modifiers.Select(m => new BreakdownRow(m.Source,
-            m.Blocks ? "blocked" : m.ExtraTicks != 0 ? $"{(m.ExtraTicks > 0 ? "+" : "−")}{Math.Abs(m.ExtraTicks) / perDay:0.#} days" : Times(m.Multiplier), m.Reason)));
+            m.Blocks ? "blocked" : m.ExtraTicks != 0 ? $"{(m.ExtraTicks > 0 ? "+" : "−")}{Days(Math.Abs(m.ExtraTicks) / perDay)}" : Times(m.Multiplier), m.Reason)));
         rows.Add(new("Rations per member", $"{WorldMap.RationsPerMember(sim.Data, plan.Ticks / perDay):0.#} food", "base ration + per day, out and back"));
-        return new Breakdown($"To {zone.Name}", rows, plan.Blocked ? "cannot leave now" : $"{plan.Ticks / perDay:0.#} days each way",
+        return new Breakdown($"To {zone.Name}", rows, plan.Blocked ? "cannot leave now" : $"{Days(plan.Ticks / perDay)} each way",
             "base days × multipliers + extra days");
     }
 

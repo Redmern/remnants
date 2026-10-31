@@ -110,7 +110,7 @@ public class HelpTests
         var zone = Real.Zones.Values.First();
         var travel = Breakdowns.For(Breakdowns.Travel, new HelpContext { Colony = sim, Zone = zone })!;
         var days = WorldMap.Travel(sim, zone, sim.State.Tick).Ticks / (double)sim.Data.Rules.TicksPerDay;
-        Assert.Equal($"{days:0.#} days each way", travel.Total);
+        Assert.Equal($"{days:0.#} day{(Math.Abs(days - 1) < 0.05 ? "" : "s")} each way", travel.Total);
         Assert.Contains(travel.Rows, r => r.Label == "Rations per member");
 
         var food = Breakdowns.For(Breakdowns.FoodDays, new HelpContext { Colony = sim })!;

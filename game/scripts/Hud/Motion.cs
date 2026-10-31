@@ -70,6 +70,27 @@ public static class Motion
         tween.TweenProperty(control, "position", target, Normal);
     }
 
+    /// <summary>
+    /// Shows <paramref name="control"/> with a fade and a slight grow from its centre, leaving its position alone (for
+    /// popups the caller places, and may place again once their size settles).
+    /// </summary>
+    public static void FadeIn(Control control)
+    {
+        control.Visible = true;
+        if (!control.IsInsideTree() || GameSettings.ReduceMotion)
+        {
+            control.Modulate = Colors.White;
+            control.Scale = Vector2.One;
+            return;
+        }
+        var tween = Fresh(Running, control, parallel: true);
+        control.Modulate = new Color(1, 1, 1, 0);
+        control.PivotOffset = control.Size / 2;
+        control.Scale = new Vector2(0.97f, 0.97f);
+        tween.TweenProperty(control, "modulate:a", 1f, Fast);
+        tween.TweenProperty(control, "scale", Vector2.One, Normal);
+    }
+
     /// <summary>Fades <paramref name="control"/> out (and slides it toward <paramref name="to"/>), then hides it.</summary>
     public static void Conceal(Control control, Vector2? to = null, Action? done = null)
     {

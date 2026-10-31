@@ -149,7 +149,7 @@ public partial class HelpLayer : CanvasLayer
         // Size is known after this frame's layout; place now with the minimum size, again once it settles.
         Place(tip);
         Callable.From(() => Place(tip)).CallDeferred();
-        if (animate) Motion.Reveal(_tip, new Vector2(0, -4));
+        if (animate) Motion.FadeIn(_tip);
         else _tip.Modulate = Colors.White;
     }
 
@@ -201,7 +201,9 @@ public partial class HelpLayer : CanvasLayer
         _history.Clear();
         ShowTopic(topicId, push: false);
         _catcher.Visible = true;
-        Motion.Reveal(_popover, new Vector2(0, 6));
+        _popover.Visible = true;
+        PlacePopover();
+        Motion.FadeIn(_popover);
         Callable.From(PlacePopover).CallDeferred();
     }
 

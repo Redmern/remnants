@@ -65,3 +65,66 @@ public partial class HelpSelfTest : Node
         return null;
     }
 }
+
+/// <summary>
+/// Debug / smoke: <c>--help-demo[=TOPIC]</c> hovers the first visible <see cref="InfoTip"/> (on TOPIC if given) after a
+/// moment, shows its tooltip, then clicks it so the detail popover is open for <c>--screenshot</c>; <c>--help-index</c>
+/// opens the help index. Prints <c>[help-demo] ...</c> so the smoke log says what it did.
+/// </summary>
+public partial class HelpDemo : Node
+{
+    private int _frames = 60;
+    private string? _topic;
+    private bool _index;
+    private InfoTip? _tip;
+
+    public static HelpDemo? FromCommandLine()
+    {
+        var args = OS.GetCmdlineUserArgs();
+        var demo = args.FirstOrDefault(a => a == "--help-demo" || a.StartsWith("--help-demo="));
+        var index = args.Contains("--help-index");
+        if (demo is null && !index) return null;
+        return new HelpDemo
+        {
+            Name = "HelpDemo", ProcessMode = ProcessModeEnum.Always,
+            _topic = demo?.Contains('=') == true ? demo[(demo.IndexOf('=') + 1)..] : null, _index = index && demo is null,
+        };
+    }
+
+    public override void _Process(double delta)
+    {
+        if (--_frames > 0 || HelpLayer.Instance is not { } layer) return;
+        if (_index)
+        {
+            SetProcess(false);
+            layer.Index.OpenAt(_topic);
+            GD.Print("[help-demo] index open");
+            return;
+        }
+        if (_tip is null)
+        {
+            _tip = Find(GetTree().Root);
+            if (_tip is null)
+            {
+                SetProcess(false);
+                GD.Print($"[help-demo] no InfoTip on screen{(_topic is null ? "" : $" for '{_topic}'")}");
+                return;
+            }
+            layer.ShowTip(_tip);
+            GD.Print($"[help-demo] hover '{_tip.Topic}'");
+            _frames = 20;
+            return;
+        }
+        SetProcess(false);
+        _tip.Open();
+        GD.Print($"[help-demo] open '{_tip.Topic}' (popover {(layer.DetailOpen ? "open" : "closed")})");
+    }
+
+    private InfoTip? Find(Node node)
+    {
+        if (node is InfoTip tip && tip.IsVisibleInTree() && (_topic is null || tip.Topic == _topic)) return tip;
+        foreach (var child in node.GetChildren())
+            if (Find(child) is { } found) return found;
+        return null;
+    }
+}

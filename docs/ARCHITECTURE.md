@@ -163,7 +163,7 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   `BuildingPanel` (level pips, `WorkerSlots`, upgrade cost chips and Town Hall cap), `BuildMenu` (category filter,
   grid with costs, locks and tooltips), `EventLog` (filterable, collapsible feed with icons; first-time tips from
   `Advice`; raises toasts for deaths, births, departures, a party's arrival and return, lost limbs, recruits),
-  `ExpeditionPanel` (Weapon / Body / Head / Tool per member), `WorldMapPanel`, `MedBayPanel`, `ProductionPanel`, `InventoryPanel`, `GearBenchPanel` (below), `AfterActionDialog` (who came
+  `ExpeditionPanel` (five steps — Destination, Party, Gear, Vehicle & supplies, Review — one on screen at a time, in `ExpeditionSteps`; a summary bar with InfoTips on every step; tabs marked settled / warning / blocked; Review lists the warnings with links to their step and Launch says why it is disabled; keys 1–5, Tab, Enter; Repeat last refills the session's last launched plan; per tick only the summary and the shown step refresh; `--expedition-step=N`), `WorldMapPanel`, `MedBayPanel`, `ProductionPanel`, `InventoryPanel`, `GearBenchPanel` (below), `AfterActionDialog` (who came
   home with injury chips, who was lost, recruits, loot). Esc closes the topmost panel, then opens the pause menu
   (resume, save, load, settings, main menu, quit). `WorkerSlots` (one reusable control, also the `DefensePanel`'s guard
   slots): worker portraits (click: Unassign / Open survivor) and a "+" per free slot that opens `WorkerPicker` (portrait,
