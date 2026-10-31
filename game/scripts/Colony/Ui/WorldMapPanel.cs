@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Godot;
+using Remnants.Core.Help;
 using Remnants.Game.Hud;
+using Remnants.Game.Hud.Help;
 using Remnants.Core.Colony;
 using Remnants.Core.Scavenge;
 using Remnants.Core.Story;
@@ -25,19 +27,24 @@ public partial class WorldMapPanel : Control
     private readonly WorldMapCanvas _canvas;
     private readonly PanelContainer _card = new() { CustomMinimumSize = new Vector2(380, 0) };
     private readonly Label _cardTitle = Widgets.Label("", "Display", size: 24);
-    private readonly Label _cardRegion = Ui.Label(size: 13, color: Ui.Muted);
-    private readonly RichTextLabel _cardBody = Ui.Rich();
+    private readonly Label _cardRegion = Widgets.Label("", "Small", Palette.TextMuted);
+    private readonly VBoxContainer _summary = Widgets.Column(6);
+    private readonly Expander _about = new("About this zone");
+    private readonly Expander _storyBox = new("Story missions");
+    private readonly Label _party = Widgets.Wrapped("", "Small", Palette.TextMuted);
     private readonly Button _plan;
     private readonly Button _drone;
+    private readonly Unchanged _ui = new();
     private string? _selected;
+    private string _cardShown = "";
+    private string _storyShown = "";
+    private string _canvasShown = "";
 
     /// <summary>"Plan expedition" for a zone: the screen opens the expedition planner on it.</summary>
     public event Action<string>? PlanPressed;
 
     /// <summary>A story mission's marker or card entry: the screen opens its briefing.</summary>
     public event Action<string>? MissionPressed;
-
-    private readonly VBoxContainer _story = Widgets.Column(4);
 
     public WorldMapPanel(ColonySession session)
     {
@@ -51,56 +58,83 @@ public partial class WorldMapPanel : Control
         AddChild(_canvas);
 
         var header = new HBoxContainer { Position = new Vector2(24, 18) };
+        header.AddThemeConstantOverride("separation", 12);
         var title = Widgets.Label("WORLD MAP", "Title", Ink);
         header.AddChild(title);
+        var keys = Widgets.Label("←/→ or Tab: next zone · Enter: plan", "Small", Palette.TextDim);
+        header.AddChild(keys);
         AddChild(header);
 
-        var close = Widgets.IconButton("ui_close", "Close", "Close the map", Close, Hotkeys.KeyName("pause_menu"));
+        var close = PanelKit.Focusable(Widgets.IconButton("ui_close", "Close", "Close the map", Close, Hotkeys.KeyName("pause_menu")));
         close.SetAnchorsPreset(LayoutPreset.TopRight);
         close.Position = new Vector2(-134, 18);
         AddChild(close);
 
-        _card.SetAnchorsPreset(LayoutPreset.RightWide);
+        // The legend sits on the map's bottom-left, beside what it explains, as chips.
+        var legend = Legend();
+        legend.SetAnchorsPreset(LayoutPreset.BottomLeft);
+        legend.GrowVertical = GrowDirection.Begin;
+        legend.OffsetLeft = 24;
+        legend.OffsetBottom = -18;
+        AddChild(legend);
+
+        // The card is as tall as what it says (no tall empty card); details open below the summary.
+        _card.SetAnchorsPreset(LayoutPreset.TopRight);
+        _card.GrowHorizontal = GrowDirection.Begin;
         _card.OffsetLeft = -404;
         _card.OffsetRight = -24;
         _card.OffsetTop = 70;
-        _card.OffsetBottom = -24;
         AddChild(_card);
-        var box = Ui.Panel(_card, 8);
-        box.AddChild(_cardTitle);
-        box.AddChild(_cardRegion);
-        _cardBody.CustomMinimumSize = new Vector2(340, 0);
-        box.AddChild(_cardBody);
-        box.AddChild(_story);
-        _plan = Widgets.IconButton("ui_expedition", "Plan expedition", "Open the expedition planner on this zone", () =>
-        {
-            if (_selected is not { } id) return;
-            Close();
-            PlanPressed?.Invoke(id);
-        });
-        _plan.ThemeTypeVariation = "Primary";
-        box.AddChild(_plan);
-        _drone = Widgets.IconButton("skill_dronepiloting", "Send scout drone", "Fly a scout drone from the stores over this zone: its intel without anyone going", () =>
+        var outer = Ui.Panel(_card, 8);
+        outer.AddChild(_cardTitle);
+        outer.AddChild(_cardRegion);
+        var box = Widgets.Column(10);
+        box.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        outer.AddChild(box);
+        box.AddChild(_summary);
+        box.AddChild(_about);
+        box.AddChild(_storyBox);
+
+        outer.AddChild(_party);
+        _plan = PanelKit.Focusable(Widgets.IconButton("ui_expedition", "Plan expedition", "Open the expedition planner on this zone", PlanSelected, "Enter", "Primary"));
+        _plan.CustomMinimumSize = new Vector2(0, 36);
+        outer.AddChild(_plan);
+        var droneRow = Widgets.Row(4);
+        _drone = PanelKit.Focusable(Widgets.IconButton("skill_dronepiloting", "Send scout drone", "Fly a scout drone from the stores over this zone: its intel without anyone going", () =>
         {
             if (_selected is not { } id) return;
             // The best pilot at home flies it: less risk, and they train Drone Piloting.
             var pilot = _session.Sim.State.Survivors.Where(s => !s.IsChild && !s.Away).MaxBy(s => s.Get(Remnants.Core.Survivors.Skill.DronePiloting));
             _session.Execute(new SendScoutDrone(id, pilot?.Id));
             Refresh();
-        });
-        box.AddChild(_drone);
-        box.AddChild(Legend());
+        }));
+        _drone.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        droneRow.AddChild(_drone);
+        droneRow.AddChild(new InfoTip("drones"));
+        outer.AddChild(droneRow);
+        _droneRow = droneRow;
+    }
+
+    private readonly HBoxContainer _droneRow;
+
+    private void PlanSelected()
+    {
+        if (_selected is not { } id || _plan.Disabled) return;
+        Close();
+        PlanPressed?.Invoke(id);
     }
 
     public void Open(string? zoneId = null)
     {
-        Visible = true;
+        var opening = !Visible;
         _selected = zoneId ?? _session.Sim.State.Expedition?.ZoneId ?? _selected
             ?? _session.Sim.WorldZones().FirstOrDefault(z => z.Intel != ZoneIntel.Unknown)?.Zone.Id;
+        _cardShown = _storyShown = _canvasShown = "";
+        if (opening) Motion.Reveal(this, new Vector2(0, 12));
         Refresh();
     }
 
-    public void Close() => Visible = false;
+    public void Close() => Motion.Conceal(this);
 
     public void Toggle()
     {
@@ -108,29 +142,206 @@ public partial class WorldMapPanel : Control
         else Open();
     }
 
+    /// <summary>Arrows / Tab cycle the known zones, Enter plans an expedition to the selected one (while the map is open).</summary>
+    public override void _Input(InputEvent e)
+    {
+        if (!Visible || e is not InputEventKey { Pressed: true } key) return;
+        if (GetViewport().GuiGetFocusOwner() is LineEdit or TextEdit) return;
+        // Not while something opened over the map (a briefing, the pause menu) has the keys.
+        if (GetParent() is { } parent)
+            for (var i = GetIndex() + 1; i < parent.GetChildCount(); i++)
+                if (parent.GetChild(i) is CanvasItem { Visible: true } or CanvasLayer { Visible: true }) return;
+        var step = key.Keycode switch
+        {
+            Key.Right or Key.Down => 1,
+            Key.Left or Key.Up => -1,
+            Key.Tab => key.ShiftPressed ? -1 : 1,
+            _ => 0,
+        };
+        if (step != 0)
+        {
+            Cycle(step);
+            GetViewport().SetInputAsHandled();
+            return;
+        }
+        // Enter on a focused button presses that button; otherwise it plans.
+        if (key.Keycode is Key.Enter or Key.KpEnter && GetViewport().GuiGetFocusOwner() is not BaseButton)
+        {
+            PlanSelected();
+            GetViewport().SetInputAsHandled();
+        }
+    }
+
+    private void Cycle(int step)
+    {
+        var zones = _session.Sim.WorldZones().Where(z => z.Intel != ZoneIntel.Unknown)
+            .OrderBy(z => z.Zone.TravelDays).ThenBy(z => z.Zone.Name, StringComparer.Ordinal).Select(z => z.Zone.Id).ToList();
+        if (zones.Count == 0) return;
+        var at = _selected is null ? -1 : zones.IndexOf(_selected);
+        Select(zones[((at < 0 ? (step > 0 ? -1 : 0) : at) + step + zones.Count) % zones.Count]);
+    }
+
     public void Refresh()
     {
         if (!Visible) return;
-        _canvas.QueueRedraw();
         var sim = _session.Sim;
+        RedrawIfChanged(sim);
         if (_selected is not { } id || sim.ZoneInfo(id) is not { Intel: not ZoneIntel.Unknown } info)
         {
+            if (_cardShown == "none") return;
+            _cardShown = "none";
             _cardTitle.Text = "Choose a zone";
-            _cardRegion.Text = "";
-            _cardBody.Text = "Click a marker on the map.";
+            _cardRegion.Text = "Click a marker on the map, or use the arrow keys.";
+            Widgets.Clear(_summary);
+            _about.Visible = _storyBox.Visible = false;
             _plan.Disabled = true;
-            _drone.Visible = false;
+            _droneRow.Visible = false;
+            _party.Visible = false;
             return;
         }
-        _cardTitle.Text = info.Zone.Name;
-        _cardRegion.Text = info.Zone.Region.ToUpperInvariant() + (info.Visits > 0 ? $"  ·  visited {info.Visits}×" : "");
-        var body = ColonyText.ZoneSummary(sim, info);
-        if (info.Intel == ZoneIntel.Scouted && !string.IsNullOrEmpty(info.Zone.Description)) body = $"[i]{info.Zone.Description}[/i]\n\n{body}";
-        _cardBody.Text = body;
-        _plan.Disabled = sim.State.Expedition is not null;
-        _plan.Text = sim.State.Expedition is null ? "Plan expedition" : "A party is already out";
+        var vehicles = string.Join(",", sim.State.Vehicles.Where(v => !v.Away).Select(v => $"{v.Id}:{v.Condition:0}"));
+        var signature = $"{id}|{info.Intel}|{info.Visits}|{info.Linked}|{Math.Round(info.Depletion * 20)}|{vehicles}|{sim.State.Tick / Math.Max(1, sim.Data.Rules.TicksPerDay / 4)}";
+        if (signature != _cardShown)
+        {
+            _cardShown = signature;
+            BuildCard(sim, info);
+        }
+        RefreshParty(sim);
         RefreshDrone(sim, info);
         RefreshStory(sim, id);
+    }
+
+    /// <summary>The canvas redraws when what it shows changes (the party moves, a zone is scouted, the selection), not every tick.</summary>
+    private void RedrawIfChanged(ColonySim sim)
+    {
+        var e = sim.State.Expedition;
+        var zones = string.Join(",", sim.WorldZones().Select(z => $"{(int)z.Intel}{Math.Round(z.Depletion * 20)}{(int)z.Linked}"));
+        var moving = e is not null || sim.State.Trade.Deliveries.Count > 0 || sim.State.Campaign is not null ? sim.State.Tick : 0;
+        var signature = $"{_selected}|{zones}|{moving}|{e?.VehicleId}";
+        if (signature == _canvasShown) return;
+        _canvasShown = signature;
+        _canvas.QueueRedraw();
+    }
+
+    /// <summary>The zone card, summary first: threat, loot, Linked and travel as chips; the rest behind "About this zone".</summary>
+    private void BuildCard(ColonySim sim, ZoneInfo info)
+    {
+        var zone = info.Zone;
+        _cardTitle.Text = zone.Name;
+        _cardRegion.Text = zone.Region.ToUpperInvariant() + (info.Visits > 0 ? $"  ·  visited {info.Visits}×" : "  ·  never visited");
+        Widgets.Clear(_summary);
+        var scouted = info.Intel == ZoneIntel.Scouted;
+
+        if (scouted)
+        {
+            var chips = new HFlowContainer();
+            chips.AddThemeConstantOverride("h_separation", 6);
+            chips.AddThemeConstantOverride("v_separation", 6);
+            var threat = Widgets.Row(4);
+            threat.AddChild(Widgets.Label("Threat", "Small", Palette.TextMuted));
+            threat.AddChild(new Pips(zone.Threat, 4, ColonyText.ThreatColor(zone.Threat)));
+            threat.AddChild(new InfoTip("expeditions", () => new HelpContext { Colony = sim, Zone = zone }));
+            chips.AddChild(Framed(threat, $"Threat {zone.Threat} of 4: how many and how tough the enemies are."));
+            var loot = Widgets.Row(4);
+            loot.AddChild(Widgets.Label("Loot", "Small", Palette.TextMuted));
+            loot.AddChild(new Pips(zone.LootTier, 4, Palette.Amber));
+            loot.AddChild(new InfoTip("loot"));
+            chips.AddChild(Framed(loot, $"Loot tier {zone.LootTier} of 4: better gear and more schematics the higher it is."));
+            var linked = Widgets.Row(4);
+            linked.AddChild(Widgets.Label(Capital(ColonyText.Presence(info.Linked)), "Small", info.Linked == LinkedPresence.None ? Palette.TextMuted : Palette.Network));
+            linked.AddChild(new InfoTip("fog"));
+            chips.AddChild(Framed(linked, "Linked: the Network's soldiers. More rings on the marker, more of them."));
+            if (info.Depletion > 0.01)
+                chips.AddChild(Framed(Widgets.Label($"Picked over {Fmt.Percent(info.Depletion)}", "Small", Palette.Warn),
+                    "Fewer caches until it recovers: zones refill a little every day."));
+            _summary.AddChild(chips);
+        }
+        else
+            _summary.AddChild(Widgets.Wrapped("Rumored, not scouted: threat and rewards are unknown until a party goes there or a drone flies over.", "Small", Palette.TextMuted));
+
+        _summary.AddChild(TravelRow(sim, info));
+
+        // Details: the flavour line, what is there in numbers, with no degenerate "1–1" ranges.
+        Widgets.Clear(_about.Body);
+        _about.Visible = true;
+        if (!string.IsNullOrEmpty(zone.Description)) _about.Body.AddChild(Widgets.Wrapped(zone.Description, "Muted"));
+        if (scouted && sim.Scavenge is { } data)
+        {
+            var mix = string.Join(", ", zone.EnemyMix.Select(e => data.Enemies.GetValueOrDefault(e.Id)?.Name ?? e.Id).Distinct());
+            AboutLine($"{Range(zone.Enemies)} enemies{(mix.Length > 0 ? $": {mix}" : "")}");
+            AboutLine($"{Range(zone.Caches)} caches to search");
+            if (zone.Npcs[1] > 0) AboutLine($"{Range(zone.Npcs)} {(zone.Npcs[1] == 1 ? "stranger" : "strangers")} (may join, trade or fight)");
+            if (zone.Pylons[1] > 0) AboutLine($"{Range(zone.Pylons)} {(zone.Pylons[1] == 1 ? "pylon" : "pylons")}: they call reinforcements until destroyed");
+        }
+        _about.SetTitle(scouted ? "About this zone" : "What is said about it");
+    }
+
+    private void AboutLine(string text) => _about.Body.AddChild(Widgets.Wrapped("· " + text, "Small", Palette.Text));
+
+    private static string Capital(string s) => s.Length == 0 ? s : char.ToUpperInvariant(s[0]) + s[1..];
+
+    /// <summary>"3", or "2–4" when the numbers differ.</summary>
+    private static string Range(int[] range) => range.Length < 2 || range[0] == range[1] ? $"{range[0]}" : $"{range[0]}–{range[1]}";
+
+    private static PanelContainer Framed(Control content, string tooltip)
+    {
+        var chip = new PanelContainer { ThemeTypeVariation = "Chip", TooltipText = tooltip, MouseFilter = MouseFilterEnum.Stop };
+        chip.AddChild(content);
+        return chip;
+    }
+
+    /// <summary>"On foot 2d · 3 rations each" and, with a vehicle at home, the best one's time and fuel (or why it cannot go).</summary>
+    private Control TravelRow(ColonySim sim, ZoneInfo info)
+    {
+        var col = Widgets.Column(2);
+        var zone = info.Zone;
+        var head = Widgets.Row(4);
+        head.AddChild(Widgets.Label("TRAVEL", "Heading", Palette.TextMuted));
+        head.AddChild(new InfoTip("travel", () => new HelpContext { Colony = sim, Zone = zone }));
+        head.AddChild(Widgets.Label("· vehicles", "Small", Palette.TextDim));
+        head.AddChild(new InfoTip("vehicles"));
+        col.AddChild(head);
+        var foot = VehicleRules.Plan(sim, zone, null, sim.State.Tick);
+        var footText = zone.TravelDays <= 0 ? "On the doorstep" : $"On foot {ColonyText.Duration((int)foot.Ticks, sim.Data.Rules)} each way · {info.RationsPerMember:0.#} food per member";
+        col.AddChild(Widgets.Wrapped(foot.Blocked is { } fb ? $"{footText} · {fb}" : footText, "Small", foot.Blocked is null ? Palette.Text : Palette.Warn));
+        var best = sim.State.Vehicles.Where(v => !v.Away && !VehicleRules.Broken(sim.Data, v))
+            .OrderByDescending(v => sim.VehicleStats(v).Speed).FirstOrDefault();
+        if (best is not null && zone.TravelDays > 0)
+        {
+            var trip = VehicleRules.Plan(sim, zone, best, sim.State.Tick);
+            var fuel = sim.Data.Resources.GetValueOrDefault(sim.Data.Vehicles.FuelResource)?.Name ?? "fuel";
+            var text = trip.Blocked is { } why ? $"By {best.Name}: {why}"
+                : $"By {best.Name} {ColonyText.Duration((int)trip.Ticks, sim.Data.Rules)} · {trip.FuelRoundTrip:0} {fuel.ToLowerInvariant()} there and back";
+            var line = Widgets.Wrapped(text, "Small", trip.Blocked is null ? Palette.Text : Palette.Warn);
+            line.TooltipText = string.Join("\n", trip.Terms.Select(t => $"{t.Label}: speed ×{t.SpeedMultiplier:0.##}"));
+            line.MouseFilter = MouseFilterEnum.Stop;
+            col.AddChild(line);
+        }
+        return col;
+    }
+
+    /// <summary>Where the party is and when it is back: the reason Plan is off, said where it is seen.</summary>
+    private void RefreshParty(ColonySim sim)
+    {
+        var e = sim.State.Expedition;
+        _ui.Visible(_party, e is not null);
+        _plan.Disabled = e is not null || _selected is null;
+        if (e is null)
+        {
+            if (_plan.Text != "Plan expedition") _plan.Text = "Plan expedition";
+            return;
+        }
+        var zone = sim.Scavenge?.Zones.GetValueOrDefault(e.ZoneId)?.Name ?? e.ZoneId;
+        var tick = sim.State.Tick;
+        var rules = sim.Data.Rules;
+        var text = e.PhaseAt(tick) switch
+        {
+            ExpeditionPhase.Outbound => $"The party is on the road to {zone}: there in {ColonyText.Duration((int)Math.Max(0, e.ArrivalTick - tick), rules)}.",
+            ExpeditionPhase.InZone => $"The party is in {zone}: play it from the Expedition panel.",
+            _ => $"The party is heading home from {zone}: back in {ColonyText.Duration((int)Math.Max(0, e.ReturnTick - tick), rules)}.",
+        };
+        _ui.Text(_party, text + " One party at a time.");
+        if (_plan.Text != "A party is already out") _plan.Text = "A party is already out";
     }
 
     /// <summary>The scout drone button: what a flight there would cost and risk, or why it cannot go.</summary>
@@ -140,58 +351,90 @@ public partial class WorldMapPanel : Control
         var rules = scavenge.Rules.World.DroneScout;
         var flying = sim.State.DroneFlights.FirstOrDefault(f => f.ZoneId == info.Zone.Id);
         var item = WorldMap.DroneItem(sim.State, scavenge);
-        _drone.Visible = info.Intel != ZoneIntel.Scouted || flying is not null;
+        _ui.Visible(_droneRow, info.Intel != ZoneIntel.Scouted || flying is not null);
+        if (!_droneRow.Visible) return;
         var pilot = sim.State.Survivors.Where(s => !s.IsChild && !s.Away).MaxBy(s => s.Get(Remnants.Core.Survivors.Skill.DronePiloting));
         var risk = WorldMap.DroneLossChance(scavenge, info.Zone, pilot);
         var days = WorldMap.DroneLegTicks(sim.Data, scavenge, info.Zone) / (double)sim.Data.Rules.TicksPerDay;
-        (_drone.Disabled, _drone.Text) = flying is not null ? (true, flying.Arrived ? "Scout drone flying home" : "Scout drone on its way")
+        var (disabled, text) = flying is not null ? (true, flying.Arrived ? "Scout drone flying home" : "Scout drone on its way")
             : info.Zone.TravelDays > rules.MaxTravelDays ? (true, "Beyond a drone's battery")
             : item is null ? (true, "No scout drone in the stores")
             : (false, $"Send scout drone · {days:0.#}d · {risk * 100:0}% risk");
-        _drone.TooltipText = $"Reveals this zone's intel in {days:0.#} days without anyone going. It may be shot down over dangerous zones "
-                             + $"({risk * 100:0}% here{(pilot is null ? "" : $", flown by {pilot.Name}")}); otherwise it is back, recharged, "
-                             + $"{rules.RechargeDays:0.#} days after the flight home.";
+        if (_drone.Disabled != disabled) _drone.Disabled = disabled;
+        if (_drone.Text != text) _drone.Text = text;
+        _ui.Tooltip(_drone, $"Reveals this zone's intel in {days:0.#} days without anyone going. It may be shot down over dangerous zones "
+                            + $"({risk * 100:0}% here{(pilot is null ? "" : $", flown by {pilot.Name}")}); otherwise it is back, recharged, "
+                            + $"{rules.RechargeDays:0.#} days after the flight home.");
     }
 
-    /// <summary>The zone card's story section: missions there, their threat, the schematics they pay and what they need.</summary>
+    /// <summary>
+    /// The zone card's story section: missions there, their threat, the schematics they pay and what they need. Rebuilt only
+    /// when the zone or a mission's status changes.
+    /// </summary>
     private void RefreshStory(ColonySim sim, string zoneId)
     {
-        Widgets.Clear(_story);
         var missions = Campaign.Visible(sim).Where(m => m.Def.Zone == zoneId && m.Def.Type == MissionType.Field && !m.Def.Perimeter).ToList();
         var later = sim.Story?.Missions.Where(m => m.Zone == zoneId && m.Type == MissionType.Field && !m.Perimeter
                                                     && sim.State.Campaign?.Progress(m.Id).Status == MissionStatus.Locked).Take(2).ToList() ?? [];
-        if (missions.Count == 0 && later.Count == 0) return;
-        _story.AddChild(Widgets.SectionHeader("Story", "story_main"));
+        var signature = $"{zoneId}|" + string.Join(",", missions.Select(m => $"{m.Def.Id}:{m.Progress.Status}:{m.Progress.Outcome}"))
+                        + "|" + string.Join(",", later.Select(m => m.Id));
+        if (signature == _storyShown) return;
+        _storyShown = signature;
+        var box = _storyBox.Body;
+        Widgets.Clear(box);
+        _storyBox.Visible = missions.Count > 0 || later.Count > 0;
+        if (!_storyBox.Visible) return;
+        var open = missions.Count(m => m.Progress.Status == MissionStatus.Available);
+        _storyBox.SetTitle(open > 0 ? $"Story missions ({open} open)" : $"Story missions ({missions.Count + later.Count})");
+        // An open mission is something to do here: show it without a click.
+        if (open > 0) _storyBox.SetExpanded(true);
         foreach (var (def, p) in missions)
         {
             var row = Widgets.Row(6);
             row.AddChild(Icons.Rect(Icons.Get(def.Main ? "story_main" : "story_side", 16), 16, p.Status == MissionStatus.Done ? Palette.TextDim : Palette.Amber));
             var state = p.Status switch { MissionStatus.Done => p.Outcome == "failed" ? " · failed" : " · done", MissionStatus.Failed => " · back later", _ => "" };
-            row.AddChild(Widgets.Label($"{def.Name} · threat {def.Threat}{state}", "Small"));
-            row.AddChild(Widgets.Spacer());
+            var name = Widgets.Wrapped($"{def.Name} · threat {def.Threat}{state}", "Small");
+            row.AddChild(name);
             if (p.Status == MissionStatus.Available)
-                row.AddChild(Widgets.IconButton("ui_info", "Briefing", "Read the briefing", () => MissionPressed?.Invoke(def.Id), variation: "Flat"));
-            _story.AddChild(row);
+                row.AddChild(PanelKit.Focusable(Widgets.IconButton("ui_info", "Briefing", "Read the briefing", () => MissionPressed?.Invoke(def.Id), variation: "Flat")));
+            box.AddChild(row);
             var schematics = def.Rewards.Where(e => e.Kind == EffectKind.Schematic).Select(e => Campaign.SchematicName(e.Id)).ToList();
             if (schematics.Count > 0 && p.Status != MissionStatus.Done)
-                _story.AddChild(Widgets.Label($"   pays: {string.Join(", ", schematics)}", "Small", Palette.Good));
+                box.AddChild(Widgets.Label($"   pays: {string.Join(", ", schematics)}", "Small", Palette.Good));
         }
         foreach (var def in later)
-            _story.AddChild(Widgets.Label($"◇ {def.Name} · needs {def.NeedsText}", "Small", Palette.TextDim));
+            box.AddChild(Widgets.Wrapped($"◇ {def.Name} · needs {def.NeedsText}", "Small", Palette.TextDim));
     }
 
+    /// <summary>The legend as a chip row on the map: each mark as the map draws it, with a tip where a rule hides behind it.</summary>
     private static Control Legend()
     {
-        var legend = Ui.Rich();
-        legend.Text =
-            $"\n[color=#{Ui.Hex(Ui.Muted)}]LEGEND[/color]\n" +
-            $"[color=#{ColonyText.ThreatColor(1).ToHtml(false)}]●[/color] threat 1  " +
-            $"[color=#{ColonyText.ThreatColor(2).ToHtml(false)}]●[/color] 2  " +
-            $"[color=#{ColonyText.ThreatColor(3).ToHtml(false)}]●[/color] 3  " +
-            $"[color=#{ColonyText.ThreatColor(4).ToHtml(false)}]●[/color] 4\n" +
-            "bigger marker = richer loot · [color=#4dd9f2]○[/color] Linked presence · ? rumored, not scouted\n" +
-            $"[color=#{Palette.Amber.ToHtml(false)}]◆[/color] story mission · ◇ side mission · ))) a call at the colony";
-        return legend;
+        var row = new HFlowContainer { MouseFilter = MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(720, 0) };
+        row.AddThemeConstantOverride("h_separation", 6);
+        row.AddThemeConstantOverride("v_separation", 6);
+        Control Chip(string glyph, Color color, string text, string tooltip, string? topic = null)
+        {
+            var inner = Widgets.Row(4);
+            inner.AddChild(Widgets.Label(glyph, "Number", color));
+            inner.AddChild(Widgets.Label(text, "Small", Palette.TextMuted));
+            if (topic is not null) inner.AddChild(new InfoTip(topic));
+            return Framed(inner, tooltip);
+        }
+        row.AddChild(Chip("?", Ink, "rumored", "A rumor: not scouted, threat and rewards unknown."));
+        var threat = Widgets.Row(3);
+        threat.AddChild(Widgets.Label("Threat", "Small", Palette.TextMuted));
+        for (var t = 1; t <= 4; t++) threat.AddChild(Widgets.Label($"● {t}", "Number", ColonyText.ThreatColor(t)));
+        threat.AddChild(new InfoTip("expeditions"));
+        row.AddChild(Framed(threat, "Marker colour: the zone's threat, 1 (green) to 4."));
+        row.AddChild(Chip("◆", Palette.Amber, "loot tier · bigger = richer", "Diamonds on a marker and its size: the loot tier.", "loot"));
+        row.AddChild(Chip("○", Palette.Network, "Linked seen", "Cyan rings: Linked presence, more rings for more.", "fog"));
+        var picked = Widgets.Row(4);
+        picked.AddChild(new LegendMark());
+        picked.AddChild(Widgets.Label("picked over", "Small", Palette.TextMuted));
+        row.AddChild(Framed(picked, "A dark arc on the marker: how much of the zone has been looted. It refills slowly."));
+        row.AddChild(Chip("◆", Palette.Amber, "story mission", "Gold diamond: a main story mission, hollow: a side mission. Click it for the briefing."));
+        row.AddChild(Chip("●", Palette.Amber, "party · vehicle", "The party on its road; a party that drives shows its vehicle with condition.", "vehicles"));
+        return row;
     }
 
     internal ColonySim Sim => _session.Sim;
@@ -202,8 +445,28 @@ public partial class WorldMapPanel : Control
 
     internal void Select(string zoneId)
     {
+        if (_selected == zoneId) return;
         _selected = zoneId;
         Refresh();
+    }
+}
+
+/// <summary>The legend's "picked over" mark, drawn like the map draws it: a marker with a dark arc eating into it.</summary>
+public partial class LegendMark : Control
+{
+    public LegendMark()
+    {
+        CustomMinimumSize = new Vector2(16, 16);
+        SizeFlagsVertical = SizeFlags.ShrinkCenter;
+        MouseFilter = MouseFilterEnum.Ignore;
+    }
+
+    public override void _Draw()
+    {
+        var c = Size / 2;
+        DrawCircle(c, 7, Palette.Good.Darkened(0.35f));
+        DrawCircle(c, 5, Palette.Good);
+        DrawArc(c, 5.5f, -Mathf.Pi / 2, Mathf.Pi * 0.6f, 16, new Color(0, 0, 0, 0.6f), 3f, true);
     }
 }
 
@@ -282,7 +545,9 @@ public partial class WorldMapCanvas : Control
             var y = points.Min(p => p.Y) - 52;
             var text = string.Join(" ", region.Key.ToUpperInvariant().ToCharArray());
             var width = font.GetStringSize(text, HorizontalAlignment.Left, -1, 15).X;
-            DrawString(font, new Vector2(x - width / 2, y), text, HorizontalAlignment.Left, -1, 15, new Color(Ink, 0.35f));
+            // Outlined so a name over the river or a road still reads.
+            DrawStringOutline(font, new Vector2(x - width / 2, y), text, HorizontalAlignment.Left, -1, 15, 4, new Color(Sea, 0.9f));
+            DrawString(font, new Vector2(x - width / 2, y), text, HorizontalAlignment.Left, -1, 15, new Color(Ink, 0.62f));
         }
 
         // Roads: dashed from the colony, labelled with the travel time.
@@ -293,11 +558,20 @@ public partial class WorldMapCanvas : Control
             var color = new Color(ColonyText.ThreatColor(info.Zone.Threat), info.Intel == ZoneIntel.Scouted ? 0.55f : 0.3f);
             DrawDashedLine(colony, to, color, 2f, 9f);
             if (info.Zone.TravelDays <= 0) continue;
-            // The label sits beside the road, a little past halfway.
-            var along = colony.Lerp(to, 0.58f);
-            var side = (to - colony).Normalized().Orthogonal() * 12;
+            // The label sits beside the road halfway along its open stretch (between the colony's ring and the marker's), so
+            // labels of roads that meet at the colony do not pile up there and none sits on a ring.
+            var length = colony.DistanceTo(to);
+            var start = 26f;
+            var end = length - Radius(info.Zone) - 12;
+            if (end - start < 24) continue;
+            var dir = (to - colony) / length;
+            var along = colony + dir * ((start + end) / 2);
+            var side = dir.Orthogonal() * 12;
             var label = $"{info.Zone.TravelDays:0.#}d";
-            DrawString(font, along + side + new Vector2(-6, 4), label, HorizontalAlignment.Left, -1, 13, new Color(Ink, 0.8f));
+            var lw = font.GetStringSize(label, HorizontalAlignment.Left, -1, 13).X;
+            var pos = along + side + new Vector2(-lw / 2, 4);
+            DrawStringOutline(font, pos, label, HorizontalAlignment.Left, -1, 13, 4, new Color(Sea, 0.85f));
+            DrawString(font, pos, label, HorizontalAlignment.Left, -1, 13, new Color(Ink, 0.85f));
         }
 
         DrawColony(colony, font);
@@ -333,9 +607,12 @@ public partial class WorldMapCanvas : Control
     /// </summary>
     private void DrawStory(ColonySim sim, Vector2 colony, Font font)
     {
+        _pulsing = false;
         if (sim.State.Campaign is not { } campaign || sim.Story is null) return;
-        var pulse = 0.5f + 0.5f * Mathf.Sin((float)Time.GetTicksMsec() / 260f);
-        foreach (var (_, at, main, isNew, name) in StoryPins())
+        var pulse = GameSettings.ReduceMotion ? 1f : 0.5f + 0.5f * Mathf.Sin((float)Time.GetTicksMsec() / 260f);
+        var pins = StoryPins();
+        _pulsing = pins.Any(p => p.New);
+        foreach (var (_, at, main, isNew, name) in pins)
         {
             var size = isNew ? 12 + 2 * pulse : 12;
             if (StoryArt.Marker(main ? "marker_mission_main" : "marker_mission_side") is { } tex)
@@ -370,9 +647,12 @@ public partial class WorldMapCanvas : Control
         }
     }
 
+    private bool _pulsing;
+
+    /// <summary>Redraws every frame only while a new story pin pulses; otherwise the panel asks when something changed.</summary>
     public override void _Process(double delta)
     {
-        if (IsVisibleInTree() && _owner.Sim.State.Campaign is not null) QueueRedraw();
+        if (_pulsing && IsVisibleInTree() && !GameSettings.ReduceMotion) QueueRedraw();
     }
 
     /// <summary>
@@ -497,6 +777,14 @@ public partial class WorldMapCanvas : Control
             _ => 1f,
         };
         var at = colony.Lerp(target, Mathf.Clamp(progress, 0, 1)) + new Vector2(0, -Radius(zone) - 10) * (progress >= 1 ? 1 : 0);
+        // Keep the token off every marker (it covered the zone it passed, and the click went to it).
+        foreach (var info in sim.WorldZones().Where(z => z.Intel != ZoneIntel.Unknown))
+        {
+            var centre = At(info.Zone.MapPos);
+            var clear = Radius(info.Zone) + 16;
+            var away = at - centre;
+            if (away.Length() < clear) at = centre + (away.Length() < 1e-3 ? new Vector2(0, -1) : away.Normalized()) * clear;
+        }
         if (e.VehicleId is { } vid && sim.FindVehicle(vid) is { } vehicle)
         {
             var stats = sim.VehicleStats(vehicle);
