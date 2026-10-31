@@ -225,9 +225,19 @@ public static class Hotkeys
         new("scav_fly", "Fly the scout drone", "Scavenge", [Key.J]),
         new("scav_mark", "Mark a target with the drone", "Scavenge", [Key.M]),
         new("scav_payload", "Drop a payload from the drone", "Scavenge", [Key.P]),
-        new("scav_drone_action", "Drone role: heal / load / fire", "Scavenge", [Key.R]),
-        new("scav_ferry", "Cargo drone: ferry the load out", "Scavenge", [Key.I]),
+        // Drone orders that share a letter with an everyday order take Shift: R loads the vehicle, Shift+R is the
+        // drone's role; I salvages, Shift+I ferries the cargo drone's hold out.
+        new("scav_drone_action", "Drone role: heal / load / fire", "Scavenge", [Shift(Key.R)]),
+        new("scav_ferry", "Cargo drone: ferry the load out", "Scavenge", [Shift(Key.I)]),
+        new("scav_next_unit", "Select your next unit", "Scavenge", [Key.Tab]),
+        new("scav_center", "Centre the camera on the acting unit", "Scavenge", [Key.Home]),
+        new("scav_cancel", "Cancel aiming (item, drone, ping)", "Scavenge", [Key.Backspace]),
     ];
+
+    /// <summary>A chord: <paramref name="key"/> with Shift held.</summary>
+    private static Key Shift(Key key) => (Key)((long)key | (long)KeyModifierMask.MaskShift);
+
+    private static readonly Dictionary<string, Binding> ByAction = All.ToDictionary(b => b.Action);
 
     /// <summary>Camera panning is not an action (it reads WASD and arrows directly); listed for the settings screen.</summary>
     public static readonly (string Label, string Keys)[] Fixed =
@@ -246,20 +256,35 @@ public static class Hotkeys
         {
             if (InputMap.HasAction(binding.Action)) continue;
             InputMap.AddAction(binding.Action);
-            foreach (var key in binding.Keys) InputMap.ActionAddEvent(binding.Action, new InputEventKey { Keycode = key });
+            foreach (var key in binding.Keys)
+                InputMap.ActionAddEvent(binding.Action, new InputEventKey
+                {
+                    Keycode = (Key)((long)key & (long)KeyModifierMask.CodeMask),
+                    ShiftPressed = ((long)key & (long)KeyModifierMask.MaskShift) != 0,
+                });
         }
     }
 
-    /// <summary>"B", "Space / Enter": the keys bound to an action, for tooltips.</summary>
+    /// <summary>"B", "Space / Enter", "Shift+R": the keys bound to an action, for tooltips and keycaps.</summary>
     public static string KeyName(string action)
     {
         if (!InputMap.HasAction(action)) return "";
         var keys = InputMap.ActionGetEvents(action).OfType<InputEventKey>()
-            .Select(k => OS.GetKeycodeString(k.Keycode != Key.None ? k.Keycode : k.PhysicalKeycode));
+            .Select(k => OS.GetKeycodeString(k.Keycode != Key.None ? k.GetKeycodeWithModifiers() : k.GetPhysicalKeycodeWithModifiers()));
         return string.Join(" / ", keys);
     }
 
-    /// <summary>A fresh key press of <paramref name="action"/> (no echo).</summary>
-    public static bool Pressed(InputEvent e, string action) =>
-        e is InputEventKey { Pressed: true, Echo: false } && e.IsAction(action, exactMatch: false);
+    /// <summary>
+    /// A fresh key press of <paramref name="action"/> (no echo). The exact chord wins: with Shift held, a plain binding
+    /// still answers (Shift+Space ends the turn) unless an action of the same context is bound to exactly that chord
+    /// (Shift+R is the drone's order, not R's vehicle load).
+    /// </summary>
+    public static bool Pressed(InputEvent e, string action)
+    {
+        if (e is not InputEventKey { Pressed: true, Echo: false }) return false;
+        if (e.IsAction(action, exactMatch: true)) return true;
+        if (!e.IsAction(action, exactMatch: false)) return false;
+        var context = ByAction.TryGetValue(action, out var mine) ? mine.Context : "";
+        return !All.Any(b => (b.Context == context || b.Context == "Everywhere") && b.Action != action && e.IsAction(b.Action, exactMatch: true));
+    }
 }
