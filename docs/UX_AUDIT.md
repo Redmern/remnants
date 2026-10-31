@@ -1037,16 +1037,18 @@ CPU side of each command frame, before (e2df81b) → after stage 1:
 
 What is left over budget is AI turn time (`execute`, up to 40–50 ms on core_spire). Rows below get filled in stage 2.
 
-| Scenario | Before (ms, p50 / worst) | After stage 2 (ms, p50 / worst) |
+**Stage 2 (measured, merged rework vs e2df81b, headless; details in `docs/PERFORMANCE.md`).**
+
+| Scenario | Before | After stage 2 |
 |---|---|---|
-| Scavenge: move one tile (command frame) | TBD | TBD |
-| Scavenge: attack (command + AI replies) | TBD | TBD |
-| Scavenge: end turn | TBD | TBD |
-| Colony 4×, Expedition planner open, 2 picked | TBD | TBD |
-| Colony 4×, Garage open, production running | TBD | TBD |
-| Colony 4×, Gear Bench open | TBD | TBD |
-| Colony 4×, Kitchen recipe book open | TBD | TBD |
-| Colony 4×, Electronics Lab with charging bench | TBD | TBD |
-| Colony 4×, World map open | TBD | TBD |
-| Colony: open / close building panel | TBD | TBD |
-| Expedition planner: tick a survivor | TBD | TBD |
+| Scavenge command frame, hud + sync mean (core_spire / network_relay) | 9.9 / 10.1 ms | **2.8 / 2.8 ms** |
+| Scavenge hud p95 (core_spire / network_relay) | 10.4 / 9.4 ms | **3.5 / 3.6 ms** |
+| Scavenge frames > 16.7 ms in 40 s autoplay (core_spire / network_relay) | 7 / 8 | **4 / 3** (all AI turns) |
+| Colony 4×, Expedition planner open: p99 / max / frames > 16.7 ms in 30 s | 11.6 / 43.3 ms / 38 | **6.96 / 18.4 ms / 1** |
+| Colony 4×, Garage open | 7.6 / 33.1 ms / 38 | **6.94 / 18.4 ms / 1** |
+| Colony 4×, Kitchen recipe book open | 13.2 / 32.1 ms / 7 | **6.94 / 18.1 ms / 1** |
+| Colony 4×, Armory with a queue | 7.7 / 21.6 ms / 3 | **6.94 / 17.8 ms / 1** |
+
+The single frame over budget left in each colony run is the first tick after loading. Not measured: windowed 60 Hz
+frame times (agent runs use a hidden workspace that presents about once a second) and per-interaction timings such as
+opening a building panel; the remaining scavenge hitches are AI `execute` time (p95 46 ms on core_spire).

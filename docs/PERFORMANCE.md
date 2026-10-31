@@ -153,6 +153,36 @@ frames (they are replayed one by one anyway) is the next lever.
 Windowed runs now go through `tools/godot-agent.sh` (a hidden workspace); there Godot only draws once a second, so
 wall-clock frame times need a visible window (see "How to measure") and the stage-1 numbers above are headless.
 
+## UI/UX pass, stage 2 (merged rework)
+
+Stage 2 kept every scavenge HUD panel in place (stance, mission, turn-bar order chips, loot, pings, world-tag chips; the
+unit card's gear rows only on a gear or pack change, skipped while folded) and froze the order panels during enemy turns.
+Same headless A/B as above, back to back, e2df81b vs the merged branch:
+
+| Scavenge, 40 s autoplay | core_spire before → after | network_relay before → after |
+|---|---:|---:|
+| hud mean / p95 / max | 4.31 / 10.44 / 14.3 → **1.13 / 3.51 / 9.8 ms** | 4.44 / 9.42 / 18.2 → **1.19 / 3.61 / 11.4 ms** |
+| sync mean / p95 | 5.55 / 7.91 (incl. hud) → **1.64 / 3.87 ms** | 5.63 / 8.12 → **1.65 / 2.09 ms** |
+| hud + sync per command, mean | 9.9 → **2.8 ms** | 10.1 → **2.8 ms** |
+| frames with a span: mean / p95 | 11.7 / 33.1 → **9.4 / 14.2 ms** | 10.7 / 24.8 → **8.5 / 17.3 ms** |
+| frames over 16.7 ms in 40 s | 7 → **4** | 8 → **3** |
+
+The frames still over budget are the AI turns (`execute` p95 46 ms / max 54 ms on core_spire, unchanged): see "Not done".
+
+Colony at 4× with UI-heavy panels open, headless (`--headless -- --perf-log --perf-seconds=30 --colony FLAGS --speed=4`;
+CPU: sim ticks, HUD refresh and layout; the headless loop is capped near 145 fps, so the mean sits at 6.9 ms and the
+hitches are the story):
+
+| Colony 4×, 30 s | p99 before → after | max before → after | frames > 16.7 ms | frames > 20 ms |
+|---|---:|---:|---:|---:|
+| Expedition planner open, 2 picked (`--crafting-demo --expedition`) | 11.6 → **6.96 ms** | 43.3 → **18.4 ms** | 38 → **1** | 36 → **0** |
+| Garage open (`--garage-demo`) | 7.63 → **6.94 ms** | 33.1 → **18.4 ms** | 38 → **1** | 22 → **0** |
+| Kitchen recipe book (`--food-demo --food-view=kitchen`) | 13.2 → **6.94 ms** | 32.1 → **18.1 ms** | 7 → **1** | 1 → **0** |
+| Armory with a queue (`--crafting-demo`) | 7.66 → **6.94 ms** | 21.6 → **17.8 ms** | 3 → **1** | 1 → **0** |
+
+The one frame over 16.7 ms left in each is the first tick after loading (portraits render, the HUD builds). Windowed
+60 Hz numbers need a visible window; agents run Godot on a hidden workspace, which presents about once a second.
+
 ## Not done / next
 
 - **Scavenge AI turns**: see "Scavenge command frames" above: `execute` is the last part of a command frame over budget.
