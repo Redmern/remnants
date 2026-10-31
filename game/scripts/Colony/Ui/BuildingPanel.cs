@@ -1,55 +1,88 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Godot;
 using Remnants.Core.Colony;
+using Remnants.Core.Help;
 using Remnants.Core.Survivors;
 using Remnants.Game.Hud;
+using Remnants.Game.Hud.Help;
 
 namespace Remnants.Game.Colony.Ui;
 
 /// <summary>
-/// The selected building: icon, name, category and level pips; its workers as portraits (empty slots shown);
-/// what it makes per day (tooltip: per worker); beds or patient beds; and the next upgrade as cost chips (missing
-/// resources marked) with the Town Hall cap; for workplaces the Night Shift toggle with its penalty, and for an unlit
-/// outdoor one the Floodlight that lets it run; for buildings on the power grid a Power section (what it makes, stores or
-/// draws, whether it is fed, the bonus power gives) with its on/off switch; after a raid its damage (wrecked: "repair it")
-/// with the repair button and cost. Core decides whether an upgrade, a night shift, a Floodlight or a switch goes through.
+/// The selected building, one panel with a pinned header and tabs (UX audit 6.2). The header never scrolls away: icon,
+/// name, level pips, status chips (power fed / not fed / off, raid damage, lightning damage, night shift), the workers as
+/// <see cref="WorkerSlots"/> ("+" opens the picker, right-click a portrait unassigns, a survivor card dropped on the
+/// panel is assigned) and the one output line. Tabs: <b>Overview</b> (what it does, raid and lightning damage with their
+/// repair, the Night Shift toggle and Floodlight, the Power switch), <b>Upgrade</b> (the next level's gain, named cost
+/// chips, what blocks it with a link) and one tab per building-specific panel the HUD hosts here (<see cref="AddExtra"/>:
+/// crops, the queue, patients, research, radio, study). Everything is built once and updated in place. Core decides
+/// whether an upgrade, a night shift, a Floodlight, a repair or a switch goes through.
 /// </summary>
 public partial class BuildingPanel : PanelContainer
 {
     private readonly ColonySession _session;
+    private readonly Unchanged _set = new();
+
+    // Header (pinned)
     private readonly TextureRect _icon = Icons.Rect(Icons.Get("ui_build", 26), 26, Palette.Rust);
     private readonly Label _name = Widgets.Label("", "Display");
     private readonly Label _category = Widgets.Label("", "Small");
     private readonly Pips _levels = new();
+    private readonly Label _levelText = Widgets.Label("", "Small");
+    private readonly HFlowContainer _chips = new();
+    private readonly PanelContainer _powerChip;
+    private readonly PanelContainer _damageChip;
+    private readonly PanelContainer _lightningChip;
+    private readonly PanelContainer _nightChip;
+    private readonly HBoxContainer _workersHead;
     private readonly Label _workersLabel = Widgets.Label("", "Heading");
     private readonly WorkerSlots _workers;
-    private readonly Label _output = Widgets.Label("", "");
-    private readonly VBoxContainer _upgradeBox = Widgets.Column(6);
-    private readonly Label _upgradeTitle = Widgets.Label("", "Heading");
-    private readonly MarginContainer _costs = new();
-    private readonly Label _cap = Widgets.Wrapped("", "Small");
-    private readonly Button _upgrade;
-    private readonly VBoxContainer _nightBox = Widgets.Column(4);
-    private readonly Button _nightShift;
-    private readonly Label _nightNote = Widgets.Wrapped("", "Small");
-    private readonly HBoxContainer _floodRow = Widgets.Row(6);
-    private readonly MarginContainer _floodCost = new();
-    private readonly Button _flood;
-    private readonly VBoxContainer _damageBox = Widgets.Column(6);
+    private readonly Label _output = Widgets.Wrapped("", "");
+    private readonly HBoxContainer _outputRow;
+
+    // Tabs
+    private readonly TabStrip _tabs = new();
+    private readonly ScrollContainer _scroll = new() { HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+    private readonly VBoxContainer _pages = Widgets.Column(0);
+    private readonly List<Control> _pageList = new();
+    private readonly int _overviewTab, _upgradeTab;
+    private readonly List<(PanelContainer Panel, int Tab)> _extras = new();
+    private bool _pickTab;
+
+    // Overview
+    private readonly Label _purpose = Widgets.Wrapped("", "Muted");
+    private readonly VBoxContainer _damageBox = Widgets.Column(Space.Xs);
     private readonly Label _damageTitle = Widgets.Label("", "Heading");
     private readonly StatBar _damageHp = new("stat_hp");
-    private readonly HBoxContainer _damageRow = Widgets.Row(6);
-    private string _damageSignature = "";
-    private string _floodSignature = "";
-    private readonly VBoxContainer _repairBox = Widgets.Column(4);
-    private readonly Label _repairNote = Widgets.Wrapped("", "Small");
-    private readonly MarginContainer _repairCost = new();
-    private Button _repair = null!;
-    private readonly VBoxContainer _powerBox = Widgets.Column(4);
+    private readonly Label _damageStatus = Widgets.Wrapped("", "Small");
+    private readonly Button _damageCancel;
+    private readonly Button _damageRepair;
+    private readonly CostRow _damageCost = new();
+    private readonly VBoxContainer _nightBox = Widgets.Column(Space.Xs);
+    private readonly Button _nightShift;
+    private readonly Label _nightNote = Widgets.Wrapped("", "Small");
+    private readonly HBoxContainer _floodRow = Widgets.Row(Space.Sm);
+    private readonly CostRow _floodCost = new();
+    private readonly Button _flood;
+    private readonly VBoxContainer _repairBox = Widgets.Column(Space.Xs);
+    private readonly Label _repairNote = Widgets.Wrapped("", "Small", Palette.Warn);
+    private readonly CostRow _repairCost = new();
+    private readonly Button _repair;
+    private readonly VBoxContainer _powerBox = Widgets.Column(Space.Xs);
     private readonly Label _powerLines = Widgets.Wrapped("", "Small");
     private readonly Button _powerSwitch;
-    private string _costSignature = "";
+
+    // Upgrade
+    private readonly Label _upgradeTitle = Widgets.Label("", "Heading");
+    private readonly VBoxContainer _gains = Widgets.Column(2);
+    private readonly CostRow _costs = new(named: true);
+    private readonly Label _blocker = Widgets.Wrapped("", "Small");
+    private readonly Button _blockerLink;
+    private readonly Button _upgrade;
+    private readonly Label _upgradeWhy = Widgets.Wrapped("", "Small");
+    private readonly Control _upgradeBody;
 
     public int? BuildingId { get; private set; }
 
@@ -61,6 +94,12 @@ public partial class BuildingPanel : PanelContainer
     /// <summary>"Open survivor" on a worker's portrait.</summary>
     public event Action<int>? SurvivorRequested;
 
+    /// <summary>A blocker's "Open archive" link (the schematic an upgrade needs).</summary>
+    public event Action? ArchiveRequested;
+
+    /// <summary>The tallest the panel may grow (the HUD's room in the right column); the tab body scrolls past it.</summary>
+    public Func<float>? MaxHeight { get; set; }
+
     /// <summary>A survivor's fit for a job: Core's effectiveness (the job's skill and attributes, weighted) and its parts.</summary>
     public static SlotFit JobFit(Remnants.Core.Data.JobDef job, Survivor s)
     {
@@ -71,18 +110,23 @@ public partial class BuildingPanel : PanelContainer
     public BuildingPanel(ColonySession session)
     {
         _session = session;
-        CustomMinimumSize = new Vector2(0, 0);
-        var box = Ui.Panel(this, 8);
+        CustomMinimumSize = new Vector2(PanelWidth.Side, 0);
+        SizeFlagsVertical = SizeFlags.ShrinkBegin;
+        var box = Ui.Panel(this, Space.Sm);
 
-        var head = Widgets.Row(8);
+        // ── Header: name and level, status chips, workers, output ──
+        var head = Widgets.Row(Space.Sm);
         head.AddChild(_icon);
         var names = Widgets.Column(0);
         names.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _name.AddThemeFontSizeOverride("font_size", 22);
+        _name.ClipText = true;
+        _name.TextOverrunBehavior = TextServer.OverrunBehavior.TrimEllipsis;
         names.AddChild(_name);
-        var sub = Widgets.Row(8);
+        var sub = Widgets.Row(Space.Sm);
         sub.AddChild(_category);
+        _levels.MouseFilter = MouseFilterEnum.Stop;
         sub.AddChild(_levels);
+        sub.AddChild(_levelText);
         names.AddChild(sub);
         head.AddChild(names);
         var close = Widgets.IconButton("ui_close", "", "Deselect", () => Closed?.Invoke(), "Esc", "Flat");
@@ -90,13 +134,16 @@ public partial class BuildingPanel : PanelContainer
         head.AddChild(close);
         box.AddChild(head);
 
-        // Raid damage: shown only when the building is hurt; a wrecked one cannot be worked until repaired.
-        _damageBox.AddChild(_damageTitle);
-        _damageBox.AddChild(_damageHp);
-        _damageBox.AddChild(_damageRow);
-        box.AddChild(_damageBox);
+        _chips.AddThemeConstantOverride("h_separation", Space.Xs);
+        _chips.AddThemeConstantOverride("v_separation", Space.Xs);
+        _powerChip = StatusChip("stat_power", "power", () => ShowTab(_overviewTab, _powerBox));
+        _damageChip = StatusChip("ui_repair", "raids", () => ShowTab(_overviewTab, _damageBox));
+        _lightningChip = StatusChip("weather_lightning", "weather", () => ShowTab(_overviewTab, _repairBox));
+        _nightChip = StatusChip("ui_night_shift", "night_shift", () => ShowTab(_overviewTab, _nightBox));
+        box.AddChild(_chips);
 
-        box.AddChild(_workersLabel);
+        _workersHead = InfoTip.Beside(_workersLabel, "jobs_output", WorkerContext);
+        box.AddChild(_workersHead);
         _workers = new WorkerSlots(session)
         {
             Title = sim => BuildingId is { } b && sim.State.FindBuilding(b) is { } at ? $"Assign to {ColonyText.BuildingName(sim, at)}" : "Assign",
@@ -105,58 +152,231 @@ public partial class BuildingPanel : PanelContainer
                 ? JobFit(sim.Data.Jobs[job], s) : null,
             Assign = s => new AssignJob(s.Id, BuildingId ?? -1),
             Unassign = s => new Unassign(s.Id),
-            FreeTip = "Free slot: click to pick who works here.",
+            FreeTip = "Free slot: click to pick who works here.\nOr drag a survivor's card onto this panel.",
         };
         _workers.SurvivorRequested += id => SurvivorRequested?.Invoke(id);
         box.AddChild(_workers);
         _output.MouseFilter = MouseFilterEnum.Stop;
-        _output.AutowrapMode = TextServer.AutowrapMode.WordSmart;
-        box.AddChild(_output);
+        _outputRow = InfoTip.Beside(_output, "production", WorkerContext);
+        _output.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        box.AddChild(_outputRow);
 
-        _nightBox.AddChild(Widgets.SectionHeader("Night", "phase_night"));
-        _nightShift = Widgets.IconButton("ui_night_shift", "Night shift", "", ToggleNightShift);
-        _nightShift.ToggleMode = true;
-        _nightBox.AddChild(_nightShift);
-        _nightBox.AddChild(_nightNote);
-        _flood = Widgets.IconButton("bld_floodlight", "Fit Floodlight", "", FitFloodlight);
-        _floodRow.AddChild(_flood);
-        _floodRow.AddChild(_floodCost);
-        _nightBox.AddChild(_floodRow);
-        box.AddChild(_nightBox);
+        // ── Tabs ──
+        _overviewTab = _tabs.Add("Overview", "What it does, damage, night shift and power");
+        _upgradeTab = _tabs.Add("Upgrade", "The next level: what it adds and costs");
+        _tabs.Changed += OnTab;
+        box.AddChild(_tabs);
+        _scroll.SizeFlagsVertical = SizeFlags.ExpandFill;
+        _pages.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _scroll.AddChild(_pages);
+        box.AddChild(_scroll);
 
-        // Struck by lightning: half output until repaired.
-        _repairBox.AddChild(Widgets.SectionHeader("Lightning damage", "weather_lightning"));
+        // Overview page
+        var overview = Widgets.Column(Space.Md);
+        overview.AddChild(_purpose);
+
+        // Raid damage: shown only when the building is hurt; a wrecked one cannot be worked until repaired.
+        _damageBox.AddChild(_damageTitle);
+        _damageBox.AddChild(_damageHp);
+        _damageBox.AddChild(_damageStatus);
+        var damageRow = Widgets.Row(Space.Sm);
+        _damageRepair = Widgets.IconButton("ui_repair", "Queue repair", "Idle adults work the repair queue by day; materials are paid when it starts.", QueueRepair);
+        _damageRepair.Icon = Icons.Get("ui_repair", 18, "skill_crafting");
+        _damageRepair.FocusMode = FocusModeEnum.All;
+        damageRow.AddChild(_damageRepair);
+        _damageCancel = Widgets.IconButton("ui_close", "Cancel repair", "Take it out of the repair queue", CancelRepair);
+        _damageCancel.FocusMode = FocusModeEnum.All;
+        damageRow.AddChild(_damageCancel);
+        _damageCost.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        damageRow.AddChild(_damageCost);
+        _damageBox.AddChild(damageRow);
+        overview.AddChild(_damageBox);
+
+        // Struck by lightning: lower output until repaired.
+        _repairBox.AddChild(Widgets.SectionHeader("Lightning damage", "weather_lightning", new InfoTip("weather")));
         _repairBox.AddChild(_repairNote);
-        var repairRow = Widgets.Row(6);
+        var repairRow = Widgets.Row(Space.Sm);
         _repair = Widgets.IconButton("ui_build", "Repair", "", Repair, variation: "Primary");
+        _repair.FocusMode = FocusModeEnum.All;
         repairRow.AddChild(_repair);
         repairRow.AddChild(_repairCost);
         _repairBox.AddChild(repairRow);
-        box.AddChild(_repairBox);
-        _powerBox.AddChild(Widgets.SectionHeader("Power", "stat_power"));
-        _powerBox.AddChild(_powerLines);
-        _powerSwitch = Widgets.IconButton("stat_power", "On the grid", "", TogglePower);
-        _powerSwitch.ToggleMode = true;
-        _powerBox.AddChild(_powerSwitch);
-        box.AddChild(_powerBox);
+        overview.AddChild(_repairBox);
 
-        _upgradeBox.AddChild(Widgets.SectionHeader("Upgrade", "ui_chevron_up"));
-        _upgradeBox.AddChild(_upgradeTitle);
-        _upgradeBox.AddChild(_costs);
-        _upgradeBox.AddChild(_cap);
+        _nightBox.AddChild(Widgets.SectionHeader("Night", "phase_night", new InfoTip("night_shift", WorkerContext)));
+        var nightRow = Widgets.Row(Space.Sm);
+        _nightShift = Motion.OnPress(Widgets.IconButton("ui_night_shift", "Night shift", "", ToggleNightShift));
+        _nightShift.ToggleMode = true;
+        _nightShift.FocusMode = FocusModeEnum.All;
+        nightRow.AddChild(_nightShift);
+        _nightNote.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        nightRow.AddChild(_nightNote);
+        _nightBox.AddChild(nightRow);
+        _flood = Widgets.IconButton("bld_floodlight", "Fit Floodlight", "", FitFloodlight);
+        _flood.FocusMode = FocusModeEnum.All;
+        _floodRow.AddChild(_flood);
+        _floodCost.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        _floodRow.AddChild(_floodCost);
+        _nightBox.AddChild(_floodRow);
+        overview.AddChild(_nightBox);
+
+        _powerBox.AddChild(Widgets.SectionHeader("Power", "stat_power", new InfoTip("power")));
+        _powerBox.AddChild(_powerLines);
+        // A switch, not a call to action: flat, saying the state it is in.
+        _powerSwitch = Motion.OnPress(Widgets.IconButton("stat_power", "On the grid", "", TogglePower, variation: "Flat"));
+        _powerSwitch.ToggleMode = true;
+        _powerSwitch.FocusMode = FocusModeEnum.All;
+        _powerSwitch.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
+        _powerBox.AddChild(_powerSwitch);
+        overview.AddChild(_powerBox);
+        AddPage(overview);
+
+        // Upgrade page
+        var upgrade = Widgets.Column(Space.Sm);
+        upgrade.AddChild(_upgradeTitle);
+        var body = Widgets.Column(Space.Sm);
+        _upgradeBody = body;
+        body.AddChild(_gains);
+        body.AddChild(Widgets.Label("COSTS", "Heading"));
+        body.AddChild(_costs);
+        var blockerRow = Widgets.Row(Space.Sm);
+        _blocker.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        blockerRow.AddChild(_blocker);
+        _blockerLink = Widgets.IconButton("item_schematic", "Open archive", "Items → Schematics: where schematics are kept and researched", () => ArchiveRequested?.Invoke(), variation: "Flat");
+        _blockerLink.FocusMode = FocusModeEnum.All;
+        _blockerLink.SizeFlagsVertical = SizeFlags.ShrinkBegin;
+        blockerRow.AddChild(_blockerLink);
+        body.AddChild(blockerRow);
         _upgrade = Widgets.IconButton("ui_chevron_up", "Upgrade", "Upgrade this building", Upgrade, variation: "Primary");
-        _upgradeBox.AddChild(_upgrade);
-        box.AddChild(_upgradeBox);
+        _upgrade.FocusMode = FocusModeEnum.All;
+        body.AddChild(_upgrade);
+        body.AddChild(_upgradeWhy);
+        upgrade.AddChild(body);
+        AddPage(upgrade);
         Visible = false;
+        Fit.OnParentResized(this, FitHeight);
+    }
+
+    /// <summary>A small chip in the header (power, damage, night): click jumps to its section; an (i) on hover through the tooltip.</summary>
+    private PanelContainer StatusChip(string icon, string topic, Action onClick)
+    {
+        var chip = Widgets.Chip(Icons.Get(icon, 16), "");
+        chip.MouseDefaultCursorShape = CursorShape.PointingHand;
+        chip.GetChild(0).AddChild(new InfoTip(topic, WorkerContext));
+        chip.GuiInput += e =>
+        {
+            if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) onClick();
+        };
+        chip.Visible = false;
+        _chips.AddChild(chip);
+        return chip;
+    }
+
+    private void AddPage(Control page)
+    {
+        page.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        page.Visible = _pageList.Count == _tabs.Selected;
+        _pageList.Add(page);
+        _pages.AddChild(page);
+    }
+
+    /// <summary>
+    /// Hosts a building-specific panel (crops, queue, patients...) under its own tab, shown while the panel says it
+    /// applies (its own <see cref="CanvasItem.Visible"/>, set by its Refresh). It loses its frame: the building panel is its frame.
+    /// </summary>
+    public void AddExtra(PanelContainer panel, string title, string tooltip)
+    {
+        var tab = _tabs.Add(title, tooltip);
+        panel.AddThemeStyleboxOverride("panel", new StyleBoxEmpty());
+        var host = new MarginContainer { SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        host.AddChild(panel);
+        AddPage(host);
+        _extras.Add((panel, tab));
+        _tabs.SetShown(tab, false);
+        panel.VisibilityChanged += SyncExtras;
+    }
+
+    /// <summary>True when <paramref name="control"/> lives in one of this panel's tabs.</summary>
+    public bool Hosts(Control control) => _pages.IsAncestorOf(control);
+
+    /// <summary>Opens the tab holding <paramref name="control"/> and scrolls it into view (debug captures of long panels).</summary>
+    public void Reveal(Control control)
+    {
+        var page = _pageList.FindIndex(p => p == control || p.IsAncestorOf(control));
+        if (page >= 0) _tabs.Select(page);
+        _scroll.CallDeferred(ScrollContainer.MethodName.EnsureControlVisible, control);
+    }
+
+    private void ShowTab(int tab, Control? section = null)
+    {
+        _tabs.Select(tab);
+        if (section is not null) _scroll.CallDeferred(ScrollContainer.MethodName.EnsureControlVisible, section);
+    }
+
+    private void OnTab(int tab)
+    {
+        for (var i = 0; i < _pageList.Count; i++)
+        {
+            if (i == tab) Motion.Reveal(_pageList[i]);
+            else _pageList[i].Visible = false;
+        }
+        _scroll.ScrollVertical = 0;
+        FitHeight();
+    }
+
+    private void SyncExtras()
+    {
+        foreach (var (panel, tab) in _extras) _tabs.SetShown(tab, panel.Visible);
+    }
+
+    /// <summary>A new building opens on its own work (the first hosted tab that applies), else on Overview.</summary>
+    private void PickTab()
+    {
+        if (!_pickTab) return;
+        _pickTab = false;
+        SyncExtras();
+        var extra = _extras.FirstOrDefault(x => x.Panel.Visible);
+        _tabs.Select(extra.Panel is not null ? extra.Tab : _overviewTab);
+        OnTab(_tabs.Selected);
+    }
+
+    /// <summary>Survivor-card drops: assign the dropped survivor here (Core decides; a refusal shows in the log).</summary>
+    public override bool _CanDropData(Vector2 atPosition, Variant data) =>
+        BuildingId is { } id && SurvivorCard.DraggedId(data) is not null
+        && _session.Sim.State.FindBuilding(id) is { } b && _session.Sim.Data.Buildings[b.DefId].Job is not null;
+
+    public override void _DropData(Vector2 atPosition, Variant data)
+    {
+        if (BuildingId is { } id && SurvivorCard.DraggedId(data) is { } who) _session.Execute(new AssignJob(who, id));
+    }
+
+    private HelpContext WorkerContext()
+    {
+        var sim = _session.Sim;
+        var building = BuildingId is { } id ? sim.State.FindBuilding(id) : null;
+        return new HelpContext
+        {
+            Colony = sim,
+            Building = building,
+            Survivor = building is null ? null : sim.State.WorkersAt(building.Id).OrderBy(s => s.Id).FirstOrDefault(),
+        };
     }
 
     public void Show(int? buildingId)
     {
+        var changed = buildingId != BuildingId;
         BuildingId = buildingId;
-        _costSignature = _damageSignature = "";
         _workers.Reset();
         if (buildingId is null) Visible = false;
-        else if (_session.Sim.State.FindBuilding(buildingId.Value) is not null) Motion.Reveal(this, new Vector2(12, 0));
+        else if (_session.Sim.State.FindBuilding(buildingId.Value) is not null)
+        {
+            Motion.Reveal(this, new Vector2(12, 0));
+            if (changed)
+            {
+                _pickTab = true;
+                CallDeferred(MethodName.PickTab);
+            }
+        }
         Refresh();
     }
 
@@ -172,98 +392,142 @@ public partial class BuildingPanel : PanelContainer
 
         var def = sim.Data.Buildings[building.DefId];
         var level = def.Level(building.Level);
-        _icon.Texture = Icons.Building(def.Id, def.Category.ToString(), 26);
-        _name.Text = def.Name;
-        _category.Text = $"{def.Category} · level {building.Level}/{def.MaxLevel}";
+        _set.Texture(_icon, Icons.Building(def.Id, def.Category.ToString(), 26));
+        _set.Text(_name, def.Name);
+        _set.Text(_category, def.Category.ToString());
         _levels.Set(building.Level, def.MaxLevel);
-        _levels.TooltipText = $"Level {building.Level} of {def.MaxLevel}";
+        _set.Text(_levelText, $"L{building.Level}/{def.MaxLevel}");
+        var levelTip = $"Level {building.Level} of {def.MaxLevel}." + (building.Level < def.MaxLevel ? " Upgrade for more workers and output (Upgrade tab)." : " Fully upgraded.");
+        _set.Tooltip(_levels, levelTip);
+        _set.Tooltip(_levelText, levelTip);
+        _set.Text(_purpose, BuildMenu.Purpose(sim, def));
 
         RefreshDamage(sim, building);
         RefreshWorkers(sim, building, def, level.WorkerSlots);
-        _output.Text = OutputText(sim, building, def, level, out var tip);
-        _output.TooltipText = tip;
-        _output.Visible = _output.Text.Length > 0;
+        _set.Text(_output, OutputText(sim, building, def, level, out var tip));
+        _set.Tooltip(_output, tip);
+        _set.Visible(_outputRow, _output.Text.Length > 0);
         RefreshNight(sim, building, def);
         RefreshRepair(sim, building, def);
         RefreshPower(sim, building);
         RefreshUpgrade(sim, building, def);
+        _set.Visible(_chips, _chips.GetChildren().OfType<Control>().Any(c => c.Visible));
+        FitHeight();
+    }
+
+    /// <summary>
+    /// The panel is as tall as its content up to <see cref="MaxHeight"/>; past that the tab body scrolls and the header
+    /// stays put. Set only when it changes, so a steady panel never relayouts.
+    /// </summary>
+    private void FitHeight()
+    {
+        var page = _tabs.Selected < _pageList.Count ? _pageList[_tabs.Selected] : null;
+        var want = page?.GetCombinedMinimumSize().Y ?? 0;
+        var chrome = GetCombinedMinimumSize().Y - _scroll.CustomMinimumSize.Y;
+        var room = MaxHeight?.Invoke() is { } max and > 0 ? max - chrome : want;
+        var height = Mathf.Round(Math.Max(60, Math.Min(want, room)));
+        if (Math.Abs(_scroll.CustomMinimumSize.Y - height) >= 1) _scroll.CustomMinimumSize = new Vector2(0, height);
+    }
+
+    private void SetChip(PanelContainer chip, bool shown, string text = "", Color? color = null, string tooltip = "")
+    {
+        _set.Visible(chip, shown);
+        if (!shown) return;
+        var row = chip.GetChild(0);
+        var label = row.GetChild<Label>(1);
+        var c = color ?? Palette.Text;
+        _set.Text(label, text);
+        _set.FontColor(label, c);
+        _set.Modulate(row.GetChild<TextureRect>(0), c == Palette.Text ? Palette.TextMuted : c);
+        _set.Tooltip(chip, tooltip + "\nClick for the details.");
     }
 
     private void RefreshDamage(ColonySim sim, Building building)
     {
         var raids = sim.Raids;
         var damage = raids is null ? 0 : Remnants.Core.Raids.RaidSystem.Damage(sim.State, building);
-        _damageBox.Visible = damage > 0;
-        if (raids is null || damage <= 0) return;
+        _set.Visible(_damageBox, damage > 0);
+        if (raids is null || damage <= 0)
+        {
+            SetChip(_damageChip, false);
+            return;
+        }
         var max = Remnants.Core.Raids.RaidSystem.BuildingHp(raids, building);
         var wrecked = Remnants.Core.Raids.RaidSystem.IsRubble(sim, building);
-        _damageTitle.Text = wrecked ? "⚠ WRECKED — REPAIR IT" : "DAMAGED IN A RAID";
-        _damageTitle.AddThemeColorOverride("font_color", wrecked ? Palette.Danger : Palette.Warn);
-        _damageTitle.TooltipText = wrecked ? "Nobody can work or be assigned here until it is repaired." : "It still works; repair it before the next raid.";
+        var color = wrecked ? Palette.Danger : Palette.Warn;
+        SetChip(_damageChip, true, wrecked ? "Wrecked" : $"Damaged {max - damage:0}/{max:0}", color,
+            wrecked ? "Wrecked in a raid: nobody can work here until it is repaired." : "Damaged in a raid: it still works; repair it before the next raid.");
+        _set.Text(_damageTitle, wrecked ? "WRECKED: REPAIR IT" : "DAMAGED IN A RAID");
+        _set.FontColor(_damageTitle, color);
+        _set.Tooltip(_damageTitle, wrecked ? "Nobody can work or be assigned here until it is repaired." : "It still works; repair it before the next raid.");
         _damageHp.Set((max - damage) / max, $"{max - damage:0}/{max:0}");
         var order = sim.State.Defense.Repairs.FirstOrDefault(r => r.Target == Remnants.Core.Raids.RepairTarget.Building && r.TargetId == building.Id);
         var cost = Remnants.Core.Raids.RaidSystem.RepairCost(sim, raids, Remnants.Core.Raids.RepairTarget.Building, building.Id);
-        var signature = $"{order?.Id}|{order?.Progress:0}|{order?.Paid}|{damage:0}|" + RaidText.Signature(sim, cost);
-        if (signature == _damageSignature) return;
-        _damageSignature = signature;
-        Widgets.Clear(_damageRow);
+        _set.Visible(_damageStatus, order is not null);
+        _set.Visible(_damageCancel, order is not null);
+        _set.Visible(_damageRepair, order is null);
+        _set.Visible(_damageCost, order is null);
         if (order is not null)
         {
             var place = sim.State.Defense.Repairs.IndexOf(order) + 1;
-            _damageRow.AddChild(Widgets.Label(order.Paid ? $"Being repaired ({order.Progress:0} HP done)" : $"Repair queued (#{place})", "Small", Palette.Good));
-            _damageRow.AddChild(Widgets.Spacer());
-            _damageRow.AddChild(Widgets.IconButton("ui_close", "Cancel", "Take it out of the repair queue", () => _session.Execute(new Remnants.Core.Raids.CancelRepair(order.Id))));
+            _set.Text(_damageStatus, order.Paid ? $"Being repaired ({order.Progress:0} HP done)" : $"Repair queued (#{place})");
+            _set.FontColor(_damageStatus, Palette.Good);
             return;
         }
-        var repair = Widgets.IconButton("ui_repair", wrecked ? "Repair" : "Queue repair", "Idle adults work the repair queue by day; materials are paid when it starts.",
-            () => _session.Execute(new Remnants.Core.Raids.QueueRepair(Remnants.Core.Raids.RepairTarget.Building, building.Id)), variation: wrecked ? "Primary" : "");
-        repair.Icon = Icons.Get("ui_repair", 18, "skill_crafting");
-        _damageRow.AddChild(repair);
-        var chips = Widgets.CostChips(RaidText.Costs(sim, cost));
-        chips.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        _damageRow.AddChild(chips);
+        SetText(_damageRepair, wrecked ? "Repair" : "Queue repair");
+        _damageRepair.ThemeTypeVariation = wrecked ? "Primary" : "";
+        _damageCost.Set(RaidText.Costs(sim, cost));
+    }
+
+    private void QueueRepair()
+    {
+        if (BuildingId is { } id) _session.Execute(new Remnants.Core.Raids.QueueRepair(Remnants.Core.Raids.RepairTarget.Building, id));
+    }
+
+    private void CancelRepair()
+    {
+        if (BuildingId is not { } id) return;
+        var order = _session.Sim.State.Defense.Repairs.FirstOrDefault(r => r.Target == Remnants.Core.Raids.RepairTarget.Building && r.TargetId == id);
+        if (order is not null) _session.Execute(new Remnants.Core.Raids.CancelRepair(order.Id));
     }
 
     private void RefreshNight(ColonySim sim, Building building, Remnants.Core.Data.BuildingDef def)
     {
         var rules = sim.Data.Rules.DayNight;
-        _nightBox.Visible = rules.Enabled && def.Job is not null;
-        if (!_nightBox.Visible) return;
+        var shown = rules.Enabled && def.Job is not null;
+        _set.Visible(_nightBox, shown);
+        SetChip(_nightChip, shown && building.NightShift, "Night shift", Palette.Night, "Workers here keep going at night, at lower output and lost sleep.");
+        if (!shown) return;
         var lit = sim.CanRunNightShift(building);
         var cut = (int)Math.Round((1 - rules.NightShift.OutputMultiplier) * 100);
         _nightShift.SetPressedNoSignal(building.NightShift);
-        _nightShift.Text = building.NightShift ? "Night shift: ON" : "Night shift: off";
+        SetText(_nightShift, building.NightShift ? "On" : "Off");
         _nightShift.Disabled = !lit && !building.NightShift;
-        _nightShift.TooltipText = ColonyText.NightShiftTip(sim, building);
-        _nightNote.Text = !lit ? $"Too dark at night: {def.Name} works outdoors. Fit a Floodlight or reach level {rules.LitMinLevel}."
-            : building.NightShift ? $"Adults work on after {rules.WorkHours[1]:00}:00 at −{cut}% output; they lose sleep and mood."
-            : $"Off: workers sleep. On: −{cut}% output at night, costs mood and sleep.";
-        _nightNote.AddThemeColorOverride("font_color", !lit ? Palette.Warn : building.NightShift ? Palette.Night : Palette.TextMuted);
+        _set.Tooltip(_nightShift, ColonyText.NightShiftTip(sim, building));
+        _set.Text(_nightNote, !lit ? $"Too dark: {def.Name} works outdoors. Fit a Floodlight or reach level {rules.LitMinLevel}."
+            : building.NightShift ? $"Working nights at −{cut}% output; workers lose sleep and mood."
+            : $"Workers sleep. On: −{cut}% output at night, costs mood and sleep.");
+        _set.FontColor(_nightNote, !lit ? Palette.Warn : building.NightShift ? Palette.Night : Palette.TextMuted);
 
-        _floodRow.Visible = def.Outdoor && !lit;
-        if (!_floodRow.Visible) return;
+        var needFlood = def.Outdoor && !lit;
+        _set.Visible(_floodRow, needFlood);
+        if (!needFlood) return;
         var cost = rules.FloodlightCost;
-        var signature = string.Join(",", cost.Select(kv => $"{kv.Key}:{sim.State.Stockpile.Get(kv.Key) >= kv.Value}"));
-        if (signature != _floodSignature)
-        {
-            _floodSignature = signature;
-            Widgets.Clear(_floodCost);
-            _floodCost.AddChild(Widgets.CostChips(cost.Select(kv => (kv.Key, sim.Data.Resources[kv.Key].Name, kv.Value, sim.State.Stockpile.Get(kv.Key)))));
-        }
-        _flood.TooltipText = $"A lamp mast that lights {def.Name} for a night shift ({ColonyText.Cost(cost, sim.Data)}).";
+        _floodCost.Set(cost.Select(kv => (kv.Key, sim.Data.Resources[kv.Key].Name, kv.Value, sim.State.Stockpile.Get(kv.Key))));
+        _set.Tooltip(_flood, $"A lamp mast that lights {def.Name} for a night shift ({ColonyText.Cost(cost, sim.Data)}).");
     }
 
     private void RefreshRepair(ColonySim sim, Building building, Remnants.Core.Data.BuildingDef def)
     {
-        _repairBox.Visible = building.Damaged;
-        if (!building.Damaged) return;
+        _set.Visible(_repairBox, building.Damaged);
         var rules = sim.Data.Weather.Repair;
-        _repairNote.Text = $"Lightning struck the {def.Name}: it works at {rules.DamagedOutput * 100:0}% until repaired.";
-        _repairNote.AddThemeColorOverride("font_color", Palette.Warn);
-        Widgets.Clear(_repairCost);
-        _repairCost.AddChild(Widgets.CostChips(rules.Cost.Select(kv => (kv.Key, sim.Data.Resources[kv.Key].Name, kv.Value, sim.State.Stockpile.Get(kv.Key)))));
-        _repair.Disabled = !sim.State.Stockpile.CanAfford(rules.Cost);
-        _repair.TooltipText = $"Repair the {def.Name} ({ColonyText.Cost(rules.Cost, sim.Data)}).";
+        SetChip(_lightningChip, building.Damaged, $"Struck: {rules.DamagedOutput * 100:0}% output", Palette.Warn,
+            $"Lightning struck the {def.Name}: it works at {rules.DamagedOutput * 100:0}% until repaired.");
+        if (!building.Damaged) return;
+        _set.Text(_repairNote, $"Lightning struck the {def.Name}: it works at {rules.DamagedOutput * 100:0}% until repaired.");
+        _repairCost.Set(rules.Cost.Select(kv => (kv.Key, sim.Data.Resources[kv.Key].Name, kv.Value, sim.State.Stockpile.Get(kv.Key))));
+        _repair.Disabled = !_repairCost.Affordable;
+        _set.Tooltip(_repair, $"Repair the {def.Name} ({ColonyText.Cost(rules.Cost, sim.Data)}).");
     }
 
     private void Repair()
@@ -274,20 +538,34 @@ public partial class BuildingPanel : PanelContainer
     private void RefreshPower(ColonySim sim, Building building)
     {
         var nodes = sim.PowerNodes().Where(n => n.BuildingId == building.Id).ToList();
-        _powerBox.Visible = nodes.Count > 0;
-        if (nodes.Count == 0) return;
+        _set.Visible(_powerBox, nodes.Count > 0);
+        if (nodes.Count == 0)
+        {
+            SetChip(_powerChip, false);
+            return;
+        }
         var on = nodes[0].On;
         var lines = nodes.Select(n => PowerText.Line(sim, n)).ToList();
         if (sim.Data.Buildings[building.DefId].Category == Remnants.Core.Data.BuildingCategory.Power && sim.State.Power is var p)
             lines.Add($"Grid: {p.Used:0.#} used of {p.Capacity:0.#}" + (sim.PowerStorageCapacity > 0 ? $", batteries {p.Stored:0.#}/{sim.PowerStorageCapacity:0.#}" : ""));
-        _powerLines.Text = string.Join("\n", lines);
+        _set.Text(_powerLines, string.Join("\n", lines));
         var unfed = nodes.Any(n => n.Role == PowerRole.Consumer && n.On && !n.Fed && !PowerText.Idle(sim, n));
-        _powerLines.AddThemeColorOverride("font_color", !on ? Palette.TextMuted : unfed ? Palette.Warn : Palette.Text);
+        _set.FontColor(_powerLines, !on ? Palette.TextMuted : unfed ? Palette.Warn : Palette.Text);
+        var main = nodes[0];
+        var (chip, color) = main.Role switch
+        {
+            _ when !on => ("Power off", Palette.TextDim),
+            PowerRole.Generator => ($"Makes {main.Amount:0.#}", Palette.Warn),
+            PowerRole.Storage => ($"Battery {sim.State.Power.Stored:0}/{sim.PowerStorageCapacity:0}", Palette.Warn),
+            _ when PowerText.Idle(sim, main) => ("Power idle", Palette.TextMuted),
+            _ => main.Fed ? ("Fed", Palette.Good) : ("Not fed", Palette.Danger),
+        };
+        SetChip(_powerChip, true, chip, color, string.Join("\n", lines));
         _powerSwitch.SetPressedNoSignal(on);
-        _powerSwitch.Text = on ? "On the grid" : "Switched off";
-        _powerSwitch.TooltipText = on
+        SetText(_powerSwitch, on ? "Switch: on the grid" : "Switch: off");
+        _set.Tooltip(_powerSwitch, on
             ? "Switch it off: a consumer stops drawing (and loses its bonus), a generator stays cold and burns no fuel."
-            : "Switch it back on the grid.";
+            : "Switch it back on the grid.");
     }
 
     private void TogglePower()
@@ -310,9 +588,11 @@ public partial class BuildingPanel : PanelContainer
     private void RefreshWorkers(ColonySim sim, Building building, Remnants.Core.Data.BuildingDef def, int slots)
     {
         var workers = sim.State.WorkersAt(building.Id).OrderBy(s => s.Id).ToList();
-        _workersLabel.Visible = _workers.Visible = def.Job is not null;
+        _set.Visible(_workersHead, def.Job is not null);
+        _set.Visible(_workers, def.Job is not null);
         if (def.Job is null) return;
-        _workersLabel.Text = $"WORKERS {workers.Count}/{slots}";
+        _set.Text(_workersLabel, $"WORKERS {workers.Count}/{slots}");
+        _set.Tooltip(_workersLabel, $"{workers.Count} of {slots} slots filled. Each worker adds output by their {sim.Data.Jobs[def.Job].Skill} skill and attributes.");
         _workers.WorkerTip = w => $"{w.Name}\n{JobFit(sim.Data.Jobs[def.Job], w).Detail}";
         _workers.Set(workers, slots);
     }
@@ -340,51 +620,78 @@ public partial class BuildingPanel : PanelContainer
             return $"Produce and meat age at {Pantry.CellarRate(sim.State, sim.Data) * 100:0}% speed";
         if (level.Beds > 0) return $"Sleeps {level.Beds}";
         if (level.Patients > 0) return $"{level.Patients} patient beds";
-        if (def.Category == Remnants.Core.Data.BuildingCategory.Power) return "Part of the colony power grid.";
         return "";
     }
 
     private void RefreshUpgrade(ColonySim sim, Building building, Remnants.Core.Data.BuildingDef def)
     {
         var next = building.Level + 1;
+        _tabs.SetTitle(_upgradeTab, next > def.MaxLevel ? "Upgrade" : $"Upgrade · L{next}");
         if (next > def.MaxLevel)
         {
-            _upgradeTitle.Text = "MAX LEVEL REACHED";
-            _costs.Visible = _cap.Visible = _upgrade.Visible = false;
+            _set.Text(_upgradeTitle, "MAX LEVEL REACHED");
+            _set.Visible(_upgradeBody, false);
             return;
         }
-        _costs.Visible = _cap.Visible = _upgrade.Visible = true;
-        var cost = def.Level(next).Cost;
+        _set.Visible(_upgradeBody, true);
+        var current = def.Level(building.Level);
         var nextLevel = def.Level(next);
-        var gains = new System.Collections.Generic.List<string>();
-        if (nextLevel.WorkerSlots > def.Level(building.Level).WorkerSlots) gains.Add($"{nextLevel.WorkerSlots} workers");
-        if (nextLevel.OutputMultiplier > def.Level(building.Level).OutputMultiplier) gains.Add($"output {Fmt.Factor(nextLevel.OutputMultiplier)}");
-        if (nextLevel.Beds > 0) gains.Add($"{nextLevel.Beds} beds");
-        if (nextLevel.Patients > 0) gains.Add($"{nextLevel.Patients} patients");
-        _upgradeTitle.Text = $"LEVEL {next}" + (gains.Count > 0 ? ": " + string.Join(", ", gains).ToUpperInvariant() : "");
+        _set.Text(_upgradeTitle, $"LEVEL {building.Level} → {next}");
+        var gains = new List<string>();
+        if (nextLevel.WorkerSlots > current.WorkerSlots) gains.Add($"Workers {current.WorkerSlots} → {nextLevel.WorkerSlots}");
+        if (nextLevel.OutputMultiplier > current.OutputMultiplier) gains.Add($"Output {Fmt.Factor(current.OutputMultiplier)} → {Fmt.Factor(nextLevel.OutputMultiplier)}");
+        if (nextLevel.Beds > current.Beds) gains.Add($"Beds {current.Beds} → {nextLevel.Beds}");
+        if (nextLevel.Patients > current.Patients) gains.Add($"Patient beds {current.Patients} → {nextLevel.Patients}");
+        if (def.Outdoor && building.Level < sim.Data.Rules.DayNight.LitMinLevel && next >= sim.Data.Rules.DayNight.LitMinLevel) gains.Add("Lit for night shifts");
+        if (gains.Count == 0) gains.Add("A sturdier building");
+        SetGains(gains);
 
-        var signature = string.Join(",", cost.Select(kv => $"{kv.Key}:{kv.Value}:{sim.State.Stockpile.Get(kv.Key) >= kv.Value}"));
-        if (signature != _costSignature)
-        {
-            _costSignature = signature;
-            Widgets.Clear(_costs);
-            _costs.AddChild(Widgets.CostChips(cost.Select(kv => (kv.Key, sim.Data.Resources[kv.Key].Name, kv.Value, sim.State.Stockpile.Get(kv.Key)))));
-        }
+        var cost = nextLevel.Cost;
+        _costs.Set(cost.Select(kv => (kv.Key, sim.Data.Resources[kv.Key].Name, kv.Value, sim.State.Stockpile.Get(kv.Key))));
 
         var cap = sim.MaxUpgradeLevel(def);
         var capped = def.Id != sim.Data.Rules.TownHallBuildingId && next > cap;
         var gate = Remnants.Core.Schematics.Schematics.LevelUnlocked(sim, def.Id, next) ? null : sim.Data.Schematics.GateOfBuildingLevel(def.Id, next);
         var gateName = gate is null ? null : sim.Data.Schematics.All[gate].Name;
-        _cap.Visible = def.Id != sim.Data.Rules.TownHallBuildingId || gate is not null;
-        _cap.Text = gateName is not null ? $"⚠ Level {next} needs the {gateName} schematic (see Items → Schematics)."
-            : capped ? $"⚠ Town Hall level {sim.TownHallLevel} allows up to level {cap}: upgrade the Town Hall first."
-            : $"Town Hall level {sim.TownHallLevel} allows up to level {cap}.";
-        _cap.AddThemeColorOverride("font_color", capped || gate is not null ? Palette.Danger : Palette.TextMuted);
-        var affordable = sim.State.Stockpile.CanAfford(cost);
+        _set.Visible(_blocker, def.Id != sim.Data.Rules.TownHallBuildingId || gate is not null);
+        _set.Visible(_blockerLink, gateName is not null);
+        _set.Text(_blocker, gateName is not null ? $"Needs the {gateName} schematic."
+            : capped ? $"Town Hall level {sim.TownHallLevel} allows up to level {cap}: upgrade the Town Hall first."
+            : $"Town Hall level {sim.TownHallLevel} allows up to level {cap}.");
+        _set.FontColor(_blocker, capped || gate is not null ? Palette.Danger : Palette.TextMuted);
         // Core decides; a refused upgrade explains itself in the log. The button only signals what is likely.
-        _upgrade.Disabled = capped || gate is not null;
-        _upgrade.TooltipText = gateName is not null ? $"Needs the {gateName} schematic."
-            : capped ? "Needs a higher Town Hall level." : affordable ? $"Upgrade to level {next}." : "Not enough resources yet (marked with !).";
+        _upgrade.Disabled = capped || gate is not null || !_costs.Affordable;
+        SetText(_upgrade, $"Upgrade to level {next}");
+        var why = gateName is not null ? $"Locked: needs the {gateName} schematic."
+            : capped ? "Locked: needs a higher Town Hall level."
+            : !_costs.Affordable ? "Not enough resources yet (see the red costs)." : "";
+        // A lock is already said in red above the button; only the shortfall needs saying under it.
+        _set.Text(_upgradeWhy, why);
+        _set.FontColor(_upgradeWhy, Palette.Danger);
+        _set.Visible(_upgradeWhy, why.Length > 0 && gateName is null && !capped);
+        _set.Tooltip(_upgrade, why.Length > 0 ? why : $"Upgrade to level {next}.");
+    }
+
+    private void SetGains(List<string> gains)
+    {
+        while (_gains.GetChildCount() < gains.Count)
+        {
+            var row = Widgets.Row(Space.Sm);
+            row.AddChild(Icons.Rect(Icons.Get("ui_chevron_up", 14), 14, Palette.Good));
+            row.AddChild(Widgets.Label(""));
+            _gains.AddChild(row);
+        }
+        for (var i = 0; i < _gains.GetChildCount(); i++)
+        {
+            var row = _gains.GetChild<HBoxContainer>(i);
+            _set.Visible(row, i < gains.Count);
+            if (i < gains.Count) _set.Text(row.GetChild<Label>(1), gains[i]);
+        }
+    }
+
+    private static void SetText(Button button, string text)
+    {
+        if (button.Text != text) button.Text = text;
     }
 
     private void Upgrade()

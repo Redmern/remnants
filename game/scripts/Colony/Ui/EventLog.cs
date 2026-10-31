@@ -8,27 +8,34 @@ using Remnants.Game.Hud;
 namespace Remnants.Game.Colony.Ui;
 
 /// <summary>
-/// The colony feed: Core events, command feedback and first-time tips (<see cref="Advice"/>, each once per session),
-/// each line with time, an icon and a colour by kind, filterable (All / People / Colony / Alerts / Tips) and
-/// collapsible. Important events (a death, a birth, someone leaving, a party home, a level up, a perk learned, a class
-/// finished, a schematic found, the trader arriving, a contract done, a raid seen coming, beaten or breaking through, a
-/// building wrecked) are also raised as
-/// <see cref="Important"/> for toasts, keyed by event type and survivor so a burst about one survivor merges.
+/// The colony feed: Core events and command feedback, each line with its hour, an icon and a colour by kind, a "Day N"
+/// rule where a day begins, filterable (All / People / Colony / Alerts) and at a fixed height: three lines by default,
+/// more when expanded (L), so it never pushes the panels above it. First-time tips (<see cref="Advice"/>, each once per
+/// session) are not log lines but the Advisor strip on top, one at a time, dismissable. Important events (a death, a
+/// birth, someone leaving, a party arriving, a level up, a perk learned, a class finished, a schematic found, the trader
+/// arriving, a contract done, a raid seen coming or at the fence, a building wrecked) are also raised as
+/// <see cref="Important"/> for toasts, keyed by event type and survivor so a burst about one survivor merges; events that
+/// open a report of their own (a party home, a raid's outcome) get no toast.
 /// </summary>
 public partial class EventLog : PanelContainer
 {
     private const int MaxEntries = 160;
+    private const float LineHeight = 20, CompactLines = 3, ExpandedLines = 10;
 
     public enum Kind { People, Colony, Alert, Tip }
 
-    private sealed record Entry(string Time, string Icon, Color Color, string Text, Kind Kind);
+    private sealed record Entry(long Tick, string Icon, Color Color, string Text, Kind Kind);
 
     private readonly ColonySession _session;
     private readonly RichTextLabel _text = Ui.Rich(scroll: true);
     private readonly List<Entry> _entries = new();
     private readonly HashSet<string> _tipsShown = new();
     private readonly Control _body;
-    private readonly Button _collapse;
+    private readonly Button _expand;
+    private readonly PanelContainer _advisor = new() { ThemeTypeVariation = "Inset", Visible = false };
+    private readonly Label _advice = Widgets.Wrapped("", "Small", Palette.Text);
+    private bool _expanded;
+    private long _lastDay = -1;
     private Kind? _filter;
     private ColonyEvent? _lastSeen;
 
@@ -43,44 +50,69 @@ public partial class EventLog : PanelContainer
     public EventLog(ColonySession session)
     {
         _session = session;
-        CustomMinimumSize = new Vector2(360, 0);
-        var box = Ui.Panel(this, 6);
+        CustomMinimumSize = new Vector2(PanelWidth.Side, 0);
+        var box = Ui.Panel(this, Space.Xs);
 
-        var header = Widgets.Row(4);
+        var header = Widgets.Row(Space.Xs);
         header.AddChild(Icons.Rect(Icons.Get("ui_log", 16), 16, Palette.Rust));
         var title = Widgets.Label("LOG", "Heading");
         header.AddChild(title);
         header.AddChild(Widgets.Spacer());
         var group = new ButtonGroup();
-        foreach (var (label, icon, kind) in new (string, string, Kind?)[]
-                 {
-                     ("All", "ui_filter", null), ("People", "stat_pop", Kind.People), ("Colony", "ui_build", Kind.Colony),
-                     ("Alerts", "stat_warning", Kind.Alert), ("Tips", "ui_info", Kind.Tip),
-                 })
+        foreach (var (label, kind) in new (string, Kind?)[] { ("All", null), ("People", Kind.People), ("Colony", Kind.Colony), ("Alerts", Kind.Alert) })
         {
-            var button = Widgets.IconButton(icon, "", $"Show {label.ToLowerInvariant()}", () => SetFilter(kind), variation: "Tab");
-            button.ToggleMode = true;
-            button.ButtonGroup = group;
-            button.ButtonPressed = kind is null;
-            button.CustomMinimumSize = new Vector2(28, 26);
+            var button = Motion.OnPress(new Button
+            {
+                Text = label, ThemeTypeVariation = "Tab", ToggleMode = true, ButtonGroup = group, ButtonPressed = kind is null,
+                FocusMode = FocusModeEnum.All, TooltipText = kind is null ? "Show every line" : $"Show {label.ToLowerInvariant()} only",
+                CustomMinimumSize = new Vector2(0, 24), MouseDefaultCursorShape = CursorShape.PointingHand,
+            });
+            button.Pressed += () => SetFilter(kind);
             header.AddChild(button);
         }
-        _collapse = Widgets.IconButton("ui_chevron_down", "", "Collapse the log", ToggleCollapsed, Hotkeys.KeyName("open_log"), "Flat");
-        header.AddChild(_collapse);
+        _expand = Widgets.IconButton("ui_chevron_up", "", "Show more lines", ToggleExpanded, Hotkeys.KeyName("open_log"), "Flat");
+        _expand.FocusMode = FocusModeEnum.All;
+        header.AddChild(_expand);
         box.AddChild(header);
 
+        // The Advisor: the current first-time tip, one at a time, until dismissed or replaced.
+        var advisorRow = Widgets.Row(Space.Sm);
+        var bulb = Icons.Rect(Icons.Get("ui_info", 16), 16, Palette.Amber);
+        bulb.SizeFlagsVertical = SizeFlags.ShrinkBegin;
+        advisorRow.AddChild(bulb);
+        advisorRow.AddChild(_advice);
+        var dismiss = Widgets.IconButton("ui_close", "", "Dismiss the tip", () => Motion.Conceal(_advisor), variation: "Flat");
+        dismiss.SizeFlagsVertical = SizeFlags.ShrinkBegin;
+        dismiss.CustomMinimumSize = new Vector2(26, 26);
+        advisorRow.AddChild(dismiss);
+        _advisor.AddChild(advisorRow);
+        _advisor.TooltipText = "Advisor: a first-time tip";
+        box.AddChild(_advisor);
+
         _text.ScrollFollowing = true;
-        _text.CustomMinimumSize = new Vector2(0, 132);
+        _text.SizeFlagsVertical = SizeFlags.Fill;
+        _text.CustomMinimumSize = new Vector2(0, LineHeight * CompactLines + 4);
         _body = _text;
         box.AddChild(_text);
-        session.Feedback += (message, error) => Add("", error ? "stat_warning" : "ui_info", error ? Palette.Danger : Palette.TextMuted, message, error ? Kind.Alert : Kind.Colony);
+        session.Feedback += (message, error) => Add(_session.Sim.State.Tick, error ? "stat_warning" : "ui_info", error ? Palette.Danger : Palette.TextMuted, message, error ? Kind.Alert : Kind.Colony);
     }
 
+    /// <summary>Shows or hides the lines entirely (debug captures that want the column's room).</summary>
     public void ToggleCollapsed()
     {
         _body.Visible = !_body.Visible;
-        _collapse.Icon = Icons.Get(_body.Visible ? "ui_chevron_down" : "ui_chevron_up", 18);
-        _collapse.TooltipText = Widgets.Tip(_body.Visible ? "Collapse the log" : "Expand the log", Hotkeys.KeyName("open_log"));
+        _expand.Visible = _body.Visible;
+    }
+
+    /// <summary>Three lines or ten (L).</summary>
+    public void ToggleExpanded()
+    {
+        if (!_body.Visible) ToggleCollapsed();
+        _expanded = !_expanded;
+        _text.CustomMinimumSize = new Vector2(0, LineHeight * (_expanded ? ExpandedLines : CompactLines) + 4);
+        _expand.Icon = Icons.Get(_expanded ? "ui_chevron_down" : "ui_chevron_up", 18);
+        _expand.TooltipText = Widgets.Tip(_expanded ? "Show fewer lines" : "Show more lines", Hotkeys.KeyName("open_log"));
+        _text.ScrollToLine(Math.Max(0, _text.GetLineCount() - 1));
     }
 
     private void SetFilter(Kind? kind)
@@ -101,17 +133,21 @@ public partial class EventLog : PanelContainer
         var events = _session.Sim.State.Events;
         // Core caps the list, so find where we left off by identity rather than index.
         var start = _lastSeen is null ? 0 : events.LastIndexOf(_lastSeen) + 1;
-        var rules = _session.Sim.Data.Rules;
         for (var i = start; i < events.Count; i++)
         {
             var e = events[i];
             var (icon, color, kind) = Style(e.Type);
-            Add($"D{e.Tick / rules.TicksPerDay + 1} {e.Tick % rules.TicksPerDay:00}h", icon, color, e.Message, kind);
+            Add(e.Tick, icon, color, e.Message, kind);
             if (ToastFor(e.Type) is { } toast && !RepeatNightShift(events, i) && !(e.Type == ColonyEventType.SchematicFound && _session.FromCommand(e))) Important?.Invoke(NoticeFor(e, toast.Title, icon, color));
         }
         if (events.Count > 0) _lastSeen = events[^1];
-        if (Advice.Next(_session.Sim) is { } tip && _tipsShown.Add(tip.Id))
-            Add("Tip", "ui_info", Palette.Amber, tip.Text, Kind.Tip);
+        if (Advice.Next(_session.Sim) is { } tip && _tipsShown.Add(tip.Id)) ShowAdvice(tip.Text);
+    }
+
+    private void ShowAdvice(string text)
+    {
+        _advice.Text = text;
+        Motion.Reveal(_advisor);
     }
 
     /// <summary>
@@ -157,7 +193,6 @@ public partial class EventLog : PanelContainer
         ColonyEventType.Died => ("Death", true),
         ColonyEventType.Born => ("A birth", true),
         ColonyEventType.Left => ("Someone left", true),
-        ColonyEventType.ExpeditionReturned => ("The party is home", true),
         ColonyEventType.ExpeditionArrived => ("The party has arrived", true),
         ColonyEventType.LimbLost => ("A limb is lost", true),
         ColonyEventType.Recruited => ("A new face", true),
@@ -172,8 +207,6 @@ public partial class EventLog : PanelContainer
         ColonyEventType.ProstheticNeedsService => ("Prosthetic needs a service", true),
         ColonyEventType.RaidWarned => ("Raid incoming", true),
         ColonyEventType.RaidAtTheFence => ("They're at the fence", true),
-        ColonyEventType.RaidRepelled => ("Raid repelled", true),
-        ColonyEventType.RaidBreached => ("The raid broke through", true),
         ColonyEventType.BuildingWrecked => ("Building wrecked", true),
         ColonyEventType.SchematicFound => ("Schematic found", true),
         ColonyEventType.TraderArrived => ("The trader is here", true),
@@ -244,9 +277,9 @@ public partial class EventLog : PanelContainer
         _ => ("ui_info", Palette.TextMuted, Kind.Colony),
     };
 
-    private void Add(string time, string icon, Color color, string text, Kind kind)
+    private void Add(long tick, string icon, Color color, string text, Kind kind)
     {
-        var entry = new Entry(time, icon, color, text, kind);
+        var entry = new Entry(tick, icon, color, text, kind);
         _entries.Add(entry);
         if (_entries.Count > MaxEntries)
         {
@@ -254,31 +287,40 @@ public partial class EventLog : PanelContainer
             Render();
             return;
         }
-        if (_filter is null || _filter == kind) Append(entry, _text.GetParagraphCount() > 0 && _text.GetParsedText().Length > 0);
+        if (_filter is null || _filter == kind) Append(entry);
     }
 
     private void Render()
     {
         _text.Clear();
-        var first = true;
-        foreach (var e in _entries.Where(e => _filter is null || e.Kind == _filter))
-        {
-            Append(e, !first);
-            first = false;
-        }
+        _lastDay = -1;
+        foreach (var e in _entries.Where(e => _filter is null || e.Kind == _filter)) Append(e);
     }
 
-    private void Append(Entry e, bool newline)
+    private void Append(Entry e)
     {
-        if (newline) _text.Newline();
+        var rules = _session.Sim.Data.Rules;
+        var day = e.Tick / rules.TicksPerDay;
+        if (day != _lastDay)
+        {
+            // "Day 2" where a day begins, so each line only needs its hour.
+            if (_lastDay >= 0) _text.Newline();
+            _lastDay = day;
+            _text.PushColor(Palette.TextDim);
+            _text.PushFont(Fonts.Display, 13);
+            _text.AddText($"Day {day + 1}");
+            _text.Pop();
+            _text.Pop();
+        }
+        _text.Newline();
         _text.PushColor(Palette.TextDim);
         _text.PushFont(Fonts.Numbers, 13);
-        _text.AddText(e.Time.PadRight(7));
+        _text.AddText($"{e.Tick % rules.TicksPerDay:00}:00  ");
         _text.Pop();
         _text.Pop();
         _text.AddImage(Icons.Get(e.Icon, 14), 14, 14, e.Color);
         _text.AddText(" ");
-        _text.PushColor(e.Kind == Kind.Colony && e.Color == Palette.TextMuted ? Palette.TextMuted : e.Kind == Kind.Tip ? Palette.Text : e.Color.Lerp(Palette.Text, 0.35f));
+        _text.PushColor(e.Kind == Kind.Colony && e.Color == Palette.TextMuted ? Palette.TextMuted : e.Color.Lerp(Palette.Text, 0.35f));
         _text.AddText(e.Text);
         _text.Pop();
     }

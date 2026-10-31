@@ -14,7 +14,8 @@ public readonly record struct SlotFit(double Score, string Detail);
 /// <summary>
 /// The people at one workplace as portraits plus a "+" for each free slot. "+" opens a <see cref="WorkerPicker"/> of the
 /// colony's survivors; a click assigns through the owner's command (Core decides, its refusal shows in the picker). A
-/// worker's portrait offers Unassign / Open survivor. Reused by the building panel (any job building, the Med Bay's
+/// worker's portrait offers Unassign / Open survivor on a click; a right-click unassigns at once. New portraits enter
+/// with <see cref="Motion.Enter"/>. Reused by the building panel (any job building, the Med Bay's
 /// staff) and the guard posts; the owner says who is listed, how they fit and which commands to send.
 /// </summary>
 public partial class WorkerSlots : HFlowContainer
@@ -25,6 +26,8 @@ public partial class WorkerSlots : HFlowContainer
     private WorkerPicker? _picker;
     private PopupMenu? _menu;
     private int _menuSurvivor;
+    private readonly HashSet<int> _shown = new();
+    private static readonly StringName SurvivorMeta = "survivor";
 
     /// <summary>The picker's title ("Assign to Woodcutter").</summary>
     public Func<ColonySim, string> Title { get; set; } = _ => "Assign";
@@ -60,22 +63,31 @@ public partial class WorkerSlots : HFlowContainer
         if (_picker is { Visible: true }) _picker.Refresh();
         if (signature == _signature) return;
         _signature = signature;
+        _shown.Clear();
+        foreach (var child in GetChildren().OfType<Portrait>()) if (child.HasMeta(SurvivorMeta)) _shown.Add(child.GetMeta(SurvivorMeta).AsInt32());
         Widgets.Clear(this);
         foreach (var w in workers)
         {
             var id = w.Id;
-            var portrait = new Portrait(_size) { TooltipText = $"{WorkerTip(w)}\nClick: unassign or open their panel.", MouseFilter = MouseFilterEnum.Stop };
+            var portrait = new Portrait(_size) { TooltipText = $"{WorkerTip(w)}\nClick: unassign or open their panel. Right-click: unassign.", MouseFilter = MouseFilterEnum.Stop };
             portrait.Set(PortraitStudio.For(GetTree(), w), PortraitStudio.Backdrop(w.Id));
+            portrait.SetMeta(SurvivorMeta, id);
             portrait.MouseDefaultCursorShape = CursorShape.PointingHand;
             portrait.GuiInput += e =>
             {
                 if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) ShowMenu(id, portrait);
+                else if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Right } && _session.Sim.State.FindSurvivor(id) is { } who)
+                {
+                    portrait.AcceptEvent();
+                    _session.Execute(Unassign(who));
+                }
             };
             AddChild(portrait);
+            if (!_shown.Contains(id)) Motion.Enter(portrait);
         }
         for (var i = workers.Count; i < slots; i++)
         {
-            var slot = new FreeSlot { CustomMinimumSize = new Vector2(_size, _size), TooltipText = FreeTip, Name = $"FreeSlot{i}" };
+            var slot = new FreeSlot { CustomMinimumSize = new Vector2(_size, _size), TooltipText = FreeTip, Name = $"FreeSlot{i}", FocusMode = FocusModeEnum.All };
             slot.Pressed += () => OpenPicker(slot);
             AddChild(slot);
         }
@@ -146,15 +158,16 @@ public partial class WorkerSlots : HFlowContainer
         public FreeSlot()
         {
             Flat = true;
-            FocusMode = FocusModeEnum.None;
             MouseDefaultCursorShape = CursorShape.PointingHand;
             MouseEntered += QueueRedraw;
             MouseExited += QueueRedraw;
+            FocusEntered += QueueRedraw;
+            FocusExited += QueueRedraw;
         }
 
         public override void _Draw()
         {
-            var hover = IsHovered();
+            var hover = IsHovered() || HasFocus();
             var edge = hover ? Palette.Amber : Palette.EdgeLight;
             DrawRect(new Rect2(Vector2.Zero, Size), new Color(hover ? Palette.Raised : Palette.Inset, 0.7f));
             DrawDashedLine(new Vector2(1, 1), new Vector2(Size.X - 1, 1), edge, 1, 3);

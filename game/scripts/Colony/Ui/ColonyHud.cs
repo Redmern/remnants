@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using Godot;
 using Remnants.Game.Hud;
 
@@ -6,8 +7,9 @@ namespace Remnants.Game.Colony.Ui;
 
 /// <summary>
 /// The colony HUD's layout and keyboard: top bar; roster and survivor details down the left; the expedition and
-/// item panels and the repair queue in the middle; the raid warning under the top bar; building, build menu, defend
-/// catalogue, selected defense, Med Bay and production down the right above the event log;
+/// item panels and the repair queue in the middle (one at a time); the raid warning under the top bar; down the right
+/// the selected building (one panel with a pinned header; crops, queue, patients, research, radio and study are its
+/// tabs), the build menu, defend catalogue and selected defense, and the event log at a fixed height under them;
 /// toasts at the town's bottom-right; world map, after-action and raid reports, raid prep, pause menu and settings on top. Hotkeys
 /// (<see cref="Hotkeys"/>) do what their buttons do. <see cref="ColonyScreen"/> wires the panels to the town.
 /// </summary>
@@ -101,6 +103,13 @@ public partial class ColonyHud : CanvasLayer
         foreach (var side in new[] { "left", "right", "top", "bottom" }) root.AddThemeConstantOverride($"margin_{side}", 8);
         root.TextureFilter = CanvasItem.TextureFilterEnum.LinearWithMipmaps;
         AddChild(root);
+        // Debug: lay the HUD out in a smaller area (logical units), to check small windows from any window:
+        // --hud-size=1506x847 is 1280×720 at its auto scale.
+        if (DebugCapture.Value("--hud-size")?.Split('x') is [var w, var h] && float.TryParse(w, out var hudW) && float.TryParse(h, out var hudH))
+        {
+            root.SetAnchorsPreset(Control.LayoutPreset.TopLeft);
+            root.Size = new Vector2(hudW, hudH);
+        }
 
         var column = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         column.AddThemeConstantOverride("separation", 8);
@@ -136,10 +145,43 @@ public partial class ColonyHud : CanvasLayer
         floating.AddChild(Garage);
         floating.AddChild(Repairs);
         center.AddChild(floating);
+        // One centre panel at a time: opening one closes the others.
+        Control[] centre = [Inventory, Pantry, Expedition, Garage, Repairs];
+        foreach (var panel in centre)
+            panel.VisibilityChanged += () =>
+            {
+                if (!panel.Visible) return;
+                foreach (var other in centre)
+                    if (other != panel && other.Visible) other.Visible = false;
+            };
 
-        var right = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(360, 0) };
-        right.AddThemeConstantOverride("separation", 8);
+        // The right column: the selected building as one panel with a pinned header (its building-specific panels are
+        // tabs inside it), the build / defend panels in their own scroll, and the log at a fixed height at the bottom,
+        // so nothing clips the panels above it.
+        var right = new VBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, CustomMinimumSize = new Vector2(PanelWidth.Side, 0) };
+        right.AddThemeConstantOverride("separation", Space.Sm);
         middle.AddChild(right);
+        BuildMenu = new BuildMenu(session);
+        Defend = new DefenseCatalog(session);
+        Defense = new DefensePanel(session);
+        Building = new BuildingPanel(session);
+        Building.SurvivorRequested += id => Roster.Select(id);
+        Building.ArchiveRequested += () => Inventory.Open(archive: true);
+        Defense.SurvivorRequested += id => Roster.Select(id);
+        MedBay = new MedBayPanel(session);
+        Production = new ProductionPanel(session);
+        Study = new StudyPanel(session);
+        Harvest = new HarvestPanel(session);
+        Research = new ResearchPanel(session);
+        Radio = new RadioPanel(session);
+        // In the order a building opens on: its first tab that applies (the Med Bay on Patients, not its queue).
+        Building.AddExtra(Harvest, "Crops", "What it grows or hunts, and what to plant next");
+        Building.AddExtra(MedBay, "Patients", "Patients, surgery and the dispensary");
+        Building.AddExtra(Research, "Research", "Schematics being researched");
+        Building.AddExtra(Radio, "Radio", "Calls, the trader and contracts");
+        Building.AddExtra(Production, "Queue", "Orders, recipes and the bench");
+        Building.AddExtra(Study, "Study", "Classes: skills and perks taught here");
+        right.AddChild(Building);
         var scroll = new ScrollContainer
         {
             SizeFlagsVertical = Control.SizeFlags.ExpandFill,
@@ -148,33 +190,23 @@ public partial class ColonyHud : CanvasLayer
         };
         right.AddChild(scroll);
         _rightScroll = scroll;
-        var stack = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
-        stack.AddThemeConstantOverride("separation", 8);
+        // The stack fills the scroll's height, so the build menu's own grid gets the room it has.
+        var stack = new VBoxContainer
+        {
+            SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, SizeFlagsVertical = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        stack.AddThemeConstantOverride("separation", Space.Sm);
         scroll.AddChild(stack);
-        BuildMenu = new BuildMenu(session);
-        Defend = new DefenseCatalog(session);
-        Defense = new DefensePanel(session);
-        Building = new BuildingPanel(session);
-        Building.SurvivorRequested += id => Roster.Select(id);
-        Defense.SurvivorRequested += id => Roster.Select(id);
-        MedBay = new MedBayPanel(session);
-        Production = new ProductionPanel(session);
-        Study = new StudyPanel(session);
-        Harvest = new HarvestPanel(session);
-        Research = new ResearchPanel(session);
-        Radio = new RadioPanel(session);
         stack.AddChild(BuildMenu);
         stack.AddChild(Defense);
         stack.AddChild(Defend);
-        stack.AddChild(Building);
-        stack.AddChild(Harvest);
-        stack.AddChild(MedBay);
-        stack.AddChild(Radio);
-        stack.AddChild(Research);
-        stack.AddChild(Production);
-        stack.AddChild(Study);
         Log = new EventLog(session);
         right.AddChild(Log);
+        Log.Resized += () => Building.Refresh();
+        // The building panel grows to its content, up to the column less the log (and room for the build or defend
+        // panel when one is open beside it).
+        Building.MaxHeight = () => right.Size.Y - Log.Size.Y - Space.Sm * 2
+                                   - (stack.GetChildren().OfType<Control>().Any(c => c.Visible) ? 260 : 0);
 
         // Toasts float over the town's bottom-right corner, beside the right column, anchored in a plain Control so
         // they never push panels around.
@@ -275,8 +307,15 @@ public partial class ColonyHud : CanvasLayer
 
     private readonly ScrollContainer _rightScroll;
 
-    /// <summary>Scrolls the right-hand panel column so <paramref name="control"/> is in view (after layout).</summary>
-    public void ScrollRightTo(Control control) => _rightScroll.CallDeferred(ScrollContainer.MethodName.EnsureControlVisible, control);
+    /// <summary>
+    /// Brings <paramref name="control"/> into view in the right-hand column (after layout): inside the building panel
+    /// its tab opens and scrolls to it.
+    /// </summary>
+    public void ScrollRightTo(Control control)
+    {
+        if (Building.Hosts(control)) Building.Reveal(control);
+        else _rightScroll.CallDeferred(ScrollContainer.MethodName.EnsureControlVisible, control);
+    }
 
     /// <summary>Scrolls the right-hand column so a panel shows (debug captures of long panels).</summary>
     public void ScrollSideTo(Control panel) => ScrollRightTo(panel);
@@ -332,7 +371,7 @@ public partial class ColonyHud : CanvasLayer
         else if (Hotkeys.Pressed(e, "open_defend")) TopBar.EmitDefend();
         else if (Hotkeys.Pressed(e, "open_expedition")) Expedition.Toggle();
         else if (Hotkeys.Pressed(e, "open_items")) Inventory.Toggle();
-        else if (Hotkeys.Pressed(e, "open_log")) Log.ToggleCollapsed();
+        else if (Hotkeys.Pressed(e, "open_log")) Log.ToggleExpanded();
         else if (Hotkeys.Pressed(e, "cycle_survivor")) Roster.SelectNext();
         else if (Hotkeys.Pressed(e, "open_power")) TopBar.EmitPower();
         else return;
