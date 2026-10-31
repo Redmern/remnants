@@ -140,12 +140,16 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   Build / Items / Expedition / World map / Menu), `RosterPanel` of `SurvivorCard`s (portrait, job, health and mood
   bars, badges: injured / worsening, patient, pregnant, away, starving, homeless with its timer; collapsible),
   `SurvivorPanel` (tabs Overview with the job output formula as a tooltip, Skills, Body, Family with matchmaking),
-  `BuildingPanel` (level pips, worker portraits, upgrade cost chips and Town Hall cap), `BuildMenu` (category filter,
+  `BuildingPanel` (level pips, `WorkerSlots`, upgrade cost chips and Town Hall cap), `BuildMenu` (category filter,
   grid with costs, locks and tooltips), `EventLog` (filterable, collapsible feed with icons; first-time tips from
   `Advice`; raises toasts for deaths, births, departures, a party's arrival and return, lost limbs, recruits),
   `ExpeditionPanel` (Weapon / Body / Head / Tool per member), `WorldMapPanel`, `MedBayPanel`, `ProductionPanel`, `InventoryPanel`, `GearBenchPanel` (below), `AfterActionDialog` (who came
   home with injury chips, who was lost, recruits, loot). Esc closes the topmost panel, then opens the pause menu
-  (resume, save, load, settings, main menu, quit). Read Core state, call the session; no rules. Where the UI
+  (resume, save, load, settings, main menu, quit). `WorkerSlots` (one reusable control, also the `DefensePanel`'s guard
+  slots): worker portraits (click: Unassign / Open survivor) and a "+" per free slot that opens `WorkerPicker` (portrait,
+  current job, the slot's fit score with its parts, injured / tired / child / patient / away / in-class badges, free
+  people first, best first); a click sends the owner's command (`AssignJob` / `AssignGuard`) and Core's refusal shows in
+  red. Debug: `--worker-demo=open|assign`, `--placing-demo`. Read Core state, call the session; no rules. Where the UI
   needs a rule Core exposes a query (`MaxUpgradeLevel`, `MaxPartySize`, `HealPerTick`/`HealEta`, `IsWorsening`,
   `CraftEffortPerTick`, `CraftStatus`, `SkillGap`, `CanQueue`, `QualityChances`, `PreviewProfile` for a survivor's field profile with
   a given loadout, `FoodPerDay`/`FoodDays`, `OutputPerTick`); the per-survivor output breakdown uses `JobOutput`'s

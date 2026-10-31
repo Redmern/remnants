@@ -35,6 +35,9 @@ badly or confuses you. Section 5 says which notes help most.
    parts, job). Open the build menu (**B**) and place something cheap, such as a farm. Unpause with **Space** and speed
    time up with **1 / 2 / 3 / 4** (normal, 2×, 4×, 8×). A day takes 2 minutes at normal speed (Settings → Game → Day
    length: 1 / 2 / 4 / 8 minutes). Watch people walk to work, eat and sleep, and the light glide from dawn to dusk.
+   Click a building with jobs (e.g. the Woodcutter): a "+" on a free worker slot lists everyone with their job fit
+   and status; click one to assign them, click a worker's portrait to unassign or open them. In build mode the plot
+   footprints appear; outside it the town has no plot squares.
 3. **Story calls.** Before long the radio crackles: a toast says someone is calling. Open the call. Look at the
    portrait, the dialogue frame and the text. Press **Space** or **Enter** to move the conversation on. The journal
    (story panel) lists the missions, and the first one is **M1 "Home"**.
