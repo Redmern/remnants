@@ -8,6 +8,9 @@ dotnet build Remnants.sln --nologo -v quiet
 dotnet test tests/Remnants.Core.Tests --nologo --no-build -v quiet
 dotnet test tests/Remnants.Net.Tests --nologo --no-build -v quiet
 
+# Asset audit: a report, never a failure. Prints the missing/fallback counts; `--write` refreshes docs/MISSING_ASSETS.md.
+if command -v python3 >/dev/null; then python3 -I tools/asset-audit/asset_audit.py --quiet || true; fi
+
 if [[ "${1:-}" == "--godot" ]]; then
   godot-mono --headless --path game --build-solutions --quit
   godot-mono --headless --path game -- --audio-selftest | grep -E '^\[audio-selftest\]'
