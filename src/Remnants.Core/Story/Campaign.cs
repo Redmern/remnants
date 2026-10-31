@@ -527,6 +527,13 @@ public static class Campaign
                 var vehicle = VehicleRules.Add(state, sim.Data, e.Id);
                 lines?.Add($"{vehicle.Name} (vehicle)");
                 break;
+            case EffectKind.Building:
+                var building = sim.Data.Buildings[e.Id];
+                var materials = building.Level(1).Cost;
+                foreach (var (res, amount) in materials) state.Stockpile.Add(res, amount);
+                lines?.Add(sim.Execute(new Construct(e.Id)).Ok ? $"a {building.Name}, built for you"
+                    : $"materials for a {building.Name} ({CommandHandlers.Describe(new(materials))})");
+                break;
             case EffectKind.Rename:
                 if (StoryCharacters.SurvivorOf(sim, e.Id) is { } renamed && e.Text is { Length: > 0 } newName) renamed.Name = newName;
                 break;

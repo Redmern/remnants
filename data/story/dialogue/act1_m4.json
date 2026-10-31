@@ -50,8 +50,10 @@
         { "text": "Deal.", "next": "d1" },
         { "text": "What do you have?", "next": "d2" }
       ] },
-      { "id": "d1", "speaker": "marrow", "text": "Good. Everything's for sale except the road. The road's free.", "next": "e" },
-      { "id": "d2", "speaker": "marrow", "text": "Fuel, parts, and a few plans I'm not supposed to have. A bike's two wheels, a prayer and a muffler. We'll talk.", "next": "e" },
+      { "id": "d1", "speaker": "marrow", "text": "Good. Everything's for sale except the road. The road's free.", "next": "h" },
+      { "id": "d2", "speaker": "marrow", "text": "Fuel, parts, and a few plans I'm not supposed to have. A bike's two wheels, a prayer and a muffler. We'll talk.", "next": "h" },
+      { "id": "h", "speaker": "marrow", "text": "And a debt in people gets paid in people. Hollis has driven for me eleven years and wants a roof that doesn't move. Feed them, they'll work.", "next": "e",
+        "effects": [ { "kind": "Recruit", "id": "", "value": 100, "text": "Hollis" } ] },
       { "id": "e", "speaker": "marrow", "text": "Count the people. Then count the cargo. In that order. See you in ten." }
     ]
   },

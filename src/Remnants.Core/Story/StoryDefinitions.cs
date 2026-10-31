@@ -153,6 +153,12 @@ public enum EffectKind
     Rename,
     /// <summary>A vehicle of tier <see cref="EffectDef.Id"/> (vehicles.json) joins the colony's yard (Juniper's handcart).</summary>
     Vehicle,
+    /// <summary>
+    /// Someone puts up building <see cref="EffectDef.Id"/> (level 1) for the colony with their own materials (Marrow's crew
+    /// after M5). When it cannot be built now (one already stands, no free plot, the Town Hall is too low), the materials
+    /// are left in the stockpile instead.
+    /// </summary>
+    Building,
 }
 
 /// <summary>

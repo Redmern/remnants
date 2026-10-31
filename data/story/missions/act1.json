@@ -276,6 +276,8 @@
       { "kind": "Resource", "id": "wood", "value": 12 },
       { "kind": "Resource", "id": "scrap", "value": 8 },
       { "kind": "Note", "text": "Marrow sends a barricade kit for the next time: wood and scrap for four barricades, and how to stack a sandbag nest." },
+      { "kind": "Building", "id": "house" },
+      { "kind": "Note", "text": "His crew stays two days and puts up a House with their own timber: room for the people a loud radio brings in." },
       { "kind": "SetFlag", "id": "act", "value": 2 },
       { "kind": "Note", "text": "End of Act 1: Static." }
     ],

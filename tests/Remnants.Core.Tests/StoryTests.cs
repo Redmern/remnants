@@ -227,6 +227,44 @@ public class CampaignTests
     }
 
     [Fact]
+    public void A_building_reward_is_put_up_for_free_or_left_as_materials()
+    {
+        var sim = NewStory();
+        sim.State.Buildings.Single(b => b.DefId == "town_hall").Level = 2;
+        var (wood, stone) = (sim.State.Stockpile.Get("wood"), sim.State.Stockpile.Get("stone"));
+        var house = new EffectDef { Kind = EffectKind.Building, Id = "house" };
+        var lines = new List<string>();
+
+        Campaign.Apply(sim, house, "test", lines);
+
+        Assert.Single(sim.State.Buildings, b => b.DefId == "house");
+        Assert.Equal((wood, stone), (sim.State.Stockpile.Get("wood"), sim.State.Stockpile.Get("stone")));  // their timber, not ours
+        Assert.Contains(lines, l => l.Contains("House, built for you"));
+
+        // Town Hall 1 cannot have a House: the crew leaves the timber.
+        var low = NewStory();
+        var lowWood = low.State.Stockpile.Get("wood");
+        Campaign.Apply(low, house, "test", lines);
+        Assert.DoesNotContain(low.State.Buildings, b => b.DefId == "house");
+        Assert.Equal(lowWood + TestData.Real.Buildings["house"].Level(1).Cost["wood"], low.State.Stockpile.Get("wood"));
+    }
+
+    [Fact]
+    public void Marrow_pays_for_Juniper_with_a_hand_and_ends_Act_1_with_a_house()
+    {
+        var hello = Real.Dialogues["marrow_hello"];
+        Assert.Contains(hello.Nodes.SelectMany(n => n.Effects), e => e.Kind == EffectKind.Recruit && e.Text == "Hollis");
+        Assert.Contains(Real.Mission("m5")!.Rewards, e => e.Kind == EffectKind.Building && e.Id == "house");
+
+        var sim = NewStory();
+        var adults = sim.State.Survivors.Count(s => !s.IsChild);
+        Assert.True(sim.Execute(new TakeCall(Campaign.QueueCall(sim, "marrow_hello").Id)).Ok);
+        PlayOut(sim);
+        Assert.Equal(adults + 1, sim.State.Survivors.Count(s => !s.IsChild));
+        Assert.Contains(sim.State.Survivors, s => s.Name == "Hollis");
+    }
+
+    [Fact]
     public void Leaving_early_is_not_a_fail_the_mission_stays_open()
     {
         var sim = NewStory();
