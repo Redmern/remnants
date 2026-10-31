@@ -118,7 +118,7 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
     (procedural grain/bevel/rivet 9-slice textures), `Fmt` (number formatting), `Motion` (the motion vocabulary: one
     set of durations, `Fast` 120 ms / `Normal` 180 ms / `Slow` 220 ms, ease-out cubic; `Reveal` / `Conceal` panels, `Enter` /
     `Exit` list rows with a capped stagger, `CountUp` numbers, `PressFeedback`, `OnPress` for buttons that act on press,
-    `Flash`; one running tween per control and purpose; all of it instant with Settings → Reduce motion). Tweens only
+    `Flash`, `FadeIn` for popups the caller places (fade and a slight grow, position left alone); one running tween per control and purpose; all of it instant with Settings → Reduce motion). Tweens only
     touch modulate, scale and free-standing positions, never a container child's layout.
   - `Icons` — line icons by id from `game/ui/icons/{group}_{id}.svg` (24×24, white 2px stroke, tinted; imported with the
     "keep" importer so exports ship the SVG), rasterised at 2× with mipmaps; fallbacks per call, then `item_generic`.
@@ -131,8 +131,14 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   - `GameSettings` — `user://settings.cfg`: UI scale (root `ContentScaleFactor` = auto by window height × the
     setting), window mode/size, vsync, master/music/sfx/ambience bus volumes (buses made at boot), mute when unfocused,
     visual sound cues, camera pan/zoom speed, day length (Game tab: real minutes per in-game day at 1x).
-    `Hotkeys` installs the InputMap actions (Esc menu, Space pause, 1/2/3/4 speed, B build, E expedition, I items,
-    L log, Tab next survivor, Q/R colony camera rotation; Space/Enter end turn in scavenge). `GameSettings.Boot` runs
+    `Hotkeys` is one table of `Binding`s (action, label, context Everywhere / Colony / Scavenge, keys; `Shift(key)` makes
+    a Shift chord) that installs the InputMap actions and feeds Settings → Controls (plus `Hotkeys.Fixed`: pan, zoom,
+    rotate, cancel, orbit, turn the defense being placed). Everywhere: Esc menu, F1 help, F3 frame time. Colony: Space
+    pause, 1/2/3/4 speed, B build, F defend, E expedition, I items, L log, Tab next survivor, P power grid, M world map,
+    G garage, Y radio, T research, K pantry, Q/R camera rotation. Scavenge: Space/Enter end turn, 1–9 order slots
+    (attacks, then items), O/B/L stances, F loot, I salvage, T recruit, X extract, R load the vehicle, G give, C carry,
+    Z/V/N pings, Y/U alliance, H hack, K drone, J fly, M mark, P payload, Shift+R drone role, Shift+I ferry, Tab next
+    unit, Home centre, Backspace cancel aiming. `GameSettings.Boot` runs
     once from whichever scene starts first and also attaches `DebugCapture`. `DebugCapture` also attaches `PerfMonitor` for
     `--perf-log` (frame time, draw calls, memory, hitches; see `PERFORMANCE.md`).
   - `Unchanged` — sets a control's text / tooltip / texture / visibility / colour only when it changed; HUD panels
@@ -150,39 +156,115 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
     numbers, related links with Back; Esc / click outside closes) and `HelpIndex` (F1 or Help in the pause menu:
     search over every topic, grouped by category). `HelpLibrary.Ambient` is the screen's context (the colony screen:
     the sim, the open survivor and building; scavenge: the acting unit, its chosen attack and the hovered hostile),
-    each `InfoTip` may add its own on top.
+    each `InfoTip` may add its own on top. Debug (`HelpSelfTest.HelpDemo`): `--help-demo[=TOPIC]` hovers then opens the
+    first visible `InfoTip` (of that topic), `--help-index` opens the index.
   - `FrameTimeOverlay` — debug frame-time graph top right (F3, Settings → Display → Show frame time, or
     `--frame-overlay`): last / mean / max ms, fps, frames over 16.7 ms per second and in total, a 2 s graph.
 - `scripts/MainMenu` + `MenuBackdrop` — the title screen over a throwaway grown colony circled by a slow camera:
   Continue (the session's colony, else the save), New Game, Load, Multiplayer, Settings, Quit, debug skirmish.
-- `scripts/Colony/Ui/` — `ColonyHud` lays the colony HUD out and owns its hotkeys: `TopBar` (clock in 10-minute steps between ticks, speed, resource
-  chips with the change over the last day and what makes/eats each, population / beds / food-days pressure chips,
-  Build / Items / Expedition / World map / Menu), `RosterPanel` of `SurvivorCard`s (portrait, job, health and mood
-  bars, badges: injured / worsening, patient, pregnant, away, starving, homeless with its timer; collapsible),
-  `SurvivorPanel` (tabs Overview with the job output formula as a tooltip, Skills, Body, Family with matchmaking),
-  `BuildingPanel` (level pips, `WorkerSlots`, upgrade cost chips and Town Hall cap), `BuildMenu` (category filter,
-  grid with costs, locks and tooltips), `EventLog` (filterable, collapsible feed with icons; first-time tips from
-  `Advice`; raises toasts for deaths, births, departures, a party's arrival and return, lost limbs, recruits),
-  `ExpeditionPanel` (five steps — Destination, Party, Gear, Vehicle & supplies, Review — one on screen at a time, in `ExpeditionSteps`; a summary bar with InfoTips on every step; tabs marked settled / warning / blocked; Review lists the warnings with links to their step and Launch says why it is disabled; keys 1–5, Tab, Enter; Repeat last refills the session's last launched plan; per tick only the summary and the shown step refresh; `--expedition-step=N`), `WorldMapPanel`, `MedBayPanel`, `ProductionPanel`, `InventoryPanel`, `GearBenchPanel` (below), `AfterActionDialog` (who came
-  home with injury chips, who was lost, recruits, loot). Esc closes the topmost panel, then opens the pause menu
-  (resume, save, load, settings, main menu, quit). `WorkerSlots` (one reusable control, also the `DefensePanel`'s guard
-  slots): worker portraits (click: Unassign / Open survivor) and a "+" per free slot that opens `WorkerPicker` (portrait,
-  current job, the slot's fit score with its parts, injured / tired / child / patient / away / in-class badges, free
-  people first, best first); a click sends the owner's command (`AssignJob` / `AssignGuard`) and Core's refusal shows in
-  red. Debug: `--worker-demo=open|assign`, `--placing-demo`. Read Core state, call the session; no rules. Where the UI
-  needs a rule Core exposes a query (`MaxUpgradeLevel`, `MaxPartySize`, `HealPerTick`/`HealEta`, `IsWorsening`,
-  `CraftEffortPerTick`, `CraftStatus`, `SkillGap`, `CanQueue`, `QualityChances`, `PreviewProfile` for a survivor's field profile with
-  a given loadout, `FoodPerDay`/`FoodDays`, `OutputPerTick`); the per-survivor output breakdown uses `JobOutput`'s
-  public factors. Bars fed once a tick (production queue, research) glide across the next tick (`Ui.Glide`).
+  `--new-game-choice` opens the Story / Sandbox choice (screenshots).
+- `scripts/Colony/Ui/` — `ColonyHud` lays the colony HUD out and owns its hotkeys: top bar; roster and survivor details
+  down the left; one centre panel at a time (`Inventory`, `Pantry`, `Expedition`, `Garage`, `Repairs`: opening one hides
+  the others); the raid warning under the top bar; the right column at `PanelWidth.Side` (the selected building, the build
+  menu, defend catalogue and selected defense, the event log at a fixed height under them); toasts bottom-right; world
+  map, after-action and raid reports, raid prep, pause menu and settings on top. Hotkeys do what their buttons do; M
+  world map, K pantry; G / Y raise `BuildingRequested("garage" | "radio_mast")` and T `ResearchRequested`, and
+  `ColonyScreen` selects the best such building (the Town Hall). Esc closes the topmost panel, then opens the pause
+  menu (resume, save, load, settings, main menu, quit). Debug: `--hud-size=WxH` lays the HUD out in a smaller area
+  (logical units; `1506x847` is 1280×720 at its auto scale).
+  - Shared parts (`PanelParts`): `Space` (spacing scale 4 / 8 / 12 / 16), `Fit` (fit-to-content panels re-measure when
+    their parent's room changes), `PanelWidth` (roster, survivor, building column), `CostRow` (cost chips kept by
+    resource id, a cost the stock cannot cover red with "short N"), `TabStrip` (the one tab style, tabs act on press and
+    can hide), `FoldSection` (chevron, caps title, a summary on the right, optional (i); body revealed with `Motion`),
+    `KeyBadge` (the hotkey letter drawn in a button's corner). `PanelKit`: `PanelTabs` (a tab strip over pages built
+    once and kept, Left / Right between tabs, the page revealed; only the visible page is refreshed), `Expander`
+    ("▸ More" over a kept body), `Stepper` ("[−] 3 [+]", wheel and arrows), `KeyedRows<TKey>` (rows kept by key: built
+    when a key appears with `Motion.Enter`, moved, updated in place, removed with `Motion.Exit`, so pickers, hover and
+    focus survive a tick), and helpers (focusable buttons, captions and headers with an (i), height-keeping labels,
+    state chips, `Clickable` cards with keyboard focus and Up / Down). Panels are built once and updated in place; rebuilds only on a
+    changed signature.
+  - `TopBar` — one row at every size: phase, weather and one forecast chip ("Rain in 6h", the forecast in its
+    tooltip), clock in 10-minute steps between ticks, speed; the core resources (food, wood, stone, scrap) as
+    `StockChip`s (count-up amount, ▲ / ▼ trend, tooltip with the change per day and what makes it) and the rest in a
+    `ResourceDrawer` "+N" drop-down (`StockChips`); population, beds, food-days and power pressure chips with an (i);
+    actions Build, Defend, Repairs, Items, Pantry, Expedition, World map, Menu — labelled when there is room, else
+    icons with a `KeyBadge`, else a 4×2 icon grid (measured again only when the width or content changes).
+  - `RosterPanel` of `SurvivorCard`s down the left (adults then minors; head count, H / M legend, collapse to
+    portraits; as tall as its cards, scrolls past the room): card = portrait, name, badges (injured / worsening,
+    patient, pregnant, away, homeless with its timer, starving, in class, asleep / night shift / tired, food buffs,
+    perk points), job and age on one line, H and M bars, a `LevelPip` ringed by XP. Left-click selects; right-click
+    opens Assign to… (buildings with a free slot), Send to the Med Bay, Make idle, Open details; a card dragged onto
+    the building panel assigns there (payload `{"survivor": id}`).
+  - `SurvivorPanel` — tabs Overview (labelled health / mood bars, needs and status, nutrition, a job picker that
+    assigns on pick, the output line with `JobOutput`'s formula as tooltip and (i); Body — only the parts that are not
+    healthy, conditions with treatments, humanity — and Family — ties, matchmaking with the current stance — as
+    `FoldSection`s), Skills (attributes as a 2×3 grid, trained skills by value, the untrained folded) and Perks
+    (`PerksTab`: level, XP, points, discipline switcher, a `PerkTree` of `PerkNode`s owned / open / missing / locked
+    behind a schematic, detail with Learn). `OpenTab` keeps the old indices (Body / Family open and scroll to their section).
+  - `BuildingPanel` — the selected building, one panel with a pinned header (icon, name, level pips, status chips for
+    power / raid damage / lightning damage / night shift that jump to their section, `WorkerSlots`, the output line)
+    over tabs: Overview (what it does, damage and repair, Night Shift and Floodlight, the Power switch), Upgrade (the
+    next level's gain, named cost chips, the blocker with a link — "Open archive" for a missing schematic) and one tab
+    per hosted panel (`AddExtra`: crops, the production queue, Med Bay patients, research, radio, study), shown while
+    that panel applies. A new building opens on its first hosted tab, else Overview. As tall as its content up to
+    `MaxHeight` (the column's room from the screen); past that the tab body scrolls under the header.
+  - `WorkerSlots` (also the `DefensePanel`'s guard slots): worker portraits (click: Unassign / Open survivor;
+    right-click unassigns at once; new ones enter with `Motion.Enter`) and a focusable "+" per free slot that opens
+    `WorkerPicker` (portrait, current job, the slot's fit score with its parts, injured / tired / child / patient /
+    away / in-class badges, free people first, best first); a click sends the owner's command (`AssignJob` /
+    `AssignGuard`) and Core's refusal shows in red. Debug: `--worker-demo=open|assign`, `--placing-demo`.
+  - `BuildMenu` — one row of category icon tabs, a grid of tiles (icon, name, a one-line "what it does", `CostRow`),
+    locked tiles with a lock and the reason on the tile (schematic, Town Hall level, already built); picking one starts
+    placement, with a cursor tag naming the building, its cost and how to cancel. Fills the column.
+  - `EventLog` — hour, icon and colour per line, "Day N" rules, filters All / People / Colony / Alerts, a fixed height
+    (three lines, ten expanded with L) so it never pushes the panels above; first-time `Advice` tips are an Advisor
+    strip on top (one at a time, dismissable), not log lines. Important events become `Notice`s for toasts, merged by
+    event type and survivor ("Juno reached level 3 (+2 perk points)"); events with their own report get none.
+  - Building screens, one task per tab (`PanelTabs`), rows kept by id and updated in place, Core decides:
+    `ProductionPanel` (Queue: active order with its bar, the rest one line with a state chip — Repeat, ×N, Next,
+    Waiting for materials, Not started — "Again", Gear Bench / Cybernetics buttons; Recipes: group tabs at the
+    Electronics Lab, a quick "+" per row, the picked recipe's needs, work, time, quality odds, power, research chance,
+    a `Stepper`, Repeat, Queue; Charging at the Electronics Lab; at cooking buildings the recipe book with ingredient
+    chips and locked dishes under "Locked (N)"; `--production-tab=queue|recipes|...`), `GaragePanel` (Vehicles: list
+    with condition, the picked one turning in 3D with four key numbers and the rest behind More; Upgrades: slots with
+    fitted chips, a picker per free slot, before → after, cost, blocker; Repairs; Build = the Garage's
+    `ProductionPanel`; per-tab signatures; `--garage-tab=`), `GearBenchPanel` (overlay; Bench / Queue tabs: gear list,
+    slots with fitting mods and hover preview, Mk kit upgrade, before/after `GearBench.Stats` with a `BodySilhouette`
+    for worn gear, a collapsible compare; the bench orders; `--gear-tab=`), `MedBayPanel` (pinned header: beds, heal
+    rate, medicine and days it lasts, "999+" for a huge stock; Patients, Surgery — queue, odds, ETA, prosthetic fitting,
+    augmentation behind a confirm, "Tree" — and Dispensary in `MedBayPanel.Dispensary.cs`; hosted in the building
+    panel it opens on Patients), `CyberneticsPanel` (overlay: slot switcher, `CyberTree` tier columns T0..T4 with
+    prerequisite lines and a legend, the picked design in reading order — needs, components, effects, humanity, upkeep,
+    Queue pinned, compare with a survivor's limb, Fit / Book surgery), `StudyPanel` (classes, a new class pre-picking the
+    best mentor and manual, Core's `PlanStudy` before Start), `ResearchPanel` (running research with ETA and Cancel, a
+    researcher picker, `ResearchOptionRow`s kept in place), `RadioPanel` (`RadioTab`s from a `Tabs` list —
+    Calls with Answer / Accept, Trader as cards with Buy per price option and a Sell section, Contracts; each tab a
+    status line plus a body rebuilt on its signature).
+  - `InventoryPanel` (Items; the second tab is `SchematicsArchive`: schematics by what they unlock with status Known /
+    To decrypt / Heard of / Unknown / Planned, filter and search, player wording for sources and missions via
+    `SchematicText`; `ShowSchematic(id)` deep-links to one), `PantryPanel`, `WorldMapPanel` (`WorldMapCanvas` chart,
+    a summary card for the picked zone, legend chips incl. `LegendMark`, keys, no per-tick rebuilds; "Plan expedition"
+    hands the zone to the planner), `ExpeditionPanel` (five steps — Destination, Party, Gear, Vehicle & supplies,
+    Review — one on screen at a time, in `ExpeditionSteps`; a summary bar with InfoTips on every step; tabs marked
+    settled / warning / blocked; Review lists the warnings with links to their step and Launch says why it is disabled;
+    keys 1–5, Tab, Enter; Repeat last refills the session's last launched plan; per tick only the summary and the shown
+    step refresh; `--expedition-step=N`), `AfterActionDialog` (who came home with injury chips, who was lost,
+    recruits, loot).
+  - Read Core state, call the session; no rules. Where the UI needs a rule Core exposes a query (`MaxUpgradeLevel`,
+    `MaxPartySize`, `HealPerTick`/`HealEta`, `IsWorsening`, `CraftEffortPerTick`, `CraftStatus`, `SkillGap`,
+    `CanQueue`, `QualityChances`, `PreviewProfile` for a survivor's field profile with a given loadout,
+    `FoodPerDay`/`FoodDays`, `OutputPerTick`); the per-survivor output breakdown uses `JobOutput`'s public factors. Bars
+    fed once a tick (production queue, research) glide across the next tick (`Ui.Glide`). `tools/ux-gallery.sh` captures
+    every screen through the debug flags and writes a before/after page.
 - Electronics and power UI: `ProductionPanel` groups a bench's recipes into tabs by `RecipeDef.Group` (Electronics Lab:
   Components / Devices / Upgrades / Disassembly / Other), badges `NeedsPower` recipes and orders, shows disassembly yields and
   research chance, the lab's powered line and the charging bench (`ColonyState.Charging`, `Power.ChargeEta`); `TopBar`
   shows used/supply, battery % and brownout / breaker trouble once a generator or bank stands, with a grid button (P) for
   `PowerOverlay` (posts, tags and cables over the town from `ColonySim.PowerNodes`, fed / not fed / idle / off); the
-  `BuildingPanel` Power section (`PowerText`) has the on/off switch (`SetPower`). Power buildings use shaped placeholders
+  `BuildingPanel` Overview tab (`PowerText`, a power status chip in the header) has the on/off switch (`SetPower`). Power buildings use shaped placeholders
   (`Placeholders`, category colour) until `fuel_generator_l1` etc. exist. In the field: EMP / holo-decoy / noise decoy use
-  buttons (tile-aimed like flares, charges for reusable kits), drone-role orders in `TechPanel` (R: heal / load / fire, I:
-  ferry), the drone card's variant, role and cargo hold, hologram decoys, the EMP ring (`UnitViews.EmpRing`), tinted
+  buttons (tile-aimed like flares, charges for reusable kits), drone-role orders in `TechPanel` (Shift+R: heal / load / fire,
+  Shift+I: ferry), the drone card's variant, role and cargo hold, hologram decoys, the EMP ring (`UnitViews.EmpRing`), tinted
   `scout_drone` models for the variants, EMP / DECOY world tags and log icons.
 - `ColonySession.Current` keeps the colony alive across scene changes, so a party can go to the scavenge scene and
   come back. Each `ColonyScreen` detaches its handlers when it leaves the tree.
@@ -226,21 +308,39 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   35.264°; WASD/middle-drag pan, wheel zoom, Q/E rotate 90°; starts on the party, follows other units' visible actions).
   `SidePalette` colours rings, labels and turn chips alike (other players' parties violet). Units that leave a remote
   view are hidden; the turn bar shows whose turn it is and the turn timer in multiplayer. HUD in `Scavenge/Ui/`, laid out
-  by `ScavengeHud` (which also owns the hotkeys and the pause menu): `TurnBar` (zone, round, initiative order as
-  portrait chips with a side-colour edge, the acting unit's AP pips, End Turn, Leave, menu), `UnitPanel` (cards: portrait
-  rendered from the unit's model with its gear, HP bar and AP pips; Body with part icons and bars; field profile chips;
-  gear, pack and load), `ActionPanel` and `StancePanel` built from `ActionButton`s (icon, detail line, AP-cost pips, hotkey
-  keycap), `WorldTags` (everything written over the map as HUD chips in one stack per unit — name and HP bar, status
-  tags, attack preview with hit chance and AMBUSH, rising pop-ups — so nothing overlaps; contacts' `?` on their tiles),
-  `ScavengeLog` (icon per event kind; only Network events are cyan), `ResultPanel` (`ExtractionResult` in the
-  after-action style). Portraits of field units come from `UnitPortrait`. The order panels (`ActionPanel`, `TechPanel`, `CoopPanel`) keep their
-  rows across refreshes through `PanelRows` (rows asked for in order are re-used and updated in place via
-  `ActionButton.Configure`, extras hidden); `UnitPanel`'s gear card and `LootPanel` rebuild only when their signature
-  changes; `ScavengeScreen.RefreshHud` coalesces every request in a frame into one deferred refresh.
+  by `ScavengeHud` (which also owns the hotkeys and the pause menu). Turn bar on top: `TurnBar` (zone, round, the
+  initiative order as `OrderChip`s kept per unit — side-colour edge, the acting unit larger, framed and named, those
+  that acted faded, unseen ones "?", HP as a bottom-edge tint —, the acting unit's AP pips, End Turn, Leave, menu), the
+  `AllianceBanner` under it. Left: `UnitPanel`, summary first — header (portrait rendered from the unit's model with
+  its gear, name, kind, status, "Not their turn" when one of yours is selected while another acts, HP bar, AP pips
+  unless it is the acting unit) and folding sections (`Scavenge/Ui/Expander`: chevron, icon, title, a one-line summary
+  while folded, an (i); open state remembered per section for the session): Body ("All parts ok", else only hurt, lost
+  and prosthetic parts), Field profile (Move, Sight, Armor, Dodge with an (i) each; AP, initiative and attacks behind
+  More), Gear (folded, summary; slots, pack, load), and an Ally section for a co-op ally's read-only unit — with
+  `LootPanel` docked under it while the acting unit stands at a pile, on an exit with a pack, or is slowed (one load bar
+  against the encumbrance steps, item chips per pile, Take all (F) amber when it slows, `PackRow`s with Drop 1 and Stash
+  on an exit). Right: one fixed-width column — `ActingHeader` (the acting unit's portrait and "Silas's turn", and a
+  reserved two-line hint: what a click does while aiming an item / ping / drone order, another unit selected, enemy
+  turn, autoplay; its height never changes, so the buttons below never move), `MissionPanel`, then the orders in a
+  fixed order: `ActionPanel` (Attack · Use, numbered 1–9, attacks then items), `StancePanel`, `ActionPanel.Context`
+  ("Here": salvage I, recruit T, the vehicle chip with Load R / Take, extract X), `TechPanel`, `CoopPanel` (Team); all
+  built from `ActionButton`s (icon, detail line, AP-cost pips, keycap; toggles act on press). Orders dim while another
+  unit is selected and stay put (dimmed) while a turn replays, catching up after; both side columns scroll on a short
+  screen. Bottom: toasts and `ScavengeLog` (round, icon and colour per kind, errors red, only Network events cyan;
+  folds to three lines, opens on hover). Under everything `WorldTags` (one stack of `TagChip`s per unit, kept and
+  updated in place via `TagChip.Set` — name and HP bar, status tags, attack preview with hit chance and AMBUSH, rising
+  pop-ups — so nothing overlaps; contacts' `?` on their tiles); on top `ResultPanel` (`ExtractionResult` in the
+  after-action style), pause menu, settings, and `DeviceTip` at the cursor. Portraits of field units come from
+  `UnitPortrait`. Nothing rebuilds per event: the order panels (`ActionPanel`, `TechPanel`, `CoopPanel`) keep their rows
+  through `PanelRows` (rows asked for in order are re-used and updated in place via `ActionButton.Configure`, extras
+  hidden; `Heading` with an optional (i), `Note`, pooled status chips), and `StancePanel`, `MissionPanel`, the order
+  chips, `LootPanel`, the ping row and the vehicle chip update in place; panels reveal / conceal and rows enter with
+  `Motion`; `ScavengeScreen.RefreshHud` coalesces every request in a frame into one deferred refresh.
 - Scavenge input: left-click a blue tile to move, a red target to attack with the chosen action, a unit to inspect it;
-  item buttons arm "use on" and the next unit click is the target; right-click/Esc cancels (Esc with nothing to cancel
-  opens the pause menu); Space/Enter ends the turn; 1–3 pick the attack, 4–6 aim an item, O/B/L stances, F loot,
-  T recruit, X extract.
+  item buttons arm "use on" and the next unit click is the target; right-click / Esc / Backspace cancels aiming (Esc
+  with nothing to cancel opens the pause menu); Space/Enter ends the turn; 1–9 are the order slots (attacks, then items:
+  with two attacks the items start at 3), Tab next unit, Home centres on the acting unit; the rest per the `Hotkeys`
+  table (drone orders that share a letter take Shift: Shift+R role, Shift+I ferry).
 
 - `scripts/Multiplayer/` — `MultiplayerMenu` (scene `Multiplayer.tscn`: name, address, Host / Join, lobby with Ready),
   `MultiplayerSession` (the party from the colony's waiting expedition or a debug party, the connection, the in-process
