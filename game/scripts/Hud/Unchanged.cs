@@ -31,7 +31,8 @@ public sealed class Unchanged
 
     public void Texture(TextureRect rect, Texture2D? texture)
     {
-        if (!Same(rect, 2, texture)) rect.Texture = texture;
+        // The native pointer, not the texture: holding the resource here would keep it alive past the scene.
+        if (!Same(rect, 2, texture?.NativeInstance ?? System.IntPtr.Zero)) rect.Texture = texture;
     }
 
     public void Visible(CanvasItem item, bool visible)

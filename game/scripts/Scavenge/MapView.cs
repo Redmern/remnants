@@ -350,7 +350,7 @@ public partial class MapView : Node3D
         node.FindChildren("*", nameof(MeshInstance3D), true, false).OfType<MeshInstance3D>().ToArray();
 
     // Highlights are pooled: a refresh after every command would otherwise make (and free) a mesh and node per tile.
-    private static readonly PlaneMesh HighlightQuad = new() { Size = new Vector2(1.9f, 1.9f) };
+    private readonly PlaneMesh _highlightQuad = new() { Size = new Vector2(1.9f, 1.9f) };
     private readonly List<MeshInstance3D> _quads = new();
     private readonly List<Label3D> _labels = new();
     private int _quadsUsed, _labelsUsed;
@@ -367,7 +367,7 @@ public partial class MapView : Node3D
     {
         if (_quadsUsed == _quads.Count)
         {
-            var made = new MeshInstance3D { Mesh = HighlightQuad, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+            var made = new MeshInstance3D { Mesh = _highlightQuad, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
             _quads.Add(made);
             _highlights.AddChild(made);
         }
