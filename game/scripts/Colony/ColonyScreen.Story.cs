@@ -5,7 +5,7 @@ using Remnants.Core.Story;
 namespace Remnants.Game.Colony;
 
 /// <summary>
-/// Debug stagings of Story mode for screenshots (<c>--story-demo=radio|dialogue|worldmap|briefing|journal</c>): a
+/// Debug stagings of Story mode for screenshots (<c>--story-demo=radio|dialogue|worldmap|briefing|briefing-warn|journal</c>): a
 /// fresh Story colony plays M1 through Core commands until First Light calls, then stops on the asked-for screen.
 /// Acts 2–4 (<c>--story-demo=offer|join|codex|epilogue [--ending=terms|silence|voice|calm] [--slide=N]</c>): Act 1 is
 /// taken as done and the campaign is set up for the scene: Halcyon's Offer, Doc joining after M7, the Codex, an ending.
@@ -59,6 +59,11 @@ public partial class ColonyScreen
             case "radio": _hud.Story.Radio.Open(); break;
             case "worldmap": _hud.WorldMap.Open("outskirts"); break;
             case "briefing": _hud.Story.OpenBriefing("m2"); break;
+            case "briefing-warn":
+                // The readiness warnings: a wounded arm and starting-tier weapons in front of The Drowned Clinic.
+                sim.State.Survivors.First(s => !s.IsChild).Body.Injure(Remnants.Core.Survivors.BodyPart.RightArm, 0.45);
+                _hud.Story.OpenBriefing("m7");
+                break;
             case "journal": _hud.Story.Journal.Open(); break;
         }
         _hud.Story.Refresh();

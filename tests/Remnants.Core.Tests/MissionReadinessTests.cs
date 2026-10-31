@@ -25,6 +25,10 @@ public class MissionReadinessTests
         var warning = Assert.Single(MissionReadiness.Check(sim, Real.Mission("m2")!), w => w.Id == $"hurt:{noor.Id}");
         Assert.Contains("right arm 40%", warning.Text);
         Assert.Contains("hits about 60% as often", warning.Text);
+        // One arm: a one-handed weapon still swings with the good one.
+        noor.Body.Heal(BodyPart.LeftArm);
+        var one = Assert.Single(MissionReadiness.Check(sim, Real.Mission("m2")!), w => w.Id == $"hurt:{noor.Id}");
+        Assert.Contains("hits about 80% as often with a two-handed weapon", one.Text);
         // Only the party picked counts once there is one.
         var others = sim.State.Survivors.Where(s => !s.IsChild && s.Id != noor.Id).Select(s => new ExpeditionMember(s.Id)).ToList();
         Assert.DoesNotContain(MissionReadiness.Check(sim, Real.Mission("m2")!, others), w => w.Id.StartsWith("hurt:", StringComparison.Ordinal));

@@ -78,8 +78,10 @@ public static class MissionReadiness
             .Select(kv => $"{MedicalSystem.Describe(kv.Key)} {kv.Value.Severity * 100:0}%").ToList();
         var bits = new List<string>();
         if (parts.Count > 0) bits.Add($"injured ({string.Join(", ", parts)})");
-        var arms = Math.Max(body.PartEfficiency(BodyPart.LeftArm), body.PartEfficiency(BodyPart.RightArm));
-        if (arms < 0.95) bits.Add($"hits about {arms * 100:0}% as often");
+        // One-handed weapons swing with the better arm, two-handed ones with both (ProfileDeriver).
+        var (left, right) = (body.PartEfficiency(BodyPart.LeftArm), body.PartEfficiency(BodyPart.RightArm));
+        if (Math.Max(left, right) < 0.95) bits.Add($"hits about {Math.Max(left, right) * 100:0}% as often");
+        else if ((left + right) / 2 < 0.95) bits.Add($"hits about {(left + right) / 2 * 100:0}% as often with a two-handed weapon");
         var legs = body.RegionEfficiency(BodyRegion.Legs);
         if (legs < 0.95) bits.Add("slow on their feet");
         if (s.Health < 70) bits.Add($"worn out (health {s.Health:0})");

@@ -18,6 +18,7 @@ run 02-new-game-story   300 --new-game=story
 run 03-radio-call       150 --colony --story --story-demo=radio
 run 04-journal-m1       150 --colony --story --story-demo=journal
 run 05-briefing         150 --colony --story --story-demo=briefing
+run 05b-briefing-warn   150 --colony --story --story-demo=briefing-warn
 run 06-garage           150 --colony --garage-demo
 run 07-planner-vehicle  150 --colony --garage-demo --expedition --zone=outskirts --vehicle=handcart
 run 08-world-drive      240 --colony --world-demo --vehicle=motorbike
