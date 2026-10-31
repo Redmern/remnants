@@ -11,7 +11,7 @@ driver=()
 
 shot() {
   local name=$1 frames=$2; shift 2
-  timeout 120 godot-mono "${driver[@]}" --path game -- "$@" --screenshot="$out/$name.png" --frames="$frames" --quit \
+  GODOT_AGENT_TIMEOUT=120 tools/godot-agent.sh "${driver[@]}" --path game -- "$@" --screenshot="$out/$name.png" --frames="$frames" --quit \
     >"$out/$name.log" 2>&1 || echo "FAILED: $name (see $out/$name.log)"
 }
 

@@ -7,7 +7,7 @@ SH=build/smoke
 mkdir -p $SH
 step() { # name frames flags...
   local name=$1 frames=$2; shift 2
-  timeout 180 godot-mono --path game --disable-vsync -- "$@" --screenshot=$PWD/$SH/$name.png --frames=$frames --quit > $SH/$name.log 2>&1
+  GODOT_AGENT_TIMEOUT=180 tools/godot-agent.sh --path game --disable-vsync -- "$@" --screenshot=$PWD/$SH/$name.png --frames=$frames --quit > $SH/$name.log 2>&1
   local code=$?
   local errs=$(grep -cE "^(ERROR|SCRIPT ERROR)|Unhandled|Exception|\[worker-demo\] (no |assign failed|picker is empty)" $SH/$name.log)
   printf '%-24s exit %3s  errors %3s  %s\n' "$name" "$code" "$errs" "$([[ -f $SH/$name.png ]] && echo shot || echo NO-SHOT)"
