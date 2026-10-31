@@ -1,0 +1,169 @@
+{
+  "category": "World",
+  "topics": [
+    {
+      "id": "weather",
+      "title": "Weather",
+      "short": "Rain, storms, fog and dust change work, crops, mood, travel and fights. The forecast reaches further with a better Town Hall.",
+      "long": "Each region has its own weather. The wastes get more dust storms.\n\n## At home\n\n- **Rain**: outdoor work ×0.9, outdoor crops ×1.3, no Campfire.\n- **Thunderstorm**: outdoor work ×0.7, crops ×1.1, mood drops, no Campfire; lightning can damage a building (half output until repaired).\n- **Fog**: mood drops.\n- **Dust storm**: outdoor work ×0.3, or ×0.65 with a dust mask; unmasked workers lose health (never below 25); children stay in; crops ×0.6; mood drops.\n\n## On the road and in the field\n\n- Storms add travel days; a long dust storm can close a route (see [[travel]]).\n- Drones are grounded in thunderstorms, dust storms and heavy rain.\n- In the field, rain and fog cut sight and hearing and add stealth; dust also hurts ranged aim (see [[fog]]).\n\n## Forecast\n\nThe Town Hall forecasts 1, 2 or 3 days ahead by level, one more with an Electronics Lab level 2. Calls get less reliable the further ahead; a scanner in the stores improves them.\n\n## Tips\n\n- Make dust masks at the Tailor before the first storm.",
+      "related": [
+        "travel",
+        "production",
+        "fog",
+        "raids"
+      ],
+      "keywords": [
+        "rain",
+        "storm",
+        "dust",
+        "fog",
+        "forecast",
+        "lightning",
+        "mask"
+      ]
+    },
+    {
+      "id": "expeditions",
+      "title": "Expeditions",
+      "short": "Send a party of adults to a zone on the world map to scavenge. Party size grows with the Town Hall: 2, 3, then 4.",
+      "long": "Press **E** for the expedition planner, or pick a zone on the world map.\n\n## Who can go\n\n- Adults only, not patients and not pregnant.\n- Up to 2, 3 or 4 by Town Hall level, or a vehicle's seats.\n- One expedition at a time.\n\n## Setting out\n\n- Gear comes out of your stores: weapons, armor, packs.\n- Each member takes [[rations]]. Away, they do not eat colony food, but they keep their bed.\n- The planner shows travel days, arrival time and phase. You can wait outside for a better hour, at the daily ration rate.\n\n## The run\n\nThe party travels out (colony time keeps passing), then you play the zone in turns. Colony time stops while you play. Leaving the screen pauses the mission; it resumes from the expedition menu.\n\n## Coming home\n\nThe after-action report lists who came back, new injuries, loot and recruits. Those who did not come back are dead, and their gear is lost. Everyone home earns XP, more for dangerous zones.\n\n## Zones\n\nUnknown zones must be rumored first. A visit scouts the zone, makes its neighbours rumored, and depletes it for a while.",
+      "related": [
+        "travel",
+        "rations",
+        "vehicles",
+        "extraction",
+        "fog"
+      ],
+      "keywords": [
+        "mission",
+        "scavenge",
+        "party",
+        "world map",
+        "zone",
+        "expedition planner"
+      ]
+    },
+    {
+      "id": "travel",
+      "title": "Travel time",
+      "short": "A zone's distance in days, changed by the weather and your vehicle. A long dust storm over a zone closes the route.",
+      "long": "Each zone lies a number of days from home on foot. The breakdown below shows the trip to the selected zone leaving now.\n\n## What changes it\n\n- **Weather**: the worse of home's and the zone's weather at departure adds time: a thunderstorm about half a day, a dust storm a day. A long dust storm raging over the zone closes the route.\n- **Vehicles**: speed and upgrades multiply the time; the weather slows or blocks some vehicles; a motor vehicle without headlights is slower in the dark (see [[vehicles]]).\n- Any closed route blocks the launch.\n\n## Rations\n\nRations are planned on the time moving, out and back, plus any waiting and weather delays (see [[rations]]).\n\n## The way home\n\nThe return trip is planned when the run ends, in the weather of that moment.\n\n## Tips\n\n- Check the forecast before a long trip (see [[weather]]).\n- A doorstep zone takes no travel time at all.",
+      "provider": "travel",
+      "related": [
+        "rations",
+        "weather",
+        "vehicles",
+        "expeditions"
+      ],
+      "keywords": [
+        "distance",
+        "days",
+        "route",
+        "road",
+        "journey"
+      ]
+    },
+    {
+      "id": "rations",
+      "title": "Rations",
+      "short": "Each member takes 3 food plus 2 per day on the road, out and back. Risky food can make people sick; a good meal gives +1 AP at the start.",
+      "long": "Rations are food taken from your stores for the trip.\n\n## How much\n\n- Each member takes 3 food, plus 2 food per day of travel, counted both ways.\n- Waiting outside a zone for a better hour costs 2 food per member per day.\n- Weather delays add their own rations.\n\n## What gets packed\n\nThe planner's ration picker lets you prefer one item. The rest is food that will keep until the party is home. Long-keeping food is held back from colony meals for exactly this.\n\n## Risky rations\n\nSpoiled food, tainted Husk meat, or food that will spoil on the road may make members sick at launch, costing health.\n\n## Fed for the Road\n\nPack a stew, pie, feast or field rations of Standard quality or better for each member, and the party starts the field with **+1 AP** on the first round (see [[food_buffs]]).\n\n## Tips\n\n- Field rations keep for months and give the buff: make a stock at the Kitchen.",
+      "provider": "travel",
+      "related": [
+        "travel",
+        "expeditions",
+        "food",
+        "cooking"
+      ],
+      "keywords": [
+        "food",
+        "supplies",
+        "packing",
+        "trip"
+      ]
+    },
+    {
+      "id": "vehicles",
+      "title": "Vehicles",
+      "short": "From the starting Handcart to the Armored Rig: faster trips, more seats, cargo home and cover in the field. Motor vehicles need fuel.",
+      "long": "Every colony starts with a **Handcart**. Better vehicles are built at the **Garage** from parts and a schematic.\n\n## Tiers\n\n- **Handcart**: any party, 30 kg cargo, no fuel.\n- **Bicycle Cart**: ×1.5 speed, 3 seats, 45 kg.\n- **Motorbike**: ×2.5 speed, 2 seats; fuel.\n- **Buggy**: ×3 speed, 4 seats, 80 kg, light armor.\n- **Truck**: ×2 speed, 6 seats, 200 kg.\n- **Armored Rig**: ×1.75 speed, 6 seats, heavy armor.\n\nMotor vehicles burn fuel per travel day and have a range on a tank. The **Biofuel Still** makes fuel from crops (wood at level 2).\n\n## Upkeep\n\nThe road wears a vehicle a little each day; below 25% condition it cannot leave. Repair with spare parts at the Garage.\n\n## Upgrades\n\nEngine, tyres, armor and utility slots: turbo, muffler, off-road tyres, armor plates, cargo rack, headlights, winch, roof turret and more.\n\n## In the field\n\nThe vehicle parks next to the party as cover. Load carried items into it (**R**) within its cargo, and extract from any tile next to it. Noise draws more Husks on arrival. At 0 HP it is wrecked and its load is lost.",
+      "related": [
+        "travel",
+        "extraction",
+        "salvage",
+        "expeditions"
+      ],
+      "keywords": [
+        "garage",
+        "car",
+        "truck",
+        "fuel",
+        "cargo",
+        "handcart",
+        "buggy",
+        "motorbike"
+      ]
+    },
+    {
+      "id": "raids",
+      "title": "Raids",
+      "short": "Husks, Linked and raiders attack the colony. Each is drawn by something: noise, Network attention or your wealth. Warning time lets you prepare.",
+      "long": "After a quiet start (about twelve days and five buildings), the colony attracts attackers.\n\n## What draws them\n\n- **Husks** hear noise: people, night shifts, Floodlights at night, parties coming home, vehicles. They favour the night.\n- **Raiders** (from about day 10) smell wealth.\n- **The Linked** (from about day 25) follow your trail from Linked zones you have scouted.\n\nRaids come at least six days apart and grow with each one survived.\n\n## Warning\n\nA raid sets out a day ahead. How early you see it depends on towers, alarms, the Watchtower and Radio Mast, guards on duty and a drone patrol, less in bad weather. The size estimate gets better with more warning.\n\n## Preparing\n\nWhile a raid is warned: pick defenders, shelter the children, close the gates, recall an expedition that can make it home, or choose to **fight** it yourself on the map. Unfought raids are settled automatically.\n\n## Afterwards\n\nTraps spring, walls and buildings take damage, attackers may steal food or supplies, people get hurt. A beaten raid leaves loot and sometimes a schematic.",
+      "related": [
+        "defenses",
+        "night_shift",
+        "weather",
+        "loot"
+      ],
+      "keywords": [
+        "attack",
+        "husks",
+        "raiders",
+        "linked",
+        "siege",
+        "warning"
+      ]
+    },
+    {
+      "id": "defenses",
+      "title": "Defenses and guards",
+      "short": "Walls, gates, towers, posts, turrets and traps around the town. Guards on posts fight better and spot raids sooner. Press F to place them.",
+      "long": "Press **F** for Defend mode. Pick a defense, place it, drag to lay a line, and **R** to rotate.\n\n## Kinds\n\n- **Walls**: wood, then scrap (Town Hall 2), then concrete (Town Hall 3). Each upgrade pays the difference.\n- **Gate**: a wall that opens; shut it when a raid comes.\n- **Barricade** and **Sandbag Nest**: cheap cover; a nest holds two guards.\n- **Towers**: Lookout Tower, Watchtower, Fortified Tower: more warning hours, more guard slots, longer view.\n- **Floodlight**, **Scrap Turret** (Town Hall 2): light and firepower, with daily upkeep; power near them helps.\n- **Alarm Bell**: wakes everyone.\n- **Traps**: spike strips, snares, pit traps (even the Linked fall in), tripwires (warning), noise-makers (lure Husks), fire traps and mines (used once).\n\n## Guards\n\nAssign survivors to posts for the day shift or the night watch. On duty they add warning, fight better at their post and train Firearms. The night watch is night work.\n\n## Upkeep\n\nUpkeep is paid at midnight; unpaid defenses stand idle that day. Removing one refunds half.",
+      "related": [
+        "raids",
+        "power",
+        "night_shift"
+      ],
+      "keywords": [
+        "walls",
+        "gate",
+        "tower",
+        "traps",
+        "turret",
+        "guards",
+        "night watch",
+        "defend"
+      ]
+    },
+    {
+      "id": "trading",
+      "title": "Trading",
+      "short": "Barter with the trader at the Radio Mast, or with other players live or on the Trading Post. Couriers carry the goods home.",
+      "long": "## The trader\n\nWith a **Radio Mast**, a caravan calls every 10 days (every 5 with Radio Mast level 2) and stays 2 days. In Sandbox it first comes once you have scouted Suburb Ruins. It sells schematics you do not know and buys schematics and Research Data. Prices are in scrap, food, cloth, electronics or Research Data.\n\n## Other players\n\n- **Live**: open a trade window with another player in the lobby, or an ally in a mission. Up to 8 lines a side.\n- **Trading Post**: post a listing that stays up for a few days; up to 8 open at once.\n- It is barter: resources, items, food and schematic copies. Survivors cannot be traded.\n- Goods leave your stores when you confirm and come back if the trade is cancelled.\n\n## Couriers\n\nTraded goods come home by courier: half a day plus half a day per leg of the route. A Garage speeds it up; weather and vehicles change it.\n\n## Food\n\nFood keeps its quality and how long it has left. Spoiled food cannot be offered.",
+      "related": [
+        "schematics",
+        "research",
+        "coop"
+      ],
+      "keywords": [
+        "trader",
+        "caravan",
+        "barter",
+        "market",
+        "trading post",
+        "radio mast",
+        "courier"
+      ]
+    }
+  ]
+}

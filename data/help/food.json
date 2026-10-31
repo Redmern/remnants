@@ -1,0 +1,188 @@
+{
+  "category": "Food & health",
+  "topics": [
+    {
+      "id": "food",
+      "title": "Food",
+      "short": "Your stock is the food value of every edible item. Everyone eats a little each hour, children first; cooked dishes are picked over raw food.",
+      "long": "Food is ordinary items: potatoes, beans, meat, canned food, dishes from the kitchen. Each has a **food value** and a **nutrition** value. The breakdown below shows your stock against what the colony eats per day.\n\n## Eating\n\n- Everyone eats a little every hour; children and infants need less and are fed first.\n- People prefer cooked dishes, better quality and variety, and eat what spoils soonest. Long-keeping food is saved for the road (see [[rations]]).\n- With nothing to eat a survivor becomes **Hungry** and loses health every hour.\n- Nutrition is averaged over a couple of days; a poor diet leads to Malnourished (see [[food_buffs]]).\n\n## Getting food\n\n- **Farm**: potatoes (ready in 1 day), herbs, beans (3 days), corn (4 days). Rain helps outdoor crops; dust storms bury them.\n- **Greenhouse**: vegetables and herbs, indoors, whatever the weather.\n- **Hunting Lodge**: game (meat and hides), Husk-zone game (plenty but tainted), forage.\n- Switching a field's crop loses what is growing.\n\n## Tips\n\n- Keep several days of food in stock before a raid season or a long expedition.",
+      "provider": "food_days",
+      "related": [
+        "spoilage",
+        "cooking",
+        "food_buffs",
+        "rations"
+      ],
+      "keywords": [
+        "eating",
+        "hunger",
+        "farm",
+        "crops",
+        "harvest",
+        "starving"
+      ]
+    },
+    {
+      "id": "spoilage",
+      "title": "Spoilage and the Cold Cellar",
+      "short": "Food keeps for its shelf life, then spoils and rots away. A Cold Cellar slows fresh produce and meat to 60% (40% at level 2).",
+      "long": "Every lot of food ages. Each item has a shelf life: potatoes about two weeks, beans a month, raw meat three days, Husk meat two, canned food half a year. Cooked dishes keep only a few days; preserved food keeps much longer.\n\n## Spoiled food\n\n- Past its shelf life a lot is **spoiled**: it no longer counts as food and is eaten only when nothing else is left, with a chance of food sickness.\n- Two days later it rots away.\n\n## The Cold Cellar\n\nThe **Cold Cellar** slows ageing for fresh produce and meat: they age at 60% of the normal rate, 40% at level 2. Preserved food does not need it.\n\n## Keeping food longer\n\n- Preserve: smoked and salted meat, pickles, dried food, canned and field rations.\n- The Preserver perk makes a cook's preserved food keep longer.\n- Raw meat cannot be eaten at all: cook it or preserve it before it turns.\n\n## Tips\n\n- Hunting brings meat that is gone in three days. Pair a Lodge with a cook.",
+      "related": [
+        "food",
+        "cooking",
+        "food_buffs"
+      ],
+      "keywords": [
+        "shelf life",
+        "rot",
+        "spoiled",
+        "cellar",
+        "preserve",
+        "fresh"
+      ]
+    },
+    {
+      "id": "cooking",
+      "title": "Cooking",
+      "short": "Campfire, Kitchen and Smokehouse turn raw food into dishes worth more mood, health and buffs. The cook's skill sets the dish's quality.",
+      "long": "Cooking buildings work like any workshop: queue a recipe, and workers turn ingredients into dishes. The **Campfire** does simple food, the **Kitchen** (levels 1 to 3) meals, the **Smokehouse** preserves.\n\n## Why cook\n\n- Dishes are worth more food than their ingredients, add mood and health when eaten, and some give buffs: a stew or roast gives Well Fed, a pie Comfort Food (see [[food_buffs]]).\n- A hot supper between dusk and dawn counts ×1.5 with a Campfire.\n- Without a cooked meal for two days everyone gets Bland Diet.\n\n## Quality\n\nA dish rolls Crude, Standard or Fine from the cook's Cooking skill and the building level, like gear (see [[crafting]]). Crude dishes do ×0.8, Fine ×1.25. Tainted ingredients such as Husk meat stay tainted in a crude dish 60% of the time, 20% at Standard and never at Fine.\n\n## For the road\n\nStew, pie, a feast or field rations of Standard quality or better give the party Fed for the Road: +1 AP on the first round in the field (see [[rations]]).",
+      "related": [
+        "food",
+        "food_buffs",
+        "crafting",
+        "spoilage"
+      ],
+      "keywords": [
+        "kitchen",
+        "campfire",
+        "smokehouse",
+        "meals",
+        "recipes",
+        "dish"
+      ]
+    },
+    {
+      "id": "food_buffs",
+      "title": "Food buffs",
+      "short": "Meals leave buffs: Well Fed (+8% output, faster healing), Comfort Food, Energised. A poor diet gives Hungry, Bland, Malnourished or Same Again.",
+      "long": "What people eat leaves a mark for hours afterwards. Buffs show as badges on survivor cards.\n\n## Good\n\n- **Well Fed** (roast, stew, feast): ×1.08 output, ×1.25 healing.\n- **Comfort Food** (pie, feast): mood lifts every hour.\n- **Energised** (stim tea): ×1.15 output, then a crash of 4 hours of sleep debt.\n- **Soothed** (medicinal broth): ×1.5 healing and a little health every hour.\n- **Fed for the Road** (stew, pie, feast, field rations): +1 AP on the first field round.\n\n## Bad\n\n- **Hungry** (went without food): ×0.85 output, ×0.75 healing.\n- **Bland Diet** (no cooked meal for two days): mood drags.\n- **Malnourished** (poor nutrition for days): ×0.9 output; children grow weaker.\n- **Same Again** (one dish most days): mood drags.\n- **Food Poisoning** (spoiled, raw or tainted food): ×0.75 output, losing mood and health, −1 AP on the first field round.\n\n## Tips\n\n- Vary the menu: two or three different dishes keep Same Again away.",
+      "related": [
+        "food",
+        "cooking",
+        "jobs_output",
+        "mood"
+      ],
+      "keywords": [
+        "buff",
+        "debuff",
+        "well fed",
+        "hungry",
+        "malnourished",
+        "bland",
+        "energised"
+      ]
+    },
+    {
+      "id": "health",
+      "title": "Health",
+      "short": "Health runs from 0 to 100. Low health cuts output by up to half; at 0 the survivor dies. Food, sleep and meals restore it.",
+      "long": "Each survivor has health from 0 to 100, separate from the condition of each body part (see [[injuries]]).\n\n## Why it matters\n\nJob output is multiplied by a vitality factor from ×0.5 at 0 HP to ×1 at full health, on top of the body parts the job needs (see [[jobs_output]]). At 0 the survivor dies and joins the memorial.\n\n## What restores it\n\n- Every fed hour, a little.\n- Sleep in a bed or a Med Bay cot.\n- Dishes that heal, and the Soothed buff (see [[food_buffs]]).\n\n## What drains it\n\n- Starvation, every hour without food.\n- Serious head and torso wounds left untreated.\n- Infection from 75% severity, and Husk sickness (see [[infection]]).\n- Working outdoors in a dust storm without a mask (it never takes health below 25).\n\n## In the field\n\nHits do damage; a survivor at 0 is downed and starts to bleed out (see [[carry_downed]]).",
+      "related": [
+        "injuries",
+        "infection",
+        "med_bay",
+        "carry_downed"
+      ],
+      "keywords": [
+        "hp",
+        "hit points",
+        "death",
+        "dying",
+        "heal"
+      ]
+    },
+    {
+      "id": "injuries",
+      "title": "Injuries and fractures",
+      "short": "Wounds sit on body parts. Light ones heal on their own; serious ones get worse without care. A limb hit hard may break: splint it.",
+      "long": "Damage lands on body parts (head, torso, arms, legs), each with a wound severity from 0 to 100%. A wounded part works worse, which costs output at jobs that use it and aim, movement or carrying in the field.\n\n## How wounds change\n\n- Under 30%: heals slowly on its own.\n- 60% or more: gets **worse** without Med Bay care. A limb that reaches 100% is lost; head and torso wounds drain health.\n- At the [[med_bay]] every wound heals, faster with good medics and Medicine.\n\n## Fractures\n\nWhen a hit leaves an arm or leg at 45% or worse there is a 35% chance it breaks: −25% efficiency and half-speed healing. A **splint** cuts the penalty to −8% and makes it heal ×1.25.\n\n## Pain\n\nA worst wound of 55% or more costs 15% output until a painkiller dulls it. Three painkillers close together start a dependency.\n\n## Dressings\n\nA bandage lowers the chance a wound gets infected; a clean dressing stops it. A new injury undoes the dressing (see [[infection]]).\n\n## Tips\n\n- A lost limb can be replaced (see [[prosthetic_tiers]]).",
+      "related": [
+        "health",
+        "infection",
+        "med_bay",
+        "medicine",
+        "prosthetic_tiers"
+      ],
+      "keywords": [
+        "wounds",
+        "fracture",
+        "splint",
+        "pain",
+        "painkiller",
+        "broken",
+        "limb"
+      ]
+    },
+    {
+      "id": "infection",
+      "title": "Infection and sickness",
+      "short": "Undressed wounds can turn infected: fever, no healing and later health loss. Dress wounds, use antibiotics. Bad food brings sickness.",
+      "long": "## Wound infection\n\n- A **dirty wound** of 25% or more has a small chance each hour to go bad. A bandage cuts the chance to about a third, a clean dressing to nothing, and a Med Bay bed halves it.\n- An infection starts mild and grows over about a week. It stops that part healing and brings **fever**: up to −35% output.\n- From 50% it costs 1 AP in the field; from 75% it drains health, and it can kill.\n- **Antibiotics** cure it. A patient at the Med Bay on Medicine holds it back.\n- A failed surgery leaves a surgical infection that works the same way.\n\n## Sickness\n\n- **Food sickness** (spoiled, raw or bad food): −30% output, passes in a day or two. Rest at the Med Bay speeds it.\n- **Husk sickness** (tainted Husk meat): −45% output, drags on and drains health. It can kill.\n- An **antidote** cures either at once.\n\n## Tips\n\n- The Med Bay treats infections second, right after bleeding (see [[med_bay]]).\n- Keep sick survivors home: fever costs AP in the field.",
+      "related": [
+        "injuries",
+        "medicine",
+        "med_bay",
+        "food"
+      ],
+      "keywords": [
+        "fever",
+        "antibiotics",
+        "sick",
+        "food poisoning",
+        "husk sickness",
+        "antidote"
+      ]
+    },
+    {
+      "id": "medicine",
+      "title": "Medical supplies",
+      "short": "Bandages, splints, antiseptic, antibiotics, painkillers, blood bags and more, made at the Med Bay. Quality changes how well they work.",
+      "long": "**Medicine** is a stockpile resource the Med Bay uses for its patients. **Medical supplies** are items you make at the Med Bay and carry into the field.\n\n## The supplies\n\n- Open from the start: bandage, splint, herbal remedy, antiseptic and the basic med-kit.\n- Found or learned from schematics: antibiotics, painkillers, antidote, clean dressings, blood bags, stims, suture and surgical kits, and the Linked \"Calm\" injector.\n- Each rolls Crude, Standard or Fine from the medic's Medicine skill: Crude works at ×0.8, Fine at ×1.25.\n\n## At home\n\nThe Med Bay treats its patients from your stock in priority order: bleeding, infection, fracture, sickness, pain. Reorder or switch these off in the dispensary. It never gives painkillers to someone close to dependency. You can treat anyone at home yourself from their Body tab.\n\n## In the field\n\n- Items are on keys 4–9.\n- A med-kit gets a downed ally up with 15 HP, a field trauma kit with 30, a blood bag with 45. Making a blood bag needs a donor with 70+ health.\n- A stim gives 1 AP now and takes 1 next turn. The Calm injector stops suppression pinning you, at a cost in [[humanity]].",
+      "related": [
+        "med_bay",
+        "infection",
+        "injuries",
+        "carry_downed"
+      ],
+      "keywords": [
+        "supplies",
+        "bandage",
+        "med-kit",
+        "antiseptic",
+        "blood bag",
+        "stim",
+        "dispensary"
+      ]
+    },
+    {
+      "id": "med_bay",
+      "title": "Med Bay",
+      "short": "Patients heal here: beds by level, medics speed it up, and each patient uses Medicine. Surgery for prosthetics happens here too.",
+      "long": "The **Med Bay** holds 2, 3 or 5 patients by level and has room for 1 or 2 medics.\n\n## Care\n\n- Admitted patients do not work; they go home once healed. The sick and infected are admitted too.\n- Every hour each wound heals by a rate set by the Med Bay's level, times the care given: an unstaffed bay gives 40% care, and each medic adds their own performance at the Medicine job (see [[jobs_output]]).\n- Each patient uses a little **Medicine** every hour. Without it, patients heal only at the natural rate (but do not get worse).\n- Medics train Medicine only while someone is in a bed.\n\n## Treatments and surgery\n\n- The bay treats patients from your supplies (see [[medicine]]).\n- Prosthetics above the basic ones go on by surgery here (see [[prosthetic_tiers]]). A level 3 bay on power adds +5% to surgery success.\n\n## Tips\n\n- Keep Medicine in stock: a patient without it only heals what would heal anyway.\n- The Well Fed and Soothed buffs speed healing (see [[food_buffs]]).",
+      "related": [
+        "medicine",
+        "injuries",
+        "infection",
+        "prosthetic_tiers"
+      ],
+      "keywords": [
+        "hospital",
+        "patients",
+        "medic",
+        "doctor",
+        "beds",
+        "healing"
+      ]
+    }
+  ]
+}

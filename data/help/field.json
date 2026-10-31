@@ -1,0 +1,280 @@
+{
+  "category": "Field",
+  "topics": [
+    {
+      "id": "fog",
+      "title": "Fog of war",
+      "short": "You see tiles, not always who stands on them. An enemy is seen only when your detection beats their stealth at that distance.",
+      "long": "In the field you see the map your survivors have explored, but enemies only when someone actually spots them.\n\n## Seeing someone\n\nA hostile in sight range with a clear line is **seen** when your unit's detection, minus their stealth, minus 2.5 per tile past the first, is 0 or more. Next to you, always. See [[stealth]].\n\n## Contacts\n\nWhat you hear shows as a fuzzy marker, up to a tile off, for two rounds: gunfire within earshot, unseen enemies moving within 3 tiles, where an attack came from, a motion sensor going off.\n\n## Lighting things up\n\n- A **flare** lights a small area for a few rounds, for every side.\n- A **motion sensor** warns you when something moves near it.\n- A **scanner** sees hostiles nearby through walls and stealth.\n- Firing reveals the shooter for a round or two.\n\n## Night and weather\n\nAt night people see only 60% as far; fog, rain and dust cut sight further (see [[weather]]).\n\n## Tips\n\n- Use **Lookout** before moving into the unknown (see [[overwatch]]).",
+      "related": [
+        "stealth",
+        "ambush",
+        "overwatch",
+        "weather"
+      ],
+      "keywords": [
+        "vision",
+        "sight",
+        "detection",
+        "contacts",
+        "flare",
+        "scanner",
+        "visibility"
+      ]
+    },
+    {
+      "id": "stealth",
+      "title": "Stealth and detection",
+      "short": "Stealth comes from Agility, light loads and quiet gear; detection from Perception and optics. Night adds +15 stealth against people and Husks.",
+      "long": "## Stealth\n\nStarts at 10, then:\n\n- +0.3 per Agility point above 50 (less below).\n- −1 per kg carried: loot is loud.\n- Gear: rag coat +3, scout jacket +4, camo cloak +15; riot armor −10.\n- Hurt legs or peg legs are loud.\n- Perks such as Light Step and Ghost.\n\n## Detection\n\nStarts at 30, +0.5 per Perception point above 50, plus gear (binoculars +10, scanner +15), lookout and overwatch bonuses, all scaled by the head's condition.\n\n## Light and weather\n\n- Dawn and dusk +5 stealth, night +15, but not against the Linked's sensors, cameras or turrets.\n- Rain, fog and dust add a little more.\n\n## Range\n\nEach tile of distance past the first takes 2.5 off detection. See [[fog]] for the full rule.\n\n## Tips\n\n- A heavy pack is the quickest way to get seen: drop or stash loot before sneaking.",
+      "related": [
+        "fog",
+        "ambush",
+        "attributes",
+        "loot"
+      ],
+      "keywords": [
+        "sneak",
+        "hidden",
+        "camo",
+        "detection",
+        "noise"
+      ]
+    },
+    {
+      "id": "ambush",
+      "title": "Ambush",
+      "short": "An attack from someone the target's side cannot see gets +20% to hit, ignores dodge and does ×1.25 damage. Bracing or an ally beside you blunts it.",
+      "long": "When the target's side cannot see the attacker as the shot lands, it is an **ambush**.\n\n## The bonus\n\n- +20% hit chance.\n- The target's dodge does not count.\n- ×1.25 damage.\n\n## Blunting it\n\n- A **braced** target gives no ambush bonus at all (see [[overwatch]]).\n- An ally next to the target, \"watching each other's backs\", halves it.\n\n## Afterwards\n\nThe attacker is revealed to those it shot at for a round or two (guns longer than melee), they get a marker for where the attack came from, and anyone in earshot hears it. Enemies on overwatch may react.\n\n## Both ways\n\nThe Linked plan ambushes: they lurk on overwatch and fire from the fog. Husks do not plan them but can stumble out of the dark.\n\n## Tips\n\n- Strike first from the dark, and keep your people in pairs.\n- The hit-chance preview includes the ambush bonus (see [[hit_chance]]).",
+      "related": [
+        "stealth",
+        "fog",
+        "overwatch",
+        "hit_chance"
+      ],
+      "keywords": [
+        "surprise",
+        "hidden attack",
+        "flank",
+        "fog"
+      ]
+    },
+    {
+      "id": "hit_chance",
+      "title": "Hit chance",
+      "short": "The attack's accuracy, minus dodge, cover, bracing and range, plus ambush, drone marks and radios. Always between 5% and 95%.",
+      "long": "Hover an attack to see its hit chance. The breakdown below shows every term for the attack being previewed.\n\n## The terms\n\n- **Accuracy**: the weapon's, raised by skill and Perception, mods and perks; lowered by a hurt arm.\n- **Dodge**: the target's (ignored in an ambush).\n- **Cover**: the tile beside the target on your side: rubble 10%, a car 25%, cover 30%, a wall 40%, an armored vehicle 45%.\n- **Brace**: +15% cover for a braced target.\n- **Range**: −3% per tile past the first.\n- **Ambush**: +20% if they cannot see you (see [[ambush]]).\n- **Drone mark**: +10% (see [[drones]]).\n- **Radio**: a bonus when two radios link your side.\n- **Weather**: dust spoils ranged shots.\n- **Bane**: some weapons are better against certain enemies, such as an EMP coil against the Linked.\n- A ranged shot after moving this turn loses some accuracy.\n\nThe result is clamped between 5% and 95%.\n\n## Tips\n\n- Flank: shooting from where the target has no cover often beats moving closer.",
+      "provider": "hit_chance",
+      "related": [
+        "ambush",
+        "overwatch",
+        "drones",
+        "gear_mods"
+      ],
+      "keywords": [
+        "accuracy",
+        "aim",
+        "miss",
+        "cover",
+        "odds",
+        "chance to hit"
+      ]
+    },
+    {
+      "id": "overwatch",
+      "title": "Overwatch, brace and lookout",
+      "short": "Overwatch (O) shoots what moves into view; Brace (B) adds cover and denies ambushes; Lookout (L) sees further and keeps your turn going.",
+      "long": "Each costs 1 AP and lasts until the unit's next turn.\n\n## Overwatch (O)\n\n- Ends the turn. The AP you have left become **reactions**, at most 2.\n- A free shot, at −10% accuracy, at each hostile that moves into or reveals itself within sight and reach.\n- +10 detection while on watch. Reactions never set off other reactions, and allies are never shot.\n\n## Brace (B)\n\n- Ends the turn.\n- +15% cover, and no ambush bonus against this unit.\n- 1 AP less next turn.\n\n## Lookout (L)\n\n- Does **not** end the turn.\n- +2 sight and +15 detection, more with Perception.\n\n## Tips\n\n- Lookout first, then move: you see what is waiting before you step into it.\n- Brace a survivor you cannot get out of the open.\n- The Linked use overwatch too: an enemy that stops moving may be waiting for you.",
+      "related": [
+        "ambush",
+        "fog",
+        "hit_chance",
+        "controls"
+      ],
+      "keywords": [
+        "stance",
+        "reaction",
+        "brace",
+        "lookout",
+        "watch",
+        "defend"
+      ]
+    },
+    {
+      "id": "hacking",
+      "title": "Hacking",
+      "short": "Hack terminals, cameras, turrets, doors, lockers and relays with a kit or cyberdeck (H). Success opens them; failure raises the alarm.",
+      "long": "Press **H** next to a device with a hacking kit (adjacent) or a cyberdeck (3 tiles, with line of sight). A hack costs 2 AP, less with perks.\n\n## The chance\n\n55% base, +0.5% per Hacking point, +0.4% per Intellect point above 50, plus the tool and perks, minus the device's difficulty. A device on the Linked Network is 15% harder unless a jammer covers it. Between 5% and 95%.\n\nSome devices take more than one action of progress before the roll.\n\n## On success\n\n- **Terminal**: its items, the whole map explored, and a contact on every hidden enemy.\n- **Camera**: it sees for you. **Turret**: it fires for you.\n- **Door**: your side passes, others are locked out. **Locker**: its loot.\n- **Relay**: jams the Network nearby and stops reinforcements.\n\n## On failure\n\nNoise (the alarm), Linked on the Network hunt the hacker, a shock to the arm, progress lost and a lockout of a few rounds.\n\n## Tips\n\n- Terminals are the best place to find schematics (see [[schematics]]).\n- With the Override perk you can turn a Linked enemy for a couple of rounds.",
+      "related": [
+        "drones",
+        "schematics",
+        "electronics",
+        "loot"
+      ],
+      "keywords": [
+        "terminal",
+        "camera",
+        "turret",
+        "door",
+        "cyberdeck",
+        "kit",
+        "network",
+        "alarm"
+      ]
+    },
+    {
+      "id": "drones",
+      "title": "Scout drones",
+      "short": "Deploy a drone (K) to see over walls, fly it with the operator's AP, and with perks mark targets for +10% to hit. On the world map it scouts zones.",
+      "long": "## In the field\n\n- **Deploy** (K) on a free tile next to the operator; **Recall** (K) to pick it up.\n- **Fly** (J) with the operator's AP, over any terrain, within control range (the drone's own, plus Drone Piloting).\n- Its sight is your side's sight, so allies share it.\n- The battery drops 1 a round, faster inside a jammer's field. Flat, or with its operator down, it lands and is left behind.\n- Melee cannot reach it and Husks ignore it, but the Linked focus it.\n- **Mark** (M, Spotter perk): a target seen through walls and stealth, +10% to hit for 2 rounds.\n- **Payload** (P, Payload perk): drop a flare or motion sensor.\n- Thunderstorms and dust storms ground it.\n\nMedic, cargo and combat drones from the Electronics Lab add their own actions.\n\n## On the world map\n\nSend a drone to a rumored zone within its battery's reach. It reports back after a while: the zone is scouted and its neighbours rumored. Over dangerous zones it may be shot down, less likely with a skilled pilot. It needs a day to recharge after.",
+      "related": [
+        "hacking",
+        "electronics",
+        "fog",
+        "weather"
+      ],
+      "keywords": [
+        "drone",
+        "scout",
+        "mark",
+        "pilot",
+        "battery",
+        "spotter"
+      ]
+    },
+    {
+      "id": "loot",
+      "title": "Loot and carrying",
+      "short": "Caches, lockers and fallen enemies leave piles. Take one item or everything (F). Weight past 60% of capacity slows you.",
+      "long": "## Where loot is\n\n- **Caches** and **lockers** around the zone; lockers can be hacked open (see [[hacking]]).\n- **Remains**: a killed enemy drops a pile from its own table, sometimes with a schematic.\n- **Salvage** nodes you work for materials (see [[salvage]]).\n\n## Taking it\n\n- Pick up one item for 1 AP, or **Take all** (F) for the same, lightest items first, as much as fits.\n- Drop an item for free.\n- Perks such as Scavenger find more in caches.\n\n## Weight\n\nCarry capacity is 10 kg plus 0.3 kg per Strength point. Past 60% of it you move one tile less; past 85%, two less. Weight also costs stealth.\n\n## Stashing\n\nOn an exit tile, stash an item (1 AP): it waits there for your next run in that zone. Next to your parked vehicle, load it into the cargo instead.\n\n## Tips\n\n- Better zones, night runs and some weather mean better loot, and more danger.",
+      "related": [
+        "salvage",
+        "extraction",
+        "stealth",
+        "vehicles"
+      ],
+      "keywords": [
+        "items",
+        "pick up",
+        "cache",
+        "carry",
+        "weight",
+        "encumbrance",
+        "stash"
+      ]
+    },
+    {
+      "id": "salvage",
+      "title": "Salvage",
+      "short": "Work rubble, dead trees, furniture, wrecked cars and dead electronics (I) for materials. It takes AP, makes noise and trains a skill.",
+      "long": "Salvage nodes are scattered around each zone: rubble, dead trees, broken furniture, old bedding, wrecked cars, building shells and dead electronics.\n\n## Working a node\n\n- Stand next to it and press **I**. Most nodes cost 2 AP a go (bedding 1).\n- Each go adds 1 work, more with the right tool: pickaxe or crowbar for rubble, a hand saw or machete for wood, a hacking kit for electronics.\n- When enough work is in, one lot comes off: into your pack while it fits, the rest onto a pile.\n- Each node holds a few lots.\n\n## Skill\n\nEach node uses a skill (Mining, Woodcutting, Tailoring, Crafting or Electronics). More skill means more yield, and the work trains it.\n\n## Noise\n\nSalvaging is loud. Idle enemies within earshot come looking, and other parties hear it.\n\n## Wrecked cars\n\nCars also give vehicle parts: wheels, spare parts, fuel cans. Big parts like engines and chassis need your own vehicle parked nearby; a winch adds a roll (see [[vehicles]]).",
+      "related": [
+        "loot",
+        "vehicles",
+        "skills"
+      ],
+      "keywords": [
+        "scrap",
+        "materials",
+        "nodes",
+        "rubble",
+        "wreck",
+        "tools"
+      ]
+    },
+    {
+      "id": "extraction",
+      "title": "Extraction",
+      "short": "Leave the map (X) from an exit tile or next to your vehicle, with whatever you carry. Anyone left behind does not come home.",
+      "long": "Press **X** on an exit tile, or on any tile next to your parked vehicle, to take a survivor out.\n\n## Who goes\n\n- The survivor and everything they carry.\n- A downed ally they are carrying (see [[carry_downed]]).\n- Recruits following your side within 2 tiles.\n- A vehicle's load, if someone drives it home.\n\n## The end of a run\n\nThe run ends once everyone has extracted, died or been left behind. Party members who never got out are dead, and their gear is lost.\n\n## Leaving for now\n\nLeaving the screen is not extracting: the party stays in the zone and you can resume later from the expedition menu.\n\n## Tips\n\n- Extract the heavily loaded first; they are slow and loud.\n- With an ally still up, a downed survivor is not lost yet.",
+      "related": [
+        "carry_downed",
+        "loot",
+        "vehicles",
+        "expeditions"
+      ],
+      "keywords": [
+        "exit",
+        "leave",
+        "escape",
+        "evac",
+        "extract"
+      ]
+    },
+    {
+      "id": "carry_downed",
+      "title": "Downed allies",
+      "short": "A survivor at 0 HP is downed and bleeds out in a few rounds. Revive them with a med-kit or blood bag, or carry them out (C).",
+      "long": "A survivor brought to 0 HP is **downed**: they cannot act and will bleed out after about 3 rounds. A very heavy hit kills outright.\n\n## Saving them\n\n- **Revive** from an adjacent tile (2 AP): a med-kit gets them up with 15 HP, a field trauma kit with 30, a blood bag with 45. Items work on any survivor who is not hostile, allies included.\n- The Triage perk adds HP on revival and extra rounds before bleeding out.\n\n## Carrying\n\n- **C** next to a downed ally lifts them for 1 AP. They ride on your tile.\n- You move one tile less and lose special moves (such as a jump).\n- Put them down for free; if you go down, you drop them.\n- When you extract, they come with you and go home to their own colony.\n\n## Tips\n\n- A downed survivor is still in play while an ally is up.\n- Revive before moving if you can: carrying makes you slow and easy to catch.",
+      "related": [
+        "extraction",
+        "medicine",
+        "coop",
+        "health"
+      ],
+      "keywords": [
+        "downed",
+        "revive",
+        "bleed out",
+        "carry",
+        "rescue",
+        "stabilize"
+      ]
+    },
+    {
+      "id": "coop",
+      "title": "Co-op",
+      "short": "Allies share one side: one fog of war, no friendly fire, and watching each other's backs. Loot and survivors stay with their own player.",
+      "long": "In a co-op mission, or once an alliance forms, allied parties are one **team**.\n\n## Shared\n\n- Sight: what any ally sees, every contact, sensor and explored tile is the team's.\n- No friendly fire; overwatch never fires on allies.\n- An ally next to you halves an ambush against you (see [[ambush]]).\n\n## Kept apart\n\n- Turns, ownership, loot and results stay per player. Loot is first come, first served.\n- Hand an item to an adjacent ally with **Give** (1 AP); it goes home with them.\n- Heal or revive an ally with your own items, or carry them out (see [[carry_downed]]).\n- A recruit joins whoever escorts it out.\n\n## Difficulty\n\nThere are more enemies for each extra player in the mission.\n\n## Talking\n\nMark tiles for your team with [[pings]].\n\n## Tips\n\n- Trade with your ally afterwards, live, between missions (see [[trading]]).",
+      "related": [
+        "alliances",
+        "pings",
+        "carry_downed",
+        "trading"
+      ],
+      "keywords": [
+        "multiplayer",
+        "team",
+        "ally",
+        "online",
+        "friends"
+      ]
+    },
+    {
+      "id": "alliances",
+      "title": "Alliances",
+      "short": "Meet another party in the field and offer an alliance. If they accept, you share sight. Breaking one gives everyone a round's warning.",
+      "long": "In a versus mission you may run into another player's party.\n\n## Offering\n\n- When your party and theirs see each other, offer an alliance on your turn (free).\n- They answer on their own turn. The offer lapses after 2 rounds.\n- On accept, both parties join one team at once and share sight (see [[coop]]).\n\n## Breaking\n\n- Announce the break on your turn. It takes effect after a full round's warning, with a banner for everyone, so there is no instant backstab.\n- Each side keeps a copy of what the team knew. Motion sensors and pings go with whoever placed them; carried allies are put down.\n- From then on, sight is separate and fire is open.\n\n## Tips\n\n- An alliance halves ambushes against people standing next to each other and doubles your eyes; it costs nothing until it breaks.\n- Watch the break banner: when it shows, step away from your former allies.",
+      "related": [
+        "coop",
+        "pings",
+        "fog"
+      ],
+      "keywords": [
+        "team up",
+        "truce",
+        "betray",
+        "pvp",
+        "versus",
+        "offer"
+      ]
+    },
+    {
+      "id": "pings",
+      "title": "Pings",
+      "short": "Mark a tile for your team: danger, go here or loot. Two per turn, free, gone after two rounds.",
+      "long": "A **ping** puts a marker on a tile that only your team sees.\n\n## Kinds\n\n- **Danger**: something is there.\n- **Go here**: a place to move to.\n- **Loot**: something worth picking up.\n\n## Limits\n\n- Free: it costs no AP.\n- Up to 2 per turn; more with radios.\n- Each fades after 2 rounds.\n\n## Tips\n\n- Ping a contact you heard but cannot see, so your ally knows where to point their lookout.\n- Pings are private to your team, so they never give your position away.",
+      "related": [
+        "coop",
+        "alliances",
+        "electronics"
+      ],
+      "keywords": [
+        "marker",
+        "mark",
+        "signal",
+        "communicate"
+      ]
+    }
+  ]
+}

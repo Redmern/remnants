@@ -1,0 +1,167 @@
+{
+  "category": "Tech & crafting",
+  "topics": [
+    {
+      "id": "humanity",
+      "title": "Humanity",
+      "short": "Each prosthetic costs humanity. Below 70 a survivor's mood is capped; below 50 they are detached and their partner and children suffer.",
+      "long": "Humanity starts at 100 and drops by a fixed cost for every prosthetic fitted (crude parts cost nothing). It never comes back while the part is on. The breakdown below shows each part's cost for the selected survivor.\n\n## Effects\n\n- **Below 70**: mood is capped at 40 + 60 × humanity / 70. At 50 that is about 83, at 35 it is 70, at 0 it is 40.\n- **Below 50, detached**: their partner's bond erodes every hour, faster the lower humanity is, and the couple may split. Their children's mood is capped at 70. Odd lines start appearing in the log.\n\n## Costs per part\n\n- Crude 0, Mechanical 3, Powered 8, Cyborg 15, Network-grade 22.\n- Replacing a **healthy** limb by choice (Cyborg or better, adults only) costs more: 35 or 45.\n- The Linked \"Calm\" injector also costs humanity.\n\n## Tips\n\n- Two Cyborg legs and an arm put someone at 55: fine. One elective Network-grade implant more and they are detached.\n- Keep heavy cyborgs single or with a patient partner.",
+      "provider": "humanity",
+      "related": [
+        "prosthetic_tiers",
+        "mood",
+        "family"
+      ],
+      "keywords": [
+        "cyborg",
+        "detached",
+        "mood cap",
+        "implant"
+      ]
+    },
+    {
+      "id": "prosthetic_tiers",
+      "title": "Prosthetics and surgery",
+      "short": "Five tiers, from strapped-on Crude parts to Network-grade implants. Higher tiers beat flesh but need surgery, upkeep and humanity.",
+      "long": "A lost limb can be replaced, and from Cyborg tier a healthy one too.\n\n## Tiers\n\n- **Crude** (T0): wood and scrap, strapped on at Med Bay 1. Worse than the original.\n- **Mechanical** (T1): strapped on, no upkeep. 3 humanity.\n- **Powered** (T2): surgery at Med Bay 2; can specialise. Service every 10 days. 8 humanity.\n- **Cyborg** (T3): surgery by a Cyber-Surgeon; better than flesh. 15 humanity (35 elective).\n- **Network-grade** (T4): Med Bay 3, built from Linked cores; the best, but Linked within 6 tiles can lock it up, 15% each, up to 60% a round. 22 humanity (45 elective).\n\n## Surgery\n\nThe patient holds a bed while the medic works. The chance starts at 75%, less for higher tiers, plus the medic's skill, surgical kits and perks, between 30% and 97%. A failure still fits the part but leaves an infection.\n\n## Upkeep\n\nPowered parts and up need a service (scrap and electronics) every few days; missed, the part loses efficiency, down to 60%.\n\n## Specialisations\n\nArms (Labor, Precision, Hacker, Blade, Gun), legs (Runner, Jumper, Silent, Armored) and eyes. A matching pair adds a set bonus. Open the tree from the Med Bay.",
+      "related": [
+        "humanity",
+        "med_bay",
+        "schematics",
+        "injuries"
+      ],
+      "keywords": [
+        "cybernetics",
+        "implant",
+        "limb",
+        "arm",
+        "leg",
+        "eye",
+        "surgery",
+        "upkeep"
+      ]
+    },
+    {
+      "id": "crafting",
+      "title": "Crafting and quality",
+      "short": "Production buildings work a queue of orders. Gear rolls Crude, Standard or Fine from the best worker's skill and the building level.",
+      "long": "Workshop, Tailor, Kitchen, Armory, Electronics Lab, Garage and Med Bay all make things the same way.\n\n## The queue\n\n- Each building holds up to 8 orders: a count, or **repeat** forever. It works one at a time.\n- An order is paid when it starts. Cancelling refunds a paid batch.\n- If no worker has the skill an order needs, workers **practise** and the panel says how long until someone is ready.\n\n## Quality\n\nGear, mods, vehicle parts, supplies and dishes roll a quality when made:\n\n- Score = best worker's skill / 100 + 0.05 per building level above 1, give or take 0.2 at random, plus perk bonuses.\n- At 0.6 or more it is **Fine** (×1.25 stats, ×0.9 weight); at 0.15 or more **Standard**; below that **Crude** (×0.8 stats, ×1.15 weight).\n- The recipe panel shows the odds for your current crew.\n\n## Tips\n\n- One skilled worker sets the quality for the whole building: put your best crafter there.\n- Upgrading a building raises both speed and quality.",
+      "related": [
+        "skills",
+        "schematics",
+        "gear_mods",
+        "electronics"
+      ],
+      "keywords": [
+        "quality",
+        "fine",
+        "crude",
+        "queue",
+        "recipe",
+        "workshop",
+        "orders"
+      ]
+    },
+    {
+      "id": "schematics",
+      "title": "Schematics",
+      "short": "Schematics are knowledge: they unlock recipes, building levels, perks, vehicles and prosthetic tiers. Find them, decrypt them, trade or research them.",
+      "long": "Most basic recipes and buildings are open from the start. Everything else needs its **schematic**.\n\n## Where they come from\n\n- **Loot**: caches and lockers roll for one, more often in dangerous zones. Hacked **terminals** are the best source.\n- **Kills**: the Linked sometimes carry one; Wardens often do.\n- **Trade**: a trader at the Radio Mast sells them (see [[trading]]).\n- **Research** at the Town Hall (see [[research]]).\n- Story missions.\n\n## Encrypted chips\n\nSome arrive as an encrypted chip. Queue its **Decrypt** order at the Electronics Lab (level 2, level 3 for tier 4) with a worker of Electronics 20 or more.\n\n## Heard of\n\nA schematic you saw but did not bring home, such as one a failed hack showed you, is marked **heard of**. Only heard-of schematics can be researched.\n\n## Duplicates\n\nA copy of one you know becomes Research Data. You can also make copies to trade.\n\n## Tips\n\n- Open the archive with **I** (Items → Schematics) to see what is known, waiting, heard of or unknown.",
+      "related": [
+        "research",
+        "hacking",
+        "trading",
+        "loot"
+      ],
+      "keywords": [
+        "blueprint",
+        "unlock",
+        "decrypt",
+        "chip",
+        "knowledge",
+        "research data"
+      ]
+    },
+    {
+      "id": "research",
+      "title": "Research",
+      "short": "Research a schematic you have heard of at the Town Hall, paying Research Data. Tier 1–2 need Town Hall 2, tier 3 Town Hall 3 and a Lab 2.",
+      "long": "Research turns a schematic you have **heard of** into one you know, so bad luck with loot never locks you out. It happens at the Town Hall, one project at a time.\n\n## Requirements\n\n- Tiers 1 and 2: Town Hall level 2. Tier 3: Town Hall level 3 and an Electronics Lab level 2.\n- Cost: 4, 8 or 16 Research Data by tier, paid at the start.\n- Tier 4 schematics cannot be researched: they come from the Black Grid, Wardens or the story.\n\n## The researcher\n\nPick an adult; they leave their job while researching and work on the day shift. Speed grows with their **Intellect** and **Electronics** skill.\n\n## Research Data\n\n- A duplicate schematic turns into Research Data.\n- Salvage a chip you do not need into Research Data.\n- Taking electronics apart sometimes yields one (see [[electronics]]).\n- The trader buys and sells it.\n\n## Tips\n\n- Use a high-Intellect survivor who is not your best worker anywhere else.",
+      "related": [
+        "schematics",
+        "electronics",
+        "trading"
+      ],
+      "keywords": [
+        "town hall",
+        "research data",
+        "unlock",
+        "tech"
+      ]
+    },
+    {
+      "id": "power",
+      "title": "Power",
+      "short": "Generators, solar arrays and battery banks feed the Lab, Med Bay, charging bench and Floodlights. Over capacity, things brown out.",
+      "long": "Nothing needs power to work at all; power makes some buildings better. Until you build a generator or bank, nothing changes. Press **P** for the power overlay.\n\n## Supply\n\n- **Fuel Generator**: 6, 9 or 12 power by level; burns fuel, or wood if out of fuel.\n- **Solar Array**: 3, 5 or 8 at full sun; less at dawn and dusk, nothing at night, less under cloud.\n- **Battery Bank**: stores 30, 60 or 100 and releases it at a limited rate.\n\n## What uses it\n\n- **Electronics Lab**: +25% crafting speed; tier 3 parts need it.\n- **Med Bay** level 3: +5% surgery success.\n- **Charging bench**: charges devices 5× faster.\n- **Floodlights**: +15% night-shift output.\n- The Radio Mast and Cold Cellar draw power too, and defenses near a powered building get a bonus.\n\nConsumers only draw while their crew is on shift.\n\n## Overload\n\nIf demand is over supply, the last consumers in line are cut (a brownout). Asking for far more than you have for hours trips the breaker for a while. Switch buildings off the grid in their panel.",
+      "related": [
+        "electronics",
+        "night_shift",
+        "med_bay",
+        "defenses"
+      ],
+      "keywords": [
+        "electricity",
+        "generator",
+        "solar",
+        "battery",
+        "brownout",
+        "grid"
+      ]
+    },
+    {
+      "id": "electronics",
+      "title": "Electronics and devices",
+      "short": "The Electronics Lab turns scrap into components, then devices: scanners, jammers, radios, EMPs, decoys and drones. Old gadgets come apart for parts.",
+      "long": "## Components\n\nThe Lab builds a chain: scrap → wiring → circuit boards → antennas and sensor modules. Microchips and cyan **Network chips** (from Linked circuitry) are tier 3 and need [[power]].\n\n## Devices\n\n- **Scanner**: sees hostiles nearby through walls and stealth. **Jammer**: cuts the Linked off their Network nearby.\n- **Radios**: two on a side add aim within range and extra [[pings]].\n- **EMP**: knocks out Linked, drones and cameras nearby (and Network-grade implants, yours too).\n- **Holo-decoy** and **noise decoy**: lure enemies.\n- Sensor kits, rangefinders and drones (see [[drones]]).\n\nQuality scales a device's radius, battery, hack chance or range (see [[crafting]]).\n\n## Charges\n\nSome devices have charges. They come home drained and wait on the charging bench; power makes it 5× faster.\n\n## Disassembly\n\nBroken gadgets, dead radios and smashed drones from loot can be taken apart at the Lab for components, sometimes with a Research Data. Electronics skill raises the yield.\n\n## Tips\n\n- Lab work also trains Hacking and Drone Piloting.",
+      "related": [
+        "power",
+        "drones",
+        "hacking",
+        "crafting"
+      ],
+      "keywords": [
+        "lab",
+        "components",
+        "scanner",
+        "jammer",
+        "emp",
+        "radio",
+        "decoy",
+        "charges",
+        "disassembly"
+      ]
+    },
+    {
+      "id": "gear_mods",
+      "title": "Gear mods and Mk upgrades",
+      "short": "Fit sights, grips, plating and linings into gear slots at the Armory, Workshop or Tailor. A Mk II or III kit adds slots and stats.",
+      "long": "Weapons, armor, clothing and helmets have **mod slots**. A firearm takes sight, muzzle, stock and underbarrel mods; melee weapons edge, grip and coil; armor plating, lining, outer layer and webbing.\n\n## Fitting\n\n- Open the **Gear Bench** from the production panel of an Armory, Workshop or Tailor.\n- Fitting into a full slot swaps the old mod out; removing a mod returns it intact.\n- The compare column shows the build before and after.\n\n## Mk upgrades\n\n- Mk I has one slot, Mk II two, Mk III three.\n- A **Mk kit** of the gear's family is fitted at the Armory or Tailor, one Mk at a time.\n- Mk II adds ×1.08 damage and +2% accuracy to weapons, more armor and coverage to worn gear. Mk III ×1.16 and +4%.\n\n## Quality\n\nMods roll a quality like any crafted item: a Fine mod's benefits are ×1.25 and its drawbacks smaller.\n\n## In the field\n\nWith the Jury-rig perk a survivor can fit or remove a mod for 2 AP. A ranged shot after moving loses some accuracy; a stock takes part of that off.",
+      "related": [
+        "crafting",
+        "schematics",
+        "hit_chance"
+      ],
+      "keywords": [
+        "mods",
+        "weapon",
+        "armor",
+        "scope",
+        "gear bench",
+        "kit",
+        "upgrade",
+        "mk"
+      ]
+    }
+  ]
+}

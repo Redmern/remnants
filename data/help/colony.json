@@ -1,0 +1,236 @@
+{
+  "category": "Colony",
+  "topics": [
+    {
+      "id": "attributes",
+      "title": "Attributes",
+      "short": "Six attributes from 0 to 100: Strength, Agility, Endurance, Intellect, Creativity and Perception. Jobs, crafting and the field all read them.",
+      "long": "Every survivor has six **attributes**, each from 0 to 100: Strength, Agility, Endurance, Intellect, Creativity and Perception. Each job weighs a few of them: Woodcutting uses Strength and Endurance, Crafting uses Intellect and Creativity, Guard duty leans on Perception. See [[jobs_output]] for how they turn into output.\n\n## How they grow\n\n- Working trains the attributes the job weighs, a little every hour on shift. Gains shrink as a value nears 100.\n- Children grow towards an aptitude inherited from their parents. Hungry hours do not count, so malnourished children grow up weaker (see [[children]]).\n\n## In the field\n\n- **Agility**: movement range, initiative, dodge and stealth (+0.3 stealth per point above 50).\n- **Perception**: sight, detection (+0.5 per point above 50) and aim.\n- **Strength**: carry capacity (10 kg plus 0.3 kg per point) and melee damage.\n- **Intellect**: hacking chance and research speed.\n\n## Tips\n\n- Put people where their strongest attributes count: a high-Perception survivor makes a good guard and scout.",
+      "related": [
+        "skills",
+        "jobs_output",
+        "children",
+        "stealth"
+      ],
+      "keywords": [
+        "strength",
+        "agility",
+        "endurance",
+        "intellect",
+        "creativity",
+        "perception",
+        "stats"
+      ]
+    },
+    {
+      "id": "skills",
+      "title": "Skills",
+      "short": "Thirteen skills from 0 to 100, from Woodcutting to Drone Piloting. They grow by doing the work, studying, or using them in the field.",
+      "long": "Skills are what a survivor has learned: Woodcutting, Mining, Crafting, Tailoring, Electronics, Medicine, Firearms, Melee, Cooking, Farming, Hacking, Drone Piloting and Mechanics. Each runs from 0 to 100.\n\n## How they grow\n\n- **Work**: every hour on shift trains the job's skill. Some jobs train a side skill too: Electronics Lab work grows Hacking and Drone Piloting, Guard duty grows Melee, Hunting grows Farming.\n- **Study**: classes at the Town Hall, Electronics Lab or Garage (see [[study_perks]]).\n- **The field**: hacking, flying drones, salvaging and treating wounds train their skills, and the gains come home.\n- Gains shrink as a skill nears 100. Children learn twice as fast.\n\n## What they do\n\n- Skill is part of job output (see [[jobs_output]]).\n- The best worker's skill sets the quality of what a building makes (see [[crafting]]).\n- Some recipes need a minimum skill. If nobody has it, workers **practise** instead of idling, and the order starts once someone is good enough.\n\n## Tips\n\n- Keep one person on a skill rather than rotating: the first points come fastest.",
+      "related": [
+        "attributes",
+        "jobs_output",
+        "study_perks",
+        "crafting"
+      ],
+      "keywords": [
+        "training",
+        "practice",
+        "learning",
+        "xp"
+      ]
+    },
+    {
+      "id": "jobs_output",
+      "title": "Jobs and output",
+      "short": "How much a survivor makes per hour: the building's base rate times their attributes and skill, tool, health, age, mood, perks and food buffs.",
+      "long": "Each worker's output is the building's base rate multiplied by a chain of factors. The breakdown below shows the live numbers for the selected survivor.\n\n## The factors\n\n- **Performance**: the weighted average of the job's attributes and skill. Even an untrained worker makes 25% of the full rate; a perfect one makes 100%.\n- **Building level**: higher levels multiply output.\n- **Tool**: a good tool adds up to the job's tool bonus (as much as +50%).\n- **Health and body**: the body parts the job uses (an injured or missing arm hurts a woodcutter), times a vitality factor from ×0.5 at 0 HP to ×1 at full health.\n- **Conditions and pain**: fever, sickness and bad injuries cost output (see [[infection]], [[injuries]]).\n- **Age**: children work at half rate.\n- **Mood**: from ×0.8 at mood 0 to ×1 at 100 (see [[mood]]).\n- **Perks and cybernetics**: bonuses for this job.\n- **Food buffs**: Well Fed ×1.08, Hungry ×0.85 and others (see [[food_buffs]]).\n\nPer day, that rate counts only the hours on shift (see [[shifts]]).\n\n## Tips\n\n- Fix the biggest factor first: healing an arm or a good meal often beats a building upgrade.",
+      "provider": "job_output",
+      "related": [
+        "attributes",
+        "skills",
+        "production",
+        "shifts",
+        "mood"
+      ],
+      "keywords": [
+        "production",
+        "work",
+        "efficiency",
+        "performance",
+        "output"
+      ]
+    },
+    {
+      "id": "production",
+      "title": "Output per day",
+      "short": "What each staffed building makes in a day on the current schedule, including night shifts and weather.",
+      "long": "The colony's production is the sum of every worker's output (see [[jobs_output]]) over the hours they actually work. The breakdown below lists each staffed building's output per day, best first.\n\n## What changes it\n\n- **Shifts**: day-shift hours count fully; a Night Shift adds more hours at reduced output (see [[night_shift]]).\n- **Weather**: rain, storms and dust slow outdoor work; the Greenhouse and indoor workshops do not care (see [[weather]]).\n- **Damage**: a building hit by lightning, or damaged in a raid, works at half rate until repaired.\n- **Crops**: farms and lodges bring in whole harvests once a crop has grown, so their output arrives in steps (see [[food]]).\n\n## Tips\n\n- Compare this list with what you use: if wood piles up and scrap runs short, move a worker.\n- A building with fewer workers than slots is the cheapest boost there is.",
+      "provider": "colony_output",
+      "related": [
+        "jobs_output",
+        "shifts",
+        "night_shift",
+        "weather"
+      ],
+      "keywords": [
+        "colony output",
+        "per day",
+        "income",
+        "economy",
+        "buildings"
+      ]
+    },
+    {
+      "id": "shifts",
+      "title": "Day and night shifts",
+      "short": "Adults work 06:00 to 20:00 and sleep 22:00 to 06:00; children work 07:00 to 19:00. Missed sleep makes people tired.",
+      "long": "The colony runs on a clock. Dawn is at 05:00, day at 07:00, dusk at 18:00 and night at 20:00.\n\n## The schedule\n\n- **Day shift**: adults work 06:00 to 20:00. Children work 07:00 to 19:00 and go to bed first.\n- **Sleep**: adults sleep 22:00 to 06:00, children 19:00 to 07:00. Sleep in a bed (or a Med Bay cot) restores mood and a little health.\n- **Evenings**: off work between dusk and bedtime, people sit at the Campfire for a mood lift. A hot meal after dusk adds a little more.\n\n## Tired\n\nWorking through sleep hours builds **sleep debt**. At 4 hours of debt a survivor is **tired**: −15% output and a slow mood drain until they sleep it off.\n\n## Tips\n\n- Research, study and Med Bay care also follow the day shift.\n- For more hours from a building, use a [[night_shift]], but watch for tired workers.",
+      "related": [
+        "night_shift",
+        "mood",
+        "jobs_output",
+        "production"
+      ],
+      "keywords": [
+        "schedule",
+        "sleep",
+        "tired",
+        "day",
+        "night",
+        "clock",
+        "hours"
+      ]
+    },
+    {
+      "id": "night_shift",
+      "title": "Night shift",
+      "short": "Let a building keep working after dark at 70% output. Adults only, it costs mood, and outdoor sites need a Floodlight or level 2.",
+      "long": "Switch on **Night Shift** in a building's panel and its adult workers carry on outside the day shift.\n\n## The rules\n\n- Output at night is ×0.7 of the day rate. A powered Floodlight adds +15% (see [[power]]).\n- Only adults work nights; children always keep to the day shift.\n- The building must be lit: indoor buildings always are; an outdoor site needs **level 2** or a **Floodlight** (10 wood, 5 scrap).\n- Night work costs mood every hour and eats into sleep, so a standing night crew will usually be tired (−15% more).\n\n## Side effects\n\n- Night shifts are noise: they draw Husk raids (see [[raids]]).\n- Guards on the night watch count as night workers too (see [[defenses]]).\n\n## Tips\n\n- Use it in bursts, for a stock you need now, rather than every night.\n- Keep an eye on [[mood]]: low mood costs output on the day shift too.",
+      "related": [
+        "shifts",
+        "mood",
+        "power",
+        "raids"
+      ],
+      "keywords": [
+        "night work",
+        "floodlight",
+        "overtime",
+        "dark"
+      ]
+    },
+    {
+      "id": "mood",
+      "title": "Mood",
+      "short": "Mood runs from 0 to 100. Low mood costs up to 20% output. Sleep, evenings by the fire and good meals lift it; grief, night work and storms drag it down.",
+      "long": "Every survivor has a mood from 0 to 100. It starts at 100 and drifts back up slowly on its own.\n\n## Why it matters\n\nJob output and medic care are multiplied by mood: ×0.8 at 0, ×1 at 100 (see [[jobs_output]]). A survivor's [[humanity]] can cap how high mood may go.\n\n## Up\n\n- A night's sleep, evenings by the Campfire, a hot supper after dusk.\n- Good dishes and the Comfort Food buff (see [[food_buffs]]).\n- A repelled raid.\n\n## Down\n\n- Grief: a partner's death costs 50, a parent's or child's 25, a break-up 20.\n- Night shifts and being tired (see [[shifts]]).\n- Thunderstorms, fog and dust storms (see [[weather]]).\n- A bland or repetitive diet, food poisoning, painkiller dependency.\n- A lost raid.\n\n## Tips\n\n- After a death, give the family an easy few days: grief costs output on top of the lost worker.",
+      "related": [
+        "humanity",
+        "shifts",
+        "food_buffs",
+        "family"
+      ],
+      "keywords": [
+        "happiness",
+        "morale",
+        "grief",
+        "sad"
+      ]
+    },
+    {
+      "id": "housing",
+      "title": "Housing and beds",
+      "short": "Everyone needs a bed. A newcomer without one has a few days' grace before they leave. Babies are only conceived when a bed is free.",
+      "long": "Beds come from housing: a **Shelter** holds 6, 8 or 12 by level; a **House** (Town Hall 2) holds 10, 14 or 20.\n\n## How homes work\n\n- People keep their home. Newcomers move in with their partner or parents if there is room.\n- A newborn or recruit with no bed starts a **grace timer** of a few days. It pauses while they are away on an expedition.\n- When it runs out, an adult leaves. A homeless child leaves with a parent who is at home, which ends that parent's couple; with no parent at home, passing travelers take the child in.\n- A couple only conceives when a bed is free for the baby (see [[family]]).\n- Sleeping in a bed restores mood and health (see [[shifts]]).\n\n## Tips\n\n- Build a bed ahead of a birth or a rescue mission, not after.\n- Recruits from expeditions come home without a bed.",
+      "related": [
+        "family",
+        "children",
+        "shifts"
+      ],
+      "keywords": [
+        "beds",
+        "shelter",
+        "house",
+        "homeless"
+      ]
+    },
+    {
+      "id": "family",
+      "title": "Couples and family",
+      "short": "Single adults at home grow closer every hour, faster when they share work or a home. At 100 they become a couple and may have children.",
+      "long": "Every pair of single adults at home gains affinity each hour: a base amount, more if they work at the same building, more if they share a home, and more the more alike their attributes are.\n\n## Couples\n\n- At 100 affinity the closest ready pair becomes a couple.\n- You can **encourage** a pair (×3 as fast), **discourage** them (no gain; it splits a couple) or reset them.\n\n## Babies\n\n- A couple who are both at home may conceive: a regular check with a 35% chance, when a bed is free and the stores hold at least 2 food per person.\n- Pregnancy lasts a few days. A pregnant survivor stays home from expeditions.\n- The baby's aptitude comes from the parents' average, give or take a little. See [[children]].\n\n## Losses\n\nA death costs the partner 50 mood and parents or children 25; a break-up costs 20. A detached cyborg strains their partner (see [[humanity]]).\n\n## Tips\n\n- Pairing two workers at the same building grows both affinity and output.",
+      "related": [
+        "children",
+        "housing",
+        "mood",
+        "humanity"
+      ],
+      "keywords": [
+        "couple",
+        "partner",
+        "baby",
+        "pregnancy",
+        "relationship",
+        "romance"
+      ]
+    },
+    {
+      "id": "children",
+      "title": "Children",
+      "short": "Infants grow into children and children into adults in a few weeks. Children eat less, do light jobs at half rate and learn twice as fast.",
+      "long": "Babies are born as **infants**, become **children** a few days later, and come of age about two weeks after that. The age shown in years is their share of the way to adulthood.\n\n## What children do\n\n- Infants cannot work and eat about half what an adult eats.\n- Children can work Farming, Scrap Sorting, Crafting, Tailoring, Cooking and Distilling, at half output.\n- They train twice as fast and earn more XP, so they grow into whatever they do.\n- Children and infants are fed before adults.\n- They never go on expeditions, stay in during dust storms and can be sheltered during raids.\n\n## Growing up\n\nEach fed hour moves a child's attributes towards their inherited aptitude, faster on good nutrition. Hungry hours do not count, so malnourished children grow up weaker (see [[food]]).\n\n## Tips\n\n- Put a child at the job you want them to be good at as an adult.",
+      "related": [
+        "family",
+        "attributes",
+        "food",
+        "housing"
+      ],
+      "keywords": [
+        "kids",
+        "infant",
+        "growing up",
+        "aptitude"
+      ]
+    },
+    {
+      "id": "study_perks",
+      "title": "XP, perks and study",
+      "short": "Work and missions earn XP; each level gives a perk point. Classes at the Town Hall, Electronics Lab and Garage teach skills and perks.",
+      "long": "## XP and levels\n\nSurvivors earn XP for every hour of work, each finished batch, classes, and every mission (more for dangerous zones and for skill gained in the field). Each level gives **one perk point**, up to level 20.\n\n## Perks\n\nPerks sit in disciplines (Tech, Drones, Combat, Survival, Medic and others) with requirements: skills, attributes, other perks, a building level. Some are locked until you know a technique schematic (see [[schematics]]). Open a survivor's Perks tab to spend points.\n\n## Study\n\n- **Town Hall** teaches the colony skills; the **Electronics Lab** Electronics, Hacking and Drone Piloting (and the Tech and Drones perks); the **Garage** Mechanics. More students fit at higher levels.\n- Alone, a student reaches skill 20; a **field manual** raises that cap.\n- A **mentor** at least 5 points ahead doubles the pace and teaches up to their own level, at most two students each.\n- A perk can be learned from a mentor who has it, without spending a point.\n- Students and mentors leave their jobs while in class.",
+      "related": [
+        "skills",
+        "schematics",
+        "research"
+      ],
+      "keywords": [
+        "xp",
+        "level",
+        "perk points",
+        "mentor",
+        "class",
+        "manual",
+        "experience"
+      ]
+    },
+    {
+      "id": "controls",
+      "title": "Controls",
+      "short": "Space pauses, 1/2/3 sets the speed, B builds, F places defenses, E plans an expedition. In the field Space ends your turn.",
+      "long": "## Everywhere\n\n- **Esc**: pause menu or back.\n\n## Colony\n\n- **Space**: pause and resume time. **1 / 2 / 3**: normal, 2× and 4× speed.\n- **B**: build menu. **F**: place defenses. **E**: expedition planner. **I**: items and schematics. **P**: power overlay.\n- **Tab**: next survivor. **Q / R**: turn the camera.\n\n## Field\n\n- **Space** or **Enter**: end turn.\n- **1–3**: attacks. **4–9**: items.\n- **O / B / L**: [[overwatch|overwatch, brace, lookout]].\n- **F**: take all loot. **I**: salvage. **X**: extract. **C**: carry a downed ally.\n- **H**: hack. **K**: deploy or recall the scout drone.\n\n## Dialogue\n\n- **Space** or **Enter**: next line.\n\nThe full list, and rebinding, is in **Settings → Controls**.",
+      "related": [
+        "overwatch",
+        "loot",
+        "extraction",
+        "hacking"
+      ],
+      "keywords": [
+        "keys",
+        "hotkeys",
+        "keyboard",
+        "shortcuts",
+        "bindings"
+      ]
+    }
+  ]
+}
