@@ -737,14 +737,17 @@ public sealed class ColonyBot
         }
     }
 
-    /// <summary>Sends the strongest healthy adults on the first available story mission (it waits for its own party size).</summary>
+    /// <summary>
+    /// Sends the strongest healthy adults (health 90+: a half-healed arm is what lost most M2 runs) on the first available
+    /// story mission (it waits for its own party size).
+    /// </summary>
     private bool StoryLaunch()
     {
         if (State.Campaign is null || _sim.Story is null || State.Expedition is not null) return false;
         var mission = Campaign.Visible(_sim).Where(m => m.Def.Type == MissionType.Field && m.Progress.Status == MissionStatus.Available)
             .Select(m => m.Def).FirstOrDefault();
         if (mission is null) return false;
-        var adults = State.Survivors.Where(s => !s.IsChild && !s.Away && s.PatientAtBuildingId is null && s.Pregnancy is null && s.Health >= 70).ToList();
+        var adults = State.Survivors.Where(s => !s.IsChild && !s.Away && s.PatientAtBuildingId is null && s.Pregnancy is null && s.Health >= 90).ToList();
         var size = Math.Min(Math.Max(_sim.MaxPartySize, mission.MaxParty ?? 0), adults.Count);
         if (size < 2) return false;
         // A mission that needs someone treated waits for something to treat them with.

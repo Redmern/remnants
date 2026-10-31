@@ -251,7 +251,7 @@ level, see Implementation) · Threat 2 · Needs: M4, Town Hall 2 (~day 30)
 ### Act 2 — Ashgrove
 
 **M6 The Long Haul** · Type: escort · Map: generated Scrapyard Flats → Suburb Ruins road map (new "road" template: long,
-narrow, with the caravan's three vehicles as moving allied units) · Threat 2 · Needs: M4, Marrow has visited twice
+narrow, with the caravan's three vehicles as moving allied units) · Threat 2 · Needs: M4, Town Hall 2, Marrow has visited twice
 - Marrow is moving cargo and fuel through the Ruins and asks the colony to ride shotgun. On round 6 the Linked hit
   the caravan (one Linked, two drones).
 - Objectives: keep the vehicles moving to the far edge; at the ambush, **choose**: protect the people's truck or the
@@ -264,7 +264,7 @@ narrow, with the caravan's three vehicles as moving allied units) · Threat 2 ·
 - Teaches: world-map travel, the Garage, fuel, escorting moving units.
 
 **M7 The Drowned Clinic** · Type: survive N rounds · Map: handmade, Flooded Mall pharmacy wing (30×26, water) · Threat 2 ·
-Needs: M4, Med Bay L1
+Needs: M4, Town Hall 2, Med Bay L1
 - Doc Hale is in the middle of an amputation when the water and the Husks come in. She will not stop.
 - Objectives: reach the clinic; hold it for 6 rounds while Doc finishes (a progress bar on the map); then escort Doc
   and her patient out.

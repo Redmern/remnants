@@ -9,7 +9,7 @@ namespace Remnants.Core.Raids;
 /// <code>
 /// pressure/hour = (basePerHour + perInputPerHour · input) · weather.pressure[kind]
 /// Husk input    = noise: survivors · perSurvivor + night shifts + lit floodlights at night + recent returns + noisy items − lures
-/// Linked input  = Network presence: Σ threat of known zones with Linked, · (1 + day / 30)
+/// Linked input  = Network presence: Σ threat of scouted zones with Linked, · (1 + day / 30)
 /// Raider input  = wealth: (stockpile + pantry food value) / 50 + non-food items / 5
 /// </code>
 /// </summary>
@@ -46,12 +46,16 @@ public static class ThreatModel
         return Math.Max(0, noise);
     }
 
-    /// <summary>How far the Network reaches toward the colony: the threat of every known zone with Linked in it, growing with time.</summary>
+    /// <summary>
+    /// How far the Network reaches toward the colony: the threat of every zone with Linked in it that the colony has
+    /// scouted (been to, or flown a drone over), growing with time. A rumor alone draws nothing: the Network notices the
+    /// colony in its territory, not the colony hearing of it (a Story game hears of far zones early).
+    /// </summary>
     public static double NetworkPresence(ColonySim sim)
     {
         if (sim.Scavenge is not { } data) return 0;
         var presence = data.Zones.Values
-            .Where(z => WorldMap.IntelOf(sim.State, z) != ZoneIntel.Unknown
+            .Where(z => WorldMap.IntelOf(sim.State, z) == ZoneIntel.Scouted
                         && z.EnemyMix.Any(m => data.Enemies.GetValueOrDefault(m.Id)?.Ai == AiKind.Linked))
             .Sum(z => z.Threat);
         return presence * (1 + DayNight.Day(sim.State.Tick, sim.Data.Rules) / 30.0);

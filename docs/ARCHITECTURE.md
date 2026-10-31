@@ -1411,7 +1411,7 @@ their RNG draws), so the game, the playtest bot and raid tests set it after `New
   `guard` job (Firearms; Perception, Endurance; Melee on the side) with work XP. `AssignJob` ends guard duty.
 - **Threats** (`ThreatModel`): pressure per hour per kind = `(basePerHour + perInputPerHour · input) · weather`; Husks hear
   noise (survivors, night shifts, Floodlights at night, returns, noisy items such as vehicles, minus lures), the Linked follow
-  Network presence (known Linked zones' threat, growing with the days), raiders smell wealth. `RaidSystem` draws a raid when a
+  Network presence (the threat of *scouted* Linked zones, growing with the days; a rumor draws nothing), raiders smell wealth. `RaidSystem` draws a raid when a
   kind reaches `scheduler.threshold` — after the grace (days and buildings), never within `minGapDays` of the last — with a
   size from pressure and escalation (raids survived, days), an approach side and an arrival phase by weight (Husks favour
   night). It sets out `travelHours` ahead.
@@ -1586,6 +1586,7 @@ godot-mono -e --path game # open in the editor
 dotnet run --project src/Remnants.Server -- --port 7777   # multiplayer server; then Multiplayer → Join in two games
 dotnet run --project tools/Remnants.Playtest -- --data=data --seeds=1..20 --days=60 --quiet   # balance sweep (BALANCE.md)
 dotnet run --project tools/Remnants.Playtest -- --data=data --zone=all --runs=300            # zone lethality
+dotnet run --project tools/Remnants.Playtest -- --data=data --mission=m2 --runs=200 --hour=2,12   # one story mission, fresh first party (MissionTrial)
 dotnet run --project tools/Remnants.Playtest -- --data=data --zone=suburb_ruins --runs=300 --coop=2   # co-op trial
 ```
 

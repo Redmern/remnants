@@ -295,6 +295,11 @@ public class StoryActsTests
         sim.State.Radio.Visits += 2;
         sim.Tick();
         Assert.Equal(2, campaign.Flag("marrow_visits"));
+        // Act 2 rides on Town Hall 2 (STORY.md: days 30–65), like M5.
+        Assert.Equal(MissionStatus.Locked, campaign.Progress("m6").Status);
+        Assert.Equal(MissionStatus.Locked, campaign.Progress("m7").Status);
+        sim.State.Buildings.Single(b => b.DefId == "town_hall").Level = 2;
+        sim.Tick();
         Assert.Equal(MissionStatus.Available, campaign.Progress("m6").Status);
         Assert.Contains(campaign.Inbox, c => c.DialogueId == "m6_open");
     }

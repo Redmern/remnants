@@ -1,14 +1,14 @@
 {
   "grid": { "cellsPerPlot": 4, "margin": 4, "cellSize": 2.0 },
   "scheduler": {
-    "graceDays": 8,
+    "graceDays": 12,
     "graceBuildings": 5,
-    "threshold": 130,
+    "threshold": 150,
     "minGapDays": 6,
     "travelHours": 24,
     "escalationPerRaid": 0.1,
     "escalationPerDay": 0.01,
-    "firstRaidMaxSize": 3,
+    "firstRaidMaxSize": 2,
     "smallRaidRatio": 1.0
   },
   "threats": {

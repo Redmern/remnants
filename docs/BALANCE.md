@@ -1114,12 +1114,12 @@ from a strength calculation; the bot (`DefenseBot`) builds defenses, posts guard
 
 | What | Value | Why |
 |---|---|---|
-| Grace | day 9 and five buildings | basics first; pressure builds meanwhile, so the first raid comes soon after |
-| Threshold / gap | 130 pressure, ≥ 6 days | one raid a week; the others' pressure ×0.25 after any raid |
+| Grace | day 12 and five buildings (day 8 before full-game pass 1) | basics first; pressure builds meanwhile, so the first raid comes soon after |
+| Threshold / gap | 150 pressure (was 130), ≥ 6 days | one raid a week; the others' pressure ×0.25 after any raid |
 | Husk pressure/h | 0.2 + 0.1 · noise | noise ≈ 0.5 per survivor + night shifts + floodlights at night + returns (gunfire) − lures |
 | Raider pressure/h | 0.1 + 0.03 · wealth (stock/50 + items/5), from day 10 | rich colonies draw bands |
-| Linked pressure/h | 0.05 · Network presence (known Linked zones' threat × (1 + day/30)), from day 25 | grows with the Network's reach |
-| Size | min + pressure/100 · sizePerPressure, × (1 + 0.1/raid + 0.01/day past grace); first raid ≤ 3 | escalation |
+| Linked pressure/h | 0.05 · Network presence (scouted Linked zones' threat × (1 + day/30)), from day 25 | grows with the Network's reach |
+| Size | min + pressure/100 · sizePerPressure, × (1 + 0.1/raid + 0.01/day past grace); first raid ≤ 2 (was 3) | escalation |
 | Strength per attacker | Husk 5, raider 6, Linked 9 | ×1.25 Husks, ×1.1 raiders at night |
 | Defender | 8 · (0.5 + 0.5 · combat/50) · health · arms + weapon power · 0.6 + armor · 0.8 | gear from the inventory, best to the best |
 | Night | defenders ×0.75 (a lit approach recovers 75% of the loss); asleep ×0.5 unless an Alarm Bell | towers, bells and lights matter at night |
@@ -1252,3 +1252,108 @@ at the exit, come back) gets more than the bot, which never stashes.
   for now), `item_drop` (drop and stash use `loot_pickup`).
 - Props reused for nodes: `rubble`, `dead_tree`, `ruins_house_shelf` (furniture), `ruins_house_bed` (bedding),
   `wrecked_car`, `building_shell` (scaled 0.45), `terminal_room_server_rack` (dead electronics).
+
+## Full-game pass 1
+
+Stabilisation pass 1, with every feature on main and on in the sweep: raids, weather, nights, food, medicine, vehicles,
+field loot and salvage, schematics, and in Story the campaign through Act 4.
+`dotnet run --project tools/Remnants.Playtest -c Release -- --data=data --seeds=1..20 --days=90 [--story]`. "Before" is
+main at the start of the pass (da62114); "after" is the end of it.
+
+### 20 seeds × 90 days
+
+| | Sandbox before | Sandbox after | Story before | Story after |
+|---|---|---|---|---|
+| median population at day 90 | 10 | 10 | **0** (19 of 20 wiped) | 3 (8 of 20 wiped) |
+| Town Hall 2 (median day, colonies that got there) | 37.5 | 40.6 | 61.0 (1/20) | 68.6 (8/20) |
+| expedition deaths | 15 over 489 runs | 19 over 481 | 82 over 178 | 79 over 362 |
+| raids / held / first held | 197 / 105 / 15 of 20 | 178 / 110 / 18 of 20 | 169 / 13 / 9 of 20 | 126 / 27 / 10 of 20 |
+| raid dead / taken / buildings wrecked | 9 / 2 / 11 | 3 / 0 / 3 | 6 / **20** / **192** | 13 / 6 / 52 |
+| first raid (median day) | 11.8 | 13.8 | 11.9 | 14.1 |
+| starvation deaths | 0 | 0 | 1 | 0 |
+
+Town Hall 2 over 20 colonies is too noisy to judge raid tuning (one seed moved from day 26 to 50 on an unrelated
+change). The raid numbers below use 60 seeds × 60 days and the mean day, with a colony that never gets there counted as
+day 61:
+
+| 60 seeds × 60 days | TH2 mean (± s.e.) | median | never | first raid held | raid dead |
+|---|---|---|---|---|---|
+| raids as they were | 44.7 ± 1.6 | 37.0 | 13 | 49/60 | 4 |
+| raids after this pass | 41.2 ± 1.4 | 38.5 | 8 | 57/60 | 2 |
+| `--no-raids` | 38.6 ± 1.6 | 34.1 | 10 | — | — |
+| `--no-salvage` (raids after) | 46.0 ± 1.4 | 43.7 | 13 | 56/60 | 7 |
+| `--no-expeditions` (raids after) | 26.3 ± 0.2 | 26.5 | 0 | — | — |
+
+Seeds 61–120 confirm the raid change: 44.8 ± 1.7 → 41.2 ± 1.5.
+
+### What changed
+
+- **Story Act 2 waited for nothing.** M6 (The Long Haul) and M7 (The Drowned Clinic) needed only M4 (and Marrow's visits
+  or a Med Bay), so they opened around day 16, half an act early. The bot took M7 with Act 1 gear and lost the whole party
+  in most seeds. Both now also need **Town Hall 2**, like M5. STORY.md puts Act 2 at days 30–65 on the Town Hall 2
+  milestone. `StoryActsTests` checks the gate.
+- **The Linked raided Story colonies to death.** Linked raid pressure counted every *known* Linked zone. A Story colony
+  hears of the Flooded Mall and the Rail Depot by about day 16 (M4 and Lantern's talk), which tripled the Network
+  presence. From day 25 nearly every raid was a Linked probe (kinds `HHLLLLLLLL`), and each lost probe took up to two
+  survivors: 20 taken and 192 buildings wrecked over 20 colonies. Network presence now counts only **scouted** zones,
+  where the colony has been or flown a drone (`ThreatModel.NetworkPresence`). A rumor draws nothing. The fix brought
+  taken survivors from 45 to 2 on the first re-run.
+- **A later, lighter first raid** (raids.json `scheduler`): grace 8 → 12 days, first raid ≤ 3 → ≤ 2 attackers,
+  threshold 130 → 150. The cost of raids to Town Hall 2 roughly halves (+6.1 → +2.6 days over no raids, mean), first
+  raids held go 49 → 57 of 60, raid deaths 4 → 2, and there are 11% fewer raids. Other variants, none better: grace 12
+  alone 42.0 (first raid held only 37/60, because a later raid is a bigger one), first ≤ 2 alone 43.6, plus
+  `minGapDays` 8 41.3, plus `escalationPerDay` 0.005 41.0.
+- **Bot only:** the story bot sends survivors on a mission only at health 90+ (was 70). That took M2 failures from
+  9 to 4 of about 25 runs.
+- **New tool:** `--mission=ID [--runs=N] [--hour=H,…] [--weather=…] [--th=N]` (`MissionTrial`) plays one story mission
+  with a fresh colony's first party.
+
+### The questions this pass was asked
+
+- **Expedition deaths 7 → 12 at the food merge: not food.** By arrival phase, day arrivals had 12 deaths in 414 runs
+  and night arrivals 3 in 85, so night is not the cause. Nobody fell sick (0 sicknesses in the sweeps), and the food
+  merge's meals *add* a first-round AP. The rise is field loot and salvage: Outskirts zone trials were 4% runs with a
+  death before loot, 5% with enemy loot only, 6% with salvage (longer runs, 15 → 19 rounds). Colony sweeps: 13 deaths
+  with salvage against 7 without, over ~320 runs each. The rest is noise. Repeated 20 × 60 runs of the same build gave
+  12, 13 and 16, and the Poisson spread at that size is ±3.5. Two candidate fixes didn't move it:
+  - salvage noise −1 on every node: 12 deaths, Outskirts still 6%
+  - a stricter salvage window in the bot (health 80%, nothing heard for 3 rounds, stop at round 20): 16 deaths
+
+  The cost is intended (risk for materials), so salvage stays as it is.
+- **Raids and Town Hall 2:** see above. TH2 ~day 32–33 is out of reach through raids alone, because the no-raid economy
+  itself is now at a 34-day median (it was 30.8 before vehicles, medicine, loot and story). Vehicles are about 1 to 3
+  days of that (60 seeds: 35.8 without them, raids on): the handcart's runs keep two adults out longer. Expeditions as a
+  whole are the big lever: without them Town Hall 2 comes on day 26.
+- **Loot and salvage don't flood the early economy.** Salvage brings Town Hall 2 about 5 days *earlier* (46.0 → 41.2),
+  but colonies that never send anyone out reach it on day 26. In the bot's hands, early expeditions cost more labour than
+  they bring home, and loot only partly pays for the adults' time away. Wood and stone still come from the Woodcutter and
+  Quarry. Stolen stock in raids is unchanged (2,193 → 2,219 over 60 colonies).
+- **Story pacing against STORY.md** (median day a mission closes, colonies that close it):
+
+  | Mission | target | before | after |
+  |---|---|---|---|
+  | M1 Home | early Act 1 | 7.8 (19/20) | 9.3 (20/20) |
+  | M2 First Light | day 7–12 | 9.6 (16/20) | 11.1 (18/20) |
+  | M3 Signal in the Rust | Act 1 | 11.4 (15/20) | 14.4 (18/20) |
+  | M4 The Stranger | Act 1 | 18.4 (9/20) | 17.4 (13/20) |
+  | M5 Hold the Line | ~day 30 (TH2) | — (0/20) | 64.0 (8/20) |
+  | M6 / M7 (Act 2) | days 30–65 | 31.9 / 28.3 (3 / 2 of 20, most parties lost) | 75.4 / 79.8 (3 / 1) |
+
+  Act 1 is on time up to M4. From M5 on, the story waits for Town Hall 2, and a Story colony reaches it much later than
+  a Sandbox one (day 68 against 41 in this sweep), so Act 2 starts around day 64–75 instead of 30.
+
+### Still open (next Story balance pass)
+
+The Story colony is far weaker than the Sandbox one with the same bot. Median population is 3 against 10. Expedition
+deaths are 79 in 362 runs against 19 in 481, and raids held 21% against 62%. What we know:
+
+- The story missions kill in the colony far more than in a trial. `--mission=m2 --runs=200` with a fresh party: 95% done,
+  0.25 deaths a run, the same at 02:00, 07:00, 12:00 and 19:00. In the colony sweep it was about 1 death a run (24 in
+  25 runs) before the health-90 rule. Colony parties go out hurt, and a hurt arm drops the hit chance to 12–19% (seen in
+  the M2 trace).
+- M6 and M7 are threat-2 fights. Even at Town Hall 2 the bot brings starting-tier gear: 27 deaths in 15 runs. They may
+  want a gear check in the bot, a lighter first wave, or a second retry tier.
+- Half the Story colonies never place a defense: the build order leaves no wood spare, and DefenseBot only spends what
+  the next build goal does not need.
+- The repeatable Dead Drop contract (every 7 days) ties up 2–3 adults about four times per colony. Taking it only once
+  changed little: Town Hall 2 68.6 → 59, still median population 2.

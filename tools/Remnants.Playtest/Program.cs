@@ -4,6 +4,7 @@ using Remnants.Playtest;
 
 // Usage: dotnet run --project tools/Remnants.Playtest -- [--story [--prompt=N]] [--days=N] [--seeds=A..B | --seed=N] [--quiet] [--trace] [--no-expeditions] [--bold] [--no-mods] [--no-raids | --fight] [--data=DIR]
 //        [--no-vehicles] [--schematics=sch_a,sch_b|vehicles]   --travel-table   --zone=ID --vehicle=TIER   (vehicles: every vehicle schematic, to sweep the tiers)
+//        dotnet run --project tools/Remnants.Playtest -- --mission=ID [--runs=N] [--hour=H[,H...]] [--weather=KIND[,KIND...]] [--th=N]
 //        dotnet run --project tools/Remnants.Playtest -- --story-acts[=terms|silence|voice|calm|all] [--seed=N] [--trace]
 //        dotnet run --project tools/Remnants.Playtest -- --zone=outskirts|all [--runs=N] [--party=N] [--trace] [--no-defenses] [--kit=fog|geared|tech|hack|drone|hacker|peg|mech|powered|cyborg|network] [--carbines=N] [--carbine-quality=fine|crude] [--armor] [--no-tech] [--coop=N] [--hour=H[,H...]] [--weather=KIND[,KIND...]|all] [--mods=basic|full|stealth|network] [--no-salvage]
 var options = args.Where(a => a.StartsWith("--")).Select(a => a[2..].Split('=', 2)).ToDictionary(p => p[0], p => p.Length > 1 ? p[1] : "");
@@ -44,6 +45,18 @@ if (options.TryGetValue("story-acts", out var variantArg))
         foreach (var variant in picked)
             StoryActs.Print(StoryActs.Run(data, scavenge, storyData, seed, variant, options.ContainsKey("trace") ? line => Console.WriteLine($"    {line}") : null),
                 Console.WriteLine);
+    return;
+}
+if (options.TryGetValue("mission", out var missionArg))
+{
+    // Mission trial: --mission=ID [--runs=N] [--hour=H[,H...]] [--weather=KIND[,KIND...]] [--th=N]: a fresh colony's first party plays it.
+    var storyData = Remnants.Core.Story.StoryDataLoader.LoadFromDirectory(Path.Combine(dataDir, "story"));
+    var hours = options.TryGetValue("hour", out var hourArg) ? hourArg.Split(',').Select(h => (int?)int.Parse(h)).ToList() : [null];
+    var weathers = options.TryGetValue("weather", out var weatherArg) ? weatherArg.Split(',').Select(w => (string?)w).ToList() : [null];
+    foreach (var hour in hours)
+    foreach (var weather in weathers)
+        Console.Write(MissionTrial.Run(data, scavenge, storyData, missionArg, int.Parse(options.GetValueOrDefault("runs", "100")), hour, weather,
+            int.Parse(options.GetValueOrDefault("th", "1")), options.ContainsKey("trace") ? line => Console.WriteLine($"    {line}") : null));
     return;
 }
 if (options.TryGetValue("zone", out var zoneArg))
