@@ -6,6 +6,7 @@ using Remnants.Core.Scavenge;
 using Remnants.Core.Survivors;
 using Remnants.Game.Anim;
 using Remnants.Game.Colony;
+using Remnants.Game.Story;
 
 namespace Remnants.Game.Scavenge;
 
@@ -146,6 +147,8 @@ public sealed class ScavengeModels(ModelLibrary library)
 
         var child = unit.Origin?.IsChild ?? false;
         var id = ModelLibrary.SurvivorId(child, unit.Origin?.Sex ?? Sex.Male);
+        // A story character in the party walks in their own body.
+        if (StoryArt.BodyModel(unit.Origin?.UniqueId, child, inColony: true) is { } own && library.Has(own)) id = own;
         if (library.TryInstance(id) is not { } model) return Placeholders.Survivor(child);
         SurvivorDressing.FitLimbs(library, model, unit.Body, child);
         SurvivorDressing.AttachGear(library, model, id, unit.Equipment);
@@ -193,11 +196,11 @@ public sealed class ScavengeModels(ModelLibrary library)
         if (unit.Tag is "truck_people" or "truck_cargo" or "convoy")
             return library.TryInstance(unit.Tag switch { "truck_people" => "long_haul_lead_truck", "truck_cargo" => "long_haul_cargo_truck", _ => "long_haul_gun_truck" });
         if (unit.CharacterId == "juniper") return library.TryInstance(unit.FollowingId is null ? "story_juniper" : "story_juniper_bandaged");
-        if (unit.CharacterId is { } character) return library.TryInstance($"story_{character}");
+        if (StoryArt.BodyModel(unit.CharacterId) is { } character) return library.TryInstance(character);
         return unit.EnemyDefId switch
         {
             "cole" => library.TryInstance("story_cole_brannigan"),
-            "tally_scav" => library.TryInstance($"story_tally_member_{unit.Id % 5 + 1}"),
+            "tally_scav" or "tally_blade" => library.TryInstance($"story_tally_member_{unit.Id % 5 + 1}"),
             _ => null,
         };
     }

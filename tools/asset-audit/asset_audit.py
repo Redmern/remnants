@@ -303,8 +303,8 @@ def audit_devices_and_enemies():
                 add("Devices & electronics", mid, "missing", "DeviceViews", f"{kind} device{var.replace('_', ' ')}", HIGH if var == "" else MED, "draws a cyan block")
     for e in data("enemies.json"):
         eid, ai = e["id"], e.get("ai")
-        if eid in ("cole", "tally_scav"):
-            continue  # story models below
+        if eid in ("cole", "tally_scav", "tally_blade"):
+            continue  # story models below (ScavengeModels.Story: the Tally band shares story_tally_member_1..5)
         if ai == "Device" or eid == "camera":
             if f"device_{eid}" not in MODELS:
                 add("Enemies", f"device_{eid}", "missing", "ScavengeModels.Unit (device enemy)", e["name"], HIGH, "draws a capsule")
@@ -356,6 +356,7 @@ def walk(node, fn):
 def audit_story():
     src = open(os.path.join(SCRIPTS, "Story", "StoryArt.cs"), encoding="utf-8").read()
     asset = dict(re.findall(r'\["([a-z_]+)"\]\s*=\s*"(story_[a-z_]+)"', src))
+    mood_alias = dict(re.findall(r'\["([a-z_]+)"\]\s*=\s*"([a-z_]+)"', src.split("MoodAlias", 1)[1].split("};", 1)[0])) if "MoodAlias" in src else {}
     moods = defaultdict(lambda: defaultdict(int))
     dialogue_dir = os.path.join(DATA, "story", "dialogue")
 
@@ -371,8 +372,10 @@ def audit_story():
                 add("Story portraits", f"{base}_{mood}", "missing", "StoryArt.Portrait", f"{speaker} portrait, {mood}", HIGH, "draws an initial on a tint")
         lacking = {m: c for m, c in counts.items() if m != "neutral" and not gen_file(f"portraits/{base}_{m}.png")}
         for mood, count in sorted(lacking.items(), key=lambda kv: -kv[1]):
+            alias = mood_alias.get(mood)
+            shown = alias if alias and gen_file(f"portraits/{base}_{alias}.png") else "neutral"
             add("Story portraits", f"{base}_{mood}", "fallback", f"StoryArt.Portrait ({count} dialogue lines)", f"{speaker} looking {mood}",
-                MED if count >= 10 else LOW, "shows the neutral portrait")
+                MED if count >= 10 else LOW, f"shows the {shown} portrait")
     for marker in ("marker_mission_main", "marker_mission_side", "marker_radio_contact", "marker_caravan"):
         if not gen_file(f"ui/{marker}.png"):
             add("Story portraits", marker, "missing", "StoryArt.Marker (world map)", marker.replace("_", " "), HIGH)
@@ -383,20 +386,17 @@ def audit_story():
     chars = {}
     for f in sorted(os.listdir(os.path.join(DATA, "story", "maps"))):
         walk(jsonc(os.path.join(DATA, "story", "maps", f)), lambda n: chars.setdefault(n["character"], f) if isinstance(n.get("character"), str) else None)
-    ids = {f"story_{c}": f"npc on {m}" for c, m in chars.items()}
+    # StoryArt.BodyModel: characters.json id -> its story_* asset (the same table as the portraits).
+    ids = {asset.get(c, f"story_{c}"): f"npc on {m}" for c, m in chars.items()}
     ids.update({"story_juniper_bandaged": "Juniper once treated", "story_cole_brannigan": "Cole (enemy)",
-                **{f"story_tally_member_{i}": "Tally scavs" for i in range(1, 6)},
+                **{f"story_tally_member_{i}": "Tally scavs and cutters" for i in range(1, 6)},
+                "story_seven_colony": "Seven once it joins (colony, party)", "story_pell_adult": "Pell grown up (colony, party)",
                 "long_haul_lead_truck": "M6 convoy", "long_haul_cargo_truck": "M6 convoy", "long_haul_gun_truck": "M6 convoy"})
     for mid, used in sorted(ids.items()):
         if mid not in MODELS:
-            exported = asset.get(mid[len("story_"):])
-            note = (f"NAME MISMATCH: export ships {exported}; code looks up story_{{character}} (fix in code or alias the asset)"
-                    if exported in MODELS else "story unit drawn as a plain survivor")
+            note = "story unit drawn as a plain survivor"
             add("Survivors & characters", mid, "missing", f"ScavengeModels.Story ({used})", mid.replace("story_", "").replace("_", " "),
                 MED, note)
-    # Story enemies with no art of their own.
-    if "enemy_tally_blade" not in MODELS and "story_tally_blade" not in MODELS:
-        pass  # covered by audit_devices_and_enemies (enemy_tally_blade)
 
 
 # ---------------------------------------------------------------- UI icons
@@ -555,10 +555,12 @@ def audit_sounds():
 # ---------------------------------------------------------------- report
 
 SCREENSHOTS = [
-    ("defenses_placeholders.png", "`--colony --raid-demo=placement`: every defense but the walls, barricade, nest and turret is a primitive "
-     "stand-in (flat trap discs, lamp-post floodlights, bell post); walls are `wall_segment` tinted by tier."),
-    ("story_m6_long_haul.png", "`--scavenge --story-mission=m6`: Marrow is looked up as `story_marrow` but ships as `story_abel_marrow`, so he "
-     "walks as a stock survivor (same for `iris` on M11 and `hale` on M7). `long_haul_marrow_bike` and `long_haul_tanker` ship but nothing uses them."),
+    ("defenses_placeholders.png", "`--colony --raid-demo=placement` (taken before the gate, nest, spike strip and first two towers were wired to "
+     "the shipped `perimeter_*` / `watchtower_l1/_l2` models): the other traps, the floodlight, bell and Fortified Tower are primitive "
+     "stand-ins (flat trap discs, lamp-post floodlights, bell post); walls are `wall_segment` tinted by tier."),
+    ("story_m6_long_haul.png", "`--scavenge --story-mission=m6` (taken before the fix): Marrow walked as a stock survivor because the code looked up "
+     "`story_marrow`; story units now go through StoryArt's id table (`story_abel_marrow`, `story_iris_vahn`, `story_doc_hale`). "
+     "`long_haul_marrow_bike` and `long_haul_tanker` ship but nothing uses them."),
     ("gear_bench_line_icons.png", "`--colony --gear-demo`: every gear row shows its kind's line icon; no rendered item icon "
      "(`assets/generated/icons/{id}.png`) ships yet."),
 ]

@@ -9,21 +9,21 @@ Priority: **high** = seen or heard every session (colony buildings, common items
 | Category | missing | fallback | tint | placeholder | silent | high |
 |---|---:|---:|---:|---:|---:|---:|
 | Colony buildings | 0 | 11 | 0 | 0 | 0 | 0 |
-| Survivors & characters | 3 | 0 | 0 | 0 | 0 | 0 |
-| Enemies | 1 | 0 | 0 | 0 | 0 | 0 |
+| Survivors & characters | 0 | 0 | 0 | 0 | 0 | 0 |
+| Enemies | 0 | 0 | 0 | 0 | 0 | 0 |
 | Scavenge maps & props | 0 | 0 | 0 | 0 | 0 | 0 |
 | Devices & electronics | 0 | 0 | 3 | 0 | 0 | 0 |
-| Defenses & traps | 14 | 3 | 3 | 0 | 0 | 0 |
+| Defenses & traps | 10 | 2 | 3 | 0 | 0 | 0 |
 | Gear models | 10 | 0 | 0 | 0 | 0 | 2 |
 | Gear mods | 3 | 0 | 0 | 0 | 0 | 0 |
 | Cybernetics | 0 | 0 | 0 | 0 | 0 | 0 |
 | Vehicles | 2 | 0 | 0 | 0 | 0 | 0 |
 | Story portraits | 0 | 45 | 0 | 0 | 0 | 0 |
 | Item icons | 0 | 114 | 0 | 0 | 0 | 0 |
-| UI icons | 1 | 23 | 0 | 0 | 0 | 3 |
+| UI icons | 0 | 23 | 0 | 0 | 0 | 2 |
 | Sounds | 0 | 0 | 0 | 0 | 0 | 0 |
 | Sound events | 0 | 16 | 0 | 0 | 3 | 0 |
-| **Total** | 34 | 212 | 6 | 0 | 3 | 5 |
+| **Total** | 25 | 211 | 6 | 0 | 3 | 4 |
 
 Checked against 492 models, 128 sounds, 466 line icons.
 
@@ -33,11 +33,11 @@ Captured with `godot-mono --path game -- <flags> --screenshot=...` after a `--he
 
 ![defenses_placeholders.png](missing_assets/defenses_placeholders.png)
 
-`--colony --raid-demo=placement`: every defense but the walls, barricade, nest and turret is a primitive stand-in (flat trap discs, lamp-post floodlights, bell post); walls are `wall_segment` tinted by tier.
+`--colony --raid-demo=placement` (taken before the gate, nest, spike strip and first two towers were wired to the shipped `perimeter_*` / `watchtower_l1/_l2` models): the other traps, the floodlight, bell and Fortified Tower are primitive stand-ins (flat trap discs, lamp-post floodlights, bell post); walls are `wall_segment` tinted by tier.
 
 ![story_m6_long_haul.png](missing_assets/story_m6_long_haul.png)
 
-`--scavenge --story-mission=m6`: Marrow is looked up as `story_marrow` but ships as `story_abel_marrow`, so he walks as a stock survivor (same for `iris` on M11 and `hale` on M7). `long_haul_marrow_bike` and `long_haul_tanker` ship but nothing uses them.
+`--scavenge --story-mission=m6` (taken before the fix): Marrow walked as a stock survivor because the code looked up `story_marrow`; story units now go through StoryArt's id table (`story_abel_marrow`, `story_iris_vahn`, `story_doc_hale`). `long_haul_marrow_bike` and `long_haul_tanker` ship but nothing uses them.
 
 ![gear_bench_line_icons.png](missing_assets/gear_bench_line_icons.png)
 
@@ -61,17 +61,11 @@ Captured with `godot-mono --path game -- <flags> --screenshot=...` after a `--he
 
 ## Survivors & characters
 
-| Priority | Id | Status | Used in | Should be | Meanwhile |
-|---|---|---|---|---|---|
-| medium | `story_hale` | missing | ScavengeModels.Story (npc on m7_drowned_pharmacy.json) | hale | NAME MISMATCH: export ships story_doc_hale; code looks up story_{character} (fix in code or alias the asset) |
-| medium | `story_iris` | missing | ScavengeModels.Story (npc on m11_depot_sheds.json) | iris | NAME MISMATCH: export ships story_iris_vahn; code looks up story_{character} (fix in code or alias the asset) |
-| medium | `story_marrow` | missing | ScavengeModels.Story (npc on m6_freight_road.json) | marrow | NAME MISMATCH: export ships story_abel_marrow; code looks up story_{character} (fix in code or alias the asset) |
+Nothing missing.
 
 ## Enemies
 
-| Priority | Id | Status | Used in | Should be | Meanwhile |
-|---|---|---|---|---|---|
-| medium | `enemy_tally_blade` | missing | ScavengeModels.Unit (enemy) | Tally Cutter (Husk AI); equipment machete, padded_vest | draws a capsule |
+Nothing missing.
 
 ## Scavenge maps & props
 
@@ -91,20 +85,15 @@ Nothing missing.
 |---|---|---|---|---|---|
 | medium | `defense_barricade` | fallback | DefenseModels.Build (colony defenses, raids) | Barricade (Barricade): Junk piled high. Cheap, quick, and it buys a moment. | shows cover_low_barrier |
 | medium | `defense_defense_turret` | fallback | DefenseModels.Build (colony defenses, raids) | Scrap Turret (Turret): A survivor-made gun on a swivel. Eats scrap for ammo. | shows device_turret |
-| medium | `defense_sandbag_nest` | fallback | DefenseModels.Build (colony defenses, raids) | Sandbag Nest (Post): A ring of sandbags for two guards. | shows cover_low_sandbags |
 | medium | `defense_alarm_bell` | missing | DefenseModels.Build (colony defenses, raids) | Alarm Bell (Alarm): Nobody sleeps through it. | draws a primitive stand-in |
 | medium | `defense_emp_mine` | missing | DefenseModels.Build (colony defenses, raids) | EMP Mine (Trap): Fries Linked implants and drones in a burst. | draws a primitive stand-in |
 | medium | `defense_fire_trap` | missing | DefenseModels.Build (colony defenses, raids) | Fire Trap (Trap): Fuel-soaked brush and a spark. Once. | draws a primitive stand-in |
 | medium | `defense_floodlight_post` | missing | DefenseModels.Build (colony defenses, raids) | Floodlight (Light): Lights the approach at night. Husks hear the hum. | draws a primitive stand-in |
-| medium | `defense_gate_wood` | missing | DefenseModels.Build (colony defenses, raids) | Gate (Gate): A wall that opens. Shut it when they come. | draws a primitive stand-in |
 | medium | `defense_noise_maker` | missing | DefenseModels.Build (colony defenses, raids) | Noise-maker (Trap): A clockwork rattle that draws Husks away from the walls. | draws a primitive stand-in |
 | medium | `defense_pit_trap` | missing | DefenseModels.Build (colony defenses, raids) | Pit Trap (Trap): A covered pit with stakes. Even a Linked falls in. | draws a primitive stand-in |
 | medium | `defense_scrap_mine` | missing | DefenseModels.Build (colony defenses, raids) | Scrap Mine (Trap): Nails and a pressure plate. Claymore-style. | draws a primitive stand-in |
 | medium | `defense_snare` | missing | DefenseModels.Build (colony defenses, raids) | Snare (Trap): A noose on a sapling. Holds a leg long enough. | draws a primitive stand-in |
-| medium | `defense_spike_strip` | missing | DefenseModels.Build (colony defenses, raids) | Spike Strip (Trap): Sharpened stakes in the grass. Reset them after. | draws a primitive stand-in |
 | medium | `defense_tripwire_alarm` | missing | DefenseModels.Build (colony defenses, raids) | Tripwire Alarm (Trap): Cans on a wire. An hour's warning, if you are lucky. | draws a primitive stand-in |
-| medium | `defense_watchtower_1` | missing | DefenseModels.Build (colony defenses, raids) | Lookout Tower (Tower): A ladder and a platform. Sees them coming. | draws a primitive stand-in |
-| medium | `defense_watchtower_2` | missing | DefenseModels.Build (colony defenses, raids) | Watchtower (Tower): A roofed tower with room for two. | draws a primitive stand-in |
 | medium | `defense_watchtower_3` | missing | DefenseModels.Build (colony defenses, raids) | Fortified Tower (Tower): Plated and tall: the whole valley in view. | draws a primitive stand-in |
 | medium | `defense_wall_concrete` | tint | DefenseModels.Build (colony defenses, raids) | Concrete Wall (Wall): Rubble and cement. It holds. | shows wall_segment tinted by tier |
 | medium | `defense_wall_scrap` | tint | DefenseModels.Build (colony defenses, raids) | Scrap Wall (Wall): Car doors and sheet metal over the planks. | shows wall_segment tinted by tier |
@@ -153,13 +142,13 @@ Nothing missing.
 | medium | `story_doc_hale_cold` | fallback | StoryArt.Portrait (11 dialogue lines) | hale looking cold | shows the neutral portrait |
 | medium | `story_iris_vahn_cold` | fallback | StoryArt.Portrait (10 dialogue lines) | iris looking cold | shows the neutral portrait |
 | medium | `story_iris_vahn_resolved` | fallback | StoryArt.Portrait (18 dialogue lines) | iris looking resolved | shows the neutral portrait |
-| medium | `story_iris_vahn_tired` | fallback | StoryArt.Portrait (16 dialogue lines) | iris looking tired | shows the neutral portrait |
+| medium | `story_iris_vahn_tired` | fallback | StoryArt.Portrait (16 dialogue lines) | iris looking tired | shows the worried portrait |
 | medium | `story_iris_vahn_wry` | fallback | StoryArt.Portrait (12 dialogue lines) | iris looking wry | shows the neutral portrait |
-| low | `story_abel_marrow_ashamed` | fallback | StoryArt.Portrait (1 dialogue lines) | marrow looking ashamed | shows the neutral portrait |
+| low | `story_abel_marrow_ashamed` | fallback | StoryArt.Portrait (1 dialogue lines) | marrow looking ashamed | shows the worried portrait |
 | low | `story_abel_marrow_cold` | fallback | StoryArt.Portrait (3 dialogue lines) | marrow looking cold | shows the neutral portrait |
-| low | `story_abel_marrow_grief` | fallback | StoryArt.Portrait (1 dialogue lines) | marrow looking grief | shows the neutral portrait |
+| low | `story_abel_marrow_grief` | fallback | StoryArt.Portrait (1 dialogue lines) | marrow looking grief | shows the worried portrait |
 | low | `story_abel_marrow_resolved` | fallback | StoryArt.Portrait (4 dialogue lines) | marrow looking resolved | shows the neutral portrait |
-| low | `story_abel_marrow_tired` | fallback | StoryArt.Portrait (4 dialogue lines) | marrow looking tired | shows the neutral portrait |
+| low | `story_abel_marrow_tired` | fallback | StoryArt.Portrait (4 dialogue lines) | marrow looking tired | shows the worried portrait |
 | low | `story_abel_marrow_wry` | fallback | StoryArt.Portrait (8 dialogue lines) | marrow looking wry | shows the neutral portrait |
 | low | `story_cole_brannigan_afraid` | fallback | StoryArt.Portrait (1 dialogue lines) | cole looking afraid | shows the neutral portrait |
 | low | `story_cole_brannigan_resolved` | fallback | StoryArt.Portrait (1 dialogue lines) | cole looking resolved | shows the neutral portrait |
@@ -171,23 +160,23 @@ Nothing missing.
 | low | `story_dee_quiet` | fallback | StoryArt.Portrait (1 dialogue lines) | dee looking quiet | shows the neutral portrait |
 | low | `story_dee_resolved` | fallback | StoryArt.Portrait (2 dialogue lines) | dee looking resolved | shows the neutral portrait |
 | low | `story_dee_wry` | fallback | StoryArt.Portrait (2 dialogue lines) | dee looking wry | shows the neutral portrait |
-| low | `story_doc_hale_afraid` | fallback | StoryArt.Portrait (1 dialogue lines) | hale looking afraid | shows the neutral portrait |
+| low | `story_doc_hale_afraid` | fallback | StoryArt.Portrait (1 dialogue lines) | hale looking afraid | shows the worried portrait |
 | low | `story_doc_hale_angry` | fallback | StoryArt.Portrait (1 dialogue lines) | hale looking angry | shows the neutral portrait |
-| low | `story_doc_hale_grief` | fallback | StoryArt.Portrait (1 dialogue lines) | hale looking grief | shows the neutral portrait |
+| low | `story_doc_hale_grief` | fallback | StoryArt.Portrait (1 dialogue lines) | hale looking grief | shows the worried portrait |
 | low | `story_doc_hale_quiet` | fallback | StoryArt.Portrait (1 dialogue lines) | hale looking quiet | shows the neutral portrait |
 | low | `story_doc_hale_resolved` | fallback | StoryArt.Portrait (5 dialogue lines) | hale looking resolved | shows the neutral portrait |
-| low | `story_doc_hale_tired` | fallback | StoryArt.Portrait (8 dialogue lines) | hale looking tired | shows the neutral portrait |
+| low | `story_doc_hale_tired` | fallback | StoryArt.Portrait (8 dialogue lines) | hale looking tired | shows the worried portrait |
 | low | `story_doc_hale_warm` | fallback | StoryArt.Portrait (5 dialogue lines) | hale looking warm | shows the neutral portrait |
 | low | `story_doc_hale_wry` | fallback | StoryArt.Portrait (5 dialogue lines) | hale looking wry | shows the neutral portrait |
-| low | `story_iris_vahn_afraid` | fallback | StoryArt.Portrait (7 dialogue lines) | iris looking afraid | shows the neutral portrait |
+| low | `story_iris_vahn_afraid` | fallback | StoryArt.Portrait (7 dialogue lines) | iris looking afraid | shows the worried portrait |
 | low | `story_iris_vahn_angry` | fallback | StoryArt.Portrait (1 dialogue lines) | iris looking angry | shows the neutral portrait |
-| low | `story_iris_vahn_ashamed` | fallback | StoryArt.Portrait (5 dialogue lines) | iris looking ashamed | shows the neutral portrait |
-| low | `story_iris_vahn_grief` | fallback | StoryArt.Portrait (7 dialogue lines) | iris looking grief | shows the neutral portrait |
+| low | `story_iris_vahn_ashamed` | fallback | StoryArt.Portrait (5 dialogue lines) | iris looking ashamed | shows the worried portrait |
+| low | `story_iris_vahn_grief` | fallback | StoryArt.Portrait (7 dialogue lines) | iris looking grief | shows the worried portrait |
 | low | `story_iris_vahn_quiet` | fallback | StoryArt.Portrait (9 dialogue lines) | iris looking quiet | shows the neutral portrait |
 | low | `story_iris_vahn_warm` | fallback | StoryArt.Portrait (5 dialogue lines) | iris looking warm | shows the neutral portrait |
-| low | `story_pell_child_afraid` | fallback | StoryArt.Portrait (8 dialogue lines) | pell looking afraid | shows the neutral portrait |
+| low | `story_pell_child_afraid` | fallback | StoryArt.Portrait (8 dialogue lines) | pell looking afraid | shows the worried portrait |
 | low | `story_pell_child_resolved` | fallback | StoryArt.Portrait (3 dialogue lines) | pell looking resolved | shows the neutral portrait |
-| low | `story_pell_child_tired` | fallback | StoryArt.Portrait (1 dialogue lines) | pell looking tired | shows the neutral portrait |
+| low | `story_pell_child_tired` | fallback | StoryArt.Portrait (1 dialogue lines) | pell looking tired | shows the worried portrait |
 | low | `story_pell_child_warm` | fallback | StoryArt.Portrait (3 dialogue lines) | pell looking warm | shows the neutral portrait |
 | low | `story_pell_child_wry` | fallback | StoryArt.Portrait (1 dialogue lines) | pell looking wry | shows the neutral portrait |
 | low | `story_seven_dark` | fallback | StoryArt.Portrait (4 dialogue lines) | seven looking dark | shows the neutral portrait |
@@ -319,7 +308,6 @@ Nothing missing.
 |---|---|---|---|---|---|
 | high | `bld_watchtower` | fallback | Icons.Building (build menu, building panel) | line icon for Watchtower | shows bld_cat_core |
 | high | `item_headgear` | fallback | Icons.Item kind line icon | line icon for Headgear items | shows body_head |
-| high | `stat_move` | missing | game/scripts/Colony/Ui/ExpeditionPanel.cs | line icon (24×24 white SVG, 2 px stroke) | falls back to the next id or item_generic |
 | medium | `body_eyes` | fallback | Icons.BodyPart | Eyes body part | shows body_full |
 | low | `def_alarm_bell` | fallback | RaidText.Icon (defense catalog, panel) | line icon for Alarm Bell | shows def_cat_ icon |
 | low | `def_barricade` | fallback | RaidText.Icon (defense catalog, panel) | line icon for Barricade | shows def_cat_ icon |

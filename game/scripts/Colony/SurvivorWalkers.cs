@@ -141,7 +141,7 @@ public partial class SurvivorWalkers : Node3D
                 w?.Node.QueueFree();
                 var rng = new RandomNumberGenerator { Seed = (ulong)s.Id * 7919 + 17 };
                 w = new Walker { Node = _models.Survivor(s), Look = look, Rng = rng };
-                w.Rig = CharacterRig.Attach(_models, w.Node, ModelLibrary.SurvivorId(s.IsChild, s.Sex));
+                w.Rig = CharacterRig.Attach(_models, w.Node, _models.SurvivorId(s));
                 if (w.Rig is { } rig)
                 {
                     var node = w.Node;

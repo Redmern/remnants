@@ -240,10 +240,14 @@ public sealed class ModelLibrary
     public static string SurvivorId(bool child, Sex sex) =>
         child ? "survivor_child" : sex == Sex.Female ? "survivor_adult_female" : "survivor_adult_male";
 
+    /// <summary>A survivor's body model: a story character's own (<see cref="Story.StoryArt.BodyModel"/>) when it ships, else the stock body.</summary>
+    public string SurvivorId(Survivor s) =>
+        Story.StoryArt.BodyModel(s.UniqueId, s.IsChild, inColony: true) is { } own && Has(own) ? own : SurvivorId(s.IsChild, s.Sex);
+
     /// <summary>A survivor's body with missing limbs hidden and prosthetics swapped in (see <see cref="SurvivorDressing"/>).</summary>
     public Node3D Survivor(Survivor s)
     {
-        var id = SurvivorId(s.IsChild, s.Sex);
+        var id = SurvivorId(s);
         if (TryInstance(id) is not { } model) return Placeholders.Survivor(s.IsChild);
         SurvivorDressing.FitLimbs(this, model, s.Body, s.IsChild);
         return model;

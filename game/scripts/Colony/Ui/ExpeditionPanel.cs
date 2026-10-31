@@ -287,7 +287,7 @@ public partial class ExpeditionPanel : PanelContainer
         _vehicle.Clear();
         for (var i = 0; i < ids.Count; i++)
         {
-            _vehicle.AddIconItem(Icons.Get(i == 0 ? "stat_move" : "ui_vehicle", 16, "ui_expedition"), labels[i]);
+            _vehicle.AddIconItem(Icons.Get(i == 0 ? "ui_move" : "ui_vehicle", 16, "ui_expedition"), labels[i]);
             if (ids[i] is { } vid && sim.FindVehicle(vid) is { } v && Remnants.Core.Colony.VehicleRules.Broken(sim.Data, v))
                 _vehicle.SetItemDisabled(i, true);
         }

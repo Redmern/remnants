@@ -23,6 +23,24 @@ public static class StoryArt
         ["hale"] = "story_doc_hale", ["cole"] = "story_cole_brannigan", ["seven"] = "story_seven", ["pell"] = "story_pell_child",
     };
 
+    /// <summary>Moods without portraits of their own borrow the nearest one that ships before falling back to neutral.</summary>
+    private static readonly Dictionary<string, string> MoodAlias = new()
+    {
+        ["afraid"] = "worried", ["grief"] = "worried", ["ashamed"] = "worried", ["tired"] = "worried",
+    };
+
+    /// <summary>
+    /// The body model of a story character (characters.json id, also a joined survivor's <c>UniqueId</c>): Pell by age,
+    /// Seven in its colony blanket once it lives with you. Null for anyone else.
+    /// </summary>
+    public static string? BodyModel(string? characterId, bool child = false, bool inColony = false) => characterId switch
+    {
+        null => null,
+        "pell" => child ? "story_pell_child" : "story_pell_adult",
+        "seven" when inColony => "story_seven_colony",
+        _ => Asset.GetValueOrDefault(characterId),
+    };
+
     /// <summary>
     /// The portrait for a speaker: Pell grown up uses his adult bust; Halcyon its emblem; colony survivors are rendered
     /// (<see cref="PortraitStudio"/>) by the caller. Null when there is no art (draw <see cref="Placeholder"/>).
@@ -32,8 +50,11 @@ public static class StoryArt
         if (characterId == "halcyon") return Load("portraits/halcyon_idle_00.png");
         if (!Asset.TryGetValue(characterId, out var asset)) return null;
         if (characterId == "pell" && sim?.State.Survivors.Find(s => s.UniqueId == Campaign.PellId) is { IsChild: false }) asset = "story_pell_adult";
+        if (characterId == StoryCharacters.Seven && sim is not null && StoryCharacters.SurvivorOf(sim, characterId) is not null) asset = "story_seven_colony";
         var variant = radio ? "radio" : mood;
-        return Load($"portraits/{asset}_{variant}.png") ?? Load($"portraits/{asset}_neutral.png");
+        return Load($"portraits/{asset}_{variant}.png")
+               ?? (MoodAlias.TryGetValue(variant, out var alias) ? Load($"portraits/{asset}_{alias}.png") : null)
+               ?? Load($"portraits/{asset}_neutral.png");
     }
 
     /// <summary>A world map marker (marker_mission_main / _side, marker_radio_contact, marker_caravan).</summary>
