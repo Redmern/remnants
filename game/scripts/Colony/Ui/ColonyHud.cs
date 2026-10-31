@@ -278,9 +278,9 @@ public partial class ColonyHud : CanvasLayer
         Roster.SelectionChanged += Survivor.Show;
     }
 
-    /// <summary>The bottom edge the HUD lays out to: the screen (logical units), or the debug --hud-size area.</summary>
+    /// <summary>The bottom edge the HUD lays out to: the screen (logical units), or the debug --hud-size area; 0 off the tree.</summary>
     private float HudBottom(Control root) =>
-        (_hudSize?.Y ?? GetViewport().GetVisibleRect().Size.Y) - root.GetThemeConstant("margin_bottom");
+        !IsInsideTree() ? 0 : (_hudSize?.Y ?? GetViewport().GetVisibleRect().Size.Y) - root.GetThemeConstant("margin_bottom");
 
     private Vector2? _hudSize;
 
