@@ -219,6 +219,16 @@
     "rewards": [ { "kind": "Resource", "id": "food", "value": 8 } ]
   },
   {
+    "id": "t_fence", "act": 1, "name": "The Fence Line", "type": "Colony", "main": false, "task": true,
+    "summary": "Iris: the radio carries, and not only to friends. Raiders will find you before long. A Lookout Tower sees them coming and spike strips slow them down.",
+    "requires": [ { "mission": "m2" } ],
+    "colonyObjectives": [
+      { "id": "tower", "kind": "Defense", "text": "Put up a Lookout Tower", "defense": "Tower" },
+      { "id": "traps", "kind": "Defense", "text": "Lay two spike strips", "defense": "Trap", "count": 2 }
+    ],
+    "rewards": [ { "kind": "Schematic", "id": "sch_barricade" }, { "kind": "Resource", "id": "scrap", "value": 8 } ]
+  },
+  {
     "id": "m5", "act": 1, "name": "Hold the Line", "type": "Field",
     "summary": "The radio mast is loud. Something heard it. A Husk swarm is walking in from the treeline at dusk.",
     "teaches": "Overwatch, Brace, defending the colony; why the Watchtower matters.",
@@ -257,6 +267,10 @@
     "rewards": [
       { "kind": "Schematic", "id": "sch_workshop_3" },
       { "kind": "ResearchData", "value": 6 },
+      { "kind": "Schematic", "id": "sch_sandbag_nest" },
+      { "kind": "Resource", "id": "wood", "value": 12 },
+      { "kind": "Resource", "id": "scrap", "value": 8 },
+      { "kind": "Note", "text": "Marrow sends a barricade kit for the next time: wood and scrap for four barricades, and how to stack a sandbag nest." },
       { "kind": "SetFlag", "id": "act", "value": 2 },
       { "kind": "Note", "text": "End of Act 1: Static." }
     ],

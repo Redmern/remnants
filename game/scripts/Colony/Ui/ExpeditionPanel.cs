@@ -34,6 +34,7 @@ public partial class ExpeditionPanel : PanelContainer
     private readonly OptionButton _zone = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None };
     private readonly RichTextLabel _zoneInfo = Ui.Rich();
     private readonly Label _partyInfo = Ui.Label(color: Ui.Muted);
+    private readonly Label _readiness = Ui.Label(color: Palette.Warn);
     private readonly OptionButton _wait = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None };
     private readonly TextureRect _arrivalIcon = new() { StretchMode = TextureRect.StretchModeEnum.KeepCentered, CustomMinimumSize = new Vector2(22, 22) };
     private readonly Label _arrival = Ui.Label();
@@ -124,6 +125,8 @@ public partial class ExpeditionPanel : PanelContainer
         planner.AddChild(Widgets.SectionHeader("Party", "stat_pop"));
         _partyInfo.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         planner.AddChild(_partyInfo);
+        _readiness.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+        planner.AddChild(_readiness);
         var scroll = new ScrollContainer { CustomMinimumSize = new Vector2(0, 300), HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
         _rows.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _rows.AddThemeConstantOverride("separation", 6);
@@ -487,6 +490,14 @@ public partial class ExpeditionPanel : PanelContainer
         var mission = MissionId is { } mid && sim.Story?.Mission(mid) is { } md ? $"Mission: {md.Name} · " : "";
         _partyInfo.Text = $"{mission}Party {_picked.Count}/{cap} (Town Hall L{sim.TownHallLevel}{capNote}) · rations {food:0} food " +
                           $"(have {sim.FoodStock:0}) · away members don't eat at home";
+        // A story mission: the briefing's warnings for the party as picked (wounds and what they do to aim, too few, weak weapons).
+        // A plain expedition still warns about the wounded picked.
+        var warnings = MissionId is { } wm && sim.Story?.Mission(wm) is { } wdef
+            ? Remnants.Core.Story.MissionReadiness.Check(sim, wdef, _picked.Select(kv => new ExpeditionMember(kv.Key, new(kv.Value.Equipment), new(kv.Value.Pack))).ToList())
+            : _picked.Keys.Select(sim.State.FindSurvivor).OfType<Survivor>().Where(s => s.IsInjured || s.Health < 70)
+                .Select(s => new Remnants.Core.Story.ReadinessWarning($"hurt:{s.Id}", Remnants.Core.Story.MissionReadiness.Wound(s))).ToList();
+        _readiness.Text = string.Join("\n", warnings.Select(w => "⚠ " + w.Text));
+        _readiness.Visible = warnings.Count > 0;
         RefreshRations(sim, food);
         _launch.Disabled = _launchOnline.Disabled = _picked.Count == 0 || _blocked || _picked.Count > cap
                                                     || SelectedZone is { } z && sim.PlanTravel(z, SelectedVehicle).Blocked is not null;

@@ -47,7 +47,11 @@
       "sources": [
         "Loot",
         "Trade",
-        "Research"
+        "Research",
+        "Story"
+      ],
+      "storyMissions": [
+        "The Fence Line"
       ],
       "description": "Junk piled high. Cheap, quick, and it buys a moment."
     },
@@ -64,7 +68,11 @@
       "sources": [
         "Loot",
         "Trade",
-        "Research"
+        "Research",
+        "Story"
+      ],
+      "storyMissions": [
+        "M5"
       ],
       "description": "A ring of sandbags for two guards."
     },

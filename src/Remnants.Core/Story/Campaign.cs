@@ -113,6 +113,8 @@ public static class Campaign
                 ColonyObjectiveKind.ChildJob => state.Survivors.Any(s => s.IsChild && s.AssignedBuildingId is { } b
                     && state.FindBuilding(b) is { } at && sim.Data.Buildings[at.DefId].Job == o.Job),
                 ColonyObjectiveKind.Scene => campaign.Heard.Contains(o.Dialogue!),
+                ColonyObjectiveKind.Defense => sim.Raids is { } raids
+                    && state.Defense.Defenses.Count(d => o.Defense is null || raids.Defense(d.DefId).Kind.ToString() == o.Defense) >= o.Count,
                 _ => false,
             };
             if (o.Kind == ColonyObjectiveKind.Scene && !done && !p.SceneQueued

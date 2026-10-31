@@ -67,4 +67,24 @@ public class AdviceTests
         Staff(sim);
         Assert.Equal("beds", Advice.Next(sim)!.Id);
     }
+
+    [Fact]
+    public void Defenses_are_suggested_a_few_days_before_raids_can_start()
+    {
+        var sim = Fresh();
+        sim.Raids = RaidTestData.Real;
+        foreach (var id in new[] { "farm", "woodcutter", "quarry", "workshop", "med_bay", "campfire" }) Build(sim, id);
+        sim.State.NextExpeditionId = 2;
+        Staff(sim);
+        Assert.NotEqual("defenses", Advice.Next(sim)?.Id);
+
+        var grace = RaidTestData.Real.Def.Scheduler.GraceDays;
+        sim.State.Tick = (grace - 6) * sim.Data.Rules.TicksPerDay;
+        Assert.Equal("defenses", Advice.Next(sim)!.Id);
+        sim.State.Stockpile.Add("wood", 10);
+        sim.State.Stockpile.Add("scrap", 10);
+        var at = RaidTestData.Edge(sim, Remnants.Core.Raids.Side.North);
+        Assert.True(sim.Execute(new Remnants.Core.Raids.PlaceDefense("spike_strip", at.X, at.Y)).Ok);
+        Assert.NotEqual("defenses", Advice.Next(sim)?.Id);
+    }
 }

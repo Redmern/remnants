@@ -370,6 +370,13 @@ public partial class BriefingPanel : Overlay
         _card.AddChild(Widgets.Wrapped(string.Join("  ·  ", rewards), "Small", Palette.Good));
         if (def.Teaches.Length > 0) _card.AddChild(Widgets.Wrapped($"Teaches: {def.Teaches}", "Small", Palette.TextMuted));
         if (def.MaxParty is { } party) _card.AddChild(Widgets.Label($"Up to {party} survivors may go.", "Small", Palette.TextMuted));
+        // Wounds, too few hands, starting-tier weapons for a stand-up fight: the planner repeats these for the party picked.
+        var warnings = MissionReadiness.Check(sim, def);
+        if (warnings.Count > 0)
+        {
+            _card.AddChild(Widgets.SectionHeader("Before you go", "stat_warning"));
+            foreach (var w in warnings) _card.AddChild(Widgets.Wrapped(w.Text, "Small", Palette.Warn));
+        }
         var launch = Widgets.IconButton("ui_expedition", "Plan the party", "Pick who goes and what they carry", () => _hud.Launch(def.Id), variation: "Primary");
         launch.CustomMinimumSize = new Vector2(0, 40);
         launch.Disabled = Campaign.CannotLaunch(sim, def.Id) is not null || sim.State.Expedition is not null;

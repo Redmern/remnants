@@ -225,6 +225,11 @@ public enum ColonyObjectiveKind
     /// <summary>A child works at a building with job <see cref="ColonyObjectiveDef.Job"/>.</summary>
     ChildJob,
     /// <summary>
+    /// <see cref="ColonyObjectiveDef.Count"/> defenses of kind <see cref="ColonyObjectiveDef.Defense"/> (a
+    /// <c>DefenseKind</c> name: Tower, Trap, Barricade...) stand at the colony; any kind when it is null.
+    /// </summary>
+    Defense,
+    /// <summary>
     /// A scene: once every other objective is done (and, with <see cref="ColonyObjectiveDef.Phase"/>, at that time of
     /// day) dialogue <see cref="ColonyObjectiveDef.Dialogue"/> calls; done when it has been played to the end.
     /// </summary>
@@ -242,6 +247,7 @@ public sealed record ColonyObjectiveDef
     public string? Resource { get; init; }
     public int Count { get; init; } = 1;
     public string? Job { get; init; }
+    public string? Defense { get; init; }
     public string? Dialogue { get; init; }
     public DayPhase? Phase { get; init; }
 }
@@ -283,6 +289,12 @@ public sealed record MissionDef
     public string Map { get; init; } = "generated";
     public string? Room { get; init; }
     public int? MaxParty { get; init; }
+
+    /// <summary>
+    /// The weapon tier the fight is balanced for (a stand-up fight a party with starting gear loses): the briefing warns
+    /// below it (<see cref="MissionReadiness"/>). Null: no gear warning.
+    /// </summary>
+    public int? GearTier { get; init; }
     public List<ConditionDef> Requires { get; init; } = new();
     public string NeedsText { get; init; } = "";
     public string? Briefing { get; init; }

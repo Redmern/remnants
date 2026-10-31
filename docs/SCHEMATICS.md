@@ -116,6 +116,8 @@ to match it when that lands.
 | id | Unlocks | Tier | Sources |
 |---|---|---|---|
 | `sch_watchtower` | **New** Watchtower building L1–2 (sight over the colony, an overwatch post on defense maps) | 1 | Loot 1+, Trade, Research, Story M2 |
+| `sch_barricade` | Barricade defense | 1 | Loot 1+, Trade, Research, Story task "The Fence Line" |
+| `sch_sandbag_nest` | Sandbag Nest defense | 1 | Loot 1+, Trade, Research, Story M5 |
 | `sch_camo_cloak` | Camo Cloak recipe (Tailor L2) | 1 | Loot 1+, Trade, Research, Story M3 |
 | `sch_grappling_hook` | Grappling Hook recipe (Workshop L2) | 1 | Loot 1+, Trade, Research, Story M4 |
 | `sch_radio_mast_2` | Radio Mast L2 (traders call twice as often; contracts from farther zones) | 1 | Loot 1+, Trade, Research, Story side "Marrow's Debt" |

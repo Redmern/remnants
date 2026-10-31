@@ -9,7 +9,8 @@ public sealed record Tip(string Id, string Text);
 /// <summary>
 /// First-time guidance: the most useful next step for a colony in this state, or null when nothing stands out.
 /// Pure (reads state, changes nothing), in priority order: food, wood and stone, the homeless, idle hands, untreated
-/// wounds (build a Med Bay, then admit), the first expedition, a Workshop, full beds, the Town Hall.
+/// wounds (build a Med Bay, then admit), the first expedition, a Workshop, cooking, defenses before the first raid, full
+/// beds, the Town Hall.
 /// </summary>
 public static class Advice
 {
@@ -61,6 +62,11 @@ public static class Advice
                 && state.Events.Any(e => e.Type == ColonyEventType.FoodRotted && e.Tick >= state.Tick - 2 * day))
                 return new("spoilage", $"Food is rotting in the pantry: a {Name("smokehouse")} smokes, salts and dries it; beans and corn keep longer than potatoes.");
         }
+        // Raids start once the grace period is over: a Lookout Tower sees them coming, strips slow them down.
+        if (sim.Raids is { } raids && state.Defense.Defenses.Count == 0
+            && state.Tick >= (raids.Def.Scheduler.GraceDays - 6) * data.Rules.TicksPerDay)
+            return new("defenses", $"Raiders find a colony after about {raids.Def.Scheduler.GraceDays} days. Open Defenses: a Lookout Tower " +
+                                   "sees them coming and spike strips on the edges slow them down. When a warning comes, add barricades on that side.");
         if (state.Survivors.Count >= sim.BedCapacity)
             return new("beds", $"Every bed is taken: no babies are conceived and newcomers leave after a while. Upgrade the {Name("shelter")} or build a House.");
         if (sim.TownHallLevel == 1 && Has("med_bay"))

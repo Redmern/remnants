@@ -144,6 +144,7 @@ public sealed class StoryData
                     if (o.Dialogue is { } dl && !Dialogues.ContainsKey(dl)) errors.Add($"{where}: objective {o.Id} names unknown dialogue '{dl}'.");
                     if (o.Item is { } it && !scavenge.Items.ContainsKey(it)) errors.Add($"{where}: objective {o.Id} names unknown item '{it}'.");
                     if (o.Resource is { } rs && rs != Colony.Pantry.FoodKey && !game.Resources.ContainsKey(rs)) errors.Add($"{where}: objective {o.Id} names unknown resource '{rs}'.");
+                    if (o.Defense is { } dk && !Enum.TryParse<Raids.DefenseKind>(dk, out _)) errors.Add($"{where}: objective {o.Id} names unknown defense kind '{dk}'.");
                 }
                 continue;
             }
