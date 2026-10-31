@@ -14,21 +14,33 @@ public static class TestData
 
     private static readonly Lazy<GameData> RealData = new(() => With(Shipped.Value, nights: false, weather: false));
 
-    private static GameData With(GameData d, bool nights, bool weather)
+    private static readonly Lazy<GameData> RealSites = new(() => With(Shipped.Value, nights: false, weather: false, construction: true));
+
+    private static GameData With(GameData d, bool nights, bool weather, bool construction = false)
     {
-        var rules = d.Rules with { DayNight = d.Rules.DayNight with { Enabled = nights && d.Rules.DayNight.Enabled } };
+        var rules = d.Rules with
+        {
+            DayNight = d.Rules.DayNight with { Enabled = nights && d.Rules.DayNight.Enabled },
+            Construction = d.Rules.Construction with { Enabled = construction && d.Rules.Construction.Enabled },
+        };
         return new GameData(d.Resources.Values, d.Jobs.Values, d.Buildings.Values, rules, d.Recipes.Values, d.Progression, d.Cybernetics?.Def, d.Schematics,
             d.Weather with { Enabled = weather && d.Weather.Enabled }, d.Food?.Def, d.Electronics, d.Medicine?.Def, d.Vehicles);
     }
 
     /// <summary>
-    /// The real data/ folder with the day and night cycle and the weather off (everyone works every tick, nobody sleeps,
-    /// always clear), so tests of other rules can count ticks without a clock. <see cref="RealWithNights"/> turns the
+    /// The real data/ folder with the day and night cycle, the weather and construction sites off (everyone works every
+    /// tick, nobody sleeps, always clear, buildings go up at once), so tests of other rules can count ticks without a clock. <see cref="RealWithNights"/> turns the
     /// cycle on; <see cref="RealWithWeather"/> is the data exactly as shipped.
     /// </summary>
     public static GameData Real => RealData.Value;
 
     public static GameData RealWithNights => RealNights.Value;
+
+    /// <summary>
+    /// Like <see cref="Real"/> (no clock, no weather) but with construction sites on: Construct and Upgrade place a site that
+    /// builders finish. Everywhere else construction is off, so a test that builds gets its building at once.
+    /// </summary>
+    public static GameData RealWithConstruction => RealSites.Value;
 
     public static GameData RealWithWeather => Shipped.Value;
 
@@ -99,7 +111,8 @@ public static class TestData
     {
         var def = sim.Data.Buildings[defId];
         foreach (var (res, amount) in def.Level(1).Cost) sim.State.Stockpile.Add(res, amount);
-        var result = sim.Execute(new Construct(defId));
+        // A finished building whatever the data says about construction sites (tests of sites place their own).
+        var result = sim.Instantly(() => sim.Execute(new Construct(defId)));
         Assert.True(result.Ok, result.Message);
         return sim.State.FindBuilding(result.EntityId!.Value)!;
     }

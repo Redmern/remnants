@@ -13,6 +13,7 @@ public enum Skill
     Medicine, Firearms, Melee, Cooking, Farming,
     Hacking, DronePiloting,
     Mechanics,
+    Construction,
 }
 
 /// <summary>Where a skill gain or XP came from (for the log and for the scavenge side's own calls).</summary>

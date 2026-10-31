@@ -15,6 +15,21 @@ public sealed record Construct(string BuildingDefId, int? Plot = null) : IColony
 
 public sealed record Upgrade(int BuildingId) : IColonyCommand;
 
+/// <summary>Put a survivor to work at a construction site (the building's id; they leave their job or post).</summary>
+public sealed record AssignBuilder(int SurvivorId, int BuildingId) : IColonyCommand;
+
+/// <summary>Call off a construction site: the materials come back (most of those already hauled).</summary>
+public sealed record CancelConstruction(int BuildingId) : IColonyCommand;
+
+/// <summary>Stop or resume work at a construction site.</summary>
+public sealed record PauseConstruction(int BuildingId, bool Paused) : IColonyCommand;
+
+/// <summary>Which site idle hands go to first (Low: assigned builders only).</summary>
+public sealed record SetConstructionPriority(int BuildingId, SitePriority Priority) : IColonyCommand;
+
+/// <summary>Builders at an upgrade of a lit building keep going after the day shift.</summary>
+public sealed record SetSiteNightShift(int BuildingId, bool On) : IColonyCommand;
+
 /// <summary>
 /// Send adults into a zone with gear from the colony inventory. They are away until the result is applied. With
 /// <paramref name="WaitFor"/> the party waits outside the zone until that phase starts (if they would arrive in another),
@@ -278,6 +293,9 @@ public enum CommandError
     EmptyModSlot,
     WrongKit,
     MaxMk,
+    /// <summary>Construction: the building has no site; or it is already being built or upgraded.</summary>
+    NotUnderConstruction,
+    UnderConstruction,
 }
 
 /// <summary>

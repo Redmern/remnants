@@ -5,9 +5,9 @@
     "category": "Core",
     "unique": true,
     "levels": [
-      { "cost": {},                                      "workerSlots": 0, "beds": 0 },
-      { "cost": { "wood": 55,  "stone": 35 },            "workerSlots": 0, "beds": 0 },
-      { "cost": { "wood": 160, "stone": 140, "scrap": 40 }, "workerSlots": 0, "beds": 0 }
+      { "cost": {},                                      "workerSlots": 0, "beds": 0, "buildWork": 4, "maxBuilders": 2 },
+      { "cost": { "wood": 55,  "stone": 35 },            "workerSlots": 0, "beds": 0, "buildWork": 12, "maxBuilders": 3 },
+      { "cost": { "wood": 160, "stone": 140, "scrap": 40 }, "workerSlots": 0, "beds": 0, "buildWork": 32, "maxBuilders": 4 }
     ]
   },
   {
@@ -15,9 +15,9 @@
     "name": "Shelter",
     "category": "Housing",
     "levels": [
-      { "cost": { "wood": 20 },               "beds": 6 },
-      { "cost": { "wood": 30, "stone": 10 },  "beds": 8 },
-      { "cost": { "wood": 50, "stone": 30 },  "beds": 12 }
+      { "cost": { "wood": 20 },               "beds": 6, "buildWork": 1.3, "maxBuilders": 2 },
+      { "cost": { "wood": 30, "stone": 10 },  "beds": 8, "buildWork": 8.7, "maxBuilders": 3 },
+      { "cost": { "wood": 50, "stone": 30 },  "beds": 12, "buildWork": 22, "maxBuilders": 4 }
     ]
   },
   {
@@ -29,9 +29,9 @@
     "produces": "wood",
     "baseOutput": 0.96,
     "levels": [
-      { "cost": { "wood": 10, "stone": 5 },   "workerSlots": 2, "outputMultiplier": 1.0 },
-      { "cost": { "wood": 30, "stone": 20 },  "workerSlots": 3, "outputMultiplier": 1.25 },
-      { "cost": { "wood": 60, "stone": 50 },  "workerSlots": 4, "outputMultiplier": 1.5 }
+      { "cost": { "wood": 10, "stone": 5 },   "workerSlots": 2, "outputMultiplier": 1.0, "buildWork": 1, "maxBuilders": 2 },
+      { "cost": { "wood": 30, "stone": 20 },  "workerSlots": 3, "outputMultiplier": 1.25, "buildWork": 9.3, "maxBuilders": 3 },
+      { "cost": { "wood": 60, "stone": 50 },  "workerSlots": 4, "outputMultiplier": 1.5, "buildWork": 23.5, "maxBuilders": 4 }
     ]
   },
   {
@@ -43,9 +43,9 @@
     "produces": "stone",
     "baseOutput": 0.88,
     "levels": [
-      { "cost": { "wood": 15 },               "workerSlots": 2, "outputMultiplier": 1.0 },
-      { "cost": { "wood": 35, "stone": 20 },  "workerSlots": 3, "outputMultiplier": 1.25 },
-      { "cost": { "wood": 70, "stone": 50 },  "workerSlots": 4, "outputMultiplier": 1.5 }
+      { "cost": { "wood": 15 },               "workerSlots": 2, "outputMultiplier": 1.0, "buildWork": 1, "maxBuilders": 2 },
+      { "cost": { "wood": 35, "stone": 20 },  "workerSlots": 3, "outputMultiplier": 1.25, "buildWork": 9.7, "maxBuilders": 3 },
+      { "cost": { "wood": 70, "stone": 50 },  "workerSlots": 4, "outputMultiplier": 1.5, "buildWork": 24, "maxBuilders": 4 }
     ]
   },
   {
@@ -57,9 +57,9 @@
     "produces": "scrap",
     "baseOutput": 0.43,
     "levels": [
-      { "cost": { "wood": 20, "stone": 10 },  "workerSlots": 2, "outputMultiplier": 1.0 },
-      { "cost": { "wood": 40, "stone": 30 },  "workerSlots": 3, "outputMultiplier": 1.25 },
-      { "cost": { "wood": 80, "stone": 60, "scrap": 20 }, "workerSlots": 4, "outputMultiplier": 1.5 }
+      { "cost": { "wood": 20, "stone": 10 },  "workerSlots": 2, "outputMultiplier": 1.0, "buildWork": 2, "maxBuilders": 2 },
+      { "cost": { "wood": 40, "stone": 30 },  "workerSlots": 3, "outputMultiplier": 1.25, "buildWork": 10.7, "maxBuilders": 3 },
+      { "cost": { "wood": 80, "stone": 60, "scrap": 20 }, "workerSlots": 4, "outputMultiplier": 1.5, "buildWork": 26, "maxBuilders": 4 }
     ]
   },
   {
@@ -70,9 +70,9 @@
     "job": "farming",
     "baseOutput": 1.03,
     "levels": [
-      { "cost": { "wood": 15 },               "workerSlots": 2, "outputMultiplier": 1.0 },
-      { "cost": { "wood": 35, "stone": 15 },  "workerSlots": 3, "outputMultiplier": 1.25 },
-      { "cost": { "wood": 70, "stone": 40 },  "workerSlots": 4, "outputMultiplier": 1.5 }
+      { "cost": { "wood": 15 },               "workerSlots": 2, "outputMultiplier": 1.0, "buildWork": 1, "maxBuilders": 2 },
+      { "cost": { "wood": 35, "stone": 15 },  "workerSlots": 3, "outputMultiplier": 1.25, "buildWork": 9.3, "maxBuilders": 3 },
+      { "cost": { "wood": 70, "stone": 40 },  "workerSlots": 4, "outputMultiplier": 1.5, "buildWork": 23.5, "maxBuilders": 4 }
     ]
   },
   {
@@ -83,9 +83,9 @@
     "job": "medicine",
     "baseOutput": 1.0,
     "levels": [
-      { "cost": { "wood": 30, "stone": 15 },               "workerSlots": 1, "outputMultiplier": 1.0,  "patients": 2 },
-      { "cost": { "wood": 50, "stone": 40, "scrap": 15 },  "workerSlots": 2, "outputMultiplier": 1.5,  "patients": 3 },
-      { "cost": { "wood": 80, "stone": 60, "scrap": 40, "electronics": 10 }, "workerSlots": 2, "outputMultiplier": 2.0, "patients": 5 }
+      { "cost": { "wood": 30, "stone": 15 },               "workerSlots": 1, "outputMultiplier": 1.0,  "patients": 2, "buildWork": 3, "maxBuilders": 2 },
+      { "cost": { "wood": 50, "stone": 40, "scrap": 15 },  "workerSlots": 2, "outputMultiplier": 1.5,  "patients": 3, "buildWork": 13, "maxBuilders": 3 },
+      { "cost": { "wood": 80, "stone": 60, "scrap": 40, "electronics": 10 }, "workerSlots": 2, "outputMultiplier": 2.0, "patients": 5, "buildWork": 27.5, "maxBuilders": 4 }
     ]
   },
   {
@@ -96,9 +96,9 @@
     "job": "crafting",
     "baseOutput": 1.7,
     "levels": [
-      { "cost": { "wood": 25, "stone": 10 },               "workerSlots": 2, "outputMultiplier": 1.0 },
-      { "cost": { "wood": 45, "stone": 30, "scrap": 20 },  "workerSlots": 3, "outputMultiplier": 1.25 },
-      { "cost": { "wood": 80, "stone": 50, "scrap": 40 },  "workerSlots": 4, "outputMultiplier": 1.5 }
+      { "cost": { "wood": 25, "stone": 10 },               "workerSlots": 2, "outputMultiplier": 1.0, "buildWork": 2.3, "maxBuilders": 2 },
+      { "cost": { "wood": 45, "stone": 30, "scrap": 20 },  "workerSlots": 3, "outputMultiplier": 1.25, "buildWork": 12.3, "maxBuilders": 3 },
+      { "cost": { "wood": 80, "stone": 50, "scrap": 40 },  "workerSlots": 4, "outputMultiplier": 1.5, "buildWork": 26.5, "maxBuilders": 4 }
     ]
   },
   {
@@ -109,9 +109,9 @@
     "job": "tailoring",
     "baseOutput": 1.7,
     "levels": [
-      { "cost": { "wood": 30, "stone": 10 },                              "workerSlots": 2, "outputMultiplier": 1.0 },
-      { "cost": { "wood": 50, "stone": 30, "cloth": 10 },                 "workerSlots": 3, "outputMultiplier": 1.25 },
-      { "cost": { "wood": 80, "stone": 50, "cloth": 20, "scrap": 20 },    "workerSlots": 4, "outputMultiplier": 1.5 }
+      { "cost": { "wood": 30, "stone": 10 },                              "workerSlots": 2, "outputMultiplier": 1.0, "buildWork": 2.7, "maxBuilders": 2 },
+      { "cost": { "wood": 50, "stone": 30, "cloth": 10 },                 "workerSlots": 3, "outputMultiplier": 1.25, "buildWork": 12, "maxBuilders": 3 },
+      { "cost": { "wood": 80, "stone": 50, "cloth": 20, "scrap": 20 },    "workerSlots": 4, "outputMultiplier": 1.5, "buildWork": 26.5, "maxBuilders": 4 }
     ]
   },
   {
@@ -122,9 +122,9 @@
     "job": "cooking",
     "baseOutput": 1.7,
     "levels": [
-      { "cost": { "wood": 30, "stone": 20 },                              "workerSlots": 2, "outputMultiplier": 1.0 },
-      { "cost": { "wood": 50, "stone": 40, "scrap": 10 },                 "workerSlots": 3, "outputMultiplier": 1.25 },
-      { "cost": { "wood": 80, "stone": 60, "scrap": 30 },                 "workerSlots": 4, "outputMultiplier": 1.5 }
+      { "cost": { "wood": 30, "stone": 20 },                              "workerSlots": 2, "outputMultiplier": 1.0, "buildWork": 3.3, "maxBuilders": 2 },
+      { "cost": { "wood": 50, "stone": 40, "scrap": 10 },                 "workerSlots": 3, "outputMultiplier": 1.25, "buildWork": 12.7, "maxBuilders": 3 },
+      { "cost": { "wood": 80, "stone": 60, "scrap": 30 },                 "workerSlots": 4, "outputMultiplier": 1.5, "buildWork": 26.5, "maxBuilders": 4 }
     ]
   },
   {
@@ -135,7 +135,7 @@
     "job": "cooking",
     "baseOutput": 1.2,
     "levels": [
-      { "cost": { "wood": 8 }, "workerSlots": 1, "outputMultiplier": 1.0 }
+      { "cost": { "wood": 8 }, "workerSlots": 1, "outputMultiplier": 1.0, "buildWork": 1, "maxBuilders": 2 }
     ]
   },
   {
@@ -146,9 +146,9 @@
     "job": "hunting",
     "baseOutput": 1.0,
     "levels": [
-      { "cost": { "wood": 25, "stone": 5 },               "workerSlots": 2, "outputMultiplier": 1.0 },
-      { "cost": { "wood": 40, "stone": 20 },              "workerSlots": 3, "outputMultiplier": 1.25 },
-      { "cost": { "wood": 70, "stone": 40, "scrap": 15 }, "workerSlots": 4, "outputMultiplier": 1.5 }
+      { "cost": { "wood": 25, "stone": 5 },               "workerSlots": 2, "outputMultiplier": 1.0, "buildWork": 2, "maxBuilders": 2 },
+      { "cost": { "wood": 40, "stone": 20 },              "workerSlots": 3, "outputMultiplier": 1.25, "buildWork": 10, "maxBuilders": 3 },
+      { "cost": { "wood": 70, "stone": 40, "scrap": 15 }, "workerSlots": 4, "outputMultiplier": 1.5, "buildWork": 24.2, "maxBuilders": 4 }
     ]
   },
   {
@@ -159,8 +159,8 @@
     "job": "cooking",
     "baseOutput": 1.7,
     "levels": [
-      { "cost": { "wood": 30, "stone": 15 },               "workerSlots": 1, "outputMultiplier": 1.0 },
-      { "cost": { "wood": 50, "stone": 30, "scrap": 10 },  "workerSlots": 2, "outputMultiplier": 1.25 }
+      { "cost": { "wood": 30, "stone": 15 },               "workerSlots": 1, "outputMultiplier": 1.0, "buildWork": 3, "maxBuilders": 2 },
+      { "cost": { "wood": 50, "stone": 30, "scrap": 10 },  "workerSlots": 2, "outputMultiplier": 1.25, "buildWork": 12, "maxBuilders": 3 }
     ]
   },
   {
@@ -169,8 +169,8 @@
     "category": "Care",
     "unique": true,
     "levels": [
-      { "cost": { "wood": 25, "stone": 35 } },
-      { "cost": { "wood": 40, "stone": 60, "scrap": 10 } }
+      { "cost": { "wood": 25, "stone": 35 }, "buildWork": 4, "maxBuilders": 2 },
+      { "cost": { "wood": 40, "stone": 60, "scrap": 10 }, "buildWork": 13.3, "maxBuilders": 3 }
     ]
   },
   {
@@ -181,8 +181,8 @@
     "baseOutput": 0.9,
     "minTownHallLevel": 2,
     "levels": [
-      { "cost": { "wood": 40, "stone": 20, "scrap": 15 }, "workerSlots": 2, "outputMultiplier": 1.0 },
-      { "cost": { "wood": 70, "stone": 40, "scrap": 30 }, "workerSlots": 3, "outputMultiplier": 1.3 }
+      { "cost": { "wood": 40, "stone": 20, "scrap": 15 }, "workerSlots": 2, "outputMultiplier": 1.0, "buildWork": 5, "maxBuilders": 2 },
+      { "cost": { "wood": 70, "stone": 40, "scrap": 30 }, "workerSlots": 3, "outputMultiplier": 1.3, "buildWork": 14, "maxBuilders": 3 }
     ]
   },
   {
@@ -194,9 +194,9 @@
     "job": "gunsmithing",
     "baseOutput": 1.7,
     "levels": [
-      { "cost": { "wood": 40, "stone": 40, "scrap": 30 },                 "workerSlots": 2, "outputMultiplier": 1.0 },
-      { "cost": { "wood": 60, "stone": 60, "scrap": 50 },                 "workerSlots": 3, "outputMultiplier": 1.25 },
-      { "cost": { "wood": 90, "stone": 80, "scrap": 80, "electronics": 10 }, "workerSlots": 4, "outputMultiplier": 1.5 }
+      { "cost": { "wood": 40, "stone": 40, "scrap": 30 },                 "workerSlots": 2, "outputMultiplier": 1.0, "buildWork": 6, "maxBuilders": 2 },
+      { "cost": { "wood": 60, "stone": 60, "scrap": 50 },                 "workerSlots": 3, "outputMultiplier": 1.25, "buildWork": 14, "maxBuilders": 3 },
+      { "cost": { "wood": 90, "stone": 80, "scrap": 80, "electronics": 10 }, "workerSlots": 4, "outputMultiplier": 1.5, "buildWork": 31, "maxBuilders": 4 }
     ]
   },
   {
@@ -208,9 +208,9 @@
     "job": "electronics",
     "baseOutput": 1.7,
     "levels": [
-      { "cost": { "wood": 40, "stone": 30, "scrap": 40 },                     "workerSlots": 2, "outputMultiplier": 1.0 },
-      { "cost": { "wood": 60, "stone": 50, "scrap": 50, "electronics": 15 }, "workerSlots": 3, "outputMultiplier": 1.25 },
-      { "cost": { "wood": 90, "stone": 70, "scrap": 80, "electronics": 30 }, "workerSlots": 3, "outputMultiplier": 1.5 }
+      { "cost": { "wood": 40, "stone": 30, "scrap": 40 },                     "workerSlots": 2, "outputMultiplier": 1.0, "buildWork": 6, "maxBuilders": 2 },
+      { "cost": { "wood": 60, "stone": 50, "scrap": 50, "electronics": 15 }, "workerSlots": 3, "outputMultiplier": 1.25, "buildWork": 14, "maxBuilders": 3 },
+      { "cost": { "wood": 90, "stone": 70, "scrap": 80, "electronics": 30 }, "workerSlots": 3, "outputMultiplier": 1.5, "buildWork": 31.5, "maxBuilders": 4 }
     ]
   },
   {
@@ -219,23 +219,23 @@
     "category": "Housing",
     "minTownHallLevel": 2,
     "levels": [
-      { "cost": { "wood": 60, "stone": 40 },                "beds": 10 },
-      { "cost": { "wood": 80, "stone": 60, "scrap": 10 },   "beds": 14 },
-      { "cost": { "wood": 120, "stone": 90, "scrap": 30 },  "beds": 20 }
+      { "cost": { "wood": 60, "stone": 40 },                "beds": 10, "buildWork": 6, "maxBuilders": 3 },
+      { "cost": { "wood": 80, "stone": 60, "scrap": 10 },   "beds": 14, "buildWork": 14, "maxBuilders": 4 },
+      { "cost": { "wood": 120, "stone": 90, "scrap": 30 },  "beds": 20, "buildWork": 30, "maxBuilders": 4 }
     ]
   },
   {
     "id": "radio_mast", "name": "Radio Mast", "category": "Core", "unique": true, "outdoor": true,
     "levels": [
-      { "cost": { "wood": 15, "scrap": 10 }, "workerSlots": 0 },
-      { "cost": { "wood": 40, "scrap": 25, "electronics": 5 }, "workerSlots": 0 }
+      { "cost": { "wood": 15, "scrap": 10 }, "workerSlots": 0, "buildWork": 1.7, "maxBuilders": 2 },
+      { "cost": { "wood": 40, "scrap": 25, "electronics": 5 }, "workerSlots": 0, "buildWork": 10.7, "maxBuilders": 3 }
     ]
   },
   {
     "id": "watchtower", "name": "Watchtower", "category": "Core", "outdoor": true,
     "levels": [
-      { "cost": { "wood": 25, "stone": 10 }, "workerSlots": 0 },
-      { "cost": { "wood": 40, "stone": 30, "scrap": 10 }, "workerSlots": 0 }
+      { "cost": { "wood": 25, "stone": 10 }, "workerSlots": 0, "buildWork": 2.3, "maxBuilders": 2 },
+      { "cost": { "wood": 40, "stone": 30, "scrap": 10 }, "workerSlots": 0, "buildWork": 11.3, "maxBuilders": 3 }
     ]
   },
   {
@@ -246,9 +246,9 @@
     "job": "mechanics",
     "baseOutput": 1.7,
     "levels": [
-      { "cost": { "wood": 30, "stone": 15, "scrap": 10 },                    "workerSlots": 2, "outputMultiplier": 1.0 },
-      { "cost": { "wood": 50, "stone": 30, "scrap": 40 },                    "workerSlots": 3, "outputMultiplier": 1.25 },
-      { "cost": { "wood": 80, "stone": 60, "scrap": 80, "electronics": 15 }, "workerSlots": 4, "outputMultiplier": 1.5 }
+      { "cost": { "wood": 30, "stone": 15, "scrap": 10 },                    "workerSlots": 2, "outputMultiplier": 1.0, "buildWork": 3.7, "maxBuilders": 2 },
+      { "cost": { "wood": 50, "stone": 30, "scrap": 40 },                    "workerSlots": 3, "outputMultiplier": 1.25, "buildWork": 14, "maxBuilders": 3 },
+      { "cost": { "wood": 80, "stone": 60, "scrap": 80, "electronics": 15 }, "workerSlots": 4, "outputMultiplier": 1.5, "buildWork": 29.8, "maxBuilders": 4 }
     ]
   },
   {
@@ -259,8 +259,8 @@
     "job": "distilling",
     "baseOutput": 1.7,
     "levels": [
-      { "cost": { "wood": 25, "stone": 10, "scrap": 15 }, "workerSlots": 1, "outputMultiplier": 1.0 },
-      { "cost": { "wood": 40, "stone": 20, "scrap": 30 }, "workerSlots": 2, "outputMultiplier": 1.3 }
+      { "cost": { "wood": 25, "stone": 10, "scrap": 15 }, "workerSlots": 1, "outputMultiplier": 1.0, "buildWork": 3.3, "maxBuilders": 2 },
+      { "cost": { "wood": 40, "stone": 20, "scrap": 30 }, "workerSlots": 2, "outputMultiplier": 1.3, "buildWork": 12, "maxBuilders": 3 }
     ]
   }
 ]

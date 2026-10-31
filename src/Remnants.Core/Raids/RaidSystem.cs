@@ -100,7 +100,8 @@ public static class RaidSystem
         var state = sim.State;
         if (sim.Data.Rules.DayNight.Enabled && !DayNight.InWindow(DayNight.Hour(state.Tick, sim.Data.Rules), sim.Data.Rules.DayNight.WorkHours)) return 0;
         var idle = state.Survivors.Where(s => !s.Away && !s.IsChild && s.PatientAtBuildingId is null && s.AssignedBuildingId is null
-                                              && !state.Defense.Guards.ContainsKey(s.Id) && StudySystem.ClassOf(state, s.Id) is null);
+                                              && !state.Defense.Guards.ContainsKey(s.Id) && StudySystem.ClassOf(state, s.Id) is null
+                                              && state.Construction.SiteOf(s.Id) is null);
         var bonus = 1 + state.Survivors.Where(s => !s.Away).Select(s => PerkEffects.For(s, sim.Data).Hook(PerkHooks.RepairSpeedBonus)).DefaultIfEmpty(0).Max();
         return (rules.BaseHpPerTick + idle.Sum(s => rules.HpPerWorkerTick * (0.5 + s.Get(Skill.Crafting) / 100))) * bonus;
     }

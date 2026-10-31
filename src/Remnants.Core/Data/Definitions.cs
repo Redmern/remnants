@@ -39,6 +39,15 @@ public sealed record BuildingLevelDef
 
     /// <summary>Care buildings: how many patients can be admitted at once.</summary>
     public int Patients { get; init; }
+
+    /// <summary>
+    /// Builder effort to build this level (to construct it at level 1, or to upgrade to it) once its materials are on
+    /// site; a builder of average skill puts in about half a unit an hour (see <c>rules.construction</c>).
+    /// </summary>
+    public double BuildWork { get; init; }
+
+    /// <summary>Builders who can work on its site at once (0: <c>rules.construction.defaultMaxBuilders</c>).</summary>
+    public int MaxBuilders { get; init; }
 }
 
 /// <summary>

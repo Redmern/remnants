@@ -171,6 +171,7 @@ internal static class MedicalHandlers
         if (bay is null) return CommandResult.Fail(CommandError.MedBayFull, "The Med Bay has no free bed.");
 
         s.AssignedBuildingId = null;
+        ConstructionSystem.Release(sim.State, s.Id);
         s.PatientAtBuildingId = bay.Id;
         var name = sim.Data.Buildings[bay.DefId].Name;
         state.Log(new(state.Tick, ColonyEventType.Admitted, $"{s.Name} was admitted to the {name}.", s.Id, bay.Id));

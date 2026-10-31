@@ -346,7 +346,34 @@ public sealed class ColonySim
         NewScavenge.PreviewProfile(Scavenge ?? throw new InvalidOperationException("Scavenge data is not loaded."),
             new PartyMember(s, equipment, pack));
 
-    public bool IsPlotFree(int plot) => State.Buildings.All(b => b.Plot != plot);
+    public bool IsPlotFree(int plot) => State.Buildings.All(b => b.Plot != plot) && State.Construction.Sites.All(s => s.Plot != plot);
+
+    /// <summary>
+    /// Construct and Upgrade finish at once instead of placing a site (scene setup and story gifts). Not saved; leave it
+    /// off in play.
+    /// </summary>
+    public bool InstantConstruction { get; set; }
+
+    /// <summary>The construction site of a building (new, under its future id, or an upgrade), if any.</summary>
+    public ConstructionSite? Site(int buildingId) => State.Construction.Find(buildingId);
+
+    /// <summary>What a site's crew does now: rates, ETA, and why it stands still.</summary>
+    public SiteForecast SiteForecast(ConstructionSite site) => ConstructionSystem.Forecast(this, site);
+
+    /// <summary>Clock hours a level takes to build with two typical builders (the build menu's estimate).</summary>
+    public double BuildHours(BuildingDef def, int level) => ConstructionSystem.EstimateHours(this, def, level);
+
+    /// <summary>Builders a site takes at once.</summary>
+    public int MaxBuilders(ConstructionSite site) => ConstructionSystem.MaxBuilders(Data, site);
+
+    /// <summary>Runs <paramref name="setup"/> with <see cref="InstantConstruction"/> on (for scene setup and gifts).</summary>
+    public T Instantly<T>(Func<T> setup)
+    {
+        var was = InstantConstruction;
+        InstantConstruction = true;
+        try { return setup(); }
+        finally { InstantConstruction = was; }
+    }
 
     /// <summary>Unbuilt plots in ascending order.</summary>
     public IEnumerable<int> FreePlots() => Enumerable.Range(0, Data.Rules.Layout.PlotCount).Where(IsPlotFree);
@@ -360,6 +387,7 @@ public sealed class ColonySim
     {
         Colony.Power.Run(State, Data);
         ProductionSystem.Run(State, Data);
+        ConstructionSystem.Run(this);
         HarvestSystem.Run(State, Data);
         CraftingSystem.Run(State, Data, Scavenge, _rng, this);
         StudySystem.Run(State, Data, Scavenge);
@@ -396,6 +424,11 @@ public sealed class ColonySim
             Unassign c => CommandHandlers.Unassign(this, c),
             Construct c => CommandHandlers.Construct(this, c),
             Upgrade c => CommandHandlers.Upgrade(this, c),
+            AssignBuilder c => ConstructionHandlers.AssignBuilder(this, c),
+            CancelConstruction c => ConstructionHandlers.Cancel(this, c),
+            PauseConstruction c => ConstructionHandlers.Pause(this, c),
+            SetConstructionPriority c => ConstructionHandlers.SetPriority(this, c),
+            SetSiteNightShift c => ConstructionHandlers.SetNightShift(this, c),
             LaunchExpedition c => ExpeditionHandlers.Launch(this, c),
             SendScoutDrone c => WorldMap.SendDrone(this, c),
             ApplyExtractionResult c => ExpeditionHandlers.Apply(this, c),

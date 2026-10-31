@@ -531,7 +531,7 @@ public static class Campaign
                 var building = sim.Data.Buildings[e.Id];
                 var materials = building.Level(1).Cost;
                 foreach (var (res, amount) in materials) state.Stockpile.Add(res, amount);
-                lines?.Add(sim.Execute(new Construct(e.Id)).Ok ? $"a {building.Name}, built for you"
+                lines?.Add(sim.Instantly(() => sim.Execute(new Construct(e.Id))).Ok ? $"a {building.Name}, built for you"
                     : $"materials for a {building.Name} ({CommandHandlers.Describe(new(materials))})");
                 break;
             case EffectKind.Rename:

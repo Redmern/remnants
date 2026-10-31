@@ -196,6 +196,7 @@ public static class Research
         var cost = SchematicCatalog.At(rules.Cost, def.Tier);
         state.Stockpile.Spend(new Dictionary<string, double> { [sim.Data.Schematics.Rules.ResearchDataResource] = cost });
         s.AssignedBuildingId = null;
+        Colony.ConstructionSystem.Release(state, s.Id);
         var hall = state.Buildings.Where(b => b.DefId == rules.Building).MaxBy(b => b.Level)!;
         state.Schematics.Research = new ResearchOrder
         {

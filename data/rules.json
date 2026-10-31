@@ -99,6 +99,16 @@
     "litMinLevel": 2,
     "floodlightCost": { "wood": 10, "scrap": 5 }
   },
+  "construction": {
+    "enabled": true,
+    "job": "construction",
+    "workPerHour": 1.0,
+    "haulPerHour": 30,
+    "haulLead": 0.25,
+    "refundShare": 0.8,
+    "defaultMaxBuilders": 3,
+    "helperShare": 0.5
+  },
   "layout": {
     "plotColumns": 6,
     "plotRows": 4

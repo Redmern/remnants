@@ -19,6 +19,7 @@ public sealed record RulesDef
     public FamilyRules Family { get; init; } = new();
     public MoodRules Mood { get; init; } = new();
     public DayNightRules DayNight { get; init; } = new();
+    public ConstructionRules Construction { get; init; } = new();
     public LayoutRules Layout { get; init; } = new();
     public NewGameRules NewGame { get; init; } = new();
 
@@ -287,4 +288,40 @@ public sealed record NewGameRules
     public List<string> Buildings { get; init; } = new();
     public List<string> MaleNames { get; init; } = new();
     public List<string> FemaleNames { get; init; } = new();
+}
+
+/// <summary>
+/// Construction sites (see <c>Colony/Construction.cs</c>). Off (the code default, so hand-built test rules keep the old
+/// math) means Construct and Upgrade finish at once, as before sites.
+/// <code>
+/// work/hour  = workPerHour · JobOutput factors for the construction job (performance, tool, health, child, mood, perks, food)
+///              · Schedule factor (day shift, Night Shift, tired) · weather (buildOutput, else outdoorOutput)
+/// haul/hour  = haulPerHour · health · child · Schedule factor · weather   (materials reserved → delivered)
+/// a builder hauls while delivered share &lt; progress share + haulLead, else builds; work never passes the delivered share
+/// </code>
+/// </summary>
+public sealed record ConstructionRules
+{
+    public bool Enabled { get; init; }
+
+    /// <summary>The job builders do (data/jobs.json): its skill, attributes, body regions and tool bonus.</summary>
+    public string Job { get; init; } = "construction";
+
+    /// <summary>Work units an hour from a builder at performance 1 (before tools, health, mood, perks).</summary>
+    public double WorkPerHour { get; init; } = 1;
+
+    /// <summary>Material units a builder carries from the stockpile to the site in an hour.</summary>
+    public double HaulPerHour { get; init; } = 30;
+
+    /// <summary>Builders keep the delivered share this far ahead of the work share (0.25 = a quarter of the materials).</summary>
+    public double HaulLead { get; init; } = 0.25;
+
+    /// <summary>Share of the delivered materials a cancel gives back (materials not yet hauled come back in full).</summary>
+    public double RefundShare { get; init; } = 0.8;
+
+    /// <summary>Builders per site when the level does not say (<c>maxBuilders</c>).</summary>
+    public int DefaultMaxBuilders { get; init; } = 3;
+
+    /// <summary>Idle adults and children at home lend a hand at the site with the highest priority, at this share of their output.</summary>
+    public double HelperShare { get; init; } = 0.5;
 }

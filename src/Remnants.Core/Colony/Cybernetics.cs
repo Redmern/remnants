@@ -394,6 +394,7 @@ internal static class CyberneticsHandlers
         if (!state.Inventory.TryTake(item.Id)) return CommandResult.Fail(CommandError.MissingItems, $"No {item.Name} in the inventory.");
 
         s.AssignedBuildingId = null;
+        ConstructionSystem.Release(state, s.Id);
         s.PatientAtBuildingId = bay.Id;
         var op = new Surgery { Id = state.NextSurgeryId++, SurvivorId = s.Id, BuildingId = bay.Id, Part = c.Part, ItemId = item.Id, Elective = elective };
         state.Surgeries.Add(op);

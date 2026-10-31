@@ -534,6 +534,31 @@ public class RaidBattleTests
     }
 
     [Fact]
+    public void Unfinished_sites_are_frames_then_walls_at_their_share_of_hp_and_lose_work_when_hit()
+    {
+        var sim = Colony();
+        var g = DefenseGrid.Of(sim, RaidTestData.Real);
+        var early = new ConstructionSite { BuildingId = 90, DefId = "farm", Plot = 4, WorkNeeded = 10, Work = 0.5 };
+        var frame = new ConstructionSite { BuildingId = 91, DefId = "house", Plot = 5, WorkNeeded = 10, Work = 3 };
+        var walls = new ConstructionSite { BuildingId = 92, DefId = "workshop", Plot = 6, WorkNeeded = 10, Work = 8 };
+        sim.State.Construction.Sites.AddRange([early, frame, walls]);
+        var map = RaidBattle.ColonyMap(sim, RaidTestData.Real, Side.North);
+
+        char Inner(ConstructionSite s)
+        {
+            var cells = g.PlotCells(s.Plot).ToList();
+            return map.Rows[cells.Min(c => c.Y) + 1][cells.Min(c => c.X) + 1];
+        }
+        Assert.Equal('.', Inner(early));
+        Assert.Equal('=', Inner(frame));
+        Assert.Equal('#', Inner(walls));
+        Assert.DoesNotContain(map.Structures, x => x.Tag == RaidBattle.SiteTag(early));
+        var levelHp = RaidBattle.SiteLevelHp(RaidTestData.Real);
+        Assert.Equal(Math.Round(levelHp * 0.3), map.Structures.Single(x => x.Tag == RaidBattle.SiteTag(frame)).Hp);
+        Assert.Equal(Math.Round(levelHp * 0.8), map.Structures.Single(x => x.Tag == RaidBattle.SiteTag(walls)).Hp);
+    }
+
+    [Fact]
     public void A_fought_raid_spawns_its_waves_puts_guards_on_their_posts_and_feeds_the_consequences()
     {
         var sim = Colony();

@@ -76,10 +76,17 @@ namespace Remnants.Core.Serialization;
 /// Version 25 adds Story Acts 2–4: the campaign's world effects, the survivors Halcyon took, chain parties and the
 /// Network-grade parts Doc's oath has counted (<see cref="Story.CampaignState"/>), survivors' story traits and trait hooks; the
 /// run's <see cref="ScavengeSave"/> version 14. Nothing to migrate: every new field starts empty or at zero.
+/// Version <see cref="ConstructionVersion"/> (26) adds construction sites (<see cref="ColonyState.Construction"/>): Construct and
+/// Upgrade place a site that builders finish over time. Older saves had none pending (building was instant), so every
+/// building in them stays finished and they load with no sites; the Construction skill starts at 0. A save with sites
+/// loaded on data with construction off has them finished at once (see <see cref="FinishSites"/>).
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 25;
+    public const int Version = 26;
+
+    /// <summary>The save version that brought construction sites.</summary>
+    public const int ConstructionVersion = 26;
 
     /// <summary>The save version that brought food and cooking (one constant so a renumbering on merge is one edit).</summary>
     public const int FoodVersion = 17;
@@ -223,7 +230,27 @@ public static class SaveGame
         if (scavenge is not null) Validate(scavenge, colony);
         var sim = new ColonySim(data, colony, scavenge);
         if (envelope.Version < 15) MigrateSchematics(sim, oldKnown, storyGranted, storyResearchData);
+        FinishSites(sim);
         return sim;
+    }
+
+    /// <summary>
+    /// Sites whose building type or level no longer exists are dropped (their materials refunded); with construction off in
+    /// the data, every site left is finished as if built.
+    /// </summary>
+    private static void FinishSites(ColonySim sim)
+    {
+        foreach (var site in sim.State.Construction.Sites.ToList())
+        {
+            var gone = !sim.Data.Buildings.TryGetValue(site.DefId, out var def) || site.Level < 1 || site.Level > def.MaxLevel
+                       || site.IsUpgrade && sim.State.FindBuilding(site.BuildingId) is null;
+            if (gone)
+            {
+                ConstructionSystem.Refund(sim, site);
+                sim.State.Construction.Sites.Remove(site);
+            }
+            else if (!sim.Data.Rules.Construction.Enabled) ConstructionSystem.Complete(sim, site);
+        }
     }
 
     /// <summary>

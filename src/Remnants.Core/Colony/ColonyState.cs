@@ -85,6 +85,9 @@ public sealed class ColonyState
     /// <summary>Defenses, guards, raids and repairs (see <see cref="Raids.RaidSystem"/>).</summary>
     public Raids.DefenseState Defense { get; set; } = new();
 
+    /// <summary>Buildings being built or upgraded (see <see cref="ConstructionSystem"/>).</summary>
+    public ConstructionState Construction { get; set; } = new();
+
     /// <summary>Everyone who died, oldest first. Never trimmed.</summary>
     public List<MemorialEntry> Memorial { get; set; } = new();
     public List<ColonyEvent> Events { get; set; } = new();

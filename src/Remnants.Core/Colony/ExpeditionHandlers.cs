@@ -81,6 +81,7 @@ internal static class ExpeditionHandlers
         {
             var s = state.FindSurvivor(m.SurvivorId)!;
             s.AssignedBuildingId = null;
+            ConstructionSystem.Release(state, s.Id);
             s.Away = true;
         }
 

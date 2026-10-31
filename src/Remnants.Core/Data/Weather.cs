@@ -77,6 +77,9 @@ public sealed record ColonyWeatherEffects
     /// <summary>Output of workers at outdoor buildings (rain slows them, a storm more).</summary>
     public double OutdoorOutput { get; init; } = 1;
 
+    /// <summary>Builders' output at construction sites (null: <see cref="OutdoorOutput"/>; a dust storm halts building).</summary>
+    public double? BuildOutput { get; init; }
+
     /// <summary>Crop yield multiplier (rain waters the fields, dust buries them); applied through <c>Crops.Modifiers</c>.</summary>
     public double CropOutput { get; init; } = 1;
 

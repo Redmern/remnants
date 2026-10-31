@@ -22,6 +22,7 @@ public enum ColonyEventType
     GearModded,
     RaidWarned, RaidRepelled, RaidBreached, DefenseBuilt, DefenseDestroyed, DefenseUnpaid, BuildingWrecked, GuardPosted,
     ExpeditionRecalled, RaidAtTheFence,
+    SiteStarted, SiteCancelled,
 }
 
 /// <summary>Something notable the UI can show in a log. Purely informational.</summary>

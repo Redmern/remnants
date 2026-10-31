@@ -12,5 +12,6 @@
   {"id": "guard", "name": "Guard", "skill": "Firearms", "skillWeight": 1.0, "attributes": {"Perception": 0.7, "Endurance": 0.3}, "bodyParts": {"Head": 0.4, "Arms": 0.3, "Legs": 0.3}, "trains": {"Melee": 0.3}},
   {"id": "hunting", "name": "Hunting", "skill": "Firearms", "skillWeight": 0.6, "trains": {"Farming": 0.3}, "attributes": {"Perception": 0.5, "Agility": 0.3, "Endurance": 0.2}, "bodyParts": {"Legs": 0.5, "Arms": 0.3, "Head": 0.2}, "toolBonus": 0.5},
   {"id": "mechanics", "name": "Mechanics", "skill": "Mechanics", "skillWeight": 1.0, "attributes": {"Strength": 0.4, "Intellect": 0.3, "Agility": 0.3}, "bodyParts": {"Arms": 0.7, "Head": 0.3}, "toolBonus": 0.5},
+  {"id": "construction", "name": "Construction", "childrenAllowed": true, "skill": "Construction", "skillWeight": 1.0, "attributes": {"Strength": 0.4, "Endurance": 0.3, "Intellect": 0.15, "Creativity": 0.15}, "bodyParts": {"Arms": 0.5, "Legs": 0.3, "Torso": 0.2}, "toolBonus": 0.4},
   {"id": "distilling", "name": "Distilling", "childrenAllowed": true, "skill": "Cooking", "skillWeight": 1.0, "attributes": {"Intellect": 0.5, "Perception": 0.5}, "bodyParts": {"Arms": 0.5, "Head": 0.5}, "toolBonus": 0.2}
 ]

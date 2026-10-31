@@ -31,6 +31,7 @@ internal static class CommandHandlers
 
         survivor.AssignedBuildingId = building.Id;
         Raids.Guards.Release(sim.State, survivor.Id);
+        ConstructionSystem.Release(sim.State, survivor.Id);
         return CommandResult.Success($"{survivor.Name} now works at {def.Name}.", building.Id);
     }
 
@@ -38,6 +39,11 @@ internal static class CommandHandlers
     {
         var survivor = sim.State.FindSurvivor(c.SurvivorId);
         if (survivor is null) return CommandResult.Fail(CommandError.UnknownSurvivor, $"No survivor {c.SurvivorId}.");
+        if (survivor.AssignedBuildingId is null && sim.State.Construction.Sites.Any(s => s.Builders.Contains(survivor.Id)))
+        {
+            ConstructionSystem.Release(sim.State, survivor.Id);
+            return CommandResult.Success($"{survivor.Name} stopped building and is now idle.");
+        }
         if (survivor.AssignedBuildingId is null)
             return CommandResult.Fail(CommandError.NotAssigned, $"{survivor.Name} has no job.");
         survivor.AssignedBuildingId = null;
@@ -48,7 +54,7 @@ internal static class CommandHandlers
     {
         if (!sim.Data.Buildings.TryGetValue(c.BuildingDefId, out var def))
             return CommandResult.Fail(CommandError.UnknownBuildingType, $"No building type '{c.BuildingDefId}'.");
-        if (def.Unique && sim.State.Buildings.Any(b => b.DefId == def.Id))
+        if (def.Unique && (sim.State.Buildings.Any(b => b.DefId == def.Id) || sim.State.Construction.Sites.Any(s => s.DefId == def.Id)))
             return CommandResult.Fail(CommandError.AlreadyExists, $"Only one {def.Name} allowed.");
         if (!IsTownHall(sim, def) && sim.TownHallLevel < 1)
             return CommandResult.Fail(CommandError.NoTownHall, "Build a Town Hall first.");
@@ -75,11 +81,10 @@ internal static class CommandHandlers
             return CommandResult.Fail(CommandError.CannotAfford, $"Cannot afford {def.Name}: {Describe(sim.State.Stockpile.Shortfall(cost))}.");
 
         sim.State.Stockpile.Spend(cost);
-        var building = new Building { Id = sim.State.NextBuildingId++, DefId = def.Id, Level = 1, Plot = plot };
-        sim.State.Buildings.Add(building);
-        Harvesting.Planted(sim.State, sim.Data, building);
-        sim.State.Log(new(sim.State.Tick, ColonyEventType.Constructed, $"Built {def.Name}.", BuildingId: building.Id));
-        return CommandResult.Success($"Built {def.Name}.", building.Id);
+        var id = sim.State.NextBuildingId++;
+        return ConstructionSystem.Place(sim, def, 1, id, plot) is null
+            ? CommandResult.Success($"Built {def.Name}.", id)
+            : CommandResult.Success($"Started building {def.Name}: assign builders to the site.", id);
     }
 
     public static CommandResult Upgrade(ColonySim sim, Upgrade c)
@@ -88,6 +93,8 @@ internal static class CommandHandlers
         if (building is null) return CommandResult.Fail(CommandError.UnknownBuilding, $"No building {c.BuildingId}.");
         var def = sim.Data.Buildings[building.DefId];
         var next = building.Level + 1;
+        if (sim.State.Construction.Find(building.Id) is { } running)
+            return CommandResult.Fail(CommandError.UnderConstruction, $"{def.Name} is already being upgraded to level {running.Level}.");
         if (next > def.MaxLevel)
             return CommandResult.Fail(CommandError.MaxLevel, $"{def.Name} is already at max level {def.MaxLevel}.");
         if (next > sim.MaxUpgradeLevel(def))
@@ -101,9 +108,9 @@ internal static class CommandHandlers
             return CommandResult.Fail(CommandError.CannotAfford, $"Cannot afford {def.Name} level {next}: {Describe(sim.State.Stockpile.Shortfall(cost))}.");
 
         sim.State.Stockpile.Spend(cost);
-        building.Level = next;
-        sim.State.Log(new(sim.State.Tick, ColonyEventType.Upgraded, $"{def.Name} reached level {next}.", BuildingId: building.Id));
-        return CommandResult.Success($"{def.Name} reached level {next}.", building.Id);
+        return ConstructionSystem.Place(sim, def, next, building.Id, building.Plot) is null
+            ? CommandResult.Success($"{def.Name} reached level {next}.", building.Id)
+            : CommandResult.Success($"Started upgrading {def.Name} to level {next}; it keeps working meanwhile.", building.Id);
     }
 
     private static string SchematicName(ColonySim sim, string buildingId, int level) =>

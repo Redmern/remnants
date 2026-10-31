@@ -33,6 +33,18 @@ public static class RaidBattle
 
     private const string Pool = "bcdfghjkmnoqrtuvwxyzABCDFGHIJKLMNOQRUVWXYZ0123456789!$&*+-:;<>?@^_|";
 
+    /// <summary>A new building's site shows on the battle map from this share of its work (a frame: low cover)...</summary>
+    public const double SiteFrameFrom = 0.15;
+
+    /// <summary>...and stands as walls from this share.</summary>
+    public const double SiteWallsFrom = 0.6;
+
+    /// <summary>The tag of a construction site's structure in a battle map.</summary>
+    public static string SiteTag(ConstructionSite site) => $"s{site.BuildingId}";
+
+    /// <summary>A finished level-1 building's HP, which a site has its progress share of.</summary>
+    public static double SiteLevelHp(RaidData raids) => raids.Def.Consequences.BuildingHp[0];
+
     /// <summary>The tag of a building's structure in a battle map.</summary>
     public static string TagOf(ColonySim sim, Building b) =>
         b.DefId == sim.Data.Rules.TownHallBuildingId ? HallTag : b.DefId == "radio_mast" ? MastTag : $"b{b.Id}";
@@ -89,6 +101,22 @@ public static class RaidBattle
             rows[door.Y][door.X] = Name(tag);
             var hp = RaidSystem.BuildingHp(raids, b) - RaidSystem.Damage(sim.State, b);
             structures.Add(new MapStructureDef(sim.Data.Buildings[b.DefId].Name, tag, Math.Max(1, Math.Round(hp)), tag));
+        }
+
+        // New buildings still on the scaffold: a frame that gives low cover, walls once it is mostly up, at its share of HP.
+        foreach (var site in sim.State.Construction.Sites.Where(s => !s.IsUpgrade).OrderBy(s => s.BuildingId))
+        {
+            if (site.Progress < SiteFrameFrom) continue;
+            var cells = grid.PlotCells(site.Plot).ToList();
+            int x0 = cells.Min(c => c.X), y0 = cells.Min(c => c.Y);
+            var cell = site.Progress >= SiteWallsFrom ? '#' : '=';
+            for (var y = y0 + 1; y < y0 + grid.CellsPerPlot; y++)
+                for (var x = x0 + 1; x < x0 + grid.CellsPerPlot; x++)
+                    rows[y][x] = cell;
+            var tag = SiteTag(site);
+            rows[y0 + grid.CellsPerPlot - 1][x0 + grid.CellsPerPlot / 2] = Name(tag);
+            var hp = ConstructionSystem.SiteHp(site, SiteLevelHp(raids));
+            structures.Add(new MapStructureDef($"{sim.Data.Buildings[site.DefId].Name} (site)", tag, Math.Max(1, Math.Round(hp)), tag));
         }
 
         foreach (var d in sim.State.Defense.Defenses.OrderBy(d => d.Id))
@@ -310,6 +338,14 @@ public static class RaidBattle
             if (lost <= 0) continue;
             state.Defense.BuildingDamage[b.Id] = Math.Min(RaidSystem.BuildingHp(raids, b), RaidSystem.Damage(state, b) + lost);
             if (RaidSystem.IsRubble(sim, b)) RaidSystem.Wreck(sim, b);
+        }
+
+        // Sites lose work for the HP their frames took.
+        foreach (var site in state.Construction.Sites.Where(s => !s.IsUpgrade).ToList())
+        {
+            if (battle.Units.FirstOrDefault(u => u.Tag == SiteTag(site) && u.Kind == UnitKind.Npc) is not { } unit) continue;
+            var lost = unit.Status == UnitStatus.Dead ? unit.MaxHp : Math.Max(0, unit.MaxHp - Math.Max(0, unit.Hp));
+            if (lost > 0) ConstructionSystem.Hit(site, SiteLevelHp(raids), lost);
         }
 
         var enemies = battle.Units.Where(u => u.Kind == UnitKind.Enemy && u.Tag == "raider").ToList();

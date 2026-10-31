@@ -30,7 +30,11 @@ public static class Advice
         if (home.FirstOrDefault(s => s.HomelessTicks > 0) is { } homeless)
             return new("homeless", $"{homeless.Name} has no bed and will leave in a few days: upgrade the {Name("shelter")} or build more housing.");
 
+        if (state.Construction.Sites.FirstOrDefault(c => !c.Paused && c.Builders.Count == 0 && c.Helpers.Count == 0) is { } bare)
+            return new("builders", $"Nobody is building the {Name(bare.DefId)}: select its site and assign builders (idle people help at Normal or High priority).");
+
         var idle = home.Where(s => !s.IsInfant && s.AssignedBuildingId is null && s.PatientAtBuildingId is null
+                                   && state.Construction.SiteOf(s.Id) is null
                                    && state.Buildings.Any(b => CanWork(sim, s, b))).ToList();
         if (idle.Count > 0)
             return new("idle", $"{string.Join(", ", idle.Select(s => s.Name))} {(idle.Count == 1 ? "is" : "are")} idle: select a building and assign workers.");

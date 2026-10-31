@@ -281,7 +281,9 @@ internal static class StudyHandlers
         var mentor = c.MentorId is { } m ? state.FindSurvivor(m) : null;
         if (c.ManualItemId is { } manual) state.Inventory.TryTake(manual);
         student.AssignedBuildingId = null;
+        ConstructionSystem.Release(state, student.Id);
         if (mentor is not null) mentor.AssignedBuildingId = null;
+        if (mentor is not null) ConstructionSystem.Release(state, mentor.Id);
         var order = new StudyOrder
         {
             Id = state.NextStudyId++, BuildingId = c.BuildingId, StudentId = c.StudentId, MentorId = c.MentorId,

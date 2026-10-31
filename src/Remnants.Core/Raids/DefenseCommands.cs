@@ -212,6 +212,7 @@ public static class DefenseHandlers
         if (state.Defense.Guards.GetValueOrDefault(s.Id) == post.Id) return CommandResult.Success($"{s.Name} already guards here.", post.Id);
         if (FreeGuardSlots(sim, raids, post) <= 0) return CommandResult.Fail(CommandError.NoFreeSlot, "No room for another guard there.");
         s.AssignedBuildingId = null;
+        ConstructionSystem.Release(state, s.Id);
         state.Defense.Guards[s.Id] = post.Id;
         var name = raids.Defense(post.DefId).Name;
         state.Log(new(state.Tick, ColonyEventType.GuardPosted, $"{s.Name} stands guard at the {name}.", s.Id));

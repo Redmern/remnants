@@ -204,9 +204,27 @@ public static class Consequences
             var targets = state.Buildings
                 .OrderBy(b => grid.DistanceToEdge(grid.PlotCenter(b.Plot).X, grid.PlotCenter(b.Plot).Y, raid.Approach)).ThenBy(b => b.Id)
                 .Where(b => !RaidSystem.IsRubble(sim, b)).Take(3).ToList();
-            while (damage > 0.5 && targets.Count > 0)
+            // New buildings' sites near the approach are in reach too: a hit knocks their work back (the materials stay).
+            var sites = state.Construction.Sites.Where(s => !s.IsUpgrade && s.Work > 1e-9)
+                .OrderBy(s => grid.DistanceToEdge(grid.PlotCenter(s.Plot).X, grid.PlotCenter(s.Plot).Y, raid.Approach)).ThenBy(s => s.BuildingId)
+                .Take(2).ToList();
+            var levelHp = RaidBattle.SiteLevelHp(raids);
+            while (damage > 0.5 && targets.Count + sites.Count > 0)
             {
-                var b = targets[rng.Next(0, targets.Count)];
+                var pick = rng.Next(0, targets.Count + sites.Count);
+                if (pick >= targets.Count)
+                {
+                    var site = sites[pick - targets.Count];
+                    var knocked = ConstructionSystem.Hit(site, levelHp, Math.Max(1, damage / 2));
+                    damage -= Math.Max(knocked, 0.5);
+                    var siteName = $"{sim.Data.Buildings[site.DefId].Name} (site)";
+                    var flat = site.Work <= 1e-9;
+                    if (damaged.FindIndex(x => x.Name == siteName) is var j and >= 0) damaged[j] = damaged[j] with { Damage = damaged[j].Damage + Math.Round(knocked), Destroyed = flat };
+                    else damaged.Add(new(siteName, Math.Round(knocked), flat));
+                    if (flat) sites.Remove(site);
+                    continue;
+                }
+                var b = targets[pick];
                 var hp = RaidSystem.BuildingHp(raids, b) - state.Defense.BuildingDamage.GetValueOrDefault(b.Id);
                 var hit = Math.Min(hp, Math.Max(1, damage / 2));
                 state.Defense.BuildingDamage[b.Id] = state.Defense.BuildingDamage.GetValueOrDefault(b.Id) + hit;
@@ -220,6 +238,9 @@ public static class Consequences
                     targets.Remove(b);
                     RaidSystem.Wreck(sim, b);
                 }
+                // An upgrade under way loses work too: the scaffold comes down with the walls.
+                if (state.Construction.Find(b.Id) is { } upgrade)
+                    upgrade.Work = Math.Max(0, upgrade.Work - hit / RaidSystem.BuildingHp(raids, b) * upgrade.WorkNeeded);
             }
         }
 

@@ -105,6 +105,17 @@
         "Strength": 0.4,
         "Intellect": 0.6
       }
+    },
+    {
+      "skill": "Construction",
+      "name": "Construction",
+      "attributes": {
+        "Strength": 0.4,
+        "Endurance": 0.3,
+        "Intellect": 0.15,
+        "Creativity": 0.15
+      },
+      "description": "Raising and upgrading buildings: hauling materials and putting up the frame. Grows on construction sites."
     }
   ],
   "xp": {
@@ -665,7 +676,7 @@
       "name": "Engineer",
       "discipline": "survival",
       "tier": 1,
-      "description": "Builds traps from less and patches walls fast.",
+      "description": "Builds traps from less, patches walls fast and builds better on construction sites.",
       "requires": {
         "skills": {
           "Crafting": 15
@@ -680,7 +691,8 @@
           "repair_speed_bonus": 0.3
         },
         "jobOutput": {
-          "crafting": 0.05
+          "crafting": 0.05,
+          "construction": 0.15
         }
       }
     },
@@ -861,7 +873,7 @@
       "name": "Pack Mule",
       "discipline": "survival",
       "tier": 2,
-      "description": "Carries more, in the field and at the woodpile.",
+      "description": "Carries more, in the field, at the woodpile and on building sites.",
       "requires": {
         "attributes": {
           "Strength": 45,
@@ -875,7 +887,8 @@
         },
         "jobOutput": {
           "woodcutting": 0.05,
-          "mining": 0.05
+          "mining": 0.05,
+          "construction": 0.1
         }
       }
     },

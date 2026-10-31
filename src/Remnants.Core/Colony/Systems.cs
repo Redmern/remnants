@@ -121,6 +121,7 @@ internal static class HousingSystem
     {
         state.Survivors.Remove(s);
         s.AssignedBuildingId = null;
+        ConstructionSystem.Release(state, s.Id);
         s.PatientAtBuildingId = null;
         state.Log(new(state.Tick, ColonyEventType.Left, message, s.Id));
         Bonds.OnGone(state, data, s, died: false);
