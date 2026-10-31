@@ -10,6 +10,7 @@ public partial class StatBar : HBoxContainer
 {
     private readonly Bar _bar = new();
     private readonly Label _value = Widgets.Label("", "Number");
+    private string? _text;
     private readonly TextureRect? _icon;
 
     public StatBar() : this(null) { }
@@ -39,6 +40,8 @@ public partial class StatBar : HBoxContainer
     {
         var f = Mathf.Clamp((float)fraction, 0, 1);
         _bar.SetTarget(f, color ?? Palette.Gauge(f));
+        if (text == _text) return;
+        _text = text;
         _value.Text = text;
     }
 
@@ -50,6 +53,7 @@ public partial class StatBar : HBoxContainer
 
         public void SetTarget(float fraction, Color color)
         {
+            if (_shown >= 0 && fraction == _target && color == _color) return;
             _target = fraction;
             _color = color;
             if (_shown < 0) _shown = fraction;

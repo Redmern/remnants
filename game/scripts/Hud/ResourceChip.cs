@@ -11,6 +11,7 @@ public partial class ResourceChip : PanelContainer
     private readonly Label _amount = Widgets.Label("", "Number");
     private readonly Label _delta = Widgets.Label("", "Number");
     private double _last = double.NaN;
+    private readonly Unchanged _set = new();
 
     public ResourceChip() : this("wood") { }
 
@@ -32,15 +33,16 @@ public partial class ResourceChip : PanelContainer
     /// <summary>Shows <paramref name="amount"/> and, when known, the change per day.</summary>
     public void Set(double amount, double? perDay, string tooltip)
     {
-        _amount.Text = Fmt.Amount(amount);
-        if (!double.IsNaN(_last) && Fmt.Amount(_last) != _amount.Text) Motion.Flash(_amount, amount > _last ? Palette.Good : Palette.Danger);
+        var text = Fmt.Amount(amount);
+        _set.Text(_amount, text);
+        if (!double.IsNaN(_last) && Fmt.Amount(_last) != text) Motion.Flash(_amount, amount > _last ? Palette.Good : Palette.Danger);
         _last = amount;
-        _delta.Visible = perDay is { } d && System.Math.Abs(d) >= 0.05;
+        _set.Visible(_delta, perDay is { } d && System.Math.Abs(d) >= 0.05);
         if (perDay is { } day)
         {
-            _delta.Text = Fmt.Delta(day);
-            _delta.AddThemeColorOverride("font_color", day > 0 ? Palette.Good : Palette.Danger);
+            _set.Text(_delta, Fmt.Delta(day));
+            _set.FontColor(_delta, day > 0 ? Palette.Good : Palette.Danger);
         }
-        TooltipText = tooltip;
+        _set.Tooltip(this, tooltip);
     }
 }

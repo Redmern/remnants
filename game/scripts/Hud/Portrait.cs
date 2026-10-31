@@ -25,14 +25,15 @@ public partial class Portrait : Control
 
     public void Set(Texture2D texture, Color backdrop)
     {
+        if (texture == _texture && backdrop == _backdrop) return;
         _texture = texture;
         _backdrop = backdrop;
         QueueRedraw();
     }
 
-    public bool Selected { get => _selected; set { _selected = value; QueueRedraw(); } }
-    public bool Alert { get => _alert; set { _alert = value; QueueRedraw(); } }
-    public bool Dim { get => _dim; set { _dim = value; QueueRedraw(); } }
+    public bool Selected { get => _selected; set { if (_selected == value) return; _selected = value; QueueRedraw(); } }
+    public bool Alert { get => _alert; set { if (_alert == value) return; _alert = value; QueueRedraw(); } }
+    public bool Dim { get => _dim; set { if (_dim == value) return; _dim = value; QueueRedraw(); } }
 
     public override void _Draw()
     {

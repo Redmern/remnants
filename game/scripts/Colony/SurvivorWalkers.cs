@@ -442,12 +442,21 @@ public partial class SurvivorWalkers : Node3D
     /// <summary>Figures closer than <see cref="Personal"/> drift apart (paused ones too, so groups spread into rings).</summary>
     private void Separate(float dt)
     {
-        var list = _walkers.Values.Where(w => !w.Inside).ToList();
-        foreach (var w in list) w.Push = Vector3.Zero;
+        _outside.Clear();
+        foreach (var w in _walkers.Values)
+            if (!w.Inside) _outside.Add(w);
+        var list = _outside;
+        // Positions read once: each Node.Position is an engine call, and the pair loop would make n² of them.
+        if (_positions.Length < list.Count) _positions = new Vector3[list.Count * 2];
+        for (var i = 0; i < list.Count; i++)
+        {
+            list[i].Push = Vector3.Zero;
+            _positions[i] = list[i].Node.Position;
+        }
         for (var i = 0; i < list.Count; i++)
         for (var j = i + 1; j < list.Count; j++)
         {
-            var d = list[j].Node.Position - list[i].Node.Position;
+            var d = _positions[j] - _positions[i];
             d.Y = 0;
             var dist = d.Length();
             if (dist >= Personal) continue;
@@ -456,8 +465,12 @@ public partial class SurvivorWalkers : Node3D
             list[i].Push -= push;
             list[j].Push += push;
         }
-        foreach (var w in list) w.Node.Position += w.Push.LimitLength(Mathf.Min(1f, 2f * dt));
+        for (var i = 0; i < list.Count; i++)
+            if (list[i].Push != Vector3.Zero) list[i].Node.Position = _positions[i] + list[i].Push.LimitLength(Mathf.Min(1f, 2f * dt));
     }
+
+    private readonly List<Walker> _outside = new();
+    private Vector3[] _positions = new Vector3[32];
 
     /// <summary>Seated: the sit clip; rigless figures get legs out in front, hips on the ground (prosthetic legs too).</summary>
     private static void Sit(Walker w)

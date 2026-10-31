@@ -39,6 +39,7 @@ public partial class DefenseView : Node3D
     private Camera3D _camera = null!;
     private DayNightLighting? _lighting;
     private Node3D? _dressing;
+    private HashSet<(int, int)>? _fenceCells;
     private MeshInstance3D _grid = null!;
     private MeshInstance3D _cover = null!;
     private MeshInstance3D _marks = null!;
@@ -250,6 +251,9 @@ public partial class DefenseView : Node3D
     {
         if (_dressing is null || Grid is not { } g) return;
         var cells = sim.State.Defense.Defenses.Select(d => (d.X, d.Y)).ToHashSet();
+        // Every tick syncs; walk the dressing only when the defenses' cells changed.
+        if (_fenceCells is not null && _fenceCells.SetEquals(cells)) return;
+        _fenceCells = cells;
         var cs = CellSize;
         foreach (var child in _dressing.GetChildren())
         {

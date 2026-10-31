@@ -350,16 +350,18 @@ public partial class TopBar : PanelContainer
             days < 3 ? "stat_starving" : "res_food");
     }
 
-    private static void SetChip(PanelContainer chip, string text, Color color, string tooltip, string? icon = null)
+    private readonly Unchanged _set = new();
+
+    private void SetChip(PanelContainer chip, string text, Color color, string tooltip, string? icon = null)
     {
         var row = chip.GetChild(0);
         var label = row.GetChild<Label>(1);
-        label.Text = text;
-        label.AddThemeColorOverride("font_color", color);
+        _set.Text(label, text);
+        _set.FontColor(label, color);
         var rect = row.GetChild<TextureRect>(0);
-        if (icon is not null) rect.Texture = Icons.Get(icon, 16);
-        rect.Modulate = color == Palette.Text ? Palette.TextMuted : color;
-        chip.TooltipText = tooltip;
+        if (icon is not null) _set.Texture(rect, Icons.Get(icon, 16));
+        _set.Modulate(rect, color == Palette.Text ? Palette.TextMuted : color);
+        _set.Tooltip(chip, tooltip);
     }
 
     /// <summary>"Wood 114 — last day +12. Made by Woodcutter L1: 2 workers, about 14/day."</summary>

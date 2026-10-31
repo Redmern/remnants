@@ -29,6 +29,7 @@ public partial class SurvivorCard : PanelContainer
     private string _badgeSignature = "-";
     private Label? _homeless;
     private bool _selected;
+    private readonly Unchanged _set = new();
 
     public int SurvivorId { get; }
 
@@ -73,6 +74,7 @@ public partial class SurvivorCard : PanelContainer
         _xp.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         _text.AddChild(_xp);
 
+        Restyle();
         MouseEntered += () => { _hover = true; Restyle(); };
         MouseExited += () => { _hover = false; Restyle(); };
         GuiInput += e =>
@@ -94,6 +96,7 @@ public partial class SurvivorCard : PanelContainer
     {
         set
         {
+            if (value == _selected) return;
             _selected = value;
             _portrait.Selected = value;
             Restyle();
@@ -109,21 +112,22 @@ public partial class SurvivorCard : PanelContainer
         _portrait.Set(PortraitStudio.For(GetTree(), s), PortraitStudio.Backdrop(s.Id));
         _portrait.Dim = s.Away;
         _portrait.Alert = s.StarvingTicks > 0 || sim.IsWorsening(s) || !s.HasBed;
-        _name.Text = s.Name + (s.PartnerId is not null ? " ♥" : "");
-        _stage.Text = s.IsChild ? $"{s.LifeStage.ToString().ToLowerInvariant()} {ColonyText.AgeYears(s, rules)}y" : $"{ColonyText.AgeYears(s, rules)}y";
-        _job.Text = ColonyText.Job(sim, s);
-        _jobIcon.Texture = JobIcon(sim, s);
+        _set.Text(_name, s.Name + (s.PartnerId is not null ? " ♥" : ""));
+        _set.Text(_stage, s.IsChild ? $"{s.LifeStage.ToString().ToLowerInvariant()} {ColonyText.AgeYears(s, rules)}y" : $"{ColonyText.AgeYears(s, rules)}y");
+        var job = ColonyText.Job(sim, s);
+        _set.Text(_job, job);
+        _set.Texture(_jobIcon, JobIcon(sim, s));
         _health.Set(s.Health / Survivor.MaxHealth, $"{s.Health:0}");
         _mood.Set(s.Mood / Survivor.MaxMood, $"{s.Mood:0}");
-        _health.TooltipText = $"Health {s.Health:0}/{Survivor.MaxHealth:0}";
-        _mood.TooltipText = $"Mood {s.Mood:0}/{Survivor.MaxMood:0}: {ColonyText.Mood(s)}";
+        _set.Tooltip(_health, $"Health {s.Health:0}/{Survivor.MaxHealth:0}");
+        _set.Tooltip(_mood, $"Mood {s.Mood:0}/{Survivor.MaxMood:0}: {ColonyText.Mood(s)}");
         var xp = sim.Data.Progression.Xp;
-        _xp.Visible = !s.IsInfant;
+        _set.Visible(_xp, !s.IsInfant);
         _xp.Set(Progression.LevelProgress(s, xp), $"L{s.Level}", Palette.Amber);
-        _xp.TooltipText = s.Level >= xp.MaxLevel ? $"Level {s.Level} (max)"
-            : $"Level {s.Level}: {Fmt.Amount(s.Xp)}/{Fmt.Amount(Progression.XpForLevel(s.Level + 1, xp))} XP to the next";
+        _set.Tooltip(_xp, s.Level >= xp.MaxLevel ? $"Level {s.Level} (max)"
+            : $"Level {s.Level}: {Fmt.Amount(s.Xp)}/{Fmt.Amount(Progression.XpForLevel(s.Level + 1, xp))} XP to the next");
         RefreshBadges(sim, s);
-        TooltipText = $"{s.Name}, {s.LifeStage.ToString().ToLowerInvariant()} · {ColonyText.Job(sim, s)}\nClick for details.";
+        _set.Tooltip(this, $"{s.Name}, {s.LifeStage.ToString().ToLowerInvariant()} · {job}\nClick for details.");
     }
 
     private void RefreshBadges(ColonySim sim, Survivor s)
