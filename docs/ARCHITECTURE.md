@@ -1691,6 +1691,8 @@ by default, so hand-built test rules and `TestData.Real` keep instant building).
   with its building's damage. On the battle map (`RaidBattle.ColonyMap`) a site from 15% stands as a frame (`=`, low
   cover) and from 60% as walls (`#`), with a structure (`s{id}`) at its HP; what it loses comes off its work.
 - **Bonds**: builders at one site share a workplace for affinity (as co-workers do).
+- **Repairs**: raid repairs are worked by idle adults; builders and helpers on a site are not idle, so a site at Normal or
+  High priority with open places draws idle hands away from the repair queue (set it to Low to keep them repairing).
 - **Setup without sites**: `ColonySim.InstantConstruction` (not saved) or `sim.Instantly(() => …)` finishes Construct and
   Upgrade at once — story gifts (`EffectKind.Building`), debug scenes, the menu backdrop and the audio self-test use it.
 - **Save** version 26 adds `ColonyState.Construction`. Older saves had nothing pending (building was instant): every

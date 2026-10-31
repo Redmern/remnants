@@ -39,11 +39,22 @@ public sealed class ConstructionSite
     public double Work { get; set; }
     public double WorkNeeded { get; set; }
 
-    /// <summary>Everything the level costs, taken from the stockpile when the site was placed.</summary>
-    public SortedDictionary<string, double> Materials { get; set; } = new(StringComparer.Ordinal);
+    private SortedDictionary<string, double> _materials = new(StringComparer.Ordinal);
+    private SortedDictionary<string, double> _delivered = new(StringComparer.Ordinal);
+
+    /// <summary>Everything the level costs, taken from the stockpile when the site was placed (ordinal order, also after a load).</summary>
+    public SortedDictionary<string, double> Materials
+    {
+        get => _materials;
+        set => _materials = new(value, StringComparer.Ordinal);
+    }
 
     /// <summary>The part of <see cref="Materials"/> hauled to the site so far.</summary>
-    public SortedDictionary<string, double> Delivered { get; set; } = new(StringComparer.Ordinal);
+    public SortedDictionary<string, double> Delivered
+    {
+        get => _delivered;
+        set => _delivered = new(value, StringComparer.Ordinal);
+    }
 
     /// <summary>Survivors assigned to build here (in assignment order).</summary>
     public List<int> Builders { get; set; } = new();
@@ -131,13 +142,16 @@ public static class ConstructionSystem
         var rules = sim.Data.Rules.Construction;
         var total = site.MaterialsTotal;
         var delivered = site.DeliveredTotal;
-        var cap = site.WorkNeeded * site.DeliveredShare;
-        var behind = delivered < total - 1e-9 && (site.DeliveredShare < site.Progress + rules.HaulLead || site.Work >= cap - 1e-9);
-        if (behind)
+        if (Hauling(site, rules))
             Deliver(site, Math.Min(total - delivered, HaulRate(sim, s) * f));
         else if (site.Work < site.WorkNeeded)
-            site.Work = Math.Min(cap, site.Work + WorkRate(sim, s) * f);
+            site.Work = Math.Min(site.WorkNeeded * site.DeliveredShare, site.Work + WorkRate(sim, s) * f);
     }
+
+    /// <summary>The crew hauls now: materials are still to come and trail the work by less than <c>haulLead</c> (or work has caught up).</summary>
+    public static bool Hauling(ConstructionSite site, ConstructionRules rules) =>
+        site.DeliveredTotal < site.MaterialsTotal - 1e-9
+        && (site.DeliveredShare < site.Progress + rules.HaulLead || site.Work >= site.WorkNeeded * site.DeliveredShare - 1e-9);
 
     /// <summary>Hauls <paramref name="amount"/> units, each material in proportion to what is still to come.</summary>
     private static void Deliver(ConstructionSite site, double amount)

@@ -337,6 +337,9 @@ public static class RaidBattle
             if (unit.Status == UnitStatus.Dead) lost = RaidSystem.BuildingHp(raids, b);
             if (lost <= 0) continue;
             state.Defense.BuildingDamage[b.Id] = Math.Min(RaidSystem.BuildingHp(raids, b), RaidSystem.Damage(state, b) + lost);
+            // An upgrade under way loses work with its building's damage (as in an auto-resolved raid).
+            if (state.Construction.Find(b.Id) is { } upgrade && RaidSystem.BuildingHp(raids, b) > 0)
+                upgrade.Work = Math.Max(0, upgrade.Work - lost / RaidSystem.BuildingHp(raids, b) * upgrade.WorkNeeded);
             if (RaidSystem.IsRubble(sim, b)) RaidSystem.Wreck(sim, b);
         }
 

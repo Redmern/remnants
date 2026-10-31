@@ -107,6 +107,7 @@ public partial class TownView : Node3D
     {
         foreach (var entry in _buildings.Values) entry.Node.QueueFree();
         _buildings.Clear();
+        _sites.Reset();
         CancelPlacing();
         Select(null);
         Sync();

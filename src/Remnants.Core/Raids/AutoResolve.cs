@@ -239,7 +239,7 @@ public static class Consequences
                     RaidSystem.Wreck(sim, b);
                 }
                 // An upgrade under way loses work too: the scaffold comes down with the walls.
-                if (state.Construction.Find(b.Id) is { } upgrade)
+                if (state.Construction.Find(b.Id) is { } upgrade && RaidSystem.BuildingHp(raids, b) > 0)
                     upgrade.Work = Math.Max(0, upgrade.Work - hit / RaidSystem.BuildingHp(raids, b) * upgrade.WorkNeeded);
             }
         }

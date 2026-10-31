@@ -235,15 +235,21 @@ public static class SaveGame
     }
 
     /// <summary>
-    /// Sites whose building type or level no longer exists are dropped (their materials refunded); with construction off in
+    /// Sites whose building type or level no longer exists, or that no longer fit (plot outside the town or taken, an upgrade
+    /// that does not follow its building's level), are dropped (their materials refunded); with construction off in
     /// the data, every site left is finished as if built.
     /// </summary>
     private static void FinishSites(ColonySim sim)
     {
         foreach (var site in sim.State.Construction.Sites.ToList())
         {
+            var standing = sim.State.FindBuilding(site.BuildingId);
             var gone = !sim.Data.Buildings.TryGetValue(site.DefId, out var def) || site.Level < 1 || site.Level > def.MaxLevel
-                       || site.IsUpgrade && sim.State.FindBuilding(site.BuildingId) is null;
+                       || site.Plot < 0 || site.Plot >= sim.Data.Rules.Layout.PlotCount
+                       || (site.IsUpgrade
+                           ? standing is null || standing.DefId != site.DefId || standing.Level != site.Level - 1
+                           : standing is not null || sim.State.Buildings.Any(b => b.Plot == site.Plot)
+                             || sim.State.Construction.Sites.Any(o => o != site && o.Plot == site.Plot && !o.IsUpgrade));
             if (gone)
             {
                 ConstructionSystem.Refund(sim, site);

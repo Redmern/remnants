@@ -135,10 +135,11 @@ public sealed class ColonyBot
             ? BuildOrder.Prepend(("armory", 1)) : BuildOrder;
         foreach (var (id, level) in order)
         {
-            // A site counts as done: its builders are on it.
+            // A site counts as done (its builders are on it); a further level of that type waits for it to finish.
             var have = State.Buildings.Where(b => b.DefId == id).Select(b => b.Level)
                 .Concat(State.Construction.Sites.Where(s => s.DefId == id).Select(s => s.Level)).DefaultIfEmpty(0).Max();
             if (have >= level) continue;
+            if (State.Construction.Sites.Any(s => s.DefId == id)) continue;
             var def = Data.Buildings[id];
             if (level == 1 && def.MinTownHallLevel > _sim.TownHallLevel) continue;
             if (level == 1 && !Remnants.Core.Schematics.Schematics.LevelUnlocked(_sim, id, 1)) continue;

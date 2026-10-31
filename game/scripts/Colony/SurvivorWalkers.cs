@@ -50,7 +50,7 @@ public partial class SurvivorWalkers : Node3D
 
         /// <summary>A builder hauling: where they fetch materials from (the stockpile at the Town Hall), and whether they carry a load now.</summary>
         public Vector3? Haul;
-        public bool Carrying;
+        public bool Carrying, ToStock;
     }
 
     private readonly Dictionary<int, Walker> _walkers = new();
@@ -176,8 +176,9 @@ public partial class SurvivorWalkers : Node3D
             w.Job = site is not null ? sim.Data.Rules.Construction.Job
                 : workplace is not null && s.PatientAtBuildingId is null ? sim.Data.Buildings.GetValueOrDefault(workplace.DefId)?.Job : null;
             var center = site is not null ? _layout.Center(site.Plot) : workplace is null ? w.Home : _layout.Center(workplace.Plot);
-            w.Haul = site is not null && site.DeliveredShare < 1 - 1e-6 && hall is not null ? Doorstep(_layout.Center(hall.Plot), s.Id * 13 + 5) : null;
-            if (w.Haul is null) w.Carrying = false;
+            w.Haul = site is not null && hall is not null && Remnants.Core.Colony.ConstructionSystem.Hauling(site, sim.Data.Rules.Construction)
+                ? Doorstep(_layout.Center(hall!.Plot), s.Id * 13 + 5) : null;
+            if (w.Haul is null) w.ToStock = false;
             if (role != w.Role || center != w.WorkCenter || w.Node.Position == Vector3.Inf)
             {
                 w.Role = role;
@@ -353,6 +354,7 @@ public partial class SurvivorWalkers : Node3D
             case Role.Worker when w.Haul is { } stock && !w.Carrying:
                 // Fetch a load from the stockpile, then carry it over (see Arrive).
                 goal = stock + Scatter(w, 0.8f);
+                w.ToStock = true;
                 break;
             case Role.Worker:
                 w.SpotsUntilBreak--;
@@ -396,16 +398,15 @@ public partial class SurvivorWalkers : Node3D
     {
         var atFire = w.FaceTo == _campfire && w.Role == Role.Idle;
         // Hauling: picked up at the stockpile (carry it over next), set down at the site (fetch the next load).
-        if (w.Role == Role.Worker && w.Haul is not null)
+        if (w.Role == Role.Worker && w.ToStock)
         {
-            w.Carrying = !w.Carrying;
-            if (w.Carrying)
-            {
-                w.Pause = w.Rng.RandfRange(0.8f, 1.6f);
-                if (w.Rig is { } r) r.Loop(r.Pick("use_item", "idle") ?? "idle");
-                return;
-            }
+            w.ToStock = false;
+            w.Carrying = true;
+            w.Pause = w.Rng.RandfRange(0.8f, 1.6f);
+            if (w.Rig is { } r) r.Loop(r.Pick("use_item", "idle") ?? "idle");
+            return;
         }
+        w.Carrying = false;
         w.Pause = w.Role switch
         {
             Role.Worker => w.FaceTo is null ? w.Rng.RandfRange(4f, 7f) : w.Rng.RandfRange(4f, 8f),

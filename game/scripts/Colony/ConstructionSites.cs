@@ -57,6 +57,13 @@ public partial class ConstructionSites : Node3D
         _standing = standing;
     }
 
+    /// <summary>Drop every site node (after a load, ids may mean different buildings).</summary>
+    public void Reset()
+    {
+        foreach (var e in _sites.Values) e.Root.QueueFree();
+        _sites.Clear();
+    }
+
     public void Sync()
     {
         var sim = _session.Sim;
