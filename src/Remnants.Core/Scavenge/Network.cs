@@ -69,6 +69,7 @@ public static class Network
     /// </summary>
     public static List<Unit> Known(ScavengeSim sim, NetworkGroup group)
     {
+        using var memo = ProfileDeriver.Memo(sim.Data);
         var members = group.Units.Where(u => u.IsActive).ToList();
         return sim.State.Units
             .Where(t => t.IsActive && members.Any(m => m.HostileTo(t)

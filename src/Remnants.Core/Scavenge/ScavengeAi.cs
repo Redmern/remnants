@@ -198,12 +198,18 @@ internal static class ScavengeAi
             return shot + cover * rules.CoverWeight + ap * rules.ApWeight + (hidden ? data.Rules.Fog.Ai.HiddenWeight : 0);
         }
 
-        var stay = Score(unit.Pos, 0);
-        var best = sim.Reachable(unit)
-            .Where(kv => kv.Value <= unit.Ap)
-            .Select(kv => (Pos: kv.Key, Ap: kv.Value, Score: Score(kv.Key, kv.Value)))
-            .OrderByDescending(o => o.Score).ThenBy(o => o.Ap).ThenBy(o => map.Index(o.Pos))
-            .FirstOrDefault();
+        double stay;
+        (Pos Pos, int Ap, double Score) best;
+        // Scoring only looks: every profile stays the same until the move.
+        using (ProfileDeriver.Memo(data))
+        {
+            stay = Score(unit.Pos, 0);
+            best = sim.Reachable(unit)
+                .Where(kv => kv.Value <= unit.Ap)
+                .Select(kv => (Pos: kv.Key, Ap: kv.Value, Score: Score(kv.Key, kv.Value)))
+                .OrderByDescending(o => o.Score).ThenBy(o => o.Ap).ThenBy(o => map.Index(o.Pos))
+                .FirstOrDefault();
+        }
         if (best.Ap == 0 || best.Score <= stay + 1e-9) return false;
 
         var coverBefore = Combat.CoverAgainst(data, map, focus.Pos, unit.Pos);

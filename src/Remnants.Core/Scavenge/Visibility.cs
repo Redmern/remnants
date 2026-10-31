@@ -26,6 +26,7 @@ public static class Visibility
     /// </summary>
     public static HashSet<int> SideVisible(ScavengeData data, ScavengeState state, string side)
     {
+        using var memo = ProfileDeriver.Memo(data);
         var result = new HashSet<int>();
         foreach (var u in state.Units.Where(u => u.Side == side && u.IsActive))
         {

@@ -79,7 +79,39 @@ public sealed record UnitProfile(
 /// </summary>
 public static class ProfileDeriver
 {
+    [ThreadStatic] private static Dictionary<Unit, UnitProfile>? _memo;
+    [ThreadStatic] private static ScavengeData? _memoData;
+
+    /// <summary>
+    /// Remembers each unit's profile until the scope is disposed. Only around read-only queries (sight and detection
+    /// checks, AI position scoring) where no unit changes, so the profile cannot go stale. Scopes nest.
+    /// </summary>
+    public static MemoScope Memo(ScavengeData data)
+    {
+        if (_memo is not null) return default;
+        _memo = new Dictionary<Unit, UnitProfile>(ReferenceEqualityComparer.Instance);
+        _memoData = data;
+        return new MemoScope(true);
+    }
+
+    public readonly struct MemoScope(bool owner) : IDisposable
+    {
+        public void Dispose()
+        {
+            if (!owner) return;
+            _memo = null;
+            _memoData = null;
+        }
+    }
+
     public static UnitProfile Derive(ScavengeData data, Unit unit)
+    {
+        if (_memo is null || !ReferenceEquals(data, _memoData)) return Compute(data, unit);
+        if (!_memo.TryGetValue(unit, out var profile)) _memo[unit] = profile = Compute(data, unit);
+        return profile;
+    }
+
+    private static UnitProfile Compute(ScavengeData data, Unit unit)
     {
         var rules = data.Rules;
         var fitted = data.FittedParts(unit.Body).ToList();

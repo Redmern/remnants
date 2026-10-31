@@ -92,7 +92,7 @@ if (Run("save"))
 
 if (Run("scavenge"))
 {
-    var runs = int.Parse(options.GetValueOrDefault("runs", "20"));
+    var runs = int.Parse(options.GetValueOrDefault("runs", "60"));
     // Biggest zones; tech kits bring drones and hacking; two co-op parties add units.
     foreach (var (zone, kit, players) in new[] { ("network_relay", "tech", 1), ("core_spire", "tech", 1), ("core_spire", "drone", 2) })
     {

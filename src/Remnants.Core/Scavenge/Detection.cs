@@ -47,6 +47,7 @@ public static class Detection
     {
         if (target.Side == side) return true;
         if (!target.OnMap) return false;
+        using var memo = ProfileDeriver.Memo(data);
         var observers = state.Units.Where(u => u.Side == side && u.IsActive).ToList();
         if (observers.Count == 0) return false;
         if (IsLit(state, target.Pos) || FieldEnvironment.LightningNow(state)) return true;
