@@ -61,8 +61,25 @@ public static class SchematicText
         return unlocks == def.Name ? "" : $" → {unlocks}";
     }
 
-    /// <summary>One line per source: "Loot: caches and lockers in Ashgrove or deeper", "Story: M6, M9".</summary>
-    public static IEnumerable<string> Sources(SchematicDef def)
+    /// <summary>A story mission by name ("The Relay"), never its data id; "a story mission" when the story is not loaded.</summary>
+    public static string Mission(ColonySim? sim, string missionId) =>
+        sim?.Story?.Mission(missionId)?.Name is { Length: > 0 } name ? $"the \"{name}\" mission" : "a story mission";
+
+    /// <summary>Player wording for where a known schematic came from ("Found on an expedition", "Researched").</summary>
+    public static string LearnedFrom(SchematicSource source) => source switch
+    {
+        SchematicSource.Loot => "Found on an expedition",
+        SchematicSource.Terminal => "Pulled from a terminal",
+        SchematicSource.Kill => "Taken from an enemy",
+        SchematicSource.Trade => "Bought from the trader",
+        SchematicSource.Research => "Researched at the Town Hall",
+        SchematicSource.Story => "A story reward",
+        SchematicSource.Migration => "Known from before",
+        _ => "Known from the start",
+    };
+
+    /// <summary>One line per source: "Loot: caches and lockers in Ashgrove or deeper", "Story: the "Relay" mission".</summary>
+    public static IEnumerable<string> Sources(SchematicDef def, ColonySim? sim = null)
     {
         foreach (var source in def.Sources)
             yield return source switch
@@ -72,7 +89,7 @@ public static class SchematicText
                 SchematicSource.Kill => "Kill: dropped by Linked enemies",
                 SchematicSource.Trade => "Trade: the trader at the Radio Mast",
                 SchematicSource.Research => "Research: at the Town Hall with Research Data",
-                SchematicSource.Story => def.StoryMissions.Count > 0 ? $"Story: {string.Join(", ", def.StoryMissions)}" : "Story: a mission reward",
+                SchematicSource.Story => def.StoryMissions.Count > 0 ? $"Story: {string.Join(", ", def.StoryMissions.Select(m => Mission(sim, m)))}" : "Story: a mission reward",
                 _ => source.ToString(),
             };
     }
@@ -83,9 +100,9 @@ public static class SchematicText
         var lines = new List<string> { $"{def.Name} · tier {def.Tier} ({Region(def.Tier)}){(def.Encrypted ? " · encrypted Network chip" : "")}" };
         lines.Add($"Unlocks: {Unlocks(sim, def)}");
         if (def.Description.Length > 0) lines.Add(def.Description);
-        if (sim.State.Schematics.LearnedFrom.TryGetValue(def.Id, out var from)) lines.Add($"Learned from: {from}");
+        if (sim.State.Schematics.LearnedFrom.TryGetValue(def.Id, out var from)) lines.Add(LearnedFrom(from));
         lines.Add("Sources:");
-        lines.AddRange(Sources(def).Select(s => "  · " + s));
+        lines.AddRange(Sources(def, sim).Select(s => "  · " + s));
         return string.Join("\n", lines);
     }
 
