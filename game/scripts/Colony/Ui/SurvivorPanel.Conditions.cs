@@ -15,12 +15,14 @@ namespace Remnants.Game.Colony.Ui;
 /// </summary>
 public partial class SurvivorPanel
 {
-    private readonly VBoxContainer _conditions = Widgets.Column(4);
+    private readonly VBoxContainer _conditions = Widgets.Column(Space.Sm);
+    private Control _conditionsHeader = null!;
     private string _conditionSignature = "";
 
     private void BuildConditions(VBoxContainer box)
     {
-        box.AddChild(Widgets.SectionHeader("Conditions", "cond_infection"));
+        _conditionsHeader = Widgets.SectionHeader("Conditions", "cond_infection", new Hud.Help.InfoTip("medicine", Context));
+        box.AddChild(_conditionsHeader);
         box.AddChild(_conditions);
     }
 
@@ -28,7 +30,7 @@ public partial class SurvivorPanel
     {
         if (sim.Data.Medicine is not { } med || sim.Scavenge is not { } items)
         {
-            _conditions.GetParent<Control>().Visible = false;
+            _conditionsHeader.Visible = _conditions.Visible = false;
             return;
         }
         var treatments = sim.State.Inventory.Counts.Keys
@@ -70,11 +72,13 @@ public partial class SurvivorPanel
 
     private void AddConditionRow(string icon, string line, string suggestion, Color tint, string tooltip, List<string> items, Survivor s, ColonySim sim)
     {
-        var row = Widgets.Row(8);
-        row.AddChild(Icons.Rect(Icons.Get(icon, 20), 20, tint));
-        var col = Widgets.Column(0);
+        var row = Widgets.Row(Space.Sm);
+        var mark = Icons.Rect(Icons.Get(icon, 20), 20, tint);
+        mark.SizeFlagsVertical = SizeFlags.ShrinkBegin;
+        row.AddChild(mark);
+        var col = Widgets.Column(2);
         col.SizeFlagsHorizontal = SizeFlags.ExpandFill;
-        var text = Widgets.Label(line, "", tint);
+        var text = Widgets.Wrapped(line, "", tint);
         text.TooltipText = tooltip;
         text.MouseFilter = MouseFilterEnum.Stop;
         col.AddChild(text);
@@ -82,16 +86,22 @@ public partial class SurvivorPanel
         hint.AutowrapMode = TextServer.AutowrapMode.WordSmart;
         col.AddChild(hint);
         row.AddChild(col);
+        // The treatments under the text, so a long item name never squeezes the description.
+        var actions = new HFlowContainer();
+        actions.AddThemeConstantOverride("h_separation", Space.Xs);
+        actions.AddThemeConstantOverride("v_separation", Space.Xs);
+        col.AddChild(actions);
         foreach (var id in items.Take(2))
         {
             var item = sim.Scavenge!.Items[id];
             var survivorId = s.Id;
-            var button = Widgets.IconButton("ui_use", item.Name, MedicalText.ItemTip(sim.Scavenge, item) + $"\nIn stock: {sim.State.Inventory.Count(id)}",
-                () => _session.Execute(new TreatSurvivor(survivorId, id)), variation: "Flat");
-            button.CustomMinimumSize = new Vector2(0, 26);
-            button.SizeFlagsVertical = SizeFlags.ShrinkBegin;
+            // A real button that says what it does ("Give Crude Antibiotics"), not a link-like flat one.
+            var button = Widgets.IconButton("ui_use", $"Give {item.Name}", MedicalText.ItemTip(sim.Scavenge, item) + $"\nIn stock: {sim.State.Inventory.Count(id)}",
+                () => _session.Execute(new TreatSurvivor(survivorId, id)));
+            button.FocusMode = FocusModeEnum.All;
+            button.CustomMinimumSize = new Vector2(0, 28);
             button.Disabled = s.Away;
-            row.AddChild(button);
+            actions.AddChild(button);
         }
         _conditions.AddChild(row);
     }
