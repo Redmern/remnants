@@ -159,14 +159,15 @@ Seven named characters. Pronouns are given for each so writers and the voice/tex
 ## Structure
 
 Four acts, 17 main missions and 6 side missions. Colony time does not pass during a mission (as today), so days are
-the colony days when the mission becomes available. The Act 1–2 days are the bot's (BALANCE.md "Full-game pass 2"):
-M5 closes around day 42–46, M6, M7 and M9 around days 61–73. A Story colony reaches Town Hall 2 later than a Sandbox
-one (~42 against ~35), since the missions take hands away.
+the colony days when the mission becomes available. The Act 1–2 days are the bot's (BALANCE.md "Full-game pass 3"):
+M5 closes around day 36–37, M6, M7 and M9 around days 58–75, M8 and M10 (in the colonies that get there) on days 80–85.
+A Story colony reaches Town Hall 2 on about the same day as a Sandbox one (~38 against ~35–37): the missions take hands
+away, and Marrow pays some of them back (Hollis after M4, a House after M5).
 
 | Act | Name | Days (BALANCE.md timeline) | Zones | Colony milestone it rides on |
 |---|---|---|---|---|
-| 1 | Static | 1–40 | Outskirts, Scrapyard Flats, Suburb Ruins | first buildings → Med Bay (~7) → Kitchen, Tailor → Town Hall 2 (~35–45) |
-| 2 | Ashgrove | 40–75 | Suburb Ruins, Flooded Mall | Armory (first, for M6/M7), House, Electronics Lab |
+| 1 | Static | 1–37 | Outskirts, Scrapyard Flats, Suburb Ruins | first buildings → Med Bay (~7) → Kitchen, Tailor → Town Hall 2 (~36–38) |
+| 2 | Ashgrove | 37–80 | Suburb Ruins, Flooded Mall | House (M5's reward), Armory (for M6/M7), Electronics Lab |
 | 3 | Iron Corridor | 75–110 | Rail Depot, Network Relay | Town Hall 3, Lab L2–3, T2–T3 limbs, a truck |
 | 4 | The Black Grid | 110–150 | Network Relay, Core Spire | Hospital, cyborgs, the end |
 
@@ -187,7 +188,7 @@ gets the same colony tasks as optional tips from the existing advice line (`Advi
 | colony tasks | Med Bay, patients, crafting queue, Tailor; The Fence Line (a Lookout Tower and spike strips before the first raid) |
 | M3 Signal in the Rust | hacking a locker and a terminal; a non-hostile human party |
 | M4 The Stranger | fog of war, Lookout, flares, recruiting and escorting; the handcart and cart |
-| colony tasks | Town Hall 2, House, perks |
+| colony tasks | Town Hall 2, perks (the House comes with M5) |
 | M5 Hold the Line | Overwatch, Brace, defending the colony; the Watchtower |
 
 ## Missions
@@ -236,8 +237,9 @@ General rules:
   or bandage); escort them to the exit (they follow, as recruits do, at walking pace). The scout is **Juniper** (she/her),
   Marrow's outrider.
 - Fails if: Juniper dies.
-- Rewards: `sch_bicycle_cart`; 20 wood and 15 stone; Marrow's caravan unlocked (first visit in 2 days, trading opens);
-  Juniper's handcart left at the colony (a free T0 vehicle); Field Manual: Electronics.
+- Rewards: `sch_bicycle_cart`; 20 wood and 15 stone; Marrow's caravan unlocked (first visit in 2 days, trading opens;
+  he pays for Juniper in people too: Hollis, one of his drivers, stays as a recruit); Juniper's handcart left at the
+  colony (a free T0 vehicle); Field Manual: Electronics.
 - If failed: Marrow comes anyway four days later, angry and grieving; trading opens at worse prices for 20 days.
 - Teaches: fog, Lookout, flares, ambush, carrying/escorting a recruit; vehicles exist.
 
@@ -248,7 +250,8 @@ level, see Implementation) · Threat 2 · Needs: M4, Town Hall 2 (~day 30)
   carried off. Each Watchtower the colony has built is a raised overwatch tile on the map.
 - Fails if: the Radio Mast is destroyed (it is rebuilt at cost, and Iris is off-air for 5 days), or every defender is down.
 - Rewards: `sch_workshop_3`; 6 Research Data from the wrecked Husks' Link chips; Marrow's barricade kit (wood and scrap for
-  four barricades) and `sch_sandbag_nest`; end of Act 1 card.
+  four barricades) and `sch_sandbag_nest`; Marrow's crew puts up a **House** with their own timber (materials instead if
+  the colony has one); end of Act 1 card.
 - Teaches: Overwatch, Brace, defense, why the Watchtower matters.
 
 ### Act 2 — Ashgrove

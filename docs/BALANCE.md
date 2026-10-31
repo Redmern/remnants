@@ -1422,6 +1422,8 @@ adults away about every other day through Act 1, and the colony's own scavenging
 trade a scavenging run for a story mission the way a player might. Next pass: look at Act 1's travel and party sizes, and
 let the bot skip a scavenging run when a mission is waiting.
 
+Taken up in "Full-game pass 3" below: the gap was housing and wounds, not travel.
+
 ### Bisect: what pushed Sandbox Town Hall 2 from ~30 to ~40
 
 Sandbox, 60 seeds × 60 days (a colony that never gets there counts as day 61), `main` with one system off at a time:
@@ -1506,3 +1508,125 @@ Bot (playtest only):
 | Raiders come after about two weeks: tower, strips, barricades on the warned side | The Fence Line task; `Advice.Next` "defenses" tip; M5's barricade kit |
 | Contracts are optional; take them with hands to spare | side missions are hollow diamonds; Dead Drop opens at Town Hall 2 |
 | Stealth jobs are fights if you are seen | Marrow's Debt is threat 2 on its card |
+
+## Full-game pass 3
+
+Story pacing: close the Story vs Sandbox gap that pass 2 left (population 6 against 11, Town Hall 2 ~44 against ~36).
+Measured as in pass 2: `dotnet run --project tools/Remnants.Playtest -c Release -- --data=data --days=90
+--seeds=1..60 [--story]`, confirmed on seeds 61–120. "Before" is `main` at a999623 (the end of pass 2), "after" is the
+end of this pass. Every change is **game** (rules or data); the bot is unchanged.
+
+### Where the gap was
+
+Pass 2 guessed the missions' travel and away time. The sweep says otherwise:
+
+- **Beds, not recruits.** Story colonies took in *more* recruits than Sandbox ones (281 against 221) but had a third of
+  the births (80 against 273) and nearly twice the departures (161 against 90, all "no place to sleep"). They stayed at
+  the Shelter's 6 beds to day 90: the House (Town Hall 2, 60 wood / 40 stone) came on day 86 in 10 of 60 colonies,
+  against day 58 in 54 of 60 Sandbox ones. A newborn in a full colony leaves with a parent.
+- **Hands at work.** By day 31–60 a Story colony had about 0.9 fewer adults (deaths), 0.1–0.5 more away and 0.3 more in
+  bed. Farm, Kitchen and Med Bay take the first workers, so every lost hand comes off wood and stone: 0.5 woodcutters
+  and quarry workers against 1.2–1.6 in Sandbox, and everything after Town Hall 2 was built at half pace.
+- **Hold the Line killed after the fight.** 22 Story deaths (Sandbox 1) were "untreated injuries", 14 of them right
+  after M5: a defender downed in the last round comes home at 1 health with a torso wound draining 0.5 an hour and is
+  dead before anyone admits them (seen in seed 23: Pell, torso 74%, one of two Med Bay beds free).
+- **Not travel.** With no travel at all for story missions, away time drops but the bot fills it with more scavenging
+  runs (1633 against 1419) and more deaths (133 against 101); Town Hall 2 and population did not move.
+
+Variants (seeds 1–60, Story; population median, Town Hall 2 median with never = 91, House median day (colonies)):
+
+| variant | pop | TH2 | House |
+|---|---|---|---|
+| before | 6 | 44.0 | 86.6 (10) |
+| `--story-missions=none` | 11 | 38.5 | — |
+| story missions with no travel (test hack) | 6 | 47.6 | 80.8 (21) |
+| M5 pays +48 wood +40 stone | 6 | 44.0 | 86.6 (10) |
+| bot: no Armory jump for M6's gear tier | 6 | 41.6 | 78.8 (14) |
+| bot: upgrade the Shelter when someone has no bed | 7 | 44.0 | 85.5 (10) |
+| triage on return (taken) | 6 | 41.6 | 81.6 (8) |
+| triage + Hollis after M4 | 6 | 38.0 | 86.0 (10) |
+| triage + a House after M5 | 11 | 41.6 | 39.8 (49) |
+| **triage + Hollis + House (taken)** | **11** | **38.0** | **36.1 (51)** |
+
+Extra materials do not reach the House: the build order and the Armory (M6's gear tier) spend them first. A House
+itself does, and the extra adult from Marrow brings Town Hall 2 forward by about 3.5 days.
+
+### What changed (game)
+
+- **Triage on return** (`medical.triageOnReturn`, all modes): when a party comes home, whoever has a wound that is
+  getting worse (severity ≥ the worsen threshold) is carried into a free Med Bay bed, the weakest first. With the beds
+  full, a patient with nothing worsening and health over half gives up their bed ("gave up their bed for …"). Untreated
+  deaths: 22 → 2 (Story), 1 → 0 (Sandbox).
+- **Marrow pays in people** (`marrow_hello`, two days after M4): Hollis, one of his drivers, joins as a recruit. A
+  failed M4 (Marrow grieving) brings nobody.
+- **A House after Hold the Line**: M5 (which needs Town Hall 2, as the House does) ends with Marrow's crew putting up a
+  House with their own timber, on a new story effect `Building` (if one already stands, or there is no plot, the
+  materials go into the stockpile instead).
+
+What was not needed: shorter Act 1 travel, "not now" on calls (calls never force a launch), one story mission at a time
+(there is one expedition slot), a Doc Hale presence bonus. The risk stays: M2–M7 deaths are as before.
+
+### 60 seeds × 90 days
+
+| | Sandbox before | Sandbox after | Story before | Story after |
+|---|---|---|---|---|
+| median population at day 90 (mean) | 11 (11.0) | 11 (10.6) | 6 (5.8) | **11** (10.3) |
+| colonies wiped out | 0 | 1 | 1 | 2 |
+| Town Hall 2: median day of those that got there (how many) | 34.6 (55) | 35.5 (57) | 41.6 (49) | **35.8** (53) |
+| Town Hall 2: median day, never = 91 | 35.6 | 36.6 | 44.0 | **38.0** |
+| House: median day (colonies) | 57.8 (54) | 58.6 (57) | 86.6 (10) | **36.1** (51) |
+| births / recruits / left for want of a bed | 273 / 221 / 90 | 251 / 236 / 106 | 80 / 281 / 161 | 241 / 263 / **44** |
+| expedition deaths / runs | 41 / 1459 | 40 / 1455 | 101 / 1424 | 120 / 1359 |
+| died of untreated injuries | 1 | 0 | 22 | **2** |
+| raids held | 477 / 543 (88%) | 478 / 540 (89%) | 265 / 468 (57%) | 321 / 482 (**67%**) |
+
+Seeds 61–120, same builds:
+
+| | Sandbox before | Sandbox after | Story before | Story after |
+|---|---|---|---|---|
+| median population (mean, wiped) | 10 (10.6, 0) | 11 (11.3, 0) | 6 (5.7, 1) | **11** (10.5, 3) |
+| Town Hall 2 median, never = 91 (reached) | 34.6 (59) | 34.6 (58) | 45.8 (52) | **38.5** (55) |
+| House: median day (colonies) | 55.8 (52) | 56.5 (53) | 85.6 (9) | **37.0** (54) |
+| expedition deaths / runs | 38 / 1461 | 33 / 1461 | 85 / 1452 | 124 / 1460 |
+| died of untreated injuries | 3 | 2 | 19 | 4 |
+| raids held | 82% | 84% | 60% | **72%** |
+
+The one Sandbox wipe (seed 48) is two deaths in one Outskirts run on day 13 and a third on the next run; an admission
+shifts the random stream, so a seed can land on a different run. The Story wipes (2 and 3) are all early: two to four
+dead in Act 1 runs by day 17, as in pass 2.
+
+Story missions (median day a mission closes, colonies that close it, deaths over all runs):
+
+| Mission | seeds 1–60 before | after | seeds 61–120 before | after |
+|---|---|---|---|---|
+| M2 First Light | 9.1 (58), 8 in 64 | 9.1 (58), 8 in 64 | 7.9 (57), 8 in 69 | 7.9 (57), 12 in 74 |
+| M3 Signal in the Rust | 13.6 (58), 6 in 76 | 13.6 (58), 6 in 76 | 13.4 (57), 3 in 65 | 13.4 (57), 3 in 66 |
+| M4 The Stranger | 17.4 (48), 13 in 64 | 16.9 (46), 13 in 63 | 16.9 (53), 6 in 62 | 16.9 (53), 5 in 61 |
+| M5 Hold the Line (end of Act 1) | 41.9 (46), 4 in 46 | **36.1** (50), 4 in 50 | 46.1 (51), 3 in 51 | **36.8** (53), 8 in 55 |
+| M6 The Long Haul | 61.4 (39), 14 in 42 | 58.3 (37), 19 in 42 | 64.6 (41), 14 in 46 | 61.6 (45), 11 in 47 |
+| M7 The Drowned Clinic | 70.8 (38), 3 in 38 | 70.9 (37), 9 in 39 | 69.4 (35), 3 in 35 | 65.9 (45), 7 in 46 |
+| M8 Eyes Up | 87.4 (1) | 84.1 (10), 0 in 15 | — | 80.6 (15), 1 in 20 |
+| M9 The Tally | 73.4 (23), 5 in 35 | 75.4 (29), 8 in 42 | 74.4 (32), 5 in 46 | 70.4 (37), 10 in 52 |
+| M10 Ghost Signal | — | 84.4 (5), 5 in 6 | — | 82.6 (10), 9 in 13 |
+| M11 Lantern (Act 3) | — | 0, 3 in 3 | — | 0, 12 in 15 |
+| Doc's Rounds (repeatable) | 44 runs, 4 dead | 51 runs, 9 dead | 43 runs, 9 dead | 71 runs, 21 dead |
+
+M1–M4 are unchanged (the changes come in after M4). Expedition deaths rise because stronger colonies get further: most
+of the extra dead are in M10, M11 and Doc's Rounds, which few colonies reached before.
+
+### Against the goals
+
+| Goal | Result |
+|---|---|
+| Story population within ~20% of Sandbox at day 90 | **Met**: 11 against 11 (means 10.3–10.5 against 10.6–11.3) on both seed ranges. |
+| Story Town Hall 2 ≈ day 36–40 | **Met**: 38.0 / 38.5 (never = 91); 35.8 / 36.5 among the colonies that get there. |
+| Act 1 done by ~day 35 | **Close**: M5 closes on day 36.1 / 36.8 (was 41.9 / 46.1). M5 waits for Town Hall 2. |
+| Deaths stay possible | Yes: 120 / 124 expedition deaths against Sandbox 40 / 33; every mission still loses people. |
+
+### Watch next pass
+
+- **Act 3 with Act 2 gear.** M11 Lantern is never closed and loses 3 in 3 runs (seeds 1–60) and 12 in 15 (seeds
+  61–120); M10 loses 5 in 6 and 9 in 13. Colonies now reach them around day 80–85; the bot takes them with what it has. Look at their gear tier
+  warnings and the bot's wait for gear, as pass 2 did for M6/M7.
+- **Doc's Rounds** got deadlier as more colonies reach it (21 dead in 71 runs on seeds 61–120).
+- **M6** still loses 11–19 dead in 42–47 runs.
