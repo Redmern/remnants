@@ -9,7 +9,7 @@ step() { # name frames flags...
   local name=$1 frames=$2; shift 2
   timeout 180 godot-mono --path game --disable-vsync -- "$@" --screenshot=$PWD/$SH/$name.png --frames=$frames --quit > $SH/$name.log 2>&1
   local code=$?
-  local errs=$(grep -cE "^(ERROR|SCRIPT ERROR)|Unhandled|Exception" $SH/$name.log)
+  local errs=$(grep -cE "^(ERROR|SCRIPT ERROR)|Unhandled|Exception|\[worker-demo\] (no |assign failed|picker is empty)" $SH/$name.log)
   printf '%-24s exit %3s  errors %3s  %s\n' "$name" "$code" "$errs" "$([[ -f $SH/$name.png ]] && echo shot || echo NO-SHOT)"
 }
 only="${1:-}"
@@ -35,4 +35,8 @@ run 18-raid-warning     150 --colony --raid-demo=warning
 run 19-raid-prep        150 --colony --raid-demo=prep
 run 20-defense-battle   600 --colony --raid-demo=battle
 run 21-raid-report      150 --colony --raid-demo=report
+# Review fixes 1: build mode shows footprints only; "+" on a worker slot opens the picker and a click assigns.
+run 22-build-footprints 300 --colony --demo --placing-demo --hour=12
+run 23-worker-picker    300 --colony --worker-demo=open
+run 24-worker-assign    600 --colony --worker-demo=assign
 exit 0

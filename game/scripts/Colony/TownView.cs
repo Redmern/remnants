@@ -69,6 +69,13 @@ public partial class TownView : Node3D
         PlacingChanged?.Invoke();
     }
 
+    /// <summary>Debug (screenshots): show <paramref name="plot"/> as hovered, as if the cursor were over it.</summary>
+    public void HoverPlot(int plot)
+    {
+        _hoverPlot = plot;
+        RefreshPlots();
+    }
+
     public void CancelPlacing()
     {
         if (PlacingDefId is null) return;

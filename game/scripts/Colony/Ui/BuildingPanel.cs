@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Godot;
 using Remnants.Core.Colony;
+using Remnants.Core.Survivors;
 using Remnants.Game.Hud;
 
 namespace Remnants.Game.Colony.Ui;
@@ -22,7 +23,7 @@ public partial class BuildingPanel : PanelContainer
     private readonly Label _category = Widgets.Label("", "Small");
     private readonly Pips _levels = new();
     private readonly Label _workersLabel = Widgets.Label("", "Heading");
-    private readonly HFlowContainer _workers = new();
+    private readonly WorkerSlots _workers;
     private readonly Label _output = Widgets.Label("", "");
     private readonly VBoxContainer _upgradeBox = Widgets.Column(6);
     private readonly Label _upgradeTitle = Widgets.Label("", "Heading");
@@ -48,12 +49,24 @@ public partial class BuildingPanel : PanelContainer
     private readonly VBoxContainer _powerBox = Widgets.Column(4);
     private readonly Label _powerLines = Widgets.Wrapped("", "Small");
     private readonly Button _powerSwitch;
-    private string _workerSignature = "";
     private string _costSignature = "";
 
     public int? BuildingId { get; private set; }
 
     public event Action? Closed;
+
+    /// <summary>The worker slots (debug: the smoke run clicks "+").</summary>
+    public WorkerSlots Workers => _workers;
+
+    /// <summary>"Open survivor" on a worker's portrait.</summary>
+    public event Action<int>? SurvivorRequested;
+
+    /// <summary>A survivor's fit for a job: Core's effectiveness (the job's skill and attributes, weighted) and its parts.</summary>
+    public static SlotFit JobFit(Remnants.Core.Data.JobDef job, Survivor s)
+    {
+        var parts = job.Attributes.Select(kv => $"{kv.Key} {s.Get(kv.Key):0}").Prepend($"{job.Skill} {s.Get(job.Skill):0}");
+        return new SlotFit(JobOutput.Effectiveness(job, s), $"{job.Name} fit: {string.Join(", ", parts)}");
+    }
 
     public BuildingPanel(ColonySession session)
     {
@@ -84,7 +97,17 @@ public partial class BuildingPanel : PanelContainer
         box.AddChild(_damageBox);
 
         box.AddChild(_workersLabel);
-        _workers.AddThemeConstantOverride("h_separation", 4);
+        _workers = new WorkerSlots(session)
+        {
+            Title = sim => BuildingId is { } b && sim.State.FindBuilding(b) is { } at ? $"Assign to {ColonyText.BuildingName(sim, at)}" : "Assign",
+            Candidate = (sim, s) => !s.IsInfant && s.AssignedBuildingId != BuildingId,
+            Fit = (sim, s) => BuildingId is { } b && sim.State.FindBuilding(b) is { } at && sim.Data.Buildings[at.DefId].Job is { } job
+                ? JobFit(sim.Data.Jobs[job], s) : null,
+            Assign = s => new AssignJob(s.Id, BuildingId ?? -1),
+            Unassign = s => new Unassign(s.Id),
+            FreeTip = "Free slot: click to pick who works here.",
+        };
+        _workers.SurvivorRequested += id => SurvivorRequested?.Invoke(id);
         box.AddChild(_workers);
         _output.MouseFilter = MouseFilterEnum.Stop;
         _output.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -130,7 +153,8 @@ public partial class BuildingPanel : PanelContainer
     public void Show(int? buildingId)
     {
         BuildingId = buildingId;
-        _workerSignature = _costSignature = _damageSignature = "";
+        _costSignature = _damageSignature = "";
+        _workers.Reset();
         if (buildingId is null) Visible = false;
         else if (_session.Sim.State.FindBuilding(buildingId.Value) is not null) Motion.Reveal(this, new Vector2(12, 0));
         Refresh();
@@ -289,19 +313,8 @@ public partial class BuildingPanel : PanelContainer
         _workersLabel.Visible = _workers.Visible = def.Job is not null;
         if (def.Job is null) return;
         _workersLabel.Text = $"WORKERS {workers.Count}/{slots}";
-        var signature = string.Join(",", workers.Select(w => w.Id)) + $"/{slots}";
-        if (signature == _workerSignature) return;
-        _workerSignature = signature;
-        Widgets.Clear(_workers);
-        foreach (var w in workers)
-        {
-            var portrait = new Portrait(38) { TooltipText = $"{w.Name}\nAssign and unassign from the survivor's panel." };
-            portrait.MouseFilter = MouseFilterEnum.Stop;
-            portrait.Set(PortraitStudio.For(GetTree(), w), PortraitStudio.Backdrop(w.Id));
-            _workers.AddChild(portrait);
-        }
-        for (var i = workers.Count; i < slots; i++)
-            _workers.AddChild(new EmptySlot { TooltipText = "Free slot: select a survivor and Assign them here." });
+        _workers.WorkerTip = w => $"{w.Name}\n{JobFit(sim.Data.Jobs[def.Job], w).Detail}";
+        _workers.Set(workers, slots);
     }
 
     private static string OutputText(ColonySim sim, Building building, Remnants.Core.Data.BuildingDef def, Remnants.Core.Data.BuildingLevelDef level, out string tip)
@@ -377,26 +390,5 @@ public partial class BuildingPanel : PanelContainer
     private void Upgrade()
     {
         if (BuildingId is { } id) _session.Execute(new Upgrade(id));
-    }
-
-    /// <summary>A dashed square for a free worker slot.</summary>
-    private partial class EmptySlot : Control
-    {
-        public EmptySlot()
-        {
-            CustomMinimumSize = new Vector2(38, 38);
-            MouseFilter = MouseFilterEnum.Stop;
-        }
-
-        public override void _Draw()
-        {
-            DrawRect(new Rect2(Vector2.Zero, Size), new Color(Palette.Inset, 0.7f));
-            DrawDashedLine(new Vector2(1, 1), new Vector2(Size.X - 1, 1), Palette.EdgeLight, 1, 3);
-            DrawDashedLine(new Vector2(1, Size.Y - 1), new Vector2(Size.X - 1, Size.Y - 1), Palette.EdgeLight, 1, 3);
-            DrawDashedLine(new Vector2(1, 1), new Vector2(1, Size.Y - 1), Palette.EdgeLight, 1, 3);
-            DrawDashedLine(new Vector2(Size.X - 1, 1), new Vector2(Size.X - 1, Size.Y - 1), Palette.EdgeLight, 1, 3);
-            DrawLine(new Vector2(Size.X / 2 - 5, Size.Y / 2), new Vector2(Size.X / 2 + 5, Size.Y / 2), Palette.TextDim, 2);
-            DrawLine(new Vector2(Size.X / 2, Size.Y / 2 - 5), new Vector2(Size.X / 2, Size.Y / 2 + 5), Palette.TextDim, 2);
-        }
     }
 }

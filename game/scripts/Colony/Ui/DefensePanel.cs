@@ -28,15 +28,24 @@ public partial class DefensePanel : PanelContainer
     private readonly VBoxContainer _actions = Widgets.Column(6);
     private readonly VBoxContainer _guardBox = Widgets.Column(6);
     private readonly Label _guardTitle = Widgets.Label("", "Heading");
-    private readonly HFlowContainer _guards = new();
-    private readonly OptionButton _candidates = new() { FocusMode = FocusModeEnum.None, SizeFlagsHorizontal = SizeFlags.ExpandFill };
-    private readonly Button _assign;
+    private readonly WorkerSlots _guards;
     private readonly Button _night;
     private readonly Label _nightNote = Widgets.Wrapped("", "Small");
-    private readonly List<int> _candidateIds = new();
     private string _signature = "";
 
     public int? DefenseId { get; private set; }
+
+    /// <summary>"Open survivor" on a guard's portrait.</summary>
+    public event Action<int>? SurvivorRequested;
+
+    /// <summary>A guard's fit, for sorting the picker: their better fighting skill and their Perception, averaged.</summary>
+    private static SlotFit GuardFit(Remnants.Core.Survivors.Survivor s)
+    {
+        double firearms = s.Get(Remnants.Core.Survivors.Skill.Firearms), melee = s.Get(Remnants.Core.Survivors.Skill.Melee);
+        var perception = s.Get(Remnants.Core.Survivors.AttributeKind.Perception);
+        return new SlotFit((Math.Max(firearms, melee) + perception) / 200,
+            $"Guard fit: Firearms {firearms:0}, Melee {melee:0}, Perception {perception:0}");
+    }
 
     public event Action? Closed;
 
@@ -65,14 +74,18 @@ public partial class DefensePanel : PanelContainer
 
         _guardBox.AddChild(Widgets.SectionHeader("Guards", "stance_overwatch"));
         _guardBox.AddChild(_guardTitle);
-        _guards.AddThemeConstantOverride("h_separation", 4);
-        _guards.AddThemeConstantOverride("v_separation", 4);
+        _guards = new WorkerSlots(session, 44)
+        {
+            Title = sim => DefenseId is { } id && sim.State.Defense.Find(id) is { } d && sim.Raids?.Defense(d.DefId) is { } def
+                ? $"Guard the {def.Name}" : "Guard",
+            Candidate = (sim, s) => !s.IsChild && Guards.PostOf(sim.State, s.Id)?.Id != DefenseId,
+            Fit = (_, s) => GuardFit(s),
+            Assign = s => new AssignGuard(s.Id, DefenseId),
+            Unassign = s => new AssignGuard(s.Id, null),
+            FreeTip = "Free guard slot: click to post someone here (takes them off their job).",
+        };
+        _guards.SurvivorRequested += id => SurvivorRequested?.Invoke(id);
         _guardBox.AddChild(_guards);
-        var assignRow = Widgets.Row(6);
-        assignRow.AddChild(_candidates);
-        _assign = Widgets.IconButton("ui_plus", "Post", "Put this survivor on guard duty here (takes them off their job)", Assign);
-        assignRow.AddChild(_assign);
-        _guardBox.AddChild(assignRow);
         _night = Widgets.IconButton("phase_night", "Night watch", "", ToggleNight);
         _night.ToggleMode = true;
         _guardBox.AddChild(_night);
@@ -85,6 +98,7 @@ public partial class DefensePanel : PanelContainer
     {
         DefenseId = defenseId;
         _signature = "";
+        _guards.Reset();
         if (defenseId is null) Visible = false;
         else Motion.Reveal(this, new Vector2(12, 0));
         Refresh();
@@ -200,50 +214,15 @@ public partial class DefensePanel : PanelContainer
         _guardBox.Visible = def.GuardSlots > 0;
         if (!_guardBox.Visible) return;
         _guardTitle.Text = $"ON DUTY {guards.Count}/{def.GuardSlots}";
-        Widgets.Clear(_guards);
-        foreach (var gid in guards)
-        {
-            if (sim.State.FindSurvivor(gid) is not { } g) continue;
-            var card = Widgets.Column(2);
-            var portrait = new Portrait(44) { TooltipText = $"{g.Name}\nGuards here{(d.NightWatch ? " on the night watch" : " by day")}." };
-            portrait.MouseFilter = MouseFilterEnum.Stop;
-            portrait.Set(PortraitStudio.For(GetTree(), g), PortraitStudio.Backdrop(g.Id));
-            card.AddChild(portrait);
-            var off = Widgets.IconButton("ui_minus", "", $"Take {g.Name} off guard duty", () => _session.Execute(new AssignGuard(g.Id, null)), variation: "Flat");
-            off.CustomMinimumSize = new Vector2(44, 22);
-            card.AddChild(off);
-            _guards.AddChild(card);
-        }
-        for (var i = guards.Count; i < def.GuardSlots; i++)
-            _guards.AddChild(new ColorRect { CustomMinimumSize = new Vector2(44, 44), Color = new Color(Palette.Inset, 0.7f), TooltipText = "Free guard slot" });
-
-        _candidates.Clear();
-        _candidateIds.Clear();
-        var free = DefenseHandlers.FreeGuardSlots(sim, raids, d);
-        foreach (var s in sim.State.Survivors.Where(s => !s.IsChild && !s.Away && s.PatientAtBuildingId is null && !guards.Contains(s.Id))
-                     .OrderBy(s => sim.State.Defense.Guards.ContainsKey(s.Id)).ThenBy(s => s.Name))
-        {
-            var elsewhere = sim.State.Defense.Guards.ContainsKey(s.Id) ? " (guards elsewhere)" : "";
-            var job = s.AssignedBuildingId is { } b && sim.State.FindBuilding(b) is { } at ? $" — {sim.Data.Buildings[at.DefId].Name}" : " — idle";
-            _candidates.AddItem($"{s.Name}{job}{elsewhere}");
-            _candidateIds.Add(s.Id);
-        }
-        _candidates.Disabled = _candidateIds.Count == 0 || free <= 0;
-        _assign.Disabled = _candidates.Disabled;
-        _assign.TooltipText = free <= 0 ? "Every slot here is taken." : "Put this survivor on guard duty here (takes them off their job)";
-        if (_candidateIds.Count == 0) _candidates.AddItem("Nobody free to stand guard");
+        var onDuty = guards.Select(sim.State.FindSurvivor).OfType<Remnants.Core.Survivors.Survivor>().ToList();
+        _guards.WorkerTip = g => $"{g.Name}\nGuards here{(d.NightWatch ? " on the night watch" : " by day")}.";
+        _guards.Set(onDuty, def.GuardSlots);
 
         _night.SetPressedNoSignal(d.NightWatch);
         _night.Text = d.NightWatch ? "Night watch: ON" : "Night watch: off";
         _night.TooltipText = "Guards here stand watch from dusk to dawn and sleep in the day. Night work costs sleep and mood.";
         _nightNote.Text = d.NightWatch ? "They watch the dark hours: most raids come at night." : "Day watch: the post is empty at night.";
         _nightNote.AddThemeColorOverride("font_color", d.NightWatch ? Palette.Night : Palette.TextMuted);
-    }
-
-    private void Assign()
-    {
-        if (DefenseId is not { } post || _candidates.Selected < 0 || _candidates.Selected >= _candidateIds.Count) return;
-        _session.Execute(new AssignGuard(_candidateIds[_candidates.Selected], post));
     }
 
     private void ToggleNight()

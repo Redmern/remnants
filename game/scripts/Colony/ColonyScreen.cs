@@ -110,6 +110,8 @@ public partial class ColonyScreen : Node3D
             if (DebugCapture.Value("--zone") is { } planZone) _hud.Expedition.PlanFor(planZone);
             if (DebugCapture.Value("--vehicle") is { } pickTier) _hud.Expedition.PickVehicle(pickTier);
         }
+        if (DebugCapture.Value("--worker-demo") is { Length: > 0 } workerDemo && IsFreshGame) RunWorkerDemo(workerDemo);
+        if (DebugCapture.HasFlag("--placing-demo")) RunPlacingDemo();
         if (DebugCapture.HasFlag("--night-demo") && IsFreshGame) RunNightDemo();
         if (DebugCapture.Value("--raid-demo") is { } raidDemo && IsFreshGame) RunRaidDemo(raidDemo);
         if (DebugCapture.HasFlag("--power-demo") && IsFreshGame) RunPowerDemo();

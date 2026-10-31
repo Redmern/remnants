@@ -155,6 +155,8 @@ public partial class ColonyHud : CanvasLayer
         Defend = new DefenseCatalog(session);
         Defense = new DefensePanel(session);
         Building = new BuildingPanel(session);
+        Building.SurvivorRequested += id => Roster.Select(id);
+        Defense.SurvivorRequested += id => Roster.Select(id);
         MedBay = new MedBayPanel(session);
         Production = new ProductionPanel(session);
         Study = new StudyPanel(session);
