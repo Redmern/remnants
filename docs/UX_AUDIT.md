@@ -1027,6 +1027,16 @@ Checks for stage 2 (each at UI scale 85%, 100% and 130%):
 
 Fill in from the perf monitor (frames over 20 ms, see `docs/PERFORMANCE.md`). Same machine and flags as the baselines there.
 
+**Stage 1 (measured, headless A/B, see `docs/PERFORMANCE.md` → "Scavenge command frames").** Scavenge autoplay, 40 s,
+CPU side of each command frame, before (e2df81b) → after stage 1:
+
+| Zone | hud mean / p95 | sync mean / p95 | command frames mean / p95 | frames > 16.7 ms |
+|---|---|---|---|---|
+| core_spire | 4.05 / 9.30 → **2.69 / 6.75** | 5.17 / 6.38 → **1.25 / 2.06** | 10.7 / 20.1 → **9.8 / 15.8** | 6 → **3** |
+| network_relay | 4.14 / 8.26 → **2.55 / 4.84** | 5.12 / 7.44 → **1.34 / 1.82** | 10.0 / 22.0 → **8.9 / 17.5** | 6 → **3** |
+
+What is left over budget is AI turn time (`execute`, up to 40–50 ms on core_spire). Rows below get filled in stage 2.
+
 | Scenario | Before (ms, p50 / worst) | After stage 2 (ms, p50 / worst) |
 |---|---|---|
 | Scavenge: move one tile (command frame) | TBD | TBD |

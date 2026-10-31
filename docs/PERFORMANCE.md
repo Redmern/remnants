@@ -118,12 +118,44 @@ What changed (purely visual code, nothing the sim sees):
 - `MapView` pools the tile highlight quads and labels with one shared mesh (it made a new `PlaneMesh` and node per tile
   on every HUD refresh). `StancePanel` keeps its buttons while the acting unit, AP and stance are the same.
 
+## Scavenge command frames (UI/UX pass, stage 1)
+
+What a command cost: `ActionPanel`, `TechPanel`, `CoopPanel` and `LootPanel` freed and rebuilt every button on every HUD
+refresh, `UnitPanel` its whole gear card, and `RefreshHud` ran several times in one frame (a replay step, the sync and a
+selection change). Now the order panels keep their rows (`PanelRows`: same row, same kind → `ActionButton.Configure` in
+place; extras hidden), the gear card and the loot panel rebuild only when their signature changes, and the HUD refreshes
+once per frame (deferred). `PerfMonitor`'s summary now ends with `span-frames` (the frames that ran a measured span) and
+one `span LABEL: n mean p95 max` line per label.
+
+Headless A/B (`--headless ... --perf-log --perf-seconds=40 --perf-hitches --scavenge --zone=Z --hour=12 --autoplay=200`,
+the same seed and commands; before = e2df81b with the same PerfMonitor). Headless has no GPU work, so these are the CPU
+side of a command frame. `sync` no longer contains the HUD (it is deferred), so compare hud + sync:
+
+| core_spire | before | after |
+|---|---:|---:|
+| hud, mean / p95 / max (n=63) | 4.05 / 9.30 / 12.5 ms | **2.69 / 6.75 / 12.4 ms** |
+| sync, mean / p95 / max (n=34) | 5.17 / 6.38 / 6.6 ms (incl. hud) | **1.25 / 2.06 / 3.0 ms** |
+| frames with a span: mean / p95 | 10.7 / 20.1 ms | **9.8 / 15.8 ms** |
+| frames over 16.7 ms in 40 s | 6 | **3** |
+
+| network_relay | before | after |
+|---|---:|---:|
+| hud, mean / p95 / max (n=47) | 4.14 / 8.26 / 16.0 ms | **2.55 / 4.84 / 12.2 ms** |
+| sync, mean / p95 / max (n=26) | 5.12 / 7.44 / 7.9 ms | **1.34 / 1.82 / 2.9 ms** |
+| frames with a span: mean / p95 | 10.0 / 22.0 ms | **8.9 / 17.5 ms** |
+| frames over 16.7 ms in 40 s | 6 | **3** |
+
+The frames still over budget are AI turns: `execute` (every AI unit's turn until a player unit is up) is up to 40–50 ms
+on core_spire. It runs on the main thread inside the command; moving it to a worker needs the per-frame readers
+(`WorldTags._Process`, `UnitViews._Process` walk `State.Units`) to read a snapshot first. That and spreading AI turns over
+frames (they are replayed one by one anyway) is the next lever.
+
+Windowed runs now go through `tools/godot-agent.sh` (a hidden workspace); there Godot only draws once a second, so
+wall-clock frame times need a visible window (see "How to measure") and the stage-1 numbers above are headless.
+
 ## Not done / next
 
-- **Scavenge command frames**: each command (and the AI turns it sets off) costs one 20–30 ms frame, i.e. one missed
-  60 Hz frame per action. About half is managed (`sync` 3–10 ms, `hud` 2–11 ms, `execute` 1–5 ms incl. AI), the rest
-  is engine-side layout of the panels that rebuild their children (`ActionPanel`, `UnitPanel`, `CoopPanel`). Next:
-  keep those panels' children and update them in place like `StancePanel`.
+- **Scavenge AI turns**: see "Scavenge command frames" above: `execute` is the last part of a command frame over budget.
 - **Animation**: `CharacterRig` is the biggest per-frame cost and scales with frame rate (each near figure advances its
   AnimationTree every frame). LOD exists (`UpdateEvery` by zoom and frustum); a pose-rate cap (e.g. 60 Hz) would halve
   it on fast monitors.
