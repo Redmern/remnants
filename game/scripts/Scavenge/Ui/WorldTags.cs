@@ -195,15 +195,19 @@ public partial class WorldTags : Control
         var signature = sb.ToString();
         if (signature != stack.Signature)
         {
+            // Chips are kept per stack and updated in place (a hover's hit preview, an HP change): hover feedback
+            // lands the same frame without freeing and re-making the labels.
             stack.Signature = signature;
-            Widgets.Clear(stack.Box);
-            foreach (var line in lines)
+            for (var i = 0; i < lines.Count; i++)
             {
-                var chip = Chip(line.Text, line.Color, line.Icon, line.Size, line.Strong, line.Hp);
+                if (i == stack.Box.GetChildCount()) stack.Box.AddChild(new TagChip { SizeFlagsHorizontal = SizeFlags.ShrinkCenter });
+                var chip = stack.Box.GetChild<TagChip>(i);
+                var line = lines[i];
+                chip.Set(line.Text, line.Color, line.Icon, line.Size, line.Strong, line.Hp);
                 chip.Modulate = new Color(1, 1, 1, line.Fade);
-                chip.SizeFlagsHorizontal = SizeFlags.ShrinkCenter;
-                stack.Box.AddChild(chip);
+                chip.Visible = true;
             }
+            for (var i = lines.Count; i < stack.Box.GetChildCount(); i++) stack.Box.GetChild<TagChip>(i).Visible = false;
             stack.Box.ResetSize();
         }
         var visible = lines.Count > 0 && !_camera.IsPositionBehind(world);
@@ -237,5 +241,73 @@ public partial class WorldTags : Control
             col.AddChild(bar);
         }
         return chip;
+    }
+}
+
+/// <summary>A world-tag line (stance, preview, name with its HP bar), kept in its stack and updated in place.</summary>
+public partial class TagChip : PanelContainer
+{
+    private readonly StyleBoxFlat _box = HudTheme.Box(new Color(Palette.Void, 0.82f), Palette.Text, 1, radius: 3, padX: 6, padY: 1);
+    private readonly TextureRect _icon = Icons.Rect(Icons.Get("ui_info", 14), 14, Palette.Text);
+    private readonly Label _label = Widgets.Label("", "");
+    private readonly StatBar _bar = new(null, 0, false) { CustomMinimumSize = new Vector2(52, 4), MouseFilter = MouseFilterEnum.Ignore };
+    private string? _iconId;
+    private int _size;
+    private bool? _strong;
+    private Color _color;
+
+    public TagChip()
+    {
+        MouseFilter = MouseFilterEnum.Ignore;
+        AddThemeStyleboxOverride("panel", _box);
+        var col = Widgets.Column(1);
+        col.MouseFilter = MouseFilterEnum.Ignore;
+        AddChild(col);
+        var row = Widgets.Row(4);
+        row.MouseFilter = MouseFilterEnum.Ignore;
+        row.Alignment = BoxContainer.AlignmentMode.Center;
+        col.AddChild(row);
+        _icon.MouseFilter = MouseFilterEnum.Ignore;
+        row.AddChild(_icon);
+        row.AddChild(_label);
+        col.AddChild(_bar);
+    }
+
+    public void Set(string text, Color color, string? icon, int size, bool strong, float? hp)
+    {
+        if (strong != _strong || color != _color)
+        {
+            _box.BorderColor = strong ? color : new Color(color, 0.55f);
+            _box.SetBorderWidthAll(strong ? 2 : 1);
+            if (strong != _strong)
+            {
+                _label.ThemeTypeVariation = strong ? "Number" : "";
+                if (strong) _label.RemoveThemeFontOverride("font");
+                else _label.AddThemeFontOverride("font", Fonts.BodyBold);
+            }
+            _strong = strong;
+        }
+        if (color != _color)
+        {
+            _color = color;
+            _label.AddThemeColorOverride("font_color", color);
+            _icon.Modulate = color;
+        }
+        if (size != _size)
+        {
+            _size = size;
+            _label.AddThemeFontSizeOverride("font_size", size);
+            _icon.CustomMinimumSize = new Vector2(size, size);
+            _iconId = null;
+        }
+        _icon.Visible = icon is not null;
+        if (icon is not null && icon != _iconId)
+        {
+            _iconId = icon;
+            _icon.Texture = Icons.Get(icon, size);
+        }
+        _label.Text = text;
+        _bar.Visible = hp is not null;
+        if (hp is { } fraction) _bar.Set(fraction, "");
     }
 }
