@@ -85,6 +85,7 @@ public partial class ColonyAudio : Node3D
         _night?.Update(dt);
         _campfire?.Update(dt);
         foreach (var loop in _work.Values) loop.Update(dt);
+        foreach (var loop in _sites.Values) loop.Update(dt);
     }
 
     private void FollowCamera()
@@ -169,6 +170,33 @@ public partial class ColonyAudio : Node3D
         {
             _work[gone].Stop();
             _work.Remove(gone);
+        }
+        SyncSites(map);
+    }
+
+    private readonly Dictionary<int, AmbientLoop> _sites = new();
+
+    /// <summary>Hammering at each construction site while its crew is on shift (ambience.work <c>construction_site</c>).</summary>
+    private void SyncSites(SoundEventMap map)
+    {
+        var sim = _session.Sim;
+        if (map.WorkLoops.GetValueOrDefault("construction_site") is not { Length: > 0 } id) return;
+        foreach (var site in sim.State.Construction.Sites)
+        {
+            var crew = ConstructionSites.Working(sim, site)
+                ? ConstructionSystem.Crew(sim.State, sim.Data, site).Count(c => sim.OnShift(c.Survivor)) : 0;
+            if (!_sites.TryGetValue(site.BuildingId, out var loop))
+            {
+                if (crew == 0) continue;
+                loop = new AmbientLoop(this, id, _layout.Center(site.Plot) + Vector3.Up, fadeSeconds: 1.5f);
+                _sites[site.BuildingId] = loop;
+            }
+            loop.Level = _session.Speed == 0 ? 0 : crew switch { 0 => 0, 1 => 0.55f, 2 => 0.8f, _ => 1 };
+        }
+        foreach (var gone in _sites.Keys.Where(b => sim.Site(b) is null).ToList())
+        {
+            _sites[gone].Stop();
+            _sites.Remove(gone);
         }
     }
 

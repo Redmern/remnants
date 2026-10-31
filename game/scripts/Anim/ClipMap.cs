@@ -46,6 +46,7 @@ public static class ClipMap
         ["tailoring"] = "work_craft",
         ["cooking"] = "work_craft",
         ["electronics"] = "work_craft",
+        ["construction"] = "work_hammer",
     };
 
     /// <summary>The clip for an attack: by action id, then melee vs ranged; the events it carries are <c>impact</c> or <c>fire</c>.</summary>

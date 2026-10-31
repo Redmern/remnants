@@ -25,6 +25,7 @@ public sealed class ColonyBattleDressing
     private readonly Dictionary<Pos, Building> _centres = new();
     private readonly HashSet<Pos> _blocks = new();
     private readonly Dictionary<Pos, PlacedDefense> _defenses = new();
+    private readonly Dictionary<Pos, ConstructionSite> _sites = new();
     private readonly bool _night;
 
     private ColonyBattleDressing(ModelLibrary library, ColonySim sim, RaidData raids, DefenseGrid grid, bool night)
@@ -42,6 +43,16 @@ public sealed class ColonyBattleDressing
             _centres[new Pos(x0 + 2, y0 + 2)] = b;
         }
         foreach (var d in sim.State.Defense.Defenses) _defenses[new Pos(d.X, d.Y)] = d;
+        // New buildings still on the scaffold stand as far as they are built (Core makes them frames or walls).
+        foreach (var s in sim.State.Construction.Sites.Where(s => !s.IsUpgrade && s.Progress >= RaidBattle.SiteFrameFrom))
+        {
+            var cells = grid.PlotCells(s.Plot).ToList();
+            int x0 = cells.Min(c => c.X), y0 = cells.Min(c => c.Y);
+            if (s.Progress >= RaidBattle.SiteWallsFrom)
+                for (var y = y0 + 1; y < y0 + grid.CellsPerPlot; y++)
+                    for (var x = x0 + 1; x < x0 + grid.CellsPerPlot; x++) _blocks.Add(new Pos(x, y));
+            _sites[new Pos(x0 + 2, y0 + 2)] = s;
+        }
     }
 
     /// <summary>Whether this run is a raid battle on a colony map (also tells the unit models to draw structures as markers).</summary>
@@ -67,6 +78,14 @@ public sealed class ColonyBattleDressing
             var model = _library.Building(_sim.Data.Buildings[b.DefId], b.Level);
             if (RaidSystem.Damage(_sim.State, b) > 0) DefenseModels.Tint(model, new Color(0.25f, 0.12f, 0.06f, 0.22f));
             tile.AddChild(model);
+        }
+        if (_sites.TryGetValue(p, out var site) && terrain != Terrain.Rubble)
+        {
+            var model = _library.Building(_sim.Data.Buildings[site.DefId], 1);
+            var height = ConstructionSites.Bounds(model).End.Y;
+            BuildReveal.Set(BuildReveal.Apply(model), tile.Position.Y - 0.05f + (height + 0.1f) * (float)site.Progress);
+            tile.AddChild(model);
+            tile.AddChild(ConstructionSites.Scaffold(ConstructionSites.Bounds(model), height + 0.6f));
         }
         if (_blocks.Contains(p)) return terrain == Terrain.Wall;
         if (!_defenses.TryGetValue(p, out var d) || !_raids.Defenses.TryGetValue(d.DefId, out var def)) return false;

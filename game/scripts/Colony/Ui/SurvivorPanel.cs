@@ -469,6 +469,13 @@ public partial class SurvivorPanel : PanelContainer
     {
         breakdown = "";
         if (sim.ClassOf(s) is not null) return "";
+        if (s.AssignedBuildingId is null && sim.State.Construction.SiteOf(s.Id) is { } site)
+        {
+            breakdown = $"Construction: {sim.Data.Rules.Construction.WorkPerHour:0.##} work/h × the job's performance, tool, health, mood and perks; "
+                        + $"hauls {ConstructionSystem.HaulRate(sim, s):0} units/h while the materials trail the work.";
+            var share = site.Builders.Contains(s.Id) ? 1 : sim.Data.Rules.Construction.HelperShare;
+            return $"Builds {ConstructionSystem.WorkRate(sim, s) * share:0.##} work/h at the {sim.Data.Buildings[site.DefId].Name} site";
+        }
         if (s.AssignedBuildingId is not { } id || sim.State.FindBuilding(id) is not { } b) return "";
         var def = sim.Data.Buildings[b.DefId];
         if (def.Job is null) return "";

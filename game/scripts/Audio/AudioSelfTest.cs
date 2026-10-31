@@ -87,6 +87,7 @@ public partial class AudioSelfTest : Node
     {
         var sim = NewGame.Create(GameDataPaths.Load(), 1, GameDataPaths.LoadScavenge());
         sim.Raids = GameDataPaths.LoadRaids();
+        sim.InstantConstruction = true;
         var seen = sim.State.Events.Count > 0 ? sim.State.Events[^1] : null;
         void Flush()
         {

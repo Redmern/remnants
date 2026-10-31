@@ -154,7 +154,10 @@ public static class ColonyText
             + (study.Skill is { } k ? sim.Data.SkillInfo(k).Name : sim.Data.Perks[study.PerkId!].Name)
         : sim.State.Schematics.Research is { } r && r.ResearcherId == s.Id
             ? $"Researching: {sim.Data.Schematics.Find(r.SchematicId)?.Name ?? r.SchematicId}"
-        : s.AssignedBuildingId is { } id && sim.State.FindBuilding(id) is { } b ? sim.Data.Buildings[b.DefId].Name : "Idle";
+        : s.AssignedBuildingId is { } id && sim.State.FindBuilding(id) is { } b ? sim.Data.Buildings[b.DefId].Name
+        : sim.State.Construction.SiteOf(s.Id) is { } site
+            ? (site.Builders.Contains(s.Id) ? "Building: " : "Helping build: ") + sim.Data.Buildings[site.DefId].Name
+        : "Idle";
 
     public static string BuildingName(ColonySim sim, Building b) => $"{sim.Data.Buildings[b.DefId].Name} L{b.Level}";
 

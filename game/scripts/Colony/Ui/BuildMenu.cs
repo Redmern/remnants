@@ -158,6 +158,7 @@ public partial class BuildMenu : PanelContainer
         private readonly Label _purpose = Widgets.Label("", "Small");
         private readonly Label _lockText = Widgets.Label("", "Small", Palette.Danger);
         private readonly CostRow _costs = new() { PassMouse = true };
+        private readonly Label _time = Widgets.Label("", "Small", Palette.TextMuted);
         private readonly TextureRect _lock = Icons.Rect(Icons.Get("stat_lock", 16), 16, Palette.Danger);
         private readonly TextureRect _icon;
         private readonly Unchanged _set = new();
@@ -203,7 +204,15 @@ public partial class BuildMenu : PanelContainer
                 label.MouseFilter = MouseFilterEnum.Ignore;
                 col.AddChild(label);
             }
-            col.AddChild(_costs);
+            // Cost chips, then how long two builders take (hauling and work on the day shift).
+            var bottom = Widgets.Row(Space.Sm);
+            bottom.MouseFilter = MouseFilterEnum.Ignore;
+            _costs.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            bottom.AddChild(_costs);
+            _time.MouseFilter = MouseFilterEnum.Ignore;
+            _time.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+            bottom.AddChild(_time);
+            col.AddChild(bottom);
             Motion.PressFeedback(this);
         }
 
@@ -220,6 +229,8 @@ public partial class BuildMenu : PanelContainer
             if (Locked) _set.Text(_lockText, lockReason!);
             var cost = _def.Level(1).Cost;
             _costs.Set(cost.Select(kv => (kv.Key, sim.Data.Resources[kv.Key].Name, kv.Value, sim.State.Stockpile.Get(kv.Key))));
+            _set.Visible(_time, sim.Data.Rules.Construction.Enabled);
+            if (sim.Data.Rules.Construction.Enabled) _set.Text(_time, SiteText.Estimate(sim.BuildHours(_def, 1), sim.Data.Rules) + " to build");
             if (_placing != placing)
             {
                 _placing = placing;
@@ -243,6 +254,11 @@ public partial class BuildMenu : PanelContainer
             lines.Add($"Up to level {_def.MaxLevel}.");
             lines.Add("Cost: " + string.Join(", ", l1.Cost.Select(kv =>
                 $"{kv.Value:0} {sim.Data.Resources[kv.Key].Name}{(sim.State.Stockpile.Get(kv.Key) < kv.Value ? $" (have {sim.State.Stockpile.Get(kv.Key):0}, short {kv.Value - sim.State.Stockpile.Get(kv.Key):0})" : "")}")));
+            if (sim.Data.Rules.Construction.Enabled)
+            {
+                var times = Enumerable.Range(1, _def.MaxLevel).Select(l => $"L{l} {SiteText.Estimate(sim.BuildHours(_def, l), sim.Data.Rules)}");
+                lines.Add($"Build time with two builders: {string.Join(", ", times)}. Placing it makes a site: assign builders to it.");
+            }
             if (lockReason is not null) lines.Add($"Locked: {lockReason}.");
             return string.Join("\n", lines);
         }

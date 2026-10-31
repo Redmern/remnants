@@ -54,6 +54,8 @@ public partial class MenuBackdrop : Node3D
     private static void Grow(ColonySession session)
     {
         var sim = session.Sim;
+        // A backdrop town stands finished (no construction sites).
+        sim.InstantConstruction = true;
         foreach (var res in sim.Data.Resources.Keys) sim.State.Stockpile.Add(res, 1000);
         var hall = sim.State.Buildings.First(b => b.DefId == sim.Data.Rules.TownHallBuildingId).Id;
         sim.Execute(new Upgrade(hall));

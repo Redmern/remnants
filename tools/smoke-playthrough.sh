@@ -9,7 +9,7 @@ step() { # name frames flags...
   local name=$1 frames=$2; shift 2
   GODOT_AGENT_TIMEOUT=180 tools/godot-agent.sh --path game --disable-vsync -- "$@" --screenshot=$PWD/$SH/$name.png --frames=$frames --quit > $SH/$name.log 2>&1
   local code=$?
-  local errs=$(grep -cE "^(ERROR|SCRIPT ERROR)|Unhandled|Exception|\[worker-demo\] (no |assign failed|picker is empty)" $SH/$name.log)
+  local errs=$(grep -cE "^(ERROR|SCRIPT ERROR)|Unhandled|Exception|\[(worker|construction)-demo\] (no |assign failed|picker is empty)" $SH/$name.log)
   printf '%-24s exit %3s  errors %3s  %s\n' "$name" "$code" "$errs" "$([[ -f $SH/$name.png ]] && echo shot || echo NO-SHOT)"
 }
 only="${1:-}"
@@ -46,4 +46,10 @@ run 26-infotip-travel   300 --colony --garage-demo --expedition --zone=suburb_ru
 run 27-infotip-colony   300 --colony --demo --help-demo
 run 28-infotip-field    300 --scavenge --help-demo
 run 29-help-index       200 --colony --demo --help-index
+# Construction: place a building and assign a builder through the "+" slot, a site at 0/50/100%, an upgrade on scaffolding.
+run 30-site-assign      600 --colony --construction-demo=assign
+run 31-site-0           240 --colony --construction-demo=0
+run 32-site-50          240 --colony --construction-demo=50 --site-tip
+run 33-site-100         240 --colony --construction-demo=100
+run 34-site-upgrade     240 --colony --construction-demo=upgrade
 exit 0

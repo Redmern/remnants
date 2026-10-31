@@ -22,6 +22,8 @@
     "//colony": "Toasts already sound (ui.toast) for deaths, births, departures, recruits, arrivals and limb loss; those events add a sting only where one exists.",
     "colony.constructed": "ui_build_complete",
     "colony.upgraded": "ui_upgrade",
+    "colony.site_started": "ui_confirm",
+    "colony.site_cancelled": "ui_panel_close",
     "colony.crafted": "ui_craft_complete",
     "colony.level_up": "ui_level_up",
     "colony.perk_learned": "ui_perk_learned",
@@ -416,6 +418,7 @@
     "flare": "flare_burn_loop",
     "work": {
       "default": [],
+      "construction_site": "work_workshop",
       "woodcutter": "work_woodcutter",
       "quarry": "work_quarry",
       "scrapyard": "work_scrapyard",

@@ -231,6 +231,86 @@
         "shortcuts",
         "bindings"
       ]
+    },
+    {
+      "id": "construction",
+      "title": "Construction",
+      "provider": "construction_site",
+      "short": "Placing a building makes a construction site. Builders haul its materials over and put in work; it is done when both are in. Level 1 is a quick shed, upgrades take days.",
+      "long": "Placing a building (or ordering an upgrade) makes a **construction site**. Its materials leave the stockpile at once, so you can only place what you can afford.\n\n## How a site gets built\n\n- **Builders** you assign (see [[builders]]) and idle people who lend a hand do the work, on the day shift.\n- First they **haul** the materials from the stockpile to the site (see [[hauling]]). Work can never run ahead of what has been hauled.\n- Then they put in **work**: each level has a build work amount. When the work is done and everything is on site, the building stands.\n\n## Upgrades\n\n- An upgrade takes much longer than a new level-1 building (see [[upgrade_time]]).\n- **The building keeps working at its old level** while it is upgraded: its workers, output and beds carry on.\n\n## Weather and raids\n\n- Rain slows building, a thunderstorm more; a **dust storm stops it**.\n- Raiders can knock a site back. An unfinished building stands as a frame (low cover) and later as walls in a defense battle.\n\n## Controls\n\n- **Pause** stops a site. **Priority** says where idle hands go first (Low: assigned builders only). **Cancel** gives back what was not hauled and most of what was.\n- Builders keep the work schedule. An upgrade of a lit building can run a **Night shift**; a new building's site is dark.",
+      "related": [
+        "builders",
+        "hauling",
+        "upgrade_time",
+        "shifts",
+        "night_shift"
+      ],
+      "keywords": [
+        "build",
+        "site",
+        "scaffold",
+        "place",
+        "upgrade",
+        "materials",
+        "cancel",
+        "pause",
+        "priority"
+      ]
+    },
+    {
+      "id": "builders",
+      "title": "Builders",
+      "short": "Builders are people you put on a site with its \"+\" slot. Strength, Endurance, a little Intellect and Creativity and the Construction skill set their pace; idle people help at half pace.",
+      "long": "Put someone on a site with a \"+\" builder slot. They leave their job or guard post for it, and become idle again when the building is done.\n\n## Their pace\n\n- Builders use the **Construction** job: Strength and Endurance most, some Intellect and Creativity, and the **Construction** skill, which grows by building (see [[skills]]).\n- Tools, health, mood, conditions and food count as for any job (see [[jobs_output]]). The **Engineer** perk adds 15%, **Pack Mule** 10%.\n- A fresh adult puts in about half a work unit an hour; a trained builder more.\n- **Children** can build, at the child rate.\n\n## Helpers\n\n- Survivors with nothing to do (no job, post, site, bed, class or research) **lend a hand** at half pace, at the site with the highest priority that has room.\n- Set a site to **Low** priority to keep idle people off it (for example to keep them on raid repairs).\n\n## How many\n\n- Each level says how many builders a site takes at once (2 for level 1, 3 for level 2, 4 for level 3).",
+      "related": [
+        "construction",
+        "hauling",
+        "jobs_output",
+        "skills"
+      ],
+      "keywords": [
+        "builder",
+        "helper",
+        "idle",
+        "construction skill",
+        "engineer",
+        "assign"
+      ]
+    },
+    {
+      "id": "hauling",
+      "title": "Hauling",
+      "short": "Builders first carry a site's materials from the stockpile, about 30 units an hour each. Work never runs ahead of what is on site.",
+      "long": "A site's materials leave the stockpile when you place it, but they still have to be **carried over**. Builders haul about **30 units an hour** each (less when hurt, half for children).\n\n- Builders keep the hauled share a little ahead of the work, then build, then haul the next load. You can see them walk to the Town Hall and back carrying loads.\n- **Work can never pass the share of materials on site**: a site with nothing hauled cannot rise.\n- The site panel shows each material as hauled / needed.\n- **Cancel** gives back everything not hauled yet, and most of what was hauled.",
+      "related": [
+        "construction",
+        "builders"
+      ],
+      "keywords": [
+        "materials",
+        "carry",
+        "stockpile",
+        "delivered",
+        "refund"
+      ]
+    },
+    {
+      "id": "upgrade_time",
+      "title": "Build and upgrade time",
+      "short": "Level 1 is a quick, cheap shed: an hour or two with two builders. Level 2 takes about one to two days of one builder, level 3 three to five.",
+      "long": "Each level has its own **build work**:\n\n- **Level 1** is a simple shed: about an hour or two with two builders for a farm or a woodcutter, a few hours for a bigger building.\n- **Level 2** is about **one to two days** of one builder on the day shift; two builders halve it.\n- **Level 3** is about **three to five days** of one builder.\n\nThe build menu shows the time for two typical builders of your colony, and the Upgrade tab shows it for the next level. While a site is going, its panel shows the time left at the crew's pace, or why it stands still (paused, nobody on it).\n\n## Tips\n\n- An upgrade does not stop the building: keep its workers on.\n- Put your best builders on long upgrades; the Construction skill grows as they build.\n- Night shifts (an upgrade of a lit building) and more builders speed it up; dust storms stop it.",
+      "related": [
+        "construction",
+        "builders",
+        "night_shift"
+      ],
+      "keywords": [
+        "time",
+        "eta",
+        "how long",
+        "duration",
+        "level"
+      ]
     }
   ]
 }

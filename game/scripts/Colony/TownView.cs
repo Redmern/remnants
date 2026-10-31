@@ -19,6 +19,7 @@ public partial class TownView : Node3D
     private static readonly Color BlockedHover = new(0.95f, 0.35f, 0.25f, 0.9f);
     private static readonly Color FreeFootprint = new(0.85f, 0.82f, 0.7f, 0.22f);
     private static readonly Color SelectedColor = new(0.85f, 0.65f, 0.25f, 0.6f);
+    private static readonly Color SiteFootprint = new(0.95f, 0.72f, 0.35f, 0.45f);
 
     /// <summary>Most lamp OmniLights the town runs at once; lamps past it glow without casting light.</summary>
     private const int MaxLampLights = 12;
@@ -32,6 +33,20 @@ public partial class TownView : Node3D
     private ModelLibrary _models = null!;
     private Camera3D _camera = null!;
     private int _hoverPlot = -1;
+    private ConstructionSites _sites = null!;
+
+    /// <summary>The plot under the cursor changed (-1: none), for the site tooltip.</summary>
+    public event Action<int>? HoverChanged;
+
+    /// <summary>The plot under the cursor (-1: none).</summary>
+    public int HoveredPlot => _hoverPlot;
+
+    /// <summary>Screen position of a point above a plot (for tooltips), or null when it is behind the camera.</summary>
+    public Vector2? ScreenAt(int plot, float height = 3f)
+    {
+        var at = _layout.Center(plot) + new Vector3(0, height, 0);
+        return _camera.IsPositionBehind(at) ? null : _camera.UnprojectPosition(at);
+    }
 
     public int? SelectedBuildingId { get; private set; }
 
@@ -52,6 +67,9 @@ public partial class TownView : Node3D
         _models = models;
         _camera = camera;
         BuildGround();
+        _sites = new ConstructionSites { Name = "Sites" };
+        AddChild(_sites);
+        _sites.Setup(session, layout, models, id => _buildings.TryGetValue(id, out var k) ? k.Node.GetChildOrNull<Node3D>(0) : null);
         Sync();
     }
 
@@ -105,6 +123,9 @@ public partial class TownView : Node3D
             if (_buildings.TryGetValue(b.Id, out var known) && known.Level == b.Level && known.DefId == b.DefId && known.Plot == b.Plot
                 && known.Lit == b.Floodlight && known.Wreck == wreck)
                 continue;
+            // A level reached (or a new building off its site): the old model hands over to the new one.
+            var finished = known.Node is not null ? known.DefId == b.DefId && known.Level < b.Level : _sites.Has(b.Id);
+            var oldModel = finished && known.Node is not null ? known.Node.GetChildOrNull<Node3D>(0) : null;
             if (known.Node is not null) known.Node.QueueFree();
 
             var def = sim.Data.Buildings[b.DefId];
@@ -128,8 +149,10 @@ public partial class TownView : Node3D
             var lights = wreck == 2 ? 0 : Lamps(node, b.Id, def, b, budget);
             ShowDamage(node, model, wreck);
             AddChild(node);
+            if (finished) _sites.Finish(node, oldModel, model);
             _buildings[b.Id] = (node, b.DefId, b.Level, b.Plot, label, b.Floodlight, lights, wreck);
         }
+        _sites.Sync();
 
         foreach (var gone in _buildings.Keys.Where(id => !alive.Contains(id)).ToList())
         {
@@ -138,7 +161,7 @@ public partial class TownView : Node3D
             _crops.Remove(gone);
         }
         foreach (var b in sim.State.Buildings) SyncCrops(sim, b);
-        if (SelectedBuildingId is { } sel && !alive.Contains(sel)) Select(null);
+        if (SelectedBuildingId is { } sel && !alive.Contains(sel) && sim.Site(sel) is null) Select(null);
         RefreshPlots();
     }
 
@@ -216,6 +239,7 @@ public partial class TownView : Node3D
                 {
                     _hoverPlot = plot;
                     RefreshPlots();
+                    HoverChanged?.Invoke(plot);
                 }
                 break;
             case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left } b:
@@ -238,7 +262,9 @@ public partial class TownView : Node3D
             return;
         }
         var building = plot < 0 ? null : _session.Sim.State.Buildings.FirstOrDefault(b => b.Plot == plot);
-        Select(building?.Id);
+        // A new building's site is selected by the id it will have.
+        var site = plot < 0 || building is not null ? null : _session.Sim.State.Construction.Sites.FirstOrDefault(s => s.Plot == plot);
+        Select(building?.Id ?? site?.BuildingId);
     }
 
     /// <summary>
@@ -335,15 +361,19 @@ public partial class TownView : Node3D
     {
         if (_footprints.Count == 0) return;
         var sim = _session.Sim;
-        var selectedPlot = SelectedBuildingId is { } id ? sim.State.FindBuilding(id)?.Plot ?? -1 : -1;
+        var selectedPlot = SelectedBuildingId is { } id ? sim.State.FindBuilding(id)?.Plot ?? sim.Site(id)?.Plot ?? -1 : -1;
         var placing = PlacingDefId is not null;
+        var sites = sim.State.Construction.Sites.Where(s => !s.IsUpgrade).Select(s => s.Plot).ToHashSet();
         for (var plot = 0; plot < _footprints.Count; plot++)
         {
             var free = sim.IsPlotFree(plot);
-            // Footprints only in build mode: free plots faintly, the hovered one green (free) or red (taken).
+            // Footprints only in build mode: free plots faintly, the hovered one green (free) or red (taken); a new
+            // building's site always shows its footprint outline.
             var (footprint, footMaterial) = _footprints[plot];
-            footprint.Visible = placing && (free || plot == _hoverPlot);
-            if (footprint.Visible) footMaterial.AlbedoColor = plot == _hoverPlot ? free ? FreeHover : BlockedHover : FreeFootprint;
+            footprint.Visible = placing && (free || plot == _hoverPlot) || sites.Contains(plot);
+            if (footprint.Visible)
+                footMaterial.AlbedoColor = placing && plot == _hoverPlot ? free ? FreeHover : BlockedHover
+                    : sites.Contains(plot) ? SiteFootprint : FreeFootprint;
             // The soft earth patch sits under each building; it warms for the selected one and lifts for the hovered one.
             var (patch, patchMaterial) = _patches[plot];
             patch.Visible = !free;

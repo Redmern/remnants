@@ -47,6 +47,10 @@ public partial class SurvivorWalkers : Node3D
         public CharacterRig? Rig;
         public string? Job;
         public float Gait = 1f;
+
+        /// <summary>A builder hauling: where they fetch materials from (the stockpile at the Town Hall), and whether they carry a load now.</summary>
+        public Vector3? Haul;
+        public bool Carrying;
     }
 
     private readonly Dictionary<int, Walker> _walkers = new();
@@ -158,16 +162,22 @@ public partial class SurvivorWalkers : Node3D
 
             var homeBuilding = s.HomeBuildingId is { } hid ? sim.State.FindBuilding(hid) : null;
             w.Home = Doorstep(homeBuilding is null ? camp : _layout.Center(homeBuilding.Plot), s.Id);
+            // Builders (and idle hands helping) work at their site's plot: hauling from the Town Hall's stockpile while
+            // the materials trail the work, then hammering.
+            var site = s.AssignedBuildingId is null ? sim.State.Construction.SiteOf(s.Id) : null;
             var role = sim.IsAsleep(s) ? Role.Asleep
                 : s.PatientAtBuildingId is not null ? Role.Patient
                 : s.IsInfant ? Role.Infant
-                : s.AssignedBuildingId is not null && sim.OnShift(s) ? Role.Worker
+                : (s.AssignedBuildingId is not null || site is not null) && sim.OnShift(s) ? Role.Worker
                 : s.AssignedBuildingId is not null && !s.IsChild ? Role.Idle
                 : s.IsChild ? Role.Child
                 : Role.Idle;
             var workplace = (s.PatientAtBuildingId ?? s.AssignedBuildingId) is { } bid ? sim.State.FindBuilding(bid) : null;
-            w.Job = workplace is not null && s.PatientAtBuildingId is null ? sim.Data.Buildings.GetValueOrDefault(workplace.DefId)?.Job : null;
-            var center = workplace is null ? w.Home : _layout.Center(workplace.Plot);
+            w.Job = site is not null ? sim.Data.Rules.Construction.Job
+                : workplace is not null && s.PatientAtBuildingId is null ? sim.Data.Buildings.GetValueOrDefault(workplace.DefId)?.Job : null;
+            var center = site is not null ? _layout.Center(site.Plot) : workplace is null ? w.Home : _layout.Center(workplace.Plot);
+            w.Haul = site is not null && site.DeliveredShare < 1 - 1e-6 && hall is not null ? Doorstep(_layout.Center(hall.Plot), s.Id * 13 + 5) : null;
+            if (w.Haul is null) w.Carrying = false;
             if (role != w.Role || center != w.WorkCenter || w.Node.Position == Vector3.Inf)
             {
                 w.Role = role;
@@ -301,7 +311,7 @@ public partial class SurvivorWalkers : Node3D
         var dir = to.Normalized();
         w.Node.Position += dir * step;
         Face(w, dir);
-        if (w.Rig is { } rig && rig.Pick(w.Role == Role.Child ? ["run", "walk"] : ["walk"]) is { } gait)
+        if (w.Rig is { } rig && rig.Pick(w.Role == Role.Child ? ["run", "walk"] : w.Carrying ? ["carry_walk", "walk"] : ["walk"]) is { } gait)
         {
             rig.Loop(gait);
             w.Gait = speed * (rig.Info(gait)?.Length ?? 1f) / (gait == "run" ? RunStride : WalkStride);
@@ -339,6 +349,10 @@ public partial class SurvivorWalkers : Node3D
             case Role.Worker when w.SpotsUntilBreak <= 0:
                 w.SpotsUntilBreak = w.Rng.RandiRange(6, 10);
                 goal = w.Home;
+                break;
+            case Role.Worker when w.Haul is { } stock && !w.Carrying:
+                // Fetch a load from the stockpile, then carry it over (see Arrive).
+                goal = stock + Scatter(w, 0.8f);
                 break;
             case Role.Worker:
                 w.SpotsUntilBreak--;
@@ -381,6 +395,17 @@ public partial class SurvivorWalkers : Node3D
     private void Arrive(Walker w)
     {
         var atFire = w.FaceTo == _campfire && w.Role == Role.Idle;
+        // Hauling: picked up at the stockpile (carry it over next), set down at the site (fetch the next load).
+        if (w.Role == Role.Worker && w.Haul is not null)
+        {
+            w.Carrying = !w.Carrying;
+            if (w.Carrying)
+            {
+                w.Pause = w.Rng.RandfRange(0.8f, 1.6f);
+                if (w.Rig is { } r) r.Loop(r.Pick("use_item", "idle") ?? "idle");
+                return;
+            }
+        }
         w.Pause = w.Role switch
         {
             Role.Worker => w.FaceTo is null ? w.Rng.RandfRange(4f, 7f) : w.Rng.RandfRange(4f, 8f),
@@ -395,6 +420,8 @@ public partial class SurvivorWalkers : Node3D
             // At the workplace: the job's loop facing the building; children play; everyone else stands about.
             var clip = w.Role switch
             {
+                // Builders hammer, and now and then fit a piece by hand.
+                Role.Worker when w.FaceTo is not null && w.Job == _session.Sim.Data.Rules.Construction.Job && w.Rng.Randf() < 0.35f => "work_craft",
                 Role.Worker when w.FaceTo is not null => ClipMap.Work(w.Job),
                 Role.Child => "child_play",
                 _ => "idle",

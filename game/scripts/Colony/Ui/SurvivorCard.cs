@@ -244,6 +244,7 @@ public partial class SurvivorCard : PanelContainer
         if (Remnants.Core.Schematics.Research.IsResearching(sim.State, s.Id)) return Icons.Get("ui_research", 14);
         if (s.AssignedBuildingId is { } id && sim.State.FindBuilding(id) is { } b && sim.Data.Buildings[b.DefId].Job is { } job)
             return Icons.Get($"skill_{job}", 14, $"job_{job}", "skill_crafting");
+        if (sim.State.Construction.SiteOf(s.Id) is not null) return Icons.Get("ui_build", 14);
         return Icons.Get("job_idle", 14);
     }
 }

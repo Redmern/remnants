@@ -20,6 +20,9 @@ public sealed record HelpContext
     public ColonySim? Colony { get; init; }
     public Survivor? Survivor { get; init; }
     public Building? Building { get; init; }
+
+    /// <summary>A construction site (a new building's has no <see cref="Building"/> yet).</summary>
+    public ConstructionSite? Site { get; init; }
     public ZoneDef? Zone { get; init; }
     public ScavengeSim? Scavenge { get; init; }
     public Unit? Attacker { get; init; }
@@ -41,6 +44,7 @@ public static class Breakdowns
     public const string Travel = "travel";
     public const string HitChance = "hit_chance";
     public const string Humanity = "humanity";
+    public const string ConstructionSite = "construction_site";
 
     private static readonly Dictionary<string, Func<HelpContext, Breakdown?>> Providers = new(StringComparer.Ordinal)
     {
@@ -50,6 +54,7 @@ public static class Breakdowns
         [Travel] = TravelOf,
         [HitChance] = HitChanceOf,
         [Humanity] = HumanityOf,
+        [ConstructionSite] = SiteOf,
     };
 
     public static IEnumerable<string> Ids => Providers.Keys;
@@ -91,6 +96,27 @@ public static class Breakdowns
         var perDay = perTick * Schedule.ShiftHoursPerDay(s, building, def, sim.Data.Rules);
         return new Breakdown($"{s.Name} at the {def.Name}", rows, $"{perTick:0.###}/tick · {perDay:0.#}/day on shift",
             "base × level × performance × tool × health × conditions × age × mood × perks × food");
+    }
+
+    /// <summary>A construction site: work and materials so far, the crew's pace and the time left at it.</summary>
+    private static Breakdown? SiteOf(HelpContext c)
+    {
+        if (c.Colony is not { } sim) return null;
+        var site = c.Site ?? (c.Building is { } b ? sim.Site(b.Id) : null);
+        if (site is null) return null;
+        var def = sim.Data.Buildings[site.DefId];
+        var f = sim.SiteForecast(site);
+        var rows = new List<BreakdownRow>
+        {
+            new("Work", $"{site.Work:0.#} / {site.WorkNeeded:0.#}", $"level {site.Level} build work"),
+            new("Materials hauled", $"{site.DeliveredTotal:0} / {site.MaterialsTotal:0}", "work never passes this share"),
+            new("Builders", $"{f.Builders} / {sim.MaxBuilders(site)}", f.Helpers > 0 ? $"+ {f.Helpers} idle helping at {Pct(sim.Data.Rules.Construction.HelperShare)}" : ""),
+            new("Crew work per hour", $"{f.WorkPerHour:0.##}", "averaged over the day's shifts"),
+            new("Crew hauling per hour", $"{f.HaulPerHour:0}", "units"),
+        };
+        var total = f.BlockedBy ?? (f.EtaHours is { } h ? (h < sim.Data.Rules.TicksPerDay ? $"about {Math.Ceiling(h):0} h left" : $"about {Days(h / sim.Data.Rules.TicksPerDay)} left") : "no progress");
+        return new Breakdown(site.IsUpgrade ? $"{def.Name} → level {site.Level}" : $"{def.Name} (site)", rows, total,
+            "materials left ÷ hauling + work left ÷ work per hour");
     }
 
     /// <summary>What each staffed gathering building makes per day.</summary>

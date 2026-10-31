@@ -21,6 +21,7 @@ public partial class ColonyScreen : Node3D
     private DefenseView _defenses = null!;
     private ColonyHud _hud = null!;
     private OrbitCamera _camera = null!;
+    private SiteTooltip _siteTip = null!;
 
     /// <summary>The raid at the fence time was stopped for (once each).</summary>
     private int? _pausedForRaid;
@@ -83,6 +84,8 @@ public partial class ColonyScreen : Node3D
         AddChild(weather);
         weather.Setup(_session, weatherView);
 
+        // Debug scenes stage finished buildings at once; play (and --construction-demo's own sites) builds on sites.
+        _session.Sim.InstantConstruction = true;
         if ((DebugCapture.HasFlag("--demo") || DebugCapture.HasFlag("--family-demo")) && IsFreshGame) RunDemo();
         if (DebugCapture.HasFlag("--family-demo")) RunFamilyDemo();
         if (DebugCapture.HasFlag("--crafting-demo") && IsFreshGame) RunCraftingDemo();
@@ -163,6 +166,8 @@ public partial class ColonyScreen : Node3D
         if (DebugCapture.HasFlag("--courier-demo") || DebugCapture.HasFlag("--trading-post") || DebugCapture.Value("--trading-post") is not null)
             Trade.TradeUi.EnsureMastForDebug(_session.Sim);
         if (DebugCapture.HasFlag("--courier-demo")) RunCourierDemo();
+        _session.Sim.InstantConstruction = false;
+        if (DebugCapture.Value("--construction-demo") is { } constructionDemo && IsFreshGame) RunConstructionDemo(constructionDemo);
         if (DebugCapture.HasFlag("--trading-post") || DebugCapture.Value("--trading-post") is not null)
         {
             var address = DebugCapture.Value("--trading-post");
@@ -982,6 +987,8 @@ public partial class ColonyScreen : Node3D
         _hud = new ColonyHud(_session);
         Hud.Help.HelpLibrary.Ambient = HelpContext;
         AddChild(_hud);
+        _siteTip = new SiteTooltip(_session, _town);
+        _hud.AddChild(_siteTip);
         _hud.Log.Reset();
     }
 

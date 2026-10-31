@@ -82,7 +82,11 @@ public partial class BuildingPanel : PanelContainer
     private readonly Button _blockerLink;
     private readonly Button _upgrade;
     private readonly Label _upgradeWhy = Widgets.Wrapped("", "Small");
+    private readonly Label _buildTime = Widgets.Wrapped("", "Small", Palette.TextMuted);
     private readonly Control _upgradeBody;
+
+    // Construction (a hosted tab while the building is built or upgraded)
+    private readonly ConstructionSitePanel _site;
 
     public int? BuildingId { get; private set; }
 
@@ -90,6 +94,9 @@ public partial class BuildingPanel : PanelContainer
 
     /// <summary>The worker slots (debug: the smoke run clicks "+").</summary>
     public WorkerSlots Workers => _workers;
+
+    /// <summary>The Construction tab (debug: the smoke run assigns builders through it).</summary>
+    public ConstructionSitePanel Site => _site;
 
     /// <summary>"Open survivor" on a worker's portrait.</summary>
     public event Action<int>? SurvivorRequested;
@@ -239,6 +246,7 @@ public partial class BuildingPanel : PanelContainer
         body.AddChild(_gains);
         body.AddChild(Widgets.Label("COSTS", "Heading"));
         body.AddChild(_costs);
+        body.AddChild(InfoTip.Beside(_buildTime, "upgrade_time"));
         var blockerRow = Widgets.Row(Space.Sm);
         _blocker.SizeFlagsHorizontal = SizeFlags.ExpandFill;
         blockerRow.AddChild(_blocker);
@@ -253,6 +261,11 @@ public partial class BuildingPanel : PanelContainer
         body.AddChild(_upgradeWhy);
         upgrade.AddChild(body);
         AddPage(upgrade);
+
+        // Construction: the first hosted tab, so a building under construction opens on it.
+        _site = new ConstructionSitePanel(session);
+        _site.SurvivorRequested += id => SurvivorRequested?.Invoke(id);
+        AddExtra(_site, "Construction", "The site: materials hauled, work, builders, pause, priority and cancel");
         Visible = false;
         Fit.OnParentResized(this, FitHeight);
     }
@@ -343,11 +356,16 @@ public partial class BuildingPanel : PanelContainer
     /// <summary>Survivor-card drops: assign the dropped survivor here (Core decides; a refusal shows in the log).</summary>
     public override bool _CanDropData(Vector2 atPosition, Variant data) =>
         BuildingId is { } id && SurvivorCard.DraggedId(data) is not null
-        && _session.Sim.State.FindBuilding(id) is { } b && _session.Sim.Data.Buildings[b.DefId].Job is not null;
+        && (_session.Sim.Site(id) is not null && _tabs.Selected == _extras[0].Tab
+            || _session.Sim.State.FindBuilding(id) is { } b && _session.Sim.Data.Buildings[b.DefId].Job is not null);
 
+    /// <summary>A card dropped on the Construction tab makes a builder; anywhere else, a worker.</summary>
     public override void _DropData(Vector2 atPosition, Variant data)
     {
-        if (BuildingId is { } id && SurvivorCard.DraggedId(data) is { } who) _session.Execute(new AssignJob(who, id));
+        if (BuildingId is not { } id || SurvivorCard.DraggedId(data) is not { } who) return;
+        if (_session.Sim.Site(id) is not null && (_tabs.Selected == _extras[0].Tab || _session.Sim.State.FindBuilding(id) is null))
+            _session.Execute(new AssignBuilder(who, id));
+        else _session.Execute(new AssignJob(who, id));
     }
 
     private HelpContext WorkerContext()
@@ -367,8 +385,9 @@ public partial class BuildingPanel : PanelContainer
         var changed = buildingId != BuildingId;
         BuildingId = buildingId;
         _workers.Reset();
+        _site.Show(buildingId);
         if (buildingId is null) Visible = false;
-        else if (_session.Sim.State.FindBuilding(buildingId.Value) is not null)
+        else if (_session.Sim.State.FindBuilding(buildingId.Value) is not null || _session.Sim.Site(buildingId.Value) is not null)
         {
             Motion.Reveal(this, new Vector2(12, 0));
             if (changed)
@@ -384,6 +403,29 @@ public partial class BuildingPanel : PanelContainer
     {
         var sim = _session.Sim;
         var building = BuildingId is { } id ? sim.State.FindBuilding(id) : null;
+        var site = BuildingId is { } sid ? sim.Site(sid) : null;
+        _site.Refresh();
+        // A new building's site has only the header and the Construction tab; a standing building has them all.
+        _tabs.SetShown(_overviewTab, building is not null);
+        _tabs.SetShown(_upgradeTab, building is not null);
+        if (building is null && site is not null)
+        {
+            var planned = sim.Data.Buildings[site.DefId];
+            _set.Texture(_icon, Icons.Building(planned.Id, planned.Category.ToString(), 26));
+            _set.Text(_name, planned.Name);
+            _set.Text(_category, planned.Category.ToString());
+            _levels.Set(0, planned.MaxLevel);
+            _set.Text(_levelText, "under construction");
+            _set.Tooltip(_levels, "Not built yet: see the Construction tab.");
+            _set.Tooltip(_levelText, "Not built yet: see the Construction tab.");
+            _set.Visible(_workersHead, false);
+            _set.Visible(_workers, false);
+            _set.Visible(_outputRow, false);
+            _set.Visible(_chips, false);
+            if (_tabs.Selected != _extras[0].Tab) _tabs.Select(_extras[0].Tab);
+            FitHeight();
+            return;
+        }
         if (building is null)
         {
             Visible = false;
@@ -627,6 +669,13 @@ public partial class BuildingPanel : PanelContainer
     {
         var next = building.Level + 1;
         _tabs.SetTitle(_upgradeTab, next > def.MaxLevel ? "Upgrade" : $"Upgrade · L{next}");
+        if (sim.Site(building.Id) is { } upgrading)
+        {
+            // Shown on the Construction tab; the building keeps working at its level meanwhile.
+            _set.Text(_upgradeTitle, $"UPGRADING TO LEVEL {upgrading.Level}: see the Construction tab");
+            _set.Visible(_upgradeBody, false);
+            return;
+        }
         if (next > def.MaxLevel)
         {
             _set.Text(_upgradeTitle, "MAX LEVEL REACHED");
@@ -648,6 +697,8 @@ public partial class BuildingPanel : PanelContainer
 
         var cost = nextLevel.Cost;
         _costs.Set(cost.Select(kv => (kv.Key, sim.Data.Resources[kv.Key].Name, kv.Value, sim.State.Stockpile.Get(kv.Key))));
+        _set.Visible(_buildTime.GetParent<Control>(), sim.Data.Rules.Construction.Enabled);
+        _set.Text(_buildTime, $"Build time {SiteText.Estimate(sim.BuildHours(def, next), sim.Data.Rules)} with two builders; it keeps working at level {building.Level} meanwhile.");
 
         var cap = sim.MaxUpgradeLevel(def);
         var capped = def.Id != sim.Data.Rules.TownHallBuildingId && next > cap;
