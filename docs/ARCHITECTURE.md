@@ -115,7 +115,11 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
 - `scripts/Hud/` — the HUD component library and design tokens, shared by all screens:
   - `Palette` (colour tokens: rust/amber for the player, moss good, red danger; **cyan only for the AI Network**),
     `Fonts` (Barlow body, Barlow Condensed display/numbers, OFL, in `game/ui/fonts` with their licences), `PanelArt`
-    (procedural grain/bevel/rivet 9-slice textures), `Fmt` (number formatting), `Motion` (reveal/press/flash tweens).
+    (procedural grain/bevel/rivet 9-slice textures), `Fmt` (number formatting), `Motion` (the motion vocabulary: one
+    set of durations, `Fast` 120 ms / `Normal` 180 ms / `Slow` 220 ms, ease-out cubic; `Reveal` / `Conceal` panels, `Enter` /
+    `Exit` list rows with a capped stagger, `CountUp` numbers, `PressFeedback`, `OnPress` for buttons that act on press,
+    `Flash`; one running tween per control and purpose; all of it instant with Settings → Reduce motion). Tweens only
+    touch modulate, scale and free-standing positions, never a container child's layout.
   - `Icons` — line icons by id from `game/ui/icons/{group}_{id}.svg` (24×24, white 2px stroke, tinted; imported with the
     "keep" importer so exports ship the SVG), rasterised at 2× with mipmaps; fallbacks per call, then `item_generic`.
     `Icons.Item` prefers a rendered gear icon `assets/generated/icons/{baseItemId}.png` when the asset pipeline adds one.
@@ -133,6 +137,22 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
     `--perf-log` (frame time, draw calls, memory, hitches; see `PERFORMANCE.md`).
   - `Unchanged` — sets a control's text / tooltip / texture / visibility / colour only when it changed; HUD panels
     that refresh every tick use it so unchanged values cost no engine call or relayout.
+  - `Help/` — in-game help. Topics live in `data/help/*.json` (Core `Remnants.Core.Help.HelpCatalog`: id, title, a
+    short hover line, a long text in `HelpMarkup` — paragraphs, `## ` headings, `- ` bullets, `**bold**`, `*em*`,
+    `[[topic]]` links —, an optional live-breakdown `provider`, related topics, search keywords; `Validate` checks ids,
+    links, providers and short-text length, a Core test runs it on the shipped files). `Breakdowns` are the providers:
+    read-only Core queries that list the terms of a rule with live numbers (`job_output`, `colony_output`, `food_days`,
+    `travel`, `hit_chance`, `humanity`) for a `HelpContext` (colony, survivor, building, zone, scavenge sim, attacker,
+    action, target). Game side: `InfoTip` is the code-drawn (i) placed next to any label (`InfoTip.Beside(label,
+    topic, context?)`); hover, keyboard focus or a touch-hold shows the short text, click / Enter opens the detail.
+    `HelpLayer` (a `CanvasLayer` on the tree root, attached at boot, runs while paused) owns the one shared tooltip
+    (80 ms delay, instant when moving between tips, kept on screen), the detail popover (`TopicView`: text, live
+    numbers, related links with Back; Esc / click outside closes) and `HelpIndex` (F1 or Help in the pause menu:
+    search over every topic, grouped by category). `HelpLibrary.Ambient` is the screen's context (the colony screen:
+    the sim, the open survivor and building; scavenge: the acting unit, its chosen attack and the hovered hostile),
+    each `InfoTip` may add its own on top.
+  - `FrameTimeOverlay` — debug frame-time graph top right (F3, Settings → Display → Show frame time, or
+    `--frame-overlay`): last / mean / max ms, fps, frames over 16.7 ms per second and in total, a 2 s graph.
 - `scripts/MainMenu` + `MenuBackdrop` — the title screen over a throwaway grown colony circled by a slow camera:
   Continue (the session's colony, else the save), New Game, Load, Multiplayer, Settings, Quit, debug skirmish.
 - `scripts/Colony/Ui/` — `ColonyHud` lays the colony HUD out and owns its hotkeys: `TopBar` (clock in 10-minute steps between ticks, speed, resource
@@ -213,7 +233,10 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   keycap), `WorldTags` (everything written over the map as HUD chips in one stack per unit — name and HP bar, status
   tags, attack preview with hit chance and AMBUSH, rising pop-ups — so nothing overlaps; contacts' `?` on their tiles),
   `ScavengeLog` (icon per event kind; only Network events are cyan), `ResultPanel` (`ExtractionResult` in the
-  after-action style). Portraits of field units come from `UnitPortrait`.
+  after-action style). Portraits of field units come from `UnitPortrait`. The order panels (`ActionPanel`, `TechPanel`, `CoopPanel`) keep their
+  rows across refreshes through `PanelRows` (rows asked for in order are re-used and updated in place via
+  `ActionButton.Configure`, extras hidden); `UnitPanel`'s gear card and `LootPanel` rebuild only when their signature
+  changes; `ScavengeScreen.RefreshHud` coalesces every request in a frame into one deferred refresh.
 - Scavenge input: left-click a blue tile to move, a red target to attack with the chosen action, a unit to inspect it;
   item buttons arm "use on" and the next unit click is the target; right-click/Esc cancels (Esc with nothing to cancel
   opens the pause menu); Space/Enter ends the turn; 1–3 pick the attack, 4–6 aim an item, O/B/L stances, F loot,
