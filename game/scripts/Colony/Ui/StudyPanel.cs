@@ -4,6 +4,7 @@ using Godot;
 using Remnants.Core.Colony;
 using Remnants.Core.Survivors;
 using Remnants.Game.Hud;
+using Remnants.Game.Hud.Help;
 
 namespace Remnants.Game.Colony.Ui;
 
@@ -18,6 +19,9 @@ public partial class StudyPanel : PanelContainer
     private readonly ColonySession _session;
     private readonly Label _slots = Widgets.Label("", "Number", Palette.TextMuted, 14);
     private readonly VBoxContainer _classes = Widgets.Column(4);
+    private readonly KeyedRows<int> _classRows;
+    private readonly Label _noClasses = Widgets.Label("No classes. Pick a student below.", "Muted");
+    private readonly Unchanged _set = new();
     private readonly OptionButton _student = Picker();
     private readonly OptionButton _subject = Picker();
     private readonly OptionButton _mentor = Picker();
@@ -29,7 +33,6 @@ public partial class StudyPanel : PanelContainer
     private readonly List<string> _subjectKeys = new();
     private readonly List<int?> _mentorIds = new();
     private readonly List<string?> _manualIds = new();
-    private string _classSignature = "";
 
     public int? BuildingId { get; private set; }
 
@@ -39,10 +42,12 @@ public partial class StudyPanel : PanelContainer
         CustomMinimumSize = new Vector2(300, 0);
         Visible = false;
         var box = Ui.Panel(this);
-        box.AddChild(Widgets.SectionHeader("Study", "ui_study", _slots));
+        box.AddChild(PanelKit.Header("Study", "ui_study", "study_perks", _slots));
+        _classes.AddChild(_noClasses);
+        _classRows = new KeyedRows<int>(_classes, 1);
         box.AddChild(_classes);
 
-        box.AddChild(Widgets.SectionHeader("New class", "ui_plus"));
+        box.AddChild(PanelKit.Header("New class", "ui_plus", "skills"));
         var grid = new GridContainer { Columns = 2 };
         grid.AddThemeConstantOverride("h_separation", 6);
         grid.AddThemeConstantOverride("v_separation", 4);
@@ -58,19 +63,19 @@ public partial class StudyPanel : PanelContainer
         }
         box.AddChild(grid);
         box.AddChild(_plan);
-        _start = Widgets.IconButton("ui_study", "Start class", "Student and mentor leave their jobs while in class.", Start, variation: "Primary");
+        _start = PanelKit.Focusable(Widgets.IconButton("ui_study", "Start class", "Student and mentor leave their jobs while in class.", Start, variation: "Primary"));
         box.AddChild(_start);
     }
 
     private static OptionButton Picker() => new()
     {
-        SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.None, ClipText = true, FitToLongestItem = false,
+        SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.All, ClipText = true, FitToLongestItem = false,
     };
 
     public void Show(int? buildingId)
     {
+        if (buildingId != BuildingId) _classRows.Reset();
         BuildingId = buildingId;
-        _classSignature = "";
         Refresh();
     }
 
@@ -83,8 +88,8 @@ public partial class StudyPanel : PanelContainer
         var teaches = sim.Data.Progression.Study.Buildings[building!.DefId];
         var classes = sim.State.Studies.Where(o => o.BuildingId == building.Id).OrderBy(o => o.Id).ToList();
         var slots = sim.StudySlots(building);
-        _slots.Text = $"{classes.Count}/{slots}";
-        _slots.TooltipText = $"Students at once at level {building.Level}. Upgrade for more.";
+        _set.Text(_slots, $"{classes.Count}/{slots}");
+        _set.Tooltip(_slots, $"Students at once at level {building.Level}. Upgrade for more.");
         RefreshClasses(sim, classes);
 
         // Student: anyone at home, not a baby, not a patient, not in class already.
@@ -127,7 +132,10 @@ public partial class StudyPanel : PanelContainer
             var busy = sim.ClassOf(m) is not null ? ", teaching" : m.AssignedBuildingId is not null ? ", working" : "";
             mentorLabels.Add(skill is { } k ? $"{m.Name}  ({sim.Data.SkillInfo(k).Name} {m.Get(k):0}{busy})" : $"{m.Name}{busy}");
         }
-        Fill(_mentor, _mentorIds, mentorIds, mentorLabels);
+        // Pre-pick the best mentor who is free (else the best at all): a mentor doubles the speed and lifts the cap.
+        var best = mentors.FindIndex(m => sim.ClassOf(m) is null && m.AssignedBuildingId is null);
+        if (best < 0 && mentors.Count > 0) best = 0;
+        Fill(_mentor, _mentorIds, mentorIds, mentorLabels, best < 0 ? 0 : best + (skill is not null ? 1 : 0));
         var mentorId = Selected(_mentor, _mentorIds);
 
         // Manual: any in the inventory for this skill.
@@ -136,7 +144,7 @@ public partial class StudyPanel : PanelContainer
             : new List<string>();
         _manual.Visible = _manualLabel.Visible = manuals.Count > 0;
         Fill(_manual, _manualIds, new string?[] { null }.Concat(manuals),
-            new[] { "None" }.Concat(manuals.Select(m => $"{sim.Scavenge!.Items[m].Name} ×{sim.State.Inventory.Count(m)}")));
+            new[] { "None" }.Concat(manuals.Select(m => $"{sim.Scavenge!.Items[m].Name} ×{sim.State.Inventory.Count(m)}")), manuals.Count > 0 ? 1 : 0);
         var manual = _manual.Visible ? Selected(_manual, _manualIds) : null;
 
         _student.Disabled = _studentIds.Count == 0;
@@ -144,46 +152,40 @@ public partial class StudyPanel : PanelContainer
         _mentor.Disabled = _mentorIds.Count == 0;
         if (student is null || subject is null)
         {
-            _plan.Text = students.Count == 0 ? "Nobody is free to study." : "Pick what to study.";
-            _plan.AddThemeColorOverride("font_color", Palette.TextMuted);
+            _set.Text(_plan, students.Count == 0 ? "Nobody is free to study." : "Nothing to study here for them: no skill taught and no mentor with a perk.");
+            _set.FontColor(_plan, Palette.TextMuted);
             _start.Disabled = true;
             return;
         }
         var plan = sim.PlanStudy(new StartStudy(student.Id, building.Id, skill, perkId, mentorId, manual));
         var eta = plan.EtaTicks is { } t ? ColonyText.Duration(t, sim.Data.Rules) : "—";
-        _plan.Text = !plan.Ok ? "⚠ " + plan.Check.Message
+        _set.Text(_plan, !plan.Ok ? "⚠ " + plan.Check.Message
             : skill is { } sk ? $"{sim.Data.SkillInfo(sk).Name} {student.Get(sk):0} → {plan.Cap:0}, done in {eta}" + (mentorId is null ? " (alone)" : " (mentor ×2 speed)")
-            : $"Learns {sim.Data.Perks[perkId!].Name} in {eta}, without a perk point.";
-        _plan.AddThemeColorOverride("font_color", plan.Ok ? Palette.Text : Palette.Danger);
+            : $"Learns {sim.Data.Perks[perkId!].Name} in {eta}, without a perk point.");
+        _set.FontColor(_plan, plan.Ok ? Palette.Text : Palette.Danger);
         _start.Disabled = !plan.Ok;
     }
 
+    /// <summary>One row per class, kept by order id; only the text (skill value, ETA) changes each tick.</summary>
     private void RefreshClasses(ColonySim sim, List<StudyOrder> classes)
     {
-        var signature = string.Join(",", classes.Select(o => $"{o.Id}:{o.MentorId}"));
-        if (signature != _classSignature)
+        _set.Visible(_noClasses, classes.Count == 0);
+        _classRows.Sync(classes.Select(o => o.Id).ToList(), id =>
         {
-            _classSignature = signature;
-            Widgets.Clear(_classes);
-            if (classes.Count == 0) _classes.AddChild(Widgets.Label("No classes. Pick a student below.", "Muted"));
-            foreach (var o in classes)
-            {
-                var row = Widgets.Row(6);
-                row.SetMeta("study", o.Id);
-                var portrait = new Portrait(34);
-                if (sim.State.FindSurvivor(o.StudentId) is { } s) portrait.Set(PortraitStudio.For(GetTree(), s), PortraitStudio.Backdrop(s.Id));
-                row.AddChild(portrait);
-                var label = Widgets.Wrapped("", "Small");
-                label.AddThemeColorOverride("font_color", Palette.Text);
-                row.AddChild(label);
-                var id = o.Id;
-                row.AddChild(Widgets.IconButton("ui_close", "", "End this class", () => _session.Execute(new CancelStudy(id)), variation: "Flat"));
-                _classes.AddChild(row);
-            }
-        }
-        foreach (var row in _classes.GetChildren().OfType<HBoxContainer>())
-            if (classes.Find(o => o.Id == row.GetMeta("study").AsInt32()) is { } o)
-                row.GetChild<Label>(1).Text = ClassText(sim, o);
+            var row = Widgets.Row(6);
+            var portrait = new Portrait(34);
+            if (classes.Find(o => o.Id == id) is { } order && sim.State.FindSurvivor(order.StudentId) is { } s)
+                portrait.Set(PortraitStudio.For(GetTree(), s), PortraitStudio.Backdrop(s.Id));
+            row.AddChild(portrait);
+            row.AddChild(Widgets.Wrapped("", "Small", Palette.Text));
+            var end = PanelKit.Focusable(Widgets.IconButton("ui_close", "", "End this class", () => _session.Execute(new CancelStudy(id)), variation: "Flat"));
+            end.SizeFlagsVertical = SizeFlags.ShrinkCenter;
+            row.AddChild(end);
+            return row;
+        }, (id, row) =>
+        {
+            if (classes.Find(o => o.Id == id) is { } o) _set.Text(row.GetChild<Label>(1), ClassText(sim, o));
+        });
     }
 
     private static string ClassText(ColonySim sim, StudyOrder o)
@@ -198,7 +200,7 @@ public partial class StudyPanel : PanelContainer
     }
 
     /// <summary>Refills a picker only when its items change (so an open dropdown stays open) and keeps the selection by id.</summary>
-    private static void Fill<T>(OptionButton picker, List<T> ids, IEnumerable<T> newIds, IEnumerable<string> labels)
+    private static void Fill<T>(OptionButton picker, List<T> ids, IEnumerable<T> newIds, IEnumerable<string> labels, int fallback = 0)
     {
         var idList = newIds.ToList();
         var labelList = labels.ToList();
@@ -216,7 +218,7 @@ public partial class StudyPanel : PanelContainer
         picker.Clear();
         foreach (var label in labelList) picker.AddItem(label);
         var index = hadPrevious ? ids.IndexOf(previous!) : -1;
-        picker.Select(index >= 0 ? index : ids.Count > 0 ? 0 : -1);
+        picker.Select(index >= 0 ? index : ids.Count > 0 ? System.Math.Clamp(fallback, 0, ids.Count - 1) : -1);
     }
 
     private static T? Selected<T>(OptionButton picker, List<T> ids) =>
