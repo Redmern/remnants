@@ -24,6 +24,11 @@ public partial class ColonyScreen
         // Mid-morning, everyone on the day shift (before any site exists, so no work happens on the way).
         JumpToHour(10);
         var adults = sim.State.Survivors.Where(s => !s.IsChild).ToList();
+        if (mode == "levels")
+        {
+            LevelSheet(DebugCapture.Value("--level-types") ?? "woodcutter,farm,quarry,scrapyard,shelter,workshop");
+            return;
+        }
         int? id = mode switch
         {
             "upgrade" => UpgradeSite(),
@@ -92,6 +97,35 @@ public partial class ColonyScreen
             };
             return farm;
         }
+    }
+
+    /// <summary>
+    /// `--construction-demo=levels [--level-types=a,b,…]`: each type at levels 1, 2 and 3 in a row (columns 0–2 of the plot
+    /// grid, a type per row, up to four), the Town Hall moved aside, for judging the level progression of the models.
+    /// </summary>
+    private void LevelSheet(string types)
+    {
+        var sim = _session.Sim;
+        var cols = sim.Data.Rules.Layout.PlotColumns;
+        foreach (var b in sim.State.Buildings.Where(b => b.DefId != sim.Data.Rules.TownHallBuildingId).ToList()) sim.State.Buildings.Remove(b);
+        var hall = sim.State.Buildings.First(b => b.DefId == sim.Data.Rules.TownHallBuildingId);
+        hall.Level = 3;
+        hall.Plot = cols - 1;
+        var row = 0;
+        foreach (var type in types.Split(',').Take(sim.Data.Rules.Layout.PlotRows))
+        {
+            if (!sim.Data.Buildings.TryGetValue(type, out var def)) continue;
+            for (var level = 1; level <= System.Math.Min(3, def.MaxLevel); level++)
+                sim.State.Buildings.Add(new Building { Id = sim.State.NextBuildingId++, DefId = type, Level = level, Plot = row * cols + level - 1 });
+            row++;
+        }
+        _town.Reset();
+        _hud.Roster.Select(null);
+        _town.Select(null);
+        _camera.Focus(_layout.Center(cols + 1) + new Vector3(0, 0, TownLayout.PlotSize * 0.5f));
+        _camera.ZoomTo(44);
+        _session.SetSpeed(0);
+        GD.Print($"[construction-demo] level sheet: {types}");
     }
 
     /// <summary>Debug staging: a site at <paramref name="share"/> of its work (materials hauled to match), these builders on it, in view.</summary>

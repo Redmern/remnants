@@ -594,6 +594,10 @@ def report():
         lines += ["## Screenshots", "", "Captured with `godot-mono --path game -- <flags> --screenshot=...` after a `--headless --import` "
                   "(a fresh worktree without `.godot/imported` shows every model as a primitive).", ""]
         for f, c in shots: lines += [f"![{f}](missing_assets/{f})", "", c, ""]
+    # Hand-written reviews that a re-run keeps (e.g. the level progression of the building models).
+    progression = os.path.join(os.path.dirname(os.path.abspath(__file__)), "level_progression.md")
+    if os.path.exists(progression):
+        lines += open(progression, encoding="utf-8").read().rstrip("\n").split("\n") + [""]
     for cat in CATEGORY_ORDER:
         rows = sorted(by_cat.get(cat, []), key=lambda r: (PRIORITY_ORDER[r["priority"]], r["status"], r["id"]))
         lines += [f"## {cat}", ""]
