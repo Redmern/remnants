@@ -6,7 +6,7 @@ using Remnants.Core.Scavenge;
 using Remnants.Core.Serialization;
 using Remnants.Playtest;
 
-// Usage: dotnet run -c Release --project tools/Remnants.Bench -- [colony] [scavenge] [save] [--seed=N] [--days=N] [--runs=N]
+// Usage: dotnet run -c Release --project tools/Remnants.Bench -- [colony] [scavenge] [save] [--seed=N] [--days=N] [--runs=N] [--write-save=PATH] [--loop=DAYS]
 // Prints baselines for docs/PERFORMANCE.md. With no section named, runs all three.
 var options = args.Where(a => a.StartsWith("--")).Select(a => a[2..].Split('=', 2)).ToDictionary(p => p[0], p => p.Length > 1 ? p[1] : "");
 var sections = args.Where(a => !a.StartsWith("--")).ToHashSet();
@@ -59,6 +59,8 @@ if (Run("colony"))
         ticks.Add(Stopwatch.GetElapsedTime(t).TotalMilliseconds);
     }
     var allocated = GC.GetAllocatedBytesForCurrentThread() - alloc;
+    // --write-save=PATH: the grown colony for the game's --load-save (Godot frame-time runs).
+    if (options.TryGetValue("write-save", out var savePath)) File.WriteAllText(savePath, json);
     // --loop=N: keep ticking N more days afterwards (for a profiler to sample the tick).
     if (options.TryGetValue("loop", out var loop)) Load(json).Advance(tpd * int.Parse(loop));
     var perDay = ticks.Sum() / 30;

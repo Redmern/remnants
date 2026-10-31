@@ -35,7 +35,10 @@ public partial class ColonyScreen : Node3D
         Hud.GameSettings.Boot(GetTree());
         var data = GameDataPaths.Load();
         // The session outlives this scene so a party can leave for the scavenge scene and come back to it.
-        _session = ColonySession.Current ??= new ColonySession(NewGame.Create(data, NewGameSeed, GameDataPaths.LoadScavenge()));
+        // `--load-save=PATH` (debug, an OS path) opens a colony save, e.g. the grown one tools/Remnants.Bench writes.
+        _session = ColonySession.Current ??= DebugCapture.Value("--load-save") is { Length: > 0 } savePath
+            ? new ColonySession(Remnants.Core.Serialization.SaveGame.Load(data, System.IO.File.ReadAllText(savePath), GameDataPaths.LoadScavenge()))
+            : new ColonySession(NewGame.Create(data, NewGameSeed, GameDataPaths.LoadScavenge()));
         // `--story` (with --colony) founds a Story colony.
         if (DebugCapture.HasFlag("--story") && _session.Sim.State.Campaign is null && IsFreshGame) Remnants.Core.Story.Campaign.Start(_session.Sim);
         var layout = new TownLayout(data.Rules.Layout);
@@ -112,6 +115,8 @@ public partial class ColonyScreen : Node3D
         if (DebugCapture.HasFlag("--power-demo") && IsFreshGame) RunPowerDemo();
         if (DebugCapture.HasFlag("--power-overlay")) TogglePowerOverlay();
         if (int.TryParse(DebugCapture.Value("--hour"), out var hour)) JumpToHour(hour);
+        // `--speed=N` (debug, after --hour holds its hour): run at that speed, for --perf-log runs.
+        if (int.TryParse(DebugCapture.Value("--speed"), out var speed)) GetTree().CreateTimer(0.5).Timeout += () => _session.SetSpeed(speed);
         // `--anim-demo=colony` (with --demo): close on the Woodcutter and Farm so the work loops read (FrameRecorder).
         if (DebugCapture.Value("--anim-demo") == "colony" && _session.Sim.State.Buildings.FirstOrDefault(b => b.DefId == "woodcutter") is { } cutter)
         {

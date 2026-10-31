@@ -348,7 +348,8 @@ public partial class ScavengeScreen : Node3D
     {
         if (_busy) return false;
         _busy = true;
-        var result = await _presenter.Execute(command);
+        ScavengeResult result;
+        using (PerfMonitor.Measure("execute")) result = await _presenter.Execute(command);
         if (result.Ok) _usingItem = null;
         if (result.Ok) _aim = TechAim.None;
         if (result.Ok && command is not PingTile) _pinging = null;
@@ -437,6 +438,7 @@ public partial class ScavengeScreen : Node3D
 
     private void SyncAll()
     {
+        using var _ = PerfMonitor.Measure("sync");
         SyncWeather();
         _map.Sync();
         _units.Sync();
@@ -467,6 +469,7 @@ public partial class ScavengeScreen : Node3D
 
     private void RefreshHud()
     {
+        using var _ = PerfMonitor.Measure("hud");
         var selected = _selectedId is { } id ? _presenter.State.FindUnit(id) : null;
         RefreshFocus();
         _turnBar.Refresh(_busy);
