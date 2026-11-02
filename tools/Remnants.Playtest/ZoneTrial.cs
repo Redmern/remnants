@@ -13,6 +13,9 @@ namespace Remnants.Playtest;
 /// </summary>
 public static class ZoneTrial
 {
+    /// <summary>Which runs take the late zones' retune (<c>--late-zones=current|expeditions|everywhere</c>; the game's default).</summary>
+    public static LateZoneTuning LateZones { get; set; } = LateZoneTuning.Expeditions;
+
     /// <summary>Whether parties bring the colony's squad deck (<c>--no-cards</c> turns it off, for before/after comparisons).</summary>
     public static bool Cards { get; set; } = true;
 
@@ -105,7 +108,7 @@ public static class ZoneTrial
             environment = ScavengeEnvironment.At(h, DayNight.PhaseAtHour(h, data.Rules.DayNight), weather);
             if (weather is not null && weather != WeatherRules.Clear) environment.Intensity = TrialIntensity;
         }
-        var conditions = environment is null ? null : new ZoneConditions(Environment: environment);
+        var conditions = new ZoneConditions(Environment: environment) { LateZones = LateZones };
         int limbLocks = 0;
         // --vehicle=TIER parks that vehicle (new, no upgrades) at each party's spawn point; its noise draws more Husks.
         FieldVehicle? field = null;
@@ -114,7 +117,7 @@ public static class ZoneTrial
             var tier = data.VehicleTiers[vehicle];
             var stats = VehicleRules.Stats(data, tier, Array.Empty<string>());
             field = new FieldVehicle(tier.Id, tier.Name, tier.Tier, stats.MaxCondition, stats.MaxCondition, stats.Armor, stats.CargoKg, stats.Armored, stats.Seats);
-            conditions = (conditions ?? new ZoneConditions()) with { HuskMultiplier = 1 + stats.Noise };
+            conditions = conditions with { HuskMultiplier = 1 + stats.Noise };
             if (stats.Seats is { } seats && partySize > seats) partySize = seats;
         }
         int stashed = 0, wrecked = 0;

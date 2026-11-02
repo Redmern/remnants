@@ -6,7 +6,7 @@ using Remnants.Playtest;
 //        [--no-vehicles] [--schematics=sch_a,sch_b|vehicles]   --travel-table   --zone=ID --vehicle=TIER   (vehicles: every vehicle schematic, to sweep the tiers)
 //        dotnet run --project tools/Remnants.Playtest -- --mission=ID [--runs=N] [--hour=H[,H...]] [--weather=KIND[,KIND...]] [--th=N] [--party=N] [--kit=armed]
 //        dotnet run --project tools/Remnants.Playtest -- --story-acts[=terms|silence|voice|calm|all] [--seed=N] [--trace]
-//        dotnet run --project tools/Remnants.Playtest -- --zone=outskirts|all [--runs=N] [--party=N] [--trace] [--no-defenses] [--kit=fog|geared|tech|hack|drone|hacker|peg|mech|powered|cyborg|network] [--carbines=N] [--carbine-quality=fine|crude] [--armor] [--no-tech] [--coop=N] [--hour=H[,H...]] [--weather=KIND[,KIND...]|all] [--mods=basic|full|stealth|network] [--no-salvage] [--no-cards] [--no-dodge]
+//        dotnet run --project tools/Remnants.Playtest -- --zone=outskirts|all [--runs=N] [--party=N] [--trace] [--no-defenses] [--kit=fog|geared|tech|hack|drone|hacker|peg|mech|powered|cyborg|network] [--carbines=N] [--carbine-quality=fine|crude] [--armor] [--no-tech] [--coop=N] [--hour=H[,H...]] [--weather=KIND[,KIND...]|all] [--mods=basic|full|stealth|network] [--no-salvage] [--no-cards] [--no-dodge] [--late-zones=current|expeditions|everywhere]
 var options = args.Where(a => a.StartsWith("--")).Select(a => a[2..].Split('=', 2)).ToDictionary(p => p[0], p => p.Length > 1 ? p[1] : "");
 var days = int.Parse(options.GetValueOrDefault("days", "40"));
 var dataDir = options.GetValueOrDefault("data", Path.Combine(AppContext.BaseDirectory, "data"));
@@ -18,6 +18,8 @@ var quiet = options.ContainsKey("quiet");
 PartyBot.Salvage = !options.ContainsKey("no-salvage");
 // --no-cards: zone-trial parties go without their squad deck (before/after comparisons of the card layer).
 ZoneTrial.Cards = !options.ContainsKey("no-cards");
+// --late-zones=current|expeditions|everywhere: which runs take the late zones' retune (zones.json "retune"); default expeditions.
+if (options.GetValueOrDefault("late-zones") is { Length: > 0 } lateZones) ZoneTrial.LateZones = Enum.Parse<LateZoneTuning>(lateZones, ignoreCase: true);
 // --no-dodge: the party bot does not step off tiles seen enemy plans aim at (comparisons).
 PartyBot.Dodge = !options.ContainsKey("no-dodge");
 var schematics = options.GetValueOrDefault("schematics", "") is { Length: > 0 } list
