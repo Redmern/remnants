@@ -33,6 +33,13 @@ public partial class ScavengeScreen
                     Select(husk.Id);
                     break;
                 case "preview" when husk is not null:
+                    // Fresh AP and the Husk two steps off, so the move tiles in reach of a blow show their chances.
+                    u.Ap = _presenter.Sim.Profile(u).MaxAp;
+                    if (Core.Scavenge.Pos.Neighbours8.Select(d => new Core.Scavenge.Pos(u.Pos.X + 2 * d.X, u.Pos.Y + 2 * d.Y))
+                            .FirstOrDefault(p => _presenter.State.Map.InBounds(p) && _presenter.Sim.Data.Terrain(_presenter.State.Map[p]).Passable
+                                                 && _presenter.State.UnitAt(p) is null) is var near && near != default)
+                        husk.Pos = near;
+                    SyncAll();
                     if (_presenter.Sim.Profile(u).Actions.FirstOrDefault() is { } action) _actionPanel.SetAction(action.Id);
                     _hover = husk.Pos;
                     break;
