@@ -11,7 +11,7 @@ namespace Remnants.Server;
 /// Headless authoritative server for one shared scavenge instance (see docs/MULTIPLAYER.md).
 /// <code>
 /// dotnet run --project src/Remnants.Server -- --port 7777 [--zone ID] [--seed N] [--players 2] [--max-players 4]
-///     [--turn-seconds 60] [--reconnect-seconds 120] [--bind 0.0.0.0] [--data DIR] [--coop] [--hour 0-23] [--weather KIND[:INTENSITY]] [--story-mission ID]
+///     [--turn-seconds 60] [--reconnect-seconds 120] [--bind 0.0.0.0] [--data DIR] [--coop] [--late-zones current|expeditions|everywhere] [--hour 0-23] [--weather KIND[:INTENSITY]] [--story-mission ID]
 /// dotnet run --project src/Remnants.Server -- --bot 127.0.0.1:7777 [--name Bot] [--rounds 30] [--team N] [--hostile] [--propose]
 ///     [--trade [--trade-offer "scrap:20,bandage"]]
 /// dotnet run --project src/Remnants.Server -- --market market.json [--port 7780] [--bind 0.0.0.0]
@@ -80,6 +80,7 @@ public static class Program
             TurnSeconds = a.Double("--turn-seconds", 60),
             ReconnectSeconds = a.Double("--reconnect-seconds", 120),
             Mode = a.Flag("--coop") ? MissionMode.Coop : MissionMode.Versus,
+            LateZones = a.Value("--late-zones") is { } late ? Enum.Parse<LateZoneTuning>(late, ignoreCase: true) : LateZoneTuning.Expeditions,
             Hour = a.Value("--hour") is { } hour ? int.Parse(hour, CultureInfo.InvariantCulture) : null,
             Weather = a.Value("--weather") is { } w ? w.Split(':')[0] : null,
             WeatherIntensity = a.Value("--weather") is { } wi && wi.Split(':') is [_, var i] ? double.Parse(i, CultureInfo.InvariantCulture) : 0.7,
@@ -96,7 +97,7 @@ public static class Program
         var done = new TaskCompletionSource();
         server.Host.Ended += () => done.TrySetResult();
         Print($"Remnants server v{Protocol.Version} on port {server.Port}: zone {options.ZoneId}, seed {options.Seed}, " +
-              $"{options.MinPlayers}-{options.MaxPlayers} players, {(options.Mode == MissionMode.Coop ? "co-op" : "versus")}, turn timer {options.TurnSeconds}s, reconnect window {options.ReconnectSeconds}s");
+              $"{options.MinPlayers}-{options.MaxPlayers} players, {(options.Mode == MissionMode.Coop ? "co-op" : "versus")}, late zones {options.LateZones.ToString().ToLowerInvariant()}, turn timer {options.TurnSeconds}s, reconnect window {options.ReconnectSeconds}s");
 
         Console.CancelKeyPress += (_, e) =>
         {

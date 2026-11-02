@@ -28,6 +28,7 @@ public partial class MultiplayerMenu : Control
     private LineEdit _address = null!;
     private OptionButton _zone = null!;
     private OptionButton _mode = null!;
+    private OptionButton _lateZones = null!;
     private OptionButton _team = null!;
     private HBoxContainer _teamRow = null!;
     private Label _party = null!;
@@ -117,6 +118,16 @@ public partial class MultiplayerMenu : Control
         if (DebugCapture.HasFlag("--mp-coop")) _mode.Select(1);
         grid.AddChild(Ui.Label("Mode (host)"));
         grid.AddChild(_mode);
+        // The late-zone tuning (Settings > Game > Late zones), per mission for the host.
+        _lateZones = new OptionButton
+        {
+            SizeFlagsHorizontal = SizeFlags.ExpandFill,
+            TooltipText = "Rail Depot, Network Relay and Core Spire. Re-tuned: more Linked, turrets, pylons and faster reinforcements. Expeditions only leaves co-op story missions as they are.",
+        };
+        foreach (var label in LateZoneLabels) _lateZones.AddItem(label);
+        _lateZones.Select((int)(System.Enum.TryParse<LateZoneTuning>(DebugCapture.Value("--mp-late-zones"), true, out var lateFlag) ? lateFlag : GameSettings.LateZones));
+        grid.AddChild(Ui.Label("Late zones (host)"));
+        grid.AddChild(_lateZones);
 
         _party = Ui.Label("", 13, Ui.Muted);
         _party.AutowrapMode = TextServer.AutowrapMode.WordSmart;
@@ -165,6 +176,8 @@ public partial class MultiplayerMenu : Control
         box.AddChild(_status);
     }
 
+    private static readonly string[] LateZoneLabels = ["As before (lighter)", "Re-tuned expeditions", "Re-tuned everywhere"];
+
     private void PickParty()
     {
         var (party, description) = MultiplayerSession.PickParty(_name.Text);
@@ -190,6 +203,7 @@ public partial class MultiplayerMenu : Control
             MaxPartySize = GameDataPaths.Load().Rules.Expedition.PartySizeByTownHallLevel.Max(),
             TurnSeconds = double.TryParse(DebugCapture.Value("--mp-turn-seconds"), out var turn) ? turn : 60,
             Mode = _mode.Selected == 1 ? MissionMode.Coop : MissionMode.Versus,
+            LateZones = (LateZoneTuning)_lateZones.Selected,
             // Hosting from the colony's waiting party: the mission is at the hour it arrived (and maybe waited for), in the
             // weather over the zone then; otherwise the server rolls the weather from the seed.
             Hour = env?.Hour,
@@ -325,11 +339,15 @@ public partial class MultiplayerMenu : Control
             var mode = lobby.Mode == MissionMode.Coop
                 ? Palette.Paint("CO-OP", Palette.Ally) + " · everyone on one team, more enemies per player"
                 : "VERSUS · every party for itself unless it teams up";
-            _lobby.Text = $"{zone} · {mode}\n{lobby.Players.Count}/{lobby.MaxPlayers} players (starts with {lobby.MinPlayers}+ when all are ready)\n" + string.Join("\n", lines);
+            var late = GameDataPaths.LoadScavenge().Zones.TryGetValue(lobby.ZoneId, out var lz) && lz.Retune is not null
+                ? $" · late zones: {LateZoneLabels[(int)lobby.LateZones].ToLowerInvariant()}" : "";
+            _lobby.Text = $"{zone} · {mode}{late}\n{lobby.Players.Count}/{lobby.MaxPlayers} players (starts with {lobby.MinPlayers}+ when all are ready)\n" + string.Join("\n", lines);
             _teamRow.Visible = lobby.Mode == MissionMode.Versus && client.Phase == ClientPhase.Lobby;
-            // Joined: the picker shows the server's mode and is fixed.
+            // Joined: the pickers show the server's mode and late-zone tuning, and are fixed.
             _mode.Select(lobby.Mode == MissionMode.Coop ? 1 : 0);
             _mode.Disabled = true;
+            _lateZones.Select((int)lobby.LateZones);
+            _lateZones.Disabled = true;
             if (_status.Text.StartsWith("Connecting")) _status.Text = $"In the lobby as player {client.PlayerId}.";
             _ready.Disabled = client.Phase != ClientPhase.Lobby;
             RefreshTrade(client, lobby);
