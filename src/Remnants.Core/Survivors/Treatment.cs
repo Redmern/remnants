@@ -76,6 +76,22 @@ public static class Treatment
     }
 
     /// <summary>
+    /// Field mending (stitches, a trauma kit): the worst injury's severity drops by <paramref name="amount"/>, healed
+    /// outright at 0. Null when nothing is injured.
+    /// </summary>
+    public static string? Mend(Body body, double amount)
+    {
+        var worst = body.Parts.Where(kv => kv.Value.Condition == PartCondition.Injured)
+            .OrderByDescending(kv => kv.Value.Severity).ThenBy(kv => kv.Key).Select(kv => (BodyPart?)kv.Key).FirstOrDefault();
+        if (worst is not { } part || amount <= 0) return null;
+        var p = body[part];
+        p.Severity -= amount;
+        if (p.Severity > 1e-9) return $"stitched up the {part}";
+        body.Heal(part);
+        return $"closed the wound on the {part}";
+    }
+
+    /// <summary>
     /// A painkiller dose: the effect (strongest relief, longest duration) and the dose count. Too many doses close together
     /// start a dependency, or deepen one.
     /// </summary>

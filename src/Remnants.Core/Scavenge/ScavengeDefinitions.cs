@@ -396,6 +396,9 @@ public sealed record CombatRules
     public double InstantDeathHp { get; init; } = -40;
     public ActionDef Unarmed { get; init; } = new();
 
+    /// <summary>Arm efficiency (best arm, or both averaged for two-handed) below which arm-locked attacks cannot be used.</summary>
+    public double ArmLockBelow { get; init; } = 0.5;
+
     /// <summary>How a landed hit resolves: graze, hit or solid (see <see cref="HitTierRules"/>).</summary>
     public HitTierRules Tiers { get; init; } = new();
 }
