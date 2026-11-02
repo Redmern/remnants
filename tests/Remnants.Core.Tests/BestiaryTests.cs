@@ -101,7 +101,9 @@ public class BestiaryTests
         var wiped = Arena(4, 3, [b, EnemyUnit("husk", new(2, 0))]);
         wiped.State.FindParty(1)!.Bestiary["husk"] = new BestiaryEntry { Seen = 2 };
         Combat.ApplyDamage(wiped, b, BodyPart.Torso, 999);
-        Assert.Empty(wiped.ResultFor(1).Bestiary);
+        Assert.Empty(wiped.ResultFor(1).Bestiary); // a wipe loses the run's learning, like the card pouch (user decision)
+        Bestiary.Merge(colony, wiped.ResultFor(1).Bestiary);
+        Assert.Equal(5, colony.Bestiary["husk"].Seen);
     }
 
     [Fact]
@@ -182,6 +184,59 @@ public class BestiaryTests
         Assert.DoesNotContain("Brace", labels);
         var defence = Assert.Single(hidden.Rows, r => r.Label == "Target's defence");
         Assert.Contains("Bestiary", defence.Note);
-        Assert.Equal(full.Total, hidden.Total); // the chance itself is the same; only its terms are hidden
+        var exact = Combat.ChanceToHit(sim, a, shoot, husk);
+        Assert.Equal($"{exact * 100:0}%", full.Total);
+        Assert.Equal($"{Bestiary.ShownChance(exact, BestiaryTier.Fought) * 100:0}%", hidden.Total); // rounded to 5% below killed
+    }
+
+    [Fact]
+    public void Hit_chances_against_a_type_not_yet_killed_show_to_the_nearest_five_percent()
+    {
+        Assert.Equal(0.65, Bestiary.ShownChance(0.634, BestiaryTier.Fought), 9);
+        Assert.Equal(0.60, Bestiary.ShownChance(0.62, BestiaryTier.Unknown), 9);
+        Assert.Equal(0.05, Bestiary.ShownChance(0.05, BestiaryTier.Seen), 9);
+        Assert.Equal(0.634, Bestiary.ShownChance(0.634, BestiaryTier.Killed), 9);
+    }
+
+    [Fact]
+    public void The_hit_previews_bucket_below_killed_and_stay_exact_for_players_and_known_types()
+    {
+        var a = SurvivorUnit(1, new(1, 1), weapon: "pistol");
+        var husk = EnemyUnit("husk", new(5, 1));
+        var rival = SurvivorUnit(2, new(5, 3), weapon: "pistol");
+        var sim = Arena(8, 5, [a, husk, rival]);
+        var shoot = sim.Profile(a).Actions.First(x => x.Reach > 1);
+        var exact = Combat.ChanceToHit(sim, a, shoot, husk);
+        Assert.NotEqual(exact, Bestiary.ShownChance(exact, BestiaryTier.Seen)); // the test needs an off-bucket chance
+
+        var seen = TacticsView.HitPreview(sim, a, shoot, husk, tier: BestiaryTier.Seen);
+        Assert.Equal(Bestiary.ShownChance(exact, BestiaryTier.Seen), seen.Chance, 9);
+        Assert.Equal($"{seen.Chance * 100:0}%", seen.Breakdown!.Total);
+        Assert.Equal(exact, TacticsView.HitPreview(sim, a, shoot, husk).Chance, 9);
+        Assert.All(TacticsView.MovePreview(sim, a, husk, BestiaryTier.Fought).Values, c => Assert.Equal(0, Math.Round(c * 100) % 5));
+        Assert.Contains(TacticsView.MovePreview(sim, a, husk).Values, c => Math.Round(c * 100, 6) % 5 != 0);
+
+        var p = Combat.ChanceToHit(sim, a, shoot, rival);
+        Assert.Equal(p, TacticsView.HitPreview(sim, a, shoot, rival,
+            tier: Bestiary.Knowledge(sim, new Dictionary<string, BestiaryEntry>(), 1, rival)).Chance, 9); // players: exact
+    }
+
+    [Fact]
+    public void A_miss_on_an_npc_enemy_logs_its_chance_to_the_nearest_five_percent()
+    {
+        var a = SurvivorUnit(1, new(1, 1), weapon: "pistol");
+        var husk = EnemyUnit("husk", new(5, 1));
+        var sim = Arena(8, 4, [a, husk]);
+        var shoot = sim.Profile(a).Actions.First(x => x.Reach > 1);
+        var shown = 0.0;
+        for (var i = 0; i < 40 && !sim.State.Events.Any(e => e.Type == ScavengeEventType.Missed); i++)
+        {
+            a.Ap = sim.Profile(a).MaxAp;
+            husk.Hp = husk.MaxHp;
+            shown = Bestiary.ShownChance(Combat.ChanceToHit(sim, a, shoot, husk), BestiaryTier.Unknown);
+            sim.Execute(new Attack(1, a.Id, husk.Id, shoot.Id));
+        }
+        var miss = sim.State.Events.First(e => e.Type == ScavengeEventType.Missed);
+        Assert.Contains($"{shown:P0}", miss.Message); // the log is shared and cannot know the colony's bestiary
     }
 }

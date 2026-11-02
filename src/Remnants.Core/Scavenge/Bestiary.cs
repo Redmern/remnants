@@ -72,6 +72,13 @@ public static class Bestiary
     public static string Health(Unit unit, BestiaryTier tier) =>
         tier >= BestiaryTier.Killed ? $"HP {unit.Hp:0}/{unit.MaxHp:0}" : $"HP {(unit.MaxHp > 0 ? unit.Hp / unit.MaxHp : 0) * 100:0}%";
 
+    /// <summary>
+    /// A hit chance as the side may see it: exact once the target's type is killed (and for players), otherwise to the
+    /// nearest 5% so the hidden dodge and bracing cannot be read off it (user decision).
+    /// </summary>
+    public static double ShownChance(double chance, BestiaryTier tier) =>
+        tier >= BestiaryTier.Killed ? chance : Math.Round(chance * 20, MidpointRounding.AwayFromZero) / 20;
+
     /// <summary>Whether a unit is a bestiary subject: an NPC enemy or a machine of the Network with an enemy definition.</summary>
     public static bool Subject(Unit u) => u.EnemyDefId is not null && u.PlayerId is null && u.Kind is UnitKind.Enemy or UnitKind.Device;
 

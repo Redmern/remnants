@@ -77,22 +77,26 @@ public static class TacticsView
         return overlay;
     }
 
-    /// <summary>The attack previewed from <paramref name="from"/> (default where the attacker stands): reach, hit chance, terms.</summary>
-    public static HitPreviewInfo HitPreview(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, Pos? from = null)
+    /// <summary>
+    /// The attack previewed from <paramref name="from"/> (default where the attacker stands): reach, hit chance, terms, as
+    /// a side that knows the target's type to <paramref name="tier"/> sees them (<see cref="Bestiary.ShownChance"/>).
+    /// </summary>
+    public static HitPreviewInfo HitPreview(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, Pos? from = null,
+        BestiaryTier tier = BestiaryTier.Killed)
     {
         var at = from ?? attacker.Pos;
         var inReach = Combat.CheckReach(sim.Data, sim.State.Map, at, action, target.Pos) == ScavengeError.None;
-        var chance = Combat.ChanceToHit(sim, attacker, action, target, from);
+        var chance = Bestiary.ShownChance(Combat.ChanceToHit(sim, attacker, action, target, from), tier);
         var breakdown = Breakdowns.For(Breakdowns.HitChance,
-            new HelpContext { Scavenge = sim, Attacker = attacker, Action = action, Target = target, From = from });
+            new HelpContext { Scavenge = sim, Attacker = attacker, Action = action, Target = target, From = from, TargetKnown = tier });
         return new HitPreviewInfo(inReach, chance, breakdown);
     }
 
     /// <summary>
     /// For each tile the unit can move to this turn (and where it stands), its best hit chance at <paramref name="target"/>
-    /// with the AP left after the move; tiles with no blow in reach are left out.
+    /// with the AP left after the move; tiles with no blow in reach are left out. Chances are as shown at <paramref name="tier"/>.
     /// </summary>
-    public static Dictionary<Pos, double> MovePreview(ScavengeSim sim, Unit unit, Unit target)
+    public static Dictionary<Pos, double> MovePreview(ScavengeSim sim, Unit unit, Unit target, BestiaryTier tier = BestiaryTier.Killed)
     {
         var map = sim.State.Map;
         var actions = sim.Profile(unit).Actions;
@@ -102,7 +106,7 @@ public static class TacticsView
             var best = actions.Where(a => cost + Combat.ApCost(a, tile, target.Pos) <= unit.Ap && Drones.CanStrike(a, target)
                                           && Combat.CheckReach(sim.Data, map, tile, a, target.Pos) == ScavengeError.None)
                 .Select(a => Combat.ChanceToHit(sim, unit, a, target, tile)).DefaultIfEmpty(-1).Max();
-            if (best >= 0) result[tile] = best;
+            if (best >= 0) result[tile] = Bestiary.ShownChance(best, tier);
         }
         return result;
     }
