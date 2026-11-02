@@ -48,8 +48,9 @@ public static class TacticsDemo
             var target = mine.Count > 1 ? mine[1].Pos : new Pos(anchor.X - 1, anchor.Y);
             linked.Plan = new PlannedAction { Path = [], AttackTile = target, ActionId = sim.Profile(linked).Actions.First().Id, Round = state.Round };
         }
-        state.TurnOrder = state.Units.Where(u => u.IsActive && u.Side != Unit.NeutralSide && u.Kind is not (UnitKind.Drone or UnitKind.Decoy))
-            .Select(u => u.Id).Where(id => state.TurnOrder.Contains(id) || state.FindUnit(id)!.Kind == UnitKind.Enemy).Distinct().ToList();
+        // The staged enemies act after everyone already in the order; the unit up now (whose turn has begun) stays up.
+        foreach (var e in state.Units.Where(u => u.Kind == UnitKind.Enemy && u.IsActive && !state.TurnOrder.Contains(u.Id)))
+            state.TurnOrder.Add(e.Id);
         if (SquadDecks.Of(state, playerId) is { } deck)
         {
             // A hand that shows every kind: a reaction, a hard card, a boost, a dead card.
