@@ -162,4 +162,63 @@ public class FogNetTests
         // Bob's own unit's plan keeps its card in his own view.
         Assert.Contains("secret_card", ProtocolJson.Serialize(new Snapshot(bob.View(f.Sim), [], [])));
     }
+
+    [Fact]
+    public void An_ally_and_a_side_that_only_has_it_revealed_get_the_plan_without_its_card()
+    {
+        var (f, a, b, sniper, victim) = Duel();
+        var state = f.Sim.State;
+        sniper.Plan = new PlannedAction { Path = [new(10, 10)], AttackTile = new(3, 10), ActionId = "aimed_shot", TargetId = victim.Id, CardId = "hidden_card", Round = 1 };
+        sniper.OutplayedId = victim.Id;
+        sniper.OutplayedUntilRound = state.Round + 1;
+
+        // Bob cannot see the cloaked sniper, but a motion sensor reveals it to his side: the plan comes, the card does not.
+        var bobSide = Unit.PlayerSide(b.Id);
+        state.Units.Single(u => u.PlayerId == b.Id && u.Id != victim.Id).Pos = new(7, 10); // in sight range, but the cloak hides the sniper
+        Assert.False(Detection.SideSees(f.Sim.Data, state, bobSide, sniper));
+        state.Reveals.Add(new Reveal(sniper.Id, bobSide, state.Round + 2));
+        Assert.True(Detection.SideSees(f.Sim.Data, state, bobSide, sniper));
+        var bob = new SideFog(b.Id, bobSide);
+        bob.Update(f.Sim);
+        var revealed = Assert.Single(bob.View(f.Sim).Units, u => u.Id == sniper.Id);
+        Assert.Equal(new Pos(3, 10), revealed.Plan?.AttackTile);
+        Assert.Null(revealed.Plan?.CardId);
+        Assert.Null(revealed.Plan?.TargetId);
+        Assert.Null(revealed.OutplayedId);
+
+        // Allied on one team side: Bob sees his ally's plan in full, except the card and the target.
+        var team = Unit.TeamSide(1);
+        foreach (var p in state.Parties) p.Side = team;
+        foreach (var u in state.Units.Where(u => u.PlayerId is not null)) u.Side = team;
+        var ally = new SideFog(b.Id, bobSide);
+        ally.Update(f.Sim);
+        var shown = Assert.Single(ally.View(f.Sim).Units, u => u.Id == sniper.Id);
+        Assert.Equal([new Pos(10, 10)], shown.Plan?.Path);
+        Assert.Null(shown.Plan?.CardId);
+        Assert.Null(shown.Plan?.TargetId);
+        Assert.DoesNotContain("hidden_card", ProtocolJson.Serialize(new Snapshot(ally.View(f.Sim), [], [])));
+    }
+
+    [Fact]
+    public void A_pending_plan_resolves_through_turn_timeouts_after_its_player_drops()
+    {
+        var f = new NetFixture(new HostOptions { TurnSeconds = 10, ReconnectSeconds = 600 });
+        var (a, b) = f.StartTwo();
+        f.EndTurnsUntil(() => f.PlayerUp(a, b) == a, a, b);
+        var unit = f.Sim.State.CurrentUnit!;
+        var to = f.Sim.Reachable(unit).Where(kv => kv.Value <= unit.Ap).Select(kv => kv.Key).OrderBy(p => p.Y).ThenBy(p => p.X).First();
+        var declared = a.Do(new DeclareIntent(a.Id, unit.Id, [to]));
+        Assert.True(declared.Ok, declared.Message);
+        a.Link.Close();
+
+        for (var i = 0; i < 100 && unit.Plan is not null && f.Host.Phase == HostPhase.Playing; i++)
+        {
+            f.Clock.Advance(11);
+            f.Host.Tick();
+        }
+        Assert.Null(unit.Plan);
+        Assert.Contains(f.Sim.State.Events, e => e.UnitId == unit.Id
+            && e.Type is ScavengeEventType.IntentResolved or ScavengeEventType.IntentFizzled or ScavengeEventType.IntentCanceled);
+        f.AssertNoLeaks();
+    }
 }
