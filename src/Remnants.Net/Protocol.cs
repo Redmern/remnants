@@ -142,7 +142,8 @@ public enum MissionMode { Versus, Coop }
 /// <summary><paramref name="Team"/>: the starting team (null = on their own).</summary>
 public sealed record LobbyPlayer(int PlayerId, string Name, int PartySize, bool Ready, bool Connected, int? Team = null);
 
-public sealed record LobbyState(string ZoneId, int MinPlayers, int MaxPlayers, List<LobbyPlayer> Players, MissionMode Mode = MissionMode.Versus) : Message;
+public sealed record LobbyState(string ZoneId, int MinPlayers, int MaxPlayers, List<LobbyPlayer> Players, MissionMode Mode = MissionMode.Versus,
+    LateZoneTuning LateZones = LateZoneTuning.Current) : Message;
 
 /// <summary><paramref name="Team"/>: the team the player started on (null = on their own); alliances change in the field.</summary>
 public sealed record PlayerInfo(int PlayerId, string Name, int? Team = null);

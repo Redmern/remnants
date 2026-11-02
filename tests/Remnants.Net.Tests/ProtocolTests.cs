@@ -114,6 +114,7 @@ public class ProtocolTests
         RoundTrips(new SetTeam(2));
         RoundTrips(new SetTeam(null));
         RoundTrips(new LobbyState("outskirts", 2, 4, [new LobbyPlayer(1, "Ana", 2, true, true, 1)], MissionMode.Coop));
+        RoundTrips(new LobbyState("core_spire", 2, 4, [new LobbyPlayer(1, "Ana", 2, true, true)], LateZones: LateZoneTuning.Everywhere));
         RoundTrips(new AllianceProposed(1, 2, 5));
         RoundTrips(new AllianceAccepted([1, 2]));
         RoundTrips(new AllianceDeclined(1, 2, Lapsed: true));
