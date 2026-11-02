@@ -21,7 +21,7 @@ public static class MissionTrial
         var h = hour ?? 12;
         var environment = ScavengeEnvironment.At(h, DayNight.PhaseAtHour(h, data.Rules.DayNight), weather);
         if (weather is not null && weather != WeatherRules.Clear) environment.Intensity = ZoneTrial.TrialIntensity;
-        var conditions = new ZoneConditions(Environment: environment);
+        var conditions = new ZoneConditions(Environment: environment) { LateZones = ZoneTrial.LateZones };
         var outcomes = new SortedDictionary<string, int>(StringComparer.Ordinal);
         int deaths = 0, deathRuns = 0, wipes = 0, rounds = 0;
         for (var seed = 1; seed <= runs; seed++)

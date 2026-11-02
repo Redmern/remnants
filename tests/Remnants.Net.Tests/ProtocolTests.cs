@@ -47,6 +47,44 @@ public class ProtocolTests
     }
 
     [Fact]
+    public void A_planned_action_round_trips_under_its_wire_name()
+    {
+        var plan = new DeclareIntent(1, 2, [new Pos(3, 4), new Pos(4, 4)], new Pos(5, 4), "swing");
+        var json = ProtocolJson.Serialize(new Command(7, plan));
+        Assert.Contains("\"kind\":\"plannedAction\"", json);
+        var back = Assert.IsType<DeclareIntent>(Assert.IsType<Command>(ProtocolJson.Deserialize(json)).Intent);
+        Assert.Equal(plan.Path, back.Path);
+        Assert.Equal((plan.AttackTile, plan.ActionId), (back.AttackTile, back.ActionId));
+        Assert.Equal(json, ProtocolJson.Serialize(new Command(7, back)));
+
+        var pin = new DeclareIntent(1, 2, [], new Pos(6, 4), "burst", Suppress: true);
+        var pinBack = Assert.IsType<DeclareIntent>(Assert.IsType<Command>(ProtocolJson.Deserialize(ProtocolJson.Serialize(new Command(9, pin)))).Intent);
+        Assert.True(pinBack.Suppress);
+        var moveOnly = ProtocolJson.Serialize(new Command(8, new DeclareIntent(1, 2, [new Pos(1, 1)])));
+        Assert.IsType<DeclareIntent>(Assert.IsType<Command>(ProtocolJson.Deserialize(moveOnly)).Intent);
+        Assert.Equal(17, Protocol.TacticsVersion);
+        Assert.Equal(Protocol.TacticsVersion, Protocol.Version);
+    }
+
+    [Fact]
+    public void Card_commands_and_a_join_with_a_deck_round_trip()
+    {
+        foreach (var (command, kind) in new (IScavengeCommand, string)[]
+                 {
+                     (new PlayCard(1, 2, "dash"), "playCard"), (new PlayCard(1, 2, "counterstrike", 9, Boost: true, FromSlot: true), "playCard"),
+                     (new DiscardDeadCard(1, 2, "sprint"), "discardDeadCard"),
+                 })
+        {
+            var json = ProtocolJson.Serialize(new Command(3, command));
+            Assert.Contains($"\"kind\":\"{kind}\"", json);
+            Assert.Equal(command, Assert.IsType<Command>(ProtocolJson.Deserialize(json)).Intent);
+            Assert.DoesNotContain("\"tile\"", json); // a card goes on a character, never a tile
+        }
+        RoundTrips(new Join(Protocol.Version, "Ana", NetFixture.Party("A"), Deck: ["dash", "dash", "take_cover"]));
+        Assert.Equal(17, Protocol.Version);
+    }
+
+    [Fact]
     public void Messages_carry_a_type_discriminator_and_the_protocol_version()
     {
         var json = ProtocolJson.Serialize(new Join(Protocol.Version, "Ana", NetFixture.Party("A")));
@@ -76,6 +114,7 @@ public class ProtocolTests
         RoundTrips(new SetTeam(2));
         RoundTrips(new SetTeam(null));
         RoundTrips(new LobbyState("outskirts", 2, 4, [new LobbyPlayer(1, "Ana", 2, true, true, 1)], MissionMode.Coop));
+        RoundTrips(new LobbyState("core_spire", 2, 4, [new LobbyPlayer(1, "Ana", 2, true, true)], LateZones: LateZoneTuning.Everywhere));
         RoundTrips(new AllianceProposed(1, 2, 5));
         RoundTrips(new AllianceAccepted([1, 2]));
         RoundTrips(new AllianceDeclined(1, 2, Lapsed: true));

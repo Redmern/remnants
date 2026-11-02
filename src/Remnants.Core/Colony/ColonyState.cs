@@ -28,6 +28,12 @@ public sealed class ColonyState
     /// <summary>The party currently out in a zone, if any. One expedition at a time.</summary>
     public Expedition? Expedition { get; set; }
 
+    /// <summary>Cards: the collection, the squad deck, personal slots and deck upgrades (<see cref="ColonyCards"/>).</summary>
+    public CardCollection Cards { get; set; } = new();
+
+    /// <summary>What the colony knows of each enemy type (enemy id → encounter counts; see <c>Scavenge.Bestiary</c>).</summary>
+    public SortedDictionary<string, Scavenge.BestiaryEntry> Bestiary { get; set; } = new(StringComparer.Ordinal);
+
     public int NextExpeditionId { get; set; } = 1;
 
     /// <summary>World map knowledge and depletion per zone id; zones never touched are not listed.</summary>

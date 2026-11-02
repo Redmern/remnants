@@ -172,6 +172,8 @@ public class DroneTests
         var drone = sim.State.FindUnit(op.DroneId!.Value)!;
         drone.Pos = new Pos(8, 2);
         Assert.True(sim.Execute(new EndTurn(1, op.Id)).Ok);
+        Assert.Equal(drone.Pos, linked.Plan?.AttackTile); // it telegraphs a shot at the drone
+        Assert.True(sim.Execute(new EndTurn(1, op.Id)).Ok);
         Assert.Contains(sim.State.Events, e => e.UnitId == linked.Id && e.TargetId == drone.Id
                                                && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed or ScavengeEventType.Suppressed);
 
@@ -181,6 +183,8 @@ public class DroneTests
         var drone2 = Deploy(sim2, op2, new Pos(2, 1));
         drone2.Pos = new Pos(9, 2);
         Assert.True(sim2.Execute(new EndTurn(1, op2.Id)).Ok);
+        Assert.True(sim2.Execute(new EndTurn(1, op2.Id)).Ok);
+        Assert.NotEqual(drone2.Pos, husk.Plan?.AttackTile);
         Assert.DoesNotContain(sim2.State.Events, e => e.UnitId == husk.Id && e.TargetId == drone2.Id);
     }
 

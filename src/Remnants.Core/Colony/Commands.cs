@@ -143,6 +143,10 @@ public sealed record UpgradeGear(string ItemId, string KitItemId) : IColonyComma
 public enum CommandError
 {
     None,
+    UnknownCard,
+    /// <summary>The deck and slots would use more copies of a card than the colony owns.</summary>
+    NotEnoughCards,
+    UnknownCardUpgrade,
     UnknownSurvivor,
     UnknownBuilding,
     UnknownBuildingType,
@@ -303,6 +307,15 @@ public enum CommandError
 /// a switched-off generator stays cold (no fuel burnt).
 /// </summary>
 public sealed record SetPower(int BuildingId, bool On) : IColonyCommand;
+
+/// <summary>The squad deck parties take out: card ids from the collection (copies repeated).</summary>
+public sealed record SetDeck(List<string> Cards) : IColonyCommand;
+
+/// <summary>The cards a survivor holds in their personal slots (an empty list clears them).</summary>
+public sealed record SetCardSlots(int SurvivorId, List<string> Cards) : IColonyCommand;
+
+/// <summary>Buy a squad deck upgrade (cards.json <c>rules.upgrades</c>).</summary>
+public sealed record BuyCardUpgrade(string UpgradeId) : IColonyCommand;
 
 /// <summary>Outcome of a command. <see cref="EntityId"/> carries e.g. a new building's id.</summary>
 public sealed record CommandResult(CommandError Error, string Message, int? EntityId = null)

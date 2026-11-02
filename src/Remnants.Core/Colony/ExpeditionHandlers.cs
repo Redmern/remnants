@@ -122,10 +122,11 @@ internal static class ExpeditionHandlers
         {
             var s = sim.State.FindSurvivor(m.SurvivorId) ?? throw new InvalidOperationException($"Expedition member {m.SurvivorId} is gone.");
             return new PartyMember(s, new(m.Equipment ?? new()), new(m.Pack ?? []),
-                sim.Data.Food is null ? 0 : FoodEffects.FieldFirstRoundAp(s, sim.Data, sim.State.Tick));
+                sim.Data.Food is null ? 0 : FoodEffects.FieldFirstRoundAp(s, sim.Data, sim.State.Tick), ColonyCards.SlotCards(sim.State, s.Id));
         }).ToList())
         {
             Vehicle = expedition.VehicleId is { } id && sim.FindVehicle(id) is { } v ? VehicleRules.Field(sim.Data, v) : null,
+            Deck = ColonyCards.Loadout(sim),
         };
 
     public static CommandResult Apply(ColonySim sim, ApplyExtractionResult c)
@@ -192,6 +193,10 @@ internal static class ExpeditionHandlers
                 else loot.Remove(id);
             }
         var report = new ExpeditionReport(expedition.Id, expedition.ZoneId, state.Tick, [], [], [], loot, new(StringComparer.Ordinal));
+        // Cards: what was found joins the collection; consumables played in the run are gone.
+        foreach (var card in result.Cards) ColonyCards.Add(state, data.Cards, card);
+        foreach (var card in result.ConsumedCards) ColonyCards.Remove(state, card);
+        Bestiary.Merge(state, result.Bestiary.Where(kv => data.Enemies.ContainsKey(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value));
         // Survivors the Linked carried off go to the story, not the memorial.
         if (result.Mission?.Taken is { Count: > 0 } taken) global::Remnants.Core.Story.StoryWorld.TakeAway(sim, taken);
 

@@ -49,6 +49,8 @@ public static class ScavengeSession
     {
         Pending = new ScavengeMission(driver, onFinished, returnScene ?? MenuScene);
         LastResult = null;
+        // The colony's bestiary gates the enemy stats the run shows (empty for a run started without a colony).
+        BestiaryKnowledge.Colony = (IReadOnlyDictionary<string, BestiaryEntry>?)Colony.ColonySession.Current?.Sim.State.Bestiary ?? new Dictionary<string, BestiaryEntry>();
         tree.ChangeSceneToFile(ScenePath);
     }
 
@@ -69,6 +71,13 @@ public static class ScavengeSession
                 vehicle.Upgrades.Add(Remnants.Core.Colony.FittedUpgrade.Standard(u));
         vehicle.Condition = Remnants.Core.Colony.VehicleRules.Stats(data, vehicle).MaxCondition * 0.8;
         return Remnants.Core.Colony.VehicleRules.Field(data, vehicle);
+    }
+
+    /// <summary>The starter squad deck with the base deck rules (a debug run plays with cards like a colony's first).</summary>
+    private static SquadLoadout? DebugDeck()
+    {
+        var cards = GameDataPaths.LoadScavenge().Cards;
+        return cards.All.Count == 0 ? null : new SquadLoadout(cards.StarterDeck(), cards.Rules.HandSize, cards.Rules.Draw, cards.Rules.Budget);
     }
 
     /// <summary>A debug mission with <see cref="DebugParty"/>, returning to the main menu. --zone=ID / --seed=N pick another.</summary>
@@ -106,13 +115,17 @@ public static class ScavengeSession
             env.Intensity = parts.Length > 1 && double.TryParse(parts[1], System.Globalization.CultureInfo.InvariantCulture, out var i) ? i : 0.85;
             conditions = new ZoneConditions(Environment: env);
         }
+        // The late-zone tuning: --late-zones=current|expeditions|everywhere, else the setting.
+        var late = ZoneTuning.TryParse(DebugCapture.Value("--late-zones"), out var flag) ? flag : Hud.GameSettings.LateZones;
+        conditions = (conditions ?? new ZoneConditions()) with { LateZones = late };
         var sim = NewScavenge.Create(GameDataPaths.LoadScavenge(), DebugZoneArg, DebugSeedArg,
-            [new PartySetup(LocalPlayerId, DebugParty()) { Vehicle = DebugVehicle() }], conditions);
+            [new PartySetup(LocalPlayerId, DebugParty()) { Vehicle = DebugVehicle(), Deck = DebugDeck() }], conditions);
         if (Fog.FogDemo.Requested) Fog.FogDemo.Stage(sim, LocalPlayerId);
         if (TechDemo.Requested) TechDemo.Stage(sim, LocalPlayerId);
         if (LootDemo.Requested) LootDemo.Stage(sim, LocalPlayerId);
         if (AnimDemo.Requested) AnimDemo.Stage(sim, LocalPlayerId);
         if (GearDemo.Requested) GearDemo.Stage(sim, LocalPlayerId);
+        if (TacticsDemo.Requested) TacticsDemo.Stage(sim, LocalPlayerId);
         return sim;
     }
 

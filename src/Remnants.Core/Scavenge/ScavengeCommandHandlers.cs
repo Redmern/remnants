@@ -15,7 +15,10 @@ internal static class ScavengeCommandHandlers
         if (unit.PlayerId != c.PlayerId || !unit.PlayerControlled)
             return ScavengeResult.Fail(ScavengeError.NotYourUnit, $"{unit.Name} does not take orders from player {c.PlayerId}.");
         if (!unit.IsActive) return ScavengeResult.Fail(ScavengeError.Incapacitated, $"{unit.Name} cannot act ({unit.Status}).");
-        if (sim.State.CurrentUnitId != unit.Id) return ScavengeResult.Fail(ScavengeError.NotYourTurn, $"It is not {unit.Name}'s turn.");
+        // Cards may be played on any of the player's units during one of their turns (CardPlay then holds all but
+        // reactions to the unit whose turn it is).
+        var cardOnOwnTurn = c is PlayCard or DiscardDeadCard && sim.State.CurrentUnit?.PlayerId == c.PlayerId;
+        if (sim.State.CurrentUnitId != unit.Id && !cardOnOwnTurn) return ScavengeResult.Fail(ScavengeError.NotYourTurn, $"It is not {unit.Name}'s turn.");
         return null;
     }
 

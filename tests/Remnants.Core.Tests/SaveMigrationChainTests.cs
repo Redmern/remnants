@@ -59,27 +59,30 @@ public class SaveMigrationChainTests
     }
 
     [Fact]
-    public void A_v2_expedition_resumes_its_run_mid_mission()
+    public void A_v2_expedition_keeps_its_party_out_but_its_old_run_starts_over()
     {
+        // Old runs are not carried over (colony save 27): the v1 run inside is dropped and the expedition, still out with
+        // its party and seed, opens a fresh run with today's rules (and the starter deck the migration granted).
         var sim = LoadOld("colony-v2.json");
-        var run = sim.State.Expedition?.Scavenge;
-        Assert.NotNull(run);
-        Assert.Equal(7, run.Round);
-        PlayRounds(new ScavengeSim(ScavengeTestData.Real, run), 3);
+        var expedition = Assert.IsType<Expedition>(sim.State.Expedition);
+        Assert.Null(expedition.Scavenge);
+        Assert.All(expedition.Members, m => Assert.True(sim.State.FindSurvivor(m.SurvivorId)!.Away));
+        Assert.NotEmpty(sim.State.Cards.Deck);
+        Assert.Equal(ExpeditionPhase.InZone, expedition.PhaseAt(sim.State.Tick));
+        var run = sim.OpenExpeditionScavenge();
+        Assert.Equal(1, run.State.Round);
+        Assert.Single(run.State.Decks);
+        PlayRounds(run, 2);
         var reloaded = SaveGame.Load(TestData.RealWithWeather, SaveGame.Save(sim.State), ScavengeTestData.Real);
-        Assert.Equal(run.Round, reloaded.State.Expedition!.Scavenge!.Round);
+        Assert.Equal(run.State.Round, reloaded.State.Expedition!.Scavenge!.Round);
     }
 
     [Fact]
-    public void A_v1_scavenge_run_migrates_and_plays_on()
+    public void A_v1_scavenge_run_is_refused()
     {
+        // Old runs reset (scavenge save 15): a run file from before plans and decks no longer loads.
         Assert.Contains("\"version\": 1", Fixture("scavenge-v1.json"));
-        var run = ScavengeSave.Load(ScavengeTestData.Real, Fixture("scavenge-v1.json"));
-        Assert.Equal(7, run.State.Round);
-        PlayRounds(run, 3);
-        var again = ScavengeSave.Save(run.State);
-        Assert.Contains($"\"version\": {ScavengeSave.Version}", again);
-        Assert.Equal(run.State.Round, ScavengeSave.Load(ScavengeTestData.Real, again).State.Round);
+        Assert.Contains("Unsupported scavenge save version", Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(ScavengeTestData.Real, Fixture("scavenge-v1.json"))).Message);
     }
 
     /// <summary>Ends the turn of whoever is up until <paramref name="rounds"/> more rounds have passed (the AI acts in between).</summary>

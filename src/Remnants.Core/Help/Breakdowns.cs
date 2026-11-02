@@ -29,6 +29,12 @@ public sealed record HelpContext
     public ActionProfile? Action { get; init; }
     public Unit? Target { get; init; }
 
+    /// <summary>The tile the attack is previewed from (a candidate move); null: where the attacker stands.</summary>
+    public Scavenge.Pos? From { get; init; }
+
+    /// <summary>What the attacker's side knows of the target (<see cref="Bestiary.Knowledge"/>): below killed, its defence is one row.</summary>
+    public BestiaryTier TargetKnown { get; init; } = BestiaryTier.Killed;
+
     public static readonly HelpContext None = new();
 }
 
@@ -162,13 +168,14 @@ public static class Breakdowns
     {
         if (c.Scavenge is not { } sim || c.Attacker is not { } attacker || c.Action is not { } action || c.Target is not { } target) return null;
         var data = sim.Data;
+        var from = c.From ?? attacker.Pos;
         var profile = sim.Profile(target);
-        var ambush = Combat.AmbushAgainst(data, sim.State, attacker, target);
+        var ambush = Combat.AmbushAgainst(data, sim.State, attacker, target, c.From);
         var bane = Combat.Bane(data, action, target);
         var mark = Combat.MarkBonus(sim, attacker, target);
         var weather = Combat.WeatherPenalty(sim, action);
         var radio = ElectronicWarfare.RadioAccuracy(sim, attacker);
-        var range = Math.Max(0, Math.Sqrt(attacker.Pos.DistanceSquared(target.Pos)) - 1) * data.Rules.Combat.RangeFalloff;
+        var range = Math.Max(0, Math.Sqrt(from.DistanceSquared(target.Pos)) - 1) * data.Rules.Combat.RangeFalloff;
         var dodge = ambush is { IgnoreDodge: true } ? Math.Min(0, profile.Dodge) : profile.Dodge;
         var rows = new List<BreakdownRow> { new("Accuracy", Pct(action.Accuracy), action.Name) };
         void Term(string label, double value, string note = "")
@@ -178,13 +185,21 @@ public static class Breakdowns
         Term("Drone mark", mark);
         Term("Weather", -weather, "dust and rain on ranged shots");
         Term("Radio", radio);
-        Term("Target's dodge", -dodge, ambush is { IgnoreDodge: true } ? "caught off guard" : "");
-        Term("Cover", -Combat.CoverAgainst(data, sim.State.Map, target.Pos, attacker.Pos), "the tile beside the target, on your side");
-        Term("Brace", -profile.CoverBonus);
+        Term("Dodged their attack", Combat.OutplayBonus(sim, attacker, target), "you stepped out of their telegraphed blow");
+        Term("Card", attacker.CardHit, "for the next attack");
+        var cover = Combat.CoverAgainst(data, sim.State.Map, target.Pos, from);
+        if (c.TargetKnown >= BestiaryTier.Killed)
+        {
+            Term("Target's dodge", -dodge, ambush is { IgnoreDodge: true } ? "caught off guard" : "");
+            Term("Cover", -cover, "the tile beside the target, on your side");
+            Term("Brace", -profile.CoverBonus);
+        }
+        else Term("Target's defence", -Bestiary.ShownChance(data.Rules.Bestiary, dodge + cover + profile.CoverBonus, c.TargetKnown),
+            "dodge, cover and bracing, roughly: learn it in the Bestiary");
         Term("Range", -range, $"{data.Rules.Combat.RangeFalloff * 100:0}% per tile past the first");
         Term("Ambush", ambush?.HitBonus ?? 0, ambush is { Backs: true } ? "an ally beside the target blunts it" : "they cannot see you");
         Term("Bane", bane?.HitBonus ?? 0);
-        var chance = Combat.ChanceToHit(sim, attacker, action, target);
+        var chance = Bestiary.ShownChance(data.Rules.Bestiary, Combat.ChanceToHit(sim, attacker, action, target, c.From), c.TargetKnown);
         return new Breakdown($"{attacker.Name} → {target.Name}", rows, Pct(chance),
             $"clamped to {Pct(data.Rules.Combat.MinHitChance)}–{Pct(data.Rules.Combat.MaxHitChance)}");
     }

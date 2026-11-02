@@ -20,6 +20,27 @@ public sealed record Attack(int PlayerId, int UnitId, int TargetId, string Actio
 /// </summary>
 public sealed record UseItem(int PlayerId, int UnitId, string ItemId, int? TargetId = null, Pos? At = null) : IScavengeCommand;
 
+/// <summary>
+/// Telegraph a plan (wire name <c>plannedAction</c>): a move along <see cref="Path"/> (each waypoint one move from the
+/// last) and optionally an attack with <see cref="ActionId"/> on the tile <see cref="AttackTile"/>, in reach from the
+/// end of the path. Free now and ends the turn; it resolves, and costs its AP, at the start of the unit's next turn.
+/// See <see cref="PlannedActions"/>.
+/// </summary>
+/// <see cref="Suppress"/>: the attack is suppressing fire (a ranged action; no damage, it pins whoever is on the tile).
+public sealed record DeclareIntent(int PlayerId, int UnitId, IReadOnlyList<Pos> Path, Pos? AttackTile = null, string? ActionId = null,
+    bool Suppress = false) : IScavengeCommand;
+
+/// <summary>
+/// Play a card on <see cref="UnitId"/> (the character it applies to): from the squad hand, or from that character's
+/// personal slots (<see cref="FromSlot"/>). <see cref="TargetId"/>: the enemy whose plan a reaction answers.
+/// <see cref="Boost"/>: pay the card's extra AP for its boost. See <see cref="CardPlay"/>.
+/// </summary>
+public sealed record PlayCard(int PlayerId, int UnitId, string CardId, int? TargetId = null, bool Boost = false, bool FromSlot = false)
+    : IScavengeCommand;
+
+/// <summary>Discard a hard card nobody in the party qualifies for, at no cost, once a round.</summary>
+public sealed record DiscardDeadCard(int PlayerId, int UnitId, string CardId) : IScavengeCommand;
+
 /// <summary>Go on overwatch or brace. Either ends the unit's turn and holds until its next one.</summary>
 public sealed record SetStance(int PlayerId, int UnitId, Stance Stance) : IScavengeCommand;
 
@@ -190,6 +211,21 @@ public enum ScavengeError
     NodeDepleted,
     /// <summary>Gear mods: the mod does not fit, the slot is full or empty, or there is no gear there.</summary>
     CannotMod,
+    /// <summary>The unit already has a plan waiting: plans cannot be revised or cancelled.</summary>
+    PlanLocked,
+    /// <summary>The card is not in the hand (or the character's ready slots), or the party has no deck.</summary>
+    NoCard,
+    /// <summary>The character does not meet a hard card's requirement.</summary>
+    NotQualified,
+    NotEnoughPoints,
+    /// <summary>An arm-locked card while the character's arms are too hurt.</summary>
+    ArmsLocked,
+    /// <summary>A reaction card needs a seen enemy with a telegraphed plan.</summary>
+    NoIntent,
+    /// <summary>A dead card was discarded this round already.</summary>
+    DeadCardSpent,
+    /// <summary>Only a hard card nobody in the party can play may be discarded.</summary>
+    CardPlayable,
 }
 
 /// <summary>Outcome of a scavenge command. <see cref="EntityId"/> carries e.g. the attacked unit.</summary>

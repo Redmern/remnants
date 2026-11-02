@@ -90,6 +90,12 @@ public sealed record RecipeDef
     public string? Learns { get; init; }
 
     /// <summary>
+    /// A card id: the colony's first finished batch teaches it (one copy into the collection); a recipe whose only output
+    /// is the card grants a copy every batch (<see cref="Colony.ColonyCards.FromRecipe"/>).
+    /// </summary>
+    public string? Card { get; init; }
+
+    /// <summary>
     /// Health a donor at home gives when a batch starts (a blood bag); the batch waits for a donor (see
     /// <c>Medicine.Donor</c>). 0 = none needed.
     /// </summary>

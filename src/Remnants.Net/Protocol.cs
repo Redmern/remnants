@@ -34,6 +34,12 @@ public static class Protocol
     /// (scavenge save 14: the run's campaign flags, the taken, devices' failed hacks).
     /// 16 (<see cref="ConstructionVersion"/>): the Construction skill in every survivor's skills (parties on <see cref="Join"/>,
     /// extraction results); an older peer cannot read it.
+    /// 17 (<see cref="TacticsVersion"/>): scavenge tactics: the plannedAction command (a telegraphed plan), units' plans
+    /// in views (path, attack tile and action, never the card or the aimed-at unit of another player's unit), the intent
+    /// events and the hit tier on attack events (scavenge save 15); tactical cards: the playCard / discardDeadCard commands, a
+    /// squad deck on <see cref="Join"/> and slot cards on party members, each player's own deck, slot cards and card pouch in
+    /// views (other players' only as counts), the card events (to the player's side only). Later additive fields ride 17
+    /// without a bump: the lobby's lateZones (the host's late-zone tuning; an older 17 peer reads Current).
     /// <see cref="Version"/> is always the highest of these keyed versions (ProtocolTests checks it).
     /// </summary>
     public const int MedicineVersion = 12;
@@ -46,7 +52,9 @@ public static class Protocol
 
     public const int ConstructionVersion = 16;
 
-    public const int Version = ConstructionVersion;
+    public const int TacticsVersion = 17;
+
+    public const int Version = TacticsVersion;
     public const int DefaultPort = 7777;
 }
 
@@ -100,9 +108,12 @@ public abstract record Message;
 /// <summary>
 /// Take a seat with a party (lobby only), or with <paramref name="ReconnectToken"/> retake the seat a dropped
 /// connection left during a mission (the party is then ignored). <paramref name="Vehicle"/>: the colony vehicle the party
-/// drives in (each player brings their own; it parks at their spawn point).
+/// drives in (each player brings their own; it parks at their spawn point). Members carry their personal slot cards;
+/// <paramref name="Deck"/>: the squad deck the party brings (card ids, copies repeated, within cards.json's deck rules),
+/// dealt with the base deck rules.
 /// </summary>
-public sealed record Join(int Version, string Name, List<PartyMember> Party, string? ReconnectToken = null, FieldVehicle? Vehicle = null) : Message;
+public sealed record Join(int Version, string Name, List<PartyMember> Party, string? ReconnectToken = null, FieldVehicle? Vehicle = null,
+    List<string>? Deck = null) : Message;
 
 /// <summary>Lobby: ready (or not) to start. The mission starts once every seated player is ready.</summary>
 public sealed record Ready(bool IsReady) : Message;
@@ -132,7 +143,8 @@ public enum MissionMode { Versus, Coop }
 /// <summary><paramref name="Team"/>: the starting team (null = on their own).</summary>
 public sealed record LobbyPlayer(int PlayerId, string Name, int PartySize, bool Ready, bool Connected, int? Team = null);
 
-public sealed record LobbyState(string ZoneId, int MinPlayers, int MaxPlayers, List<LobbyPlayer> Players, MissionMode Mode = MissionMode.Versus) : Message;
+public sealed record LobbyState(string ZoneId, int MinPlayers, int MaxPlayers, List<LobbyPlayer> Players, MissionMode Mode = MissionMode.Versus,
+    LateZoneTuning LateZones = LateZoneTuning.Current) : Message;
 
 /// <summary><paramref name="Team"/>: the team the player started on (null = on their own); alliances change in the field.</summary>
 public sealed record PlayerInfo(int PlayerId, string Name, int? Team = null);

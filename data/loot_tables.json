@@ -53,7 +53,8 @@
       ],
       "rare": [
         { "item": "pistol", "chance": 0.3, "quality": { "crude": 2, "standard": 1 } },
-        { "item": "padded_vest", "chance": 0.1, "quality": { "crude": 2, "standard": 1 } }
+        { "item": "padded_vest", "chance": 0.1, "quality": { "crude": 2, "standard": 1 } },
+        { "card": "steady_aim", "chance": 0.06 }
       ]
     },
     {
@@ -101,7 +102,8 @@
         { "item": "power_cell", "weight": 0.6 },
         { "item": "myomer_bundle", "weight": 0.3 },
         { "item": "neural_link", "weight": 0.1 }
-      ]
+      ],
+      "rare": [ { "card": "called_shot", "chance": 0.05 } ]
     },
     {
       "id": "linked_drone", "nothing": 0.15, "rolls": [1, 1],
@@ -177,7 +179,7 @@
         { "item": "stone", "weight": 3 },
         { "item": "concrete_chunk", "weight": 1 }
       ],
-      "rare": [ { "item": "pickaxe", "chance": 0.03 } ]
+      "rare": [ { "item": "pickaxe", "chance": 0.03 }, { "card": "sprint", "chance": 0.04, "minTier": 2 } ]
     },
     {
       "id": "salvage_electronics", "nothing": 0.1, "rolls": [1, 2],

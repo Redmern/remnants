@@ -9,7 +9,10 @@ namespace Remnants.Net;
 /// <item>the units of its side (any status: its own, and its allies' with their colony record cut like anyone else's)
 ///   and other units only while the side sees them now (<see cref="Detection"/>:
 ///   in sight and detected, lit by a flare, revealed, or scanned); other units lose their AI memory and colony record
-///   (only name, sex and child/adult are kept for the model);</item>
+///   (only name, sex and child/adult are kept for the model), and their telegraphed plan keeps its path, tile and action
+///   but loses its card and aimed-at unit (a hidden unit's plan is never sent, as the unit is not); its personal slot
+///   cards show only as a count, as does every other player's squad deck (allies' included); the player's own draw pile
+///   comes sorted (what is left, not the order it will be drawn in), and only the player's own card pouch is sent;</item>
 /// <item>the side's own contacts and motion sensors, reveals of units it sees, and every burning flare (they light up
 ///   for everyone);</item>
 /// <item>loot caches as the side last saw them (a cache looted out of sight still shows until seen again);</item>
@@ -120,7 +123,14 @@ public sealed class SideFog(int playerId, string side)
             Finished = state.Finished,
             Map = new TileMap(),
             // Other teams' alliances are none of this player's business: their parties show as on their own.
-            Parties = state.Parties.Select(p => new Party { PlayerId = p.PlayerId, Name = p.Name, Side = Shown(p.Side, p.PlayerId), Done = p.Done, Left = p.Left }).ToList(),
+            Parties = state.Parties.Select(p => new Party
+            {
+                PlayerId = p.PlayerId, Name = p.Name, Side = Shown(p.Side, p.PlayerId), Done = p.Done, Left = p.Left,
+                CardPouch = p.PlayerId == PlayerId ? new(p.CardPouch) : [],
+                Bestiary = p.PlayerId == PlayerId ? new(p.Bestiary, StringComparer.Ordinal) : new(StringComparer.Ordinal),
+            }).ToList(),
+            // The player's own deck in full; anyone else's (allies too) only as counts, never which cards.
+            Decks = state.Decks.Select(d => d.PlayerId == PlayerId ? Own(d) : Hidden(d)).ToList(),
             Units = units,
             Caches = _knownCaches.Values.OrderBy(c => c.Id).Select(CopyPile).ToList(),
             SalvageNodes = _knownNodes.Values.OrderBy(n => n.Id)
@@ -198,6 +208,23 @@ public sealed class SideFog(int playerId, string side)
 
     private static Unit Copy(Unit u) => ProtocolCopy.Clone(u);
 
+    /// <summary>The player's own deck: everything, but the draw pile sorted, so it tells what is left, never what comes next.</summary>
+    private static SquadDeck Own(SquadDeck d)
+    {
+        var copy = ProtocolCopy.Clone(d);
+        copy.DrawPile.Sort(StringComparer.Ordinal);
+        copy.DrawCount = d.DrawPile.Count;
+        copy.HandCount = d.Hand.Count;
+        copy.UsedCount = d.Used.Count;
+        return copy;
+    }
+
+    private static SquadDeck Hidden(SquadDeck d) => new()
+    {
+        PlayerId = d.PlayerId, Hidden = true, HandCount = d.Hand.Count, DrawCount = d.DrawPile.Count, UsedCount = d.Used.Count,
+        Points = d.Points, Budget = d.Budget, HandSize = d.HandSize, DrawPerRound = d.DrawPerRound,
+    };
+
     /// <summary>A side as this player may know it: their own team's as is, another team's as the owner's own side.</summary>
     private string Shown(string side, int? owner) =>
         side == Side || side is Unit.EnemySide or Unit.NeutralSide || owner is null ? side : Unit.PlayerSide(owner.Value);
@@ -212,6 +239,26 @@ public sealed class SideFog(int playerId, string side)
         copy.FieldXp = 0;
         copy.DroneBattery = null;
         copy.ChargesUsed = new(StringComparer.Ordinal);
+        // A plan shows what it does (path, tile, action), never the card behind it or whom it was aimed at.
+        if (copy.Plan is { } plan)
+        {
+            plan.CardId = null;
+            plan.TargetId = null;
+            plan.MoveBonus = 0;
+        }
+        // Card buffs on it would give away hit chances and moves the cards behind them buy.
+        copy.CardHit = 0;
+        copy.Guard = 0;
+        copy.CardCover = 0;
+        copy.CardMove = 0;
+        copy.OutplayedId = null;
+        copy.OutplayedUntilRound = 0;
+        // Personal slot cards: how many, never which; nor the last card played on it or a readied counter.
+        copy.HiddenSlots = u.SlotCards.Count;
+        copy.SlotCards = new();
+        copy.SlotSpent = new();
+        copy.LastCardId = null;
+        copy.CounterId = null;
         copy.Origin = u.Origin is { } o ? new Survivor { Name = o.Name, Sex = o.Sex, LifeStage = o.LifeStage } : null;
         // A rival's holo-decoy looks like one of their people until it flickers out.
         if (u.Kind == UnitKind.Decoy && u.Side != Side)

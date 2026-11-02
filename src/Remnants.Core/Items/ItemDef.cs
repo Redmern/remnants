@@ -93,6 +93,9 @@ public sealed record ActionDef
     /// <summary>Needs both arms: arm factor is the average of both, not the best one.</summary>
     public bool TwoHanded { get; init; }
 
+    /// <summary>Unusable while the arms are badly hurt (see <c>ProfileDeriver.ArmsLocked</c>).</summary>
+    public bool ArmLock { get; init; }
+
     /// <summary>Splash radius (Chebyshev) around the target: other hostiles of the attacker in it are attacked too, each with its own roll.</summary>
     public int Area { get; init; }
 
@@ -222,6 +225,9 @@ public sealed record UseEffect
 
     /// <summary>Splints a fracture (the worst unsplinted one).</summary>
     public bool Splint { get; init; }
+
+    /// <summary>In the field: the worst injury's severity drops by this much (healed at 0). See <c>Treatment.Mend</c>.</summary>
+    public double Mend { get; init; }
 
     /// <summary>Painkiller: this share of injury penalties is ignored, for <see cref="PainRounds"/> rounds in the field or <see cref="PainTicks"/> at home.</summary>
     public double PainRelief { get; init; }
@@ -413,6 +419,9 @@ public sealed record ItemDef
 
     public double Initiative { get; init; }
     public int ApBonus { get; init; }
+
+    /// <summary>Personal card slots the gear adds while worn (see <c>CardSlots</c>).</summary>
+    public int CardSlots { get; init; }
     public double SightBonus { get; init; }
     public double CarryBonus { get; init; }
 

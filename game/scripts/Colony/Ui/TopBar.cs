@@ -66,6 +66,8 @@ public partial class TopBar : PanelContainer
 
     /// <summary>The grid button (or P): show or hide the power overlay on the town.</summary>
     public event Action? PowerPressed;
+    public event Action? DeckPressed;
+    public event Action? BestiaryPressed;
 
     public TopBar(ColonySession session)
     {
@@ -180,6 +182,8 @@ public partial class TopBar : PanelContainer
         Action("ui_items", "Items", "Items and blueprints", () => ItemsPressed?.Invoke(), "open_items");
         Action("res_food", "Pantry", "Pantry: food, spoilage and food days", () => PantryPressed?.Invoke(), null);
         Action("ui_expedition", "Expedition", "Expedition", () => ExpeditionPressed?.Invoke(), "open_expedition");
+        Action("ui_cards", "Deck", "Squad deck: cards, personal slots, deck upgrades", () => DeckPressed?.Invoke(), null);
+        Action("ui_bestiary", "Bestiary", "Bestiary: what the colony knows of each enemy", () => BestiaryPressed?.Invoke(), null);
         Action("ui_world_map", "Map", "World map", () => WorldMapPressed?.Invoke(), null);
         Action("ui_menu", "Menu", "Menu: save, load, settings", () => MenuPressed?.Invoke(), "pause_menu");
         row.AddChild(_actions);

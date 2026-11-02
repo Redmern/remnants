@@ -40,6 +40,12 @@ public sealed record EnemyDef
     /// <summary>Linked: how far (Chebyshev) this unit links to other Network nodes. Drones relay further.</summary>
     public int RelayRange { get; init; }
 
+    /// <summary>
+    /// An authored enemy's (a boss's, a named squad's) cards: they join the enemy side's deck (<see cref="EnemyCards"/>).
+    /// Most enemies have none.
+    /// </summary>
+    public List<string> Cards { get; init; } = new();
+
     /// <summary>Added to the derived stealth: Linked move like hunters, Husks shamble.</summary>
     public double Stealth { get; init; }
 
@@ -85,6 +91,53 @@ public sealed record ReinforcementDef
     /// <summary>Units per wave.</summary>
     public int[] Count { get; init; } = [1, 2];
     public List<WeightedId> Mix { get; init; } = new();
+
+    /// <summary>Rounds of alarm before a call; null: the rules' <c>network.reinforceAfterRounds</c>.</summary>
+    public int? AfterRounds { get; init; }
+}
+
+/// <summary>
+/// Which runs take a zone's <see cref="ZoneDef.Retune"/> (a setting, to compare): none, free expeditions only (story
+/// missions keep the zone as it is), or every run there.
+/// </summary>
+public enum LateZoneTuning
+{
+    Current,
+    Expeditions,
+    Everywhere,
+}
+
+public static class ZoneTuning
+{
+    /// <summary>Whether a run takes the zone's retune under <paramref name="mode"/>; <paramref name="story"/>: a story mission.</summary>
+    public static bool Applies(LateZoneTuning mode, bool story) =>
+        mode == LateZoneTuning.Everywhere || mode == LateZoneTuning.Expeditions && !story;
+
+    /// <summary>The names a flag or setting may use (lower case).</summary>
+    public const string Names = "current, expeditions or everywhere";
+
+    /// <summary>A mode from its name (any case); false for anything else, numbers included.</summary>
+    public static bool TryParse(string? text, out LateZoneTuning mode)
+    {
+        mode = LateZoneTuning.Current;
+        if (string.IsNullOrWhiteSpace(text) || !char.IsLetter(text.Trim()[0]) || text.Contains(',')) return false;
+        return Enum.TryParse(text.Trim(), ignoreCase: true, out mode) && Enum.IsDefined(mode);
+    }
+}
+
+/// <summary>
+/// A zone's alternative numbers (zones.json <c>retune</c>): what is named replaces the zone's own (devices per kind;
+/// reinforcement waves, count and delay, keeping the mix). The late zones carry one, to bring back their difficulty
+/// now that enemies telegraph (BALANCE.md, "Late-zone re-tune").
+/// </summary>
+public sealed record ZoneRetuneDef
+{
+    public int[]? Enemies { get; init; }
+    public int[]? Pylons { get; init; }
+    public Dictionary<DeviceKind, int[]>? Devices { get; init; }
+    public int? Waves { get; init; }
+    public int[]? ReinforcementCount { get; init; }
+    public int? ReinforceAfterRounds { get; init; }
 }
 
 public sealed record ZoneTerrainDef
@@ -121,6 +174,29 @@ public sealed record ZoneDef
 
     /// <summary>Hackable devices placed in the zone: [min, max] per kind (see <see cref="DeviceKindDef"/>).</summary>
     public Dictionary<DeviceKind, int[]> Devices { get; init; } = new();
+
+    /// <summary>The zone's alternative numbers, taken by the runs <see cref="LateZoneTuning"/> picks; null: none.</summary>
+    public ZoneRetuneDef? Retune { get; init; }
+
+    /// <summary>This zone with its <see cref="Retune"/> applied (itself when it has none).</summary>
+    public ZoneDef Retuned()
+    {
+        if (Retune is not { } r) return this;
+        var devices = new Dictionary<DeviceKind, int[]>(Devices);
+        foreach (var (kind, range) in r.Devices ?? new()) devices[kind] = range;
+        return this with
+        {
+            Enemies = r.Enemies ?? Enemies,
+            Pylons = r.Pylons ?? Pylons,
+            Devices = devices,
+            Reinforcements = Reinforcements with
+            {
+                Waves = r.Waves ?? Reinforcements.Waves,
+                Count = r.ReinforcementCount ?? Reinforcements.Count,
+                AfterRounds = r.ReinforceAfterRounds ?? Reinforcements.AfterRounds,
+            },
+        };
+    }
 
     // World map (colony side): where the zone is, how far, and how it recovers from being picked over.
 
@@ -395,6 +471,36 @@ public sealed record CombatRules
     /// <summary>HP at or below which a hit kills outright instead of downing.</summary>
     public double InstantDeathHp { get; init; } = -40;
     public ActionDef Unarmed { get; init; } = new();
+
+    /// <summary>Arm efficiency (best arm, or both averaged for two-handed) below which arm-locked attacks cannot be used.</summary>
+    public double ArmLockBelow { get; init; } = 0.5;
+
+    /// <summary>How a landed hit resolves: graze, hit or solid (see <see cref="HitTierRules"/>).</summary>
+    public HitTierRules Tiers { get; init; } = new();
+}
+
+/// <summary>
+/// Hit tiers (scavenge.json <c>combat.tiers</c>). The margin of a landed hit is the share of the hit chance the roll came
+/// in under (0 = barely, 1 = dead on): below <see cref="GrazeBelow"/> a graze, from <see cref="SolidFrom"/> a solid hit,
+/// a plain hit between. Armor from <see cref="ArmorShiftFrom"/> and cover from <see cref="CoverShiftFrom"/> each shift
+/// it down a tier, never below a graze.
+/// </summary>
+public sealed record HitTierRules
+{
+    public double GrazeBelow { get; init; } = 0.25;
+    public double SolidFrom { get; init; } = 0.8;
+
+    /// <summary>A graze does this share of the damage (at least 1) and injures no body part.</summary>
+    public double GrazeDamage { get; init; } = 0.4;
+
+    /// <summary>A solid hit does full damage and this many times the injury severity.</summary>
+    public double SolidSeverity { get; init; } = 1.5;
+
+    /// <summary>Armor on the hit region (after pierce) from which the hit shifts down a tier.</summary>
+    public double ArmorShiftFrom { get; init; } = 4;
+
+    /// <summary>Cover against the attacker (terrain plus brace) from which the hit shifts down a tier.</summary>
+    public double CoverShiftFrom { get; init; } = 0.25;
 }
 
 /// <summary>
@@ -561,6 +667,8 @@ public sealed record StoryFieldRules
 
 public sealed record ScavengeRules
 {
+    /// <summary>Encounters each bestiary tier needs (see <see cref="Scavenge.Bestiary"/>).</summary>
+    public BestiaryRules Bestiary { get; init; } = new();
     public Dictionary<Terrain, TerrainDef> Terrain { get; init; } = new();
     public MovementRules Movement { get; init; } = new();
     public TurnRules Turn { get; init; } = new();

@@ -8,7 +8,7 @@ using Remnants.Game.Colony;
 namespace Remnants.Game.Scavenge;
 
 /// <summary>How a highlighted tile reads: where the unit can move, whom it can hit, whom an item can reach.</summary>
-public enum HighlightKind { Move, Attack, Use, Selected, Hover }
+public enum HighlightKind { Move, Attack, Use, Selected, Hover, Threat, ThreatPlanned }
 
 /// <summary>
 /// The tactical map: terrain props per tile (ground, walls, rubble, wrecked cars), exit markers, loot crates,
@@ -23,6 +23,9 @@ public partial class MapView : Node3D
     private static readonly Color UseColor = new(0.45f, 0.95f, 0.5f, 0.9f);
     private static readonly Color SelectedColor = new(1f, 0.8f, 0.3f, 1f);
     private static readonly Color HoverColor = new(1f, 1f, 1f, 0.7f);
+    /// <summary>Threat overlay: faint where a seen enemy could hit now, strong where a telegraphed blow will land.</summary>
+    private static readonly Color ThreatColor = new(1f, 0.55f, 0.2f, 0.32f);
+    private static readonly Color ThreatPlannedColor = new(1f, 0.18f, 0.12f, 0.85f);
     private static readonly Color ExitColor = new(0.4f, 0.95f, 0.5f, 0.45f);
     private static readonly Color GridColor = new(0f, 0f, 0f, 0.22f);
     private static readonly Color WaterColor = new(0.13f, 0.22f, 0.26f, 0.9f);
@@ -59,6 +62,7 @@ public partial class MapView : Node3D
                  {
                      (HighlightKind.Move, MoveColor), (HighlightKind.Attack, AttackColor), (HighlightKind.Use, UseColor),
                      (HighlightKind.Selected, SelectedColor), (HighlightKind.Hover, HoverColor),
+                     (HighlightKind.Threat, ThreatColor), (HighlightKind.ThreatPlanned, ThreatPlannedColor),
                  })
             _highlightMaterials[kind] = Framed(frame, color);
         BuildTerrain();
@@ -373,7 +377,8 @@ public partial class MapView : Node3D
         }
         var quad = _quads[_quadsUsed++];
         quad.MaterialOverride = _highlightMaterials[kind];
-        quad.Position = TileGrid.ToWorld(p) + new Vector3(0, kind == HighlightKind.Selected ? 0.13f : 0.12f, 0);
+        // Threats sit just under the move and attack marks, so both read on the same tile.
+        quad.Position = TileGrid.ToWorld(p) + new Vector3(0, kind switch { HighlightKind.Selected => 0.13f, HighlightKind.Threat or HighlightKind.ThreatPlanned => 0.115f, _ => 0.12f }, 0);
         quad.Visible = true;
         if (label is null) return;
         if (_labelsUsed == _labels.Count)

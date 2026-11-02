@@ -151,6 +151,7 @@ public static class ColonyTrade
     {
         var state = colony.State;
         if (g.Kind == GoodKind.Resource) state.Stockpile.TryTake(g.Id, g.Count);
+        else if (g.Kind == GoodKind.Card) ColonyCards.Remove(state, g.Id, g.Count);
         else if (FoodGoods.IsFood(colony.Data, g.Id)) return FoodGoods.Take(state, colony.Data, g) ?? g;
         else state.Inventory.TryTake(g.Id, g.Count);
         return g;
@@ -165,6 +166,7 @@ public static class ColonyTrade
     {
         var state = colony.State;
         if (g.Kind == GoodKind.Resource) state.Stockpile.Add(g.Id, g.Count);
+        else if (g.Kind == GoodKind.Card) ColonyCards.Add(state, colony.Scavenge?.Cards ?? CardCatalog.Empty, g.Id, g.Count);
         else if (FoodGoods.IsFood(colony.Data, g.Id)) FoodGoods.Put(state, colony.Data, g);
         else if (!refund && colony.Data.Schematics.Find(g.Id) is not null)
             for (var i = 0; i < g.Count; i++) Schematics.Schematics.Receive(colony, g.Id, SchematicSource.Trade);

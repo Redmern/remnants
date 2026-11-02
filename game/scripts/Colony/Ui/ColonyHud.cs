@@ -57,6 +57,8 @@ public partial class ColonyHud : CanvasLayer
     public Trade.TradingPostPanel TradingPost { get; }
     /// <summary>The Gear Bench (from the Armory, Workshop and Tailor).</summary>
     public GearBenchPanel GearBench { get; }
+    public DeckBuilderPanel Deck { get; }
+    public BestiaryPanel Bestiary { get; }
 
     /// <summary>Esc with nothing else to close; the screen may cancel placement or deselect first.</summary>
     public event Func<bool>? BackRequested;
@@ -256,6 +258,10 @@ public partial class ColonyHud : CanvasLayer
         AddChild(TradingPost);
         GearBench = new GearBenchPanel(session);
         AddChild(GearBench);
+        Deck = new DeckBuilderPanel(session);
+        AddChild(Deck);
+        Bestiary = new BestiaryPanel(session);
+        AddChild(Bestiary);
         AddChild(Pause);
         AddChild(Settings);
         MedBay.CyberneticsPressed += (who, part) =>
@@ -271,6 +277,8 @@ public partial class ColonyHud : CanvasLayer
         TopBar.ItemsPressed += () => Inventory.Toggle();
         TopBar.PantryPressed += () => Pantry.Toggle();
         TopBar.WorldMapPressed += () => WorldMap.Open();
+        TopBar.DeckPressed += () => Deck.Show("deck");
+        TopBar.BestiaryPressed += () => Bestiary.Open();
         Story.PlanMission += id => Expedition.PlanForMission(id);
         Story.CallArrived += caller => Toasts.Show("Incoming call", $"{caller} is on the radio.", "ui_radio", Palette.Amber, "story_call");
         WorldMap.MissionPressed += id => { WorldMap.Close(); Story.OpenBriefing(id); };
@@ -369,7 +377,7 @@ public partial class ColonyHud : CanvasLayer
     }
 
     /// <summary>Something modal is over the HUD (pause, settings, a full-screen bench, a raid dialog, help): HUD keys wait.</summary>
-    public bool OverlayOpen => Pause.Visible || Settings.Visible || Cybernetics.Visible || GearBench.Visible || RaidPrep.Visible
+    public bool OverlayOpen => Pause.Visible || Settings.Visible || Cybernetics.Visible || GearBench.Visible || Deck.Visible || Bestiary.Visible || RaidPrep.Visible
                                || RaidReport.Visible || Hud.Help.HelpLayer.Blocking;
 
     public override void _UnhandledInput(InputEvent e)

@@ -8,7 +8,9 @@ namespace Remnants.Core.Scavenge;
 
 /// <summary>A survivor sent on a run, with the gear they wear and carry.</summary>
 /// <summary>A survivor going into a zone with their gear. <paramref name="FirstRoundAp"/>: AP added (or taken) on the first round, from what they ate on the way (food buffs).</summary>
-public sealed record PartyMember(Survivor Survivor, Dictionary<EquipSlot, string>? Equipment = null, List<string>? Pack = null, int FirstRoundAp = 0);
+/// <see cref="SlotCards"/>: cards from the colony's collection for the member's personal slots (only as many as they have).
+public sealed record PartyMember(Survivor Survivor, Dictionary<EquipSlot, string>? Equipment = null, List<string>? Pack = null, int FirstRoundAp = 0,
+    List<string>? SlotCards = null);
 
 /// <summary>
 /// One player's party entering a zone. Parties with the same <see cref="Team"/> start allied (one side, see
@@ -19,6 +21,9 @@ public sealed record PartyMember(Survivor Survivor, Dictionary<EquipSlot, string
 public sealed record PartySetup(int PlayerId, List<PartyMember> Members, int? Team = null, string? Name = null)
 {
     public FieldVehicle? Vehicle { get; init; }
+
+    /// <summary>The party's squad deck (null: it plays without cards).</summary>
+    public SquadLoadout? Deck { get; init; }
 }
 
 /// <summary>
@@ -58,6 +63,9 @@ public sealed record ZoneConditions(double Depletion = 0, ScavengeEnvironment? E
 
     /// <summary>The story's world effects: the zone's own Network enemies stand neutral (attack only if attacked).</summary>
     public bool NetworkNeutral { get; init; }
+
+    /// <summary>Which runs take the zone's retune (a setting; see <see cref="ZoneTuning"/>).</summary>
+    public LateZoneTuning LateZones { get; init; }
 }
 
 /// <summary>
@@ -73,7 +81,9 @@ public static class NewScavenge
     {
         if (!data.Zones.TryGetValue(zoneId, out var zone)) throw new ArgumentException($"Unknown zone '{zoneId}'.", nameof(zoneId));
         ValidateParties(data, parties);
-        if (mission?.Map is { } handmade) return CreateHandmade(data, zone, seed, parties, mission, handmade, conditions);
+        var retuned = zone.Retune is not null && ZoneTuning.Applies(conditions?.LateZones ?? LateZoneTuning.Current, mission is not null);
+        if (retuned) zone = zone.Retuned();
+        if (mission?.Map is { } handmade) return CreateHandmade(data, zone, seed, parties, mission, handmade, conditions, retuned);
 
         var rng = new DeterministicRng(seed);
         var generated = MapGenerator.Generate(data, zone, rng);
@@ -86,10 +96,11 @@ public static class NewScavenge
         var env = conditions?.Environment;
         var state = new ScavengeState
         {
+            Retuned = retuned,
             ZoneId = zone.Id, Map = generated.Map,
             Environment = env is null ? new ScavengeEnvironment() : env.Copy(),
             KnownSchematics = new(conditions?.KnownSchematics ?? [], StringComparer.Ordinal),
-            LootSeed = seed ^ 0x100D_5EED_0000_0001UL, Difficulty = conditions?.Difficulty,
+            LootSeed = seed ^ 0x100D_5EED_0000_0001UL, Difficulty = conditions?.Difficulty, CardRngState = seed ^ SquadDecks.StreamSalt,
         };
         var map = state.Map;
         var open = generated.Reachable.Where(p => !map.IsExit(p)).OrderBy(map.Index).ToList();
@@ -227,6 +238,8 @@ public static class NewScavenge
         }
 
         state.RngState = rng.State;
+        foreach (var party in parties.Where(p => p.Deck is not null)) SquadDecks.Create(state, party.PlayerId, party.Deck!, data.Cards.Rules);
+        EnemyCards.Deal(data, state);
         var sim = new ScavengeSim(data, state);
         sim.Start();
         return sim;
@@ -234,15 +247,15 @@ public static class NewScavenge
 
     /// <summary>A handmade map: the parties on its spawn tiles, then only the map's own fixtures.</summary>
     private static ScavengeSim CreateHandmade(ScavengeData data, ZoneDef zone, ulong seed, IReadOnlyList<PartySetup> parties, MissionSetup mission, HandmadeMapDef def,
-        ZoneConditions? conditions)
+        ZoneConditions? conditions, bool retuned)
     {
         var built = HandmadeMaps.Build(def);
         var env = conditions?.Environment;
         var state = new ScavengeState
         {
-            ZoneId = zone.Id, Map = built.Map,
+            ZoneId = zone.Id, Map = built.Map, Retuned = retuned,
             Environment = env is null ? new ScavengeEnvironment() : ScavengeEnvironment.At(env.Hour, env.Phase, env.Weather),
-            LootSeed = seed ^ 0x100D_5EED_0000_0001UL, Difficulty = conditions?.Difficulty,
+            LootSeed = seed ^ 0x100D_5EED_0000_0001UL, Difficulty = conditions?.Difficulty, CardRngState = seed ^ SquadDecks.StreamSalt,
         };
         var map = state.Map;
         var spawn = built.Spawns.Count > 0 ? built.Spawns[0] : map.AllPositions.First(p => data.Terrain(map[p]).Passable);
@@ -274,6 +287,8 @@ public static class NewScavenge
         }
         AddMission(data, state, mission, def, built.Markers);
         state.RngState = new DeterministicRng(seed).State;
+        foreach (var party in parties.Where(p => p.Deck is not null)) SquadDecks.Create(state, party.PlayerId, party.Deck!, data.Cards.Rules);
+        EnemyCards.Deal(data, state);
         var sim = new ScavengeSim(data, state);
         sim.Start();
         return sim;
@@ -383,6 +398,8 @@ public static class NewScavenge
                 throw new ArgumentException($"Player {party.PlayerId}'s {v.Name} seats {seats}, not {party.Members.Count}.");
             if (party.Vehicle is { } pv && (pv.MaxHp <= 0 || pv.CargoKg < 0 || pv.Armor < 0))
                 throw new ArgumentException($"Player {party.PlayerId}'s vehicle has impossible stats.");
+            if (party.Deck is { } loadout && data.Cards.CheckDeck(loadout.Cards) is { } bad)
+                throw new ArgumentException($"Player {party.PlayerId}'s deck: {bad}");
             foreach (var m in party.Members)
             {
                 if (m.Survivor.IsChild) throw new ArgumentException($"{m.Survivor.Name} is a child; children never go on a run.");
@@ -391,6 +408,10 @@ public static class NewScavenge
                         throw new ArgumentException($"{m.Survivor.Name}: '{id}' is not an item for the {slot} slot.");
                 foreach (var id in m.Pack ?? [])
                     if (!data.Items.ContainsKey(id)) throw new ArgumentException($"{m.Survivor.Name}: unknown item '{id}'.");
+                if (m.SlotCards is { } slotCards && slotCards.Count > data.Cards.Rules.MaxSlotCards)
+                    throw new ArgumentException($"{m.Survivor.Name}: too many slot cards.");
+                foreach (var id in m.SlotCards ?? [])
+                    if (data.Cards.Find(id) is null) throw new ArgumentException($"{m.Survivor.Name}: unknown card '{id}'.");
             }
         }
     }
@@ -398,7 +419,7 @@ public static class NewScavenge
     private static Unit SurvivorUnit(ScavengeData data, ScavengeState state, int playerId, PartyMember member, Pos pos)
     {
         var origin = Clone(member.Survivor);
-        return new Unit
+        var unit = new Unit
         {
             Id = state.NextUnitId++,
             Name = origin.Name,
@@ -418,6 +439,8 @@ public static class NewScavenge
             CyberHooks = data.CyberHooksFor(origin.Body),
             FirstRoundAp = member.FirstRoundAp,
         };
+        unit.SlotCards = (member.SlotCards ?? []).Take(CardSlots.Count(data, unit)).ToList();
+        return unit;
     }
 
     public static Unit EnemyUnit(ScavengeData data, ScavengeState state, EnemyDef def, Pos pos)

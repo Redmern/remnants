@@ -289,7 +289,7 @@ public sealed class ColonySim
             global::Remnants.Core.Story.StoryWorld.Conditions(this, expedition.ZoneId,
                 new ZoneConditions(expedition.Depletion, MissionEnvironment(expedition.ArrivalTick, expedition.ZoneId), State.Schematics.Known,
                     expedition.MissionId is null ? State.Zones.GetValueOrDefault(expedition.ZoneId)?.Stash : null, State.Campaign?.Difficulty,
-                    HuskMultiplier: 1 + expedition.VehicleNoise)), mission);
+                    HuskMultiplier: 1 + expedition.VehicleNoise) { LateZones = LateZones }), mission);
         expedition.Scavenge = sim.State;
         return sim;
     }
@@ -353,6 +353,12 @@ public sealed class ColonySim
     /// off in play.
     /// </summary>
     public bool InstantConstruction { get; set; }
+
+    /// <summary>
+    /// Which expeditions take the late zones' retune (a player setting, not saved: the run remembers what it took, see
+    /// <see cref="ScavengeState.Retuned"/>). Current unless the game sets it.
+    /// </summary>
+    public LateZoneTuning LateZones { get; set; }
 
     /// <summary>The construction site of a building (new, under its future id, or an upgrade), if any.</summary>
     public ConstructionSite? Site(int buildingId) => State.Construction.Find(buildingId);
@@ -430,6 +436,9 @@ public sealed class ColonySim
             SetConstructionPriority c => ConstructionHandlers.SetPriority(this, c),
             SetSiteNightShift c => ConstructionHandlers.SetNightShift(this, c),
             LaunchExpedition c => ExpeditionHandlers.Launch(this, c),
+            SetDeck c => ColonyCards.SetDeck(this, c),
+            SetCardSlots c => ColonyCards.SetSlots(this, c),
+            BuyCardUpgrade c => ColonyCards.BuyUpgrade(this, c),
             SendScoutDrone c => WorldMap.SendDrone(this, c),
             ApplyExtractionResult c => ExpeditionHandlers.Apply(this, c),
             AdmitPatient c => MedicalHandlers.Admit(this, c),

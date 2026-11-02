@@ -163,7 +163,7 @@ public static class ProfileDeriver
             Dodge: (agility - 50) * rules.Combat.DodgePerAgility + equipped.Sum(i => i.Dodge),
             Stealth: stealth,
             Detection: detection * head,
-            CoverBonus: unit.Stance == Stance.Brace ? fog.Brace.CoverBonus + unit.Hook(PerkHooks.BraceCoverBonus) : 0,
+            CoverBonus: (unit.Stance == Stance.Brace ? fog.Brace.CoverBonus + unit.Hook(PerkHooks.BraceCoverBonus) : 0) + unit.CardCover,
             RegionArmor: RegionArmor(equipped),
             InjuryResist: 1 - equipped.Aggregate(1.0, (keep, i) => keep * (1 - Math.Clamp(i.InjuryResist, 0, 1))),
             MeleeArmor: equipped.Sum(i => i.MeleeArmor));
@@ -224,7 +224,7 @@ public static class ProfileDeriver
             range -= data.Rules.Coop.CarryRangePenalty;
             extraModes.Clear();
         }
-        range = Math.Floor(range * unit.Body.RegionEfficiency(BodyRegion.Legs) + 1e-9);
+        range = LegReach(range + unit.CardMove, unit.Body);
 
         foreach (var rule in rules.Body.Where(r => BodyMatches(unit.Body, r)))
             Apply(rule.Modifier, $"{rule.Condition} {rule.Region}".ToLowerInvariant());
@@ -239,6 +239,24 @@ public static class ProfileDeriver
             .Select(g => g.OrderBy(m => m.Mode.ApCost).First())
             .Select(m => new MoveMode(m.Mode.Pattern, m.Mode.Range, m.Mode.ApCost, m.Mode.IgnoresTerrain, m.Source)));
         return new MovementProfile(modes, costs);
+    }
+
+    /// <summary>
+    /// A move reach after the legs' injuries: scaled by leg efficiency, rounded down. The walk uses it; so can any other
+    /// move reach (a declared path, a card's dash).
+    /// </summary>
+    public static int LegReach(double range, Body body) =>
+        (int)Math.Floor(range * body.RegionEfficiency(BodyRegion.Legs) + 1e-9);
+
+    /// <summary>
+    /// Whether the arms are too hurt for arm-locked attacks (and cards): the best arm, or both averaged for two-handed,
+    /// below <c>combat.armLockBelow</c>. Injury efficiency counts as the rest of the profile sees it (painkillers help).
+    /// </summary>
+    public static bool ArmsLocked(ScavengeData data, Body body, bool twoHanded)
+    {
+        var left = body.PartEfficiency(BodyPart.LeftArm);
+        var right = body.PartEfficiency(BodyPart.RightArm);
+        return (twoHanded ? (left + right) / 2 : Math.Max(left, right)) + 1e-9 < data.Rules.Combat.ArmLockBelow;
     }
 
     private static bool BodyMatches(Body body, BodyMovementRule rule)
@@ -259,7 +277,7 @@ public static class ProfileDeriver
     /// <summary>
     /// Weapon actions, attacks built into cybernetic arms, plus bare hands. Accuracy adds skill and Perception, then scales with the arms
     /// (best arm, or both arms for two-handed) and, for ranged attacks, the head (eyes).
-    /// A two-handed action needs two working arms; any action needs at least one.
+    /// A two-handed action needs two working arms; any action needs at least one; an arm-locked one, arms not too hurt.
     /// </summary>
     private static List<ActionProfile> DeriveActions(ScavengeData data, Unit unit, List<ItemDef> working, List<(BodyPart Part, ItemDef Item)> fitted)
     {
@@ -271,6 +289,7 @@ public static class ProfileDeriver
         void Add(ActionDef a, string? itemId, double? arm = null)
         {
             if (a.TwoHanded && (left <= 0 || right <= 0)) return;
+            if (a.ArmLock && ArmsLocked(data, unit.Body, a.TwoHanded)) return;
             var arms = arm ?? (a.TwoHanded ? (left + right) / 2 : Math.Max(left, right));
             if (arms <= 0) return;
 

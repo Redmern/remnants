@@ -6,7 +6,7 @@ namespace Remnants.Core.Scavenge;
 
 /// <summary>
 /// Medical items on a conscious unit in the field (data/medicine.json, items.json <c>use</c>): heal HP, dress wounds, cure,
-/// splint, numb the pain, a stim's extra AP (then a crash), the Linked "Calm" injector's immunity to being pinned down (at
+/// splint, mend the worst injury, numb the pain, a stim's extra AP (then a crash), the Linked "Calm" injector's immunity to being pinned down (at
 /// a humanity cost). Downed units are stabilized and revived in <see cref="ScavengeCommandHandlers.UseItem"/>. The body
 /// changes travel home with the survivor.
 /// </summary>
@@ -25,6 +25,7 @@ public static class FieldMedicine
         var done = target.Kind == UnitKind.Survivor || target.Kind == UnitKind.Npc
             ? Treatment.Apply(sim.Data.Medicine, target.Body, use, field: true)
             : [];
+        if (use.Mend > 0 && target.Kind is UnitKind.Survivor or UnitKind.Npc && Treatment.Mend(target.Body, use.Mend) is { } mended) done.Add(mended);
         if (use.Heal > 0 && target.Hp < target.MaxHp)
         {
             target.Hp = Math.Min(target.MaxHp, target.Hp + use.Heal * (1 + unit.Hook(PerkHooks.FieldHealBonus)));

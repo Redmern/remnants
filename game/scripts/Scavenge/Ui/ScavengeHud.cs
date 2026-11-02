@@ -97,6 +97,9 @@ public partial class ScavengeHud : CanvasLayer
     public event Action? EndTurnRequested;
     public event Action? LeaveRequested;
 
+    /// <summary>The squad's hand strip and its character picker.</summary>
+    public HandStrip Hand { get; } = null!;
+
     public ScavengeHud() : this(null!) { }
 
     public ScavengeHud(ScavengePresenter presenter)
@@ -153,6 +156,12 @@ public partial class ScavengeHud : CanvasLayer
         Coop = new CoopPanel(presenter) { SizeFlagsVertical = Control.SizeFlags.ShrinkBegin };
         Orders.AddChild(Coop);
         _orderPanels = [Actions, Stances, Actions.Context, Tech, Coop];
+
+        // The squad's hand of cards, centred above the log row (hidden without a deck).
+        Hand = new HandStrip(presenter);
+        var handRow = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
+        handRow.AddChild(Hand);
+        column.AddChild(handRow);
 
         var bottom = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         bottom.AddThemeConstantOverride("separation", 8);

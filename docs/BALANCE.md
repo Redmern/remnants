@@ -1719,3 +1719,119 @@ quartile range of −4 to +9, because a site moves the random stream (who is hom
   keeps its Workshop crafter instead of cutting wood. Base has the same shape in its wiped colonies.
 - **Raids held** dipped (86 → 82%, 70 → 65%): builders are not guards, and the upgrades that would add worker slots come
   later. Worth a look with the defense numbers.
+
+## Hit tiers (scavenge tactical cards, unit 1)
+
+A landed hit now resolves by its roll margin: the share of the hit chance the roll came in under
+(`combat.tiers` in data/scavenge.json). Below 0.25 it is a **graze** (40% of the damage, at least 1, no body-part
+injury), from 0.8 a **solid** hit (full damage, 1.5× injury severity), a plain **hit** between. Armor on the hit region
+of 4 or more (after pierce) and cover of 0.25 or more (terrain beside the target plus brace) each shift it down a tier,
+never below a graze. So in the open about 25% of hits graze, 55% hit and 20% land solid. The tiers reuse the existing
+hit roll, so fixed-seed runs draw the same numbers as before.
+
+**Tuning.** The first cut shifted from armor 2. The first party member's starting Padded Vest is armor 2, so every hit
+on them dropped a tier, and early-zone deaths more than halved (Outskirts 6% → 1%, Suburb Ruins 35% → 18%, Flooded Mall
+57% → 36%). Sweeping the knobs with the same command showed the graze knobs barely move it: `grazeBelow`/`grazeDamage`
+at 0.1–0.25 / 0.4–0.6 all gave Outskirts 1%, Suburb 18–20%. Taking the armor shift away put the numbers back, and the
+cover shift is close to irrelevant (the bot rarely fights from cover). So `armorShiftFrom` is now 4: Linked Plating,
+Riot Armor and the natural shells shift a tier, the vest and coats do not.
+
+Zone trials: `dotnet run -c Release --project tools/Remnants.Playtest -- --zone=all --runs=300` (run seeds 1..300:
+the colony is seeded `seed + 10007·p`, the map `seed · 7919`; party of 2, starting gear). Before = `56e41cc` (main, no
+tiers), after = `53eefd0` (this branch).
+
+| Zone | Runs with a death | Wipes | Injuries/run |
+|---|---|---|---|
+| Outskirts | 6% → 4% | 0% → 1% | 5.0 → 4.8 |
+| Scrapyard Flats | 12% → 8% | 3% → 1% | 5.9 → 5.8 |
+| Suburb Ruins | 35% → 33% | 14% → 10% | 5.5 → 5.4 |
+| Flooded Mall | 57% → 51% | 23% → 19% | 4.3 → 4.4 |
+| Rail Depot | 91% → 91% | 65% → 62% | 1.3 → 1.3 |
+| Network Relay | 99% → 99% | 88% → 84% | 0.3 → 0.3 |
+| Core Spire | 100% → 100% | 97% → 95% | 0.1 → 0.1 |
+
+Target 3 (Outskirts: a death in ≤ 10% of runs, wipes ≤ 3%, nearly every run comes home hurt) holds, and runs stay
+about as risky as before: a little safer, because ~25% of hits are grazes that do 40% damage and solid hits only add
+injury, not HP. AC-14 re-checks the death and wipe targets once intents and cards are in. The knobs, in order of effect:
+`armorShiftFrom`, then `grazeBelow` / `grazeDamage`.
+
+Also in this unit: `combat.armLockBelow` 0.5 (arm efficiency under which arm-locked attacks and cards cannot be used; no
+item is marked yet), and field mending (`use.mend`): the Suture Kit takes 0.15 and the Field Trauma Kit 0.2 off the
+worst injury's severity during a run.
+
+## Telegraphed plans and cards (scavenge tactical cards, unit 4)
+
+Enemies now telegraph moving then striking (a plan declared on their turn, carried out at the start of their next),
+strike at once when a target is already in reach, and turrets telegraph their aim (the hybrid the user chose). Plans
+fit a full turn of AP. Parties bring the starter deck; the playtest bot plays cards by a simple priority, steps off
+tiles a seen enemy plan aims at, and telegraphs a move and a blow when nothing is in reach. Authored enemies (Cole,
+the Linked Warden) bring cards.
+
+Zone trials: `dotnet run -c Release --project tools/Remnants.Playtest -- --zone=all --runs=300` (run seeds 1..300:
+colony `seed + 10007·p`, map `seed · 7919`; party of 2, starting gear). Before = `4d25616` (enemies act at once, no cards;
+with the new metrics), after = `26f157c`.
+
+| Zone | Runs with a death | Wipes | Runs hurt | Damage taken/run | Death rate with Linked vs without |
+|---|---|---|---|---|---|
+| Outskirts | 4% → 2% | 1% → 0% | 95% → 94% | 64 → 49 | – |
+| Scrapyard Flats | 8% → 6% | 1% → 1% | 97% → 94% | 80 → 62 | – |
+| Suburb Ruins | 33% → 18% | 10% → 3% | 86% → 93% | 134 → 104 | 64/26% → 34/14% |
+| Flooded Mall | 51% → 31% | 19% → 4% | 74% → 83% | 154 → 104 | 57/26% → 33/23% |
+| Rail Depot | 91% → 50% | 62% → 9% | 33% → 75% | 203 → 122 | 92/20% → 50/0% |
+| Network Relay | 99% → 65% | 84% → 13% | 14% → 63% | 221 → 130 | 99/0% → 65/0% |
+| Core Spire | 100% → 80% | 95% → 22% | 5% → 50% | 227 → 144 | 100/0% → 80/0% |
+
+New metrics (after, per run): Outskirts 23.9 plans (14.8 by enemies; 6.3 fizzled), 10.2 cards played, hits taken
+35/48/17% graze/hit/solid in Suburb; enemy attacks per enemy-round 0.40 in Outskirts down to 0.14 in Core Spire.
+
+Against the targets: target 3 holds (Outskirts: a death in 2% of runs ≤ 10%, wipes 0% ≤ 3%, 94% of runs come home
+hurt). Target 4 holds: no Linked in Outskirts or Scrapyard Flats; in Suburb Ruins 21% of runs see one and those lose
+someone 2.4× as often (34% vs 14%). No data knob was changed. Runs got safer, most in the late zones: telegraphed
+approaches can be dodged, cards guard and cover, and wipes in Rail Depot and beyond drop from 62–95% to 9–22%. The
+late zones were never meant for a starting party (they stay deadly with Linked: every death there comes with them), but
+if they should stay near-certain wipes for starting gear, the knobs are the zones' enemy counts and the Linked's AP or
+accuracy.
+
+The earlier option, every enemy turn telegraphed, was measured too (same command, `ee7ba0d`): Outskirts deaths 0%,
+runs hurt 45%, damage taken 7 per run, Rail Depot deaths 18%; enemies acted on ~0.07 attacks per enemy-round, because
+an enemy in reach still had to wait a turn while players struck at once. That missed target 3, hence the hybrid.
+
+Not fixed here: the playtest bot still now and then paces between two tiles for the rest of a run (one stuck run in
+Suburb Ruins, seed 44; the baseline had stuck runs too).
+
+## Late-zone re-tune (scavenge tactical cards, unit 6)
+
+With telegraphs the late zones got far easier (previous section). Each of Rail Depot, Network Relay and Core Spire now
+carries a `retune` block in zones.json: more enemies (Rail Depot 6–8 → 11–13, Network Relay 7–10 → 13–16, Core Spire
+10–13 → 18–21), more turrets (2–3, 3–4, 6–7) and pylons (2, 3, 4), more reinforcement waves (3, 5, 7) of more units
+(3, 3–4, 4–5), called after 1 round of alarm instead of 3. The global `network.reinforceAfterRounds` stays 3. Linked
+skill and card lists were tried and barely moved the late zones (+1–4 points) while also touching Suburb Ruins and
+the Flooded Mall, so they are not used. The sweep (21 trials) is logged in the orchestration's progress/unit-6.md.
+
+Which runs take it is a setting, to compare (Settings > Game > Late zones; Core `LateZoneTuning`): **as before**
+(Current), **re-tuned expeditions** (the default: free expeditions take it, story missions keep the zone as it is) or
+**re-tuned everywhere** (story missions in these zones too). Playtest: `--late-zones=current|expeditions|everywhere`
+(default expeditions); debug runs: `--scavenge --late-zones=MODE`; multiplayer: the host's "Late zones (host)" picker
+or the server's `--late-zones=MODE` (default expeditions), shown in the lobby.
+
+Zone trials: `dotnet run -c Release --project tools/Remnants.Playtest -- --zone=all --runs=300` (run seeds 1..300, as
+above), `--late-zones=current` vs the default. Before = `1ce7eea` (the same numbers as `--late-zones=current` now),
+after = `93948d0` (the retune is `a029f31`). Pre-telegraph = `4d25616` (the targets: within about 10 points).
+
+| Zone | Pre-telegraph deaths / wipes | Runs with a death | Wipes | Runs hurt | Damage taken/run | Death rate with Linked/without |
+|---|---|---|---|---|---|---|
+| Outskirts | 4% / 1% | 2% → 2% | 0% → 0% | 94% → 94% | 49 → 49 | – → – |
+| Scrapyard Flats | 8% / 1% | 6% → 6% | 1% → 1% | 94% → 94% | 62 → 62 | – → – |
+| Suburb Ruins | 33% / 10% | 18% → 18% | 3% → 3% | 93% → 93% | 104 → 104 | 34/14% → 34/14% |
+| Flooded Mall | 51% / 19% | 31% → 31% | 4% → 4% | 83% → 83% | 104 → 104 | 33/23% → 33/23% |
+| Rail Depot | 91% / 62% | 50% → 95% | 9% → 55% | 75% → 32% | 122 → 189 | 50/0% → 95/0% |
+| Network Relay | 99% / 84% | 65% → 96% | 13% → 75% | 63% → 16% | 130 → 203 | 65/0% → 96/0% |
+| Core Spire | 100% / 95% | 80% → 100% | 22% → 89% | 50% → 8% | 144 → 215 | 80/0% → 100/0% |
+
+All three late zones are back within 10 points of their pre-telegraph deaths and wipes. Fewer runs come home hurt
+there because more of them do not come home. The four earlier zones are unchanged: targets 3 and 4 hold as before.
+
+Story missions (`--mission=ID --runs=100 --party=4 --kit=armed`), wipes with re-tuned expeditions → re-tuned
+everywhere: m11b 13% → 48%, m13 58% → 94%, m15 49% → 86%, side_children 58% → 94%, m17_choir 65% → 65%. The
+re-tuned expeditions setting leaves every story mission exactly as it was; m12, m16 and the m17 missions use handmade
+maps and do not change under either setting.

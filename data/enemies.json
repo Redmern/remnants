@@ -38,6 +38,7 @@
     "skills": { "Firearms": 45, "Melee": 50 },
     "loot": "linked_warden",
     "equipment": ["warden_pulse", "warden_shell"],
+    "cards": ["hold_the_line", "hold_the_line", "take_cover", "take_cover", "steady_aim", "steady_aim", "counterstrike"],
     "tags": ["network"],
     "drops": [ { "item": "linked_carbine", "chance": 0.6 }, { "item": "sch_linked_carbine", "chance": 0.25 }, { "item": "sch_linked_plating", "chance": 0.15 },
               { "item": "sch_cybernetics", "chance": 0.10 }, { "item": "sch_override", "chance": 0.10 }, { "item": "sch_pulse_rifle", "chance": 0.08 },
@@ -78,6 +79,7 @@
     "attributes": { "Strength": 55, "Agility": 60, "Endurance": 60, "Perception": 65 },
     "skills": { "Firearms": 50, "Melee": 45 },
     "loot": "cole",
-    "equipment": ["pistol", "scout_jacket"]
+    "equipment": ["pistol", "scout_jacket"],
+    "cards": ["steady_aim", "steady_aim", "called_shot", "roll_with_it", "roll_with_it", "dash", "sidestep"]
   }
 ]

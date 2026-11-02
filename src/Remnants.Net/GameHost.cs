@@ -18,6 +18,9 @@ public sealed record HostOptions
     /// <summary>Co-op: every seat starts on one team (spawned together, shared sight). Versus: teams only by choice.</summary>
     public MissionMode Mode { get; init; } = MissionMode.Versus;
 
+    /// <summary>Whether a late zone takes its retune (<see cref="LateZoneTuning"/>); the game's default, re-tuned expeditions.</summary>
+    public LateZoneTuning LateZones { get; init; } = LateZoneTuning.Expeditions;
+
     /// <summary>
     /// Hour of day the mission is played at. The server decides: this when set, else an hour from the seed. Every player
     /// gets the same light (it is in each view) and the fog follows it on the server.
@@ -139,6 +142,7 @@ public sealed class GameHost : IHostSink, TradeDesk.IVenue
         public string Token = "";
         public List<PartyMember> Party = new();
         public FieldVehicle? Vehicle;
+        public List<string>? Deck;
         public bool Ready;
         public IConnection? Connection;
         public DateTimeOffset? LeftAt;
@@ -259,6 +263,7 @@ public sealed class GameHost : IHostSink, TradeDesk.IVenue
             Token = Convert.ToHexString(RandomNumberGenerator.GetBytes(16)),
             Party = join.Party,
             Vehicle = join.Vehicle,
+            Deck = join.Deck is { Count: > 0 } deck ? new(deck) : null,
             Connection = connection,
         };
         seat.Fog = new SideFog(seat.PlayerId, Unit.PlayerSide(seat.PlayerId));
@@ -286,7 +291,12 @@ public sealed class GameHost : IHostSink, TradeDesk.IVenue
                 if (!_data.Items.TryGetValue(id, out var item) || item.Slot != slot) return $"{m.Survivor.Name}: '{id}' does not go in the {slot} slot.";
             foreach (var id in m.Pack ?? [])
                 if (!_data.Items.ContainsKey(id)) return $"{m.Survivor.Name}: unknown item '{id}'.";
+            if (m.SlotCards is { } slots && slots.Count > _data.Cards.Rules.MaxSlotCards) return $"{m.Survivor.Name}: too many slot cards.";
+            foreach (var id in m.SlotCards ?? [])
+                if (_data.Cards.Find(id) is null) return $"{m.Survivor.Name}: unknown card '{id}'.";
         }
+        // The colony's cards are trusted like its party (the trust gap), but a deck must keep the deck rules.
+        if (join.Deck is { } deck && _data.Cards.CheckDeck(deck) is { } bad) return bad;
         if (join.Vehicle is { } v)
         {
             var limits = _data.Rules.Vehicle;
@@ -307,7 +317,7 @@ public sealed class GameHost : IHostSink, TradeDesk.IVenue
     private void BroadcastLobby() =>
         Broadcast(new LobbyState(Options.ZoneId, Options.MinPlayers, Options.MaxPlayers,
             _seats.Select(s => new LobbyPlayer(s.PlayerId, s.Name, s.Party.Count, s.Ready, s.Connection is not null, s.StartTeam(Options.Mode))).ToList(),
-            Options.Mode));
+            Options.Mode, Options.LateZones));
 
     private void TryStart()
     {
@@ -315,8 +325,12 @@ public sealed class GameHost : IHostSink, TradeDesk.IVenue
         try
         {
             Sim = NewScavenge.Create(_data, Options.ZoneId, Options.Seed,
-                _seats.Select(s => new PartySetup(s.PlayerId, s.Party, s.StartTeam(Options.Mode), s.Name) { Vehicle = s.Vehicle }).ToList(),
-                new ZoneConditions(Environment: Options.MissionEnvironment(_data)), Options.Mission);
+                _seats.Select(s => new PartySetup(s.PlayerId, s.Party, s.StartTeam(Options.Mode), s.Name)
+                {
+                    Vehicle = s.Vehicle,
+                    Deck = s.Deck is { } cards ? new SquadLoadout(cards, _data.Cards.Rules.HandSize, _data.Cards.Rules.Draw, _data.Cards.Rules.Budget) : null,
+                }).ToList(),
+                new ZoneConditions(Environment: Options.MissionEnvironment(_data)) { LateZones = Options.LateZones }, Options.Mission);
         }
         catch (ArgumentException e)
         {

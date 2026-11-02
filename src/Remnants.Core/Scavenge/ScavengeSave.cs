@@ -33,13 +33,20 @@ namespace Remnants.Core.Scavenge;
 /// Version 14 adds Story Acts 2–4 field rules: the run's campaign flags, the survivors the Linked took and who they are
 /// holding, the party's survivors at the start and a co-op guest's schematic copies (<see cref="MissionRun"/>), and
 /// devices' failed hacks (<see cref="ZoneDevice.Failures"/>); an older run loads with none of them.
+/// <see cref="IntentsVersion"/> adds telegraphed plans (<see cref="Unit.Plan"/>), dodged attacks
+/// (<see cref="Unit.OutplayedId"/>) and hit tiers on events, and with them the squad decks, personal card slots and card
+/// effects. Older runs are not migrated: they are refused (old runs reset; a colony save drops its run in progress, see
+/// <see cref="SaveGame"/>).
 /// </summary>
 public static class ScavengeSave
 {
-    /// <summary>Field loot and salvage (keyed: renumber to the next free version at merge).</summary>
+    /// <summary>Field loot and salvage (keyed: renumber to the next free version at merge). Older than the oldest loadable run.</summary>
     public const int LootVersion = 13;
-    public const int Version = 14;
-    private const int OldestVersion = 1;
+    /// <summary>Telegraphed plans (keyed: renumber to the next free version at merge).</summary>
+    public const int IntentsVersion = 15;
+    public const int Version = IntentsVersion;
+    /// <summary>Runs from before plans and decks are not carried over: an older run is refused (and a colony save drops it).</summary>
+    private const int OldestVersion = IntentsVersion;
 
     private sealed record Envelope(int Version, ScavengeState Scavenge);
 
@@ -52,23 +59,8 @@ public static class ScavengeSave
         if (envelope.Version < OldestVersion || envelope.Version > Version)
             throw new JsonException($"Unsupported scavenge save version {envelope.Version} (expected {OldestVersion}..{Version}).");
         var state = envelope.Scavenge ?? throw new JsonException("Save file has no scavenge state.");
-        if (envelope.Version < 7) MigrateCybernetics(data, state);
-        if (envelope.Version < LootVersion) MigrateLoot(state);
         Validate(data, state);
         return new ScavengeSim(data, state);
-    }
-
-    /// <summary>Before version 7 the field knew nothing of cybernetics: resolve survivors' hooks from their bodies.</summary>
-    internal static void MigrateCybernetics(ScavengeData data, ScavengeState state)
-    {
-        foreach (var u in state.Units.Where(u => u.Kind == UnitKind.Survivor && u.CyberHooks.Count == 0))
-            u.CyberHooks = data.CyberHooksFor(u.Body);
-    }
-
-    /// <summary>Before field loot the run had no loot seed: derive one from the RNG state, so kills still roll their loot.</summary>
-    internal static void MigrateLoot(ScavengeState state)
-    {
-        if (state.LootSeed == 0) state.LootSeed = state.RngState ^ 0x100D_5EED_0000_0001UL;
     }
 
     /// <summary>A save must still fit the current data/ (an item or enemy may have been renamed by a balancing edit).</summary>
@@ -90,8 +82,12 @@ public static class ScavengeSave
             foreach (var id in u.AllItems) RequireItem(id);
             foreach (var (slot, id) in u.Equipment)
                 if (data.Items[id].Slot != slot) throw new JsonException($"Unit {u.Id} has '{id}' in the {slot} slot.");
+            if (u.Plan is { } plan) ValidatePlan(state, u, plan);
         }
         foreach (var id in state.Caches.SelectMany(c => c.Items)) RequireItem(id);
+        foreach (var id in state.Decks.SelectMany(d => d.DrawPile.Concat(d.Hand).Concat(d.Used).Concat(d.Consumed))
+                     .Concat(state.Units.SelectMany(u => u.SlotCards)).Concat(state.Parties.SelectMany(p => p.CardPouch)))
+            if (data.Cards.Find(id) is null) throw new JsonException($"Save references unknown card '{id}'.");
         foreach (var n in state.SalvageNodes)
         {
             if (data.Salvage.Node(n.Kind) is null) throw new JsonException($"Save references unknown salvage node '{n.Kind}'.");
@@ -124,5 +120,26 @@ public static class ScavengeSave
         }
         foreach (var id in state.TurnOrder)
             if (state.FindUnit(id) is null) throw new JsonException($"Turn order references unknown unit {id}.");
+    }
+
+    /// <summary>
+    /// A pending plan belongs to a unit that can still act, aims (if at all) at a unit that exists, stays on the map,
+    /// and walks from where the unit stands in steps that each move (no step on the tile it is already on). How far a
+    /// step goes is not checked: legs hurt or a heavier pack since declaring legally shrink the unit's moves, and the
+    /// plan then stops short when it resolves. Its rules were checked when it was declared; this catches a hand-edited
+    /// or stale save.
+    /// </summary>
+    private static void ValidatePlan(ScavengeState state, Unit u, PlannedAction plan)
+    {
+        if (!u.IsActive) throw new JsonException($"Unit {u.Id} has a plan but cannot act ({u.Status}).");
+        if (plan.TargetId is { } t && state.FindUnit(t) is null) throw new JsonException($"Unit {u.Id}'s plan aims at unknown unit {t}.");
+        if (plan.AttackTile is { } tile && !state.Map.InBounds(tile)) throw new JsonException($"Unit {u.Id}'s plan attacks {tile}, off the map.");
+        var at = u.Pos;
+        foreach (var step in plan.Path)
+        {
+            if (!state.Map.InBounds(step)) throw new JsonException($"Unit {u.Id}'s plan leaves the map at {step}.");
+            if (step == at) throw new JsonException($"Unit {u.Id}'s plan steps from {at} onto the same tile.");
+            at = step;
+        }
     }
 }

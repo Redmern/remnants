@@ -19,6 +19,15 @@ public sealed class Party
 
     /// <summary>Items a cargo drone ferried out of the zone (and the drone itself): home whatever happens to the party.</summary>
     public List<string> Secured { get; set; } = new();
+
+    /// <summary>Cards the party found in this run (loot, salvage): they join the colony's collection only if someone gets out.</summary>
+    public List<string> CardPouch { get; set; } = new();
+
+    /// <summary>What the party learned of enemy types this run (see <see cref="Scavenge.Bestiary"/>), and the enemies already counted.</summary>
+    public SortedDictionary<string, BestiaryEntry> Bestiary { get; set; } = new(StringComparer.Ordinal);
+    public SortedSet<int> SeenIds { get; set; } = new();
+    public SortedSet<int> FoughtIds { get; set; } = new();
+    public SortedSet<int> KilledIds { get; set; } = new();
 }
 
 public enum ScavengeEventType
@@ -39,6 +48,8 @@ public enum ScavengeEventType
     EmpBurst, DecoyDeployed, DecoyGone, NoiseDecoy, DroneHealed, DroneLoaded, DroneFerried, DroneFired, Traced,
     GearModded,
     LootDropped, ItemDropped, SalvageProgress,
+    IntentDeclared, IntentResolved, IntentFizzled, IntentCanceled,
+    DeckShuffled, CardPlayed, CardDiscarded, CardFound, Countered,
 }
 
 /// <summary>
@@ -49,10 +60,12 @@ public enum ScavengeEventType
 /// </summary>
 /// <see cref="SeenBy"/>: the party sides that saw the actor when the event was logged (filled in by the sim), so a side
 /// hears a hidden unit's moves only while it actually saw them. <see cref="Sides"/> sends the event to exactly these
-/// sides whatever they see (alliance news goes to the two parties involved and nobody else).
+/// sides whatever they see (alliance news goes to the two parties involved and nobody else). <see cref="Tier"/>: how a
+/// landed attack resolved (graze, hit, solid); <see cref="Amount"/>: the HP it took.
 public sealed record ScavengeEvent(
     int Round, ScavengeEventType Type, string Message, int? UnitId = null, int? TargetId = null, Pos? Pos = null,
-    string? Anonymous = null, string? Side = null, List<string>? SeenBy = null, List<string>? Sides = null);
+    string? Anonymous = null, string? Side = null, List<string>? SeenBy = null, List<string>? Sides = null, HitTier? Tier = null,
+    double? Amount = null);
 
 /// <summary>A side knows something is near a tile without knowing what: a "?" on its map.</summary>
 public enum ContactKind
@@ -185,6 +198,12 @@ public sealed class ScavengeState
     /// <summary>Seeds the per-kill and per-lot loot rolls (<see cref="FieldLoot.Rng"/>). Never sent to clients.</summary>
     public ulong LootSeed { get; set; }
 
+    /// <summary>The card stream: every deck shuffle draws from it, never from the game's RNG. Never sent to clients.</summary>
+    public ulong CardRngState { get; set; }
+
+    /// <summary>Each party's squad deck (<see cref="SquadDecks"/>); none for a party that brought no cards.</summary>
+    public List<SquadDeck> Decks { get; set; } = new();
+
     /// <summary>The Story difficulty the run is played at (loot quantities, <see cref="LootRules.Difficulty"/>); null in Sandbox.</summary>
     public string? Difficulty { get; set; }
 
@@ -202,6 +221,9 @@ public sealed class ScavengeState
 
     /// <summary>Reinforcement waves the zone's pylons have called so far.</summary>
     public int ReinforcementWaves { get; set; }
+
+    /// <summary>The run took its zone's retune (<see cref="ZoneDef.Retune"/>): reinforcements follow it too.</summary>
+    public bool Retuned { get; set; }
 
     /// <summary>Per-side contacts ("?" markers). Expired ones are dropped at round start.</summary>
     public List<Contact> Contacts { get; set; } = new();

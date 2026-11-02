@@ -273,6 +273,9 @@ internal static class CraftingSystem
             made = $"{recipe.Amount:0.##} {data.Resources[recipe.Resource!].Name}";
         }
 
+        if (recipe.Card is { } card && items is not null && ColonyCards.FromRecipe(state, items.Cards, recipe))
+            made += $" and a {items.Cards.Find(card)!.Name} card";
+
         order.Progress = 0;
         order.Paid = false;
         order.Tainted = false;

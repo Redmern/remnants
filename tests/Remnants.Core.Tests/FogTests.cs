@@ -198,6 +198,8 @@ public class FogTests
     public void Overwatch_turns_the_ap_left_into_reactions_at_hostiles_that_walk_into_sight()
     {
         var u = SurvivorUnit(pos: new(0, 4), weapon: "pistol");
+        // Slow, so the husk's turn (when its telegraphed walk-in resolves) comes before the overwatch ends.
+        u.Attributes[AttributeKind.Agility] = 10;
         var husk = EnemyUnit("husk", new(7, 4)); // every step it takes ends in sight and reach
         husk.Ai.Mode = AiMode.Hunting;
         husk.Ai.LastKnown = u.Pos;
@@ -207,6 +209,9 @@ public class FogTests
         Assert.Equal(ScavengeError.InvalidStance, sim.Execute(new SetStance(1, u.Id, Stance.None)).Error);
         Assert.True(sim.Execute(new SetStance(1, u.Id, Stance.Overwatch)).Ok);
 
+        // The husk telegraphed its walk in (round 1) and walked it at the start of its round-2 turn, ahead of the survivor's.
+        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.IntentDeclared && e.UnitId == husk.Id);
+        Assert.True(sim.State.TurnOrder.IndexOf(husk.Id) < sim.State.TurnOrder.IndexOf(u.Id));
         // Full AP (3) less the cost leaves 2 reactions; the husk keeps walking in, so both fire, and no more.
         var expected = Math.Min(rules.Reactions, sim.Profile(u).MaxAp - rules.ApCost);
         var reactions = sim.State.Events.Count(e => e.Type == ScavengeEventType.Overwatch && e.UnitId == u.Id && e.TargetId == husk.Id);
@@ -381,6 +386,8 @@ public class FogTests
         Assert.True(Detection.Spots(sim.Data, sim.State, drone, u));
 
         Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
+        Assert.Equal(!jammer, linked.Plan?.AttackTile == u.Pos); // spotted through the drone: the shot is telegraphed
+        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
 
         if (jammer) Assert.False(Shot(sim, linked, u));
         else Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Ambushed && e.UnitId == linked.Id && e.TargetId == u.Id);
@@ -422,9 +429,6 @@ public class FogTests
         var scavenge = old["scavenge"]!.AsObject();
         foreach (var key in new[] { "contacts", "reveals", "flares", "sensors", "nextSensorId" }) scavenge.Remove(key);
         foreach (var unit in scavenge["units"]!.AsArray()) foreach (var key in new[] { "stance", "reactions", "lookout" }) unit!.AsObject().Remove(key);
-        var migrated = ScavengeSave.Load(Real, old.ToJsonString());
-        Assert.Empty(migrated.State.Sensors);
-        Assert.Empty(migrated.State.Contacts);
-        Assert.All(migrated.State.Units, x => Assert.Equal(Stance.None, x.Stance));
+        Assert.Contains("Unsupported scavenge save version", Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, old.ToJsonString())).Message); // old runs reset
     }
 }

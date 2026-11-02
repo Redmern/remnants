@@ -102,6 +102,7 @@ public static class Network
     {
         var state = sim.State;
         if (!sim.Data.Zones.TryGetValue(state.ZoneId, out var zone)) return;
+        if (state.Retuned) zone = zone.Retuned();
         var alarmed = Groups(sim).FirstOrDefault(g => g.Pylons.Count > 0 && g.Units.Count > 0 && Known(sim, g).Count > 0);
         if (alarmed is null)
         {
@@ -110,7 +111,7 @@ public static class Network
         }
         state.AlarmRounds++;
         var waves = zone.Reinforcements;
-        if (state.AlarmRounds < sim.Data.Rules.Network.ReinforceAfterRounds || state.ReinforcementWaves >= waves.Waves || waves.Mix.Count == 0)
+        if (state.AlarmRounds < (waves.AfterRounds ?? sim.Data.Rules.Network.ReinforceAfterRounds) || state.ReinforcementWaves >= waves.Waves || waves.Mix.Count == 0)
             return;
         // A hacked relay node has taken the zone's uplink down: nobody answers the call.
         if (Hacking.UplinkDown(state)) return;

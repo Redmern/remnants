@@ -7,21 +7,64 @@ namespace Remnants.Core.Scavenge;
 /// <summary>Attack reach, hit chance and damage: injuries to body parts, HP, Downed and Dead.</summary>
 public static class Combat
 {
-    /// <summary>Whether <paramref name="action"/> can reach <paramref name="target"/> from <paramref name="from"/>.</summary>
+    /// <summary>
+    /// Whether <paramref name="action"/> can reach <paramref name="target"/> from <paramref name="from"/>: the target is one
+    /// of its <see cref="Tiles"/> and, past the tiles next to the attacker, in line of sight.
+    /// </summary>
     public static ScavengeError CheckReach(ScavengeData data, TileMap map, Pos from, ActionProfile action, Pos target)
     {
+        if (!map.InBounds(target) || !InPattern(action, from, null, target)) return ScavengeError.OutOfRange;
+        return Clear(data, map, from, target) ? ScavengeError.None : ScavengeError.NoLineOfSight;
+    }
+
+    /// <summary>
+    /// The tiles on the map the action's pattern covers from <paramref name="from"/> (aimed toward <paramref name="facing"/>
+    /// for patterns that care), line of sight not checked. Never the attacker's own tile.
+    /// </summary>
+    public static IEnumerable<Pos> Tiles(TileMap map, ActionProfile action, Pos from, Pos? facing)
+    {
+        for (var dy = -action.Reach; dy <= action.Reach; dy++)
+            for (var dx = -action.Reach; dx <= action.Reach; dx++)
+            {
+                var p = new Pos(from.X + dx, from.Y + dy);
+                if (map.InBounds(p) && InPattern(action, from, facing, p)) yield return p;
+            }
+    }
+
+    /// <summary>The <see cref="Tiles"/> the action can actually hit: those that pass <see cref="CheckReach"/>.</summary>
+    public static IEnumerable<Pos> Hittable(ScavengeData data, TileMap map, ActionProfile action, Pos from, Pos? facing) =>
+        Tiles(map, action, from, facing).Where(p => Clear(data, map, from, p));
+
+    /// <summary>
+    /// Every tile <paramref name="unit"/> could hit right now with any of its attacks, from where it stands and facing
+    /// where it faces. Empty for a unit that cannot act (downed, dead, gone).
+    /// </summary>
+    public static HashSet<Pos> ThreatZone(ScavengeSim sim, Unit unit)
+    {
+        var zone = new HashSet<Pos>();
+        if (!unit.IsActive) return zone;
+        foreach (var action in sim.Profile(unit).Actions)
+            zone.UnionWith(Hittable(sim.Data, sim.State.Map, action, unit.Pos, unit.Facing));
+        return zone;
+    }
+
+    /// <summary>Whether <paramref name="target"/> lies in the action's pattern from <paramref name="from"/>.</summary>
+    private static bool InPattern(ActionProfile action, Pos from, Pos? facing, Pos target)
+    {
+        if (from == target) return false;
         var d = target - from;
-        var inReach = action.Pattern switch
+        return action.Pattern switch
         {
             AttackPattern.Melee => from.Chebyshev(target) <= action.Reach,
             AttackPattern.Ranged => from.DistanceSquared(target) <= action.Reach * action.Reach,
             AttackPattern.Line => (d.X == 0 || d.Y == 0 || Math.Abs(d.X) == Math.Abs(d.Y)) && from.Chebyshev(target) <= action.Reach,
             _ => false,
         };
-        if (!inReach || from == target) return ScavengeError.OutOfRange;
-        if (from.Chebyshev(target) > 1 && !map.HasLineOfSight(data, from, target)) return ScavengeError.NoLineOfSight;
-        return ScavengeError.None;
     }
+
+    /// <summary>Line of sight, needed only past the tiles next to the attacker.</summary>
+    private static bool Clear(ScavengeData data, TileMap map, Pos from, Pos target) =>
+        from.Chebyshev(target) <= 1 || map.HasLineOfSight(data, from, target);
 
     /// <summary>AP the attack costs from <paramref name="from"/> at <paramref name="target"/>: more up close for a scope.</summary>
     public static int ApCost(ActionProfile action, Pos from, Pos target) =>
@@ -56,12 +99,16 @@ public static class Combat
     /// <summary>The hit chance of this attack as it would resolve now, ambush included (for previews and the AI).</summary>
     public static double ChanceToHit(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, Pos? from = null) =>
         HitChance(sim.Data, sim.State.Map, from ?? attacker.Pos,
-            action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) - WeatherPenalty(sim, action) + ElectronicWarfare.RadioAccuracy(sim, attacker) },
+            action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + OutplayBonus(sim, attacker, target) + attacker.CardHit - WeatherPenalty(sim, action) + ElectronicWarfare.RadioAccuracy(sim, attacker) },
             target.Pos, sim.Profile(target), AmbushAgainst(sim.Data, sim.State, attacker, target, from), Bane(sim.Data, action, target));
 
     /// <summary>What the weather takes off a ranged attack's hit chance (dust in the air; melee is unaffected).</summary>
     public static double WeatherPenalty(ScavengeSim sim, ActionProfile action) =>
         action.Pattern == AttackPattern.Melee ? 0 : FieldEnvironment.Effects(sim.Data, sim.State).RangedAccuracyPenalty;
+
+    /// <summary>The ambush hit bonus for an attack on the unit whose telegraphed attack the attacker dodged (see <see cref="Unit.OutplayedId"/>).</summary>
+    public static double OutplayBonus(ScavengeSim sim, Unit attacker, Unit target) =>
+        attacker.OutplayedId == target.Id && sim.State.Round <= attacker.OutplayedUntilRound ? sim.Data.Rules.Fog.Ambush.HitBonus : 0;
 
     /// <summary>What a drone's mark on the target adds to the attacker's side's hit chance.</summary>
     public static double MarkBonus(ScavengeSim sim, Unit attacker, Unit target) =>
@@ -111,9 +158,10 @@ public static class Combat
                 .Where(u => u.Id != target.Id && u.IsActive && attacker.HostileTo(u) && u.Pos.Chebyshev(center) <= action.Area)
                 .OrderBy(u => u.Id));
         var ambushes = targets.Select(t => AmbushAgainst(sim.Data, sim.State, attacker, t)).ToList();
+        foreach (var t in targets) Bestiary.Fought(sim, attacker, t);
         var penalty = reaction ? sim.Data.Rules.Fog.Overwatch.AccuracyPenalty : 0;
         for (var i = 0; i < targets.Count; i++)
-            Strike(sim, attacker, action with { Accuracy = action.Accuracy - penalty }, targets[i], ambushes[i]);
+            Strike(sim, attacker, action with { Accuracy = action.Accuracy - penalty }, targets[i], ambushes[i], reaction);
         AfterAttack(sim, attacker, action, targets);
         GearEffects.Feedback(sim, attacker, action);
     }
@@ -130,6 +178,7 @@ public static class Combat
         attacker.Ap -= action.ApCost;
         sim.MakeNoise(attacker, action.Noise);
         target.Suppressed = target.CalmUntilRound < sim.State.Round;
+        Bestiary.Fought(sim, attacker, target);
         sim.State.Log(new(sim.State.Round, ScavengeEventType.Suppressed,
             $"{attacker.Name} pins {target.Name} down with suppressing fire ({action.Name}).", attacker.Id, target.Id, target.Pos,
             Anonymous: $"{target.Name} is pinned down by fire from the fog."));
@@ -154,22 +203,29 @@ public static class Combat
         sim.CheckOverwatch(attacker);
     }
 
-    private static void Strike(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, AmbushInfo? ambush)
+    private static void Strike(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, AmbushInfo? ambush, bool reaction = false)
     {
         var data = sim.Data;
         var state = sim.State;
         var bane = Bane(data, action, target);
-        var chance = HitChance(data, state.Map, attacker.Pos, action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + ElectronicWarfare.RadioAccuracy(sim, attacker) },
+        // A card's hit bonus is for the unit's own next attack (not a reaction shot): the first strike uses it up.
+        var cardHit = reaction ? 0 : attacker.CardHit;
+        var chance = HitChance(data, state.Map, attacker.Pos, action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + OutplayBonus(sim, attacker, target) + cardHit + ElectronicWarfare.RadioAccuracy(sim, attacker) },
             target.Pos, sim.Profile(target), ambush, bane);
+        if (!reaction) attacker.CardHit = 0;
+        // A dodge pays off once: whichever attack on that unit comes first (planned, reaction or splash) uses it up.
+        if (attacker.OutplayedId == target.Id) attacker.OutplayedId = null;
         if (ambush is { } a)
             state.Log(new(state.Round, ScavengeEventType.Ambushed,
                 $"{attacker.Name} ambushes {target.Name} from the fog{a.Describe()}.", attacker.Id, target.Id, target.Pos,
                 Anonymous: $"{target.Name} was ambushed from the fog{a.Describe()}."));
 
-        if (sim.Rng.NextDouble() >= chance)
+        var roll = sim.Rng.NextDouble();
+        if (roll >= chance)
         {
             state.Log(new(state.Round, ScavengeEventType.Missed,
-                $"{attacker.Name} missed {target.Name} ({action.Name}, {chance:P0}).", attacker.Id, target.Id, target.Pos,
+                // The log is shared and cannot know a colony's bestiary: an NPC enemy's chance shows to the nearest 5%.
+                $"{attacker.Name} missed {target.Name} ({action.Name}, {(Bestiary.Subject(target) ? Bestiary.ShownChance(data.Rules.Bestiary, chance, BestiaryTier.Unknown) : chance):P0}).", attacker.Id, target.Id, target.Pos,
                 Anonymous: $"An attack from the fog missed {target.Name}."));
             return;
         }
@@ -183,12 +239,24 @@ public static class Combat
             raw *= bane.DamageMultiplier;
             armor = Math.Max(0, armor - bane.ArmorPierce);
         }
+        var tiers = data.Rules.Combat.Tiers;
+        var tier = TierOf(tiers, chance, roll, armor, CoverAgainst(data, state.Map, target.Pos, attacker.Pos) + defense.CoverBonus, target.Guard);
+        target.Guard = 0;
         var damage = Math.Max(1, raw - armor);
+        if (tier == HitTier.Graze) damage = Math.Max(1, damage * tiers.GrazeDamage);
         var where = target.Structure ? target.Name : $"{target.Name}'s {part}";
+        var (verb, how) = tier switch
+        {
+            HitTier.Graze => ("grazed", "grazed"),
+            HitTier.Solid => ("landed a solid hit on", "hit hard"),
+            _ => ("hit", "hit"),
+        };
         state.Log(new(state.Round, ScavengeEventType.Attacked,
-            $"{attacker.Name} hit {where} for {damage:0} ({action.Name}).", attacker.Id, target.Id, target.Pos,
-            Anonymous: target.Structure ? $"{target.Name} was hit for {damage:0} from the fog." : $"{target.Name} was hit in the {part} for {damage:0} from the fog."));
-        ApplyDamage(sim, target, part, damage, action.InjuryMultiplier * (1 - Math.Clamp(defense.InjuryResist, 0, 1)), attacker);
+            $"{attacker.Name} {verb} {where} for {damage:0} ({action.Name}).", attacker.Id, target.Id, target.Pos,
+            Anonymous: target.Structure ? $"{target.Name} was {how} for {damage:0} from the fog." : $"{target.Name} was {how} in the {part} for {damage:0} from the fog.",
+            Tier: tier, Amount: damage));
+        var severity = action.InjuryMultiplier * (1 - Math.Clamp(defense.InjuryResist, 0, 1)) * (tier == HitTier.Solid ? tiers.SolidSeverity : 1);
+        ApplyDamage(sim, target, part, damage, severity, attacker, injure: tier != HitTier.Graze);
         if (bane is { Stun: true } && target.IsActive && !target.Suppressed)
         {
             target.Suppressed = true;
@@ -201,6 +269,19 @@ public static class Combat
             state.Log(new(state.Round, ScavengeEventType.RelayDisrupted, $"{target.Name} is knocked off the relay.", attacker.Id, target.Id, target.Pos,
                 Anonymous: $"{target.Name} is knocked off the relay."));
         }
+    }
+
+    /// <summary>
+    /// The tier of a landed hit (<paramref name="roll"/> under <paramref name="chance"/>) by its margin, shifted down a tier
+    /// each by enough <paramref name="armor"/> on the hit region and enough <paramref name="cover"/>, and by
+    /// <paramref name="guard"/> tiers more (a defense card), never below a graze.
+    /// </summary>
+    public static HitTier TierOf(HitTierRules rules, double chance, double roll, double armor, double cover, int guard = 0)
+    {
+        var margin = chance > 0 ? (chance - roll) / chance : 0;
+        var tier = margin < rules.GrazeBelow ? HitTier.Graze : margin >= rules.SolidFrom ? HitTier.Solid : HitTier.Hit;
+        var shift = (armor + 1e-9 >= rules.ArmorShiftFrom ? 1 : 0) + (cover + 1e-9 >= rules.CoverShiftFrom ? 1 : 0) + Math.Max(0, guard);
+        return (HitTier)Math.Max((int)HitTier.Graze, (int)tier - shift);
     }
 
     /// <summary>
@@ -238,15 +319,19 @@ public static class Combat
         return target.Body[part].Condition == PartCondition.Missing ? BodyPart.Torso : part;
     }
 
-    /// <summary>Damage to one body part: injury severity, possible limb loss, then HP and Downed/Dead (by <paramref name="attacker"/>, for loot perks).</summary>
-    public static void ApplyDamage(ScavengeSim sim, Unit target, BodyPart part, double damage, double severityScale = 1, Unit? attacker = null)
+    /// <summary>
+    /// Damage to one body part: injury severity, possible limb loss, then HP and Downed/Dead (by <paramref name="attacker"/>,
+    /// for loot perks). Without <paramref name="injure"/> (a graze) only the HP drops.
+    /// </summary>
+    public static void ApplyDamage(ScavengeSim sim, Unit target, BodyPart part, double damage, double severityScale = 1, Unit? attacker = null,
+        bool injure = true)
     {
         var data = sim.Data;
         var state = sim.State;
         var c = data.Rules.Combat;
 
         var bodyPart = target.Body[part];
-        if (!target.Structure && bodyPart.Condition is PartCondition.Healthy or PartCondition.Injured)
+        if (injure && !target.Structure && bodyPart.Condition is PartCondition.Healthy or PartCondition.Injured)
         {
             var severity = bodyPart.Severity + damage / c.PartToughness[Body.RegionOf(part)] * severityScale;
             target.Body.Injure(part, severity);
@@ -277,11 +362,13 @@ public static class Combat
             target.Hp = 1;
             target.Status = UnitStatus.Evacuated;
             target.CarriedById = null;
+            target.Plan = null;
             state.Log(new(state.Round, ScavengeEventType.Downed, $"{target.Name} is down and dragged to safety.", target.Id, Pos: target.Pos));
             sim.UpdateParties();
             return;
         }
         target.Status = UnitStatus.Downed;
+        PlannedActions.Cancel(sim, target, "down");
         target.BleedOut = c.BleedOutRounds;
         target.Stabilized = false;
         target.Ap = 0;
@@ -289,6 +376,9 @@ public static class Combat
             $"{target.Name} is down and bleeding out ({c.BleedOutRounds} rounds).", target.Id, Pos: target.Pos));
     }
 }
+
+/// <summary>How a landed hit resolves: a graze (a little HP, no injury), a plain hit, or a solid one (worse injury).</summary>
+public enum HitTier { Graze, Hit, Solid }
 
 /// <summary>
 /// An attack from the fog: what it adds to the hit chance and damage, and whether the target loses its dodge.

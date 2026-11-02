@@ -173,6 +173,7 @@ public static class FieldSalvage
         node.LotsLeft--;
         var items = sim.Data.Loot.Find(def.Table) is { } table ? sim.Data.Loot.Roll(sim.Data, table, Context(sim, def, unit), FieldLoot.Rng(state, node.Id * 7919 + node.LotsLeft)) : [];
         if (Extras.TryGetValue(def.Id, out var extra)) items.AddRange(extra(sim, unit, node));
+        FieldLoot.Found(sim, unit, LootCatalog.TakeCards(items));
         var (kept, left) = FieldLoot.Stow(sim, unit, items);
         if (left.Count > 0) FieldLoot.Pile(state, node.Pos, LootPileKind.Dropped, def.Name).Items.AddRange(left);
         var what = items.Count == 0 ? "nothing worth carrying" : FieldLoot.Describe(sim.Data, items);

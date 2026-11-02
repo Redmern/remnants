@@ -54,6 +54,9 @@ public static class GameSettings
     /// </summary>
     public static int DayLengthMinutes { get; set; } = 2;
 
+    /// <summary>Which runs take the late zones' retune (zones.json "retune"): to compare the tunings.</summary>
+    public static Remnants.Core.Scavenge.LateZoneTuning LateZones { get; set; } = Remnants.Core.Scavenge.LateZoneTuning.Expeditions;
+
     public static readonly int[] DayLengths = [1, 2, 4, 8];
     public static float CameraZoomSpeed { get; set; } = 1f;
 
@@ -132,6 +135,7 @@ public static class GameSettings
         cfg.SetValue("camera", "pan", CameraPanSpeed);
         cfg.SetValue("camera", "zoom", CameraZoomSpeed);
         cfg.SetValue("game", "day_minutes", DayLengthMinutes);
+        cfg.SetValue("game", "late_zones", (int)LateZones);
         cfg.Save(Path);
     }
 
@@ -155,6 +159,7 @@ public static class GameSettings
         CameraPanSpeed = (float)cfg.GetValue("camera", "pan", CameraPanSpeed);
         CameraZoomSpeed = (float)cfg.GetValue("camera", "zoom", CameraZoomSpeed);
         DayLengthMinutes = Math.Clamp((int)cfg.GetValue("game", "day_minutes", DayLengthMinutes), DayLengths[0], DayLengths[^1]);
+        LateZones = (Remnants.Core.Scavenge.LateZoneTuning)Math.Clamp((int)cfg.GetValue("game", "late_zones", (int)LateZones), 0, 2);
     }
 
     private static void EnsureBuses() => Audio.AudioBuses.Ensure();

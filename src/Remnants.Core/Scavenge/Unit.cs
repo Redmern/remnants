@@ -108,6 +108,48 @@ public sealed class Unit
     /// <summary>Held until this unit's next turn starts.</summary>
     public Stance Stance { get; set; }
 
+    /// <summary>
+    /// A telegraphed plan waiting for the start of this unit's next turn (see <see cref="PlannedActions"/>); null when
+    /// none. Locked once declared; being downed, killed, pinned or stunned cancels it.
+    /// </summary>
+    public PlannedAction? Plan { get; set; }
+
+    /// <summary>
+    /// The unit whose telegraphed attack this one dodged: its next attack on that unit gets the ambush hit bonus
+    /// (<see cref="Combat.OutplayBonus"/>), then this clears. Good through <see cref="OutplayedUntilRound"/> (the round
+    /// after the dodge, so the dodger always gets its next turn to use it).
+    /// </summary>
+    public int? OutplayedId { get; set; }
+
+    public int OutplayedUntilRound { get; set; }
+
+    /// <summary>Personal card slots: cards this character always has to hand (not shuffled), paid from the squad's points.</summary>
+    public List<string> SlotCards { get; set; } = new();
+
+    /// <summary>In another player's view: how many slot cards the unit holds (<see cref="SlotCards"/> is not sent).</summary>
+    public int HiddenSlots { get; set; }
+
+    /// <summary>Slot cards played this round: they come back at the next round start (consumable ones are gone instead).</summary>
+    public List<string> SlotSpent { get; set; } = new();
+
+    /// <summary>Move range cards added this turn (carried into a plan declared now).</summary>
+    public int CardMove { get; set; }
+
+    /// <summary>Hit chance cards added to this unit's next attack.</summary>
+    public double CardHit { get; set; }
+
+    /// <summary>Tiers the next hit this unit takes is shifted down (cards; used up by that hit).</summary>
+    public int Guard { get; set; }
+
+    /// <summary>Cover cards added until this unit's next turn.</summary>
+    public double CardCover { get; set; }
+
+    /// <summary>The enemy this unit will strike first when its plan resolves (a counter card), until its own next turn.</summary>
+    public int? CounterId { get; set; }
+
+    /// <summary>The last card (not a reaction) played on this unit this turn: a plan declared now carries it, server-side only.</summary>
+    public string? LastCardId { get; set; }
+
     /// <summary>Overwatch reactions left this stance.</summary>
     public int Reactions { get; set; }
 
@@ -269,4 +311,25 @@ public sealed class LootCache
     public LootPileKind Kind { get; set; }
     public string? Source { get; set; }
     public int? PlayerId { get; set; }
+}
+
+/// <summary>
+/// A telegraphed plan (the wire calls it <c>plannedAction</c>): the path to walk and the tile to attack with an action,
+/// declared in <see cref="Round"/>. <see cref="TargetId"/> (who stood on the tile, seen, when it was declared) and
+/// <see cref="CardId"/> (a card played with it) are the server's own: a view never carries them.
+/// </summary>
+public sealed class PlannedAction
+{
+    public List<Pos> Path { get; set; } = new();
+    public Pos? AttackTile { get; set; }
+    public string? ActionId { get; set; }
+    public int? TargetId { get; set; }
+    public string? CardId { get; set; }
+    public int Round { get; set; }
+
+    /// <summary>Move range a card added when the plan was declared: its path still has it when it resolves.</summary>
+    public int MoveBonus { get; set; }
+
+    /// <summary>The attack is suppressing fire: it pins whoever is on the tile instead of a damage roll.</summary>
+    public bool Suppress { get; set; }
 }

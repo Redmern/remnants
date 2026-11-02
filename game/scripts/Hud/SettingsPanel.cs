@@ -50,6 +50,14 @@ public partial class SettingsPanel : Overlay
         day.ItemSelected += i => GameSettings.DayLengthMinutes = GameSettings.DayLengths[i];
         box.AddChild(Row("Day length", day,
             "Real time for one in-game day at normal speed; 2×, 4× and 8× go faster from there. Only the pace changes: work, food and healing still count in-game hours."));
+
+        var late = new OptionButton { FocusMode = FocusModeEnum.None };
+        foreach (var label in new[] { "As before (lighter)", "Re-tuned expeditions", "Re-tuned everywhere" }) late.AddItem(label);
+        late.Select((int)GameSettings.LateZones);
+        late.ItemSelected += i => GameSettings.LateZones = (Remnants.Core.Scavenge.LateZoneTuning)(int)i;
+        box.AddChild(Row("Late zones", late,
+            "Rail Depot, Network Relay and Core Spire. Re-tuned: more Linked, turrets, pylons and faster reinforcements, about as deadly as before enemies telegraphed. " +
+            "Expeditions only leaves story missions there as they are. Takes effect from the next run into the zone."));
         return Scroll(box);
     }
 
