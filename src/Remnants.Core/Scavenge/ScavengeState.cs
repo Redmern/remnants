@@ -40,7 +40,7 @@ public enum ScavengeEventType
     GearModded,
     LootDropped, ItemDropped, SalvageProgress,
     IntentDeclared, IntentResolved, IntentFizzled, IntentCanceled,
-    DeckShuffled, CardPlayed, CardDiscarded, CardFound,
+    DeckShuffled, CardPlayed, CardDiscarded, CardFound, Countered,
 }
 
 /// <summary>

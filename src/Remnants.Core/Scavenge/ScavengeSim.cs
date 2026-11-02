@@ -72,6 +72,8 @@ public sealed class ScavengeSim
             Recruit c => ScavengeCommandHandlers.Recruit(this, unit!, c),
             SetStance c => ScavengeCommandHandlers.SetStance(this, unit!, c),
             DeclareIntent c => PlannedActions.Declare(this, unit!, c),
+            PlayCard c => CardPlay.Play(this, unit!, c),
+            DiscardDeadCard c => CardPlay.DiscardDead(this, unit!, c),
             Lookout c => ScavengeCommandHandlers.Lookout(this, unit!, c),
             FieldMod c => ScavengeCommandHandlers.FieldMod(this, unit!, c),
             EndTurn => ScavengeResult.Success($"{unit!.Name} ends their turn."),
@@ -174,6 +176,10 @@ public sealed class ScavengeSim
         unit.PingsUsed = 0;
         unit.Moved = false;
         if (unit.OutplayedUntilRound < State.Round) unit.OutplayedId = null;
+        unit.CardMove = 0;
+        unit.CardCover = 0;
+        unit.CounterId = null;
+        unit.LastCardId = null;
         unit.Ap = Profile(unit).MaxAp;
         if (State.Round == 1 && unit.FirstRoundAp != 0) unit.Ap = Math.Max(1, unit.Ap + unit.FirstRoundAp);
         if (braced) unit.Ap = Math.Max(1, unit.Ap - Data.Rules.Fog.Brace.NextTurnApPenalty);

@@ -129,6 +129,24 @@ public sealed class Unit
     /// <summary>Slot cards played this round: they come back at the next round start (consumable ones are gone instead).</summary>
     public List<string> SlotSpent { get; set; } = new();
 
+    /// <summary>Move range cards added this turn (carried into a plan declared now).</summary>
+    public int CardMove { get; set; }
+
+    /// <summary>Hit chance cards added to this unit's next attack.</summary>
+    public double CardHit { get; set; }
+
+    /// <summary>Tiers the next hit this unit takes is shifted down (cards; used up by that hit).</summary>
+    public int Guard { get; set; }
+
+    /// <summary>Cover cards added until this unit's next turn.</summary>
+    public double CardCover { get; set; }
+
+    /// <summary>The enemy this unit will strike first when its plan resolves (a counter card), until its own next turn.</summary>
+    public int? CounterId { get; set; }
+
+    /// <summary>The last card (not a reaction) played on this unit this turn: a plan declared now carries it, server-side only.</summary>
+    public string? LastCardId { get; set; }
+
     /// <summary>Overwatch reactions left this stance.</summary>
     public int Reactions { get; set; }
 
@@ -305,4 +323,7 @@ public sealed class PlannedAction
     public int? TargetId { get; set; }
     public string? CardId { get; set; }
     public int Round { get; set; }
+
+    /// <summary>Move range a card added when the plan was declared: its path still has it when it resolves.</summary>
+    public int MoveBonus { get; set; }
 }

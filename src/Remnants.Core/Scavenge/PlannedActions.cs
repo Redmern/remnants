@@ -53,6 +53,7 @@ public static class PlannedActions
         unit.Plan = new PlannedAction
         {
             Path = c.Path.ToList(), AttackTile = c.AttackTile, ActionId = c.ActionId, TargetId = targetId, Round = state.Round,
+            CardId = unit.LastCardId, MoveBonus = unit.CardMove,
         };
         var what = (c.Path.Count > 0 ? $"a move to {end}" : "") + (c.Path.Count > 0 && c.AttackTile is not null ? " and " : "")
                    + (c.AttackTile is { } at ? $"an attack on {at}" : "");
@@ -67,6 +68,8 @@ public static class PlannedActions
         unit.Plan = null;
         var state = sim.State;
         string? failed = null;
+        // A move card played with the plan still counts for its path.
+        unit.CardMove = plan.MoveBonus;
         foreach (var step in plan.Path)
         {
             var moved = ScavengeCommandHandlers.Move(sim, unit, new Move(unit.PlayerId ?? 0, unit.Id, step));
@@ -77,6 +80,10 @@ public static class PlannedActions
                 break;
             }
         }
+
+        unit.CardMove = 0;
+        CardPlay.Counters(sim, unit);
+        if (!unit.IsActive) return;
 
         if (plan.AttackTile is { } tile && plan.ActionId is { } id)
         {

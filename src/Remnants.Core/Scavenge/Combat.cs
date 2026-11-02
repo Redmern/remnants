@@ -99,7 +99,7 @@ public static class Combat
     /// <summary>The hit chance of this attack as it would resolve now, ambush included (for previews and the AI).</summary>
     public static double ChanceToHit(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, Pos? from = null) =>
         HitChance(sim.Data, sim.State.Map, from ?? attacker.Pos,
-            action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + OutplayBonus(sim, attacker, target) - WeatherPenalty(sim, action) + ElectronicWarfare.RadioAccuracy(sim, attacker) },
+            action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + OutplayBonus(sim, attacker, target) + attacker.CardHit - WeatherPenalty(sim, action) + ElectronicWarfare.RadioAccuracy(sim, attacker) },
             target.Pos, sim.Profile(target), AmbushAgainst(sim.Data, sim.State, attacker, target, from), Bane(sim.Data, action, target));
 
     /// <summary>What the weather takes off a ranged attack's hit chance (dust in the air; melee is unaffected).</summary>
@@ -206,8 +206,10 @@ public static class Combat
         var data = sim.Data;
         var state = sim.State;
         var bane = Bane(data, action, target);
-        var chance = HitChance(data, state.Map, attacker.Pos, action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + OutplayBonus(sim, attacker, target) + ElectronicWarfare.RadioAccuracy(sim, attacker) },
+        var chance = HitChance(data, state.Map, attacker.Pos, action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + OutplayBonus(sim, attacker, target) + attacker.CardHit + ElectronicWarfare.RadioAccuracy(sim, attacker) },
             target.Pos, sim.Profile(target), ambush, bane);
+        // A card's hit bonus is for one attack: the first strike uses it up.
+        attacker.CardHit = 0;
         // A dodge pays off once: whichever attack on that unit comes first (planned, reaction or splash) uses it up.
         if (attacker.OutplayedId == target.Id) attacker.OutplayedId = null;
         if (ambush is { } a)
@@ -234,7 +236,8 @@ public static class Combat
             armor = Math.Max(0, armor - bane.ArmorPierce);
         }
         var tiers = data.Rules.Combat.Tiers;
-        var tier = TierOf(tiers, chance, roll, armor, CoverAgainst(data, state.Map, target.Pos, attacker.Pos) + defense.CoverBonus);
+        var tier = TierOf(tiers, chance, roll, armor, CoverAgainst(data, state.Map, target.Pos, attacker.Pos) + defense.CoverBonus, target.Guard);
+        target.Guard = 0;
         var damage = Math.Max(1, raw - armor);
         if (tier == HitTier.Graze) damage = Math.Max(1, damage * tiers.GrazeDamage);
         var where = target.Structure ? target.Name : $"{target.Name}'s {part}";
@@ -266,13 +269,14 @@ public static class Combat
 
     /// <summary>
     /// The tier of a landed hit (<paramref name="roll"/> under <paramref name="chance"/>) by its margin, shifted down a tier
-    /// each by enough <paramref name="armor"/> on the hit region and enough <paramref name="cover"/>, never below a graze.
+    /// each by enough <paramref name="armor"/> on the hit region and enough <paramref name="cover"/>, and by
+    /// <paramref name="guard"/> tiers more (a defense card), never below a graze.
     /// </summary>
-    public static HitTier TierOf(HitTierRules rules, double chance, double roll, double armor, double cover)
+    public static HitTier TierOf(HitTierRules rules, double chance, double roll, double armor, double cover, int guard = 0)
     {
         var margin = chance > 0 ? (chance - roll) / chance : 0;
         var tier = margin < rules.GrazeBelow ? HitTier.Graze : margin >= rules.SolidFrom ? HitTier.Solid : HitTier.Hit;
-        var shift = (armor + 1e-9 >= rules.ArmorShiftFrom ? 1 : 0) + (cover + 1e-9 >= rules.CoverShiftFrom ? 1 : 0);
+        var shift = (armor + 1e-9 >= rules.ArmorShiftFrom ? 1 : 0) + (cover + 1e-9 >= rules.CoverShiftFrom ? 1 : 0) + Math.Max(0, guard);
         return (HitTier)Math.Max((int)HitTier.Graze, (int)tier - shift);
     }
 

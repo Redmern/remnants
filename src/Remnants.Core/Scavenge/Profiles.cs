@@ -163,7 +163,7 @@ public static class ProfileDeriver
             Dodge: (agility - 50) * rules.Combat.DodgePerAgility + equipped.Sum(i => i.Dodge),
             Stealth: stealth,
             Detection: detection * head,
-            CoverBonus: unit.Stance == Stance.Brace ? fog.Brace.CoverBonus + unit.Hook(PerkHooks.BraceCoverBonus) : 0,
+            CoverBonus: (unit.Stance == Stance.Brace ? fog.Brace.CoverBonus + unit.Hook(PerkHooks.BraceCoverBonus) : 0) + unit.CardCover,
             RegionArmor: RegionArmor(equipped),
             InjuryResist: 1 - equipped.Aggregate(1.0, (keep, i) => keep * (1 - Math.Clamp(i.InjuryResist, 0, 1))),
             MeleeArmor: equipped.Sum(i => i.MeleeArmor));
@@ -224,7 +224,7 @@ public static class ProfileDeriver
             range -= data.Rules.Coop.CarryRangePenalty;
             extraModes.Clear();
         }
-        range = LegReach(range, unit.Body);
+        range = LegReach(range + unit.CardMove, unit.Body);
 
         foreach (var rule in rules.Body.Where(r => BodyMatches(unit.Body, r)))
             Apply(rule.Modifier, $"{rule.Condition} {rule.Region}".ToLowerInvariant());
