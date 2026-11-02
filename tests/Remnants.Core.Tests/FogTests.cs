@@ -422,6 +422,6 @@ public class FogTests
         var scavenge = old["scavenge"]!.AsObject();
         foreach (var key in new[] { "contacts", "reveals", "flares", "sensors", "nextSensorId" }) scavenge.Remove(key);
         foreach (var unit in scavenge["units"]!.AsArray()) foreach (var key in new[] { "stance", "reactions", "lookout" }) unit!.AsObject().Remove(key);
-        Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, old.ToJsonString())); // old runs reset
+        Assert.Contains("Unsupported scavenge save version", Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, old.ToJsonString())).Message); // old runs reset
     }
 }

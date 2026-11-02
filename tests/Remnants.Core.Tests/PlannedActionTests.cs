@@ -321,6 +321,7 @@ public class PlannedActionTests
     {
         var (sim, a, _) = Duel();
         Assert.True(sim.Execute(Charge(a)).Ok);
+        ScavengeSave.Load(Sure, ScavengeSave.Save(sim.State)); // the plan as declared loads
         var plan = a.Plan!;
         switch (broken)
         {
@@ -329,7 +330,7 @@ public class PlannedActionTests
             case "step on the start tile": plan.Path = [a.Pos, new(2, 1)]; break;
             case "step off the map": plan.Path = [new(-1, 1)]; break;
         }
-        Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Sure, ScavengeSave.Save(sim.State)));
+        Assert.Contains("plan", Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Sure, ScavengeSave.Save(sim.State))).Message);
     }
 
     [Fact]
@@ -338,7 +339,7 @@ public class PlannedActionTests
         var (sim, a, _) = Duel();
         Assert.True(sim.Execute(Charge(a)).Ok);
         a.Plan!.AttackTile = new Pos(40, 1);
-        Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Sure, ScavengeSave.Save(sim.State)));
+        Assert.Contains("plan", Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Sure, ScavengeSave.Save(sim.State))).Message);
     }
 
     [Fact]

@@ -631,7 +631,7 @@ public class ElectronicsSaveTests
 
         var plain = Arena(12, 8, [SurvivorUnit(1, new Pos(1, 1)), EnemyUnit("husk", new Pos(8, 6))]);
         var old = ScavengeSave.Save(plain.State).Replace($"\"version\": {ScavengeSave.Version}", "\"version\": 7");
-        Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, old)); // old runs reset
+        Assert.Contains("Unsupported scavenge save version", Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, old)).Message); // old runs reset
     }
 }
 

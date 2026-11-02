@@ -185,7 +185,7 @@ public class NightMissionTests
         node["version"] = 5;
         node["scavenge"]!.AsObject().Remove("environment");
         // Runs from before plans and decks are refused now (old runs reset).
-        Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, node.ToJsonString()));
+        Assert.Contains("Unsupported scavenge save version", Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, node.ToJsonString())).Message);
     }
 
     [Fact]

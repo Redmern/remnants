@@ -444,7 +444,7 @@ public class GearModsTests
         var field = Arena(6, 6, [SurvivorUnit(weapon: "pistol")]);
         var run = ScavengeSave.Save(field.State).Replace($"\"version\": {ScavengeSave.Version}", $"\"version\": {ScavengeSave.Version - 1}")
             .Replace("\"moved\": false,", "").Replace("\"facing\": null,", "");
-        Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, run)); // old runs reset
+        Assert.Contains("Unsupported scavenge save version", Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, run)).Message); // old runs reset
     }
 
     [Fact]

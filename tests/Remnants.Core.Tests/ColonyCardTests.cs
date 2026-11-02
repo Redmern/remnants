@@ -148,6 +148,6 @@ public class ColonyCardTests
         var sim = NewScavenge.Create(ScavengeTestData.Real, "outskirts", 1, [ScavengeTestData.Party(1)]);
         var node = JsonNode.Parse(ScavengeSave.Save(sim.State))!;
         node["version"] = 14;
-        Assert.Throws<JsonException>(() => ScavengeSave.Load(ScavengeTestData.Real, node.ToJsonString()));
+        Assert.Contains("Unsupported scavenge save version", Assert.Throws<JsonException>(() => ScavengeSave.Load(ScavengeTestData.Real, node.ToJsonString())).Message);
     }
 }

@@ -68,13 +68,13 @@ public class SaveMigrationChainTests
         Assert.Null(expedition.Scavenge);
         Assert.All(expedition.Members, m => Assert.True(sim.State.FindSurvivor(m.SurvivorId)!.Away));
         Assert.NotEmpty(sim.State.Cards.Deck);
-        if (expedition.PhaseAt(sim.State.Tick) == ExpeditionPhase.InZone)
-        {
-            var run = sim.OpenExpeditionScavenge();
-            PlayRounds(run, 2);
-            var reloaded = SaveGame.Load(TestData.RealWithWeather, SaveGame.Save(sim.State), ScavengeTestData.Real);
-            Assert.Equal(run.State.Round, reloaded.State.Expedition!.Scavenge!.Round);
-        }
+        Assert.Equal(ExpeditionPhase.InZone, expedition.PhaseAt(sim.State.Tick));
+        var run = sim.OpenExpeditionScavenge();
+        Assert.Equal(1, run.State.Round);
+        Assert.Single(run.State.Decks);
+        PlayRounds(run, 2);
+        var reloaded = SaveGame.Load(TestData.RealWithWeather, SaveGame.Save(sim.State), ScavengeTestData.Real);
+        Assert.Equal(run.State.Round, reloaded.State.Expedition!.Scavenge!.Round);
     }
 
     [Fact]
@@ -82,7 +82,7 @@ public class SaveMigrationChainTests
     {
         // Old runs reset (scavenge save 15): a run file from before plans and decks no longer loads.
         Assert.Contains("\"version\": 1", Fixture("scavenge-v1.json"));
-        Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(ScavengeTestData.Real, Fixture("scavenge-v1.json")));
+        Assert.Contains("Unsupported scavenge save version", Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(ScavengeTestData.Real, Fixture("scavenge-v1.json"))).Message);
     }
 
     /// <summary>Ends the turn of whoever is up until <paramref name="rounds"/> more rounds have passed (the AI acts in between).</summary>

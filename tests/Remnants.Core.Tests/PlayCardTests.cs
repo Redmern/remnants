@@ -236,4 +236,41 @@ public class PlayCardTests
         Assert.Equal(3, deck.Points);
         Assert.Equal(ScavengeError.DeadCardSpent, sim.Execute(new DiscardDeadCard(1, a.Id, "sprint")).Error);
     }
+
+    [Theory]
+    [InlineData("a card not in hand", ScavengeError.NoCard)]
+    [InlineData("an unknown card", ScavengeError.NoCard)]
+    [InlineData("another player's id", ScavengeError.NotYourUnit)]
+    [InlineData("another player's unit", ScavengeError.NotYourUnit)]
+    [InlineData("a reaction at an unseen enemy", ScavengeError.NoIntent)]
+    [InlineData("a reaction at a friend", ScavengeError.NoIntent)]
+    public void Forged_card_plays_are_refused_and_change_nothing(string forged, ScavengeError expected)
+    {
+        var a = SurvivorUnit(1, new(0, 1), weapon: "pipe");
+        var a2 = SurvivorUnit(1, new(0, 2), weapon: "pipe");
+        var b = SurvivorUnit(2, new(5, 1), weapon: "pipe");
+        var sim = Arena(14, 3, [a, a2, b], data: Sure);
+        var deck = new SquadDeck { PlayerId = 1, Hand = ["sidestep", "dash"], Points = 3, Budget = 3, HandSize = 5 };
+        sim.State.Decks.Add(deck);
+        b.Plan = new PlannedAction { Path = [], AttackTile = a.Pos, ActionId = "swing", Round = 1 };
+        a2.Plan = new PlannedAction { Path = [new(1, 2)], Round = 1 };
+        if (forged == "a reaction at an unseen enemy")
+        {
+            b.Pos = new(13, 1);
+            Assert.False(Detection.SideSees(Sure, sim.State, a.Side, b));
+        }
+        var command = forged switch
+        {
+            "a card not in hand" => new PlayCard(1, a.Id, "sprint"),
+            "an unknown card" => new PlayCard(1, a.Id, "no_such_card"),
+            "another player's id" => new PlayCard(2, a.Id, "dash"),
+            "another player's unit" => new PlayCard(1, b.Id, "dash"),
+            "a reaction at an unseen enemy" => new PlayCard(1, a.Id, "sidestep", b.Id),
+            _ => new PlayCard(1, a.Id, "sidestep", a2.Id),
+        };
+        Assert.Equal(expected, sim.Execute(command).Error);
+        Assert.Equal(["sidestep", "dash"], deck.Hand);
+        Assert.Equal(3, deck.Points);
+        Assert.Equal(0, a.Guard + a.CardMove);
+    }
 }

@@ -316,7 +316,7 @@ public class SalvageTests
         var node = System.Text.Json.Nodes.JsonNode.Parse(ScavengeSave.Save(sim.State))!;
         node["version"] = ScavengeSave.LootVersion - 1;
         node["scavenge"]!["lootSeed"] = 0;
-        Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, node.ToJsonString())); // old runs reset
+        Assert.Contains("Unsupported scavenge save version", Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, node.ToJsonString())).Message); // old runs reset
         Assert.NotEqual(0UL, ScavengeSave.Load(Real, ScavengeSave.Save(sim.State)).State.LootSeed);
     }
 }
