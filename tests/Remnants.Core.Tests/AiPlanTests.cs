@@ -49,6 +49,26 @@ public class AiPlanTests
     }
 
     [Fact]
+    public void An_enemy_with_a_target_in_reach_strikes_at_once_and_only_moving_then_striking_is_telegraphed()
+    {
+        var u = SurvivorUnit(pos: new(0, 0));
+        var near = EnemyUnit("husk", new(1, 0));
+        var sim = Arena(8, 3, [u, near]);
+        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
+        Assert.Null(near.Plan);
+        Assert.Contains(sim.State.Events, e => e.UnitId == near.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
+        Assert.DoesNotContain(sim.State.Events, e => e.UnitId == near.Id && e.Type == ScavengeEventType.IntentDeclared);
+
+        // A turret in reach still only telegraphs its aim.
+        ZoneDevice turret = null!;
+        var v = SurvivorUnit(1, new Pos(1, 1));
+        var sim2 = Arena(10, 8, [v], setup: (d, s) => turret = Hacking.Place(d, s, DeviceKind.Turret, new Pos(4, 1)));
+        Assert.True(sim2.Execute(new EndTurn(1, v.Id)).Ok);
+        Assert.NotNull(sim2.State.FindUnit(turret.UnitId!.Value)!.Plan);
+        Assert.DoesNotContain(sim2.State.Events, e => e.UnitId == turret.UnitId && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
+    }
+
+    [Fact]
     public void Ai_against_ai_rounds_always_end()
     {
         // A crowd of every AI kind against an overridden Linked and recruits on the player's side, the player's own unit

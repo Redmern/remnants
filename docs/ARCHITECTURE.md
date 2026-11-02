@@ -886,9 +886,11 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
   step that no longer works ends the path, whoever hostile is on the tile then is struck, an empty tile is a miss with
   no refund (the aimed-at unit dodged it: `Unit.OutplayedId`, the ambush hit bonus on its next attack on the attacker,
   through the next round). Downed, killed, pinned or stunned cancels the plan.
-- **Enemy AI telegraphs**: `ScavengeAi.Planned` runs a unit's usual behaviour (Spot, TryAttack, Reposition, Retreat,
-  Suppress, shared squad focus) against a look-ahead position and AP, then declares the path and attack it chose. A
-  turret's plan is its aim tile. Recruits act at once.
+- **Enemy AI telegraphs** (user decision: the hybrid): `ScavengeAi.Planned` runs a unit's usual behaviour (Spot,
+  TryAttack, Reposition, Retreat, Suppress, shared squad focus) against a look-ahead position and AP. If it chose to
+  move and then strike (or only move), it declares that plan; if its choice is to strike from where it stands (a target
+  already in reach at the start of its turn), it takes its turn at once. A turret always telegraphs its aim tile.
+  Recruits act at once.
 - **Cards** (`data/cards.json`, `ScavengeData.Cards`): card defs (category, rarity, points, AP cost / boost,
   consumable, reaction, arm lock, `CardRequirement` any-of skill / attribute / perk hook, hard or baseline, scaling,
   effects in the game's own terms: move, hit, guard, cover, mend, draw, counter) and the deck rules (hand size, an

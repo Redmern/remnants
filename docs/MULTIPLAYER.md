@@ -544,8 +544,9 @@ reset, older colonies migrate and get the starter cards).
   requirement, the points and the AP. Every kind round-trips in `ProtocolTests`.
 - **Plans in views.** A unit's `plan` travels with the unit, so a side sees the path and the threatened tile of exactly
   the units it sees now (a hidden unit's plan never leaves the server). `SideFog.Redacted` strips the plan's card and
-  aimed-at unit, and dodge bonuses, from every unit the player does not own (allies included). Enemy AI plans like a
-  player: Husks, the Linked and turrets declare their turn and it resolves at their next one.
+  aimed-at unit, and dodge bonuses, from every unit the player does not own (allies included). Enemy AI telegraphs
+  moving and striking (Husks, the Linked), and turrets their aim; an enemy that already has a target in reach strikes at
+  once.
 - **Cards in views.** The player's own squad deck in full except the draw pile, which comes sorted (what is left, not
   the order); every other player's deck (allies too) only as counts (`hidden`, `handCount`, `drawCount`, `usedCount`),
   the enemy side's deck likewise; other players' units carry `hiddenSlots` instead of their slot cards, and no last card

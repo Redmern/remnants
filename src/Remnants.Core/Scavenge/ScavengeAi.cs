@@ -17,8 +17,9 @@ namespace Remnants.Core.Scavenge;
 /// </list>
 /// Enemies and turrets telegraph: their turn runs these same behaviours as a plan (<see cref="Planned"/>), from where
 /// they stand with the AP a plan may use, and declares the path and the attack it chose (<see cref="PlannedActions"/>);
-/// it resolves at the start of their next turn. A turret's plan is only its aim tile; suppressing fire is planned as such
-/// (it pins whoever stands on the tile then). Recruits act at once.
+/// it resolves at the start of their next turn. An enemy that already has a target in reach strikes at once (only moving
+/// then striking is telegraphed); a turret's plan is only its aim tile, always telegraphed; suppressing fire is planned as
+/// such (it pins whoever stands on the tile then). Recruits act at once.
 /// </summary>
 internal static class ScavengeAi
 {
@@ -28,7 +29,7 @@ internal static class ScavengeAi
     public static void TakeTurn(ScavengeSim sim, Unit unit)
     {
         if (unit.FollowingId is not null) Follow(sim, unit);
-        else if (unit.Kind == UnitKind.Device) Planned(sim, unit, () => Machine(sim, unit));
+        else if (unit.Kind == UnitKind.Device) Planned(sim, unit, () => Machine(sim, unit), telegraphOnly: true);
         else if (unit.Kind != UnitKind.Enemy) return;
         else if (Network.GroupOf(sim, unit) is { } group) Planned(sim, unit, () => Squad(sim, unit, group));
         else Planned(sim, unit, () => Fight(sim, unit));
@@ -53,9 +54,11 @@ internal static class ScavengeAi
     /// <summary>
     /// Runs <paramref name="behaviour"/> as a plan: from where the unit stands, with the AP a plan may use
     /// (<see cref="PlannedActions.Budget"/>). Then the unit is put back and declares what it chose; with nothing to do it
-    /// may wait on overwatch (a Linked's lurk) as before.
+    /// may wait on overwatch (a Linked's lurk) as before. A unit whose choice is to strike from where it stands (a target
+    /// already in reach) takes its turn at once instead: only moving then striking is telegraphed. A turret
+    /// (<paramref name="telegraphOnly"/>) always telegraphs its aim.
     /// </summary>
-    private static void Planned(ScavengeSim sim, Unit unit, Action behaviour)
+    private static void Planned(ScavengeSim sim, Unit unit, Action behaviour, bool telegraphOnly = false)
     {
         var (pos, ap, facing) = (unit.Pos, unit.Ap, unit.Facing);
         var plan = _plan = new Plan();
@@ -70,6 +73,11 @@ internal static class ScavengeAi
             (unit.Pos, unit.Ap, unit.Facing) = (pos, ap, facing);
         }
         if (!unit.IsActive) return;
+        if (!telegraphOnly && plan.Path.Count == 0 && plan.AttackTile is not null)
+        {
+            behaviour();
+            return;
+        }
         if (plan.Path.Count > 0 || plan.AttackTile is not null)
         {
             var declared = PlannedActions.Declare(sim, unit, new DeclareIntent(unit.PlayerId ?? 0, unit.Id, plan.Path, plan.AttackTile, plan.ActionId, plan.Suppress));
