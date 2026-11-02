@@ -131,7 +131,11 @@ internal static class Bot
             return profile.Actions.Count > 0 && unit.Ap > cost ? new SetStance(pid, unit.Id, Stance.Overwatch) : new EndTurn(pid, unit.Id);
         }
         var centre = buddy is not null && !leaving ? buddy.Pos : new Pos(map.Width / 2, map.Height / 2);
-        int Distance(Pos p) => leaving ? map.Exits.Min(e => e.Chebyshev(p)) : p.Chebyshev(centre);
+        // Walking distance (round walls), to the nearest exit when leaving; straight-line where the walk cannot get there.
+        var movement = profile.Movement;
+        var fields = (leaving ? map.Exits : [centre]).Select(g => Movement.DistanceField(state, unit, movement, g)).ToList();
+        int Distance(Pos p) => fields.Select(f => f.TryGetValue(p, out var d) ? d : int.MaxValue).DefaultIfEmpty(int.MaxValue).Min() is var walk && walk < int.MaxValue
+            ? walk : 1000 + (leaving ? map.Exits.Min(e => e.Chebyshev(p)) : p.Chebyshev(centre));
         var step = view.Reachable(unit).Where(kv => kv.Value <= unit.Ap && Distance(kv.Key) < Distance(unit.Pos))
             .OrderBy(kv => Distance(kv.Key)).ThenBy(kv => kv.Value).ThenBy(kv => map.Index(kv.Key))
             .Select(kv => (Pos?)kv.Key).FirstOrDefault();
