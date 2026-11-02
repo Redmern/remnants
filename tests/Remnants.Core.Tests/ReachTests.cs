@@ -33,21 +33,46 @@ public class ReachTests
     }
 
     [Fact]
-    public void Check_reach_is_membership_of_the_hittable_tiles()
+    public void Check_reach_keeps_the_old_rules()
     {
         var map = new TileMap(14, 14);
-        map[new Pos(6, 4)] = Terrain.Wall;
-        map[new Pos(4, 7)] = Terrain.Wall;
-        map[new Pos(8, 8)] = Terrain.Wall;
-        var o = new Pos(6, 6);
-        foreach (var (weapon, id) in new[] { ("pipe", "swing"), ("spear", "thrust"), ("pistol", "shoot") })
-        {
-            var action = Action(SurvivorUnit(weapon: weapon), id);
-            var hittable = Combat.Hittable(Real, map, action, o, null).ToHashSet();
-            Assert.NotEmpty(hittable);
-            foreach (var p in map.AllPositions)
-                Assert.Equal(Combat.CheckReach(Real, map, o, action, p) == ScavengeError.None, hittable.Contains(p));
-        }
+        var o = new Pos(5, 5);
+        var pistol = Action(SurvivorUnit(weapon: "pistol"), "shoot");   // ranged, reach 6: a disc
+        var spear = Action(SurvivorUnit(weapon: "spear"), "thrust");    // line, reach 2
+
+        Assert.Equal(ScavengeError.None, Combat.CheckReach(Real, map, o, pistol, new(11, 5)));       // 36 = 6²
+        Assert.Equal(ScavengeError.None, Combat.CheckReach(Real, map, o, pistol, new(10, 8)));       // 25 + 9 = 34
+        Assert.Equal(ScavengeError.OutOfRange, Combat.CheckReach(Real, map, o, pistol, new(10, 9))); // 25 + 16 = 41
+        Assert.Equal(ScavengeError.OutOfRange, Combat.CheckReach(Real, map, o, pistol, new(11, 6))); // 36 + 1 = 37
+        Assert.Equal(ScavengeError.OutOfRange, Combat.CheckReach(Real, map, o, pistol, o));
+        Assert.Equal(ScavengeError.None, Combat.CheckReach(Real, map, o, spear, new(7, 3)));
+        Assert.Equal(ScavengeError.OutOfRange, Combat.CheckReach(Real, map, o, spear, new(7, 6)));   // off the diagonal
+        Assert.Equal(ScavengeError.OutOfRange, Combat.CheckReach(Real, map, o, spear, new(5, 8)));   // 3 along the column
+
+        map[new Pos(6, 5)] = Terrain.Wall;
+        Assert.Equal(ScavengeError.NoLineOfSight, Combat.CheckReach(Real, map, o, spear, new(7, 5)));
+        Assert.Equal(ScavengeError.NoLineOfSight, Combat.CheckReach(Real, map, o, pistol, new(9, 5)));
+        map[new Pos(6, 6)] = Terrain.Wall;
+        map[new Pos(5, 6)] = Terrain.Wall;
+        Assert.Equal(ScavengeError.None, Combat.CheckReach(Real, map, o, pistol, new(6, 4)));        // adjacent: no sight check
+    }
+
+    [Fact]
+    public void Hittable_tiles_are_the_reachable_tiles_in_sight()
+    {
+        var map = new TileMap(14, 14);
+        var o = new Pos(5, 5);
+        map[new Pos(6, 5)] = Terrain.Wall;
+        var pistol = Action(SurvivorUnit(weapon: "pistol"), "shoot");
+        var hittable = Combat.Hittable(Real, map, pistol, o, null).ToHashSet();
+        Assert.Contains(new Pos(6, 5), hittable);        // the wall tile itself is next to the shooter
+        Assert.DoesNotContain(new Pos(8, 5), hittable);  // behind the wall
+        Assert.Contains(new Pos(8, 7), hittable);
+        Assert.Contains(new Pos(10, 8), hittable);
+        Assert.DoesNotContain(new Pos(10, 9), hittable); // out of the disc
+        Assert.DoesNotContain(o, hittable);
+        foreach (var p in map.AllPositions)
+            Assert.Equal(Combat.CheckReach(Real, map, o, pistol, p) == ScavengeError.None, hittable.Contains(p));
     }
 
     [Fact]

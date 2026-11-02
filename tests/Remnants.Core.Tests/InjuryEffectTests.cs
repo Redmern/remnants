@@ -103,4 +103,18 @@ public class InjuryEffectTests
         Assert.True(sim.Execute(new UseItem(1, medic.Id, kit.Id, hurt.Id)).Ok);
         Assert.Equal(0.7 - kit.Use!.Mend, hurt.Body[BodyPart.RightLeg].Severity, 9);
     }
+
+    [Fact]
+    public void A_mending_kit_does_nothing_for_someone_unhurt()
+    {
+        var kit = Real.Items["suture_kit"];
+        Assert.True(kit.Use!.Mend > 0);
+        var medic = SurvivorUnit(pos: new(0, 0), pack: kit.Id);
+        var fine = SurvivorUnit(pos: new(1, 0));
+        var sim = Arena(3, 3, [medic, fine]);
+        var ap = medic.Ap;
+        Assert.False(sim.Execute(new UseItem(1, medic.Id, kit.Id, fine.Id)).Ok);
+        Assert.Contains(kit.Id, medic.Pack);
+        Assert.Equal(ap, medic.Ap);
+    }
 }

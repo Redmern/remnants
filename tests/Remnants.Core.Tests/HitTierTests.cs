@@ -58,8 +58,7 @@ public class HitTierTests
         var (hit, hitLoss) = Punch(Landing(grazeBelow: 0, solidFrom: 1));
         Assert.All(grazed.Body.Parts.Values, p => Assert.Equal(PartCondition.Healthy, p.Condition));
         Assert.Contains(hit.Body.Parts.Values, p => p.Condition == PartCondition.Injured);
-        Assert.InRange(grazeLoss, 1, hitLoss);
-        Assert.True(grazeLoss < hitLoss || grazeLoss == 1);
+        Assert.Equal(Math.Max(1, hitLoss * Tiers.GrazeDamage), grazeLoss, 9);
     }
 
     [Fact]
@@ -85,6 +84,24 @@ public class HitTierTests
     }
 
     [Fact]
+    public void A_graze_through_heavy_armor_still_takes_1_hp()
+    {
+        var (_, loss) = Punch(Landing(grazeBelow: 1, solidFrom: 1), body: "riot_armor"); // punch 2-5 against armor 6
+        Assert.Equal(1, loss, 9);
+    }
+
+    [Fact]
+    public void Cover_beside_the_target_turns_a_solid_shot_into_a_plain_one()
+    {
+        var data = Landing(grazeBelow: 0, solidFrom: 0);
+        var (open, openLoss) = Shoot(data, cover: false);
+        var (covered, coveredLoss) = Shoot(data, cover: true);
+        Assert.Equal(openLoss, coveredLoss, 9);
+        var part = open.Body.Parts.Single(kv => kv.Value.Condition == PartCondition.Injured).Key;
+        Assert.Equal(open.Body[part].Severity / Tiers.SolidSeverity, covered.Body[part].Severity, 9);
+    }
+
+    [Fact]
     public void The_log_names_the_tier()
     {
         var a = SurvivorUnit(pos: new(0, 0));
@@ -92,6 +109,17 @@ public class HitTierTests
         var sim = Arena(3, 3, [a, b], data: Landing(grazeBelow: 1, solidFrom: 1));
         Assert.True(sim.Execute(new Attack(1, a.Id, b.Id, "punch")).Ok);
         Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Attacked && e.Message.Contains("grazed"));
+    }
+
+    /// <summary>One pistol shot from 3 tiles, same seed every time, with or without Cover beside the target.</summary>
+    private static (Unit Target, double Loss) Shoot(ScavengeData data, bool cover)
+    {
+        var a = SurvivorUnit(pos: new(0, 1), weapon: "pistol");
+        var b = SurvivorUnit(playerId: 2, pos: new(3, 1));
+        var sim = Arena(5, 3, [a, b], rows: [".....", cover ? "..c.." : ".....", "....."], data: data, seed: 7);
+        Assert.True(Combat.CoverAgainst(data, sim.State.Map, b.Pos, a.Pos) + 1e-9 >= Tiers.CoverShiftFrom == cover);
+        Assert.True(sim.Execute(new Attack(1, a.Id, b.Id, "shoot")).Ok);
+        return (b, b.MaxHp - b.Hp);
     }
 
     /// <summary>One punch, same seed every time; returns the target and the HP it lost.</summary>
