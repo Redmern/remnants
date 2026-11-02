@@ -124,14 +124,12 @@ public class PlannedActionTests
         Assert.True(sim.Execute(new EndTurn(2, b.Id)).Ok);
         Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
         Assert.Equal(dodged + 1, sim.State.Round);
-        var swing = sim.Profile(b).Action("swing")!;
         Assert.True(Combat.OutplayBonus(sim, b, a) > 0);       // still good the round after
         Assert.True(sim.Execute(new EndTurn(2, b.Id)).Ok);
         Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
         Assert.Equal(dodged + 2, sim.State.Round);
         Assert.Null(b.OutplayedId);                            // lapsed when b's turn came round again
         Assert.Equal(0, Combat.OutplayBonus(sim, b, a));
-        Assert.NotNull(swing);
     }
 
     [Fact]
@@ -302,11 +300,22 @@ public class PlannedActionTests
         Assert.Equal(15, ScavengeSave.Version);
     }
 
+    [Fact]
+    public void A_plan_whose_legs_were_hurt_after_declaring_still_saves_and_loads()
+    {
+        var (sim, a, _) = Duel();
+        Assert.True(sim.Execute(Charge(a)).Ok);
+        a.Body.Injure(BodyPart.LeftLeg, 0.6);
+        a.Body.Injure(BodyPart.RightLeg, 0.6);
+        Assert.Equal(1, sim.Profile(a).Movement.Primary.Range); // the declared 2-tile steps are now out of one move
+        var loaded = ScavengeSave.Load(Sure, ScavengeSave.Save(sim.State));
+        Assert.Equal([new Pos(2, 1), new Pos(4, 1)], loaded.State.FindUnit(a.Id)!.Plan!.Path);
+    }
+
     [Theory]
     [InlineData("downed")]
     [InlineData("unknown target")]
     [InlineData("step on the start tile")]
-    [InlineData("step too far")]
     [InlineData("step off the map")]
     public void A_save_with_a_broken_plan_is_refused(string broken)
     {
@@ -318,7 +327,6 @@ public class PlannedActionTests
             case "downed": a.Status = UnitStatus.Downed; break;
             case "unknown target": plan.TargetId = 99; break;
             case "step on the start tile": plan.Path = [a.Pos, new(2, 1)]; break;
-            case "step too far": plan.Path = [new(4, 1)]; break;
             case "step off the map": plan.Path = [new(-1, 1)]; break;
         }
         Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Sure, ScavengeSave.Save(sim.State)));

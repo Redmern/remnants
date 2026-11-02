@@ -94,7 +94,7 @@ public static class ScavengeSave
             foreach (var id in u.AllItems) RequireItem(id);
             foreach (var (slot, id) in u.Equipment)
                 if (data.Items[id].Slot != slot) throw new JsonException($"Unit {u.Id} has '{id}' in the {slot} slot.");
-            if (u.Plan is { } plan) ValidatePlan(data, state, u, plan);
+            if (u.Plan is { } plan) ValidatePlan(state, u, plan);
         }
         foreach (var id in state.Caches.SelectMany(c => c.Items)) RequireItem(id);
         foreach (var n in state.SalvageNodes)
@@ -133,21 +133,21 @@ public static class ScavengeSave
 
     /// <summary>
     /// A pending plan belongs to a unit that can still act, aims (if at all) at a unit that exists, stays on the map,
-    /// and walks from where the unit stands in steps that each move (no step on the tile it is already on) and that
-    /// its longest move could make. Its rules were checked when it was declared; this catches a hand-edited or stale save.
+    /// and walks from where the unit stands in steps that each move (no step on the tile it is already on). How far a
+    /// step goes is not checked: legs hurt or a heavier pack since declaring legally shrink the unit's moves, and the
+    /// plan then stops short when it resolves. Its rules were checked when it was declared; this catches a hand-edited
+    /// or stale save.
     /// </summary>
-    private static void ValidatePlan(ScavengeData data, ScavengeState state, Unit u, PlannedAction plan)
+    private static void ValidatePlan(ScavengeState state, Unit u, PlannedAction plan)
     {
         if (!u.IsActive) throw new JsonException($"Unit {u.Id} has a plan but cannot act ({u.Status}).");
         if (plan.TargetId is { } t && state.FindUnit(t) is null) throw new JsonException($"Unit {u.Id}'s plan aims at unknown unit {t}.");
         if (plan.AttackTile is { } tile && !state.Map.InBounds(tile)) throw new JsonException($"Unit {u.Id}'s plan attacks {tile}, off the map.");
-        var longest = ProfileDeriver.Derive(data, u).Movement.Modes.Max(m => m.Pattern == Items.MovePattern.Knight ? 2 * m.Range : m.Range);
         var at = u.Pos;
         foreach (var step in plan.Path)
         {
             if (!state.Map.InBounds(step)) throw new JsonException($"Unit {u.Id}'s plan leaves the map at {step}.");
-            if (step == at || step.Chebyshev(at) > longest)
-                throw new JsonException($"Unit {u.Id}'s plan steps from {at} to {step}, which is no move.");
+            if (step == at) throw new JsonException($"Unit {u.Id}'s plan steps from {at} onto the same tile.");
             at = step;
         }
     }
