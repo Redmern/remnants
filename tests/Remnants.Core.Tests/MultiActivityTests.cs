@@ -1,5 +1,7 @@
 using Remnants.Core.Colony;
+using System.Text.Json.Nodes;
 using Remnants.Core.Data;
+using Remnants.Core.Serialization;
 using Remnants.Core.Survivors;
 
 namespace Remnants.Core.Tests;
@@ -285,5 +287,62 @@ public class MultiActivityTests
         var baby = sim.AddSurvivor(LifeStage.Infant);
         Assert.Equal(CommandError.TooYoung, sim.Execute(new AssignJob(baby.Id, sim.Build("farm").Id)).Error);
         Assert.Empty(baby.Jobs);
+    }
+
+    [Fact]
+    public void Several_activities_round_trip_through_a_save()
+    {
+        var sim = Colony();
+        var s = sim.AddSurvivor();
+        var buildings = Gatherers.Take(2).Select(sim.Build).ToList();
+        foreach (var b in buildings) sim.Execute(new AssignJob(s.Id, b.Id));
+        Assert.True(sim.Execute(new StartStudy(s.Id, TownHall(sim).Id, Skill.Melee)).Ok);
+
+        var json = SaveGame.Save(sim.State);
+        Assert.DoesNotContain("assignedBuildingId", json);
+        var loaded = SaveGame.Load(sim.Data, json, ScavengeTestData.Real);
+
+        var again = loaded.State.FindSurvivor(s.Id)!;
+        Assert.Equal(s.Jobs, again.Jobs);
+        Assert.Equal(3, Activities.Count(loaded.State, again));
+        Assert.Equal(sim.OutputPerTick(buildings[0]), loaded.OutputPerTick(loaded.State.FindBuilding(buildings[0].Id)!), 12);
+    }
+
+    [Fact]
+    public void A_save_from_before_multiple_activities_loads_its_one_job_unchanged()
+    {
+        var sim = Colony();
+        var s = sim.AddSurvivor();
+        var idle = sim.AddSurvivor();
+        var wood = sim.Build("woodcutter");
+        sim.Execute(new AssignJob(s.Id, wood.Id));
+        // The same colony as the previous save version wrote it: one assignedBuildingId per survivor, no jobs list.
+        var node = JsonNode.Parse(SaveGame.Save(sim.State))!;
+        node["version"] = SaveGame.MultiActivityVersion - 1;
+        foreach (var p in node["colony"]!["survivors"]!.AsArray().OfType<JsonObject>())
+        {
+            var jobs = p["jobs"]!.AsArray();
+            p["assignedBuildingId"] = jobs.Count == 0 ? null : jobs[0]!.GetValue<int>();
+            p.Remove("jobs");
+        }
+
+        var loaded = SaveGame.Load(sim.Data, node.ToJsonString(), ScavengeTestData.Real);
+
+        Assert.Equal([wood.Id], loaded.State.FindSurvivor(s.Id)!.Jobs);
+        Assert.Empty(loaded.State.FindSurvivor(idle.Id)!.Jobs);
+        Assert.Equal(1, Activities.Share(loaded.State, loaded.State.FindSurvivor(s.Id)!));
+        Assert.Equal(sim.OutputPerTick(wood), loaded.OutputPerTick(loaded.State.FindBuilding(wood.Id)!), 12);
+    }
+
+    [Fact]
+    public void A_real_v1_save_keeps_its_woodcutter_staffed()
+    {
+        var json = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "saves", "colony-v1.json"));
+        Assert.Contains("\"assignedBuildingId\": ", json);
+        var sim = SaveGame.Load(TestData.RealWithWeather, json, ScavengeTestData.Real);
+
+        var woodcutter = sim.State.Buildings.Single(b => b.DefId == "woodcutter");
+        Assert.NotEmpty(sim.State.WorkersAt(woodcutter.Id));
+        Assert.All(sim.State.Survivors, p => Assert.True(p.Jobs.Count <= 1));
     }
 }

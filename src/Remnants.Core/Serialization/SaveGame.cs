@@ -86,10 +86,15 @@ namespace Remnants.Core.Serialization;
 /// the cards on the unreleased branch). A run in progress inside an older save (an expedition in the zone)
 /// cannot be carried over (old runs are not migrated, <see cref="ScavengeSave"/>): it is dropped and starts over from the
 /// expedition's seed with the party as it set out, which is what a run not yet opened does anyway. The party stays out.
+/// Version <see cref="MultiActivityVersion"/> (28) lets a survivor hold several jobs: each survivor's single
+/// <c>assignedBuildingId</c> becomes the list <c>jobs</c> (one entry, or none), so older saves load with one job each.
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = CardsVersion;
+    public const int Version = MultiActivityVersion;
+
+    /// <summary>The save version that brought several jobs per survivor (<see cref="Survivors.Survivor.Jobs"/>).</summary>
+    public const int MultiActivityVersion = 28;
 
     /// <summary>The save version that brought tactical cards (keyed so a merge renumbers it in one place).</summary>
     public const int CardsVersion = 27;
@@ -198,6 +203,7 @@ public static class SaveGame
             ?? throw new JsonException("Save file is empty.");
         if (node["version"]?.GetValue<int>() is < 4 and >= OldestVersion && node["colony"] is JsonObject old) MigrateCrafting(old);
         if (node["version"]?.GetValue<int>() == 1 && node["colony"] is JsonObject v1) MigratePlots(v1);
+        if (node["version"]?.GetValue<int>() is { } v && v < MultiActivityVersion && v >= OldestVersion) MigrateJobs(node["colony"]);
         var oldKnown = new List<string>();
         var storyGranted = new List<string>();
         var storyResearchData = 0;
@@ -313,6 +319,26 @@ public static class SaveGame
         }
         colony["nextOrderId"] = nextOrder;
         RenameItem(colony, "blueprint", LegacyBlueprintItem);
+    }
+
+    /// <summary>Before version 28: every survivor's (anywhere in the colony) <c>assignedBuildingId</c> becomes <c>jobs</c>.</summary>
+    private static void MigrateJobs(JsonNode? node)
+    {
+        switch (node)
+        {
+            case JsonObject o:
+                if (o.ContainsKey("assignedBuildingId"))
+                {
+                    var id = o["assignedBuildingId"]?.GetValue<int>();
+                    o.Remove("assignedBuildingId");
+                    o["jobs"] = id is { } job ? new JsonArray(job) : new JsonArray();
+                }
+                foreach (var (_, child) in o.ToList()) MigrateJobs(child);
+                break;
+            case JsonArray a:
+                foreach (var child in a) MigrateJobs(child);
+                break;
+        }
     }
 
     private static void RenameItem(JsonNode node, string from, string to)
