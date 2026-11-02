@@ -100,8 +100,8 @@ public static class ScavengeSave
             if (u.Plan is { } plan) ValidatePlan(state, u, plan);
         }
         foreach (var id in state.Caches.SelectMany(c => c.Items)) RequireItem(id);
-        foreach (var id in state.Decks.SelectMany(d => d.DrawPile.Concat(d.Hand).Concat(d.Used).Concat(d.Consumed).Concat(d.Pouch))
-                     .Concat(state.Units.SelectMany(u => u.SlotCards)))
+        foreach (var id in state.Decks.SelectMany(d => d.DrawPile.Concat(d.Hand).Concat(d.Used).Concat(d.Consumed))
+                     .Concat(state.Units.SelectMany(u => u.SlotCards)).Concat(state.Parties.SelectMany(p => p.CardPouch)))
             if (data.Cards.Find(id) is null) throw new JsonException($"Save references unknown card '{id}'.");
         foreach (var n in state.SalvageNodes)
         {

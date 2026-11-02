@@ -19,6 +19,9 @@ public sealed class Party
 
     /// <summary>Items a cargo drone ferried out of the zone (and the drone itself): home whatever happens to the party.</summary>
     public List<string> Secured { get; set; } = new();
+
+    /// <summary>Cards the party found in this run (loot, salvage): they join the colony's collection only if someone gets out.</summary>
+    public List<string> CardPouch { get; set; } = new();
 }
 
 public enum ScavengeEventType

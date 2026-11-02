@@ -89,6 +89,9 @@ public sealed record RecipeDef
     /// <summary>Decrypt orders: the schematic learned when the batch is done (its item is the one input).</summary>
     public string? Learns { get; init; }
 
+    /// <summary>A card id: each finished batch also grants a copy into the colony's card collection.</summary>
+    public string? Card { get; init; }
+
     /// <summary>
     /// Health a donor at home gives when a batch starts (a blood bag); the batch waits for a donor (see
     /// <c>Medicine.Donor</c>). 0 = none needed.

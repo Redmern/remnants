@@ -12,7 +12,7 @@ public sealed record SquadLoadout(List<string> Cards, int HandSize, int Draw, in
 /// A party's shared squad deck in the field. Cards are drawn from <see cref="DrawPile"/> into <see cref="Hand"/>; played
 /// ones go to <see cref="Used"/> (shuffled back when the draw pile runs out) or, if consumable, to <see cref="Consumed"/>
 /// (gone, also from the colony's collection). <see cref="Points"/>: card points left this round, refilled to
-/// <see cref="Budget"/> at each round start. <see cref="Pouch"/>: cards found in the run, kept only if the party gets out.
+/// <see cref="Budget"/> at each round start. (Cards found in the run ride in <see cref="Party.CardPouch"/>.)
 /// A view for another player carries no card ids, only <see cref="HandCount"/>, <see cref="DrawCount"/> and
 /// <see cref="UsedCount"/> (<see cref="Hidden"/> set).
 /// </summary>
@@ -23,7 +23,6 @@ public sealed class SquadDeck
     public List<string> Hand { get; set; } = new();
     public List<string> Used { get; set; } = new();
     public List<string> Consumed { get; set; } = new();
-    public List<string> Pouch { get; set; } = new();
     public int Points { get; set; }
     public int Budget { get; set; }
     public int HandSize { get; set; }

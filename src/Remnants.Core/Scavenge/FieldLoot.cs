@@ -45,9 +45,23 @@ public static class FieldLoot
     {
         if (unit.EnemyDefId is not { } enemyId || !sim.Data.Enemies.TryGetValue(enemyId, out var def)) return [];
         var items = sim.Data.Loot.Find(def.Loot) is { } table ? sim.Data.Loot.Roll(sim.Data, table, Context(sim, killer), Rng(sim.State, unit.Id)) : [];
+        Found(sim, killer, LootCatalog.TakeCards(items));
         // Schematics roll as SCHEMATICS.md says (on the sim's RNG, first hit only), after the table.
         items.AddRange(Schematics.SchematicDrops.EnemyDrops(sim.Data, def, sim.Rng, sim.State.KnownSchematics));
         return items;
+    }
+
+    /// <summary>
+    /// Cards a unit's party found (a kill's or a salvage lot's card rows): into the party's run pouch, told to its side only.
+    /// A find with no party to take it (an AI kill) is lost.
+    /// </summary>
+    public static void Found(ScavengeSim sim, Unit? finder, List<string> cards)
+    {
+        if (cards.Count == 0 || finder?.PlayerId is not { } pid || sim.State.FindParty(pid) is not { } party) return;
+        party.CardPouch.AddRange(cards);
+        var names = string.Join(", ", cards.Select(id => sim.Data.Cards.Find(id)?.Name ?? id));
+        sim.State.Log(new(sim.State.Round, ScavengeEventType.CardFound, $"{finder.Name} found card{(cards.Count > 1 ? "s" : "")}: {names}.", finder.Id,
+            Pos: finder.Pos, Side: party.Side));
     }
 
     /// <summary>The pile of this kind on a tile (a new one when there is none): remains and drops share a tile's pile.</summary>
@@ -180,8 +194,12 @@ public static class FieldLoot
         foreach (var id in enemyIds)
         {
             if (!data.Enemies.TryGetValue(id, out var def) || data.Loot.Find(def.Loot) is not { } table) continue;
-            foreach (var item in data.Loot.Roll(data, table, new LootContext(tier), rng ?? sim.Rng))
-                spoils[item] = spoils.GetValueOrDefault(item) + 1;
+        {
+            var items = data.Loot.Roll(data, table, new LootContext(tier), rng ?? sim.Rng);
+            // Cards the raiders carried go straight into the colony's collection.
+            foreach (var card in LootCatalog.TakeCards(items)) ColonyCards.Add(sim.State, card);
+            foreach (var item in items) spoils[item] = spoils.GetValueOrDefault(item) + 1;
+        }
         }
         foreach (var (item, n) in spoils)
             for (var i = 0; i < n; i++) ExpeditionHandlers.Deposit(sim, item);

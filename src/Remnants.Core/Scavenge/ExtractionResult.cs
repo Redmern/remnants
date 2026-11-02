@@ -35,6 +35,12 @@ public sealed record ExtractionResult(
     /// <summary>What the player left in their stash at the exit: it waits there for the next run to this zone.</summary>
     public List<string> Stash { get; init; } = new();
 
+    /// <summary>Cards the party found in the run (its pouch): only when someone got out; they join the collection.</summary>
+    public List<string> Cards { get; init; } = new();
+
+    /// <summary>Consumable cards the party played: gone from the collection whatever became of the party.</summary>
+    public List<string> ConsumedCards { get; init; } = new();
+
     /// <summary>Schematics the side saw but did not bring home (left in a cache, on a terminal it failed to hack): id → where.</summary>
     public SortedDictionary<string, string> HeardOf { get; init; } = new(StringComparer.Ordinal);
 
@@ -75,7 +81,12 @@ public sealed record ExtractionResult(
                 heard.TryAdd(id, $"on a terminal in {zone}");
         }
         return new ExtractionResult(playerId, party.Done, returned, recruits, deaths, loot, MissionRules.Result(state, playerId),
-            party.Secured.Count > 0 ? new(party.Secured) : null) { SharedSchematics = shared, HeardOf = heard, Vehicle = vehicle, Stash = FieldLoot.StashOf(state, playerId) };
+            party.Secured.Count > 0 ? new(party.Secured) : null)
+        {
+            SharedSchematics = shared, HeardOf = heard, Vehicle = vehicle, Stash = FieldLoot.StashOf(state, playerId),
+            Cards = returned.Count > 0 ? new(party.CardPouch) : [],
+            ConsumedCards = SquadDecks.Of(state, playerId) is { } deck ? new(deck.Consumed) : [],
+        };
     }
 
     private static ReturnedSurvivor ToReturned(Unit u) =>

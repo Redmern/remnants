@@ -13,6 +13,9 @@ namespace Remnants.Core.Scavenge;
 public sealed record LootEntryDef
 {
     public string Item { get; init; } = "";
+
+    /// <summary>A card id instead of an item: a find goes into the finder's run pouch (<see cref="LootCatalog.TakeCards"/>).</summary>
+    public string? Card { get; init; }
     public double Weight { get; init; } = 1;
     public int[] Qty { get; init; } = [1, 1];
     public int MinTier { get; init; } = 1;
@@ -24,6 +27,9 @@ public sealed record LootEntryDef
 public sealed record LootRareDef
 {
     public string Item { get; init; } = "";
+
+    /// <summary>A card id instead of an item (see <see cref="LootEntryDef.Card"/>).</summary>
+    public string? Card { get; init; }
     public double Chance { get; init; }
     public int[] Qty { get; init; } = [1, 1];
     public int MinTier { get; init; } = 1;
@@ -136,8 +142,9 @@ public sealed class LootCatalog
             };
         }
 
-        bool Known(string table, string item, Dictionary<string, double> quality)
+        bool Known(string table, string item, Dictionary<string, double> quality, string? card = null)
         {
+            if (card is not null) return true; // checked against cards.json by ScavengeData
             if (!items.TryGetValue(item, out var def))
             {
                 warnings.Add($"Loot table '{table}': unknown item '{item}' skipped.");
@@ -167,9 +174,9 @@ public sealed class LootCatalog
             }
             resolved[t.Id] = t with
             {
-                Entries = t.Entries.Where(e => Known(t.Id, e.Item, e.Quality)).ToList(),
-                Guaranteed = t.Guaranteed.Where(e => Known(t.Id, e.Item, e.Quality)).ToList(),
-                Rare = t.Rare.Where(r => Known(t.Id, r.Item, r.Quality)).ToList(),
+                Entries = t.Entries.Where(e => Known(t.Id, e.Item, e.Quality, e.Card)).ToList(),
+                Guaranteed = t.Guaranteed.Where(e => Known(t.Id, e.Item, e.Quality, e.Card)).ToList(),
+                Rare = t.Rare.Where(r => Known(t.Id, r.Item, r.Quality, r.Card)).ToList(),
             };
         }
         var rules = files.Select(f => f.Rules).FirstOrDefault(r => r is not null) ?? new LootRules();
@@ -193,14 +200,14 @@ public sealed class LootCatalog
         var quantity = context.QuantityMultiplier * (1 + Rules.QuantityPerTier * above);
         var drops = new List<string>();
 
-        void Add(string item, int[] qty, Dictionary<string, double> quality)
+        void Add(string item, int[] qty, Dictionary<string, double> quality, string? card = null)
         {
             var n = Stochastic(rng, rng.NextInclusive(qty[0], qty[1]) * quantity);
-            for (var i = 0; i < n; i++) drops.Add(Quality(data, rng, item, quality));
+            for (var i = 0; i < n; i++) drops.Add(card is not null ? CardPrefix + card : Quality(data, rng, item, quality));
         }
 
         foreach (var g in table.Guaranteed.Where(e => e.MinTier <= tier && tier <= e.MaxTier))
-            Add(g.Item, g.Qty, g.Quality);
+            Add(g.Item, g.Qty, g.Quality, g.Card);
 
         var nothing = Math.Clamp((table.Nothing - Rules.NothingPerTier * above) * context.NothingMultiplier, 0, 1);
         if (rng.NextDouble() < nothing) return drops;
@@ -212,13 +219,24 @@ public sealed class LootCatalog
             for (var i = 0; i < rolls; i++)
             {
                 var e = NewScavenge.PickWeighted(rng, pool, p => p.Weight);
-                Add(e.Item, e.Qty, e.Quality);
+                Add(e.Item, e.Qty, e.Quality, e.Card);
             }
         }
         foreach (var r in table.Rare.Where(r => r.MinTier <= tier))
             if (rng.NextDouble() < Math.Min(1, r.Chance * (1 + Rules.RarePerTier * above)))
-                Add(r.Item, r.Qty, r.Quality);
+                Add(r.Item, r.Qty, r.Quality, r.Card);
         return drops;
+    }
+
+    /// <summary>How a card find rides in a roll's result, among the item ids, until <see cref="TakeCards"/> takes it out.</summary>
+    public const string CardPrefix = "card:";
+
+    /// <summary>Takes the card finds out of a roll's result (leaving the items) and returns their card ids.</summary>
+    public static List<string> TakeCards(List<string> drops)
+    {
+        var cards = drops.Where(d => d.StartsWith(CardPrefix, StringComparison.Ordinal)).Select(d => d[CardPrefix.Length..]).ToList();
+        drops.RemoveAll(d => d.StartsWith(CardPrefix, StringComparison.Ordinal));
+        return cards;
     }
 
     /// <summary>
@@ -233,13 +251,13 @@ public sealed class LootCatalog
         var result = new SortedDictionary<string, double>(StringComparer.Ordinal);
         void Add(string item, int[] qty, double times) => result[item] = result.GetValueOrDefault(item) + times * (qty[0] + qty[1]) / 2.0 * quantity;
 
-        foreach (var g in table.Guaranteed.Where(e => e.MinTier <= tier && tier <= e.MaxTier)) Add(g.Item, g.Qty, 1);
+        foreach (var g in table.Guaranteed.Where(e => e.MinTier <= tier && tier <= e.MaxTier && e.Card is null)) Add(g.Item, g.Qty, 1);
         var some = 1 - Math.Clamp((table.Nothing - Rules.NothingPerTier * above) * context.NothingMultiplier, 0, 1);
         var pool = table.Entries.Where(e => e.MinTier <= tier && tier <= e.MaxTier).ToList();
         var total = pool.Sum(e => e.Weight);
         var rolls = (table.Rolls[0] + table.Rolls[1]) / 2.0 + Rules.ExtraRollsPerTier * above + context.ExtraRolls;
-        foreach (var e in pool) Add(e.Item, e.Qty, some * rolls * e.Weight / total);
-        foreach (var r in table.Rare.Where(r => r.MinTier <= tier)) Add(r.Item, r.Qty, some * Math.Min(1, r.Chance * (1 + Rules.RarePerTier * above)));
+        foreach (var e in pool.Where(e => e.Card is null)) Add(e.Item, e.Qty, some * rolls * e.Weight / total);
+        foreach (var r in table.Rare.Where(r => r.MinTier <= tier && r.Card is null)) Add(r.Item, r.Qty, some * Math.Min(1, r.Chance * (1 + Rules.RarePerTier * above)));
         return result;
     }
 
