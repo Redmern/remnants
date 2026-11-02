@@ -76,8 +76,8 @@ public class HitTierTests
     {
         var solid = Landing(grazeBelow: 0, solidFrom: 0);
         var ignoresArmor = With(r => r with { Combat = solid.Rules.Combat with { Tiers = solid.Rules.Combat.Tiers with { ArmorShiftFrom = 99 } } });
-        var (shifted, shiftedLoss) = Punch(solid, body: "padded_vest");
-        var (unshifted, unshiftedLoss) = Punch(ignoresArmor, body: "padded_vest");
+        var (shifted, shiftedLoss) = Punch(solid, body: "linked_plating");
+        var (unshifted, unshiftedLoss) = Punch(ignoresArmor, body: "linked_plating");
         Assert.Equal(unshiftedLoss, shiftedLoss, 9);
         var part = unshifted.Body.Parts.Single(kv => kv.Value.Condition == PartCondition.Injured).Key;
         Assert.Equal(unshifted.Body[part].Severity / Tiers.SolidSeverity, shifted.Body[part].Severity, 9);

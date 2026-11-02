@@ -421,7 +421,7 @@ public sealed record HitTierRules
     public double SolidSeverity { get; init; } = 1.5;
 
     /// <summary>Armor on the hit region (after pierce) from which the hit shifts down a tier.</summary>
-    public double ArmorShiftFrom { get; init; } = 2;
+    public double ArmorShiftFrom { get; init; } = 4;
 
     /// <summary>Cover against the attacker (terrain plus brace) from which the hit shifts down a tier.</summary>
     public double CoverShiftFrom { get; init; } = 0.25;
