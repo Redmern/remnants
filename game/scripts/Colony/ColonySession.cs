@@ -149,6 +149,7 @@ public sealed class ColonySession
                 return;
         }
         SetSpeed(0);
+        Sim.LateZones = GameSettings.LateZones;
         ScavengeHandoff.Begin(tree, new ScavengeRun(Sim.OpenExpeditionScavenge(), ColonySim.ExpeditionPlayerId), ApplyResult);
     }
 

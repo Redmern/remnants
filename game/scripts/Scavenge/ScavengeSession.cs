@@ -115,6 +115,9 @@ public static class ScavengeSession
             env.Intensity = parts.Length > 1 && double.TryParse(parts[1], System.Globalization.CultureInfo.InvariantCulture, out var i) ? i : 0.85;
             conditions = new ZoneConditions(Environment: env);
         }
+        // The late-zone tuning: --late-zones=current|expeditions|everywhere, else the setting.
+        var late = Enum.TryParse<LateZoneTuning>(DebugCapture.Value("--late-zones"), ignoreCase: true, out var flag) ? flag : Hud.GameSettings.LateZones;
+        conditions = (conditions ?? new ZoneConditions()) with { LateZones = late };
         var sim = NewScavenge.Create(GameDataPaths.LoadScavenge(), DebugZoneArg, DebugSeedArg,
             [new PartySetup(LocalPlayerId, DebugParty()) { Vehicle = DebugVehicle(), Deck = DebugDeck() }], conditions);
         if (Fog.FogDemo.Requested) Fog.FogDemo.Stage(sim, LocalPlayerId);
