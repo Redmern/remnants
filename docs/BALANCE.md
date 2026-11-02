@@ -1832,5 +1832,6 @@ All three late zones are back within 10 points of their pre-telegraph deaths and
 there because more of them do not come home. The four earlier zones are unchanged: targets 3 and 4 hold as before.
 
 Story missions (`--mission=ID --runs=100 --party=4 --kit=armed`), wipes with re-tuned expeditions → re-tuned
-everywhere: m11b 13% → 48%, m13 58% → 94%, m15 49% → 86%, side_children 58% → 94%, m17_choir 65% → 65%. The re-tuned expeditions setting leaves every story mission exactly as it was; m12, m16 and
-the m17 missions use handmade maps and do not change under either setting.
+everywhere: m11b 13% → 48%, m13 58% → 94%, m15 49% → 86%, side_children 58% → 94%, m17_choir 65% → 65%. The
+re-tuned expeditions setting leaves every story mission exactly as it was; m12, m16 and the m17 missions use handmade
+maps and do not change under either setting.

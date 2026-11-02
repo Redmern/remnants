@@ -38,7 +38,8 @@ public static class Protocol
     /// in views (path, attack tile and action, never the card or the aimed-at unit of another player's unit), the intent
     /// events and the hit tier on attack events (scavenge save 15); tactical cards: the playCard / discardDeadCard commands, a
     /// squad deck on <see cref="Join"/> and slot cards on party members, each player's own deck, slot cards and card pouch in
-    /// views (other players' only as counts), the card events (to the player's side only).
+    /// views (other players' only as counts), the card events (to the player's side only). Later additive fields ride 17
+    /// without a bump: the lobby's lateZones (the host's late-zone tuning; an older 17 peer reads Current).
     /// <see cref="Version"/> is always the highest of these keyed versions (ProtocolTests checks it).
     /// </summary>
     public const int MedicineVersion = 12;
