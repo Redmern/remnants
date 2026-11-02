@@ -57,11 +57,15 @@ public sealed class ScavengeData
     /// </summary>
     public IReadOnlyList<string> LootWarnings { get; }
 
+    /// <summary>Tactical cards and the squad deck's rules (cards.json); <see cref="CardCatalog.Empty"/> without the file.</summary>
+    public CardCatalog Cards { get; }
+
     public ScavengeData(IEnumerable<ItemDef> items, IEnumerable<EnemyDef> enemies, IEnumerable<ZoneDef> zones, ScavengeRules rules,
         IReadOnlyDictionary<string, IReadOnlyDictionary<string, double>>? perkHooks = null, CyberneticsDef? cybernetics = null,
         SchematicCatalog? schematics = null, ElectronicsDef? electronics = null, GearModsDef? gearMods = null,
-        MedicineDef? medicine = null, IReadOnlyList<LootTableFile>? loot = null, SalvageRules? salvage = null)
+        MedicineDef? medicine = null, IReadOnlyList<LootTableFile>? loot = null, SalvageRules? salvage = null, CardsDef? cards = null)
     {
+        Cards = cards is null ? CardCatalog.Empty : new CardCatalog(cards);
         Schematics = schematics ?? SchematicCatalog.Empty;
         // Schematic items come from the catalogue; without one, data built from another ScavengeData's items keeps them.
         if (schematics is not null) items = items.Where(i => i.Kind != ItemKind.Schematic).Concat(Schematics.All.Values.Select(SchematicItem));
@@ -417,8 +421,17 @@ public static class ScavengeDataLoader
         var loaded = LoadFromJson(data.Read("items.json"), data.Read("enemies.json"), data.Read("zones.json"), data.Read("scavenge.json"),
             data.TryRead("perks.json"), data.TryRead("cybernetics.json"), data.TryRead("electronics.json"), data.TryRead("gear_mods.json"), data.TryRead("medicine.json"),
             data.ReadCatalogue(SchematicCatalogLoader.FileName));
+        loaded = WithCards(loaded, data.TryRead(CardsFileName));
         return WithLoot(loaded, data.ReadCatalogue(LootTableLoader.FileName), data.TryRead(FieldSalvage.FileName));
     }
+
+    public const string CardsFileName = "cards.json";
+
+    /// <summary>The same data with the cards of <paramref name="cards"/> (cards.json; null: none).</summary>
+    public static ScavengeData WithCards(ScavengeData data, string? cards) =>
+        new(data.Items.Values.Where(i => i.BaseId is null), data.Enemies.Values, data.Zones.Values, data.Rules, data.PerkHooks, data.Cybernetics?.Def,
+            data.Schematics, data.Electronics, data.GearMods?.Def, data.Medicine?.Def, data.LootFiles, data.Salvage,
+            cards is null ? null : Parse<CardsDef>(cards, "cards"));
 
     /// <summary>
     /// The same data with loot tables (main file first, then <c>loot_tables.&lt;feature&gt;.json</c>) and salvage rules
@@ -426,7 +439,8 @@ public static class ScavengeDataLoader
     /// </summary>
     public static ScavengeData WithLoot(ScavengeData data, IEnumerable<string> lootTables, string? salvage) =>
         new(data.Items.Values.Where(i => i.BaseId is null), data.Enemies.Values, data.Zones.Values, data.Rules, data.PerkHooks, data.Cybernetics?.Def,
-            data.Schematics, data.Electronics, data.GearMods?.Def, data.Medicine?.Def, LootTableLoader.Parse(lootTables), FieldSalvage.Parse(salvage));
+            data.Schematics, data.Electronics, data.GearMods?.Def, data.Medicine?.Def, LootTableLoader.Parse(lootTables), FieldSalvage.Parse(salvage),
+            data.Cards == CardCatalog.Empty ? null : data.Cards.Def);
 
     /// <param name="perks">perks.json (optional): only each perk's scavenge hooks are read (see <see cref="ScavengeData.PerkHooks"/>).</param>
     /// <param name="cybernetics">cybernetics.json (optional; see <see cref="ScavengeData.Cybernetics"/>).</param>
