@@ -69,6 +69,29 @@ public class AiPlanTests
     }
 
     [Fact]
+    public void A_plan_that_cannot_be_declared_is_logged_and_a_target_in_reach_is_struck_instead()
+    {
+        // Force the rare failure: a plan is already pending (declaring then fails as locked).
+        var u = SurvivorUnit(pos: new(0, 2));
+        var linked = EnemyUnit("linked", new(6, 2));
+        var sim = Arena(9, 5, [u, linked], [".........", ".........", ".........", "......c..", "........."]);
+        Assert.Contains(sim.Profile(linked).Actions, a => Combat.CheckReach(Real, sim.State.Map, linked.Pos, a, u.Pos) == ScavengeError.None);
+        linked.Plan = new PlannedAction { Path = [], Round = 0 };
+        ScavengeAi.TakeTurn(sim, linked);
+        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.IntentCanceled && e.UnitId == linked.Id && e.Message.Contains("could not settle"));
+        Assert.Contains(sim.State.Events, e => e.UnitId == linked.Id && e.TargetId == u.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
+
+        // Nothing in reach: logged, and it idles (no plan, no blow).
+        var v = SurvivorUnit(pos: new(0, 0));
+        var husk = EnemyUnit("husk", new(5, 0));
+        var sim2 = Arena(8, 3, [v, husk]);
+        husk.Plan = new PlannedAction { Path = [], Round = 0 };
+        ScavengeAi.TakeTurn(sim2, husk);
+        Assert.Contains(sim2.State.Events, e => e.Type == ScavengeEventType.IntentCanceled && e.UnitId == husk.Id);
+        Assert.DoesNotContain(sim2.State.Events, e => e.UnitId == husk.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed or ScavengeEventType.Moved);
+    }
+
+    [Fact]
     public void Ai_against_ai_rounds_always_end()
     {
         // A crowd of every AI kind against an overridden Linked and recruits on the player's side, the player's own unit

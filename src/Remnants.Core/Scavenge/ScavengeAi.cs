@@ -82,6 +82,11 @@ internal static class ScavengeAi
         {
             var declared = PlannedActions.Declare(sim, unit, new DeclareIntent(unit.PlayerId ?? 0, unit.Id, plan.Path, plan.AttackTile, plan.ActionId, plan.Suppress));
             if (declared.Ok) return;
+            // The look-ahead and the plan rules disagree (should not happen): say so, and strike what is in reach now
+            // rather than idle.
+            sim.State.Log(new(sim.State.Round, ScavengeEventType.IntentCanceled, $"{unit.Name} could not settle on a plan ({declared.Message})",
+                unit.Id, Pos: unit.Pos));
+            if (Spot(sim, unit) is { } target && TryAttack(sim, unit, target)) return;
         }
         if (plan.Lurk) Lurk(sim, unit);
     }
@@ -217,7 +222,7 @@ internal static class ScavengeAi
     {
         var map = sim.State.Map;
         var best = sim.Profile(unit).Actions
-            .Where(a => a.ApCost <= unit.Ap && Drones.CanStrike(a, target) && Combat.CheckReach(sim.Data, map, unit.Pos, a, target.Pos) == ScavengeError.None)
+            .Where(a => Combat.ApCost(a, unit.Pos, target.Pos) <= unit.Ap && Drones.CanStrike(a, target) && Combat.CheckReach(sim.Data, map, unit.Pos, a, target.Pos) == ScavengeError.None)
             .Select(a => (Action: a, Chance: Combat.ChanceToHit(sim, unit, a, target)))
             .Where(x => x.Chance + 1e-9 >= minChance)
             .OrderByDescending(x => x.Chance * (x.Action.MinDamage + x.Action.MaxDamage) / 2)
@@ -267,7 +272,7 @@ internal static class ScavengeAi
                 || (Detection.ScanRadius(data, t) is var r && r > 0 && t.Pos.Chebyshev(tile) <= r));
             var ambush = hidden ? Combat.AmbushAgainst(data, sim.State, unit, focus, tile) : null;
             var shot = profile.Actions
-                .Where(a => a.ApCost <= ap && Drones.CanStrike(a, focus) && Combat.CheckReach(data, map, tile, a, focus.Pos) == ScavengeError.None)
+                .Where(a => Combat.ApCost(a, tile, focus.Pos) <= ap && Drones.CanStrike(a, focus) && Combat.CheckReach(data, map, tile, a, focus.Pos) == ScavengeError.None)
                 .Select(a => Combat.HitChance(data, map, tile, a, focus.Pos, focusProfile, ambush)
                              * Math.Max(1, (a.MinDamage + a.MaxDamage) / 2 * (ambush?.DamageMultiplier ?? 1) - focusProfile.Armor))
                 .DefaultIfEmpty(0).Max();
@@ -343,7 +348,7 @@ internal static class ScavengeAi
     {
         var map = sim.State.Map;
         var best = sim.Profile(unit).Actions
-            .Where(a => a.ApCost <= unit.Ap && Drones.CanStrike(a, target) && Combat.CheckReach(sim.Data, map, unit.Pos, a, target.Pos) == ScavengeError.None)
+            .Where(a => Combat.ApCost(a, unit.Pos, target.Pos) <= unit.Ap && Drones.CanStrike(a, target) && Combat.CheckReach(sim.Data, map, unit.Pos, a, target.Pos) == ScavengeError.None)
             .OrderByDescending(a => Combat.ChanceToHit(sim, unit, a, target) * (a.MinDamage + a.MaxDamage) / 2)
             .ThenBy(a => a.Id, StringComparer.Ordinal)
             .FirstOrDefault();

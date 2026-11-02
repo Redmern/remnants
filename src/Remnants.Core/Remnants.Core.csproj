@@ -4,4 +4,8 @@
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>Remnants.Core</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- Tests reach the AI's turn directly (ScavengeAi.TakeTurn) to force its rare failure paths. -->
+    <InternalsVisibleTo Include="Remnants.Core.Tests" />
+  </ItemGroup>
 </Project>
