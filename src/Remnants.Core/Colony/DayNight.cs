@@ -93,10 +93,11 @@ public static class Schedule
     /// <summary>Whether a survivor is working right now (assigned, home, not a patient, and on shift; or a guard on duty).</summary>
     public static bool OnShift(ColonyState state, GameData data, Survivor s)
     {
-        if (s.AssignedBuildingId is null) return Raids.Guards.OnShift(state, data, s) || ConstructionSystem.OnShift(state, data, s);
-        if (s.AssignedBuildingId is not { } id || s.Away || s.PatientAtBuildingId is not null) return false;
-        if (state.FindBuilding(id) is not { } b) return false;
-        return Factor(s, b, data.Buildings[b.DefId], DayNight.Hour(state.Tick, data.Rules), data.Rules.DayNight) > 0;
+        if (s.Jobs.Count == 0) return Raids.Guards.OnShift(state, data, s) || ConstructionSystem.OnShift(state, data, s);
+        if (s.Away || s.PatientAtBuildingId is not null) return false;
+        var hour = DayNight.Hour(state.Tick, data.Rules);
+        return s.Jobs.Any(id => state.FindBuilding(id) is { } b && Factor(s, b, data.Buildings[b.DefId], hour, data.Rules.DayNight) > 0)
+               || ConstructionSystem.OnShift(state, data, s);
     }
 
     /// <summary>Asleep right now: day/night on, at home, in their sleep window and not working it.</summary>
@@ -132,7 +133,7 @@ public static class Schedule
 
     /// <summary>
     /// The workers of a building who work this tick, with their shift factor times the weather's
-    /// (<see cref="Weather.WorkFactor"/>: Night Shift and weather stack).
+    /// (<see cref="Weather.WorkFactor"/>: Night Shift and weather stack) times their share of effort (<see cref="Activities.Share"/>).
     /// </summary>
     public static IEnumerable<(Survivor Worker, double Factor)> Crew(ColonyState state, GameData data, Building building)
     {
@@ -146,7 +147,7 @@ public static class Schedule
             var f = Factor(w, building, def, hour, data.Rules.DayNight);
             if (f <= 0) continue;
             if (def.Outdoor) masked ??= Weather.Masked(state, data, spell);
-            f *= Weather.WorkFactor(data, spell, building, def, w, masked?.Contains(w.Id) == true);
+            f *= Weather.WorkFactor(data, spell, building, def, w, masked?.Contains(w.Id) == true) * Activities.Share(state, w);
             // A powered Floodlight makes night work easier (see Power).
             if (IsNightShiftHour(w, building, def, hour, data.Rules.DayNight)) f *= 1 + Power.NightShiftBonus(state, data, building);
             if (f > 0) yield return (w, f);

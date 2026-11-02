@@ -103,7 +103,7 @@ internal static class CraftingSystem
         var def = data.Buildings[building.DefId];
         if (def.Job is null) return 0;
         var job = data.Jobs[def.Job];
-        return state.WorkersAt(building.Id).Sum(w => JobOutput.PerTick(def, building.Level, job, w, data.Rules.Output, data));
+        return state.WorkersAt(building.Id).Sum(w => JobOutput.PerTick(def, building.Level, job, w, data.Rules.Output, data) * Activities.Share(state, w));
     }
 
     /// <summary>The order worked this tick, or null when nothing can go.</summary>

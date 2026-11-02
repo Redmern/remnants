@@ -72,4 +72,51 @@ public class MultiActivityTests
         Assert.Equal(CommandError.TooManyActivities, sim.Execute(new AssignJob(s.Id, c.Id)).Error);
         Assert.Equal(3, TestData.Real.Rules.MaxActivities);
     }
+
+    private static readonly string[] Gatherers = ["woodcutter", "quarry", "scrapyard"];
+    private static readonly string[] Produces = ["wood", "stone", "scrap"];
+
+    /// <summary>One survivor holding the first <paramref name="n"/> gathering jobs; returns what each building made in one tick.</summary>
+    private static (double[] Made, double[] Estimate, Survivor S) Work(int n)
+    {
+        var sim = Colony();
+        var s = sim.AddSurvivor();
+        var buildings = Gatherers.Select(sim.Build).ToList();
+        foreach (var b in buildings.Take(n)) Assert.True(sim.Execute(new AssignJob(s.Id, b.Id)).Ok);
+        var before = Produces.Select(sim.State.Stockpile.Get).ToArray();
+        var estimate = buildings.Select(sim.OutputPerTick).ToArray();
+        sim.Advance(1);
+        return (Produces.Select((r, i) => sim.State.Stockpile.Get(r) - before[i]).ToArray(), estimate, s);
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void Each_job_yields_its_single_job_output_split_n_ways(int n)
+    {
+        var alone = Enumerable.Range(0, n).Select(Single).ToArray();
+        var (made, estimate, _) = Work(n);
+
+        for (var i = 0; i < n; i++)
+        {
+            Assert.True(alone[i] > 0);
+            Assert.Equal(alone[i] / n, estimate[i], 9);
+            // Made in the tick: the same, but a later job runs on stats the earlier one just trained (a hair more).
+            Assert.Equal(alone[i] / n, made[i], 4);
+        }
+        // In shares of a full job: all N together are one job's worth, not more.
+        Assert.Equal(1, made.Take(n).Select((m, i) => m / alone[i]).Sum(), 3);
+    }
+
+    /// <summary>What the <paramref name="index"/>th gathering job alone makes in a tick.</summary>
+    private static double Single(int index)
+    {
+        var sim = Colony();
+        var s = sim.AddSurvivor();
+        var b = sim.Build(Gatherers[index]);
+        sim.Execute(new AssignJob(s.Id, b.Id));
+        var before = sim.State.Stockpile.Get(Produces[index]);
+        sim.Advance(1);
+        return sim.State.Stockpile.Get(Produces[index]) - before;
+    }
 }

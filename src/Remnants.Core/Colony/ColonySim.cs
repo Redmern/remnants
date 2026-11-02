@@ -100,7 +100,7 @@ public sealed class ColonySim
         var factor = OutputFactor(building, def);
         if (def.Job is null || factor <= 0) return 0;
         var job = Data.Jobs[def.Job];
-        return State.WorkersAt(building.Id).Sum(w => JobOutput.PerTick(def, building.Level, job, w, Data.Rules.Output, Data)) * factor;
+        return State.WorkersAt(building.Id).Sum(w => JobOutput.PerTick(def, building.Level, job, w, Data.Rules.Output, Data) * Activities.Share(State, w)) * factor;
     }
 
     private double OutputFactor(Building building, BuildingDef def) =>
@@ -120,7 +120,8 @@ public sealed class ColonySim
         if (def.Job is null || factor <= 0) return 0;
         var job = Data.Jobs[def.Job];
         return State.WorkersAt(building.Id).Sum(w =>
-            JobOutput.PerTick(def, building.Level, job, w, Data.Rules.Output, Data) * Schedule.ShiftHoursPerDay(w, building, def, Data.Rules)) * factor;
+            JobOutput.PerTick(def, building.Level, job, w, Data.Rules.Output, Data) * Activities.Share(State, w)
+            * Schedule.ShiftHoursPerDay(w, building, def, Data.Rules)) * factor;
     }
 
     /// <summary>Hour of day now (0..ticksPerDay−1).</summary>
@@ -204,7 +205,8 @@ public sealed class ColonySim
         if (def.Job is null) return 0;
         var job = Data.Jobs[def.Job];
         return State.WorkersAt(building.Id).Sum(w =>
-            JobOutput.PerTick(def, building.Level, job, w, Data.Rules.Output, Data) * Schedule.AverageFactor(w, building, def, Data.Rules));
+            JobOutput.PerTick(def, building.Level, job, w, Data.Rules.Output, Data) * Activities.Share(State, w)
+            * Schedule.AverageFactor(w, building, def, Data.Rules));
     }
 
     /// <summary>Recipe effort per tick from the building's current workers (while on shift).</summary>
