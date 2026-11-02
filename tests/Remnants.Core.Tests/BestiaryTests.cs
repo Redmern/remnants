@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using Remnants.Core.Colony;
+using Remnants.Core.Help;
 using Remnants.Core.Scavenge;
 using Remnants.Core.Serialization;
 using Remnants.Core.Survivors;
@@ -134,5 +135,53 @@ public class BestiaryTests
         Assert.True(sim.Execute(new ApplyExtractionResult(result)).Ok);
         for (var i = 0; i < 2000 && sim.State.Expedition is not null; i++) sim.Tick();
         Assert.Equal(BestiaryTier.Fought, Bestiary.TierOf(Rules, sim.State.Bestiary["husk"]));
+    }
+
+    [Fact]
+    public void What_a_side_knows_of_a_unit_adds_the_colony_to_the_run_and_never_gates_players()
+    {
+        var a = SurvivorUnit(1, new(0, 0));
+        var husk = EnemyUnit("husk", new(2, 0));
+        var rival = SurvivorUnit(2, new(3, 2));
+        var sim = Arena(6, 3, [a, husk, rival]);
+        var colony = new Dictionary<string, BestiaryEntry>();
+        Assert.Equal(BestiaryTier.Unknown, Bestiary.Knowledge(sim, colony, 1, husk));
+        Bestiary.Observe(sim);
+        Assert.Equal(BestiaryTier.Seen, Bestiary.Knowledge(sim, colony, 1, husk)); // the run has seen it now
+        colony["husk"] = new BestiaryEntry { Killed = Rules.Killed };
+        Assert.Equal(BestiaryTier.Killed, Bestiary.Knowledge(sim, colony, 1, husk));
+        Assert.Equal(BestiaryTier.Killed, Bestiary.Knowledge(sim, new Dictionary<string, BestiaryEntry>(), 1, rival));
+    }
+
+    [Fact]
+    public void Health_shows_numbers_only_once_the_type_is_killed()
+    {
+        var husk = EnemyUnit("husk", new(2, 0));
+        husk.Hp = husk.MaxHp * 0.75;
+        Assert.Equal($"HP {husk.Hp:0}/{husk.MaxHp:0}", Bestiary.Health(husk, BestiaryTier.Killed));
+        Assert.Equal("HP 75%", Bestiary.Health(husk, BestiaryTier.Fought));
+        Assert.DoesNotContain($"{husk.MaxHp:0}", Bestiary.Health(husk, BestiaryTier.Seen));
+    }
+
+    [Fact]
+    public void The_hit_chance_help_folds_the_targets_defence_into_one_row_below_killed()
+    {
+        var a = SurvivorUnit(1, new(1, 1), weapon: "pistol");
+        var husk = EnemyUnit("husk", new(5, 1));
+        var sim = Arena(8, 4, [a, husk]);
+        husk.Stance = Stance.Brace;
+        var shoot = sim.Profile(a).Actions.First(x => x.Reach > 1);
+        HelpContext Ctx(BestiaryTier tier) => new() { Scavenge = sim, Attacker = a, Action = shoot, Target = husk, TargetKnown = tier };
+
+        var full = Breakdowns.For("hit_chance", Ctx(BestiaryTier.Killed))!;
+        Assert.Contains(full.Rows, r => r.Label == "Brace");
+        var hidden = Breakdowns.For("hit_chance", Ctx(BestiaryTier.Fought))!;
+        var labels = hidden.Rows.Select(r => r.Label).ToList();
+        Assert.DoesNotContain("Target's dodge", labels);
+        Assert.DoesNotContain("Cover", labels);
+        Assert.DoesNotContain("Brace", labels);
+        var defence = Assert.Single(hidden.Rows, r => r.Label == "Target's defence");
+        Assert.Contains("Bestiary", defence.Note);
+        Assert.Equal(full.Total, hidden.Total); // the chance itself is the same; only its terms are hidden
     }
 }

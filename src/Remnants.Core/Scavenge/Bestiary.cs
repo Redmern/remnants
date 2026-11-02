@@ -59,6 +59,19 @@ public static class Bestiary
         return TierOf(rules, new BestiaryEntry { Seen = (c?.Seen ?? 0) + r.Seen, Fought = (c?.Fought ?? 0) + r.Fought, Killed = (c?.Killed ?? 0) + r.Killed });
     }
 
+    /// <summary>
+    /// What <paramref name="playerId"/>'s side knows of <paramref name="unit"/>: the colony's bestiary plus what its party
+    /// learned this run. Anything that is not a bestiary subject (players, survivors, recruits) is known in full.
+    /// </summary>
+    public static BestiaryTier Knowledge(ScavengeSim sim, IReadOnlyDictionary<string, BestiaryEntry> colony, int playerId, Unit unit) =>
+        Subject(unit) && unit.EnemyDefId is { } id
+            ? TierOf(sim.Data.Rules.Bestiary, colony, sim.State.FindParty(playerId)?.Bestiary, id)
+            : BestiaryTier.Killed;
+
+    /// <summary>A unit's health as the side may see it: the numbers once the type is killed, otherwise how hurt it looks.</summary>
+    public static string Health(Unit unit, BestiaryTier tier) =>
+        tier >= BestiaryTier.Killed ? $"HP {unit.Hp:0}/{unit.MaxHp:0}" : $"HP {(unit.MaxHp > 0 ? unit.Hp / unit.MaxHp : 0) * 100:0}%";
+
     /// <summary>Whether a unit is a bestiary subject: an NPC enemy or a machine of the Network with an enemy definition.</summary>
     public static bool Subject(Unit u) => u.EnemyDefId is not null && u.PlayerId is null && u.Kind is UnitKind.Enemy or UnitKind.Device;
 

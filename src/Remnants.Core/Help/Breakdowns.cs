@@ -32,6 +32,9 @@ public sealed record HelpContext
     /// <summary>The tile the attack is previewed from (a candidate move); null: where the attacker stands.</summary>
     public Scavenge.Pos? From { get; init; }
 
+    /// <summary>What the attacker's side knows of the target (<see cref="Bestiary.Knowledge"/>): below killed, its defence is one row.</summary>
+    public BestiaryTier TargetKnown { get; init; } = BestiaryTier.Killed;
+
     public static readonly HelpContext None = new();
 }
 
@@ -184,9 +187,14 @@ public static class Breakdowns
         Term("Radio", radio);
         Term("Dodged their attack", Combat.OutplayBonus(sim, attacker, target), "you stepped out of their telegraphed blow");
         Term("Card", attacker.CardHit, "for the next attack");
-        Term("Target's dodge", -dodge, ambush is { IgnoreDodge: true } ? "caught off guard" : "");
-        Term("Cover", -Combat.CoverAgainst(data, sim.State.Map, target.Pos, from), "the tile beside the target, on your side");
-        Term("Brace", -profile.CoverBonus);
+        var cover = Combat.CoverAgainst(data, sim.State.Map, target.Pos, from);
+        if (c.TargetKnown >= BestiaryTier.Killed)
+        {
+            Term("Target's dodge", -dodge, ambush is { IgnoreDodge: true } ? "caught off guard" : "");
+            Term("Cover", -cover, "the tile beside the target, on your side");
+            Term("Brace", -profile.CoverBonus);
+        }
+        else Term("Target's defence", -(dodge + cover + profile.CoverBonus), "dodge, cover and bracing: learn it in the Bestiary");
         Term("Range", -range, $"{data.Rules.Combat.RangeFalloff * 100:0}% per tile past the first");
         Term("Ambush", ambush?.HitBonus ?? 0, ambush is { Backs: true } ? "an ally beside the target blunts it" : "they cannot see you");
         Term("Bane", bane?.HitBonus ?? 0);
