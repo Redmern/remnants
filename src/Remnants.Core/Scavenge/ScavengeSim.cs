@@ -212,6 +212,7 @@ public sealed class ScavengeSim
         ElectronicWarfare.RoundStarted(this);
         MissionRules.RoundStarted(this);
         if (State.Finished) return;
+        SquadDecks.RoundStarted(this);
         ParkedVehicles.RoundStarted(this);
 
         // Drones fly on their operator's AP and cameras only watch: neither takes turns.

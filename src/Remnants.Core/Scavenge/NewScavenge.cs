@@ -19,6 +19,9 @@ public sealed record PartyMember(Survivor Survivor, Dictionary<EquipSlot, string
 public sealed record PartySetup(int PlayerId, List<PartyMember> Members, int? Team = null, string? Name = null)
 {
     public FieldVehicle? Vehicle { get; init; }
+
+    /// <summary>The party's squad deck (null: it plays without cards).</summary>
+    public SquadLoadout? Deck { get; init; }
 }
 
 /// <summary>
@@ -89,7 +92,7 @@ public static class NewScavenge
             ZoneId = zone.Id, Map = generated.Map,
             Environment = env is null ? new ScavengeEnvironment() : env.Copy(),
             KnownSchematics = new(conditions?.KnownSchematics ?? [], StringComparer.Ordinal),
-            LootSeed = seed ^ 0x100D_5EED_0000_0001UL, Difficulty = conditions?.Difficulty,
+            LootSeed = seed ^ 0x100D_5EED_0000_0001UL, Difficulty = conditions?.Difficulty, CardRngState = seed ^ SquadDecks.StreamSalt,
         };
         var map = state.Map;
         var open = generated.Reachable.Where(p => !map.IsExit(p)).OrderBy(map.Index).ToList();
@@ -227,6 +230,7 @@ public static class NewScavenge
         }
 
         state.RngState = rng.State;
+        foreach (var party in parties.Where(p => p.Deck is not null)) SquadDecks.Create(state, party.PlayerId, party.Deck!);
         var sim = new ScavengeSim(data, state);
         sim.Start();
         return sim;
@@ -242,7 +246,7 @@ public static class NewScavenge
         {
             ZoneId = zone.Id, Map = built.Map,
             Environment = env is null ? new ScavengeEnvironment() : ScavengeEnvironment.At(env.Hour, env.Phase, env.Weather),
-            LootSeed = seed ^ 0x100D_5EED_0000_0001UL, Difficulty = conditions?.Difficulty,
+            LootSeed = seed ^ 0x100D_5EED_0000_0001UL, Difficulty = conditions?.Difficulty, CardRngState = seed ^ SquadDecks.StreamSalt,
         };
         var map = state.Map;
         var spawn = built.Spawns.Count > 0 ? built.Spawns[0] : map.AllPositions.First(p => data.Terrain(map[p]).Passable);
@@ -274,6 +278,7 @@ public static class NewScavenge
         }
         AddMission(data, state, mission, def, built.Markers);
         state.RngState = new DeterministicRng(seed).State;
+        foreach (var party in parties.Where(p => p.Deck is not null)) SquadDecks.Create(state, party.PlayerId, party.Deck!);
         var sim = new ScavengeSim(data, state);
         sim.Start();
         return sim;
@@ -383,6 +388,8 @@ public static class NewScavenge
                 throw new ArgumentException($"Player {party.PlayerId}'s {v.Name} seats {seats}, not {party.Members.Count}.");
             if (party.Vehicle is { } pv && (pv.MaxHp <= 0 || pv.CargoKg < 0 || pv.Armor < 0))
                 throw new ArgumentException($"Player {party.PlayerId}'s vehicle has impossible stats.");
+            foreach (var id in party.Deck?.Cards ?? [])
+                if (data.Cards.Find(id) is null) throw new ArgumentException($"Player {party.PlayerId}'s deck has unknown card '{id}'.");
             foreach (var m in party.Members)
             {
                 if (m.Survivor.IsChild) throw new ArgumentException($"{m.Survivor.Name} is a child; children never go on a run.");

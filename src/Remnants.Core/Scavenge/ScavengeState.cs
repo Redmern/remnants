@@ -40,6 +40,7 @@ public enum ScavengeEventType
     GearModded,
     LootDropped, ItemDropped, SalvageProgress,
     IntentDeclared, IntentResolved, IntentFizzled, IntentCanceled,
+    DeckShuffled, CardPlayed, CardDiscarded, CardFound,
 }
 
 /// <summary>
@@ -186,6 +187,12 @@ public sealed class ScavengeState
 
     /// <summary>Seeds the per-kill and per-lot loot rolls (<see cref="FieldLoot.Rng"/>). Never sent to clients.</summary>
     public ulong LootSeed { get; set; }
+
+    /// <summary>The card stream: every deck shuffle draws from it, never from the game's RNG. Never sent to clients.</summary>
+    public ulong CardRngState { get; set; }
+
+    /// <summary>Each party's squad deck (<see cref="SquadDecks"/>); none for a party that brought no cards.</summary>
+    public List<SquadDeck> Decks { get; set; } = new();
 
     /// <summary>The Story difficulty the run is played at (loot quantities, <see cref="LootRules.Difficulty"/>); null in Sandbox.</summary>
     public string? Difficulty { get; set; }

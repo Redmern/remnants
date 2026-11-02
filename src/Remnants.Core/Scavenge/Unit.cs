@@ -123,6 +123,12 @@ public sealed class Unit
 
     public int OutplayedUntilRound { get; set; }
 
+    /// <summary>Personal card slots: cards this character always has to hand (not shuffled), paid from the squad's points.</summary>
+    public List<string> SlotCards { get; set; } = new();
+
+    /// <summary>Slot cards played this round: they come back at the next round start (consumable ones are gone instead).</summary>
+    public List<string> SlotSpent { get; set; } = new();
+
     /// <summary>Overwatch reactions left this stance.</summary>
     public int Reactions { get; set; }
 
