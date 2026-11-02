@@ -171,6 +171,16 @@ public sealed class NetFixture
                     FogViolations.Add($"{player.Name} was sent {u.Name}'s AI memory.");
                 foreach (var u in s.View.Units.Where(u => u.PlayerId != me && (u.Plan is { CardId: not null } or { TargetId: not null } || u.OutplayedId is not null)))
                     FogViolations.Add($"{player.Name} was sent {u.Name}'s plan card, plan target or dodge.");
+                foreach (var u in s.View.Units.Where(u => u.PlayerId != me && (u.SlotCards.Count > 0 || u.SlotSpent.Count > 0 || u.LastCardId is not null || u.CounterId is not null)))
+                    FogViolations.Add($"{player.Name} was sent {u.Name}'s slot cards, last card or counter.");
+                foreach (var d in s.View.Decks.Where(d => d.PlayerId != me && (!d.Hidden || d.Hand.Count + d.DrawPile.Count + d.Used.Count + d.Consumed.Count > 0)))
+                    FogViolations.Add($"{player.Name} was sent player {d.PlayerId}'s cards.");
+                foreach (var p in s.View.Parties.Where(p => p.PlayerId != me && p.CardPouch.Count > 0))
+                    FogViolations.Add($"{player.Name} was sent player {p.PlayerId}'s card pouch.");
+                if (s.View.CardRngState != 0) FogViolations.Add($"{player.Name} was sent the card stream.");
+                foreach (var e in s.Events.Where(e => e.Type is ScavengeEventType.CardPlayed or ScavengeEventType.CardDiscarded or ScavengeEventType.CardFound
+                             or ScavengeEventType.DeckShuffled && e.Side != side))
+                    FogViolations.Add($"{player.Name} heard another side's card event '{e.Message}'.");
                 var sideExplored = sim.State.Explored.GetValueOrDefault(side) ?? [];
                 foreach (var c in s.View.Caches.Where(c => !sideExplored.Contains(map.Index(c.Pos))))
                     FogViolations.Add($"{player.Name} was sent the pile at {c.Pos}, which their side never saw.");

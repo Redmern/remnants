@@ -36,7 +36,9 @@ public static class Protocol
     /// extraction results); an older peer cannot read it.
     /// 17 (<see cref="TacticsVersion"/>): scavenge tactics: the plannedAction command (a telegraphed plan), units' plans
     /// in views (path, attack tile and action, never the card or the aimed-at unit of another player's unit), the intent
-    /// events and the hit tier on attack events (scavenge save 15).
+    /// events and the hit tier on attack events (scavenge save 15); tactical cards: the playCard / discardDeadCard commands, a
+    /// squad deck on <see cref="Join"/> and slot cards on party members, each player's own deck, slot cards and card pouch in
+    /// views (other players' only as counts), the card events (to the player's side only).
     /// <see cref="Version"/> is always the highest of these keyed versions (ProtocolTests checks it).
     /// </summary>
     public const int MedicineVersion = 12;
@@ -107,7 +109,12 @@ public abstract record Message;
 /// connection left during a mission (the party is then ignored). <paramref name="Vehicle"/>: the colony vehicle the party
 /// drives in (each player brings their own; it parks at their spawn point).
 /// </summary>
-public sealed record Join(int Version, string Name, List<PartyMember> Party, string? ReconnectToken = null, FieldVehicle? Vehicle = null) : Message;
+/// <summary>
+/// Take a seat: the player's party (members with gear and personal slot cards) and optionally the squad deck it brings
+/// (<paramref name="Deck"/>: card ids, copies repeated; the server deals it with the base deck rules).
+/// </summary>
+public sealed record Join(int Version, string Name, List<PartyMember> Party, string? ReconnectToken = null, FieldVehicle? Vehicle = null,
+    List<string>? Deck = null) : Message;
 
 /// <summary>Lobby: ready (or not) to start. The mission starts once every seated player is ready.</summary>
 public sealed record Ready(bool IsReady) : Message;

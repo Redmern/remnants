@@ -64,6 +64,23 @@ public class ProtocolTests
     }
 
     [Fact]
+    public void Card_commands_and_a_join_with_a_deck_round_trip()
+    {
+        foreach (var (command, kind) in new (IScavengeCommand, string)[]
+                 {
+                     (new PlayCard(1, 2, "dash"), "playCard"), (new PlayCard(1, 2, "counterstrike", 9, Boost: true, FromSlot: true), "playCard"),
+                     (new DiscardDeadCard(1, 2, "sprint"), "discardDeadCard"),
+                 })
+        {
+            var json = ProtocolJson.Serialize(new Command(3, command));
+            Assert.Contains($"\"kind\":\"{kind}\"", json);
+            Assert.Equal(command, Assert.IsType<Command>(ProtocolJson.Deserialize(json)).Intent);
+        }
+        RoundTrips(new Join(Protocol.Version, "Ana", NetFixture.Party("A"), Deck: ["dash", "dash", "take_cover"]));
+        Assert.Equal(17, Protocol.Version);
+    }
+
+    [Fact]
     public void Messages_carry_a_type_discriminator_and_the_protocol_version()
     {
         var json = ProtocolJson.Serialize(new Join(Protocol.Version, "Ana", NetFixture.Party("A")));

@@ -126,6 +126,9 @@ public sealed class Unit
     /// <summary>Personal card slots: cards this character always has to hand (not shuffled), paid from the squad's points.</summary>
     public List<string> SlotCards { get; set; } = new();
 
+    /// <summary>In another player's view: how many slot cards the unit holds (<see cref="SlotCards"/> is not sent).</summary>
+    public int HiddenSlots { get; set; }
+
     /// <summary>Slot cards played this round: they come back at the next round start (consumable ones are gone instead).</summary>
     public List<string> SlotSpent { get; set; } = new();
 

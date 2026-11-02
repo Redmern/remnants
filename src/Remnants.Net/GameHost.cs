@@ -139,6 +139,7 @@ public sealed class GameHost : IHostSink, TradeDesk.IVenue
         public string Token = "";
         public List<PartyMember> Party = new();
         public FieldVehicle? Vehicle;
+        public List<string>? Deck;
         public bool Ready;
         public IConnection? Connection;
         public DateTimeOffset? LeftAt;
@@ -259,6 +260,7 @@ public sealed class GameHost : IHostSink, TradeDesk.IVenue
             Token = Convert.ToHexString(RandomNumberGenerator.GetBytes(16)),
             Party = join.Party,
             Vehicle = join.Vehicle,
+            Deck = join.Deck is { Count: > 0 } deck ? new(deck) : null,
             Connection = connection,
         };
         seat.Fog = new SideFog(seat.PlayerId, Unit.PlayerSide(seat.PlayerId));
@@ -273,6 +275,9 @@ public sealed class GameHost : IHostSink, TradeDesk.IVenue
     /// The server trusts the client's colony for who is in the party (see docs/MULTIPLAYER.md, "Trust gap"); it only
     /// checks that the party fits the instance, that nobody in it is a child, and that every item exists and sits in its slot.
     /// </summary>
+    /// <summary>The largest squad deck a client may bring (the colony's deck is trusted like its party, but bounded).</summary>
+    public const int MaxDeckCards = 60;
+
     private string? ValidateParty(Join join)
     {
         if (string.IsNullOrWhiteSpace(join.Name)) return "Pick a player name.";
@@ -286,6 +291,15 @@ public sealed class GameHost : IHostSink, TradeDesk.IVenue
                 if (!_data.Items.TryGetValue(id, out var item) || item.Slot != slot) return $"{m.Survivor.Name}: '{id}' does not go in the {slot} slot.";
             foreach (var id in m.Pack ?? [])
                 if (!_data.Items.ContainsKey(id)) return $"{m.Survivor.Name}: unknown item '{id}'.";
+            if (m.SlotCards is { Count: > 8 }) return $"{m.Survivor.Name}: too many slot cards.";
+            foreach (var id in m.SlotCards ?? [])
+                if (_data.Cards.Find(id) is null) return $"{m.Survivor.Name}: unknown card '{id}'.";
+        }
+        if (join.Deck is { } deck)
+        {
+            if (deck.Count > MaxDeckCards) return $"A deck holds at most {MaxDeckCards} cards.";
+            foreach (var id in deck)
+                if (_data.Cards.Find(id) is null) return $"Unknown card '{id}' in the deck.";
         }
         if (join.Vehicle is { } v)
         {
@@ -315,7 +329,11 @@ public sealed class GameHost : IHostSink, TradeDesk.IVenue
         try
         {
             Sim = NewScavenge.Create(_data, Options.ZoneId, Options.Seed,
-                _seats.Select(s => new PartySetup(s.PlayerId, s.Party, s.StartTeam(Options.Mode), s.Name) { Vehicle = s.Vehicle }).ToList(),
+                _seats.Select(s => new PartySetup(s.PlayerId, s.Party, s.StartTeam(Options.Mode), s.Name)
+                {
+                    Vehicle = s.Vehicle,
+                    Deck = s.Deck is { } cards ? new SquadLoadout(cards, _data.Cards.Rules.HandSize, _data.Cards.Rules.Draw, _data.Cards.Rules.Budget) : null,
+                }).ToList(),
                 new ZoneConditions(Environment: Options.MissionEnvironment(_data)), Options.Mission);
         }
         catch (ArgumentException e)
