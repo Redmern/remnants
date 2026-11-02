@@ -23,11 +23,14 @@ public static class Activities
     /// <summary>The share each would get after taking on one more activity.</summary>
     public static double ShareWithOneMore(ColonyState state, Survivor s) => 1.0 / (Count(state, s) + 1);
 
-    /// <summary>Fails when the survivor already holds as many activities as the rules allow.</summary>
-    public static CommandResult CanTakeOn(ColonyState state, GameData data, Survivor s)
+    /// <summary>
+    /// Fails when the survivor already holds as many activities as the rules allow, after giving up
+    /// <paramref name="freed"/> of them (a move gives up their jobs).
+    /// </summary>
+    public static CommandResult CanTakeOn(ColonyState state, GameData data, Survivor s, int freed = 0)
     {
         var max = data.Rules.MaxActivities;
-        return Count(state, s) >= max
+        return Count(state, s) - freed >= max
             ? CommandResult.Fail(CommandError.TooManyActivities, $"{s.Name} already has {max} things to do; take one away first.")
             : CommandResult.Success("");
     }

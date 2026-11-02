@@ -23,11 +23,17 @@ internal static class CommandHandlers
         if (Raids.RaidSystem.IsRubble(sim, building))
             return CommandResult.Fail(CommandError.Wrecked, $"{def.Name} was wrecked in a raid; repair it first.");
         if (survivor.Jobs.Contains(building.Id))
-            return CommandResult.Success($"{survivor.Name} already works at {def.Name}.", building.Id);
+        {
+            if (!c.Move || survivor.Jobs.Count == 1)
+                return CommandResult.Success($"{survivor.Name} already works at {def.Name}.", building.Id);
+            survivor.AssignedBuildingId = building.Id;
+            return CommandResult.Success($"{survivor.Name} now only works at {def.Name}.", building.Id);
+        }
         if (sim.FreeSlots(building) <= 0)
             return CommandResult.Fail(CommandError.NoFreeSlot, $"{def.Name} has no free worker slot.");
-        if (Activities.CanTakeOn(sim.State, sim.Data, survivor) is { Ok: false } busy) return busy;
+        if (Activities.CanTakeOn(sim.State, sim.Data, survivor, c.Move ? survivor.Jobs.Count : 0) is { Ok: false } busy) return busy;
 
+        if (c.Move) survivor.Jobs.Clear();
         survivor.Jobs.Add(building.Id);
         Raids.Guards.Release(sim.State, survivor.Id);
         return CommandResult.Success($"{survivor.Name} now works at {def.Name}.", building.Id);

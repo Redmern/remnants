@@ -358,4 +358,54 @@ public class MultiActivityTests
 
         Assert.DoesNotContain(s.Id, sim.Site(site)!.Helpers);
     }
+
+    [Fact]
+    public void A_move_replaces_every_job_and_keeps_class_and_site()
+    {
+        var sim = Colony(TestData.RealWithConstruction);
+        var s = sim.AddSurvivor();
+        var buildings = Gatherers.Select(sim.Build).ToList();
+        var farm = sim.Build("farm");
+        sim.Execute(new AssignJob(s.Id, buildings[0].Id));
+        sim.Execute(new AssignJob(s.Id, buildings[1].Id));
+        var site = Place(sim, "house");
+        Assert.True(sim.Execute(new AssignBuilder(s.Id, site)).Ok);
+
+        // At the cap, a move still fits: it gives up both jobs for one.
+        Assert.True(sim.Execute(new AssignJob(s.Id, farm.Id, Move: true)).Ok);
+
+        Assert.Equal([farm.Id], s.Jobs);
+        Assert.Contains(s.Id, sim.Site(site)!.Builders);
+        Assert.Empty(sim.State.WorkersAt(buildings[0].Id));
+    }
+
+    [Fact]
+    public void A_refused_move_keeps_the_old_jobs()
+    {
+        var sim = Colony();
+        var s = sim.AddSurvivor();
+        var wood = sim.Build("woodcutter");
+        var stone = sim.Build("quarry");
+        foreach (var other in new[] { sim.AddSurvivor(), sim.AddSurvivor() }) sim.Execute(new AssignJob(other.Id, stone.Id));
+        sim.Execute(new AssignJob(s.Id, wood.Id));
+
+        Assert.Equal(CommandError.NoFreeSlot, sim.Execute(new AssignJob(s.Id, stone.Id, Move: true)).Error);
+
+        Assert.Equal([wood.Id], s.Jobs);
+    }
+
+    [Fact]
+    public void Moving_onto_a_job_already_held_drops_the_others()
+    {
+        var sim = Colony();
+        var s = sim.AddSurvivor();
+        var wood = sim.Build("woodcutter");
+        var stone = sim.Build("quarry");
+        sim.Execute(new AssignJob(s.Id, wood.Id));
+        sim.Execute(new AssignJob(s.Id, stone.Id));
+
+        Assert.True(sim.Execute(new AssignJob(s.Id, stone.Id, Move: true)).Ok);
+
+        Assert.Equal([stone.Id], s.Jobs);
+    }
 }

@@ -468,7 +468,6 @@ public partial class SurvivorPanel : PanelContainer
     private static string OutputLine(ColonySim sim, Survivor s, out string breakdown)
     {
         breakdown = "";
-        if (sim.ClassOf(s) is not null) return "";
         if (s.AssignedBuildingId is null && sim.State.Construction.SiteOf(s.Id) is { } site)
         {
             breakdown = $"Construction: {sim.Data.Rules.Construction.WorkPerHour:0.##} work/h × the job's performance, tool, health, mood and perks; "
@@ -725,7 +724,6 @@ public partial class SurvivorPanel : PanelContainer
         var why = s.IsInfant ? "Too young to work."
             : s.Away ? "Away on an expedition: the job waits."
             : s.PatientAtBuildingId is not null ? "A patient in the Med Bay: the job waits."
-            : sim.ClassOf(s) is not null ? "In class: the job waits until it ends."
             : buildings.Count == 0 ? "No workplaces yet: build one (B)." : "";
         _jobs.Disabled = why.Length > 0;
         _set.Text(_jobNote, why);
@@ -738,7 +736,7 @@ public partial class SurvivorPanel : PanelContainer
         var current = _session.Sim.State.FindSurvivor(id)?.AssignedBuildingId;
         var target = _jobBuildingIds[(int)index];
         if (target == current) return;
-        _session.Execute(target is { } b ? new AssignJob(id, b) : new Unassign(id));
+        _session.Execute(target is { } b ? new AssignJob(id, b, Move: true) : new Unassign(id));
         Refresh();
     }
 

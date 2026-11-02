@@ -6,8 +6,11 @@ namespace Remnants.Core.Colony;
 /// <summary>An intent from the UI (or, later, a client). Core validates and applies it.</summary>
 public interface IColonyCommand;
 
-/// <summary>Adds a job at the building; the survivor keeps their other activities (see <c>Activities</c>).</summary>
-public sealed record AssignJob(int SurvivorId, int BuildingId) : IColonyCommand;
+/// <summary>
+/// Adds a job at the building; the survivor keeps their other activities (see <c>Activities</c>). With
+/// <paramref name="Move"/> it replaces every job they hold instead (class and site stay); refused, it changes nothing.
+/// </summary>
+public sealed record AssignJob(int SurvivorId, int BuildingId, bool Move = false) : IColonyCommand;
 
 /// <summary>
 /// Leave the job at <paramref name="BuildingId"/>, or the site there if they build it. Without a building: leave every

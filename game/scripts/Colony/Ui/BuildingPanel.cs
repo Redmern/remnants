@@ -154,11 +154,12 @@ public partial class BuildingPanel : PanelContainer
         _workers = new WorkerSlots(session)
         {
             Title = sim => BuildingId is { } b && sim.State.FindBuilding(b) is { } at ? $"Assign to {ColonyText.BuildingName(sim, at)}" : "Assign",
-            Candidate = (sim, s) => !s.IsInfant && s.AssignedBuildingId != BuildingId,
+            Candidate = (sim, s) => !s.IsInfant && (BuildingId is not { } here || !s.Jobs.Contains(here)),
             Fit = (sim, s) => BuildingId is { } b && sim.State.FindBuilding(b) is { } at && sim.Data.Buildings[at.DefId].Job is { } job
                 ? JobFit(sim.Data.Jobs[job], s) : null,
-            Assign = s => new AssignJob(s.Id, BuildingId ?? -1),
-            Unassign = s => new Unassign(s.Id),
+            // The roster moves people: they leave their other jobs (Core keeps them when it refuses).
+            Assign = s => new AssignJob(s.Id, BuildingId ?? -1, Move: true),
+            Unassign = s => new Unassign(s.Id, BuildingId),
             FreeTip = "Free slot: click to pick who works here.\nOr drag a survivor's card onto this panel.",
         };
         _workers.SurvivorRequested += id => SurvivorRequested?.Invoke(id);
@@ -365,7 +366,7 @@ public partial class BuildingPanel : PanelContainer
         if (BuildingId is not { } id || SurvivorCard.DraggedId(data) is not { } who) return;
         if (_session.Sim.Site(id) is not null && (_tabs.Selected == _extras[0].Tab || _session.Sim.State.FindBuilding(id) is null))
             _session.Execute(new AssignBuilder(who, id));
-        else _session.Execute(new AssignJob(who, id));
+        else _session.Execute(new AssignJob(who, id, Move: true));
     }
 
     private HelpContext WorkerContext()
