@@ -173,4 +173,50 @@ public class AiPlanTests
         Assert.Equal(sim.Profile(u).MaxAp, PlannedActions.Budget(sim, u));
         Assert.True(sim.Execute(new DeclareIntent(1, u.Id, [new(3, 1), new(4, 1)], new Pos(5, 1), "swing")).Ok);
     }
+
+    [Fact]
+    public void The_look_ahead_draws_nothing_from_the_run_rng()
+    {
+        // A Husk that has to close in, and a Linked pair: planning and declaring draw no dice.
+        var u = SurvivorUnit(pos: new(0, 0));
+        var husk = EnemyUnit("husk", new(5, 0));
+        var sim = Arena(8, 3, [u, husk]);
+        var before = sim.Rng.State;
+        ScavengeAi.TakeTurn(sim, husk);
+        Assert.NotNull(husk.Plan);
+        Assert.Equal(before, sim.Rng.State);
+
+        var a = SurvivorUnit(pos: new(2, 2));
+        var b = SurvivorUnit(pos: new(2, 6));
+        var l1 = EnemyUnit("linked", new(8, 3));
+        var l2 = EnemyUnit("linked", new(8, 5));
+        var squad = Arena(11, 9, [a, b, l1, l2]);
+        before = squad.Rng.State;
+        ScavengeAi.TakeTurn(squad, l1);
+        Assert.NotNull(l1.Plan);
+        Assert.Equal(before, squad.Rng.State);
+    }
+
+    [Fact]
+    public void Striking_at_once_draws_only_the_strikes_dice_though_the_behaviour_runs_twice()
+    {
+        (ScavengeSim Sim, Unit U, Unit Near) Make()
+        {
+            var u = SurvivorUnit(pos: new(0, 0));
+            var near = EnemyUnit("husk", new(1, 0));
+            return (Arena(8, 3, [u, near]), u, near);
+        }
+        var (ai, aiU, aiNear) = Make();
+        ScavengeAi.TakeTurn(ai, aiNear);
+        var strikes = ai.State.Events.Where(e => e.UnitId == aiNear.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed).ToList();
+        Assert.NotEmpty(strikes);
+        Assert.Null(aiNear.Plan);
+
+        // The same strikes made directly, with no look-ahead before them, leave the dice where the AI's turn did.
+        var (direct, u, near) = Make();
+        foreach (var strike in strikes)
+            Combat.Resolve(direct, near, direct.Profile(near).Actions.First(a => strike.Message.Contains(a.Name)), u);
+        Assert.Equal(direct.Rng.State, ai.Rng.State);
+        Assert.Equal(u.Hp, aiU.Hp);
+    }
 }

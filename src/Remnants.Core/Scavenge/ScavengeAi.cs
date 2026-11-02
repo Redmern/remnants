@@ -49,6 +49,11 @@ internal static class ScavengeAi
         public bool Lurk;
     }
 
+    /// <summary>
+    /// The plan being chosen, if this unit's turn is the look-ahead pass. Ambient rather than a parameter so every
+    /// behaviour (Fight, Squad, Machine and all they call) runs unchanged in both passes; per thread, so parallel sims
+    /// (the playtest runner) never share one. The look-ahead draws no dice (AiPlanTests).
+    /// </summary>
     [ThreadStatic] private static Plan? _plan;
 
     /// <summary>
