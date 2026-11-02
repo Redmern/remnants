@@ -13,12 +13,16 @@ public sealed class BestiaryEntry
 /// <summary>What the colony knows of an enemy type: nothing, its basics, how it moves and acts, or everything.</summary>
 public enum BestiaryTier { Unknown, Seen, Fought, Killed }
 
-/// <summary>Encounters each tier needs (scavenge.json <c>bestiary</c>): sightings, fights, kills.</summary>
+/// <summary>
+/// Encounters each tier needs (scavenge.json <c>bestiary</c>): sightings, fights, kills; and <see cref="ChanceStep"/>, what
+/// hit chances against a type not yet killed round to.
+/// </summary>
 public sealed record BestiaryRules
 {
     public int Seen { get; init; } = 1;
     public int Fought { get; init; } = 2;
     public int Killed { get; init; } = 1;
+    public double ChanceStep { get; init; } = 0.05;
 }
 
 /// <summary>
@@ -74,10 +78,17 @@ public static class Bestiary
 
     /// <summary>
     /// A hit chance as the side may see it: exact once the target's type is killed (and for players), otherwise to the
-    /// nearest 5% so the hidden dodge and bracing cannot be read off it (user decision).
+    /// nearest <see cref="BestiaryRules.ChanceStep"/> (half steps up), never a sure or hopeless one, so the hidden dodge
+    /// and bracing cannot be read off it (user decision).
     /// </summary>
-    public static double ShownChance(double chance, BestiaryTier tier) =>
-        tier >= BestiaryTier.Killed ? chance : Math.Round(chance * 20, MidpointRounding.AwayFromZero) / 20;
+    public static double ShownChance(BestiaryRules rules, double chance, BestiaryTier tier)
+    {
+        var step = rules.ChanceStep;
+        if (tier >= BestiaryTier.Killed || step <= 0) return chance;
+        // The nudge keeps a half step that binary stores a hair low (0.425) rounding up.
+        var buckets = Math.Round(chance / step + 1e-9, MidpointRounding.AwayFromZero);
+        return Math.Clamp(buckets * step, step, 1 - step);
+    }
 
     /// <summary>Whether a unit is a bestiary subject: an NPC enemy or a machine of the Network with an enemy definition.</summary>
     public static bool Subject(Unit u) => u.EnemyDefId is not null && u.PlayerId is null && u.Kind is UnitKind.Enemy or UnitKind.Device;

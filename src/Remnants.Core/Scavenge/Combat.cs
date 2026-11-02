@@ -225,7 +225,7 @@ public static class Combat
         {
             state.Log(new(state.Round, ScavengeEventType.Missed,
                 // The log is shared and cannot know a colony's bestiary: an NPC enemy's chance shows to the nearest 5%.
-                $"{attacker.Name} missed {target.Name} ({action.Name}, {(Bestiary.Subject(target) ? Bestiary.ShownChance(chance, BestiaryTier.Unknown) : chance):P0}).", attacker.Id, target.Id, target.Pos,
+                $"{attacker.Name} missed {target.Name} ({action.Name}, {(Bestiary.Subject(target) ? Bestiary.ShownChance(data.Rules.Bestiary, chance, BestiaryTier.Unknown) : chance):P0}).", attacker.Id, target.Id, target.Pos,
                 Anonymous: $"An attack from the fog missed {target.Name}."));
             return;
         }

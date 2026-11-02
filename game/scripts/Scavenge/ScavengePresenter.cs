@@ -145,7 +145,7 @@ public sealed class ScavengePresenter
         return State.Units
             .Where(t => t.OnMap && unit.HostileTo(t) && CanSee(t) && Drones.CanStrike(action, t)
                         && Combat.CheckReach(data, map, unit.Pos, action, t.Pos) == ScavengeError.None)
-            .Select(t => new AttackOption(t, action, Bestiary.ShownChance(Combat.ChanceToHit(Sim, unit, action, t), KnowledgeOf(t)), Combat.AmbushAgainst(data, State, unit, t)))
+            .Select(t => new AttackOption(t, action, Bestiary.ShownChance(Sim.Data.Rules.Bestiary, Combat.ChanceToHit(Sim, unit, action, t), KnowledgeOf(t)), Combat.AmbushAgainst(data, State, unit, t)))
             .ToList();
     }
 

@@ -186,16 +186,28 @@ public class BestiaryTests
         Assert.Contains("Bestiary", defence.Note);
         var exact = Combat.ChanceToHit(sim, a, shoot, husk);
         Assert.Equal($"{exact * 100:0}%", full.Total);
-        Assert.Equal($"{Bestiary.ShownChance(exact, BestiaryTier.Fought) * 100:0}%", hidden.Total); // rounded to 5% below killed
+        Assert.Equal($"{Bestiary.ShownChance(Rules, exact, BestiaryTier.Fought) * 100:0}%", hidden.Total); // rounded to 5% below killed
     }
 
     [Fact]
     public void Hit_chances_against_a_type_not_yet_killed_show_to_the_nearest_five_percent()
     {
-        Assert.Equal(0.65, Bestiary.ShownChance(0.634, BestiaryTier.Fought), 9);
-        Assert.Equal(0.60, Bestiary.ShownChance(0.62, BestiaryTier.Unknown), 9);
-        Assert.Equal(0.05, Bestiary.ShownChance(0.05, BestiaryTier.Seen), 9);
-        Assert.Equal(0.634, Bestiary.ShownChance(0.634, BestiaryTier.Killed), 9);
+        Assert.Equal(0.65, Bestiary.ShownChance(Rules, 0.634, BestiaryTier.Fought), 9);
+        Assert.Equal(0.60, Bestiary.ShownChance(Rules, 0.62, BestiaryTier.Unknown), 9);
+        Assert.Equal(0.05, Bestiary.ShownChance(Rules, 0.05, BestiaryTier.Seen), 9);
+        Assert.Equal(0.634, Bestiary.ShownChance(Rules, 0.634, BestiaryTier.Killed), 9);
+    }
+
+    [Theory]
+    [InlineData(0.425, 0.45)] // a half step rounds up, despite 0.425 being a hair under it in binary
+    [InlineData(0.95, 0.95)]
+    [InlineData(0.99, 0.95)]  // never shows a sure thing
+    [InlineData(0.02, 0.05)]  // nor a hopeless one
+    [InlineData(0.05, 0.05)]
+    public void Rounded_chances_round_half_steps_up_and_stay_within_one_step_of_the_ends(double chance, double shown)
+    {
+        Assert.Equal(0.05, Rules.ChanceStep, 9); // from scavenge.json
+        Assert.Equal(shown, Bestiary.ShownChance(Rules, chance, BestiaryTier.Seen), 9);
     }
 
     [Fact]
@@ -207,10 +219,10 @@ public class BestiaryTests
         var sim = Arena(8, 5, [a, husk, rival]);
         var shoot = sim.Profile(a).Actions.First(x => x.Reach > 1);
         var exact = Combat.ChanceToHit(sim, a, shoot, husk);
-        Assert.NotEqual(exact, Bestiary.ShownChance(exact, BestiaryTier.Seen)); // the test needs an off-bucket chance
+        Assert.NotEqual(exact, Bestiary.ShownChance(Rules, exact, BestiaryTier.Seen)); // the test needs an off-bucket chance
 
         var seen = TacticsView.HitPreview(sim, a, shoot, husk, tier: BestiaryTier.Seen);
-        Assert.Equal(Bestiary.ShownChance(exact, BestiaryTier.Seen), seen.Chance, 9);
+        Assert.Equal(Bestiary.ShownChance(Rules, exact, BestiaryTier.Seen), seen.Chance, 9);
         Assert.Equal($"{seen.Chance * 100:0}%", seen.Breakdown!.Total);
         Assert.Equal(exact, TacticsView.HitPreview(sim, a, shoot, husk).Chance, 9);
         Assert.All(TacticsView.MovePreview(sim, a, husk, BestiaryTier.Fought).Values, c => Assert.Equal(0, Math.Round(c * 100) % 5));
@@ -233,7 +245,7 @@ public class BestiaryTests
         {
             a.Ap = sim.Profile(a).MaxAp;
             husk.Hp = husk.MaxHp;
-            shown = Bestiary.ShownChance(Combat.ChanceToHit(sim, a, shoot, husk), BestiaryTier.Unknown);
+            shown = Bestiary.ShownChance(Rules, Combat.ChanceToHit(sim, a, shoot, husk), BestiaryTier.Unknown);
             sim.Execute(new Attack(1, a.Id, husk.Id, shoot.Id));
         }
         var miss = sim.State.Events.First(e => e.Type == ScavengeEventType.Missed);

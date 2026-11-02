@@ -194,12 +194,12 @@ public static class Breakdowns
             Term("Cover", -cover, "the tile beside the target, on your side");
             Term("Brace", -profile.CoverBonus);
         }
-        else Term("Target's defence", -Bestiary.ShownChance(dodge + cover + profile.CoverBonus, c.TargetKnown),
+        else Term("Target's defence", -Bestiary.ShownChance(data.Rules.Bestiary, dodge + cover + profile.CoverBonus, c.TargetKnown),
             "dodge, cover and bracing, roughly: learn it in the Bestiary");
         Term("Range", -range, $"{data.Rules.Combat.RangeFalloff * 100:0}% per tile past the first");
         Term("Ambush", ambush?.HitBonus ?? 0, ambush is { Backs: true } ? "an ally beside the target blunts it" : "they cannot see you");
         Term("Bane", bane?.HitBonus ?? 0);
-        var chance = Bestiary.ShownChance(Combat.ChanceToHit(sim, attacker, action, target, c.From), c.TargetKnown);
+        var chance = Bestiary.ShownChance(data.Rules.Bestiary, Combat.ChanceToHit(sim, attacker, action, target, c.From), c.TargetKnown);
         return new Breakdown($"{attacker.Name} → {target.Name}", rows, Pct(chance),
             $"clamped to {Pct(data.Rules.Combat.MinHitChance)}–{Pct(data.Rules.Combat.MaxHitChance)}");
     }
