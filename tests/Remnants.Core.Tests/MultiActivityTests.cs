@@ -150,4 +150,79 @@ public class MultiActivityTests
         var gained = Enum.GetValues<AttributeKind>().Sum(a => s.Get(a) - 50);
         Assert.Equal(rules.AttributePerTick * 0.5, gained, 4);
     }
+
+    [Fact]
+    public void Work_and_study_together_each_get_half()
+    {
+        var sim = Colony();
+        var wood = sim.Build("woodcutter");
+        var alone = sim.AddSurvivor();
+        var busy = sim.AddSurvivor();
+        Assert.True(sim.Execute(new AssignJob(busy.Id, wood.Id)).Ok);
+        Assert.True(sim.Execute(new StartStudy(alone.Id, TownHall(sim).Id, Skill.Melee)).Ok);
+        Assert.True(sim.Execute(new StartStudy(busy.Id, TownHall(sim).Id, Skill.Melee)).Ok);
+        Assert.Equal(wood.Id, busy.AssignedBuildingId);
+        var eta = sim.StudyEta(sim.ClassOf(alone)!)!.Value;
+
+        sim.Advance(1);
+
+        Assert.True(alone.Get(Skill.Melee) > 0);
+        // Half (to a hair: the job ran first this tick and trained the attributes study rides on).
+        Assert.Equal(alone.Get(Skill.Melee) / 2, busy.Get(Skill.Melee), 5);
+        Assert.Equal(TestData.Real.Rules.Training.SkillPerTick / 2, busy.Get(Skill.Woodcutting), 9);
+        var xp = TestData.Real.Progression.Xp;
+        Assert.Equal(xp.PerStudyTick, alone.Xp, 9);
+        Assert.Equal(xp.PerStudyTick / 2 + xp.PerWorkTick / 2, busy.Xp, 9);
+        Assert.True(sim.StudyEta(sim.ClassOf(busy)!) > eta);
+    }
+
+    [Fact]
+    public void A_mentor_who_also_works_earns_half_the_teaching_xp()
+    {
+        var sim = Colony();
+        var wood = sim.Build("woodcutter");
+        var student = sim.AddSurvivor();
+        var mentor = sim.AddSurvivor();
+        mentor.Set(Skill.Melee, 60);
+        sim.Execute(new AssignJob(mentor.Id, wood.Id));
+        Assert.True(sim.Execute(new StartStudy(student.Id, TownHall(sim).Id, Skill.Melee, MentorId: mentor.Id)).Ok);
+
+        sim.Advance(1);
+
+        var xp = TestData.Real.Progression.Xp;
+        Assert.Equal(xp.PerTeachTick / 2 + xp.PerWorkTick / 2, mentor.Xp, 9);
+    }
+
+    [Fact]
+    public void Work_and_build_together_each_get_half_and_three_way_a_third()
+    {
+        var sim = Colony(TestData.RealWithConstruction);
+        var wood = sim.Build("woodcutter");
+        var solo = sim.AddSurvivor();
+        var two = sim.AddSurvivor();
+        var three = sim.AddSurvivor();
+        var sites = Enumerable.Range(0, 3).Select(_ => Place(sim, "house")).ToList();
+        sim.Execute(new AssignJob(two.Id, wood.Id));
+        sim.Execute(new AssignJob(three.Id, wood.Id));
+        Assert.True(sim.Execute(new StartStudy(three.Id, TownHall(sim).Id, Skill.Melee)).Ok);
+        Assert.True(sim.Execute(new AssignBuilder(solo.Id, sites[0])).Ok);
+        Assert.True(sim.Execute(new AssignBuilder(two.Id, sites[1])).Ok);
+        Assert.True(sim.Execute(new AssignBuilder(three.Id, sites[2])).Ok);
+        Assert.Equal(3, Activities.Count(sim.State, three));
+
+        sim.Advance(1);
+
+        var full = sim.Site(sites[0])!.DeliveredTotal;
+        Assert.True(full > 0);
+        Assert.Equal(full / 2, sim.Site(sites[1])!.DeliveredTotal, 9);
+        Assert.Equal(full / 3, sim.Site(sites[2])!.DeliveredTotal, 9);
+    }
+
+    private static int Place(ColonySim sim, string defId)
+    {
+        foreach (var (res, amount) in sim.Data.Buildings[defId].Level(1).Cost) sim.State.Stockpile.Add(res, amount);
+        var r = sim.Execute(new Construct(defId));
+        Assert.True(r.Ok, r.Message);
+        return r.EntityId!.Value;
+    }
 }

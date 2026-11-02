@@ -127,7 +127,7 @@ public static class ConstructionSystem
                     masked = true;
                     masks--;
                 }
-                f *= WeatherFactor(data, spell, s, masked) * share;
+                f *= WeatherFactor(data, spell, s, masked) * share * Activities.Share(state, s);
                 if (f <= 0) continue;
                 Step(sim, site, s, f);
                 if (job is not null) Training.Work(state, data, job, s);
@@ -395,7 +395,7 @@ public static class ConstructionSystem
         double work = 0, haul = 0;
         foreach (var (s, share) in crew)
         {
-            var day = ShiftHoursPerDay(sim, site, s) / sim.Data.Rules.TicksPerDay;
+            var day = ShiftHoursPerDay(sim, site, s) / sim.Data.Rules.TicksPerDay * Activities.Share(state, s);
             work += WorkRate(sim, s) * share * day;
             haul += HaulRate(sim, s) * share * day;
         }
