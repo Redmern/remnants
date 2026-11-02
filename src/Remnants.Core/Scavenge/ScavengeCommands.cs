@@ -20,6 +20,15 @@ public sealed record Attack(int PlayerId, int UnitId, int TargetId, string Actio
 /// </summary>
 public sealed record UseItem(int PlayerId, int UnitId, string ItemId, int? TargetId = null, Pos? At = null) : IScavengeCommand;
 
+/// <summary>
+/// Telegraph a plan (wire name <c>plannedAction</c>): a move along <see cref="Path"/> (each waypoint one move from the
+/// last) and optionally an attack with <see cref="ActionId"/> on the tile <see cref="AttackTile"/>, in reach from the
+/// end of the path. Free now and ends the turn; it resolves, and costs its AP, at the start of the unit's next turn.
+/// See <see cref="PlannedActions"/>.
+/// </summary>
+public sealed record DeclareIntent(int PlayerId, int UnitId, IReadOnlyList<Pos> Path, Pos? AttackTile = null, string? ActionId = null)
+    : IScavengeCommand;
+
 /// <summary>Go on overwatch or brace. Either ends the unit's turn and holds until its next one.</summary>
 public sealed record SetStance(int PlayerId, int UnitId, Stance Stance) : IScavengeCommand;
 
@@ -190,6 +199,8 @@ public enum ScavengeError
     NodeDepleted,
     /// <summary>Gear mods: the mod does not fit, the slot is full or empty, or there is no gear there.</summary>
     CannotMod,
+    /// <summary>The unit already has a plan waiting: plans cannot be revised or cancelled.</summary>
+    PlanLocked,
 }
 
 /// <summary>Outcome of a scavenge command. <see cref="EntityId"/> carries e.g. the attacked unit.</summary>

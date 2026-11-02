@@ -33,12 +33,16 @@ namespace Remnants.Core.Scavenge;
 /// Version 14 adds Story Acts 2–4 field rules: the run's campaign flags, the survivors the Linked took and who they are
 /// holding, the party's survivors at the start and a co-op guest's schematic copies (<see cref="MissionRun"/>), and
 /// devices' failed hacks (<see cref="ZoneDevice.Failures"/>); an older run loads with none of them.
+/// <see cref="IntentsVersion"/> adds telegraphed plans (<see cref="Unit.Plan"/>), dodged attacks
+/// (<see cref="Unit.OutplayedId"/>) and hit tiers on events; an older run loads with no plans pending.
 /// </summary>
 public static class ScavengeSave
 {
     /// <summary>Field loot and salvage (keyed: renumber to the next free version at merge).</summary>
     public const int LootVersion = 13;
-    public const int Version = 14;
+    /// <summary>Telegraphed plans (keyed: renumber to the next free version at merge).</summary>
+    public const int IntentsVersion = 15;
+    public const int Version = IntentsVersion;
     private const int OldestVersion = 1;
 
     private sealed record Envelope(int Version, ScavengeState Scavenge);
@@ -90,6 +94,8 @@ public static class ScavengeSave
             foreach (var id in u.AllItems) RequireItem(id);
             foreach (var (slot, id) in u.Equipment)
                 if (data.Items[id].Slot != slot) throw new JsonException($"Unit {u.Id} has '{id}' in the {slot} slot.");
+            if (u.Plan is { } plan && plan.Path.Append(plan.AttackTile ?? u.Pos).Any(p => !state.Map.InBounds(p)))
+                throw new JsonException($"Unit {u.Id}'s plan leaves the map.");
         }
         foreach (var id in state.Caches.SelectMany(c => c.Items)) RequireItem(id);
         foreach (var n in state.SalvageNodes)

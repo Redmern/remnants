@@ -39,6 +39,7 @@ public enum ScavengeEventType
     EmpBurst, DecoyDeployed, DecoyGone, NoiseDecoy, DroneHealed, DroneLoaded, DroneFerried, DroneFired, Traced,
     GearModded,
     LootDropped, ItemDropped, SalvageProgress,
+    IntentDeclared, IntentResolved, IntentFizzled, IntentCanceled,
 }
 
 /// <summary>
@@ -49,10 +50,11 @@ public enum ScavengeEventType
 /// </summary>
 /// <see cref="SeenBy"/>: the party sides that saw the actor when the event was logged (filled in by the sim), so a side
 /// hears a hidden unit's moves only while it actually saw them. <see cref="Sides"/> sends the event to exactly these
-/// sides whatever they see (alliance news goes to the two parties involved and nobody else).
+/// sides whatever they see (alliance news goes to the two parties involved and nobody else). <see cref="Tier"/>: how a
+/// landed attack resolved (graze, hit, solid).
 public sealed record ScavengeEvent(
     int Round, ScavengeEventType Type, string Message, int? UnitId = null, int? TargetId = null, Pos? Pos = null,
-    string? Anonymous = null, string? Side = null, List<string>? SeenBy = null, List<string>? Sides = null);
+    string? Anonymous = null, string? Side = null, List<string>? SeenBy = null, List<string>? Sides = null, HitTier? Tier = null);
 
 /// <summary>A side knows something is near a tile without knowing what: a "?" on its map.</summary>
 public enum ContactKind

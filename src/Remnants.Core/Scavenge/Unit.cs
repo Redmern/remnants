@@ -108,6 +108,18 @@ public sealed class Unit
     /// <summary>Held until this unit's next turn starts.</summary>
     public Stance Stance { get; set; }
 
+    /// <summary>
+    /// A telegraphed plan waiting for the start of this unit's next turn (see <see cref="PlannedActions"/>); null when
+    /// none. Locked once declared; being downed, killed, pinned or stunned cancels it.
+    /// </summary>
+    public PlannedAction? Plan { get; set; }
+
+    /// <summary>
+    /// The unit whose telegraphed attack this one dodged: its next attack on that unit gets the ambush hit bonus
+    /// (<see cref="Combat.OutplayBonus"/>), then this clears.
+    /// </summary>
+    public int? OutplayedId { get; set; }
+
     /// <summary>Overwatch reactions left this stance.</summary>
     public int Reactions { get; set; }
 
@@ -269,4 +281,19 @@ public sealed class LootCache
     public LootPileKind Kind { get; set; }
     public string? Source { get; set; }
     public int? PlayerId { get; set; }
+}
+
+/// <summary>
+/// A telegraphed plan (the wire calls it <c>plannedAction</c>): the path to walk and the tile to attack with an action,
+/// declared in <see cref="Round"/>. <see cref="TargetId"/> (who stood on the tile, seen, when it was declared) and
+/// <see cref="CardId"/> (a card played with it) are the server's own: a view never carries them.
+/// </summary>
+public sealed class PlannedAction
+{
+    public List<Pos> Path { get; set; } = new();
+    public Pos? AttackTile { get; set; }
+    public string? ActionId { get; set; }
+    public int? TargetId { get; set; }
+    public string? CardId { get; set; }
+    public int Round { get; set; }
 }

@@ -99,12 +99,16 @@ public static class Combat
     /// <summary>The hit chance of this attack as it would resolve now, ambush included (for previews and the AI).</summary>
     public static double ChanceToHit(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, Pos? from = null) =>
         HitChance(sim.Data, sim.State.Map, from ?? attacker.Pos,
-            action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) - WeatherPenalty(sim, action) + ElectronicWarfare.RadioAccuracy(sim, attacker) },
+            action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + OutplayBonus(sim, attacker, target) - WeatherPenalty(sim, action) + ElectronicWarfare.RadioAccuracy(sim, attacker) },
             target.Pos, sim.Profile(target), AmbushAgainst(sim.Data, sim.State, attacker, target, from), Bane(sim.Data, action, target));
 
     /// <summary>What the weather takes off a ranged attack's hit chance (dust in the air; melee is unaffected).</summary>
     public static double WeatherPenalty(ScavengeSim sim, ActionProfile action) =>
         action.Pattern == AttackPattern.Melee ? 0 : FieldEnvironment.Effects(sim.Data, sim.State).RangedAccuracyPenalty;
+
+    /// <summary>The ambush hit bonus for an attack on the unit whose telegraphed attack the attacker dodged (see <see cref="Unit.OutplayedId"/>).</summary>
+    public static double OutplayBonus(ScavengeSim sim, Unit attacker, Unit target) =>
+        attacker.OutplayedId == target.Id ? sim.Data.Rules.Fog.Ambush.HitBonus : 0;
 
     /// <summary>What a drone's mark on the target adds to the attacker's side's hit chance.</summary>
     public static double MarkBonus(ScavengeSim sim, Unit attacker, Unit target) =>
@@ -157,6 +161,7 @@ public static class Combat
         var penalty = reaction ? sim.Data.Rules.Fog.Overwatch.AccuracyPenalty : 0;
         for (var i = 0; i < targets.Count; i++)
             Strike(sim, attacker, action with { Accuracy = action.Accuracy - penalty }, targets[i], ambushes[i]);
+        if (attacker.OutplayedId is { } dodged && targets.Any(t => t.Id == dodged)) attacker.OutplayedId = null;
         AfterAttack(sim, attacker, action, targets);
         GearEffects.Feedback(sim, attacker, action);
     }
@@ -202,7 +207,7 @@ public static class Combat
         var data = sim.Data;
         var state = sim.State;
         var bane = Bane(data, action, target);
-        var chance = HitChance(data, state.Map, attacker.Pos, action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + ElectronicWarfare.RadioAccuracy(sim, attacker) },
+        var chance = HitChance(data, state.Map, attacker.Pos, action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + OutplayBonus(sim, attacker, target) + ElectronicWarfare.RadioAccuracy(sim, attacker) },
             target.Pos, sim.Profile(target), ambush, bane);
         if (ambush is { } a)
             state.Log(new(state.Round, ScavengeEventType.Ambushed,
@@ -240,7 +245,8 @@ public static class Combat
         };
         state.Log(new(state.Round, ScavengeEventType.Attacked,
             $"{attacker.Name} {verb} {where} for {damage:0} ({action.Name}).", attacker.Id, target.Id, target.Pos,
-            Anonymous: target.Structure ? $"{target.Name} was {how} for {damage:0} from the fog." : $"{target.Name} was {how} in the {part} for {damage:0} from the fog."));
+            Anonymous: target.Structure ? $"{target.Name} was {how} for {damage:0} from the fog." : $"{target.Name} was {how} in the {part} for {damage:0} from the fog.",
+            Tier: tier));
         var severity = action.InjuryMultiplier * (1 - Math.Clamp(defense.InjuryResist, 0, 1)) * (tier == HitTier.Solid ? tiers.SolidSeverity : 1);
         ApplyDamage(sim, target, part, damage, severity, attacker, injure: tier != HitTier.Graze);
         if (bane is { Stun: true } && target.IsActive && !target.Suppressed)
@@ -347,11 +353,13 @@ public static class Combat
             target.Hp = 1;
             target.Status = UnitStatus.Evacuated;
             target.CarriedById = null;
+            target.Plan = null;
             state.Log(new(state.Round, ScavengeEventType.Downed, $"{target.Name} is down and dragged to safety.", target.Id, Pos: target.Pos));
             sim.UpdateParties();
             return;
         }
         target.Status = UnitStatus.Downed;
+        PlannedActions.Cancel(sim, target, "down");
         target.BleedOut = c.BleedOutRounds;
         target.Stabilized = false;
         target.Ap = 0;

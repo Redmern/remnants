@@ -71,6 +71,7 @@ public sealed class ScavengeSim
             Salvage c => FieldSalvage.Salvage(this, unit!, c),
             Recruit c => ScavengeCommandHandlers.Recruit(this, unit!, c),
             SetStance c => ScavengeCommandHandlers.SetStance(this, unit!, c),
+            DeclareIntent c => PlannedActions.Declare(this, unit!, c),
             Lookout c => ScavengeCommandHandlers.Lookout(this, unit!, c),
             FieldMod c => ScavengeCommandHandlers.FieldMod(this, unit!, c),
             EndTurn => ScavengeResult.Success($"{unit!.Name} ends their turn."),
@@ -100,8 +101,8 @@ public sealed class ScavengeSim
         {
             MissionRules.Update(this);
             UpdateParties();
-            // The acting unit's turn ends on EndTurn, or when it left the map or can no longer act.
-            if (command is EndTurn or SetStance || unit is not { IsActive: true })
+            // The acting unit's turn ends on EndTurn, a stance or a plan, or when it left the map or can no longer act.
+            if (command is EndTurn or SetStance or DeclareIntent || unit is not { IsActive: true })
             {
                 State.TurnIndex++;
                 AdvanceTurns();
@@ -132,11 +133,24 @@ public sealed class ScavengeSim
                 continue;
             }
             BeginTurn(unit);
+            if (unit.Suppressed) PlannedActions.Cancel(this, unit, "pinned down");
+            if (unit.EmpUntilRound >= State.Round) PlannedActions.Cancel(this, unit, "stunned");
             if (unit.Suppressed)
             {
                 unit.Suppressed = false;
                 unit.Ap = Math.Max(1, unit.Ap - Data.Rules.Network.SuppressApPenalty);
                 State.Log(new(State.Round, ScavengeEventType.Suppressed, $"{unit.Name} is pinned down ({unit.Ap} AP).", unit.Id, Pos: unit.Pos));
+            }
+            if (unit.Plan is not null)
+            {
+                PlannedActions.Resolve(this, unit);
+                MissionRules.Update(this);
+                UpdateParties();
+                if (!unit.IsActive)
+                {
+                    State.TurnIndex++;
+                    continue;
+                }
             }
             if (unit.PlayerControlled) return;
 
@@ -282,6 +296,7 @@ public sealed class ScavengeSim
         unit.Status = UnitStatus.Dead;
         unit.Hp = Math.Min(unit.Hp, 0);
         unit.Ap = 0;
+        unit.Plan = null;
         State.Log(new(State.Round, type, message, unit.Id, Pos: unit.Pos));
         if (unit.Kind == UnitKind.Drone)
         {
