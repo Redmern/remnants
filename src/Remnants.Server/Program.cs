@@ -80,7 +80,9 @@ public static class Program
             TurnSeconds = a.Double("--turn-seconds", 60),
             ReconnectSeconds = a.Double("--reconnect-seconds", 120),
             Mode = a.Flag("--coop") ? MissionMode.Coop : MissionMode.Versus,
-            LateZones = a.Value("--late-zones") is { } late ? Enum.Parse<LateZoneTuning>(late, ignoreCase: true) : LateZoneTuning.Expeditions,
+            LateZones = a.Value("--late-zones") is not { } late ? LateZoneTuning.Expeditions
+                : ZoneTuning.TryParse(late, out var mode) ? mode
+                : throw new ArgumentException($"--late-zones must be {ZoneTuning.Names} (got '{late}')."),
             Hour = a.Value("--hour") is { } hour ? int.Parse(hour, CultureInfo.InvariantCulture) : null,
             Weather = a.Value("--weather") is { } w ? w.Split(':')[0] : null,
             WeatherIntensity = a.Value("--weather") is { } wi && wi.Split(':') is [_, var i] ? double.Parse(i, CultureInfo.InvariantCulture) : 0.7,

@@ -19,7 +19,15 @@ PartyBot.Salvage = !options.ContainsKey("no-salvage");
 // --no-cards: zone-trial parties go without their squad deck (before/after comparisons of the card layer).
 ZoneTrial.Cards = !options.ContainsKey("no-cards");
 // --late-zones=current|expeditions|everywhere: which runs take the late zones' retune (zones.json "retune"); default expeditions.
-if (options.GetValueOrDefault("late-zones") is { Length: > 0 } lateZones) ZoneTrial.LateZones = Enum.Parse<LateZoneTuning>(lateZones, ignoreCase: true);
+if (options.GetValueOrDefault("late-zones") is { } lateZones)
+{
+    if (!ZoneTuning.TryParse(lateZones, out var lateMode))
+    {
+        Console.Error.WriteLine($"error: --late-zones must be {ZoneTuning.Names} (got '{lateZones}').");
+        Environment.Exit(2);
+    }
+    ZoneTrial.LateZones = lateMode;
+}
 // --no-dodge: the party bot does not step off tiles seen enemy plans aim at (comparisons).
 PartyBot.Dodge = !options.ContainsKey("no-dodge");
 var schematics = options.GetValueOrDefault("schematics", "") is { Length: > 0 } list

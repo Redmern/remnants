@@ -18,7 +18,8 @@ namespace Remnants.Game.Multiplayer;
 /// <para>
 /// Debug flags (after <c>--</c>): <c>--mp-host[=PORT]</c> or <c>--mp-join=ADDR</c>, <c>--mp-name=NAME</c>, <c>--mp-ready</c>,
 /// <c>--mp-zone=ID</c>, <c>--mp-seed=N</c>, <c>--mp-players=N</c>, <c>--mp-turn-seconds=S</c>, <c>--mp-coop</c> (host a
-/// co-op mission), <c>--mp-team=N</c> (versus lobby team); the scavenge screen's
+/// co-op mission), <c>--mp-team=N</c> (versus lobby team), <c>--mp-late-zones=MODE</c> (current, expeditions or
+/// everywhere: the host's late-zone tuning); the scavenge screen's
 /// <c>--autoplay</c> / <c>--screenshot</c> work as usual.
 /// </para>
 /// </summary>
@@ -125,7 +126,7 @@ public partial class MultiplayerMenu : Control
             TooltipText = "Rail Depot, Network Relay and Core Spire. Re-tuned: more Linked, turrets, pylons and faster reinforcements. Expeditions only leaves co-op story missions as they are.",
         };
         foreach (var label in LateZoneLabels) _lateZones.AddItem(label);
-        _lateZones.Select((int)(System.Enum.TryParse<LateZoneTuning>(DebugCapture.Value("--mp-late-zones"), true, out var lateFlag) ? lateFlag : GameSettings.LateZones));
+        _lateZones.Select((int)(ZoneTuning.TryParse(DebugCapture.Value("--mp-late-zones"), out var lateFlag) ? lateFlag : GameSettings.LateZones));
         grid.AddChild(Ui.Label("Late zones (host)"));
         grid.AddChild(_lateZones);
 
@@ -340,13 +341,14 @@ public partial class MultiplayerMenu : Control
                 ? Palette.Paint("CO-OP", Palette.Ally) + " · everyone on one team, more enemies per player"
                 : "VERSUS · every party for itself unless it teams up";
             var late = GameDataPaths.LoadScavenge().Zones.TryGetValue(lobby.ZoneId, out var lz) && lz.Retune is not null
-                ? $" · late zones: {LateZoneLabels[(int)lobby.LateZones].ToLowerInvariant()}" : "";
+                       && (int)lobby.LateZones is var li && li >= 0 && li < LateZoneLabels.Length
+                ? $" · late zones: {LateZoneLabels[li].ToLowerInvariant()}" : "";
             _lobby.Text = $"{zone} · {mode}{late}\n{lobby.Players.Count}/{lobby.MaxPlayers} players (starts with {lobby.MinPlayers}+ when all are ready)\n" + string.Join("\n", lines);
             _teamRow.Visible = lobby.Mode == MissionMode.Versus && client.Phase == ClientPhase.Lobby;
             // Joined: the pickers show the server's mode and late-zone tuning, and are fixed.
             _mode.Select(lobby.Mode == MissionMode.Coop ? 1 : 0);
             _mode.Disabled = true;
-            _lateZones.Select((int)lobby.LateZones);
+            if (System.Enum.IsDefined(lobby.LateZones)) _lateZones.Select((int)lobby.LateZones);
             _lateZones.Disabled = true;
             if (_status.Text.StartsWith("Connecting")) _status.Text = $"In the lobby as player {client.PlayerId}.";
             _ready.Disabled = client.Phase != ClientPhase.Lobby;
