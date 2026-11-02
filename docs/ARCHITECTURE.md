@@ -907,6 +907,12 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
 - **Saves**: scavenge save 15 (`ScavengeSave.IntentsVersion`; older runs are refused) and colony save 27
   (`SaveGame.CardsVersion`; older colonies get the starter set, and a run in progress inside one starts over from its
   expedition's seed). Protocol 17 (see MULTIPLAYER.md, "Telegraphed plans and cards over the wire").
+- **Late-zone retune** (`ZoneDef.Retune`, zones.json `retune`; `LateZoneTuning`, `ZoneTuning.Applies`): a zone's
+  alternative enemy count, devices, pylons and reinforcements (waves, count, `afterRounds`). `NewScavenge.Create` applies
+  it when `ZoneConditions.LateZones` picks the run (Current; Expeditions: no story mission; Everywhere) and records
+  `ScavengeState.Retuned`, which `Network` reads for reinforcements. The colony takes the mode from
+  `ColonySim.LateZones` (set from the game's setting when a run opens; not saved). The multiplayer host uses Current.
+  Tests: `LateZoneTuningTests`.
 - Tests: `ReachTests`, `HitTierTests`, `InjuryEffectTests`, `PlannedActionTests`, `AiPlanTests`, `CardDataTests`,
   `SquadDeckTests`, `PlayCardTests`, `CardSlotTests`, `ColonyCardTests`, `CardSourceTests`, `BotTacticsTests`; Net
   `CardNetTests`, `FogNetTests`.

@@ -1798,3 +1798,38 @@ an enemy in reach still had to wait a turn while players struck at once. That mi
 
 Not fixed here: the playtest bot still now and then paces between two tiles for the rest of a run (one stuck run in
 Suburb Ruins, seed 44; the baseline had stuck runs too).
+
+## Late-zone re-tune (scavenge tactical cards, unit 6)
+
+With telegraphs the late zones got far easier (previous section). Each of Rail Depot, Network Relay and Core Spire now
+carries a `retune` block in zones.json: more enemies (Rail Depot 6–8 → 11–13, Network Relay 7–10 → 13–16, Core Spire
+10–13 → 18–21), more turrets (2–3, 3–4, 6–7) and pylons (2, 3, 4), more reinforcement waves (3, 5, 7) of more units
+(3, 3–4, 4–5), called after 1 round of alarm instead of 3. The global `network.reinforceAfterRounds` stays 3. Linked
+skill and card lists were tried and barely moved the late zones (+1–4 points) while also touching Suburb Ruins and
+the Flooded Mall, so they are not used. The sweep (21 trials) is logged in the orchestration's progress/unit-6.md.
+
+Which runs take it is a setting, to compare (Settings > Game > Late zones; Core `LateZoneTuning`): **as before**
+(Current), **re-tuned expeditions** (the default: free expeditions take it, story missions keep the zone as it is) or
+**re-tuned everywhere** (story missions in these zones too). Playtest: `--late-zones=current|expeditions|everywhere`
+(default expeditions); debug runs: `--scavenge --late-zones=MODE`.
+
+Zone trials: `dotnet run -c Release --project tools/Remnants.Playtest -- --zone=all --runs=300` (run seeds 1..300, as
+above), `--late-zones=current` vs the default. Before = `1ce7eea` (the same numbers as `--late-zones=current` now),
+after = `93948d0` (the retune is `a029f31`). Pre-telegraph = `4d25616` (the targets: within about 10 points).
+
+| Zone | Pre-telegraph deaths / wipes | Runs with a death | Wipes | Runs hurt | Damage taken/run | Death rate with Linked/without |
+|---|---|---|---|---|---|---|
+| Outskirts | 4% / 1% | 2% → 2% | 0% → 0% | 94% → 94% | 49 → 49 | – → – |
+| Scrapyard Flats | 8% / 1% | 6% → 6% | 1% → 1% | 94% → 94% | 62 → 62 | – → – |
+| Suburb Ruins | 33% / 10% | 18% → 18% | 3% → 3% | 93% → 93% | 104 → 104 | 34/14% → 34/14% |
+| Flooded Mall | 51% / 19% | 31% → 31% | 4% → 4% | 83% → 83% | 104 → 104 | 33/23% → 33/23% |
+| Rail Depot | 91% / 62% | 50% → 95% | 9% → 55% | 75% → 32% | 122 → 189 | 50/0% → 95/0% |
+| Network Relay | 99% / 84% | 65% → 96% | 13% → 75% | 63% → 16% | 130 → 203 | 65/0% → 96/0% |
+| Core Spire | 100% / 95% | 80% → 100% | 22% → 89% | 50% → 8% | 144 → 215 | 80/0% → 100/0% |
+
+All three late zones are back within 10 points of their pre-telegraph deaths and wipes. Fewer runs come home hurt
+there because more of them do not come home. The four earlier zones are unchanged: targets 3 and 4 hold as before.
+
+Story missions (`--mission=ID --runs=100 --party=4 --kit=armed`), wipes with re-tuned expeditions → re-tuned
+everywhere: m11b 13% → 48%, m13 58% → 94%, m15 49% → 86%, side_children 58% → 94%, m17_choir 65% → 65%. The re-tuned expeditions setting leaves every story mission exactly as it was; m12, m16 and
+the m17 missions use handmade maps and do not change under either setting.
