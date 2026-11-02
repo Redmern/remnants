@@ -97,7 +97,7 @@ hooks), and the `limbLocked` event. **7: schematics** — schematic items (`sch_
 
 | Direction | Message | Meaning |
 |-----------|---------|---------|
-| C→S | `Join(version, name, party, reconnectToken?)` | take a seat with a party (lobby), or retake a dropped seat |
+| C→S | `Join(version, name, party, reconnectToken?, vehicle?, deck?)` | take a seat with a party (members may carry slot cards) and optionally a squad deck (lobby), or retake a dropped seat |
 | C→S | `Ready(isReady)` | lobby; the mission starts when ≥ `minPlayers` are seated and all are ready |
 | C→S | `SetTeam(team?)` | lobby, versus only: start on team N with whoever picks it (allied, spawned together), null = alone; unreadies |
 | C→S | `Command(requestId, intent)` | a scavenge command |
@@ -336,6 +336,11 @@ map), Accept (Y) / Decline (U) an offer, Offer an alliance (Y) to a rival you se
   in it is a child (a join with one is refused), and that every item exists and sits in its slot. It does **not** know the colony: a modified client can join with invented
   survivors and gear, and can apply any result to its own save (or play the same expedition again locally after
   leaving). Fine between friends on a LAN; not for strangers.
+- **Cards share the gap.** The server cannot verify that a player owns the cards of the deck (or of the slot cards) it
+  brings in `Join`. It only holds them to `cards.json`'s deck rules: known card ids, at most `rules.maxDeck` cards and
+  `rules.maxCopies` copies of one card in the deck, at most `rules.maxSlotCards` slot cards per member (and only as many
+  as the member's slots, by the server's own slot rules); the deck is dealt with the base hand, draw and budget (a
+  client's village upgrades are not trusted). Server-saved colonies would close this like the rest.
 - **What a server-saved colony would need:** colonies stored server-side (accounts, the colony save per account);
   `LaunchExpedition` executed on the server, so the party, its gear and rations come out of the stored colony and the
   instance is joined from that expedition; `ApplyExtractionResult` executed by the server on the stored colony when the
@@ -526,3 +531,33 @@ Allies trade in a mission the same way (`--coop` server, `--bot … --trade`: th
 The colony's new Construction skill travels in every survivor's skills (parties on `Join`, extraction results), which
 an older peer cannot read. Protocol version 16 (`Protocol.ConstructionVersion`). Sites themselves stay in the colony and
 never go over the wire.
+
+## Telegraphed plans and cards over the wire
+
+Protocol version 17 (`Protocol.TacticsVersion`), with the run's scavenge save 15 and the colony's save 27 (older runs are
+reset, older colonies migrate and get the starter cards).
+
+- **Commands.** `plannedAction` (Core's `DeclareIntent`: a path, an optional attack tile and action, `suppress` for
+  suppressing fire; free, ends the turn, resolves at the start of the unit's next turn), `playCard` (a card from the
+  squad hand or a character's slot onto that character; reactions at a seen enemy plan, also off the unit's own turn
+  during the player's turns) and `discardDeadCard`. Commands carry card ids only; Core checks the hand, the slots, the
+  requirement, the points and the AP. Every kind round-trips in `ProtocolTests`.
+- **Plans in views.** A unit's `plan` travels with the unit, so a side sees the path and the threatened tile of exactly
+  the units it sees now (a hidden unit's plan never leaves the server). `SideFog.Redacted` strips the plan's card and
+  aimed-at unit, and dodge bonuses, from every unit the player does not own (allies included). Enemy AI plans like a
+  player: Husks, the Linked and turrets declare their turn and it resolves at their next one.
+- **Cards in views.** The player's own squad deck in full except the draw pile, which comes sorted (what is left, not
+  the order); every other player's deck (allies too) only as counts (`hidden`, `handCount`, `drawCount`, `usedCount`),
+  the enemy side's deck likewise; other players' units carry `hiddenSlots` instead of their slot cards, and no last card
+  or readied counter; only the player's own card pouch; never the card stream. Card events (`CardPlayed`,
+  `CardDiscarded`, `CardFound`, `DeckShuffled`) go to the player's side only: rivals see what a card does, never which.
+- **Events.** `IntentDeclared` / `IntentResolved` / `IntentFizzled` / `IntentCanceled` (no anonymous form: a side that
+  does not see the unit never hears of its plan), `Countered`, and attack events with their hit `tier` and `amount`.
+- **Trust.** See "Parties and results — the trust gap": a client's deck and slot cards are held to the deck rules, not to
+  what its colony owns.
+- **Tests.** `FogNetTests` (a hidden unit's plan never reaches the rival; a seen, revealed or allied unit's plan without
+  card or target; plans resolving through turn timeouts after a drop), `CardNetTests` (counts only, card events to the own
+  side only, decks breaking the deck rules refused at the door), and `NetFixture.CheckFog` on every snapshot: no plan card,
+  plan target, dodge, slot card, last card, counter, other deck's cards, other pouch or card stream; the own draw pile
+  sorted and the own deck's counts matching its cards.
+

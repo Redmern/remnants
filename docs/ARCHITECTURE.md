@@ -59,7 +59,10 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
     slog onto rubble or water), `Combat` (reach, cover, hit chance,
     body-part injuries, limb loss, Downed → bleed-out → Dead; ambushes), `Visibility` (per-side sight + explored, lit tiles).
   - `ScavengeSim` — `Execute(IScavengeCommand)`; initiative turn order across all units of all
-    sides; AI turns (`ScavengeAi`: Husk, Linked squad, recruit followers) run inside it. See "Linked squad AI" below.
+    sides; AI turns (`ScavengeAi`: Husk, Linked squad, turrets, recruit followers) run inside it. See "Linked squad AI"
+    and "Telegraphed plans and cards" below.
+  - `PlannedActions` (telegraphed plans), `Cards/` (`CardDefs`, `SquadDecks`, `CardPlay`, `CardSlots`, `EnemyCards`,
+    `BotTactics`) — see "Telegraphed plans and cards".
   - `Hacking` (devices, the Hack action, Override, placement) and `Drones` (scout drones) — see "Hacking and scout drones".
   - `Network` — the Linked relay graph (groups, shared knowledge, squad focus, pylon alarm and reinforcements).
   - `ExtractionResult` per player — returned survivors (with injuries/health), recruits, deaths, loot.
@@ -868,6 +871,42 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
   `DroneTests` (deploy, flight over walls revealing fog, control range and perks, battery and landing, recall and recharge,
   extraction, shot down, the Linked vs Husks, melee, Spotter, Payload, jammer, allies, saves), `WorldMapTests` (scouting
   flights), `HackNetTests` (no leaks of devices, hacks or drones; team camera sight; drone sight shared; perks over the wire).
+
+## Telegraphed plans and cards
+
+- **Reach** (`Combat.Tiles(map, action, from, facing)`): the tiles an attack pattern covers; `Combat.Hittable` adds the
+  line-of-sight rule, `CheckReach` is membership plus LOS, and `Combat.ThreatZone(sim, unit)` unions a unit's attacks.
+- **Hit tiers** (`Combat.TierOf`, `scavenge.json combat.tiers`): a landed hit is a graze (a share of the damage, no
+  injury), a hit or a solid hit (more injury) by its roll margin; armor, cover and card guard shift it down. Attack
+  events carry the `Tier` and the `Amount`.
+- **Plans** (`PlannedActions`, command `DeclareIntent`, wire `plannedAction`; `Unit.Plan` = `PlannedAction`): a path of
+  whole moves, an optional attack tile and action (or suppressing fire). Free, no noise, ends the turn, locked; it must
+  fit the AP the unit has now (`scavenge.json plans.fullTurnBudget` lets it use a full turn instead, for measuring). It
+  resolves at the start of the unit's next turn through the plain move and attack rules, paid from that turn's AP: a
+  step that no longer works ends the path, whoever hostile is on the tile then is struck, an empty tile is a miss with
+  no refund (the aimed-at unit dodged it: `Unit.OutplayedId`, the ambush hit bonus on its next attack on the attacker,
+  through the next round). Downed, killed, pinned or stunned cancels the plan.
+- **Enemy AI telegraphs**: `ScavengeAi.Planned` runs a unit's usual behaviour (Spot, TryAttack, Reposition, Retreat,
+  Suppress, shared squad focus) against a look-ahead position and AP, then declares the path and attack it chose. A
+  turret's plan is its aim tile. Recruits act at once.
+- **Cards** (`data/cards.json`, `ScavengeData.Cards`): card defs (category, rarity, points, AP cost / boost,
+  consumable, reaction, arm lock, `CardRequirement` any-of skill / attribute / perk hook, hard or baseline, scaling,
+  effects in the game's own terms: move, hit, guard, cover, mend, draw, counter) and the deck rules (hand size, an
+  optional draw cap, budget, deck caps, slot rules, village upgrades, trade values by rarity).
+- **Squad deck** (`SquadDecks`, `ScavengeState.Decks`): one per party, built from the colony's deck (`PartySetup.Deck`),
+  shuffled on its own stream (`ScavengeState.CardRngState`, never the game RNG); a full opening hand; each round start
+  refills the points and the hand. `CardPlay` checks and applies `PlayCard` / `DiscardDeadCard`; `CardSlots` counts
+  personal slots (level, skills, gear `cardSlots`, perk hook `card_slots`); `EnemyCards` deals authored enemies' cards
+  (`enemies[].cards`) into one enemy deck and plays them after their plan; `BotTactics` holds the bots' heuristics.
+- **Colony** (`ColonyCards`, `ColonyState.Cards`): the collection (copies per id), the deck, slot cards, upgrades;
+  starter set for new and migrated colonies; cards from loot / salvage rows (the run's `Party.CardPouch`, kept only if
+  someone gets out), recipe outputs (`recipes[].card`), trade (`GoodKind.Card`); consumables played leave the collection.
+- **Saves**: scavenge save 15 (`ScavengeSave.IntentsVersion`; older runs are refused) and colony save 27
+  (`SaveGame.CardsVersion`; older colonies get the starter set, and a run in progress inside one starts over from its
+  expedition's seed). Protocol 17 (see MULTIPLAYER.md, "Telegraphed plans and cards over the wire").
+- Tests: `ReachTests`, `HitTierTests`, `InjuryEffectTests`, `PlannedActionTests`, `AiPlanTests`, `CardDataTests`,
+  `SquadDeckTests`, `PlayCardTests`, `CardSlotTests`, `ColonyCardTests`, `CardSourceTests`, `BotTacticsTests`; Net
+  `CardNetTests`, `FogNetTests`.
 
 ## Linked squad AI
 
@@ -1758,7 +1797,9 @@ by default, so hand-built test rules and `TestData.Real` keep instant building).
   tier + loot weight for caches; `natural` for enemy body parts (never looted or crafted). Every other item has a
   recipe or a loot weight (tested).
 - `enemies.json` — hp, AI kind, attributes, skills, equipment (a Husk's claws are an item too), `tags` (for weapon
-  banes), `loot` (its loot table) and `drops` (schematics and fixed items; Linked and Wardens always leave Linked cores).
+  banes), `loot` (its loot table), `drops` (schematics and fixed items; Linked and Wardens always leave Linked cores) and,
+  for authored enemies, `cards` (see "Telegraphed plans and cards").
+- `cards.json` — tactical cards and the squad deck's rules (see "Telegraphed plans and cards").
 - `loot_tables.json` — loot tables and their scaling rules; `loot_tables.<feature>.json` add tables or extend them (see
   "Field loot and salvage").
 - `salvage.json` — salvage node kinds (table, prop, terrain, work, lots, AP, noise, skill, tools), zone densities, drop and
@@ -1771,7 +1812,8 @@ by default, so hand-built test rules and `TestData.Real` keep instant building).
 - `scavenge.json` — `environment` (per day phase and per weather: sight per sense kind, stealth bonus and who ignores it,
   Husk count and hearing, flare radius; see "Day and night"), `hacking`, `devices`, `drone`, `world.droneScout` (see "Hacking and scout drones"), `coop` (alliance offer / break-warning rounds, pings, give and carry costs, carry movement penalty,
   enemies per extra player), `fog` (stealth, detection, contacts, ambush, overwatch, brace, lookout, Linked fog AI), `network` (Linked squad tuning), `world.colonyPos`, terrain table, movement derivation (base pattern/range, Agility per range,
-  encumbrance steps, body rules such as "missing leg → King 1"), AP, sight, carry, combat numbers,
+  encumbrance steps, body rules such as "missing leg → King 1"), AP, sight, carry, combat numbers (with hit `tiers` and
+  `armLockBelow`), `plans`,
   AI, NPC names, escort radius, gear quality tiers.
 
 ## Running
