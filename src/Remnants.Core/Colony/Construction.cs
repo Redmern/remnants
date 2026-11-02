@@ -251,7 +251,7 @@ public static class ConstructionSystem
         return level > 0 ? level : data.Rules.Construction.DefaultMaxBuilders;
     }
 
-    /// <summary>Whether this survivor may build: at home, not a patient, researcher, student or baby; children only as the job allows.</summary>
+    /// <summary>Whether this survivor may build: at home, not a patient, researcher or baby; children only as the job allows.</summary>
     public static CommandResult CanBuild(ColonySim sim, Survivor s)
     {
         if (s.Away) return CommandResult.Fail(CommandError.SurvivorAway, $"{s.Name} is away on an expedition.");
@@ -259,13 +259,12 @@ public static class ConstructionSystem
         if (Schematics.Research.IsResearching(sim.State, s.Id))
             return CommandResult.Fail(CommandError.IsResearching, $"{s.Name} is researching at the Town Hall; stop the research first.");
         if (s.IsInfant) return CommandResult.Fail(CommandError.TooYoung, $"{s.Name} is a baby.");
-        if (StudySystem.ClassOf(sim.State, s.Id) is not null) return CommandResult.Fail(CommandError.InClass, $"{s.Name} is in class; end the study first.");
         if (s.IsChild && sim.Data.Jobs.GetValueOrDefault(sim.Data.Rules.Construction.Job) is { ChildrenAllowed: false })
             return CommandResult.Fail(CommandError.NotForChildren, "Building is too hard for a child.");
         return CommandResult.Success("");
     }
 
-    /// <summary>Takes a survivor off any site (taking a job, guard duty, an expedition, a bed in the Med Bay).</summary>
+    /// <summary>Takes a survivor off any site (guard duty, an expedition, a bed in the Med Bay, another site).</summary>
     public static void Release(ColonyState state, int survivorId)
     {
         foreach (var site in state.Construction.Sites)
@@ -275,13 +274,12 @@ public static class ConstructionSystem
         }
     }
 
-    /// <summary>Drops builders who can no longer build (gone, away, a patient, at a job, on guard, in class or research).</summary>
+    /// <summary>Drops builders who can no longer build (gone, away, a patient, on guard or in research).</summary>
     private static void Tidy(ColonySim sim)
     {
         var state = sim.State;
         foreach (var site in state.Construction.Sites)
-            site.Builders.RemoveAll(id => state.FindSurvivor(id) is not { } s || s.AssignedBuildingId is not null
-                                          || state.Defense.Guards.ContainsKey(id) || !CanBuild(sim, s).Ok);
+            site.Builders.RemoveAll(id => state.FindSurvivor(id) is not { } s || state.Defense.Guards.ContainsKey(id) || !CanBuild(sim, s).Ok);
     }
 
     /// <summary>Idle survivors at home (no job, post, site, bed, class or research) fill the open places at sites by priority.</summary>

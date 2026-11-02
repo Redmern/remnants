@@ -104,7 +104,7 @@ public sealed class ColonyState
     public Survivor? FindSurvivor(int id) => Survivors.Find(s => s.Id == id);
     public Building? FindBuilding(int id) => Buildings.Find(b => b.Id == id);
 
-    public IEnumerable<Survivor> WorkersAt(int buildingId) => Survivors.Where(s => s.AssignedBuildingId == buildingId);
+    public IEnumerable<Survivor> WorkersAt(int buildingId) => Survivors.Where(s => s.Jobs.Contains(buildingId));
 
     public IEnumerable<Survivor> PatientsAt(int buildingId) => Survivors.Where(s => s.PatientAtBuildingId == buildingId);
 

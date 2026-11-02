@@ -7,7 +7,7 @@ namespace Remnants.Core.Colony;
 
 /// <summary>
 /// A student in class at a study building: learning a skill up to a cap, or a perk from a mentor who has it. Student and
-/// mentor do not work meanwhile. Plain data (saved with the colony).
+/// mentor keep their other activities, each at a share of their effort (see <see cref="Activities"/>). Plain data (saved with the colony).
 /// </summary>
 public sealed class StudyOrder
 {
@@ -213,7 +213,8 @@ public static class StudySystem
         if (student.IsInfant) return Fail(CommandError.TooYoung, $"{student.Name} is a baby.");
         if (student.Away) return Fail(CommandError.SurvivorAway, $"{student.Name} is away on an expedition.");
         if (student.PatientAtBuildingId is not null) return Fail(CommandError.IsPatient, $"{student.Name} is a patient.");
-        if (ClassOf(state, student.Id) is not null) return Fail(CommandError.InClass, $"{student.Name} is already in class.");
+        if (state.Studies.Any(o => o.StudentId == student.Id)) return Fail(CommandError.InClass, $"{student.Name} is already in class.");
+        if (Activities.CanTakeOn(state, data, student) is { Ok: false } busy) return new(busy, 0, 0, null);
         if (state.Studies.Count(o => o.BuildingId == building.Id) >= Slots(data, building))
             return Fail(CommandError.StudyFull, $"The {def.Name} has no room for another student.");
 
@@ -229,6 +230,8 @@ public static class StudySystem
             if (state.Studies.Any(o => o.StudentId == mentor.Id)) return Fail(CommandError.InClass, $"{mentor.Name} is a student right now.");
             if (state.Studies.Count(o => o.MentorId == mentor.Id) >= data.Progression.Study.MaxStudentsPerMentor)
                 return Fail(CommandError.MentorBusy, $"{mentor.Name} already teaches {data.Progression.Study.MaxStudentsPerMentor} students.");
+            if (!state.Studies.Any(o => o.MentorId == mentor.Id) && Activities.CanTakeOn(state, data, mentor) is { Ok: false } full)
+                return new(full, 0, 0, null);
         }
 
         ManualDef? manual = null;
@@ -280,10 +283,6 @@ internal static class StudyHandlers
         var student = state.FindSurvivor(c.StudentId)!;
         var mentor = c.MentorId is { } m ? state.FindSurvivor(m) : null;
         if (c.ManualItemId is { } manual) state.Inventory.TryTake(manual);
-        student.AssignedBuildingId = null;
-        ConstructionSystem.Release(state, student.Id);
-        if (mentor is not null) mentor.AssignedBuildingId = null;
-        if (mentor is not null) ConstructionSystem.Release(state, mentor.Id);
         var order = new StudyOrder
         {
             Id = state.NextStudyId++, BuildingId = c.BuildingId, StudentId = c.StudentId, MentorId = c.MentorId,

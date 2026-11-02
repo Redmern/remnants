@@ -6,9 +6,14 @@ namespace Remnants.Core.Colony;
 /// <summary>An intent from the UI (or, later, a client). Core validates and applies it.</summary>
 public interface IColonyCommand;
 
+/// <summary>Adds a job at the building; the survivor keeps their other activities (see <c>Activities</c>).</summary>
 public sealed record AssignJob(int SurvivorId, int BuildingId) : IColonyCommand;
 
-public sealed record Unassign(int SurvivorId) : IColonyCommand;
+/// <summary>
+/// Leave the job at <paramref name="BuildingId"/>, or the site there if they build it. Without a building: leave every
+/// job (or the site, with none).
+/// </summary>
+public sealed record Unassign(int SurvivorId, int? BuildingId = null) : IColonyCommand;
 
 /// <summary>Build on <paramref name="Plot"/>, or on the first free plot when null.</summary>
 public sealed record Construct(string BuildingDefId, int? Plot = null) : IColonyCommand;
@@ -300,6 +305,8 @@ public enum CommandError
     /// <summary>Construction: the building has no site; or it is already being built or upgraded.</summary>
     NotUnderConstruction,
     UnderConstruction,
+    /// <summary>The survivor already holds <c>rules.maxActivities</c> activities (jobs, a class, a site).</summary>
+    TooManyActivities,
 }
 
 /// <summary>

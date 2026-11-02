@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Remnants.Core.Survivors;
 
 public sealed class Survivor
@@ -37,8 +39,26 @@ public sealed class Survivor
     /// <summary>Tool quality 0 (bare hands) to 1 (best tool). Items come later.</summary>
     public double ToolQuality { get; set; }
 
-    /// <summary>The building this survivor works at, if any. Single source of truth for assignment.</summary>
-    public int? AssignedBuildingId { get; set; }
+    /// <summary>
+    /// The buildings this survivor works at, in the order taken (up to <c>rules.maxActivities</c> together with a class and
+    /// a site; see <c>Activities</c>). Single source of truth for job assignment.
+    /// </summary>
+    public List<int> Jobs { get; set; } = new();
+
+    /// <summary>
+    /// The first job, if any. Setting it replaces every job (null clears them all: an expedition, a Med Bay bed, leaving).
+    /// Not saved: <see cref="Jobs"/> is.
+    /// </summary>
+    [JsonIgnore]
+    public int? AssignedBuildingId
+    {
+        get => Jobs.Count == 0 ? null : Jobs[0];
+        set
+        {
+            Jobs.Clear();
+            if (value is { } id) Jobs.Add(id);
+        }
+    }
 
     /// <summary>On an expedition: no job, does not eat colony food, is not treated. Set by <c>LaunchExpedition</c>.</summary>
     public bool Away { get; set; }

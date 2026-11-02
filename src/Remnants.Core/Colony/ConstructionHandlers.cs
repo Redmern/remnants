@@ -15,9 +15,11 @@ internal static class ConstructionHandlers
         if (site.Builders.Count >= ConstructionSystem.MaxBuilders(sim.Data, site))
             return CommandResult.Fail(CommandError.NoFreeSlot, $"The {name} site has room for no more builders.");
 
-        survivor.AssignedBuildingId = null;
-        Raids.Guards.Release(sim.State, survivor.Id);
+        // Moving from another site keeps the count; a first site is one more activity.
+        if (!sim.State.Construction.Sites.Any(o => o.Builders.Contains(survivor.Id))
+            && Activities.CanTakeOn(sim.State, sim.Data, survivor) is { Ok: false } busy) return busy;
         ConstructionSystem.Release(sim.State, survivor.Id);
+        Raids.Guards.Release(sim.State, survivor.Id);
         site.Builders.Add(survivor.Id);
         return CommandResult.Success($"{survivor.Name} now builds the {name}.", c.BuildingId);
     }
