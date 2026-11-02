@@ -209,7 +209,8 @@ public static class Combat
                 $"{attacker.Name} ambushes {target.Name} from the fog{a.Describe()}.", attacker.Id, target.Id, target.Pos,
                 Anonymous: $"{target.Name} was ambushed from the fog{a.Describe()}."));
 
-        if (sim.Rng.NextDouble() >= chance)
+        var roll = sim.Rng.NextDouble();
+        if (roll >= chance)
         {
             state.Log(new(state.Round, ScavengeEventType.Missed,
                 $"{attacker.Name} missed {target.Name} ({action.Name}, {chance:P0}).", attacker.Id, target.Id, target.Pos,
@@ -226,12 +227,22 @@ public static class Combat
             raw *= bane.DamageMultiplier;
             armor = Math.Max(0, armor - bane.ArmorPierce);
         }
+        var tiers = data.Rules.Combat.Tiers;
+        var tier = TierOf(tiers, chance, roll, armor, CoverAgainst(data, state.Map, target.Pos, attacker.Pos) + defense.CoverBonus);
         var damage = Math.Max(1, raw - armor);
+        if (tier == HitTier.Graze) damage = Math.Max(1, damage * tiers.GrazeDamage);
         var where = target.Structure ? target.Name : $"{target.Name}'s {part}";
+        var (verb, how) = tier switch
+        {
+            HitTier.Graze => ("grazed", "grazed"),
+            HitTier.Solid => ("landed a solid hit on", "hit hard"),
+            _ => ("hit", "hit"),
+        };
         state.Log(new(state.Round, ScavengeEventType.Attacked,
-            $"{attacker.Name} hit {where} for {damage:0} ({action.Name}).", attacker.Id, target.Id, target.Pos,
-            Anonymous: target.Structure ? $"{target.Name} was hit for {damage:0} from the fog." : $"{target.Name} was hit in the {part} for {damage:0} from the fog."));
-        ApplyDamage(sim, target, part, damage, action.InjuryMultiplier * (1 - Math.Clamp(defense.InjuryResist, 0, 1)), attacker);
+            $"{attacker.Name} {verb} {where} for {damage:0} ({action.Name}).", attacker.Id, target.Id, target.Pos,
+            Anonymous: target.Structure ? $"{target.Name} was {how} for {damage:0} from the fog." : $"{target.Name} was {how} in the {part} for {damage:0} from the fog."));
+        var severity = action.InjuryMultiplier * (1 - Math.Clamp(defense.InjuryResist, 0, 1)) * (tier == HitTier.Solid ? tiers.SolidSeverity : 1);
+        ApplyDamage(sim, target, part, damage, severity, attacker, injure: tier != HitTier.Graze);
         if (bane is { Stun: true } && target.IsActive && !target.Suppressed)
         {
             target.Suppressed = true;
@@ -244,6 +255,18 @@ public static class Combat
             state.Log(new(state.Round, ScavengeEventType.RelayDisrupted, $"{target.Name} is knocked off the relay.", attacker.Id, target.Id, target.Pos,
                 Anonymous: $"{target.Name} is knocked off the relay."));
         }
+    }
+
+    /// <summary>
+    /// The tier of a landed hit (<paramref name="roll"/> under <paramref name="chance"/>) by its margin, shifted down a tier
+    /// each by enough <paramref name="armor"/> on the hit region and enough <paramref name="cover"/>, never below a graze.
+    /// </summary>
+    public static HitTier TierOf(HitTierRules rules, double chance, double roll, double armor, double cover)
+    {
+        var margin = chance > 0 ? (chance - roll) / chance : 0;
+        var tier = margin < rules.GrazeBelow ? HitTier.Graze : margin >= rules.SolidFrom ? HitTier.Solid : HitTier.Hit;
+        var shift = (armor + 1e-9 >= rules.ArmorShiftFrom ? 1 : 0) + (cover + 1e-9 >= rules.CoverShiftFrom ? 1 : 0);
+        return (HitTier)Math.Max((int)HitTier.Graze, (int)tier - shift);
     }
 
     /// <summary>
@@ -281,15 +304,19 @@ public static class Combat
         return target.Body[part].Condition == PartCondition.Missing ? BodyPart.Torso : part;
     }
 
-    /// <summary>Damage to one body part: injury severity, possible limb loss, then HP and Downed/Dead (by <paramref name="attacker"/>, for loot perks).</summary>
-    public static void ApplyDamage(ScavengeSim sim, Unit target, BodyPart part, double damage, double severityScale = 1, Unit? attacker = null)
+    /// <summary>
+    /// Damage to one body part: injury severity, possible limb loss, then HP and Downed/Dead (by <paramref name="attacker"/>,
+    /// for loot perks). Without <paramref name="injure"/> (a graze) only the HP drops.
+    /// </summary>
+    public static void ApplyDamage(ScavengeSim sim, Unit target, BodyPart part, double damage, double severityScale = 1, Unit? attacker = null,
+        bool injure = true)
     {
         var data = sim.Data;
         var state = sim.State;
         var c = data.Rules.Combat;
 
         var bodyPart = target.Body[part];
-        if (!target.Structure && bodyPart.Condition is PartCondition.Healthy or PartCondition.Injured)
+        if (injure && !target.Structure && bodyPart.Condition is PartCondition.Healthy or PartCondition.Injured)
         {
             var severity = bodyPart.Severity + damage / c.PartToughness[Body.RegionOf(part)] * severityScale;
             target.Body.Injure(part, severity);
@@ -332,6 +359,9 @@ public static class Combat
             $"{target.Name} is down and bleeding out ({c.BleedOutRounds} rounds).", target.Id, Pos: target.Pos));
     }
 }
+
+/// <summary>How a landed hit resolves: a graze (a little HP, no injury), a plain hit, or a solid one (worse injury).</summary>
+public enum HitTier { Graze, Hit, Solid }
 
 /// <summary>
 /// An attack from the fog: what it adds to the hit chance and damage, and whether the target loses its dodge.

@@ -395,6 +395,33 @@ public sealed record CombatRules
     /// <summary>HP at or below which a hit kills outright instead of downing.</summary>
     public double InstantDeathHp { get; init; } = -40;
     public ActionDef Unarmed { get; init; } = new();
+
+    /// <summary>How a landed hit resolves: graze, hit or solid (see <see cref="HitTierRules"/>).</summary>
+    public HitTierRules Tiers { get; init; } = new();
+}
+
+/// <summary>
+/// Hit tiers (scavenge.json <c>combat.tiers</c>). The margin of a landed hit is the share of the hit chance the roll came
+/// in under (0 = barely, 1 = dead on): below <see cref="GrazeBelow"/> a graze, from <see cref="SolidFrom"/> a solid hit,
+/// a plain hit between. Armor from <see cref="ArmorShiftFrom"/> and cover from <see cref="CoverShiftFrom"/> each shift
+/// it down a tier, never below a graze.
+/// </summary>
+public sealed record HitTierRules
+{
+    public double GrazeBelow { get; init; } = 0.25;
+    public double SolidFrom { get; init; } = 0.8;
+
+    /// <summary>A graze does this share of the damage (at least 1) and injures no body part.</summary>
+    public double GrazeDamage { get; init; } = 0.4;
+
+    /// <summary>A solid hit does full damage and this many times the injury severity.</summary>
+    public double SolidSeverity { get; init; } = 1.5;
+
+    /// <summary>Armor on the hit region (after pierce) from which the hit shifts down a tier.</summary>
+    public double ArmorShiftFrom { get; init; } = 2;
+
+    /// <summary>Cover against the attacker (terrain plus brace) from which the hit shifts down a tier.</summary>
+    public double CoverShiftFrom { get; init; } = 0.25;
 }
 
 /// <summary>
