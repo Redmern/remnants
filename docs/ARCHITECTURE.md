@@ -909,6 +909,24 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
 - Tests: `ReachTests`, `HitTierTests`, `InjuryEffectTests`, `PlannedActionTests`, `AiPlanTests`, `CardDataTests`,
   `SquadDeckTests`, `PlayCardTests`, `CardSlotTests`, `ColonyCardTests`, `CardSourceTests`, `BotTacticsTests`; Net
   `CardNetTests`, `FogNetTests`.
+- **Bestiary** (`Bestiary`, thresholds `scavenge.json bestiary`): per NPC enemy type, how many a party saw, fought
+  (attacked or was attacked by) and killed, each enemy counted once per run (`Party.Bestiary`, `SeenIds` /
+  `FoughtIds` / `KilledIds`). It comes home in `ExtractionResult.Bestiary` only if someone got out and is merged into
+  `ColonyState.Bestiary` (colony save 27; a save 26 starts empty). The tier (seen, fought, killed) gates what
+  `Bestiary.Describe` / `List` reveal: weapons and reach, then AP and moves, then everything. Other players are never in
+  it; SideFog sends a player only their own party's counts. Position, facing, plans and reach show for any seen
+  attacker regardless. Tests: `BestiaryTests`.
+- **UI view models** (`TacticsView`, `DeckBuilder.View`, all plain C# with tests in `TacticsViewTests`): enemy
+  telegraphs as a side sees them (path, strike tiles, aimed at us; never the card), the threat overlay (planned blows
+  over plain reach, fog-filtered), hit previews from a tile (`Combat.ChanceToHit` with `from`, terms from
+  `Breakdowns.HitChanceOf`), the hand (points, piles, slot cards, who can play each, dead cards), the character picker
+  (`CardPlay.Check`: who can take a card now, and Core's reason for the rest) and the village deck builder.
+  Godot draws them: `TelegraphView` (trails, pulsing strike rings, flashes on resolve / dodge), `MapView` highlight
+  kinds `Threat` / `ThreatPlanned`, `Ui/HandStrip` (hand and picker), `UnitPanel` (enemy stats per bestiary tier, via
+  `ScavengePresenter.KnowledgeOf` and `BestiaryKnowledge.Colony`), and the colony overlays `DeckBuilderPanel` and
+  `BestiaryPanel` (Deck and Bestiary in the top bar). Sound cues are `scavenge.intent_*`, `scavenge.card_*`,
+  `scavenge.countered` in `game/audio/sound_events.json`. Debug captures: `--scavenge --tactics-demo[=overlay|picker|
+  reaction|enemy|preview]`, `--colony --deck-demo=deck|slots|upgrades`, `--colony --bestiary-demo`.
 
 ## Linked squad AI
 
