@@ -101,4 +101,25 @@ public class LateZoneTuningTests
         Assert.Equal(Real.Rules.Network.ReinforceAfterRounds, RoundsToCall(false));
         Assert.Equal(after, RoundsToCall(true));
     }
+
+    [Theory]
+    [InlineData("current", LateZoneTuning.Current)]
+    [InlineData("Expeditions", LateZoneTuning.Expeditions)]
+    [InlineData("EVERYWHERE", LateZoneTuning.Everywhere)]
+    public void A_late_zone_flag_parses_by_name(string text, LateZoneTuning mode)
+    {
+        Assert.True(ZoneTuning.TryParse(text, out var parsed));
+        Assert.Equal(mode, parsed);
+    }
+
+    [Theory]
+    [InlineData("7")]
+    [InlineData("1")]
+    [InlineData("-1")]
+    [InlineData("hard")]
+    [InlineData("")]
+    [InlineData(null)]
+    [InlineData("current,everywhere")]
+    public void A_late_zone_flag_refuses_numbers_and_unknown_names(string? text) =>
+        Assert.False(ZoneTuning.TryParse(text, out _));
 }

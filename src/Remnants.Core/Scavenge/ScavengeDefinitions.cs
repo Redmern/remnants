@@ -112,6 +112,17 @@ public static class ZoneTuning
     /// <summary>Whether a run takes the zone's retune under <paramref name="mode"/>; <paramref name="story"/>: a story mission.</summary>
     public static bool Applies(LateZoneTuning mode, bool story) =>
         mode == LateZoneTuning.Everywhere || mode == LateZoneTuning.Expeditions && !story;
+
+    /// <summary>The names a flag or setting may use (lower case).</summary>
+    public const string Names = "current, expeditions or everywhere";
+
+    /// <summary>A mode from its name (any case); false for anything else, numbers included.</summary>
+    public static bool TryParse(string? text, out LateZoneTuning mode)
+    {
+        mode = LateZoneTuning.Current;
+        if (string.IsNullOrWhiteSpace(text) || !char.IsLetter(text.Trim()[0]) || text.Contains(',')) return false;
+        return Enum.TryParse(text.Trim(), ignoreCase: true, out mode) && Enum.IsDefined(mode);
+    }
 }
 
 /// <summary>
