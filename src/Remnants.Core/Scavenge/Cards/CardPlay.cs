@@ -13,38 +13,60 @@ namespace Remnants.Core.Scavenge;
 /// </summary>
 public static class CardPlay
 {
-    /// <param name="deckId">The deck to play from: the player's (default), or the enemy side's for its AI (<see cref="EnemyCards.DeckId"/>).</param>
-    internal static ScavengeResult Play(ScavengeSim sim, Unit unit, PlayCard c, int? deckId = null)
+    /// <summary>A card play as Core would take it: the deck, the card, the effect it would have and its AP; or why not.</summary>
+    public sealed record PlayCheck(ScavengeResult Result, SquadDeck? Deck = null, CardDef? Card = null, Unit? Planner = null,
+        CardEffect? Effect = null, int Ap = 0, bool Boost = false)
+    {
+        public bool Ok => Result.Ok;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="c"/> could be played now, and what it would do, without playing it (the UI's character
+    /// picker, the bots). The same checks <see cref="PlayCard"/> runs.
+    /// </summary>
+    public static PlayCheck Check(ScavengeSim sim, Unit unit, PlayCard c, int? deckId = null)
     {
         var state = sim.State;
         var data = sim.Data;
-        if (SquadDecks.Of(state, deckId ?? c.PlayerId) is not { } deck) return ScavengeResult.Fail(ScavengeError.NoCard, "Your party has no cards.");
+        PlayCheck Fail(ScavengeError e, string m) => new(ScavengeResult.Fail(e, m));
+        if (SquadDecks.Of(state, deckId ?? c.PlayerId) is not { } deck) return Fail(ScavengeError.NoCard, "Your party has no cards.");
         var held = c.FromSlot ? unit.SlotCards.Contains(c.CardId) && !unit.SlotSpent.Contains(c.CardId) : deck.Hand.Contains(c.CardId);
         if (!held || data.Cards.Find(c.CardId) is not { } card)
-            return ScavengeResult.Fail(ScavengeError.NoCard, c.FromSlot ? $"{unit.Name} has no '{c.CardId}' ready in a slot." : $"No '{c.CardId}' in hand.");
-        if (!card.Reaction && state.CurrentUnitId != unit.Id) return ScavengeResult.Fail(ScavengeError.NotYourTurn, $"It is not {unit.Name}'s turn.");
+            return Fail(ScavengeError.NoCard, c.FromSlot ? $"{unit.Name} has no '{c.CardId}' ready in a slot." : $"No '{c.CardId}' in hand.");
+        if (!unit.IsActive) return Fail(ScavengeError.Incapacitated, $"{unit.Name} cannot act ({unit.Status}).");
+        if (!card.Reaction && state.CurrentUnitId != unit.Id) return Fail(ScavengeError.NotYourTurn, $"It is not {unit.Name}'s turn.");
         var qualified = card.Requirement.Met(unit);
         if (card.Requirement.Kind == CardKind.Hard && !qualified)
-            return ScavengeResult.Fail(ScavengeError.NotQualified, $"{unit.Name} cannot use {card.Name}.");
+            return Fail(ScavengeError.NotQualified, $"{unit.Name} cannot use {card.Name}: needs {card.Requirement.Describe()}.");
         if (card.ArmLock && ProfileDeriver.ArmsLocked(data, unit.Body, twoHanded: false))
-            return ScavengeResult.Fail(ScavengeError.ArmsLocked, $"{unit.Name}'s arms are too hurt for {card.Name}.");
-        if (card.Cost > deck.Points) return ScavengeResult.Fail(ScavengeError.NotEnoughPoints, $"{card.Name} needs {card.Cost} card points ({deck.Points} left).");
+            return Fail(ScavengeError.ArmsLocked, $"{unit.Name}'s arms are too hurt for {card.Name}.");
+        if (card.Cost > deck.Points) return Fail(ScavengeError.NotEnoughPoints, $"{card.Name} needs {card.Cost} card points ({deck.Points} left).");
         var boost = c.Boost && card.BoostAp > 0;
         var ap = card.ApCost + (boost ? card.BoostAp : 0);
-        if (ap > unit.Ap) return ScavengeResult.Fail(ScavengeError.NotEnoughAp, $"{unit.Name} needs {ap} AP for {card.Name} (has {unit.Ap}).");
+        if (ap > unit.Ap) return Fail(ScavengeError.NotEnoughAp, $"{unit.Name} needs {ap} AP for {card.Name} (has {unit.Ap}).");
 
         Unit? planner = null;
         if (card.Reaction)
         {
             planner = c.TargetId is { } id ? state.FindUnit(id) : null;
             if (planner is not { IsActive: true, Plan: not null } || !unit.HostileTo(planner) || !Detection.SideSees(data, state, unit.Side, planner))
-                return ScavengeResult.Fail(ScavengeError.NoIntent, $"{card.Name} needs a seen enemy with a plan.");
+                return Fail(ScavengeError.NoIntent, $"{card.Name} needs a seen enemy with a plan.");
         }
 
         var effect = card.Effect.Plus(qualified && card.Requirement.Kind == CardKind.Baseline ? card.Bonus : null).Plus(boost ? card.Boost : null);
         if (card.Scaling is { } scaling) effect = effect.Scaled(scaling.Factor(unit));
         if (effect.Mend > 0 && Treatment.WorstInjury(unit.Body) <= 0 && effect with { Mend = 0 } is { IsEmpty: true })
-            return ScavengeResult.Fail(ScavengeError.NotUsable, $"{unit.Name} has no injury to mend.");
+            return Fail(ScavengeError.NotUsable, $"{unit.Name} has no injury to mend.");
+        return new PlayCheck(ScavengeResult.Success($"{card.Name} on {unit.Name}."), deck, card, planner, effect, ap, boost);
+    }
+
+    /// <param name="deckId">The deck to play from: the player's (default), or the enemy side's for its AI (<see cref="EnemyCards.DeckId"/>).</param>
+    internal static ScavengeResult Play(ScavengeSim sim, Unit unit, PlayCard c, int? deckId = null)
+    {
+        var state = sim.State;
+        var check = Check(sim, unit, c, deckId);
+        if (!check.Ok) return check.Result;
+        var (deck, card, planner, effect, ap, boost) = (check.Deck!, check.Card!, check.Planner, check.Effect!, check.Ap, check.Boost);
 
         deck.Points -= card.Cost;
         unit.Ap -= ap;

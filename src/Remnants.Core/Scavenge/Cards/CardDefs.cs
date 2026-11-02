@@ -21,6 +21,9 @@ public sealed record CardCondition
     public string? Hook { get; init; }
     public double Min { get; init; }
 
+    public string Describe() =>
+        Skill is { } s ? $"{s} {Min:0}" : Attribute is { } a ? $"{a} {Min:0}" : $"the {Hook?.Replace('_', ' ')} perk";
+
     public bool Met(Unit unit) =>
         Skill is { } s ? unit.Get(s) + 1e-9 >= Min
         : Attribute is { } a ? unit.Get(a) + 1e-9 >= Min
@@ -34,6 +37,9 @@ public sealed record CardRequirement
     public List<CardCondition> AnyOf { get; init; } = new();
 
     public bool Met(Unit unit) => AnyOf.Count == 0 || AnyOf.Any(c => c.Met(unit));
+
+    /// <summary>The requirement in words: "Firearms 40 or Perception 65" ("anyone" without conditions).</summary>
+    public string Describe() => AnyOf.Count == 0 ? "anyone" : string.Join(" or ", AnyOf.Select(c => c.Describe()));
 }
 
 /// <summary>
