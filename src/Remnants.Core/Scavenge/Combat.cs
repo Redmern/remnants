@@ -158,6 +158,7 @@ public static class Combat
                 .Where(u => u.Id != target.Id && u.IsActive && attacker.HostileTo(u) && u.Pos.Chebyshev(center) <= action.Area)
                 .OrderBy(u => u.Id));
         var ambushes = targets.Select(t => AmbushAgainst(sim.Data, sim.State, attacker, t)).ToList();
+        foreach (var t in targets) Bestiary.Fought(sim, attacker, t);
         var penalty = reaction ? sim.Data.Rules.Fog.Overwatch.AccuracyPenalty : 0;
         for (var i = 0; i < targets.Count; i++)
             Strike(sim, attacker, action with { Accuracy = action.Accuracy - penalty }, targets[i], ambushes[i], reaction);
@@ -177,6 +178,7 @@ public static class Combat
         attacker.Ap -= action.ApCost;
         sim.MakeNoise(attacker, action.Noise);
         target.Suppressed = target.CalmUntilRound < sim.State.Round;
+        Bestiary.Fought(sim, attacker, target);
         sim.State.Log(new(sim.State.Round, ScavengeEventType.Suppressed,
             $"{attacker.Name} pins {target.Name} down with suppressing fire ({action.Name}).", attacker.Id, target.Id, target.Pos,
             Anonymous: $"{target.Name} is pinned down by fire from the fog."));

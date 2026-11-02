@@ -42,6 +42,7 @@
                  "apCost": 1, "accuracy": 0.8, "skill": "Melee", "strengthScaling": 1.0, "noise": 1 }
   },
   "ai": { "wanderChance": 0.5, "minSpawnDistance": 8 },
+  "bestiary": { "seen": 1, "fought": 2, "killed": 1 },
   "network": {
     "pylonRange": 8,
     "reinforceAfterRounds": 3,

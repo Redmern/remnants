@@ -127,6 +127,7 @@ public sealed class SideFog(int playerId, string side)
             {
                 PlayerId = p.PlayerId, Name = p.Name, Side = Shown(p.Side, p.PlayerId), Done = p.Done, Left = p.Left,
                 CardPouch = p.PlayerId == PlayerId ? new(p.CardPouch) : [],
+                Bestiary = p.PlayerId == PlayerId ? new(p.Bestiary, StringComparer.Ordinal) : new(StringComparer.Ordinal),
             }).ToList(),
             // The player's own deck in full; anyone else's (allies too) only as counts, never which cards.
             Decks = state.Decks.Select(d => d.PlayerId == PlayerId ? Own(d) : Hidden(d)).ToList(),

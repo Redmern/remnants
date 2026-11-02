@@ -22,6 +22,12 @@ public sealed class Party
 
     /// <summary>Cards the party found in this run (loot, salvage): they join the colony's collection only if someone gets out.</summary>
     public List<string> CardPouch { get; set; } = new();
+
+    /// <summary>What the party learned of enemy types this run (see <see cref="Scavenge.Bestiary"/>), and the enemies already counted.</summary>
+    public SortedDictionary<string, BestiaryEntry> Bestiary { get; set; } = new(StringComparer.Ordinal);
+    public SortedSet<int> SeenIds { get; set; } = new();
+    public SortedSet<int> FoughtIds { get; set; } = new();
+    public SortedSet<int> KilledIds { get; set; } = new();
 }
 
 public enum ScavengeEventType

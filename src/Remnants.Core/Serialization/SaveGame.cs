@@ -82,7 +82,8 @@ namespace Remnants.Core.Serialization;
 /// loaded on data with construction off has them finished at once (see <see cref="FinishSites"/>).
 /// Version <see cref="CardsVersion"/> (27) adds tactical cards (<see cref="ColonyState.Cards"/>: the collection, the squad deck,
 /// personal slots and deck upgrades) and carries the run's <see cref="ScavengeSave"/> version 15 (plans, decks). Older colonies
-/// get the starter set as their collection and deck. A run in progress inside an older save (an expedition in the zone)
+/// get the starter set as their collection and deck, and an empty bestiary (<see cref="ColonyState.Bestiary"/>, added with
+/// the cards on the unreleased branch). A run in progress inside an older save (an expedition in the zone)
 /// cannot be carried over (old runs are not migrated, <see cref="ScavengeSave"/>): it is dropped and starts over from the
 /// expedition's seed with the party as it set out, which is what a run not yet opened does anyway. The party stays out.
 /// </summary>
@@ -574,6 +575,8 @@ public static class SaveGame
         foreach (var op in colony.Surgeries) RequireItem(op.ItemId);
         foreach (var id in colony.Cards.Owned.Keys.Concat(colony.Cards.Deck).Concat(colony.Cards.Slots.Values.SelectMany(s => s)))
             if (data.Cards.Find(id) is null) throw new JsonException($"Save references unknown card '{id}'.");
+        foreach (var id in colony.Bestiary.Keys)
+            if (!data.Enemies.ContainsKey(id)) throw new JsonException($"Save's bestiary references unknown enemy '{id}'.");
         if (colony.Defense.Raid?.Battle is { } battle) ScavengeSave.Validate(data, battle);
         if (colony.Expedition is not { } expedition) return;
         if (!data.Zones.ContainsKey(expedition.ZoneId)) throw new JsonException($"Save references unknown zone '{expedition.ZoneId}'.");

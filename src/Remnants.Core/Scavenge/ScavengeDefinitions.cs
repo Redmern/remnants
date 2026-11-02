@@ -597,6 +597,8 @@ public sealed record StoryFieldRules
 
 public sealed record ScavengeRules
 {
+    /// <summary>Encounters each bestiary tier needs (see <see cref="Scavenge.Bestiary"/>).</summary>
+    public BestiaryRules Bestiary { get; init; } = new();
     public Dictionary<Terrain, TerrainDef> Terrain { get; init; } = new();
     public MovementRules Movement { get; init; } = new();
     public TurnRules Turn { get; init; } = new();

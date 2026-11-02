@@ -38,6 +38,9 @@ public sealed record ExtractionResult(
     /// <summary>Cards the party found in the run (its pouch): only when someone got out; they join the collection.</summary>
     public List<string> Cards { get; init; } = new();
 
+    /// <summary>What the party learned of enemy types (only when someone got out): it adds to the colony's bestiary.</summary>
+    public SortedDictionary<string, BestiaryEntry> Bestiary { get; init; } = new(StringComparer.Ordinal);
+
     /// <summary>Consumable cards the party played: gone from the collection whatever became of the party.</summary>
     public List<string> ConsumedCards { get; init; } = new();
 
@@ -85,6 +88,7 @@ public sealed record ExtractionResult(
         {
             SharedSchematics = shared, HeardOf = heard, Vehicle = vehicle, Stash = FieldLoot.StashOf(state, playerId),
             Cards = returned.Count > 0 ? new(party.CardPouch) : [],
+            Bestiary = returned.Count > 0 ? new(party.Bestiary, StringComparer.Ordinal) : new(StringComparer.Ordinal),
             ConsumedCards = SquadDecks.Of(state, playerId) is { } deck ? new(deck.Consumed) : [],
         };
     }

@@ -53,6 +53,7 @@ public sealed class ScavengeSim
             AdvanceTurns();
         }
         Visibility.UpdateExplored(Data, State);
+        Bestiary.Observe(this);
         SyncRng();
     }
 
@@ -110,6 +111,7 @@ public sealed class ScavengeSim
                 AdvanceTurns();
             }
             Visibility.UpdateExplored(Data, State);
+            Bestiary.Observe(this);
         }
         SyncRng();
         return result;
@@ -305,6 +307,7 @@ public sealed class ScavengeSim
         unit.Hp = Math.Min(unit.Hp, 0);
         unit.Ap = 0;
         unit.Plan = null;
+        Bestiary.Killed(this, unit, killer);
         State.Log(new(State.Round, type, message, unit.Id, Pos: unit.Pos));
         if (unit.Kind == UnitKind.Drone)
         {

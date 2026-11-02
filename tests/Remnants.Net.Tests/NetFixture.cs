@@ -177,6 +177,8 @@ public sealed class NetFixture
                     FogViolations.Add($"{player.Name} was sent player {d.PlayerId}'s cards.");
                 foreach (var p in s.View.Parties.Where(p => p.PlayerId != me && p.CardPouch.Count > 0))
                     FogViolations.Add($"{player.Name} was sent player {p.PlayerId}'s card pouch.");
+                foreach (var p in s.View.Parties.Where(p => p.PlayerId != me && (p.Bestiary.Count > 0 || p.SeenIds.Count > 0 || p.FoughtIds.Count > 0)))
+                    FogViolations.Add($"{player.Name} was sent player {p.PlayerId}'s bestiary.");
                 if (s.View.CardRngState != 0) FogViolations.Add($"{player.Name} was sent the card stream.");
                 foreach (var d in s.View.Decks.Where(d => d.PlayerId == me && !d.DrawPile.SequenceEqual(d.DrawPile.OrderBy(x => x, StringComparer.Ordinal))))
                     FogViolations.Add($"{player.Name} was sent their draw pile in draw order.");
