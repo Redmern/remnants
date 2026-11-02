@@ -75,6 +75,25 @@ public static class BotTactics
     }
 
     /// <summary>
+    /// One move that brings the unit closer to the nearest of <paramref name="goals"/> by walking distance (round walls), the
+    /// closest such tile first; straight-line distance only where no walk gets there. Null when no move gets closer.
+    /// </summary>
+    public static Move? StepToward(ScavengeSim sim, Unit unit, int playerId, IReadOnlyList<Pos> goals)
+    {
+        if (goals.Count == 0) return null;
+        var map = sim.State.Map;
+        var movement = sim.Profile(unit).Movement;
+        var fields = goals.Select(g => Movement.DistanceField(sim.State, unit, movement, g)).ToList();
+        int Distance(Pos p) => fields.Select(f => f.TryGetValue(p, out var d) ? d : int.MaxValue).Min() is var walk && walk < int.MaxValue
+            ? walk : 1000 + goals.Min(g => g.Chebyshev(p));
+        var here = Distance(unit.Pos);
+        var step = sim.Reachable(unit).Where(kv => kv.Value <= unit.Ap && Distance(kv.Key) < here)
+            .OrderBy(kv => Distance(kv.Key)).ThenBy(kv => kv.Value).ThenBy(kv => map.Index(kv.Key))
+            .Select(kv => (Pos?)kv.Key).FirstOrDefault();
+        return step is { } to ? new Move(playerId, unit.Id, to) : null;
+    }
+
+    /// <summary>
     /// A plan for a unit with nothing in reach now: one move to the tile from which its best attack reaches the nearest of
     /// <paramref name="targets"/> (or none needed), and that attack at the target's tile, within the AP a plan may use.
     /// Null when no such plan exists.

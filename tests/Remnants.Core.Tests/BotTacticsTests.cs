@@ -85,4 +85,28 @@ public class BotTacticsTests
         Assert.True(sim.Execute(plan).Ok);
         Assert.Null(BotTactics.Plan(Field().Sim, a, 1, [])); // nobody to go for
     }
+
+    [Fact]
+    public void Stepping_toward_a_goal_walks_round_a_wall_instead_of_hugging_it()
+    {
+        // The goal is due east behind a wall open only at the bottom: straight-line steps would press against the wall.
+        var u = SurvivorUnit(1, new(1, 2));
+        var sim = Arena(9, 6, [u], rows: ["....#....", "....#....", "....#....", "....#....", "....#....", "........."]);
+        var goal = new Pos(7, 2);
+        var moves = 0;
+        for (var turn = 0; turn < 8 && u.Pos != goal; turn++)
+        {
+            u.Ap = sim.Profile(u).MaxAp;
+            while (BotTactics.StepToward(sim, u, 1, [goal]) is { } step)
+            {
+                Assert.True(sim.Execute(step).Ok);
+                moves++;
+                if (u.Pos == goal) break;
+            }
+        }
+        Assert.Equal(goal, u.Pos);
+        Assert.True(moves > 0);
+        Assert.Null(BotTactics.StepToward(sim, u, 1, [goal])); // there already
+        Assert.Null(BotTactics.StepToward(sim, u, 1, []));
+    }
 }
