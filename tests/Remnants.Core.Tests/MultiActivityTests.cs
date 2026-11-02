@@ -119,4 +119,35 @@ public class MultiActivityTests
         sim.Advance(1);
         return sim.State.Stockpile.Get(Produces[index]) - before;
     }
+
+    private static readonly Skill[] Trained = [Skill.Woodcutting, Skill.Mining, Skill.Crafting];
+
+    [Fact]
+    public void A_single_job_trains_and_earns_xp_as_before()
+    {
+        var (_, _, s) = Work(1);
+        var rules = TestData.Real.Rules.Training;
+
+        // Skill 0 and attributes at 50 (see AddSurvivor): the unchanged per-tick gains.
+        Assert.Equal(rules.SkillPerTick, s.Get(Skill.Woodcutting), 9);
+        Assert.Equal(rules.AttributePerTick * 0.6 * 0.5, s.Get(AttributeKind.Strength) - 50, 9);
+        Assert.Equal(rules.AttributePerTick * 0.4 * 0.5, s.Get(AttributeKind.Endurance) - 50, 9);
+        Assert.Equal(TestData.Real.Progression.Xp.PerWorkTick, s.Xp, 9);
+    }
+
+    [Theory]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void Each_job_trains_and_earns_xp_at_one_nth(int n)
+    {
+        var (_, _, s) = Work(n);
+        var rules = TestData.Real.Rules.Training;
+
+        for (var i = 0; i < n; i++) Assert.Equal(rules.SkillPerTick / n, s.Get(Trained[i]), 9);
+        // XP: 1/N of a work tick per job, so one work tick in all.
+        Assert.Equal(TestData.Real.Progression.Xp.PerWorkTick, s.Xp, 9);
+        // Attributes: all N jobs together train about as much as one job (each spreads AttributePerTick / N).
+        var gained = Enum.GetValues<AttributeKind>().Sum(a => s.Get(a) - 50);
+        Assert.Equal(rules.AttributePerTick * 0.5, gained, 4);
+    }
 }
