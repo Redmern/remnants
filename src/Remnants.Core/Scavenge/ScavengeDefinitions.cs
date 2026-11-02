@@ -595,18 +595,8 @@ public sealed record StoryFieldRules
     public double RaisedDetection { get; init; } = 10;
 }
 
-/// <summary>
-/// Telegraphed plans (scavenge.json <c>plans</c>). <see cref="FullTurnBudget"/>: a plan may use the unit's full turn of AP
-/// (what it pays from when it resolves) instead of the AP it has left when declaring (the rule as confirmed: false).
-/// </summary>
-public sealed record PlanRules
-{
-    public bool FullTurnBudget { get; init; }
-}
-
 public sealed record ScavengeRules
 {
-    public PlanRules Plans { get; init; } = new();
     public Dictionary<Terrain, TerrainDef> Terrain { get; init; } = new();
     public MovementRules Movement { get; init; } = new();
     public TurnRules Turn { get; init; } = new();

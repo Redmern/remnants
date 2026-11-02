@@ -185,8 +185,8 @@ public class PlannedActionTests
         Assert.Equal(ScavengeError.OutOfRange, sim.Execute(new DeclareIntent(1, a.Id, [new(2, 1)], new Pos(5, 1), "swing")).Error);
         Assert.Equal(ScavengeError.UnknownAction, sim.Execute(new DeclareIntent(1, a.Id, [new(2, 1)], new Pos(3, 1), "shoot")).Error);
         Assert.Equal(ScavengeError.InvalidTarget, sim.Execute(new DeclareIntent(1, a.Id, [])).Error);
-        a.Ap = 2;
-        Assert.Equal(ScavengeError.NotEnoughAp, sim.Execute(Charge(a)).Error);
+        // Checked against a full turn's AP (what it pays from), not what is left now: 3 moves and a swing is 4 of 3.
+        Assert.Equal(ScavengeError.NotEnoughAp, sim.Execute(new DeclareIntent(1, a.Id, [new(2, 0), new(4, 0), new(6, 0)], new Pos(5, 1), "swing")).Error);
         Assert.Null(a.Plan);
         Assert.Equal(a.Id, sim.State.CurrentUnitId);
     }

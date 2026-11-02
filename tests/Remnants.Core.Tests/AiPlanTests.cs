@@ -121,19 +121,13 @@ public class AiPlanTests
     }
 
     [Fact]
-    public void The_plan_budget_is_the_ap_left_unless_the_rules_give_a_full_turn()
+    public void A_plan_is_checked_against_a_full_turn_of_ap_not_what_is_left()
     {
         var u = SurvivorUnit(1, new(0, 1), weapon: "pipe");
-        var b = SurvivorUnit(2, new(5, 1));
-        var sim = Arena(10, 3, [u, b]);
-        u.Ap = 0;
-        Assert.Equal(ScavengeError.NotEnoughAp, sim.Execute(new DeclareIntent(1, u.Id, [new(2, 1)])).Error);
-
-        var full = With(r => r with { Plans = new PlanRules { FullTurnBudget = true } });
-        var u2 = SurvivorUnit(1, new(0, 1), weapon: "pipe");
-        var sim2 = Arena(10, 3, [u2, SurvivorUnit(2, new(5, 1))], data: full);
-        u2.Ap = 0;
-        Assert.Equal(sim2.Profile(u2).MaxAp, PlannedActions.Budget(sim2, u2));
-        Assert.True(sim2.Execute(new DeclareIntent(1, u2.Id, [new(2, 1), new(4, 1)], new Pos(5, 1), "swing")).Ok);
+        var sim = Arena(10, 3, [u, SurvivorUnit(2, new(5, 1))]);
+        Assert.True(sim.Execute(new Move(1, u.Id, new(1, 1))).Ok);
+        u.Ap = 0; // spent this turn
+        Assert.Equal(sim.Profile(u).MaxAp, PlannedActions.Budget(sim, u));
+        Assert.True(sim.Execute(new DeclareIntent(1, u.Id, [new(3, 1), new(4, 1)], new Pos(5, 1), "swing")).Ok);
     }
 }

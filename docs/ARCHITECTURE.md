@@ -881,7 +881,7 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
   events carry the `Tier` and the `Amount`.
 - **Plans** (`PlannedActions`, command `DeclareIntent`, wire `plannedAction`; `Unit.Plan` = `PlannedAction`): a path of
   whole moves, an optional attack tile and action (or suppressing fire). Free, no noise, ends the turn, locked; it must
-  fit the AP the unit has now (`scavenge.json plans.fullTurnBudget` lets it use a full turn instead, for measuring). It
+  fit a full turn's AP (`UnitProfile.MaxAp`, what it pays from), whatever the unit has left when it declares. It
   resolves at the start of the unit's next turn through the plain move and attack rules, paid from that turn's AP: a
   step that no longer works ends the path, whoever hostile is on the tile then is struck, an empty tile is a miss with
   no refund (the aimed-at unit dodged it: `Unit.OutplayedId`, the ambush hit bonus on its next attack on the attacker,

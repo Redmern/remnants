@@ -4,7 +4,7 @@ namespace Remnants.Core.Scavenge;
 
 /// <summary>
 /// Telegraphed plans (<see cref="DeclareIntent"/>, <see cref="PlannedAction"/>). Declaring is free, makes no noise and ends
-/// the turn; the plan must be affordable with the AP the unit has now, every waypoint one move from the last (a move
+/// the turn; the plan must fit a full turn's AP (what it pays from when it resolves), every waypoint one move from the last (a move
 /// reach that injured legs shrink, <see cref="ProfileDeriver.LegReach"/>), and the attack tile hittable from the end of
 /// the path. It is locked. At the start of the unit's next turn it resolves through the plain move and attack rules,
 /// paid from that turn's AP: the path stops where a step no longer works (blocked, legs hurt since, out of AP), and the
@@ -67,11 +67,10 @@ public static class PlannedActions
     }
 
     /// <summary>
-    /// The AP a plan may use: what the unit has left now, or with <see cref="PlanRules.FullTurnBudget"/> a full turn's
-    /// (the plan pays from the next turn's AP either way).
+    /// The AP a plan may use: a full turn's (<see cref="UnitProfile.MaxAp"/>), the AP it pays from when it resolves
+    /// (whatever the unit has left now; more if a stim left it above its maximum).
     /// </summary>
-    public static int Budget(ScavengeSim sim, Unit unit) =>
-        sim.Data.Rules.Plans.FullTurnBudget ? Math.Max(unit.Ap, sim.Profile(unit).MaxAp) : unit.Ap;
+    public static int Budget(ScavengeSim sim, Unit unit) => Math.Max(unit.Ap, sim.Profile(unit).MaxAp);
 
     /// <summary>Carries out the unit's plan at the start of its turn (after its AP refill), then clears it.</summary>
     internal static void Resolve(ScavengeSim sim, Unit unit)
