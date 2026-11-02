@@ -348,7 +348,9 @@ public class PlannedActionTests
         var (sim, a, b) = Duel();
         a.Pos = new(4, 1);
         Assert.True(sim.Execute(new Attack(1, a.Id, b.Id, "swing")).Ok);
-        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Attacked && e.Tier == HitTier.Hit);
+        var hit = Assert.Single(sim.State.Events, e => e.Type == ScavengeEventType.Attacked);
+        Assert.Equal(HitTier.Hit, hit.Tier);
+        Assert.Equal(b.MaxHp - b.Hp, hit.Amount!.Value, 9);
     }
 
     [Fact]

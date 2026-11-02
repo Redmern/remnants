@@ -10,7 +10,69 @@ public sealed record RunStats(int Rounds, int Kills, int LinkedSeen, int LinkedK
     int AmbushedTimes = 0, int OverwatchShots = 0, int DefensesUsed = 0,
     int Hacked = 0, int HackFailed = 0, int Overrides = 0, int DroneFlights = 0, int DronesLost = 0, int Marks = 0, int FromDevices = 0,
     int LimbLocks = 0, int Emps = 0, int Decoys = 0, int NoiseDecoys = 0, int DroneHeals = 0, int Ferried = 0, int DroneShots = 0,
-    int Salvaged = 0, int PilesLooted = 0);
+    int Salvaged = 0, int PilesLooted = 0)
+{
+    /// <summary>Plans and cards (counted from every event the run logged, not just the last <see cref="ScavengeState.MaxEvents"/>).</summary>
+    public PlanCardStats Tactics { get; init; } = new();
+}
+
+/// <summary>
+/// Telegraphed plans by everyone (<see cref="EnemyDeclared"/>: by enemies), cards the party played, the damage the party
+/// dealt and took, and the hit tiers (graze, hit, solid) of the attacks it landed and took.
+/// </summary>
+public sealed record PlanCardStats
+{
+    public int Declared { get; set; }
+    public int EnemyDeclared { get; set; }
+    public int Resolved { get; set; }
+    public int Fizzled { get; set; }
+    public int Canceled { get; set; }
+    public int CardsPlayed { get; set; }
+    public int EnemyCardsPlayed { get; set; }
+    public double DamageDealt { get; set; }
+    public double DamageTaken { get; set; }
+    public int[] TiersDealt { get; set; } = new int[3];
+    public int[] TiersTaken { get; set; } = new int[3];
+
+    public void Add(ScavengeState state, ScavengeEvent e, ISet<int> mine)
+    {
+        bool Mine(int? id) => id is { } i && mine.Contains(i);
+        bool Enemy(int? id) => id is { } i && state.FindUnit(i)?.Kind is UnitKind.Enemy or UnitKind.Device;
+        switch (e.Type)
+        {
+            case ScavengeEventType.IntentDeclared:
+                Declared++;
+                if (Enemy(e.UnitId)) EnemyDeclared++;
+                break;
+            case ScavengeEventType.IntentResolved: Resolved++; break;
+            case ScavengeEventType.IntentFizzled: Fizzled++; break;
+            case ScavengeEventType.IntentCanceled: Canceled++; break;
+            case ScavengeEventType.CardPlayed:
+                if (Mine(e.UnitId)) CardsPlayed++;
+                else EnemyCardsPlayed++;
+                break;
+            case ScavengeEventType.Attacked when e.Tier is { } tier:
+                if (Mine(e.UnitId))
+                {
+                    DamageDealt += e.Amount ?? 0;
+                    TiersDealt[(int)tier]++;
+                }
+                if (Mine(e.TargetId))
+                {
+                    DamageTaken += e.Amount ?? 0;
+                    TiersTaken[(int)tier]++;
+                }
+                break;
+        }
+    }
+
+    public void Add(PlanCardStats o)
+    {
+        Declared += o.Declared; EnemyDeclared += o.EnemyDeclared; Resolved += o.Resolved; Fizzled += o.Fizzled; Canceled += o.Canceled;
+        CardsPlayed += o.CardsPlayed; EnemyCardsPlayed += o.EnemyCardsPlayed; DamageDealt += o.DamageDealt; DamageTaken += o.DamageTaken;
+        for (var i = 0; i < 3; i++) { TiersDealt[i] += o.TiersDealt[i]; TiersTaken[i] += o.TiersTaken[i]; }
+    }
+}
 
 /// <summary>
 /// Plays the colony's party in a scavenge run through Core commands only, roughly like a careful player:
@@ -80,6 +142,22 @@ public static class PartyBot
     {
         Detours.Clear();
         ScavengeEvent? last = null;
+        var tactics = new PlanCardStats();
+        var party = sim.State.Units.Where(u => u.PlayerId is { } p && playerIds.Contains(p)).Select(u => u.Id).ToHashSet();
+        ScavengeEvent? tallied = null;
+        // Every event once, as it is logged (the state keeps only the last MaxEvents).
+        void Tally()
+        {
+            var log = sim.State.Events;
+            var start = 0;
+            if (tallied is not null)
+                for (var i = log.Count - 1; i >= 0; i--)
+                    if (ReferenceEquals(log[i], tallied)) { start = i + 1; break; }
+            foreach (var u in sim.State.Units.Where(u => u.PlayerId is { } p && playerIds.Contains(p))) party.Add(u.Id);
+            foreach (var e in log.Skip(start)) tactics.Add(sim.State, e, party);
+            if (log.Count > 0) tallied = log[^1];
+        }
+        Tally();
         void Flush()
         {
             if (trace is null) return;
@@ -122,6 +200,7 @@ public static class PartyBot
                 sim.Execute(new EndTurn(playerId, unit.Id));
             }
             Flush();
+            Tally();
         }
 
         var enemies = state.Units.Where(u => u.Kind == UnitKind.Enemy).ToList();
@@ -147,7 +226,7 @@ public static class PartyBot
             state.Events.Count(e => e.Type == ScavengeEventType.EmpBurst && e.Message.Contains(" goes off at ") && e.UnitId is { } t && mine.Contains(t)),
             Count(ScavengeEventType.DecoyDeployed), Count(ScavengeEventType.NoiseDecoy), Count(ScavengeEventType.DroneHealed),
             Count(ScavengeEventType.DroneFerried), Count(ScavengeEventType.DroneFired),
-            salvaged, Count(ScavengeEventType.PickedUp)));
+            salvaged, Count(ScavengeEventType.PickedUp)) { Tactics = tactics });
     }
 
     private static bool IsLinked(ScavengeSim sim, Unit u) =>

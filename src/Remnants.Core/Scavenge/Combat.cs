@@ -251,7 +251,7 @@ public static class Combat
         state.Log(new(state.Round, ScavengeEventType.Attacked,
             $"{attacker.Name} {verb} {where} for {damage:0} ({action.Name}).", attacker.Id, target.Id, target.Pos,
             Anonymous: target.Structure ? $"{target.Name} was {how} for {damage:0} from the fog." : $"{target.Name} was {how} in the {part} for {damage:0} from the fog.",
-            Tier: tier));
+            Tier: tier, Amount: damage));
         var severity = action.InjuryMultiplier * (1 - Math.Clamp(defense.InjuryResist, 0, 1)) * (tier == HitTier.Solid ? tiers.SolidSeverity : 1);
         ApplyDamage(sim, target, part, damage, severity, attacker, injure: tier != HitTier.Graze);
         if (bane is { Stun: true } && target.IsActive && !target.Suppressed)

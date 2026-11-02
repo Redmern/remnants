@@ -125,6 +125,7 @@ public static class ZoneTrial
         var injuries = 0;
         var deadWithLinked = 0;
         var linkedKills = 0;
+        var tactics = new PlanCardStats();
         for (var seed = 1; seed <= runs; seed++)
         {
             var setups = new List<PartySetup>();
@@ -256,6 +257,7 @@ public static class ZoneTrial
             heals += stats.DroneHeals;
             ferried += stats.Ferried;
             droneShots += stats.DroneShots;
+            tactics.Add(stats.Tactics);
         }
         var n = Math.Max(1, runs - stuck);
         var sb = new StringBuilder();
@@ -267,6 +269,12 @@ public static class ZoneTrial
         sb.AppendLine($"  items/run {items / (double)n:0.0}  schematics/run {schematics / (double)n:0.00}  kills/run {kills / (double)n:0.0}  Linked kills/run {linkedKills / (double)n:0.00}  rounds/run {rounds / (double)n:0}");
         sb.AppendLine($"  carried home/run: {string.Join("  ", resources.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => $"{kv.Key} {kv.Value / (double)n:0.0}"))}  pick-ups/run {piles / (double)n:0.0}  salvage actions/run {salvaged / (double)n:0.0}");
         sb.AppendLine($"  ambushed/run {ambushed / (double)n:0.00}  overwatch shots/run {reactions / (double)n:0.00}  defenses used/run {defended / (double)n:0.0}");
+        string Tiers(int[] t) => t.Sum() == 0 ? "-" : $"{100.0 * t[0] / t.Sum():0}/{100.0 * t[1] / t.Sum():0}/{100.0 * t[2] / t.Sum():0}%";
+        sb.AppendLine($"  plans/run {tactics.Declared / (double)n:0.0} (enemy {tactics.EnemyDeclared / (double)n:0.0})  resolved {tactics.Resolved / (double)n:0.0}" +
+                      $"  fizzled {tactics.Fizzled / (double)n:0.0}  cancelled {tactics.Canceled / (double)n:0.0}  cards played/run {tactics.CardsPlayed / (double)n:0.0}" +
+                      (tactics.EnemyCardsPlayed > 0 ? $" (enemy {tactics.EnemyCardsPlayed / (double)n:0.0})" : ""));
+        sb.AppendLine($"  damage dealt/run {tactics.DamageDealt / n:0}  taken/run {tactics.DamageTaken / n:0}" +
+                      $"  graze/hit/solid dealt {Tiers(tactics.TiersDealt)}  taken {Tiers(tactics.TiersTaken)}");
         var otherRuns = n - runsWithLinked;
         sb.AppendLine($"  runs seeing Linked {100.0 * runsWithLinked / n:0}%  Linked seen/run {linkedSeen / (double)n:0.00}" +
                       (runsWithLinked > 0 ? $"  death rate with Linked {100.0 * deadWithLinked / runsWithLinked:0}% vs without {100.0 * (runsWithDeath - deadWithLinked) / Math.Max(1, otherRuns):0}%" : ""));
