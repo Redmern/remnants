@@ -1719,3 +1719,33 @@ quartile range of −4 to +9, because a site moves the random stream (who is hom
   keeps its Workshop crafter instead of cutting wood. Base has the same shape in its wiped colonies.
 - **Raids held** dipped (86 → 82%, 70 → 65%): builders are not guards, and the upgrades that would add worker slots come
   later. Worth a look with the defense numbers.
+
+## Hit tiers (scavenge tactical cards, unit 1)
+
+A landed hit now resolves by its roll margin: the share of the hit chance the roll came in under
+(`combat.tiers` in data/scavenge.json). Below 0.25 it is a **graze** (40% of the damage, at least 1, no body-part
+injury), from 0.8 a **solid** hit (full damage, 1.5× injury severity), a plain **hit** between. Armor on the hit region
+of 2 or more (after pierce) and cover of 0.25 or more (terrain beside the target plus brace) each shift it down a tier,
+never below a graze. So in the open about 25% of hits graze, 55% hit and 20% land solid. The tiers reuse the existing
+hit roll, so fixed-seed runs draw the same numbers as before.
+
+Zone trials, 300 runs each, party of 2 with starting gear, before → after:
+
+| Zone | Runs with a death | Wipes | Injuries/run |
+|---|---|---|---|
+| Outskirts | 6% → 1% | 0% → 0% | 5.0 → 3.2 |
+| Scrapyard Flats | 12% → 6% | 3% → 1% | 5.9 → 3.7 |
+| Suburb Ruins | 35% → 18% | 14% → 5% | 5.5 → 4.4 |
+| Flooded Mall | 57% → 36% | 23% → 9% | |
+| Rail Depot | 91% → 84% | 65% → 45% | 1.3 → 1.3 |
+| Network Relay | 99% → 96% | 88% → 72% | 0.3 → 0.5 |
+| Core Spire | 100% → 100% | 97% → 89% | 0.1 → 0.2 |
+
+Target 3 (Outskirts: a death in ≤ 10% of runs, wipes ≤ 3%, nearly every run comes home hurt) still holds: 92% of runs
+bring home a new injury. Runs got a lot safer, mostly in the early and middle zones. That is on purpose for now: intents
+and cards (units 2 to 5) add new ways to get hit and to avoid it, and AC-14 re-checks the death and wipe targets once
+they are in. If the tiers stay as they are, the knobs are `grazeBelow` and `grazeDamage`.
+
+Also in this unit: `combat.armLockBelow` 0.5 (arm efficiency under which arm-locked attacks and cards cannot be used; no
+item is marked yet), and field mending (`use.mend`): the Suture Kit takes 0.15 and the Field Trauma Kit 0.2 off the
+worst injury's severity during a run.
