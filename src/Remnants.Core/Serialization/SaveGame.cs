@@ -573,7 +573,7 @@ public static class SaveGame
         foreach (var part in colony.Survivors.SelectMany(s => s.Body.Parts.Values))
             if (part.ProstheticItemId is { } id) RequireItem(id);
         foreach (var op in colony.Surgeries) RequireItem(op.ItemId);
-        foreach (var id in colony.Cards.Owned.Keys.Concat(colony.Cards.Deck).Concat(colony.Cards.Slots.Values.SelectMany(s => s)))
+        foreach (var id in colony.Cards.Owned.Keys.Concat(colony.Cards.Deck).Concat(colony.Cards.Slots.Values.SelectMany(s => s)).Concat(colony.Cards.Taught))
             if (data.Cards.Find(id) is null) throw new JsonException($"Save references unknown card '{id}'.");
         foreach (var id in colony.Bestiary.Keys)
             if (!data.Enemies.ContainsKey(id)) throw new JsonException($"Save's bestiary references unknown enemy '{id}'.");

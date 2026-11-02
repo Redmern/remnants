@@ -1,4 +1,6 @@
 using Remnants.Core.Colony;
+using Remnants.Core.Data;
+using Remnants.Core.Serialization;
 using Remnants.Core.Random;
 using Remnants.Core.Scavenge;
 using Remnants.Core.Survivors;
@@ -94,7 +96,7 @@ public class CardSourceTests
     }
 
     [Fact]
-    public void A_recipe_with_a_card_output_grants_a_copy()
+    public void A_recipe_with_a_card_output_teaches_it_on_the_first_craft_only()
     {
         var recipe = TestData.Real.Recipes.Values.First(r => r.Card is not null);
         Assert.NotNull(Real.Cards.Find(recipe.Card!));
@@ -104,11 +106,47 @@ public class CardSourceTests
         var worker = sim.AddSurvivor(attributes: 60);
         worker.Set(sim.Data.Jobs[sim.Data.Buildings[recipe.Building].Job!].Skill, Math.Max(recipe.MinSkill, 30));
         Assert.True(sim.Execute(new AssignJob(worker.Id, shop.Id)).Ok);
-        foreach (var (res, n) in recipe.Inputs) sim.State.Stockpile.Add(res, n * 2);
+        var before = sim.State.Cards.Owned.GetValueOrDefault(recipe.Card!);
+        foreach (var (res, n) in recipe.Inputs) sim.State.Stockpile.Add(res, n * 4);
         Assert.True(sim.Execute(new QueueRecipe(shop.Id, recipe.Id)).Ok);
-        for (var i = 0; i < 3000 && shop.Queue.Count > 0; i++) sim.Tick();
+        Assert.True(sim.Execute(new QueueRecipe(shop.Id, recipe.Id)).Ok);
+        for (var i = 0; i < 6000 && shop.Queue.Count > 0; i++) sim.Tick();
         Assert.Empty(shop.Queue);
-        Assert.Equal(1, sim.State.Cards.Owned.GetValueOrDefault(recipe.Card!));
+        Assert.Equal(before + 1, sim.State.Cards.Owned.GetValueOrDefault(recipe.Card!)); // two crafts, one card (user decision)
+        Assert.Contains(recipe.Card!, sim.State.Cards.Taught);
+    }
+
+    [Fact]
+    public void Crafting_teaches_a_card_once_but_a_recipe_that_only_makes_the_card_grants_it_every_time()
+    {
+        var state = new ColonyState();
+        var jacket = new RecipeDef { Id = "jacket", Item = "scout_jacket", Card = "dash" };
+        Assert.True(ColonyCards.FromRecipe(state, Real.Cards, jacket));
+        Assert.False(ColonyCards.FromRecipe(state, Real.Cards, jacket));
+        Assert.Equal(1, state.Cards.Owned["dash"]);
+
+        var press = new RecipeDef { Id = "card_press", Card = "dash" }; // the card is its only output
+        Assert.True(ColonyCards.FromRecipe(state, Real.Cards, press));
+        Assert.True(ColonyCards.FromRecipe(state, Real.Cards, press));
+        Assert.Equal(3, state.Cards.Owned["dash"]);
+        Assert.False(ColonyCards.FromRecipe(state, Real.Cards, new RecipeDef { Id = "x", Item = "pipe", Card = "no_such_card" }));
+    }
+
+    [Fact]
+    public void Taught_cards_ride_the_save_and_an_older_colony_starts_with_none_taught()
+    {
+        var sim = NewGame.Create(TestData.Real, 3, Real);
+        sim.State.Cards.Taught.Add("dash");
+        var json = SaveGame.Save(sim.State);
+        Assert.Contains("dash", SaveGame.Load(TestData.Real, json, Real).State.Cards.Taught);
+
+        var node = System.Text.Json.Nodes.JsonNode.Parse(json)!;
+        node["version"] = 26;
+        node["colony"]!.AsObject().Remove("cards");
+        Assert.Empty(SaveGame.Load(TestData.Real, node.ToJsonString(), Real).State.Cards.Taught);
+
+        sim.State.Cards.Taught.Add("no_such_card");
+        Assert.Throws<System.Text.Json.JsonException>(() => SaveGame.Load(TestData.Real, SaveGame.Save(sim.State), Real));
     }
 
     [Fact]

@@ -89,7 +89,10 @@ public sealed record RecipeDef
     /// <summary>Decrypt orders: the schematic learned when the batch is done (its item is the one input).</summary>
     public string? Learns { get; init; }
 
-    /// <summary>A card id: each finished batch also grants a copy into the colony's card collection.</summary>
+    /// <summary>
+    /// A card id: the colony's first finished batch teaches it (one copy into the collection); a recipe whose only output
+    /// is the card grants a copy every batch (<see cref="Colony.ColonyCards.FromRecipe"/>).
+    /// </summary>
     public string? Card { get; init; }
 
     /// <summary>

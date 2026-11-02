@@ -14,6 +14,9 @@ public sealed class CardCollection
     public List<string> Deck { get; set; } = new();
     public SortedDictionary<int, List<string>> Slots { get; set; } = new();
     public SortedSet<string> Upgrades { get; set; } = new(StringComparer.Ordinal);
+
+    /// <summary>Cards a recipe has already taught (granted on its first craft only; see <see cref="ColonyCards.FromRecipe"/>).</summary>
+    public SortedSet<string> Taught { get; set; } = new(StringComparer.Ordinal);
 }
 
 /// <summary>Building the squad deck at the village, the starter set, and cards coming into and leaving the collection.</summary>
@@ -32,6 +35,19 @@ public static class ColonyCards
         if (count <= 0 || cards.Find(id) is null) return false;
         state.Cards.Owned[id] = state.Cards.Owned.GetValueOrDefault(id) + count;
         return true;
+    }
+
+    /// <summary>
+    /// A finished batch's card (user decision): a recipe that makes something else teaches its card on the colony's first
+    /// craft of it, one copy (<see cref="CardCollection.Taught"/>); more copies come from loot, trade and dedicated card
+    /// recipes, whose only output is the card, and which grant a copy every time. True when a copy was added.
+    /// </summary>
+    public static bool FromRecipe(ColonyState state, CardCatalog cards, Data.RecipeDef recipe)
+    {
+        if (recipe.Card is not { } id || cards.Find(id) is null) return false;
+        var dedicated = recipe.Item is null && recipe.Resource is null && recipe.Vehicle is null && recipe.Learns is null;
+        if (!dedicated && !state.Cards.Taught.Add(id)) return false;
+        return Add(state, cards, id);
     }
 
     /// <summary>
