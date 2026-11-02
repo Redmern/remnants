@@ -389,6 +389,6 @@ public class ScavengeSaveVersionTests
 
         var v1 = NewScavenge.Create(Real, "outskirts", 5, [Party(1)]);
         var old = ScavengeSave.Save(v1.State).Replace($"\"version\": {ScavengeSave.Version}", "\"version\": 1");
-        Assert.Equal(0, ScavengeSave.Load(Real, old).State.AlarmRounds);
+        Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, old)); // old runs reset
     }
 }

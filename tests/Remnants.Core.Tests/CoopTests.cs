@@ -451,9 +451,7 @@ public class CoopTests
         node["version"] = 3;
         var run = node["scavenge"]!.AsObject();
         foreach (var key in new[] { "proposals", "breaks", "pings", "nextTeamId" }) run.Remove(key);
-        var old = ScavengeSave.Load(Real, node.ToJsonString());
-        Assert.Empty(old.State.Pings);
-        Assert.Equal(Unit.PlayerSide(1), old.State.FindParty(1)!.Side);
+        Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, node.ToJsonString())); // old runs reset
     }
 
     [Fact]

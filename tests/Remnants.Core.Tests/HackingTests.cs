@@ -444,8 +444,7 @@ public class HackingTests
         scavenge.Remove("devices");
         scavenge.Remove("marks");
         foreach (var u in scavenge["units"]!.AsArray()) u!.AsObject().Remove("hooks");
-        var v4 = ScavengeSave.Load(Real, old.ToJsonString());
-        Assert.Empty(v4.State.Devices);
+        Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, old.ToJsonString())); // old runs reset
     }
 
     /// <summary>Open rows with wall runs (x0, y0, x1, y1), inclusive, each a straight line.</summary>

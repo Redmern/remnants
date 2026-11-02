@@ -422,9 +422,6 @@ public class FogTests
         var scavenge = old["scavenge"]!.AsObject();
         foreach (var key in new[] { "contacts", "reveals", "flares", "sensors", "nextSensorId" }) scavenge.Remove(key);
         foreach (var unit in scavenge["units"]!.AsArray()) foreach (var key in new[] { "stance", "reactions", "lookout" }) unit!.AsObject().Remove(key);
-        var migrated = ScavengeSave.Load(Real, old.ToJsonString());
-        Assert.Empty(migrated.State.Sensors);
-        Assert.Empty(migrated.State.Contacts);
-        Assert.All(migrated.State.Units, x => Assert.Equal(Stance.None, x.Stance));
+        Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, old.ToJsonString())); // old runs reset
     }
 }

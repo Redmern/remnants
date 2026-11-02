@@ -184,9 +184,8 @@ public class NightMissionTests
         var node = System.Text.Json.Nodes.JsonNode.Parse(ScavengeSave.Save(sim.State))!;
         node["version"] = 5;
         node["scavenge"]!.AsObject().Remove("environment");
-        var old = ScavengeSave.Load(Real, node.ToJsonString());
-        Assert.Equal(DayPhase.Day, old.State.Environment.Phase);
-        Assert.Equal(12, old.State.Environment.Hour);
+        // Runs from before plans and decks are refused now (old runs reset).
+        Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, node.ToJsonString()));
     }
 
     [Fact]

@@ -34,7 +34,9 @@ namespace Remnants.Core.Scavenge;
 /// holding, the party's survivors at the start and a co-op guest's schematic copies (<see cref="MissionRun"/>), and
 /// devices' failed hacks (<see cref="ZoneDevice.Failures"/>); an older run loads with none of them.
 /// <see cref="IntentsVersion"/> adds telegraphed plans (<see cref="Unit.Plan"/>), dodged attacks
-/// (<see cref="Unit.OutplayedId"/>) and hit tiers on events; an older run loads with no plans pending.
+/// (<see cref="Unit.OutplayedId"/>) and hit tiers on events, and with them the squad decks, personal card slots and card
+/// effects. Older runs are not migrated: they are refused (old runs reset; a colony save drops its run in progress, see
+/// <see cref="SaveGame"/>).
 /// </summary>
 public static class ScavengeSave
 {
@@ -43,7 +45,8 @@ public static class ScavengeSave
     /// <summary>Telegraphed plans (keyed: renumber to the next free version at merge).</summary>
     public const int IntentsVersion = 15;
     public const int Version = IntentsVersion;
-    private const int OldestVersion = 1;
+    /// <summary>Runs from before plans and decks are not carried over: an older run is refused (and a colony save drops it).</summary>
+    private const int OldestVersion = IntentsVersion;
 
     private sealed record Envelope(int Version, ScavengeState Scavenge);
 

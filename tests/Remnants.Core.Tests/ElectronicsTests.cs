@@ -631,9 +631,7 @@ public class ElectronicsSaveTests
 
         var plain = Arena(12, 8, [SurvivorUnit(1, new Pos(1, 1)), EnemyUnit("husk", new Pos(8, 6))]);
         var old = ScavengeSave.Save(plain.State).Replace($"\"version\": {ScavengeSave.Version}", "\"version\": 7");
-        var loaded = ScavengeSave.Load(Real, old).State;
-        Assert.Empty(loaded.Parties[0].Secured);
-        Assert.All(loaded.Units, x => Assert.Empty(x.ChargesUsed));
+        Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, old)); // old runs reset
     }
 }
 

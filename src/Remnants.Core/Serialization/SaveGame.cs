@@ -80,10 +80,18 @@ namespace Remnants.Core.Serialization;
 /// Upgrade place a site that builders finish over time. Older saves had none pending (building was instant), so every
 /// building in them stays finished and they load with no sites; the Construction skill starts at 0. A save with sites
 /// loaded on data with construction off has them finished at once (see <see cref="FinishSites"/>).
+/// Version <see cref="CardsVersion"/> (27) adds tactical cards (<see cref="ColonyState.Cards"/>: the collection, the squad deck,
+/// personal slots and deck upgrades) and carries the run's <see cref="ScavengeSave"/> version 15 (plans, decks). Older colonies
+/// get the starter set as their collection and deck. A run in progress inside an older save (an expedition in the zone)
+/// cannot be carried over (old runs are not migrated, <see cref="ScavengeSave"/>): it is dropped and starts over from the
+/// expedition's seed with the party as it set out, which is what a run not yet opened does anyway. The party stays out.
 /// </summary>
 public static class SaveGame
 {
-    public const int Version = 26;
+    public const int Version = CardsVersion;
+
+    /// <summary>The save version that brought tactical cards (keyed so a merge renumbers it in one place).</summary>
+    public const int CardsVersion = 27;
 
     /// <summary>The save version that brought construction sites.</summary>
     public const int ConstructionVersion = 26;
@@ -214,6 +222,7 @@ public static class SaveGame
         if (envelope.Version < OldestVersion || envelope.Version > Version)
             throw new JsonException($"Unsupported save version {envelope.Version} (expected {OldestVersion}..{Version}).");
         var colony = envelope.Colony ?? throw new JsonException("Save file has no colony.");
+        if (envelope.Version < CardsVersion && colony.Expedition is { PendingResult: null } running) running.Scavenge = null;
         if (envelope.Version < 3) MigrateGrowth(data, colony);
         foreach (var s in colony.Survivors)
             if (envelope.Version < 8) Progression.Migrate(data, s);
@@ -226,6 +235,7 @@ public static class SaveGame
         if (envelope.Version < RaidsVersion) MigrateRaids(colony);
         RepairDefense(data, colony);
         if (envelope.Version < MedicineVersion) MigrateMedicine(data, scavenge, colony);
+        if (envelope.Version < CardsVersion && scavenge is not null) ColonyCards.GrantStarter(colony, scavenge.Cards);
         Validate(data, colony);
         if (scavenge is not null) Validate(scavenge, colony);
         var sim = new ColonySim(data, colony, scavenge);
@@ -562,6 +572,8 @@ public static class SaveGame
         foreach (var part in colony.Survivors.SelectMany(s => s.Body.Parts.Values))
             if (part.ProstheticItemId is { } id) RequireItem(id);
         foreach (var op in colony.Surgeries) RequireItem(op.ItemId);
+        foreach (var id in colony.Cards.Owned.Keys.Concat(colony.Cards.Deck).Concat(colony.Cards.Slots.Values.SelectMany(s => s)))
+            if (data.Cards.Find(id) is null) throw new JsonException($"Save references unknown card '{id}'.");
         if (colony.Defense.Raid?.Battle is { } battle) ScavengeSave.Validate(data, battle);
         if (colony.Expedition is not { } expedition) return;
         if (!data.Zones.ContainsKey(expedition.ZoneId)) throw new JsonException($"Save references unknown zone '{expedition.ZoneId}'.");

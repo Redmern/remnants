@@ -122,10 +122,11 @@ internal static class ExpeditionHandlers
         {
             var s = sim.State.FindSurvivor(m.SurvivorId) ?? throw new InvalidOperationException($"Expedition member {m.SurvivorId} is gone.");
             return new PartyMember(s, new(m.Equipment ?? new()), new(m.Pack ?? []),
-                sim.Data.Food is null ? 0 : FoodEffects.FieldFirstRoundAp(s, sim.Data, sim.State.Tick));
+                sim.Data.Food is null ? 0 : FoodEffects.FieldFirstRoundAp(s, sim.Data, sim.State.Tick), ColonyCards.SlotCards(sim.State, s.Id));
         }).ToList())
         {
             Vehicle = expedition.VehicleId is { } id && sim.FindVehicle(id) is { } v ? VehicleRules.Field(sim.Data, v) : null,
+            Deck = ColonyCards.Loadout(sim),
         };
 
     public static CommandResult Apply(ColonySim sim, ApplyExtractionResult c)

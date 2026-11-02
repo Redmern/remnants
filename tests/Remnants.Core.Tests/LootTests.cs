@@ -310,13 +310,13 @@ public class SalvageTests
     }
 
     [Fact]
-    public void An_older_run_gets_a_loot_seed_on_load()
+    public void An_older_run_is_refused_and_a_current_one_keeps_its_loot_seed()
     {
         var sim = NewScavenge.Create(Real, "outskirts", 3, [Party(1)]);
         var node = System.Text.Json.Nodes.JsonNode.Parse(ScavengeSave.Save(sim.State))!;
         node["version"] = ScavengeSave.LootVersion - 1;
         node["scavenge"]!["lootSeed"] = 0;
-        var loaded = ScavengeSave.Load(Real, node.ToJsonString());
-        Assert.NotEqual(0UL, loaded.State.LootSeed);
+        Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Real, node.ToJsonString())); // old runs reset
+        Assert.NotEqual(0UL, ScavengeSave.Load(Real, ScavengeSave.Save(sim.State)).State.LootSeed);
     }
 }
