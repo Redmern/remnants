@@ -1811,7 +1811,8 @@ the Flooded Mall, so they are not used. The sweep (21 trials) is logged in the o
 Which runs take it is a setting, to compare (Settings > Game > Late zones; Core `LateZoneTuning`): **as before**
 (Current), **re-tuned expeditions** (the default: free expeditions take it, story missions keep the zone as it is) or
 **re-tuned everywhere** (story missions in these zones too). Playtest: `--late-zones=current|expeditions|everywhere`
-(default expeditions); debug runs: `--scavenge --late-zones=MODE`.
+(default expeditions); debug runs: `--scavenge --late-zones=MODE`; multiplayer: the host's "Late zones (host)" picker
+or the server's `--late-zones=MODE` (default expeditions), shown in the lobby.
 
 Zone trials: `dotnet run -c Release --project tools/Remnants.Playtest -- --zone=all --runs=300` (run seeds 1..300, as
 above), `--late-zones=current` vs the default. Before = `1ce7eea` (the same numbers as `--late-zones=current` now),

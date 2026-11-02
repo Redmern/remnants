@@ -911,7 +911,8 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
   alternative enemy count, devices, pylons and reinforcements (waves, count, `afterRounds`). `NewScavenge.Create` applies
   it when `ZoneConditions.LateZones` picks the run (Current; Expeditions: no story mission; Everywhere) and records
   `ScavengeState.Retuned`, which `Network` reads for reinforcements. The colony takes the mode from
-  `ColonySim.LateZones` (set from the game's setting when a run opens; not saved). The multiplayer host uses Current.
+  `ColonySim.LateZones` (set from the game's setting when a run opens; not saved). Multiplayer: `HostOptions.LateZones`
+  (default Expeditions; the host's "Late zones" picker, the server's `--late-zones`), shown in `LobbyState.LateZones`.
   Tests: `LateZoneTuningTests`.
 - Tests: `ReachTests`, `HitTierTests`, `InjuryEffectTests`, `PlannedActionTests`, `AiPlanTests`, `CardDataTests`,
   `SquadDeckTests`, `PlayCardTests`, `CardSlotTests`, `ColonyCardTests`, `CardSourceTests`, `BotTacticsTests`; Net

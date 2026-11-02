@@ -12,6 +12,7 @@ dotnet run --project src/Remnants.Server -- --port 7777
 #    options: --zone ID (default suburb_ruins) --seed N --players 2 (min to start) --max-players 4
 #             --turn-seconds 60 (0 = no AFK timer) --reconnect-seconds 120 --max-party N --bind 0.0.0.0 --data DIR
 #             --coop (everyone on one team; default versus) --hour 0-23 (time of day; default: from the seed)
+#             --late-zones current|expeditions|everywhere (the late zones' retune, see BALANCE.md; default expeditions)
 #             --weather KIND[:INTENSITY] (clear, overcast, rain, thunderstorm, fog, dust_storm; default: from the seed)
 
 # 2. two game clients: main menu → Multiplayer → name + server address → Join → Ready
@@ -103,7 +104,7 @@ hooks), and the `limbLocked` event. **7: schematics** — schematic items (`sch_
 | C→S | `Command(requestId, intent)` | a scavenge command |
 | C→S | `Leave` | leave for good (no reconnect) |
 | S→C | `Welcome(version, playerId, reconnectToken)` / `JoinRefused(reason)` | seat (player ids 1, 2, …) or why not |
-| S→C | `LobbyState(zone, min, max, players, mode)` | after every lobby change; each player with their starting `team` (co-op: all 1) |
+| S→C | `LobbyState(zone, min, max, players, mode, lateZones)` | after every lobby change; each player with their starting `team` (co-op: all 1); `lateZones`: the host's late-zone tuning (a co-op story mission takes the retune only under `everywhere`) |
 | S→C | `MissionStarted(zone, map, players, turnSeconds, reconnectSeconds, mode)` | the terrain, once; players with their starting team |
 | S→C | `Snapshot(view, visible, events)` | the receiver's fog-filtered state + new events it may hear about |
 | S→C | `CommandAccepted(requestId, message)` / `CommandRejected(requestId, error, message)` | sent after the snapshot carrying the effects |
