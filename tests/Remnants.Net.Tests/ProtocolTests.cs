@@ -57,6 +57,9 @@ public class ProtocolTests
         Assert.Equal((plan.AttackTile, plan.ActionId), (back.AttackTile, back.ActionId));
         Assert.Equal(json, ProtocolJson.Serialize(new Command(7, back)));
 
+        var pin = new DeclareIntent(1, 2, [], new Pos(6, 4), "burst", Suppress: true);
+        var pinBack = Assert.IsType<DeclareIntent>(Assert.IsType<Command>(ProtocolJson.Deserialize(ProtocolJson.Serialize(new Command(9, pin)))).Intent);
+        Assert.True(pinBack.Suppress);
         var moveOnly = ProtocolJson.Serialize(new Command(8, new DeclareIntent(1, 2, [new Pos(1, 1)])));
         Assert.IsType<DeclareIntent>(Assert.IsType<Command>(ProtocolJson.Deserialize(moveOnly)).Intent);
         Assert.Equal(17, Protocol.TacticsVersion);

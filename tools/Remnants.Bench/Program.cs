@@ -99,20 +99,24 @@ if (Run("scavenge"))
     foreach (var (zone, kit, players) in new[] { ("network_relay", "tech", 1), ("core_spire", "tech", 1), ("core_spire", "drone", 2) })
     {
         var ends = new List<double>();
+        var cards = new List<double>();
         var all = new List<double>();
         PartyBot.Timed = (command, ms) =>
         {
             all.Add(ms);
-            if (command is EndTurn or SetStance) ends.Add(ms);
+            if (command is EndTurn or SetStance or DeclareIntent) ends.Add(ms);
+            else if (command is PlayCard or DiscardDeadCard) cards.Add(ms);
         };
         ZoneTrial.Run(data, scavenge, zone, 2, 3, kit: kit, players: players); // warm-up
         ends.Clear();
+        cards.Clear();
         all.Clear();
         var sw = Stopwatch.StartNew();
         ZoneTrial.Run(data, scavenge, zone, runs, 3, kit: kit, players: players);
         PartyBot.Timed = null;
         Console.WriteLine($"scavenge {zone} kit={kit} players={players}: {runs} runs in {sw.Elapsed.TotalSeconds:F1}s");
-        Console.WriteLine($"  end turn (AI turns until the party is up again): {Stats(ends)}");
+        Console.WriteLine($"  end turn or plan (AI turns until the party is up again): {Stats(ends)}");
+        Console.WriteLine($"  card plays: {Stats(cards)}");
         Console.WriteLine($"  any command: {Stats(all)}");
     }
 }

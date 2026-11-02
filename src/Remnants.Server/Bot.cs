@@ -8,9 +8,11 @@ using Remnants.Net;
 namespace Remnants.Server;
 
 /// <summary>
-/// A scripted headless client: joins with two armed adults from a fresh colony, readies, then on each of its turns
-/// shoots the best visible target, else walks toward the map centre (for <c>--rounds</c> rounds) and then to the
-/// nearest exit and extracts. It only uses what its fog-filtered view shows, like a real client.
+/// A scripted headless client: joins with two armed adults and the starter deck of a fresh colony, readies, then on each
+/// of its turns plays a card when one is worth it (<see cref="BotTactics"/>), shoots the best visible target, steps off a
+/// tile a seen enemy plan aims at, telegraphs a move and a blow at a hostile out of reach, else walks toward the map
+/// centre (for <c>--rounds</c> rounds) and then to the nearest exit and extracts. It only uses what its fog-filtered
+/// view shows, like a real client.
 /// <para>
 /// As an ally (a co-op mission, <c>--team N</c> in a versus lobby, or an alliance it accepted: it accepts every offer
 /// unless <c>--hostile</c>; with <c>--propose</c> it also offers one to every rival party it is in contact with) it patches up and revives allies next to it, carries a downed one it cannot revive to the
@@ -38,10 +40,12 @@ internal static class Bot
         if (a.Flag("--trade")) BotTrade.Attach(client, name, BotTrade.ParseGoods(a.Value("--trade-offer") ?? "scrap:20,bandage", game, data));
         transport.Start();
 
-        var survivors = NewGame.Create(game, (ulong)name.Sum(c => c)).State.Survivors.Where(s => !s.IsChild).Take(2).ToList();
+        var colony = NewGame.Create(game, (ulong)name.Sum(c => c), data).State;
+        var survivors = colony.Survivors.Where(s => !s.IsChild).Take(2).ToList();
         var party = survivors.Select((s, i) => new PartyMember(s,
             new Dictionary<EquipSlot, string> { [EquipSlot.Weapon] = i == 0 ? "pistol" : "pipe" }, ["bandage", "med_kit"])).ToList();
-        client.Join(name, party);
+        // A new colony's starter deck comes along (an empty one, with no cards.json, means none).
+        client.Join(name, party, deck: colony.Cards.Deck.Count > 0 ? colony.Cards.Deck : null);
         if (a.Value("--team") is { } team) client.SetTeam(int.Parse(team));
         client.SetReady(true);
         Program.Print($"{name}: joining {target} with {string.Join(", ", party.Select(p => p.Survivor.Name))}");
@@ -99,6 +103,8 @@ internal static class Bot
             (p.FromPlayerId, p.ToPlayerId) == (pid, other) || (p.FromPlayerId, p.ToPlayerId) == (other, pid));
 
         var allies = state.Units.Where(u => u.Side == unit.Side && u.PlayerId != pid && u.Kind == UnitKind.Survivor && u.OnMap).ToList();
+        // Cards first (mostly free): a reaction to a plan aimed at it, aim, defense, a mend, a draw.
+        if (BotTactics.Card(view, unit, pid) is { } card) return card;
         if (Help(view, unit, allies) is { } help) return help;
 
         var shot = profile.Actions
@@ -107,10 +113,15 @@ internal static class Bot
                 .Select(t => (Action: x, Target: t, Chance: Combat.HitChance(view.Data, map, unit.Pos, x, t.Pos, view.Profile(t)))))
             .OrderByDescending(o => o.Chance).FirstOrDefault();
         if (shot.Target is not null) return new Attack(pid, unit.Id, shot.Target.Id, shot.Action.Id);
+        // Step off a tile a seen enemy plan aims at.
+        if (BotTactics.Dodge(view, unit, pid) is { } dodge) return dodge;
 
         var hadAllies = client.Mission?.Mode == MissionMode.Coop || state.Parties.Any(p => p.PlayerId != pid && p.Side == unit.Side);
         var leaving = state.Round > rounds || unit.CarryingId is not null || (hadAllies && allies.All(a => !a.IsActive));
         if (leaving && map.IsExit(unit.Pos)) return new Extract(pid, unit.Id);
+        // A hostile in view but out of reach: telegraph a move and a blow at it for next turn.
+        var targets = state.Units.Where(t => t.OnMap && t.IsActive && unit.HostileTo(t) && !Talking(t)).ToList();
+        if (!leaving && BotTactics.Plan(view, unit, pid, targets) is { } plan) return plan;
 
         // Follow the nearest ally (a downed one first); once next to them, cover them on overwatch.
         var buddy = allies.OrderBy(a => a.IsActive ? 1 : 0).ThenBy(a => a.Pos.Chebyshev(unit.Pos)).ThenBy(a => a.Id).FirstOrDefault();

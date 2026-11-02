@@ -6,7 +6,7 @@ using Remnants.Playtest;
 //        [--no-vehicles] [--schematics=sch_a,sch_b|vehicles]   --travel-table   --zone=ID --vehicle=TIER   (vehicles: every vehicle schematic, to sweep the tiers)
 //        dotnet run --project tools/Remnants.Playtest -- --mission=ID [--runs=N] [--hour=H[,H...]] [--weather=KIND[,KIND...]] [--th=N] [--party=N] [--kit=armed]
 //        dotnet run --project tools/Remnants.Playtest -- --story-acts[=terms|silence|voice|calm|all] [--seed=N] [--trace]
-//        dotnet run --project tools/Remnants.Playtest -- --zone=outskirts|all [--runs=N] [--party=N] [--trace] [--no-defenses] [--kit=fog|geared|tech|hack|drone|hacker|peg|mech|powered|cyborg|network] [--carbines=N] [--carbine-quality=fine|crude] [--armor] [--no-tech] [--coop=N] [--hour=H[,H...]] [--weather=KIND[,KIND...]|all] [--mods=basic|full|stealth|network] [--no-salvage]
+//        dotnet run --project tools/Remnants.Playtest -- --zone=outskirts|all [--runs=N] [--party=N] [--trace] [--no-defenses] [--kit=fog|geared|tech|hack|drone|hacker|peg|mech|powered|cyborg|network] [--carbines=N] [--carbine-quality=fine|crude] [--armor] [--no-tech] [--coop=N] [--hour=H[,H...]] [--weather=KIND[,KIND...]|all] [--mods=basic|full|stealth|network] [--no-salvage] [--no-cards] [--no-dodge]
 var options = args.Where(a => a.StartsWith("--")).Select(a => a[2..].Split('=', 2)).ToDictionary(p => p[0], p => p.Length > 1 ? p[1] : "");
 var days = int.Parse(options.GetValueOrDefault("days", "40"));
 var dataDir = options.GetValueOrDefault("data", Path.Combine(AppContext.BaseDirectory, "data"));
@@ -16,6 +16,10 @@ var seeds = options.TryGetValue("seed", out var one) ? [ulong.Parse(one)]
 var quiet = options.ContainsKey("quiet");
 // --no-salvage: the party bot leaves salvage nodes alone (before/after comparisons of field loot).
 PartyBot.Salvage = !options.ContainsKey("no-salvage");
+// --no-cards: zone-trial parties go without their squad deck (before/after comparisons of the card layer).
+ZoneTrial.Cards = !options.ContainsKey("no-cards");
+// --no-dodge: the party bot does not step off tiles seen enemy plans aim at (comparisons).
+PartyBot.Dodge = !options.ContainsKey("no-dodge");
 var schematics = options.GetValueOrDefault("schematics", "") is { Length: > 0 } list
     ? list == "vehicles"
         ? ["sch_bicycle_cart", "sch_garage_2", "sch_biofuel_still", "sch_motorbike", "sch_small_engine", "sch_buggy",

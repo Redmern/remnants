@@ -13,6 +13,9 @@ namespace Remnants.Playtest;
 /// </summary>
 public static class ZoneTrial
 {
+    /// <summary>Whether parties bring the colony's squad deck (<c>--no-cards</c> turns it off, for before/after comparisons).</summary>
+    public static bool Cards { get; set; } = true;
+
     /// <summary>The intensity of a trial's weather: heavy rain (drones grounded), a strong storm.</summary>
     public const double TrialIntensity = 0.8;
 
@@ -115,6 +118,7 @@ public static class ZoneTrial
             if (stats.Seats is { } seats && partySize > seats) partySize = seats;
         }
         int stashed = 0, wrecked = 0;
+        // Parties bring their deck unless --no-cards (before/after comparisons).
         int hacked = 0, hackFailed = 0, flights = 0, dronesLost = 0, marks = 0, fromDevices = 0;
         int emps = 0, decoys = 0, noises = 0, heals = 0, ferried = 0, droneShots = 0;
         int partyRuns = 0, partyWipes = 0, partyDeathRuns = 0;
@@ -193,7 +197,8 @@ public static class ZoneTrial
                 if (mods != "") Mod(scavenge, gearSet, mods, new ModContext(conditions?.Environment?.IsDark == true, kit == "geared", mods == "stealth"));
                 return new PartyMember(s, gearSet, packs[i]);
             }).ToList();
-            setups.Add(new PartySetup(ColonySim.ExpeditionPlayerId + p, party, players > 1 ? 1 : null) { Vehicle = field });
+            // The colony's squad deck (a new colony's starter set), as an expedition would take it.
+            setups.Add(new PartySetup(ColonySim.ExpeditionPlayerId + p, party, players > 1 ? 1 : null) { Vehicle = field, Deck = Cards ? ColonyCards.Loadout(colony) : null });
             allAdults.AddRange(adults);
             }
             var sim = NewScavenge.Create(scavenge, zoneId, (ulong)(seed * 7919), setups, conditions);
@@ -273,7 +278,8 @@ public static class ZoneTrial
         sb.AppendLine($"  plans/run {tactics.Declared / (double)n:0.0} (enemy {tactics.EnemyDeclared / (double)n:0.0})  resolved {tactics.Resolved / (double)n:0.0}" +
                       $"  fizzled {tactics.Fizzled / (double)n:0.0}  cancelled {tactics.Canceled / (double)n:0.0}  cards played/run {tactics.CardsPlayed / (double)n:0.0}" +
                       (tactics.EnemyCardsPlayed > 0 ? $" (enemy {tactics.EnemyCardsPlayed / (double)n:0.0})" : ""));
-        sb.AppendLine($"  damage dealt/run {tactics.DamageDealt / n:0}  taken/run {tactics.DamageTaken / n:0}" +
+        sb.AppendLine($"  enemy attacks/run {tactics.EnemyAttacks / (double)n:0.0}  per enemy-round {tactics.EnemyAttacks / (double)Math.Max(1, tactics.EnemyRounds):0.000}" +
+                      $"  damage dealt/run {tactics.DamageDealt / n:0}  taken/run {tactics.DamageTaken / n:0}" +
                       $"  graze/hit/solid dealt {Tiers(tactics.TiersDealt)}  taken {Tiers(tactics.TiersTaken)}");
         var otherRuns = n - runsWithLinked;
         sb.AppendLine($"  runs seeing Linked {100.0 * runsWithLinked / n:0}%  Linked seen/run {linkedSeen / (double)n:0.00}" +
