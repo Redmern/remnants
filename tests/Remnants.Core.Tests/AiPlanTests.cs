@@ -147,6 +147,31 @@ public class AiPlanTests
     }
 
     [Fact]
+    public void An_authored_enemy_arriving_later_shuffles_its_cards_into_the_enemy_deck_once()
+    {
+        var warden = Real.Enemies["linked_warden"];
+        var cole = Real.Enemies["cole"];
+        var u = SurvivorUnit(1, new(0, 1));
+        var first = EnemyUnit("linked_warden", new(6, 1));
+        var sim = Arena(12, 3, [u, first]);
+        EnemyCards.Play(sim, first);
+        var deck = SquadDecks.Of(sim.State, EnemyCards.DeckId)!;
+        int Total() => deck.Hand.Count + deck.DrawPile.Count + deck.Used.Count + deck.Consumed.Count;
+        Assert.Equal(warden.Cards.Count, Total());
+
+        var late = EnemyUnit("cole", new(9, 1)); // a story trigger brings him in
+        late.Id = sim.State.Units.Max(x => x.Id) + 1;
+        sim.State.Units.Add(late);
+        var stream = sim.State.CardRngState;
+        EnemyCards.Play(sim, late);
+        Assert.Equal(warden.Cards.Count + cole.Cards.Count, Total());
+        Assert.NotEqual(stream, sim.State.CardRngState); // shuffled in on the card stream
+        EnemyCards.Play(sim, late);
+        EnemyCards.Play(sim, first);
+        Assert.Equal(warden.Cards.Count + cole.Cards.Count, Total()); // each brings its cards once
+    }
+
+    [Fact]
     public void Enemies_without_cards_get_no_deck()
     {
         var sim = Arena(10, 3, [SurvivorUnit(1, new(0, 1)), EnemyUnit("husk", new(6, 1))]);

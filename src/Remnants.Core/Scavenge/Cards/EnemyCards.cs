@@ -15,24 +15,34 @@ public static class EnemyCards
     /// <summary>The enemy deck from the cards of the authored enemies on the map; none when they bring none.</summary>
     internal static void Deal(ScavengeData data, ScavengeState state)
     {
-        var cards = state.Units.Where(u => u.Kind == UnitKind.Enemy && u.EnemyDefId is { } id && data.Enemies.TryGetValue(id, out var def) && def.Cards.Count > 0)
-            .OrderBy(u => u.Id).SelectMany(u => data.Enemies[u.EnemyDefId!].Cards).ToList();
-        if (cards.Count == 0 || SquadDecks.Of(state, DeckId) is not null) return;
+        var authored = state.Units.Where(u => u.Kind == UnitKind.Enemy && u.EnemyDefId is { } id && data.Enemies.TryGetValue(id, out var def) && def.Cards.Count > 0)
+            .OrderBy(u => u.Id).ToList();
+        if (authored.Count == 0 || SquadDecks.Of(state, DeckId) is not null) return;
         var rules = data.Cards.Rules;
+        var cards = authored.SelectMany(u => data.Enemies[u.EnemyDefId!].Cards).ToList();
         SquadDecks.Create(state, DeckId, new SquadLoadout(cards, rules.HandSize, rules.Draw, rules.Budget), rules);
+        SquadDecks.Of(state, DeckId)!.Brought = authored.Select(u => u.Id).ToList();
     }
 
     internal static void Play(ScavengeSim sim, Unit unit)
     {
         if (!unit.IsActive || unit.EnemyDefId is not { } id || !sim.Data.Enemies.TryGetValue(id, out var def) || def.Cards.Count == 0) return;
-        // An authored enemy that arrived later (a story trigger, reinforcements) starts the deck if there is none yet.
+        // An authored enemy that arrived later (a story trigger, reinforcements) starts the deck if there is none yet, or
+        // shuffles its cards into the draw pile.
         if (SquadDecks.Of(sim.State, DeckId) is null)
         {
             var rules = sim.Data.Cards.Rules;
             SquadDecks.Create(sim.State, DeckId, new SquadLoadout(new(def.Cards), rules.HandSize, rules.Draw, rules.Budget), rules);
             sim.State.Decks[^1].Points = sim.State.Decks[^1].Budget;
+            sim.State.Decks[^1].Brought.Add(unit.Id);
         }
         var deck = SquadDecks.Of(sim.State, DeckId)!;
+        if (!deck.Brought.Contains(unit.Id))
+        {
+            deck.Brought.Add(unit.Id);
+            deck.DrawPile.AddRange(def.Cards);
+            SquadDecks.Shuffle(sim.State, deck.DrawPile);
+        }
         for (var tries = 0; tries < deck.HandSize && deck.Points > 0; tries++)
         {
             var pick = Choose(sim, unit, deck);

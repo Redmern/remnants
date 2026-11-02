@@ -33,6 +33,9 @@ public sealed class SquadDeck
     /// <summary>The round a dead hard card was last discarded in (once per round).</summary>
     public int DeadDiscardRound { get; set; }
 
+    /// <summary>The enemy deck only: the units whose authored cards are in it (each brings them once).</summary>
+    public List<int> Brought { get; set; } = new();
+
     public bool Hidden { get; set; }
     public int HandCount { get; set; }
     public int DrawCount { get; set; }
@@ -103,7 +106,7 @@ public static class SquadDecks
     }
 
     /// <summary>Fisher–Yates on the card stream.</summary>
-    private static void Shuffle(ScavengeState state, List<string> cards)
+    internal static void Shuffle(ScavengeState state, List<string> cards)
     {
         var rng = new DeterministicRng { State = state.CardRngState == 0 ? new DeterministicRng(StreamSalt).State : state.CardRngState };
         for (var i = cards.Count - 1; i > 0; i--)
