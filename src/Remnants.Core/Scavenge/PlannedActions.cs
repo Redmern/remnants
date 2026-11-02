@@ -1,3 +1,5 @@
+using Remnants.Core.Items;
+
 namespace Remnants.Core.Scavenge;
 
 /// <summary>
@@ -43,23 +45,33 @@ public static class PlannedActions
         {
             var action = sim.Profile(unit).Action(c.ActionId!);
             if (action is null) return ScavengeResult.Fail(ScavengeError.UnknownAction, $"{unit.Name} cannot use '{c.ActionId}' now.");
+            if (c.Suppress && action.Pattern == AttackPattern.Melee)
+                return ScavengeResult.Fail(ScavengeError.UnknownAction, $"{action.Name} cannot lay down suppressing fire.");
             var reach = Combat.CheckReach(sim.Data, state.Map, end, action, tile);
             if (reach != ScavengeError.None) return ScavengeResult.Fail(reach, $"{tile} is not in reach of {action.Name} from {end} ({reach}).");
             ap += Combat.ApCost(action, end, tile);
             targetId = TargetAt(state, unit, tile) is { } t && Detection.SideSees(sim.Data, state, unit.Side, t) ? t.Id : null;
         }
-        if (ap > unit.Ap) return ScavengeResult.Fail(ScavengeError.NotEnoughAp, $"{unit.Name} needs {ap} AP for that plan (has {unit.Ap}).");
+        var budget = Budget(sim, unit);
+        if (ap > budget) return ScavengeResult.Fail(ScavengeError.NotEnoughAp, $"{unit.Name} needs {ap} AP for that plan (has {budget}).");
 
         unit.Plan = new PlannedAction
         {
             Path = c.Path.ToList(), AttackTile = c.AttackTile, ActionId = c.ActionId, TargetId = targetId, Round = state.Round,
-            CardId = unit.LastCardId, MoveBonus = unit.CardMove,
+            CardId = unit.LastCardId, MoveBonus = unit.CardMove, Suppress = c.Suppress,
         };
         var what = (c.Path.Count > 0 ? $"a move to {end}" : "") + (c.Path.Count > 0 && c.AttackTile is not null ? " and " : "")
                    + (c.AttackTile is { } at ? $"an attack on {at}" : "");
         state.Log(new(state.Round, ScavengeEventType.IntentDeclared, $"{unit.Name} plans {what}.", unit.Id, Pos: unit.Pos));
         return ScavengeResult.Success($"{unit.Name} plans {what}.");
     }
+
+    /// <summary>
+    /// The AP a plan may use: what the unit has left now, or with <see cref="PlanRules.FullTurnBudget"/> a full turn's
+    /// (the plan pays from the next turn's AP either way).
+    /// </summary>
+    public static int Budget(ScavengeSim sim, Unit unit) =>
+        sim.Data.Rules.Plans.FullTurnBudget ? Math.Max(unit.Ap, sim.Profile(unit).MaxAp) : unit.Ap;
 
     /// <summary>Carries out the unit's plan at the start of its turn (after its AP refill), then clears it.</summary>
     internal static void Resolve(ScavengeSim sim, Unit unit)
@@ -95,7 +107,8 @@ public static class PlannedActions
             else if (Combat.ApCost(action, unit.Pos, tile) > unit.Ap) failed = "has no AP left for the attack";
             else if (target is not null && Drones.CanStrike(action, target))
             {
-                Combat.Resolve(sim, unit, action, target);
+                if (plan.Suppress) Combat.Suppress(sim, unit, action, target);
+                else Combat.Resolve(sim, unit, action, target);
                 swung = true;
             }
             else

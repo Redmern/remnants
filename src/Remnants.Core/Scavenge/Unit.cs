@@ -329,4 +329,7 @@ public sealed class PlannedAction
 
     /// <summary>Move range a card added when the plan was declared: its path still has it when it resolves.</summary>
     public int MoveBonus { get; set; }
+
+    /// <summary>The attack is suppressing fire: it pins whoever is on the tile instead of a damage roll.</summary>
+    public bool Suppress { get; set; }
 }

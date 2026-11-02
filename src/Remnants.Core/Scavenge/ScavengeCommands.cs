@@ -26,8 +26,9 @@ public sealed record UseItem(int PlayerId, int UnitId, string ItemId, int? Targe
 /// end of the path. Free now and ends the turn; it resolves, and costs its AP, at the start of the unit's next turn.
 /// See <see cref="PlannedActions"/>.
 /// </summary>
-public sealed record DeclareIntent(int PlayerId, int UnitId, IReadOnlyList<Pos> Path, Pos? AttackTile = null, string? ActionId = null)
-    : IScavengeCommand;
+/// <see cref="Suppress"/>: the attack is suppressing fire (a ranged action; no damage, it pins whoever is on the tile).
+public sealed record DeclareIntent(int PlayerId, int UnitId, IReadOnlyList<Pos> Path, Pos? AttackTile = null, string? ActionId = null,
+    bool Suppress = false) : IScavengeCommand;
 
 /// <summary>
 /// Play a card on <see cref="UnitId"/> (the character it applies to): from the squad hand, or from that character's

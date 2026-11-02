@@ -233,6 +233,7 @@ public static class NewScavenge
 
         state.RngState = rng.State;
         foreach (var party in parties.Where(p => p.Deck is not null)) SquadDecks.Create(state, party.PlayerId, party.Deck!, data.Cards.Rules);
+        EnemyCards.Deal(data, state);
         var sim = new ScavengeSim(data, state);
         sim.Start();
         return sim;
@@ -281,6 +282,7 @@ public static class NewScavenge
         AddMission(data, state, mission, def, built.Markers);
         state.RngState = new DeterministicRng(seed).State;
         foreach (var party in parties.Where(p => p.Deck is not null)) SquadDecks.Create(state, party.PlayerId, party.Deck!, data.Cards.Rules);
+        EnemyCards.Deal(data, state);
         var sim = new ScavengeSim(data, state);
         sim.Start();
         return sim;

@@ -13,11 +13,12 @@ namespace Remnants.Core.Scavenge;
 /// </summary>
 public static class CardPlay
 {
-    internal static ScavengeResult Play(ScavengeSim sim, Unit unit, PlayCard c)
+    /// <param name="deckId">The deck to play from: the player's (default), or the enemy side's for its AI (<see cref="EnemyCards.DeckId"/>).</param>
+    internal static ScavengeResult Play(ScavengeSim sim, Unit unit, PlayCard c, int? deckId = null)
     {
         var state = sim.State;
         var data = sim.Data;
-        if (SquadDecks.Of(state, c.PlayerId) is not { } deck) return ScavengeResult.Fail(ScavengeError.NoCard, "Your party has no cards.");
+        if (SquadDecks.Of(state, deckId ?? c.PlayerId) is not { } deck) return ScavengeResult.Fail(ScavengeError.NoCard, "Your party has no cards.");
         var held = c.FromSlot ? unit.SlotCards.Contains(c.CardId) && !unit.SlotSpent.Contains(c.CardId) : deck.Hand.Contains(c.CardId);
         if (!held || data.Cards.Find(c.CardId) is not { } card)
             return ScavengeResult.Fail(ScavengeError.NoCard, c.FromSlot ? $"{unit.Name} has no '{c.CardId}' ready in a slot." : $"No '{c.CardId}' in hand.");
@@ -70,7 +71,7 @@ public static class CardPlay
         if (!c.FromSlot) (card.Consumable ? deck.Consumed : deck.Used).Add(c.CardId);
         if (!card.Reaction) unit.LastCardId = card.Id;
 
-        var side = state.FindParty(c.PlayerId)?.Side ?? unit.Side;
+        var side = deckId is null ? state.FindParty(c.PlayerId)?.Side ?? unit.Side : unit.Side;
         var text = $"{unit.Name} plays {card.Name}{(boost ? " (boosted)" : "")}: {string.Join(", ", done)}.";
         state.Log(new(state.Round, ScavengeEventType.CardPlayed, text, unit.Id, planner?.Id, unit.Pos, Side: side));
         return ScavengeResult.Success(text, planner?.Id);

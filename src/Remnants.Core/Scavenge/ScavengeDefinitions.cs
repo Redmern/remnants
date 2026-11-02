@@ -40,6 +40,12 @@ public sealed record EnemyDef
     /// <summary>Linked: how far (Chebyshev) this unit links to other Network nodes. Drones relay further.</summary>
     public int RelayRange { get; init; }
 
+    /// <summary>
+    /// An authored enemy's (a boss's, a named squad's) cards: they join the enemy side's deck (<see cref="EnemyCards"/>).
+    /// Most enemies have none.
+    /// </summary>
+    public List<string> Cards { get; init; } = new();
+
     /// <summary>Added to the derived stealth: Linked move like hunters, Husks shamble.</summary>
     public double Stealth { get; init; }
 
@@ -589,8 +595,18 @@ public sealed record StoryFieldRules
     public double RaisedDetection { get; init; } = 10;
 }
 
+/// <summary>
+/// Telegraphed plans (scavenge.json <c>plans</c>). <see cref="FullTurnBudget"/>: a plan may use the unit's full turn of AP
+/// (what it pays from when it resolves) instead of the AP it has left when declaring (the rule as confirmed: false).
+/// </summary>
+public sealed record PlanRules
+{
+    public bool FullTurnBudget { get; init; }
+}
+
 public sealed record ScavengeRules
 {
+    public PlanRules Plans { get; init; } = new();
     public Dictionary<Terrain, TerrainDef> Terrain { get; init; } = new();
     public MovementRules Movement { get; init; } = new();
     public TurnRules Turn { get; init; } = new();

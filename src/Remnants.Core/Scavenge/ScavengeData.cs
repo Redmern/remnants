@@ -105,6 +105,10 @@ public sealed class ScavengeData
         var warnings = Loot.Warnings.ToList();
         foreach (var e in Enemies.Values.Where(e => e.Loot is not null && Loot.Find(e.Loot) is null).OrderBy(e => e.Id, StringComparer.Ordinal))
             warnings.Add($"Enemy '{e.Id}': unknown loot table '{e.Loot}' (it drops only its schematics).");
+        // An authored enemy's cards must be cards (when cards.json is loaded).
+        if (Cards != CardCatalog.Empty)
+            foreach (var e in Enemies.Values.Where(e => e.Cards.Count > 0))
+                if (Cards.CheckDeck(e.Cards) is { } bad) throw new GameDataException($"Enemy '{e.Id}' cards: {bad}");
         // Card rows need cards.json; data without it (tests, tools) only warns.
         foreach (var (table, card) in Loot.Tables.Values.SelectMany(t => t.Entries.Select(e => e.Card).Concat(t.Guaranteed.Select(e => e.Card))
                      .Concat(t.Rare.Select(r => r.Card)).OfType<string>().Select(c => (t.Id, c))))

@@ -110,9 +110,11 @@ public class LinkedAiTests
         Assert.True(Combat.CoverAgainst(sim.Data, sim.State.Map, u.Pos, linked.Pos) > 0);
 
         Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
+        Assert.True(Did(sim, linked, ScavengeEventType.Flanked)); // the flank is telegraphed...
+        Assert.Equal(u.Pos, linked.Plan?.AttackTile);
+        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);           // ...and carried out next turn
         Assert.NotEqual(new Pos(8, 3), linked.Pos);
         Assert.Equal(0, Combat.CoverAgainst(sim.Data, sim.State.Map, u.Pos, linked.Pos));
-        Assert.True(Did(sim, linked, ScavengeEventType.Flanked));
         Assert.True(Shot(sim, linked, u));
     }
 
@@ -127,6 +129,11 @@ public class LinkedAiTests
         var sim = Arena(11, 9, [healthy, hurt, a, b]);
 
         Assert.Equal(hurt, Network.Focus(sim, Network.GroupOf(sim, a)!, Network.Known(sim, Network.GroupOf(sim, a)!)));
+        Assert.True(sim.Execute(new EndTurn(1, healthy.Id)).Ok);
+        Assert.True(sim.Execute(new EndTurn(1, hurt.Id)).Ok);
+        // Both telegraph at the hurt survivor's tile, and shoot when their plans come.
+        Assert.Equal(hurt.Pos, a.Plan?.AttackTile);
+        Assert.Equal(hurt.Pos, b.Plan?.AttackTile);
         Assert.True(sim.Execute(new EndTurn(1, healthy.Id)).Ok);
         Assert.True(sim.Execute(new EndTurn(1, hurt.Id)).Ok);
         // Each Linked opens on the hurt survivor (three bursts cannot drop 70 HP, so it is still up for the second).
@@ -183,6 +190,8 @@ public class LinkedAiTests
 
         var maxAp = sim.Profile(u).MaxAp;
         Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
+        Assert.True(linked.Plan is { Suppress: true }, "suppressing fire is telegraphed");
+        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
         Assert.True(Did(sim, linked, ScavengeEventType.Suppressed), string.Join("\n", sim.State.Events.Select(e => e.Message)));
         Assert.Equal(maxAp - sim.Data.Rules.Network.SuppressApPenalty, u.Ap);
         Assert.False(u.Suppressed);
@@ -199,8 +208,10 @@ public class LinkedAiTests
         var before = hurt.Pos.Chebyshev(u.Pos);
 
         Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
-        Assert.True(Did(sim, hurt, ScavengeEventType.Retreated));
-        Assert.True(hurt.Pos.Chebyshev(u.Pos) > before);
+        Assert.True(Did(sim, hurt, ScavengeEventType.Retreated)); // the fall-back is telegraphed...
+        Assert.True(hurt.Plan!.Path[^1].Chebyshev(u.Pos) > before);
+        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
+        Assert.True(hurt.Pos.Chebyshev(u.Pos) > before);           // ...and carried out next turn
         Assert.False(Did(sim, buddy, ScavengeEventType.Retreated));
     }
 

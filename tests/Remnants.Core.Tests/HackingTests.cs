@@ -224,8 +224,12 @@ public class HackingTests
         Assert.Equal(P1, gun.Side);
         Assert.False(gun.PlayerControlled, "a turret is the AI's to run, for its new side");
         EndTurns(sim, 1);
-        Assert.Contains(sim.State.Events, e => e.UnitId == gun.Id && e.TargetId == husk.Id
-                                               && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
+        // It telegraphs its aim at the husk's tile (a turret never moves), then fires there: the husk is hit or, if it
+        // walked off the tile meanwhile, the shot falls through.
+        Assert.Equal(husk.Pos, gun.Plan?.AttackTile);
+        EndTurns(sim, 1);
+        Assert.Contains(sim.State.Events, e => e.UnitId == gun.Id && (e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed && e.TargetId == husk.Id
+                                                                     || e.Type == ScavengeEventType.IntentFizzled));
         Assert.DoesNotContain(sim.State.Events, e => e.UnitId == gun.Id && e.TargetId == hacker.Id);
     }
 
@@ -316,7 +320,7 @@ public class HackingTests
         Assert.True(linked.HostileTo(husk));
         Assert.Null(Network.GroupOf(sim, linked));
 
-        EndTurns(sim, 1);
+        EndTurns(sim, 2); // it telegraphs a blow at a Husk, then strikes
         Assert.Contains(sim.State.Events, e => e.UnitId == linked.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed
                                                && sim.State.FindUnit(e.TargetId!.Value)!.Kind == UnitKind.Enemy);
         EndTurns(sim, Real.Rules.Hacking.OverrideRounds);
