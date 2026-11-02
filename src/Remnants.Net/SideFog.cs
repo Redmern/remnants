@@ -220,6 +220,7 @@ public sealed class SideFog(int playerId, string side)
             plan.TargetId = null;
         }
         copy.OutplayedId = null;
+        copy.OutplayedUntilRound = 0;
         copy.Origin = u.Origin is { } o ? new Survivor { Name = o.Name, Sex = o.Sex, LifeStage = o.LifeStage } : null;
         // A rival's holo-decoy looks like one of their people until it flickers out.
         if (u.Kind == UnitKind.Decoy && u.Side != Side)

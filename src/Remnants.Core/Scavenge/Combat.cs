@@ -108,7 +108,7 @@ public static class Combat
 
     /// <summary>The ambush hit bonus for an attack on the unit whose telegraphed attack the attacker dodged (see <see cref="Unit.OutplayedId"/>).</summary>
     public static double OutplayBonus(ScavengeSim sim, Unit attacker, Unit target) =>
-        attacker.OutplayedId == target.Id ? sim.Data.Rules.Fog.Ambush.HitBonus : 0;
+        attacker.OutplayedId == target.Id && sim.State.Round <= attacker.OutplayedUntilRound ? sim.Data.Rules.Fog.Ambush.HitBonus : 0;
 
     /// <summary>What a drone's mark on the target adds to the attacker's side's hit chance.</summary>
     public static double MarkBonus(ScavengeSim sim, Unit attacker, Unit target) =>
@@ -161,7 +161,6 @@ public static class Combat
         var penalty = reaction ? sim.Data.Rules.Fog.Overwatch.AccuracyPenalty : 0;
         for (var i = 0; i < targets.Count; i++)
             Strike(sim, attacker, action with { Accuracy = action.Accuracy - penalty }, targets[i], ambushes[i]);
-        if (attacker.OutplayedId is { } dodged && targets.Any(t => t.Id == dodged)) attacker.OutplayedId = null;
         AfterAttack(sim, attacker, action, targets);
         GearEffects.Feedback(sim, attacker, action);
     }
@@ -209,6 +208,8 @@ public static class Combat
         var bane = Bane(data, action, target);
         var chance = HitChance(data, state.Map, attacker.Pos, action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + OutplayBonus(sim, attacker, target) + ElectronicWarfare.RadioAccuracy(sim, attacker) },
             target.Pos, sim.Profile(target), ambush, bane);
+        // A dodge pays off once: whichever attack on that unit comes first (planned, reaction or splash) uses it up.
+        if (attacker.OutplayedId == target.Id) attacker.OutplayedId = null;
         if (ambush is { } a)
             state.Log(new(state.Round, ScavengeEventType.Ambushed,
                 $"{attacker.Name} ambushes {target.Name} from the fog{a.Describe()}.", attacker.Id, target.Id, target.Pos,

@@ -173,6 +173,7 @@ public sealed class ScavengeSim
         unit.Lookout = false;
         unit.PingsUsed = 0;
         unit.Moved = false;
+        if (unit.OutplayedUntilRound < State.Round) unit.OutplayedId = null;
         unit.Ap = Profile(unit).MaxAp;
         if (State.Round == 1 && unit.FirstRoundAp != 0) unit.Ap = Math.Max(1, unit.Ap + unit.FirstRoundAp);
         if (braced) unit.Ap = Math.Max(1, unit.Ap - Data.Rules.Fog.Brace.NextTurnApPenalty);

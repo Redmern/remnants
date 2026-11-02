@@ -96,6 +96,73 @@ public class PlannedActionTests
     }
 
     [Fact]
+    public void A_plan_that_falls_short_dodges_nobody()
+    {
+        var (sim, a, b) = Duel();
+        Assert.True(sim.Execute(Charge(a)).Ok);
+        Assert.True(sim.Execute(new Move(2, b.Id, new(6, 1))).Ok);
+        a.Body.Injure(BodyPart.LeftLeg, 0.6);
+        a.Body.Injure(BodyPart.RightLeg, 0.6);
+        Assert.True(sim.Execute(new EndTurn(2, b.Id)).Ok);
+
+        Assert.Equal(new Pos(0, 1), a.Pos);
+        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.IntentFizzled && e.UnitId == a.Id);
+        Assert.Null(b.OutplayedId);
+        Assert.Equal(sim.Profile(a).MaxAp, a.Ap); // the attack never came, so it cost nothing
+    }
+
+    [Fact]
+    public void A_dodge_is_good_through_the_next_round_then_lapses()
+    {
+        var (sim, a, b) = Duel(Real);
+        Assert.True(sim.Execute(Charge(a)).Ok);
+        Assert.True(sim.Execute(new Move(2, b.Id, new(6, 1))).Ok);
+        Assert.True(sim.Execute(new EndTurn(2, b.Id)).Ok);   // round 2: a swings at the empty tile
+        var dodged = sim.State.Round;
+        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
+        Assert.Equal(a.Id, b.OutplayedId);                     // b's turn, the same round
+        Assert.True(sim.Execute(new EndTurn(2, b.Id)).Ok);
+        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
+        Assert.Equal(dodged + 1, sim.State.Round);
+        var swing = sim.Profile(b).Action("swing")!;
+        Assert.True(Combat.OutplayBonus(sim, b, a) > 0);       // still good the round after
+        Assert.True(sim.Execute(new EndTurn(2, b.Id)).Ok);
+        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
+        Assert.Equal(dodged + 2, sim.State.Round);
+        Assert.Null(b.OutplayedId);                            // lapsed when b's turn came round again
+        Assert.Equal(0, Combat.OutplayBonus(sim, b, a));
+        Assert.NotNull(swing);
+    }
+
+    [Fact]
+    public void Overwatch_fires_on_a_plan_walking_into_view()
+    {
+        var a = SurvivorUnit(1, new(0, 1), weapon: "pipe");
+        var b = SurvivorUnit(2, new(7, 1), weapon: "pistol");
+        b.Attributes[AttributeKind.Agility] = 35; // slower: a stays first, so b's overwatch holds until a's plan walks
+        var sim = Arena(10, 3, [a, b], data: Sure);
+        Assert.True(sim.Execute(new DeclareIntent(1, a.Id, [new(2, 1), new(4, 1)])).Ok);
+        Assert.True(sim.Execute(new SetStance(2, b.Id, Stance.Overwatch)).Ok);
+        Assert.Equal(a.Id, sim.State.CurrentUnitId);
+
+        var round = sim.State.Round;
+        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Overwatch && e.Round == round && e.UnitId == b.Id && e.TargetId == a.Id);
+        Assert.True(a.Hp < a.MaxHp);
+    }
+
+    [Fact]
+    public void A_pending_plan_still_resolves_after_its_player_has_gone()
+    {
+        var (sim, a, b) = Duel();
+        Assert.True(sim.Execute(Charge(a)).Ok);
+        sim.Abandon(1);
+        Assert.True(sim.Execute(new EndTurn(2, b.Id)).Ok);
+        Assert.Null(a.Plan);
+        Assert.Equal(new Pos(4, 1), a.Pos);
+        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.IntentResolved && e.UnitId == a.Id);
+    }
+
+    [Fact]
     public void Anyone_hostile_who_steps_onto_the_tile_is_hit()
     {
         var a = SurvivorUnit(1, new(0, 1), weapon: "pipe");
@@ -233,6 +300,28 @@ public class PlannedActionTests
         Assert.Equal([new Pos(2, 1), new Pos(4, 1)], plan.Path);
         Assert.Equal("swing", plan.ActionId);
         Assert.Equal(15, ScavengeSave.Version);
+    }
+
+    [Theory]
+    [InlineData("downed")]
+    [InlineData("unknown target")]
+    [InlineData("step on the start tile")]
+    [InlineData("step too far")]
+    [InlineData("step off the map")]
+    public void A_save_with_a_broken_plan_is_refused(string broken)
+    {
+        var (sim, a, _) = Duel();
+        Assert.True(sim.Execute(Charge(a)).Ok);
+        var plan = a.Plan!;
+        switch (broken)
+        {
+            case "downed": a.Status = UnitStatus.Downed; break;
+            case "unknown target": plan.TargetId = 99; break;
+            case "step on the start tile": plan.Path = [a.Pos, new(2, 1)]; break;
+            case "step too far": plan.Path = [new(4, 1)]; break;
+            case "step off the map": plan.Path = [new(-1, 1)]; break;
+        }
+        Assert.Throws<System.Text.Json.JsonException>(() => ScavengeSave.Load(Sure, ScavengeSave.Save(sim.State)));
     }
 
     [Fact]

@@ -116,9 +116,12 @@ public sealed class Unit
 
     /// <summary>
     /// The unit whose telegraphed attack this one dodged: its next attack on that unit gets the ambush hit bonus
-    /// (<see cref="Combat.OutplayBonus"/>), then this clears.
+    /// (<see cref="Combat.OutplayBonus"/>), then this clears. Good through <see cref="OutplayedUntilRound"/> (the round
+    /// after the dodge, so the dodger always gets its next turn to use it).
     /// </summary>
     public int? OutplayedId { get; set; }
+
+    public int OutplayedUntilRound { get; set; }
 
     /// <summary>Overwatch reactions left this stance.</summary>
     public int Reactions { get; set; }

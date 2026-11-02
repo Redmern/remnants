@@ -7,7 +7,8 @@ namespace Remnants.Core.Scavenge;
 /// the path. It is locked. At the start of the unit's next turn it resolves through the plain move and attack rules,
 /// paid from that turn's AP: the path stops where a step no longer works (blocked, legs hurt since, out of AP), and the
 /// attack strikes whoever hostile stands on the tile then. Nobody there is a miss and the AP is spent all the same; the
-/// one it was aimed at, if they moved off, dodged it (<see cref="Unit.OutplayedId"/>). Being downed, killed, pinned or
+/// one it was aimed at, if they moved off and the blow came down on the tile, dodged it (<see cref="Unit.OutplayedId"/>,
+/// good through the next round). Being downed, killed, pinned or
 /// stunned (an EMP) cancels the plan.
 /// </summary>
 public static class PlannedActions
@@ -81,12 +82,14 @@ public static class PlannedActions
         {
             var action = sim.Profile(unit).Action(id);
             var target = TargetAt(state, unit, tile);
+            var swung = false;
             if (action is null) failed = $"can no longer use {id}";
             else if (Combat.CheckReach(sim.Data, state.Map, unit.Pos, action, tile) != ScavengeError.None) failed = $"{tile} is out of reach";
             else if (Combat.ApCost(action, unit.Pos, tile) > unit.Ap) failed = "has no AP left for the attack";
             else if (target is not null && Drones.CanStrike(action, target))
             {
                 Combat.Resolve(sim, unit, action, target);
+                swung = true;
             }
             else
             {
@@ -95,9 +98,14 @@ public static class PlannedActions
                 unit.Facing = Combat.Face(unit.Pos, tile);
                 sim.MakeNoise(unit, action.Noise);
                 failed = $"{action.Name} hits nothing at {tile}";
+                swung = true;
             }
-            if (plan.TargetId is { } aimed && aimed != target?.Id && state.FindUnit(aimed) is { IsActive: true } dodger && dodger.Pos != tile)
+            // Only a blow that came down on the tile can be dodged; a plan that fell short dodged nobody.
+            if (swung && plan.TargetId is { } aimed && aimed != target?.Id && state.FindUnit(aimed) is { IsActive: true } dodger && dodger.Pos != tile)
+            {
                 dodger.OutplayedId = unit.Id;
+                dodger.OutplayedUntilRound = state.Round + 1;
+            }
         }
 
         if (failed is null)
