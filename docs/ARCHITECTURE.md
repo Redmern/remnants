@@ -915,7 +915,9 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
   `ColonyState.Bestiary` (colony save 27; a save 26 starts empty). The tier (seen, fought, killed) gates what
   `Bestiary.Describe` / `List` reveal: weapons and reach, then AP and moves, then everything. Other players are never in
   it; SideFog sends a player only their own party's counts. Position, facing, plans and reach show for any seen
-  attacker regardless. Tests: `BestiaryTests`.
+  attacker regardless. The tier gate is a display gate: `Bestiary.Knowledge` gives the side's tier, `Bestiary.Health`
+  and `HelpContext.TargetKnown` (the hit-chance terms fold into one "Target's defence" row) apply it. Seen enemy units
+  are still sent whole in snapshots (SideFog), per the existing fog model. Tests: `BestiaryTests`.
 - **UI view models** (`TacticsView`, `DeckBuilder.View`, all plain C# with tests in `TacticsViewTests`): enemy
   telegraphs as a side sees them (path, strike tiles, aimed at us; never the card), the threat overlay (planned blows
   over plain reach, fog-filtered), hit previews from a tile (`Combat.ChanceToHit` with `from`, terms from
