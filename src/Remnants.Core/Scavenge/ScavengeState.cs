@@ -222,6 +222,9 @@ public sealed class ScavengeState
     /// <summary>Reinforcement waves the zone's pylons have called so far.</summary>
     public int ReinforcementWaves { get; set; }
 
+    /// <summary>The run took its zone's retune (<see cref="ZoneDef.Retune"/>): reinforcements follow it too.</summary>
+    public bool Retuned { get; set; }
+
     /// <summary>Per-side contacts ("?" markers). Expired ones are dropped at round start.</summary>
     public List<Contact> Contacts { get; set; } = new();
 

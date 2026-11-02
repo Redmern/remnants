@@ -400,6 +400,17 @@ public sealed class ScavengeData
             foreach (var other in zone.Reveals)
                 if (!Zones.ContainsKey(other)) throw new GameDataException($"{where} reveals unknown zone '{other}'.");
             foreach (var (kind, range) in zone.Devices) RequireRange(range, $"{where} devices.{kind}");
+            if (zone.Retune is { } retune)
+            {
+                var tuned = zone.Retuned();
+                RequireRange(tuned.Enemies, $"{where} retune.enemies");
+                RequireRange(tuned.Pylons, $"{where} retune.pylons");
+                RequireRange(tuned.Reinforcements.Count, $"{where} retune.reinforcementCount");
+                foreach (var (kind, range) in retune.Devices ?? new()) RequireRange(range, $"{where} retune.devices.{kind}");
+                if (tuned.Reinforcements.AfterRounds is < 1) throw new GameDataException($"{where}: retune.reinforceAfterRounds must be at least 1.");
+                if (tuned.Reinforcements.Waves > 0 && tuned.Reinforcements.Mix.Count == 0)
+                    throw new GameDataException($"{where} retune has reinforcement waves but no reinforcement mix.");
+            }
             if (zone.Caches[1] > 0 && !Items.Values.Any(i => i.LootWeight > 0 && i.Tier <= zone.LootTier))
                 throw new GameDataException($"{where} has caches but no items at loot tier {zone.LootTier}.");
         }

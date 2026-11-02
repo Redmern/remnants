@@ -61,6 +61,7 @@
     "devices": { "Locker": [1, 2], "Terminal": [1, 1], "Camera": [1, 2], "Turret": [0, 1], "Door": [1, 2], "Relay": [0, 1] },
     "enemyMix": [ { "id": "husk", "weight": 3 }, { "id": "linked", "weight": 3 }, { "id": "linked_drone", "weight": 1, "max": 2 } ],
     "pylons": [1, 1], "reinforcements": { "waves": 1, "count": [2, 2], "mix": [ { "id": "linked", "weight": 2 }, { "id": "linked_drone", "weight": 1 } ] },
+    "retune": { "enemies": [11, 13], "pylons": [2, 2], "devices": { "Turret": [2, 3] }, "waves": 3, "reinforcementCount": [3, 3], "reinforceAfterRounds": 1 },
     "caches": [5, 7], "itemsPerCache": [2, 3], "npcs": [0, 1]
   },
   {
@@ -75,6 +76,7 @@
     "devices": { "Locker": [1, 1], "Terminal": [1, 2], "Camera": [2, 3], "Turret": [1, 1], "Door": [1, 2], "Relay": [1, 1] },
     "enemyMix": [ { "id": "husk", "weight": 2 }, { "id": "linked", "weight": 4 }, { "id": "linked_drone", "weight": 2 }, { "id": "linked_warden", "weight": 1, "max": 1 } ],
     "pylons": [2, 2], "reinforcements": { "waves": 2, "count": [2, 3], "mix": [ { "id": "linked", "weight": 3 }, { "id": "linked_drone", "weight": 2 } ] },
+    "retune": { "enemies": [13, 16], "pylons": [3, 3], "devices": { "Turret": [3, 4] }, "waves": 5, "reinforcementCount": [3, 4], "reinforceAfterRounds": 1 },
     "caches": [5, 7], "itemsPerCache": [2, 3], "npcs": [0, 2]
   },
   {
@@ -89,6 +91,7 @@
     "devices": { "Locker": [1, 2], "Terminal": [2, 2], "Camera": [2, 3], "Turret": [1, 2], "Door": [2, 2], "Relay": [1, 2] },
     "enemyMix": [ { "id": "linked", "weight": 5 }, { "id": "linked_drone", "weight": 3 }, { "id": "linked_warden", "weight": 2, "max": 3 }, { "id": "husk", "weight": 1 } ],
     "pylons": [3, 3], "reinforcements": { "waves": 3, "count": [2, 3], "mix": [ { "id": "linked", "weight": 3 }, { "id": "linked_drone", "weight": 2 }, { "id": "linked_warden", "weight": 1 } ] },
+    "retune": { "enemies": [18, 21], "pylons": [4, 4], "devices": { "Turret": [6, 7] }, "waves": 7, "reinforcementCount": [4, 5], "reinforceAfterRounds": 1 },
     "caches": [7, 9], "itemsPerCache": [2, 4], "npcs": [0, 1]
   }
 ]

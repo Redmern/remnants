@@ -63,6 +63,9 @@ public sealed record ZoneConditions(double Depletion = 0, ScavengeEnvironment? E
 
     /// <summary>The story's world effects: the zone's own Network enemies stand neutral (attack only if attacked).</summary>
     public bool NetworkNeutral { get; init; }
+
+    /// <summary>Which runs take the zone's retune (a setting; see <see cref="ZoneTuning"/>).</summary>
+    public LateZoneTuning LateZones { get; init; }
 }
 
 /// <summary>
@@ -78,7 +81,9 @@ public static class NewScavenge
     {
         if (!data.Zones.TryGetValue(zoneId, out var zone)) throw new ArgumentException($"Unknown zone '{zoneId}'.", nameof(zoneId));
         ValidateParties(data, parties);
-        if (mission?.Map is { } handmade) return CreateHandmade(data, zone, seed, parties, mission, handmade, conditions);
+        var retuned = zone.Retune is not null && ZoneTuning.Applies(conditions?.LateZones ?? LateZoneTuning.Current, mission is not null);
+        if (retuned) zone = zone.Retuned();
+        if (mission?.Map is { } handmade) return CreateHandmade(data, zone, seed, parties, mission, handmade, conditions, retuned);
 
         var rng = new DeterministicRng(seed);
         var generated = MapGenerator.Generate(data, zone, rng);
@@ -91,6 +96,7 @@ public static class NewScavenge
         var env = conditions?.Environment;
         var state = new ScavengeState
         {
+            Retuned = retuned,
             ZoneId = zone.Id, Map = generated.Map,
             Environment = env is null ? new ScavengeEnvironment() : env.Copy(),
             KnownSchematics = new(conditions?.KnownSchematics ?? [], StringComparer.Ordinal),
@@ -241,13 +247,13 @@ public static class NewScavenge
 
     /// <summary>A handmade map: the parties on its spawn tiles, then only the map's own fixtures.</summary>
     private static ScavengeSim CreateHandmade(ScavengeData data, ZoneDef zone, ulong seed, IReadOnlyList<PartySetup> parties, MissionSetup mission, HandmadeMapDef def,
-        ZoneConditions? conditions)
+        ZoneConditions? conditions, bool retuned)
     {
         var built = HandmadeMaps.Build(def);
         var env = conditions?.Environment;
         var state = new ScavengeState
         {
-            ZoneId = zone.Id, Map = built.Map,
+            ZoneId = zone.Id, Map = built.Map, Retuned = retuned,
             Environment = env is null ? new ScavengeEnvironment() : ScavengeEnvironment.At(env.Hour, env.Phase, env.Weather),
             LootSeed = seed ^ 0x100D_5EED_0000_0001UL, Difficulty = conditions?.Difficulty, CardRngState = seed ^ SquadDecks.StreamSalt,
         };

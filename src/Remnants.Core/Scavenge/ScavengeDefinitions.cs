@@ -91,6 +91,42 @@ public sealed record ReinforcementDef
     /// <summary>Units per wave.</summary>
     public int[] Count { get; init; } = [1, 2];
     public List<WeightedId> Mix { get; init; } = new();
+
+    /// <summary>Rounds of alarm before a call; null: the rules' <c>network.reinforceAfterRounds</c>.</summary>
+    public int? AfterRounds { get; init; }
+}
+
+/// <summary>
+/// Which runs take a zone's <see cref="ZoneDef.Retune"/> (a setting, to compare): none, free expeditions only (story
+/// missions keep the zone as it is), or every run there.
+/// </summary>
+public enum LateZoneTuning
+{
+    Current,
+    Expeditions,
+    Everywhere,
+}
+
+public static class ZoneTuning
+{
+    /// <summary>Whether a run takes the zone's retune under <paramref name="mode"/>; <paramref name="story"/>: a story mission.</summary>
+    public static bool Applies(LateZoneTuning mode, bool story) =>
+        mode == LateZoneTuning.Everywhere || mode == LateZoneTuning.Expeditions && !story;
+}
+
+/// <summary>
+/// A zone's alternative numbers (zones.json <c>retune</c>): what is named replaces the zone's own (devices per kind;
+/// reinforcement waves, count and delay, keeping the mix). The late zones carry one, to bring back their difficulty
+/// now that enemies telegraph (BALANCE.md, "Late-zone re-tune").
+/// </summary>
+public sealed record ZoneRetuneDef
+{
+    public int[]? Enemies { get; init; }
+    public int[]? Pylons { get; init; }
+    public Dictionary<DeviceKind, int[]>? Devices { get; init; }
+    public int? Waves { get; init; }
+    public int[]? ReinforcementCount { get; init; }
+    public int? ReinforceAfterRounds { get; init; }
 }
 
 public sealed record ZoneTerrainDef
@@ -127,6 +163,29 @@ public sealed record ZoneDef
 
     /// <summary>Hackable devices placed in the zone: [min, max] per kind (see <see cref="DeviceKindDef"/>).</summary>
     public Dictionary<DeviceKind, int[]> Devices { get; init; } = new();
+
+    /// <summary>The zone's alternative numbers, taken by the runs <see cref="LateZoneTuning"/> picks; null: none.</summary>
+    public ZoneRetuneDef? Retune { get; init; }
+
+    /// <summary>This zone with its <see cref="Retune"/> applied (itself when it has none).</summary>
+    public ZoneDef Retuned()
+    {
+        if (Retune is not { } r) return this;
+        var devices = new Dictionary<DeviceKind, int[]>(Devices);
+        foreach (var (kind, range) in r.Devices ?? new()) devices[kind] = range;
+        return this with
+        {
+            Enemies = r.Enemies ?? Enemies,
+            Pylons = r.Pylons ?? Pylons,
+            Devices = devices,
+            Reinforcements = Reinforcements with
+            {
+                Waves = r.Waves ?? Reinforcements.Waves,
+                Count = r.ReinforcementCount ?? Reinforcements.Count,
+                AfterRounds = r.ReinforceAfterRounds ?? Reinforcements.AfterRounds,
+            },
+        };
+    }
 
     // World map (colony side): where the zone is, how far, and how it recovers from being picked over.
 
