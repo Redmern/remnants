@@ -345,4 +345,17 @@ public class MultiActivityTests
         Assert.NotEmpty(sim.State.WorkersAt(woodcutter.Id));
         Assert.All(sim.State.Survivors, p => Assert.True(p.Jobs.Count <= 1));
     }
+
+    [Fact]
+    public void A_student_is_not_drafted_as_a_site_helper()
+    {
+        var sim = Colony(TestData.RealWithConstruction);
+        var s = sim.AddSurvivor();
+        Assert.True(sim.Execute(new StartStudy(s.Id, TownHall(sim).Id, Skill.Melee)).Ok);
+        var site = Place(sim, "house");
+
+        sim.Advance(1);
+
+        Assert.DoesNotContain(s.Id, sim.Site(site)!.Helpers);
+    }
 }

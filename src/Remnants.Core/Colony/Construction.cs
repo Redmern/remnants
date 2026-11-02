@@ -291,7 +291,7 @@ public static class ConstructionSystem
         if (data.Rules.Construction.HelperShare <= 0) return;
         var builders = state.Construction.Sites.SelectMany(s => s.Builders).ToHashSet();
         var idle = state.Survivors
-            .Where(s => s.AssignedBuildingId is null && !builders.Contains(s.Id) && !state.Defense.Guards.ContainsKey(s.Id) && CanBuild(sim, s).Ok)
+            .Where(s => !builders.Contains(s.Id) && Activities.Count(state, s) == 0 && !state.Defense.Guards.ContainsKey(s.Id) && CanBuild(sim, s).Ok)
             .OrderBy(s => s.IsChild ? 1 : 0).ThenBy(s => s.Id).Select(s => s.Id).ToList();
         foreach (var site in Ordered(state))
         {
