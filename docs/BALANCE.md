@@ -1736,7 +1736,7 @@ Zone trials, 300 runs each, party of 2 with starting gear, before → after:
 | Outskirts | 6% → 1% | 0% → 0% | 5.0 → 3.2 |
 | Scrapyard Flats | 12% → 6% | 3% → 1% | 5.9 → 3.7 |
 | Suburb Ruins | 35% → 18% | 14% → 5% | 5.5 → 4.4 |
-| Flooded Mall | 57% → 36% | 23% → 9% | |
+| Flooded Mall | 57% → 36% | 23% → 9% | 4.3 → 3.7 |
 | Rail Depot | 91% → 84% | 65% → 45% | 1.3 → 1.3 |
 | Network Relay | 99% → 96% | 88% → 72% | 0.3 → 0.5 |
 | Core Spire | 100% → 100% | 97% → 89% | 0.1 → 0.2 |
