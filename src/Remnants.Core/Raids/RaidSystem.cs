@@ -40,7 +40,7 @@ public static class RaidSystem
     internal static void Wreck(ColonySim sim, Building b)
     {
         var name = sim.Data.Buildings[b.DefId].Name;
-        foreach (var w in sim.State.WorkersAt(b.Id).ToList()) w.AssignedBuildingId = null;
+        foreach (var w in sim.State.WorkersAt(b.Id).ToList()) w.Jobs.Remove(b.Id);
         b.NightShift = false;
         sim.State.Log(new(sim.State.Tick, ColonyEventType.BuildingWrecked, $"The {name} was wrecked in the raid; repair it to use it again.", BuildingId: b.Id));
     }

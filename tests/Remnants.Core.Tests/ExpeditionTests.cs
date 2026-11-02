@@ -50,16 +50,18 @@ public class LaunchExpeditionTests
     {
         var sim = LoopTestData.Colony(items: new() { ["pipe"] = 1, ["rag_coat"] = 1, ["bandage"] = 2 });
         var farm = sim.Build("farm");
+        var quarry = sim.Build("quarry");
         var a = sim.AddSurvivor();
         var b = sim.AddSurvivor();
         Assert.True(sim.Execute(new AssignJob(a.Id, farm.Id)).Ok);
+        Assert.True(sim.Execute(new AssignJob(a.Id, quarry.Id)).Ok);
 
         var result = sim.Execute(new LaunchExpedition("outskirts",
             [LoopTestData.Member(a, weapon: "pipe", body: "rag_coat", pack: "bandage"), LoopTestData.Member(b, pack: "bandage")]));
 
         Assert.True(result.Ok, result.Message);
         Assert.True(a.Away && b.Away);
-        Assert.Null(a.AssignedBuildingId);
+        Assert.Empty(a.Jobs);
         Assert.DoesNotContain(sim.State.Inventory.Counts, kv => !sim.Data.Food!.IsFood(kv.Key));
         Assert.Equal(100 - 2 * sim.Data.Rules.Expedition.RationFoodPerMember, sim.FoodStock, 6);
         Assert.Equal("outskirts", sim.State.Expedition!.ZoneId);

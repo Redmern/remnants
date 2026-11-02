@@ -225,4 +225,65 @@ public class MultiActivityTests
         Assert.True(r.Ok, r.Message);
         return r.EntityId!.Value;
     }
+
+    [Fact]
+    public void Leaving_one_job_gives_the_others_a_bigger_share_next_tick()
+    {
+        var sim = Colony();
+        var s = sim.AddSurvivor();
+        var buildings = Gatherers.Select(sim.Build).ToList();
+        foreach (var b in buildings) sim.Execute(new AssignJob(s.Id, b.Id));
+        var third = sim.OutputPerTick(buildings[0]);
+
+        Assert.True(sim.Execute(new Unassign(s.Id, buildings[2].Id)).Ok);
+
+        Assert.Equal([buildings[0].Id, buildings[1].Id], s.Jobs);
+        Assert.Equal(0.5, Activities.Share(sim.State, s), 9);
+        Assert.Equal(third * 3 / 2, sim.OutputPerTick(buildings[0]), 9);
+        var wood = sim.State.Stockpile.Get("wood");
+        sim.Advance(1);
+        Assert.Equal(third * 3 / 2, sim.State.Stockpile.Get("wood") - wood, 9);
+        Assert.Equal(CommandError.NotAssigned, sim.Execute(new Unassign(s.Id, buildings[2].Id)).Error);
+    }
+
+    [Fact]
+    public void Unassign_without_a_building_leaves_every_job()
+    {
+        var sim = Colony();
+        var s = sim.AddSurvivor();
+        foreach (var b in Gatherers.Take(2).Select(sim.Build)) sim.Execute(new AssignJob(s.Id, b.Id));
+
+        Assert.True(sim.Execute(new Unassign(s.Id)).Ok);
+
+        Assert.Empty(s.Jobs);
+    }
+
+    [Fact]
+    public void Admission_as_a_patient_still_clears_every_activity_and_refuses_new_ones()
+    {
+        var sim = Colony(TestData.RealWithConstruction);
+        var bay = sim.Build("med_bay");
+        var s = sim.AddSurvivor();
+        foreach (var b in Gatherers.Take(2).Select(sim.Build)) sim.Execute(new AssignJob(s.Id, b.Id));
+        var site = Place(sim, "house");
+        Assert.True(sim.Execute(new AssignBuilder(s.Id, site)).Ok);
+        s.Body.Injure(BodyPart.LeftLeg, 0.5);
+
+        var admitted = sim.Execute(new AdmitPatient(s.Id, bay.Id));
+        Assert.True(admitted.Ok, admitted.Message);
+
+        Assert.Empty(s.Jobs);
+        Assert.Null(sim.State.Construction.SiteOf(s.Id));
+        Assert.Equal(0, Activities.Count(sim.State, s));
+        Assert.Equal(CommandError.IsPatient, sim.Execute(new AssignJob(s.Id, sim.State.Buildings.First(b => b.DefId == "woodcutter").Id)).Error);
+    }
+
+    [Fact]
+    public void Babies_hold_no_activity()
+    {
+        var sim = Colony();
+        var baby = sim.AddSurvivor(LifeStage.Infant);
+        Assert.Equal(CommandError.TooYoung, sim.Execute(new AssignJob(baby.Id, sim.Build("farm").Id)).Error);
+        Assert.Empty(baby.Jobs);
+    }
 }

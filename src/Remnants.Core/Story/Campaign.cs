@@ -110,8 +110,8 @@ public static class Campaign
                 ColonyObjectiveKind.HaveItem => state.Inventory.Count(o.Item!) >= o.Count,
                 ColonyObjectiveKind.HaveResource => (o.Resource == Pantry.FoodKey ? Pantry.FoodValue(state, sim.Data) : state.Stockpile.Get(o.Resource!)) >= o.Count,
                 ColonyObjectiveKind.Patient => state.Survivors.Any(s => s.PatientAtBuildingId is not null),
-                ColonyObjectiveKind.ChildJob => state.Survivors.Any(s => s.IsChild && s.AssignedBuildingId is { } b
-                    && state.FindBuilding(b) is { } at && sim.Data.Buildings[at.DefId].Job == o.Job),
+                ColonyObjectiveKind.ChildJob => state.Survivors.Any(s => s.IsChild
+                    && s.Jobs.Any(b => state.FindBuilding(b) is { } at && sim.Data.Buildings[at.DefId].Job == o.Job)),
                 ColonyObjectiveKind.Scene => campaign.Heard.Contains(o.Dialogue!),
                 ColonyObjectiveKind.Defense => sim.Raids is { } raids
                     && state.Defense.Defenses.Count(d => o.Defense is null || raids.Defense(d.DefId).Kind.ToString() == o.Defense) >= o.Count,
