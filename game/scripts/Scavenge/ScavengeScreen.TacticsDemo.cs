@@ -9,7 +9,7 @@ public partial class ScavengeScreen
 {
     /// <summary>
     /// Frames the staged telegraphs; with <c>picker</c> opens the character picker on a card, with <c>reaction</c> on the
-    /// reaction card; with <c>preview</c> aims the first attack at the Husk so the move tiles show hit chances; then
+    /// reaction card; with <c>enemy</c> selects the Husk (its card as the bestiary allows); with <c>preview</c> aims the first attack at the Husk so the move tiles show hit chances; then
     /// (with <c>--screenshot=PATH</c>) saves the frame.
     /// </summary>
     private async Task TacticsDemoScript()
@@ -28,6 +28,9 @@ public partial class ScavengeScreen
                     break;
                 case "reaction":
                     _hud.Hand.Choose("sidestep");
+                    break;
+                case "enemy" when husk is not null:
+                    Select(husk.Id);
                     break;
                 case "preview" when husk is not null:
                     if (_presenter.Sim.Profile(u).Actions.FirstOrDefault() is { } action) _actionPanel.SetAction(action.Id);

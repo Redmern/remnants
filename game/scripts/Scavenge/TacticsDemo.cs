@@ -4,7 +4,7 @@ using Remnants.Core.Scavenge;
 namespace Remnants.Game.Scavenge;
 
 /// <summary>
-/// Debug (<c>--tactics-demo[=overlay|picker|reaction]</c>, for screenshots): stages a Husk and a Linked in sight of the party
+/// Debug (<c>--tactics-demo[=overlay|picker|reaction|enemy|preview]</c>, for screenshots): stages a Husk and a Linked in sight of the party
 /// with telegraphed plans (one aimed at a survivor's tile), so the threat overlay, the telegraphs and the hand strip show;
 /// <c>picker</c> also opens the character picker, <c>reaction</c> on a reaction card against the aimed plan.
 /// </summary>
