@@ -1758,3 +1758,43 @@ injury, not HP. AC-14 re-checks the death and wipe targets once intents and card
 Also in this unit: `combat.armLockBelow` 0.5 (arm efficiency under which arm-locked attacks and cards cannot be used; no
 item is marked yet), and field mending (`use.mend`): the Suture Kit takes 0.15 and the Field Trauma Kit 0.2 off the
 worst injury's severity during a run.
+
+## Telegraphed plans and cards (scavenge tactical cards, unit 4)
+
+Enemies now telegraph moving then striking (a plan declared on their turn, carried out at the start of their next),
+strike at once when a target is already in reach, and turrets telegraph their aim (the hybrid the user chose). Plans
+fit a full turn of AP. Parties bring the starter deck; the playtest bot plays cards by a simple priority, steps off
+tiles a seen enemy plan aims at, and telegraphs a move and a blow when nothing is in reach. Authored enemies (Cole,
+the Linked Warden) bring cards.
+
+Zone trials: `dotnet run -c Release --project tools/Remnants.Playtest -- --zone=all --runs=300` (run seeds 1..300:
+colony `seed + 10007·p`, map `seed · 7919`; party of 2, starting gear). Before = `4d25616` (enemies act at once, no cards;
+with the new metrics), after = `26f157c`.
+
+| Zone | Runs with a death | Wipes | Runs hurt | Damage taken/run | Death rate with Linked vs without |
+|---|---|---|---|---|---|
+| Outskirts | 4% → 2% | 1% → 0% | 95% → 94% | 64 → 49 | – |
+| Scrapyard Flats | 8% → 6% | 1% → 1% | 97% → 94% | 80 → 62 | – |
+| Suburb Ruins | 33% → 18% | 10% → 3% | 86% → 93% | 134 → 104 | 64/26% → 34/14% |
+| Flooded Mall | 51% → 31% | 19% → 4% | 74% → 83% | 154 → 104 | 57/26% → 33/23% |
+| Rail Depot | 91% → 50% | 62% → 9% | 33% → 75% | 203 → 122 | 92/20% → 50/0% |
+| Network Relay | 99% → 65% | 84% → 13% | 14% → 63% | 221 → 130 | 99/0% → 65/0% |
+| Core Spire | 100% → 80% | 95% → 22% | 5% → 50% | 227 → 144 | 100/0% → 80/0% |
+
+New metrics (after, per run): Outskirts 23.9 plans (14.8 by enemies; 6.3 fizzled), 10.2 cards played, hits taken
+35/48/17% graze/hit/solid in Suburb; enemy attacks per enemy-round 0.40 in Outskirts down to 0.14 in Core Spire.
+
+Against the targets: target 3 holds (Outskirts: a death in 2% of runs ≤ 10%, wipes 0% ≤ 3%, 94% of runs come home
+hurt). Target 4 holds: no Linked in Outskirts or Scrapyard Flats; in Suburb Ruins 21% of runs see one and those lose
+someone 2.4× as often (34% vs 14%). No data knob was changed. Runs got safer, most in the late zones: telegraphed
+approaches can be dodged, cards guard and cover, and wipes in Rail Depot and beyond drop from 62–95% to 9–22%. The
+late zones were never meant for a starting party (they stay deadly with Linked: every death there comes with them), but
+if they should stay near-certain wipes for starting gear, the knobs are the zones' enemy counts and the Linked's AP or
+accuracy.
+
+The earlier option, every enemy turn telegraphed, was measured too (same command, `ee7ba0d`): Outskirts deaths 0%,
+runs hurt 45%, damage taken 7 per run, Rail Depot deaths 18%; enemies acted on ~0.07 attacks per enemy-round, because
+an enemy in reach still had to wait a turn while players struck at once. That missed target 3, hence the hybrid.
+
+Not fixed here: the playtest bot still now and then paces between two tiles for the rest of a run (one stuck run in
+Suburb Ruins, seed 44; the baseline had stuck runs too).
