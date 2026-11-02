@@ -150,4 +150,42 @@ public class ColonyCardTests
         node["version"] = 14;
         Assert.Contains("Unsupported scavenge save version", Assert.Throws<JsonException>(() => ScavengeSave.Load(ScavengeTestData.Real, node.ToJsonString())).Message);
     }
+
+    [Fact]
+    public void A_survivor_holds_no_more_slot_cards_than_the_rules_allow()
+    {
+        var sim = Fresh();
+        var s = sim.State.Survivors.First(x => !x.IsChild);
+        var max = Cards.Rules.MaxSlotCards;
+        foreach (var id in Cards.All.Keys) ColonyCards.Add(sim.State, Cards, id, max);
+        var tooMany = Cards.All.Keys.Take(max + 1).ToList();
+        var r = sim.Execute(new SetCardSlots(s.Id, tooMany));
+        Assert.Equal(CommandError.NotEnoughCards, r.Error);
+        Assert.Contains($"{max}", r.Message);
+        Assert.True(sim.Execute(new SetCardSlots(s.Id, tooMany.Take(max).ToList())).Ok);
+    }
+
+    [Fact]
+    public void A_party_member_with_too_many_slot_cards_is_refused()
+    {
+        var max = Cards.Rules.MaxSlotCards;
+        var s = ScavengeTestData.Survivor("Vet", 55);
+        var ex = Assert.Throws<ArgumentException>(() => NewScavenge.Create(ScavengeTestData.Real, "outskirts", 3,
+            [new PartySetup(1, [new PartyMember(s, SlotCards: Enumerable.Repeat("dash", max + 1).ToList())])]));
+        Assert.Contains("slot cards", ex.Message);
+        NewScavenge.Create(ScavengeTestData.Real, "outskirts", 3, [new PartySetup(1, [new PartyMember(s, SlotCards: Enumerable.Repeat("dash", max).ToList())])]);
+    }
+
+    [Fact]
+    public void A_save_with_the_removed_draw_upgrade_loads_and_it_adds_nothing()
+    {
+        var sim = Fresh();
+        var plain = ColonyCards.Loadout(sim)!;
+        var node = JsonNode.Parse(SaveGame.Save(sim.State))!;
+        node["colony"]!["cards"]!["upgrades"] = new JsonArray("draw_1");
+        var loaded = SaveGame.Load(TestData.Real, node.ToJsonString(), ScavengeTestData.Real);
+        Assert.Contains("draw_1", loaded.State.Cards.Upgrades);
+        Assert.Equal(plain, ColonyCards.Loadout(loaded)! with { Cards = plain.Cards });
+        Assert.Null(ColonyCards.Loadout(loaded)!.Draw);
+    }
 }

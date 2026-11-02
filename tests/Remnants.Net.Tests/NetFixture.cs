@@ -180,6 +180,9 @@ public sealed class NetFixture
                 if (s.View.CardRngState != 0) FogViolations.Add($"{player.Name} was sent the card stream.");
                 foreach (var d in s.View.Decks.Where(d => d.PlayerId == me && !d.DrawPile.SequenceEqual(d.DrawPile.OrderBy(x => x, StringComparer.Ordinal))))
                     FogViolations.Add($"{player.Name} was sent their draw pile in draw order.");
+                foreach (var d in s.View.Decks.Where(d => d.PlayerId == me
+                             && (d.UsedCount != d.Used.Count || d.DrawCount != d.DrawPile.Count || d.HandCount != d.Hand.Count)))
+                    FogViolations.Add($"{player.Name}'s own deck counts do not match its cards.");
                 foreach (var e in s.Events.Where(e => e.Type is ScavengeEventType.CardPlayed or ScavengeEventType.CardDiscarded or ScavengeEventType.CardFound
                              or ScavengeEventType.DeckShuffled && e.Side != side))
                     FogViolations.Add($"{player.Name} heard another side's card event '{e.Message}'.");
