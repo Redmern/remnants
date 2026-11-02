@@ -40,7 +40,7 @@ namespace Remnants.Core.Scavenge;
 /// </summary>
 public static class ScavengeSave
 {
-    /// <summary>Field loot and salvage (keyed: renumber to the next free version at merge).</summary>
+    /// <summary>Field loot and salvage (keyed: renumber to the next free version at merge). Older than the oldest loadable run.</summary>
     public const int LootVersion = 13;
     /// <summary>Telegraphed plans (keyed: renumber to the next free version at merge).</summary>
     public const int IntentsVersion = 15;
@@ -59,23 +59,8 @@ public static class ScavengeSave
         if (envelope.Version < OldestVersion || envelope.Version > Version)
             throw new JsonException($"Unsupported scavenge save version {envelope.Version} (expected {OldestVersion}..{Version}).");
         var state = envelope.Scavenge ?? throw new JsonException("Save file has no scavenge state.");
-        if (envelope.Version < 7) MigrateCybernetics(data, state);
-        if (envelope.Version < LootVersion) MigrateLoot(state);
         Validate(data, state);
         return new ScavengeSim(data, state);
-    }
-
-    /// <summary>Before version 7 the field knew nothing of cybernetics: resolve survivors' hooks from their bodies.</summary>
-    internal static void MigrateCybernetics(ScavengeData data, ScavengeState state)
-    {
-        foreach (var u in state.Units.Where(u => u.Kind == UnitKind.Survivor && u.CyberHooks.Count == 0))
-            u.CyberHooks = data.CyberHooksFor(u.Body);
-    }
-
-    /// <summary>Before field loot the run had no loot seed: derive one from the RNG state, so kills still roll their loot.</summary>
-    internal static void MigrateLoot(ScavengeState state)
-    {
-        if (state.LootSeed == 0) state.LootSeed = state.RngState ^ 0x100D_5EED_0000_0001UL;
     }
 
     /// <summary>A save must still fit the current data/ (an item or enemy may have been renamed by a balancing edit).</summary>

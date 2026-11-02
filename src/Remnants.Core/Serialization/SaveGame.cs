@@ -229,7 +229,7 @@ public static class SaveGame
             if (envelope.Version < 8) Progression.Migrate(data, s);
             else foreach (var skill in Enum.GetValues<Survivors.Skill>()) s.Skills.TryAdd(skill, 0);
         StudySystem.Repair(colony);
-        if (envelope.Version < 12) MigrateCybernetics(data, scavenge, colony);
+        if (envelope.Version < 12) MigrateCybernetics(data, colony);
         if (envelope.Version < VehiclesVersion && colony.Vehicles.Count == 0)
             foreach (var tier in data.Vehicles.Starting) VehicleRules.Add(colony, data, tier);
         if (envelope.Version < FoodVersion) MigrateFood(data, colony);
@@ -353,9 +353,9 @@ public static class SaveGame
 
     /// <summary>
     /// Before version 12: prosthetics join the cybernetics tree (see the class remarks) and pay humanity as replacements,
-    /// the colony knows what it has fitted or owns, and a run in progress gets its units' cybernetic hooks.
+    /// and the colony knows what it has fitted or owns.
     /// </summary>
-    private static void MigrateCybernetics(GameData data, ScavengeData? scavenge, ColonyState colony)
+    private static void MigrateCybernetics(GameData data, ColonyState colony)
     {
         var cyber = data.Cybernetics;
         foreach (var s in colony.Survivors)
@@ -373,7 +373,7 @@ public static class SaveGame
         if (cyber is not null)
             foreach (var id in colony.Inventory.Counts.Keys.Where(id => cyber.Node(id) is not null))
                 colony.KnownCybernetics.Add(id);
-        if (scavenge is not null && colony.Expedition?.Scavenge is { } run) ScavengeSave.MigrateCybernetics(scavenge, run);
+        // A run in progress is not migrated: a save this old (before cards) drops it, and one heading home has none.
     }
 
     /// <summary>
