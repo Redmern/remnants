@@ -367,4 +367,19 @@ public class PlannedActionTests
         }
         Assert.Equal(Play(), Play());
     }
+
+    [Fact]
+    public void A_path_longer_than_the_budget_is_refused_before_it_is_walked()
+    {
+        var (sim, a, _) = Duel();
+        var budget = PlannedActions.Budget(sim, a);
+        // Back and forth past the budget, then a tile nobody can reach: the AP runs out first, so that is the error.
+        var path = Enumerable.Range(0, budget + 1).Select(i => i % 2 == 0 ? new Pos(1, 1) : new Pos(0, 1)).Append(new Pos(9, 9)).ToList();
+        Assert.Equal(ScavengeError.NotEnoughAp, sim.Execute(new DeclareIntent(1, a.Id, path)).Error);
+        // A client flooding the path is refused on its length alone.
+        var flood = Enumerable.Range(0, 100_000).Select(i => i % 2 == 0 ? new Pos(1, 1) : new Pos(0, 1)).ToList();
+        Assert.Equal(ScavengeError.NotEnoughAp, sim.Execute(new DeclareIntent(1, a.Id, flood)).Error);
+        Assert.Null(a.Plan);
+        Assert.Equal(new Pos(0, 1), a.Pos);
+    }
 }

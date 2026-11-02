@@ -22,6 +22,11 @@ public static class PlannedActions
         if (c.Path.Count == 0 && c.AttackTile is null || (c.AttackTile is null) != (c.ActionId is null))
             return ScavengeResult.Fail(ScavengeError.InvalidTarget, "A plan needs a path, an attack (a tile and an action), or both.");
 
+        var budget = Budget(sim, unit);
+        ScavengeResult NotEnough(int need) => ScavengeResult.Fail(ScavengeError.NotEnoughAp, $"{unit.Name} needs {need} AP for that plan (has {budget}).");
+        // Every move costs at least 1 AP: a longer path cannot fit, and is refused before any reachability is worked out.
+        if (c.Path.Count > budget) return NotEnough(c.Path.Count);
+
         var start = unit.Pos;
         var ap = 0;
         try
@@ -31,6 +36,7 @@ public static class PlannedActions
                 if (!sim.Reachable(unit).TryGetValue(step, out var cost))
                     return ScavengeResult.Fail(ScavengeError.Unreachable, $"{unit.Name} cannot reach {step} from {unit.Pos} in one move.");
                 ap += cost;
+                if (ap > budget) return NotEnough(ap);
                 unit.Pos = step;
             }
         }
@@ -52,8 +58,7 @@ public static class PlannedActions
             ap += Combat.ApCost(action, end, tile);
             targetId = TargetAt(state, unit, tile) is { } t && Detection.SideSees(sim.Data, state, unit.Side, t) ? t.Id : null;
         }
-        var budget = Budget(sim, unit);
-        if (ap > budget) return ScavengeResult.Fail(ScavengeError.NotEnoughAp, $"{unit.Name} needs {ap} AP for that plan (has {budget}).");
+        if (ap > budget) return NotEnough(ap);
 
         unit.Plan = new PlannedAction
         {
