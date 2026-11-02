@@ -9,6 +9,9 @@ namespace Remnants.Core.Scavenge;
 /// </summary>
 public static class BotTactics
 {
+    /// <summary>A bot plays a mend card once a body part is at least this badly hurt (a bot habit, not a game rule).</summary>
+    public const double MendInjuryAt = 0.2;
+
     /// <summary>Seen hostiles whose telegraphed attack is aimed at <paramref name="unit"/>'s tile.</summary>
     public static List<Unit> Threats(ScavengeSim sim, Unit unit) =>
         sim.State.Units.Where(u => u.IsActive && unit.HostileTo(u) && u.Plan is { AttackTile: { } t } && t == unit.Pos
@@ -46,7 +49,7 @@ public static class BotTactics
         if (inReach && unit.CardHit <= 0 && nonReactions.FirstOrDefault(c => c.Effect.Hit > 0) is { } aim) return Play(aim);
         if (seen && unit.CardCover <= 0 && nonReactions.FirstOrDefault(c => c.Effect.Cover > 0) is { } cover) return Play(cover);
         if (seen && unit.Guard == 0 && nonReactions.FirstOrDefault(c => c.Effect.Guard > 0) is { } guard) return Play(guard);
-        if (Treatment.WorstInjury(unit.Body) >= 0.2 && nonReactions.FirstOrDefault(c => c.Effect.Mend > 0) is { } mend) return Play(mend);
+        if (Treatment.WorstInjury(unit.Body) >= MendInjuryAt && nonReactions.FirstOrDefault(c => c.Effect.Mend > 0) is { } mend) return Play(mend);
         if (deck.Hand.Count <= 2 && nonReactions.FirstOrDefault(c => c.Effect.Draw > 0) is { } draw) return Play(draw);
         var squad = state.Units.Where(u => u.PlayerId == playerId && u.PlayerControlled && u.IsActive).ToList();
         if (deck.DeadDiscardRound != state.Round
