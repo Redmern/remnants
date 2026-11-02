@@ -902,7 +902,8 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
   (`enemies[].cards`) into one enemy deck and plays them after their plan; `BotTactics` holds the bots' heuristics.
 - **Colony** (`ColonyCards`, `ColonyState.Cards`): the collection (copies per id), the deck, slot cards, upgrades;
   starter set for new and migrated colonies; cards from loot / salvage rows (the run's `Party.CardPouch`, kept only if
-  someone gets out), recipe outputs (`recipes[].card`), trade (`GoodKind.Card`); consumables played leave the collection.
+  someone gets out), recipe outputs (`recipes[].card`: a recipe that makes something else teaches its card once per colony,
+  `CardCollection.Taught`; a recipe whose only output is the card grants it every craft), trade (`GoodKind.Card`); consumables played leave the collection.
 - **Saves**: scavenge save 15 (`ScavengeSave.IntentsVersion`; older runs are refused) and colony save 27
   (`SaveGame.CardsVersion`; older colonies get the starter set, and a run in progress inside one starts over from its
   expedition's seed). Protocol 17 (see MULTIPLAYER.md, "Telegraphed plans and cards over the wire").
