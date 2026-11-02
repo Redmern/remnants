@@ -16,6 +16,7 @@ public static class FoodGoods
     /// <summary>How many of this good the colony can offer now (food: fresh units only).</summary>
     public static double Have(ColonyState state, GameData data, TradeGood g) =>
         g.Kind == GoodKind.Resource ? state.Stockpile.Get(g.Id)
+        : g.Kind == GoodKind.Card ? state.Cards.Owned.GetValueOrDefault(g.Id)
         : IsFood(data, g.Id) ? Pantry.Available(state, data, g.Id)
         : state.Inventory.Count(g.Id);
 

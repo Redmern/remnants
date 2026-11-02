@@ -390,3 +390,42 @@ public class TradeTests
         Assert.Equal(3, b.ChargesUsed["motion_sensor_mk2"]);
     }
 }
+
+/// <summary>Cards trade by id like items: out of one collection into escrow, into another collection on delivery.</summary>
+public class CardTradeTests
+{
+    private static readonly TradeRules Rules = TradeRules.Load(Path.Combine(AppContext.BaseDirectory, "data"));
+
+    [Fact]
+    public void A_card_leaves_one_collection_and_joins_another()
+    {
+        var seller = NewGame.Create(TestData.Real, 1, Real);
+        var buyer = NewGame.Create(TestData.Real, 2, Real);
+        var line = TradeGood.Card("sprint");
+        Assert.Null(TradeGoods.Validate([line], Rules, TestData.Real, Real));
+        Assert.NotNull(TradeGoods.Validate([TradeGood.Card("no_such_card")], Rules, TestData.Real, Real));
+        Assert.Equal("Sprint", TradeGoods.Name(line, TestData.Real, Real));
+        Assert.True(TradePrices.Of(line, Rules, TestData.Real, Real) > 0);
+
+        var had = seller.State.Cards.Owned["sprint"];
+        Assert.True(ColonyTrade.Escrow(seller, "tx-card", [line], "test").Ok);
+        Assert.Equal(had - 1, seller.State.Cards.Owned.GetValueOrDefault("sprint"));
+        Assert.DoesNotContain("sprint", seller.State.Cards.Deck); // the deck gives up a copy it no longer has
+        Assert.False(ColonyTrade.Escrow(seller, "tx-card-2", [TradeGood.Card("sprint")], "test").Ok);
+
+        Assert.True(ColonyTrade.Settle(seller, "tx-card"));
+        var before = buyer.State.Cards.Owned.GetValueOrDefault("sprint");
+        Assert.True(ColonyTrade.Receive(buyer, "tx-card", [line], "Seller"));
+        Assert.Equal(before + 1, buyer.State.Cards.Owned["sprint"]);
+    }
+
+    [Fact]
+    public void A_refunded_card_comes_back()
+    {
+        var colony = NewGame.Create(TestData.Real, 1, Real);
+        var had = colony.State.Cards.Owned["dash"];
+        Assert.True(ColonyTrade.Escrow(colony, "tx", [TradeGood.Card("dash")], "test").Ok);
+        Assert.True(ColonyTrade.Refund(colony, "tx"));
+        Assert.Equal(had, colony.State.Cards.Owned["dash"]);
+    }
+}

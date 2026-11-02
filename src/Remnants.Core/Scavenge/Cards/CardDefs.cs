@@ -116,6 +116,11 @@ public sealed record CardDef
 
     /// <summary>What <see cref="BoostAp"/> more AP adds.</summary>
     public CardEffect? Boost { get; init; }
+
+    /// <summary>Reference value in scrap for the trade hint (0: by rarity).</summary>
+    public double Value { get; init; }
+
+    public double TradeValue => Value > 0 ? Value : Rarity switch { CardRarity.Common => 6, CardRarity.Uncommon => 15, _ => 30 };
 }
 
 /// <summary>

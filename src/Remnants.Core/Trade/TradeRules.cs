@@ -80,7 +80,12 @@ public sealed record LiveTradeRules
 public static class TradePrices
 {
     public static double Of(TradeGood good, TradeRules rules, GameData data, ScavengeData items) =>
-        good.Count * (good.Kind == GoodKind.Resource ? Schematics.TradeValues.OfResource(data, good.Id) : Schematics.TradeValues.Of(data, items, good.Id));
+        good.Count * (good.Kind switch
+        {
+            GoodKind.Resource => Schematics.TradeValues.OfResource(data, good.Id),
+            GoodKind.Card => items.Cards.Find(good.Id)?.TradeValue ?? 0,
+            _ => Schematics.TradeValues.Of(data, items, good.Id),
+        });
 
     public static double Of(IEnumerable<TradeGood> goods, TradeRules rules, GameData data, ScavengeData items) =>
         Math.Round(goods.Sum(g => Of(g, rules, data, items)), 1);

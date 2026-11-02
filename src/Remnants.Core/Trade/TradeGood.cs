@@ -5,8 +5,8 @@ using Remnants.Core.Scavenge;
 
 namespace Remnants.Core.Trade;
 
-/// <summary>What a trade line moves: a stockpile resource (wood, scrap, Research Data…) or whole items.</summary>
-public enum GoodKind { Resource, Item }
+/// <summary>What a trade line moves: a stockpile resource (wood, scrap, Research Data…), whole items, or cards (by card id).</summary>
+public enum GoodKind { Resource, Item, Card }
 
 /// <summary>
 /// Per-item data that must survive a trade beyond the item id (gear quality is already part of the id: a quality
@@ -34,6 +34,7 @@ public sealed record TradeGood(GoodKind Kind, string Id, int Count, ItemExtras? 
 {
     public static TradeGood Resource(string id, int amount) => new(GoodKind.Resource, id, amount);
     public static TradeGood Item(string id, int count = 1) => new(GoodKind.Item, id, count);
+    public static TradeGood Card(string id, int count = 1) => new(GoodKind.Card, id, count);
 
     public string Key => $"{Kind}:{Id}";
 }
@@ -83,6 +84,11 @@ public static class TradeGoods
                             || lots.Any(l => l.Count <= 0 || string.IsNullOrWhiteSpace(l.Quality) || l.Quality.Length > 24 || l.TicksLeft < 0)))
                         return $"{item.Name}: the food lots do not add up.";
                     break;
+                case GoodKind.Card:
+                    if (items.Cards.Find(g.Id) is not { } card) return $"Unknown card '{g.Id}'.";
+                    if (g.Count > rules.Limits.MaxItemCount) return $"At most {rules.Limits.MaxItemCount} × {card.Name} per line.";
+                    if (g.Extras is not null) return $"{card.Name} is a card.";
+                    break;
                 default:
                     return "Unknown kind of goods.";
             }
@@ -100,12 +106,13 @@ public static class TradeGoods
     public static string Name(TradeGood g, GameData data, ScavengeData items) => g.Kind switch
     {
         GoodKind.Resource => data.Resources.GetValueOrDefault(g.Id)?.Name ?? g.Id,
+        GoodKind.Card => items.Cards.Find(g.Id)?.Name ?? g.Id,
         _ => items.Items.GetValueOrDefault(g.Id)?.Name ?? g.Id,
     };
 
     public static string Describe(IEnumerable<TradeGood> goods, GameData data, ScavengeData items)
     {
-        var parts = goods.Select(g => g.Count == 1 && g.Kind == GoodKind.Item ? Name(g, data, items) : $"{g.Count} {Name(g, data, items)}").ToList();
+        var parts = goods.Select(g => g.Count == 1 && g.Kind != GoodKind.Resource ? Name(g, data, items) : $"{g.Count} {Name(g, data, items)}").ToList();
         return parts.Count == 0 ? "nothing" : string.Join(", ", parts);
     }
 
