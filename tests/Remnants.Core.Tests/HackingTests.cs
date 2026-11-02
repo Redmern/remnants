@@ -208,13 +208,17 @@ public class HackingTests
         Assert.True(Detection.SideSees(sim.Data, sim.State, team, husk), "the camera sees through to the other room for the team");
     }
 
-    [Fact]
-    public void A_turret_shoots_the_party_until_hacked_then_fires_for_it()
+    /// <summary>
+    /// A hacked turret against a husk at (6,5); with <paramref name="penned"/> pylons all round the husk keep it on its tile
+    /// (they block movement, not sight). The turret is hacked and has telegraphed its aim at the husk's tile.
+    /// </summary>
+    private static (ScavengeSim Sim, Unit Gun, Unit Husk, Unit Hacker) HackedTurret(bool penned)
     {
         ZoneDevice turret = null!;
         var hacker = Hacker(new Pos(1, 1));
         var husk = EnemyUnit("husk", new Pos(6, 5));
-        var sim = Arena(10, 8, [hacker, husk], data: Rolls(1), setup: (d, s) => turret = Hacking.Place(d, s, DeviceKind.Turret, new Pos(2, 2)));
+        string[]? rows = penned ? ["..........", "..........", "..........", "..........", ".....PPP..", ".....P.P..", ".....PPP..", ".........."] : null;
+        var sim = Arena(10, 8, [hacker, husk], rows: rows, data: Rolls(1), setup: (d, s) => turret = Hacking.Place(d, s, DeviceKind.Turret, new Pos(2, 2)));
         var gun = sim.State.FindUnit(turret.UnitId!.Value)!;
         Assert.True(gun.HostileTo(hacker));
         Assert.False(gun.HostileTo(husk));
@@ -224,12 +228,31 @@ public class HackingTests
         Assert.Equal(P1, gun.Side);
         Assert.False(gun.PlayerControlled, "a turret is the AI's to run, for its new side");
         EndTurns(sim, 1);
-        // It telegraphs its aim at the husk's tile (a turret never moves), then fires there: the husk is hit or, if it
-        // walked off the tile meanwhile, the shot falls through.
+        // It telegraphs its aim at the husk's tile (a turret never moves, even with the husk in reach).
         Assert.Equal(husk.Pos, gun.Plan?.AttackTile);
+        return (sim, gun, husk, hacker);
+    }
+
+    [Fact]
+    public void A_hacked_turret_fires_for_its_new_side_at_the_tile_it_aimed_at()
+    {
+        var (sim, gun, husk, hacker) = HackedTurret(penned: true);
         EndTurns(sim, 1);
-        Assert.Contains(sim.State.Events, e => e.UnitId == gun.Id && (e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed && e.TargetId == husk.Id
-                                                                     || e.Type == ScavengeEventType.IntentFizzled));
+        Assert.Equal(new Pos(6, 5), husk.Pos);
+        Assert.Contains(sim.State.Events, e => e.UnitId == gun.Id && e.TargetId == husk.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
+        Assert.DoesNotContain(sim.State.Events, e => e.UnitId == gun.Id && e.Type == ScavengeEventType.IntentFizzled);
+        Assert.DoesNotContain(sim.State.Events, e => e.UnitId == gun.Id && e.TargetId == hacker.Id);
+    }
+
+    [Fact]
+    public void A_hacked_turrets_shot_falls_through_when_its_target_leaves_the_tile()
+    {
+        var (sim, gun, husk, hacker) = HackedTurret(penned: false);
+        husk.Pos = new Pos(8, 7); // walked off before the turret's turn
+        EndTurns(sim, 1);
+        Assert.Contains(sim.State.Events, e => e.UnitId == gun.Id && e.Type == ScavengeEventType.IntentFizzled);
+        Assert.DoesNotContain(sim.State.Events, e => e.UnitId == gun.Id && e.TargetId == husk.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed
+                                                     && e.Round < sim.State.Round);
         Assert.DoesNotContain(sim.State.Events, e => e.UnitId == gun.Id && e.TargetId == hacker.Id);
     }
 
