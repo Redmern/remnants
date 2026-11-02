@@ -261,7 +261,7 @@ public partial class UnitPanel : PanelContainer
 
         var health = unit.MaxHp > 0 ? Mathf.Clamp(unit.Hp / unit.MaxHp, 0, 1) : 0;
         var hpKnown = _tier >= BestiaryTier.Killed;
-        _hp.Set(health, hpKnown ? $"{unit.Hp:0}/{unit.MaxHp:0}" : $"{health * 100:0}%");
+        _hp.Set(health, Bestiary.Health(unit, _tier)[3..]);
         _set.Tooltip(_hp, unit.Status == UnitStatus.Downed
             ? $"Down: bleeds out in {unit.BleedOut} rounds unless stabilized{(unit.Stabilized ? " (stabilized)" : "")}"
             : hpKnown ? $"Health {unit.Hp:0}/{unit.MaxHp:0}" : "How hurt it looks. Kill one to learn its health (Bestiary).");

@@ -248,7 +248,7 @@ public partial class OrderChip : PanelContainer
         _set.Text(_name, known ? u.Name : "Unseen");
         _set.Modulate(this, acted ? new Color(1, 1, 1, 0.45f) : Colors.White);
         _set.Tooltip(this, known
-            ? $"{u.Name} · {ScavengeText.Kind(u)} · {ScavengeText.Status(u)} · HP {u.Hp:0}/{u.MaxHp:0}"
+            ? $"{u.Name} · {ScavengeText.Kind(u)} · {ScavengeText.Status(u)} · {Bestiary.Health(u, presenter.KnowledgeOf(u))}"
               + (acted ? "\nActed this round" : current ? "\nActing now" : "") + "\nClick to select"
             : "Unseen: heard or known to be there, but not in sight. It acts at this place in the order.");
     }

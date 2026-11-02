@@ -160,7 +160,11 @@ public partial class ScavengeScreen : Node3D
             var acting = _presenter.ActingUnit;
             var action = acting is not null && _actionPanel.ActionId is { } id ? _presenter.Sim.Profile(acting).Action(id) : null;
             var target = _hover is { } p && _presenter.State.UnitAt(p) is { } u && acting is not null && acting.HostileTo(u) && _presenter.CanSee(u) ? u : null;
-            return new Remnants.Core.Help.HelpContext { Scavenge = _presenter.Sim, Attacker = acting, Action = action, Target = target };
+            return new Remnants.Core.Help.HelpContext
+            {
+                Scavenge = _presenter.Sim, Attacker = acting, Action = action, Target = target,
+                TargetKnown = target is null ? BestiaryTier.Killed : _presenter.KnowledgeOf(target),
+            };
         };
         TreeExiting += () => Hud.Help.HelpLibrary.Ambient = null;
         AddChild(_hud);

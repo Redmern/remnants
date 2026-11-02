@@ -172,10 +172,7 @@ public sealed class ScavengePresenter
     /// The bestiary tier the local player knows an enemy type at: the colony's (<see cref="BestiaryKnowledge"/>) plus this
     /// run's encounters. Units that are not bestiary subjects (people, other players) are always known as seen.
     /// </summary>
-    public BestiaryTier KnowledgeOf(Unit unit) =>
-        Bestiary.Subject(unit) && unit.EnemyDefId is { } id
-            ? Bestiary.TierOf(Sim.Data.Rules.Bestiary, BestiaryKnowledge.Colony, Party.Bestiary, id)
-            : BestiaryTier.Killed;
+    public BestiaryTier KnowledgeOf(Unit unit) => Bestiary.Knowledge(Sim, BestiaryKnowledge.Colony, PlayerId, unit);
 
     /// <summary>Caches the unit can loot from (its tile or next to it).</summary>
     public IEnumerable<LootCache> CachesInReach(Unit unit) => State.Caches.Where(c => c.Pos.Chebyshev(unit.Pos) <= 1);
