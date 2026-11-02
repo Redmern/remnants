@@ -6,7 +6,8 @@ namespace Remnants.Core.Scavenge;
 /// What a party brings in card terms: its deck (card ids, copies repeated) and the deck's numbers with the village's
 /// upgrades in (hand size, cards drawn per round, card-point budget).
 /// </summary>
-public sealed record SquadLoadout(List<string> Cards, int HandSize, int Draw, int Budget);
+/// <see cref="Draw"/>: at most this many cards drawn per round start (null: the hand refills to its size).
+public sealed record SquadLoadout(List<string> Cards, int HandSize, int? Draw, int Budget);
 
 /// <summary>
 /// A party's shared squad deck in the field. Cards are drawn from <see cref="DrawPile"/> into <see cref="Hand"/>; played
@@ -26,7 +27,8 @@ public sealed class SquadDeck
     public int Points { get; set; }
     public int Budget { get; set; }
     public int HandSize { get; set; }
-    public int DrawPerRound { get; set; }
+    /// <summary>At most this many cards drawn per round start; null: the hand refills to <see cref="HandSize"/>.</summary>
+    public int? DrawPerRound { get; set; }
 
     /// <summary>The round a dead hard card was last discarded in (once per round).</summary>
     public int DeadDiscardRound { get; set; }
@@ -53,20 +55,19 @@ public static class SquadDecks
         var deck = new SquadDeck
         {
             PlayerId = playerId, DrawPile = new(loadout.Cards), HandSize = Math.Max(rules.MinHandSize, loadout.HandSize),
-            DrawPerRound = Math.Max(0, loadout.Draw), Budget = Math.Max(0, loadout.Budget),
+            DrawPerRound = loadout.Draw is { } cap ? Math.Max(0, cap) : null, Budget = Math.Max(0, loadout.Budget),
         };
         Shuffle(state, deck.DrawPile);
         // The opening hand: a full one, or the first round's draw (cards.json rules.fullOpeningHand).
-        var opening = Math.Min(rules.FullOpeningHand ? deck.HandSize : Math.Min(deck.HandSize, deck.DrawPerRound), deck.DrawPile.Count);
+        var opening = Math.Min(rules.FullOpeningHand ? deck.HandSize : Math.Min(deck.HandSize, deck.DrawPerRound ?? deck.HandSize), deck.DrawPile.Count);
         deck.Hand.AddRange(deck.DrawPile.TakeLast(opening).Reverse());
         deck.DrawPile.RemoveRange(deck.DrawPile.Count - opening, opening);
         state.Decks.Add(deck);
     }
 
     /// <summary>
-    /// Round start: every party still in the run gets its full card points back and draws up to its hand size, at most
-    /// its draw per round (the opening hand, dealt as the party enters, is a full one). Personal slot cards played last
-    /// round come back.
+    /// Round start: every party still in the run gets its full card points back and draws up to its hand size (at most
+    /// its draw per round, when the rules set one). Personal slot cards played last round come back.
     /// </summary>
     public static void RoundStarted(ScavengeSim sim)
     {
@@ -76,7 +77,7 @@ public static class SquadDecks
             if (state.FindParty(deck.PlayerId) is { Done: true }) continue;
             deck.Points = deck.Budget;
             var room = deck.HandSize - deck.Hand.Count;
-            Draw(sim, deck, Math.Min(room, deck.DrawPerRound));
+            Draw(sim, deck, Math.Min(room, deck.DrawPerRound ?? room));
         }
         foreach (var u in state.Units.Where(u => u.SlotSpent.Count > 0)) u.SlotSpent.Clear();
     }

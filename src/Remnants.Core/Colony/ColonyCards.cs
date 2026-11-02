@@ -63,7 +63,7 @@ public static class ColonyCards
         var rules = data.Cards.Rules;
         int Bonus(CardUpgradeStat stat) => rules.Upgrades.Where(u => u.Stat == stat && sim.State.Cards.Upgrades.Contains(u.Id)).Sum(u => u.Amount);
         return new SquadLoadout(sim.State.Cards.Deck.Where(id => data.Cards.Find(id) is not null).ToList(),
-            rules.HandSize + Bonus(CardUpgradeStat.HandSize), rules.Draw + Bonus(CardUpgradeStat.Draw), rules.Budget + Bonus(CardUpgradeStat.Budget));
+            rules.HandSize + Bonus(CardUpgradeStat.HandSize), rules.Draw is { } cap ? cap + Bonus(CardUpgradeStat.Draw) : null, rules.Budget + Bonus(CardUpgradeStat.Budget));
     }
 
     public static List<string> SlotCards(ColonyState state, int survivorId) => new(state.Cards.Slots.GetValueOrDefault(survivorId) ?? []);

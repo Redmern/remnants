@@ -1,7 +1,6 @@
 {
   "rules": {
     "handSize": 5,
-    "draw": 3,
     "budget": 3,
     "minHandSize": 1,
     "fullOpeningHand": true,
@@ -22,7 +21,6 @@
     },
     "upgrades": [
       { "id": "hand_1", "name": "Tactics board", "stat": "HandSize", "amount": 1, "cost": { "wood": 15, "cloth": 10 } },
-      { "id": "draw_1", "name": "Drill yard", "stat": "Draw", "amount": 1, "cost": { "wood": 20, "scrap": 10 } },
       { "id": "budget_1", "name": "War room", "stat": "Budget", "amount": 1, "cost": { "scrap": 20, "electronics": 4 } },
       { "id": "budget_2", "name": "War room II", "stat": "Budget", "amount": 1, "cost": { "scrap": 40, "electronics": 10 }, "after": "budget_1" }
     ]

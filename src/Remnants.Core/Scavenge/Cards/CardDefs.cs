@@ -148,13 +148,15 @@ public sealed record CardUpgradeDef
 }
 
 /// <summary>
-/// The squad deck's numbers: hand size, cards drawn at each round start (up to the hand size; the first round deals a full
-/// hand) and the card-point budget refilled each round; the starter set (id → copies) new colonies get.
+/// The squad deck's numbers: hand size (refilled at each round start, optionally capped by <see cref="Draw"/>) and the
+/// card-point budget refilled each round; the starter set (id → copies) new colonies get.
 /// </summary>
 public sealed record CardRules
 {
     public int HandSize { get; init; } = 5;
-    public int Draw { get; init; } = 3;
+
+    /// <summary>At most this many cards drawn at a round start; null (the default): the hand refills to its size.</summary>
+    public int? Draw { get; init; }
     public int Budget { get; init; } = 3;
 
     /// <summary>The smallest hand a deck is dealt, whatever a loadout says.</summary>
@@ -234,7 +236,7 @@ public sealed class CardCatalog
         var upgrades = def.Rules.Upgrades.Select(u => u.Id).ToHashSet(StringComparer.Ordinal);
         foreach (var u in def.Rules.Upgrades.Where(u => u.After is { } a && !upgrades.Contains(a)))
             throw new GameDataException($"cards.json: upgrade '{u.Id}' follows unknown upgrade '{u.After}'.");
-        if (def.Rules.HandSize < 1 || def.Rules.Draw < 0 || def.Rules.Budget < 0) throw new GameDataException("cards.json: bad deck rules.");
+        if (def.Rules.HandSize < 1 || def.Rules.Draw is < 0 || def.Rules.Budget < 0) throw new GameDataException("cards.json: bad deck rules.");
         All = all;
     }
 

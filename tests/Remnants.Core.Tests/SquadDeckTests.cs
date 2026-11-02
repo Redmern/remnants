@@ -6,7 +6,7 @@ namespace Remnants.Core.Tests;
 /// <summary>The shared squad deck: draw pile, hand, used pile, the round's card points, reshuffles.</summary>
 public class SquadDeckTests
 {
-    private static SquadLoadout Starter => new(Real.Cards.StarterDeck(), 5, 3, 3);
+    private static SquadLoadout Starter => new(Real.Cards.StarterDeck(), 5, null, 3);
 
     private static ScavengeSim Run(SquadLoadout? loadout = null, ulong seed = 11) =>
         NewScavenge.Create(Real, "outskirts", seed, [Party(1) with { Deck = loadout ?? Starter }]);
@@ -26,21 +26,36 @@ public class SquadDeckTests
     }
 
     [Fact]
-    public void Each_round_start_refills_the_points_and_draws_up_to_the_hand_size_at_most_draw_cards()
+    public void Each_round_start_refills_the_points_and_the_hand()
     {
+        Assert.Null(Real.Cards.Rules.Draw); // no cap in the data: the hand refills to its size
         var sim = Run();
         sim.Start();
         var deck = sim.State.Decks[0];
         deck.Points = 0;
-        // Four cards played away: the next round draws three (the draw), not four.
         for (var i = 0; i < 4; i++)
         {
             deck.Used.Add(deck.Hand[0]);
             deck.Hand.RemoveAt(0);
         }
         SquadDecks.RoundStarted(sim);
-        Assert.Equal(4, deck.Hand.Count);
+        Assert.Equal(5, deck.Hand.Count);
         Assert.Equal(3, deck.Points);
+    }
+
+    [Fact]
+    public void A_draw_cap_limits_the_cards_drawn_per_round()
+    {
+        var sim = Run(new SquadLoadout(Real.Cards.StarterDeck(), 5, 3, 3));
+        sim.Start();
+        var deck = sim.State.Decks[0];
+        for (var i = 0; i < 4; i++)
+        {
+            deck.Used.Add(deck.Hand[0]);
+            deck.Hand.RemoveAt(0);
+        }
+        SquadDecks.RoundStarted(sim);
+        Assert.Equal(4, deck.Hand.Count); // three drawn, not four
         SquadDecks.RoundStarted(sim);
         Assert.Equal(5, deck.Hand.Count);
     }
