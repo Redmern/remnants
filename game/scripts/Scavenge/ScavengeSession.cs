@@ -71,6 +71,13 @@ public static class ScavengeSession
         return Remnants.Core.Colony.VehicleRules.Field(data, vehicle);
     }
 
+    /// <summary>The starter squad deck with the base deck rules (a debug run plays with cards like a colony's first).</summary>
+    private static SquadLoadout? DebugDeck()
+    {
+        var cards = GameDataPaths.LoadScavenge().Cards;
+        return cards.All.Count == 0 ? null : new SquadLoadout(cards.StarterDeck(), cards.Rules.HandSize, cards.Rules.Draw, cards.Rules.Budget);
+    }
+
     /// <summary>A debug mission with <see cref="DebugParty"/>, returning to the main menu. --zone=ID / --seed=N pick another.</summary>
     public static void BeginDebug(SceneTree tree) => Begin(tree, DebugSim());
 
@@ -107,12 +114,13 @@ public static class ScavengeSession
             conditions = new ZoneConditions(Environment: env);
         }
         var sim = NewScavenge.Create(GameDataPaths.LoadScavenge(), DebugZoneArg, DebugSeedArg,
-            [new PartySetup(LocalPlayerId, DebugParty()) { Vehicle = DebugVehicle() }], conditions);
+            [new PartySetup(LocalPlayerId, DebugParty()) { Vehicle = DebugVehicle(), Deck = DebugDeck() }], conditions);
         if (Fog.FogDemo.Requested) Fog.FogDemo.Stage(sim, LocalPlayerId);
         if (TechDemo.Requested) TechDemo.Stage(sim, LocalPlayerId);
         if (LootDemo.Requested) LootDemo.Stage(sim, LocalPlayerId);
         if (AnimDemo.Requested) AnimDemo.Stage(sim, LocalPlayerId);
         if (GearDemo.Requested) GearDemo.Stage(sim, LocalPlayerId);
+        if (TacticsDemo.Requested) TacticsDemo.Stage(sim, LocalPlayerId);
         return sim;
     }
 

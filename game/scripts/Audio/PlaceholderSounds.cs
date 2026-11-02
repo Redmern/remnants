@@ -25,6 +25,11 @@ public static class PlaceholderSounds
         ["ui_toast"] = new(880, 1320, 0.1f, Volume: 0.25f),
         ["sting_death"] = new(140, 70, 1.4f, Noise: 0.1f, Volume: 0.6f, Attack: 0.05f),
         ["sting_ambush"] = new(90, 420, 0.5f, Noise: 0.6f, Volume: 0.6f, Attack: 0.002f),
+        // Tactics placeholders until real recordings: a card snapped down, a riffle, a low warning, an air swish.
+        ["card_play"] = new(1800, 600, 0.07f, Noise: 0.5f, Volume: 0.3f, Attack: 0.002f),
+        ["card_shuffle"] = new(2400, 1600, 0.28f, Noise: 0.85f, Volume: 0.22f),
+        ["telegraph_warn"] = new(320, 260, 0.22f, Noise: 0.1f, Volume: 0.28f),
+        ["dodge_whoosh"] = new(900, 200, 0.25f, Noise: 0.9f, Volume: 0.3f),
     };
 
     private static readonly Dictionary<string, AudioStreamWav> Cache = new();

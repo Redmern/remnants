@@ -149,6 +149,34 @@ public sealed class ScavengePresenter
             .ToList();
     }
 
+    /// <summary>Seen enemy plans as telegraphs (Core's <see cref="TacticsView"/>; never the card).</summary>
+    public List<Telegraph> Telegraphs() => TacticsView.Telegraphs(Sim, Side);
+
+    /// <summary>The threat overlay: planned blows of seen enemies, and what they could hit from where they stand.</summary>
+    public Dictionary<Pos, ThreatKind> Threats() => TacticsView.Threats(Sim, Side);
+
+    /// <summary>For each tile <paramref name="unit"/> can move to, its best hit chance at <paramref name="target"/> from there.</summary>
+    public Dictionary<Pos, double> MovePreview(Unit unit, Unit target) => TacticsView.MovePreview(Sim, unit, target);
+
+    /// <summary>The local player's hand strip (null without a deck).</summary>
+    public HandView? Hand() => TacticsView.Hand(Sim, PlayerId);
+
+    /// <summary>The character picker for a card: who can take it now, and why the others cannot.</summary>
+    public List<PickerRow> Picker(string cardId, bool boost, int? target, bool fromSlot) =>
+        TacticsView.Picker(Sim, PlayerId, cardId, boost, target, fromSlot);
+
+    /// <summary>Seen enemies with a plan (what a reaction card answers).</summary>
+    public List<Unit> ReactionTargets() => TacticsView.ReactionTargets(Sim, PlayerId);
+
+    /// <summary>
+    /// The bestiary tier the local player knows an enemy type at: the colony's (<see cref="BestiaryKnowledge"/>) plus this
+    /// run's encounters. Units that are not bestiary subjects (people, other players) are always known as seen.
+    /// </summary>
+    public BestiaryTier KnowledgeOf(Unit unit) =>
+        Bestiary.Subject(unit) && unit.EnemyDefId is { } id
+            ? Bestiary.TierOf(Sim.Data.Rules.Bestiary, BestiaryKnowledge.Colony, Party.Bestiary, id)
+            : BestiaryTier.Killed;
+
     /// <summary>Caches the unit can loot from (its tile or next to it).</summary>
     public IEnumerable<LootCache> CachesInReach(Unit unit) => State.Caches.Where(c => c.Pos.Chebyshev(unit.Pos) <= 1);
 

@@ -275,6 +275,59 @@
         "signal",
         "communicate"
       ]
+    },
+    {
+      "id": "cards",
+      "title": "Tactical cards",
+      "short": "Your squad shares a hand of cards. Most cost card points, not AP; points refill each round.",
+      "long": "## The hand\n\n- One shared deck per party. Each round the hand refills to its size and the card points refill to the budget.\n- Played cards go to the used pile and come back when the draw pile runs out; consumable cards are gone for good.\n\n## Playing a card\n\n- Pick a card, then pick who it goes on. The picker shows who can take it now and, for the rest, why not.\n- **Hard** cards need a qualified character (a skill, attribute or perk). **Baseline** cards work for anyone; a qualified character gets more.\n- Some cost AP; some take extra AP for a **boost**. Arm-heavy cards wait for working arms.\n- **Reactions** answer a seen enemy's telegraphed plan, also on another unit's turn.\n- A hard card nobody can use can be discarded for free, once a round.\n\n## Slots\n\nSome characters hold personal slot cards: always to hand for them, paid from the squad's points.",
+      "related": [
+        "telegraphs",
+        "hit_chance",
+        "bestiary"
+      ],
+      "keywords": [
+        "card",
+        "hand",
+        "deck",
+        "points",
+        "reaction",
+        "slot"
+      ]
+    },
+{
+      "id": "telegraphs",
+      "title": "Telegraphs and threats",
+      "short": "Enemies show what they will do next turn: the path they walk and the tile they strike. Step off it.",
+      "long": "## Telegraphs\n\n- An enemy that has to move to reach you declares its plan: a trail of steps and a ring on the tile it will strike. It carries it out at the start of its next turn.\n- An enemy already in reach strikes at once. Turrets always telegraph their aim.\n- A blow on an empty tile hits nothing. Dodge one and your next attack on that enemy gets +20% to hit.\n\n## The threat overlay\n\n- Strong red: a telegraphed blow lands here.\n- Faint orange: a seen enemy could hit this tile from where it stands.\n\n## Hit preview\n\nHover a hostile with an attack chosen: every tile you can move to shows your hit chance from there.",
+      "related": [
+        "cards",
+        "hit_chance",
+        "overwatch"
+      ],
+      "keywords": [
+        "intent",
+        "plan",
+        "telegraph",
+        "threat",
+        "dodge",
+        "overlay"
+      ]
+    },
+{
+      "id": "bestiary",
+      "title": "The bestiary",
+      "short": "What your colony knows of each enemy type grows with every sighting, fight and kill.",
+      "long": "- **Seen**: its weapons and reach.\n- **Fought**: its AP and how it moves.\n- **Killed**: everything: health, armor, stats and how it behaves.\n\nWhat a party learns comes home only if someone gets out. Other players are never in it: judge them by their gear and play.",
+      "related": [
+        "telegraphs"
+      ],
+      "keywords": [
+        "bestiary",
+        "enemy",
+        "knowledge",
+        "codex"
+      ]
     }
   ]
 }

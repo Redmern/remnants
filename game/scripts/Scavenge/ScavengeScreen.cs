@@ -21,6 +21,7 @@ public partial class ScavengeScreen : Node3D
     private MapView _map = null!;
     private UnitViews _units = null!;
     private FogOverlay _fog = null!;
+    private TelegraphView _telegraphs = null!;
     private Ui.ObjectiveMarkers _objectives = null!;
     private DeviceViews _devices = null!;
     private SalvageViews _salvage = null!;
@@ -80,6 +81,9 @@ public partial class ScavengeScreen : Node3D
         _objectives = new Ui.ObjectiveMarkers { Name = "Objectives" };
         AddChild(_objectives);
         _objectives.Setup(_presenter, models);
+        _telegraphs = new TelegraphView { Name = "Telegraphs" };
+        AddChild(_telegraphs);
+        _telegraphs.Setup(_presenter, models);
 
         BuildHud();
         _audio = new Audio.ScavengeAudio { Name = "Audio" };
@@ -98,6 +102,7 @@ public partial class ScavengeScreen : Node3D
         if (MedicineDemoRequested) _ = MedicineDemoScript();
         if (AnimDemo.Requested) _ = AnimDemoScript();
         if (GearDemo.Requested) _ = GearDemoScript();
+        if (TacticsDemo.Requested) _ = TacticsDemoScript();
         if (float.TryParse(DebugValue("--zoom"), out var zoom)) _camera.Camera.Size = zoom;
         if (int.TryParse(DebugValue("--autoplay"), out var steps)) _ = Autoplay(steps);
         if (int.TryParse(DebugValue("--select-unit"), out var unitId)) CallDeferred(MethodName.SelectForCapture, unitId);
@@ -226,6 +231,7 @@ public partial class ScavengeScreen : Node3D
             RefreshHud();
         };
         _coopPanel.CommandRequested += command => _ = Run(command);
+        _hud.Hand.CommandRequested += command => _ = Run(command);
         _coopPanel.PingChosen += kind =>
         {
             _pinging = _pinging == kind ? null : kind;
@@ -400,6 +406,8 @@ public partial class ScavengeScreen : Node3D
                 {
                     _log.Event(e);
                     _fog.Incoming(e);
+                    _telegraphs.Incoming(e);
+                    CardFlourish(e);
                     _audio.Step(e);
                     WeatherEvent(e);
                     // Follow what others do in sight (enemy turns, recruits) so it never happens off screen.
@@ -448,6 +456,14 @@ public partial class ScavengeScreen : Node3D
         else _hud.LootTip.HideTip();
     }
 
+    /// <summary>A card played in sight: its name pops over the unit it went on (the hand strip's own sound plays with it).</summary>
+    private void CardFlourish(ScavengeEvent e)
+    {
+        if (e.Type != ScavengeEventType.CardPlayed || e.UnitId is not { } id || _units.WorldOf(id) is not { } at) return;
+        var name = e.Message.Split(" plays ") is [_, var rest] ? rest.Split(':')[0] : "Card";
+        _hud.Tags.Pop(at, name, Hud.Palette.Amber, false);
+    }
+
     private void SyncAll()
     {
         using var _ = PerfMonitor.Measure("sync");
@@ -458,6 +474,7 @@ public partial class ScavengeScreen : Node3D
         _devices.Sync();
         _salvage.Sync();
         _objectives.Sync();
+        _telegraphs.Sync();
         RefreshHud();
         _seen = new HashSet<int>(_presenter.Visible);
         if (_presenter.Done && !_result.Visible && _presenter.Result() is { } result)
@@ -510,6 +527,7 @@ public partial class ScavengeScreen : Node3D
             _techPanel.Refresh(false, _aim);
             _coopPanel.Refresh(false, selected, _pinging);
         }
+        _hud.Hand.Refresh(_busy);
         RefreshActingHeader(selected);
         _hud.Banner.Refresh();
         _hud.RefreshStory();
@@ -580,6 +598,11 @@ public partial class ScavengeScreen : Node3D
         _map.ClearHighlights();
         var previews = new Dictionary<int, WorldTags.Preview>();
         _hud.Tags.SetPreviews(previews);
+        // The threat overlay: where seen enemies' telegraphed blows land (strong), and what they could hit now (faint).
+        if (!_busy && !_presenter.Done)
+            foreach (var (tile, kind) in _presenter.Threats())
+                if (_presenter.IsExplored(tile))
+                    _map.Highlight(tile, kind == ThreatKind.Planned ? HighlightKind.ThreatPlanned : HighlightKind.Threat);
         if (selected is null || !selected.OnMap || !_presenter.CanSee(selected)) return;
         _map.Highlight(selected.Pos, HighlightKind.Selected);
         if (_busy || _presenter.Done) return;
@@ -629,10 +652,15 @@ public partial class ScavengeScreen : Node3D
 
         // Drones fly on their operator's orders and devices stay put: no walking tiles for them.
         if (selected.Kind is UnitKind.Drone or UnitKind.Device) return;
+        // Hit preview: with an attack chosen and a seen hostile hovered, each tile shows the hit chance from there.
+        var hovered = isActing && _actionPanel.ActionId is not null && _hover is { } hp && _presenter.State.UnitAt(hp) is { } h
+                      && selected.HostileTo(h) && _presenter.CanSee(h) ? h : null;
+        var fromTiles = hovered is null ? null : _presenter.MovePreview(selected, hovered);
         foreach (var (tile, cost) in _presenter.Reachable(selected))
         {
             if (isActing && cost > selected.Ap) continue;
-            _map.Highlight(tile, HighlightKind.Move, cost > 1 ? $"{cost} AP" : null);
+            var label = fromTiles?.TryGetValue(tile, out var chance) == true ? $"{chance * 100:0}%" : cost > 1 ? $"{cost} AP" : null;
+            _map.Highlight(tile, HighlightKind.Move, label);
         }
 
         if (!isActing || _actionPanel.ActionId is not { } actionId || _presenter.Sim.Profile(selected).Action(actionId) is not { } action) return;
