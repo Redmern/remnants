@@ -105,6 +105,20 @@ public static class Bestiary
         }
     }
 
+    /// <summary>
+    /// Every enemy type as the colony knows it, what it knows best first (then by name); a type never seen shows as "???".
+    /// </summary>
+    public static List<BestiaryCard> List(ScavengeData data, IReadOnlyDictionary<string, BestiaryEntry> known)
+    {
+        var rules = data.Rules.Bestiary;
+        return data.Enemies.Values
+            .Select(e => TierOf(rules, known.GetValueOrDefault(e.Id)) is var tier && tier == BestiaryTier.Unknown
+                ? new BestiaryCard(e.Id, "???", tier)
+                : Describe(data, e.Id, tier))
+            .OrderByDescending(c => c.Tier).ThenBy(c => c.Tier == BestiaryTier.Unknown ? c.Id : c.Name, StringComparer.Ordinal)
+            .ToList();
+    }
+
     /// <summary>An enemy type as the bestiary shows it at <paramref name="tier"/>.</summary>
     public static BestiaryCard Describe(ScavengeData data, string enemyId, BestiaryTier tier)
     {
