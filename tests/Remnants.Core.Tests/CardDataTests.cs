@@ -76,6 +76,41 @@ public class CardDataTests
         Assert.Equal(1.4, byLevel.Factor(u), 9);
     }
 
+    [Theory]
+    [InlineData("empty condition")]
+    [InlineData("two-headed condition")]
+    [InlineData("negative minimum")]
+    [InlineData("unknown hook")]
+    [InlineData("negative effect")]
+    [InlineData("negative bonus")]
+    [InlineData("scaling with nothing")]
+    [InlineData("negative scaling")]
+    [InlineData("slot rule without a skill")]
+    [InlineData("unknown slot hook")]
+    [InlineData("free upgrade")]
+    public void Broken_card_data_is_refused(string broken)
+    {
+        var card = Cards.Def.Cards[0];
+        var rules = Cards.Rules;
+        CardRequirement Req(CardCondition c) => new() { Kind = CardKind.Hard, AnyOf = [c] };
+        var bad = broken switch
+        {
+            "empty condition" => Cards.Def with { Cards = [card with { Requirement = Req(new CardCondition()) }] },
+            "two-headed condition" => Cards.Def with { Cards = [card with { Requirement = Req(new CardCondition { Skill = Skill.Melee, Hook = "card_slots" }) }] },
+            "negative minimum" => Cards.Def with { Cards = [card with { Requirement = Req(new CardCondition { Skill = Skill.Melee, Min = -1 }) }] },
+            "unknown hook" => Cards.Def with { Cards = [card with { Requirement = Req(new CardCondition { Hook = "no_such_hook" }) }] },
+            "negative effect" => Cards.Def with { Cards = [card with { Effect = new CardEffect { Move = 1, Hit = -0.1 } }] },
+            "negative bonus" => Cards.Def with { Cards = [card with { Bonus = new CardEffect { Guard = -1 } }] },
+            "scaling with nothing" => Cards.Def with { Cards = [card with { Scaling = new CardScaling { Per = 0.1 } }] },
+            "negative scaling" => Cards.Def with { Cards = [card with { Scaling = new CardScaling { Skill = Skill.Melee, Per = -0.1 } }] },
+            "slot rule without a skill" => Cards.Def with { Rules = rules with { Slots = rules.Slots with { Skills = [new CardCondition { Attribute = AttributeKind.Agility, Min = 60 }] } } },
+            "unknown slot hook" => Cards.Def with { Rules = rules with { Slots = rules.Slots with { Hook = "no_such_hook" } } },
+            _ => Cards.Def with { Rules = rules with { Upgrades = [rules.Upgrades[0] with { Amount = 0 }] } },
+        };
+        if (bad.Cards.Count == 1) bad = bad with { Rules = bad.Rules with { Starter = new() { [card.Id] = 1 } } };
+        Assert.Throws<GameDataException>(() => new CardCatalog(bad));
+    }
+
     [Fact]
     public void Card_data_with_an_unknown_starter_card_is_refused()
     {

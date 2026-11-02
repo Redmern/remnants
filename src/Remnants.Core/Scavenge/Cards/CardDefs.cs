@@ -186,6 +186,12 @@ public sealed record CardsDef
 /// <summary>The card definitions, indexed and checked. <see cref="Empty"/> without cards.json.</summary>
 public sealed class CardCatalog
 {
+    /// <summary>The perk hook ids the game knows (<see cref="Colony.PerkHooks"/>): a card may only ask for one of these.</summary>
+    private static readonly HashSet<string> KnownHooks = typeof(Colony.PerkHooks)
+        .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+        .Where(f => f.IsLiteral && f.FieldType == typeof(string)).Select(f => (string)f.GetRawConstantValue()!).ToHashSet(StringComparer.Ordinal);
+
+    // After KnownHooks: static fields initialize in order.
     public static readonly CardCatalog Empty = new(new CardsDef());
 
     public CardsDef Def { get; }
@@ -205,7 +211,24 @@ public sealed class CardCatalog
             if (c.BoostAp > 0 && c.Boost is null) throw new GameDataException($"Card '{c.Id}': a boost cost needs a boost effect.");
             if (c.Requirement.Kind == CardKind.Hard && c.Requirement.AnyOf.Count == 0)
                 throw new GameDataException($"Card '{c.Id}': a hard card needs a requirement.");
+            foreach (var cond in c.Requirement.AnyOf) CheckCondition(cond, $"Card '{c.Id}'");
+            foreach (var e in new[] { c.Effect, c.Bonus, c.Boost }.OfType<CardEffect>())
+                if (e.Move < 0 || e.Hit < 0 || e.Guard < 0 || e.Cover < 0 || e.Mend < 0 || e.Draw < 0)
+                    throw new GameDataException($"Card '{c.Id}': effects cannot be negative.");
+            if (c.Scaling is { } s
+                && ((s.Skill is null ? 0 : 1) + (s.Attribute is null ? 0 : 1) + (s.Level ? 1 : 0) != 1 || s.Per < 0 || s.Max < 0))
+                throw new GameDataException($"Card '{c.Id}': scaling needs exactly one of skill, attribute or level, and no negative numbers.");
         }
+        var slots = def.Rules.Slots;
+        if (slots.Level < 0) throw new GameDataException("cards.json: slots.level cannot be negative.");
+        foreach (var cond in slots.Skills)
+        {
+            CheckCondition(cond, "cards.json slots");
+            if (cond.Skill is null) throw new GameDataException("cards.json: each slots.skills rule names a skill.");
+        }
+        if (!KnownHooks.Contains(slots.Hook)) throw new GameDataException($"cards.json: slots.hook '{slots.Hook}' is not a perk hook.");
+        foreach (var u in def.Rules.Upgrades.Where(u => u.Amount <= 0 || u.Cost.Values.Any(v => v < 0)))
+            throw new GameDataException($"cards.json: upgrade '{u.Id}' needs a positive amount and no negative cost.");
         foreach (var id in def.Rules.Starter.Keys.Where(id => !all.ContainsKey(id)))
             throw new GameDataException($"cards.json: starter card '{id}' is not a card.");
         var upgrades = def.Rules.Upgrades.Select(u => u.Id).ToHashSet(StringComparer.Ordinal);
@@ -216,6 +239,15 @@ public sealed class CardCatalog
     }
 
     public CardDef? Find(string id) => All.GetValueOrDefault(id);
+
+    /// <summary>A condition names exactly one of a skill, an attribute or a known perk hook, at no negative minimum.</summary>
+    private static void CheckCondition(CardCondition c, string where)
+    {
+        if ((c.Skill is null ? 0 : 1) + (c.Attribute is null ? 0 : 1) + (c.Hook is null ? 0 : 1) != 1)
+            throw new GameDataException($"{where}: a condition names exactly one of a skill, an attribute or a perk hook.");
+        if (c.Min < 0) throw new GameDataException($"{where}: a condition's minimum cannot be negative.");
+        if (c.Hook is { } hook && !KnownHooks.Contains(hook)) throw new GameDataException($"{where}: unknown perk hook '{hook}'.");
+    }
 
     /// <summary>A card's reference value in scrap for the trade hint.</summary>
     public double TradeValue(CardDef card) => card.Value > 0 ? card.Value : Rules.TradeValues.GetValueOrDefault(card.Rarity);
