@@ -9,7 +9,8 @@ namespace Remnants.Net;
 /// <item>the units of its side (any status: its own, and its allies' with their colony record cut like anyone else's)
 ///   and other units only while the side sees them now (<see cref="Detection"/>:
 ///   in sight and detected, lit by a flare, revealed, or scanned); other units lose their AI memory and colony record
-///   (only name, sex and child/adult are kept for the model);</item>
+///   (only name, sex and child/adult are kept for the model), and their telegraphed plan keeps its path, tile and action
+///   but loses its card and aimed-at unit (a hidden unit's plan is never sent, as the unit is not);</item>
 /// <item>the side's own contacts and motion sensors, reveals of units it sees, and every burning flare (they light up
 ///   for everyone);</item>
 /// <item>loot caches as the side last saw them (a cache looted out of sight still shows until seen again);</item>
@@ -212,6 +213,13 @@ public sealed class SideFog(int playerId, string side)
         copy.FieldXp = 0;
         copy.DroneBattery = null;
         copy.ChargesUsed = new(StringComparer.Ordinal);
+        // A plan shows what it does (path, tile, action), never the card behind it or whom it was aimed at.
+        if (copy.Plan is { } plan)
+        {
+            plan.CardId = null;
+            plan.TargetId = null;
+        }
+        copy.OutplayedId = null;
         copy.Origin = u.Origin is { } o ? new Survivor { Name = o.Name, Sex = o.Sex, LifeStage = o.LifeStage } : null;
         // A rival's holo-decoy looks like one of their people until it flickers out.
         if (u.Kind == UnitKind.Decoy && u.Side != Side)

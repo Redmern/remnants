@@ -47,6 +47,23 @@ public class ProtocolTests
     }
 
     [Fact]
+    public void A_planned_action_round_trips_under_its_wire_name()
+    {
+        var plan = new DeclareIntent(1, 2, [new Pos(3, 4), new Pos(4, 4)], new Pos(5, 4), "swing");
+        var json = ProtocolJson.Serialize(new Command(7, plan));
+        Assert.Contains("\"kind\":\"plannedAction\"", json);
+        var back = Assert.IsType<DeclareIntent>(Assert.IsType<Command>(ProtocolJson.Deserialize(json)).Intent);
+        Assert.Equal(plan.Path, back.Path);
+        Assert.Equal((plan.AttackTile, plan.ActionId), (back.AttackTile, back.ActionId));
+        Assert.Equal(json, ProtocolJson.Serialize(new Command(7, back)));
+
+        var moveOnly = ProtocolJson.Serialize(new Command(8, new DeclareIntent(1, 2, [new Pos(1, 1)])));
+        Assert.IsType<DeclareIntent>(Assert.IsType<Command>(ProtocolJson.Deserialize(moveOnly)).Intent);
+        Assert.Equal(17, Protocol.TacticsVersion);
+        Assert.Equal(Protocol.TacticsVersion, Protocol.Version);
+    }
+
+    [Fact]
     public void Messages_carry_a_type_discriminator_and_the_protocol_version()
     {
         var json = ProtocolJson.Serialize(new Join(Protocol.Version, "Ana", NetFixture.Party("A")));

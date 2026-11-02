@@ -169,6 +169,8 @@ public sealed class NetFixture
                     FogViolations.Add($"{player.Name} was sent a reveal of unit {r.UnitId} for {r.Side}.");
                 foreach (var u in s.View.Units.Where(u => u.Side != side && u.Ai.TargetId is not null))
                     FogViolations.Add($"{player.Name} was sent {u.Name}'s AI memory.");
+                foreach (var u in s.View.Units.Where(u => u.PlayerId != me && (u.Plan is { CardId: not null } or { TargetId: not null } || u.OutplayedId is not null)))
+                    FogViolations.Add($"{player.Name} was sent {u.Name}'s plan card, plan target or dodge.");
                 var sideExplored = sim.State.Explored.GetValueOrDefault(side) ?? [];
                 foreach (var c in s.View.Caches.Where(c => !sideExplored.Contains(map.Index(c.Pos))))
                     FogViolations.Add($"{player.Name} was sent the pile at {c.Pos}, which their side never saw.");

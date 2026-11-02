@@ -34,6 +34,9 @@ public static class Protocol
     /// (scavenge save 14: the run's campaign flags, the taken, devices' failed hacks).
     /// 16 (<see cref="ConstructionVersion"/>): the Construction skill in every survivor's skills (parties on <see cref="Join"/>,
     /// extraction results); an older peer cannot read it.
+    /// 17 (<see cref="TacticsVersion"/>): scavenge tactics: the plannedAction command (a telegraphed plan), units' plans
+    /// in views (path, attack tile and action, never the card or the aimed-at unit of another player's unit), the intent
+    /// events and the hit tier on attack events (scavenge save 15).
     /// <see cref="Version"/> is always the highest of these keyed versions (ProtocolTests checks it).
     /// </summary>
     public const int MedicineVersion = 12;
@@ -46,7 +49,9 @@ public static class Protocol
 
     public const int ConstructionVersion = 16;
 
-    public const int Version = ConstructionVersion;
+    public const int TacticsVersion = 17;
+
+    public const int Version = TacticsVersion;
     public const int DefaultPort = 7777;
 }
 
