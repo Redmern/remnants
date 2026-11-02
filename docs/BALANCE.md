@@ -1725,26 +1725,35 @@ quartile range of −4 to +9, because a site moves the random stream (who is hom
 A landed hit now resolves by its roll margin: the share of the hit chance the roll came in under
 (`combat.tiers` in data/scavenge.json). Below 0.25 it is a **graze** (40% of the damage, at least 1, no body-part
 injury), from 0.8 a **solid** hit (full damage, 1.5× injury severity), a plain **hit** between. Armor on the hit region
-of 2 or more (after pierce) and cover of 0.25 or more (terrain beside the target plus brace) each shift it down a tier,
+of 4 or more (after pierce) and cover of 0.25 or more (terrain beside the target plus brace) each shift it down a tier,
 never below a graze. So in the open about 25% of hits graze, 55% hit and 20% land solid. The tiers reuse the existing
 hit roll, so fixed-seed runs draw the same numbers as before.
 
-Zone trials, 300 runs each, party of 2 with starting gear, before → after:
+**Tuning.** The first cut shifted from armor 2. The first party member's starting Padded Vest is armor 2, so every hit
+on them dropped a tier, and early-zone deaths more than halved (Outskirts 6% → 1%, Suburb Ruins 35% → 18%, Flooded Mall
+57% → 36%). Sweeping the knobs with the same command showed the graze knobs barely move it: `grazeBelow`/`grazeDamage`
+at 0.1–0.25 / 0.4–0.6 all gave Outskirts 1%, Suburb 18–20%. Taking the armor shift away put the numbers back, and the
+cover shift is close to irrelevant (the bot rarely fights from cover). So `armorShiftFrom` is now 4: Linked Plating,
+Riot Armor and the natural shells shift a tier, the vest and coats do not.
+
+Zone trials: `dotnet run -c Release --project tools/Remnants.Playtest -- --zone=all --runs=300` (run seeds 1..300:
+the colony is seeded `seed + 10007·p`, the map `seed · 7919`; party of 2, starting gear). Before = `56e41cc` (main, no
+tiers), after = `53eefd0` (this branch).
 
 | Zone | Runs with a death | Wipes | Injuries/run |
 |---|---|---|---|
-| Outskirts | 6% → 1% | 0% → 0% | 5.0 → 3.2 |
-| Scrapyard Flats | 12% → 6% | 3% → 1% | 5.9 → 3.7 |
-| Suburb Ruins | 35% → 18% | 14% → 5% | 5.5 → 4.4 |
-| Flooded Mall | 57% → 36% | 23% → 9% | 4.3 → 3.7 |
-| Rail Depot | 91% → 84% | 65% → 45% | 1.3 → 1.3 |
-| Network Relay | 99% → 96% | 88% → 72% | 0.3 → 0.5 |
-| Core Spire | 100% → 100% | 97% → 89% | 0.1 → 0.2 |
+| Outskirts | 6% → 4% | 0% → 1% | 5.0 → 4.8 |
+| Scrapyard Flats | 12% → 8% | 3% → 1% | 5.9 → 5.8 |
+| Suburb Ruins | 35% → 33% | 14% → 10% | 5.5 → 5.4 |
+| Flooded Mall | 57% → 51% | 23% → 19% | 4.3 → 4.4 |
+| Rail Depot | 91% → 91% | 65% → 62% | 1.3 → 1.3 |
+| Network Relay | 99% → 99% | 88% → 84% | 0.3 → 0.3 |
+| Core Spire | 100% → 100% | 97% → 95% | 0.1 → 0.1 |
 
-Target 3 (Outskirts: a death in ≤ 10% of runs, wipes ≤ 3%, nearly every run comes home hurt) still holds: 92% of runs
-bring home a new injury. Runs got a lot safer, mostly in the early and middle zones. That is on purpose for now: intents
-and cards (units 2 to 5) add new ways to get hit and to avoid it, and AC-14 re-checks the death and wipe targets once
-they are in. If the tiers stay as they are, the knobs are `grazeBelow` and `grazeDamage`.
+Target 3 (Outskirts: a death in ≤ 10% of runs, wipes ≤ 3%, nearly every run comes home hurt) holds, and runs stay
+about as risky as before: a little safer, because ~25% of hits are grazes that do 40% damage and solid hits only add
+injury, not HP. AC-14 re-checks the death and wipe targets once intents and cards are in. The knobs, in order of effect:
+`armorShiftFrom`, then `grazeBelow` / `grazeDamage`.
 
 Also in this unit: `combat.armLockBelow` 0.5 (arm efficiency under which arm-locked attacks and cards cannot be used; no
 item is marked yet), and field mending (`use.mend`): the Suture Kit takes 0.15 and the Field Trauma Kit 0.2 off the
