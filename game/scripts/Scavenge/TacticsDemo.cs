@@ -10,7 +10,7 @@ namespace Remnants.Game.Scavenge;
 /// </summary>
 public static class TacticsDemo
 {
-    public static bool Requested => DebugCapture.HasFlag("--tactics-demo");
+    public static bool Requested => DebugCapture.HasFlag("--tactics-demo") || DebugCapture.Value("--tactics-demo") is not null;
 
     public static string Mode => DebugCapture.Value("--tactics-demo") is { Length: > 0 } m ? m : "overlay";
 

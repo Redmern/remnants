@@ -105,6 +105,8 @@ public partial class ColonyScreen : Node3D
         if (DebugCapture.HasFlag("--cyber-demo") && IsFreshGame) RunCyberDemo();
         if (DebugCapture.HasFlag("--medicine-demo") && IsFreshGame) RunMedicineDemo();
         if (DebugCapture.HasFlag("--gear-demo") && IsFreshGame) RunGearDemo();
+        if (DebugCapture.Value("--deck-demo") is { } deckTab && IsFreshGame) RunDeckDemo(deckTab);
+        if (DebugCapture.HasFlag("--bestiary-demo") && IsFreshGame) RunBestiaryDemo();
         if (DebugCapture.HasFlag("--world-demo") && IsFreshGame) RunWorldDemo();
         if (DebugCapture.HasFlag("--garage-demo") && IsFreshGame) RunGarageDemo();
         if (DebugCapture.HasFlag("--expedition"))
@@ -817,6 +819,35 @@ public partial class ColonyScreen : Node3D
     /// the pistol taken to Mk II with a suppressor, the vest given scrap plates. Opens the Gear Bench on the pistol with a
     /// Reflex Sight previewed (<c>--gear-item=ID</c> and <c>--gear-preview=MOD</c> pick another piece and mod).
     /// </summary>
+    /// <summary>
+    /// Debug (<c>--deck-demo=deck|slots|upgrades</c>, screenshots): a veteran with slots, a couple of found cards, resources
+    /// for an upgrade, then the deck builder open on that tab.
+    /// </summary>
+    private void RunDeckDemo(string tab)
+    {
+        var sim = _session.Sim;
+        if (sim.Scavenge is not { } data) return;
+        foreach (var (id, n) in new[] { ("sprint", 1), ("called_shot", 1), ("counterstrike", 1) }) ColonyCards.Add(sim.State, data.Cards, id, n);
+        if (sim.State.Survivors.FirstOrDefault(s => !s.IsChild) is { } vet)
+        {
+            vet.Level = data.Cards.Rules.Slots.Level;
+            vet.Set(Remnants.Core.Survivors.Skill.Melee, 60);
+            _session.Execute(new SetCardSlots(vet.Id, ["counterstrike"]));
+        }
+        foreach (var (res, n) in data.Cards.Rules.Upgrades[0].Cost) sim.State.Stockpile.Add(res, n);
+        Callable.From(() => _hud.Deck.Show(tab.Length == 0 ? "deck" : tab)).CallDeferred();
+    }
+
+    /// <summary>Debug (<c>--bestiary-demo</c>, screenshots): a colony that has met Husks, fought the Linked and seen a Warden.</summary>
+    private void RunBestiaryDemo()
+    {
+        var known = _session.Sim.State.Bestiary;
+        known["husk"] = new Remnants.Core.Scavenge.BestiaryEntry { Seen = 9, Fought = 6, Killed = 4 };
+        known["linked"] = new Remnants.Core.Scavenge.BestiaryEntry { Seen = 3, Fought = 2 };
+        known["linked_warden"] = new Remnants.Core.Scavenge.BestiaryEntry { Seen = 1 };
+        Callable.From(() => _hud.Bestiary.Open()).CallDeferred();
+    }
+
     private void RunGearDemo()
     {
         var sim = _session.Sim;

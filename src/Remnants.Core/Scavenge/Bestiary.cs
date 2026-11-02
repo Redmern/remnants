@@ -29,7 +29,7 @@ public sealed record BestiaryRules
 public sealed record BestiaryCard(
     string Id, string Name, BestiaryTier Tier,
     List<string>? Weapons = null, int? Reach = null,
-    int? Ap = null, string? Movement = null,
+    int? Ap = null, MoveMode? Movement = null,
     double? Hp = null, double? Armor = null, double? Dodge = null,
     Dictionary<Survivors.AttributeKind, double>? Attributes = null, Dictionary<Survivors.Skill, double>? Skills = null,
     string? Behaviour = null);
@@ -140,7 +140,7 @@ public static class Bestiary
         };
         if (tier < BestiaryTier.Fought) return card;
         var walk = profile.Movement.Primary;
-        card = card with { Ap = profile.MaxAp, Movement = $"{walk.Pattern} {walk.Range}" };
+        card = card with { Ap = profile.MaxAp, Movement = walk };
         if (tier < BestiaryTier.Killed) return card;
         return card with
         {

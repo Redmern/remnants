@@ -233,6 +233,9 @@ public partial class UnitPanel : PanelContainer
 
         var data = _presenter.Sim.Data;
         var profile = _presenter.Sim.Profile(unit!);
+        // An enemy shows what the colony's bestiary knows: position, facing and plan always; AP and moves once fought;
+        // health numbers, armor, dodge and damage once killed.
+        _tier = _presenter.KnowledgeOf(unit!);
         var side = SidePalette.For(_presenter, unit!);
         _portrait.Set(UnitPortrait.For(GetTree(), unit!), side.Darkened(0.55f));
         _portrait.Alert = unit!.Status == UnitStatus.Downed;
@@ -257,12 +260,13 @@ public partial class UnitPanel : PanelContainer
         _set.Tooltip(_turnTag, waiting ? $"The orders on the right are {acting!.Name}'s. {unit.Name} acts at their place in the turn order." : "");
 
         var health = unit.MaxHp > 0 ? Mathf.Clamp(unit.Hp / unit.MaxHp, 0, 1) : 0;
-        _hp.Set(health, $"{unit.Hp:0}/{unit.MaxHp:0}");
+        var hpKnown = _tier >= BestiaryTier.Killed;
+        _hp.Set(health, hpKnown ? $"{unit.Hp:0}/{unit.MaxHp:0}" : $"{health * 100:0}%");
         _set.Tooltip(_hp, unit.Status == UnitStatus.Downed
             ? $"Down: bleeds out in {unit.BleedOut} rounds unless stabilized{(unit.Stabilized ? " (stabilized)" : "")}"
-            : $"Health {unit.Hp:0}/{unit.MaxHp:0}");
+            : hpKnown ? $"Health {unit.Hp:0}/{unit.MaxHp:0}" : "How hurt it looks. Kill one to learn its health (Bestiary).");
         // The acting unit's AP is next to End turn in the turn bar; the card shows it for the others.
-        _set.Visible(_apRow, !isActing && unit.Kind is not (UnitKind.Device or UnitKind.Decoy));
+        _set.Visible(_apRow, !isActing && unit.Kind is not (UnitKind.Device or UnitKind.Decoy) && _tier >= BestiaryTier.Fought);
         _ap.Set(unit.Ap, profile.MaxAp, unit.Suppressed ? Palette.Warn : Palette.Amber);
         _set.Tooltip(_ap, $"{unit.Ap} of {profile.MaxAp} action points" + (unit.Suppressed ? " · suppressed: fewer AP next turn" : ""));
 
@@ -439,6 +443,7 @@ public partial class UnitPanel : PanelContainer
     {
         var modes = profile.Movement.Modes;
         var first = modes.FirstOrDefault();
+        if (_tier < BestiaryTier.Killed && RefreshUnknown(profile, first)) return;
         _set.Text(_move, first is null ? "—" : MoveWords(first) + (modes.Count > 1 ? $" +{modes.Count - 1}" : ""));
         _set.Tooltip(_move, "How far one move goes, like a chess piece:\n" + string.Join("\n", modes.Select(m => MoveWords(m) + $" ({m.Source ?? "on foot"})")));
         _set.Text(_sight, $"{profile.Sight:0.#} tiles");
@@ -468,6 +473,48 @@ public partial class UnitPanel : PanelContainer
         }
         for (var i = n; i < _attacks.GetChildCount(); i++) _set.Visible(_attacks.GetChild<Label>(i), false);
     }
+
+    /// <summary>
+    /// An enemy the bestiary has not opened up: reach always, moves once fought, the rest "?" until one is killed.
+    /// Returns true when it drew the card.
+    /// </summary>
+    private bool RefreshUnknown(UnitProfile profile, MoveMode? first)
+    {
+        const string hidden = "Learned in the Bestiary: kill one to know it.";
+        var fought = _tier >= BestiaryTier.Fought;
+        _set.Text(_move, !fought || first is null ? "?" : MoveWords(first));
+        _set.Tooltip(_move, fought ? "How far one move goes." : "Fight one to learn how it moves (Bestiary).");
+        _set.Text(_sight, "?");
+        _set.Tooltip(_sight, hidden);
+        _set.Text(_armor, "?");
+        _set.Tooltip(_armor, hidden);
+        _set.Text(_dodge, "?");
+        _set.Tooltip(_dodge, hidden);
+        var reach = profile.Actions.Count == 0 ? 0 : profile.Actions.Max(a => a.Reach);
+        _profileCard.Summary(_tier == BestiaryTier.Unknown ? "unknown" : $"reach {reach}");
+        if (!_moreOpen) return true;
+        _set.Text(_apMax, fought ? $"{profile.MaxAp}" : "?");
+        _set.Text(_initiative, "?");
+        var n = 0;
+        foreach (var a in profile.Actions)
+        {
+            if (n == _attacks.GetChildCount())
+            {
+                var line = Widgets.Label("", "Small");
+                line.ClipText = true;
+                line.MouseFilter = MouseFilterEnum.Pass;
+                _attacks.AddChild(line);
+            }
+            var label = _attacks.GetChild<Label>(n++);
+            _set.Visible(label, true);
+            _set.Text(label, _tier == BestiaryTier.Unknown ? "?" : $"{a.Name} · {a.Pattern} {a.Reach}");
+            _set.Tooltip(label, hidden);
+        }
+        for (var i = n; i < _attacks.GetChildCount(); i++) _set.Visible(_attacks.GetChild<Label>(i), false);
+        return true;
+    }
+
+    private BestiaryTier _tier = BestiaryTier.Killed;
 
     /// <summary>A Jury-rig order (fit a mod from the pack, or take one off): the screen runs it.</summary>
     public event Action<IScavengeCommand>? CommandRequested;

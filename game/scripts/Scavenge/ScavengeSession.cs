@@ -49,6 +49,8 @@ public static class ScavengeSession
     {
         Pending = new ScavengeMission(driver, onFinished, returnScene ?? MenuScene);
         LastResult = null;
+        // The colony's bestiary gates the enemy stats the run shows (empty for a run started without a colony).
+        BestiaryKnowledge.Colony = (IReadOnlyDictionary<string, BestiaryEntry>?)Colony.ColonySession.Current?.Sim.State.Bestiary ?? new Dictionary<string, BestiaryEntry>();
         tree.ChangeSceneToFile(ScenePath);
     }
 

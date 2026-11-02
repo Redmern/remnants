@@ -40,6 +40,8 @@ public partial class HandStrip : PanelContainer
         _presenter = presenter;
         Name = "Hand";
         MouseFilter = MouseFilterEnum.Stop;
+        // Room for a full hand of five plus a couple of slot cards without scrolling.
+        CustomMinimumSize = new Vector2(720, 0);
         var box = UiKit.Panel(this, 4);
         var header = Widgets.Row(8);
         header.AddChild(Widgets.SectionHeader("Cards", "ui_items", new InfoTip("cards")));
