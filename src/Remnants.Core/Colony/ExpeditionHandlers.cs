@@ -194,7 +194,7 @@ internal static class ExpeditionHandlers
             }
         var report = new ExpeditionReport(expedition.Id, expedition.ZoneId, state.Tick, [], [], [], loot, new(StringComparer.Ordinal));
         // Cards: what was found joins the collection; consumables played in the run are gone.
-        foreach (var card in result.Cards.Where(id => data.Cards.Find(id) is not null)) ColonyCards.Add(state, card);
+        foreach (var card in result.Cards) ColonyCards.Add(state, data.Cards, card);
         foreach (var card in result.ConsumedCards) ColonyCards.Remove(state, card);
         // Survivors the Linked carried off go to the story, not the memorial.
         if (result.Mission?.Taken is { Count: > 0 } taken) global::Remnants.Core.Story.StoryWorld.TakeAway(sim, taken);

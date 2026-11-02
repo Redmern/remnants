@@ -29,6 +29,10 @@ public class ColonyCardTests
         Assert.Equal(["dash", "dash", "take_cover"], sim.State.Cards.Deck);
         Assert.Equal(CommandError.NotEnoughCards, sim.Execute(new SetDeck(["dash", "dash", "dash"])).Error);
         Assert.Equal(CommandError.UnknownCard, sim.Execute(new SetDeck(["no_such_card"])).Error);
+        ColonyCards.Add(sim.State, Cards, "dash", Cards.Rules.MaxCopies + 1);
+        var over = sim.Execute(new SetDeck(Enumerable.Repeat("dash", Cards.Rules.MaxCopies + 1).ToList()));
+        Assert.Equal(CommandError.NotEnoughCards, over.Error);
+        Assert.Contains("copies", over.Message);
     }
 
     [Fact]

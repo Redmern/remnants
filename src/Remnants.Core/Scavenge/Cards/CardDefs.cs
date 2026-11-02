@@ -117,10 +117,8 @@ public sealed record CardDef
     /// <summary>What <see cref="BoostAp"/> more AP adds.</summary>
     public CardEffect? Boost { get; init; }
 
-    /// <summary>Reference value in scrap for the trade hint (0: by rarity).</summary>
+    /// <summary>Reference value in scrap for the trade hint (0: the rules' value for its rarity).</summary>
     public double Value { get; init; }
-
-    public double TradeValue => Value > 0 ? Value : Rarity switch { CardRarity.Common => 6, CardRarity.Uncommon => 15, _ => 30 };
 }
 
 /// <summary>
@@ -158,6 +156,22 @@ public sealed record CardRules
     public int HandSize { get; init; } = 5;
     public int Draw { get; init; } = 3;
     public int Budget { get; init; } = 3;
+
+    /// <summary>The smallest hand a deck is dealt, whatever a loadout says.</summary>
+    public int MinHandSize { get; init; } = 1;
+
+    /// <summary>Whether a party enters with a full hand (else it draws its first round's cards like any round).</summary>
+    public bool FullOpeningHand { get; init; } = true;
+
+    /// <summary>The most cards a squad deck may hold, and copies of one card in it (the colony's deck and a client's Join alike).</summary>
+    public int MaxDeck { get; init; } = 60;
+    public int MaxCopies { get; init; } = 4;
+
+    /// <summary>The most slot cards one character may bring.</summary>
+    public int MaxSlotCards { get; init; } = 8;
+
+    /// <summary>Reference value in scrap per rarity for the trade hint (a card's own <see cref="CardDef.Value"/> wins).</summary>
+    public Dictionary<CardRarity, double> TradeValues { get; init; } = new() { [CardRarity.Common] = 6, [CardRarity.Uncommon] = 15, [CardRarity.Rare] = 30 };
     public Dictionary<string, int> Starter { get; init; } = new(StringComparer.Ordinal);
     public CardSlotRules Slots { get; init; } = new();
     public List<CardUpgradeDef> Upgrades { get; init; } = new();
@@ -202,6 +216,21 @@ public sealed class CardCatalog
     }
 
     public CardDef? Find(string id) => All.GetValueOrDefault(id);
+
+    /// <summary>A card's reference value in scrap for the trade hint.</summary>
+    public double TradeValue(CardDef card) => card.Value > 0 ? card.Value : Rules.TradeValues.GetValueOrDefault(card.Rarity);
+
+    /// <summary>Why a deck list breaks the deck rules (unknown card, too many cards or copies), or null.</summary>
+    public string? CheckDeck(IReadOnlyCollection<string> deck)
+    {
+        if (deck.Count > Rules.MaxDeck) return $"A deck holds at most {Rules.MaxDeck} cards.";
+        foreach (var g in deck.GroupBy(id => id, StringComparer.Ordinal))
+        {
+            if (Find(g.Key) is not { } card) return $"Unknown card '{g.Key}'.";
+            if (g.Count() > Rules.MaxCopies) return $"At most {Rules.MaxCopies} copies of {card.Name} in a deck.";
+        }
+        return null;
+    }
 
     /// <summary>The starter set as a deck list (each id as often as its copies, in id order).</summary>
     public List<string> StarterDeck() =>

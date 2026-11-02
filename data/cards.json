@@ -3,6 +3,12 @@
     "handSize": 5,
     "draw": 3,
     "budget": 3,
+    "minHandSize": 1,
+    "fullOpeningHand": true,
+    "maxDeck": 60,
+    "maxCopies": 4,
+    "maxSlotCards": 8,
+    "tradeValues": { "Common": 6, "Uncommon": 15, "Rare": 30 },
     "starter": {
       "dash": 2, "sprint": 1,
       "steady_aim": 2, "heavy_swing": 2, "called_shot": 1,

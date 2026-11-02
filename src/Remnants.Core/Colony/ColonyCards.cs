@@ -22,14 +22,16 @@ public static class ColonyCards
     /// <summary>The starter set into the collection, and as the deck when there is none yet (new and migrated colonies).</summary>
     public static void GrantStarter(ColonyState state, CardCatalog cards)
     {
-        foreach (var (id, n) in cards.Rules.Starter) Add(state, id, n);
+        foreach (var (id, n) in cards.Rules.Starter) Add(state, cards, id, n);
         if (state.Cards.Deck.Count == 0) state.Cards.Deck = cards.StarterDeck();
     }
 
-    public static void Add(ColonyState state, string id, int count = 1)
+    /// <summary>Copies into the collection; false (nothing added) for a card id <paramref name="cards"/> does not know.</summary>
+    public static bool Add(ColonyState state, CardCatalog cards, string id, int count = 1)
     {
-        if (count <= 0) return;
+        if (count <= 0 || cards.Find(id) is null) return false;
         state.Cards.Owned[id] = state.Cards.Owned.GetValueOrDefault(id) + count;
+        return true;
     }
 
     /// <summary>
@@ -70,6 +72,7 @@ public static class ColonyCards
     {
         var slots = sim.State.Cards.Slots.Values.SelectMany(s => s);
         if (Check(sim, c.Cards.Concat(slots)) is { } bad) return bad;
+        if (sim.Scavenge!.Cards.CheckDeck(c.Cards) is { } rule) return CommandResult.Fail(CommandError.NotEnoughCards, rule);
         sim.State.Cards.Deck = c.Cards.ToList();
         return CommandResult.Success($"The squad deck has {c.Cards.Count} cards.");
     }
@@ -77,6 +80,8 @@ public static class ColonyCards
     internal static CommandResult SetSlots(ColonySim sim, SetCardSlots c)
     {
         if (sim.State.FindSurvivor(c.SurvivorId) is not { } s) return CommandResult.Fail(CommandError.UnknownSurvivor, $"No survivor {c.SurvivorId}.");
+        if (sim.Scavenge is { } data && c.Cards.Count > data.Cards.Rules.MaxSlotCards)
+            return CommandResult.Fail(CommandError.NotEnoughCards, $"A survivor holds at most {data.Cards.Rules.MaxSlotCards} slot cards.");
         var others = sim.State.Cards.Slots.Where(kv => kv.Key != c.SurvivorId).SelectMany(kv => kv.Value);
         if (Check(sim, c.Cards.Concat(sim.State.Cards.Deck).Concat(others)) is { } bad) return bad;
         if (c.Cards.Count == 0) sim.State.Cards.Slots.Remove(c.SurvivorId);

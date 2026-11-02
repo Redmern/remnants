@@ -178,6 +178,8 @@ public sealed class NetFixture
                 foreach (var p in s.View.Parties.Where(p => p.PlayerId != me && p.CardPouch.Count > 0))
                     FogViolations.Add($"{player.Name} was sent player {p.PlayerId}'s card pouch.");
                 if (s.View.CardRngState != 0) FogViolations.Add($"{player.Name} was sent the card stream.");
+                foreach (var d in s.View.Decks.Where(d => d.PlayerId == me && !d.DrawPile.SequenceEqual(d.DrawPile.OrderBy(x => x, StringComparer.Ordinal))))
+                    FogViolations.Add($"{player.Name} was sent their draw pile in draw order.");
                 foreach (var e in s.Events.Where(e => e.Type is ScavengeEventType.CardPlayed or ScavengeEventType.CardDiscarded or ScavengeEventType.CardFound
                              or ScavengeEventType.DeckShuffled && e.Side != side))
                     FogViolations.Add($"{player.Name} heard another side's card event '{e.Message}'.");

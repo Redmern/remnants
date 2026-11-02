@@ -38,6 +38,9 @@ public class CardNetTests
         Assert.False(mine.Hidden);
         Assert.Equal(5, mine.Hand.Count);
         Assert.NotEmpty(mine.DrawPile);
+        var server = SquadDecks.Of(f.Sim.State, a.Id)!;
+        Assert.Equal(server.DrawPile.OrderBy(x => x, StringComparer.Ordinal), mine.DrawPile); // what is left, not what comes next
+        Assert.Equal(server.DrawPile.Count, mine.DrawCount);
 
         var theirs = Assert.Single(a.View.Decks, d => d.PlayerId == b.Id);
         Assert.True(theirs.Hidden);
@@ -76,12 +79,32 @@ public class CardNetTests
         f.AssertNoLeaks();
     }
 
-    [Fact]
-    public void A_deck_naming_an_unknown_card_is_refused_at_the_door()
+    [Theory]
+    [InlineData("unknown")]
+    [InlineData("too many copies")]
+    [InlineData("too many cards")]
+    [InlineData("too many slot cards")]
+    public void A_deck_that_breaks_the_deck_rules_is_refused_at_the_door(string broken)
     {
+        var rules = NetFixture.Data.Cards.Rules;
+        var party = NetFixture.Party("A");
+        List<string> deck = broken switch
+        {
+            "unknown" => ["no_such_card"],
+            "too many copies" => Enumerable.Repeat("dash", rules.MaxCopies + 1).ToList(),
+            "too many cards" => Enumerable.Range(0, rules.MaxDeck + 1).Select(i => NetFixture.Data.Cards.All.Keys.ElementAt(i % NetFixture.Data.Cards.All.Count)).ToList(),
+            _ => ["dash"],
+        };
+        if (broken == "too many slot cards") party[0] = party[0] with { SlotCards = Enumerable.Repeat("dash", rules.MaxSlotCards + 1).ToList() };
+        Assert.True(broken != "too many cards" || deck.Count > rules.MaxDeck, "the test deck must exceed the cap");
         var f = new NetFixture(new HostOptions { TurnSeconds = 0 });
         var a = f.Connect("Alice");
-        a.Client.Join("Alice", NetFixture.Party("A"), deck: ["no_such_card"]);
-        Assert.Contains("no_such_card", a.Last<JoinRefused>().Reason);
+        a.Client.Join("Alice", party, deck: deck);
+        var refused = a.Last<JoinRefused>().Reason;
+        Assert.Contains(broken switch { "unknown" => "no_such_card", "too many copies" => "copies", "too many cards" => $"at most {rules.MaxDeck} cards", _ => "slot cards" }, refused);
+        // A deck inside the rules gets in.
+        var b = f.Connect("Bob");
+        b.Client.Join("Bob", NetFixture.Party("B"), deck: Enumerable.Repeat("dash", rules.MaxCopies).ToList());
+        Assert.Empty(b.Link.Inbox.OfType<JoinRefused>());
     }
 }

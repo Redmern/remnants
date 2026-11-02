@@ -10,11 +10,23 @@ public static class GameDataLoader
     public static GameData LoadFromDirectory(string directory) => Load(DataSource.FromDirectory(directory));
 
     /// <summary>The colony definitions in <paramref name="data"/>: the required files, the optional feature files and the schematic catalogue.</summary>
-    public static GameData Load(DataSource data) =>
-        LoadFromJson(data.Read("resources.json"), data.Read("jobs.json"), data.Read("buildings.json"), data.Read("rules.json"), data.Read("recipes.json"),
+    public static GameData Load(DataSource data)
+    {
+        var loaded = LoadFromJson(data.Read("resources.json"), data.Read("jobs.json"), data.Read("buildings.json"), data.Read("rules.json"), data.Read("recipes.json"),
             data.TryRead("perks.json"), data.TryRead("cybernetics.json"), data.TryRead("weather.json"), data.TryRead("food.json"), data.TryRead("electronics.json"),
             data.TryRead("gear_mods.json"), data.TryRead("medicine.json"), data.ReadCatalogue(SchematicCatalogLoader.FileName),
             vehicles: data.TryRead("vehicles.json"));
+        if (data.TryRead(Scavenge.ScavengeDataLoader.CardsFileName) is { } cards) CheckRecipeCards(loaded.Recipes.Values, Parse<Scavenge.CardsDef>(cards, "cards"));
+        return loaded;
+    }
+
+    /// <summary>Every recipe's card output names a card of cards.json (the recipes and the cards load apart).</summary>
+    public static void CheckRecipeCards(IEnumerable<RecipeDef> recipes, Scavenge.CardsDef cards)
+    {
+        var known = cards.Cards.Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
+        foreach (var r in recipes.Where(r => r.Card is { } id && !known.Contains(id)).OrderBy(r => r.Id, StringComparer.Ordinal))
+            throw new GameDataException($"Recipe '{r.Id}': unknown card '{r.Card}'.");
+    }
 
     /// <summary>
     /// Without <paramref name="perks"/> there is no perk tree and no study (XP still counts levels); without

@@ -11,8 +11,8 @@ namespace Remnants.Net;
 ///   in sight and detected, lit by a flare, revealed, or scanned); other units lose their AI memory and colony record
 ///   (only name, sex and child/adult are kept for the model), and their telegraphed plan keeps its path, tile and action
 ///   but loses its card and aimed-at unit (a hidden unit's plan is never sent, as the unit is not); its personal slot
-///   cards show only as a count, as does every other player's squad deck (allies' included), and only the player's own
-///   card pouch is sent;</item>
+///   cards show only as a count, as does every other player's squad deck (allies' included); the player's own draw pile
+///   comes sorted (what is left, not the order it will be drawn in), and only the player's own card pouch is sent;</item>
 /// <item>the side's own contacts and motion sensors, reveals of units it sees, and every burning flare (they light up
 ///   for everyone);</item>
 /// <item>loot caches as the side last saw them (a cache looted out of sight still shows until seen again);</item>
@@ -129,7 +129,7 @@ public sealed class SideFog(int playerId, string side)
                 CardPouch = p.PlayerId == PlayerId ? new(p.CardPouch) : [],
             }).ToList(),
             // The player's own deck in full; anyone else's (allies too) only as counts, never which cards.
-            Decks = state.Decks.Select(d => d.PlayerId == PlayerId ? ProtocolCopy.Clone(d) : Hidden(d)).ToList(),
+            Decks = state.Decks.Select(d => d.PlayerId == PlayerId ? Own(d) : Hidden(d)).ToList(),
             Units = units,
             Caches = _knownCaches.Values.OrderBy(c => c.Id).Select(CopyPile).ToList(),
             SalvageNodes = _knownNodes.Values.OrderBy(n => n.Id)
@@ -206,6 +206,17 @@ public sealed class SideFog(int playerId, string side)
             p => state.Map.InBounds(p) && (Visible.Contains(state.Map.Index(p)) || seenBefore.Contains(state.Map.Index(p))));
 
     private static Unit Copy(Unit u) => ProtocolCopy.Clone(u);
+
+    /// <summary>The player's own deck: everything, but the draw pile sorted, so it tells what is left, never what comes next.</summary>
+    private static SquadDeck Own(SquadDeck d)
+    {
+        var copy = ProtocolCopy.Clone(d);
+        copy.DrawPile.Sort(StringComparer.Ordinal);
+        copy.DrawCount = d.DrawPile.Count;
+        copy.HandCount = d.Hand.Count;
+        copy.UsedCount = d.Used.Count;
+        return copy;
+    }
 
     private static SquadDeck Hidden(SquadDeck d) => new()
     {

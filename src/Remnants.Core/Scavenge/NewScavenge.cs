@@ -232,7 +232,7 @@ public static class NewScavenge
         }
 
         state.RngState = rng.State;
-        foreach (var party in parties.Where(p => p.Deck is not null)) SquadDecks.Create(state, party.PlayerId, party.Deck!);
+        foreach (var party in parties.Where(p => p.Deck is not null)) SquadDecks.Create(state, party.PlayerId, party.Deck!, data.Cards.Rules);
         var sim = new ScavengeSim(data, state);
         sim.Start();
         return sim;
@@ -280,7 +280,7 @@ public static class NewScavenge
         }
         AddMission(data, state, mission, def, built.Markers);
         state.RngState = new DeterministicRng(seed).State;
-        foreach (var party in parties.Where(p => p.Deck is not null)) SquadDecks.Create(state, party.PlayerId, party.Deck!);
+        foreach (var party in parties.Where(p => p.Deck is not null)) SquadDecks.Create(state, party.PlayerId, party.Deck!, data.Cards.Rules);
         var sim = new ScavengeSim(data, state);
         sim.Start();
         return sim;
@@ -390,8 +390,8 @@ public static class NewScavenge
                 throw new ArgumentException($"Player {party.PlayerId}'s {v.Name} seats {seats}, not {party.Members.Count}.");
             if (party.Vehicle is { } pv && (pv.MaxHp <= 0 || pv.CargoKg < 0 || pv.Armor < 0))
                 throw new ArgumentException($"Player {party.PlayerId}'s vehicle has impossible stats.");
-            foreach (var id in party.Deck?.Cards ?? [])
-                if (data.Cards.Find(id) is null) throw new ArgumentException($"Player {party.PlayerId}'s deck has unknown card '{id}'.");
+            if (party.Deck is { } loadout && data.Cards.CheckDeck(loadout.Cards) is { } bad)
+                throw new ArgumentException($"Player {party.PlayerId}'s deck: {bad}");
             foreach (var m in party.Members)
             {
                 if (m.Survivor.IsChild) throw new ArgumentException($"{m.Survivor.Name} is a child; children never go on a run.");
@@ -400,6 +400,8 @@ public static class NewScavenge
                         throw new ArgumentException($"{m.Survivor.Name}: '{id}' is not an item for the {slot} slot.");
                 foreach (var id in m.Pack ?? [])
                     if (!data.Items.ContainsKey(id)) throw new ArgumentException($"{m.Survivor.Name}: unknown item '{id}'.");
+                if (m.SlotCards is { } slotCards && slotCards.Count > data.Cards.Rules.MaxSlotCards)
+                    throw new ArgumentException($"{m.Survivor.Name}: too many slot cards.");
                 foreach (var id in m.SlotCards ?? [])
                     if (data.Cards.Find(id) is null) throw new ArgumentException($"{m.Survivor.Name}: unknown card '{id}'.");
             }

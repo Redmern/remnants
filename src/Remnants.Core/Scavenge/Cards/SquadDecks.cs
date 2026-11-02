@@ -48,16 +48,16 @@ public static class SquadDecks
 
     public static SquadDeck? Of(ScavengeState state, int playerId) => state.Decks.Find(d => d.PlayerId == playerId);
 
-    internal static void Create(ScavengeState state, int playerId, SquadLoadout loadout)
+    internal static void Create(ScavengeState state, int playerId, SquadLoadout loadout, CardRules rules)
     {
         var deck = new SquadDeck
         {
-            PlayerId = playerId, DrawPile = new(loadout.Cards), HandSize = Math.Max(1, loadout.HandSize),
+            PlayerId = playerId, DrawPile = new(loadout.Cards), HandSize = Math.Max(rules.MinHandSize, loadout.HandSize),
             DrawPerRound = Math.Max(0, loadout.Draw), Budget = Math.Max(0, loadout.Budget),
         };
         Shuffle(state, deck.DrawPile);
-        // The opening hand is a full one.
-        var opening = Math.Min(deck.HandSize, deck.DrawPile.Count);
+        // The opening hand: a full one, or the first round's draw (cards.json rules.fullOpeningHand).
+        var opening = Math.Min(rules.FullOpeningHand ? deck.HandSize : Math.Min(deck.HandSize, deck.DrawPerRound), deck.DrawPile.Count);
         deck.Hand.AddRange(deck.DrawPile.TakeLast(opening).Reverse());
         deck.DrawPile.RemoveRange(deck.DrawPile.Count - opening, opening);
         state.Decks.Add(deck);

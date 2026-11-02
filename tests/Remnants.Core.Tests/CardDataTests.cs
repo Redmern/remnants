@@ -28,6 +28,17 @@ public class CardDataTests
     }
 
     [Fact]
+    public void Deck_limits_and_trade_values_come_from_the_data()
+    {
+        var r = Cards.Rules;
+        Assert.Equal((60, 4, 8, 1, true), (r.MaxDeck, r.MaxCopies, r.MaxSlotCards, r.MinHandSize, r.FullOpeningHand));
+        Assert.Equal(6, Cards.TradeValue(Cards.All["dash"]));      // common
+        Assert.Equal(15, Cards.TradeValue(Cards.All["sprint"]));   // uncommon
+        Assert.Null(Cards.CheckDeck(Cards.StarterDeck()));
+        Assert.Contains("copies", Cards.CheckDeck(Enumerable.Repeat("dash", r.MaxCopies + 1).ToList()));
+    }
+
+    [Fact]
     public void A_requirement_is_met_by_any_one_of_its_conditions()
     {
         var req = new CardRequirement

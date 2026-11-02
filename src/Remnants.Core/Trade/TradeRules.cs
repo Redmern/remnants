@@ -83,7 +83,7 @@ public static class TradePrices
         good.Count * (good.Kind switch
         {
             GoodKind.Resource => Schematics.TradeValues.OfResource(data, good.Id),
-            GoodKind.Card => items.Cards.Find(good.Id)?.TradeValue ?? 0,
+            GoodKind.Card => items.Cards.Find(good.Id) is { } card ? items.Cards.TradeValue(card) : 0,
             _ => Schematics.TradeValues.Of(data, items, good.Id),
         });
 

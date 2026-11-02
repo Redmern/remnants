@@ -197,7 +197,7 @@ public static class FieldLoot
         {
             var items = data.Loot.Roll(data, table, new LootContext(tier), rng ?? sim.Rng);
             // Cards the raiders carried go straight into the colony's collection.
-            foreach (var card in LootCatalog.TakeCards(items)) ColonyCards.Add(sim.State, card);
+            foreach (var card in LootCatalog.TakeCards(items)) ColonyCards.Add(sim.State, data.Cards, card);
             foreach (var item in items) spoils[item] = spoils.GetValueOrDefault(item) + 1;
         }
         }

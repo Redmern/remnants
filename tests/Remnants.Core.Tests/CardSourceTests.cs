@@ -121,3 +121,25 @@ public class CardSourceTests
         Assert.All(TestData.Real.Recipes.Values.Select(r => r.Card).OfType<string>(), id => Assert.NotNull(Real.Cards.Find(id)));
     }
 }
+
+public class RecipeCardValidationTests
+{
+    [Fact]
+    public void A_recipe_naming_an_unknown_card_is_a_data_error()
+    {
+        var bad = TestData.Real.Recipes.Values.Append(new Remnants.Core.Data.RecipeDef { Id = "x", Building = "workshop", Item = "spear", Card = "no_such_card" });
+        var ex = Assert.Throws<Remnants.Core.Data.GameDataException>(() => Remnants.Core.Data.GameDataLoader.CheckRecipeCards(bad, Real.Cards.Def));
+        Assert.Contains("no_such_card", ex.Message);
+        Remnants.Core.Data.GameDataLoader.CheckRecipeCards(TestData.Real.Recipes.Values, Real.Cards.Def); // the real recipes pass
+    }
+
+    [Fact]
+    public void The_collection_refuses_a_card_the_data_does_not_know()
+    {
+        var state = new ColonyState();
+        Assert.False(ColonyCards.Add(state, Real.Cards, "no_such_card"));
+        Assert.Empty(state.Cards.Owned);
+        Assert.True(ColonyCards.Add(state, Real.Cards, "dash", 2));
+        Assert.Equal(2, state.Cards.Owned["dash"]);
+    }
+}
