@@ -7,21 +7,64 @@ namespace Remnants.Core.Scavenge;
 /// <summary>Attack reach, hit chance and damage: injuries to body parts, HP, Downed and Dead.</summary>
 public static class Combat
 {
-    /// <summary>Whether <paramref name="action"/> can reach <paramref name="target"/> from <paramref name="from"/>.</summary>
+    /// <summary>
+    /// Whether <paramref name="action"/> can reach <paramref name="target"/> from <paramref name="from"/>: the target is one
+    /// of its <see cref="Tiles"/> and, past the tiles next to the attacker, in line of sight.
+    /// </summary>
     public static ScavengeError CheckReach(ScavengeData data, TileMap map, Pos from, ActionProfile action, Pos target)
     {
+        if (!map.InBounds(target) || !InPattern(action, from, null, target)) return ScavengeError.OutOfRange;
+        return Clear(data, map, from, target) ? ScavengeError.None : ScavengeError.NoLineOfSight;
+    }
+
+    /// <summary>
+    /// The tiles on the map the action's pattern covers from <paramref name="from"/> (aimed toward <paramref name="facing"/>
+    /// for patterns that care), line of sight not checked. Never the attacker's own tile.
+    /// </summary>
+    public static IEnumerable<Pos> Tiles(TileMap map, ActionProfile action, Pos from, Pos? facing)
+    {
+        for (var dy = -action.Reach; dy <= action.Reach; dy++)
+            for (var dx = -action.Reach; dx <= action.Reach; dx++)
+            {
+                var p = new Pos(from.X + dx, from.Y + dy);
+                if (map.InBounds(p) && InPattern(action, from, facing, p)) yield return p;
+            }
+    }
+
+    /// <summary>The <see cref="Tiles"/> the action can actually hit: those that pass <see cref="CheckReach"/>.</summary>
+    public static IEnumerable<Pos> Hittable(ScavengeData data, TileMap map, ActionProfile action, Pos from, Pos? facing) =>
+        Tiles(map, action, from, facing).Where(p => Clear(data, map, from, p));
+
+    /// <summary>
+    /// Every tile <paramref name="unit"/> could hit right now with any of its attacks, from where it stands and facing
+    /// where it faces. Empty for a unit that cannot act (downed, dead, gone).
+    /// </summary>
+    public static HashSet<Pos> ThreatZone(ScavengeSim sim, Unit unit)
+    {
+        var zone = new HashSet<Pos>();
+        if (!unit.IsActive) return zone;
+        foreach (var action in sim.Profile(unit).Actions)
+            zone.UnionWith(Hittable(sim.Data, sim.State.Map, action, unit.Pos, unit.Facing));
+        return zone;
+    }
+
+    /// <summary>Whether <paramref name="target"/> lies in the action's pattern from <paramref name="from"/>.</summary>
+    private static bool InPattern(ActionProfile action, Pos from, Pos? facing, Pos target)
+    {
+        if (from == target) return false;
         var d = target - from;
-        var inReach = action.Pattern switch
+        return action.Pattern switch
         {
             AttackPattern.Melee => from.Chebyshev(target) <= action.Reach,
             AttackPattern.Ranged => from.DistanceSquared(target) <= action.Reach * action.Reach,
             AttackPattern.Line => (d.X == 0 || d.Y == 0 || Math.Abs(d.X) == Math.Abs(d.Y)) && from.Chebyshev(target) <= action.Reach,
             _ => false,
         };
-        if (!inReach || from == target) return ScavengeError.OutOfRange;
-        if (from.Chebyshev(target) > 1 && !map.HasLineOfSight(data, from, target)) return ScavengeError.NoLineOfSight;
-        return ScavengeError.None;
     }
+
+    /// <summary>Line of sight, needed only past the tiles next to the attacker.</summary>
+    private static bool Clear(ScavengeData data, TileMap map, Pos from, Pos target) =>
+        from.Chebyshev(target) <= 1 || map.HasLineOfSight(data, from, target);
 
     /// <summary>AP the attack costs from <paramref name="from"/> at <paramref name="target"/>: more up close for a scope.</summary>
     public static int ApCost(ActionProfile action, Pos from, Pos target) =>
