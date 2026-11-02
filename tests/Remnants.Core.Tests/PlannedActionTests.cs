@@ -187,6 +187,22 @@ public class PlannedActionTests
     }
 
     [Fact]
+    public void Plans_resolve_in_turn_order()
+    {
+        var a = SurvivorUnit(1, new(0, 1), weapon: "pipe");
+        var b = SurvivorUnit(2, new(9, 1), weapon: "pipe");
+        var sim = Arena(10, 3, [a, b], data: Sure);
+        Assert.True(sim.Execute(new DeclareIntent(1, a.Id, [new(2, 1)])).Ok);
+        Assert.True(sim.Execute(new DeclareIntent(2, b.Id, [new(7, 1)])).Ok);
+        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
+
+        var resolved = sim.State.Events.Where(e => e.Type == ScavengeEventType.IntentResolved).Select(e => e.UnitId).ToList();
+        Assert.Equal([a.Id, b.Id], resolved);
+        Assert.True(sim.State.TurnOrder.IndexOf(a.Id) < sim.State.TurnOrder.IndexOf(b.Id));
+        Assert.Equal((new Pos(2, 1), new Pos(7, 1)), (a.Pos, b.Pos));
+    }
+
+    [Fact]
     public void Declaring_makes_no_noise()
     {
         var a = SurvivorUnit(1, new(0, 1), weapon: "pipe");

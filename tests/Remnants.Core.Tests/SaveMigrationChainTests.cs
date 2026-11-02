@@ -76,6 +76,7 @@ public class SaveMigrationChainTests
         Assert.Contains("\"version\": 1", Fixture("scavenge-v1.json"));
         var run = ScavengeSave.Load(ScavengeTestData.Real, Fixture("scavenge-v1.json"));
         Assert.Equal(7, run.State.Round);
+        Assert.All(run.State.Units, u => Assert.Null(u.Plan)); // an older run has no plans pending
         PlayRounds(run, 3);
         var again = ScavengeSave.Save(run.State);
         Assert.Contains($"\"version\": {ScavengeSave.Version}", again);
