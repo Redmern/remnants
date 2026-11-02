@@ -79,6 +79,23 @@ public class CardNetTests
         f.AssertNoLeaks();
     }
 
+    [Fact]
+    public void Card_buffs_on_a_unit_are_never_sent_to_another_side()
+    {
+        var (f, a, b) = Start();
+        f.EndTurnsUntil(() => f.PlayerUp(a, b) == a, a, b);
+        var unit = f.Sim.State.CurrentUnit!;
+        foreach (var bob in f.Sim.State.Units.Where(u => u.PlayerId == b.Id)) bob.Pos = f.FreeNeighbour(unit.Pos);
+        (unit.CardHit, unit.Guard, unit.CardCover, unit.CardMove) = (0.1, 1, 0.15, 1); // as if cards were played on it
+
+        Assert.True(a.Do(new Move(a.Id, unit.Id, f.FreeNeighbour(unit.Pos))).Ok);
+        var mine = a.View.Units.Single(u => u.Id == unit.Id);
+        Assert.Equal((0.1, 1), (mine.CardHit, mine.Guard));
+        var seen = b.View.Units.Single(u => u.Id == unit.Id);
+        Assert.Equal((0.0, 0, 0.0, 0), (seen.CardHit, seen.Guard, seen.CardCover, seen.CardMove));
+        f.AssertNoLeaks();
+    }
+
     [Theory]
     [InlineData("unknown")]
     [InlineData("too many copies")]

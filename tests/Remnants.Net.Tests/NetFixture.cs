@@ -173,6 +173,8 @@ public sealed class NetFixture
                     FogViolations.Add($"{player.Name} was sent {u.Name}'s plan card, plan target or dodge.");
                 foreach (var u in s.View.Units.Where(u => u.PlayerId != me && (u.SlotCards.Count > 0 || u.SlotSpent.Count > 0 || u.LastCardId is not null || u.CounterId is not null)))
                     FogViolations.Add($"{player.Name} was sent {u.Name}'s slot cards, last card or counter.");
+                foreach (var u in s.View.Units.Where(u => u.PlayerId != me && (u.CardHit != 0 || u.Guard != 0 || u.CardCover != 0 || u.CardMove != 0 || u.Plan is { MoveBonus: not 0 })))
+                    FogViolations.Add($"{player.Name} was sent {u.Name}'s card buffs.");
                 foreach (var d in s.View.Decks.Where(d => d.PlayerId != me && (!d.Hidden || d.Hand.Count + d.DrawPile.Count + d.Used.Count + d.Consumed.Count > 0)))
                     FogViolations.Add($"{player.Name} was sent player {d.PlayerId}'s cards.");
                 foreach (var p in s.View.Parties.Where(p => p.PlayerId != me && p.CardPouch.Count > 0))

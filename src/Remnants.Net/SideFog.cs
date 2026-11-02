@@ -244,7 +244,13 @@ public sealed class SideFog(int playerId, string side)
         {
             plan.CardId = null;
             plan.TargetId = null;
+            plan.MoveBonus = 0;
         }
+        // Card buffs on it would give away hit chances and moves the cards behind them buy.
+        copy.CardHit = 0;
+        copy.Guard = 0;
+        copy.CardCover = 0;
+        copy.CardMove = 0;
         copy.OutplayedId = null;
         copy.OutplayedUntilRound = 0;
         // Personal slot cards: how many, never which; nor the last card played on it or a readied counter.
