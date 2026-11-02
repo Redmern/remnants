@@ -627,7 +627,7 @@ public partial class ScavengeScreen : Node3D
             {
                 _map.Highlight(t.Pos, HighlightKind.Attack);
                 if (gun is not null)
-                    previews[t.Id] = new WorldTags.Preview($"DRONE {Combat.ChanceToHit(_presenter.Sim, gunship, gun, t) * 100:0}% · {gun.MinDamage:0}–{gun.MaxDamage:0}",
+                    previews[t.Id] = new WorldTags.Preview($"DRONE {Bestiary.ShownChance(Combat.ChanceToHit(_presenter.Sim, gunship, gun, t), _presenter.KnowledgeOf(t)) * 100:0}% · {gun.MinDamage:0}–{gun.MaxDamage:0}",
                         false, gun.ApCost > acting!.Ap);
             }
             return;

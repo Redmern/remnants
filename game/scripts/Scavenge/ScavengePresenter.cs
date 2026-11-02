@@ -145,7 +145,7 @@ public sealed class ScavengePresenter
         return State.Units
             .Where(t => t.OnMap && unit.HostileTo(t) && CanSee(t) && Drones.CanStrike(action, t)
                         && Combat.CheckReach(data, map, unit.Pos, action, t.Pos) == ScavengeError.None)
-            .Select(t => new AttackOption(t, action, Combat.ChanceToHit(Sim, unit, action, t), Combat.AmbushAgainst(data, State, unit, t)))
+            .Select(t => new AttackOption(t, action, Bestiary.ShownChance(Combat.ChanceToHit(Sim, unit, action, t), KnowledgeOf(t)), Combat.AmbushAgainst(data, State, unit, t)))
             .ToList();
     }
 
@@ -156,7 +156,7 @@ public sealed class ScavengePresenter
     public Dictionary<Pos, ThreatKind> Threats() => TacticsView.Threats(Sim, Side);
 
     /// <summary>For each tile <paramref name="unit"/> can move to, its best hit chance at <paramref name="target"/> from there.</summary>
-    public Dictionary<Pos, double> MovePreview(Unit unit, Unit target) => TacticsView.MovePreview(Sim, unit, target);
+    public Dictionary<Pos, double> MovePreview(Unit unit, Unit target) => TacticsView.MovePreview(Sim, unit, target, KnowledgeOf(target));
 
     /// <summary>The local player's hand strip (null without a deck).</summary>
     public HandView? Hand() => TacticsView.Hand(Sim, PlayerId);
