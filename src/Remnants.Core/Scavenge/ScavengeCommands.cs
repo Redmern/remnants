@@ -35,7 +35,7 @@ public sealed record DeclareIntent(int PlayerId, int UnitId, IReadOnlyList<Pos> 
 /// personal slots (<see cref="FromSlot"/>). <see cref="TargetId"/>: the enemy whose plan a reaction answers.
 /// <see cref="Boost"/>: pay the card's extra AP for its boost. See <see cref="CardPlay"/>.
 /// </summary>
-public sealed record PlayCard(int PlayerId, int UnitId, string CardId, int? TargetId = null, Pos? Tile = null, bool Boost = false, bool FromSlot = false)
+public sealed record PlayCard(int PlayerId, int UnitId, string CardId, int? TargetId = null, bool Boost = false, bool FromSlot = false)
     : IScavengeCommand;
 
 /// <summary>Discard a hard card nobody in the party qualifies for, at no cost, once a round.</summary>

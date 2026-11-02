@@ -78,6 +78,7 @@ public class ProtocolTests
             var json = ProtocolJson.Serialize(new Command(3, command));
             Assert.Contains($"\"kind\":\"{kind}\"", json);
             Assert.Equal(command, Assert.IsType<Command>(ProtocolJson.Deserialize(json)).Intent);
+            Assert.DoesNotContain("\"tile\"", json); // a card goes on a character, never a tile
         }
         RoundTrips(new Join(Protocol.Version, "Ana", NetFixture.Party("A"), Deck: ["dash", "dash", "take_cover"]));
         Assert.Equal(17, Protocol.Version);
