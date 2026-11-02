@@ -56,11 +56,7 @@ public static class CardPlay
             }
             else unit.SlotSpent.Add(c.CardId);
         }
-        else
-        {
-            deck.Hand.Remove(c.CardId);
-            (card.Consumable ? deck.Consumed : deck.Used).Add(c.CardId);
-        }
+        else deck.Hand.Remove(c.CardId);
 
         var done = new List<string>();
         if (effect.Move > 0) { unit.CardMove += effect.Move; done.Add($"+{effect.Move} move"); }
@@ -70,6 +66,8 @@ public static class CardPlay
         if (effect.Mend > 0 && Treatment.Mend(unit.Body, effect.Mend) is { } mended) done.Add(mended);
         if (effect.Draw > 0) { SquadDecks.Draw(sim, deck, effect.Draw); done.Add($"draws {effect.Draw}"); }
         if (effect.Counter && planner is not null) { unit.CounterId = planner.Id; done.Add($"ready to strike {planner.Name} first"); }
+        // Onto its pile only now, so a draw card never reshuffles itself back into the hand.
+        if (!c.FromSlot) (card.Consumable ? deck.Consumed : deck.Used).Add(c.CardId);
         if (!card.Reaction) unit.LastCardId = card.Id;
 
         var side = state.FindParty(c.PlayerId)?.Side ?? unit.Side;

@@ -273,4 +273,30 @@ public class PlayCardTests
         Assert.Equal(3, deck.Points);
         Assert.Equal(0, a.Guard + a.CardMove);
     }
+
+    [Fact]
+    public void A_draw_card_never_reshuffles_itself_back_into_the_hand()
+    {
+        var (sim, a, _, deck) = Table("scout_ahead");
+        deck.DrawPile.Clear();
+        deck.Used.Add("take_cover");
+        Assert.True(Play(sim, a, "scout_ahead").Ok);
+        Assert.Equal(["take_cover"], deck.Hand);
+        Assert.Equal(["scout_ahead"], deck.Used);
+    }
+
+    [Fact]
+    public void A_hit_card_waits_for_the_units_own_attack_not_an_overwatch_shot()
+    {
+        var a = SurvivorUnit(1, new(0, 1), weapon: "pipe");
+        var b = SurvivorUnit(2, new(7, 1), weapon: "pistol");
+        b.Attributes[Survivors.AttributeKind.Agility] = 35;
+        var sim = Arena(10, 3, [a, b], data: Sure);
+        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
+        Assert.True(sim.Execute(new SetStance(2, b.Id, Stance.Overwatch)).Ok);
+        b.CardHit = 0.1;
+        Assert.True(sim.Execute(new Move(1, a.Id, new(2, 1))).Ok);
+        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Overwatch && e.UnitId == b.Id);
+        Assert.Equal(0.1, b.CardHit, 9);
+    }
 }

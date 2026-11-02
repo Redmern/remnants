@@ -160,7 +160,7 @@ public static class Combat
         var ambushes = targets.Select(t => AmbushAgainst(sim.Data, sim.State, attacker, t)).ToList();
         var penalty = reaction ? sim.Data.Rules.Fog.Overwatch.AccuracyPenalty : 0;
         for (var i = 0; i < targets.Count; i++)
-            Strike(sim, attacker, action with { Accuracy = action.Accuracy - penalty }, targets[i], ambushes[i]);
+            Strike(sim, attacker, action with { Accuracy = action.Accuracy - penalty }, targets[i], ambushes[i], reaction);
         AfterAttack(sim, attacker, action, targets);
         GearEffects.Feedback(sim, attacker, action);
     }
@@ -201,15 +201,16 @@ public static class Combat
         sim.CheckOverwatch(attacker);
     }
 
-    private static void Strike(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, AmbushInfo? ambush)
+    private static void Strike(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, AmbushInfo? ambush, bool reaction = false)
     {
         var data = sim.Data;
         var state = sim.State;
         var bane = Bane(data, action, target);
-        var chance = HitChance(data, state.Map, attacker.Pos, action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + OutplayBonus(sim, attacker, target) + attacker.CardHit + ElectronicWarfare.RadioAccuracy(sim, attacker) },
+        // A card's hit bonus is for the unit's own next attack (not a reaction shot): the first strike uses it up.
+        var cardHit = reaction ? 0 : attacker.CardHit;
+        var chance = HitChance(data, state.Map, attacker.Pos, action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + OutplayBonus(sim, attacker, target) + cardHit + ElectronicWarfare.RadioAccuracy(sim, attacker) },
             target.Pos, sim.Profile(target), ambush, bane);
-        // A card's hit bonus is for one attack: the first strike uses it up.
-        attacker.CardHit = 0;
+        if (!reaction) attacker.CardHit = 0;
         // A dodge pays off once: whichever attack on that unit comes first (planned, reaction or splash) uses it up.
         if (attacker.OutplayedId == target.Id) attacker.OutplayedId = null;
         if (ambush is { } a)

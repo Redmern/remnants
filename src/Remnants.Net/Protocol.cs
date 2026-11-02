@@ -107,11 +107,9 @@ public abstract record Message;
 /// <summary>
 /// Take a seat with a party (lobby only), or with <paramref name="ReconnectToken"/> retake the seat a dropped
 /// connection left during a mission (the party is then ignored). <paramref name="Vehicle"/>: the colony vehicle the party
-/// drives in (each player brings their own; it parks at their spawn point).
-/// </summary>
-/// <summary>
-/// Take a seat: the player's party (members with gear and personal slot cards) and optionally the squad deck it brings
-/// (<paramref name="Deck"/>: card ids, copies repeated; the server deals it with the base deck rules).
+/// drives in (each player brings their own; it parks at their spawn point). Members carry their personal slot cards;
+/// <paramref name="Deck"/>: the squad deck the party brings (card ids, copies repeated, within cards.json's deck rules),
+/// dealt with the base deck rules.
 /// </summary>
 public sealed record Join(int Version, string Name, List<PartyMember> Party, string? ReconnectToken = null, FieldVehicle? Vehicle = null,
     List<string>? Deck = null) : Message;
