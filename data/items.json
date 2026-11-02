@@ -14,7 +14,7 @@
   { "id": "rifle", "name": "Hunting Rifle", "kind": "Weapon", "weight": 4, "tier": 3, "lootWeight": 1,
     "actions": [
       { "id": "aimed_shot", "name": "Aimed Shot", "pattern": "Ranged", "reach": 10, "minDamage": 14, "maxDamage": 24,
-        "apCost": 2, "accuracy": 0.7, "skill": "Firearms", "noise": 12, "twoHanded": true, "reveal": 2 },
+        "apCost": 2, "accuracy": 0.7, "skill": "Firearms", "noise": 12, "twoHanded": true, "reveal": 2, "armLock": true },
       { "id": "butt_strike", "name": "Butt Strike", "pattern": "Melee", "reach": 1, "minDamage": 4, "maxDamage": 8,
         "apCost": 1, "accuracy": 0.75, "skill": "Melee", "strengthScaling": 0.5, "noise": 1 } ] },
   { "id": "husk_claws", "name": "Husk Claws", "kind": "Weapon", "weight": 0, "natural": true,
@@ -29,7 +29,7 @@
   { "id": "pulse_rifle", "name": "Pulse Rifle", "kind": "Weapon", "weight": 6, "tier": 3,
     "actions": [
       { "id": "pulse", "name": "Pulse Blast", "pattern": "Ranged", "reach": 5, "minDamage": 8, "maxDamage": 13,
-        "apCost": 2, "accuracy": 0.6, "skill": "Firearms", "noise": 12, "area": 1, "reveal": 2, "twoHanded": true } ] },
+        "apCost": 2, "accuracy": 0.6, "skill": "Firearms", "noise": 12, "area": 1, "reveal": 2, "twoHanded": true, "armLock": true } ] },
   { "id": "warden_pulse", "name": "Warden Pulse Cannon", "kind": "Weapon", "weight": 0, "natural": true,
     "actions": [
       { "id": "pulse", "name": "Pulse Blast", "pattern": "Ranged", "reach": 5, "minDamage": 9, "maxDamage": 15,
@@ -43,7 +43,7 @@
 
   { "id": "rag_coat", "name": "Rag Coat", "kind": "Clothing", "weight": 1, "tier": 1, "lootWeight": 3, "armor": 0.5, "stealth": 3 },
   { "id": "camo_cloak", "name": "Camo Cloak", "kind": "Clothing", "weight": 1, "tier": 2, "lootWeight": 0.5, "armor": 0.5, "stealth": 15 },
-  { "id": "scout_jacket", "name": "Scout Jacket", "kind": "Clothing", "weight": 1.5, "tier": 2, "lootWeight": 2,
+  { "id": "scout_jacket", "name": "Scout Jacket", "kind": "Clothing", "weight": 1.5, "tier": 2, "lootWeight": 2, "cardSlots": 1,
     "dodge": 0.05, "initiative": 5, "stealth": 4, "movement": { "setPattern": "Rook", "rangeBonus": 1 } },
   { "id": "padded_vest", "name": "Padded Vest", "kind": "Armor", "weight": 4, "tier": 1, "lootWeight": 2, "armor": 2 },
   { "id": "riot_armor", "name": "Riot Armor", "kind": "Armor", "weight": 12, "tier": 3, "lootWeight": 1,

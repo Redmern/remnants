@@ -8,7 +8,9 @@ namespace Remnants.Core.Scavenge;
 
 /// <summary>A survivor sent on a run, with the gear they wear and carry.</summary>
 /// <summary>A survivor going into a zone with their gear. <paramref name="FirstRoundAp"/>: AP added (or taken) on the first round, from what they ate on the way (food buffs).</summary>
-public sealed record PartyMember(Survivor Survivor, Dictionary<EquipSlot, string>? Equipment = null, List<string>? Pack = null, int FirstRoundAp = 0);
+/// <see cref="SlotCards"/>: cards from the colony's collection for the member's personal slots (only as many as they have).
+public sealed record PartyMember(Survivor Survivor, Dictionary<EquipSlot, string>? Equipment = null, List<string>? Pack = null, int FirstRoundAp = 0,
+    List<string>? SlotCards = null);
 
 /// <summary>
 /// One player's party entering a zone. Parties with the same <see cref="Team"/> start allied (one side, see
@@ -398,6 +400,8 @@ public static class NewScavenge
                         throw new ArgumentException($"{m.Survivor.Name}: '{id}' is not an item for the {slot} slot.");
                 foreach (var id in m.Pack ?? [])
                     if (!data.Items.ContainsKey(id)) throw new ArgumentException($"{m.Survivor.Name}: unknown item '{id}'.");
+                foreach (var id in m.SlotCards ?? [])
+                    if (data.Cards.Find(id) is null) throw new ArgumentException($"{m.Survivor.Name}: unknown card '{id}'.");
             }
         }
     }
@@ -405,7 +409,7 @@ public static class NewScavenge
     private static Unit SurvivorUnit(ScavengeData data, ScavengeState state, int playerId, PartyMember member, Pos pos)
     {
         var origin = Clone(member.Survivor);
-        return new Unit
+        var unit = new Unit
         {
             Id = state.NextUnitId++,
             Name = origin.Name,
@@ -425,6 +429,8 @@ public static class NewScavenge
             CyberHooks = data.CyberHooksFor(origin.Body),
             FirstRoundAp = member.FirstRoundAp,
         };
+        unit.SlotCards = (member.SlotCards ?? []).Take(CardSlots.Count(data, unit)).ToList();
+        return unit;
     }
 
     public static Unit EnemyUnit(ScavengeData data, ScavengeState state, EnemyDef def, Pos pos)

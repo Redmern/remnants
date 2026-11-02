@@ -10,6 +10,10 @@ namespace Remnants.Core.Colony;
 /// </summary>
 public static class PerkHooks
 {
+    // Cards
+    /// <summary>Personal card slots (see <c>Scavenge.CardSlots</c>).</summary>
+    public const string CardSlots = "card_slots";
+
     // Tech
     public const string HackChanceBonus = "hack_chance_bonus";
     public const string HackAlarmReduction = "hack_alarm_reduction";

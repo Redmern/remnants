@@ -419,6 +419,9 @@ public sealed record ItemDef
 
     public double Initiative { get; init; }
     public int ApBonus { get; init; }
+
+    /// <summary>Personal card slots the gear adds while worn (see <c>CardSlots</c>).</summary>
+    public int CardSlots { get; init; }
     public double SightBonus { get; init; }
     public double CarryBonus { get; init; }
 
