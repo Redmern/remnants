@@ -401,31 +401,31 @@ public class CardTradeTests
     {
         var seller = NewGame.Create(TestData.Real, 1, Real);
         var buyer = NewGame.Create(TestData.Real, 2, Real);
-        var line = TradeGood.Card("sprint");
+        var line = TradeGood.Card("smoke_bomb");
         Assert.Null(TradeGoods.Validate([line], Rules, TestData.Real, Real));
         Assert.NotNull(TradeGoods.Validate([TradeGood.Card("no_such_card")], Rules, TestData.Real, Real));
-        Assert.Equal("Sprint", TradeGoods.Name(line, TestData.Real, Real));
+        Assert.Equal("Smoke Bomb", TradeGoods.Name(line, TestData.Real, Real));
         Assert.True(TradePrices.Of(line, Rules, TestData.Real, Real) > 0);
 
-        var had = seller.State.Cards.Owned["sprint"];
+        var had = seller.State.Cards.Owned["smoke_bomb"];
         Assert.True(ColonyTrade.Escrow(seller, "tx-card", [line], "test").Ok);
-        Assert.Equal(had - 1, seller.State.Cards.Owned.GetValueOrDefault("sprint"));
-        Assert.DoesNotContain("sprint", seller.State.Cards.Deck); // the deck gives up a copy it no longer has
-        Assert.False(ColonyTrade.Escrow(seller, "tx-card-2", [TradeGood.Card("sprint")], "test").Ok);
+        Assert.Equal(had - 1, seller.State.Cards.Owned.GetValueOrDefault("smoke_bomb"));
+        Assert.DoesNotContain("smoke_bomb", seller.State.Cards.Deck); // the deck gives up a copy it no longer has
+        Assert.False(ColonyTrade.Escrow(seller, "tx-card-2", [TradeGood.Card("smoke_bomb")], "test").Ok);
 
         Assert.True(ColonyTrade.Settle(seller, "tx-card"));
-        var before = buyer.State.Cards.Owned.GetValueOrDefault("sprint");
+        var before = buyer.State.Cards.Owned.GetValueOrDefault("smoke_bomb");
         Assert.True(ColonyTrade.Receive(buyer, "tx-card", [line], "Seller"));
-        Assert.Equal(before + 1, buyer.State.Cards.Owned["sprint"]);
+        Assert.Equal(before + 1, buyer.State.Cards.Owned["smoke_bomb"]);
     }
 
     [Fact]
     public void A_refunded_card_comes_back()
     {
         var colony = NewGame.Create(TestData.Real, 1, Real);
-        var had = colony.State.Cards.Owned["dash"];
-        Assert.True(ColonyTrade.Escrow(colony, "tx", [TradeGood.Card("dash")], "test").Ok);
+        var had = colony.State.Cards.Owned["shove"];
+        Assert.True(ColonyTrade.Escrow(colony, "tx", [TradeGood.Card("shove")], "test").Ok);
         Assert.True(ColonyTrade.Refund(colony, "tx"));
-        Assert.Equal(had, colony.State.Cards.Owned["dash"]);
+        Assert.Equal(had, colony.State.Cards.Owned["shove"]);
     }
 }

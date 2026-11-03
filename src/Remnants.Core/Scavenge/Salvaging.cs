@@ -38,7 +38,10 @@ public sealed record WreckSalvageRules
 /// </summary>
 public static class Salvaging
 {
-    /// <summary>Every wreck on the map as its two tiles (the first in row order is its key).</summary>
+    /// <summary>
+    /// Every wreck on the map as its two tiles (the first in row order is its key). The map's own terrain: a card's barrier
+    /// (<see cref="TileMap.Overlay"/>) is no wreck.
+    /// </summary>
     public static List<(Pos A, Pos B)> Wrecks(TileMap map)
     {
         var placed = new HashSet<Pos>();
@@ -47,9 +50,9 @@ public static class Salvaging
             for (var x = 0; x < map.Width; x++)
             {
                 var p = new Pos(x, y);
-                if (map[p] != Terrain.Cover || !placed.Add(p)) continue;
+                if (Base(map, p) != Terrain.Cover || !placed.Add(p)) continue;
                 foreach (var next in new[] { p + new Pos(1, 0), p + new Pos(0, 1) })
-                    if (map.InBounds(next) && map[next] == Terrain.Cover && !placed.Contains(next))
+                    if (map.InBounds(next) && Base(map, next) == Terrain.Cover && !placed.Contains(next))
                     {
                         placed.Add(next);
                         wrecks.Add((p, next));
@@ -58,6 +61,8 @@ public static class Salvaging
             }
         return wrecks;
     }
+
+    private static Terrain Base(TileMap map, Pos p) => map.Tiles[map.Index(p)];
 
     /// <summary>The wreck that covers <paramref name="at"/>, if any.</summary>
     public static (Pos A, Pos B)? WreckAt(TileMap map, Pos at) =>

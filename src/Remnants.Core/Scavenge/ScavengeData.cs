@@ -26,6 +26,14 @@ public sealed class ScavengeData
         return copy;
     }
 
+    /// <summary>A copy with other card definitions, everything else shared.</summary>
+    public ScavengeData WithCards(CardsDef cards)
+    {
+        var copy = (ScavengeData)MemberwiseClone();
+        copy.Cards = new CardCatalog(cards);
+        return copy;
+    }
+
     /// <summary>The schematics catalogue: drop odds and pools; each schematic is also an item with its id.</summary>
     public SchematicCatalog Schematics { get; }
 
@@ -69,7 +77,7 @@ public sealed class ScavengeData
     public IReadOnlyList<string> LootWarnings { get; }
 
     /// <summary>Tactical cards and the squad deck's rules (cards.json); <see cref="CardCatalog.Empty"/> without the file.</summary>
-    public CardCatalog Cards { get; }
+    public CardCatalog Cards { get; private set; }
 
     public ScavengeData(IEnumerable<ItemDef> items, IEnumerable<EnemyDef> enemies, IEnumerable<ZoneDef> zones, ScavengeRules rules,
         IReadOnlyDictionary<string, IReadOnlyDictionary<string, double>>? perkHooks = null, CyberneticsDef? cybernetics = null,

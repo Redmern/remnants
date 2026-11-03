@@ -211,9 +211,17 @@
     "scavenge.intent_canceled": [],
     "scavenge.countered": "sting_ambush",
     "scavenge.card_played": "card_play",
+    "scavenge.displaced": "dodge_whoosh",
+    "scavenge.initiative_changed": "card_play",
+    "scavenge.field_effect_placed": "flare_ignite",
     "scavenge.card_discarded": "ui_click",
     "scavenge.card_found": "ui_toast",
     "scavenge.deck_shuffled": "card_shuffle",
+    "juice.card_draw": "card_draw",
+    "juice.card_slam": "card_slam",
+    "juice.card_sweep": "card_sweep",
+    "juice.chain": "chain_tick",
+    "juice.kill": "kill_thump",
     "scavenge.overwatch_trigger": "fog_overwatch_trigger",
     "scavenge.braced": [],
     "scavenge.lookout": "scanner_sweep",
@@ -417,7 +425,8 @@
   "//layers": "Played on top of the running track, in its sync group (same bpm and length, started at its position).",
   "layers": {
     "linked_layer": "music_linked_presence",
-    "contact_layer": "music_scavenge_combat_layer"
+    "contact_layer": "music_scavenge_combat_layer",
+    "chain_layer": "music_scavenge_combat_layer"
   },
 
   "ambience": {

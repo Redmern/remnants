@@ -350,9 +350,11 @@ public class DeviceTests
             ".........",
         ]);
         Assert.True(Devices.IsJammed(sim, linked));
-        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
+        // Its telegraphed shot comes down once the survivor has had a turn to answer it.
+        bool Shot() => sim.State.Events.Any(e => e.UnitId == linked.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
+        for (var i = 0; i < 3 && !Shot(); i++) Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
         Assert.Equal(new Pos(6, 2), linked.Pos);  // shot from where it stood
-        Assert.Contains(sim.State.Events, e => e.UnitId == linked.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
+        Assert.True(Shot());
     }
 
     [Fact]

@@ -52,11 +52,22 @@ public sealed class TileMap
 
     public Pos FromIndex(int index) => new(index % Width, index / Width);
 
+    /// <summary>
+    /// The terrain on a tile, with a card's barrier over it (<see cref="Overlay"/>). Setting it changes the map itself.
+    /// </summary>
     public Terrain this[Pos p]
     {
-        get => Tiles[Index(p)];
+        get => Overlay.Count > 0 && Overlay.TryGetValue(Index(p), out var over) ? over : Tiles[Index(p)];
         set => Tiles[Index(p)] = value;
     }
+
+    /// <summary>Terrain laid over tiles for now (barriers), from <see cref="ScavengeState.FieldEffects"/>; not saved.</summary>
+    [JsonIgnore]
+    public Dictionary<int, Terrain> Overlay { get; } = new();
+
+    /// <summary>Tile indices under smoke (<see cref="FieldEffects"/>): they block sight; not saved.</summary>
+    [JsonIgnore]
+    public HashSet<int> Smoke { get; } = new();
 
     [JsonIgnore]
     public IEnumerable<Pos> AllPositions
@@ -73,17 +84,21 @@ public sealed class TileMap
 
     /// <summary>
     /// Line of sight between two tiles: no sight-blocking tile strictly between them on a Bresenham line.
-    /// Checked both ways and passes if either is clear, so it is symmetric.
+    /// Checked both ways and passes if either is clear, so it is symmetric. Smoke blocks it like a wall, and hides a tile
+    /// in it from anything not right next to it (and the view out of it the same way).
     /// </summary>
-    public bool HasLineOfSight(ScavengeData data, Pos from, Pos to) =>
-        LineClear(data, from, to) || LineClear(data, to, from);
+    public bool HasLineOfSight(ScavengeData data, Pos from, Pos to)
+    {
+        if (Smoke.Count > 0 && from.Chebyshev(to) > 1 && (Smoke.Contains(Index(from)) || Smoke.Contains(Index(to)))) return false;
+        return LineClear(data, from, to) || LineClear(data, to, from);
+    }
 
     private bool LineClear(ScavengeData data, Pos from, Pos to)
     {
         foreach (var p in Line(from, to))
         {
             if (p == from || p == to) continue;
-            if (data.Terrain(this[p]).BlocksSight) return false;
+            if (data.Terrain(this[p]).BlocksSight || Smoke.Count > 0 && Smoke.Contains(Index(p))) return false;
         }
         return true;
     }

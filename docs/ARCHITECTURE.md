@@ -919,13 +919,42 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
   resolves at the start of the unit's next turn through the plain move rules and a tile strike (`TileStrikes.Strike`, a
   stab / slash's covered tiles or the one tile) from where the path ended, paid from that turn's AP: a step that no
   longer works ends the path, whoever hostile is on the tile then is struck (suppressing fire pins them instead), an empty tile is a miss with
-  no refund (the aimed-at unit dodged it: `Unit.OutplayedId`, the ambush hit bonus on its next attack on the attacker,
-  through the next round). Downed, killed, pinned or stunned cancels the plan.
-- **Enemy AI telegraphs** (user decision: the hybrid): `ScavengeAi.Planned` runs a unit's usual behaviour (Spot,
-  TryAttack, Reposition, Retreat, Suppress, shared squad focus) against a look-ahead position and AP. If it chose to
-  move and then strike (or only move), it declares that plan; if its choice is to strike from where it stands (a target
-  already in reach at the start of its turn), it takes its turn at once. A turret always telegraphs its aim tile.
-  Recruits act at once.
+  no refund. Declaring turns the unit toward its first waypoint (or its attack tile). Downed, killed, pinned or stunned
+  cancels the plan.
+- **Outplays** (`Combat.Dodged`, `scavenge.json combat.outplay`): a telegraphed blow (tile strike or plan) that comes
+  down on a tile its aimed-at unit stepped off is dodged. Through the next round the dodger gets the ambush hit bonus on
+  the attacker (`Unit.OutplayedId`, `Combat.OutplayBonus`) and one free counter (`Unit.FreeCounterId`,
+  `TileStrikes.FreeCounter`: its next tile strike covering the attacker takes off `TileStrikes.CounterWaiver`, the unit's
+  cheapest attack's base AP; it needs AP > 0 and the attacker in sight; logged `Countered`; dodging a counter earns none
+  back, `TileStrike.Counter`). The attacker is exposed to the dodger's side (`Unit.ExposedUntilRound`,
+  `Unit.ExposedToSide`, `Combat.ExposedTo`): that side's next hit on it does `exposedDamage` times the damage and uses it
+  up; other sides' hits leave it. Stacked damage multipliers (ambush × facing × exposed) are capped at
+  `combat.maxDamageMultiplier`, the outplay and ambush hit bonuses at `combat.maxHitBonus`. SideFog hides the outplay,
+  the free counter and exposure from other sides; the fog log never names a hidden attacker, its tile, arc or exposure.
+  Tests: `OutplayTests`, `OutplayFogTests`.
+- **Facing** (`Unit.Facing`, `Combat.ArcOf`, `scavenge.json combat.facing`): a unit faces where it last moved, struck or
+  planned. A landed blow's damage (before armor) is multiplied by `sideDamage` from the target's flank and `rearDamage`
+  from behind, by the attacker's true bearing against the facing (front within 67.5°, side to 112.5°, rear past); a unit
+  facing nowhere and a structure are always struck from the front. The log says "from the side" / "from behind".
+  Tests: `FacingTests`.
+- **Enemy AI telegraphs**: `ScavengeAi.Planned` runs a unit's usual behaviour (Spot, TryAttack, Reposition, Retreat,
+  Suppress, shared squad focus) against a look-ahead position and AP and declares what it chose as a plan, a blow at a
+  target already in reach too (a plan with no path, `PlannedAction.Quick`), which comes down at the enemy's next
+  sub-turn, a later sub-round's too, and is then followed by the next: an enemy in reach attacks about as often as
+  before. Every AI plan waits until its target has had its chance to answer (`PlannedActions.Ready`: a sub-turn since it
+  was declared, counted by `ScavengeState.TurnSeq` / `Unit.TurnSeq`; a stance held; done for the round with AP left; a
+  drone's operator answers for it). Only a plan that cannot be declared falls back to a tile strike at once. A turret's
+  plan is its aim tile. Recruits act at once. Tests: `EnemyTelegraphTests`, `TileAttackAiTests`, `AiPlanTests`.
+- **Turn advice** (`TurnAdvice.CanStillAct`): whether the acting unit has an affordable, useful order left (a move, a
+  stance or lookout, an item, a blow at a seen hostile in reach, a playable card, extracting, a pick-up, a hack, salvage,
+  a drone order, a plan with a blow at a seen hostile; the harder ones tried on a copy of the run). The screen ends the
+  turn when it has not (`GameSettings.AutoEndTurn`, default on), after a beat any click or key cancels, after each replay
+  and when it opens. Tests: `TurnAdviceTests`.
+- **Replay pacing** (`ReplayPacing`, a Core view model; Godot `UnitViews.Replay`): a tile walk takes `GameSettings.WalkTileSeconds` (Settings > Game, walk
+  speed, default 0.2 s); `GameSettings.SkipAnimations` (Settings > Game, hotkey `scav_fast_forward`, ".") snaps every
+  step to its end in the same frame. An event of another side's unit the side saw nothing of (`UnitViews.InSight`) is
+  always instant and the camera only follows what was seen. Tests: `ReplayPacingTests`. Models turn to Core's facing on sync and on a seen plan.
+  Pacing only: the sim is the same either way.
 - **Cards** (`data/cards.json`, `ScavengeData.Cards`): card defs (category, rarity, points, AP cost / boost,
   consumable, reaction, arm lock, `CardRequirement` any-of skill / attribute / perk hook, hard or baseline, scaling,
   effects in the game's own terms: move, hit, guard, cover, mend, draw, counter) and the deck rules (hand size, an
@@ -971,8 +1000,17 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
   kinds `Threat` / `ThreatPlanned`, `Ui/HandStrip` (hand and picker), `UnitPanel` (enemy stats per bestiary tier, via
   `ScavengePresenter.KnowledgeOf` and `BestiaryKnowledge.Colony`), and the colony overlays `DeckBuilderPanel` and
   `BestiaryPanel` (Deck and Bestiary in the top bar). Sound cues are `scavenge.intent_*`, `scavenge.card_*`,
-  `scavenge.countered` in `game/audio/sound_events.json`. Debug captures: `--scavenge --tactics-demo[=overlay|picker|
-  reaction|enemy|preview]`, `--colony --deck-demo=deck|slots|upgrades`, `--colony --bestiary-demo`.
+  `scavenge.countered`, `scavenge.displaced`, `scavenge.initiative_changed`, `scavenge.field_effect_placed` in
+  `game/audio/sound_events.json`. Debug captures: `--scavenge --tactics-demo[=overlay|picker|reaction|enemy|preview|
+  targeting|smoke]` (`--play-aim` then plays the aimed card and checks every model is on its Core tile),
+  `--colony --deck-demo=deck|slots|upgrades`, `--colony --bestiary-demo`.
+- **Ability cards** (`Scavenge/Cards/CardAbilities.cs`, `FieldEffects.cs`): cards declare a target (self, ally, enemy,
+  unit, tile), range and radius in `data/cards.json`, and effects beyond buffs: push / pull / swap / step / spin, grant
+  AP, advance / delay initiative (only units still to act this sub-round), barrier and smoke (`ScavengeState.FieldEffects`
+  laid over the map as `TileMap.Overlay` / `TileMap.Smoke`, never changing the terrain), strike and disrupt. A unit moved
+  by a card loses its plan (exposed if a hostile moved it) and is hit by a declared strike on its new tile whoever's side
+  it is, until its next sub-turn. `TacticsView.Targets` is the targeting preview; Godot's `ScavengeScreen.CardAim` and
+  `Ui/CardTargetTip` draw it (valid targets lit, invalid greyed with Core's reason, landing tile, affected units).
 
 ## Linked squad AI
 

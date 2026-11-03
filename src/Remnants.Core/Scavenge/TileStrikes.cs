@@ -16,6 +16,9 @@ public sealed class TileStrike
     public Pos Direction { get; set; }
     public List<Pos> Tiles { get; set; } = new();
     public int? TargetId { get; set; }
+
+    /// <summary>A free counter (<see cref="TileStrikes.FreeCounter"/>): dodging it earns no counter back, so they never chain.</summary>
+    public bool Counter { get; set; }
 }
 
 /// <summary>
@@ -38,16 +41,24 @@ public static class TileStrikes
             return c.Mode is { } m && action.Modes?.Contains(m) != true
                 ? ScavengeResult.Fail(ScavengeError.InvalidTarget, $"{action.Name} cannot {m.ToString().ToLowerInvariant()}.")
                 : ScavengeResult.Fail(ScavengeError.OutOfRange, $"{c.Tile} is not in reach of {action.Name} from {unit.Pos}.");
-        var cost = Combat.ApCost(action, unit.Pos, c.Tile);
+        var free = FreeCounter(sim, unit, aim.Tiles);
+        var cost = Combat.ApCost(action, unit.Pos, c.Tile) - (free ? CounterWaiver(sim, unit) : 0);
+        cost = Math.Max(0, cost);
         if (cost > unit.Ap) return ScavengeResult.Fail(ScavengeError.NotEnoughAp, $"{unit.Name} needs {cost} AP for {action.Name} (has {unit.Ap}).");
 
         unit.Ap -= cost;
         unit.Facing = aim.Direction;
+        if (free && state.FindUnit(unit.FreeCounterId!.Value) is { } dodged)
+        {
+            unit.FreeCounterId = null;
+            state.Log(new(state.Round, ScavengeEventType.Countered, $"{unit.Name} turns {dodged.Name}'s miss against them: a free counter.",
+                unit.Id, dodged.Id, unit.Pos));
+        }
         var seen = TargetsOn(state, unit, action, aim.Tiles).FirstOrDefault(t => Detection.SideSees(sim.Data, state, unit.Side, t));
         state.Strikes.Add(new TileStrike
         {
             UnitId = unit.Id, ActionId = action.Id, Mode = aim.Mode, From = unit.Pos, Tile = c.Tile, Direction = aim.Direction,
-            Tiles = aim.Tiles, TargetId = seen?.Id,
+            Tiles = aim.Tiles, TargetId = seen?.Id, Counter = free,
         });
         var how = aim.Mode is { } mode ? $"a {mode.ToString().ToLowerInvariant()} at {c.Tile}" : $"an attack on {c.Tile}";
         state.Log(new(state.Round, ScavengeEventType.IntentDeclared, $"{unit.Name} readies {how} ({action.Name}).", unit.Id, Pos: unit.Pos));
@@ -75,6 +86,21 @@ public static class TileStrikes
         var tiles = Combat.Covered(map, action, m, at, dir).ToList();
         return tiles.Contains(tile) ? (m, dir, tiles) : null;
     }
+
+    /// <summary>
+    /// Whether a tile strike of the unit's over <paramref name="tiles"/> is its free counter: it dodged a telegraphed blow of
+    /// a hostile still standing on one of them in its side's sight (<see cref="Unit.FreeCounterId"/>, good through the round
+    /// after the dodge; a strike at a tile in the fog never comes back free, so the cost gives nothing away). The unit must
+    /// have AP to act at all: the counter waives <see cref="CounterWaiver"/> of the strike's cost, never more.
+    /// </summary>
+    public static bool FreeCounter(ScavengeSim sim, Unit unit, IReadOnlyCollection<Pos> tiles) =>
+        unit.FreeCounterId is { } id && unit.Ap > 0 && sim.State.Round <= unit.OutplayedUntilRound
+        && sim.State.FindUnit(id) is { IsActive: true, OnMap: true } attacker && unit.HostileTo(attacker) && tiles.Contains(attacker.Pos)
+        && Detection.SideSees(sim.Data, sim.State, unit.Side, attacker);
+
+    /// <summary>The AP a free counter takes off a strike: the unit's cheapest attack's base cost (a dear attack pays the rest).</summary>
+    public static int CounterWaiver(ScavengeSim sim, Unit unit) =>
+        sim.Profile(unit).Actions.Select(a => a.ApCost).DefaultIfEmpty(0).Min();
 
     /// <summary>Whether the unit has a tile strike waiting for this sub-round's end.</summary>
     public static bool Readied(ScavengeState state, Unit unit) => state.Strikes.Any(s => s.UnitId == unit.Id);
@@ -147,10 +173,7 @@ public static class TileStrikes
         else state.Log(new(state.Round, ScavengeEventType.IntentResolved, $"{unit.Name}'s {action.Name} comes down on {strike.Tile}.", unit.Id, Pos: unit.Pos));
         if (strike.TargetId is { } aimed && targets.All(t => t.Id != aimed) && state.FindUnit(aimed) is { IsActive: true } dodger
             && !strike.Tiles.Contains(dodger.Pos))
-        {
-            dodger.OutplayedId = unit.Id;
-            dodger.OutplayedUntilRound = state.Round + 1;
-        }
+            Combat.Dodged(sim, dodger, unit, counter: !strike.Counter);
     }
 
     /// <summary>
@@ -174,8 +197,12 @@ public static class TileStrikes
         return targets;
     }
 
-    /// <summary>The conscious hostiles on <paramref name="tiles"/> the action can strike, tile by tile, then by id.</summary>
+    /// <summary>
+    /// The conscious hostiles on <paramref name="tiles"/> the action can strike, tile by tile, then by id; and anyone a card
+    /// shoved there (<see cref="Unit.Displaced"/>), whoever's side: friendly fire.
+    /// </summary>
     private static IEnumerable<Unit> TargetsOn(ScavengeState state, Unit attacker, ActionProfile action, List<Pos> tiles) =>
-        state.Units.Where(u => u.IsActive && u.OnMap && u.CarriedById is null && attacker.HostileTo(u) && tiles.Contains(u.Pos) && Drones.CanStrike(action, u))
+        state.Units.Where(u => u.IsActive && u.OnMap && u.CarriedById is null && (attacker.HostileTo(u) || u.Displaced && u.Id != attacker.Id)
+                               && tiles.Contains(u.Pos) && Drones.CanStrike(action, u))
             .OrderBy(u => tiles.IndexOf(u.Pos)).ThenBy(u => u.Id);
 }

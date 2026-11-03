@@ -279,8 +279,8 @@
     {
       "id": "cards",
       "title": "Tactical cards",
-      "short": "Your squad shares a hand of cards. Most cost card points, not AP; points refill each round.",
-      "long": "## The hand\n\n- One shared deck per party. Each round the hand refills to its size and the card points refill to the budget.\n- Played cards go to the used pile and come back when the draw pile runs out; consumable cards are gone for good.\n\n## Playing a card\n\n- Pick a card, then pick who it goes on. The picker shows who can take it now and, for the rest, why not.\n- **Hard** cards need a qualified character (a skill, attribute or perk). **Baseline** cards work for anyone; a qualified character gets more.\n- Some cost AP; some take extra AP for a **boost**. Arm-heavy cards wait for working arms.\n- **Reactions** answer a seen enemy's telegraphed plan, also on another unit's turn.\n- A hard card nobody can use can be discarded for free, once a round.\n\n## Slots\n\nSome characters hold personal slot cards: always to hand for them, paid from the squad's points.",
+      "short": "Your squad shares a hand of cards: shoves, steps, smoke, turn-order tricks and a few bonuses. They cost card points, not AP; points refill each round.",
+      "long": "## The hand\n\n- One shared deck per party. Each round the hand refills to its size and the card points refill to the budget.\n- Played cards go to the used pile and come back when the draw pile runs out; consumable cards are gone for good.\n\n## Playing a card\n\n- Pick a card, then pick who it goes on. The picker shows who can take it now and, for the rest, why not.\n- **Hard** cards need a qualified character (a skill, attribute or perk). **Baseline** cards work for anyone; a qualified character gets more.\n- Some cost AP; some take extra AP for a **boost**. Arm-heavy cards wait for working arms.\n- **Reactions** answer a seen enemy's telegraphed plan, also on another unit's turn.\n\n## Abilities\n\nMost cards change the board instead of adding a bonus. Pick the card, then its target: an enemy, an ally or a tile. The preview shows where everyone lands and what it does; targets it cannot take are greyed with the reason.\n\n- **Shove / Yank / Drag In** move an enemy along the line, stopping before walls, units and the map edge. A moved enemy's plan falls through and it is **exposed** (your side's next hit lands harder). **Shove** also turns its back to you.\n- Shoving anyone onto a tile a blow is about to come down on gets them hit, **even by their own side**.\n- **Flank Step** slips you up to two tiles and turns you to the nearest enemy: hit it from the side or back.\n- **Flank Step** and **Switch Places** are your own moves: hurt legs shorten them, you cannot do them carrying someone, and overwatch may fire. A unit you shove is not fired at for it.\n- **Switch Places** trades tiles with one of your own people; **Second Wind** gives 1 AP. Cards never move or hurry a co-op partner's people.\n- **Go Now!** lets an ally who has not acted go next; **Feint** makes an enemy that has not acted go last. Nobody ever gets an extra turn, and an enemy's blow still waits for its target's turn.\n- **Barricade** puts up cover next to you; **Smoke Bomb** throws a screen (never over yourself) that blocks sight through and into a patch for two rounds.\n- **Spoil** calls off a seen plan or readied strike, even of what cannot be moved; **Snap Strike** attacks now for no AP.\n- A hard card nobody can use can be discarded for free, once a round.\n\n## Slots\n\nSome characters hold personal slot cards: always to hand for them, paid from the squad's points.",
       "related": [
         "telegraphs",
         "hit_chance",
@@ -299,7 +299,7 @@
       "id": "telegraphs",
       "title": "Telegraphs and threats",
       "short": "Enemies show what they will do next turn: the path they walk and the tile they strike. Step off it.",
-      "long": "## Telegraphs\n\n- An enemy that has to move to reach you declares its plan: a trail of steps and a ring on the tile it will strike. It carries it out at the start of its next turn.\n- An enemy already in reach strikes at once. Turrets always telegraph their aim.\n- A blow on an empty tile hits nothing. Dodge one and your next attack on that enemy gets +20% to hit.\n\n## The threat overlay\n\n- Strong red: a telegraphed blow lands here.\n- Faint orange: a seen enemy could hit this tile from where it stands.\n\n## Hit preview\n\nHover a hostile with an attack chosen: every tile you can move to shows your hit chance from there.",
+      "long": "## Telegraphs\n\n- Every enemy blow is declared first: a trail of steps (if it moves) and a ring on the tile it will strike. It carries it out at its next turn (a blow at someone already in reach, at its next half-round), and never before you have had a turn to step off. Turrets telegraph their aim.\n- A blow on an empty tile hits nothing. Dodge one and that enemy is **exposed** to your side: your next hit on it does ×1.5 damage. Your next attack on it gets +20% to hit, and your next strike that covers it is a free counter (your cheapest attack's AP is waived), until the end of the next round. Bonuses stack to at most ×2 damage.\n\n## Facing\n\n- Units face where they last moved, struck or planned. A blow from the side does ×1.25 damage, from behind ×1.5.\n\n## The threat overlay\n\n- Strong red: a telegraphed blow lands here.\n- Faint orange: a seen enemy could hit this tile from where it stands.\n\n## Hit preview\n\nHover a hostile with an attack chosen: every tile you can move to shows your hit chance from there.",
       "related": [
         "cards",
         "hit_chance",
@@ -311,7 +311,10 @@
         "telegraph",
         "threat",
         "dodge",
-        "overlay"
+        "overlay",
+        "facing",
+        "exposed",
+        "counter"
       ]
     },
 {

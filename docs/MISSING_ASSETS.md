@@ -14,18 +14,18 @@ Priority: **high** = seen or heard every session (colony buildings, common items
 | Scavenge maps & props | 0 | 0 | 0 | 0 | 0 | 0 |
 | Devices & electronics | 0 | 0 | 3 | 0 | 0 | 0 |
 | Defenses & traps | 10 | 2 | 3 | 0 | 0 | 0 |
-| Gear models | 10 | 0 | 0 | 0 | 0 | 2 |
+| Gear models | 12 | 0 | 0 | 0 | 0 | 3 |
 | Gear mods | 3 | 0 | 0 | 0 | 0 | 0 |
 | Cybernetics | 0 | 0 | 0 | 0 | 0 | 0 |
 | Vehicles | 2 | 0 | 0 | 0 | 0 | 0 |
 | Story portraits | 0 | 45 | 0 | 0 | 0 | 0 |
-| Item icons | 0 | 114 | 0 | 0 | 0 | 0 |
+| Item icons | 0 | 119 | 0 | 0 | 0 | 0 |
 | UI icons | 0 | 24 | 0 | 0 | 0 | 2 |
-| Sounds | 0 | 0 | 0 | 0 | 0 | 0 |
+| Sounds | 0 | 1 | 0 | 10 | 0 | 0 |
 | Sound events | 0 | 16 | 0 | 0 | 3 | 0 |
-| **Total** | 25 | 212 | 6 | 0 | 3 | 4 |
+| **Total** | 27 | 218 | 6 | 10 | 3 | 5 |
 
-Checked against 492 models, 128 sounds, 466 line icons.
+Checked against 492 models, 128 sounds, 470 line icons.
 
 ## Screenshots
 
@@ -150,7 +150,9 @@ Nothing missing.
 |---|---|---|---|---|---|
 | high | `item_crowbar` | missing | SurvivorDressing.AttachGear, gear bench preview | Crowbar (weapon, tier 1) | not drawn on survivors; bench shows a grey box |
 | high | `item_dust_mask` | missing | SurvivorDressing.AttachGear, gear bench preview | Dust Mask & Goggles (headgear, tier 1) | not drawn on survivors; bench shows a grey box |
+| high | `item_knife` | missing | SurvivorDressing.AttachGear, gear bench preview | Scrap Knife (weapon, tier 1) | not drawn on survivors; bench shows a grey box |
 | medium | `item_pulse_rifle` | missing | SurvivorDressing.AttachGear, gear bench preview | Pulse Rifle (weapon, tier 3) | not drawn on survivors; bench shows a grey box |
+| medium | `item_sword` | missing | SurvivorDressing.AttachGear, gear bench preview | Scrap Sword (weapon, tier 2) | not drawn on survivors; bench shows a grey box |
 | low | `item_crawler_carapace` | missing | SurvivorDressing.AttachGear, gear bench preview | Crawler Carapace (armor, enemy gear) | not drawn on survivors; bench shows a grey box |
 | low | `item_crawler_mandibles` | missing | SurvivorDressing.AttachGear, gear bench preview | Crawler Mandibles (weapon, enemy gear) | not drawn on survivors; bench shows a grey box |
 | low | `item_drone_zapper` | missing | SurvivorDressing.AttachGear, gear bench preview | Drone Zapper (weapon, enemy gear) | not drawn on survivors; bench shows a grey box |
@@ -249,6 +251,7 @@ Nothing missing.
 | medium | `icons/fuel_can.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Fuel Can, rendered material icon | shows the item_material line icon |
 | medium | `icons/hand_saw.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Hand Saw, rendered material icon | shows the item_material line icon |
 | medium | `icons/hook_arm.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Hook Arm, rendered prosthetic icon | shows the item_prosthetic line icon |
+| medium | `icons/knife.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Scrap Knife, rendered weapon icon | shows the item_weapon line icon |
 | medium | `icons/machete.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Machete, rendered weapon icon | shows the item_weapon line icon |
 | medium | `icons/manual_electronics.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Field Manual: Electronics, rendered material icon | shows the item_material line icon |
 | medium | `icons/marrow_ledger.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Marrow's Ledger, rendered material icon | shows the item_material line icon |
@@ -288,6 +291,7 @@ Nothing missing.
 | low | `icons/cole_ledger.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | The Tally's List, rendered material icon | shows the item_material line icon |
 | low | `icons/crawler_carapace.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Crawler Carapace, rendered armor icon (enemy gear) | shows the item_armor line icon |
 | low | `icons/crawler_mandibles.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Crawler Mandibles, rendered weapon icon (enemy gear) | shows the item_weapon line icon |
+| low | `icons/cutting_torch.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Cutting Torch, rendered material icon | shows the item_material line icon |
 | low | `icons/cyber_arm.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Cybernetic Arm, rendered prosthetic icon | shows the item_prosthetic line icon |
 | low | `icons/cyber_leg.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Cybernetic Leg, rendered prosthetic icon | shows the item_prosthetic line icon |
 | low | `icons/cyberdeck.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Cyberdeck, rendered tool icon | shows the item_tool line icon |
@@ -300,6 +304,7 @@ Nothing missing.
 | low | `icons/engine_small.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Small Engine, rendered material icon | shows the item_material line icon |
 | low | `icons/engine_v8.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Freight Diesel, rendered material icon | shows the item_material line icon |
 | low | `icons/evac_beacon.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Evac Beacon, rendered consumable icon | shows the item_consumable line icon |
+| low | `icons/felling_axe.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Felling Axe, rendered material icon | shows the item_material line icon |
 | low | `icons/grappling_hook.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Grappling Hook, rendered tool icon | shows the item_tool line icon |
 | low | `icons/gun_arm.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Gun Arm, rendered prosthetic icon | shows the item_prosthetic line icon |
 | low | `icons/hacker_arm.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Hacker Arm, rendered prosthetic icon | shows the item_prosthetic line icon |
@@ -328,6 +333,7 @@ Nothing missing.
 | low | `icons/pulse_rifle.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Pulse Rifle, rendered weapon icon | shows the item_weapon line icon |
 | low | `icons/rifle.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Hunting Rifle, rendered weapon icon | shows the item_weapon line icon |
 | low | `icons/riot_armor.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Riot Armor, rendered armor icon | shows the item_armor line icon |
+| low | `icons/rock_drill.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Hand Rock Drill, rendered material icon | shows the item_material line icon |
 | low | `icons/runner_leg.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Runner Leg, rendered prosthetic icon | shows the item_prosthetic line icon |
 | low | `icons/runner_leg_mk2.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Cyborg Runner Leg, rendered prosthetic icon | shows the item_prosthetic line icon |
 | low | `icons/scanner.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Scanner, rendered tool icon | shows the item_tool line icon |
@@ -340,6 +346,7 @@ Nothing missing.
 | low | `icons/silent_leg_mk2.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Cyborg Silent Leg, rendered prosthetic icon | shows the item_prosthetic line icon |
 | low | `icons/stim.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Combat Stim, rendered consumable icon | shows the item_consumable line icon |
 | low | `icons/surgical_kit.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Surgical Kit, rendered material icon | shows the item_material line icon |
+| low | `icons/sword.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Scrap Sword, rendered weapon icon | shows the item_weapon line icon |
 | low | `icons/thermal_eye.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Thermal Eye, rendered prosthetic icon | shows the item_prosthetic line icon |
 | low | `icons/trauma_kit.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Field Trauma Kit, rendered consumable icon | shows the item_consumable line icon |
 | low | `icons/turret_gun.png` | fallback | Icons.Item (inventory, loot, trade, bench, expedition) | Turret Gun, rendered weapon icon (enemy gear) | shows the item_weapon line icon |
@@ -378,7 +385,19 @@ Nothing missing.
 
 ## Sounds
 
-Nothing missing.
+| Priority | Id | Status | Used in | Should be | Meanwhile |
+|---|---|---|---|---|---|
+| medium | `music_chain_layer` | fallback | sound_events.json layers[chain_layer] | its own chain layer stem | borrows music_scavenge_combat_layer (contact_layer's stem); silent while that one plays |
+| medium | `card_draw` | placeholder | sound_events.json events[juice.card_draw] | juice.card_draw | synthesised blip (PlaceholderSounds) |
+| medium | `card_play` | placeholder | sound_events.json events[scavenge.card_played] | scavenge.card_played | synthesised blip (PlaceholderSounds) |
+| medium | `card_shuffle` | placeholder | sound_events.json events[scavenge.deck_shuffled] | scavenge.deck_shuffled | synthesised blip (PlaceholderSounds) |
+| medium | `card_slam` | placeholder | sound_events.json events[juice.card_slam] | juice.card_slam | synthesised blip (PlaceholderSounds) |
+| medium | `card_sweep` | placeholder | sound_events.json events[juice.card_sweep] | juice.card_sweep | synthesised blip (PlaceholderSounds) |
+| medium | `chain_tick` | placeholder | sound_events.json events[juice.chain] | juice.chain | synthesised blip (PlaceholderSounds) |
+| medium | `dodge_whoosh` | placeholder | sound_events.json events[scavenge.intent_fizzled] | scavenge.intent_fizzled | synthesised blip (PlaceholderSounds) |
+| medium | `kill_thump` | placeholder | sound_events.json events[juice.kill] | juice.kill | synthesised blip (PlaceholderSounds) |
+| medium | `sting_ambush` | placeholder | sound_events.json events[scavenge.countered] | scavenge.countered | synthesised blip (PlaceholderSounds) |
+| medium | `telegraph_warn` | placeholder | sound_events.json events[scavenge.intent_declared] | scavenge.intent_declared | synthesised blip (PlaceholderSounds) |
 
 ## Sound events
 

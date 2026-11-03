@@ -121,7 +121,7 @@ public class TacticsViewTests
         var view = DeckBuilder.View(sim);
         Assert.Equal(Real.Cards.Rules.MaxDeck, view.MaxDeck);
         Assert.Equal(sim.State.Cards.Deck.Count, view.DeckCount);
-        var dash = view.Rows.Single(r => r.Id == "dash");
+        var dash = view.Rows.Single(r => r.Id == "shove");
         Assert.Equal((2, 2, 0, 0), (dash.Owned, dash.InDeck, dash.InSlots, dash.Free));
         Assert.Equal(Real.Cards.Rules.MaxCopies, dash.MaxCopies);
         Assert.All(view.Slots, s => Assert.True(s.Slots >= 0));

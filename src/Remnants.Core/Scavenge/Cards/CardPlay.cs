@@ -15,7 +15,7 @@ public static class CardPlay
 {
     /// <summary>A card play as Core would take it: the deck, the card, the effect it would have and its AP; or why not.</summary>
     public sealed record PlayCheck(ScavengeResult Result, SquadDeck? Deck = null, CardDef? Card = null, Unit? Planner = null,
-        CardEffect? Effect = null, int Ap = 0, bool Boost = false)
+        CardEffect? Effect = null, int Ap = 0, bool Boost = false, CardAbilities.Outcome? Ability = null)
     {
         public bool Ok => Result.Ok;
     }
@@ -49,7 +49,9 @@ public static class CardPlay
         if (card.Reaction)
         {
             planner = c.TargetId is { } id ? state.FindUnit(id) : null;
-            if (planner is not { IsActive: true, Plan: not null } || !unit.HostileTo(planner) || !Detection.SideSees(data, state, unit.Side, planner))
+            // A plan, or (for a disrupt) a tile strike readied this sub-round.
+            if (planner is not { IsActive: true } || planner.Plan is null && !(card.Effect.Disrupt && TileStrikes.Readied(state, planner))
+                || !unit.HostileTo(planner) || !Detection.SideSees(data, state, unit.Side, planner))
                 return Fail(ScavengeError.NoIntent, $"{card.Name} needs a seen enemy with a plan.");
         }
 
@@ -57,7 +59,13 @@ public static class CardPlay
         if (card.Scaling is { } scaling) effect = effect.Scaled(scaling.Factor(unit));
         if (effect.Mend > 0 && Treatment.WorstInjury(unit.Body) <= 0 && effect with { Mend = 0 } is { IsEmpty: true })
             return Fail(ScavengeError.NotUsable, $"{unit.Name} has no injury to mend.");
-        return new PlayCheck(ScavengeResult.Success($"{card.Name} on {unit.Name}."), deck, card, planner, effect, ap, boost);
+        CardAbilities.Outcome? ability = null;
+        if (effect.IsAbility)
+        {
+            ability = CardAbilities.Check(sim, unit, card, effect, c.TargetId, c.Tile);
+            if (!ability.Ok) return new PlayCheck(ability.Fail!);
+        }
+        return new PlayCheck(ScavengeResult.Success($"{card.Name} on {unit.Name}."), deck, card, planner, effect, ap, boost, ability);
     }
 
     /// <param name="deckId">The deck to play from: the player's (default), or the enemy side's for its AI (<see cref="EnemyCards.DeckId"/>).</param>
@@ -67,6 +75,7 @@ public static class CardPlay
         var check = Check(sim, unit, c, deckId);
         if (!check.Ok) return check.Result;
         var (deck, card, planner, effect, ap, boost) = (check.Deck!, check.Card!, check.Planner, check.Effect!, check.Ap, check.Boost);
+        var target = planner ?? check.Ability?.Target;
 
         deck.Points -= card.Cost;
         unit.Ap -= ap;
@@ -89,14 +98,15 @@ public static class CardPlay
         if (effect.Mend > 0 && Treatment.Mend(unit.Body, effect.Mend) is { } mended) done.Add(mended);
         if (effect.Draw > 0) { SquadDecks.Draw(sim, deck, effect.Draw); done.Add($"draws {effect.Draw}"); }
         if (effect.Counter && planner is not null) { unit.CounterId = planner.Id; done.Add($"ready to strike {planner.Name} first"); }
+        if (check.Ability is { } ability) done.AddRange(CardAbilities.Apply(sim, unit, effect, ability, card.Radius));
         // Onto its pile only now, so a draw card never reshuffles itself back into the hand.
         if (!c.FromSlot) (card.Consumable ? deck.Consumed : deck.Used).Add(c.CardId);
         if (!card.Reaction) unit.LastCardId = card.Id;
 
         var side = deckId is null ? state.FindParty(c.PlayerId)?.Side ?? unit.Side : unit.Side;
         var text = $"{unit.Name} plays {card.Name}{(boost ? " (boosted)" : "")}: {string.Join(", ", done)}.";
-        state.Log(new(state.Round, ScavengeEventType.CardPlayed, text, unit.Id, planner?.Id, unit.Pos, Side: side));
-        return ScavengeResult.Success(text, planner?.Id);
+        state.Log(new(state.Round, ScavengeEventType.CardPlayed, text, unit.Id, target?.Id, unit.Pos, Side: side));
+        return ScavengeResult.Success(text, target?.Id);
     }
 
     internal static ScavengeResult DiscardDead(ScavengeSim sim, Unit unit, DiscardDeadCard c)
@@ -127,11 +137,7 @@ public static class CardPlay
             u.CounterId = null;
             if (!planner.IsActive) return;
             if (!u.IsActive || !Detection.Spots(sim.Data, sim.State, u, planner)) continue;
-            var action = sim.Profile(u).Actions
-                .Where(a => Drones.CanStrike(a, planner) && Combat.CheckReach(sim.Data, sim.State.Map, u.Pos, a, planner.Pos) == ScavengeError.None)
-                .OrderByDescending(a => Combat.ChanceToHit(sim, u, a, planner) * (a.MinDamage + a.MaxDamage) / 2)
-                .ThenBy(a => a.Id, StringComparer.Ordinal)
-                .FirstOrDefault();
+            var action = CardAbilities.BestBlow(sim, u, planner);
             if (action is null) continue;
             sim.State.Log(new(sim.State.Round, ScavengeEventType.Countered, $"{u.Name} reads {planner.Name}'s move and strikes first ({action.Name})!",
                 u.Id, planner.Id, planner.Pos, Anonymous: $"{planner.Name} is struck from the fog as it moves."));

@@ -80,7 +80,10 @@ public static class PlannedActions
         {
             Path = c.Path.ToList(), AttackTile = c.AttackTile, ActionId = c.ActionId, TargetId = targetId, Round = state.Round,
             CardId = unit.LastCardId, MoveBonus = unit.CardMove, Suppress = c.Suppress, Mode = mode, Direction = direction,
+            DeclaredSeq = state.TurnSeq,
         };
+        // It turns to where it means to go (or strike) first: the plan shows in how it stands, and its back is then open.
+        if ((c.Path.Count > 0 ? c.Path[0] : c.AttackTile) is { } toward && toward != start) unit.Facing = Combat.Face(start, toward);
         var what = (c.Path.Count > 0 ? $"a move to {end}" : "") + (c.Path.Count > 0 && c.AttackTile is not null ? " and " : "")
                    + (c.AttackTile is { } at ? $"an attack on {at}" : "");
         state.Log(new(state.Round, ScavengeEventType.IntentDeclared, $"{unit.Name} plans {what}.", unit.Id, Pos: unit.Pos));
@@ -92,6 +95,21 @@ public static class PlannedActions
     /// (whatever the unit has left now; more if a stim left it above its maximum).
     /// </summary>
     public static int Budget(ScavengeSim sim, Unit unit) => Math.Max(unit.Ap, sim.Profile(unit).MaxAp);
+
+    /// <summary>
+    /// Whether an AI unit's plan may come down now: whoever it was aimed at has had its chance to answer it since it was
+    /// declared, so every enemy blow can be stepped out of. That is a sub-turn since (a drone's operator's), or a choice
+    /// already made: holding a stance, or done for the round with AP left. A target that is gone or never takes turns
+    /// (a decoy, a device) does not hold it up. A player's plan is always ready at the start of their turn.
+    /// </summary>
+    public static bool Ready(ScavengeState state, Unit unit)
+    {
+        if (unit.Plan is not { } plan || unit.PlayerControlled || plan.TargetId is not { } id) return true;
+        if (state.FindUnit(id) is not { IsActive: true, OnMap: true } target) return true;
+        if (target.Kind == UnitKind.Drone && target.OperatorId is { } op && state.FindUnit(op) is { IsActive: true } pilot) target = pilot;
+        if (!state.TurnOrder.Contains(target.Id)) return true;
+        return target.TurnSeq > plan.DeclaredSeq || target.Stance != Stance.None || target.TurnOverRound == state.Round && target.Ap > 0;
+    }
 
     /// <summary>Carries out the unit's plan at the start of its turn (after its AP refill), then clears it.</summary>
     internal static void Resolve(ScavengeSim sim, Unit unit)
@@ -145,10 +163,7 @@ public static class PlannedActions
             // Only a blow that came down on the tile can be dodged; a plan that fell short dodged nobody.
             if (swung && plan.TargetId is { } aimed && aimed != target?.Id && struck?.Any(u => u.Id == aimed) != true
                 && state.FindUnit(aimed) is { IsActive: true } dodger && dodger.Pos != tile)
-            {
-                dodger.OutplayedId = unit.Id;
-                dodger.OutplayedUntilRound = state.Round + 1;
-            }
+                Combat.Dodged(sim, dodger, unit);
         }
 
         if (failed is null)

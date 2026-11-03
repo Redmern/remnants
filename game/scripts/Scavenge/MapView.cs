@@ -8,7 +8,11 @@ using Remnants.Game.Colony;
 namespace Remnants.Game.Scavenge;
 
 /// <summary>How a highlighted tile reads: where the unit can move, whom it can hit, whom an item can reach.</summary>
-public enum HighlightKind { Move, Attack, Use, Selected, Hover, Threat, ThreatPlanned }
+/// <summary>
+/// An aimed card adds four: <see cref="CardTarget"/> a target it can go on, <see cref="CardInvalid"/> one it cannot (greyed),
+/// <see cref="Landing"/> where the hovered target's moved unit ends up, <see cref="Affected"/> the units it touches.
+/// </summary>
+public enum HighlightKind { Move, Attack, Use, Selected, Hover, Threat, ThreatPlanned, CardTarget, CardInvalid, Landing, Affected }
 
 /// <summary>
 /// The tactical map: terrain props per tile (ground, walls, rubble, wrecked cars), exit markers, loot crates,
@@ -26,6 +30,12 @@ public partial class MapView : Node3D
     /// <summary>Threat overlay: faint where a seen enemy could hit now, strong where a telegraphed blow will land.</summary>
     private static readonly Color ThreatColor = new(1f, 0.55f, 0.2f, 0.32f);
     private static readonly Color ThreatPlannedColor = new(1f, 0.18f, 0.12f, 0.85f);
+    private static readonly Color CardTargetColor = new(0.92f, 0.65f, 0.24f, 0.95f);
+    private static readonly Color CardInvalidColor = new(0.45f, 0.43f, 0.4f, 0.55f);
+    private static readonly Color LandingColor = new(0.55f, 1f, 0.85f, 1f);
+    private static readonly Color AffectedColor = new(1f, 0.42f, 0.2f, 0.9f);
+    private static readonly Color BarrierColor = new(0.92f, 0.65f, 0.24f, 1f);
+    private static readonly Color SmokeColor = new(0.72f, 0.72f, 0.7f, 0.42f);
     private static readonly Color ExitColor = new(0.4f, 0.95f, 0.5f, 0.45f);
     private static readonly Color GridColor = new(0f, 0f, 0f, 0.22f);
     private static readonly Color WaterColor = new(0.13f, 0.22f, 0.26f, 0.9f);
@@ -63,6 +73,8 @@ public partial class MapView : Node3D
                      (HighlightKind.Move, MoveColor), (HighlightKind.Attack, AttackColor), (HighlightKind.Use, UseColor),
                      (HighlightKind.Selected, SelectedColor), (HighlightKind.Hover, HoverColor),
                      (HighlightKind.Threat, ThreatColor), (HighlightKind.ThreatPlanned, ThreatPlannedColor),
+                     (HighlightKind.CardTarget, CardTargetColor), (HighlightKind.CardInvalid, CardInvalidColor),
+                     (HighlightKind.Landing, LandingColor), (HighlightKind.Affected, AffectedColor),
                  })
             _highlightMaterials[kind] = Framed(frame, color);
         BuildTerrain();
@@ -82,6 +94,7 @@ public partial class MapView : Node3D
     private void BuildTerrain()
     {
         var map = _presenter.State.Map;
+        Terrain Raw(Pos p) => map.Tiles[map.Index(p)];
         var seed = GroundPattern.Seed(map, _presenter.State.ZoneId);
         _tiles = new Node3D[map.Width * map.Height];
         _tileMeshes = new MeshInstance3D[_tiles.Length][];
@@ -104,9 +117,9 @@ public partial class MapView : Node3D
             if (GroundPattern.Flip(seed, p)) ground.RotationDegrees = new Vector3(0, 180, 0);
             tile.AddChild(ground);
             foreach (var mesh in Meshes(ground)) _ground[mesh] = variant == 0 ? _groundShade : _patchShade;
-            var dressed = colony?.Dress(tile, p, map[p]) ?? false;
+            var dressed = colony?.Dress(tile, p, Raw(p)) ?? false;
 
-            switch (map[p])
+            switch (Raw(p))
             {
                 case Terrain.Wall when dressed:
                 case Terrain.Cover when dressed:
@@ -136,7 +149,7 @@ public partial class MapView : Node3D
                     });
                     break;
             }
-            if (map[p] != Terrain.Wall)
+            if (Raw(p) != Terrain.Wall)
                 tile.AddChild(new MeshInstance3D
                 {
                     Name = "Grid", Mesh = gridMesh, MaterialOverride = gridMaterial, Position = new Vector3(0, 0.09f, 0),
@@ -148,7 +161,8 @@ public partial class MapView : Node3D
         }
     }
 
-    private static bool Is(TileMap map, Pos p, params Terrain[] kinds) => map.InBounds(p) && kinds.Contains(map[p]);
+    /// <summary>The map's own terrain on a tile (a card's barrier over it is drawn apart, <see cref="SyncFieldEffects"/>).</summary>
+    private static bool Is(TileMap map, Pos p, params Terrain[] kinds) => map.InBounds(p) && kinds.Contains(map.Tiles[map.Index(p)]);
 
     /// <summary>
     /// A wall segment runs along X; turn it to follow neighbouring walls, two crossed at corners. A wall tile with no
@@ -285,6 +299,8 @@ public partial class MapView : Node3D
                 foreach (var mesh in Meshes(hulk)) mesh.MaterialOverlay = _wreckMaterial;
             }
 
+        SyncFieldEffects();
+
         var caches = _presenter.State.Caches;
         foreach (var id in _crates.Keys.Where(id => caches.All(c => c.Id != id)).ToList())
         {
@@ -304,6 +320,82 @@ public partial class MapView : Node3D
             var dim = _presenter.IsVisible(cache.Pos) ? null : _fogMaterial;
             foreach (var mesh in Meshes(crate)) mesh.MaterialOverlay = dim;
         }
+    }
+
+    private readonly Node3D _fieldEffects = new() { Name = "FieldEffects" };
+    private string _fieldSignature = "";
+    private StandardMaterial3D? _barrierTint, _smokeMaterial;
+
+    /// <summary>
+    /// Cards' marks on the map (<see cref="ScavengeState.FieldEffects"/>), rebuilt when they change: a barrier is a low-cover
+    /// prop with an amber band (it is cover until it falls), smoke a grey haze of puffs over each tile it covers. Only on
+    /// tiles the side has seen; dimmed out of sight like the ground.
+    /// </summary>
+    private void SyncFieldEffects()
+    {
+        if (_fieldEffects.GetParent() is null) AddChild(_fieldEffects);
+        var effects = _presenter.State.FieldEffects;
+        var signature = string.Join(";", effects.Select(f => $"{f.Kind}:{f.UntilRound}:{string.Join(",", f.Tiles)}"));
+        if (signature != _fieldSignature)
+        {
+            _fieldSignature = signature;
+            foreach (var child in _fieldEffects.GetChildren()) child.QueueFree();
+            foreach (var effect in effects)
+                foreach (var p in effect.Tiles)
+                    _fieldEffects.AddChild(effect.Kind == FieldEffectKind.Barrier ? Barrier(p) : SmokePuff(p));
+        }
+        foreach (var child in _fieldEffects.GetChildren().OfType<Node3D>())
+        {
+            var p = TileGrid.FromWorld(child.Position);
+            child.Visible = _presenter.IsExplored(p) || _presenter.IsVisible(p);
+            var dim = _presenter.IsVisible(p) ? null : _fogMaterial;
+            if (child.Name.ToString().StartsWith("Barrier"))
+                foreach (var mesh in Meshes(child)) mesh.MaterialOverlay = dim ?? (mesh.Name == "Band" ? null : _barrierTint);
+        }
+    }
+
+    private Node3D Barrier(Pos p)
+    {
+        _barrierTint ??= Placeholders.Material(new Color(BarrierColor, 0.18f), unshaded: true);
+        var root = new Node3D { Name = $"Barrier{p.X}_{p.Y}", Position = TileGrid.ToWorld(p) };
+        if (_models.LowCover.Count > 0 && _models.Prop(_models.LowCover[(p.X * 7 + p.Y * 3 & int.MaxValue) % _models.LowCover.Count]) is { } prop)
+        {
+            var map = _presenter.State.Map;
+            var alongZ = Is(map, p + new Pos(0, 1), Terrain.Wall, Terrain.Cover) || Is(map, p + new Pos(0, -1), Terrain.Wall, Terrain.Cover);
+            prop.RotationDegrees = new Vector3(0, alongZ ? 90 : 0, 0);
+            root.AddChild(prop);
+        }
+        else
+            root.AddChild(new MeshInstance3D
+            {
+                Mesh = new BoxMesh { Size = new Vector3(1.7f, 0.7f, 0.5f) }, Position = new Vector3(0, 0.35f, 0),
+                MaterialOverride = Placeholders.Material(new Color(0.42f, 0.38f, 0.32f)),
+            });
+        // The card's mark: an amber band on the ground round the tile.
+        var band = Quad(BarrierColor, 0.105f, 1.9f);
+        band.Name = "Band";
+        band.MaterialOverride = Framed(TileFrame(border: 3, fill: 0.08f), BarrierColor);
+        root.AddChild(band);
+        return root;
+    }
+
+    private Node3D SmokePuff(Pos p)
+    {
+        _smokeMaterial ??= Placeholders.Material(SmokeColor, unshaded: true);
+        var root = new Node3D { Name = $"Smoke{p.X}_{p.Y}", Position = TileGrid.ToWorld(p) };
+        var seed = (p.X * 73856093) ^ (p.Y * 19349663);
+        for (var i = 0; i < 3; i++)
+        {
+            var r = 0.55f + (seed >> (i * 3) & 3) * 0.1f;
+            var puff = new MeshInstance3D
+            {
+                Mesh = new SphereMesh { Radius = r, Height = r * 1.4f, RadialSegments = 10, Rings = 5 },
+                MaterialOverride = _smokeMaterial, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+                Position = new Vector3(((seed >> (i * 4 + 1)) & 3) * 0.2f - 0.3f, 0.45f + i * 0.35f, ((seed >> (i * 4 + 2)) & 3) * 0.2f - 0.3f),
+            };
+            root.AddChild(puff);
+        }
+        return root;
     }
 
     /// <summary>
@@ -378,7 +470,11 @@ public partial class MapView : Node3D
         var quad = _quads[_quadsUsed++];
         quad.MaterialOverride = _highlightMaterials[kind];
         // Threats sit just under the move and attack marks, so both read on the same tile.
-        quad.Position = TileGrid.ToWorld(p) + new Vector3(0, kind switch { HighlightKind.Selected => 0.13f, HighlightKind.Threat or HighlightKind.ThreatPlanned => 0.115f, _ => 0.12f }, 0);
+        quad.Position = TileGrid.ToWorld(p) + new Vector3(0, kind switch
+        {
+            HighlightKind.Selected or HighlightKind.Landing => 0.13f, HighlightKind.Affected => 0.125f,
+            HighlightKind.Threat or HighlightKind.ThreatPlanned => 0.115f, _ => 0.12f,
+        }, 0);
         quad.Visible = true;
         if (label is null) return;
         if (_labelsUsed == _labels.Count)
@@ -396,7 +492,14 @@ public partial class MapView : Node3D
         var text = _labels[_labelsUsed++];
         text.Text = label;
         text.Position = TileGrid.ToWorld(p) + new Vector3(0, 0.5f, 0);
-        text.Modulate = kind == HighlightKind.Use ? Hud.Palette.Good : Hud.Palette.Text;
+        text.Modulate = kind switch
+        {
+            HighlightKind.Use => Hud.Palette.Good,
+            HighlightKind.CardTarget => Hud.Palette.Amber,
+            HighlightKind.CardInvalid => Hud.Palette.TextMuted,
+            HighlightKind.Landing => LandingColor,
+            _ => Hud.Palette.Text,
+        };
         text.Visible = true;
     }
 

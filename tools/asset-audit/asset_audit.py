@@ -519,6 +519,15 @@ def audit_sounds():
         for key, value in (EVENTS_FILE.get(section) or {}).items():
             if key.startswith("//"): continue
             for sid in sound_ids(value): check_sound(sid, f"sound_events.json {section}[{key}]", f"{section} {key}", pri)
+    # A music layer that borrows another layer's stem (MusicDirector never plays one stem twice: the first one on wins).
+    seen_stems = {}
+    for key, value in (EVENTS_FILE.get("layers") or {}).items():
+        if key.startswith("//"): continue
+        for sid in sound_ids(value):
+            if sid in seen_stems:
+                add("Sounds", f"music_{key}", "fallback", f"sound_events.json layers[{key}]", f"its own {key.replace('_', ' ')} stem",
+                    MED, f"borrows {sid} ({seen_stems[sid]}'s stem); silent while that one plays")
+            else: seen_stems[sid] = key
     for key, value in (EVENTS_FILE.get("ambience") or {}).items():
         if key.startswith("//"): continue
         if key == "work" and isinstance(value, dict):

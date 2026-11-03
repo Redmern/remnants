@@ -93,13 +93,12 @@ public class ProtocolTests
         foreach (var (command, kind) in new (IScavengeCommand, string)[]
                  {
                      (new PlayCard(1, 2, "dash"), "playCard"), (new PlayCard(1, 2, "counterstrike", 9, Boost: true, FromSlot: true), "playCard"),
-                     (new DiscardDeadCard(1, 2, "sprint"), "discardDeadCard"),
+                     (new PlayCard(1, 2, "smoke_bomb", Tile: new Pos(4, 5)), "playCard"), (new DiscardDeadCard(1, 2, "sprint"), "discardDeadCard"),
                  })
         {
             var json = ProtocolJson.Serialize(new Command(3, command));
             Assert.Contains($"\"kind\":\"{kind}\"", json);
             Assert.Equal(command, Assert.IsType<Command>(ProtocolJson.Deserialize(json)).Intent);
-            Assert.DoesNotContain("\"tile\"", json); // a card goes on a character, never a tile
         }
         RoundTrips(new Join(Protocol.Version, "Ana", NetFixture.Party("A"), Deck: ["dash", "dash", "take_cover"]));
     }

@@ -19,10 +19,13 @@ public static class BotTactics
             .OrderBy(u => u.Id).ToList();
 
     /// <summary>
-    /// The card to play on <paramref name="unit"/> now, or null. By priority: a reaction against a seen plan aimed at it;
-    /// an aim card when it can attack a hostile now; a defense card when a hostile sees it; a mend when it is hurt; a
-    /// draw when the hand runs low; else a dead hard card nobody can use is discarded. Only cards it may play, that the
-    /// points cover and that cost no AP or leave AP for a blow.
+    /// The card to play on <paramref name="unit"/> now, or null. By priority: a reaction against a seen plan aimed at it
+    /// (one that breaks the plan first); on its own turn, holding back a seen enemy still to act whose plan aims at one of
+    /// the squad, hurrying up a threatened ally still to act, breaking a seen enemy's plan (a shove, a pull, a disrupt), a
+    /// free strike or an aim card when it can attack a hostile now, a flank step round to a seen enemy's side or back when
+    /// none is in reach; a smoke screen toward who sees it when hurt, a defense card or a barrier toward the hostiles when seen; a
+    /// mend when it is hurt; a draw when the hand runs low; else a dead hard card nobody can use is discarded. Only cards
+    /// the rules accept now (<see cref="CardPlay.Check"/>) that cost no AP or leave AP for a blow.
     /// </summary>
     public static IScavengeCommand? Card(ScavengeSim sim, Unit unit, int playerId)
     {
@@ -38,24 +41,76 @@ public static class BotTactics
             && (c.ApCost == 0 || unit.Ap >= c.ApCost + cheapest) && (current || c.Reaction);
         var hand = deck.Hand.Distinct().Select(data.Cards.Find).OfType<CardDef>().OrderBy(c => c.Id, StringComparer.Ordinal).ToList();
         var playable = hand.Where(Playable).ToList();
-        PlayCard Play(CardDef c, int? target = null) => new(playerId, unit.Id, c.Id, target);
+        PlayCard Play(CardDef c, int? target = null, Pos? tile = null) => new(playerId, unit.Id, c.Id, target, Tile: tile);
+        PlayCard? Try(IEnumerable<CardDef> cards, IEnumerable<(int? Target, Pos? Tile)> aims)
+        {
+            var list = aims.ToList();
+            foreach (var c in cards)
+                foreach (var (target, tile) in list)
+                    if (CardPlay.Check(sim, unit, Play(c, target, tile)).Ok) return Play(c, target, tile);
+            return null;
+        }
+        IEnumerable<(int?, Pos?)> At(IEnumerable<Unit> units) => units.Select(u => ((int?)u.Id, (Pos?)null));
 
-        if (Threats(sim, unit).FirstOrDefault() is { } threat && playable.FirstOrDefault(c => c.Reaction) is { } reaction) return Play(reaction, threat.Id);
+        if (Threats(sim, unit) is { Count: > 0 } threats
+            && Try(playable.Where(c => c.Reaction).OrderByDescending(Breaks), At(threats)) is { } answer) return answer;
         if (!current) return null;
-        var hostiles = state.Units.Where(u => u.IsActive && unit.HostileTo(u) && Detection.SideSees(data, state, unit.Side, u)).ToList();
-        var inReach = hostiles.Any(h => profile.Actions.Any(a => a.ApCost <= unit.Ap && Combat.CheckReach(data, state.Map, unit.Pos, a, h.Pos) == ScavengeError.None));
-        var seen = hostiles.Any(h => Detection.Spots(data, state, h, unit));
-        var nonReactions = playable.Where(c => !c.Reaction).ToList();
-        if (inReach && unit.CardHit <= 0 && nonReactions.FirstOrDefault(c => c.Effect.Hit > 0) is { } aim) return Play(aim);
-        if (seen && unit.CardCover <= 0 && nonReactions.FirstOrDefault(c => c.Effect.Cover > 0) is { } cover) return Play(cover);
-        if (seen && unit.Guard == 0 && nonReactions.FirstOrDefault(c => c.Effect.Guard > 0) is { } guard) return Play(guard);
-        if (Treatment.WorstInjury(unit.Body) >= MendInjuryAt && nonReactions.FirstOrDefault(c => c.Effect.Mend > 0) is { } mend) return Play(mend);
-        if (deck.Hand.Count <= 2 && nonReactions.FirstOrDefault(c => c.Effect.Draw > 0) is { } draw) return Play(draw);
+        var hostiles = state.Units.Where(u => u.IsActive && unit.HostileTo(u) && Detection.SideSees(data, state, unit.Side, u))
+            .OrderBy(h => h.Pos.Chebyshev(unit.Pos)).ThenBy(h => h.Id).ToList();
         var squad = state.Units.Where(u => u.PlayerId == playerId && u.PlayerControlled && u.IsActive).ToList();
+        var nonReactions = playable.Where(c => !c.Reaction).ToList();
+        bool StillToAct(Unit u) => state.TurnOrder.IndexOf(u.Id) > state.TurnIndex;
+
+        // Turn order: an enemy about to bring a blow down on one of us goes last; a threatened ally goes next, to get away.
+        var aimedAtUs = hostiles.Where(h => h.Plan?.AttackTile is { } t && squad.Any(s => s.Pos == t) && StillToAct(h));
+        if (Try(nonReactions.Where(c => c.Effect.DelayInitiative), At(aimedAtUs)) is { } hold) return hold;
+        var threatened = squad.Where(s => s.Id != unit.Id && StillToAct(s) && Threats(sim, s).Count > 0);
+        if (Try(nonReactions.Where(c => c.Effect.AdvanceInitiative), At(threatened)) is { } hurry) return hurry;
+        // A seen plan is broken: shoved or pulled off its tile, or disrupted.
+        if (Try(nonReactions.Where(Breaks), At(hostiles.Where(h => h.Plan is not null))) is { } broken) return broken;
+
+        var inReach = hostiles.Where(h => profile.Actions.Any(a => a.ApCost <= unit.Ap && Combat.CheckReach(data, state.Map, unit.Pos, a, h.Pos) == ScavengeError.None)).ToList();
+        if (Try(nonReactions.Where(c => c.Effect.Strike), At(inReach)) is { } strike) return strike;
+        if (inReach.Count > 0 && unit.CardHit <= 0 && nonReactions.FirstOrDefault(c => c.Effect.Hit > 0) is { } aim) return Play(aim);
+        if (inReach.Count == 0 && Try(nonReactions.Where(c => c.Effect.Step > 0), FlankTiles(sim, unit, hostiles)) is { } flank) return flank;
+
+        var seenBy = hostiles.Where(h => Detection.Spots(data, state, h, unit)).ToList();
+        var hurt = Treatment.WorstInjury(unit.Body);
+        if (seenBy.Count > 0 && hurt >= SmokeInjuryAt)
+            foreach (var c in nonReactions.Where(c => c.Effect.Smoke > 0))
+                if (Try([c], [(null, CardAbilities.ScreenTile(unit, seenBy[0].Pos, c.Radius))]) is { } smoke) return smoke;
+        if (seenBy.Count > 0 && unit.CardCover <= 0 && nonReactions.FirstOrDefault(c => c.Effect.Cover > 0) is { } cover) return Play(cover);
+        if (seenBy.Count > 0 && unit.Guard == 0 && nonReactions.FirstOrDefault(c => c.Effect.Guard > 0) is { } guard) return Play(guard);
+        if (seenBy.FirstOrDefault(h => h.Pos.Chebyshev(unit.Pos) > 1) is { } shooter
+            && Combat.CoverAgainst(data, state.Map, unit.Pos, shooter.Pos) <= 0
+            && Try(nonReactions.Where(c => c.Effect.PlaceBarrier > 0), [(null, unit.Pos + Combat.Face(unit.Pos, shooter.Pos))]) is { } barrier) return barrier;
+        if (hurt >= MendInjuryAt && nonReactions.FirstOrDefault(c => c.Effect.Mend > 0) is { } mend) return Play(mend);
+        if (deck.Hand.Count <= 2 && nonReactions.FirstOrDefault(c => c.Effect.Draw > 0) is { } draw) return Play(draw);
         if (deck.DeadDiscardRound != state.Round
             && hand.FirstOrDefault(c => c.Requirement.Kind == CardKind.Hard && !squad.Any(c.Requirement.Met)) is { } dead)
             return new DiscardDeadCard(playerId, unit.Id, dead.Id);
         return null;
+    }
+
+    /// <summary>A bot throws a smoke screen once a body part is at least this badly hurt and a hostile sees it (a bot habit).</summary>
+    public const double SmokeInjuryAt = 0.3;
+
+    /// <summary>Whether a card breaks a plan it is aimed at: it moves the planner off its tile or disrupts it.</summary>
+    private static bool Breaks(CardDef c) => c.Effect.Disrupt || c.Effect.Push > 0 || c.Effect.Pull > 0;
+
+    /// <summary>
+    /// Tiles next to seen hostiles off their front (their back first, then their side), nearest hostile first, from which
+    /// the unit's attacks reach it.
+    /// </summary>
+    private static IEnumerable<(int?, Pos?)> FlankTiles(ScavengeSim sim, Unit unit, List<Unit> hostiles)
+    {
+        var actions = sim.Profile(unit).Actions;
+        foreach (var h in hostiles.Where(h => !h.Structure))
+            foreach (var t in Pos.Neighbours8.Select(d => h.Pos + d)
+                         .Where(t => sim.State.Map.InBounds(t) && Combat.ArcOf(h, t) != FacingArc.Front
+                                     && actions.Any(a => Combat.CheckReach(sim.Data, sim.State.Map, t, a, h.Pos) == ScavengeError.None))
+                         .OrderByDescending(t => Combat.ArcOf(h, t)).ThenBy(t => t.Chebyshev(unit.Pos)).ThenBy(t => sim.State.Map.Index(t)))
+                yield return (null, t);
     }
 
     /// <summary>

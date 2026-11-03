@@ -70,9 +70,10 @@ public partial class WeatherView : Node3D
     }
 
     /// <summary>A lightning flash (unless the settings say no flashes) and its crack and thunder; <paramref name="distance"/> 0..1.</summary>
-    public void Strike(float distance = 0.4f)
+    /// <param name="flash">False holds the sky's flash back (the scavenge screen's strobing cap); the thunder still rolls.</param>
+    public void Strike(float distance = 0.4f, bool flash = true)
     {
-        if (GameSettings.WeatherEffects == WeatherEffects.Full) _flash = Mathf.Lerp(1f, 0.45f, distance);
+        if (flash && GameSettings.WeatherEffects == WeatherEffects.Full) _flash = Mathf.Lerp(1f, 0.45f, distance);
         WeatherAudio.Lightning(distance);
     }
 

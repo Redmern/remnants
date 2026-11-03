@@ -189,9 +189,11 @@ public class LinkedAiTests
         Assert.True(chance < sim.Data.Rules.Network.SuppressBelowHitChance, $"hit chance {chance}");
 
         var maxAp = sim.Profile(u).MaxAp;
-        // Boxed in, it fires from where it stands: in reach at the start of its turn, so at once (not telegraphed).
+        // Boxed in, it fires from where it stands: the suppressing fire is telegraphed and comes down next turn.
         Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
-        Assert.Null(linked.Plan);
+        Assert.True(linked.Plan is { Suppress: true, Path.Count: 0 });
+        Assert.False(Did(sim, linked, ScavengeEventType.Suppressed));
+        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
         Assert.True(Did(sim, linked, ScavengeEventType.Suppressed), string.Join("\n", sim.State.Events.Select(e => e.Message)));
         Assert.Equal(maxAp - sim.Data.Rules.Network.SuppressApPenalty, u.Ap);
         Assert.False(u.Suppressed);

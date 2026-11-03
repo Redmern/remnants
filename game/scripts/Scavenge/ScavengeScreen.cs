@@ -39,6 +39,7 @@ public partial class ScavengeScreen : Node3D
     private ScavengeLog _log = null!;
     private ResultPanel _result = null!;
     private Audio.ScavengeAudio _audio = null!;
+    private ScavengeJuice _juice = null!;
 
     private int? _selectedId;
     private int? _lastActingId;
@@ -91,6 +92,16 @@ public partial class ScavengeScreen : Node3D
         AddChild(_audio);
         _audio.Setup(_presenter, _camera, _hud);
         _units.Footstep += _audio.Footstep;
+        _juice = new ScavengeJuice { Name = "Juice" };
+        AddChild(_juice);
+        _juice.Setup(_presenter, _camera, _hud);
+        _units.Juice = _juice;
+        _hud.Hand.Slammed += _juice.Slam;
+        _hud.Hand.TargetPoint = play =>
+        {
+            var world = play.Tile is { } tile ? TileGrid.ToWorld(tile) : _units.WorldOf(play.TargetId ?? play.UnitId);
+            return world is { } w && !_camera.Camera.IsPositionBehind(w) ? _camera.Camera.UnprojectPosition(w + Vector3.Up) : null;
+        };
         Wire();
         SelectActing();
         _camera.Focus(PartyCentre());
@@ -108,6 +119,8 @@ public partial class ScavengeScreen : Node3D
         if (int.TryParse(DebugValue("--autoplay"), out var steps)) _ = Autoplay(steps);
         if (int.TryParse(DebugValue("--select-unit"), out var unitId)) CallDeferred(MethodName.SelectForCapture, unitId);
         if (DebugCapture.HasFlag("--pause-menu")) _hud.Pause.CallDeferred(Hud.Overlay.MethodName.Open);
+        // The first turn may already have nothing in it (a run resumed with the AP spent).
+        AutoEndTurn();
     }
 
     /// <summary>
@@ -147,7 +160,8 @@ public partial class ScavengeScreen : Node3D
         switch (e.Type)
         {
             case ScavengeEventType.WeatherChanged: SyncWeather(); break;
-            case ScavengeEventType.Lightning: _weather.Strike(0.15f); break;
+            // Lightning shares the hit flashes' strobing cap (and none with reduce motion).
+            case ScavengeEventType.Lightning: _weather.Strike(0.15f, _juice.AllowFlash()); break;
             case ScavengeEventType.Thunder: Audio.WeatherAudio.Lightning(0.9f); break;
         }
     }
@@ -192,6 +206,14 @@ public partial class ScavengeScreen : Node3D
             if (error) Toast(message);
         };
         _hud.EndTurnRequested += OnEndTurn;
+        _hud.FastForwardToggled += () =>
+        {
+            Hud.GameSettings.SkipAnimations = !Hud.GameSettings.SkipAnimations;
+            Hud.GameSettings.Save();
+            _hud.Toasts.Show(Hud.GameSettings.SkipAnimations ? "Fast-forward on" : "Fast-forward off",
+                Hud.GameSettings.SkipAnimations ? "Moves and blows snap to where they end." : "Moves and blows play out again.",
+                "ui_end_turn", Hud.Palette.Amber, key: "fast_forward");
+        };
         _hud.NextUnitRequested += SelectNextUnit;
         _hud.CenterRequested += CenterOnActing;
         _hud.Acting.ActingClicked += CenterOnActing;
@@ -202,6 +224,7 @@ public partial class ScavengeScreen : Node3D
         };
         _hud.BackRequested += () =>
         {
+            if (CancelCardAim()) return true;
             if (_usingItem is null && _pinging is null && _aim == TechAim.None) return false;
             _usingItem = null;
             _pinging = null;
@@ -220,6 +243,7 @@ public partial class ScavengeScreen : Node3D
         _actionPanel.ActionChosen += _ => RefreshHud();
         _actionPanel.UseItemChosen += id =>
         {
+            CancelCardAim();
             _usingItem = _usingItem == id ? null : id;
             RefreshHud();
         };
@@ -230,6 +254,7 @@ public partial class ScavengeScreen : Node3D
         _unitPanel.CommandRequested += command => _ = Run(command);
         _techPanel.AimChosen += aim =>
         {
+            CancelCardAim();
             _aim = aim;
             _usingItem = null;
             _pinging = null;
@@ -239,16 +264,26 @@ public partial class ScavengeScreen : Node3D
         _hud.Hand.CommandRequested += command => _ = Run(command);
         _coopPanel.PingChosen += kind =>
         {
+            CancelCardAim();
             _pinging = _pinging == kind ? null : kind;
             _usingItem = null;
             RefreshHud();
         };
         _result.ContinuePressed += Finish;
+        WireCardAim();
     }
 
     /// <summary>Back to the caller with the local result (an unfinished one if a remote result never came).</summary>
     private void Finish() =>
         ScavengeSession.End(GetTree(), _presenter.Result() ?? new ExtractionResult(_presenter.PlayerId, false, [], [], [], new()));
+
+    /// <summary>Counts the player's clicks and key presses, so an auto end turn waiting out its beat can tell it was overtaken.</summary>
+    private int _inputSeq;
+
+    public override void _Input(InputEvent e)
+    {
+        if (e is InputEventMouseButton { Pressed: true } or InputEventKey { Pressed: true, Echo: false }) _inputSeq++;
+    }
 
     public override void _UnhandledInput(InputEvent e)
     {
@@ -261,7 +296,17 @@ public partial class ScavengeScreen : Node3D
                     _hover = hover;
                     _map.SetHover(hover);
                     RefreshFocus();
+                    // Aiming a card: the hovered target's landing tile and the units it touches follow the cursor.
+                    if (_cardAim is not null) RefreshHud();
                 }
+                if (_cardAim is not null)
+                {
+                    ShowCardAimTip(hover);
+                    _hud.DeviceTip.HideTip();
+                    _hud.LootTip.HideTip();
+                    break;
+                }
+                _hud.TargetTip.HideTip();
                 if (hover is { } over && _presenter.IsExplored(over) && _presenter.State.DeviceAt(over) is { } device
                     && _presenter.KnownDevices.Contains(device))
                     _hud.DeviceTip.Show(_presenter, device, _hud.DeviceTip.GetGlobalMousePosition());
@@ -272,6 +317,7 @@ public partial class ScavengeScreen : Node3D
                 if (TileUnder(click.Position) is { } tile) OnTileClicked(tile);
                 break;
             case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Right }:
+                CancelCardAim();
                 _usingItem = null;
                 _pinging = null;
                 _aim = TechAim.None;
@@ -291,6 +337,11 @@ public partial class ScavengeScreen : Node3D
     private void OnTileClicked(Pos tile)
     {
         if (_busy || _presenter.Done) return;
+        if (_cardAim is { } cardAim)
+        {
+            ClickCardAim(cardAim, tile);
+            return;
+        }
         var state = _presenter.State;
         var clicked = state.UnitAt(tile) is { } u && _presenter.CanSee(u) ? u : null;
         var acting = _presenter.ActingUnit;
@@ -381,6 +432,7 @@ public partial class ScavengeScreen : Node3D
         ScavengeResult result;
         using (PerfMonitor.Measure("execute")) result = await _presenter.Execute(command);
         if (result.Ok) _usingItem = null;
+        if (result.Ok) CancelCardAim();
         if (result.Ok) _aim = TechAim.None;
         if (result.Ok && command is not PingTile) _pinging = null;
         await ReplayNew();
@@ -414,16 +466,19 @@ public partial class ScavengeScreen : Node3D
                 _map.ClearHighlights();
                 RefreshHud();
                 _map.Sync();
-                await _units.Replay(events, seenBefore, e =>
+                await _units.Replay(events, seenBefore, (e, seen) =>
                 {
                     _log.Event(e);
                     _fog.Incoming(e);
                     _telegraphs.Incoming(e);
                     CardFlourish(e);
-                    _audio.Step(e);
+                    _juice.Step(e, seen);
+                    _audio.Step(e, _juice.HitPitch(e));
                     WeatherEvent(e);
-                    // Follow what others do in sight (enemy turns, recruits) so it never happens off screen.
-                    if (e.Type is ScavengeEventType.Moved or ScavengeEventType.Attacked or ScavengeEventType.Missed
+                    // Follow what others do in sight (enemy turns, recruits) so it never happens off screen; never what the
+                    // side did not see, nor while animations are skipped.
+                    if (seen && !Hud.GameSettings.SkipAnimations
+                        && e.Type is ScavengeEventType.Moved or ScavengeEventType.Attacked or ScavengeEventType.Missed
                         && e.UnitId is { } actor && _presenter.State.FindUnit(actor) is { } u && u.PlayerId != _presenter.PlayerId
                         && _units.WorldOf(actor) is { } at)
                         _camera.Follow(e.Type == ScavengeEventType.Moved && e.Pos is { } to ? TileGrid.ToWorld(to) : at);
@@ -438,6 +493,29 @@ public partial class ScavengeScreen : Node3D
             _camera.GlideTo(TileGrid.ToWorld(acting.Pos));
         }
         SyncAll();
+        AutoEndTurn();
+    }
+
+    /// <summary>
+    /// The acting unit has nothing affordable left (<see cref="TurnAdvice.CanStillAct"/>): with the setting on its turn
+    /// ends by itself, after a short beat so the player sees why; off, the End Turn hint says so.
+    /// </summary>
+    private async void AutoEndTurn()
+    {
+        if (!Hud.GameSettings.AutoEndTurn || _autoplaying || _presenter.Done || _presenter.ActingUnit is not { } acting || !_presenter.IsMine(acting)
+            || TurnAdvice.CanStillAct(_presenter.Sim, acting)) return;
+        var id = acting.Id;
+        var round = (_presenter.State.Round, _presenter.State.SubRound);
+        var input = _inputSeq;
+        _hud.Toasts.Show("Turn over", $"{acting.Name} has nothing left to do.", "ui_end_turn", Hud.Palette.TextMuted, key: "auto_end_turn");
+        // A beat so the player sees why (a frame at least: never re-entering the replay that called this).
+        if (Hud.GameSettings.SkipAnimations) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        else await ToSignal(GetTree().CreateTimer(0.35), SceneTreeTimer.SignalName.Timeout);
+        // The player may have acted (a card, End Turn) during the beat; a remote view may have been replaced: look again.
+        // Any click or key in the beat (a card, an order, End Turn itself) is the player's own answer: leave the turn to them.
+        if (!IsInsideTree() || _busy || _inputSeq != input || _presenter.ActingUnit is not { } now || now.Id != id
+            || (_presenter.State.Round, _presenter.State.SubRound) != round || TurnAdvice.CanStillAct(_presenter.Sim, now)) return;
+        _ = Run(new EndTurn(_presenter.PlayerId, id));
     }
 
     /// <summary>Debug (<c>--select-unit=ID</c>, for screenshots): select a unit as if clicked, after any demo staging.</summary>
@@ -487,6 +565,7 @@ public partial class ScavengeScreen : Node3D
         _salvage.Sync();
         _objectives.Sync();
         _telegraphs.Sync();
+        RefreshCardAim();
         RefreshHud();
         _seen = new HashSet<int>(_presenter.Visible);
         if (_presenter.Done && !_result.Visible && _presenter.Result() is { } result)
@@ -572,6 +651,7 @@ public partial class ScavengeScreen : Node3D
             {
                 (true, _) => ("Playing out the last order…", Hud.Palette.TextMuted),
                 (_, true) => ("Autoplay is giving the orders (debug).", Hud.Palette.Warn),
+                _ when CardAimHint() is { } cardHint => (cardHint, Hud.Palette.Amber),
                 _ when _pinging is { } ping => (CoopPanel.PingHint(ping), Hud.Palette.Amber),
                 _ when _aim != TechAim.None => (TechPanel.AimHint(_aim), Hud.Palette.Amber),
                 _ when _usingItem is { } item => (_actionPanel.ItemHint(item), Hud.Palette.Amber),
@@ -644,6 +724,7 @@ public partial class ScavengeScreen : Node3D
             foreach (var (tile, kind) in _presenter.Threats())
                 if (_presenter.IsExplored(tile))
                     _map.Highlight(tile, kind == ThreatKind.Planned ? HighlightKind.ThreatPlanned : HighlightKind.Threat);
+        if (HighlightCardAim()) return;
         if (selected is null || !selected.OnMap || !_presenter.CanSee(selected)) return;
         _map.Highlight(selected.Pos, HighlightKind.Selected);
         if (_busy || _presenter.Done) return;
@@ -759,6 +840,8 @@ public partial class ScavengeScreen : Node3D
     /// </summary>
     private async Task Autoplay(int steps)
     {
+        // --autoplay-policy=cards: play the first card that has a working target before attacking (exercises the hand).
+        var cards = DebugValue("--autoplay-policy") == "cards";
         await ToSignal(GetTree().CreateTimer(0.5), SceneTreeTimer.SignalName.Timeout);
         _autoplaying = true;
         for (var i = 0; i < steps && !_presenter.Done; i++)
@@ -775,7 +858,12 @@ public partial class ScavengeScreen : Node3D
             var exits = _presenter.State.Map.Exits;
             var loot = _presenter.CachesInReach(u).FirstOrDefault();
             IScavengeCommand command;
-            if (attack is not null) command = StrikeOn(u, attack.Target, attack.Action.Id);
+            if (cards && CardPlayFor(u) is { } play)
+            {
+                command = play;
+                _hud.Hand.Played(play);
+            }
+            else if (attack is not null) command = StrikeOn(u, attack.Target, attack.Action.Id);
             else if (loot is not null && u.Ap >= _presenter.Sim.Data.Rules.Turn.PickUpApCost) command = new PickUp(pid, u.Id, loot.Id, loot.Items[0]);
             else if (_presenter.State.Map.IsExit(u.Pos) && i > steps / 2) command = new Extract(pid, u.Id);
             else
@@ -787,10 +875,34 @@ public partial class ScavengeScreen : Node3D
                     ? new Move(pid, u.Id, to)
                     : new EndTurn(pid, u.Id);
             }
+            var started = Time.GetTicksMsec();
             if (!await Run(command) && command is not EndTurn) await Run(new EndTurn(pid, u.Id));
+            GD.Print($"Autoplay: {command.GetType().Name} replayed in {Time.GetTicksMsec() - started} ms");
             await ToSignal(GetTree().CreateTimer(0.2), SceneTreeTimer.SignalName.Timeout);
         }
         _autoplaying = false;
+        // The run's state as a digest: the same commands give the same digest at every effects / skip setting (AC-8).
+        var save = ScavengeSave.Save(_presenter.State);
+        var digest = System.Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(save)))[..16];
+        GD.Print($"Autoplay: done, policy {(cards ? "cards" : "attack")}, round {_presenter.State.Round}, {_presenter.State.Events.Count} events, {_presenter.State.Events.Count(e => e.Type == ScavengeEventType.CardPlayed)} cards played, effects {Hud.GameSettings.EffectsLevel}, " +
+                 $"skip {Hud.GameSettings.SkipAnimations}, state {digest}");
+        if (DebugCapture.HasFlag("--quit-after-autoplay")) GetTree().Quit();
         RefreshHud();
+    }
+
+    /// <summary>Autoplay's card: the first hand card <paramref name="u"/> can play now, on its first working target.</summary>
+    private PlayCard? CardPlayFor(Unit u)
+    {
+        if (_presenter.Hand() is not { } hand) return null;
+        var pid = _presenter.PlayerId;
+        foreach (var card in hand.Cards.Where(c => c.PlayableBy.Contains(u.Id) && !c.Dead))
+        {
+            var fromSlot = card.SlotOf is not null;
+            if (!_presenter.IsAimed(card.Id)) return new PlayCard(pid, u.Id, card.Id, null, FromSlot: fromSlot);
+            if (_presenter.Sim.Data.Cards.Find(card.Id) is not { } def) continue;
+            if (_presenter.Targets(u.Id, card.Id, false, fromSlot).FirstOrDefault(o => o.Ok) is { } target)
+                return new PlayCard(pid, u.Id, card.Id, target.UnitId, false, fromSlot, def.Target == CardTarget.Tile ? target.Tile : null);
+        }
+        return null;
     }
 }
