@@ -5,7 +5,7 @@ using Godot;
 namespace Remnants.Game.Hud;
 
 /// <summary>
-/// Settings, in tabs: Game (day length, late zones, scavenge walk speed, skip animations, auto end turn), Display (UI scale, fullscreen, window size, vsync, weather effects, reduce motion, the scavenge effects, frame time), Audio (master / music / effects / ambience
+/// Settings, in tabs: Game (day length, late zones, scavenge walk speed, skip animations, auto end turn, version and version switcher), Display (UI scale, fullscreen, window size, vsync, weather effects, reduce motion, the scavenge effects, frame time), Audio (master / music / effects / ambience
 /// volume on their buses, mute when unfocused, visual sound cues), Camera (pan and zoom speed) and Controls (the hotkey list). Changes apply at once and are saved
 /// when the panel closes (<see cref="GameSettings"/>).
 /// </summary>
@@ -85,6 +85,11 @@ public partial class SettingsPanel : Overlay
         };
         auto.Toggled += on => GameSettings.AutoEndTurn = on;
         box.AddChild(auto);
+
+        var version = VersionSwitcher.CurrentVersion;
+        box.AddChild(Row("Version", Widgets.Label(version.Length > 0 ? version : "unknown", "Number"), "The version of the game you are running."));
+        box.AddChild(Row("Versions", new VersionSwitcher(),
+            "Switch to another published build. It downloads once into its own folder; saves and settings stay where they are."));
         return Scroll(box);
     }
 
