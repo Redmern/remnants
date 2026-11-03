@@ -82,6 +82,9 @@ public partial class ScavengeHud : CanvasLayer
     /// <summary>A hovered device's state, owner and what hacking it does, next to the cursor.</summary>
     public DeviceTip DeviceTip { get; } = new();
     public LootTip LootTip { get; } = new();
+
+    /// <summary>An aimed card's target under the cursor: what comes of it, or why it cannot go there.</summary>
+    public CardTargetTip TargetTip { get; } = new();
     public LootPanel Loot { get; }
     public CoopPanel Coop { get; }
     public AllianceBanner Banner { get; }
@@ -190,6 +193,8 @@ public partial class ScavengeHud : CanvasLayer
         AddChild(DeviceTip);
         LootTip.Theme = HudTheme.Shared;
         AddChild(LootTip);
+        TargetTip.Theme = HudTheme.Shared;
+        AddChild(TargetTip);
         AddChild(Result);
         Pause = new PauseMenu(
         [

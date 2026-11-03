@@ -219,6 +219,8 @@ public partial class UnitViews : Node3D
                     actor.Root.Position = TileGrid.ToWorld(went);
                     if (e.Type == ScavengeEventType.Moved) Footstep?.Invoke(actor.Id, actor.Root.Position);
                 }
+                if (e.Type == ScavengeEventType.Displaced && target is not null && e.Pos is { } thrown)
+                    await Displace(actor, target, thrown, e.TargetId is { } moved ? _presenter.State.FindUnit(moved) : null, snap: true);
                 Beat();
                 previous = e;
                 continue;
@@ -232,6 +234,14 @@ public partial class UnitViews : Node3D
                     actor.Root.Visible = true;
                     await Walk(actor, unit, from, to);
                     if (!Mine(e.UnitId) && !Seen(to)) actor.Root.Visible = false;
+                    break;
+
+                // A card shoved, dragged, swapped or spun a unit: it slides to where it lands (snaps when skipping).
+                case ScavengeEventType.Displaced when target is not null && e.Pos is { } landing:
+                    Beat();
+                    target.Root.Visible = true;
+                    await Displace(actor, target, landing, e.TargetId is { } movedId ? _presenter.State.FindUnit(movedId) : null, snap: false);
+                    if (!Mine(e.TargetId) && !Seen(landing)) target.Root.Visible = false;
                     break;
 
                 case ScavengeEventType.Attacked or ScavengeEventType.Missed when actor is not null && target is not null:
@@ -475,6 +485,56 @@ public partial class UnitViews : Node3D
         }
         rig.SpeedScale = 1f;
         if (unit is not null && rig.Pick(ClipMap.Hold(unit)) is { } hold) rig.Loop(hold);
+    }
+
+    /// <summary>
+    /// A unit put on another tile by a card (<see cref="ScavengeEventType.Displaced"/>): it slides there with no walk, a
+    /// swap's player takes the tile it left (Core logs only the moved unit: the player is the one standing on the landing
+    /// tile), and a spin on the spot turns it away from the player. It then faces the way Core says. With
+    /// <paramref name="snap"/> (out of sight) or skipping animations everything lands in the same frame.
+    /// </summary>
+    private async Task Displace(View? actor, View target, Pos landing, Unit? moved, bool snap)
+    {
+        var from = TileGrid.FromWorld(target.Root.Position);
+        var instant = snap || Fast;
+        var settled = moved is not null && moved.Pos == landing;
+        if (from == landing)
+        {
+            // A spin on the spot: its back turned to the one who spun it.
+            if (instant)
+            {
+                if (settled) SnapFacing(target, moved!);
+                return;
+            }
+            if (actor is not null) Face(target, target.Root.Position + (target.Root.Position - actor.Root.Position), TurnSeconds);
+            await Wait(TurnSeconds);
+            if (settled) FaceCore(target, moved!);
+            return;
+        }
+
+        // A swap: the player stood on the landing tile and takes the one the other unit left.
+        var swap = actor is not null && actor != target && TileGrid.FromWorld(actor.Root.Position) == landing;
+        if (instant)
+        {
+            target.Root.Position = TileGrid.ToWorld(landing);
+            if (swap) actor!.Root.Position = TileGrid.ToWorld(from);
+            if (settled) SnapFacing(target, moved!);
+            return;
+        }
+        if (target.Rig is { } rig && !swap && rig.Current is not ("death" or "downed" or "downed_loop")) rig.Once("hit_react");
+        var slides = new List<Task> { TweenTo(target.Root, TileGrid.ToWorld(landing), MoveSeconds * 1.5f) };
+        if (swap) slides.Add(TweenTo(actor!.Root, TileGrid.ToWorld(from), MoveSeconds * 1.5f));
+        await Task.WhenAll(slides);
+        if (settled) FaceCore(target, moved!);
+    }
+
+    /// <summary>Sets the model's facing to Core's at once (no turn tween), for snapped steps.</summary>
+    private static void SnapFacing(View view, Unit unit)
+    {
+        if (unit.Facing is not { } f || f == default || unit.CarriedById is not null) return;
+        var toward = TileGrid.ToWorld(unit.Pos + f) - TileGrid.ToWorld(unit.Pos);
+        view.Yaw = Mathf.RadToDeg(Mathf.Atan2(toward.X, toward.Z));
+        view.Model.RotationDegrees = new Vector3(0, view.Yaw, 0);
     }
 
     /// <summary>

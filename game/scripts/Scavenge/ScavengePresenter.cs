@@ -165,6 +165,17 @@ public sealed class ScavengePresenter
     public List<PickerRow> Picker(string cardId, bool boost, int? target, bool fromSlot) =>
         TacticsView.Picker(Sim, PlayerId, cardId, boost, target, fromSlot);
 
+    /// <summary>
+    /// Every unit or tile an ability (or reaction) card played by <paramref name="unitId"/> could be aimed at, as the side
+    /// knows them: Core's reason where it cannot, the landing tile, the units touched and the outcome where it can. Empty
+    /// for a card played on the character itself.
+    /// </summary>
+    public List<CardTargetOption> Targets(int unitId, string cardId, bool boost, bool fromSlot) =>
+        TacticsView.Targets(Sim, PlayerId, unitId, cardId, boost, fromSlot);
+
+    /// <summary>Whether a card is aimed (on the map, after picking who plays it): an ability at a unit or tile, or a reaction.</summary>
+    public bool IsAimed(string cardId) => Sim.Data.Cards.Find(cardId) is { } card && (card.Reaction || card.Target != CardTarget.Self);
+
     /// <summary>Seen enemies with a plan (what a reaction card answers).</summary>
     public List<Unit> ReactionTargets() => TacticsView.ReactionTargets(Sim, PlayerId);
 

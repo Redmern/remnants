@@ -212,6 +212,7 @@ public partial class ScavengeScreen : Node3D
         };
         _hud.BackRequested += () =>
         {
+            if (CancelCardAim()) return true;
             if (_usingItem is null && _pinging is null && _aim == TechAim.None) return false;
             _usingItem = null;
             _pinging = null;
@@ -230,6 +231,7 @@ public partial class ScavengeScreen : Node3D
         _actionPanel.ActionChosen += _ => RefreshHud();
         _actionPanel.UseItemChosen += id =>
         {
+            CancelCardAim();
             _usingItem = _usingItem == id ? null : id;
             RefreshHud();
         };
@@ -240,6 +242,7 @@ public partial class ScavengeScreen : Node3D
         _unitPanel.CommandRequested += command => _ = Run(command);
         _techPanel.AimChosen += aim =>
         {
+            CancelCardAim();
             _aim = aim;
             _usingItem = null;
             _pinging = null;
@@ -249,11 +252,13 @@ public partial class ScavengeScreen : Node3D
         _hud.Hand.CommandRequested += command => _ = Run(command);
         _coopPanel.PingChosen += kind =>
         {
+            CancelCardAim();
             _pinging = _pinging == kind ? null : kind;
             _usingItem = null;
             RefreshHud();
         };
         _result.ContinuePressed += Finish;
+        WireCardAim();
     }
 
     /// <summary>Back to the caller with the local result (an unfinished one if a remote result never came).</summary>
@@ -279,7 +284,17 @@ public partial class ScavengeScreen : Node3D
                     _hover = hover;
                     _map.SetHover(hover);
                     RefreshFocus();
+                    // Aiming a card: the hovered target's landing tile and the units it touches follow the cursor.
+                    if (_cardAim is not null) RefreshHud();
                 }
+                if (_cardAim is not null)
+                {
+                    ShowCardAimTip(hover);
+                    _hud.DeviceTip.HideTip();
+                    _hud.LootTip.HideTip();
+                    break;
+                }
+                _hud.TargetTip.HideTip();
                 if (hover is { } over && _presenter.IsExplored(over) && _presenter.State.DeviceAt(over) is { } device
                     && _presenter.KnownDevices.Contains(device))
                     _hud.DeviceTip.Show(_presenter, device, _hud.DeviceTip.GetGlobalMousePosition());
@@ -290,6 +305,7 @@ public partial class ScavengeScreen : Node3D
                 if (TileUnder(click.Position) is { } tile) OnTileClicked(tile);
                 break;
             case InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Right }:
+                CancelCardAim();
                 _usingItem = null;
                 _pinging = null;
                 _aim = TechAim.None;
@@ -309,6 +325,11 @@ public partial class ScavengeScreen : Node3D
     private void OnTileClicked(Pos tile)
     {
         if (_busy || _presenter.Done) return;
+        if (_cardAim is { } cardAim)
+        {
+            ClickCardAim(cardAim, tile);
+            return;
+        }
         var state = _presenter.State;
         var clicked = state.UnitAt(tile) is { } u && _presenter.CanSee(u) ? u : null;
         var acting = _presenter.ActingUnit;
@@ -399,6 +420,7 @@ public partial class ScavengeScreen : Node3D
         ScavengeResult result;
         using (PerfMonitor.Measure("execute")) result = await _presenter.Execute(command);
         if (result.Ok) _usingItem = null;
+        if (result.Ok) CancelCardAim();
         if (result.Ok) _aim = TechAim.None;
         if (result.Ok && command is not PingTile) _pinging = null;
         await ReplayNew();
@@ -530,6 +552,7 @@ public partial class ScavengeScreen : Node3D
         _salvage.Sync();
         _objectives.Sync();
         _telegraphs.Sync();
+        RefreshCardAim();
         RefreshHud();
         _seen = new HashSet<int>(_presenter.Visible);
         if (_presenter.Done && !_result.Visible && _presenter.Result() is { } result)
@@ -615,6 +638,7 @@ public partial class ScavengeScreen : Node3D
             {
                 (true, _) => ("Playing out the last order…", Hud.Palette.TextMuted),
                 (_, true) => ("Autoplay is giving the orders (debug).", Hud.Palette.Warn),
+                _ when CardAimHint() is { } cardHint => (cardHint, Hud.Palette.Amber),
                 _ when _pinging is { } ping => (CoopPanel.PingHint(ping), Hud.Palette.Amber),
                 _ when _aim != TechAim.None => (TechPanel.AimHint(_aim), Hud.Palette.Amber),
                 _ when _usingItem is { } item => (_actionPanel.ItemHint(item), Hud.Palette.Amber),
@@ -687,6 +711,7 @@ public partial class ScavengeScreen : Node3D
             foreach (var (tile, kind) in _presenter.Threats())
                 if (_presenter.IsExplored(tile))
                     _map.Highlight(tile, kind == ThreatKind.Planned ? HighlightKind.ThreatPlanned : HighlightKind.Threat);
+        if (HighlightCardAim()) return;
         if (selected is null || !selected.OnMap || !_presenter.CanSee(selected)) return;
         _map.Highlight(selected.Pos, HighlightKind.Selected);
         if (_busy || _presenter.Done) return;

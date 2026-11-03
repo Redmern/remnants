@@ -1000,8 +1000,17 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
   kinds `Threat` / `ThreatPlanned`, `Ui/HandStrip` (hand and picker), `UnitPanel` (enemy stats per bestiary tier, via
   `ScavengePresenter.KnowledgeOf` and `BestiaryKnowledge.Colony`), and the colony overlays `DeckBuilderPanel` and
   `BestiaryPanel` (Deck and Bestiary in the top bar). Sound cues are `scavenge.intent_*`, `scavenge.card_*`,
-  `scavenge.countered` in `game/audio/sound_events.json`. Debug captures: `--scavenge --tactics-demo[=overlay|picker|
-  reaction|enemy|preview]`, `--colony --deck-demo=deck|slots|upgrades`, `--colony --bestiary-demo`.
+  `scavenge.countered`, `scavenge.displaced`, `scavenge.initiative_changed`, `scavenge.field_effect_placed` in
+  `game/audio/sound_events.json`. Debug captures: `--scavenge --tactics-demo[=overlay|picker|reaction|enemy|preview|
+  targeting|smoke]` (`--play-aim` then plays the aimed card and checks every model is on its Core tile),
+  `--colony --deck-demo=deck|slots|upgrades`, `--colony --bestiary-demo`.
+- **Ability cards** (`Scavenge/Cards/CardAbilities.cs`, `FieldEffects.cs`): cards declare a target (self, ally, enemy,
+  unit, tile), range and radius in `data/cards.json`, and effects beyond buffs: push / pull / swap / step / spin, grant
+  AP, advance / delay initiative (only units still to act this sub-round), barrier and smoke (`ScavengeState.FieldEffects`
+  laid over the map as `TileMap.Overlay` / `TileMap.Smoke`, never changing the terrain), strike and disrupt. A unit moved
+  by a card loses its plan (exposed if a hostile moved it) and is hit by a declared strike on its new tile whoever's side
+  it is, until its next sub-turn. `TacticsView.Targets` is the targeting preview; Godot's `ScavengeScreen.CardAim` and
+  `Ui/CardTargetTip` draw it (valid targets lit, invalid greyed with Core's reason, landing tile, affected units).
 
 ## Linked squad AI
 

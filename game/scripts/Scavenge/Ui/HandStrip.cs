@@ -14,8 +14,10 @@ namespace Remnants.Game.Scavenge.Ui;
 /// card per hand card and per ready personal slot card (cost, AP, category). Choosing a card opens the character
 /// picker under the cards: every conscious unit of the party with a play button where the card can go on it now
 /// (<see cref="TacticsView.Picker"/>, Core's own checks) and the reason where it cannot, the AP boost when the card has
-/// one, the enemy plan a reaction answers, and Discard for a dead hard card nobody can use. Everything shown comes from
-/// <see cref="TacticsView"/>; Core decides.
+/// one, and Discard for a dead hard card nobody can use. An aimed card (an ability at a unit or tile, or a reaction)
+/// is not played from the picker: choosing who plays it asks the screen to aim it on the map (<see cref="AimRequested"/>,
+/// <see cref="TacticsView.Targets"/>), and the row shows it is being aimed until it is played or cancelled. Everything
+/// shown comes from <see cref="TacticsView"/>; Core decides.
 /// </summary>
 public partial class HandStrip : PanelContainer
 {
@@ -27,13 +29,21 @@ public partial class HandStrip : PanelContainer
     private string? _chosen;
     private int? _chosenSlot;
     private bool _boost;
-    private int? _target;
     private string? _signature;
 
     public event Action<IScavengeCommand>? CommandRequested;
 
     /// <summary>A card was played (for the strip's flourish and the sound).</summary>
     public event Action<string>? CardPlayed;
+
+    /// <summary>An aimed card is to be aimed on the map: the card, who plays it, boost, from that unit's slot.</summary>
+    public event Action<string, int, bool, bool>? AimRequested;
+
+    /// <summary>The player cancelled the aim from the strip.</summary>
+    public event Action? AimCancelled;
+
+    /// <summary>The card and unit the screen is aiming on the map now (set by the screen), or null.</summary>
+    public (string CardId, int UnitId)? Aiming { get; set; }
 
     public HandStrip(ScavengePresenter presenter)
     {
@@ -59,10 +69,11 @@ public partial class HandStrip : PanelContainer
     /// <summary>The card the picker is open for (debug captures).</summary>
     public void Choose(string? cardId, int? slotOf = null)
     {
+        // Another card (or none) chosen: an aim in progress is dropped.
+        if (Aiming is { } aiming && (aiming.CardId != cardId || slotOf != _chosenSlot)) AimCancelled?.Invoke();
         _chosen = cardId;
         _chosenSlot = slotOf;
         _boost = false;
-        _target = _presenter.ReactionTargets().FirstOrDefault()?.Id;
         _signature = null;
         Refresh(false);
     }
@@ -73,7 +84,7 @@ public partial class HandStrip : PanelContainer
         var signature = hand is null || busy ? "" :
             $"{hand.Points}/{hand.Budget}|{hand.DrawCount}|{hand.UsedCount}|{_presenter.State.CurrentUnitId}|{_presenter.ActingUnit?.Ap}|" +
             string.Join(",", hand.Cards.Select(c => $"{c.Id}:{c.SlotOf}:{string.Join(".", c.PlayableBy)}:{c.Dead}")) +
-            $"|{_chosen}:{_chosenSlot}:{_boost}:{_target}|{string.Join(",", _presenter.ReactionTargets().Select(u => u.Id))}";
+            $"|{_chosen}:{_chosenSlot}:{_boost}|{Aiming}|{string.Join(",", _presenter.ReactionTargets().Select(u => u.Id))}";
         if (signature == _signature) return;
         _signature = signature;
         Presence.Set(this, hand is not null && !busy && !_presenter.Done);
@@ -126,29 +137,42 @@ public partial class HandStrip : PanelContainer
                 _signature = null;
                 Refresh(false);
             }, "Spend more AP for the card's boost", _boost ? "Primary" : ""));
-        if (card.Reaction)
-        {
-            var targets = _presenter.ReactionTargets();
-            if (targets.Count == 0) options.AddChild(Widgets.Label("No seen enemy plan to answer.", "Small", Palette.Warn));
-            foreach (var t in targets)
-                options.AddChild(Widgets.TextButton($"vs {t.Name}", () =>
-                {
-                    _target = t.Id;
-                    _signature = null;
-                    Refresh(false);
-                }, $"Answer {t.Name}'s telegraphed plan", _target == t.Id ? "Primary" : ""));
-        }
+        var aimed = _presenter.IsAimed(card.Id);
+        if (card.Reaction && _presenter.ReactionTargets().Count == 0)
+            options.AddChild(Widgets.Label("No seen enemy plan to answer.", "Small", Palette.Warn));
+        if (Aiming is { } now && now.CardId == card.Id)
+            options.AddChild(Widgets.TextButton("Cancel aim", () => AimCancelled?.Invoke(), "Stop aiming (right-click or Esc)"));
         if (card.Dead && !hand.DeadDiscardUsed && _presenter.ActingUnit is { } acting)
             options.AddChild(Widgets.TextButton("Discard (nobody can use it)", () => Send(new DiscardDeadCard(pid, acting.Id, card.Id)),
                 "A hard card nobody in the party qualifies for: discard it for free, once a round"));
         if (options.GetChildCount() > 0) _picker.AddChild(options);
 
-        foreach (var row in _presenter.Picker(card.Id, _boost, card.Reaction ? _target : null, card.SlotOf is not null)
+        var fromSlot = card.SlotOf is not null;
+        foreach (var row in _presenter.Picker(card.Id, _boost, null, fromSlot)
                      .Where(r => card.SlotOf is null || r.UnitId == card.SlotOf))
         {
             var line = Widgets.Row(8);
+            if (aimed)
+            {
+                // Aimed: who plays it, then where on the map. Playable when some target works for this unit.
+                var targets = _presenter.Targets(row.UnitId, card.Id, _boost, fromSlot);
+                var valid = targets.Count(o => o.Ok);
+                var reasons = targets.Select(o => o.Reason).Distinct().ToList();
+                var why = valid > 0 ? $"{valid} target{(valid == 1 ? "" : "s")}: pick one on the map"
+                    : targets.Count == 0 ? (row.Ok || row.Reason.Length == 0 ? "Nothing in sight to aim at." : row.Reason)
+                    : reasons.Count == 1 ? reasons[0] : "No target works now.";
+                var aiming = Aiming is { } a && a.CardId == card.Id && a.UnitId == row.UnitId;
+                var aim = Widgets.TextButton(aiming ? $"Aiming: {row.Name}" : valid > 0 ? $"Aim with {row.Name}" : row.Name,
+                    () => AimRequested?.Invoke(card.Id, row.UnitId, _boost, fromSlot), why, valid > 0 ? "Primary" : "", 150);
+                aim.Disabled = valid == 0;
+                line.AddChild(aim);
+                line.AddChild(Widgets.Wrapped(aiming ? "Click a lit target on the map · right-click or Esc cancels" : why, "Small",
+                    valid > 0 ? (aiming ? Palette.Amber : Palette.Good) : Palette.TextMuted));
+                _picker.AddChild(line);
+                continue;
+            }
             var play = Widgets.TextButton(row.Ok ? $"Play on {row.Name}" : row.Name,
-                () => Send(new PlayCard(pid, row.UnitId, card.Id, card.Reaction ? _target : null, Boost: _boost, FromSlot: card.SlotOf is not null)),
+                () => Send(new PlayCard(pid, row.UnitId, card.Id, null, Boost: _boost, FromSlot: fromSlot)),
                 row.Ok ? row.Effect : row.Reason, row.Ok ? "Primary" : "", 150);
             play.Disabled = !row.Ok;
             line.AddChild(play);
@@ -156,6 +180,14 @@ public partial class HandStrip : PanelContainer
             _picker.AddChild(line);
         }
         Motion.FadeIn(_picker);
+    }
+
+    /// <summary>The screen played the aimed card on the map: the strip's flourish, and the picker closes.</summary>
+    public void Played(string cardId)
+    {
+        CardPlayed?.Invoke(cardId);
+        _chosen = null;
+        _signature = null;
     }
 
     private void Send(IScavengeCommand command)
