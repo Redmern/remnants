@@ -63,7 +63,19 @@ public class ProtocolTests
         var moveOnly = ProtocolJson.Serialize(new Command(8, new DeclareIntent(1, 2, [new Pos(1, 1)])));
         Assert.IsType<DeclareIntent>(Assert.IsType<Command>(ProtocolJson.Deserialize(moveOnly)).Intent);
         Assert.Equal(17, Protocol.TacticsVersion);
-        Assert.Equal(Protocol.TacticsVersion, Protocol.Version);
+    }
+
+    [Fact]
+    public void A_tile_attack_and_a_whole_turn_end_round_trip_under_their_wire_names()
+    {
+        var strike = new AttackTile(1, 2, new Pos(3, 4), "blade", Remnants.Core.Items.StrikeMode.Slash, new Pos(1, 1));
+        var json = ProtocolJson.Serialize(new Command(5, strike));
+        Assert.Contains("\"kind\":\"attackTile\"", json);
+        Assert.Equal(strike, Assert.IsType<Command>(ProtocolJson.Deserialize(json)).Intent);
+        var end = new EndTurn(1, 2, WholeTurn: true);
+        Assert.Equal(end, Assert.IsType<Command>(ProtocolJson.Deserialize(ProtocolJson.Serialize(new Command(6, end)))).Intent);
+        Assert.Equal(18, Protocol.TileAttacksVersion);
+        Assert.Equal(Protocol.TileAttacksVersion, Protocol.Version);
     }
 
     [Fact]
@@ -81,7 +93,6 @@ public class ProtocolTests
             Assert.DoesNotContain("\"tile\"", json); // a card goes on a character, never a tile
         }
         RoundTrips(new Join(Protocol.Version, "Ana", NetFixture.Party("A"), Deck: ["dash", "dash", "take_cover"]));
-        Assert.Equal(17, Protocol.Version);
     }
 
     [Fact]
