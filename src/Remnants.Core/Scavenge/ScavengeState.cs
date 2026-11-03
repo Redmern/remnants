@@ -50,6 +50,12 @@ public enum ScavengeEventType
     LootDropped, ItemDropped, SalvageProgress,
     IntentDeclared, IntentResolved, IntentFizzled, IntentCanceled,
     DeckShuffled, CardPlayed, CardDiscarded, CardFound, Countered,
+    /// <summary>A card moved a unit by force (push, pull, swap).</summary>
+    Displaced,
+    /// <summary>A card changed a unit's place in the round's turn order.</summary>
+    InitiativeChanged,
+    /// <summary>A card put a barrier or smoke on the map.</summary>
+    FieldEffectPlaced,
 }
 
 /// <summary>

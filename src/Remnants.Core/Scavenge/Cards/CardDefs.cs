@@ -8,6 +8,13 @@ public enum CardCategory { Movement, Attack, Defense, Utility }
 public enum CardRarity { Common, Uncommon, Rare }
 
 /// <summary>
+/// What an ability card is aimed at: nothing beyond the character it is played on (<see cref="Self"/>), a unit of its
+/// side (<see cref="Ally"/>, itself included), a hostile (<see cref="Enemy"/>), anyone (<see cref="Unit"/>) or a
+/// <see cref="Tile"/>.
+/// </summary>
+public enum CardTarget { Self, Ally, Enemy, Unit, Tile }
+
+/// <summary>
 /// <see cref="Hard"/>: only a character who meets the requirement may play it. <see cref="Baseline"/>: anyone may, at the
 /// card's base effect; one who meets the requirement adds its <see cref="CardDef.Bonus"/>.
 /// </summary>
@@ -67,6 +74,13 @@ public sealed record CardScaling
 /// hit it takes, <see cref="Cover"/> until its next turn, <see cref="Mend"/> off its worst injury (field mending),
 /// <see cref="Draw"/> cards for the squad, and <see cref="Counter"/>: a reaction blow at an enemy whose plan it reads,
 /// struck when that plan resolves.
+/// Abilities change the board instead (<see cref="CardAbilities"/>): <see cref="Push"/> / <see cref="Pull"/> the target
+/// that many tiles along the line from / to the player, <see cref="Swap"/> places with an ally, <see cref="Step"/> the
+/// player up to that many tiles to the target tile, <see cref="Spin"/> the target's back to the player,
+/// <see cref="GrantAp"/>, <see cref="AdvanceInitiative"/> / <see cref="DelayInitiative"/> the target within the
+/// current round, <see cref="PlaceBarrier"/> (cover on the tile for that many rounds), <see cref="Smoke"/> (sight-blocking
+/// smoke for that many rounds), <see cref="Strike"/> the target now with the player's best attack, and
+/// <see cref="Disrupt"/> the target's plan.
 /// </summary>
 public sealed record CardEffect
 {
@@ -77,13 +91,39 @@ public sealed record CardEffect
     public double Mend { get; init; }
     public int Draw { get; init; }
     public bool Counter { get; init; }
+    public int Push { get; init; }
+    public int Pull { get; init; }
+    public bool Swap { get; init; }
+    public int Step { get; init; }
+    public bool Spin { get; init; }
+    public int GrantAp { get; init; }
+    public bool AdvanceInitiative { get; init; }
+    public bool DelayInitiative { get; init; }
+    public int PlaceBarrier { get; init; }
+    public int Smoke { get; init; }
+    public bool Strike { get; init; }
+    public bool Disrupt { get; init; }
 
-    public bool IsEmpty => Move == 0 && Hit == 0 && Guard == 0 && Cover == 0 && Mend == 0 && Draw == 0 && !Counter;
+    /// <summary>Whether it changes the board (anything beyond a buff on the character it is played on).</summary>
+    public bool IsAbility => Push > 0 || Pull > 0 || Swap || Step > 0 || Spin || GrantAp > 0 || AdvanceInitiative || DelayInitiative
+                             || PlaceBarrier > 0 || Smoke > 0 || Strike || Disrupt;
+
+    /// <summary>Whether it acts on a unit other than the player (a target unit is needed).</summary>
+    public bool NeedsUnit => Push > 0 || Pull > 0 || Swap || Spin || GrantAp > 0 || AdvanceInitiative || DelayInitiative || Strike || Disrupt;
+
+    /// <summary>Whether it acts on a tile (a target tile is needed).</summary>
+    public bool NeedsTile => Step > 0 || PlaceBarrier > 0 || Smoke > 0;
+
+    public bool IsEmpty => Move == 0 && Hit == 0 && Guard == 0 && Cover == 0 && Mend == 0 && Draw == 0 && !Counter && !IsAbility;
 
     public CardEffect Plus(CardEffect? other) => other is null ? this : new()
     {
         Move = Move + other.Move, Hit = Hit + other.Hit, Guard = Guard + other.Guard, Cover = Cover + other.Cover,
         Mend = Mend + other.Mend, Draw = Draw + other.Draw, Counter = Counter || other.Counter,
+        Push = Push + other.Push, Pull = Pull + other.Pull, Swap = Swap || other.Swap, Step = Step + other.Step, Spin = Spin || other.Spin,
+        GrantAp = GrantAp + other.GrantAp, AdvanceInitiative = AdvanceInitiative || other.AdvanceInitiative,
+        DelayInitiative = DelayInitiative || other.DelayInitiative, PlaceBarrier = PlaceBarrier + other.PlaceBarrier,
+        Smoke = Smoke + other.Smoke, Strike = Strike || other.Strike, Disrupt = Disrupt || other.Disrupt,
     };
 
     /// <summary>Numbers × <paramref name="factor"/> (whole-number effects round down, never below their base).</summary>
@@ -91,6 +131,9 @@ public sealed record CardEffect
     {
         Move = Math.Max(Move, (int)Math.Floor(Move * factor + 1e-9)), Hit = Hit * factor, Guard = Math.Max(Guard, (int)Math.Floor(Guard * factor + 1e-9)),
         Cover = Cover * factor, Mend = Mend * factor, Draw = Draw, Counter = Counter,
+        // Abilities do not scale: a push is as far, a smoke as long, whoever plays it.
+        Push = Push, Pull = Pull, Swap = Swap, Step = Step, Spin = Spin, GrantAp = GrantAp, AdvanceInitiative = AdvanceInitiative,
+        DelayInitiative = DelayInitiative, PlaceBarrier = PlaceBarrier, Smoke = Smoke, Strike = Strike, Disrupt = Disrupt,
     };
 }
 
@@ -99,6 +142,8 @@ public sealed record CardEffect
 /// of the character it is played on (most cost none); <see cref="BoostAp"/> more AP adds <see cref="Boost"/>.
 /// <see cref="Consumable"/>: gone for good once played (else it goes to the used pile). <see cref="Reaction"/>: played
 /// against a seen enemy's telegraphed plan. <see cref="ArmLock"/>: not while the character's arms are badly hurt.
+/// An ability is aimed at its <see cref="Target"/> within <see cref="Range"/> tiles (0: any distance in sight); a
+/// smoke covers <see cref="Radius"/> tiles around its tile.
 /// </summary>
 public sealed record CardDef
 {
@@ -113,6 +158,9 @@ public sealed record CardDef
     public bool Consumable { get; init; }
     public bool Reaction { get; init; }
     public bool ArmLock { get; init; }
+    public CardTarget Target { get; init; }
+    public int Range { get; init; }
+    public int Radius { get; init; }
     public CardRequirement Requirement { get; init; } = new();
     public CardScaling? Scaling { get; init; }
     public CardEffect Effect { get; init; } = new();
@@ -216,12 +264,14 @@ public sealed class CardCatalog
             if (!all.TryAdd(c.Id, c)) throw new GameDataException($"cards.json: card '{c.Id}' is defined twice.");
             if (c.Cost < 0 || c.ApCost < 0 || c.BoostAp < 0) throw new GameDataException($"Card '{c.Id}': costs cannot be negative.");
             if (c.Effect.IsEmpty) throw new GameDataException($"Card '{c.Id}' does nothing.");
+            CheckTarget(c);
             if (c.BoostAp > 0 && c.Boost is null) throw new GameDataException($"Card '{c.Id}': a boost cost needs a boost effect.");
             if (c.Requirement.Kind == CardKind.Hard && c.Requirement.AnyOf.Count == 0)
                 throw new GameDataException($"Card '{c.Id}': a hard card needs a requirement.");
             foreach (var cond in c.Requirement.AnyOf) CheckCondition(cond, $"Card '{c.Id}'");
             foreach (var e in new[] { c.Effect, c.Bonus, c.Boost }.OfType<CardEffect>())
-                if (e.Move < 0 || e.Hit < 0 || e.Guard < 0 || e.Cover < 0 || e.Mend < 0 || e.Draw < 0)
+                if (e.Move < 0 || e.Hit < 0 || e.Guard < 0 || e.Cover < 0 || e.Mend < 0 || e.Draw < 0 || e.Push < 0 || e.Pull < 0 || e.Step < 0
+                    || e.GrantAp < 0 || e.PlaceBarrier < 0 || e.Smoke < 0)
                     throw new GameDataException($"Card '{c.Id}': effects cannot be negative.");
             if (c.Scaling is { } s
                 && ((s.Skill is null ? 0 : 1) + (s.Attribute is null ? 0 : 1) + (s.Level ? 1 : 0) != 1 || s.Per < 0 || s.Max < 0))
@@ -247,6 +297,25 @@ public sealed class CardCatalog
     }
 
     public CardDef? Find(string id) => All.GetValueOrDefault(id);
+
+    /// <summary>
+    /// An ability's target fits what it does: unit effects need a unit (a swap an ally), tile effects a tile, never both;
+    /// a reaction answers an enemy's plan; no negative range or radius.
+    /// </summary>
+    private static void CheckTarget(CardDef c)
+    {
+        var e = c.Effect;
+        if (c.Range < 0 || c.Radius < 0) throw new GameDataException($"Card '{c.Id}': range and radius cannot be negative.");
+        if (e.NeedsUnit && e.NeedsTile) throw new GameDataException($"Card '{c.Id}': an ability acts on a unit or a tile, not both.");
+        var unit = c.Target is CardTarget.Ally or CardTarget.Enemy or CardTarget.Unit;
+        if (e.NeedsUnit && !unit) throw new GameDataException($"Card '{c.Id}': its effect needs a unit target.");
+        if (e.NeedsTile && c.Target != CardTarget.Tile) throw new GameDataException($"Card '{c.Id}': its effect needs a tile target.");
+        if (e.Swap && c.Target != CardTarget.Ally) throw new GameDataException($"Card '{c.Id}': a swap is with an ally.");
+        if (c.Reaction && c.Target is not (CardTarget.Self or CardTarget.Enemy))
+            throw new GameDataException($"Card '{c.Id}': a reaction answers an enemy's plan.");
+        if (!e.IsAbility && c.Target is not CardTarget.Self && !c.Reaction)
+            throw new GameDataException($"Card '{c.Id}': a buff is played on the character itself.");
+    }
 
     /// <summary>A condition names exactly one of a skill, an attribute or a known perk hook, at no negative minimum.</summary>
     private static void CheckCondition(CardCondition c, string where)

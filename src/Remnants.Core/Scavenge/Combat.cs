@@ -157,10 +157,19 @@ public static class Combat
         dodger.OutplayedId = attacker.Id;
         dodger.OutplayedUntilRound = state.Round + 1;
         dodger.FreeCounterId = counter && sim.Data.Rules.Combat.Outplay.FreeCounter ? attacker.Id : null;
-        attacker.ExposedUntilRound = state.Round + 1;
-        attacker.ExposedToSide = dodger.Side;
+        Expose(sim, attacker, dodger.Side);
         state.Log(new(state.Round, ScavengeEventType.IntentFizzled, $"{dodger.Name} dodges {attacker.Name}'s blow: {attacker.Name} is exposed.",
             attacker.Id, dodger.Id, attacker.Pos));
+    }
+
+    /// <summary>
+    /// The unit was outplayed (its blow dodged, its plan disrupted): the next hit by <paramref name="side"/> lands harder,
+    /// through the next round.
+    /// </summary>
+    internal static void Expose(ScavengeSim sim, Unit unit, string side)
+    {
+        unit.ExposedUntilRound = sim.State.Round + 1;
+        unit.ExposedToSide = side;
     }
 
     /// <summary>Whether the unit is exposed: a telegraphed blow of its was dodged (<see cref="Unit.ExposedUntilRound"/>).</summary>

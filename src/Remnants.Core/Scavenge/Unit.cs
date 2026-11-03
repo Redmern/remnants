@@ -168,6 +168,12 @@ public sealed class Unit
     /// <summary>The enemy this unit will strike first when its plan resolves (a counter card), until its own next turn.</summary>
     public int? CounterId { get; set; }
 
+    /// <summary>
+    /// Moved by force (a card's push, pull or swap) since its last sub-turn began: a declared strike on its tile hits it
+    /// whoever's side the strike is (<see cref="CardAbilities"/>).
+    /// </summary>
+    public bool Displaced { get; set; }
+
     /// <summary>The last card (not a reaction) played on this unit this turn: a plan declared now carries it, server-side only.</summary>
     public string? LastCardId { get; set; }
 

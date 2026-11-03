@@ -205,8 +205,12 @@ public sealed class ScavengeSim
         }
     }
 
-    /// <summary>A unit's sub-turn begins: it gets the next <see cref="ScavengeState.TurnSeq"/>.</summary>
-    private void StartSubTurn(Unit unit) => unit.TurnSeq = ++State.TurnSeq;
+    /// <summary>A unit's sub-turn begins: it gets the next <see cref="ScavengeState.TurnSeq"/> and is on its feet again (no longer <see cref="Unit.Displaced"/>).</summary>
+    private void StartSubTurn(Unit unit)
+    {
+        unit.TurnSeq = ++State.TurnSeq;
+        unit.Displaced = false;
+    }
 
     private ScavengeResult FinishTurn(Unit unit, EndTurn c)
     {
