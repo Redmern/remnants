@@ -131,7 +131,7 @@ public sealed class ScavengeSim
             {
                 EndSubRound();
                 if (State.Finished) break;
-                if (State.SubRound < Data.Rules.Turn.SubRounds)
+                if (State.Round > 0 && State.SubRound < Data.Rules.Turn.SubRounds)
                 {
                     State.SubRound++;
                     State.TurnIndex = 0;
