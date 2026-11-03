@@ -23,7 +23,7 @@ public sealed record SalvageNodeDef
     public Terrain Terrain { get; init; } = Terrain.Floor;
     public int Work { get; init; } = 1;
     public int[] Lots { get; init; } = [1, 1];
-    public int ApCost { get; init; } = 2;
+    public int ApCost { get; init; } = 1;
     public int Noise { get; init; } = 3;
     public Skill? Skill { get; init; }
     public double YieldPerSkill { get; init; } = 0.005;

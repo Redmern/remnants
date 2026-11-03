@@ -4,19 +4,19 @@
   "stashApCost": 1,
   "nodes": [
     { "id": "rubble", "name": "Rubble", "table": "salvage_rubble", "model": "rubble", "terrain": "Rubble",
-      "work": 2, "lots": [2, 3], "apCost": 2, "noise": 3, "skill": "Mining", "tools": { "pickaxe": 1, "crowbar": 1 } },
+      "work": 2, "lots": [2, 3], "apCost": 1, "noise": 3, "skill": "Mining", "tools": { "pickaxe": 1, "crowbar": 1 } },
     { "id": "dead_tree", "name": "Dead Tree", "table": "salvage_tree", "model": "dead_tree", "terrain": "Floor",
-      "work": 2, "lots": [2, 3], "apCost": 2, "noise": 3, "skill": "Woodcutting", "tools": { "hand_saw": 1, "machete": 1 } },
+      "work": 2, "lots": [2, 3], "apCost": 1, "noise": 3, "skill": "Woodcutting", "tools": { "hand_saw": 1, "machete": 1 } },
     { "id": "furniture", "name": "Broken Furniture", "table": "salvage_furniture", "model": "ruins_house_shelf", "terrain": "Floor",
-      "work": 1, "lots": [2, 2], "apCost": 2, "noise": 2, "skill": "Woodcutting", "tools": { "hand_saw": 1, "crowbar": 1 } },
+      "work": 1, "lots": [2, 2], "apCost": 1, "noise": 2, "skill": "Woodcutting", "tools": { "hand_saw": 1, "crowbar": 1 } },
     { "id": "bedding", "name": "Old Bedding", "table": "salvage_bedding", "model": "ruins_house_bed", "terrain": "Floor",
       "work": 1, "lots": [1, 1], "apCost": 1, "noise": 1, "skill": "Tailoring" },
     { "id": "wrecked_car", "name": "Wrecked Car", "table": "salvage_car", "model": "wrecked_car", "terrain": "Cover",
-      "work": 2, "lots": [2, 3], "apCost": 2, "noise": 4, "skill": "Crafting", "tools": { "crowbar": 1 } },
+      "work": 2, "lots": [2, 3], "apCost": 1, "noise": 4, "skill": "Crafting", "tools": { "crowbar": 1 } },
     { "id": "building_shell", "name": "Building Shell", "table": "salvage_shell", "model": "building_shell", "terrain": "Floor",
-      "work": 3, "lots": [2, 3], "apCost": 2, "noise": 4, "skill": "Mining", "tools": { "crowbar": 1, "pickaxe": 1 } },
+      "work": 3, "lots": [2, 3], "apCost": 1, "noise": 4, "skill": "Mining", "tools": { "crowbar": 1, "pickaxe": 1 } },
     { "id": "dead_electronics", "name": "Dead Electronics", "table": "salvage_electronics", "model": "terminal_room_server_rack", "terrain": "Floor",
-      "work": 2, "lots": [1, 2], "apCost": 2, "noise": 2, "skill": "Electronics", "tools": { "hacking_kit": 1 } }
+      "work": 2, "lots": [1, 2], "apCost": 1, "noise": 2, "skill": "Electronics", "tools": { "hacking_kit": 1 } }
   ],
   "default": { "count": [3, 5], "mix": [ { "id": "rubble", "weight": 2 }, { "id": "wrecked_car", "weight": 2 }, { "id": "furniture", "weight": 1 } ] },
   "zones": {
