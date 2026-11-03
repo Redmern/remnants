@@ -56,8 +56,9 @@ public class AiPlanTests
         var sim = Arena(8, 3, [u, near]);
         Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
         Assert.Null(near.Plan);
+        // Striking at once is a tile strike, readied and come down at the sub-round's end; no plan is telegraphed.
         Assert.Contains(sim.State.Events, e => e.UnitId == near.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
-        Assert.DoesNotContain(sim.State.Events, e => e.UnitId == near.Id && e.Type == ScavengeEventType.IntentDeclared);
+        Assert.DoesNotContain(sim.State.Events, e => e.UnitId == near.Id && e.Type == ScavengeEventType.IntentDeclared && !e.Message.Contains("readies"));
 
         // A turret in reach still only telegraphs its aim.
         ZoneDevice turret = null!;
@@ -79,7 +80,7 @@ public class AiPlanTests
         linked.Plan = new PlannedAction { Path = [], Round = 0 };
         ScavengeAi.TakeTurn(sim, linked);
         Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.IntentCanceled && e.UnitId == linked.Id && e.Message.Contains("could not settle"));
-        Assert.Contains(sim.State.Events, e => e.UnitId == linked.Id && e.TargetId == u.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
+        Assert.Contains(u.Pos, Assert.Single(sim.State.Strikes, s => s.UnitId == linked.Id).Tiles);
 
         // Nothing in reach: logged, and it idles (no plan, no blow).
         var v = SurvivorUnit(pos: new(0, 0));
@@ -233,14 +234,17 @@ public class AiPlanTests
         }
         var (ai, aiU, aiNear) = Make();
         ScavengeAi.TakeTurn(ai, aiNear);
-        var strikes = ai.State.Events.Where(e => e.UnitId == aiNear.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed).ToList();
+        var strikes = ai.State.Strikes.ToList();
         Assert.NotEmpty(strikes);
         Assert.Null(aiNear.Plan);
+        TileStrikes.ResolveAll(ai);
+        Assert.Contains(ai.State.Events, e => e.UnitId == aiNear.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
 
-        // The same strikes made directly, with no look-ahead before them, leave the dice where the AI's turn did.
+        // The same strikes readied directly, with no look-ahead before them, leave the dice where the AI's turn did.
         var (direct, u, near) = Make();
         foreach (var strike in strikes)
-            Combat.Resolve(direct, near, direct.Profile(near).Actions.First(a => strike.Message.Contains(a.Name)), u);
+            Assert.True(TileStrikes.Declare(direct, near, new AttackTile(0, near.Id, strike.Tile, strike.ActionId, strike.Mode, strike.Direction)).Ok);
+        TileStrikes.ResolveAll(direct);
         Assert.Equal(direct.Rng.State, ai.Rng.State);
         Assert.Equal(u.Hp, aiU.Hp);
     }

@@ -38,6 +38,25 @@ public class TileAttackAiTests
     }
 
     [Fact]
+    public void An_enemy_with_a_plain_attack_readies_a_strike_on_the_one_tile_instead_of_hitting_at_once()
+    {
+        var far = SurvivorUnit(1, new(0, 0), weapon: "pipe");
+        var husk = EnemyUnit("husk", new(5, 2));
+        var near = SurvivorUnit(1, new(6, 2), weapon: "pipe");
+        var sim = Arena(10, 5, [far, husk, near], data: Rounds(1));
+        husk.Ai.Mode = AiMode.Hunting;
+        Assert.True(sim.Execute(new EndTurn(1, far.Id)).Ok);
+
+        Assert.Equal(near.MaxHp, near.Hp);
+        var strike = Assert.Single(sim.State.Strikes);
+        Assert.Equal((husk.Id, (Items.StrikeMode?)null), (strike.UnitId, strike.Mode));
+        Assert.Equal([near.Pos], strike.Tiles);
+
+        Assert.True(sim.Execute(new EndTurn(1, near.Id)).Ok);
+        Assert.True(near.Hp < near.MaxHp);
+    }
+
+    [Fact]
     public void The_enemy_strike_lands_on_whoever_stays_and_misses_who_steps_away()
     {
         var (sim, far, _, near) = Ambush();
