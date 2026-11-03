@@ -919,13 +919,33 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
   resolves at the start of the unit's next turn through the plain move rules and a tile strike (`TileStrikes.Strike`, a
   stab / slash's covered tiles or the one tile) from where the path ended, paid from that turn's AP: a step that no
   longer works ends the path, whoever hostile is on the tile then is struck (suppressing fire pins them instead), an empty tile is a miss with
-  no refund (the aimed-at unit dodged it: `Unit.OutplayedId`, the ambush hit bonus on its next attack on the attacker,
-  through the next round). Downed, killed, pinned or stunned cancels the plan.
-- **Enemy AI telegraphs** (user decision: the hybrid): `ScavengeAi.Planned` runs a unit's usual behaviour (Spot,
-  TryAttack, Reposition, Retreat, Suppress, shared squad focus) against a look-ahead position and AP. If it chose to
-  move and then strike (or only move), it declares that plan; if its choice is to strike from where it stands (a target
-  already in reach at the start of its turn), it takes its turn at once. A turret always telegraphs its aim tile.
-  Recruits act at once.
+  no refund. Declaring turns the unit toward its first waypoint (or its attack tile). Downed, killed, pinned or stunned
+  cancels the plan.
+- **Outplays** (`Combat.Dodged`, `scavenge.json combat.outplay`): a telegraphed blow (tile strike or plan) that comes
+  down on a tile its aimed-at unit stepped off is dodged. Through the next round the dodger gets the ambush hit bonus on
+  the attacker (`Unit.OutplayedId`, `Combat.OutplayBonus`) and one free counter (`Unit.FreeCounterId`,
+  `TileStrikes.FreeCounter`: its next tile strike covering the attacker costs no AP, logged `Countered`); the attacker is
+  exposed (`Unit.ExposedUntilRound`, `Combat.Exposed`): the next hit on it does `exposedDamage` times the damage, once.
+  SideFog hides the outplay and the free counter from other sides; exposure is public. Tests: `OutplayTests`.
+- **Facing** (`Unit.Facing`, `Combat.ArcOf`, `scavenge.json combat.facing`): a unit faces where it last moved, struck or
+  planned. A landed blow's damage (before armor) is multiplied by `sideDamage` from the target's flank and `rearDamage`
+  from behind, by the 8 steps (within one step of where it faces is the front, two the side, further the rear); a unit
+  facing nowhere and a structure are always struck from the front. The log says "from the side" / "from behind".
+  Tests: `FacingTests`.
+- **Enemy AI telegraphs**: `ScavengeAi.Planned` runs a unit's usual behaviour (Spot, TryAttack, Reposition, Retreat,
+  Suppress, shared squad focus) against a look-ahead position and AP and declares what it chose as a plan, a blow at a
+  target already in reach too (a plan with no path): it resolves at the start of the enemy's next turn, so whoever it is
+  aimed at always gets a turn to step out of it (an enemy in reach attacks once a round). Only a plan that cannot be
+  declared falls back to a tile strike at once. A turret's plan is its aim tile. Recruits act at once.
+  Tests: `EnemyTelegraphTests`, `TileAttackAiTests`, `AiPlanTests`.
+- **Turn advice** (`TurnAdvice.CanStillAct`): whether the acting unit has an affordable, useful order left (a move, a
+  stance or lookout, an item, a blow at a seen hostile in reach); the screen ends the turn when it has not
+  (`GameSettings.AutoEndTurn`, default on). Tests: `TurnAdviceTests`.
+- **Replay pacing** (Godot, `UnitViews.Replay`): a tile walk takes `GameSettings.WalkTileSeconds` (Settings > Game, walk
+  speed, default 0.2 s); `GameSettings.SkipAnimations` (Settings > Game, hotkey `scav_fast_forward`, ".") snaps every
+  step to its end in the same frame. An event of another side's unit the side saw nothing of (`UnitViews.InSight`) is
+  always instant and the camera only follows what was seen. Models turn to Core's facing on sync and on a seen plan.
+  Pacing only: the sim is the same either way.
 - **Cards** (`data/cards.json`, `ScavengeData.Cards`): card defs (category, rarity, points, AP cost / boost,
   consumable, reaction, arm lock, `CardRequirement` any-of skill / attribute / perk hook, hard or baseline, scaling,
   effects in the game's own terms: move, hit, guard, cover, mend, draw, counter) and the deck rules (hand size, an
