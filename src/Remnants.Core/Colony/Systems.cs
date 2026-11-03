@@ -15,7 +15,8 @@ internal static class ProductionSystem
             var job = data.Jobs[def.Job];
             foreach (var (worker, shift) in Schedule.Crew(state, data, building))
             {
-                state.Stockpile.Add(def.Produces, JobOutput.PerTick(def, building.Level, job, worker, data.Rules.Output, data) * shift);
+                var tool = WorkTools.Quality(state, data, job, worker);
+                state.Stockpile.Add(def.Produces, JobOutput.PerTick(def, building.Level, job, worker, data.Rules.Output, data, tool) * shift);
                 Training.Work(state, data, job, worker);
             }
         }

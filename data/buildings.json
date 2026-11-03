@@ -27,11 +27,11 @@
     "outdoor": true,
     "job": "woodcutting",
     "produces": "wood",
-    "baseOutput": 0.96,
+    "baseOutput": 0.6,
     "levels": [
       { "cost": { "wood": 10, "stone": 5 },   "workerSlots": 2, "outputMultiplier": 1.0, "buildWork": 1, "maxBuilders": 2 },
-      { "cost": { "wood": 30, "stone": 20 },  "workerSlots": 3, "outputMultiplier": 1.25, "buildWork": 7.5, "maxBuilders": 3 },
-      { "cost": { "wood": 60, "stone": 50 },  "workerSlots": 4, "outputMultiplier": 1.5, "buildWork": 23.5, "maxBuilders": 4 }
+      { "cost": { "wood": 30, "stone": 20 },  "workerSlots": 3, "outputMultiplier": 1.6, "buildWork": 7.5, "maxBuilders": 3 },
+      { "cost": { "wood": 60, "stone": 50 },  "workerSlots": 4, "outputMultiplier": 2.2, "buildWork": 23.5, "maxBuilders": 4 }
     ]
   },
   {
@@ -41,11 +41,11 @@
     "outdoor": true,
     "job": "mining",
     "produces": "stone",
-    "baseOutput": 0.88,
+    "baseOutput": 0.55,
     "levels": [
       { "cost": { "wood": 15 },               "workerSlots": 2, "outputMultiplier": 1.0, "buildWork": 1, "maxBuilders": 2 },
-      { "cost": { "wood": 35, "stone": 20 },  "workerSlots": 3, "outputMultiplier": 1.25, "buildWork": 7.8, "maxBuilders": 3 },
-      { "cost": { "wood": 70, "stone": 50 },  "workerSlots": 4, "outputMultiplier": 1.5, "buildWork": 24, "maxBuilders": 4 }
+      { "cost": { "wood": 35, "stone": 20 },  "workerSlots": 3, "outputMultiplier": 1.6, "buildWork": 7.8, "maxBuilders": 3 },
+      { "cost": { "wood": 70, "stone": 50 },  "workerSlots": 4, "outputMultiplier": 2.2, "buildWork": 24, "maxBuilders": 4 }
     ]
   },
   {
@@ -55,11 +55,11 @@
     "outdoor": true,
     "job": "scavenging",
     "produces": "scrap",
-    "baseOutput": 0.43,
+    "baseOutput": 0.27,
     "levels": [
       { "cost": { "wood": 20, "stone": 10 },  "workerSlots": 2, "outputMultiplier": 1.0, "buildWork": 1.2, "maxBuilders": 2 },
-      { "cost": { "wood": 40, "stone": 30 },  "workerSlots": 3, "outputMultiplier": 1.25, "buildWork": 8.5, "maxBuilders": 3 },
-      { "cost": { "wood": 80, "stone": 60, "scrap": 20 }, "workerSlots": 4, "outputMultiplier": 1.5, "buildWork": 26, "maxBuilders": 4 }
+      { "cost": { "wood": 40, "stone": 30 },  "workerSlots": 3, "outputMultiplier": 1.6, "buildWork": 8.5, "maxBuilders": 3 },
+      { "cost": { "wood": 80, "stone": 60, "scrap": 20 }, "workerSlots": 4, "outputMultiplier": 2.2, "buildWork": 26, "maxBuilders": 4 }
     ]
   },
   {

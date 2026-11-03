@@ -8,7 +8,7 @@ namespace Remnants.Core.Colony;
 /// <code>
 /// effectiveness = (Σ wₐ·attrₐ + w_skill·skill) / (Σ wₐ + w_skill) / 100          ∈ [0,1]
 /// performance   = floor + (1 − floor) · effectiveness
-/// tool          = 1 + toolQuality · job.toolBonus
+/// tool          = 1 + toolQuality · job.toolBonus   (toolQuality: the stockpile tool the worker uses, see WorkTools)
 /// health        = bodyEfficiency(job regions) · lerp(lowHealthMultiplier, 1, hp/100)
 /// life          = child ? childOutputMultiplier : 1
 /// mood          = lerp(lowMoodMultiplier, 1, mood/100)
@@ -29,7 +29,8 @@ public static class JobOutput
     public static double Performance(JobDef job, Survivor s, OutputRules rules) =>
         rules.PerformanceFloor + (1 - rules.PerformanceFloor) * Effectiveness(job, s);
 
-    public static double ToolFactor(JobDef job, Survivor s) => 1 + Math.Clamp(s.ToolQuality, 0, 1) * job.ToolBonus;
+    public static double ToolFactor(JobDef job, Survivor s, double? toolQuality = null) =>
+        1 + Math.Clamp(toolQuality ?? s.ToolQuality, 0, 1) * job.ToolBonus;
 
     public static double HealthFactor(JobDef job, Survivor s, OutputRules rules)
     {
@@ -52,12 +53,15 @@ public static class JobOutput
             ? 1
             : 1 + PerkEffects.For(s, data).JobOutputBonus(job.Id);
 
-    /// <summary>Units of the building's resource this survivor produces in one tick (perks count when <paramref name="data"/> is given).</summary>
-    public static double PerTick(BuildingDef building, int level, JobDef job, Survivor s, OutputRules rules, GameData? data = null) =>
+    /// <summary>
+    /// Units of the building's resource this survivor produces in one tick (perks count when <paramref name="data"/> is
+    /// given; <paramref name="toolQuality"/> overrides the survivor's own, as gathering passes <see cref="WorkTools.Quality"/>).
+    /// </summary>
+    public static double PerTick(BuildingDef building, int level, JobDef job, Survivor s, OutputRules rules, GameData? data = null, double? toolQuality = null) =>
         building.BaseOutput
         * building.Level(level).OutputMultiplier
         * Performance(job, s, rules)
-        * ToolFactor(job, s)
+        * ToolFactor(job, s, toolQuality)
         * HealthFactor(job, s, rules)
         * LifeFactor(s, rules)
         * MoodFactor(s, rules)

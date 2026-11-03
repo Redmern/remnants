@@ -21,6 +21,12 @@ public sealed record JobDef
     /// <summary>Output bonus at tool quality 1 (0.5 = +50%).</summary>
     public double ToolBonus { get; init; }
 
+    /// <summary>
+    /// Stockpile items that serve as this job's tools: item id → tool quality (0..1). Each worker at the job's buildings
+    /// uses one, the best first (see <see cref="Colony.WorkTools"/>).
+    /// </summary>
+    public Dictionary<string, double> Tools { get; init; } = new();
+
     /// <summary>Other skills this job trains on the side, as a share of the main skill's gain (electronics → Hacking 0.3).</summary>
     public Dictionary<Skill, double> Trains { get; init; } = new();
 
