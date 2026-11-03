@@ -73,11 +73,12 @@ public sealed class ScavengeSim
             Recruit c => ScavengeCommandHandlers.Recruit(this, unit!, c),
             SetStance c => ScavengeCommandHandlers.SetStance(this, unit!, c),
             DeclareIntent c => PlannedActions.Declare(this, unit!, c),
+            AttackTile c => TileStrikes.Declare(this, unit!, c),
             PlayCard c => CardPlay.Play(this, unit!, c),
             DiscardDeadCard c => CardPlay.DiscardDead(this, unit!, c),
             Lookout c => ScavengeCommandHandlers.Lookout(this, unit!, c),
             FieldMod c => ScavengeCommandHandlers.FieldMod(this, unit!, c),
-            EndTurn => ScavengeResult.Success($"{unit!.Name} ends their turn."),
+            EndTurn c => FinishTurn(unit!, c),
             Extract => ScavengeCommandHandlers.Extract(this, unit!),
             TakeFromStash c => ParkedVehicles.Unstash(this, unit!, c),
             ProposeAlliance c => Alliances.Propose(this, unit!, c),
@@ -104,8 +105,9 @@ public sealed class ScavengeSim
         {
             MissionRules.Update(this);
             UpdateParties();
-            // The acting unit's turn ends on EndTurn, a stance or a plan, or when it left the map or can no longer act.
-            if (command is EndTurn or SetStance or DeclareIntent || unit is not { IsActive: true })
+            // The acting unit's turn ends on EndTurn, a stance or a plan, or when it left the map or can no longer act; its
+            // sub-turn ends on a tile attack.
+            if (command is EndTurn or SetStance or DeclareIntent or AttackTile || unit is not { IsActive: true })
             {
                 State.TurnIndex++;
                 AdvanceTurns();
@@ -127,12 +129,29 @@ public sealed class ScavengeSim
         {
             if (State.TurnIndex >= State.TurnOrder.Count)
             {
-                StartRound();
+                EndSubRound();
+                if (State.Finished) break;
+                if (State.Round > 0 && State.SubRound < Data.Rules.Turn.SubRounds)
+                {
+                    State.SubRound++;
+                    State.TurnIndex = 0;
+                }
+                else StartRound();
                 continue;
             }
             var unit = State.CurrentUnit;
-            if (unit is not { IsActive: true })
+            if (unit is not { IsActive: true } || State.SubRound > 1 && SitsOut(unit))
             {
+                State.TurnIndex++;
+                continue;
+            }
+            if (State.SubRound > 1)
+            {
+                // A later sub-round: the turn goes on with the AP left.
+                if (unit.PlayerControlled) return;
+                ScavengeAi.TakeTurn(this, unit);
+                MissionRules.Update(this);
+                UpdateParties();
                 State.TurnIndex++;
                 continue;
             }
@@ -163,6 +182,27 @@ public sealed class ScavengeSim
             UpdateParties();
             State.TurnIndex++;
         }
+    }
+
+    private ScavengeResult FinishTurn(Unit unit, EndTurn c)
+    {
+        if (!c.WholeTurn) return ScavengeResult.Success($"{unit.Name} ends their turn.");
+        unit.TurnOverRound = State.Round;
+        return ScavengeResult.Success($"{unit.Name} is done for the round.");
+    }
+
+    /// <summary>
+    /// Whether the unit skips a later sub-round: out of AP, done for the round, holding a stance or waiting on a plan.
+    /// </summary>
+    private bool SitsOut(Unit unit) =>
+        unit.Ap <= 0 || unit.TurnOverRound == State.Round || unit.Stance != Stance.None || unit.Plan is not null;
+
+    /// <summary>The sub-round's tile attacks come down (<see cref="TileStrikes"/>).</summary>
+    private void EndSubRound()
+    {
+        TileStrikes.ResolveAll(this);
+        MissionRules.Update(this);
+        UpdateParties();
     }
 
     /// <summary>
@@ -202,6 +242,7 @@ public sealed class ScavengeSim
     private void StartRound()
     {
         State.Round++;
+        State.SubRound = 1;
         State.Log(new(State.Round, ScavengeEventType.RoundStarted, $"Round {State.Round}."));
         foreach (var u in State.Units.Where(u => u.Status == UnitStatus.Downed && !u.Stabilized).ToList())
         {

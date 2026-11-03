@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Godot;
+using Remnants.Core.Items;
 using Remnants.Core.Scavenge;
 using Remnants.Game.Colony;
 using Remnants.Game.Scavenge.Fog;
@@ -341,6 +342,12 @@ public partial class ScavengeScreen : Node3D
             return;
         }
 
+        if (acting is not null && _selectedId == acting.Id && StrikeAim(acting, tile) is { } strike)
+        {
+            _ = Run(new AttackTile(pid, acting.Id, tile, strike.Action.Id, strike.Mode));
+            return;
+        }
+
         if (clicked is not null)
         {
             if (acting is not null && _selectedId == acting.Id && acting.HostileTo(clicked))
@@ -362,7 +369,8 @@ public partial class ScavengeScreen : Node3D
     private void OnEndTurn()
     {
         if (_busy || _presenter.ActingUnit is not { } acting) return;
-        _ = Run(new EndTurn(_presenter.PlayerId, acting.Id));
+        // Shift: done for the whole round, sitting out its later sub-rounds.
+        _ = Run(new EndTurn(_presenter.PlayerId, acting.Id, WholeTurn: Input.IsKeyPressed(Key.Shift)));
     }
 
     /// <summary>Sends a command; on success replays its events (and any AI turns it set off), then snaps views to state.</summary>
@@ -596,6 +604,14 @@ public partial class ScavengeScreen : Node3D
         _camera.GlideTo(TileGrid.ToWorld(acting.Pos));
     }
 
+    /// <summary>The tile strike a click on <paramref name="tile"/> would ready (a stab / slash mode chosen), else null.</summary>
+    private (ActionProfile Action, StrikeMode Mode, List<Pos> Tiles)? StrikeAim(Unit acting, Pos tile)
+    {
+        if (_actionPanel.Mode is not { } mode || _actionPanel.ActionId is not { } id || _presenter.Sim.Profile(acting).Action(id) is not { } action)
+            return null;
+        return TileStrikes.Aim(_presenter.Sim, acting, action, tile, mode) is { } aim ? (action, mode, aim.Tiles) : null;
+    }
+
     /// <summary>Move tiles (Core's Reachable), attack targets with Core's hit chance, or who an item can reach.</summary>
     private void RefreshHighlights(Unit? selected)
     {
@@ -668,6 +684,14 @@ public partial class ScavengeScreen : Node3D
         }
 
         if (!isActing || _actionPanel.ActionId is not { } actionId || _presenter.Sim.Profile(selected).Action(actionId) is not { } action) return;
+        if (_actionPanel.Mode is { } strikeMode)
+        {
+            // Tile strikes: every tile the mode can reach, and what the hovered aim would cover.
+            foreach (var p in TileStrikes.Reach(_presenter.Sim, selected, action, strikeMode)) _map.Highlight(p, HighlightKind.Use);
+            if (_hover is { } aimAt && StrikeAim(selected, aimAt) is { } aim)
+                foreach (var p in aim.Tiles) _map.Highlight(p, HighlightKind.Attack, p == aimAt ? strikeMode.ToString().ToUpperInvariant() : null);
+            return;
+        }
         foreach (var option in _presenter.AttackOptions(selected, action))
         {
             _map.Highlight(option.Target.Pos, HighlightKind.Attack);

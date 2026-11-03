@@ -120,6 +120,13 @@ public sealed class SideFog(int playerId, string side)
             Round = state.Round,
             TurnOrder = order,
             TurnIndex = index,
+            SubRound = state.SubRound,
+            // Readied tile strikes of the units this side knows; whom another's was aimed at stays on the server.
+            Strikes = state.Strikes.Where(x => known.Contains(x.UnitId)).Select(x => new TileStrike
+            {
+                UnitId = x.UnitId, ActionId = x.ActionId, Mode = x.Mode, From = x.From, Tile = x.Tile, Direction = x.Direction,
+                Tiles = new(x.Tiles), TargetId = state.FindUnit(x.UnitId)?.PlayerId == PlayerId ? x.TargetId : null,
+            }).ToList(),
             Finished = state.Finished,
             Map = new TileMap(),
             // Other teams' alliances are none of this player's business: their parties show as on their own.

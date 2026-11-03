@@ -100,7 +100,7 @@ public class MultiplayerTests(ITestOutputHelper output)
             var unit = f.Sim.State.CurrentUnitId!.Value;
             Assert.Equal(unit, up.Last<TurnChanged>().UnitId);
             Assert.Equal(up.Id, (up == a ? b : a).Last<TurnChanged>().PlayerId);
-            Assert.True(up.Do(new EndTurn(up.Id, unit)).Ok);
+            Assert.True(up.Do(new EndTurn(up.Id, unit, WholeTurn: true)).Ok);
         }
         Assert.Contains(a.Id, actors);
         Assert.Contains(b.Id, actors);

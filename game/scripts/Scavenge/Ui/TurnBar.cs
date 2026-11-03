@@ -111,7 +111,8 @@ public partial class TurnBar : PanelContainer
         RefreshWeather();
         var state = _presenter.State;
         _zone.Text = _presenter.Sim.Data.Zones.TryGetValue(state.ZoneId, out var z) ? z.Name : state.ZoneId;
-        _round.Text = $"ROUND {state.Round}";
+        var subRounds = _presenter.Sim.Data.Rules.Turn.SubRounds;
+        _round.Text = subRounds > 1 ? $"ROUND {state.Round} · {state.SubRound}/{subRounds}" : $"ROUND {state.Round}";
 
         // One chip per unit, kept across rounds and updated in place (side, acting, acted, HP tint); only a unit never
         // seen in the order before gets a new chip.

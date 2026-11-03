@@ -888,6 +888,16 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
 
 - **Reach** (`Combat.Tiles(map, action, from, facing)`): the tiles an attack pattern covers; `Combat.Hittable` adds the
   line-of-sight rule, `CheckReach` is membership plus LOS, and `Combat.ThreatZone(sim, unit)` unions a unit's attacks.
+- **Tile attacks and sub-rounds** (`TileStrikes`, command `AttackTile`, wire `attackTile`; `ScavengeState.Strikes`,
+  `SubRound`): a round is `scavenge.json turn.subRounds` sub-rounds (data: 2). Every unit acts in each in initiative
+  order on one turn's AP, refilled only when the round starts; `EndTurn` ends the sub-turn, `WholeTurn` the round, and a
+  unit out of AP, on a stance or with a plan sits out later sub-rounds. An attack is declared on a tile and a direction:
+  a weapon with `modes` covers `Combat.Covered` (stab: a line of `reach`, `diagonalReach` along a diagonal; slash: the
+  front tile and its two flanks), any other action the one tile in reach. The AP goes at once and the sub-turn ends; at
+  the sub-round's end strikes come down in initiative order on every hostile on a covered tile in sight, an empty tile is
+  a miss (the one seen there dodged). Plans take a `mode` / `direction` too and strike every hostile on the covered tiles
+  when they resolve. The AI's strikes at once with a stab / slash weapon are tile strikes (`TileStrikes.BestAim`: the aim
+  covering the most seen hostiles). Readied strikes and patterned plans telegraph their covered tiles (`TacticsView`).
 - **Hit tiers** (`Combat.TierOf`, `scavenge.json combat.tiers`): a landed hit is a graze (a share of the damage, no
   injury), a hit or a solid hit (more injury) by its roll margin; armor, cover and card guard shift it down. Attack
   events carry the `Tier` and the `Amount`.
@@ -916,9 +926,10 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
   starter set for new and migrated colonies; cards from loot / salvage rows (the run's `Party.CardPouch`, kept only if
   someone gets out), recipe outputs (`recipes[].card`: a recipe that makes something else teaches its card once per colony,
   `CardCollection.Taught`; a recipe whose only output is the card grants it every craft), trade (`GoodKind.Card`); consumables played leave the collection.
-- **Saves**: scavenge save 15 (`ScavengeSave.IntentsVersion`; older runs are refused) and colony save 27
+- **Saves**: scavenge save 16 (`ScavengeSave.TileAttacksVersion`: sub-round, strikes, turn-over round; 15 loads at
+  sub-round 1), from 15 (`ScavengeSave.IntentsVersion`; older runs are refused) and colony save 27
   (`SaveGame.CardsVersion`; older colonies get the starter set, and a run in progress inside one starts over from its
-  expedition's seed). Protocol 17 (see MULTIPLAYER.md, "Telegraphed plans and cards over the wire").
+  expedition's seed). Protocol 18 (see MULTIPLAYER.md, "Telegraphed plans and cards over the wire").
 - **Late-zone retune** (`ZoneDef.Retune`, zones.json `retune`; `LateZoneTuning`, `ZoneTuning.Applies`): a zone's
   alternative enemy count, devices, pylons and reinforcements (waves, count, `afterRounds`). `NewScavenge.Create` applies
   it when `ZoneConditions.LateZones` picks the run (Current; Expeditions: no story mission; Everywhere) and records

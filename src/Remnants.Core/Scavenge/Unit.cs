@@ -108,6 +108,9 @@ public sealed class Unit
     /// <summary>Held until this unit's next turn starts.</summary>
     public Stance Stance { get; set; }
 
+    /// <summary>The round in which the unit ended its whole turn (<see cref="EndTurn.WholeTurn"/>): it sits out that round's later sub-rounds.</summary>
+    public int TurnOverRound { get; set; }
+
     /// <summary>
     /// A telegraphed plan waiting for the start of this unit's next turn (see <see cref="PlannedActions"/>); null when
     /// none. Locked once declared; being downed, killed, pinned or stunned cancels it.
@@ -332,4 +335,8 @@ public sealed class PlannedAction
 
     /// <summary>The attack is suppressing fire: it pins whoever is on the tile instead of a damage roll.</summary>
     public bool Suppress { get; set; }
+
+    /// <summary>A stab / slash weapon's mode and direction (see <see cref="TileStrikes"/>); null for any other attack.</summary>
+    public Items.StrikeMode? Mode { get; set; }
+    public Pos? Direction { get; set; }
 }

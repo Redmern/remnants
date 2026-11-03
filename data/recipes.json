@@ -56,6 +56,8 @@
   {"id": "dry_food", "name": "Dried Vegetables", "building": "smokehouse", "minLevel": 1, "work": 3, "inputs": {"wood": 0.5}, "ingredients": {"tag:fresh_veg": 3}, "item": "dried_food", "amount": 3},
   {"id": "pickle", "name": "Pickles", "building": "smokehouse", "minLevel": 2, "work": 4, "ingredients": {"tag:fresh_veg": 3, "herbs": 1, "water": 1}, "item": "pickles", "amount": 3},
   {"id": "machete", "name": "Machete", "building": "armory", "minLevel": 1, "work": 10, "inputs": {"scrap": 6, "wood": 1}, "item": "machete"},
+  {"id": "knife", "name": "Scrap Knife", "building": "workshop", "minLevel": 1, "work": 4, "inputs": {"scrap": 2}, "item": "knife"},
+  {"id": "sword", "name": "Scrap Sword", "building": "armory", "minLevel": 1, "work": 12, "inputs": {"scrap": 8, "wood": 1}, "item": "sword"},
   {"id": "pistol", "name": "Pistol", "building": "armory", "minLevel": 2, "work": 16, "inputs": {"scrap": 10, "electronics": 1}, "item": "pistol", "minSkill": 15},
   {"id": "riot_armor", "name": "Riot Armor", "building": "armory", "minLevel": 2, "work": 20, "inputs": {"scrap": 18, "cloth": 6}, "item": "riot_armor"},
   {"id": "rifle", "name": "Hunting Rifle", "building": "armory", "minLevel": 3, "work": 22, "inputs": {"scrap": 14, "wood": 4, "electronics": 1}, "item": "rifle", "minSkill": 25},

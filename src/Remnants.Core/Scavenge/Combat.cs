@@ -48,6 +48,30 @@ public static class Combat
         return zone;
     }
 
+    /// <summary>
+    /// The tiles a strike in <paramref name="mode"/> covers from <paramref name="from"/> toward <paramref name="direction"/>
+    /// (one of the 8 steps), on the map, line of sight not checked: a stab, the straight line of the action's reach
+    /// (<see cref="ActionProfile.DiagonalRange"/> along a diagonal); a slash, the front tile, then its two flanks. Nothing for
+    /// a mode the action lacks.
+    /// </summary>
+    public static IEnumerable<Pos> Covered(TileMap map, ActionProfile action, StrikeMode mode, Pos from, Pos direction)
+    {
+        var dir = new Pos(Math.Sign(direction.X), Math.Sign(direction.Y));
+        if (dir == default || action.Modes is not { } modes || !modes.Contains(mode)) yield break;
+        var diagonal = dir.X != 0 && dir.Y != 0;
+        IEnumerable<Pos> tiles = mode switch
+        {
+            StrikeMode.Stab => Enumerable.Range(1, diagonal ? action.DiagonalRange : action.Reach).Select(i => new Pos(from.X + dir.X * i, from.Y + dir.Y * i)),
+            _ => diagonal
+                ? [from + dir, new Pos(from.X + dir.X, from.Y), new Pos(from.X, from.Y + dir.Y)]
+                : dir.X != 0
+                    ? [from + dir, new Pos(from.X + dir.X, from.Y - 1), new Pos(from.X + dir.X, from.Y + 1)]
+                    : [from + dir, new Pos(from.X - 1, from.Y + dir.Y), new Pos(from.X + 1, from.Y + dir.Y)],
+        };
+        foreach (var p in tiles)
+            if (map.InBounds(p)) yield return p;
+    }
+
     /// <summary>Whether <paramref name="target"/> lies in the action's pattern from <paramref name="from"/>.</summary>
     private static bool InPattern(ActionProfile action, Pos from, Pos? facing, Pos target)
     {
@@ -57,13 +81,14 @@ public static class Combat
         {
             AttackPattern.Melee => from.Chebyshev(target) <= action.Reach,
             AttackPattern.Ranged => from.DistanceSquared(target) <= action.Reach * action.Reach,
-            AttackPattern.Line => (d.X == 0 || d.Y == 0 || Math.Abs(d.X) == Math.Abs(d.Y)) && from.Chebyshev(target) <= action.Reach,
+            AttackPattern.Line => d.X == 0 || d.Y == 0 ? from.Chebyshev(target) <= action.Reach
+                : Math.Abs(d.X) == Math.Abs(d.Y) && from.Chebyshev(target) <= action.DiagonalRange,
             _ => false,
         };
     }
 
     /// <summary>Line of sight, needed only past the tiles next to the attacker.</summary>
-    private static bool Clear(ScavengeData data, TileMap map, Pos from, Pos target) =>
+    internal static bool Clear(ScavengeData data, TileMap map, Pos from, Pos target) =>
         from.Chebyshev(target) <= 1 || map.HasLineOfSight(data, from, target);
 
     /// <summary>AP the attack costs from <paramref name="from"/> at <paramref name="target"/>: more up close for a scope.</summary>
@@ -150,13 +175,24 @@ public static class Combat
     {
         if (!reaction) attacker.Ap -= ApCost(action, attacker.Pos, target.Pos);
         attacker.Facing = Face(attacker.Pos, target.Pos);
-        sim.MakeNoise(attacker, action.Noise);
-        var center = target.Pos;
         var targets = new List<Unit> { target };
-        if (action.Area > 0)
-            targets.AddRange(sim.State.Units
-                .Where(u => u.Id != target.Id && u.IsActive && attacker.HostileTo(u) && u.Pos.Chebyshev(center) <= action.Area)
-                .OrderBy(u => u.Id));
+        targets.AddRange(Splash(sim, attacker, action, target.Pos, targets));
+        Hit(sim, attacker, action, targets, reaction);
+    }
+
+    /// <summary>The other hostiles of the attacker an area action catches within <see cref="ActionProfile.Area"/> of <paramref name="center"/>.</summary>
+    internal static IEnumerable<Unit> Splash(ScavengeSim sim, Unit attacker, ActionProfile action, Pos center, IReadOnlyCollection<Unit> struck) =>
+        action.Area <= 0 ? [] : sim.State.Units
+            .Where(u => struck.All(s => s.Id != u.Id) && u.IsActive && attacker.HostileTo(u) && u.Pos.Chebyshev(center) <= action.Area)
+            .OrderBy(u => u.Id).ToList();
+
+    /// <summary>
+    /// Makes noise and strikes every one of <paramref name="targets"/> with its own roll (the AP already paid, the attacker
+    /// already facing), then gives the attacker away as <see cref="Resolve"/> says.
+    /// </summary>
+    internal static void Hit(ScavengeSim sim, Unit attacker, ActionProfile action, List<Unit> targets, bool reaction = false)
+    {
+        sim.MakeNoise(attacker, action.Noise);
         var ambushes = targets.Select(t => AmbushAgainst(sim.Data, sim.State, attacker, t)).ToList();
         foreach (var t in targets) Bestiary.Fought(sim, attacker, t);
         var penalty = reaction ? sim.Data.Rules.Fog.Overwatch.AccuracyPenalty : 0;

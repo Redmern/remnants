@@ -27,8 +27,19 @@ public sealed record UseItem(int PlayerId, int UnitId, string ItemId, int? Targe
 /// See <see cref="PlannedActions"/>.
 /// </summary>
 /// <see cref="Suppress"/>: the attack is suppressing fire (a ranged action; no damage, it pins whoever is on the tile).
+/// <see cref="Mode"/> and <see cref="Direction"/>: for a stab / slash weapon, how it strikes and toward where (defaults as
+/// <see cref="AttackTile"/>); it comes down on every hostile on the covered tiles.
 public sealed record DeclareIntent(int PlayerId, int UnitId, IReadOnlyList<Pos> Path, Pos? AttackTile = null, string? ActionId = null,
-    bool Suppress = false) : IScavengeCommand;
+    bool Suppress = false, Items.StrikeMode? Mode = null, Pos? Direction = null) : IScavengeCommand;
+
+/// <summary>
+/// Strike tiles (wire name <c>attackTile</c>): an attack with <see cref="ActionId"/> aimed at <see cref="Tile"/>, toward
+/// <see cref="Direction"/> (default: the step from the unit toward the tile), in <see cref="Mode"/> (default: the weapon's
+/// first) for a weapon with stab / slash patterns. The AP is paid now and the unit's sub-turn ends; whoever hostile stands
+/// on the covered tiles when the sub-round ends is struck. See <see cref="TileStrikes"/>.
+/// </summary>
+public sealed record AttackTile(int PlayerId, int UnitId, Pos Tile, string ActionId, Items.StrikeMode? Mode = null, Pos? Direction = null)
+    : IScavengeCommand;
 
 /// <summary>
 /// Play a card on <see cref="UnitId"/> (the character it applies to): from the squad hand, or from that character's
@@ -77,7 +88,11 @@ public sealed record Salvage(int PlayerId, int UnitId, int NodeId) : IScavengeCo
 public sealed record Recruit(int PlayerId, int UnitId, int NpcId) : IScavengeCommand;
 
 /// <summary>Wait: end this unit's turn, forfeiting remaining AP.</summary>
-public sealed record EndTurn(int PlayerId, int UnitId) : IScavengeCommand;
+/// <summary>
+/// End the unit's part of this sub-round; it acts again in the next with the AP it has left. <see cref="WholeTurn"/>: it is
+/// done for the round and sits out the remaining sub-rounds.
+/// </summary>
+public sealed record EndTurn(int PlayerId, int UnitId, bool WholeTurn = false) : IScavengeCommand;
 
 /// <summary>Leave the map from an exit tile or next to the side's parked vehicle, taking nearby followers along.</summary>
 public sealed record Extract(int PlayerId, int UnitId) : IScavengeCommand;

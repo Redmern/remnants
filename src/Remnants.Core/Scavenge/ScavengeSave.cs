@@ -37,6 +37,8 @@ namespace Remnants.Core.Scavenge;
 /// (<see cref="Unit.OutplayedId"/>) and hit tiers on events, and with them the squad decks, personal card slots and card
 /// effects. Older runs are not migrated: they are refused (old runs reset; a colony save drops its run in progress, see
 /// <see cref="SaveGame"/>).
+/// <see cref="TileAttacksVersion"/> adds sub-rounds: <see cref="ScavengeState.SubRound"/>, the tile attacks waiting for its
+/// end (<see cref="ScavengeState.Strikes"/>) and units' <see cref="Unit.TurnOverRound"/>; an older run loads at sub-round 1.
 /// </summary>
 public static class ScavengeSave
 {
@@ -44,7 +46,9 @@ public static class ScavengeSave
     public const int LootVersion = 13;
     /// <summary>Telegraphed plans (keyed: renumber to the next free version at merge).</summary>
     public const int IntentsVersion = 15;
-    public const int Version = IntentsVersion;
+    /// <summary>Tile attacks and sub-rounds (keyed: renumber to the next free version at merge); an older run loads at sub-round 1 with nothing pending.</summary>
+    public const int TileAttacksVersion = 16;
+    public const int Version = TileAttacksVersion;
     /// <summary>Runs from before plans and decks are not carried over: an older run is refused (and a colony save drops it).</summary>
     private const int OldestVersion = IntentsVersion;
 

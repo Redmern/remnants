@@ -36,6 +36,12 @@ public partial class ActionPanel : PanelContainer
     /// <summary>The attack map clicks on enemies will use.</summary>
     public string? ActionId { get; private set; }
 
+    /// <summary>
+    /// How a stab / slash weapon strikes when a tile is clicked (a tile strike that comes down at the sub-round's end);
+    /// null: clicks on enemies attack them at once.
+    /// </summary>
+    public StrikeMode? Mode { get; private set; }
+
     public event Action<string>? ActionChosen;
     public event Action<string>? UseItemChosen;
     public event Action<IScavengeCommand>? CommandRequested;
@@ -65,6 +71,7 @@ public partial class ActionPanel : PanelContainer
 
     public void SetAction(string? actionId)
     {
+        if (actionId != ActionId) Mode = null;
         ActionId = actionId;
         ActionChosen?.Invoke(actionId ?? "");
     }
@@ -126,6 +133,23 @@ public partial class ActionPanel : PanelContainer
                     + (a.ArmorPierce > 0 ? $"\nPierces {a.ArmorPierce:0.#} armor." : ""), () => SetAction(a.Id));
             button.Toggle(a.Id == ActionId);
             button.SetBlocked(a.ApCost > unit.Ap, a.ApCost > unit.Ap);
+        }
+
+        if (ActionId is not null && profile.Action(ActionId) is { Patterned: true } chosen)
+        {
+            if (Mode is { } m && !chosen.Modes!.Contains(m)) Mode = null;
+            _rows.Heading("STRIKE TILES");
+            foreach (var mode in chosen.Modes!)
+            {
+                var stab = mode == StrikeMode.Stab;
+                var reach = stab ? $"line {chosen.Reach}, diagonal {chosen.DiagonalRange}" : "front tile and both flanks";
+                var button = Add(_rows, "skill_melee", stab ? "Stab" : "Slash", reach, chosen.ApCost, null,
+                    $"{(stab ? "Stab" : "Slash")} with the {chosen.Name}: click a tile to strike it ({reach}). The AP goes now and "
+                    + "your part of the sub-round ends; whoever hostile stands on the covered tiles when the sub-round ends is hit.\nClick again to attack units directly.",
+                    () => { Mode = Mode == mode ? null : mode; ActionChosen?.Invoke(ActionId ?? ""); });
+                button.Toggle(Mode == mode);
+                button.SetBlocked(chosen.ApCost > unit.Ap, chosen.ApCost > unit.Ap);
+            }
         }
 
         var usable = unit.Pack.Distinct().Where(id => data.Items[id].Use is not null).ToList();

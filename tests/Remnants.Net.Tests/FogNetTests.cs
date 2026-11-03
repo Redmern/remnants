@@ -135,6 +135,26 @@ public class FogNetTests
     }
 
     [Fact]
+    public void Readied_tile_strikes_show_only_for_known_units_and_never_whom_they_aim_at()
+    {
+        var (f, a, b, sniper, victim) = Duel();
+        f.Sim.State.SubRound = 2;
+        f.Sim.State.Strikes.Add(new TileStrike { UnitId = sniper.Id, ActionId = "aimed_shot", Tile = victim.Pos, Tiles = [victim.Pos], TargetId = victim.Id });
+        f.Sim.State.Strikes.Add(new TileStrike { UnitId = victim.Id, ActionId = "swing", Tile = new(4, 10), Tiles = [new(4, 10)], TargetId = sniper.Id });
+
+        var alice = new SideFog(a.Id, Unit.PlayerSide(a.Id));
+        alice.Update(f.Sim);
+        var view = alice.View(f.Sim);
+        Assert.Equal(2, view.SubRound);
+        Assert.Equal(victim.Id, Assert.Single(view.Strikes, s => s.UnitId == sniper.Id).TargetId);
+        Assert.Null(Assert.Single(view.Strikes, s => s.UnitId == victim.Id).TargetId);
+
+        var bob = new SideFog(b.Id, Unit.PlayerSide(b.Id));
+        bob.Update(f.Sim);
+        Assert.DoesNotContain(bob.View(f.Sim).Strikes, s => s.UnitId == sniper.Id);
+    }
+
+    [Fact]
     public void A_seen_units_plan_shows_its_path_and_tile_but_never_its_card_or_target()
     {
         var (f, a, b, sniper, victim) = Duel();

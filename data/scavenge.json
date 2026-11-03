@@ -21,7 +21,7 @@
       { "region": "Legs", "condition": "Prosthetic", "minCount": 2, "minQuality": 1.2, "modifier": { "rangeBonus": 1 } }
     ]
   },
-  "turn": { "baseAp": 3, "pickUpApCost": 1, "recruitApCost": 1, "initiativePerAgility": 1.0, "initiativePerLoad": 0.5 },
+  "turn": { "baseAp": 3, "subRounds": 2, "pickUpApCost": 1, "recruitApCost": 1, "initiativePerAgility": 1.0, "initiativePerLoad": 0.5 },
   "sight": { "base": 4, "perPerception": 0.06 },
   "carry": { "base": 10, "perStrength": 0.3 },
   "combat": {

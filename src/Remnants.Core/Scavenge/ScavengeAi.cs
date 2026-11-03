@@ -19,7 +19,8 @@ namespace Remnants.Core.Scavenge;
 /// they stand with the AP a plan may use, and declares the path and the attack it chose (<see cref="PlannedActions"/>);
 /// it resolves at the start of their next turn. An enemy that already has a target in reach strikes at once (only moving
 /// then striking is telegraphed); a turret's plan is only its aim tile, always telegraphed; suppressing fire is planned as
-/// such (it pins whoever stands on the tile then). Recruits act at once.
+/// such (it pins whoever stands on the tile then). Recruits act at once. A strike at once with a stab / slash weapon is a
+/// tile strike (<see cref="TileStrikes"/>), aimed to cover the most hostiles, which ends the unit's sub-turn.
 /// </summary>
 internal static class ScavengeAi
 {
@@ -46,6 +47,8 @@ internal static class ScavengeAi
         public Pos? AttackTile;
         public string? ActionId;
         public bool Suppress;
+        public StrikeMode? Mode;
+        public Pos? Direction;
         public bool Lurk;
     }
 
@@ -85,7 +88,7 @@ internal static class ScavengeAi
         }
         if (plan.Path.Count > 0 || plan.AttackTile is not null)
         {
-            var declared = PlannedActions.Declare(sim, unit, new DeclareIntent(unit.PlayerId ?? 0, unit.Id, plan.Path, plan.AttackTile, plan.ActionId, plan.Suppress));
+            var declared = PlannedActions.Declare(sim, unit, new DeclareIntent(unit.PlayerId ?? 0, unit.Id, plan.Path, plan.AttackTile, plan.ActionId, plan.Suppress, plan.Mode, plan.Direction));
             if (declared.Ok) return;
             // The look-ahead and the plan rules disagree (should not happen): say so, and strike what is in reach now
             // rather than idle.
@@ -104,17 +107,24 @@ internal static class ScavengeAi
             plan.AttackTile = target.Pos;
             plan.ActionId = action.Id;
             plan.Suppress = suppress;
+            if (!suppress && action.Patterned && TileStrikes.BestAim(sim, unit, action, target) is { } best)
+                (plan.Mode, plan.Direction) = (best.Mode, best.Direction);
             unit.Ap = 0;
             return;
         }
         if (suppress) Combat.Suppress(sim, unit, action, target);
+        else if (action.Patterned && TileStrikes.BestAim(sim, unit, action, target) is { } aim)
+            TileStrikes.Declare(sim, unit, new AttackTile(unit.PlayerId ?? 0, unit.Id, target.Pos, action.Id, aim.Mode, aim.Direction));
         else Combat.Resolve(sim, unit, action, target);
     }
+
+    /// <summary>Whether the unit can still do something this sub-turn: up, with AP, and no tile strike readied yet.</summary>
+    private static bool Acting(ScavengeSim sim, Unit unit) => unit.IsActive && unit.Ap > 0 && !TileStrikes.Readied(sim.State, unit);
 
     /// <summary>Husk behaviour (and a jammed Linked's): hunt the nearest hostile in sight, close in, attack.</summary>
     private static void Fight(ScavengeSim sim, Unit unit)
     {
-        for (var step = 0; step < MaxStepsPerTurn && unit.IsActive && unit.Ap > 0; step++)
+        for (var step = 0; step < MaxStepsPerTurn && Acting(sim, unit); step++)
         {
             var target = Spot(sim, unit);
             if (target is null)
@@ -140,7 +150,7 @@ internal static class ScavengeAi
     /// <summary>A turret: fires at the nearest hostile of its side's it sees, never moves. A camera does nothing on a turn.</summary>
     private static void Machine(ScavengeSim sim, Unit unit)
     {
-        for (var step = 0; step < MaxStepsPerTurn && unit.IsActive && unit.Ap > 0; step++)
+        for (var step = 0; step < MaxStepsPerTurn && Acting(sim, unit); step++)
             if (Spot(sim, unit) is not { } target || !TryAttack(sim, unit, target)) return;
     }
 
@@ -150,7 +160,7 @@ internal static class ScavengeAi
         var rules = sim.Data.Rules.Network;
         var positioned = false;
         var retreating = false;
-        for (var step = 0; step < MaxStepsPerTurn && unit.IsActive && unit.Ap > 0; step++)
+        for (var step = 0; step < MaxStepsPerTurn && Acting(sim, unit); step++)
         {
             var known = Network.Known(sim, group);
             if (known.Count == 0)

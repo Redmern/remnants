@@ -446,6 +446,12 @@ public sealed record TurnRules
     public int RecruitApCost { get; init; } = 1;
     public double InitiativePerAgility { get; init; } = 1.0;
     public double InitiativePerLoad { get; init; } = 0.5;
+
+    /// <summary>
+    /// Sub-rounds in a round: every unit acts in each, in initiative order, on one turn's AP (refilled only when the round
+    /// starts), and the tile attacks declared in a sub-round come down at its end (<see cref="TileStrikes"/>).
+    /// </summary>
+    public int SubRounds { get; init; } = 1;
 }
 
 public sealed record SightRules

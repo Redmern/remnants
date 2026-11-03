@@ -40,6 +40,9 @@ public static class Protocol
     /// squad deck on <see cref="Join"/> and slot cards on party members, each player's own deck, slot cards and card pouch in
     /// views (other players' only as counts), the card events (to the player's side only). Later additive fields ride 17
     /// without a bump: the lobby's lateZones (the host's late-zone tuning; an older 17 peer reads Current).
+    /// 18 (<see cref="TileAttacksVersion"/>): tile-first attacks: the attackTile command and plannedAction's mode / direction (a tile, an action, a stab / slash
+    /// mode and a direction), endTurn's wholeTurn, sub-rounds (scavenge save 16: the sub-round, pending strikes, units'
+    /// turn-over round); an older peer would read a sub-round's end as the turn's.
     /// <see cref="Version"/> is always the highest of these keyed versions (ProtocolTests checks it).
     /// </summary>
     public const int MedicineVersion = 12;
@@ -54,7 +57,9 @@ public static class Protocol
 
     public const int TacticsVersion = 17;
 
-    public const int Version = TacticsVersion;
+    public const int TileAttacksVersion = 18;
+
+    public const int Version = TileAttacksVersion;
     public const int DefaultPort = 7777;
 }
 

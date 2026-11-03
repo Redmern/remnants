@@ -13,12 +13,12 @@ public class ReachTests
         var map = new TileMap(12, 12);
         var o = new Pos(5, 5);
         var pipe = Action(SurvivorUnit(weapon: "pipe"), "swing");     // melee, reach 1
-        var spear = Action(SurvivorUnit(weapon: "spear"), "thrust");  // line, reach 2
+        var spear = Action(SurvivorUnit(weapon: "spear"), "thrust");  // line, reach 3 straight, 2 diagonal
 
         Assert.Equal(Pos.Neighbours8.Select(d => o + d).OrderBy(p => p.Y).ThenBy(p => p.X),
             Combat.Tiles(map, pipe, o, null).OrderBy(p => p.Y).ThenBy(p => p.X));
         var line = Combat.Tiles(map, spear, o, null).ToHashSet();
-        Assert.Equal(16, line.Count); // 8 directions, 2 tiles each
+        Assert.Equal(20, line.Count); // 4 straight directions of 3 tiles, 4 diagonals of 2
         Assert.Contains(new Pos(7, 7), line);
         Assert.DoesNotContain(new Pos(7, 6), line);
         Assert.DoesNotContain(o, line);
@@ -38,7 +38,7 @@ public class ReachTests
         var map = new TileMap(14, 14);
         var o = new Pos(5, 5);
         var pistol = Action(SurvivorUnit(weapon: "pistol"), "shoot");   // ranged, reach 6: a disc
-        var spear = Action(SurvivorUnit(weapon: "spear"), "thrust");    // line, reach 2
+        var spear = Action(SurvivorUnit(weapon: "spear"), "thrust");    // line, reach 3 straight, 2 diagonal
 
         Assert.Equal(ScavengeError.None, Combat.CheckReach(Real, map, o, pistol, new(11, 5)));       // 36 = 6²
         Assert.Equal(ScavengeError.None, Combat.CheckReach(Real, map, o, pistol, new(10, 8)));       // 25 + 9 = 34
@@ -47,7 +47,9 @@ public class ReachTests
         Assert.Equal(ScavengeError.OutOfRange, Combat.CheckReach(Real, map, o, pistol, o));
         Assert.Equal(ScavengeError.None, Combat.CheckReach(Real, map, o, spear, new(7, 3)));
         Assert.Equal(ScavengeError.OutOfRange, Combat.CheckReach(Real, map, o, spear, new(7, 6)));   // off the diagonal
-        Assert.Equal(ScavengeError.OutOfRange, Combat.CheckReach(Real, map, o, spear, new(5, 8)));   // 3 along the column
+        Assert.Equal(ScavengeError.None, Combat.CheckReach(Real, map, o, spear, new(5, 8)));         // 3 along the column
+        Assert.Equal(ScavengeError.OutOfRange, Combat.CheckReach(Real, map, o, spear, new(5, 9)));   // 4 along the column
+        Assert.Equal(ScavengeError.OutOfRange, Combat.CheckReach(Real, map, o, spear, new(8, 8)));   // 3 along the diagonal
 
         map[new Pos(6, 5)] = Terrain.Wall;
         Assert.Equal(ScavengeError.NoLineOfSight, Combat.CheckReach(Real, map, o, spear, new(7, 5)));

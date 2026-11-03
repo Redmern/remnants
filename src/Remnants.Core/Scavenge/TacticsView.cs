@@ -46,7 +46,11 @@ public static class TacticsView
             var plan = u.Plan!;
             var action = plan.ActionId is { } id ? sim.Profile(u).Action(id) : null;
             var threatened = new List<Pos>();
-            if (plan.AttackTile is { } tile)
+            var end = plan.Path.Count > 0 ? plan.Path[^1] : u.Pos;
+            if (plan.AttackTile is { } aimed && action is not null && plan.Mode is { } mode
+                && TileStrikes.Aim(sim, u, action, aimed, mode, plan.Direction, end) is { } aim)
+                threatened.AddRange(aim.Tiles);
+            else if (plan.AttackTile is { } tile)
             {
                 threatened.Add(tile);
                 var area = action?.Area ?? 0;
@@ -57,6 +61,12 @@ public static class TacticsView
             list.Add(new Telegraph(u.Id, u.Name, u.Pos, new(plan.Path), plan.AttackTile, action?.Name, plan.Suppress, threatened,
                 threatened.Any(ours.Contains)));
         }
+        // Tile strikes readied this sub-round: what they cover comes down at its end.
+        foreach (var strike in state.Strikes)
+            if (state.FindUnit(strike.UnitId) is { IsActive: true } u && u.Side != side && u.Side != Unit.NeutralSide
+                && Detection.SideSees(sim.Data, state, side, u))
+                list.Add(new Telegraph(u.Id, u.Name, u.Pos, [], strike.Tile, sim.Profile(u).Action(strike.ActionId)?.Name, false,
+                    new(strike.Tiles), strike.Tiles.Any(ours.Contains)));
         return list;
     }
 
