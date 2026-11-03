@@ -186,7 +186,7 @@ public static class Breakdowns
         Term("Drone mark", mark);
         Term("Weather", -weather, "dust and rain on ranged shots");
         Term("Radio", radio);
-        Term("Dodged their attack", Combat.OutplayBonus(sim, attacker, target), "you stepped out of their telegraphed blow");
+        Term("Dodged their attack", Combat.OutplayBonus(sim, attacker, target, ambush), "you stepped out of their telegraphed blow");
         Term("Card", attacker.CardHit, "for the next attack");
         var cover = Combat.CoverAgainst(data, sim.State.Map, target.Pos, from);
         if (c.TargetKnown >= BestiaryTier.Killed)

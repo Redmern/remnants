@@ -50,6 +50,12 @@ public enum ScavengeEventType
     LootDropped, ItemDropped, SalvageProgress,
     IntentDeclared, IntentResolved, IntentFizzled, IntentCanceled,
     DeckShuffled, CardPlayed, CardDiscarded, CardFound, Countered,
+    /// <summary>A card moved a unit by force (push, pull, swap).</summary>
+    Displaced,
+    /// <summary>A card changed a unit's place in the round's turn order.</summary>
+    InitiativeChanged,
+    /// <summary>A card put a barrier or smoke on the map.</summary>
+    FieldEffectPlaced,
 }
 
 /// <summary>
@@ -186,6 +192,9 @@ public sealed class ScavengeState
     /// <summary>Which of the round's sub-rounds is being played, from 1 (<see cref="TurnRules.SubRounds"/>).</summary>
     public int SubRound { get; set; } = 1;
 
+    /// <summary>Sub-turns begun so far in the run (<see cref="Unit.TurnSeq"/>): orders "has it had a turn since".</summary>
+    public int TurnSeq { get; set; }
+
     /// <summary>Tile attacks declared this sub-round, in declaration order; they strike at its end (<see cref="TileStrikes"/>).</summary>
     public List<TileStrike> Strikes { get; set; } = new();
     public bool Finished { get; set; }
@@ -237,6 +246,9 @@ public sealed class ScavengeState
     /// <summary>Units revealed to a side despite their stealth.</summary>
     public List<Reveal> Reveals { get; set; } = new();
     public List<Flare> Flares { get; set; } = new();
+
+    /// <summary>Card barriers and smoke on the map (<see cref="Scavenge.FieldEffects"/>).</summary>
+    public List<FieldEffect> FieldEffects { get; set; } = new();
     public List<Sensor> Sensors { get; set; } = new();
     public int NextSensorId { get; set; } = 1;
 

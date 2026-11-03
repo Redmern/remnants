@@ -23,6 +23,7 @@ public sealed class ScavengeSim
         _rng = new DeterministicRng { State = state.RngState == 0 ? new DeterministicRng(0).State : state.RngState };
         SyncRng();
         state.Stamp = StampSeenBy;
+        FieldEffects.Sync(state);
     }
 
     /// <summary>Sim-owned randomness. Always draw through this so the state stays in the save.</summary>
@@ -139,7 +140,10 @@ public sealed class ScavengeSim
                 continue;
             }
             var unit = State.CurrentUnit;
-            if (unit is not { IsActive: true } || State.SubRound > 1 && SitsOut(unit))
+            // An AI plan that waited (its target had no turn yet) or a blow in reach comes down in a later sub-round too.
+            var resolveNow = State.SubRound > 1 && unit is { IsActive: true, PlayerControlled: false, Plan: { } waiting } && unit.Ap > 0
+                             && (waiting.Quick || waiting.Round < State.Round) && PlannedActions.Ready(State, unit);
+            if (unit is not { IsActive: true } || State.SubRound > 1 && SitsOut(unit) && !resolveNow)
             {
                 State.TurnIndex++;
                 continue;
@@ -147,6 +151,18 @@ public sealed class ScavengeSim
             if (State.SubRound > 1)
             {
                 // A later sub-round: the turn goes on with the AP left.
+                StartSubTurn(unit);
+                if (resolveNow)
+                {
+                    PlannedActions.Resolve(this, unit);
+                    MissionRules.Update(this);
+                    UpdateParties();
+                    if (!unit.IsActive)
+                    {
+                        State.TurnIndex++;
+                        continue;
+                    }
+                }
                 if (unit.PlayerControlled) return;
                 ScavengeAi.TakeTurn(this, unit);
                 MissionRules.Update(this);
@@ -155,6 +171,7 @@ public sealed class ScavengeSim
                 continue;
             }
             BeginTurn(unit);
+            StartSubTurn(unit);
             if (unit.Suppressed) PlannedActions.Cancel(this, unit, "pinned down");
             if (unit.EmpUntilRound >= State.Round) PlannedActions.Cancel(this, unit, "stunned");
             if (unit.Suppressed)
@@ -162,6 +179,12 @@ public sealed class ScavengeSim
                 unit.Suppressed = false;
                 unit.Ap = Math.Max(1, unit.Ap - Data.Rules.Network.SuppressApPenalty);
                 State.Log(new(State.Round, ScavengeEventType.Suppressed, $"{unit.Name} is pinned down ({unit.Ap} AP).", unit.Id, Pos: unit.Pos));
+            }
+            if (unit.Plan is not null && !PlannedActions.Ready(State, unit))
+            {
+                // Its target has not had a turn since the blow was declared: it waits (for a later sub-round).
+                State.TurnIndex++;
+                continue;
             }
             if (unit.Plan is not null)
             {
@@ -181,6 +204,13 @@ public sealed class ScavengeSim
             UpdateParties();
             State.TurnIndex++;
         }
+    }
+
+    /// <summary>A unit's sub-turn begins: it gets the next <see cref="ScavengeState.TurnSeq"/> and is on its feet again (no longer <see cref="Unit.Displaced"/>).</summary>
+    private void StartSubTurn(Unit unit)
+    {
+        unit.TurnSeq = ++State.TurnSeq;
+        unit.Displaced = false;
     }
 
     private ScavengeResult FinishTurn(Unit unit, EndTurn c)
@@ -216,7 +246,7 @@ public sealed class ScavengeSim
         unit.Lookout = false;
         unit.PingsUsed = 0;
         unit.Moved = false;
-        if (unit.OutplayedUntilRound < State.Round) unit.OutplayedId = null;
+        if (unit.OutplayedUntilRound < State.Round) (unit.OutplayedId, unit.FreeCounterId) = (null, null);
         unit.CardMove = 0;
         unit.CardCover = 0;
         unit.CounterId = null;
@@ -251,6 +281,7 @@ public sealed class ScavengeSim
         foreach (var u in State.Units.Where(u => u.OnMap && u.Body.Conditions.Count > 0)) Treatment.CountDown(u.Body);
         UpdateParties();
         Detection.Expire(Data, State);
+        FieldEffects.RoundStarted(State);
         FieldEnvironment.RoundStarted(this);
         Alliances.RoundStarted(this);
         Hacking.RoundStarted(this);
@@ -398,7 +429,9 @@ public sealed class ScavengeSim
     /// After a unit moved (player or AI): motion sensors it entered reveal it to their side, sides it is unseen by but
     /// close to hear it (movement contact), and overwatch may fire on it.
     /// </summary>
-    internal void Moved(Unit unit, Pos from)
+    /// <param name="forced">Moved by a card (shoved, swapped, stepped): sensors, noise, cameras and raised ground as for any
+    /// move, but overwatch does not fire at it.</param>
+    internal void Moved(Unit unit, Pos from, bool forced = false)
     {
         var fog = Data.Rules.Fog;
         foreach (var sensor in State.Sensors.OrderBy(s => s.Id).ToList())
@@ -418,7 +451,7 @@ public sealed class ScavengeSim
                 Detection.AddContact(Data, State, side, unit.Pos, ContactKind.Movement, unit.Id);
         MissionRules.Moved(this, unit);
         Hacking.CameraCheck(this, unit);
-        CheckOverwatch(unit);
+        if (!forced) CheckOverwatch(unit);
     }
 
     /// <summary>A motion sensor goes off: the unit is revealed to the sensor's side, which gets an alert and a contact.</summary>

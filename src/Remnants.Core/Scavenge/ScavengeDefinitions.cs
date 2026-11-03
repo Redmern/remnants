@@ -496,6 +496,40 @@ public sealed record CombatRules
 
     /// <summary>How a landed hit resolves: graze, hit or solid (see <see cref="HitTierRules"/>).</summary>
     public HitTierRules Tiers { get; init; } = new();
+
+    /// <summary>Blows from the side and from behind land harder (see <see cref="FacingRules"/>).</summary>
+    public FacingRules Facing { get; init; } = new();
+
+    /// <summary>What dodging a telegraphed blow earns (see <see cref="OutplayRules"/>).</summary>
+    public OutplayRules Outplay { get; init; } = new();
+
+    /// <summary>The most the stacked damage multipliers of a blow (ambush × facing × exposed) may come to.</summary>
+    public double MaxDamageMultiplier { get; init; } = 2;
+
+    /// <summary>The most the stacked hit bonuses of an outplay and an ambush may add to a hit chance.</summary>
+    public double MaxHitBonus { get; init; } = 0.3;
+}
+
+/// <summary>
+/// Outplays (scavenge.json <c>combat.outplay</c>): when a telegraphed blow comes down on a tile its target stepped off,
+/// the attacker is exposed through the next round, and the next hit on it does <see cref="ExposedDamage"/> times the
+/// damage (before armor); with <see cref="FreeCounter"/> the dodger's next tile strike covering the attacker costs no AP.
+/// </summary>
+public sealed record OutplayRules
+{
+    public double ExposedDamage { get; init; } = 1.5;
+    public bool FreeCounter { get; init; } = true;
+}
+
+/// <summary>
+/// Facing in combat (scavenge.json <c>combat.facing</c>): a landed blow's damage (before armor) is multiplied by
+/// <see cref="SideDamage"/> when the attacker stands off the target's flank, by <see cref="RearDamage"/> when behind it
+/// (<see cref="Scavenge.Combat.ArcOf"/>).
+/// </summary>
+public sealed record FacingRules
+{
+    public double SideDamage { get; init; } = 1.25;
+    public double RearDamage { get; init; } = 1.5;
 }
 
 /// <summary>

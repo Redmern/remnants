@@ -132,8 +132,11 @@ public partial class AudioManager : Node
         _peaks.Clear();
     }
 
-    /// <summary>Fires a mapped event (<see cref="SoundEventMap"/>): 2D, or positional when <paramref name="at"/> is given.</summary>
-    public static void Fire(string name, Vector3? at = null) => Instance?.FireEvent(name, at);
+    /// <summary>
+    /// Fires a mapped event (<see cref="SoundEventMap"/>): 2D, or positional when <paramref name="at"/> is given;
+    /// <paramref name="pitch"/> scales the sound's own pitch (a chain's rising ticks).
+    /// </summary>
+    public static void Fire(string name, Vector3? at = null, float pitch = 1) => Instance?.FireEvent(name, at, pitch);
 
     /// <summary>Plays a sound id flat (UI, stings).</summary>
     public static void Play(string soundId) => Instance?.PlaySound(soundId, null, "");
@@ -141,7 +144,7 @@ public partial class AudioManager : Node
     /// <summary>Plays a sound id in the 3D world at <paramref name="position"/>.</summary>
     public static void PlayAt(string soundId, Vector3 position) => Instance?.PlaySound(soundId, position, "");
 
-    public void FireEvent(string name, Vector3? at = null)
+    public void FireEvent(string name, Vector3? at = null, float pitch = 1)
     {
         var ev = Map.Resolve(name);
         string? chosen = null;
@@ -152,7 +155,7 @@ public partial class AudioManager : Node
             if (ev.Sounds.Count > 0)
             {
                 chosen = ev.Sounds[ev.Sounds.Count == 1 ? 0 : _rng.RandiRange(0, ev.Sounds.Count - 1)];
-                audible = PlaySound(chosen, at, name);
+                audible = PlaySound(chosen, at, name, pitch);
             }
             if (ev.Cue is { } cue) Cued?.Invoke(cue, at);
         }
@@ -162,7 +165,7 @@ public partial class AudioManager : Node
     }
 
     /// <summary>Plays one variant of <paramref name="soundId"/>. False when it is missing, cooling down or at its voice limit.</summary>
-    public bool PlaySound(string soundId, Vector3? at, string eventName)
+    public bool PlaySound(string soundId, Vector3? at, string eventName, float pitchScale = 1)
     {
         var tuning = Map.Tuning(soundId);
         var now = Time.GetTicksMsec();
@@ -173,7 +176,7 @@ public partial class AudioManager : Node
 
         _lastPlayed[soundId] = now;
         var volume = tuning.VolumeDb + (asset?.VolumeDb ?? 0) + _rng.RandfRange(-tuning.VolumeJitter, tuning.VolumeJitter);
-        var pitch = 1 + _rng.RandfRange(-tuning.PitchJitter, tuning.PitchJitter);
+        var pitch = pitchScale * (1 + _rng.RandfRange(-tuning.PitchJitter, tuning.PitchJitter));
         var bus = tuning.Bus ?? AudioBuses.ForManifest(asset?.Bus ?? "")
             ?? AudioBuses.ForCategory(asset?.Category ?? (soundId.StartsWith("ui_") ? "ui" : "sfx"));
         if (at is { } pos)

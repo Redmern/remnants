@@ -126,6 +126,24 @@ public sealed class Unit
 
     public int OutplayedUntilRound { get; set; }
 
+    /// <summary>
+    /// The attacker whose telegraphed blow this one dodged, while its free counter is unspent: its next tile strike that
+    /// covers that unit costs no AP (<see cref="TileStrikes.FreeCounter"/>). Lapses with <see cref="OutplayedId"/>.
+    /// </summary>
+    public int? FreeCounterId { get; set; }
+
+    /// <summary>
+    /// A telegraphed blow of this unit's was dodged: through this round the next hit on it lands harder
+    /// (<see cref="Combat.Exposed"/>, <see cref="OutplayRules.ExposedDamage"/>), and that hit clears it. 0: not exposed.
+    /// </summary>
+    public int ExposedUntilRound { get; set; }
+
+    /// <summary>The side that dodged it: only that side's hits cash the exposure in (<see cref="Combat.ExposedTo"/>).</summary>
+    public string? ExposedToSide { get; set; }
+
+    /// <summary>The <see cref="ScavengeState.TurnSeq"/> its latest sub-turn began at.</summary>
+    public int TurnSeq { get; set; }
+
     /// <summary>Personal card slots: cards this character always has to hand (not shuffled), paid from the squad's points.</summary>
     public List<string> SlotCards { get; set; } = new();
 
@@ -149,6 +167,12 @@ public sealed class Unit
 
     /// <summary>The enemy this unit will strike first when its plan resolves (a counter card), until its own next turn.</summary>
     public int? CounterId { get; set; }
+
+    /// <summary>
+    /// Moved by force (a card's push, pull or swap) since its last sub-turn began: a declared strike on its tile hits it
+    /// whoever's side the strike is (<see cref="CardAbilities"/>).
+    /// </summary>
+    public bool Displaced { get; set; }
 
     /// <summary>The last card (not a reaction) played on this unit this turn: a plan declared now carries it, server-side only.</summary>
     public string? LastCardId { get; set; }
@@ -339,4 +363,13 @@ public sealed class PlannedAction
     /// <summary>A stab / slash weapon's mode and direction (see <see cref="TileStrikes"/>); null for any other attack.</summary>
     public Items.StrikeMode? Mode { get; set; }
     public Pos? Direction { get; set; }
+
+    /// <summary><see cref="ScavengeState.TurnSeq"/> when it was declared (see <see cref="PlannedActions.Ready"/>).</summary>
+    public int DeclaredSeq { get; set; }
+
+    /// <summary>
+    /// An AI blow at a target already in reach (no path): it comes down at the unit's next sub-turn, a later sub-round's
+    /// too, once its target has had a turn (<see cref="PlannedActions.Ready"/>).
+    /// </summary>
+    public bool Quick { get; set; }
 }

@@ -5,7 +5,7 @@ using Godot;
 namespace Remnants.Game.Hud;
 
 /// <summary>
-/// Settings, in tabs: Game (day length), Display (UI scale, fullscreen, window size, vsync, weather effects, reduce motion, frame time), Audio (master / music / effects / ambience
+/// Settings, in tabs: Game (day length, late zones, scavenge walk speed, skip animations, auto end turn), Display (UI scale, fullscreen, window size, vsync, weather effects, reduce motion, the scavenge effects, frame time), Audio (master / music / effects / ambience
 /// volume on their buses, mute when unfocused, visual sound cues), Camera (pan and zoom speed) and Controls (the hotkey list). Changes apply at once and are saved
 /// when the panel closes (<see cref="GameSettings"/>).
 /// </summary>
@@ -58,6 +58,33 @@ public partial class SettingsPanel : Overlay
         box.AddChild(Row("Late zones", late,
             "Rail Depot, Network Relay and Core Spire. Re-tuned: more Linked, turrets, pylons and faster reinforcements, about as deadly as before enemies telegraphed. " +
             "Expeditions only leaves story missions there as they are. Takes effect from the next run into the zone."));
+
+        var walk = new OptionButton { FocusMode = FocusModeEnum.None };
+        foreach (var (label, seconds) in GameSettings.WalkSpeeds) walk.AddItem($"{label} ({seconds:0.##} s a tile)");
+        walk.Select(Nearest(GameSettings.WalkSpeeds.Select(w => w.Seconds).ToArray(), GameSettings.WalkTileSeconds));
+        walk.ItemSelected += i => GameSettings.WalkTileSeconds = GameSettings.WalkSpeeds[i].Seconds;
+        box.AddChild(Row("Walk speed", walk, "How fast units walk across the tactical map in a replay. Only the pace changes."));
+
+        var skip = new CheckBox
+        {
+            Text = "Skip scavenge animations",
+            ButtonPressed = GameSettings.SkipAnimations,
+            FocusMode = FocusModeEnum.None,
+            TooltipText = Widgets.Tip("Moves and blows snap to where they end, so enemy turns never hold you up. The run plays out the same.",
+                Hotkeys.KeyName("scav_fast_forward")),
+        };
+        skip.Toggled += on => GameSettings.SkipAnimations = on;
+        box.AddChild(skip);
+
+        var auto = new CheckBox
+        {
+            Text = "End turn when nothing is left to do",
+            ButtonPressed = GameSettings.AutoEndTurn,
+            FocusMode = FocusModeEnum.None,
+            TooltipText = "A unit with no AP left for a move, a stance, an item or a blow ends its turn by itself. Turn it off to plan with no AP left.",
+        };
+        auto.Toggled += on => GameSettings.AutoEndTurn = on;
+        box.AddChild(auto);
         return Scroll(box);
     }
 
@@ -98,14 +125,19 @@ public partial class SettingsPanel : Overlay
 
         var motion = new CheckBox
         {
-            Text = "Reduce motion", ButtonPressed = GameSettings.ReduceMotion, FocusMode = FocusModeEnum.None,
-            TooltipText = "Panels, lists, counters and notices appear at once instead of sliding and fading.",
+            Text = "Reduce motion",
+            ButtonPressed = GameSettings.ReduceMotion,
+            FocusMode = FocusModeEnum.None,
+            TooltipText = "Panels, lists, counters and notices appear at once instead of sliding and fading. In scavenge runs: no screen shake, no flashes, no screen warp.",
         };
         motion.Toggled += on => GameSettings.ReduceMotion = on;
         box.AddChild(motion);
+        Effects(box);
         var frames = new CheckBox
         {
-            Text = "Show frame time", ButtonPressed = GameSettings.ShowFrameTime, FocusMode = FocusModeEnum.None,
+            Text = "Show frame time",
+            ButtonPressed = GameSettings.ShowFrameTime,
+            FocusMode = FocusModeEnum.None,
             TooltipText = Widgets.Tip("A small graph of how long each frame takes (60 fps = 16.7 ms), top right.", Hotkeys.KeyName("toggle_frame_time")),
         };
         frames.Toggled += FrameTimeOverlay.SetShown;
@@ -128,7 +160,9 @@ public partial class SettingsPanel : Overlay
         box.AddChild(mute);
         var cues = new CheckBox
         {
-            Text = "Visual sound cues", ButtonPressed = GameSettings.VisualSoundCues, FocusMode = FocusModeEnum.None,
+            Text = "Visual sound cues",
+            ButtonPressed = GameSettings.VisualSoundCues,
+            FocusMode = FocusModeEnum.None,
             TooltipText = "Show a marker at the screen edge toward ambushes and contacts you hear but cannot see.",
         };
         cues.Toggled += on => GameSettings.VisualSoundCues = on;
@@ -173,6 +207,32 @@ public partial class SettingsPanel : Overlay
         chip.AddChild(label);
         chip.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
         return chip;
+    }
+
+    /// <summary>The scavenge feel: master intensity and a toggle per effect (<see cref="GameSettings.Juice"/>).</summary>
+    private static void Effects(VBoxContainer box)
+    {
+        var level = new OptionButton { FocusMode = FocusModeEnum.None };
+        foreach (var l in GameSettings.EffectsLevels) level.AddItem(l);
+        level.Select((int)GameSettings.EffectsLevel);
+        level.ItemSelected += i => GameSettings.EffectsLevel = (Remnants.Core.Scavenge.EffectsLevel)(int)i;
+        box.AddChild(Row("Effects intensity", level,
+            "Scavenge runs: how hard damage numbers, cards, screen shake, hit-stop and flashes hit. Off plays the plain replay. The run plays out the same at every setting."));
+        void Toggle(string text, bool on, Action<bool> set, string tip)
+        {
+            var check = new CheckBox { Text = text, ButtonPressed = on, FocusMode = FocusModeEnum.None, TooltipText = tip };
+            check.Toggled += v => set(v);
+            box.AddChild(check);
+        }
+        Toggle("Screen shake", GameSettings.ScreenShake, v => GameSettings.ScreenShake = v, "The view shakes on hits, kills and shoves, harder from behind and on solid hits.");
+        Toggle("Hit-stop", GameSettings.HitStop, v => GameSettings.HitStop = v,
+            "The replay freezes a split second on a heavy blow. Never more than a fraction of a second a round, never while skipping animations.");
+        Toggle("Hit flashes", GameSettings.HitFlashes, v => GameSettings.HitFlashes = v,
+            "A short colour flash and vignette on big hits and kills. Never more than two a second.");
+        Toggle("CRT screen look", GameSettings.CrtShader, v => GameSettings.CrtShader = v,
+            "Scanlines, a slight curve and a slow wobble over the tactical map. Reduce motion keeps only the scanlines.");
+        Toggle("Music follows the fight", GameSettings.MusicReactive, v => GameSettings.MusicReactive = v,
+            "A music layer swells as your squad chains hits and card plays, and calms when the round ends.");
     }
 
     private static VBoxContainer Page(string name)

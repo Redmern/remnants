@@ -59,6 +59,34 @@ public partial class TacticalCamera : Node3D
         if (move != Vector2.Zero) Pan(move.Normalized() * PanSpeed * GameSettings.CameraPanSpeed * Camera.Size * dt);
         _yaw = Mathf.Lerp(_yaw, _targetYaw, Mathf.Min(1, dt * 10));
         Apply();
+        Shake(dt);
+    }
+
+    private float _trauma;
+    private float _shakeTime;
+
+    /// <summary>
+    /// Adds screen-shake trauma (0..1, <see cref="Remnants.Core.Scavenge.ReplayJuice.Feel"/>). The view jolts by the square
+    /// of it, a share of the view size so it reads the same at any zoom, and settles within about half a second. It moves
+    /// the lens (<see cref="Camera3D.HOffset"/>), never the focus point. Purely visual.
+    /// </summary>
+    public void AddTrauma(float amount) => _trauma = Mathf.Clamp(Mathf.Max(_trauma, amount) + amount * 0.25f, 0, 1);
+
+    private void Shake(float dt)
+    {
+        if (_trauma <= 0)
+        {
+            Camera.HOffset = Camera.VOffset = 0;
+            return;
+        }
+        // Real time, so a hit-stop (a slowed engine) does not freeze the jolt.
+        var real = dt / (float)Mathf.Max(Engine.TimeScale, 0.01);
+        _shakeTime += real;
+        _trauma = Mathf.Max(0, _trauma - real * 2.2f);
+        var amplitude = _trauma * _trauma * Camera.Size * 0.018f;
+        // Two unrelated sines per axis: a jolt that does not look like a wobble.
+        Camera.HOffset = amplitude * (Mathf.Sin(_shakeTime * 61f) * 0.6f + Mathf.Sin(_shakeTime * 37f + 1.3f) * 0.4f);
+        Camera.VOffset = amplitude * (Mathf.Sin(_shakeTime * 53f + 0.7f) * 0.6f + Mathf.Sin(_shakeTime * 29f + 2.1f) * 0.4f);
     }
 
     public override void _UnhandledInput(InputEvent e)

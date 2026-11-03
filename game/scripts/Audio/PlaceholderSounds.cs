@@ -30,6 +30,13 @@ public static class PlaceholderSounds
         ["card_shuffle"] = new(2400, 1600, 0.28f, Noise: 0.85f, Volume: 0.22f),
         ["telegraph_warn"] = new(320, 260, 0.22f, Noise: 0.1f, Volume: 0.28f),
         ["dodge_whoosh"] = new(900, 200, 0.25f, Noise: 0.9f, Volume: 0.3f),
+        // Juice placeholders (docs/MISSING_ASSETS.md): a card flicked off the deck, a card slammed onto a target, the
+        // hand swept into the used pile, the squad's chain tick (pitched up a semitone a link), a heavy thump on a kill.
+        ["card_draw"] = new(2600, 1900, 0.05f, Noise: 0.7f, Volume: 0.18f, Attack: 0.002f),
+        ["card_slam"] = new(260, 90, 0.16f, Noise: 0.45f, Volume: 0.5f, Attack: 0.001f),
+        ["card_sweep"] = new(1400, 500, 0.22f, Noise: 0.9f, Volume: 0.2f),
+        ["chain_tick"] = new(880, 900, 0.09f, Noise: 0.05f, Volume: 0.28f, Attack: 0.002f),
+        ["kill_thump"] = new(120, 45, 0.35f, Noise: 0.3f, Volume: 0.6f, Attack: 0.001f),
     };
 
     private static readonly Dictionary<string, AudioStreamWav> Cache = new();

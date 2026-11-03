@@ -82,6 +82,9 @@ public partial class ScavengeHud : CanvasLayer
     /// <summary>A hovered device's state, owner and what hacking it does, next to the cursor.</summary>
     public DeviceTip DeviceTip { get; } = new();
     public LootTip LootTip { get; } = new();
+
+    /// <summary>An aimed card's target under the cursor: what comes of it, or why it cannot go there.</summary>
+    public CardTargetTip TargetTip { get; } = new();
     public LootPanel Loot { get; }
     public CoopPanel Coop { get; }
     public AllianceBanner Banner { get; }
@@ -96,6 +99,9 @@ public partial class ScavengeHud : CanvasLayer
 
     public event Action? EndTurnRequested;
     public event Action? LeaveRequested;
+
+    /// <summary>The fast-forward hotkey: skip animations on or off (<see cref="GameSettings.SkipAnimations"/>). Works mid-replay.</summary>
+    public event Action? FastForwardToggled;
 
     /// <summary>The squad's hand strip and its character picker.</summary>
     public HandStrip Hand { get; } = null!;
@@ -187,6 +193,8 @@ public partial class ScavengeHud : CanvasLayer
         AddChild(DeviceTip);
         LootTip.Theme = HudTheme.Shared;
         AddChild(LootTip);
+        TargetTip.Theme = HudTheme.Shared;
+        AddChild(TargetTip);
         AddChild(Result);
         Pause = new PauseMenu(
         [
@@ -265,6 +273,7 @@ public partial class ScavengeHud : CanvasLayer
             if (BackRequested?.Invoke() != true) Pause.Open();
         }
         else if (Hotkeys.Pressed(e, "end_turn")) EndTurnRequested?.Invoke();
+        else if (Hotkeys.Pressed(e, "scav_fast_forward")) FastForwardToggled?.Invoke();
         else if (Hotkeys.Pressed(e, "scav_cancel"))
         {
             if (BackRequested?.Invoke() != true) return;

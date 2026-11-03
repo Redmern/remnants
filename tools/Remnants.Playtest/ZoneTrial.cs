@@ -284,6 +284,10 @@ public static class ZoneTrial
         sb.AppendLine($"  enemy attacks/run {tactics.EnemyAttacks / (double)n:0.0}  per enemy-round {tactics.EnemyAttacks / (double)Math.Max(1, tactics.EnemyRounds):0.000}" +
                       $"  damage dealt/run {tactics.DamageDealt / n:0}  taken/run {tactics.DamageTaken / n:0}" +
                       $"  graze/hit/solid dealt {Tiers(tactics.TiersDealt)}  taken {Tiers(tactics.TiersTaken)}");
+        if (tactics.CardsPlayed > 0)
+            sb.AppendLine($"  card abilities/run: moved {tactics.Displaced / (double)n:0.0}  turns reordered {tactics.Reordered / (double)n:0.0}" +
+                          $"  (enemy moved {tactics.EnemyDisplaced / (double)n:0.0});  cards/run " +
+                          string.Join(", ", tactics.CardsByName.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} {kv.Value / (double)n:0.0}")));
         var otherRuns = n - runsWithLinked;
         sb.AppendLine($"  runs seeing Linked {100.0 * runsWithLinked / n:0}%  Linked seen/run {linkedSeen / (double)n:0.00}" +
                       (runsWithLinked > 0 ? $"  death rate with Linked {100.0 * deadWithLinked / runsWithLinked:0}% vs without {100.0 * (runsWithDeath - deadWithLinked) / Math.Max(1, otherRuns):0}%" : ""));

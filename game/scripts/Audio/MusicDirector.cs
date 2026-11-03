@@ -93,6 +93,8 @@ public partial class MusicDirector : Node
 
     public void SetLayer(string layer, bool on)
     {
+        // One stem never plays twice (two layers mapped to the same track would only get louder): the first one on wins.
+        if (on && !_layersOn.Contains(layer) && SharesStem(layer)) return;
         if (on ? !_layersOn.Add(layer) : !_layersOn.Remove(layer)) return;
         Trace($"music layer {layer} {(on ? "on" : "off")}");
         if (!_layers.TryGetValue(layer, out var deck))
@@ -109,6 +111,34 @@ public partial class MusicDirector : Node
             deck.Player.Play(SyncedWith(_decks[_front], deck) ? _decks[_front].Player.GetPlaybackPosition() : 0);
         deck.Target = on ? deck.Asset?.VolumeDb ?? 0 : Silent;
         deck.Speed = (60f) / LayerFadeSeconds;
+    }
+
+    /// <summary>
+    /// A layer at a level (0..1, its loudness from silent to full): it starts when first above 0 and follows changes in
+    /// under a second, so it can swell and calm with the fight (the scavenge chain layer). 0 is the same as off.
+    /// </summary>
+    public void SetLayerLevel(string layer, float level)
+    {
+        level = Mathf.Clamp(level, 0, 1);
+        if (level <= 0.001f)
+        {
+            SetLayer(layer, false);
+            return;
+        }
+        SetLayer(layer, true);
+        if (!_layersOn.Contains(layer) || !_layers.TryGetValue(layer, out var deck)) return;
+        var target = Mathf.Max(Silent, (deck.Asset?.VolumeDb ?? 0) + Mathf.LinearToDb(level));
+        if (Mathf.IsEqualApprox(target, deck.Target)) return;
+        deck.Target = target;
+        deck.Speed = 40f;
+    }
+
+    /// <summary>Whether another layer that is on plays the same track as <paramref name="layer"/>.</summary>
+    private bool SharesStem(string layer)
+    {
+        var layers = AudioManager.Instance?.Map.Layers;
+        if (layers?.GetValueOrDefault(layer) is not { } id) return false;
+        return _layersOn.Any(other => other != layer && layers.GetValueOrDefault(other) == id);
     }
 
     /// <summary>A one-shot musical sting (extraction, death): the mapped <c>music.{name}</c> event, which ducks the bed.</summary>

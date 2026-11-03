@@ -3,7 +3,7 @@ using static Remnants.Core.Tests.ScavengeTestData;
 
 namespace Remnants.Core.Tests;
 
-/// <summary>The AI strikes tiles with patterned weapons, and runs on sub-rounds stay deterministic.</summary>
+/// <summary>The AI telegraphs blows with patterned weapons, and runs on sub-rounds with tile strikes stay deterministic.</summary>
 public class TileAttackAiTests
 {
     private static ScavengeData Rounds(int n) => With(r => r with
@@ -23,22 +23,35 @@ public class TileAttackAiTests
         return (sim, far, blade, near);
     }
 
+    /// <summary>What P1's side sees the enemy's telegraphed blow cover.</summary>
+    private static List<Pos> Threatened(ScavengeSim sim, Unit enemy) =>
+        Assert.Single(TacticsView.Telegraphs(sim, Unit.PlayerSide(1)), t => t.UnitId == enemy.Id).Threatened;
+
+    /// <summary>Ends P1's turns until the enemy's current plan has come down.</summary>
+    private static void UntilResolved(ScavengeSim sim, Unit enemy)
+    {
+        var plan = Assert.IsType<PlannedAction>(enemy.Plan);
+        for (var i = 0; i < 12 && ReferenceEquals(enemy.Plan, plan); i++)
+            Assert.True(sim.Execute(new EndTurn(1, sim.State.CurrentUnitId!.Value, WholeTurn: true)).Ok);
+        Assert.False(ReferenceEquals(enemy.Plan, plan));
+    }
+
     [Fact]
-    public void An_enemy_with_a_patterned_weapon_readies_a_tile_strike_instead_of_hitting_at_once()
+    public void An_enemy_with_a_patterned_weapon_telegraphs_a_slash_in_reach()
     {
         var (sim, far, blade, near) = Ambush();
         Assert.True(sim.Execute(new EndTurn(1, far.Id)).Ok);
 
         Assert.Equal(near.Id, sim.State.CurrentUnitId);
         Assert.Equal(near.MaxHp, near.Hp);
-        var strike = Assert.Single(sim.State.Strikes);
-        Assert.Equal(blade.Id, strike.UnitId);
-        Assert.Equal(Items.StrikeMode.Slash, strike.Mode);
-        Assert.Contains(near.Pos, strike.Tiles);
+        Assert.Empty(sim.State.Strikes);
+        var plan = Assert.IsType<PlannedAction>(blade.Plan);
+        Assert.Equal(Items.StrikeMode.Slash, plan.Mode);
+        Assert.Contains(near.Pos, Threatened(sim, blade));
     }
 
     [Fact]
-    public void An_enemy_with_a_plain_attack_readies_a_strike_on_the_one_tile_instead_of_hitting_at_once()
+    public void An_enemy_with_a_plain_attack_telegraphs_the_one_tile()
     {
         var far = SurvivorUnit(1, new(0, 0), weapon: "pipe");
         var husk = EnemyUnit("husk", new(5, 2));
@@ -48,45 +61,28 @@ public class TileAttackAiTests
         Assert.True(sim.Execute(new EndTurn(1, far.Id)).Ok);
 
         Assert.Equal(near.MaxHp, near.Hp);
-        var strike = Assert.Single(sim.State.Strikes);
-        Assert.Equal((husk.Id, (Items.StrikeMode?)null), (strike.UnitId, strike.Mode));
-        Assert.Equal([near.Pos], strike.Tiles);
-
-        Assert.True(sim.Execute(new EndTurn(1, near.Id)).Ok);
+        Assert.Null(husk.Plan!.Mode);
+        Assert.Equal([near.Pos], Threatened(sim, husk));
+        UntilResolved(sim, husk);
         Assert.True(near.Hp < near.MaxHp);
     }
 
     [Fact]
-    public void The_enemy_strike_lands_on_whoever_stays_and_misses_who_steps_away()
+    public void The_enemy_slash_lands_on_whoever_stays_and_misses_who_steps_out_of_its_arc()
     {
-        var (sim, far, _, near) = Ambush();
+        var (sim, far, blade, near) = Ambush();
         Assert.True(sim.Execute(new EndTurn(1, far.Id)).Ok);
-        Assert.True(sim.Execute(new EndTurn(1, near.Id)).Ok);
+        UntilResolved(sim, blade);
         Assert.True(near.Hp < near.MaxHp);
 
         var (sim2, far2, blade2, near2) = Ambush();
         Assert.True(sim2.Execute(new EndTurn(1, far2.Id)).Ok);
-        var covered = sim2.State.Strikes[0].Tiles;
+        var covered = Threatened(sim2, blade2);
         var away = sim2.Reachable(near2).Keys.Where(p => !covered.Contains(p) && p.Chebyshev(blade2.Pos) > 1).OrderBy(p => p.X).ThenBy(p => p.Y).First();
         Assert.True(sim2.Execute(new Move(1, near2.Id, away)).Ok);
-        Assert.True(sim2.Execute(new EndTurn(1, near2.Id)).Ok);
+        UntilResolved(sim2, blade2);
         Assert.Equal(near2.MaxHp, near2.Hp);
         Assert.Contains(sim2.State.Events, e => e.Type == ScavengeEventType.IntentFizzled && e.UnitId == blade2.Id);
-    }
-
-    [Fact]
-    public void An_enemy_readies_one_strike_a_sub_round_and_another_in_the_next_with_ap_left()
-    {
-        var (sim, far, blade, near) = Ambush(subRounds: 2);
-        Assert.True(sim.Execute(new EndTurn(1, far.Id)).Ok);
-        Assert.Single(sim.State.Strikes);
-        var left = blade.Ap;
-        Assert.True(left > 0);
-        Assert.True(sim.Execute(new EndTurn(1, near.Id)).Ok);
-        Assert.Equal(2, sim.State.SubRound);
-        Assert.True(sim.Execute(new EndTurn(1, far.Id)).Ok);
-        Assert.Equal(blade.Id, Assert.Single(sim.State.Strikes).UnitId);
-        Assert.True(blade.Ap < left);
     }
 
     [Fact]

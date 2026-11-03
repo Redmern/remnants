@@ -122,18 +122,61 @@ public static class Combat
     }
 
     /// <summary>The hit chance of this attack as it would resolve now, ambush included (for previews and the AI).</summary>
-    public static double ChanceToHit(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, Pos? from = null) =>
-        HitChance(sim.Data, sim.State.Map, from ?? attacker.Pos,
-            action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + OutplayBonus(sim, attacker, target) + attacker.CardHit - WeatherPenalty(sim, action) + ElectronicWarfare.RadioAccuracy(sim, attacker) },
-            target.Pos, sim.Profile(target), AmbushAgainst(sim.Data, sim.State, attacker, target, from), Bane(sim.Data, action, target));
+    public static double ChanceToHit(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, Pos? from = null)
+    {
+        var ambush = AmbushAgainst(sim.Data, sim.State, attacker, target, from);
+        return HitChance(sim.Data, sim.State.Map, from ?? attacker.Pos,
+            action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + OutplayBonus(sim, attacker, target, ambush) + attacker.CardHit - WeatherPenalty(sim, action) + ElectronicWarfare.RadioAccuracy(sim, attacker) },
+            target.Pos, sim.Profile(target), ambush, Bane(sim.Data, action, target));
+    }
 
     /// <summary>What the weather takes off a ranged attack's hit chance (dust in the air; melee is unaffected).</summary>
     public static double WeatherPenalty(ScavengeSim sim, ActionProfile action) =>
         action.Pattern == AttackPattern.Melee ? 0 : FieldEnvironment.Effects(sim.Data, sim.State).RangedAccuracyPenalty;
 
-    /// <summary>The ambush hit bonus for an attack on the unit whose telegraphed attack the attacker dodged (see <see cref="Unit.OutplayedId"/>).</summary>
-    public static double OutplayBonus(ScavengeSim sim, Unit attacker, Unit target) =>
-        attacker.OutplayedId == target.Id && sim.State.Round <= attacker.OutplayedUntilRound ? sim.Data.Rules.Fog.Ambush.HitBonus : 0;
+    /// <summary>
+    /// The ambush hit bonus for an attack on the unit whose telegraphed attack the attacker dodged (see
+    /// <see cref="Unit.OutplayedId"/>), cut so that with an <paramref name="ambush"/>'s bonus they add up to at most
+    /// rules.combat.maxHitBonus.
+    /// </summary>
+    public static double OutplayBonus(ScavengeSim sim, Unit attacker, Unit target, AmbushInfo? ambush = null)
+    {
+        if (attacker.OutplayedId != target.Id || sim.State.Round > attacker.OutplayedUntilRound) return 0;
+        return Math.Min(sim.Data.Rules.Fog.Ambush.HitBonus, Math.Max(0, sim.Data.Rules.Combat.MaxHitBonus - (ambush?.HitBonus ?? 0)));
+    }
+
+    /// <summary>
+    /// <paramref name="dodger"/> stepped off the tile <paramref name="attacker"/>'s telegraphed blow came down on: the dodger
+    /// gets the outplay hit bonus on it and (rules.combat.outplay) a free counter, both through the next round, and the
+    /// attacker is exposed as long. Without <paramref name="counter"/> (the blow dodged was itself a free counter) no
+    /// counter is earned back.
+    /// </summary>
+    internal static void Dodged(ScavengeSim sim, Unit dodger, Unit attacker, bool counter = true)
+    {
+        var state = sim.State;
+        dodger.OutplayedId = attacker.Id;
+        dodger.OutplayedUntilRound = state.Round + 1;
+        dodger.FreeCounterId = counter && sim.Data.Rules.Combat.Outplay.FreeCounter ? attacker.Id : null;
+        Expose(sim, attacker, dodger.Side);
+        state.Log(new(state.Round, ScavengeEventType.IntentFizzled, $"{dodger.Name} dodges {attacker.Name}'s blow: {attacker.Name} is exposed.",
+            attacker.Id, dodger.Id, attacker.Pos));
+    }
+
+    /// <summary>
+    /// The unit was outplayed (its blow dodged, its plan disrupted): the next hit by <paramref name="side"/> lands harder,
+    /// through the next round.
+    /// </summary>
+    internal static void Expose(ScavengeSim sim, Unit unit, string side)
+    {
+        unit.ExposedUntilRound = sim.State.Round + 1;
+        unit.ExposedToSide = side;
+    }
+
+    /// <summary>Whether the unit is exposed: a telegraphed blow of its was dodged (<see cref="Unit.ExposedUntilRound"/>).</summary>
+    public static bool Exposed(ScavengeSim sim, Unit unit) => unit.ExposedUntilRound > 0 && sim.State.Round <= unit.ExposedUntilRound;
+
+    /// <summary>Whether a hit by <paramref name="attacker"/> cashes the target's exposure in: it is of the side that dodged.</summary>
+    public static bool ExposedTo(ScavengeSim sim, Unit target, Unit attacker) => Exposed(sim, target) && target.ExposedToSide == attacker.Side;
 
     /// <summary>What a drone's mark on the target adds to the attacker's side's hit chance.</summary>
     public static double MarkBonus(ScavengeSim sim, Unit attacker, Unit target) =>
@@ -171,9 +214,10 @@ public static class Combat
     /// Afterwards the attacker is revealed to every side it hit at for <see cref="ActionProfile.Reveal"/> rounds, those
     /// sides get an attack contact pointing at it, every other side in earshot a noise contact, and overwatch may react.
     /// </summary>
-    internal static void Resolve(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, bool reaction = false)
+    /// <param name="free">No AP paid, at full accuracy (a card's strike).</param>
+    internal static void Resolve(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, bool reaction = false, bool free = false)
     {
-        if (!reaction) attacker.Ap -= ApCost(action, attacker.Pos, target.Pos);
+        if (!reaction && !free) attacker.Ap -= ApCost(action, attacker.Pos, target.Pos);
         attacker.Facing = Face(attacker.Pos, target.Pos);
         var targets = new List<Unit> { target };
         targets.AddRange(Splash(sim, attacker, action, target.Pos, targets));
@@ -204,6 +248,31 @@ public static class Combat
 
     /// <summary>The direction from one tile to another as a sign per axis.</summary>
     public static Pos Face(Pos from, Pos to) => new(Math.Sign(to.X - from.X), Math.Sign(to.Y - from.Y));
+
+    /// <summary>
+    /// Where a blow from <paramref name="attacker"/> comes at a target on <paramref name="target"/> facing
+    /// <paramref name="facing"/>, by the attacker's true bearing against the facing: within 67.5° of straight ahead the
+    /// front (the step ahead and its two diagonals, up close), to 112.5° the side, further the rear. A target facing
+    /// nowhere is struck from the front.
+    /// </summary>
+    public static FacingArc ArcOf(Pos target, Pos? facing, Pos attacker)
+    {
+        if (facing is not { } f || f == default || attacker == target) return FacingArc.Front;
+        var off = Math.Abs(Math.Atan2(attacker.Y - target.Y, attacker.X - target.X) - Math.Atan2(Math.Sign(f.Y), Math.Sign(f.X))) * 180 / Math.PI;
+        off = Math.Min(off, 360 - off);
+        return off <= 67.5 + 1e-9 ? FacingArc.Front : off <= 112.5 + 1e-9 ? FacingArc.Side : FacingArc.Rear;
+    }
+
+    /// <summary>The arc a blow from <paramref name="from"/> comes at <paramref name="target"/> (a structure has no back: the front).</summary>
+    public static FacingArc ArcOf(Unit target, Pos from) => target.Structure ? FacingArc.Front : ArcOf(target.Pos, target.Facing, from);
+
+    /// <summary>What a blow from that arc does to the damage (rules.combat.facing).</summary>
+    public static double ArcDamage(FacingRules rules, FacingArc arc) => arc switch
+    {
+        FacingArc.Side => rules.SideDamage,
+        FacingArc.Rear => rules.RearDamage,
+        _ => 1,
+    };
 
     /// <summary>
     /// Suppressing fire: no damage roll, but the target is pinned and loses AP next turn. Needs a ranged action that
@@ -246,7 +315,7 @@ public static class Combat
         var bane = Bane(data, action, target);
         // A card's hit bonus is for the unit's own next attack (not a reaction shot): the first strike uses it up.
         var cardHit = reaction ? 0 : attacker.CardHit;
-        var chance = HitChance(data, state.Map, attacker.Pos, action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + OutplayBonus(sim, attacker, target) + cardHit + ElectronicWarfare.RadioAccuracy(sim, attacker) },
+        var chance = HitChance(data, state.Map, attacker.Pos, action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + OutplayBonus(sim, attacker, target, ambush) + cardHit + ElectronicWarfare.RadioAccuracy(sim, attacker) },
             target.Pos, sim.Profile(target), ambush, bane);
         if (!reaction) attacker.CardHit = 0;
         // A dodge pays off once: whichever attack on that unit comes first (planned, reaction or splash) uses it up.
@@ -266,7 +335,12 @@ public static class Combat
             return;
         }
 
-        var raw = (action.MinDamage + (action.MaxDamage - action.MinDamage) * sim.Rng.NextDouble()) * (ambush?.DamageMultiplier ?? 1);
+        var arc = ArcOf(target, attacker.Pos);
+        var exposed = ExposedTo(sim, target, attacker);
+        if (exposed) (target.ExposedUntilRound, target.ExposedToSide) = (0, null);
+        var stacked = Math.Min(data.Rules.Combat.MaxDamageMultiplier,
+            (ambush?.DamageMultiplier ?? 1) * ArcDamage(data.Rules.Combat.Facing, arc) * (exposed ? data.Rules.Combat.Outplay.ExposedDamage : 1));
+        var raw = (action.MinDamage + (action.MaxDamage - action.MinDamage) * sim.Rng.NextDouble()) * stacked;
         var part = PickHitLocation(sim, target);
         var defense = sim.Profile(target);
         var armor = Math.Max(0, defense.ArmorAgainst(Body.RegionOf(part), action.Pattern == AttackPattern.Melee) - action.ArmorPierce);
@@ -280,7 +354,9 @@ public static class Combat
         target.Guard = 0;
         var damage = Math.Max(1, raw - armor);
         if (tier == HitTier.Graze) damage = Math.Max(1, damage * tiers.GrazeDamage);
-        var where = target.Structure ? target.Name : $"{target.Name}'s {part}";
+        var where = (target.Structure ? target.Name : $"{target.Name}'s {part}")
+                    + arc switch { FacingArc.Side => " from the side", FacingArc.Rear => " from behind", _ => "" }
+                    + (exposed ? " (exposed)" : "");
         var (verb, how) = tier switch
         {
             HitTier.Graze => ("grazed", "grazed"),
@@ -412,6 +488,9 @@ public static class Combat
             $"{target.Name} is down and bleeding out ({c.BleedOutRounds} rounds).", target.Id, Pos: target.Pos));
     }
 }
+
+/// <summary>Where a blow comes at its target from, against where the target faces (<see cref="Combat.ArcOf(Pos, Pos?, Pos)"/>).</summary>
+public enum FacingArc { Front, Side, Rear }
 
 /// <summary>How a landed hit resolves: a graze (a little HP, no injury), a plain hit, or a solid one (worse injury).</summary>
 public enum HitTier { Graze, Hit, Solid }
