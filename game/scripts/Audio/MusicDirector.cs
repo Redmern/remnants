@@ -111,6 +111,26 @@ public partial class MusicDirector : Node
         deck.Speed = (60f) / LayerFadeSeconds;
     }
 
+    /// <summary>
+    /// A layer at a level (0..1, its loudness from silent to full): it starts when first above 0 and follows changes in
+    /// under a second, so it can swell and calm with the fight (the scavenge chain layer). 0 is the same as off.
+    /// </summary>
+    public void SetLayerLevel(string layer, float level)
+    {
+        level = Mathf.Clamp(level, 0, 1);
+        if (level <= 0.001f)
+        {
+            SetLayer(layer, false);
+            return;
+        }
+        SetLayer(layer, true);
+        if (!_layers.TryGetValue(layer, out var deck)) return;
+        var target = Mathf.Max(Silent, (deck.Asset?.VolumeDb ?? 0) + Mathf.LinearToDb(level));
+        if (Mathf.IsEqualApprox(target, deck.Target)) return;
+        deck.Target = target;
+        deck.Speed = 40f;
+    }
+
     /// <summary>A one-shot musical sting (extraction, death): the mapped <c>music.{name}</c> event, which ducks the bed.</summary>
     public static void Sting(string name) => AudioManager.Fire($"music.{name}");
 

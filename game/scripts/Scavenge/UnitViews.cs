@@ -48,6 +48,9 @@ public partial class UnitViews : Node3D
     private readonly Dictionary<int, View> _views = new();
     private StandardMaterial3D _hitFlash = null!, _healFlash = null!, _networkFlash = null!;
 
+    /// <summary>The screen's feel (juiced pops, hit-stop); null plays the plain replay.</summary>
+    public ScavengeJuice? Juice { get; set; }
+
     /// <summary>A pop-up for the HUD: where (unit position), what, which colour, and whether it is a big one.</summary>
     public event System.Action<Vector3, string, Color, bool>? Floated;
 
@@ -254,6 +257,7 @@ public partial class UnitViews : Node3D
                 case ScavengeEventType.Attacked or ScavengeEventType.Missed when actor is null && target is not null && e.UnitId is null:
                     Beat();
                     Land(target, e);
+                    if (Juice is { } fogJuice) await fogJuice.HitStop(e);
                     await Wait(0.3f);
                     break;
 
@@ -285,6 +289,7 @@ public partial class UnitViews : Node3D
 
                 case ScavengeEventType.Died or ScavengeEventType.BledOut when actor is not null && (Seen(e.Pos) || Mine(e.UnitId)):
                     Beat();
+                    if (Juice is { } killJuice) await killJuice.HitStop(e);
                     FloatText(actor.Root.Position, "dead", Hud.Palette.TextMuted);
                     if (actor.Rig is { } deathRig && deathRig.Once("death", hold: true))
                     {
@@ -367,7 +372,8 @@ public partial class UnitViews : Node3D
                     else if (actor?.Rig is { } selfRig && selfRig.Once("use_item")) await Wait(selfRig.EventDelay("use_item", "apply"));
                     Beat();
                     Flash(target, _healFlash);
-                    FloatText(target.Root.Position, e.Type.ToString().ToLowerInvariant(), Hud.Palette.Good);
+                    if (Juice is { } healJuice) healJuice.Pop(target.Root.Position, e.Type.ToString().ToLowerInvariant(), Hud.Palette.Good, 0);
+                    else FloatText(target.Root.Position, e.Type.ToString().ToLowerInvariant(), Hud.Palette.Good);
                     if (e.Type == ScavengeEventType.Revived && target.Rig is { } upRig && upRig.Pick("idle") is { } idle) upRig.Loop(idle);
                     await Wait(0.3f);
                     break;
@@ -611,6 +617,7 @@ public partial class UnitViews : Node3D
         {
             beat();
             Land(target, e);
+            if (Juice is { } splashJuice) await splashJuice.HitStop(e);
             await Wait(0.12f);
             return;
         }
@@ -622,6 +629,7 @@ public partial class UnitViews : Node3D
             await Wait(hit);
             beat();
             Land(target, e);
+            if (Juice is { } clipJuice) await clipJuice.HitStop(e);
             // Let the follow-through play, but do not hold the turn for the whole recovery.
             await Wait(Mathf.Clamp((info?.Length ?? 0.6f) - hit, 0.15f, 0.45f));
             return;
@@ -632,6 +640,7 @@ public partial class UnitViews : Node3D
         await TweenTo(actor.Root, lunge, StrikeSeconds);
         beat();
         Land(target, e);
+        if (Juice is { } lungeJuice) await lungeJuice.HitStop(e);
         await TweenTo(actor.Root, home, StrikeSeconds);
         await Wait(0.12f);
     }
@@ -643,7 +652,9 @@ public partial class UnitViews : Node3D
         {
             Flash(target, _hitFlash);
             var damage = DamagePattern.Match(e.Message);
-            FloatText(target.Root.Position, damage.Success ? $"-{damage.Groups[1].Value}" : "hit", Hud.Palette.Danger);
+            var text = damage.Success ? $"-{damage.Groups[1].Value}" : "hit";
+            if (Juice is { } juice) juice.Pop(target.Root.Position, text, Hud.Palette.Danger, e.Amount ?? 0, e.Tier);
+            else FloatText(target.Root.Position, text, Hud.Palette.Danger);
             if (target.Rig is { } rig && rig.Current is not ("death" or "downed" or "downed_loop")) rig.Once("hit_react");
         }
         else FloatText(target.Root.Position, "miss", Hud.Palette.TextMuted);

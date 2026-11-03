@@ -36,6 +36,8 @@ public partial class WorldTags : Control
         public Vector3 World;
         public float Offset;
         public float Rise;
+        public float Jitter;
+        public float Born;
     }
 
     private readonly List<Popup> _popups = new();
@@ -71,16 +73,27 @@ public partial class WorldTags : Control
     /// <summary>Attack previews by target unit for the chosen action (empty when not targeting).</summary>
     public void SetPreviews(Dictionary<int, Preview> previews) => _previews = previews;
 
-    /// <summary>A short message rising from a spot over the map (damage, miss, AMBUSH!).</summary>
-    public void Pop(Vector3 world, string text, Color color, bool big = false)
+    /// <summary>
+    /// A short message rising from a spot over the map (damage, miss, AMBUSH!). A juiced pop (<paramref name="scale"/> above
+    /// 1, <see cref="Remnants.Core.Scavenge.ReplayJuice.PopScale"/>) lands oversized and settles to its size, and
+    /// <paramref name="jitter"/> (pixels) shakes it while it is fresh.
+    /// </summary>
+    public void Pop(Vector3 world, string text, Color color, bool big = false, float scale = 1, float jitter = 0)
     {
-        var chip = Chip(text, color, null, big ? 22 : 17, strong: true);
+        var chip = Chip(text, color, null, Mathf.RoundToInt((big ? 22 : 17) * Mathf.Max(1, scale)), strong: true);
         var anchor = world + Vector3.Up * (HeadHeight + 0.6f);
         // Pop-ups over the same spot queue upwards instead of covering each other.
         var stacked = _popups.Count(p => p.World.DistanceTo(anchor) < 0.5f);
-        var popup = new Popup { Chip = chip, World = anchor, Offset = stacked * 30f };
+        var popup = new Popup { Chip = chip, World = anchor, Offset = stacked * 30f * Mathf.Max(1, scale), Jitter = jitter, Born = Now };
         _popups.Add(popup);
         AddChild(chip);
+        if (scale > 1.05f && !GameSettings.ReduceMotion)
+        {
+            // Lands big and snaps down to size (pivot at its centre once laid out).
+            chip.Resized += () => chip.PivotOffset = chip.Size / 2;
+            chip.Scale = Vector2.One * 1.45f;
+            chip.CreateTween().TweenProperty(chip, "scale", Vector2.One, 0.22).SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+        }
         var tween = chip.CreateTween();
         tween.TweenMethod(Callable.From<float>(v => popup.Rise = v), 0f, 46f, 1.1);
         tween.Parallel().TweenProperty(chip, "modulate:a", 0f, 0.5).SetDelay(0.7);
@@ -89,6 +102,18 @@ public partial class WorldTags : Control
             _popups.Remove(popup);
             chip.QueueFree();
         }));
+    }
+
+    private static float Now => Time.GetTicksMsec() / 1000f;
+
+    /// <summary>A fresh juiced pop's shake: strong at first, gone after about half a second.</summary>
+    private static Vector2 Shaking(Popup popup)
+    {
+        if (popup.Jitter <= 0) return Vector2.Zero;
+        var age = Now - popup.Born;
+        var left = Mathf.Max(0, 1 - age / 0.5f);
+        if (left <= 0) return Vector2.Zero;
+        return new Vector2(Mathf.Sin(age * 71f), Mathf.Cos(age * 59f)) * popup.Jitter * left;
     }
 
     public override void _Process(double delta)
@@ -134,7 +159,7 @@ public partial class WorldTags : Control
             if (_camera.IsPositionBehind(popup.World)) continue;
             var p = _camera.UnprojectPosition(popup.World);
             var chip = popup.Chip;
-            chip.Position = p - new Vector2(chip.Size.X / 2, chip.Size.Y + popup.Rise + popup.Offset);
+            chip.Position = p - new Vector2(chip.Size.X / 2, chip.Size.Y + popup.Rise + popup.Offset) + Shaking(popup);
         }
     }
 

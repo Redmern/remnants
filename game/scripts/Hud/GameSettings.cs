@@ -8,7 +8,8 @@ namespace Remnants.Game.Hud;
 /// <summary>
 /// Player settings in <c>user://settings.cfg</c>: UI scale, window mode and size, vsync, master / music / sfx /
 /// ambience volume (on the buses of <see cref="Audio.AudioBuses"/>), mute when unfocused, visual sound cues, camera
-/// pan and zoom speed, day length, scavenge replay pace (walk speed, skip animations, auto end turn). Also owns the hotkey
+/// pan and zoom speed, day length, scavenge replay pace (walk speed, skip animations, auto end turn) and feel (effects
+/// intensity, shake, hit-stop, flashes, CRT shader, music reactivity). Also owns the hotkey
 /// actions (<see cref="Hotkeys"/>), added to the InputMap at boot. <see cref="Boot"/> runs once per process from
 /// whichever scene starts first.
 /// <para>The UI scale is the root window's content scale: <c>auto × UiScale</c>, where auto follows the window height
@@ -78,6 +79,32 @@ public static class GameSettings
     /// <summary>Scavenge: a unit with nothing affordable left to do ends its turn by itself (<see cref="Remnants.Core.Scavenge.TurnAdvice"/>).</summary>
     public static bool AutoEndTurn { get; set; } = true;
 
+    /// <summary>
+    /// Scavenge feel, master level (<see cref="Remnants.Core.Scavenge.ReplayJuice"/>): pops, card motion, shake, hit-stop,
+    /// flashes and the music's chain layer scale with it; Off leaves the plain replay. Presentation only.
+    /// </summary>
+    public static Remnants.Core.Scavenge.EffectsLevel EffectsLevel { get; set; } = Remnants.Core.Scavenge.EffectsLevel.Normal;
+
+    /// <summary>Scavenge: the camera shakes on hits, kills and shoves (never with <see cref="ReduceMotion"/>).</summary>
+    public static bool ScreenShake { get; set; } = true;
+
+    /// <summary>Scavenge: the replay freezes a moment on a heavy blow (never while skipping animations).</summary>
+    public static bool HitStop { get; set; } = true;
+
+    /// <summary>Scavenge: a colour flash / vignette on big hits and kills, capped against strobing (never with <see cref="ReduceMotion"/>).</summary>
+    public static bool HitFlashes { get; set; } = true;
+
+    /// <summary>Scavenge: the mild CRT look (scanlines, curve, a slow wobble; the wobble and curve go with <see cref="ReduceMotion"/>).</summary>
+    public static bool CrtShader { get; set; } = true;
+
+    /// <summary>Scavenge: the music's chain layer swells with the squad's hit chain and calms when the round ends.</summary>
+    public static bool MusicReactive { get; set; } = true;
+
+    public static readonly string[] EffectsLevels = ["Off", "Low", "Normal", "High"];
+
+    /// <summary>The feel settings as Core's view model takes them.</summary>
+    public static Remnants.Core.Scavenge.JuiceSettings Juice => new(EffectsLevel, ScreenShake, HitStop, HitFlashes, ReduceMotion);
+
     public static readonly Vector2I[] Resolutions = [new(1280, 720), new(1600, 900), new(1920, 1080), new(2560, 1440), new(3840, 2160)];
 
     public static readonly float[] UiScales = [0.75f, 0.85f, 1f, 1.15f, 1.3f, 1.5f];
@@ -94,6 +121,10 @@ public static class GameSettings
         Load();
         // Debug: a run with replays snapped (not saved unless the settings panel saves).
         if (DebugCapture.HasFlag("--skip-animations")) SkipAnimations = true;
+        // Debug: a run at a given effects level (--effects=off|low|normal|high), for the determinism and perf checks.
+        if (DebugCapture.Value("--effects") is { } effects
+            && Array.FindIndex(EffectsLevels, l => l.Equals(effects, StringComparison.OrdinalIgnoreCase)) is >= 0 and var level)
+            EffectsLevel = (Remnants.Core.Scavenge.EffectsLevel)level;
         EnsureBuses();
         Hotkeys.Install();
         Help.HelpLayer.Attach(tree);
@@ -160,6 +191,12 @@ public static class GameSettings
         cfg.SetValue("scavenge", "skip_animations", SkipAnimations);
         cfg.SetValue("scavenge", "walk_tile_seconds", WalkTileSeconds);
         cfg.SetValue("scavenge", "auto_end_turn", AutoEndTurn);
+        cfg.SetValue("effects", "level", (int)EffectsLevel);
+        cfg.SetValue("effects", "shake", ScreenShake);
+        cfg.SetValue("effects", "hit_stop", HitStop);
+        cfg.SetValue("effects", "flashes", HitFlashes);
+        cfg.SetValue("effects", "crt", CrtShader);
+        cfg.SetValue("effects", "music_reactive", MusicReactive);
         cfg.Save(Path);
     }
 
@@ -188,6 +225,12 @@ public static class GameSettings
         SkipAnimations = (bool)cfg.GetValue("scavenge", "skip_animations", SkipAnimations);
         WalkTileSeconds = Mathf.Clamp((float)cfg.GetValue("scavenge", "walk_tile_seconds", WalkTileSeconds), WalkSpeeds[^1].Seconds, WalkSpeeds[0].Seconds);
         AutoEndTurn = (bool)cfg.GetValue("scavenge", "auto_end_turn", AutoEndTurn);
+        EffectsLevel = (Remnants.Core.Scavenge.EffectsLevel)Math.Clamp((int)cfg.GetValue("effects", "level", (int)EffectsLevel), 0, 3);
+        ScreenShake = (bool)cfg.GetValue("effects", "shake", ScreenShake);
+        HitStop = (bool)cfg.GetValue("effects", "hit_stop", HitStop);
+        HitFlashes = (bool)cfg.GetValue("effects", "flashes", HitFlashes);
+        CrtShader = (bool)cfg.GetValue("effects", "crt", CrtShader);
+        MusicReactive = (bool)cfg.GetValue("effects", "music_reactive", MusicReactive);
     }
 
     private static void EnsureBuses() => Audio.AudioBuses.Ensure();

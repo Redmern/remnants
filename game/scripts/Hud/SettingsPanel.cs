@@ -5,7 +5,7 @@ using Godot;
 namespace Remnants.Game.Hud;
 
 /// <summary>
-/// Settings, in tabs: Game (day length, late zones, scavenge walk speed, skip animations, auto end turn), Display (UI scale, fullscreen, window size, vsync, weather effects, reduce motion, frame time), Audio (master / music / effects / ambience
+/// Settings, in tabs: Game (day length, late zones, scavenge walk speed, skip animations, auto end turn), Display (UI scale, fullscreen, window size, vsync, weather effects, reduce motion, the scavenge effects, frame time), Audio (master / music / effects / ambience
 /// volume on their buses, mute when unfocused, visual sound cues), Camera (pan and zoom speed) and Controls (the hotkey list). Changes apply at once and are saved
 /// when the panel closes (<see cref="GameSettings"/>).
 /// </summary>
@@ -128,10 +128,11 @@ public partial class SettingsPanel : Overlay
             Text = "Reduce motion",
             ButtonPressed = GameSettings.ReduceMotion,
             FocusMode = FocusModeEnum.None,
-            TooltipText = "Panels, lists, counters and notices appear at once instead of sliding and fading.",
+            TooltipText = "Panels, lists, counters and notices appear at once instead of sliding and fading. In scavenge runs: no screen shake, no flashes, no screen warp.",
         };
         motion.Toggled += on => GameSettings.ReduceMotion = on;
         box.AddChild(motion);
+        Effects(box);
         var frames = new CheckBox
         {
             Text = "Show frame time",
@@ -206,6 +207,32 @@ public partial class SettingsPanel : Overlay
         chip.AddChild(label);
         chip.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
         return chip;
+    }
+
+    /// <summary>The scavenge feel: master intensity and a toggle per effect (<see cref="GameSettings.Juice"/>).</summary>
+    private static void Effects(VBoxContainer box)
+    {
+        var level = new OptionButton { FocusMode = FocusModeEnum.None };
+        foreach (var l in GameSettings.EffectsLevels) level.AddItem(l);
+        level.Select((int)GameSettings.EffectsLevel);
+        level.ItemSelected += i => GameSettings.EffectsLevel = (Remnants.Core.Scavenge.EffectsLevel)(int)i;
+        box.AddChild(Row("Effects intensity", level,
+            "Scavenge runs: how hard damage numbers, cards, screen shake, hit-stop and flashes hit. Off plays the plain replay. The run plays out the same at every setting."));
+        void Toggle(string text, bool on, Action<bool> set, string tip)
+        {
+            var check = new CheckBox { Text = text, ButtonPressed = on, FocusMode = FocusModeEnum.None, TooltipText = tip };
+            check.Toggled += v => set(v);
+            box.AddChild(check);
+        }
+        Toggle("Screen shake", GameSettings.ScreenShake, v => GameSettings.ScreenShake = v, "The view shakes on hits, kills and shoves, harder from behind and on solid hits.");
+        Toggle("Hit-stop", GameSettings.HitStop, v => GameSettings.HitStop = v,
+            "The replay freezes a split second on a heavy blow. Never more than a fraction of a second a round, never while skipping animations.");
+        Toggle("Hit flashes", GameSettings.HitFlashes, v => GameSettings.HitFlashes = v,
+            "A short colour flash and vignette on big hits and kills. Never more than two a second.");
+        Toggle("CRT screen look", GameSettings.CrtShader, v => GameSettings.CrtShader = v,
+            "Scanlines, a slight curve and a slow wobble over the tactical map. Reduce motion keeps only the scanlines.");
+        Toggle("Music follows the fight", GameSettings.MusicReactive, v => GameSettings.MusicReactive = v,
+            "A music layer swells as your squad chains hits and card plays, and calms when the round ends.");
     }
 
     private static VBoxContainer Page(string name)

@@ -39,6 +39,7 @@ public partial class ScavengeScreen : Node3D
     private ScavengeLog _log = null!;
     private ResultPanel _result = null!;
     private Audio.ScavengeAudio _audio = null!;
+    private ScavengeJuice _juice = null!;
 
     private int? _selectedId;
     private int? _lastActingId;
@@ -91,6 +92,10 @@ public partial class ScavengeScreen : Node3D
         AddChild(_audio);
         _audio.Setup(_presenter, _camera, _hud);
         _units.Footstep += _audio.Footstep;
+        _juice = new ScavengeJuice { Name = "Juice" };
+        AddChild(_juice);
+        _juice.Setup(_presenter, _camera, _hud);
+        _units.Juice = _juice;
         Wire();
         SelectActing();
         _camera.Focus(PartyCentre());
@@ -461,6 +466,7 @@ public partial class ScavengeScreen : Node3D
                     _telegraphs.Incoming(e);
                     CardFlourish(e);
                     _audio.Step(e);
+                    _juice.Step(e, seen);
                     WeatherEvent(e);
                     // Follow what others do in sight (enemy turns, recruits) so it never happens off screen; never what the
                     // side did not see, nor while animations are skipped.
