@@ -1835,3 +1835,69 @@ Story missions (`--mission=ID --runs=100 --party=4 --kit=armed`), wipes with re-
 everywhere: m11b 13% → 48%, m13 58% → 94%, m15 49% → 86%, side_children 58% → 94%, m17_choir 65% → 65%. The
 re-tuned expeditions setting leaves every story mission exactly as it was; m12, m16 and the m17 missions use handmade
 maps and do not change under either setting.
+
+## Early resource scarcity
+
+Asked for: survivors can now hold several jobs, so start with fewer people (Sandbox: pick the number); buildings cost
+less wood; a level 1 Woodcutter cuts less; scavenging is the good early source of wood; building upgrades, the
+worker's skill and better tools pay off later. The same curve for every gathered material (wood, stone, scrap).
+Measured with `dotnet run --project tools/Remnants.Playtest -c Release -- --data=data --seeds=1..60 --days=60 [--story]
+--quiet`; "before" is `main` at 4da608d, "after" this branch.
+
+### The rules
+
+- **Start**: 3 adults + 1 child (was 3 + 2), `rules.newGame.adults`/`children`. Sandbox picks 2–6 on its New Game card
+  (`habitantsRange`; one in four a child, at least one from three people up; saved as `ColonyState.NewGameOptions`, the
+  last pick remembered in settings.cfg). Story keeps the default (Pell is the child). Start stock 45 wood / 20 stone (60 / 30).
+- **Gathering curve** (Woodcutter, Quarry, Scrapyard): lower base output (0.6 / 0.55 / 0.27, was 0.96 / 0.88 / 0.43),
+  steeper levels (×1.6 / ×2.2, was ×1.25 / ×1.5), skill weight doubled (2 / 2 / 1.6) so practice matters, tool bonus
+  0.6. Per hour for a fresh adult (stats 45, skill 0, no tool):
+
+  | | L1 before → after | L2 | L3 | skill 30 / 70 (L1) | hand tool / best tool (L1) | L3, skill 70, best tool |
+  |---|---|---|---|---|---|---|
+  | wood | 0.40 → **0.22** | 0.35 | 0.48 | 0.31 / 0.43 | 0.28 / 0.35 | 1.50 (before, no tools existed: 0.98) |
+  | stone | 0.37 → **0.20** | 0.32 | 0.44 | 0.28 / 0.39 | 0.26 / 0.32 | 1.38 (0.90) |
+  | scrap | 0.19 → **0.10** | 0.16 | 0.23 | 0.14 / 0.19 | 0.13 / 0.16 | 0.67 (0.43) |
+
+- **Tools** (jobs.json `tools`, `WorkTools`): stockpile items a job's workers use, one each, the best to the lowest id;
+  a tool on an expedition is away. Woodcutting: Hand Saw 0.5 / Felling Axe 1; Mining: Pickaxe 0.5 / Hand Rock Drill 1;
+  Scrap Sorting: Crowbar 0.5 / Cutting Torch 1. The basic three are Workshop L1 recipes (3–5 scrap) and loot; the good
+  ones Workshop L2 with Crafting 10. Before this pass `toolQuality` was never set, so tools did nothing at home.
+- **Haul** (zones.json `haul`): a plain run that gets someone home brings materials besides the packs, rolled from the
+  expedition's seed, × (1 − depletion): Town Outskirts 13–18 wood, 3–6 stone; Scrapyard Flats 20–28 wood, 6–10 stone,
+  6–10 scrap; Suburb Ruins 6–10 wood, 4–8 scrap. The after-action report lists it ("Hauled home"). Two fresh adults at a
+  level 1 Woodcutter cut ~6 wood in a day of work hours, so a first Outskirts run (a day) brings at least 2× that and a
+  Scrapyard Flats run (two days on the road) at least 1.6×.
+- **Costs**: level 1 wood down ~25–40% (Farm 10, Woodcutter 6 / 3 stone, Quarry 10, Workshop 18 / 8, Scrapyard 14 / 6,
+  Med Bay 22 / 12, Kitchen 22 / 15, Tailor 22 / 8, Campfire 5, ...), gatherer, Farm and Shelter L2 a little. The first
+  five builds (Farm, Woodcutter, Quarry, Workshop, Scrapyard: 58 wood / 17 stone) take the start stock plus one Outskirts
+  run. Town Hall L2 (48 / 30) and House (60 / 40) were cut in a first try and put back: with the haul Town Hall 2 came
+  on day 25 instead of ~31.
+
+The bot now crafts a basic tool for each bare-handed gatherer (Workshop, after weapons) and the good one once the
+Workshop is level 2: basic tools come about day 6–10, good ones about day 53. It still gives everyone one job.
+
+### 60 seeds × 60 days
+
+| | Sandbox before | Sandbox after | Story before | Story after |
+|---|---|---|---|---|
+| median population at day 60 | 6 | 8 | 10 | 10 |
+| colonies wiped / starvation deaths | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 |
+| min food stock, days of need (median) | 3.6 | 7.5 | 2.3 | 1.6 |
+| Town Hall 2 (median day) | 30.7 | 29.3 | 31.3 | 30.5 |
+| House affordable (median day) | 51.6 | 47.6 | 31.6 | 31.8 |
+| first birth (median day) | 46 | 34 | 38 | 37 |
+| expedition deaths / runs | 13 / 960 | 14 / 982 | 37 / 1045 | 44 / 1057 |
+| left for want of a bed | 101 | 43 | 64 | 21 |
+| first raid held | 54/60 | 59/60 | 47/60 | 41/60 |
+
+Days 1–10 (Sandbox, 60 seeds, daily stock): median wood 12 → **9**, stone 17 → **9**, scrap 9 → **6**; wood under 10 on
+44% → 51% of days. The first week is tighter on materials while the milestones keep their days: the haul fills the gap
+the Woodcutter leaves, and from about day 30 levels, skill and tools take over.
+
+- Fewer mouths make food easier in Sandbox (min 7.5 days of need against 3.6) and births come earlier; Story food is a
+  little tighter (1.6 days), with no starvation.
+- Story's first raid is held less often (41 against 47 of 60): one person fewer at home when it comes. Raid deaths are
+  unchanged (3 / 3).
+- Late game gathers more than before (a level 3 Woodcutter with a skilled, tooled worker cuts 1.5 an hour against 0.98):
+  the payoff the request asked for. Watch the 90-day economy next pass.
