@@ -43,14 +43,15 @@ public partial class ScavengeScreen
                     var card = TacticsDemo.Mode == "smoke" ? "smoke_bomb" : "shove";
                     _hud.Hand.Choose(card);
                     BeginCardAim(card, u.Id, false, false);
-                    _hover = husk.Pos;
-                    _map.SetHover(husk.Pos);
+                    var aimTile = DemoAimTile(husk.Pos);
+                    _hover = aimTile;
+                    _map.SetHover(aimTile);
                     RefreshHud();
                     await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-                    if (_cardAim?.At(husk.Pos) is { } option)
-                        _hud.TargetTip.Show(_cardAim.CardName, husk.Name, option, _camera.Camera.UnprojectPosition(TileGrid.ToWorld(husk.Pos)));
+                    if (_cardAim?.At(aimTile) is { } option)
+                        _hud.TargetTip.Show(_cardAim.CardName, husk.Name, option, _camera.Camera.UnprojectPosition(TileGrid.ToWorld(aimTile)));
                     GD.Print($"Tactics demo: aiming {card}, {_cardAim?.Options.Count(o => o.Ok)} of {_cardAim?.Options.Count} targets work; " +
-                             $"at the Husk: {(_cardAim?.At(husk.Pos) is { } at ? at.Ok ? at.Outcome : at.Reason : "none")}");
+                             $"at {aimTile}: {(_cardAim?.At(aimTile) is { } at ? at.Ok ? at.Outcome : at.Reason : "none")}");
                     break;
                 case "preview" when husk is not null:
                     // Fresh AP and the Husk two steps off, so the move tiles in reach of a blow show their chances.
@@ -71,7 +72,7 @@ public partial class ScavengeScreen
         if (DebugCapture.HasFlag("--play-aim") && _cardAim is { } aimed
             && _presenter.State.Units.FirstOrDefault(t => t.EnemyDefId == "husk" && _presenter.CanSee(t)) is { } aimAt)
         {
-            ClickCardAim(aimed, aimAt.Pos);
+            ClickCardAim(aimed, DemoAimTile(aimAt.Pos));
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             while (_busy) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             var off = _presenter.State.Units.Where(t => t.OnMap && _units.WorldOf(t.Id) is { } w && TileGrid.FromWorld(w) != t.Pos).Select(t => t.Name).ToList();
@@ -85,4 +86,13 @@ public partial class ScavengeScreen
             if (DebugCapture.HasFlag("--quit")) GetTree().Quit();
         }
     }
+
+    /// <summary>
+    /// The demo's aim: the Husk's tile when a target there works (Shove), else the working target nearest it (a Smoke Bomb
+    /// is a screen, never over the player next to it).
+    /// </summary>
+    private Core.Scavenge.Pos DemoAimTile(Core.Scavenge.Pos husk) =>
+        _cardAim?.At(husk) is { Ok: true } || _cardAim is null ? husk
+        : _cardAim.Options.Where(o => o.Ok).OrderBy(o => o.Tile.Chebyshev(husk)).ThenBy(o => o.Tile.Y).ThenBy(o => o.Tile.X)
+            .Select(o => o.Tile).DefaultIfEmpty(husk).First();
 }
