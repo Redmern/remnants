@@ -29,8 +29,22 @@ Branch `feat/early-resource-scarcity`. Numbers and results: BALANCE.md "Early re
   2 nine days early.
 - Late game now out-gathers the old numbers (×1.5 at L3 with skill and best tool). Intended payoff; watch 90-day runs.
 - Story's first raid is held less often (41 vs 47 of 60) with one person fewer.
+- Tools go to everyone on the job's roster, on shift or not (a Night Shift crew holds tools too). Simple and stable; a
+  per-hour handout would need tools to move between people.
+
+## Review follow-ups (fixed)
+
+- Building tooltip, survivor overview and help breakdown now show the stockpile tool (they used the unset
+  `Survivor.ToolQuality`).
+- Bot: falls back to the basic tool when the good one cannot be made, checks the recipe's Crafting skill, finds recipes
+  by item. Sandbox picker drops a remembered pick outside the range. A tiny start always has a man and a woman. Tool
+  qualities are validated to 0..1.
 
 ## Open questions
+
+- **Outskirts runs can be chained** with no colony time passing (travel 0): three back-to-back runs on day 1 give about
+  15 + 10 + 5 wood, as depletion bites. Each run still risks injuries and deaths, and loot had the same property
+  before. A cooldown or a colony-time cost for doorstep runs would close it; not done here.
 
 - Should tools be visible per worker in the building panel (which tool, its bonus)? Only the output number shows it now.
 - Should the bot use multiple jobs per person? It still gives everyone one job, so the bot is a little pessimistic

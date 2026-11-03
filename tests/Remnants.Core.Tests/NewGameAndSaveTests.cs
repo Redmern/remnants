@@ -67,6 +67,27 @@ public class NewGameTests
     }
 
     [Fact]
+    public void A_small_start_always_has_a_man_and_a_woman()
+    {
+        var rules = TestData.Real.Rules.NewGame with { Adults = 2, Children = 2 };
+
+        Assert.Equal((2, 0), NewGame.Composition(rules, 2));
+        Assert.Equal((2, 1), NewGame.Composition(rules, 3));
+    }
+
+    [Fact]
+    public void A_save_from_before_new_game_options_loads_as_the_default_start()
+    {
+        var json = System.Text.Json.Nodes.JsonNode.Parse(SaveGame.Save(NewGame.Create(TestData.Real, 3, options: new NewGameOptions { StartingHabitants = 6 }).State))!;
+        var state = json["colony"]!.AsObject();
+        Assert.True(state.Remove("newGameOptions"));
+
+        var loaded = SaveGame.Load(TestData.Real, json.ToJsonString());
+
+        Assert.Null(loaded.State.NewGameOptions.StartingHabitants);
+    }
+
+    [Fact]
     public void The_new_game_options_are_saved_with_the_colony()
     {
         var sim = NewGame.Create(TestData.Real, 3, options: new NewGameOptions { StartingHabitants = 6 });

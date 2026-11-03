@@ -481,13 +481,14 @@ public partial class SurvivorPanel : PanelContainer
         var job = sim.Data.Jobs[def.Job];
         var rules = sim.Data.Rules.Output;
         var perf = JobOutput.Performance(job, s, rules);
-        var tool = JobOutput.ToolFactor(job, s);
+        var toolQuality = WorkTools.Quality(sim.State, sim.Data, job, s);
+        var tool = JobOutput.ToolFactor(job, s, toolQuality);
         var health = JobOutput.HealthFactor(job, s, rules);
         var life = JobOutput.LifeFactor(s, rules);
         var mood = JobOutput.MoodFactor(s, rules);
         var perks = JobOutput.PerkFactor(job, s, sim.Data);
         var level = def.Level(b.Level).OutputMultiplier;
-        var perTick = JobOutput.PerTick(def, b.Level, job, s, rules, sim.Data);
+        var perTick = JobOutput.PerTick(def, b.Level, job, s, rules, sim.Data, toolQuality);
         var unit = def.Produces is { } res ? sim.Data.Resources[res].Name : "work";
         var hours = Schedule.ShiftHoursPerDay(s, b, def, sim.Data.Rules);
         var tired = sim.IsTired(s) ? $"\n  tired: {Fmt.Factor(sim.Data.Rules.DayNight.Tired.OutputMultiplier)} until they sleep" : "";

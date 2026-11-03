@@ -61,6 +61,7 @@ public static class GameSettings
 
     /// <summary>The Sandbox start's number of people last picked on the New Game screen (0 = the rules' default).</summary>
     public static int SandboxHabitants { get; set; }
+
     public static float CameraZoomSpeed { get; set; } = 1f;
 
     public static readonly Vector2I[] Resolutions = [new(1280, 720), new(1600, 900), new(1920, 1080), new(2560, 1440), new(3840, 2160)];

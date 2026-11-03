@@ -92,6 +92,31 @@ public class ZoneHaulTests
     }
 
     [Fact]
+    public void A_story_mission_hauls_nothing()
+    {
+        var (sim, a, b) = Launched("outskirts");
+        sim.State.Expedition!.MissionId = "m2_first_light";
+        Assert.True(sim.Execute(new ApplyExtractionResult(LoopTestData.Result(returned: [LoopTestData.Returned(a), LoopTestData.Returned(b)]))).Ok);
+
+        Assert.Equal(0, sim.State.Stockpile.Get("wood"));
+        Assert.Empty(sim.State.LastReport!.Haul);
+    }
+
+    [Fact]
+    public void A_report_saved_before_hauls_loads_with_none()
+    {
+        var sim = Returned("outskirts");
+        var json = System.Text.Json.Nodes.JsonNode.Parse(Serialization.SaveGame.Save(sim.State))!;
+        var report = json["colony"]?["lastReport"];
+        Assert.NotNull(report);
+        report!.AsObject().Remove("haul");
+
+        var loaded = Serialization.SaveGame.Load(TestData.Real, json.ToJsonString());
+
+        Assert.Empty(loaded.State.LastReport!.Haul);
+    }
+
+    [Fact]
     public void Early_zones_haul_the_gathered_materials()
     {
         var zones = ScavengeTestData.Real.Zones;

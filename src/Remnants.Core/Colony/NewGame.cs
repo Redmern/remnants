@@ -65,6 +65,8 @@ public static class NewGame
         if (habitants is not { } n) return (rules.Adults, rules.Children);
         var children = rules.Habitants == 0 ? 0 : n * rules.Children / rules.Habitants;
         if (n >= 3 && rules.Children > 0) children = Math.Max(1, children);
+        // Always one man and one woman among the adults.
+        children = Math.Min(children, Math.Max(0, n - 2));
         return (n - children, children);
     }
 

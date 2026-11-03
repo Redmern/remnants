@@ -41,11 +41,13 @@ public partial class NewGameChoice : Overlay
     {
         var rules = GameDataPaths.Load().Rules.NewGame;
         var (fewest, most) = (rules.HabitantsRange[0], rules.HabitantsRange[1]);
-        var picker = new OptionButton { FocusMode = FocusModeEnum.All, TooltipText = "How many survivors the colony starts with. One in four is a child (from three people up). Fewer hands, more work for each." };
+        var picker = new OptionButton { FocusMode = FocusModeEnum.All, TooltipText = $"How many survivors the colony starts with ({rules.Adults} adults and {rules.Children} children by default; a bigger or smaller start keeps about that share of children). Fewer hands, more work for each." };
         picker.AddItem($"Default ({rules.Habitants})", 0);
         for (var n = fewest; n <= most; n++) picker.AddItem(n.ToString(), n);
+        // A remembered pick outside today's range (older data, a hand edit) falls back to the default it shows.
+        if (GameSettings.SandboxHabitants < fewest || GameSettings.SandboxHabitants > most) GameSettings.SandboxHabitants = 0;
         var chosen = GameSettings.SandboxHabitants;
-        picker.Select(chosen >= fewest && chosen <= most ? picker.GetItemIndex(chosen) : 0);
+        picker.Select(chosen == 0 ? 0 : picker.GetItemIndex(chosen));
         picker.ItemSelected += i => GameSettings.SandboxHabitants = picker.GetItemId((int)i);
         var line = Widgets.Row(8);
         line.AddChild(Widgets.Label("Starting survivors", "Small"));

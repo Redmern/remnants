@@ -85,12 +85,13 @@ public static class Breakdowns
         var job = sim.Data.Jobs[def.Job];
         var rules = sim.Data.Rules.Output;
         var data = sim.Data;
+        var tool = Colony.WorkTools.Quality(sim.State, data, job, s);
         var rows = new List<BreakdownRow>
         {
             new("Base output", $"{def.BaseOutput:0.##}/tick", def.Name),
             new("Building level", Times(def.Level(building.Level).OutputMultiplier), $"level {building.Level}"),
             new("Performance", Times(Colony.JobOutput.Performance(job, s, rules)), $"attributes and {job.Skill} skill: {Pct(Colony.JobOutput.Effectiveness(job, s))} effective"),
-            new("Tool", Times(Colony.JobOutput.ToolFactor(job, s))),
+            new("Tool", Times(Colony.JobOutput.ToolFactor(job, s, tool)), tool > 0 ? $"a quality {tool:0.#} tool from the stockpile" : job.Tools.Count > 0 ? "bare hands: no tool left in the stockpile" : ""),
             new("Health and body", Times(Colony.JobOutput.HealthFactor(job, s, rules)), $"{s.Health:0} HP, the parts the job uses"),
             new("Conditions and pain", Times(Colony.JobOutput.ConditionFactor(s, data))),
             new("Age", Times(Colony.JobOutput.LifeFactor(s, rules)), s.IsChild ? "a child" : ""),
@@ -98,7 +99,7 @@ public static class Breakdowns
             new("Perks and cybernetics", Times(Colony.JobOutput.PerkFactor(job, s, data))),
             new("Food buffs", Times(FoodEffects.OutputFactor(s, data))),
         };
-        var perTick = Colony.JobOutput.PerTick(def, building.Level, job, s, rules, data);
+        var perTick = Colony.JobOutput.PerTick(def, building.Level, job, s, rules, data, tool);
         var perDay = perTick * Schedule.ShiftHoursPerDay(s, building, def, sim.Data.Rules);
         return new Breakdown($"{s.Name} at the {def.Name}", rows, $"{perTick:0.###}/tick · {perDay:0.#}/day on shift",
             "base × level × performance × tool × health × conditions × age × mood × perks × food");
