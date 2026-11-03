@@ -25,8 +25,6 @@ public partial class UnitViews : Node3D
 {
     private const float MoveSeconds = 0.2f;
     private const float StrikeSeconds = 0.16f;
-    private const float RunPace = 0.75f;        // a run's tile takes this share of a walked one (long paths jog)
-    private const float MaxWalkSeconds = 1.4f;  // long moves speed up so turns keep their pace
     private const float TurnSeconds = 0.18f;    // a unit turning on the spot (a plan declared, Core's facing synced)
     private const float WalkStride = 2f;        // m per walk cycle at speed 1 (two footfalls)
     private const float RunStride = 2.4f;
@@ -115,16 +113,9 @@ public partial class UnitViews : Node3D
     public bool InSight(ScavengeEvent e, IReadOnlySet<int> visible) =>
         InSight(e, visible, e.UnitId is { } a ? _views.GetValueOrDefault(a) : null, e.TargetId is { } t ? _views.GetValueOrDefault(t) : null);
 
-    private bool InSight(ScavengeEvent e, IReadOnlySet<int> visible, View? actor, View? target)
-    {
-        if (e.UnitId is null) return true;
-        var state = _presenter.State;
-        bool Mine(int? id) => id is { } i && state.FindUnit(i) is { } u && u.Side == _presenter.Side;
-        bool Seen(Pos? p) => p is { } at && state.Map.InBounds(at) && visible.Contains(state.Map.Index(at));
-        return Mine(e.UnitId) || Mine(e.TargetId) || Seen(e.Pos)
-               || actor is not null && Seen(TileGrid.FromWorld(actor.Root.Position))
-               || target is not null && Seen(TileGrid.FromWorld(target.Root.Position));
-    }
+    private bool InSight(ScavengeEvent e, IReadOnlySet<int> visible, View? actor, View? target) =>
+        ReplayPacing.InSight(_presenter.State, _presenter.Side, e, visible,
+            actor is null ? null : TileGrid.FromWorld(actor.Root.Position), target is null ? null : TileGrid.FromWorld(target.Root.Position));
 
     /// <summary>Replays snap to their end (<see cref="Hud.GameSettings.SkipAnimations"/>): read at every step, so the hotkey works mid-replay.</summary>
     private static bool Fast => Hud.GameSettings.SkipAnimations;
@@ -452,8 +443,7 @@ public partial class UnitViews : Node3D
         var path = unit is null ? [to] : TilePath(unit, from, to);
         var rig = view.Rig;
         var gait = rig is null || unit is null ? null : rig.Pick(path.Count > 3 && unit.CarryingId is null ? ["run", "walk"] : ClipMap.Move(unit));
-        var perTile = Hud.GameSettings.WalkTileSeconds * (gait == "run" ? RunPace : 1f);
-        var seconds = Mathf.Min(perTile * path.Count, MaxWalkSeconds) / path.Count;
+        var seconds = (float)ReplayPacing.WalkSeconds(Hud.GameSettings.WalkTileSeconds, path.Count, gait == "run", skip: false) / path.Count;
         if (Fast)
         {
             Face(view, TileGrid.ToWorld(to), 0.01f);
@@ -646,7 +636,7 @@ public partial class UnitViews : Node3D
 
     private async Task Wait(float seconds)
     {
-        if (Fast) return;
+        if (ReplayPacing.Hold(seconds, seen: true, skip: Fast) <= 0) return;
         await ToSignal(GetTree().CreateTimer(Mathf.Max(0.01f, seconds)), SceneTreeTimer.SignalName.Timeout);
     }
 
