@@ -263,6 +263,7 @@ public sealed class SideFog(int playerId, string side)
         copy.FreeCounterId = null;
         // Exposure would tell of a dodge the side may not have seen.
         copy.ExposedUntilRound = 0;
+        copy.ExposedToSide = null;
         // Personal slot cards: how many, never which; nor the last card played on it or a readied counter.
         copy.HiddenSlots = u.SlotCards.Count;
         copy.SlotCards = new();

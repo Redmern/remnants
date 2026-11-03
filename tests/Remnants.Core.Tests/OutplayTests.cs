@@ -71,13 +71,17 @@ public class OutplayTests
         Assert.False(Combat.Exposed(sim, a));
     }
 
-    /// <summary>The HP a knife cut from (4,2) takes off a target at (3,2), exposed or not, on the same seed.</summary>
-    private static (double First, double Second) Cuts(bool exposed)
+    /// <summary>
+    /// The HP a knife cut from (4,2) takes off a target at (3,2), exposed (to P2's side, or to <paramref name="side"/>) or
+    /// not, and facing <paramref name="facing"/>, on the same seed.
+    /// </summary>
+    private static (double First, double Second) Cuts(bool exposed, string? side = null, Pos? facing = null)
     {
         var a = SurvivorUnit(1, new(3, 2));
         var b = SurvivorUnit(2, new(4, 2), weapon: "knife");
         var sim = Arena(10, 5, [a, b], data: Sure, seed: 3);
-        if (exposed) a.ExposedUntilRound = sim.State.Round + 1;
+        a.Facing = facing;
+        if (exposed) (a.ExposedUntilRound, a.ExposedToSide) = (sim.State.Round + 1, side ?? b.Side);
         Assert.True(Blow(sim, b, a, "cut").Ok);
         b.Ap = sim.Profile(b).MaxAp;
         Assert.True(Blow(sim, b, a, "cut").Ok);
@@ -174,5 +178,48 @@ public class OutplayTests
         var r = sim.Execute(StrikeOn(sim, b, a, "cut"));
         Assert.Equal(ScavengeError.NotEnoughAp, r.Error);
         Assert.Equal(a.Id, b.FreeCounterId);
+    }
+
+    [Fact]
+    public void Only_the_dodgers_side_cashes_in_the_exposure_and_anyone_elses_hit_leaves_it()
+    {
+        var (sim, a, b) = Dodged();
+        Assert.Equal(b.Side, a.ExposedToSide);
+        var plain = Cuts(exposed: false);
+        var other = Cuts(exposed: true, side: Unit.PlayerSide(3));
+        Assert.Equal(plain.First, other.First, 6);
+        Assert.Equal(plain.Second, other.Second, 6);
+    }
+
+    [Fact]
+    public void A_hit_by_another_side_does_not_use_the_exposure_up()
+    {
+        var a = SurvivorUnit(1, new(3, 2));
+        var b = SurvivorUnit(2, new(4, 2), weapon: "knife");
+        var sim = Arena(10, 5, [a, b], data: Sure);
+        (a.ExposedUntilRound, a.ExposedToSide) = (sim.State.Round + 1, Unit.PlayerSide(3));
+        Assert.True(Blow(sim, b, a, "cut").Ok);
+        Assert.Equal(sim.State.Round + 1, a.ExposedUntilRound);
+    }
+
+    [Fact]
+    public void Stacked_damage_multipliers_are_capped_by_the_data()
+    {
+        var cap = Sure.Rules.Combat.MaxDamageMultiplier;
+        Assert.True(cap > 1);
+        Assert.True(Sure.Rules.Combat.Facing.RearDamage * Sure.Rules.Combat.Outplay.ExposedDamage > cap, "the test needs a stack past the cap");
+        var plain = Cuts(exposed: false);
+        var stacked = Cuts(exposed: true, facing: new Pos(-1, 0)); // b at (4,2) strikes a from behind, and a is exposed
+        Assert.Equal(plain.First * cap, stacked.First, 6);
+    }
+
+    [Fact]
+    public void Stacked_hit_bonuses_are_capped_by_the_data()
+    {
+        var (sim, a, b) = Dodged();
+        var cap = sim.Data.Rules.Combat.MaxHitBonus;
+        var ambush = new AmbushInfo(0.2, 1.25, true, Braced: false, Backs: false);
+        Assert.Equal(sim.Data.Rules.Fog.Ambush.HitBonus, Combat.OutplayBonus(sim, b, a), 9);
+        Assert.Equal(Math.Max(0, cap - ambush.HitBonus), Combat.OutplayBonus(sim, b, a, ambush), 9);
     }
 }

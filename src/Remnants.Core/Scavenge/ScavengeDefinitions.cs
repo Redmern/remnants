@@ -502,6 +502,12 @@ public sealed record CombatRules
 
     /// <summary>What dodging a telegraphed blow earns (see <see cref="OutplayRules"/>).</summary>
     public OutplayRules Outplay { get; init; } = new();
+
+    /// <summary>The most the stacked damage multipliers of a blow (ambush × facing × exposed) may come to.</summary>
+    public double MaxDamageMultiplier { get; init; } = 2;
+
+    /// <summary>The most the stacked hit bonuses of an outplay and an ambush may add to a hit chance.</summary>
+    public double MaxHitBonus { get; init; } = 0.3;
 }
 
 /// <summary>

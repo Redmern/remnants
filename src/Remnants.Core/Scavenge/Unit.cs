@@ -138,6 +138,9 @@ public sealed class Unit
     /// </summary>
     public int ExposedUntilRound { get; set; }
 
+    /// <summary>The side that dodged it: only that side's hits cash the exposure in (<see cref="Combat.ExposedTo"/>).</summary>
+    public string? ExposedToSide { get; set; }
+
     /// <summary>The <see cref="ScavengeState.TurnSeq"/> its latest sub-turn began at.</summary>
     public int TurnSeq { get; set; }
 

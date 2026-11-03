@@ -122,18 +122,28 @@ public static class Combat
     }
 
     /// <summary>The hit chance of this attack as it would resolve now, ambush included (for previews and the AI).</summary>
-    public static double ChanceToHit(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, Pos? from = null) =>
-        HitChance(sim.Data, sim.State.Map, from ?? attacker.Pos,
-            action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + OutplayBonus(sim, attacker, target) + attacker.CardHit - WeatherPenalty(sim, action) + ElectronicWarfare.RadioAccuracy(sim, attacker) },
-            target.Pos, sim.Profile(target), AmbushAgainst(sim.Data, sim.State, attacker, target, from), Bane(sim.Data, action, target));
+    public static double ChanceToHit(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, Pos? from = null)
+    {
+        var ambush = AmbushAgainst(sim.Data, sim.State, attacker, target, from);
+        return HitChance(sim.Data, sim.State.Map, from ?? attacker.Pos,
+            action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + OutplayBonus(sim, attacker, target, ambush) + attacker.CardHit - WeatherPenalty(sim, action) + ElectronicWarfare.RadioAccuracy(sim, attacker) },
+            target.Pos, sim.Profile(target), ambush, Bane(sim.Data, action, target));
+    }
 
     /// <summary>What the weather takes off a ranged attack's hit chance (dust in the air; melee is unaffected).</summary>
     public static double WeatherPenalty(ScavengeSim sim, ActionProfile action) =>
         action.Pattern == AttackPattern.Melee ? 0 : FieldEnvironment.Effects(sim.Data, sim.State).RangedAccuracyPenalty;
 
-    /// <summary>The ambush hit bonus for an attack on the unit whose telegraphed attack the attacker dodged (see <see cref="Unit.OutplayedId"/>).</summary>
-    public static double OutplayBonus(ScavengeSim sim, Unit attacker, Unit target) =>
-        attacker.OutplayedId == target.Id && sim.State.Round <= attacker.OutplayedUntilRound ? sim.Data.Rules.Fog.Ambush.HitBonus : 0;
+    /// <summary>
+    /// The ambush hit bonus for an attack on the unit whose telegraphed attack the attacker dodged (see
+    /// <see cref="Unit.OutplayedId"/>), cut so that with an <paramref name="ambush"/>'s bonus they add up to at most
+    /// rules.combat.maxHitBonus.
+    /// </summary>
+    public static double OutplayBonus(ScavengeSim sim, Unit attacker, Unit target, AmbushInfo? ambush = null)
+    {
+        if (attacker.OutplayedId != target.Id || sim.State.Round > attacker.OutplayedUntilRound) return 0;
+        return Math.Min(sim.Data.Rules.Fog.Ambush.HitBonus, Math.Max(0, sim.Data.Rules.Combat.MaxHitBonus - (ambush?.HitBonus ?? 0)));
+    }
 
     /// <summary>
     /// <paramref name="dodger"/> stepped off the tile <paramref name="attacker"/>'s telegraphed blow came down on: the dodger
@@ -148,12 +158,16 @@ public static class Combat
         dodger.OutplayedUntilRound = state.Round + 1;
         dodger.FreeCounterId = counter && sim.Data.Rules.Combat.Outplay.FreeCounter ? attacker.Id : null;
         attacker.ExposedUntilRound = state.Round + 1;
+        attacker.ExposedToSide = dodger.Side;
         state.Log(new(state.Round, ScavengeEventType.IntentFizzled, $"{dodger.Name} dodges {attacker.Name}'s blow: {attacker.Name} is exposed.",
             attacker.Id, dodger.Id, attacker.Pos));
     }
 
-    /// <summary>Whether the next hit on the unit lands harder: a telegraphed blow of its was dodged (<see cref="Unit.ExposedUntilRound"/>).</summary>
+    /// <summary>Whether the unit is exposed: a telegraphed blow of its was dodged (<see cref="Unit.ExposedUntilRound"/>).</summary>
     public static bool Exposed(ScavengeSim sim, Unit unit) => unit.ExposedUntilRound > 0 && sim.State.Round <= unit.ExposedUntilRound;
+
+    /// <summary>Whether a hit by <paramref name="attacker"/> cashes the target's exposure in: it is of the side that dodged.</summary>
+    public static bool ExposedTo(ScavengeSim sim, Unit target, Unit attacker) => Exposed(sim, target) && target.ExposedToSide == attacker.Side;
 
     /// <summary>What a drone's mark on the target adds to the attacker's side's hit chance.</summary>
     public static double MarkBonus(ScavengeSim sim, Unit attacker, Unit target) =>
@@ -291,7 +305,7 @@ public static class Combat
         var bane = Bane(data, action, target);
         // A card's hit bonus is for the unit's own next attack (not a reaction shot): the first strike uses it up.
         var cardHit = reaction ? 0 : attacker.CardHit;
-        var chance = HitChance(data, state.Map, attacker.Pos, action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + OutplayBonus(sim, attacker, target) + cardHit + ElectronicWarfare.RadioAccuracy(sim, attacker) },
+        var chance = HitChance(data, state.Map, attacker.Pos, action with { Accuracy = action.Accuracy + MarkBonus(sim, attacker, target) + OutplayBonus(sim, attacker, target, ambush) + cardHit + ElectronicWarfare.RadioAccuracy(sim, attacker) },
             target.Pos, sim.Profile(target), ambush, bane);
         if (!reaction) attacker.CardHit = 0;
         // A dodge pays off once: whichever attack on that unit comes first (planned, reaction or splash) uses it up.
@@ -312,10 +326,11 @@ public static class Combat
         }
 
         var arc = ArcOf(target, attacker.Pos);
-        var exposed = Exposed(sim, target);
-        target.ExposedUntilRound = 0;
-        var raw = (action.MinDamage + (action.MaxDamage - action.MinDamage) * sim.Rng.NextDouble()) * (ambush?.DamageMultiplier ?? 1)
-                  * ArcDamage(data.Rules.Combat.Facing, arc) * (exposed ? data.Rules.Combat.Outplay.ExposedDamage : 1);
+        var exposed = ExposedTo(sim, target, attacker);
+        if (exposed) (target.ExposedUntilRound, target.ExposedToSide) = (0, null);
+        var stacked = Math.Min(data.Rules.Combat.MaxDamageMultiplier,
+            (ambush?.DamageMultiplier ?? 1) * ArcDamage(data.Rules.Combat.Facing, arc) * (exposed ? data.Rules.Combat.Outplay.ExposedDamage : 1));
+        var raw = (action.MinDamage + (action.MaxDamage - action.MinDamage) * sim.Rng.NextDouble()) * stacked;
         var part = PickHitLocation(sim, target);
         var defense = sim.Profile(target);
         var armor = Math.Max(0, defense.ArmorAgainst(Body.RegionOf(part), action.Pattern == AttackPattern.Melee) - action.ArmorPierce);
