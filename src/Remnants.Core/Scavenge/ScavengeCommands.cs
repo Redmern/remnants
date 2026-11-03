@@ -86,7 +86,11 @@ public sealed record Salvage(int PlayerId, int UnitId, int NodeId) : IScavengeCo
 public sealed record Recruit(int PlayerId, int UnitId, int NpcId) : IScavengeCommand;
 
 /// <summary>Wait: end this unit's turn, forfeiting remaining AP.</summary>
-public sealed record EndTurn(int PlayerId, int UnitId) : IScavengeCommand;
+/// <summary>
+/// End the unit's part of this sub-round; it acts again in the next with the AP it has left. <see cref="WholeTurn"/>: it is
+/// done for the round and sits out the remaining sub-rounds.
+/// </summary>
+public sealed record EndTurn(int PlayerId, int UnitId, bool WholeTurn = false) : IScavengeCommand;
 
 /// <summary>Leave the map from an exit tile or next to the side's parked vehicle, taking nearby followers along.</summary>
 public sealed record Extract(int PlayerId, int UnitId) : IScavengeCommand;

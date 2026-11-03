@@ -78,7 +78,7 @@ public sealed class ScavengeSim
             DiscardDeadCard c => CardPlay.DiscardDead(this, unit!, c),
             Lookout c => ScavengeCommandHandlers.Lookout(this, unit!, c),
             FieldMod c => ScavengeCommandHandlers.FieldMod(this, unit!, c),
-            EndTurn => ScavengeResult.Success($"{unit!.Name} ends their turn."),
+            EndTurn c => FinishTurn(unit!, c),
             Extract => ScavengeCommandHandlers.Extract(this, unit!),
             TakeFromStash c => ParkedVehicles.Unstash(this, unit!, c),
             ProposeAlliance c => Alliances.Propose(this, unit!, c),
@@ -131,12 +131,27 @@ public sealed class ScavengeSim
             {
                 EndSubRound();
                 if (State.Finished) break;
-                StartRound();
+                if (State.SubRound < Data.Rules.Turn.SubRounds)
+                {
+                    State.SubRound++;
+                    State.TurnIndex = 0;
+                }
+                else StartRound();
                 continue;
             }
             var unit = State.CurrentUnit;
-            if (unit is not { IsActive: true })
+            if (unit is not { IsActive: true } || State.SubRound > 1 && SitsOut(unit))
             {
+                State.TurnIndex++;
+                continue;
+            }
+            if (State.SubRound > 1)
+            {
+                // A later sub-round: the turn goes on with the AP left.
+                if (unit.PlayerControlled) return;
+                ScavengeAi.TakeTurn(this, unit);
+                MissionRules.Update(this);
+                UpdateParties();
                 State.TurnIndex++;
                 continue;
             }
@@ -168,6 +183,19 @@ public sealed class ScavengeSim
             State.TurnIndex++;
         }
     }
+
+    private ScavengeResult FinishTurn(Unit unit, EndTurn c)
+    {
+        if (!c.WholeTurn) return ScavengeResult.Success($"{unit.Name} ends their turn.");
+        unit.TurnOverRound = State.Round;
+        return ScavengeResult.Success($"{unit.Name} is done for the round.");
+    }
+
+    /// <summary>
+    /// Whether the unit skips a later sub-round: out of AP, done for the round, holding a stance or waiting on a plan.
+    /// </summary>
+    private bool SitsOut(Unit unit) =>
+        unit.Ap <= 0 || unit.TurnOverRound == State.Round || unit.Stance != Stance.None || unit.Plan is not null;
 
     /// <summary>The sub-round's tile attacks come down (<see cref="TileStrikes"/>).</summary>
     private void EndSubRound()
@@ -214,6 +242,7 @@ public sealed class ScavengeSim
     private void StartRound()
     {
         State.Round++;
+        State.SubRound = 1;
         State.Log(new(State.Round, ScavengeEventType.RoundStarted, $"Round {State.Round}."));
         foreach (var u in State.Units.Where(u => u.Status == UnitStatus.Downed && !u.Stabilized).ToList())
         {

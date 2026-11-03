@@ -76,7 +76,7 @@ public class PlannedActionTests
     [Fact]
     public void Dodging_a_telegraphed_attack_gives_the_next_attack_on_the_attacker_the_ambush_bonus_once()
     {
-        var (sim, a, b) = Duel(Real);
+        var (sim, a, b) = Duel(WholeTurns);
         Assert.True(sim.Execute(Charge(a)).Ok);
         Assert.True(sim.Execute(new Move(2, b.Id, new(6, 1))).Ok);
         Assert.True(sim.Execute(new EndTurn(2, b.Id)).Ok);
@@ -114,7 +114,7 @@ public class PlannedActionTests
     [Fact]
     public void A_dodge_is_good_through_the_next_round_then_lapses()
     {
-        var (sim, a, b) = Duel(Real);
+        var (sim, a, b) = Duel(WholeTurns);
         Assert.True(sim.Execute(Charge(a)).Ok);
         Assert.True(sim.Execute(new Move(2, b.Id, new(6, 1))).Ok);
         Assert.True(sim.Execute(new EndTurn(2, b.Id)).Ok);   // round 2: a swings at the empty tile
@@ -297,7 +297,7 @@ public class PlannedActionTests
         var plan = Assert.IsType<PlannedAction>(loaded.State.FindUnit(a.Id)!.Plan);
         Assert.Equal([new Pos(2, 1), new Pos(4, 1)], plan.Path);
         Assert.Equal("swing", plan.ActionId);
-        Assert.Equal(15, ScavengeSave.Version);
+        Assert.Equal(16, ScavengeSave.Version);
     }
 
     [Fact]
@@ -358,7 +358,7 @@ public class PlannedActionTests
     {
         string Play()
         {
-            var (sim, a, b) = Duel(Real);
+            var (sim, a, b) = Duel(WholeTurns);
             sim.Execute(Charge(a));
             sim.Execute(new Move(2, b.Id, new(6, 1)));
             sim.Execute(new EndTurn(2, b.Id));

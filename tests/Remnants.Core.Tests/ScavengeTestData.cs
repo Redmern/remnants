@@ -12,6 +12,14 @@ public static class ScavengeTestData
 
     public static ScavengeData Real => RealData.Value;
 
+    private static readonly Lazy<ScavengeData> WholeTurnData = new(() => Real.WithTurn(Real.Rules.Turn with { SubRounds = 1 }));
+
+    /// <summary>
+    /// The real data played in whole turns (one sub-round a round): the default for <see cref="Arena"/> and <see cref="With"/>,
+    /// so tests of other rules count rounds as before. Sub-round tests set <see cref="TurnRules.SubRounds"/> themselves.
+    /// </summary>
+    public static ScavengeData WholeTurns => WholeTurnData.Value;
+
     public static Survivor Survivor(string name = "Test", double attributes = 50)
     {
         var s = new Survivor { Id = 1, Name = name };
@@ -79,9 +87,10 @@ public static class ScavengeTestData
     /// The turn order is exactly the units in the given order (not initiative), and the first one is up
     /// with full AP, so tests control who acts. Optional rows draw terrain: . floor, # wall, P pylon, r rubble, c cover, ~ water, E exit.
     /// </summary>
-    /// <summary>The real data with scavenge rules changed (e.g. a fixed hack chance).</summary>
+    /// <summary>The real data, in whole turns (<see cref="WholeTurns"/>), with scavenge rules changed (e.g. a fixed hack chance).</summary>
     public static ScavengeData With(Func<ScavengeRules, ScavengeRules> change) =>
-        new(Real.Items.Values.Where(i => i.BaseId is null), Real.Enemies.Values, Real.Zones.Values, change(Real.Rules), Real.PerkHooks, Real.Cybernetics?.Def, Real.Schematics, Real.Electronics, medicine: Real.Medicine?.Def,
+        new(Real.Items.Values.Where(i => i.BaseId is null), Real.Enemies.Values, Real.Zones.Values,
+            change(Real.Rules with { Turn = Real.Rules.Turn with { SubRounds = 1 } }), Real.PerkHooks, Real.Cybernetics?.Def, Real.Schematics, Real.Electronics, medicine: Real.Medicine?.Def,
             loot: Real.LootFiles, salvage: Real.Salvage, cards: Real.Cards.Def);
 
     /// <summary>The data with other loot tables (and optionally salvage rules) in place of the real ones.</summary>
@@ -89,11 +98,11 @@ public static class ScavengeTestData
         ScavengeDataLoader.WithLoot(data, [lootJson], salvageJson);
 
     /// <param name="setup">Runs on the state before the turn order is made (place devices, ...).</param>
-    /// <param name="data">Data to run on (default <see cref="Real"/>).</param>
+    /// <param name="data">Data to run on (default <see cref="WholeTurns"/>).</param>
     public static ScavengeSim Arena(int width, int height, IEnumerable<Unit> units, string[]? rows = null, ulong seed = 1, string zoneId = "outskirts",
         Action<ScavengeData, ScavengeState>? setup = null, ScavengeData? data = null)
     {
-        data ??= Real;
+        data ??= WholeTurns;
         var map = new TileMap(width, height);
         if (rows is not null)
             for (var y = 0; y < rows.Length; y++)

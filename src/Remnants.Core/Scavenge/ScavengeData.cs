@@ -13,7 +13,18 @@ public sealed class ScavengeData
     public IReadOnlyDictionary<string, ItemDef> Items { get; }
     public IReadOnlyDictionary<string, EnemyDef> Enemies { get; }
     public IReadOnlyDictionary<string, ZoneDef> Zones { get; }
-    public ScavengeRules Rules { get; }
+    public ScavengeRules Rules { get; private set; }
+
+    /// <summary>
+    /// A copy with other turn rules (sub-rounds, AP), everything else shared. Only the turn rules: the item variants built
+    /// from the quality tiers stay as loaded.
+    /// </summary>
+    public ScavengeData WithTurn(TurnRules turn)
+    {
+        var copy = (ScavengeData)MemberwiseClone();
+        copy.Rules = Rules with { Turn = turn };
+        return copy;
+    }
 
     /// <summary>The schematics catalogue: drop odds and pools; each schematic is also an item with its id.</summary>
     public SchematicCatalog Schematics { get; }
