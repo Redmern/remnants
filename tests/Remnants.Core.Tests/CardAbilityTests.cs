@@ -29,6 +29,9 @@ public class CardAbilityTests
         Card("t_swap", CardTarget.Ally, new() { Swap = true }, range: 2),
         Card("t_step", CardTarget.Tile, new() { Step = 2 }),
         Card("t_spin", CardTarget.Enemy, new() { Spin = true }, range: 1),
+        Card("t_ap", CardTarget.Ally, new() { GrantAp = 1 }, range: 3),
+        Card("t_advance", CardTarget.Unit, new() { AdvanceInitiative = true }),
+        Card("t_delay", CardTarget.Enemy, new() { DelayInitiative = true }),
     ];
 
     private static readonly ScavengeData Data = Sure.WithCards(Sure.Cards.Def with { Cards = [.. Sure.Cards.Def.Cards, .. TestCards] });
@@ -233,5 +236,84 @@ public class CardAbilityTests
         Assert.Equal(FacingArc.Front, Combat.ArcOf(b, a.Pos));
         Assert.True(Play(sim, a, "t_spin", b).Ok);
         Assert.Equal(FacingArc.Rear, Combat.ArcOf(b, a.Pos));
+    }
+
+    [Fact]
+    public void Grant_ap_gives_an_ally_or_the_player_more_ap_this_turn()
+    {
+        var a = SurvivorUnit(1, new(1, 2));
+        var f = SurvivorUnit(1, new(3, 2));
+        var sim = Table([a, f], ["t_ap", "t_ap"]);
+        var (apA, apF) = (a.Ap, f.Ap);
+        Assert.True(Play(sim, a, "t_ap", f).Ok);
+        Assert.True(Play(sim, a, "t_ap", a).Ok);
+        Assert.Equal(apF + 1, f.Ap);
+        Assert.Equal(apA + 1, a.Ap);
+    }
+
+    [Fact]
+    public void Advancing_puts_a_unit_next_and_delaying_puts_it_last_in_the_round()
+    {
+        var a = SurvivorUnit(1, new(0, 0));
+        var x = SurvivorUnit(2, new(5, 0));
+        var y = SurvivorUnit(2, new(5, 2));
+        var f = SurvivorUnit(1, new(0, 2));
+        var sim = Table([a, x, y, f], ["t_advance", "t_delay"]);
+        Assert.True(Play(sim, a, "t_advance", f).Ok);
+        Assert.Equal([a.Id, f.Id, x.Id, y.Id], sim.State.TurnOrder);
+        Assert.True(Play(sim, a, "t_delay", x).Ok);
+        Assert.Equal([a.Id, f.Id, y.Id, x.Id], sim.State.TurnOrder);
+        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.InitiativeChanged && e.TargetId == x.Id);
+        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
+        Assert.Equal(f.Id, sim.State.CurrentUnitId);
+    }
+
+    [Fact]
+    public void A_unit_that_already_had_its_turn_this_sub_round_cannot_be_moved_so_nobody_gets_an_extra_one()
+    {
+        var x = SurvivorUnit(2, new(5, 0));
+        var a = SurvivorUnit(1, new(0, 0));
+        var f = SurvivorUnit(1, new(0, 2));
+        var sim = Table([x, a, f], ["t_advance", "t_delay"]);
+        Assert.True(sim.Execute(new EndTurn(2, x.Id)).Ok);
+        Assert.Equal(ScavengeError.InvalidTarget, Play(sim, a, "t_advance", x).Error);
+        Assert.Equal(ScavengeError.InvalidTarget, Play(sim, a, "t_delay", x).Error);
+        Assert.Equal(ScavengeError.InvalidTarget, Play(sim, a, "t_advance", a).Error); // already up
+        Assert.Equal([x.Id, a.Id, f.Id], sim.State.TurnOrder);
+    }
+
+    [Fact]
+    public void A_reordered_round_is_forgotten_at_the_next_round_start()
+    {
+        List<int> NextRound(bool delay)
+        {
+            var a = SurvivorUnit(1, new(0, 0));
+            var x = SurvivorUnit(2, new(5, 0));
+            var f = SurvivorUnit(1, new(0, 2));
+            var sim = Table([a, x, f], ["t_delay"]);
+            if (delay) Assert.True(Play(sim, a, "t_delay", x).Ok);
+            foreach (var u in sim.State.TurnOrder.ToList()) Assert.True(sim.Execute(new EndTurn(sim.State.CurrentUnit!.PlayerId!.Value, sim.State.CurrentUnitId!.Value)).Ok);
+            Assert.Equal(2, sim.State.Round);
+            return sim.State.TurnOrder;
+        }
+        Assert.Equal(NextRound(false), NextRound(true));
+    }
+
+    [Fact]
+    public void An_advanced_enemy_plan_still_waits_for_its_target_s_turn()
+    {
+        // The tally cutter's blow is aimed at f, declared before f had a turn; a hurries the cutter up ahead of f.
+        var a = SurvivorUnit(1, new(0, 0));
+        var f = SurvivorUnit(1, new(3, 2));
+        var e = EnemyUnit("tally_blade", new(4, 2));
+        var sim = Table([a, f, e], ["t_advance"]);
+        var swing = sim.Profile(e).Actions.First(x => x.Pattern == AttackPattern.Melee);
+        e.Plan = new PlannedAction { AttackTile = f.Pos, ActionId = swing.Id, TargetId = f.Id, Round = 1, DeclaredSeq = sim.State.TurnSeq };
+        Assert.True(Play(sim, a, "t_advance", e).Ok);
+        Assert.Equal([a.Id, e.Id, f.Id], sim.State.TurnOrder);
+        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
+        Assert.Equal(f.Id, sim.State.CurrentUnitId);
+        Assert.NotNull(e.Plan);
+        Assert.Equal(f.MaxHp, f.Hp);
     }
 }

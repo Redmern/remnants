@@ -12,6 +12,12 @@ namespace Remnants.Core.Scavenge;
 /// (<see cref="Combat.Exposed"/>). Until its own next sub-turn it is hit by a declared strike on the tile it was moved to,
 /// whoever's side the strike is: friendly fire is allowed for a unit shoved into the line of fire.
 /// </para>
+/// <para>
+/// Initiative cards move a unit that is still to act in this sub-round to go next or last of those (the turn order
+/// is shown to every side that sees the unit); a unit that already acted cannot be moved, so nobody gets a turn twice,
+/// and the next round is ordered by initiative as always. An AI plan still waits for its target's turn
+/// (<see cref="PlannedActions.Ready"/>), however its unit was hurried.
+/// </para>
 /// </summary>
 public static class CardAbilities
 {
@@ -70,6 +76,13 @@ public static class CardAbilities
             if (Fixed(target)) return Fail(ScavengeError.InvalidTarget, $"{target.Name} cannot be moved.");
             landing = unit.Pos;
         }
+        if (effect.AdvanceInitiative || effect.DelayInitiative)
+        {
+            var at = state.TurnOrder.IndexOf(target!.Id);
+            if (at <= state.TurnIndex) return Fail(ScavengeError.InvalidTarget, $"{target.Name} is not waiting for a turn this sub-round.");
+            if (effect.AdvanceInitiative && at == state.TurnIndex + 1) return Fail(ScavengeError.InvalidTarget, $"{target.Name} is next already.");
+            if (effect.DelayInitiative && at == state.TurnOrder.Count - 1) return Fail(ScavengeError.InvalidTarget, $"{target.Name} is last already.");
+        }
         if (effect.Push > 0 || effect.Pull > 0)
         {
             if (target!.Id == unit.Id) return Fail(ScavengeError.InvalidTarget, $"{unit.Name} cannot shove themselves.");
@@ -110,6 +123,22 @@ public static class CardAbilities
         {
             Displace(sim, target, landing, unit);
             done.Add($"{target.Name} {(effect.Push > 0 ? "shoved" : "dragged")} to {landing}");
+        }
+        if (effect.GrantAp > 0 && target is not null)
+        {
+            target.Ap += effect.GrantAp;
+            done.Add($"{target.Name} +{effect.GrantAp} AP");
+        }
+        if ((effect.AdvanceInitiative || effect.DelayInitiative) && target is not null)
+        {
+            // Only the turns still to come this sub-round are reordered: the unit keeps its one turn, just sooner or later.
+            state.TurnOrder.Remove(target.Id);
+            if (effect.AdvanceInitiative) state.TurnOrder.Insert(state.TurnIndex + 1, target.Id);
+            else state.TurnOrder.Add(target.Id);
+            var when = effect.AdvanceInitiative ? "goes next" : "goes last this round";
+            state.Log(new(state.Round, ScavengeEventType.InitiativeChanged, $"{target.Name} {when} ({unit.Name}).", unit.Id, target.Id, target.Pos,
+                Anonymous: $"{target.Name} {when}."));
+            done.Add($"{target.Name} {when}");
         }
         if (effect.Spin && target is not null)
         {
