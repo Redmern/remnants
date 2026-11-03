@@ -5,7 +5,7 @@ using Godot;
 namespace Remnants.Game.Hud;
 
 /// <summary>
-/// Settings, in tabs: Game (day length), Display (UI scale, fullscreen, window size, vsync, weather effects, reduce motion, frame time), Audio (master / music / effects / ambience
+/// Settings, in tabs: Game (day length, late zones, scavenge walk speed, skip animations, auto end turn), Display (UI scale, fullscreen, window size, vsync, weather effects, reduce motion, frame time), Audio (master / music / effects / ambience
 /// volume on their buses, mute when unfocused, visual sound cues), Camera (pan and zoom speed) and Controls (the hotkey list). Changes apply at once and are saved
 /// when the panel closes (<see cref="GameSettings"/>).
 /// </summary>
@@ -58,6 +58,29 @@ public partial class SettingsPanel : Overlay
         box.AddChild(Row("Late zones", late,
             "Rail Depot, Network Relay and Core Spire. Re-tuned: more Linked, turrets, pylons and faster reinforcements, about as deadly as before enemies telegraphed. " +
             "Expeditions only leaves story missions there as they are. Takes effect from the next run into the zone."));
+
+        var walk = new OptionButton { FocusMode = FocusModeEnum.None };
+        foreach (var (label, seconds) in GameSettings.WalkSpeeds) walk.AddItem($"{label} ({seconds:0.##} s a tile)");
+        walk.Select(Nearest(GameSettings.WalkSpeeds.Select(w => w.Seconds).ToArray(), GameSettings.WalkTileSeconds));
+        walk.ItemSelected += i => GameSettings.WalkTileSeconds = GameSettings.WalkSpeeds[i].Seconds;
+        box.AddChild(Row("Walk speed", walk, "How fast units walk across the tactical map in a replay. Only the pace changes."));
+
+        var skip = new CheckBox
+        {
+            Text = "Skip scavenge animations", ButtonPressed = GameSettings.SkipAnimations, FocusMode = FocusModeEnum.None,
+            TooltipText = Widgets.Tip("Moves and blows snap to where they end, so enemy turns never hold you up. The run plays out the same.",
+                Hotkeys.KeyName("scav_fast_forward")),
+        };
+        skip.Toggled += on => GameSettings.SkipAnimations = on;
+        box.AddChild(skip);
+
+        var auto = new CheckBox
+        {
+            Text = "End turn when nothing is left to do", ButtonPressed = GameSettings.AutoEndTurn, FocusMode = FocusModeEnum.None,
+            TooltipText = "A unit with no AP left for a move, a stance, an item or a blow ends its turn by itself. Turn it off to plan with no AP left.",
+        };
+        auto.Toggled += on => GameSettings.AutoEndTurn = on;
+        box.AddChild(auto);
         return Scroll(box);
     }
 

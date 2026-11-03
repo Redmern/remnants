@@ -192,6 +192,14 @@ public partial class ScavengeScreen : Node3D
             if (error) Toast(message);
         };
         _hud.EndTurnRequested += OnEndTurn;
+        _hud.FastForwardToggled += () =>
+        {
+            Hud.GameSettings.SkipAnimations = !Hud.GameSettings.SkipAnimations;
+            Hud.GameSettings.Save();
+            _hud.Toasts.Show(Hud.GameSettings.SkipAnimations ? "Fast-forward on" : "Fast-forward off",
+                Hud.GameSettings.SkipAnimations ? "Moves and blows snap to where they end." : "Moves and blows play out again.",
+                "ui_end_turn", Hud.Palette.Amber, key: "fast_forward");
+        };
         _hud.NextUnitRequested += SelectNextUnit;
         _hud.CenterRequested += CenterOnActing;
         _hud.Acting.ActingClicked += CenterOnActing;
@@ -414,7 +422,7 @@ public partial class ScavengeScreen : Node3D
                 _map.ClearHighlights();
                 RefreshHud();
                 _map.Sync();
-                await _units.Replay(events, seenBefore, e =>
+                await _units.Replay(events, seenBefore, (e, seen) =>
                 {
                     _log.Event(e);
                     _fog.Incoming(e);
@@ -422,8 +430,10 @@ public partial class ScavengeScreen : Node3D
                     CardFlourish(e);
                     _audio.Step(e);
                     WeatherEvent(e);
-                    // Follow what others do in sight (enemy turns, recruits) so it never happens off screen.
-                    if (e.Type is ScavengeEventType.Moved or ScavengeEventType.Attacked or ScavengeEventType.Missed
+                    // Follow what others do in sight (enemy turns, recruits) so it never happens off screen; never what the
+                    // side did not see, nor while animations are skipped.
+                    if (seen && !Hud.GameSettings.SkipAnimations
+                        && e.Type is ScavengeEventType.Moved or ScavengeEventType.Attacked or ScavengeEventType.Missed
                         && e.UnitId is { } actor && _presenter.State.FindUnit(actor) is { } u && u.PlayerId != _presenter.PlayerId
                         && _units.WorldOf(actor) is { } at)
                         _camera.Follow(e.Type == ScavengeEventType.Moved && e.Pos is { } to ? TileGrid.ToWorld(to) : at);
@@ -438,6 +448,25 @@ public partial class ScavengeScreen : Node3D
             _camera.GlideTo(TileGrid.ToWorld(acting.Pos));
         }
         SyncAll();
+        AutoEndTurn();
+    }
+
+    /// <summary>
+    /// The acting unit has nothing affordable left (<see cref="TurnAdvice.CanStillAct"/>): with the setting on its turn
+    /// ends by itself, after a short beat so the player sees why; off, the End Turn hint says so.
+    /// </summary>
+    private async void AutoEndTurn()
+    {
+        if (!Hud.GameSettings.AutoEndTurn || _autoplaying || _presenter.Done || _presenter.ActingUnit is not { } acting || !_presenter.IsMine(acting)
+            || TurnAdvice.CanStillAct(_presenter.Sim, acting)) return;
+        var id = acting.Id;
+        var round = (_presenter.State.Round, _presenter.State.SubRound);
+        _hud.Toasts.Show("Turn over", $"{acting.Name} has nothing left to do.", "ui_end_turn", Hud.Palette.TextMuted, key: "auto_end_turn");
+        if (!Hud.GameSettings.SkipAnimations) await ToSignal(GetTree().CreateTimer(0.35), SceneTreeTimer.SignalName.Timeout);
+        // The player may have acted (a card, End Turn) during the beat.
+        if (!IsInsideTree() || _busy || _presenter.ActingUnit?.Id != id || (_presenter.State.Round, _presenter.State.SubRound) != round
+            || TurnAdvice.CanStillAct(_presenter.Sim, acting)) return;
+        _ = Run(new EndTurn(_presenter.PlayerId, id));
     }
 
     /// <summary>Debug (<c>--select-unit=ID</c>, for screenshots): select a unit as if clicked, after any demo staging.</summary>

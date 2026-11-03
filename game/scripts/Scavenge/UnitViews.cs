@@ -17,15 +17,17 @@ namespace Remnants.Game.Scavenge;
 /// (<see cref="CharacterRig"/>) walk their tile path facing the way they go, attack with their weapon's clip and take the
 /// hit, pop-up and sound on its <c>impact</c> / <c>fire</c> event, react, go down, die, hold their stance loop
 /// (overwatch_aim, crouch_brace, downed_loop, hover), hack, throw flares, use items and carry the downed on their back.
-/// Static models fall back to tweens. Purely visual.
+/// Static models fall back to tweens. Models turn to the way Core says the unit faces. A tile walk takes
+/// <see cref="Hud.GameSettings.WalkTileSeconds"/>; with <see cref="Hud.GameSettings.SkipAnimations"/> every step snaps to its
+/// end in the same frame, and steps of others the side sees nothing of are always instant. Purely visual.
 /// </summary>
 public partial class UnitViews : Node3D
 {
-    private const float MoveSeconds = 0.28f;
+    private const float MoveSeconds = 0.2f;
     private const float StrikeSeconds = 0.16f;
-    private const float TileSeconds = 0.42f;    // a walked tile; long paths jog
-    private const float RunTileSeconds = 0.3f;
-    private const float MaxWalkSeconds = 2.4f;  // long moves speed up so turns keep their pace
+    private const float RunPace = 0.75f;        // a run's tile takes this share of a walked one (long paths jog)
+    private const float MaxWalkSeconds = 1.4f;  // long moves speed up so turns keep their pace
+    private const float TurnSeconds = 0.18f;    // a unit turning on the spot (a plan declared, Core's facing synced)
     private const float WalkStride = 2f;        // m per walk cycle at speed 1 (two footfalls)
     private const float RunStride = 2.4f;
 
@@ -91,8 +93,41 @@ public partial class UnitViews : Node3D
                 view.BodyKey = bodyKey;
             }
             Hold(view, unit);
+            FaceCore(view, unit);
         }
     }
+
+    /// <summary>Turns the model to where Core says the unit faces, if it does not already (a plan declared, a strike readied).</summary>
+    private void FaceCore(View view, Unit unit)
+    {
+        if (unit.Facing is not { } f || f == default || unit.CarriedById is not null) return;
+        var toward = TileGrid.ToWorld(unit.Pos + f) - TileGrid.ToWorld(unit.Pos);
+        var yaw = Mathf.RadToDeg(Mathf.Atan2(toward.X, toward.Z));
+        if (Mathf.Abs(Mathf.Wrap(yaw - view.Yaw, -180f, 180f)) < 1f) return;
+        Face(view, view.Root.Position + toward, Fast ? 0.01f : TurnSeconds);
+    }
+
+    /// <summary>
+    /// Whether the side saw anything of a replayed event: it is about one of the side's own units (actor or target), or the
+    /// event's tile, the actor's or the target's was in sight (<paramref name="visible"/>: before or after the command). An
+    /// event about no unit counts as seen.
+    /// </summary>
+    public bool InSight(ScavengeEvent e, IReadOnlySet<int> visible) =>
+        InSight(e, visible, e.UnitId is { } a ? _views.GetValueOrDefault(a) : null, e.TargetId is { } t ? _views.GetValueOrDefault(t) : null);
+
+    private bool InSight(ScavengeEvent e, IReadOnlySet<int> visible, View? actor, View? target)
+    {
+        if (e.UnitId is null) return true;
+        var state = _presenter.State;
+        bool Mine(int? id) => id is { } i && state.FindUnit(i) is { } u && u.Side == _presenter.Side;
+        bool Seen(Pos? p) => p is { } at && state.Map.InBounds(at) && visible.Contains(state.Map.Index(at));
+        return Mine(e.UnitId) || Mine(e.TargetId) || Seen(e.Pos)
+               || actor is not null && Seen(TileGrid.FromWorld(actor.Root.Position))
+               || target is not null && Seen(TileGrid.FromWorld(target.Root.Position));
+    }
+
+    /// <summary>Replays snap to their end (<see cref="Hud.GameSettings.SkipAnimations"/>): read at every step, so the hotkey works mid-replay.</summary>
+    private static bool Fast => Hud.GameSettings.SkipAnimations;
 
     /// <summary>The pose a unit keeps between actions: its stance loop on a rig, else the old tipped-over capsule when downed.</summary>
     private void Hold(View view, Unit unit)
@@ -160,9 +195,11 @@ public partial class UnitViews : Node3D
     /// <summary>
     /// Plays events in order. Steps the local side cannot see (an enemy moving in the dark) are skipped
     /// without delay. <paramref name="visible"/> is what the side saw before or after the command.
-    /// <paramref name="onStep"/> runs at each event's beat: at the start of most, at the impact of an attack.
+    /// <paramref name="onStep"/> runs at each event's beat: at the start of most, at the impact of an attack; it is told
+    /// whether the side saw the step (<see cref="InSight"/>). An event of another side's unit the side saw nothing of (not
+    /// the actor, not the target, not the tile) plays at once: no walk, no wait.
     /// </summary>
-    public async Task Replay(IReadOnlyList<ScavengeEvent> events, IReadOnlySet<int> visible, System.Action<ScavengeEvent>? onStep = null)
+    public async Task Replay(IReadOnlyList<ScavengeEvent> events, IReadOnlySet<int> visible, System.Action<ScavengeEvent, bool>? onStep = null)
     {
         var map = _presenter.State.Map;
         bool Seen(Pos? p) => p is { } at && map.InBounds(at) && visible.Contains(map.Index(at));
@@ -174,12 +211,26 @@ public partial class UnitViews : Node3D
             var actor = e.UnitId is { } a && _views.TryGetValue(a, out var av) ? av : null;
             var target = e.TargetId is { } t && _views.TryGetValue(t, out var tv) ? tv : null;
             var unit = e.UnitId is { } uid ? _presenter.State.FindUnit(uid) : null;
+            var seen = InSight(e, visible, actor, target);
             var stepped = false;
             void Beat()
             {
                 if (stepped) return;
                 stepped = true;
-                onStep?.Invoke(e);
+                onStep?.Invoke(e, seen);
+            }
+
+            if (!seen)
+            {
+                // Out of sight: put a moving model where it went (one footfall heard), and nothing else holds the replay.
+                if (e.Type is ScavengeEventType.Moved or ScavengeEventType.DroneFlown && actor is not null && e.Pos is { } went)
+                {
+                    actor.Root.Position = TileGrid.ToWorld(went);
+                    if (e.Type == ScavengeEventType.Moved) Footstep?.Invoke(actor.Id, actor.Root.Position);
+                }
+                Beat();
+                previous = e;
+                continue;
             }
 
             switch (e.Type)
@@ -187,24 +238,12 @@ public partial class UnitViews : Node3D
                 case ScavengeEventType.Moved or ScavengeEventType.DroneFlown when actor is not null && e.Pos is { } to:
                     Beat();
                     var from = TileGrid.FromWorld(actor.Root.Position);
-                    if (!Mine(e.UnitId) && !Seen(from) && !Seen(to))
-                    {
-                        actor.Root.Position = TileGrid.ToWorld(to);
-                        // Heard, not seen: one footfall where it went.
-                        if (e.Type == ScavengeEventType.Moved) Footstep?.Invoke(actor.Id, actor.Root.Position);
-                        break;
-                    }
                     actor.Root.Visible = true;
                     await Walk(actor, unit, from, to);
                     if (!Mine(e.UnitId) && !Seen(to)) actor.Root.Visible = false;
                     break;
 
                 case ScavengeEventType.Attacked or ScavengeEventType.Missed when actor is not null && target is not null:
-                    if (!Seen(TileGrid.FromWorld(actor.Root.Position)) && !Seen(e.Pos) && !Mine(e.TargetId))
-                    {
-                        Beat();
-                        break;
-                    }
                     // A splash or burst logs one event per target: the swing plays once, the others only land.
                     var followUp = previous is { Type: ScavengeEventType.Attacked or ScavengeEventType.Missed } p && p.UnitId == e.UnitId;
                     await Strike(actor, unit, target, e, followUp, Beat);
@@ -215,6 +254,13 @@ public partial class UnitViews : Node3D
                     Beat();
                     Land(target, e);
                     await Wait(0.3f);
+                    break;
+
+                // A plan declared in sight: the unit turns to where it means to go or strike, so the telegraph reads in its stance.
+                case ScavengeEventType.IntentDeclared when actor is not null && unit is not null && !Mine(e.UnitId):
+                    Beat();
+                    FaceCore(actor, unit);
+                    await Wait(TurnSeconds);
                     break;
 
                 case ScavengeEventType.LimbLost when actor is not null && Seen(e.Pos):
@@ -231,7 +277,7 @@ public partial class UnitViews : Node3D
                     {
                         var tip = CreateTween();
                         tip.TweenProperty(actor.Pose, "rotation_degrees", new Vector3(0, 0, 80), 0.25);
-                        await ToSignal(tip, Tween.SignalName.Finished);
+                        await Finish(tip);
                     }
                     FloatText(actor.Root.Position, "DOWN", Hud.Palette.Danger);
                     break;
@@ -246,7 +292,7 @@ public partial class UnitViews : Node3D
                     }
                     var sink = CreateTween();
                     sink.TweenProperty(actor.Root, "scale", new Vector3(1, 0.05f, 1), 0.3);
-                    await ToSignal(sink, Tween.SignalName.Finished);
+                    await Finish(sink);
                     actor.Root.Visible = false;
                     actor.Root.Scale = Vector3.One;
                     break;
@@ -362,7 +408,7 @@ public partial class UnitViews : Node3D
                     Beat();
                     var fade = CreateTween();
                     fade.TweenProperty(actor.Root, "scale", new Vector3(0.05f, 1.4f, 0.05f), 0.3);
-                    await ToSignal(fade, Tween.SignalName.Finished);
+                    await Finish(fade);
                     actor.Root.Visible = false;
                     actor.Root.Scale = Vector3.One;
                     break;
@@ -406,8 +452,14 @@ public partial class UnitViews : Node3D
         var path = unit is null ? [to] : TilePath(unit, from, to);
         var rig = view.Rig;
         var gait = rig is null || unit is null ? null : rig.Pick(path.Count > 3 && unit.CarryingId is null ? ["run", "walk"] : ClipMap.Move(unit));
-        var perTile = gait == "run" ? RunTileSeconds : TileSeconds;
+        var perTile = Hud.GameSettings.WalkTileSeconds * (gait == "run" ? RunPace : 1f);
         var seconds = Mathf.Min(perTile * path.Count, MaxWalkSeconds) / path.Count;
+        if (Fast)
+        {
+            Face(view, TileGrid.ToWorld(to), 0.01f);
+            view.Root.Position = TileGrid.ToWorld(to);
+            return;
+        }
         if (rig is null || gait is null || gait == "hover")
         {
             // Rigless (or flying): one glide, a footfall per tile.
@@ -495,6 +547,12 @@ public partial class UnitViews : Node3D
             if (ranged && !followUp) MuzzleFlash(actor.Root.Position);
             inner();
         };
+        if (Fast)
+        {
+            beat();
+            Land(target, e);
+            return;
+        }
         var rig = actor.Rig;
         var actionId = unit is null ? null : Audio.ScavengeAudio.ActionId(_presenter.Sim, unit, e.Message);
         var action = unit is null || actionId is null ? null : _presenter.Sim.Profile(unit).Action(actionId);
@@ -576,12 +634,32 @@ public partial class UnitViews : Node3D
 
     private async Task TweenTo(Node3D node, Vector3 to, float seconds, bool linear = false)
     {
+        if (Fast)
+        {
+            node.Position = to;
+            return;
+        }
         var tween = CreateTween().SetTrans(linear ? Tween.TransitionType.Linear : Tween.TransitionType.Sine).SetEase(Tween.EaseType.InOut);
         tween.TweenProperty(node, "position", to, seconds);
         await ToSignal(tween, Tween.SignalName.Finished);
     }
 
-    private async Task Wait(float seconds) => await ToSignal(GetTree().CreateTimer(Mathf.Max(0.01f, seconds)), SceneTreeTimer.SignalName.Timeout);
+    private async Task Wait(float seconds)
+    {
+        if (Fast) return;
+        await ToSignal(GetTree().CreateTimer(Mathf.Max(0.01f, seconds)), SceneTreeTimer.SignalName.Timeout);
+    }
+
+    /// <summary>Waits for a tween to finish; skipping animations, runs it to its end at once.</summary>
+    private async Task Finish(Tween tween)
+    {
+        if (Fast)
+        {
+            tween.CustomStep(60);
+            return;
+        }
+        await ToSignal(tween, Tween.SignalName.Finished);
+    }
 
     /// <summary>A short warm light at a shooter, fading out in a third of a second.</summary>
     /// <summary>The widest EMP burst in the data (the event does not say which device went off).</summary>

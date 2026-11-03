@@ -8,7 +8,7 @@ namespace Remnants.Game.Hud;
 /// <summary>
 /// Player settings in <c>user://settings.cfg</c>: UI scale, window mode and size, vsync, master / music / sfx /
 /// ambience volume (on the buses of <see cref="Audio.AudioBuses"/>), mute when unfocused, visual sound cues, camera
-/// pan and zoom speed, day length. Also owns the hotkey
+/// pan and zoom speed, day length, scavenge replay pace (walk speed, skip animations, auto end turn). Also owns the hotkey
 /// actions (<see cref="Hotkeys"/>), added to the InputMap at boot. <see cref="Boot"/> runs once per process from
 /// whichever scene starts first.
 /// <para>The UI scale is the root window's content scale: <c>auto × UiScale</c>, where auto follows the window height
@@ -63,6 +63,20 @@ public static class GameSettings
     public static int SandboxHabitants { get; set; }
 
     public static float CameraZoomSpeed { get; set; } = 1f;
+
+    /// <summary>
+    /// Scavenge: replays snap each step to its end instead of animating (also the <c>scav_fast_forward</c> hotkey), so input
+    /// is never held. Pacing only: the run plays out the same either way.
+    /// </summary>
+    public static bool SkipAnimations { get; set; }
+
+    /// <summary>Scavenge: seconds a unit takes to walk one tile in a replay (one of <see cref="WalkSpeeds"/>; runs go a little quicker).</summary>
+    public static float WalkTileSeconds { get; set; } = 0.2f;
+
+    public static readonly (string Label, float Seconds)[] WalkSpeeds = [("Slow", 0.25f), ("Normal", 0.2f), ("Fast", 0.14f), ("Very fast", 0.08f)];
+
+    /// <summary>Scavenge: a unit with nothing affordable left to do ends its turn by itself (<see cref="Remnants.Core.Scavenge.TurnAdvice"/>).</summary>
+    public static bool AutoEndTurn { get; set; } = true;
 
     public static readonly Vector2I[] Resolutions = [new(1280, 720), new(1600, 900), new(1920, 1080), new(2560, 1440), new(3840, 2160)];
 
@@ -141,6 +155,9 @@ public static class GameSettings
         cfg.SetValue("game", "day_minutes", DayLengthMinutes);
         cfg.SetValue("game", "late_zones", (int)LateZones);
         cfg.SetValue("game", "sandbox_habitants", SandboxHabitants);
+        cfg.SetValue("scavenge", "skip_animations", SkipAnimations);
+        cfg.SetValue("scavenge", "walk_tile_seconds", WalkTileSeconds);
+        cfg.SetValue("scavenge", "auto_end_turn", AutoEndTurn);
         cfg.Save(Path);
     }
 
@@ -166,6 +183,9 @@ public static class GameSettings
         DayLengthMinutes = Math.Clamp((int)cfg.GetValue("game", "day_minutes", DayLengthMinutes), DayLengths[0], DayLengths[^1]);
         LateZones = (Remnants.Core.Scavenge.LateZoneTuning)Math.Clamp((int)cfg.GetValue("game", "late_zones", (int)LateZones), 0, 2);
         SandboxHabitants = Math.Max(0, (int)cfg.GetValue("game", "sandbox_habitants", SandboxHabitants));
+        SkipAnimations = (bool)cfg.GetValue("scavenge", "skip_animations", SkipAnimations);
+        WalkTileSeconds = Mathf.Clamp((float)cfg.GetValue("scavenge", "walk_tile_seconds", WalkTileSeconds), WalkSpeeds[^1].Seconds, WalkSpeeds[0].Seconds);
+        AutoEndTurn = (bool)cfg.GetValue("scavenge", "auto_end_turn", AutoEndTurn);
     }
 
     private static void EnsureBuses() => Audio.AudioBuses.Ensure();
@@ -212,6 +232,7 @@ public static class Hotkeys
         new("camera_rotate_left", "Rotate camera left", "Colony", [Key.Q]),
         new("camera_rotate_right", "Rotate camera right", "Colony", [Key.R]),
         new("end_turn", "End turn", "Scavenge", [Key.Space, Key.Enter]),
+        new("scav_fast_forward", "Skip animations on / off (fast-forward replays)", "Scavenge", [Key.Period]),
         // The number keys go down the Actions panel: the attacks first, then the items (2 attacks: items from 3).
         new("scav_attack_1", "Order 1 (attacks, then items)", "Scavenge", [Key.Key1]),
         new("scav_attack_2", "Order 2", "Scavenge", [Key.Key2]),

@@ -97,6 +97,9 @@ public partial class ScavengeHud : CanvasLayer
     public event Action? EndTurnRequested;
     public event Action? LeaveRequested;
 
+    /// <summary>The fast-forward hotkey: skip animations on or off (<see cref="GameSettings.SkipAnimations"/>). Works mid-replay.</summary>
+    public event Action? FastForwardToggled;
+
     /// <summary>The squad's hand strip and its character picker.</summary>
     public HandStrip Hand { get; } = null!;
 
@@ -265,6 +268,7 @@ public partial class ScavengeHud : CanvasLayer
             if (BackRequested?.Invoke() != true) Pause.Open();
         }
         else if (Hotkeys.Pressed(e, "end_turn")) EndTurnRequested?.Invoke();
+        else if (Hotkeys.Pressed(e, "scav_fast_forward")) FastForwardToggled?.Invoke();
         else if (Hotkeys.Pressed(e, "scav_cancel"))
         {
             if (BackRequested?.Invoke() != true) return;
