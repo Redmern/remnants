@@ -108,6 +108,8 @@ public partial class ScavengeScreen : Node3D
         if (int.TryParse(DebugValue("--autoplay"), out var steps)) _ = Autoplay(steps);
         if (int.TryParse(DebugValue("--select-unit"), out var unitId)) CallDeferred(MethodName.SelectForCapture, unitId);
         if (DebugCapture.HasFlag("--pause-menu")) _hud.Pause.CallDeferred(Hud.Overlay.MethodName.Open);
+        // The first turn may already have nothing in it (a run resumed with the AP spent).
+        AutoEndTurn();
     }
 
     /// <summary>
@@ -257,6 +259,14 @@ public partial class ScavengeScreen : Node3D
     /// <summary>Back to the caller with the local result (an unfinished one if a remote result never came).</summary>
     private void Finish() =>
         ScavengeSession.End(GetTree(), _presenter.Result() ?? new ExtractionResult(_presenter.PlayerId, false, [], [], [], new()));
+
+    /// <summary>Counts the player's clicks and key presses, so an auto end turn waiting out its beat can tell it was overtaken.</summary>
+    private int _inputSeq;
+
+    public override void _Input(InputEvent e)
+    {
+        if (e is InputEventMouseButton { Pressed: true } or InputEventKey { Pressed: true, Echo: false }) _inputSeq++;
+    }
 
     public override void _UnhandledInput(InputEvent e)
     {
@@ -461,12 +471,14 @@ public partial class ScavengeScreen : Node3D
             || TurnAdvice.CanStillAct(_presenter.Sim, acting)) return;
         var id = acting.Id;
         var round = (_presenter.State.Round, _presenter.State.SubRound);
+        var input = _inputSeq;
         _hud.Toasts.Show("Turn over", $"{acting.Name} has nothing left to do.", "ui_end_turn", Hud.Palette.TextMuted, key: "auto_end_turn");
         // A beat so the player sees why (a frame at least: never re-entering the replay that called this).
         if (Hud.GameSettings.SkipAnimations) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         else await ToSignal(GetTree().CreateTimer(0.35), SceneTreeTimer.SignalName.Timeout);
         // The player may have acted (a card, End Turn) during the beat; a remote view may have been replaced: look again.
-        if (!IsInsideTree() || _busy || _presenter.ActingUnit is not { } now || now.Id != id
+        // Any click or key in the beat (a card, an order, End Turn itself) is the player's own answer: leave the turn to them.
+        if (!IsInsideTree() || _busy || _inputSeq != input || _presenter.ActingUnit is not { } now || now.Id != id
             || (_presenter.State.Round, _presenter.State.SubRound) != round || TurnAdvice.CanStillAct(_presenter.Sim, now)) return;
         _ = Run(new EndTurn(_presenter.PlayerId, id));
     }

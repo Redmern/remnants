@@ -15,10 +15,10 @@ public class TurnAdviceTests
     }
 
     [Fact]
-    public void A_unit_out_of_ap_cannot()
+    public void A_unit_out_of_ap_with_nobody_to_plan_a_blow_at_cannot()
     {
         var a = SurvivorUnit(1, new(2, 2), weapon: "pipe");
-        var sim = Arena(6, 5, [a, SurvivorUnit(2, new(5, 4))]);
+        var sim = Arena(16, 5, [a, SurvivorUnit(2, new(15, 4))]);
         a.Ap = 0;
         Assert.False(TurnAdvice.CanStillAct(sim, a));
     }
@@ -103,5 +103,55 @@ public class TurnAdviceTests
         Assert.False(TurnAdvice.CanStillAct(sim, a));
         a.Ap = sim.Data.Rules.Turn.PickUpApCost;
         Assert.True(TurnAdvice.CanStillAct(sim, a));
+    }
+
+    [Fact]
+    public void A_blow_it_can_still_plan_at_a_seen_hostile_counts_even_with_no_ap()
+    {
+        var a = SurvivorUnit(1, new(1, 2), weapon: "pipe");
+        var b = SurvivorUnit(2, new(3, 2));
+        var sim = Arena(8, 5, [a, b], data: DearStances);
+        a.Ap = 0;
+        Assert.True(TurnAdvice.CanStillAct(sim, a));
+        b.Pos = new Pos(7, 4);
+        b.Status = UnitStatus.Dead;
+        Assert.False(TurnAdvice.CanStillAct(sim, a), "nobody to plan a blow at");
+    }
+
+    [Fact]
+    public void A_device_it_can_hack_counts()
+    {
+        ZoneDevice terminal = null!;
+        var (sim, a) = Stuck((d, s) => terminal = Hacking.Place(d, s, DeviceKind.Terminal, new Pos(2, 1)));
+        sim.State.Map.Exits.Clear();
+        Assert.False(TurnAdvice.CanStillAct(sim, a), "no tool");
+        a.Pack.Add("hacking_kit");
+        Assert.False(TurnAdvice.CanStillAct(sim, a), "no AP");
+        a.Ap = Hacking.ApCost(sim.Data, a);
+        Assert.True(TurnAdvice.CanStillAct(sim, a));
+    }
+
+    [Fact]
+    public void A_node_it_can_salvage_counts()
+    {
+        var (sim, a) = Stuck((d, s) => FieldSalvage.Add(d, s, d.Salvage.Node("rubble")!, new Pos(2, 1), new Random.DeterministicRng(1)));
+        sim.State.Map.Exits.Clear();
+        Assert.False(TurnAdvice.CanStillAct(sim, a));
+        a.Ap = sim.Data.Salvage.Node("rubble")!.ApCost;
+        Assert.True(TurnAdvice.CanStillAct(sim, a));
+    }
+
+    [Fact]
+    public void A_drone_it_can_deploy_or_fly_counts()
+    {
+        var a = SurvivorUnit(1, new(1, 1), pack: ["scout_drone"]);
+        var sim = Arena(6, 3, [a, SurvivorUnit(2, new(5, 1))], data: DearStances);
+        a.Ap = sim.Data.Rules.Drone.DeployApCost;
+        Assert.True(TurnAdvice.CanUseDrone(sim, a));
+        a.Ap = 0;
+        Assert.False(TurnAdvice.CanUseDrone(sim, a));
+        a.Ap = sim.Data.Rules.Drone.DeployApCost;
+        a.Pack.Clear();
+        Assert.False(TurnAdvice.CanUseDrone(sim, a));
     }
 }
