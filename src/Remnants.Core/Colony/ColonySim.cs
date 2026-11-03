@@ -486,6 +486,10 @@ public sealed class ColonySim
     {
         foreach (var id in data.Rules.NewGame.Items.Keys)
             if (!scavenge.Items.ContainsKey(id)) throw new GameDataException($"Rules.newGame.items: unknown item '{id}'.");
+        foreach (var zone in scavenge.Zones.Values)
+            foreach (var (res, range) in zone.Haul)
+                if (!data.Resources.ContainsKey(res) || range is not [var least, var most] || least < 0 || most < least)
+                    throw new GameDataException($"Zone '{zone.Id}': haul '{res}' needs a known resource and a [min, max] range.");
         foreach (var job in data.Jobs.Values)
             foreach (var id in job.Tools.Keys)
                 if (!scavenge.Items.ContainsKey(id)) throw new GameDataException($"Job '{job.Id}': unknown tool item '{id}'.");

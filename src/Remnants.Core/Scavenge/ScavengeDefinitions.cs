@@ -209,6 +209,13 @@ public sealed record ZoneDef
     /// <summary>One-way travel time in colony days.</summary>
     public double TravelDays { get; init; }
 
+    /// <summary>
+    /// Building materials a party brings home from a plain run besides what it carried (timber, stone, scrap gathered on
+    /// the way): colony resource id → [min, max], rolled per run and scaled by (1 − depletion). Early zones pay this
+    /// generously so scavenging is the early answer to a slow Woodcutter (BALANCE.md "Early resource scarcity").
+    /// </summary>
+    public Dictionary<string, int[]> Haul { get; init; } = new();
+
     /// <summary>Depletion (0..1) a visit adds; fewer caches spawn while depleted.</summary>
     public double DepletionPerVisit { get; init; } = 0.4;
 

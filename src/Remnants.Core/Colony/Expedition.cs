@@ -130,6 +130,9 @@ public sealed record ExpeditionReport(
     /// <summary>Schematics that came home and what became of each (learned, to decrypt, Research Data).</summary>
     public SortedDictionary<string, Schematics.ReceiveOutcome> Schematics { get; init; } = new(StringComparer.Ordinal);
 
+    /// <summary>Building materials hauled home from the zone (zones.json <c>haul</c>): resource id → amount.</summary>
+    public SortedDictionary<string, int> Haul { get; init; } = new(StringComparer.Ordinal);
+
     /// <summary>The vehicle that came home with the party, if one went.</summary>
     public string? Vehicle { get; set; }
 
