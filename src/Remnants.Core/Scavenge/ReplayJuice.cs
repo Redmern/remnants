@@ -52,6 +52,32 @@ public static class ReplayJuice
     public static double PopHeat(double amount, int chain) =>
         Math.Clamp(Math.Max(0, amount) / 30 + 0.08 * Math.Max(0, chain - 1), 0, 1);
 
+    /// <summary>The widest a hand's outer card tilts (degrees).</summary>
+    public const double MaxFanDegrees = 12;
+
+    /// <summary>Card <paramref name="index"/> of <paramref name="count"/>'s tilt in the hand's fan: 0 in the middle, outer cards out.</summary>
+    public static double FanAngle(int index, int count) => count <= 1 ? 0 : FanSpread(index, count) * Math.Min(MaxFanDegrees, 3 * (count - 1));
+
+    /// <summary>How far card <paramref name="index"/> sits below the middle of the fan (pixels), so the hand arcs.</summary>
+    public static double FanDrop(int index, int count)
+    {
+        if (count <= 1) return 0;
+        var t = FanSpread(index, count);
+        return 10 * t * t * Math.Min(1, (count - 1) / 4.0);
+    }
+
+    /// <summary>-1 for the first card, 1 for the last, 0 in the middle.</summary>
+    private static double FanSpread(int index, int count) => 2.0 * Math.Clamp(index, 0, count - 1) / (count - 1) - 1;
+
+    /// <summary>The highest a chain sound's pitch climbs (times its own).</summary>
+    public const double MaxChainPitch = 1.6;
+
+    /// <summary>A chain sound's pitch at the chain's length: a semitone a link from the second, capped.</summary>
+    public static double ChainPitch(int chain) => Math.Min(MaxChainPitch, Math.Pow(2, Math.Max(0, chain - 1) / 12.0));
+
+    /// <summary>How hard the music's combat layer plays for the chain's length (0 calm, 1 full).</summary>
+    public static double MusicHeat(int chain) => Math.Clamp(chain / 6.0, 0, 1);
+
     /// <summary>
     /// A landed attack as the screen feels it: Core's tier and HP, and the arc and exposure its line names ("from behind",
     /// "from the side", "(exposed)", <see cref="Combat"/>'s wording).

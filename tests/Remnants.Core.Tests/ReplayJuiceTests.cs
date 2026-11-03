@@ -193,4 +193,29 @@ public class ReplayJuiceTests
         Assert.True(gate.Allow(100));
         Assert.False(gate.Allow(100 + FlashGate.MinGap / 2));
     }
+
+    [Fact]
+    public void A_hand_fans_out_symmetrically_with_the_middle_card_highest()
+    {
+        Assert.Equal(0, ReplayJuice.FanAngle(0, 1), 9);
+        Assert.Equal(0, ReplayJuice.FanDrop(0, 1), 9);
+        Assert.Equal(-ReplayJuice.FanAngle(0, 5), ReplayJuice.FanAngle(4, 5), 9);
+        Assert.Equal(0, ReplayJuice.FanAngle(2, 5), 9);
+        Assert.True(ReplayJuice.FanAngle(0, 5) < 0 && ReplayJuice.FanAngle(1, 5) < 0);
+        Assert.True(ReplayJuice.FanDrop(0, 5) > ReplayJuice.FanDrop(1, 5) && ReplayJuice.FanDrop(1, 5) > ReplayJuice.FanDrop(2, 5));
+        // A big hand does not fan wider than a full one.
+        Assert.InRange(Math.Abs(ReplayJuice.FanAngle(0, 12)), 0, ReplayJuice.MaxFanDegrees);
+    }
+
+    [Fact]
+    public void Chain_sounds_climb_in_pitch_and_the_music_heats_up_with_the_chain_both_capped()
+    {
+        Assert.Equal(1, ReplayJuice.ChainPitch(0), 9);
+        Assert.Equal(1, ReplayJuice.ChainPitch(1), 9);
+        Assert.True(ReplayJuice.ChainPitch(3) > ReplayJuice.ChainPitch(2));
+        Assert.InRange(ReplayJuice.ChainPitch(99), 1, ReplayJuice.MaxChainPitch);
+        Assert.Equal(0, ReplayJuice.MusicHeat(0), 9);
+        Assert.True(ReplayJuice.MusicHeat(4) > ReplayJuice.MusicHeat(2));
+        Assert.InRange(ReplayJuice.MusicHeat(99), 0, 1);
+    }
 }
