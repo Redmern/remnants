@@ -182,6 +182,12 @@ public sealed class ScavengeState
     /// <summary>Unit ids in initiative order for the current round.</summary>
     public List<int> TurnOrder { get; set; } = new();
     public int TurnIndex { get; set; }
+
+    /// <summary>Which of the round's sub-rounds is being played, from 1 (<see cref="TurnRules.SubRounds"/>).</summary>
+    public int SubRound { get; set; } = 1;
+
+    /// <summary>Tile attacks declared this sub-round, in declaration order; they strike at its end (<see cref="TileStrikes"/>).</summary>
+    public List<TileStrike> Strikes { get; set; } = new();
     public bool Finished { get; set; }
 
     public int NextUnitId { get; set; } = 1;

@@ -88,7 +88,7 @@ public static class Combat
     }
 
     /// <summary>Line of sight, needed only past the tiles next to the attacker.</summary>
-    private static bool Clear(ScavengeData data, TileMap map, Pos from, Pos target) =>
+    internal static bool Clear(ScavengeData data, TileMap map, Pos from, Pos target) =>
         from.Chebyshev(target) <= 1 || map.HasLineOfSight(data, from, target);
 
     /// <summary>AP the attack costs from <paramref name="from"/> at <paramref name="target"/>: more up close for a scope.</summary>
@@ -175,13 +175,24 @@ public static class Combat
     {
         if (!reaction) attacker.Ap -= ApCost(action, attacker.Pos, target.Pos);
         attacker.Facing = Face(attacker.Pos, target.Pos);
-        sim.MakeNoise(attacker, action.Noise);
-        var center = target.Pos;
         var targets = new List<Unit> { target };
-        if (action.Area > 0)
-            targets.AddRange(sim.State.Units
-                .Where(u => u.Id != target.Id && u.IsActive && attacker.HostileTo(u) && u.Pos.Chebyshev(center) <= action.Area)
-                .OrderBy(u => u.Id));
+        targets.AddRange(Splash(sim, attacker, action, target.Pos, targets));
+        Hit(sim, attacker, action, targets, reaction);
+    }
+
+    /// <summary>The other hostiles of the attacker an area action catches within <see cref="ActionProfile.Area"/> of <paramref name="center"/>.</summary>
+    internal static IEnumerable<Unit> Splash(ScavengeSim sim, Unit attacker, ActionProfile action, Pos center, IReadOnlyCollection<Unit> struck) =>
+        action.Area <= 0 ? [] : sim.State.Units
+            .Where(u => struck.All(s => s.Id != u.Id) && u.IsActive && attacker.HostileTo(u) && u.Pos.Chebyshev(center) <= action.Area)
+            .OrderBy(u => u.Id).ToList();
+
+    /// <summary>
+    /// Makes noise and strikes every one of <paramref name="targets"/> with its own roll (the AP already paid, the attacker
+    /// already facing), then gives the attacker away as <see cref="Resolve"/> says.
+    /// </summary>
+    internal static void Hit(ScavengeSim sim, Unit attacker, ActionProfile action, List<Unit> targets, bool reaction = false)
+    {
+        sim.MakeNoise(attacker, action.Noise);
         var ambushes = targets.Select(t => AmbushAgainst(sim.Data, sim.State, attacker, t)).ToList();
         foreach (var t in targets) Bestiary.Fought(sim, attacker, t);
         var penalty = reaction ? sim.Data.Rules.Fog.Overwatch.AccuracyPenalty : 0;

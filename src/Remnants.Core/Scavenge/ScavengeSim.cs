@@ -73,6 +73,7 @@ public sealed class ScavengeSim
             Recruit c => ScavengeCommandHandlers.Recruit(this, unit!, c),
             SetStance c => ScavengeCommandHandlers.SetStance(this, unit!, c),
             DeclareIntent c => PlannedActions.Declare(this, unit!, c),
+            AttackTile c => TileStrikes.Declare(this, unit!, c),
             PlayCard c => CardPlay.Play(this, unit!, c),
             DiscardDeadCard c => CardPlay.DiscardDead(this, unit!, c),
             Lookout c => ScavengeCommandHandlers.Lookout(this, unit!, c),
@@ -104,8 +105,9 @@ public sealed class ScavengeSim
         {
             MissionRules.Update(this);
             UpdateParties();
-            // The acting unit's turn ends on EndTurn, a stance or a plan, or when it left the map or can no longer act.
-            if (command is EndTurn or SetStance or DeclareIntent || unit is not { IsActive: true })
+            // The acting unit's turn ends on EndTurn, a stance or a plan, or when it left the map or can no longer act; its
+            // sub-turn ends on a tile attack.
+            if (command is EndTurn or SetStance or DeclareIntent or AttackTile || unit is not { IsActive: true })
             {
                 State.TurnIndex++;
                 AdvanceTurns();
@@ -127,6 +129,8 @@ public sealed class ScavengeSim
         {
             if (State.TurnIndex >= State.TurnOrder.Count)
             {
+                EndSubRound();
+                if (State.Finished) break;
                 StartRound();
                 continue;
             }
@@ -163,6 +167,14 @@ public sealed class ScavengeSim
             UpdateParties();
             State.TurnIndex++;
         }
+    }
+
+    /// <summary>The sub-round's tile attacks come down (<see cref="TileStrikes"/>).</summary>
+    private void EndSubRound()
+    {
+        TileStrikes.ResolveAll(this);
+        MissionRules.Update(this);
+        UpdateParties();
     }
 
     /// <summary>

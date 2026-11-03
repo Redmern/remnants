@@ -31,6 +31,15 @@ public sealed record DeclareIntent(int PlayerId, int UnitId, IReadOnlyList<Pos> 
     bool Suppress = false) : IScavengeCommand;
 
 /// <summary>
+/// Strike tiles (wire name <c>attackTile</c>): an attack with <see cref="ActionId"/> aimed at <see cref="Tile"/>, toward
+/// <see cref="Direction"/> (default: the step from the unit toward the tile), in <see cref="Mode"/> (default: the weapon's
+/// first) for a weapon with stab / slash patterns. The AP is paid now and the unit's sub-turn ends; whoever hostile stands
+/// on the covered tiles when the sub-round ends is struck. See <see cref="TileStrikes"/>.
+/// </summary>
+public sealed record AttackTile(int PlayerId, int UnitId, Pos Tile, string ActionId, Items.StrikeMode? Mode = null, Pos? Direction = null)
+    : IScavengeCommand;
+
+/// <summary>
 /// Play a card on <see cref="UnitId"/> (the character it applies to): from the squad hand, or from that character's
 /// personal slots (<see cref="FromSlot"/>). <see cref="TargetId"/>: the enemy whose plan a reaction answers.
 /// <see cref="Boost"/>: pay the card's extra AP for its boost. See <see cref="CardPlay"/>.
