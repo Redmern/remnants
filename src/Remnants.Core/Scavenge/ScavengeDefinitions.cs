@@ -496,6 +496,20 @@ public sealed record CombatRules
 
     /// <summary>How a landed hit resolves: graze, hit or solid (see <see cref="HitTierRules"/>).</summary>
     public HitTierRules Tiers { get; init; } = new();
+
+    /// <summary>Blows from the side and from behind land harder (see <see cref="FacingRules"/>).</summary>
+    public FacingRules Facing { get; init; } = new();
+}
+
+/// <summary>
+/// Facing in combat (scavenge.json <c>combat.facing</c>): a landed blow's damage (before armor) is multiplied by
+/// <see cref="SideDamage"/> when the attacker stands off the target's flank, by <see cref="RearDamage"/> when behind it
+/// (<see cref="Scavenge.Combat.ArcOf"/>).
+/// </summary>
+public sealed record FacingRules
+{
+    public double SideDamage { get; init; } = 1.25;
+    public double RearDamage { get; init; } = 1.5;
 }
 
 /// <summary>

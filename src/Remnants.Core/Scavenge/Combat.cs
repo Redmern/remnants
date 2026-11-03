@@ -206,6 +206,33 @@ public static class Combat
     public static Pos Face(Pos from, Pos to) => new(Math.Sign(to.X - from.X), Math.Sign(to.Y - from.Y));
 
     /// <summary>
+    /// Where a blow from <paramref name="attacker"/> comes at a target on <paramref name="target"/> facing
+    /// <paramref name="facing"/>, by the 8 steps: within one step of straight ahead the front, two steps round the side,
+    /// further the rear. A target facing nowhere is struck from the front.
+    /// </summary>
+    public static FacingArc ArcOf(Pos target, Pos? facing, Pos attacker)
+    {
+        if (facing is not { } f || f == default || attacker == target) return FacingArc.Front;
+        var turns = Math.Abs(Octant(f) - Octant(Face(target, attacker)));
+        return Math.Min(turns, 8 - turns) switch { <= 1 => FacingArc.Front, 2 => FacingArc.Side, _ => FacingArc.Rear };
+    }
+
+    /// <summary>The arc a blow from <paramref name="from"/> comes at <paramref name="target"/> (a structure has no back: the front).</summary>
+    public static FacingArc ArcOf(Unit target, Pos from) => target.Structure ? FacingArc.Front : ArcOf(target.Pos, target.Facing, from);
+
+    /// <summary>What a blow from that arc does to the damage (rules.combat.facing).</summary>
+    public static double ArcDamage(FacingRules rules, FacingArc arc) => arc switch
+    {
+        FacingArc.Side => rules.SideDamage,
+        FacingArc.Rear => rules.RearDamage,
+        _ => 1,
+    };
+
+    /// <summary>Index 0-7 of a step round the compass, counting from east.</summary>
+    private static int Octant(Pos d) =>
+        (int)Math.Round(Math.Atan2(Math.Sign(d.Y), Math.Sign(d.X)) / (Math.PI / 4) + 8) % 8;
+
+    /// <summary>
     /// Suppressing fire: no damage roll, but the target is pinned and loses AP next turn. Needs a ranged action that
     /// reaches the target. Gives the attacker away like any shot.
     /// </summary>
@@ -266,7 +293,9 @@ public static class Combat
             return;
         }
 
-        var raw = (action.MinDamage + (action.MaxDamage - action.MinDamage) * sim.Rng.NextDouble()) * (ambush?.DamageMultiplier ?? 1);
+        var arc = ArcOf(target, attacker.Pos);
+        var raw = (action.MinDamage + (action.MaxDamage - action.MinDamage) * sim.Rng.NextDouble()) * (ambush?.DamageMultiplier ?? 1)
+                  * ArcDamage(data.Rules.Combat.Facing, arc);
         var part = PickHitLocation(sim, target);
         var defense = sim.Profile(target);
         var armor = Math.Max(0, defense.ArmorAgainst(Body.RegionOf(part), action.Pattern == AttackPattern.Melee) - action.ArmorPierce);
@@ -280,7 +309,8 @@ public static class Combat
         target.Guard = 0;
         var damage = Math.Max(1, raw - armor);
         if (tier == HitTier.Graze) damage = Math.Max(1, damage * tiers.GrazeDamage);
-        var where = target.Structure ? target.Name : $"{target.Name}'s {part}";
+        var where = (target.Structure ? target.Name : $"{target.Name}'s {part}")
+                    + arc switch { FacingArc.Side => " from the side", FacingArc.Rear => " from behind", _ => "" };
         var (verb, how) = tier switch
         {
             HitTier.Graze => ("grazed", "grazed"),
@@ -412,6 +442,9 @@ public static class Combat
             $"{target.Name} is down and bleeding out ({c.BleedOutRounds} rounds).", target.Id, Pos: target.Pos));
     }
 }
+
+/// <summary>Where a blow comes at its target from, against where the target faces (<see cref="Combat.ArcOf(Pos, Pos?, Pos)"/>).</summary>
+public enum FacingArc { Front, Side, Rear }
 
 /// <summary>How a landed hit resolves: a graze (a little HP, no injury), a plain hit, or a solid one (worse injury).</summary>
 public enum HitTier { Graze, Hit, Solid }
