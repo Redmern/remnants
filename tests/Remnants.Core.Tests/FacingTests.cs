@@ -65,4 +65,39 @@ public class FacingTests
         Assert.True(Blow(sim, a, b, "swing").Ok);
         Assert.Contains("from behind", Assert.Single(sim.State.Events, e => e.Type == ScavengeEventType.Attacked).Message);
     }
+
+    [Fact]
+    public void A_unit_faces_the_way_it_moves()
+    {
+        var a = SurvivorUnit(1, new(2, 2), weapon: "pipe");
+        var b = SurvivorUnit(2, new(7, 2));
+        var sim = Arena(8, 5, [a, b], data: Sure);
+        Assert.True(sim.Execute(new Move(1, a.Id, new(2, 3))).Ok);
+        Assert.Equal(new Pos(0, 1), a.Facing);
+    }
+
+    [Fact]
+    public void A_unit_faces_the_tile_it_strikes_at()
+    {
+        var a = SurvivorUnit(1, new(2, 2), weapon: "pipe");
+        var b = SurvivorUnit(2, new(3, 1));
+        var sim = Arena(8, 5, [a, b], data: Sure);
+        Assert.True(sim.Execute(StrikeOn(sim, a, b, "swing")).Ok);
+        Assert.Equal(new Pos(1, -1), a.Facing);
+    }
+
+    [Fact]
+    public void Declaring_a_plan_turns_the_unit_toward_its_first_step_or_else_its_attack()
+    {
+        var a = SurvivorUnit(1, new(2, 2), weapon: "pipe");
+        var b = SurvivorUnit(2, new(5, 2));
+        var sim = Arena(8, 5, [a, b], data: Sure);
+        a.Facing = new Pos(-1, 0);
+        Assert.True(sim.Execute(new DeclareIntent(1, a.Id, [new(3, 3), new(4, 2)], new Pos(5, 2), "swing")).Ok);
+        Assert.Equal(new Pos(1, 1), a.Facing);
+
+        b.Facing = new Pos(1, 0);
+        Assert.True(sim.Execute(new DeclareIntent(2, b.Id, [], new Pos(4, 2), "punch")).Ok, "nobody there: still a plan");
+        Assert.Equal(new Pos(-1, 0), b.Facing);
+    }
 }

@@ -81,6 +81,8 @@ public static class PlannedActions
             Path = c.Path.ToList(), AttackTile = c.AttackTile, ActionId = c.ActionId, TargetId = targetId, Round = state.Round,
             CardId = unit.LastCardId, MoveBonus = unit.CardMove, Suppress = c.Suppress, Mode = mode, Direction = direction,
         };
+        // It turns to where it means to go (or strike) first: the plan shows in how it stands, and its back is then open.
+        if ((c.Path.Count > 0 ? c.Path[0] : c.AttackTile) is { } toward && toward != start) unit.Facing = Combat.Face(start, toward);
         var what = (c.Path.Count > 0 ? $"a move to {end}" : "") + (c.Path.Count > 0 && c.AttackTile is not null ? " and " : "")
                    + (c.AttackTile is { } at ? $"an attack on {at}" : "");
         state.Log(new(state.Round, ScavengeEventType.IntentDeclared, $"{unit.Name} plans {what}.", unit.Id, Pos: unit.Pos));
