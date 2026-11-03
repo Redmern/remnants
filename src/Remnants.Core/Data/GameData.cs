@@ -196,6 +196,8 @@ public sealed class GameData
         if (ng.MaleNames.Count == 0 || ng.FemaleNames.Count == 0)
             throw new GameDataException("Rules.newGame needs male and female names.");
         if (ng.Adults < 2) throw new GameDataException("Rules.newGame.adults must be at least 2 (one man, one woman).");
+        if (ng.HabitantsRange is not [var fewest, var most] || fewest < 2 || most < fewest)
+            throw new GameDataException("Rules.newGame.habitantsRange must be [min, max] with min at least 2.");
         RequireRange(ng.AdultAgeRange, "adultAgeRange");
         RequireRange(ng.ChildAgeRange, "childAgeRange");
         RequireRange(ng.AttributeRange, "attributeRange");

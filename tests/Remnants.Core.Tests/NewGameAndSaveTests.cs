@@ -10,20 +10,70 @@ public class NewGameTests
     [InlineData(1UL)]
     [InlineData(2UL)]
     [InlineData(12345UL)]
-    public void Starts_with_three_adults_including_a_man_and_a_woman_and_two_children(ulong seed)
+    public void Starts_with_three_adults_including_a_man_and_a_woman_and_one_child(ulong seed)
     {
         var sim = NewGame.Create(TestData.Real, seed);
         var adults = sim.State.Survivors.Where(s => s.LifeStage == LifeStage.Adult).ToList();
         var children = sim.State.Survivors.Where(s => s.LifeStage == LifeStage.Child).ToList();
 
         Assert.Equal(3, adults.Count);
-        Assert.Equal(2, children.Count);
+        Assert.Single(children);
         Assert.Contains(adults, s => s.Sex == Sex.Male);
         Assert.Contains(adults, s => s.Sex == Sex.Female);
-        Assert.Equal(5, sim.State.Survivors.Select(s => s.Name).Distinct().Count());
+        Assert.Equal(4, sim.State.Survivors.Select(s => s.Name).Distinct().Count());
         Assert.All(children, c => Assert.True(c.AgeTicks < sim.Data.Rules.AdultAge * sim.Data.Rules.TicksPerYear));
         Assert.All(children, c => Assert.InRange(c.GrowthTicks, sim.Data.Rules.Life.InfantTicks, sim.Data.Rules.Life.GrowthTicks - 1));
         Assert.All(children, c => Assert.Equal(6, c.Aptitude.Count));
+    }
+
+    [Fact]
+    public void The_default_start_is_smaller_than_the_five_people_before_multiple_jobs()
+    {
+        var sim = NewGame.Create(TestData.Real, 1);
+
+        Assert.True(sim.State.Survivors.Count < 5);
+        Assert.Equal(sim.Data.Rules.NewGame.Habitants, sim.State.Survivors.Count);
+        Assert.Null(sim.State.NewGameOptions.StartingHabitants);
+    }
+
+    [Theory]
+    [InlineData(2, 2, 0)]
+    [InlineData(3, 2, 1)]
+    [InlineData(4, 3, 1)]
+    [InlineData(6, 5, 1)]
+    [InlineData(5, 4, 1)]
+    public void A_sandbox_start_takes_the_chosen_number_of_habitants(int habitants, int adults, int children)
+    {
+        var options = new NewGameOptions { StartingHabitants = habitants };
+        var sim = NewGame.Create(TestData.Real, 3, options: options);
+
+        Assert.Equal(adults, sim.State.Survivors.Count(s => s.LifeStage == LifeStage.Adult));
+        Assert.Equal(children, sim.State.Survivors.Count(s => s.LifeStage == LifeStage.Child));
+        Assert.Contains(sim.State.Survivors, s => s is { Sex: Sex.Male, LifeStage: LifeStage.Adult });
+        Assert.Contains(sim.State.Survivors, s => s is { Sex: Sex.Female, LifeStage: LifeStage.Adult });
+        Assert.Equal(habitants, sim.State.NewGameOptions.StartingHabitants);
+    }
+
+    [Theory]
+    [InlineData(0, 2)]
+    [InlineData(1, 2)]
+    [InlineData(99, 6)]
+    public void The_chosen_number_is_kept_inside_the_rules_range(int asked, int got)
+    {
+        var sim = NewGame.Create(TestData.Real, 3, options: new NewGameOptions { StartingHabitants = asked });
+
+        Assert.Equal(got, sim.State.Survivors.Count);
+        Assert.Equal(got, sim.State.NewGameOptions.StartingHabitants);
+    }
+
+    [Fact]
+    public void The_new_game_options_are_saved_with_the_colony()
+    {
+        var sim = NewGame.Create(TestData.Real, 3, options: new NewGameOptions { StartingHabitants = 6 });
+
+        var loaded = SaveGame.Load(TestData.Real, SaveGame.Save(sim.State));
+
+        Assert.Equal(6, loaded.State.NewGameOptions.StartingHabitants);
     }
 
     [Fact]

@@ -116,7 +116,8 @@
   },
   "newGame": {
     "adults": 3,
-    "children": 2,
+    "children": 1,
+    "habitantsRange": [2, 6],
     "startHour": 6,
     "adultAgeRange": [20, 45],
     "childAgeRange": [6, 12],

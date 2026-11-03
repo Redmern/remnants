@@ -6,16 +6,30 @@ using Remnants.Core.Survivors;
 namespace Remnants.Core.Colony;
 
 /// <summary>
+/// What the player picks for a new colony. <see cref="StartingHabitants"/>: the Sandbox's number of people (null = the
+/// rules' default start); clamped to <c>rules.newGame.habitantsRange</c> when the colony is made.
+/// </summary>
+public sealed record NewGameOptions
+{
+    public int? StartingHabitants { get; init; }
+}
+
+/// <summary>
 /// Builds the starting colony from rules.newGame: adults (at least one man and one woman),
-/// children, starting stock and items and free starting buildings, all from one seed.
+/// children, starting stock and items and free starting buildings, all from one seed. A chosen number of habitants
+/// (<see cref="NewGameOptions"/>) keeps the default's share of children (rounded down; at least one from three people up).
 /// </summary>
 public static class NewGame
 {
-    public static ColonySim Create(GameData data, ulong seed, ScavengeData? scavenge = null)
+    public static ColonySim Create(GameData data, ulong seed, ScavengeData? scavenge = null, NewGameOptions? options = null)
     {
         var rules = data.Rules.NewGame;
         var rng = new DeterministicRng(seed);
-        var state = new ColonyState { Tick = rules.StartHour };
+        options ??= new NewGameOptions();
+        if (options.StartingHabitants is { } asked)
+            options = options with { StartingHabitants = Math.Clamp(asked, rules.HabitantsRange[0], rules.HabitantsRange[1]) };
+        var (adultCount, childCount) = Composition(rules, options.StartingHabitants);
+        var state = new ColonyState { Tick = rules.StartHour, NewGameOptions = options };
 
         foreach (var (res, amount) in rules.Stock) state.Stockpile.Add(res, amount);
         foreach (var (item, count) in rules.Items.OrderBy(kv => kv.Key, StringComparer.Ordinal)) state.Inventory.Add(item, count);
@@ -26,13 +40,13 @@ public static class NewGame
             state.Buildings.Add(new Building { Id = state.NextBuildingId++, DefId = rules.Buildings[plot], Level = 1, Plot = plot });
 
         var usedNames = new HashSet<string>();
-        for (var i = 0; i < rules.Adults; i++)
+        for (var i = 0; i < adultCount; i++)
         {
             // First two adults are one man and one woman; the rest are random.
             var sex = i switch { 0 => Sex.Male, 1 => Sex.Female, _ => rng.Next(0, 2) == 0 ? Sex.Male : Sex.Female };
             state.Survivors.Add(MakeSurvivor(state, data, rng, sex, LifeStage.Adult, usedNames));
         }
-        for (var i = 0; i < rules.Children; i++)
+        for (var i = 0; i < childCount; i++)
         {
             var sex = rng.Next(0, 2) == 0 ? Sex.Male : Sex.Female;
             state.Survivors.Add(MakeSurvivor(state, data, rng, sex, LifeStage.Child, usedNames));
@@ -43,6 +57,15 @@ public static class NewGame
         // Hand out the starting beds so nobody begins the game homeless (or logs a "found a bed" event).
         foreach (var s in state.Survivors.OrderBy(s => s.Id).Take(sim.BedCapacity)) s.HasBed = true;
         return sim;
+    }
+
+    /// <summary>Adults and children for a start of <paramref name="habitants"/> people (null = the rules' default).</summary>
+    public static (int Adults, int Children) Composition(NewGameRules rules, int? habitants)
+    {
+        if (habitants is not { } n) return (rules.Adults, rules.Children);
+        var children = rules.Habitants == 0 ? 0 : n * rules.Children / rules.Habitants;
+        if (n >= 3 && rules.Children > 0) children = Math.Max(1, children);
+        return (n - children, children);
     }
 
     private static Survivor MakeSurvivor(
