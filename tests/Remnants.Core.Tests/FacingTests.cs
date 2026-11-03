@@ -33,6 +33,16 @@ public class FacingTests
     public void The_arc_is_where_the_attacker_stands_against_where_the_target_faces(int x, int y, FacingArc arc) =>
         Assert.Equal(arc, Combat.ArcOf(new Pos(3, 2), new Pos(-1, 0), new Pos(x, y)));
 
+    [Theory]
+    [InlineData(1, 6, FacingArc.Side)]   // far off the flank, a step ahead: still the side
+    [InlineData(-1, 6, FacingArc.Side)]  // far off the flank, a step behind
+    [InlineData(6, 1, FacingArc.Front)]
+    [InlineData(-6, -1, FacingArc.Rear)]
+    [InlineData(4, 4, FacingArc.Front)]  // the diagonal ahead
+    [InlineData(-4, 4, FacingArc.Rear)]  // the diagonal behind
+    public void The_arc_of_a_distant_attacker_follows_its_true_bearing(int x, int y, FacingArc arc) =>
+        Assert.Equal(arc, Combat.ArcOf(new Pos(0, 0), new Pos(1, 0), new Pos(x, y)));
+
     [Fact]
     public void A_target_facing_nowhere_is_struck_from_the_front() =>
         Assert.Equal(FacingArc.Front, Combat.ArcOf(new Pos(3, 2), null, new Pos(4, 2)));

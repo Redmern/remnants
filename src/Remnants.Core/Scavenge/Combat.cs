@@ -226,14 +226,16 @@ public static class Combat
 
     /// <summary>
     /// Where a blow from <paramref name="attacker"/> comes at a target on <paramref name="target"/> facing
-    /// <paramref name="facing"/>, by the 8 steps: within one step of straight ahead the front, two steps round the side,
-    /// further the rear. A target facing nowhere is struck from the front.
+    /// <paramref name="facing"/>, by the attacker's true bearing against the facing: within 67.5° of straight ahead the
+    /// front (the step ahead and its two diagonals, up close), to 112.5° the side, further the rear. A target facing
+    /// nowhere is struck from the front.
     /// </summary>
     public static FacingArc ArcOf(Pos target, Pos? facing, Pos attacker)
     {
         if (facing is not { } f || f == default || attacker == target) return FacingArc.Front;
-        var turns = Math.Abs(Octant(f) - Octant(Face(target, attacker)));
-        return Math.Min(turns, 8 - turns) switch { <= 1 => FacingArc.Front, 2 => FacingArc.Side, _ => FacingArc.Rear };
+        var off = Math.Abs(Math.Atan2(attacker.Y - target.Y, attacker.X - target.X) - Math.Atan2(Math.Sign(f.Y), Math.Sign(f.X))) * 180 / Math.PI;
+        off = Math.Min(off, 360 - off);
+        return off <= 67.5 + 1e-9 ? FacingArc.Front : off <= 112.5 + 1e-9 ? FacingArc.Side : FacingArc.Rear;
     }
 
     /// <summary>The arc a blow from <paramref name="from"/> comes at <paramref name="target"/> (a structure has no back: the front).</summary>
@@ -246,10 +248,6 @@ public static class Combat
         FacingArc.Rear => rules.RearDamage,
         _ => 1,
     };
-
-    /// <summary>Index 0-7 of a step round the compass, counting from east.</summary>
-    private static int Octant(Pos d) =>
-        (int)Math.Round(Math.Atan2(Math.Sign(d.Y), Math.Sign(d.X)) / (Math.PI / 4) + 8) % 8;
 
     /// <summary>
     /// Suppressing fire: no damage roll, but the target is pinned and loses AP next turn. Needs a ranged action that
