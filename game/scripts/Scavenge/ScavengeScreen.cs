@@ -462,10 +462,12 @@ public partial class ScavengeScreen : Node3D
         var id = acting.Id;
         var round = (_presenter.State.Round, _presenter.State.SubRound);
         _hud.Toasts.Show("Turn over", $"{acting.Name} has nothing left to do.", "ui_end_turn", Hud.Palette.TextMuted, key: "auto_end_turn");
-        if (!Hud.GameSettings.SkipAnimations) await ToSignal(GetTree().CreateTimer(0.35), SceneTreeTimer.SignalName.Timeout);
-        // The player may have acted (a card, End Turn) during the beat.
-        if (!IsInsideTree() || _busy || _presenter.ActingUnit?.Id != id || (_presenter.State.Round, _presenter.State.SubRound) != round
-            || TurnAdvice.CanStillAct(_presenter.Sim, acting)) return;
+        // A beat so the player sees why (a frame at least: never re-entering the replay that called this).
+        if (Hud.GameSettings.SkipAnimations) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        else await ToSignal(GetTree().CreateTimer(0.35), SceneTreeTimer.SignalName.Timeout);
+        // The player may have acted (a card, End Turn) during the beat; a remote view may have been replaced: look again.
+        if (!IsInsideTree() || _busy || _presenter.ActingUnit is not { } now || now.Id != id
+            || (_presenter.State.Round, _presenter.State.SubRound) != round || TurnAdvice.CanStillAct(_presenter.Sim, now)) return;
         _ = Run(new EndTurn(_presenter.PlayerId, id));
     }
 
