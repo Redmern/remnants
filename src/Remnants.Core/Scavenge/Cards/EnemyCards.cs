@@ -5,7 +5,7 @@ namespace Remnants.Core.Scavenge;
 /// and refilled with the same rules as a party's (<see cref="SquadDecks"/>), under <see cref="DeckId"/>. After an
 /// authored enemy's turn (its plan declared), it plays what it can by a simple priority: a reaction against a seen
 /// hostile whose plan aims at its tile (one that breaks the plan first), breaking a seen hostile's plan (a shove, a pull,
-/// a disrupt), an attack card when its plan attacks, smoke on itself when hurt and seen, a defense card, and a mend or
+/// a disrupt), an attack card when its plan attacks, a smoke screen toward who sees it when hurt, a defense card, and a mend or
 /// a draw. Only what the card rules accept (<see cref="CardPlay.Check"/>). Units without cards never play.
 /// </summary>
 public static class EnemyCards
@@ -79,9 +79,11 @@ public static class EnemyCards
         PlayCard Buff(CardDef c) => new(0, unit.Id, c.Id);
         var attacks = unit.Plan?.AttackTile is not null;
         if (attacks && unit.CardHit <= 0 && buffs.FirstOrDefault(c => c.Effect.Hit > 0) is { } aim) return Buff(aim);
-        var seen = hostiles.Any(h => Detection.Spots(data, state, h, unit));
-        if (seen && Survivors.Treatment.WorstInjury(unit.Body) >= BotTactics.SmokeInjuryAt
-            && Try(hand.Where(c => !c.Reaction && c.Effect.Smoke > 0), [null], unit.Pos) is { } smoke) return smoke;
+        var seenBy = hostiles.FirstOrDefault(h => Detection.Spots(data, state, h, unit));
+        var seen = seenBy is not null;
+        if (seenBy is not null && Survivors.Treatment.WorstInjury(unit.Body) >= BotTactics.SmokeInjuryAt)
+            foreach (var c in hand.Where(c => !c.Reaction && c.Effect.Smoke > 0))
+                if (Try([c], [null], CardAbilities.ScreenTile(unit, seenBy.Pos, c.Radius)) is { } smoke) return smoke;
         if (unit.Guard == 0 && buffs.FirstOrDefault(c => c.Effect.Guard > 0) is { } guard) return Buff(guard);
         if (unit.CardCover <= 0 && buffs.FirstOrDefault(c => c.Effect.Cover > 0) is { } cover) return Buff(cover);
         if (Survivors.Treatment.WorstInjury(unit.Body) > 0 && buffs.FirstOrDefault(c => c.Effect.Mend > 0) is { } mend) return Buff(mend);

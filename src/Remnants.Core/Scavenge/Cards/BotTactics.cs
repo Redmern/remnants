@@ -23,7 +23,7 @@ public static class BotTactics
     /// (one that breaks the plan first); on its own turn, holding back a seen enemy still to act whose plan aims at one of
     /// the squad, hurrying up a threatened ally still to act, breaking a seen enemy's plan (a shove, a pull, a disrupt), a
     /// free strike or an aim card when it can attack a hostile now, a flank step round to a seen enemy's side or back when
-    /// none is in reach; smoke on itself when hurt and seen, a defense card or a barrier toward the hostiles when seen; a
+    /// none is in reach; a smoke screen toward who sees it when hurt, a defense card or a barrier toward the hostiles when seen; a
     /// mend when it is hurt; a draw when the hand runs low; else a dead hard card nobody can use is discarded. Only cards
     /// the rules accept now (<see cref="CardPlay.Check"/>) that cost no AP or leave AP for a blow.
     /// </summary>
@@ -76,7 +76,9 @@ public static class BotTactics
 
         var seenBy = hostiles.Where(h => Detection.Spots(data, state, h, unit)).ToList();
         var hurt = Treatment.WorstInjury(unit.Body);
-        if (seenBy.Count > 0 && hurt >= SmokeInjuryAt && Try(nonReactions.Where(c => c.Effect.Smoke > 0), [(null, unit.Pos)]) is { } smoke) return smoke;
+        if (seenBy.Count > 0 && hurt >= SmokeInjuryAt)
+            foreach (var c in nonReactions.Where(c => c.Effect.Smoke > 0))
+                if (Try([c], [(null, CardAbilities.ScreenTile(unit, seenBy[0].Pos, c.Radius))]) is { } smoke) return smoke;
         if (seenBy.Count > 0 && unit.CardCover <= 0 && nonReactions.FirstOrDefault(c => c.Effect.Cover > 0) is { } cover) return Play(cover);
         if (seenBy.Count > 0 && unit.Guard == 0 && nonReactions.FirstOrDefault(c => c.Effect.Guard > 0) is { } guard) return Play(guard);
         if (seenBy.FirstOrDefault(h => h.Pos.Chebyshev(unit.Pos) > 1) is { } shooter
@@ -90,7 +92,7 @@ public static class BotTactics
         return null;
     }
 
-    /// <summary>A bot smokes itself in once a body part is at least this badly hurt and a hostile sees it (a bot habit).</summary>
+    /// <summary>A bot throws a smoke screen once a body part is at least this badly hurt and a hostile sees it (a bot habit).</summary>
     public const double SmokeInjuryAt = 0.3;
 
     /// <summary>Whether a card breaks a plan it is aimed at: it moves the planner off its tile or disrupts it.</summary>

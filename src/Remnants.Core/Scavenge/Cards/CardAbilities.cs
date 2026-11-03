@@ -48,6 +48,9 @@ public static class CardAbilities
                 return Fail(ScavengeError.InvalidTarget, $"{card.Name} is played on an enemy.");
             if (card.Target == CardTarget.Ally && (unit.HostileTo(target) || target.Side == Unit.NeutralSide))
                 return Fail(ScavengeError.InvalidTarget, $"{card.Name} is played on an ally.");
+            // A co-op partner's people take their own player's orders: no moving, hurrying or AP for them (hostiles are fair game).
+            if (!unit.HostileTo(target) && target.Side != Unit.NeutralSide && target.PlayerId != unit.PlayerId)
+                return Fail(ScavengeError.NotYourUnit, $"{target.Name} takes orders from their own player.");
             if (card.Range > 0 && unit.Pos.Chebyshev(target.Pos) > card.Range)
                 return Fail(ScavengeError.OutOfRange, $"{target.Name} is out of {card.Name}'s range ({card.Range}).");
             if (target.Id != unit.Id && !Combat.Clear(data, state.Map, unit.Pos, target.Pos))
@@ -68,12 +71,17 @@ public static class CardAbilities
         {
             var to = tile!.Value;
             if (!Open(sim, unit, to) || to == unit.Pos) return Fail(ScavengeError.InvalidTile, $"{unit.Name} cannot stand on {to}.");
-            if (Steps(sim, unit, to, effect.Step) is null) return Fail(ScavengeError.Unreachable, $"{to} is more than {effect.Step} steps away.");
+            if (unit.CarryingId is not null) return Fail(ScavengeError.CannotCarry, $"{unit.Name} cannot slip away carrying someone.");
+            // Its own legs: hurt legs shorten the step as they do a move.
+            var reach = ProfileDeriver.LegReach(effect.Step, unit.Body);
+            if (Steps(sim, unit, to, reach) is null) return Fail(ScavengeError.Unreachable, $"{to} is more than {reach} steps away.");
         }
         if (effect.Swap)
         {
             if (target!.Id == unit.Id) return Fail(ScavengeError.InvalidTarget, $"{unit.Name} cannot swap with themselves.");
             if (Fixed(target)) return Fail(ScavengeError.InvalidTarget, $"{target.Name} cannot be moved.");
+            if (unit.CarryingId is not null) return Fail(ScavengeError.CannotCarry, $"{unit.Name} cannot swap places carrying someone.");
+            if (ProfileDeriver.LegReach(1, unit.Body) < 1) return Fail(ScavengeError.Unreachable, $"{unit.Name}'s legs will not carry them.");
             landing = unit.Pos;
         }
         ActionProfile? strike = null;
@@ -84,7 +92,10 @@ public static class CardAbilities
         }
         // More AP never wakes a unit that spent its own: that would be an extra sub-turn.
         if (effect.GrantAp > 0 && target!.Ap <= 0) return Fail(ScavengeError.InvalidTarget, $"{target.Name} has spent their AP this round.");
-        if (effect.Disrupt && target!.Plan is null) return Fail(ScavengeError.NoIntent, $"{target.Name} has no plan to break.");
+        if (effect.Disrupt && target!.Plan is null && !TileStrikes.Readied(state, target))
+            return Fail(ScavengeError.NoIntent, $"{target.Name} has no plan or readied strike to break.");
+        if (effect.Smoke > 0 && FieldEffects.SmokeTiles(state.Map, tile!.Value, card.Radius).Contains(unit.Pos))
+            return Fail(ScavengeError.InvalidTile, $"{card.Name} is a screen: it cannot be thrown over {unit.Name}.");
         if (effect.PlaceBarrier > 0 && !FieldEffects.CanBarrier(state, tile!.Value))
             return Fail(ScavengeError.InvalidTile, $"No barrier can go up on {tile}.");
         if (effect.AdvanceInitiative || effect.DelayInitiative)
@@ -114,7 +125,8 @@ public static class CardAbilities
         {
             var from = unit.Pos;
             unit.Pos = stepTo;
-            sim.Moved(unit, from, forced: true);
+            // The player's own move: overwatch may fire at it.
+            sim.Moved(unit, from);
             // It slips round to face the nearest hostile it sees (a flank: its blow then finds that enemy's side or back).
             if (state.Units.Where(u => u.IsActive && u.OnMap && unit.HostileTo(u) && Detection.SideSees(sim.Data, state, unit.Side, u))
                     .OrderBy(u => u.Pos.Chebyshev(stepTo)).ThenBy(u => u.Id).FirstOrDefault() is { } nearest)
@@ -127,7 +139,7 @@ public static class CardAbilities
             var from = unit.Pos;
             unit.Pos = target.Pos;
             Displace(sim, target, from, unit);
-            sim.Moved(unit, from, forced: true);
+            sim.Moved(unit, from);
             done.Add($"swaps places with {target.Name}");
         }
         else if (outcome.Landing is { } landing && target is not null)
@@ -149,9 +161,10 @@ public static class CardAbilities
                 Anonymous: $"Out of the fog, {what}."));
             done.Add(what);
         }
-        if (effect.Disrupt && target?.Plan is not null)
+        if (effect.Disrupt && target is not null && (target.Plan is not null || TileStrikes.Readied(state, target)))
         {
             target.Plan = null;
+            state.Strikes.RemoveAll(x => x.UnitId == target.Id);
             state.Log(new(state.Round, ScavengeEventType.IntentFizzled, $"{unit.Name} breaks {target.Name}'s plan: {target.Name} is exposed.",
                 target.Id, unit.Id, target.Pos));
             if (target.HostileTo(unit)) Combat.Expose(sim, target, unit.Side);
@@ -212,6 +225,16 @@ public static class CardAbilities
             }
         }
         return null;
+    }
+
+    /// <summary>
+    /// Where a smoke of <paramref name="radius"/> screens <paramref name="unit"/> from <paramref name="from"/>: the centre
+    /// just far enough toward it that the cloud stops short of the unit.
+    /// </summary>
+    public static Pos ScreenTile(Unit unit, Pos from, int radius)
+    {
+        var dir = Combat.Face(unit.Pos, from);
+        return new Pos(unit.Pos.X + dir.X * (radius + 1), unit.Pos.Y + dir.Y * (radius + 1));
     }
 
     /// <summary>The unit's attack in reach of the target that does most on average (by id on a tie), or null.</summary>

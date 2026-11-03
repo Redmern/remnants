@@ -247,8 +247,9 @@ public static class TacticsView
                     ? $"in {by}'s blow: it will be hit"
                     : $"in {by}'s blow: hit unless it acts first");
         }
-        if (target is not null && target.HostileTo(unit) && target.Plan is not null && (e.Disrupt || landing is not null && target.Id != unit.Id && e.Step == 0))
-            said.Add("breaks its plan, exposed");
+        if (target is not null && (target.Plan is not null || e.Disrupt && TileStrikes.Readied(state, target))
+            && (e.Disrupt || landing is not null && target.Id != unit.Id && e.Step == 0))
+            said.Add(target.HostileTo(unit) ? "breaks its plan, exposed" : $"{target.Name}'s plan falls through");
         if (e.Spin && target is not null) said.Add($"{target.Name} turns its back to you");
         if (ability?.Strike is { } blow && target is not null)
         {

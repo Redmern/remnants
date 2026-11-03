@@ -70,10 +70,11 @@ public class CardPreviewTests
         var (sim, a, b) = Table("smoke_bomb", "barricade");
         var smoke = TacticsView.Targets(sim, 1, a.Id, "smoke_bomb");
         Assert.All(smoke, o => Assert.InRange(o.Tile.Chebyshev(a.Pos), 0, 5));
-        var onB = Assert.Single(smoke, o => o.Tile == b.Pos);
-        Assert.True(onB.Ok);
-        Assert.Contains(b.Id, onB.Affected);
-        Assert.Contains(a.Id, onB.Affected);
+        Assert.Contains("screen", Assert.Single(smoke, o => o.Tile == b.Pos).Reason); // it would cover a
+        var past = Assert.Single(smoke, o => o.Tile == new Pos(4, 2));
+        Assert.True(past.Ok);
+        Assert.Contains(b.Id, past.Affected);
+        Assert.DoesNotContain(a.Id, past.Affected);
         var barricade = TacticsView.Targets(sim, 1, a.Id, "barricade");
         Assert.Equal(9, barricade.Count); // a's tile and the ones round it
         Assert.False(Assert.Single(barricade, o => o.Tile == a.Pos).Ok);
@@ -87,5 +88,20 @@ public class CardPreviewTests
         Assert.Contains(a.Id, TacticsView.Hand(sim, 1)!.Cards.Single().PlayableBy);
         b.Pos = new(6, 2);
         Assert.DoesNotContain(a.Id, TacticsView.Hand(sim, 1)!.Cards.Single().PlayableBy);
+    }
+
+    [Fact]
+    public void Swapping_with_an_ally_that_has_a_plan_warns_that_the_plan_falls_through()
+    {
+        var a = SurvivorUnit(1, new(2, 2));
+        var f = SurvivorUnit(1, new(3, 2), weapon: "pipe");
+        var sim = Arena(10, 5, [a, f]);
+        sim.State.Decks.Add(new SquadDeck { PlayerId = 1, Hand = ["switch_places"], Points = 3, Budget = 3, HandSize = 5 });
+        f.Plan = new PlannedAction { Path = [new(4, 2)], Round = 1 };
+        var onF = Assert.Single(TacticsView.Targets(sim, 1, a.Id, "switch_places"), o => o.UnitId == f.Id);
+        Assert.Contains($"{f.Name}'s plan falls through", onF.Outcome);
+        Assert.True(sim.Execute(new PlayCard(1, a.Id, "switch_places", f.Id)).Ok);
+        Assert.Null(f.Plan);
+        Assert.False(Combat.Exposed(sim, f)); // no hostile moved it
     }
 }

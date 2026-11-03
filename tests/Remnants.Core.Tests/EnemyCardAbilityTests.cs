@@ -42,7 +42,7 @@ public class EnemyCardAbilityTests
     }
 
     [Fact]
-    public void Cole_smokes_himself_in_when_hurt_and_seen()
+    public void Cole_throws_a_smoke_screen_toward_who_sees_him_when_hurt()
     {
         var u = SurvivorUnit(1, new(1, 1), weapon: "pistol");
         var cole = EnemyUnit("cole", new(6, 1));
@@ -53,7 +53,8 @@ public class EnemyCardAbilityTests
         cole.Body.Injure(BodyPart.Torso, 0.5);
         EnemyCards.Play(sim, cole);
         Assert.Empty(deck.Hand);
-        Assert.Contains(sim.State.FieldEffects, f => f.Kind == FieldEffectKind.Smoke && f.Tiles.Contains(cole.Pos) && f.Side == Unit.EnemySide);
+        var cloud = Assert.Single(sim.State.FieldEffects, f => f.Kind == FieldEffectKind.Smoke && f.Side == Unit.EnemySide);
+        Assert.DoesNotContain(cole.Pos, cloud.Tiles);
         Assert.False(Detection.SideSees(sim.Data, sim.State, u.Side, cole));
     }
 }

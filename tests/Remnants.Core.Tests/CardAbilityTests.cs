@@ -509,4 +509,102 @@ public class CardAbilityTests
         Assert.True(Play(sim, a, "t_delay", x).Ok);
         Assert.Equal([a.Id, f.Id, x.Id], sim.State.TurnOrder);
     }
+
+    [Fact]
+    public void A_disrupt_also_calls_off_a_readied_tile_strike_and_exposes_the_striker()
+    {
+        var b = SurvivorUnit(2, new(3, 2), weapon: "knife");
+        var f = SurvivorUnit(1, new(4, 2));
+        var a = SurvivorUnit(1, new(1, 2));
+        var sim = Table([b, f, a], ["t_disrupt"]);
+        Assert.True(sim.Execute(new AttackTile(2, b.Id, f.Pos, "cut", StrikeMode.Stab)).Ok);
+        Assert.Equal(f.Id, sim.State.CurrentUnitId);
+        Assert.True(Play(sim, a, "t_disrupt", b).Ok); // a reaction on f's turn
+        Assert.False(TileStrikes.Readied(sim.State, b));
+        Assert.True(Combat.ExposedTo(sim, b, a));
+        Assert.True(sim.Execute(new EndTurn(1, f.Id)).Ok);
+        Assert.Equal(f.MaxHp, f.Hp);
+    }
+
+    [Fact]
+    public void Smoke_cannot_be_thrown_over_the_player_itself()
+    {
+        var a = SurvivorUnit(1, new(2, 2));
+        var sim = Table([a], ["t_smoke", "t_smoke"]);
+        Assert.Equal(ScavengeError.InvalidTile, Play(sim, a, "t_smoke", tile: a.Pos).Error);
+        Assert.Equal(ScavengeError.InvalidTile, Play(sim, a, "t_smoke", tile: new(3, 2)).Error); // radius 1 would cover a
+        Assert.True(Play(sim, a, "t_smoke", tile: new(4, 2)).Ok); // a screen between a and what is beyond
+    }
+
+    [Fact]
+    public void Ally_cards_go_only_on_the_player_s_own_units_not_a_co_op_partner_s()
+    {
+        var a = SurvivorUnit(1, new(1, 2));
+        var partner = SurvivorUnit(3, new(2, 2));
+        partner.Side = a.Side; // allied: one team side
+        var x = SurvivorUnit(2, new(8, 2));
+        var sim = Table([a, partner, x], ["t_ap", "t_swap", "t_advance"]);
+        Assert.Equal(ScavengeError.NotYourUnit, Play(sim, a, "t_ap", partner).Error);
+        Assert.Equal(ScavengeError.NotYourUnit, Play(sim, a, "t_swap", partner).Error);
+        Assert.Equal(ScavengeError.NotYourUnit, Play(sim, a, "t_advance", partner).Error);
+    }
+
+    [Fact]
+    public void A_step_is_a_move_of_the_player_s_own_legs_hurt_legs_and_a_carried_body_hold_it()
+    {
+        var a = SurvivorUnit(1, new(0, 1));
+        var b = SurvivorUnit(2, new(9, 1));
+        var sim = Table([a, b], ["t_step"], rows: ["##########", "..........", "##########"], height: 3);
+        a.Body.Injure(Survivors.BodyPart.LeftLeg, 1);
+        a.Body.Injure(Survivors.BodyPart.RightLeg, 0.9);
+        var reach = ProfileDeriver.LegReach(2, a.Body);
+        Assert.True(reach < 2);
+        Assert.Equal(ScavengeError.Unreachable, Play(sim, a, "t_step", tile: new(2, 1)).Error);
+    }
+
+    [Fact]
+    public void A_step_is_the_player_s_own_move_and_draws_overwatch()
+    {
+        // b watches the corridor on overwatch; a steps within its sight and it fires.
+        var b = SurvivorUnit(2, new(5, 1), weapon: "pistol");
+        var a = SurvivorUnit(1, new(0, 1));
+        var sim = Table([b, a], ["t_step"], rows: ["##########", "..........", "##########"], height: 3, width: 10);
+        Assert.True(sim.Execute(new SetStance(2, b.Id, Stance.Overwatch)).Ok);
+        var before = sim.State.Events.Count;
+        Assert.True(Play(sim, a, "t_step", tile: new(2, 1)).Ok);
+        Assert.Contains(sim.State.Events.Skip(before), e => e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed && e.UnitId == b.Id && e.TargetId == a.Id);
+    }
+
+    [Fact]
+    public void A_shove_only_counts_toward_friendly_fire_until_the_unit_s_next_turn()
+    {
+        // e2 is shoved onto e1's planned tile, then takes its own turn and stays: e1's blow (next round) passes it by.
+        var e1 = SurvivorUnit(2, new(5, 2), weapon: "pipe");
+        var a = SurvivorUnit(1, new(2, 0));
+        var e2 = SurvivorUnit(2, new(3, 1));
+        var sim = Table([e1, a, e2], ["t_nudge"]);
+        Assert.True(sim.Execute(new DeclareIntent(2, e1.Id, [], new Pos(4, 2), "swing")).Ok);
+        Assert.True(Play(sim, a, "t_nudge", e2).Ok);
+        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
+        Assert.Equal(e2.Id, sim.State.CurrentUnitId);
+        Assert.False(e2.Displaced); // its own sub-turn began
+        Assert.True(sim.Execute(new EndTurn(2, e2.Id)).Ok);
+        while (e1.Plan is not null) Assert.True(sim.Execute(new EndTurn(sim.State.CurrentUnit!.PlayerId!.Value, sim.State.CurrentUnitId!.Value)).Ok);
+        Assert.Equal(e2.MaxHp, e2.Hp);
+    }
+
+    [Fact]
+    public void A_unit_shoved_into_an_overwatch_zone_is_not_fired_at()
+    {
+        // b (P2) watches the corridor; a (P1) shoves P3's e toward it: being moved is no move of e's own.
+        var b = SurvivorUnit(2, new(5, 1), weapon: "pistol");
+        var a = SurvivorUnit(1, new(0, 1));
+        var e = SurvivorUnit(3, new(1, 1));
+        var sim = Table([b, a, e], ["t_push"], rows: ["##########", "..........", "##########"], height: 3, width: 10);
+        Assert.True(sim.Execute(new SetStance(2, b.Id, Stance.Overwatch)).Ok);
+        var before = sim.State.Events.Count;
+        Assert.True(Play(sim, a, "t_push", e).Ok);
+        Assert.Equal(new Pos(3, 1), e.Pos);
+        Assert.DoesNotContain(sim.State.Events.Skip(before), x => x.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed && x.UnitId == b.Id);
+    }
 }

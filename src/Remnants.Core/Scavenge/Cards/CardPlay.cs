@@ -49,7 +49,9 @@ public static class CardPlay
         if (card.Reaction)
         {
             planner = c.TargetId is { } id ? state.FindUnit(id) : null;
-            if (planner is not { IsActive: true, Plan: not null } || !unit.HostileTo(planner) || !Detection.SideSees(data, state, unit.Side, planner))
+            // A plan, or (for a disrupt) a tile strike readied this sub-round.
+            if (planner is not { IsActive: true } || planner.Plan is null && !(card.Effect.Disrupt && TileStrikes.Readied(state, planner))
+                || !unit.HostileTo(planner) || !Detection.SideSees(data, state, unit.Side, planner))
                 return Fail(ScavengeError.NoIntent, $"{card.Name} needs a seen enemy with a plan.");
         }
 

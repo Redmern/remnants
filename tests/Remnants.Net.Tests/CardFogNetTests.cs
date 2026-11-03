@@ -42,6 +42,10 @@ public class CardFogNetTests
         var seen = bobFog.View(f.Sim).FieldEffects;
         Assert.Equal(FieldEffectKind.Smoke, Assert.Single(seen).Kind); // the cloud next to Bob, not the barrier by Alice
         Assert.Equal("", seen[0].Side);
+        Assert.Equal(0, seen[0].UntilRound); // how long it lasts is not shown
+        var bobSees = bobFog.Visible;
+        Assert.All(seen[0].Tiles, p => Assert.Contains(Pos.Neighbours8.Append(default), d => bobSees.Contains(state.Map.Index(p + d))));
+        Assert.True(seen[0].Tiles.Count < 9); // the far side of the cloud is not sent
 
         var aliceFog = new SideFog(a.Id, aliceSide);
         aliceFog.Update(f.Sim);
