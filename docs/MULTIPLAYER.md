@@ -543,6 +543,10 @@ reset, older colonies migrate and get the starter cards).
   squad hand or a character's slot onto that character; reactions at a seen enemy plan, also off the unit's own turn
   during the player's turns) and `discardDeadCard`. Commands carry card ids only; Core checks the hand, the slots, the
   requirement, the points and the AP. Every kind round-trips in `ProtocolTests`.
+- **Tile attacks (protocol 18, `Protocol.TileAttacksVersion`, scavenge save 16).** `attackTile` (Core's `AttackTile`: a
+  tile, an action, an optional stab / slash `mode` and `direction`; pays now, ends the sub-turn, strikes at the end of
+  the sub-round), `plannedAction`'s `mode` / `direction`, `endTurn`'s `wholeTurn`. Views carry the `subRound` and the
+  readied `strikes` of the units the side knows, never whom another player's strike was aimed at (`SideFog`).
 - **Plans in views.** A unit's `plan` travels with the unit, so a side sees the path and the threatened tile of exactly
   the units it sees now (a hidden unit's plan never leaves the server). `SideFog.Redacted` strips the plan's card and
   aimed-at unit, and dodge bonuses, from every unit the player does not own (allies included). Enemy AI telegraphs
