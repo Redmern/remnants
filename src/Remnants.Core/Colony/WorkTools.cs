@@ -12,9 +12,18 @@ namespace Remnants.Core.Colony;
 public static class WorkTools
 {
     /// <summary>Quality of the tool <paramref name="worker"/> uses at <paramref name="job"/> (0 = bare hands).</summary>
-    public static double Quality(ColonyState state, GameData data, JobDef job, Survivor worker)
+    public static double Quality(ColonyState state, GameData data, JobDef job, Survivor worker) =>
+        job.Tools.Count == 0 ? 0 : Handout(state, data, job).GetValueOrDefault(worker.Id);
+
+    /// <summary>
+    /// Every tool-using job's handout at once (job id → survivor id → quality, bare hands left out), for a system that
+    /// asks for many workers in one tick.
+    /// </summary>
+    public static Dictionary<string, Dictionary<int, double>> Handout(ColonyState state, GameData data) =>
+        data.Jobs.Values.Where(j => j.Tools.Count > 0).ToDictionary(j => j.Id, j => Handout(state, data, j));
+
+    private static Dictionary<int, double> Handout(ColonyState state, GameData data, JobDef job)
     {
-        if (job.Tools.Count == 0) return 0;
         var crew = state.Buildings
             .Where(b => data.Buildings.TryGetValue(b.DefId, out var def) && def.Job == job.Id)
             .SelectMany(b => state.WorkersAt(b.Id))
@@ -22,15 +31,9 @@ public static class WorkTools
             .Distinct()
             .Order()
             .ToList();
-        var index = crew.IndexOf(worker.Id);
-        if (index < 0) return 0;
-        foreach (var (item, quality) in job.Tools.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal))
-        {
-            var count = state.Inventory.Counts.Where(kv => BaseId(kv.Key) == item).Sum(kv => kv.Value);
-            if (index < count) return quality;
-            index -= count;
-        }
-        return 0;
+        var tools = job.Tools.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal)
+            .SelectMany(kv => Enumerable.Repeat(kv.Value, state.Inventory.Counts.Where(c => BaseId(c.Key) == kv.Key).Sum(c => c.Value)));
+        return crew.Zip(tools).ToDictionary(p => p.First, p => p.Second);
     }
 
     /// <summary>The item an inventory id is a variant of (<c>base[@quality][+mkN][+mod]</c>).</summary>

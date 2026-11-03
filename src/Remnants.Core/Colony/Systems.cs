@@ -8,6 +8,7 @@ internal static class ProductionSystem
 {
     public static void Run(ColonyState state, GameData data)
     {
+        var tools = WorkTools.Handout(state, data);
         foreach (var building in state.Buildings)
         {
             var def = data.Buildings[building.DefId];
@@ -15,7 +16,7 @@ internal static class ProductionSystem
             var job = data.Jobs[def.Job];
             foreach (var (worker, shift) in Schedule.Crew(state, data, building))
             {
-                var tool = WorkTools.Quality(state, data, job, worker);
+                var tool = tools.GetValueOrDefault(job.Id)?.GetValueOrDefault(worker.Id) ?? 0;
                 state.Stockpile.Add(def.Produces, JobOutput.PerTick(def, building.Level, job, worker, data.Rules.Output, data, tool) * shift);
                 Training.Work(state, data, job, worker);
             }
