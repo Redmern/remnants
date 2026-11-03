@@ -176,4 +176,19 @@ public class TileAttackTests
         Assert.Equal(ScavengeError.OutOfRange, sim.Execute(new DeclareIntent(1, a.Id, [], new Pos(4, 3), "thrust")).Error);
         Assert.Null(a.Plan);
     }
+
+    [Fact]
+    public void A_readied_strike_and_a_patterned_plan_show_their_covered_tiles_to_the_other_side()
+    {
+        var (sim, a, foes) = Fight("spear", new Pos(4, 2));
+        Assert.True(sim.Execute(new AttackTile(1, a.Id, new(3, 2), "thrust")).Ok);
+        var seen = Assert.Single(TacticsView.Telegraphs(sim, foes[0].Side));
+        Assert.Equal([new Pos(3, 2), new Pos(4, 2), new Pos(5, 2)], seen.Threatened);
+        Assert.True(seen.AimedAtUs);
+        Assert.Equal(ThreatKind.Planned, TacticsView.Threats(sim, foes[0].Side)[new Pos(5, 2)]);
+
+        var (sim2, a2, foes2) = Fight("sword", new Pos(6, 2));
+        Assert.True(sim2.Execute(new DeclareIntent(1, a2.Id, [new(3, 2)], new Pos(4, 2), "blade", Mode: StrikeMode.Slash)).Ok);
+        Assert.Equal([new Pos(4, 2), new Pos(4, 1), new Pos(4, 3)], Assert.Single(TacticsView.Telegraphs(sim2, foes2[0].Side)).Threatened);
+    }
 }
