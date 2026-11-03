@@ -12,7 +12,8 @@ namespace Remnants.Game.Scavenge.Ui;
 /// </summary>
 public partial class PhysicalCard : Control
 {
-    public const float Lift = 12, Drop = 10;
+    /// <summary>Room above (hover lift), below the resting line (fan drop) and round a tilted card's corners (12° on a 112 px card).</summary>
+    public const float Lift = 12, Drop = 10, Corner = 14;
 
     public Button Face { get; }
 
@@ -33,7 +34,7 @@ public partial class PhysicalCard : Control
         Key = key;
         MouseFilter = MouseFilterEnum.Ignore;
         var size = face.CustomMinimumSize;
-        CustomMinimumSize = new Vector2(size.X, size.Y + Lift + Drop);
+        CustomMinimumSize = new Vector2(size.X, size.Y + Lift + Drop + Corner);
         (_index, _count) = (index, count);
         var rest = ReplayJuice.CardPose(index, count, hover: false, mouse: 0, GameSettings.Juice);
         AddChild(face);

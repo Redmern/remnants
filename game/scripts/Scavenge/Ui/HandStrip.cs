@@ -70,8 +70,13 @@ public partial class HandStrip : PanelContainer
         header.AddChild(Widgets.Spacer());
         header.AddChild(_piles);
         box.AddChild(header);
-        var scroll = new ScrollContainer { VerticalScrollMode = ScrollContainer.ScrollMode.Disabled, CustomMinimumSize = new Vector2(0, 74 + PhysicalCard.Lift + PhysicalCard.Drop) };
-        scroll.AddChild(_cards);
+        var scroll = new ScrollContainer { VerticalScrollMode = ScrollContainer.ScrollMode.Disabled, CustomMinimumSize = new Vector2(0, 74 + PhysicalCard.Lift + PhysicalCard.Drop + PhysicalCard.Corner) };
+        // Side room so the outer cards' tilted corners are not cut by the scroll's clip.
+        var margin = new MarginContainer();
+        margin.AddThemeConstantOverride("margin_left", (int)PhysicalCard.Corner);
+        margin.AddThemeConstantOverride("margin_right", (int)PhysicalCard.Corner);
+        margin.AddChild(_cards);
+        scroll.AddChild(margin);
         box.AddChild(scroll);
         box.AddChild(_picker);
     }
@@ -148,6 +153,7 @@ public partial class HandStrip : PanelContainer
     {
         if (gone.Count == 0 || !PhysicalCard.Animate || !IsVisibleInTree()) return;
         var pile = _piles.GetGlobalRect().GetCenter();
+        if (DebugCapture.HasFlag("--juice-log")) GD.Print($"[juice] sweep {gone.Count} cards, frame {Engine.GetFramesDrawn()}");
         Audio.AudioManager.Fire("juice.card_sweep");
         for (var i = 0; i < gone.Count; i++)
         {

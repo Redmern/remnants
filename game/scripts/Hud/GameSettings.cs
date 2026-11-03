@@ -122,6 +122,9 @@ public static class GameSettings
         Load();
         // Debug: a run with replays snapped (not saved unless the settings panel saves).
         if (DebugCapture.HasFlag("--skip-animations")) SkipAnimations = true;
+        // Debug: a UI scale for this run only (--ui-scale=1.18 on a 1390 px tall window lays out like 1280x720), not saved.
+        if (float.TryParse(DebugCapture.Value("--ui-scale"), System.Globalization.CultureInfo.InvariantCulture, out var uiScale))
+            UiScale = Mathf.Clamp(uiScale, 0.5f, 2f);
         // Debug: a run at a given effects level (--effects=off|low|normal|high), for the determinism and perf checks.
         if (DebugCapture.Value("--effects") is { } effects
             && Array.FindIndex(EffectsLevels, l => l.Equals(effects, StringComparison.OrdinalIgnoreCase)) is >= 0 and var level)

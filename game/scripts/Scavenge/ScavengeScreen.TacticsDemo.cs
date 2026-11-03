@@ -29,6 +29,16 @@ public partial class ScavengeScreen
                 case "reaction":
                     _hud.Hand.Choose("sidestep");
                     break;
+                case "discard":
+                    // The hand's dead card goes for free, as its Discard button would: it sweeps into the used pile.
+                    await ToSignal(GetTree().CreateTimer(1.0), SceneTreeTimer.SignalName.Timeout);
+                    if (_presenter.Hand()?.Cards.FirstOrDefault(c => c.Dead) is { } dead)
+                    {
+                        var ok = await Run(new Core.Scavenge.DiscardDeadCard(_presenter.PlayerId, u.Id, dead.Id));
+                        GD.Print($"Tactics demo: discarded {dead.Id}: {ok}");
+                    }
+                    else GD.Print("Tactics demo: no dead card in hand");
+                    break;
                 case "enemy" when husk is not null:
                     Select(husk.Id);
                     break;
