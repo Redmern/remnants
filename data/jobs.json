@@ -1,7 +1,7 @@
 [
-  {"id": "woodcutting", "name": "Woodcutting", "skill": "Woodcutting", "skillWeight": 1.0, "attributes": {"Strength": 0.6, "Endurance": 0.4}, "bodyParts": {"Arms": 0.6, "Legs": 0.2, "Torso": 0.2}, "toolBonus": 0.5},
-  {"id": "mining", "name": "Mining", "skill": "Mining", "skillWeight": 1.0, "attributes": {"Strength": 0.5, "Endurance": 0.5}, "bodyParts": {"Arms": 0.6, "Legs": 0.2, "Torso": 0.2}, "toolBonus": 0.5},
-  {"id": "scavenging", "childrenAllowed": true, "name": "Scrap Sorting", "skill": "Crafting", "skillWeight": 0.8, "attributes": {"Perception": 0.5, "Intellect": 0.3, "Strength": 0.2}, "bodyParts": {"Arms": 0.5, "Head": 0.3, "Legs": 0.2}, "toolBonus": 0.4},
+  {"id": "woodcutting", "name": "Woodcutting", "skill": "Woodcutting", "skillWeight": 2.0, "attributes": {"Strength": 0.6, "Endurance": 0.4}, "bodyParts": {"Arms": 0.6, "Legs": 0.2, "Torso": 0.2}, "toolBonus": 0.6, "tools": {"hand_saw": 0.5, "felling_axe": 1.0}},
+  {"id": "mining", "name": "Mining", "skill": "Mining", "skillWeight": 2.0, "attributes": {"Strength": 0.5, "Endurance": 0.5}, "bodyParts": {"Arms": 0.6, "Legs": 0.2, "Torso": 0.2}, "toolBonus": 0.6, "tools": {"pickaxe": 0.5, "rock_drill": 1.0}},
+  {"id": "scavenging", "childrenAllowed": true, "name": "Scrap Sorting", "skill": "Crafting", "skillWeight": 1.6, "attributes": {"Perception": 0.5, "Intellect": 0.3, "Strength": 0.2}, "bodyParts": {"Arms": 0.5, "Head": 0.3, "Legs": 0.2}, "toolBonus": 0.6, "tools": {"crowbar": 0.5, "cutting_torch": 1.0}},
   {"id": "farming", "childrenAllowed": true, "name": "Farming", "skill": "Farming", "skillWeight": 1.0, "attributes": {"Endurance": 0.5, "Perception": 0.3, "Intellect": 0.2}, "bodyParts": {"Arms": 0.4, "Legs": 0.4, "Torso": 0.2}, "toolBonus": 0.4},
   {"id": "medicine", "name": "Medicine", "skill": "Medicine", "skillWeight": 1.2, "attributes": {"Intellect": 0.5, "Perception": 0.3, "Agility": 0.2}, "bodyParts": {"Arms": 0.5, "Head": 0.5}, "toolBonus": 0.3},
   {"id": "crafting", "childrenAllowed": true, "name": "Crafting", "skill": "Crafting", "skillWeight": 1.0, "attributes": {"Intellect": 0.5, "Creativity": 0.5}, "bodyParts": {"Arms": 0.7, "Head": 0.3}, "toolBonus": 0.5},

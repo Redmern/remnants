@@ -1,3 +1,4 @@
+using Remnants.Core.Random;
 using Remnants.Core.Items;
 using Remnants.Core.Scavenge;
 using Remnants.Core.Schematics;
@@ -177,6 +178,29 @@ internal static class ExpeditionHandlers
         return VehicleRules.Plan(sim, zone, drives ? vehicle : null, sim.State.Tick, homeward: true);
     }
 
+    /// <summary>
+    /// The zone's haul (zones.json <c>haul</c>): each material rolled in its range from the expedition's seed (so it does
+    /// not move the colony's random stream), times what is left of the zone (1 − depletion when the party set out) and
+    /// how far it has come back since the last haul (<see cref="ZoneDef.HaulRecoveryDays"/>).
+    /// </summary>
+    private static void Haul(ColonySim sim, Expedition expedition, ZoneDef zone, ExpeditionReport report)
+    {
+        var state = sim.State;
+        if (!state.Zones.TryGetValue(zone.Id, out var status)) state.Zones[zone.Id] = status = new ZoneStatus();
+        var recovery = zone.HaulRecoveryDays * sim.Data.Rules.TicksPerDay;
+        var back = status.LastHaulTick is { } last && recovery > 0 ? Math.Clamp((state.Tick - last) / recovery, 0, 1) : 1;
+        status.LastHaulTick = state.Tick;
+        var rng = new DeterministicRng(expedition.Seed ^ 0x48A0_17B5_C0DE_F00DUL);
+        var left = Math.Clamp(1 - expedition.Depletion, 0, 1) * back;
+        foreach (var (resource, range) in zone.Haul.OrderBy(kv => kv.Key, StringComparer.Ordinal))
+        {
+            var amount = (int)Math.Round(rng.NextInclusive(range[0], range[1]) * left);
+            if (amount <= 0) continue;
+            sim.State.Stockpile.Add(resource, amount);
+            report.Haul[resource] = amount;
+        }
+    }
+
     /// <summary>The party is home: survivors, the dead, recruits and loot are applied and the zone counts as visited.</summary>
     internal static CommandResult ApplyNow(ColonySim sim, Expedition expedition, ExtractionResult result)
     {
@@ -259,6 +283,7 @@ internal static class ExpeditionHandlers
         }
 
         VehicleHome(sim, expedition, result, report);
+        if (expedition.MissionId is null && result.Returned.Count > 0 && zone is not null) Haul(sim, expedition, zone, report);
         // What a cargo drone ferried out is home whatever became of the party.
         foreach (var id in result.Secured ?? [])
         {

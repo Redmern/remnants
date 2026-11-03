@@ -86,6 +86,9 @@ public sealed class ColonyState
     /// <summary>Affinity between pairs of adults (and the player's stance on them). See <see cref="Bonds"/>.</summary>
     public List<Relationship> Relationships { get; set; } = new();
 
+    /// <summary>What the player chose when the colony was founded (see <see cref="NewGame"/>); older saves load with the defaults.</summary>
+    public NewGameOptions NewGameOptions { get; set; } = new();
+
     /// <summary>Story mode's campaign (missions, flags, the radio inbox); null in Sandbox.</summary>
     public Story.CampaignState? Campaign { get; set; }
     /// <summary>Defenses, guards, raids and repairs (see <see cref="Raids.RaidSystem"/>).</summary>

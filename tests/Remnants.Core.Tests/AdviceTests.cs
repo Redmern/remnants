@@ -63,7 +63,7 @@ public class AdviceTests
         var sim = Fresh();
         foreach (var id in new[] { "farm", "woodcutter", "quarry", "workshop", "med_bay" }) Build(sim, id);
         sim.State.NextExpeditionId = 2;
-        sim.AddSurvivor().HasBed = true;
+        while (sim.State.Survivors.Count < sim.BedCapacity) sim.AddSurvivor().HasBed = true;
         Staff(sim);
         Assert.Equal("beds", Advice.Next(sim)!.Id);
     }

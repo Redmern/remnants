@@ -58,7 +58,7 @@ public class ConstructionTests
         Assert.Equal(1, site.Level);
         Assert.Equal(0, sim.State.Stockpile.Get("wood"));
         Assert.False(sim.IsPlotFree(site.Plot));
-        Assert.Equal(15, site.Reserved().Values.Sum());
+        Assert.Equal(sim.Data.Buildings["woodcutter"].Level(1).Cost.Values.Sum(), site.Reserved().Values.Sum());
         Assert.Contains(sim.State.Events, e => e.Type == ColonyEventType.SiteStarted && e.BuildingId == id);
         Assert.DoesNotContain(sim.State.Events, e => e.Type == ColonyEventType.Constructed);
     }
@@ -158,9 +158,10 @@ public class ConstructionTests
         Assert.True(r.Ok, r.Message);
         Assert.Null(sim.Site(id));
         Assert.True(sim.IsPlotFree(site.Plot));
-        // 20 wood not hauled + 80% of the 40 hauled; all 40 stone.
-        Assert.Equal(20 + 32, sim.State.Stockpile.Get("wood"));
-        Assert.Equal(40, sim.State.Stockpile.Get("stone"));
+        // The wood not hauled + 80% of the 40 hauled; all the stone.
+        var cost = sim.Data.Buildings["house"].Level(1).Cost;
+        Assert.Equal(cost["wood"] - 40 + 32, sim.State.Stockpile.Get("wood"));
+        Assert.Equal(cost["stone"], sim.State.Stockpile.Get("stone"));
     }
 
     [Fact]

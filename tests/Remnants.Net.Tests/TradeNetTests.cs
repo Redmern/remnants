@@ -23,6 +23,9 @@ public class TradeNetTests
     {
         var colony = NewGame.Create(Game, seed, NetFixture.Data);
         colony.State.Stockpile.Add("scrap", 50);
+        // The trade tests count from 60 wood and 30 stone, whatever the new-game stock is.
+        colony.State.Stockpile.Add("wood", 60 - colony.State.Stockpile.Get("wood"));
+        colony.State.Stockpile.Add("stone", 30 - colony.State.Stockpile.Get("stone"));
         colony.State.Inventory.Add("sch_rifle");
         // Lobby trades come in over the Radio Mast.
         colony.State.Buildings.Add(new Building { Id = colony.State.NextBuildingId++, DefId = "radio_mast", Level = 1, Plot = colony.FreePlots().First() });

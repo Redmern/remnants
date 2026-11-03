@@ -1802,7 +1802,8 @@ by default, so hand-built test rules and `TestData.Real` keep instant building).
 - `resources.json` — resource ids and names.
 - `schematics.json` — the schematics catalogue, traders and the rules of drops, decrypting, research, the radio,
   copies and trade values; `schematics.<feature>.json` add entries (see "Schematics").
-- `jobs.json` — per job: skill + weight, attribute weights, body-region weights, tool bonus, `childrenAllowed`.
+- `jobs.json` — per job: skill + weight, attribute weights, body-region weights, tool bonus, `tools` (stockpile items the
+  job's workers use, item → quality; `WorkTools` hands one to each worker, the best to the lowest id), `childrenAllowed`.
 - `buildings.json` — category, job, produced resource, base output (per worker-hour on shift), `outdoor` (a Night Shift
   needs light), `minTownHallLevel`, and per-level
   cost / worker slots / output multiplier / beds / patients / `buildWork` / `maxBuilders`. Level 1 cost = construction cost
@@ -1848,7 +1849,8 @@ by default, so hand-built test rules and `TestData.Real` keep instant building).
 - `salvage.json` — salvage node kinds (table, prop, terrain, work, lots, AP, noise, skill, tools), zone densities, drop and
   stash costs.
 - `zones.json` — size, threat, loot tier, terrain densities, spawn/exit edges, enemy count + mix,
-  caches, NPC count, hackable devices per kind.
+  caches, NPC count, hackable devices per kind, `haul` (materials a plain run brings home: resource → [min, max], × (1 −
+  depletion), in `ExpeditionReport.Haul`).
 - `weather.json` — weather kinds (hours, intensity, forecast confusion, drones, colony and travel effects), the Markov
   `next` weights, per-region multipliers, the forecast, field changes (`roundsPerHour`, `lookaheadHours`), repair, mask
   items and crop jobs (see "Weather"). Optional: without it the weather is always clear.

@@ -275,8 +275,15 @@ public sealed record LayoutRules
 
 public sealed record NewGameRules
 {
+    /// <summary>The default start: this many adults and children (Story, and Sandbox unless the player picks a number).</summary>
     public int Adults { get; init; } = 3;
-    public int Children { get; init; } = 2;
+    public int Children { get; init; } = 1;
+
+    /// <summary>How many people a default start has.</summary>
+    public int Habitants => Adults + Children;
+
+    /// <summary>The lowest and highest number a Sandbox start can pick (<see cref="Colony.NewGameOptions.StartingHabitants"/>).</summary>
+    public int[] HabitantsRange { get; init; } = [2, 6];
 
     /// <summary>Hour of day 1 the game starts at (the first tick).</summary>
     public int StartHour { get; init; }

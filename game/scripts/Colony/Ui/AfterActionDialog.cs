@@ -79,6 +79,15 @@ public partial class AfterActionDialog : Overlay
         }
         _content.AddChild(Widgets.SectionHeader("Loot", "stat_loot"));
         _content.AddChild(Items(sim, report.Loot, Palette.Text, "Nothing brought back."));
+        if (report.Haul.Count > 0)
+        {
+            _content.AddChild(Widgets.SectionHeader("Hauled home", "stat_loot"));
+            var flow = Flow();
+            foreach (var (res, amount) in report.Haul)
+                flow.AddChild(Widgets.Chip(Icons.Get($"res_{res}", 16), $"+{amount} {sim.Data.Resources.GetValueOrDefault(res)?.Name ?? res}", Palette.Good,
+                    "Building materials gathered on the way; less each time while the zone is picked over.", Palette.Good));
+            _content.AddChild(flow);
+        }
         if (report.Schematics.Count > 0)
         {
             _content.AddChild(Widgets.SectionHeader("Schematics", "item_schematic"));

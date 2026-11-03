@@ -81,6 +81,9 @@ public sealed class ZoneStatus
     public int Visits { get; set; }
     public long? LastVisitTick { get; set; }
 
+    /// <summary>When a party last brought the zone's haul home (null: never); the next haul recovers from it.</summary>
+    public long? LastHaulTick { get; set; }
+
     /// <summary>What the colony's last party stashed at the zone's exit (item ids): it is there again on the next run.</summary>
     public List<string> Stash { get; set; } = new();
 }
@@ -129,6 +132,9 @@ public sealed record ExpeditionReport(
 {
     /// <summary>Schematics that came home and what became of each (learned, to decrypt, Research Data).</summary>
     public SortedDictionary<string, Schematics.ReceiveOutcome> Schematics { get; init; } = new(StringComparer.Ordinal);
+
+    /// <summary>Building materials hauled home from the zone (zones.json <c>haul</c>): resource id → amount.</summary>
+    public SortedDictionary<string, int> Haul { get; init; } = new(StringComparer.Ordinal);
 
     /// <summary>The vehicle that came home with the party, if one went.</summary>
     public string? Vehicle { get; set; }

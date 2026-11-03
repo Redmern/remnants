@@ -100,7 +100,8 @@ public sealed class ColonySim
         var factor = OutputFactor(building, def);
         if (def.Job is null || factor <= 0) return 0;
         var job = Data.Jobs[def.Job];
-        return State.WorkersAt(building.Id).Sum(w => JobOutput.PerTick(def, building.Level, job, w, Data.Rules.Output, Data) * Activities.Share(State, w)) * factor;
+        return State.WorkersAt(building.Id).Sum(w =>
+            JobOutput.PerTick(def, building.Level, job, w, Data.Rules.Output, Data, WorkTools.Quality(State, Data, job, w)) * Activities.Share(State, w)) * factor;
     }
 
     private double OutputFactor(Building building, BuildingDef def) =>
@@ -120,7 +121,7 @@ public sealed class ColonySim
         if (def.Job is null || factor <= 0) return 0;
         var job = Data.Jobs[def.Job];
         return State.WorkersAt(building.Id).Sum(w =>
-            JobOutput.PerTick(def, building.Level, job, w, Data.Rules.Output, Data) * Activities.Share(State, w)
+            JobOutput.PerTick(def, building.Level, job, w, Data.Rules.Output, Data, WorkTools.Quality(State, Data, job, w)) * Activities.Share(State, w)
             * Schedule.ShiftHoursPerDay(w, building, def, Data.Rules)) * factor;
     }
 
@@ -485,6 +486,14 @@ public sealed class ColonySim
     {
         foreach (var id in data.Rules.NewGame.Items.Keys)
             if (!scavenge.Items.ContainsKey(id)) throw new GameDataException($"Rules.newGame.items: unknown item '{id}'.");
+        foreach (var zone in scavenge.Zones.Values)
+            foreach (var (res, range) in zone.Haul)
+                if (!data.Resources.ContainsKey(res) || range is not [var least, var most] || least < 0 || most < least)
+                    throw new GameDataException($"Zone '{zone.Id}': haul '{res}' needs a known resource and a [min, max] range.");
+        foreach (var job in data.Jobs.Values)
+            foreach (var (id, quality) in job.Tools)
+                if (!scavenge.Items.ContainsKey(id) || quality is < 0 or > 1)
+                    throw new GameDataException($"Job '{job.Id}': tool '{id}' needs a known item and a quality from 0 to 1.");
         foreach (var r in data.Recipes.Values)
         {
             if (r.Item is not null && !scavenge.Items.ContainsKey(r.Item)) throw new GameDataException($"Recipe '{r.Id}': unknown item '{r.Item}'.");
