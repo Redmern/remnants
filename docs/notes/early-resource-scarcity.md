@@ -45,8 +45,7 @@ Branch `feat/early-resource-scarcity`. Numbers and results: BALANCE.md "Early re
 - **Outskirts runs can be chained** with no colony time passing (travel 0): three back-to-back runs on day 1 give about
   15 + 10 + 5 wood, as depletion bites. Each run still risks injuries and deaths, and loot had the same property
   before. A cooldown or a colony-time cost for doorstep runs would close it; not done here.
-
-- Should tools be visible per worker in the building panel (which tool, its bonus)? Only the output number shows it now.
+- Should the building panel name each worker's tool? The breakdowns show the bonus; no per-tool list yet.
 - Should the bot use multiple jobs per person? It still gives everyone one job, so the bot is a little pessimistic
   about the smaller start.
 - Haul for Flooded Mall and later: none for now (their loot tier carries them).
