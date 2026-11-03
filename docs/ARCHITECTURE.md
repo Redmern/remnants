@@ -940,7 +940,7 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
   declared falls back to a tile strike at once. A turret's plan is its aim tile. Recruits act at once.
   Tests: `EnemyTelegraphTests`, `TileAttackAiTests`, `AiPlanTests`.
 - **Turn advice** (`TurnAdvice.CanStillAct`): whether the acting unit has an affordable, useful order left (a move, a
-  stance or lookout, an item, a blow at a seen hostile in reach); the screen ends the turn when it has not
+  stance or lookout, an item, a blow at a seen hostile in reach, a playable card, extracting, a pick-up); the screen ends the turn when it has not
   (`GameSettings.AutoEndTurn`, default on). Tests: `TurnAdviceTests`.
 - **Replay pacing** (Godot, `UnitViews.Replay`): a tile walk takes `GameSettings.WalkTileSeconds` (Settings > Game, walk
   speed, default 0.2 s); `GameSettings.SkipAnimations` (Settings > Game, hotkey `scav_fast_forward`, ".") snaps every
