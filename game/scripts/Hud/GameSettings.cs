@@ -58,6 +58,9 @@ public static class GameSettings
     public static Remnants.Core.Scavenge.LateZoneTuning LateZones { get; set; } = Remnants.Core.Scavenge.LateZoneTuning.Expeditions;
 
     public static readonly int[] DayLengths = [1, 2, 4, 8];
+
+    /// <summary>The Sandbox start's number of people last picked on the New Game screen (0 = the rules' default).</summary>
+    public static int SandboxHabitants { get; set; }
     public static float CameraZoomSpeed { get; set; } = 1f;
 
     public static readonly Vector2I[] Resolutions = [new(1280, 720), new(1600, 900), new(1920, 1080), new(2560, 1440), new(3840, 2160)];
@@ -136,6 +139,7 @@ public static class GameSettings
         cfg.SetValue("camera", "zoom", CameraZoomSpeed);
         cfg.SetValue("game", "day_minutes", DayLengthMinutes);
         cfg.SetValue("game", "late_zones", (int)LateZones);
+        cfg.SetValue("game", "sandbox_habitants", SandboxHabitants);
         cfg.Save(Path);
     }
 
@@ -160,6 +164,7 @@ public static class GameSettings
         CameraZoomSpeed = (float)cfg.GetValue("camera", "zoom", CameraZoomSpeed);
         DayLengthMinutes = Math.Clamp((int)cfg.GetValue("game", "day_minutes", DayLengthMinutes), DayLengths[0], DayLengths[^1]);
         LateZones = (Remnants.Core.Scavenge.LateZoneTuning)Math.Clamp((int)cfg.GetValue("game", "late_zones", (int)LateZones), 0, 2);
+        SandboxHabitants = Math.Max(0, (int)cfg.GetValue("game", "sandbox_habitants", SandboxHabitants));
     }
 
     private static void EnsureBuses() => Audio.AudioBuses.Ensure();

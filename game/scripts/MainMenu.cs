@@ -44,7 +44,7 @@ public partial class MainMenu : Control
         // `-- --new-game-choice` opens the Story / Sandbox choice (for screenshots).
         else if (DebugCapture.HasFlag("--new-game-choice")) CallDeferred(MethodName.NewGame);
         // `-- --new-game=story` (or sandbox) clicks New Game for you: the export smoke test boots straight into a fresh colony.
-        else if (DebugCapture.Value("--new-game") is { Length: > 0 } mode) CallDeferred(MethodName.StartColony, mode == "story");
+        else if (DebugCapture.Value("--new-game") is { Length: > 0 } mode) CallDeferred(MethodName.StartNewColony, mode == "story");
     }
 
     /// <summary>A dark wash from the left so the menu reads over the town, plus a vignette.</summary>
@@ -150,9 +150,12 @@ public partial class MainMenu : Control
     /// <summary>New Game asks first: Story (Pell, the radio, the missions) or Sandbox (a random colony, as before).</summary>
     private void NewGame() => AddChild(new NewGameChoice(StartColony));
 
-    private void StartColony(bool story)
+    /// <summary>The <c>--new-game=</c> path: the default start for either mode.</summary>
+    private void StartNewColony(bool story) => StartColony(story, new NewGameOptions());
+
+    private void StartColony(bool story, NewGameOptions options)
     {
-        var session = new ColonySession(Remnants.Core.Colony.NewGame.Create(GameDataPaths.Load(), NewGameSeed, GameDataPaths.LoadScavenge()));
+        var session = new ColonySession(Remnants.Core.Colony.NewGame.Create(GameDataPaths.Load(), NewGameSeed, GameDataPaths.LoadScavenge(), options));
         if (story) Remnants.Core.Story.Campaign.Start(session.Sim);
         session.DetachViews();
         ColonySession.Current = session;
