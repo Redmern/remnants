@@ -81,7 +81,7 @@ public partial class ScavengeScreen
         var command = new PlayCard(_presenter.PlayerId, aim.UnitId, aim.CardId, option.UnitId, aim.Boost, aim.FromSlot,
             aim.Target == CardTarget.Tile ? option.Tile : null);
         CancelCardAim();
-        _hud.Hand.Played(aim.CardId);
+        _hud.Hand.Played(command);
         _ = Run(command);
     }
 

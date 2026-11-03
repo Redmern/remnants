@@ -96,6 +96,12 @@ public partial class ScavengeScreen : Node3D
         AddChild(_juice);
         _juice.Setup(_presenter, _camera, _hud);
         _units.Juice = _juice;
+        _hud.Hand.Slammed += _juice.Slam;
+        _hud.Hand.TargetPoint = play =>
+        {
+            var world = play.Tile is { } tile ? TileGrid.ToWorld(tile) : _units.WorldOf(play.TargetId ?? play.UnitId);
+            return world is { } w && !_camera.Camera.IsPositionBehind(w) ? _camera.Camera.UnprojectPosition(w + Vector3.Up) : null;
+        };
         Wire();
         SelectActing();
         _camera.Focus(PartyCentre());
@@ -867,6 +873,12 @@ public partial class ScavengeScreen : Node3D
             await ToSignal(GetTree().CreateTimer(0.2), SceneTreeTimer.SignalName.Timeout);
         }
         _autoplaying = false;
+        // The run's state as a digest: the same commands give the same digest at every effects / skip setting (AC-8).
+        var save = ScavengeSave.Save(_presenter.State);
+        var digest = System.Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(save)))[..16];
+        GD.Print($"Autoplay: done, round {_presenter.State.Round}, {_presenter.State.Events.Count} events, effects {Hud.GameSettings.EffectsLevel}, " +
+                 $"skip {Hud.GameSettings.SkipAnimations}, state {digest}");
+        if (DebugCapture.HasFlag("--quit-after-autoplay")) GetTree().Quit();
         RefreshHud();
     }
 }
