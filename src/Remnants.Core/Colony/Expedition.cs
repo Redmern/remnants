@@ -81,6 +81,9 @@ public sealed class ZoneStatus
     public int Visits { get; set; }
     public long? LastVisitTick { get; set; }
 
+    /// <summary>When a party last brought the zone's haul home (null: never); the next haul recovers from it.</summary>
+    public long? LastHaulTick { get; set; }
+
     /// <summary>What the colony's last party stashed at the zone's exit (item ids): it is there again on the next run.</summary>
     public List<string> Stash { get; set; } = new();
 }

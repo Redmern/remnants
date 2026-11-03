@@ -216,6 +216,12 @@ public sealed record ZoneDef
     /// </summary>
     public Dictionary<string, int[]> Haul { get; init; } = new();
 
+    /// <summary>
+    /// Colony days the haul takes to come back after one is taken: a run sooner gets elapsed / this of it (so runs
+    /// chained on one day, possible where the road takes no time, haul next to nothing).
+    /// </summary>
+    public double HaulRecoveryDays { get; init; } = 1;
+
     /// <summary>Depletion (0..1) a visit adds; fewer caches spawn while depleted.</summary>
     public double DepletionPerVisit { get; init; } = 0.4;
 

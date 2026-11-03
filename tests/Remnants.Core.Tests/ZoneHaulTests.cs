@@ -81,6 +81,43 @@ public class ZoneHaulTests
         Assert.True(pickedOver < fresh, $"{pickedOver} vs {fresh}");
     }
 
+    /// <summary>Runs a plain Outskirts run on <paramref name="sim"/> and returns the wood it hauled.</summary>
+    private static double Run(ColonySim sim, Survivor a, Survivor b)
+    {
+        var before = sim.State.Stockpile.Get("wood");
+        Assert.True(sim.Execute(new LaunchExpedition("outskirts", [new ExpeditionMember(a.Id), new ExpeditionMember(b.Id)])).Ok);
+        Assert.True(sim.Execute(new ApplyExtractionResult(LoopTestData.Result(returned: [LoopTestData.Returned(a), LoopTestData.Returned(b)]))).Ok);
+        return sim.State.Stockpile.Get("wood") - before;
+    }
+
+    [Fact]
+    public void Chained_runs_on_the_same_day_haul_clearly_less_than_the_first()
+    {
+        var sim = LoopTestData.Colony(food: 200);
+        var (a, b) = (sim.AddSurvivor(), sim.AddSurvivor());
+
+        var first = Run(sim, a, b);
+        var second = Run(sim, a, b);
+        var third = Run(sim, a, b);
+
+        Assert.True(first > 0);
+        Assert.True(second + third <= first * 0.25, $"first {first}, then {second} and {third}");
+    }
+
+    [Fact]
+    public void The_haul_comes_back_over_a_day()
+    {
+        var sim = LoopTestData.Colony(food: 200);
+        var (a, b) = (sim.AddSurvivor(), sim.AddSurvivor());
+        Run(sim, a, b);
+        sim.Advance(6);
+        var quarterDay = Run(sim, a, b);
+        sim.Advance(sim.Data.Rules.TicksPerDay);
+        var dayLater = Run(sim, a, b);
+
+        Assert.True(dayLater > quarterDay, $"{quarterDay} after 6 h, {dayLater} after a day");
+    }
+
     [Fact]
     public void Nobody_home_means_no_haul()
     {
