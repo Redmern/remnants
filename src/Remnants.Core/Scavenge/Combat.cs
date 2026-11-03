@@ -214,9 +214,10 @@ public static class Combat
     /// Afterwards the attacker is revealed to every side it hit at for <see cref="ActionProfile.Reveal"/> rounds, those
     /// sides get an attack contact pointing at it, every other side in earshot a noise contact, and overwatch may react.
     /// </summary>
-    internal static void Resolve(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, bool reaction = false)
+    /// <param name="free">No AP paid, at full accuracy (a card's strike).</param>
+    internal static void Resolve(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, bool reaction = false, bool free = false)
     {
-        if (!reaction) attacker.Ap -= ApCost(action, attacker.Pos, target.Pos);
+        if (!reaction && !free) attacker.Ap -= ApCost(action, attacker.Pos, target.Pos);
         attacker.Facing = Face(attacker.Pos, target.Pos);
         var targets = new List<Unit> { target };
         targets.AddRange(Splash(sim, attacker, action, target.Pos, targets));

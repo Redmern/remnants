@@ -135,11 +135,7 @@ public static class CardPlay
             u.CounterId = null;
             if (!planner.IsActive) return;
             if (!u.IsActive || !Detection.Spots(sim.Data, sim.State, u, planner)) continue;
-            var action = sim.Profile(u).Actions
-                .Where(a => Drones.CanStrike(a, planner) && Combat.CheckReach(sim.Data, sim.State.Map, u.Pos, a, planner.Pos) == ScavengeError.None)
-                .OrderByDescending(a => Combat.ChanceToHit(sim, u, a, planner) * (a.MinDamage + a.MaxDamage) / 2)
-                .ThenBy(a => a.Id, StringComparer.Ordinal)
-                .FirstOrDefault();
+            var action = CardAbilities.BestBlow(sim, u, planner);
             if (action is null) continue;
             sim.State.Log(new(sim.State.Round, ScavengeEventType.Countered, $"{u.Name} reads {planner.Name}'s move and strikes first ({action.Name})!",
                 u.Id, planner.Id, planner.Pos, Anonymous: $"{planner.Name} is struck from the fog as it moves."));

@@ -24,6 +24,7 @@ public class CardAbilityTests
     [
         Card("t_push", CardTarget.Enemy, new() { Push = 2 }, range: 1),
         Card("t_push_far", CardTarget.Enemy, new() { Push = 2 }, range: 4),
+        Card("t_nudge", CardTarget.Enemy, new() { Push = 1 }, range: 1),
         Card("t_pull", CardTarget.Enemy, new() { Pull = 2 }, range: 4),
         Card("t_pull_far", CardTarget.Enemy, new() { Pull = 9 }, range: 9),
         Card("t_swap", CardTarget.Ally, new() { Swap = true }, range: 2),
@@ -34,6 +35,8 @@ public class CardAbilityTests
         Card("t_delay", CardTarget.Enemy, new() { DelayInitiative = true }),
         Card("t_barrier", CardTarget.Tile, new() { PlaceBarrier = 2 }, range: 2),
         Card("t_smoke", CardTarget.Tile, new() { Smoke = 2 }, range: 6, radius: 1),
+        Card("t_strike", CardTarget.Enemy, new() { Strike = true }),
+        Card("t_disrupt", CardTarget.Enemy, new() { Disrupt = true }, range: 4, reaction: true),
     ];
 
     private static readonly ScavengeData Data = Sure.WithCards(Sure.Cards.Def with { Cards = [.. Sure.Cards.Def.Cards, .. TestCards] });
@@ -381,5 +384,62 @@ public class CardAbilityTests
         Assert.Equal(2, loaded.State.FieldEffects.Count);
         Assert.Equal(Terrain.Cover, loaded.State.Map[new Pos(2, 2)]);
         Assert.False(Detection.SideSees(loaded.Data, loaded.State, a.Side, loaded.State.FindUnit(b.Id)!));
+    }
+
+    [Fact]
+    public void A_strike_attacks_the_enemy_now_with_the_best_blow_in_reach_for_no_ap()
+    {
+        var a = SurvivorUnit(1, new(2, 2), weapon: "pipe");
+        var b = SurvivorUnit(2, new(5, 2));
+        var sim = Table([a, b], ["t_strike", "t_strike"]);
+        var ap = a.Ap;
+        Assert.Equal(ScavengeError.OutOfRange, Play(sim, a, "t_strike", b).Error);
+        b.Pos = new(3, 2);
+        Assert.True(Play(sim, a, "t_strike", b).Ok);
+        Assert.True(b.Hp < b.MaxHp);
+        Assert.Equal(ap, a.Ap);
+        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Attacked && e.UnitId == a.Id);
+    }
+
+    [Fact]
+    public void A_disrupt_reaction_breaks_a_seen_enemy_plan_on_another_unit_s_turn_and_exposes_the_planner()
+    {
+        var b = SurvivorUnit(2, new(5, 2), weapon: "pipe");
+        var f = SurvivorUnit(1, new(0, 0));
+        var a = SurvivorUnit(1, new(2, 2));
+        var sim = Table([f, b, a], ["t_disrupt", "t_disrupt"]);
+        Assert.Equal(ScavengeError.NoIntent, Play(sim, a, "t_disrupt", b).Error); // no plan yet
+        Assert.True(sim.Execute(new EndTurn(1, f.Id)).Ok);
+        Assert.True(sim.Execute(new DeclareIntent(2, b.Id, [new(3, 2)], new Pos(2, 2), "swing")).Ok);
+        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
+        Assert.Equal(f.Id, sim.State.CurrentUnitId); // round 2: f is up, a is not
+        Assert.True(Play(sim, a, "t_disrupt", b).Ok);
+        Assert.Null(b.Plan);
+        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.IntentFizzled && e.UnitId == b.Id);
+        Assert.True(Combat.ExposedTo(sim, b, a));
+    }
+
+    [Fact]
+    public void A_plan_s_blow_lands_on_whoever_is_shoved_onto_its_tile_and_its_dodged_target_leaves_it_exposed()
+    {
+        // e1 plans a swing at f on (4,2). f steps off; a shoves e1's ally e2 onto (4,2): e1's blow comes down on e2.
+        var e1 = SurvivorUnit(2, new(5, 2), attributes: 90, weapon: "pipe");
+        var e2 = SurvivorUnit(2, new(3, 1));
+        var f = SurvivorUnit(1, new(4, 2));
+        var a = SurvivorUnit(1, new(2, 0));
+        var sim = Table([e1, e2, f, a], ["t_nudge"]);
+        Assert.True(sim.Execute(new DeclareIntent(2, e1.Id, [], new Pos(4, 2), "swing")).Ok);
+        Assert.True(sim.Execute(new EndTurn(2, e2.Id)).Ok);
+        Assert.True(sim.Execute(new Move(1, f.Id, new(4, 4))).Ok);
+        Assert.True(sim.Execute(new EndTurn(1, f.Id)).Ok);
+        Assert.True(Play(sim, a, "t_nudge", e2).Ok);
+        Assert.Equal(new Pos(4, 2), e2.Pos);
+        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
+        // Round 2 goes by initiative: the quick e1 is first, and its plan comes down before e2 could step off.
+        Assert.Equal(e1.Id, sim.State.TurnOrder[0]);
+        Assert.Null(e1.Plan);
+        Assert.True(e2.Hp < e2.MaxHp);
+        Assert.Equal(f.MaxHp, f.Hp);
+        Assert.True(Combat.Exposed(sim, e1));
     }
 }

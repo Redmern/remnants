@@ -25,7 +25,7 @@ public static class CardAbilities
     /// What an ability would do, or why not (<see cref="Fail"/>): the unit it acts on and where it lands, the tile aimed at,
     /// the tile the player steps to.
     /// </summary>
-    public sealed record Outcome(ScavengeResult? Fail, Unit? Target = null, Pos? Tile = null, Pos? Landing = null)
+    public sealed record Outcome(ScavengeResult? Fail, Unit? Target = null, Pos? Tile = null, Pos? Landing = null, ActionProfile? Strike = null)
     {
         public bool Ok => Fail is null;
     }
@@ -76,6 +76,13 @@ public static class CardAbilities
             if (Fixed(target)) return Fail(ScavengeError.InvalidTarget, $"{target.Name} cannot be moved.");
             landing = unit.Pos;
         }
+        ActionProfile? strike = null;
+        if (effect.Strike)
+        {
+            strike = BestBlow(sim, unit, target!);
+            if (strike is null) return Fail(ScavengeError.OutOfRange, $"{target!.Name} is not in reach of any of {unit.Name}'s attacks.");
+        }
+        if (effect.Disrupt && target!.Plan is null) return Fail(ScavengeError.NoIntent, $"{target.Name} has no plan to break.");
         if (effect.PlaceBarrier > 0 && !FieldEffects.CanBarrier(state, tile!.Value))
             return Fail(ScavengeError.InvalidTile, $"No barrier can go up on {tile}.");
         if (effect.AdvanceInitiative || effect.DelayInitiative)
@@ -93,7 +100,7 @@ public static class CardAbilities
             landing = Slide(sim, target, dir, Math.Max(effect.Push, effect.Pull));
             if (landing == target.Pos) return Fail(ScavengeError.InvalidTarget, $"{target.Name} has nowhere to go.");
         }
-        return new Outcome(null, target, tile, landing);
+        return new Outcome(null, target, tile, landing, strike);
     }
 
     /// <summary>Carries out a checked ability; returns what it did, in words, for the card's log line.</summary>
@@ -139,6 +146,19 @@ public static class CardAbilities
             state.Log(new(state.Round, ScavengeEventType.FieldEffectPlaced, $"{unit.Name}: {what}.", unit.Id, Pos: at,
                 Anonymous: $"Out of the fog, {what}."));
             done.Add(what);
+        }
+        if (effect.Disrupt && target?.Plan is not null)
+        {
+            target.Plan = null;
+            state.Log(new(state.Round, ScavengeEventType.IntentFizzled, $"{unit.Name} breaks {target.Name}'s plan: {target.Name} is exposed.",
+                target.Id, unit.Id, target.Pos));
+            if (target.HostileTo(unit)) Combat.Expose(sim, target, unit.Side);
+            done.Add($"{target.Name}'s plan broken");
+        }
+        if (outcome.Strike is { } blow && target is { IsActive: true })
+        {
+            Combat.Resolve(sim, unit, blow, target, free: true);
+            done.Add($"strikes {target.Name} ({blow.Name})");
         }
         if (effect.GrantAp > 0 && target is not null)
         {
@@ -191,6 +211,14 @@ public static class CardAbilities
         }
         return null;
     }
+
+    /// <summary>The unit's attack in reach of the target that does most on average (by id on a tie), or null.</summary>
+    public static ActionProfile? BestBlow(ScavengeSim sim, Unit unit, Unit target) =>
+        sim.Profile(unit).Actions
+            .Where(a => Drones.CanStrike(a, target) && Combat.CheckReach(sim.Data, sim.State.Map, unit.Pos, a, target.Pos) == ScavengeError.None)
+            .OrderByDescending(a => Combat.ChanceToHit(sim, unit, a, target) * (a.MinDamage + a.MaxDamage) / 2)
+            .ThenBy(a => a.Id, StringComparer.Ordinal)
+            .FirstOrDefault();
 
     /// <summary>Devices and vehicles stay put.</summary>
     private static bool Fixed(Unit u) => u.Kind == UnitKind.Device;
