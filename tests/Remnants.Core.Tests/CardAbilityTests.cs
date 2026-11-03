@@ -1,3 +1,4 @@
+using Remnants.Core.Items;
 using Remnants.Core.Scavenge;
 using static Remnants.Core.Tests.ScavengeTestData;
 
@@ -25,6 +26,9 @@ public class CardAbilityTests
         Card("t_push_far", CardTarget.Enemy, new() { Push = 2 }, range: 4),
         Card("t_pull", CardTarget.Enemy, new() { Pull = 2 }, range: 4),
         Card("t_pull_far", CardTarget.Enemy, new() { Pull = 9 }, range: 9),
+        Card("t_swap", CardTarget.Ally, new() { Swap = true }, range: 2),
+        Card("t_step", CardTarget.Tile, new() { Step = 2 }),
+        Card("t_spin", CardTarget.Enemy, new() { Spin = true }, range: 1),
     ];
 
     private static readonly ScavengeData Data = Sure.WithCards(Sure.Cards.Def with { Cards = [.. Sure.Cards.Def.Cards, .. TestCards] });
@@ -141,5 +145,93 @@ public class CardAbilityTests
         friend.Pos = new(5, 0);
         Assert.Equal(ScavengeError.NoLineOfSight, Play(sim, a, "t_push_far", far).Error);  // seen by the friend, but the wall at (3,2) is in a's way
         Assert.Equal(3, SquadDecks.Of(sim.State, 1)!.Points);
+    }
+
+    [Fact]
+    public void A_displaced_unit_with_a_plan_loses_it_and_is_exposed_to_the_shover()
+    {
+        var b = SurvivorUnit(2, new(3, 2), weapon: "pipe");
+        var a = SurvivorUnit(1, new(2, 2));
+        var sim = Table([b, a], ["t_push"]);
+        Assert.True(sim.Execute(new DeclareIntent(2, b.Id, [new(4, 1)], null, null)).Ok);
+        Assert.Equal(a.Id, sim.State.CurrentUnitId);
+        Assert.True(Play(sim, a, "t_push", b).Ok);
+        Assert.Null(b.Plan);
+        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.IntentFizzled && e.UnitId == b.Id);
+        Assert.True(Combat.ExposedTo(sim, b, a));
+    }
+
+    [Fact]
+    public void A_unit_shoved_onto_a_declared_strike_is_hit_by_it_even_by_its_own_side()
+    {
+        // e1 readies a knife stab on the empty (5,2); P1 shoves e1's ally e2 from (3,2) onto it.
+        var e1 = SurvivorUnit(2, new(6, 2), weapon: "knife");
+        var e2 = SurvivorUnit(2, new(3, 2));
+        var a = SurvivorUnit(1, new(2, 2));
+        var sim = Table([e1, e2, a], ["t_push"]);
+        Assert.True(sim.Execute(new AttackTile(2, e1.Id, new(5, 2), "cut", StrikeMode.Stab)).Ok);
+        Assert.True(sim.Execute(new EndTurn(2, e2.Id)).Ok);
+        Assert.True(Play(sim, a, "t_push", e2).Ok);
+        Assert.Equal(new Pos(5, 2), e2.Pos);
+        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok); // the sub-round ends: the stab comes down
+        Assert.True(e2.Hp < e2.MaxHp, "friendly fire on the shoved unit");
+    }
+
+    [Fact]
+    public void A_friendly_unit_that_walks_onto_a_strike_is_not_hit_by_its_own_side()
+    {
+        var e1 = SurvivorUnit(2, new(6, 2), weapon: "knife");
+        var e2 = SurvivorUnit(2, new(3, 2));
+        var a = SurvivorUnit(1, new(0, 0));
+        var sim = Table([e1, e2, a], []);
+        Assert.True(sim.Execute(new AttackTile(2, e1.Id, new(5, 2), "cut", StrikeMode.Stab)).Ok);
+        Assert.True(sim.Execute(new Move(2, e2.Id, new(5, 2))).Ok);
+        Assert.True(sim.Execute(new EndTurn(2, e2.Id)).Ok);
+        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
+        Assert.Equal(e2.MaxHp, e2.Hp);
+    }
+
+    [Fact]
+    public void A_swap_trades_places_with_an_ally_in_range()
+    {
+        var a = SurvivorUnit(1, new(1, 2));
+        var f = SurvivorUnit(1, new(3, 2));
+        var far = SurvivorUnit(1, new(6, 2));
+        var sim = Table([a, f, far], ["t_swap", "t_swap"]);
+        Assert.Equal(ScavengeError.OutOfRange, Play(sim, a, "t_swap", far).Error);
+        Assert.Equal(ScavengeError.InvalidTarget, Play(sim, a, "t_swap", a).Error);
+        Assert.True(Play(sim, a, "t_swap", f).Ok);
+        Assert.Equal(new Pos(3, 2), a.Pos);
+        Assert.Equal(new Pos(1, 2), f.Pos);
+    }
+
+    [Fact]
+    public void A_step_moves_the_player_free_of_ap_and_turns_it_to_the_nearest_seen_enemy()
+    {
+        // A corridor: b stands in a's way, and a cannot step past a hostile.
+        var a = SurvivorUnit(1, new(0, 1));
+        var b = SurvivorUnit(2, new(1, 1));
+        var sim = Table([a, b], ["t_step", "t_step"], rows: ["##########", "..........", "##########"], height: 3);
+        var ap = a.Ap;
+        Assert.Equal(ScavengeError.Unreachable, Play(sim, a, "t_step", tile: new(2, 1)).Error);
+        Assert.Equal(ScavengeError.InvalidTile, Play(sim, a, "t_step", tile: new(1, 0)).Error); // a wall
+        b.Pos = new(6, 1);
+        Assert.Equal(ScavengeError.Unreachable, Play(sim, a, "t_step", tile: new(3, 1)).Error); // three steps
+        Assert.True(Play(sim, a, "t_step", tile: new(2, 1)).Ok);
+        Assert.Equal(new Pos(2, 1), a.Pos);
+        Assert.Equal(ap, a.Ap);
+        Assert.Equal(new Pos(1, 0), a.Facing);
+    }
+
+    [Fact]
+    public void A_spin_turns_the_enemy_s_back_to_the_player()
+    {
+        var a = SurvivorUnit(1, new(2, 2));
+        var b = SurvivorUnit(2, new(3, 2));
+        b.Facing = new Pos(-1, 0);
+        var sim = Table([a, b], ["t_spin"]);
+        Assert.Equal(FacingArc.Front, Combat.ArcOf(b, a.Pos));
+        Assert.True(Play(sim, a, "t_spin", b).Ok);
+        Assert.Equal(FacingArc.Rear, Combat.ArcOf(b, a.Pos));
     }
 }

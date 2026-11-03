@@ -48,7 +48,28 @@ public static class CardAbilities
                 return Fail(ScavengeError.NoLineOfSight, $"{unit.Name} has no clear line to {target.Name}.");
         }
 
+        if (card.Target == CardTarget.Tile)
+        {
+            if (tile is not { } t || !state.Map.InBounds(t)) return Fail(ScavengeError.InvalidTile, $"{card.Name} needs a tile on the map.");
+            if (card.Range > 0 && unit.Pos.Chebyshev(t) > card.Range)
+                return Fail(ScavengeError.OutOfRange, $"{t} is out of {card.Name}'s range ({card.Range}).");
+            if (!Visibility.SideVisible(data, state, unit.Side).Contains(state.Map.Index(t)))
+                return Fail(ScavengeError.NotVisible, $"{unit.Name}'s side does not see {t}.");
+        }
+
         Pos? landing = null;
+        if (effect.Step > 0)
+        {
+            var to = tile!.Value;
+            if (!Open(sim, unit, to) || to == unit.Pos) return Fail(ScavengeError.InvalidTile, $"{unit.Name} cannot stand on {to}.");
+            if (Steps(sim, unit, to, effect.Step) is null) return Fail(ScavengeError.Unreachable, $"{to} is more than {effect.Step} steps away.");
+        }
+        if (effect.Swap)
+        {
+            if (target!.Id == unit.Id) return Fail(ScavengeError.InvalidTarget, $"{unit.Name} cannot swap with themselves.");
+            if (Fixed(target)) return Fail(ScavengeError.InvalidTarget, $"{target.Name} cannot be moved.");
+            landing = unit.Pos;
+        }
         if (effect.Push > 0 || effect.Pull > 0)
         {
             if (target!.Id == unit.Id) return Fail(ScavengeError.InvalidTarget, $"{unit.Name} cannot shove themselves.");
@@ -63,14 +84,67 @@ public static class CardAbilities
     /// <summary>Carries out a checked ability; returns what it did, in words, for the card's log line.</summary>
     internal static List<string> Apply(ScavengeSim sim, Unit unit, CardEffect effect, Outcome outcome)
     {
+        var state = sim.State;
         var done = new List<string>();
         var target = outcome.Target;
-        if (outcome.Landing is { } landing && target is not null)
+        if (effect.Step > 0 && outcome.Tile is { } stepTo)
+        {
+            var from = unit.Pos;
+            unit.Pos = stepTo;
+            // It slips round to face the nearest hostile it sees (a flank: its blow then finds that enemy's side or back).
+            if (state.Units.Where(u => u.IsActive && u.OnMap && unit.HostileTo(u) && Detection.SideSees(sim.Data, state, unit.Side, u))
+                    .OrderBy(u => u.Pos.Chebyshev(stepTo)).ThenBy(u => u.Id).FirstOrDefault() is { } nearest)
+                unit.Facing = Combat.Face(stepTo, nearest.Pos);
+            state.Log(new(state.Round, ScavengeEventType.Moved, $"{unit.Name} slips from {from} to {stepTo}.", unit.Id, Pos: stepTo));
+            done.Add($"steps to {stepTo}");
+        }
+        if (effect.Swap && target is not null)
+        {
+            var from = unit.Pos;
+            unit.Pos = target.Pos;
+            unit.Displaced = true;
+            Displace(sim, target, from, unit);
+            done.Add($"swaps places with {target.Name}");
+        }
+        else if (outcome.Landing is { } landing && target is not null)
         {
             Displace(sim, target, landing, unit);
             done.Add($"{target.Name} {(effect.Push > 0 ? "shoved" : "dragged")} to {landing}");
         }
+        if (effect.Spin && target is not null)
+        {
+            target.Facing = Combat.Face(unit.Pos, target.Pos);
+            state.Log(new(state.Round, ScavengeEventType.Displaced, $"{unit.Name} spins {target.Name} round: its back is open.", unit.Id, target.Id,
+                target.Pos, Anonymous: $"{target.Name} is spun round by something in the fog."));
+            done.Add($"{target.Name} turned away");
+        }
         return done;
+    }
+
+    /// <summary>
+    /// The walking steps (8 ways, no squeezing past corners, through allies but not hostiles or held doors) from the
+    /// unit to an open tile, if at most <paramref name="max"/>; null if further or cut off. Terrain costs do not count.
+    /// </summary>
+    public static int? Steps(ScavengeSim sim, Unit unit, Pos to, int max)
+    {
+        var state = sim.State;
+        var seen = new Dictionary<Pos, int> { [unit.Pos] = 0 };
+        var queue = new Queue<Pos>([unit.Pos]);
+        while (queue.TryDequeue(out var p))
+        {
+            if (p == to) return seen[p];
+            if (seen[p] == max) continue;
+            foreach (var d in Pos.Neighbours8)
+            {
+                var n = p + d;
+                if (seen.ContainsKey(n) || !Passable(sim, n) || Hacking.Blocks(state, unit, n)) continue;
+                if (d.X != 0 && d.Y != 0 && !Passable(sim, new Pos(n.X, p.Y)) && !Passable(sim, new Pos(p.X, n.Y))) continue;
+                if (state.UnitAt(n) is { } other && other.Id != unit.Id && (other.HostileTo(unit) || n == to)) continue;
+                seen[n] = seen[p] + 1;
+                queue.Enqueue(n);
+            }
+        }
+        return null;
     }
 
     /// <summary>Devices and vehicles stay put.</summary>

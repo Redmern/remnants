@@ -197,8 +197,12 @@ public static class TileStrikes
         return targets;
     }
 
-    /// <summary>The conscious hostiles on <paramref name="tiles"/> the action can strike, tile by tile, then by id.</summary>
+    /// <summary>
+    /// The conscious hostiles on <paramref name="tiles"/> the action can strike, tile by tile, then by id; and anyone a card
+    /// shoved there (<see cref="Unit.Displaced"/>), whoever's side: friendly fire.
+    /// </summary>
     private static IEnumerable<Unit> TargetsOn(ScavengeState state, Unit attacker, ActionProfile action, List<Pos> tiles) =>
-        state.Units.Where(u => u.IsActive && u.OnMap && u.CarriedById is null && attacker.HostileTo(u) && tiles.Contains(u.Pos) && Drones.CanStrike(action, u))
+        state.Units.Where(u => u.IsActive && u.OnMap && u.CarriedById is null && (attacker.HostileTo(u) || u.Displaced && u.Id != attacker.Id)
+                               && tiles.Contains(u.Pos) && Drones.CanStrike(action, u))
             .OrderBy(u => tiles.IndexOf(u.Pos)).ThenBy(u => u.Id);
 }
