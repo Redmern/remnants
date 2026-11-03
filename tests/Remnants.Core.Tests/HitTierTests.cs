@@ -107,7 +107,7 @@ public class HitTierTests
         var a = SurvivorUnit(pos: new(0, 0));
         var b = SurvivorUnit(playerId: 2, pos: new(1, 0));
         var sim = Arena(3, 3, [a, b], data: Landing(grazeBelow: 1, solidFrom: 1));
-        Assert.True(sim.Execute(new Attack(1, a.Id, b.Id, "punch")).Ok);
+        Assert.True(StrikeNow(sim, a, b, "punch").Ok);
         Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Attacked && e.Message.Contains("grazed"));
     }
 
@@ -118,7 +118,7 @@ public class HitTierTests
         var b = SurvivorUnit(playerId: 2, pos: new(3, 1));
         var sim = Arena(5, 3, [a, b], rows: [".....", cover ? "..c.." : ".....", "....."], data: data, seed: 7);
         Assert.True(Combat.CoverAgainst(data, sim.State.Map, b.Pos, a.Pos) + 1e-9 >= Tiers.CoverShiftFrom == cover);
-        Assert.True(sim.Execute(new Attack(1, a.Id, b.Id, "shoot")).Ok);
+        Assert.True(StrikeNow(sim, a, b, "shoot").Ok);
         return (b, b.MaxHp - b.Hp);
     }
 
@@ -128,7 +128,7 @@ public class HitTierTests
         var a = SurvivorUnit(pos: new(0, 0));
         var b = SurvivorUnit(playerId: 2, pos: new(1, 0), body: body);
         var sim = Arena(3, 3, [a, b], data: data, seed: 7);
-        Assert.True(sim.Execute(new Attack(1, a.Id, b.Id, "punch")).Ok);
+        Assert.True(StrikeNow(sim, a, b, "punch").Ok);
         return (b, b.MaxHp - b.Hp);
     }
 }

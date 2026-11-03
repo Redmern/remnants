@@ -91,7 +91,7 @@ public class PlannedActionTests
 
         b.OutplayedId = a.Id;
         Assert.True(sim.Execute(new Move(2, b.Id, new(5, 1))).Ok);
-        Assert.True(sim.Execute(new Attack(2, b.Id, a.Id, "swing")).Ok);
+        Assert.True(StrikeNow(sim, b, a, "swing").Ok);
         Assert.Null(b.OutplayedId);
     }
 
@@ -347,7 +347,7 @@ public class PlannedActionTests
     {
         var (sim, a, b) = Duel();
         a.Pos = new(4, 1);
-        Assert.True(sim.Execute(new Attack(1, a.Id, b.Id, "swing")).Ok);
+        Assert.True(StrikeNow(sim, a, b, "swing").Ok);
         var hit = Assert.Single(sim.State.Events, e => e.Type == ScavengeEventType.Attacked);
         Assert.Equal(HitTier.Hit, hit.Tier);
         Assert.Equal(b.MaxHp - b.Hp, hit.Amount!.Value, 9);

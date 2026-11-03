@@ -35,9 +35,10 @@ public class CoopNetTests
                 var shot = profile.Actions.Where(a => a.ApCost <= unit.Ap)
                     .SelectMany(a => view.State.Units.Where(t => t.IsActive && unit.HostileTo(t)
                                                                   && Combat.CheckReach(view.Data, map, unit.Pos, a, t.Pos) == ScavengeError.None)
-                        .Select(t => (Action: a, Target: t)))
+                        .Select(t => (Strike: TileStrikes.StrikeAt(view, unit, a, t), Target: t)))
+                    .Where(o => o.Strike is not null)
                     .OrderBy(o => o.Target.Id).FirstOrDefault();
-                if (shot.Target is not null) command = new Attack(up.Id, unit.Id, shot.Target.Id, shot.Action.Id);
+                if (shot.Strike is { } strike) command = strike;
                 else
                 {
                     var exit = map.Exits.OrderBy(e => e.Chebyshev(unit.Pos)).ThenBy(map.Index).First();
@@ -101,7 +102,12 @@ public class CoopNetTests
         Assert.Contains(b.Client.TakeEvents().Concat(a.Client.TakeEvents()), e => e.Type == ScavengeEventType.Pinged);
         Assert.True(up.Do(new GiveItem(up.Id, mine.Id, other.Id, "bandage")).Ok, "give over the wire");
         Assert.Equal(2, f.Sim.State.FindUnit(other.Id)!.Pack.Count(i => i == "bandage"));
-        Assert.Equal(ScavengeError.FriendlyFire, up.Do(new Attack(up.Id, mine.Id, other.Id, "pistol_shot")).Error);
+        // A blow at an ally's tile comes down on nobody.
+        var hp = f.Sim.State.FindUnit(other.Id)!.Hp;
+        var swing = f.Sim.Profile(mine).Actions.First(x => TileStrikes.Aim(f.Sim, mine, x, other.Pos) is not null).Id;
+        Assert.True(up.Do(new AttackTile(up.Id, mine.Id, other.Pos, swing)).Ok, "a strike at an ally's tile over the wire");
+        f.EndTurnsUntil(() => !TileStrikes.Readied(f.Sim.State, mine), a, b);
+        Assert.Equal(hp, f.Sim.State.FindUnit(other.Id)!.Hp);
 
         PlayOut(f, a, b);
         var ra = a.Last<MissionEnded>().Result;

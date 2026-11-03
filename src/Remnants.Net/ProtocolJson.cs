@@ -31,7 +31,6 @@ public static class ProtocolJson
                 DerivedTypes =
                 {
                     new JsonDerivedType(typeof(Move), "move"),
-                    new JsonDerivedType(typeof(Attack), "attack"),
                     new JsonDerivedType(typeof(UseItem), "useItem"),
                     new JsonDerivedType(typeof(PickUp), "pickUp"),
                     new JsonDerivedType(typeof(TakeAll), "takeAll"),

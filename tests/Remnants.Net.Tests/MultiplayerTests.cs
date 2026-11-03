@@ -123,12 +123,12 @@ public class MultiplayerTests(ITestOutputHelper output)
         shooter.Ap = f.Sim.Profile(shooter).MaxAp;
 
         var action = f.Sim.Profile(shooter).Actions.First(x => Combat.CheckReach(f.Sim.Data, f.Sim.State.Map, shooter.Pos, x, victim.Pos) == ScavengeError.None);
-        var result = a.Do(new Attack(a.Id, shooter.Id, victim.Id, action.Id));
+        var result = f.StrikeNow(a, shooter, victim, action.Id, a, b);
         Assert.True(result.Ok, result.Message);
 
         bool AboutTheShot(ScavengeEvent e) => e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed && e.UnitId == shooter.Id && e.TargetId == victim.Id;
-        Assert.Contains(a.Last<Snapshot>().Events, AboutTheShot);
-        Assert.Contains(b.Last<Snapshot>().Events, AboutTheShot);
+        Assert.Contains(a.Client.TakeEvents(), AboutTheShot);
+        Assert.Contains(b.Client.TakeEvents(), AboutTheShot);
         // The victim sees the shooter now (adjacent), so it is in Bob's view with its redacted record.
         var seen = b.View.Units.Single(u => u.Id == shooter.Id);
         Assert.Equal(0, seen.Origin!.Id);

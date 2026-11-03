@@ -62,8 +62,8 @@ public class BestiaryTests
         Assert.Single(counts);
 
         a.Pos = new(1, 1);
-        Assert.True(sim.Execute(new Attack(1, a.Id, h1.Id, "swing")).Ok);
-        Assert.True(sim.Execute(new Attack(1, a.Id, h1.Id, "swing")).Ok);
+        Assert.True(Blow(sim, a, h1, "swing").Ok);
+        Assert.True(Blow(sim, a, h1, "swing").Ok);
         Assert.Equal(1, counts["husk"].Fought);
         Combat.ApplyDamage(sim, h1, BodyPart.Torso, 999, attacker: a);
         Assert.Equal(1, counts["husk"].Killed);
@@ -246,7 +246,7 @@ public class BestiaryTests
             a.Ap = sim.Profile(a).MaxAp;
             husk.Hp = husk.MaxHp;
             shown = Bestiary.ShownChance(Rules, Combat.ChanceToHit(sim, a, shoot, husk), BestiaryTier.Unknown);
-            sim.Execute(new Attack(1, a.Id, husk.Id, shoot.Id));
+            Blow(sim, a, husk, shoot.Id);
         }
         var miss = sim.State.Events.First(e => e.Type == ScavengeEventType.Missed);
         Assert.Contains($"{shown:P0}", miss.Message); // the log is shared and cannot know the colony's bestiary

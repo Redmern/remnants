@@ -108,7 +108,7 @@ public class PlayCardTests
         var before = Combat.ChanceToHit(sim, a, swing with { Accuracy = 0.3 }, b);
         Assert.True(Play(sim, a, "steady_aim").Ok);
         Assert.Equal(before + 0.1, Combat.ChanceToHit(sim, a, swing with { Accuracy = 0.3 }, b), 9);
-        Assert.True(sim.Execute(new Attack(1, a.Id, b.Id, "swing")).Ok);
+        Assert.True(StrikeNow(sim, a, b, "swing").Ok);
         Assert.Equal(0, a.CardHit);
     }
 
@@ -120,7 +120,7 @@ public class PlayCardTests
         Assert.Equal(1, a.Guard);
         b.Pos = new(1, 1);
         Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
-        Assert.True(sim.Execute(new Attack(2, b.Id, a.Id, "swing")).Ok);
+        Assert.True(StrikeNow(sim, b, a, "swing").Ok);
         Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Attacked && e.TargetId == a.Id && e.Tier == HitTier.Graze);
         Assert.All(a.Body.Parts.Values, p => Assert.Equal(PartCondition.Healthy, p.Condition));
         Assert.Equal(0, a.Guard);

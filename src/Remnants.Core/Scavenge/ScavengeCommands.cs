@@ -12,8 +12,6 @@ public interface IScavengeCommand
 
 public sealed record Move(int PlayerId, int UnitId, Pos To) : IScavengeCommand;
 
-public sealed record Attack(int PlayerId, int UnitId, int TargetId, string ActionId) : IScavengeCommand;
-
 /// <summary>
 /// Use a carried consumable on self (no target), on a unit in the item's range, or for items used on a tile (flare,
 /// motion sensor) on the tile <see cref="At"/> in range.

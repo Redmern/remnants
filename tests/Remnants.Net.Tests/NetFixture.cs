@@ -114,6 +114,16 @@ public sealed class NetFixture
         Assert.True(until(), "condition never held");
     }
 
+    /// <summary>Sends the tile strike at <paramref name="target"/>'s tile, then ends turns until it has come down.</summary>
+    public ScavengeResult StrikeNow(TestPlayer by, Unit attacker, Unit target, string actionId, params TestPlayer[] players)
+    {
+        var action = Sim.Profile(attacker).Action(actionId);
+        var strike = action is null ? null : TileStrikes.StrikeAt(Sim, attacker, action, target);
+        var result = by.Do(strike ?? new AttackTile(by.Id, attacker.Id, target.Pos, actionId));
+        if (result.Ok) EndTurnsUntil(() => !TileStrikes.Readied(Sim.State, attacker), players);
+        return result;
+    }
+
     /// <summary>A free floor tile next to <paramref name="near"/> (for staging fights).</summary>
     public Pos FreeNeighbour(Pos near)
     {

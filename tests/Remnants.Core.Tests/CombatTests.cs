@@ -159,7 +159,7 @@ public class CombatTests
         {
             linked.Hp = linked.MaxHp;
             shooter.Ap = 3;
-            var r = sim.Execute(new Attack(1, shooter.Id, linked.Id, "burst"));
+            var r = Blow(sim, shooter, linked, "burst");
             Assert.True(r.Ok, r.Message);
         }
         var taken = linked.MaxHp - linked.Hp;
@@ -181,7 +181,7 @@ public class CombatTests
         {
             linked.Hp = linked.MaxHp;
             shooter.Ap = 3;
-            Assert.True(sim.Execute(new Attack(1, shooter.Id, linked.Id, "burst")).Ok);
+            Assert.True(Blow(sim, shooter, linked, "burst").Ok);
         }
         Assert.Equal(sim.State.Round + rounds - 1, linked.OffRelayUntilRound);
         Assert.True(Devices.IsJammed(sim, linked));
@@ -231,7 +231,7 @@ public class CombatTests
         while (hits == 0)
         {
             attacker.Ap = 3;
-            Assert.True(sim.Execute(new Attack(2, attacker.Id, target.Id, "swing")).Ok);
+            Assert.True(StrikeNow(sim, attacker, target, "swing").Ok);
             hits = sim.State.Events.Count(e => e.Type == ScavengeEventType.Attacked);
         }
         Assert.InRange(100 - target.Hp, 1, 12 - 6);

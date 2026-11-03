@@ -325,7 +325,7 @@ public class EnemyVariantTests
         var far = EnemyUnit("husk", new(2, 5));
         var sim = Arena(9, 6, [gunner, a, b, far]);
         Assert.Equal(1, sim.Profile(gunner).Action("pulse")!.Area);
-        Assert.True(sim.Execute(new Attack(1, gunner.Id, a.Id, "pulse")).Ok);
+        Assert.True(StrikeNow(sim, gunner, a, "pulse").Ok);
         Assert.Contains(sim.State.Events, e => e.UnitId == gunner.Id && e.TargetId == a.Id);
         Assert.Contains(sim.State.Events, e => e.UnitId == gunner.Id && e.TargetId == b.Id);
         Assert.DoesNotContain(sim.State.Events, e => e.UnitId == gunner.Id && e.TargetId == far.Id);
