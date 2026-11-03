@@ -76,6 +76,31 @@ public static class TileStrikes
         return tiles.Contains(tile) ? (m, dir, tiles) : null;
     }
 
+    /// <summary>Whether the unit has a tile strike waiting for this sub-round's end.</summary>
+    public static bool Readied(ScavengeState state, Unit unit) => state.Strikes.Any(s => s.UnitId == unit.Id);
+
+    /// <summary>
+    /// The aim at <paramref name="target"/>'s tile that covers the most hostiles the unit's side sees (in line of sight),
+    /// ties to the action's mode order, then the direction order; null when no mode covers it.
+    /// </summary>
+    public static (StrikeMode? Mode, Pos Direction)? BestAim(ScavengeSim sim, Unit unit, ActionProfile action, Unit target)
+    {
+        var state = sim.State;
+        var best = ((StrikeMode? Mode, Pos Direction)?)null;
+        var bestScore = 0;
+        foreach (var mode in action.Modes ?? [])
+            foreach (var dir in Pos.Neighbours8)
+            {
+                if (Aim(sim, unit, action, target.Pos, mode, dir) is not { } aim) continue;
+                var tiles = aim.Tiles.Where(p => Combat.Clear(sim.Data, state.Map, unit.Pos, p)).ToList();
+                if (!tiles.Contains(target.Pos)) continue;
+                var score = TargetsOn(state, unit, action, tiles).Count(t => Detection.SideSees(sim.Data, state, unit.Side, t));
+                if (score <= bestScore) continue;
+                (best, bestScore) = ((mode, dir), score);
+            }
+        return best;
+    }
+
     /// <summary>Every tile a unit could strike now with <paramref name="action"/> in <paramref name="mode"/>, any direction.</summary>
     public static HashSet<Pos> Reach(ScavengeSim sim, Unit unit, ActionProfile action, StrikeMode? mode = null)
     {
