@@ -42,7 +42,9 @@ public class TurnAdviceTests
             {
                 Fog = r.Fog with
                 {
-                    Overwatch = r.Fog.Overwatch with { ApCost = 5 }, Brace = r.Fog.Brace with { ApCost = 5 }, Lookout = r.Fog.Lookout with { ApCost = 5 },
+                    Overwatch = r.Fog.Overwatch with { ApCost = 5 },
+                    Brace = r.Fog.Brace with { ApCost = 5 },
+                    Lookout = r.Fog.Lookout with { ApCost = 5 },
                 },
             }));
         a.Ap = 1;

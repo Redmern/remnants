@@ -67,7 +67,9 @@ public partial class SettingsPanel : Overlay
 
         var skip = new CheckBox
         {
-            Text = "Skip scavenge animations", ButtonPressed = GameSettings.SkipAnimations, FocusMode = FocusModeEnum.None,
+            Text = "Skip scavenge animations",
+            ButtonPressed = GameSettings.SkipAnimations,
+            FocusMode = FocusModeEnum.None,
             TooltipText = Widgets.Tip("Moves and blows snap to where they end, so enemy turns never hold you up. The run plays out the same.",
                 Hotkeys.KeyName("scav_fast_forward")),
         };
@@ -76,7 +78,9 @@ public partial class SettingsPanel : Overlay
 
         var auto = new CheckBox
         {
-            Text = "End turn when nothing is left to do", ButtonPressed = GameSettings.AutoEndTurn, FocusMode = FocusModeEnum.None,
+            Text = "End turn when nothing is left to do",
+            ButtonPressed = GameSettings.AutoEndTurn,
+            FocusMode = FocusModeEnum.None,
             TooltipText = "A unit with no AP left for a move, a stance, an item or a blow ends its turn by itself. Turn it off to plan with no AP left.",
         };
         auto.Toggled += on => GameSettings.AutoEndTurn = on;
@@ -121,14 +125,18 @@ public partial class SettingsPanel : Overlay
 
         var motion = new CheckBox
         {
-            Text = "Reduce motion", ButtonPressed = GameSettings.ReduceMotion, FocusMode = FocusModeEnum.None,
+            Text = "Reduce motion",
+            ButtonPressed = GameSettings.ReduceMotion,
+            FocusMode = FocusModeEnum.None,
             TooltipText = "Panels, lists, counters and notices appear at once instead of sliding and fading.",
         };
         motion.Toggled += on => GameSettings.ReduceMotion = on;
         box.AddChild(motion);
         var frames = new CheckBox
         {
-            Text = "Show frame time", ButtonPressed = GameSettings.ShowFrameTime, FocusMode = FocusModeEnum.None,
+            Text = "Show frame time",
+            ButtonPressed = GameSettings.ShowFrameTime,
+            FocusMode = FocusModeEnum.None,
             TooltipText = Widgets.Tip("A small graph of how long each frame takes (60 fps = 16.7 ms), top right.", Hotkeys.KeyName("toggle_frame_time")),
         };
         frames.Toggled += FrameTimeOverlay.SetShown;
@@ -151,7 +159,9 @@ public partial class SettingsPanel : Overlay
         box.AddChild(mute);
         var cues = new CheckBox
         {
-            Text = "Visual sound cues", ButtonPressed = GameSettings.VisualSoundCues, FocusMode = FocusModeEnum.None,
+            Text = "Visual sound cues",
+            ButtonPressed = GameSettings.VisualSoundCues,
+            FocusMode = FocusModeEnum.None,
             TooltipText = "Show a marker at the screen edge toward ambushes and contacts you hear but cannot see.",
         };
         cues.Toggled += on => GameSettings.VisualSoundCues = on;
