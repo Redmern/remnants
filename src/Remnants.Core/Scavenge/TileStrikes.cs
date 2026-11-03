@@ -42,7 +42,8 @@ public static class TileStrikes
                 ? ScavengeResult.Fail(ScavengeError.InvalidTarget, $"{action.Name} cannot {m.ToString().ToLowerInvariant()}.")
                 : ScavengeResult.Fail(ScavengeError.OutOfRange, $"{c.Tile} is not in reach of {action.Name} from {unit.Pos}.");
         var free = FreeCounter(sim, unit, aim.Tiles);
-        var cost = free ? 0 : Combat.ApCost(action, unit.Pos, c.Tile);
+        var cost = Combat.ApCost(action, unit.Pos, c.Tile) - (free ? CounterWaiver(sim, unit) : 0);
+        cost = Math.Max(0, cost);
         if (cost > unit.Ap) return ScavengeResult.Fail(ScavengeError.NotEnoughAp, $"{unit.Name} needs {cost} AP for {action.Name} (has {unit.Ap}).");
 
         unit.Ap -= cost;
@@ -89,12 +90,17 @@ public static class TileStrikes
     /// <summary>
     /// Whether a tile strike of the unit's over <paramref name="tiles"/> is its free counter: it dodged a telegraphed blow of
     /// a hostile still standing on one of them in its side's sight (<see cref="Unit.FreeCounterId"/>, good through the round
-    /// after the dodge; a strike at a tile in the fog never comes back free, so the cost gives nothing away).
+    /// after the dodge; a strike at a tile in the fog never comes back free, so the cost gives nothing away). The unit must
+    /// have AP to act at all: the counter waives <see cref="CounterWaiver"/> of the strike's cost, never more.
     /// </summary>
     public static bool FreeCounter(ScavengeSim sim, Unit unit, IReadOnlyCollection<Pos> tiles) =>
-        unit.FreeCounterId is { } id && sim.State.Round <= unit.OutplayedUntilRound
+        unit.FreeCounterId is { } id && unit.Ap > 0 && sim.State.Round <= unit.OutplayedUntilRound
         && sim.State.FindUnit(id) is { IsActive: true, OnMap: true } attacker && unit.HostileTo(attacker) && tiles.Contains(attacker.Pos)
         && Detection.SideSees(sim.Data, sim.State, unit.Side, attacker);
+
+    /// <summary>The AP a free counter takes off a strike: the unit's cheapest attack's base cost (a dear attack pays the rest).</summary>
+    public static int CounterWaiver(ScavengeSim sim, Unit unit) =>
+        sim.Profile(unit).Actions.Select(a => a.ApCost).DefaultIfEmpty(0).Min();
 
     /// <summary>Whether the unit has a tile strike waiting for this sub-round's end.</summary>
     public static bool Readied(ScavengeState state, Unit unit) => state.Strikes.Any(s => s.UnitId == unit.Id);

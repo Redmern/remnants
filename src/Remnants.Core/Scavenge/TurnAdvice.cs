@@ -31,7 +31,7 @@ public static class TurnAdvice
             var reach = TileStrikes.Reach(sim, unit, action);
             if (state.Units.Any(t => t.IsActive && t.OnMap && unit.HostileTo(t) && reach.Contains(t.Pos) && Drones.CanStrike(action, t)
                                      && Detection.SideSees(sim.Data, state, unit.Side, t)
-                                     && (Combat.ApCost(action, unit.Pos, t.Pos) <= ap || TileStrikes.FreeCounter(sim, unit, [t.Pos]))))
+                                     && Combat.ApCost(action, unit.Pos, t.Pos) - (TileStrikes.FreeCounter(sim, unit, [t.Pos]) ? TileStrikes.CounterWaiver(sim, unit) : 0) <= ap))
                 return true;
         }
         return false;

@@ -17,10 +17,10 @@ public class OutplayTests
     });
 
     /// <summary>P1's knife at (2,2) stabs at P2 on (3,2); P2 steps off to (4,3) and the stab comes down on nobody.</summary>
-    private static (ScavengeSim Sim, Unit A, Unit B) Dodged()
+    private static (ScavengeSim Sim, Unit A, Unit B) Dodged(string dodgerWeapon = "knife")
     {
         var a = SurvivorUnit(1, new(2, 2), weapon: "knife");
-        var b = SurvivorUnit(2, new(3, 2), weapon: "knife");
+        var b = SurvivorUnit(2, new(3, 2), weapon: dodgerWeapon);
         var sim = Arena(10, 5, [a, b], data: Sure);
         Assert.True(sim.Execute(new AttackTile(1, a.Id, new(3, 2), "cut", StrikeMode.Stab)).Ok);
         Assert.True(sim.Execute(new Move(2, b.Id, new(4, 3))).Ok, "step off");
@@ -148,5 +148,31 @@ public class OutplayTests
         Assert.Equal(b.Id, a.OutplayedId);
         Assert.True(Combat.Exposed(sim, b));
         Assert.Null(a.FreeCounterId);
+    }
+
+    [Fact]
+    public void The_free_counter_waives_only_the_cheapest_attacks_cost()
+    {
+        var (sim, a, b) = Dodged(dodgerWeapon: "rifle");
+        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);   // round 2: b is up with full AP, 2 tiles from a
+        var aimed = sim.Profile(b).Action("aimed_shot")!;
+        var cheapest = sim.Profile(b).Actions.Min(x => x.ApCost);
+        var ap = b.Ap;
+        Assert.True(sim.Execute(StrikeOn(sim, b, a, "aimed_shot")).Ok);
+        Assert.Equal(ap - (Combat.ApCost(aimed, b.Pos, a.Pos) - cheapest), b.Ap);
+        Assert.Null(b.FreeCounterId);
+    }
+
+    [Fact]
+    public void The_free_counter_needs_ap_to_act_at_all_and_is_kept_when_refused()
+    {
+        var (sim, a, b) = Dodged();
+        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
+        Assert.True(sim.Execute(new Move(2, b.Id, new(3, 3))).Ok);
+        b.Ap = 0;
+        Assert.False(TileStrikes.FreeCounter(sim, b, [a.Pos]));
+        var r = sim.Execute(StrikeOn(sim, b, a, "cut"));
+        Assert.Equal(ScavengeError.NotEnoughAp, r.Error);
+        Assert.Equal(a.Id, b.FreeCounterId);
     }
 }
