@@ -78,10 +78,11 @@ public class EnemyTelegraphTests
     [Fact]
     public void A_target_that_already_spent_its_turn_still_gets_a_turn_before_the_blow_lands()
     {
-        // The survivor goes first and is done for the round; the Husk then declares. The blow waits for the Husk's next
-        // turn, which comes after the survivor's.
+        // The survivor goes first and spends all its AP; the Husk then declares. The blow waits until the survivor has
+        // had its next turn.
         var (sim, u, husk) = Adjacent(huskFirst: false, subRounds: 2);
-        Assert.True(sim.Execute(new EndTurn(1, u.Id, WholeTurn: true)).Ok);
+        u.Ap = 0;
+        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
         Assert.Equal(sim.State.TurnOrder[^1], sim.State.CurrentUnitId); // the far lookout, after the Husk declared
         Assert.True(sim.Execute(new EndTurn(1, sim.State.CurrentUnitId!.Value, WholeTurn: true)).Ok);
         Assert.Equal(2, sim.State.Round);
@@ -91,6 +92,64 @@ public class EnemyTelegraphTests
         Assert.NotNull(husk.Plan);
         Assert.Equal(u.MaxHp, u.Hp);
         Assert.True(sim.Execute(new Move(1, u.Id, new(1, 2))).Ok);
+        UntilResolved(sim, husk);
+        Assert.Equal(u.MaxHp, u.Hp);
+        Assert.Equal(husk.Id, u.OutplayedId);
+    }
+
+    [Fact]
+    public void An_enemy_in_reach_strikes_in_both_sub_rounds_each_blow_telegraphed()
+    {
+        // The survivor goes first: the Husk declares in sub-round 1, and once the survivor has had its sub-round 2 turn
+        // the blow comes down at the Husk's own sub-round 2 turn, which then declares the next one.
+        var u = SurvivorUnit(1, new(2, 2), weapon: "pipe");
+        var husk = EnemyUnit("husk", new(3, 2));
+        husk.Ai.Mode = AiMode.Hunting;
+        var sim = Arena(10, 5, [u, husk], data: Rounds(2));
+        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
+        var first = Assert.IsType<PlannedAction>(husk.Plan);
+        Assert.Equal((1, 2), (sim.State.Round, sim.State.SubRound));
+        Assert.Equal(u.MaxHp, u.Hp); // the survivor's sub-round 2 turn comes before the blow
+        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
+        Assert.Contains(sim.State.Events, e => e.Round == 1 && e.Type == ScavengeEventType.Attacked && e.UnitId == husk.Id);
+        Assert.True(u.Hp < u.MaxHp);
+        Assert.NotNull(husk.Plan);
+        Assert.NotSame(first, husk.Plan);
+    }
+
+    [Fact]
+    public void A_blow_declared_in_sub_round_two_waits_for_a_slower_spent_targets_next_turn()
+    {
+        // The Husk does nothing in sub-round 1. The slow survivor then walks up next to it,
+        // spending all its AP, so it sits out sub-round 2, where the Husk declares. In round 2 the faster Husk is up
+        // first: its blow must wait until the survivor has had a turn to step out of it.
+        var data = With(r => r with
+        {
+            Turn = r.Turn with { SubRounds = 2 },
+            Ai = r.Ai with { WanderChance = 0 },
+            Combat = r.Combat with { MinHitChance = 1, MaxHitChance = 1 },
+        });
+        var husk = EnemyUnit("husk", new(5, 2));
+        var u = SurvivorUnit(1, new(2, 2), weapon: "pipe", attributes: 20);
+        var sim = Arena(12, 5, [husk, u], data: data);
+        Assert.True(sim.Profile(husk).Initiative > sim.Profile(u).Initiative);
+        sim.State.TurnIndex = 1; // the Husk's sub-round 1 turn (the arena starts on it) passes with nothing done
+        Assert.Null(husk.Plan);
+        while (u.Ap > 0 && u.Pos.Chebyshev(husk.Pos) > 1)
+        {
+            var step = sim.Reachable(u).Where(kv => kv.Value <= u.Ap).OrderBy(kv => kv.Key.Chebyshev(husk.Pos)).First().Key;
+            Assert.True(sim.Execute(new Move(1, u.Id, step)).Ok);
+        }
+        u.Ap = 0;
+        Assert.True(u.Pos.Chebyshev(husk.Pos) <= 1);
+        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);   // sub-round 2: u sits out, the Husk declares; round 2 begins
+
+        Assert.Equal(2, sim.State.Round);
+        Assert.Equal(u.Id, sim.State.CurrentUnitId);
+        Assert.NotNull(husk.Plan);
+        Assert.Equal(u.MaxHp, u.Hp);
+        var away = sim.Reachable(u).Keys.Where(p => p.Chebyshev(husk.Pos) > 1).OrderBy(p => p.X).ThenBy(p => p.Y).First();
+        Assert.True(sim.Execute(new Move(1, u.Id, away)).Ok);
         UntilResolved(sim, husk);
         Assert.Equal(u.MaxHp, u.Hp);
         Assert.Equal(husk.Id, u.OutplayedId);

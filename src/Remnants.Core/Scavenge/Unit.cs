@@ -138,6 +138,9 @@ public sealed class Unit
     /// </summary>
     public int ExposedUntilRound { get; set; }
 
+    /// <summary>The <see cref="ScavengeState.TurnSeq"/> its latest sub-turn began at.</summary>
+    public int TurnSeq { get; set; }
+
     /// <summary>Personal card slots: cards this character always has to hand (not shuffled), paid from the squad's points.</summary>
     public List<string> SlotCards { get; set; } = new();
 
@@ -351,4 +354,13 @@ public sealed class PlannedAction
     /// <summary>A stab / slash weapon's mode and direction (see <see cref="TileStrikes"/>); null for any other attack.</summary>
     public Items.StrikeMode? Mode { get; set; }
     public Pos? Direction { get; set; }
+
+    /// <summary><see cref="ScavengeState.TurnSeq"/> when it was declared (see <see cref="PlannedActions.Ready"/>).</summary>
+    public int DeclaredSeq { get; set; }
+
+    /// <summary>
+    /// An AI blow at a target already in reach (no path): it comes down at the unit's next sub-turn, a later sub-round's
+    /// too, once its target has had a turn (<see cref="PlannedActions.Ready"/>).
+    /// </summary>
+    public bool Quick { get; set; }
 }

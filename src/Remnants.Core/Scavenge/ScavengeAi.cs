@@ -83,7 +83,12 @@ internal static class ScavengeAi
         if (plan.Path.Count > 0 || plan.AttackTile is not null)
         {
             var declared = PlannedActions.Declare(sim, unit, new DeclareIntent(unit.PlayerId ?? 0, unit.Id, plan.Path, plan.AttackTile, plan.ActionId, plan.Suppress, plan.Mode, plan.Direction));
-            if (declared.Ok) return;
+            if (declared.Ok)
+            {
+                // A blow in reach comes down at its next sub-turn (once the target had a turn), not a whole turn later.
+                if (plan.Path.Count == 0 && plan.AttackTile is not null) unit.Plan!.Quick = true;
+                return;
+            }
             // The look-ahead and the plan rules disagree (should not happen): say so, and strike what is in reach now
             // rather than idle.
             sim.State.Log(new(sim.State.Round, ScavengeEventType.IntentCanceled, $"{unit.Name} could not settle on a plan ({declared.Message})",

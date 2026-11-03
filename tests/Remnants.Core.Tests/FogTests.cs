@@ -142,7 +142,9 @@ public class FogTests
         Assert.Equal(plain + sim.Data.Rules.Fog.Ambush.HitBonus + Math.Min(0, sim.Profile(u).Dodge) - sim.Profile(u).Dodge, ambush, 6);
 
         var before = sim.State.Events.Count;
-        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
+        // The Linked telegraphs from the fog; the shot comes down once the slow survivor has had a turn.
+        for (var i = 0; i < 3 && !sim.State.Events.Skip(before).Any(e => e.Type == ScavengeEventType.Ambushed); i++)
+            Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
         var fresh = sim.State.Events.Skip(before).ToList();
 
         Assert.Contains(fresh, e => e.Type == ScavengeEventType.Ambushed && e.UnitId == linked.Id && e.TargetId == u.Id);

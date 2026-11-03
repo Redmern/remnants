@@ -186,6 +186,9 @@ public sealed class ScavengeState
     /// <summary>Which of the round's sub-rounds is being played, from 1 (<see cref="TurnRules.SubRounds"/>).</summary>
     public int SubRound { get; set; } = 1;
 
+    /// <summary>Sub-turns begun so far in the run (<see cref="Unit.TurnSeq"/>): orders "has it had a turn since".</summary>
+    public int TurnSeq { get; set; }
+
     /// <summary>Tile attacks declared this sub-round, in declaration order; they strike at its end (<see cref="TileStrikes"/>).</summary>
     public List<TileStrike> Strikes { get; set; } = new();
     public bool Finished { get; set; }

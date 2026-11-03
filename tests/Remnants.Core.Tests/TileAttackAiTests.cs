@@ -86,21 +86,6 @@ public class TileAttackAiTests
     }
 
     [Fact]
-    public void An_enemy_that_telegraphed_a_blow_sits_out_the_later_sub_round()
-    {
-        var (sim, far, blade, near) = Ambush(subRounds: 2);
-        Assert.True(sim.Execute(new EndTurn(1, far.Id)).Ok);
-        var plan = blade.Plan;
-        Assert.NotNull(plan);
-        Assert.True(sim.Execute(new EndTurn(1, near.Id)).Ok);
-        Assert.Equal(2, sim.State.SubRound);
-        var events = sim.State.Events.Count;
-        Assert.True(sim.Execute(new EndTurn(1, far.Id)).Ok);
-        Assert.Same(plan, blade.Plan);
-        Assert.DoesNotContain(sim.State.Events.Skip(events), e => e.UnitId == blade.Id);
-    }
-
-    [Fact]
     public void Same_seed_and_commands_give_the_same_game_with_sub_rounds_and_tile_strikes()
     {
         string Play()
