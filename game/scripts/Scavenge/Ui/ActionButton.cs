@@ -1,3 +1,4 @@
+using System.Linq;
 using Godot;
 using Remnants.Game.Hud;
 
@@ -6,6 +7,8 @@ namespace Remnants.Game.Scavenge.Ui;
 /// <summary>
 /// A tactical order button: icon, label (with a muted detail line), its AP cost as pips (red when the unit cannot
 /// pay) and its hotkey as a keycap. Toggle buttons (the chosen attack, an item being aimed) show pressed.
+/// A compact one (the Actions row) is a square icon tile with its AP cost as a number badge; name, detail, cost and
+/// hotkey are in its tooltip.
 /// </summary>
 public partial class ActionButton : Button
 {
@@ -15,6 +18,10 @@ public partial class ActionButton : Button
     private readonly Pips _cost;
     private readonly PanelContainer _cap;
     private readonly Label _key;
+    private readonly PanelContainer? _badge;
+    private readonly Label? _badgeNumber;
+    private readonly bool _compact;
+    private readonly int _iconSize;
     private int _apCost;
     private string _iconId = "";
 
@@ -26,21 +33,24 @@ public partial class ActionButton : Button
 
     public ActionButton() : this("ui_attack", "", "", 0, null) { }
 
-    public ActionButton(string icon, string text, string detail, int apCost, string? hotkey, string tooltip = "")
+    public ActionButton(string icon, string text, string detail, int apCost, string? hotkey, string tooltip = "", bool compact = false)
     {
+        _compact = compact;
+        _iconSize = compact ? CompactIcon : 20;
         FocusMode = FocusModeEnum.None;
-        SizeFlagsHorizontal = SizeFlags.ExpandFill;
+        SizeFlagsHorizontal = compact ? SizeFlags.ShrinkBegin : SizeFlags.ExpandFill;
         MouseDefaultCursorShape = CursorShape.PointingHand;
 
         var margin = new MarginContainer { MouseFilter = MouseFilterEnum.Ignore };
         margin.SetAnchorsPreset(LayoutPreset.FullRect);
-        foreach (var side in new[] { "left", "right" }) margin.AddThemeConstantOverride($"margin_{side}", 8);
+        foreach (var side in new[] { "left", "right" }) margin.AddThemeConstantOverride($"margin_{side}", compact ? 0 : 8);
         AddChild(margin);
         var row = Widgets.Row(8);
         row.MouseFilter = MouseFilterEnum.Ignore;
+        if (compact) row.Alignment = BoxContainer.AlignmentMode.Center;
         margin.AddChild(row);
 
-        _icon = Icons.Rect(Icons.Get(icon, 20), 20, Palette.Rust);
+        _icon = Icons.Rect(Icons.Get(icon, _iconSize), _iconSize, Palette.Rust);
         _iconId = icon;
         _icon.MouseFilter = MouseFilterEnum.Ignore;
         row.AddChild(_icon);
@@ -67,6 +77,21 @@ public partial class ActionButton : Button
         _key.CustomMinimumSize = new Vector2(12, 0);
         _cap.AddChild(_key);
         row.AddChild(_cap);
+
+        if (compact)
+        {
+            // The AP cost, as a number in the tile's corner.
+            _badge = new PanelContainer { ThemeTypeVariation = "Chip", MouseFilter = MouseFilterEnum.Ignore };
+            _badge.SetAnchorsPreset(LayoutPreset.BottomRight);
+            _badge.GrowHorizontal = GrowDirection.Begin;
+            _badge.GrowVertical = GrowDirection.Begin;
+            _badgeNumber = Widgets.Label("", "", Palette.Amber, 11);
+            _badgeNumber.AddThemeFontOverride("font", Fonts.BodyBold);
+            _badgeNumber.HorizontalAlignment = HorizontalAlignment.Center;
+            _badgeNumber.CustomMinimumSize = new Vector2(8, 0);
+            _badge.AddChild(_badgeNumber);
+            AddChild(_badge);
+        }
         Pressed += () => OnPressed?.Invoke();
         Motion.PressFeedback(this);
         Configure(icon, text, detail, apCost, hotkey, tooltip);
@@ -81,24 +106,31 @@ public partial class ActionButton : Button
     {
         Hotkey = hotkey;
         _apCost = apCost;
-        CustomMinimumSize = new Vector2(0, detail.Length > 0 ? 44 : 36);
+        CustomMinimumSize = _compact ? new Vector2(CompactSize, CompactSize) : new Vector2(0, detail.Length > 0 ? 44 : 36);
         var key = hotkey is null ? "" : Hotkeys.KeyName(hotkey);
-        // A long detail line is clipped on the button: the tooltip carries it whole.
-        TooltipText = Widgets.Tip((tooltip.Length > 0 ? tooltip : text) + (detail.Length > 34 && !tooltip.Contains(detail) ? $"\n{detail}" : ""),
-                          key.Length > 0 ? key : null)
-                      + (apCost > 0 ? $"\nCosts {apCost} AP ({new string('■', apCost)}: one pip per AP)" : "");
+        // A long detail line is clipped on the button, and a compact one shows neither: the tooltip carries them whole.
+        var body = _compact
+            ? string.Join("\n", new[] { text, detail, tooltip }.Where(t => t.Length > 0).Distinct())
+            : (tooltip.Length > 0 ? tooltip : text) + (detail.Length > 34 && !tooltip.Contains(detail) ? $"\n{detail}" : "");
+        TooltipText = Widgets.Tip(body, key.Length > 0 ? key : null)
+                      + (apCost > 0 ? $"\nCosts {apCost} AP{(_compact ? "" : $" ({new string('■', apCost)}: one pip per AP)")}" : "");
         if (icon != _iconId)
         {
             _iconId = icon;
-            _icon.Texture = Icons.Get(icon, 20);
+            _icon.Texture = Icons.Get(icon, _iconSize);
         }
         _title.Text = text;
-        _title.Visible = text.Length > 0;
+        _title.Visible = text.Length > 0 && !_compact;
         _detail.Text = detail;
-        _detail.Visible = detail.Length > 0;
-        _cost.Visible = apCost > 0;
+        _detail.Visible = detail.Length > 0 && !_compact;
+        _cost.Visible = apCost > 0 && !_compact;
         _key.Text = key;
-        _cap.Visible = key.Length > 0;
+        _cap.Visible = key.Length > 0 && !_compact;
+        if (_badge is not null)
+        {
+            _badgeNumber!.Text = apCost.ToString();
+            _badge.Visible = apCost > 0;
+        }
         ToggleMode = false;
         ButtonPressed = false;
         ActionMode = ActionModeEnum.Release;
@@ -136,5 +168,8 @@ public partial class ActionButton : Button
         Disabled = blocked;
         _icon.Modulate = blocked ? Palette.TextDim : Palette.Rust;
         _cost.Set(_apCost, _apCost, tooExpensive ? Palette.Danger : Palette.Amber);
+        _badgeNumber?.AddThemeColorOverride("font_color", tooExpensive ? Palette.Danger : Palette.Amber);
     }
+
+    private const int CompactSize = 44, CompactIcon = 28;
 }

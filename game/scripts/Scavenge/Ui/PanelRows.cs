@@ -13,7 +13,7 @@ namespace Remnants.Game.Scavenge.Ui;
 /// button again (theme lookups, text shaping, layout) was most of the 20–30 ms frame each command cost.
 /// <see cref="Fresh"/> takes a one-off control, freed on the next refresh.
 /// </summary>
-public sealed class PanelRows(VBoxContainer box)
+public sealed class PanelRows(Container box)
 {
     private readonly List<Control> _rows = new();
     private readonly List<Control> _fresh = new();
@@ -92,13 +92,13 @@ public sealed class PanelRows(VBoxContainer box)
         return label;
     }
 
-    public ActionButton Button(string icon, string text, string detail, int apCost, string? hotkey, string tooltip, Action onPressed)
+    public ActionButton Button(string icon, string text, string detail, int apCost, string? hotkey, string tooltip, Action onPressed, bool compact = false)
     {
         var made = false;
         var button = Take(() =>
         {
             made = true;
-            return new ActionButton(icon, text, detail, apCost, hotkey, tooltip);
+            return new ActionButton(icon, text, detail, apCost, hotkey, tooltip, compact);
         });
         if (!made) button.Configure(icon, text, detail, apCost, hotkey, tooltip);
         button.OnPressed = onPressed;

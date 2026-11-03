@@ -11,9 +11,10 @@ using UiKit = Remnants.Game.Colony.Ui.Ui;
 namespace Remnants.Game.Scavenge.Ui;
 
 /// <summary>
-/// What the acting unit can do besides moving, as <see cref="ActionButton"/>s with icons, AP-cost pips and hotkeys.
-/// Two panels in the right column: this one (Attack, Use: pick the attack for map clicks, use a consumable then click a
-/// target, numbered 1–9 in that order so items start right after the attacks), and <see cref="Context"/> below the
+/// What the acting unit can do besides moving, as <see cref="ActionButton"/>s with icons, AP costs and hotkeys.
+/// Two panels in the right column: this one, a wrapping row of compact icon tiles with their AP cost as a badge (the
+/// attacks, the chosen weapon's stab / slash, then the consumables: pick the attack for map clicks, use a consumable then
+/// click a target, numbered 1–9 in that order so items start right after the attacks; the tooltip names each), and <see cref="Context"/> below the
 /// stances for what is in reach here (salvage a node, I; recruit a stranger, T; the party's vehicle as a status chip with
 /// Load, R, and Take at a workbench; extract on an exit or beside the vehicle, X). Piles are taken, and loot dropped or
 /// stashed, from the <see cref="LootPanel"/> (F). Every button sends a Core command through the screen; Core decides
@@ -38,9 +39,18 @@ public partial class ActionPanel : PanelContainer
 
     /// <summary>
     /// How a stab / slash weapon strikes when a tile is clicked (a tile strike that comes down at the sub-round's end);
-    /// null: clicks on enemies attack them at once.
+    /// null: clicks on enemies attack them at once. Picked for one round: the next round starts without it.
     /// </summary>
-    public StrikeMode? Mode { get; private set; }
+    public StrikeMode? Mode
+    {
+        get
+        {
+            _strike.Sync(_presenter.State.Round);
+            return _strike.Mode;
+        }
+    }
+
+    private readonly StrikeSelection _strike = new();
 
     public event Action<string>? ActionChosen;
     public event Action<string>? UseItemChosen;
@@ -54,9 +64,11 @@ public partial class ActionPanel : PanelContainer
         var tip = new InfoTip("hit_chance");
         var header = Widgets.SectionHeader("Actions", "ui_attack", tip);
         header.MouseFilter = MouseFilterEnum.Pass;
-        header.TooltipText = "Orders for the unit whose turn it is. Each pip (■) on a button is 1 AP.\nHover a red target on the map for the hit chance.";
+        header.TooltipText = "Orders for the unit whose turn it is. The number on a tile is its AP cost; hover a tile for what it does.\nHover a red target on the map for the hit chance.";
         box.AddChild(header);
-        var content = Widgets.Column(4);
+        var content = new HFlowContainer();
+        content.AddThemeConstantOverride("h_separation", 4);
+        content.AddThemeConstantOverride("v_separation", 4);
         box.AddChild(content);
         _rows = new PanelRows(content);
 
@@ -71,7 +83,7 @@ public partial class ActionPanel : PanelContainer
 
     public void SetAction(string? actionId)
     {
-        if (actionId != ActionId) Mode = null;
+        if (actionId != ActionId) _strike.Clear();
         ActionId = actionId;
         ActionChosen?.Invoke(actionId ?? "");
     }
@@ -122,7 +134,6 @@ public partial class ActionPanel : PanelContainer
         if (ActionId is null || profile.Action(ActionId) is null) ActionId = profile.Actions.FirstOrDefault()?.Id;
 
         var slot = 0;
-        _rows.Heading("ATTACK WITH");
         foreach (var a in profile.Actions)
         {
             var icon = a.Pattern == AttackPattern.Melee ? "skill_melee" : "skill_firearms";
@@ -137,16 +148,15 @@ public partial class ActionPanel : PanelContainer
 
         if (ActionId is not null && profile.Action(ActionId) is { Patterned: true } chosen)
         {
-            if (Mode is { } m && !chosen.Modes!.Contains(m)) Mode = null;
-            _rows.Heading("STRIKE TILES");
+            if (Mode is { } m && !chosen.Modes!.Contains(m)) _strike.Clear();
             foreach (var mode in chosen.Modes!)
             {
                 var stab = mode == StrikeMode.Stab;
                 var reach = stab ? $"line {chosen.Reach}, diagonal {chosen.DiagonalRange}" : "front tile and both flanks";
-                var button = Add(_rows, "skill_melee", stab ? "Stab" : "Slash", reach, chosen.ApCost, null,
+                var button = Add(_rows, stab ? "ui_stab" : "ui_slash", stab ? "Stab" : "Slash", reach, chosen.ApCost, null,
                     $"{(stab ? "Stab" : "Slash")} with the {chosen.Name}: click a tile to strike it ({reach}). The AP goes now and "
-                    + "your part of the sub-round ends; whoever hostile stands on the covered tiles when the sub-round ends is hit.\nClick again to attack units directly.",
-                    () => { Mode = Mode == mode ? null : mode; ActionChosen?.Invoke(ActionId ?? ""); });
+                    + "your part of the sub-round ends; whoever hostile stands on the covered tiles when the sub-round ends is hit.\nStays picked until the round ends; click again to attack units directly.",
+                    () => { _strike.Toggle(mode, _presenter.State.Round); ActionChosen?.Invoke(ActionId ?? ""); });
                 button.Toggle(Mode == mode);
                 button.SetBlocked(chosen.ApCost > unit.Ap, chosen.ApCost > unit.Ap);
             }
@@ -155,7 +165,6 @@ public partial class ActionPanel : PanelContainer
         var usable = unit.Pack.Distinct().Where(id => data.Items[id].Use is not null).ToList();
         if (usable.Count > 0)
         {
-            _rows.Heading("USE");
             foreach (var id in usable)
             {
                 var def = data.Items[id];
@@ -253,7 +262,7 @@ public partial class ActionPanel : PanelContainer
 
     private ActionButton Add(PanelRows rows, string icon, string text, string detail, int apCost, string? hotkey, string tooltip, Action onPressed)
     {
-        var button = rows.Button(icon, text, detail, apCost, hotkey, tooltip, onPressed);
+        var button = rows.Button(icon, text, detail, apCost, hotkey, tooltip, onPressed, compact: rows == _rows);
         _buttons.Add(button);
         return button;
     }
