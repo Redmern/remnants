@@ -16,7 +16,10 @@ namespace Remnants.Net;
 /// <item>the side's own contacts and motion sensors, reveals of units it sees, and every burning flare (they light up
 ///   for everyone);</item>
 /// <item>loot caches as the side last saw them (a cache looted out of sight still shows until seen again);</item>
-/// <item>the turn order cut to known units, with <see cref="HiddenUnitId"/> standing in when an unseen unit is up;</item>
+/// <item>the turn order cut to known units, with <see cref="HiddenUnitId"/> standing in when an unseen unit is up (a card
+///   that hurried or held up a unit shows in it for every side that knows the unit);</item>
+/// <item>card barriers and smoke the side put up or sees (a tile of it or next to it in sight), never whose they are;
+///   the client lays them over its map;</item>
 /// <item>the run's environment (hour, phase, weather): the same for everyone;</item>
 /// <item>the side's own explored tiles, every party's done flag, and no RNG state or Network alarm counters;</item>
 /// <item>co-op: the side's own pings, alliance offers to or from the player, and breaks announced on its team;</item>
@@ -148,6 +151,10 @@ public sealed class SideFog(int playerId, string side)
             Contacts = state.Contacts.Where(c => c.Side == Side).ToList(),
             Reveals = state.Reveals.Where(r => r.Side == Side && known.Contains(r.UnitId)).ToList(),
             Flares = state.Flares.ToList(),
+            // Barriers and smoke: the side's own, and any it sees (smoke from the edge of the cloud), never who put them up.
+            FieldEffects = state.FieldEffects.Where(x => x.Side == Side || x.Tiles.Any(p => SeesAt(state, p)))
+                .Select(x => new FieldEffect { Kind = x.Kind, Tiles = new(x.Tiles), UntilRound = x.UntilRound, Side = x.Side == Side ? Side : "" })
+                .ToList(),
             Sensors = state.Sensors.Where(x => x.Side == Side).ToList(),
             Pings = state.Pings.Where(p => p.Side == Side).ToList(),
             Proposals = state.Proposals.Where(p => p.FromPlayerId == PlayerId || p.ToPlayerId == PlayerId).ToList(),
@@ -173,6 +180,10 @@ public sealed class SideFog(int playerId, string side)
             }
         });
     }
+
+    /// <summary>Whether the side sees the tile or one next to it now.</summary>
+    private bool SeesAt(ScavengeState state, Pos p) =>
+        Pos.Neighbours8.Append(default).Select(d => p + d).Any(n => state.Map.InBounds(n) && Visible.Contains(state.Map.Index(n)));
 
     /// <summary>
     /// A story mission's objectives, chatter and prompt go to the host's team only (a rival never learns them), and
