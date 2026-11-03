@@ -39,7 +39,16 @@ public sealed record ActionProfile(
     int CloseRange = 0,
     int CloseApPenalty = 0,
     IReadOnlyList<BaneDef>? ExtraBanes = null,
-    double NetworkFeedback = 0);
+    double NetworkFeedback = 0,
+    int? DiagonalReach = null,
+    IReadOnlyList<StrikeMode>? Modes = null)
+{
+    /// <summary>Reach along a diagonal.</summary>
+    public int DiagonalRange => DiagonalReach ?? Reach;
+
+    /// <summary>Whether the action strikes tiles in a <see cref="StrikeMode"/> pattern rather than the one tile aimed at.</summary>
+    public bool Patterned => Modes is { Count: > 0 };
+}
 
 /// <summary>
 /// Everything the rules need about a unit, derived from attributes + carried gear + body state + stance.
@@ -308,7 +317,7 @@ public static class ProfileDeriver
 
             result.Add(new ActionProfile(a.Id, a.Name, itemId, a.Pattern, a.Reach,
                 a.MinDamage * damageScale, a.MaxDamage * damageScale, a.ApCost, Math.Max(0, accuracy), a.Noise, a.Area, a.Reveal, a.Bane,
-                a.ArmorPierce, a.InjuryMultiplier, a.CloseRange, a.CloseApPenalty, a.ExtraBanes, a.NetworkFeedback));
+                a.ArmorPierce, a.InjuryMultiplier, a.CloseRange, a.CloseApPenalty, a.ExtraBanes, a.NetworkFeedback, a.DiagonalReach, a.Modes));
         }
 
         foreach (var item in working)

@@ -48,6 +48,30 @@ public static class Combat
         return zone;
     }
 
+    /// <summary>
+    /// The tiles a strike in <paramref name="mode"/> covers from <paramref name="from"/> toward <paramref name="direction"/>
+    /// (one of the 8 steps), on the map, line of sight not checked: a stab, the straight line of the action's reach
+    /// (<see cref="ActionProfile.DiagonalRange"/> along a diagonal); a slash, the front tile, then its two flanks. Nothing for
+    /// a mode the action lacks.
+    /// </summary>
+    public static IEnumerable<Pos> Covered(TileMap map, ActionProfile action, StrikeMode mode, Pos from, Pos direction)
+    {
+        var dir = new Pos(Math.Sign(direction.X), Math.Sign(direction.Y));
+        if (dir == default || action.Modes is not { } modes || !modes.Contains(mode)) yield break;
+        var diagonal = dir.X != 0 && dir.Y != 0;
+        IEnumerable<Pos> tiles = mode switch
+        {
+            StrikeMode.Stab => Enumerable.Range(1, diagonal ? action.DiagonalRange : action.Reach).Select(i => new Pos(from.X + dir.X * i, from.Y + dir.Y * i)),
+            _ => diagonal
+                ? [from + dir, new Pos(from.X + dir.X, from.Y), new Pos(from.X, from.Y + dir.Y)]
+                : dir.X != 0
+                    ? [from + dir, new Pos(from.X + dir.X, from.Y - 1), new Pos(from.X + dir.X, from.Y + 1)]
+                    : [from + dir, new Pos(from.X - 1, from.Y + dir.Y), new Pos(from.X + 1, from.Y + dir.Y)],
+        };
+        foreach (var p in tiles)
+            if (map.InBounds(p)) yield return p;
+    }
+
     /// <summary>Whether <paramref name="target"/> lies in the action's pattern from <paramref name="from"/>.</summary>
     private static bool InPattern(ActionProfile action, Pos from, Pos? facing, Pos target)
     {
@@ -57,7 +81,8 @@ public static class Combat
         {
             AttackPattern.Melee => from.Chebyshev(target) <= action.Reach,
             AttackPattern.Ranged => from.DistanceSquared(target) <= action.Reach * action.Reach,
-            AttackPattern.Line => (d.X == 0 || d.Y == 0 || Math.Abs(d.X) == Math.Abs(d.Y)) && from.Chebyshev(target) <= action.Reach,
+            AttackPattern.Line => d.X == 0 || d.Y == 0 ? from.Chebyshev(target) <= action.Reach
+                : Math.Abs(d.X) == Math.Abs(d.Y) && from.Chebyshev(target) <= action.DiagonalRange,
             _ => false,
         };
     }

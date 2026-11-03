@@ -34,6 +34,13 @@ public enum AttackPattern
     Line,
 }
 
+/// <summary>
+/// How a melee weapon strikes a tile (see <c>Combat.Covered</c>): a stab is a straight line of the weapon's reach in the
+/// direction of the attack (<see cref="ActionDef.DiagonalReach"/> along a diagonal), a slash the tile in front and its
+/// two flanking tiles.
+/// </summary>
+public enum StrikeMode { Stab, Slash }
+
 /// <summary>Body requirement for a modifier or action, e.g. a grappling hook needs working arms.</summary>
 public sealed record BodyRequirement
 {
@@ -76,6 +83,12 @@ public sealed record ActionDef
     public string Name { get; init; } = "";
     public AttackPattern Pattern { get; init; } = AttackPattern.Melee;
     public int Reach { get; init; } = 1;
+
+    /// <summary>Reach along a diagonal (a spear's 3 straight is 2 diagonal); null: the same as <see cref="Reach"/>.</summary>
+    public int? DiagonalReach { get; init; }
+
+    /// <summary>The ways the weapon strikes tiles, the first the default; empty: it strikes the one tile aimed at.</summary>
+    public List<StrikeMode> Modes { get; init; } = new();
     public int MinDamage { get; init; }
     public int MaxDamage { get; init; }
     public int ApCost { get; init; } = 1;

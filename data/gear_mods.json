@@ -51,6 +51,8 @@
     "pipe": { "type": "melee", "family": "melee" },
     "spear": { "type": "melee", "family": "melee" },
     "machete": { "type": "melee", "family": "melee" },
+    "knife": { "type": "melee", "family": "melee" },
+    "sword": { "type": "melee", "family": "melee" },
     "gun_arm": { "type": "integrated" },
     "rag_coat": { "type": "clothing", "family": "clothing" },
     "scout_jacket": { "type": "clothing", "family": "clothing" },
