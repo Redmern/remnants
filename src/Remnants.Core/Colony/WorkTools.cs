@@ -6,7 +6,8 @@ namespace Remnants.Core.Colony;
 /// <summary>
 /// Tools in the stockpile make gatherers faster: a job's tools (jobs.json <c>tools</c>: item id → quality) go to the
 /// workers at the job's buildings, one each, the best tool to the lowest survivor id. A tool out on an expedition is not
-/// in the stockpile, so it is not used at home meanwhile. The quality feeds <see cref="JobOutput.ToolFactor"/>.
+/// in the stockpile, so it is not used at home meanwhile. Variants count as their base item (a crafted
+/// <c>crowbar@crude</c> is a crowbar). The quality feeds <see cref="JobOutput.ToolFactor"/>.
 /// </summary>
 public static class WorkTools
 {
@@ -25,10 +26,17 @@ public static class WorkTools
         if (index < 0) return 0;
         foreach (var (item, quality) in job.Tools.OrderByDescending(kv => kv.Value).ThenBy(kv => kv.Key, StringComparer.Ordinal))
         {
-            var count = state.Inventory.Count(item);
+            var count = state.Inventory.Counts.Where(kv => BaseId(kv.Key) == item).Sum(kv => kv.Value);
             if (index < count) return quality;
             index -= count;
         }
         return 0;
+    }
+
+    /// <summary>The item an inventory id is a variant of (<c>base[@quality][+mkN][+mod]</c>).</summary>
+    private static string BaseId(string id)
+    {
+        var end = id.IndexOfAny(['@', '+']);
+        return end < 0 ? id : id[..end];
     }
 }

@@ -6,7 +6,7 @@
     "unique": true,
     "levels": [
       { "cost": {},                                      "workerSlots": 0, "beds": 0, "buildWork": 4, "maxBuilders": 2 },
-      { "cost": { "wood": 40,  "stone": 26 },            "workerSlots": 0, "beds": 0, "buildWork": 9.5, "maxBuilders": 3 },
+      { "cost": { "wood": 48,  "stone": 30 },            "workerSlots": 0, "beds": 0, "buildWork": 9.5, "maxBuilders": 3 },
       { "cost": { "wood": 160, "stone": 140, "scrap": 40 }, "workerSlots": 0, "beds": 0, "buildWork": 32, "maxBuilders": 4 }
     ]
   },
@@ -219,7 +219,7 @@
     "category": "Housing",
     "minTownHallLevel": 2,
     "levels": [
-      { "cost": { "wood": 50, "stone": 34 },                "beds": 10, "buildWork": 4, "maxBuilders": 3 },
+      { "cost": { "wood": 60, "stone": 40 },                "beds": 10, "buildWork": 4, "maxBuilders": 3 },
       { "cost": { "wood": 80, "stone": 60, "scrap": 10 },   "beds": 14, "buildWork": 12, "maxBuilders": 4 },
       { "cost": { "wood": 120, "stone": 90, "scrap": 30 },  "beds": 20, "buildWork": 30, "maxBuilders": 4 }
     ]

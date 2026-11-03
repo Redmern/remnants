@@ -102,6 +102,16 @@ public class GatheringCurveTests
     }
 
     [Fact]
+    public void A_crafted_tool_of_any_quality_counts()
+    {
+        var (sim, _, worker) = Worked("scrapyard", 1);
+        sim.State.Inventory.Add("crowbar@crude");
+        var job = sim.Data.Jobs["scavenging"];
+
+        Assert.Equal(job.Tools["crowbar"], WorkTools.Quality(sim.State, sim.Data, job, worker), 9);
+    }
+
+    [Fact]
     public void Production_adds_what_the_tools_make_to_the_stockpile()
     {
         var (bareSim, _, _) = Worked("woodcutter", 1);

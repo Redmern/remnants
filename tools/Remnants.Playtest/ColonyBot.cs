@@ -209,6 +209,7 @@ public sealed class ColonyBot
             var weapons = Count("pipe") + Count("spear") + Count("machete");
             if (State.Stockpile.Get("medicine") < 3 && _sim.FoodStock > 25) Queue(workshop, "herbal_remedy");
             else if (weapons < 3 && State.Stockpile.Get("scrap") >= 6) Queue(workshop, "spear");
+            else if (ToolWanted(workshop) is { } tool) Queue(workshop, tool);
             else if (workshop.Level >= 2 && Count("med_kit") < 2 && State.Stockpile.Get("cloth") >= 2 && State.Stockpile.Get("medicine") >= 3)
                 Queue(workshop, "med_kit");
             // Gear mods from the default set once the colony is armed and has scrap to spare: an edge for each blade, sights for guns.
@@ -452,6 +453,28 @@ public sealed class ColonyBot
                 id = GearBench.Install(data, id, m) is { Ok: true } o ? o.ItemId! : id;
             }
         }
+    }
+
+    /// <summary>
+    /// A tool for a gatherer who works bare-handed (the basic one), or once the Workshop is level 2 a better one for a worker
+    /// on a basic tool; only with the inputs and 5 scrap to spare.
+    /// </summary>
+    private string? ToolWanted(Building workshop)
+    {
+        foreach (var b in State.Buildings.Where(b => Data.Buildings[b.DefId].Produces is not null).OrderBy(b => b.Id))
+        {
+            var job = Data.Jobs[Data.Buildings[b.DefId].Job!];
+            if (job.Tools.Count == 0) continue;
+            var crew = State.Buildings.Where(o => Data.Buildings[o.DefId].Job == job.Id).Sum(o => State.WorkersAt(o.Id).Count());
+            var tools = job.Tools.OrderBy(kv => kv.Value).Select(kv => kv.Key).ToList();
+            var owned = tools.Sum(Count);
+            var best = tools[^1];
+            var pick = owned < crew ? (workshop.Level >= Data.Recipes[best].MinLevel ? best : tools[0])
+                : workshop.Level >= Data.Recipes[best].MinLevel && Count(best) < crew ? best : null;
+            if (pick is null || !Data.Recipes.TryGetValue(pick, out var recipe)) continue;
+            if (recipe.Inputs.All(kv => State.Stockpile.Get(kv.Key) >= kv.Value + (kv.Key == "scrap" ? 5 : 0))) return pick;
+        }
+        return null;
     }
 
     private int Count(string baseId) =>

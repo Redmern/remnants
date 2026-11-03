@@ -3,7 +3,7 @@
     "id": "outskirts", "name": "Town Outskirts", "region": "Home Valley", "mapPos": [0.31, 0.6],
     "description": "Collapsed sheds and gardens on the colony's doorstep. Husks drift in from the hills.",
     "travelDays": 0, "startIntel": "Scouted", "reveals": ["scrapyard_flats", "suburb_ruins"],
-    "haul": {"wood": [16, 24], "stone": [4, 8]}, "depletionPerVisit": 0.35, "replenishPerDay": 0.08,
+    "haul": {"wood": [13, 18], "stone": [3, 6]}, "depletionPerVisit": 0.35, "replenishPerDay": 0.08,
     "width": 24, "height": 24, "threat": 1, "lootTier": 1,
     "terrain": { "rooms": [2, 3], "roomSize": [4, 7], "rubble": 0.06, "cover": 0.04, "water": 0.0 },
     "spawnEdge": "South", "exitEdge": "North", "exits": 2,
