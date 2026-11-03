@@ -183,9 +183,9 @@ public static class Weather
     {
         var hour = DayNight.Hour(state.Tick, data.Rules);
         return state.Survivors
-            .Where(s => !s.Away && s.PatientAtBuildingId is null && s.AssignedBuildingId is { } id
-                        && state.FindBuilding(id) is { } b && data.Buildings[b.DefId].Outdoor
-                        && Schedule.Factor(s, b, data.Buildings[b.DefId], hour, data.Rules.DayNight) > 0)
+            .Where(s => !s.Away && s.PatientAtBuildingId is null
+                        && s.Jobs.Any(id => state.FindBuilding(id) is { } b && data.Buildings[b.DefId].Outdoor
+                                            && Schedule.Factor(s, b, data.Buildings[b.DefId], hour, data.Rules.DayNight) > 0))
             .OrderBy(s => s.Id);
     }
 

@@ -153,7 +153,8 @@ public static class Cybernetics
             * JobOutput.LifeFactor(medic, data.Rules.Output)
             * JobOutput.MoodFactor(medic, data.Rules.Output)
             * JobOutput.ConditionFactor(medic, data)
-            * JobOutput.PerkFactor(job, medic, data));
+            * JobOutput.PerkFactor(job, medic, data)
+            * Activities.Share(sim.State, medic));
         return care * def.Level(bay.Level).OutputMultiplier * (1 + PerkEffects.For(lead, data).Hook(PerkHooks.SurgerySpeedBonus));
     }
 

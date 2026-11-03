@@ -61,8 +61,8 @@ public partial class ConstructionSitePanel : PanelContainer
             Candidate = (sim, s) => !s.IsInfant && (BuildingId is not { } b || sim.Site(b) is not { } site || !site.Builders.Contains(s.Id)),
             Fit = (sim, s) => sim.Data.Jobs.GetValueOrDefault(sim.Data.Rules.Construction.Job) is { } job ? BuildingPanel.JobFit(job, s) : null,
             Assign = s => new AssignBuilder(s.Id, BuildingId ?? -1),
-            Unassign = s => new Unassign(s.Id),
-            FreeTip = "Free builder slot: click to pick who builds here (they leave their job).",
+            Unassign = s => new Unassign(s.Id, BuildingId),
+            FreeTip = "Free builder slot: click to pick who builds here (they keep their job; their effort is shared).",
         };
         _builders.SurvivorRequested += id => SurvivorRequested?.Invoke(id);
         box.AddChild(_builders);

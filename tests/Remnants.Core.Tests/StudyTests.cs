@@ -115,10 +115,11 @@ public class StudyTests
     }
 
     [Fact]
-    public void Students_and_mentors_leave_their_jobs_and_cannot_be_assigned_while_in_class()
+    public void Students_and_mentors_keep_their_jobs_and_can_take_one_while_in_class()
     {
         var sim = Colony();
         var farm = sim.Build("farm");
+        var quarry = sim.Build("quarry");
         var s = sim.AddSurvivor();
         var mentor = sim.AddSurvivor();
         mentor.Set(Skill.Farming, 50);
@@ -127,12 +128,12 @@ public class StudyTests
 
         Assert.True(sim.Execute(new StartStudy(s.Id, TownHall(sim).Id, Skill.Farming, MentorId: mentor.Id)).Ok);
 
-        Assert.Null(s.AssignedBuildingId);
-        Assert.Null(mentor.AssignedBuildingId);
-        Assert.Equal(CommandError.InClass, sim.Execute(new AssignJob(mentor.Id, farm.Id)).Error);
+        Assert.Equal(farm.Id, s.AssignedBuildingId);
+        Assert.Equal(farm.Id, mentor.AssignedBuildingId);
+        Assert.True(sim.Execute(new AssignJob(mentor.Id, quarry.Id)).Ok);
         var id = sim.ClassOf(s)!.Id;
         Assert.True(sim.Execute(new CancelStudy(id)).Ok);
-        Assert.True(sim.Execute(new AssignJob(mentor.Id, farm.Id)).Ok);
+        Assert.Equal([farm.Id, quarry.Id], mentor.Jobs);
         Assert.Equal(CommandError.UnknownStudy, sim.Execute(new CancelStudy(id)).Error);
     }
 

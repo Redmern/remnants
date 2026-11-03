@@ -10,19 +10,21 @@ namespace Remnants.Core.Colony;
 /// </summary>
 public static class Training
 {
-    /// <summary>One tick of work in the colony: train, and earn the work XP.</summary>
+    /// <summary>One tick of work in the colony: train, and earn the work XP, both at the survivor's share of effort (<see cref="Activities"/>).</summary>
     internal static void Work(ColonyState state, GameData data, JobDef job, Survivor s)
     {
-        TrainTick(job, s, data.Rules.Training);
-        Progression.GrantXp(state, data, s, data.Progression.Xp.PerWorkTick, XpSource.Work);
+        var share = Activities.Share(state, s);
+        TrainTick(job, s, data.Rules.Training, share);
+        Progression.GrantXp(state, data, s, data.Progression.Xp.PerWorkTick * share, XpSource.Work);
     }
 
-    public static void TrainTick(JobDef job, Survivor s, TrainingRules rules)
+    /// <summary>One tick of training at this job; <paramref name="share"/> is the survivor's share of effort (1/N activities).</summary>
+    public static void TrainTick(JobDef job, Survivor s, TrainingRules rules, double share = 1)
     {
-        var mult = s.IsChild ? rules.ChildMultiplier : 1.0;
+        var mult = (s.IsChild ? rules.ChildMultiplier : 1.0) * share;
 
         s.GainSkill(job.Skill, rules.SkillPerTick * mult);
-        foreach (var (skill, share) in job.Trains) s.GainSkill(skill, rules.SkillPerTick * mult * share);
+        foreach (var (skill, side) in job.Trains) s.GainSkill(skill, rules.SkillPerTick * mult * side);
 
         var totalWeight = job.Attributes.Values.Sum();
         if (totalWeight <= 0) return;

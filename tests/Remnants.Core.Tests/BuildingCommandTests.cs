@@ -179,7 +179,7 @@ public class PlotTests
 public class JobCommandTests
 {
     [Fact]
-    public void Assign_moves_a_worker_between_buildings()
+    public void Moving_a_worker_is_leaving_one_job_and_taking_another()
     {
         var sim = TestData.EmptyColony();
         var s = sim.AddSurvivor();
@@ -187,6 +187,7 @@ public class JobCommandTests
         var quarry = sim.Build("quarry");
 
         Assert.True(sim.Execute(new AssignJob(s.Id, farm.Id)).Ok);
+        Assert.True(sim.Execute(new Unassign(s.Id, farm.Id)).Ok);
         Assert.True(sim.Execute(new AssignJob(s.Id, quarry.Id)).Ok);
 
         Assert.Equal(quarry.Id, s.AssignedBuildingId);

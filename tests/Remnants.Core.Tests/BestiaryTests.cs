@@ -120,7 +120,7 @@ public class BestiaryTests
         node["colony"]!.AsObject().Remove("bestiary");
         node["colony"]!.AsObject().Remove("cards");
         Assert.Empty(SaveGame.Load(TestData.Real, node.ToJsonString(), Real).State.Bestiary);
-        Assert.Equal(27, SaveGame.Version);
+        Assert.Equal(27, SaveGame.CardsVersion);
 
         sim.State.Bestiary["no_such_enemy"] = new BestiaryEntry { Seen = 1 };
         Assert.Throws<System.Text.Json.JsonException>(() => SaveGame.Load(TestData.Real, SaveGame.Save(sim.State), Real));

@@ -98,7 +98,7 @@ public class ColonyCardTests
         Assert.True(sim.Execute(new SetDeck(["dash", "take_cover"])).Ok);
         var json = SaveGame.Save(sim.State);
         Assert.Contains($"\"version\": {SaveGame.Version}", json);
-        Assert.Equal(27, SaveGame.Version);
+        Assert.Equal(27, SaveGame.CardsVersion);
         var loaded = SaveGame.Load(TestData.Real, json, ScavengeTestData.Real);
         Assert.Equal(sim.State.Cards.Owned, loaded.State.Cards.Owned);
         Assert.Equal(["dash", "take_cover"], loaded.State.Cards.Deck);

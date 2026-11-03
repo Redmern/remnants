@@ -171,7 +171,7 @@ public partial class RosterPanel : PanelContainer
             _assignMenu = new PopupMenu { Theme = HudTheme.Shared, Name = "AssignTo" };
             _assignMenu.IdPressed += id =>
             {
-                if (id >= 0 && id < _assignIds.Count) _session.Execute(new AssignJob(_menuSurvivor, _assignIds[(int)id]));
+                if (id >= 0 && id < _assignIds.Count) _session.Execute(new AssignJob(_menuSurvivor, _assignIds[(int)id], Move: true));
             };
             _menu.AddChild(_assignMenu);
             _menu.IdPressed += OnMenu;
@@ -184,7 +184,7 @@ public partial class RosterPanel : PanelContainer
         _menu.AddIconItem(Icons.Get("stat_pop", 16), $"Open {s.Name}", 0);
         // Buildings with a free slot, the best fit first; Core still decides when one is picked.
         var free = sim.State.Buildings
-            .Where(b => sim.Data.Buildings[b.DefId].Job is not null && b.Id != s.AssignedBuildingId
+            .Where(b => sim.Data.Buildings[b.DefId].Job is not null && !s.Jobs.Contains(b.Id)
                         && sim.State.WorkersAt(b.Id).Count() < sim.Data.Buildings[b.DefId].Level(b.Level).WorkerSlots)
             .Select(b => (B: b, Fit: BuildingPanel.JobFit(sim.Data.Jobs[sim.Data.Buildings[b.DefId].Job!], s).Score))
             .OrderByDescending(x => x.Fit).ThenBy(x => x.B.Id).ToList();

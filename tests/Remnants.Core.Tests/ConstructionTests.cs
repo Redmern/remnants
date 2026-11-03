@@ -215,7 +215,7 @@ public class ConstructionTests
     }
 
     [Fact]
-    public void Builders_and_jobs_and_guards_exclude_each_other()
+    public void Builders_keep_their_jobs_and_unassign_takes_them_off_the_site()
     {
         var sim = Colony();
         var farm = sim.Build("farm");
@@ -223,12 +223,17 @@ public class ConstructionTests
         var s = sim.AddSurvivor();
         sim.Execute(new AssignJob(s.Id, farm.Id));
         Assert.True(sim.Execute(new AssignBuilder(s.Id, site)).Ok);
-        Assert.Null(s.AssignedBuildingId);
+        Assert.Equal(farm.Id, s.AssignedBuildingId);
         Assert.Contains(s.Id, sim.Site(site)!.Builders);
 
-        Assert.True(sim.Execute(new AssignJob(s.Id, farm.Id)).Ok);
-        Assert.DoesNotContain(s.Id, sim.Site(site)!.Builders);
+        sim.Advance(1);
+        Assert.Contains(s.Id, sim.Site(site)!.Builders);
 
+        Assert.True(sim.Execute(new Unassign(s.Id, site)).Ok);
+        Assert.Null(sim.State.Construction.SiteOf(s.Id));
+        Assert.Equal(farm.Id, s.AssignedBuildingId);
+
+        sim.Execute(new Unassign(s.Id));
         sim.Execute(new AssignBuilder(s.Id, site));
         Assert.True(sim.Execute(new Unassign(s.Id)).Ok);
         Assert.Null(sim.State.Construction.SiteOf(s.Id));

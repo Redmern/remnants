@@ -7,7 +7,7 @@ namespace Remnants.Core.Colony;
 
 /// <summary>
 /// A student in class at a study building: learning a skill up to a cap, or a perk from a mentor who has it. Student and
-/// mentor do not work meanwhile. Plain data (saved with the colony).
+/// mentor keep their other activities, each at a share of their effort (see <see cref="Activities"/>). Plain data (saved with the colony).
 /// </summary>
 public sealed class StudyOrder
 {
@@ -37,7 +37,7 @@ public sealed record StudyPlan(CommandResult Check, double Cap, double RatePerTi
 
 /// <summary>
 /// Study (see <see cref="StudyRules"/>): each tick every class makes progress, the student earns study XP and the mentor
-/// teaching XP. A skill study ends at its cap; a perk study when its effort is done, and the perk is learned without a
+/// teaching XP, each at their share of effort (<see cref="Activities.Share"/>: 1/N when they also work or build). A skill study ends at its cap; a perk study when its effort is done, and the perk is learned without a
 /// point. A class whose student is gone, away or admitted ends; a skill class whose mentor is gone goes on alone (capped
 /// at the self-study cap), a perk class without its mentor ends.
 /// </summary>
@@ -59,7 +59,8 @@ public static class StudySystem
             var mentor = order.MentorId is { } m ? state.FindSurvivor(m) : null;
             // Classes keep the student's day shift (see Schedule); nights are for sleep.
             if (data.Rules.DayNight.Enabled && !Schedule.IsDayShiftHour(student, DayNight.Hour(state.Tick, data.Rules), data.Rules.DayNight)) continue;
-            var rate = Rate(data, student, mentor, order.Skill, order.PerkId, order.ManualItemId, items);
+            var share = Activities.Share(state, student);
+            var rate = Rate(data, student, mentor, order.Skill, order.PerkId, order.ManualItemId, items) * share;
             if (order.Skill is { } skill)
             {
                 var cap = Cap(data, items, mentor, skill, order.ManualItemId);
@@ -83,8 +84,9 @@ public static class StudySystem
                     if (!student.HasPerk(perkId)) Progression.Learn(state, student, perk, mentor is null ? " by study" : $" from {mentor.Name}");
                 }
             }
-            Progression.GrantXp(state, data, student, data.Progression.Xp.PerStudyTick, XpSource.Study);
-            if (mentor is not null) Progression.GrantXp(state, data, mentor, data.Progression.Xp.PerTeachTick, XpSource.Teaching);
+            Progression.GrantXp(state, data, student, data.Progression.Xp.PerStudyTick * share, XpSource.Study);
+            if (mentor is not null)
+                Progression.GrantXp(state, data, mentor, data.Progression.Xp.PerTeachTick * Activities.Share(state, mentor), XpSource.Teaching);
         }
     }
 
@@ -176,7 +178,7 @@ public static class StudySystem
         var student = sim.State.FindSurvivor(order.StudentId);
         if (student is null) return null;
         var mentor = order.MentorId is { } m ? sim.State.FindSurvivor(m) : null;
-        var rate = Rate(sim.Data, student, mentor, order.Skill, order.PerkId, order.ManualItemId, sim.Scavenge);
+        var rate = Rate(sim.Data, student, mentor, order.Skill, order.PerkId, order.ManualItemId, sim.Scavenge) * Activities.Share(sim.State, student);
         if (order.Skill is { } skill) return SkillEta(student.Get(skill), Cap(sim.Data, sim.Scavenge, mentor, skill, order.ManualItemId), rate);
         var work = sim.Data.Progression.Study.PerkWorkPerTier * sim.Data.Perks[order.PerkId!].Tier;
         return rate <= 0 ? null : (int)Math.Ceiling((work - order.Progress) / rate - 1e-9);
@@ -213,7 +215,8 @@ public static class StudySystem
         if (student.IsInfant) return Fail(CommandError.TooYoung, $"{student.Name} is a baby.");
         if (student.Away) return Fail(CommandError.SurvivorAway, $"{student.Name} is away on an expedition.");
         if (student.PatientAtBuildingId is not null) return Fail(CommandError.IsPatient, $"{student.Name} is a patient.");
-        if (ClassOf(state, student.Id) is not null) return Fail(CommandError.InClass, $"{student.Name} is already in class.");
+        if (state.Studies.Any(o => o.StudentId == student.Id)) return Fail(CommandError.InClass, $"{student.Name} is already in class.");
+        if (Activities.CanTakeOn(state, data, student) is { Ok: false } busy) return new(busy, 0, 0, null);
         if (state.Studies.Count(o => o.BuildingId == building.Id) >= Slots(data, building))
             return Fail(CommandError.StudyFull, $"The {def.Name} has no room for another student.");
 
@@ -229,6 +232,8 @@ public static class StudySystem
             if (state.Studies.Any(o => o.StudentId == mentor.Id)) return Fail(CommandError.InClass, $"{mentor.Name} is a student right now.");
             if (state.Studies.Count(o => o.MentorId == mentor.Id) >= data.Progression.Study.MaxStudentsPerMentor)
                 return Fail(CommandError.MentorBusy, $"{mentor.Name} already teaches {data.Progression.Study.MaxStudentsPerMentor} students.");
+            if (!state.Studies.Any(o => o.MentorId == mentor.Id) && Activities.CanTakeOn(state, data, mentor) is { Ok: false } full)
+                return new(full, 0, 0, null);
         }
 
         ManualDef? manual = null;
@@ -252,7 +257,7 @@ public static class StudySystem
                 return Fail(CommandError.AlreadyAtCap, mentor is null
                     ? $"{student.Name} cannot learn more {data.SkillInfo(skill).Name} alone; find a mentor or a manual."
                     : $"{student.Name} already knows what {mentor.Name} can teach.");
-            var rate = Rate(data, student, mentor, skill, null, c.ManualItemId, sim.Scavenge);
+            var rate = Rate(data, student, mentor, skill, null, c.ManualItemId, sim.Scavenge) * Activities.ShareWithOneMore(state, student);
             return new(CommandResult.Success("ok"), cap, rate, SkillEta(student.Get(skill), cap, rate));
         }
 
@@ -264,7 +269,7 @@ public static class StudySystem
         var status = Progression.Status(sim, student, perk);
         if (status.Owned) return Fail(CommandError.AlreadyHasPerk, $"{student.Name} already has {perk.Name}.");
         if (!status.Eligible) return Fail(CommandError.PerkRequirementsNotMet, $"{student.Name} needs {string.Join(", ", status.Missing)}.");
-        var perkRate = Rate(data, student, mentor, null, perk.Id, null, sim.Scavenge);
+        var perkRate = Rate(data, student, mentor, null, perk.Id, null, sim.Scavenge) * Activities.ShareWithOneMore(state, student);
         var work = data.Progression.Study.PerkWorkPerTier * perk.Tier;
         return new(CommandResult.Success("ok"), 0, perkRate, perkRate <= 0 ? null : (int)Math.Ceiling(work / perkRate - 1e-9));
     }
@@ -280,10 +285,6 @@ internal static class StudyHandlers
         var student = state.FindSurvivor(c.StudentId)!;
         var mentor = c.MentorId is { } m ? state.FindSurvivor(m) : null;
         if (c.ManualItemId is { } manual) state.Inventory.TryTake(manual);
-        student.AssignedBuildingId = null;
-        ConstructionSystem.Release(state, student.Id);
-        if (mentor is not null) mentor.AssignedBuildingId = null;
-        if (mentor is not null) ConstructionSystem.Release(state, mentor.Id);
         var order = new StudyOrder
         {
             Id = state.NextStudyId++, BuildingId = c.BuildingId, StudentId = c.StudentId, MentorId = c.MentorId,

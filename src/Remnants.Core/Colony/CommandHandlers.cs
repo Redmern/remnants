@@ -18,20 +18,24 @@ internal static class CommandHandlers
         if (Schematics.Research.IsResearching(sim.State, survivor.Id))
             return CommandResult.Fail(CommandError.IsResearching, $"{survivor.Name} is researching at the Town Hall; stop the research first.");
         if (survivor.IsInfant) return CommandResult.Fail(CommandError.TooYoung, $"{survivor.Name} is a baby.");
-        if (StudySystem.ClassOf(sim.State, survivor.Id) is not null)
-            return CommandResult.Fail(CommandError.InClass, $"{survivor.Name} is in class; end the study first.");
         if (survivor.IsChild && !sim.Data.Jobs[def.Job].ChildrenAllowed)
             return CommandResult.Fail(CommandError.NotForChildren, $"{sim.Data.Jobs[def.Job].Name} is too hard for a child.");
         if (Raids.RaidSystem.IsRubble(sim, building))
             return CommandResult.Fail(CommandError.Wrecked, $"{def.Name} was wrecked in a raid; repair it first.");
-        if (survivor.AssignedBuildingId == building.Id)
-            return CommandResult.Success($"{survivor.Name} already works at {def.Name}.", building.Id);
+        if (survivor.Jobs.Contains(building.Id))
+        {
+            if (!c.Move || survivor.Jobs.Count == 1)
+                return CommandResult.Success($"{survivor.Name} already works at {def.Name}.", building.Id);
+            survivor.AssignedBuildingId = building.Id;
+            return CommandResult.Success($"{survivor.Name} now only works at {def.Name}.", building.Id);
+        }
         if (sim.FreeSlots(building) <= 0)
             return CommandResult.Fail(CommandError.NoFreeSlot, $"{def.Name} has no free worker slot.");
+        if (Activities.CanTakeOn(sim.State, sim.Data, survivor, c.Move ? survivor.Jobs.Count : 0) is { Ok: false } busy) return busy;
 
-        survivor.AssignedBuildingId = building.Id;
+        if (c.Move) survivor.Jobs.Clear();
+        survivor.Jobs.Add(building.Id);
         Raids.Guards.Release(sim.State, survivor.Id);
-        ConstructionSystem.Release(sim.State, survivor.Id);
         return CommandResult.Success($"{survivor.Name} now works at {def.Name}.", building.Id);
     }
 
@@ -39,6 +43,13 @@ internal static class CommandHandlers
     {
         var survivor = sim.State.FindSurvivor(c.SurvivorId);
         if (survivor is null) return CommandResult.Fail(CommandError.UnknownSurvivor, $"No survivor {c.SurvivorId}.");
+        if (c.BuildingId is { } only)
+        {
+            if (survivor.Jobs.Remove(only)) return CommandResult.Success($"{survivor.Name} left their job there.", only);
+            if (sim.State.Construction.Find(only) is { } site && site.Builders.Remove(survivor.Id))
+                return CommandResult.Success($"{survivor.Name} stopped building there.", only);
+            return CommandResult.Fail(CommandError.NotAssigned, $"{survivor.Name} neither works nor builds there.");
+        }
         if (survivor.AssignedBuildingId is null && sim.State.Construction.Sites.Any(s => s.Builders.Contains(survivor.Id)))
         {
             ConstructionSystem.Release(sim.State, survivor.Id);

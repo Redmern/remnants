@@ -592,6 +592,18 @@ condition the rules name exists). Without the file nothing changes (no condition
 - **Saves**: colony `SaveGame.MedicineVersion` (old saves: half the Medicine stock becomes antiseptic, 2 for 1),
   protocol `Protocol.MedicineVersion`; both keyed so a merge renumbers one constant. Tests: `MedicineTests`.
 
+## Multiple activities
+
+A survivor holds up to `rules.maxActivities` (3) activities at once (`Colony/Activities.cs`): each job
+(`Survivor.Jobs`, the single source of truth; `AssignedBuildingId` is the first job and setting it replaces them all), a
+class as student, teaching as mentor, and one construction site as builder. `AssignJob` adds a job, `StartStudy` and
+`AssignBuilder` add theirs; one more past the cap fails with `TooManyActivities`. `Unassign(survivor, building)` leaves
+one job or site; `Unassign(survivor)` leaves every job. **Effort splits 1/N** (`Activities.Share`): each job's output
+(`Schedule.Crew` factor: gathering, harvest, crafting, Med Bay care; surgery effort and the output estimates follow),
+job training and work XP (`Training.Work`), study progress and study/teaching XP, and a builder's haul and work. N = 1
+is unchanged. Guard duty, research, expeditions and Med Bay beds stay exclusive and clear every job. Save version 28
+writes `jobs`; older saves' `assignedBuildingId` loads as a one-job list.
+
 ## Population life
 
 All numbers live in `rules.json` (`life`, `relationships`, `family`, `mood`, `food.infantPerTick`) and `jobs.json`
@@ -1748,9 +1760,10 @@ by default, so hand-built test rules and `TestData.Real` keep instant building).
 - **Done**: when the work is done and everything is delivered, a new building appears (`Constructed`, crops planted) or
   the standing one reaches its level (`Upgraded`); builders become idle. **An upgrade keeps the building working at its
   old level** (its workers, output, beds, Town Hall cap) until then — a site's builders are not its workers.
-- **Commands**: `AssignBuilder(survivor, building)` (leaves their job or guard post; `CanBuild`: home, not a patient, baby,
-  student or researcher; `NoFreeSlot` past `maxBuilders`, default `defaultMaxBuilders`); `Unassign` also takes a builder
-  off; `AssignJob`, guard duty, an expedition, a Med Bay bed, a class or research release them. `CancelConstruction` gives
+- **Commands**: `AssignBuilder(survivor, building)` (keeps their jobs and class, leaves a guard post; `CanBuild`: home, not a
+  patient, baby or researcher; `NoFreeSlot` past `maxBuilders`, default `defaultMaxBuilders`; `TooManyActivities` at the
+  cap, see Multiple activities); `Unassign(survivor, building)` takes a builder off that site, `Unassign(survivor)` off
+  any site when they hold no job; guard duty, an expedition, a Med Bay bed or research release them. `CancelConstruction` gives
   back what was not hauled in full and the hauled materials at `refundShare` (80%), rounded down. `PauseConstruction`,
   `SetConstructionPriority`, `SetSiteNightShift`. Queries: `ColonySim.Site(id)`, `SiteForecast(site)` (crew, rates per
   hour averaged over the day, ETA, why it stands still), `BuildHours(def, level)` (clock hours with two typical

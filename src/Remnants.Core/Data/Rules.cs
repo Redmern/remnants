@@ -7,6 +7,9 @@ public sealed record RulesDef
     public int DaysPerYear { get; init; } = 30;
     public int AdultAge { get; init; } = 16;
     public string TownHallBuildingId { get; init; } = "town_hall";
+
+    /// <summary>Activities (jobs, a class, a site) one survivor holds at once; each gets 1/N of their effort.</summary>
+    public int MaxActivities { get; init; } = 3;
     public OutputRules Output { get; init; } = new();
     public TrainingRules Training { get; init; } = new();
     public FoodRules Food { get; init; } = new();

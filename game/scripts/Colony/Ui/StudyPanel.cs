@@ -63,7 +63,7 @@ public partial class StudyPanel : PanelContainer
         }
         box.AddChild(grid);
         box.AddChild(_plan);
-        _start = PanelKit.Focusable(Widgets.IconButton("ui_study", "Start class", "Student and mentor leave their jobs while in class.", Start, variation: "Primary"));
+        _start = PanelKit.Focusable(Widgets.IconButton("ui_study", "Start class", "Student and mentor keep their jobs while in class; their effort is shared between them.", Start, variation: "Primary"));
         box.AddChild(_start);
     }
 
