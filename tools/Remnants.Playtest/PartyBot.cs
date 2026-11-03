@@ -38,6 +38,14 @@ public sealed record PlanCardStats
     public int EnemyAttacks { get; set; }
     public int EnemyRounds { get; set; }
 
+    /// <summary>Units the party's cards moved (push, pull, swap, spin) and turns they reordered; enemy cards' alike.</summary>
+    public int Displaced { get; set; }
+    public int Reordered { get; set; }
+    public int EnemyDisplaced { get; set; }
+
+    /// <summary>The party's card plays by card name.</summary>
+    public SortedDictionary<string, int> CardsByName { get; set; } = new(StringComparer.Ordinal);
+
     public void Add(ScavengeState state, ScavengeEvent e, ISet<int> mine)
     {
         bool Mine(int? id) => id is { } i && mine.Contains(i);
@@ -57,8 +65,20 @@ public sealed record PlanCardStats
             case ScavengeEventType.IntentFizzled: Fizzled++; break;
             case ScavengeEventType.IntentCanceled: Canceled++; break;
             case ScavengeEventType.CardPlayed:
-                if (Mine(e.UnitId)) CardsPlayed++;
+                if (Mine(e.UnitId))
+                {
+                    CardsPlayed++;
+                    var name = System.Text.RegularExpressions.Regex.Match(e.Message, @" plays (.+?)(?: \(boosted\))?:").Groups[1].Value;
+                    CardsByName[name] = CardsByName.GetValueOrDefault(name) + 1;
+                }
                 else EnemyCardsPlayed++;
+                break;
+            case ScavengeEventType.Displaced:
+                if (Mine(e.UnitId)) Displaced++;
+                else if (Enemy(e.UnitId)) EnemyDisplaced++;
+                break;
+            case ScavengeEventType.InitiativeChanged when Mine(e.UnitId):
+                Reordered++;
                 break;
             case ScavengeEventType.Attacked when e.Tier is { } tier:
                 if (Mine(e.UnitId))
@@ -80,6 +100,8 @@ public sealed record PlanCardStats
         Declared += o.Declared; EnemyDeclared += o.EnemyDeclared; Resolved += o.Resolved; Fizzled += o.Fizzled; Canceled += o.Canceled;
         CardsPlayed += o.CardsPlayed; EnemyCardsPlayed += o.EnemyCardsPlayed; DamageDealt += o.DamageDealt; DamageTaken += o.DamageTaken;
         EnemyAttacks += o.EnemyAttacks; EnemyRounds += o.EnemyRounds;
+        Displaced += o.Displaced; Reordered += o.Reordered; EnemyDisplaced += o.EnemyDisplaced;
+        foreach (var (name, count) in o.CardsByName) CardsByName[name] = CardsByName.GetValueOrDefault(name) + count;
         for (var i = 0; i < 3; i++) { TiersDealt[i] += o.TiersDealt[i]; TiersTaken[i] += o.TiersTaken[i]; }
     }
 }
