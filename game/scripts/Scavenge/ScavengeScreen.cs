@@ -160,7 +160,8 @@ public partial class ScavengeScreen : Node3D
         switch (e.Type)
         {
             case ScavengeEventType.WeatherChanged: SyncWeather(); break;
-            case ScavengeEventType.Lightning: _weather.Strike(0.15f); break;
+            // Lightning shares the hit flashes' strobing cap (and none with reduce motion).
+            case ScavengeEventType.Lightning: _weather.Strike(0.15f, _juice.AllowFlash()); break;
             case ScavengeEventType.Thunder: Audio.WeatherAudio.Lightning(0.9f); break;
         }
     }

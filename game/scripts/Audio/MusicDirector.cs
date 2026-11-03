@@ -93,6 +93,8 @@ public partial class MusicDirector : Node
 
     public void SetLayer(string layer, bool on)
     {
+        // One stem never plays twice (two layers mapped to the same track would only get louder): the first one on wins.
+        if (on && !_layersOn.Contains(layer) && SharesStem(layer)) return;
         if (on ? !_layersOn.Add(layer) : !_layersOn.Remove(layer)) return;
         Trace($"music layer {layer} {(on ? "on" : "off")}");
         if (!_layers.TryGetValue(layer, out var deck))
@@ -124,11 +126,19 @@ public partial class MusicDirector : Node
             return;
         }
         SetLayer(layer, true);
-        if (!_layers.TryGetValue(layer, out var deck)) return;
+        if (!_layersOn.Contains(layer) || !_layers.TryGetValue(layer, out var deck)) return;
         var target = Mathf.Max(Silent, (deck.Asset?.VolumeDb ?? 0) + Mathf.LinearToDb(level));
         if (Mathf.IsEqualApprox(target, deck.Target)) return;
         deck.Target = target;
         deck.Speed = 40f;
+    }
+
+    /// <summary>Whether another layer that is on plays the same track as <paramref name="layer"/>.</summary>
+    private bool SharesStem(string layer)
+    {
+        var layers = AudioManager.Instance?.Map.Layers;
+        if (layers?.GetValueOrDefault(layer) is not { } id) return false;
+        return _layersOn.Any(other => other != layer && layers.GetValueOrDefault(other) == id);
     }
 
     /// <summary>A one-shot musical sting (extraction, death): the mapped <c>music.{name}</c> event, which ducks the bed.</summary>

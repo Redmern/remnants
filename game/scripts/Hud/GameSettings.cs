@@ -103,7 +103,8 @@ public static class GameSettings
     public static readonly string[] EffectsLevels = ["Off", "Low", "Normal", "High"];
 
     /// <summary>The feel settings as Core's view model takes them.</summary>
-    public static Remnants.Core.Scavenge.JuiceSettings Juice => new(EffectsLevel, ScreenShake, HitStop, HitFlashes, ReduceMotion);
+    public static Remnants.Core.Scavenge.JuiceSettings Juice =>
+        new(EffectsLevel, ScreenShake, HitStop, HitFlashes, ReduceMotion) { Crt = CrtShader, Music = MusicReactive };
 
     public static readonly Vector2I[] Resolutions = [new(1280, 720), new(1600, 900), new(1920, 1080), new(2560, 1440), new(3840, 2160)];
 
@@ -191,12 +192,7 @@ public static class GameSettings
         cfg.SetValue("scavenge", "skip_animations", SkipAnimations);
         cfg.SetValue("scavenge", "walk_tile_seconds", WalkTileSeconds);
         cfg.SetValue("scavenge", "auto_end_turn", AutoEndTurn);
-        cfg.SetValue("effects", "level", (int)EffectsLevel);
-        cfg.SetValue("effects", "shake", ScreenShake);
-        cfg.SetValue("effects", "hit_stop", HitStop);
-        cfg.SetValue("effects", "flashes", HitFlashes);
-        cfg.SetValue("effects", "crt", CrtShader);
-        cfg.SetValue("effects", "music_reactive", MusicReactive);
+        foreach (var (key, value) in Juice.Save()) cfg.SetValue("effects", key, value is bool b ? b : (int)value);
         cfg.Save(Path);
     }
 
@@ -225,12 +221,12 @@ public static class GameSettings
         SkipAnimations = (bool)cfg.GetValue("scavenge", "skip_animations", SkipAnimations);
         WalkTileSeconds = Mathf.Clamp((float)cfg.GetValue("scavenge", "walk_tile_seconds", WalkTileSeconds), WalkSpeeds[^1].Seconds, WalkSpeeds[0].Seconds);
         AutoEndTurn = (bool)cfg.GetValue("scavenge", "auto_end_turn", AutoEndTurn);
-        EffectsLevel = (Remnants.Core.Scavenge.EffectsLevel)Math.Clamp((int)cfg.GetValue("effects", "level", (int)EffectsLevel), 0, 3);
-        ScreenShake = (bool)cfg.GetValue("effects", "shake", ScreenShake);
-        HitStop = (bool)cfg.GetValue("effects", "hit_stop", HitStop);
-        HitFlashes = (bool)cfg.GetValue("effects", "flashes", HitFlashes);
-        CrtShader = (bool)cfg.GetValue("effects", "crt", CrtShader);
-        MusicReactive = (bool)cfg.GetValue("effects", "music_reactive", MusicReactive);
+        var saved = cfg.HasSection("effects")
+            ? cfg.GetSectionKeys("effects").ToDictionary(k => k, k => cfg.GetValue("effects", k).Obj ?? "")
+            : new Dictionary<string, object>();
+        var juice = Remnants.Core.Scavenge.JuiceSettings.Load(saved, Juice);
+        (EffectsLevel, ScreenShake, HitStop, HitFlashes, CrtShader, MusicReactive) =
+            (juice.Level, juice.Shake, juice.HitStop, juice.Flashes, juice.Crt, juice.Music);
     }
 
     private static void EnsureBuses() => Audio.AudioBuses.Ensure();

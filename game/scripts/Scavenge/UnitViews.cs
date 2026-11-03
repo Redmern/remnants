@@ -244,7 +244,7 @@ public partial class UnitViews : Node3D
                     Beat();
                     target.Root.Visible = true;
                     await Displace(actor, target, landing, e.TargetId is { } movedId ? _presenter.State.FindUnit(movedId) : null, snap: false);
-                    if (Juice is { } shoveJuice) await shoveJuice.HitStop(e);
+                    if (Juice is { } shoveJuice) await shoveJuice.HitStop(e, seen: true);
                     if (!Mine(e.TargetId) && !Seen(landing)) target.Root.Visible = false;
                     break;
 
@@ -258,7 +258,7 @@ public partial class UnitViews : Node3D
                 case ScavengeEventType.Attacked or ScavengeEventType.Missed when actor is null && target is not null && e.UnitId is null:
                     Beat();
                     Land(target, e);
-                    if (Juice is { } fogJuice) await fogJuice.HitStop(e);
+                    if (Juice is { } fogJuice) await fogJuice.HitStop(e, seen: false);
                     await Wait(0.3f);
                     break;
 
@@ -290,7 +290,7 @@ public partial class UnitViews : Node3D
 
                 case ScavengeEventType.Died or ScavengeEventType.BledOut when actor is not null && (Seen(e.Pos) || Mine(e.UnitId)):
                     Beat();
-                    if (Juice is { } killJuice) await killJuice.HitStop(e);
+                    if (Juice is { } killJuice) await killJuice.HitStop(e, seen: true);
                     FloatText(actor.Root.Position, "dead", Hud.Palette.TextMuted);
                     if (actor.Rig is { } deathRig && deathRig.Once("death", hold: true))
                     {
@@ -618,7 +618,7 @@ public partial class UnitViews : Node3D
         {
             beat();
             Land(target, e);
-            if (Juice is { } splashJuice) await splashJuice.HitStop(e);
+            if (Juice is { } splashJuice) await splashJuice.HitStop(e, seen: true);
             await Wait(0.12f);
             return;
         }
@@ -630,7 +630,7 @@ public partial class UnitViews : Node3D
             await Wait(hit);
             beat();
             Land(target, e);
-            if (Juice is { } clipJuice) await clipJuice.HitStop(e);
+            if (Juice is { } clipJuice) await clipJuice.HitStop(e, seen: true);
             // Let the follow-through play, but do not hold the turn for the whole recovery.
             await Wait(Mathf.Clamp((info?.Length ?? 0.6f) - hit, 0.15f, 0.45f));
             return;
@@ -641,7 +641,7 @@ public partial class UnitViews : Node3D
         await TweenTo(actor.Root, lunge, StrikeSeconds);
         beat();
         Land(target, e);
-        if (Juice is { } lungeJuice) await lungeJuice.HitStop(e);
+        if (Juice is { } lungeJuice) await lungeJuice.HitStop(e, seen: true);
         await TweenTo(actor.Root, home, StrikeSeconds);
         await Wait(0.12f);
     }

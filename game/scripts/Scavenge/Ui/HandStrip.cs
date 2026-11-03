@@ -44,7 +44,7 @@ public partial class HandStrip : PanelContainer
 
     // The cards on show (for the draw / discard diff) and the one just played (it flies, it is not swept).
     private readonly List<PhysicalCard> _shown = new();
-    private string? _playedKey;
+    private readonly List<(string Key, int Round)> _played = new();
 
     /// <summary>An aimed card is to be aimed on the map: the card, who plays it, boost, from that unit's slot.</summary>
     public event Action<string, int, bool, bool>? AimRequested;
@@ -115,28 +115,23 @@ public partial class HandStrip : PanelContainer
     /// </summary>
     private void Deal(HandView hand)
     {
-        var before = new Dictionary<string, int>();
-        foreach (var c in _shown) before[c.Key] = before.GetValueOrDefault(c.Key) + 1;
-        var kept = new Dictionary<string, int>(before);
-        var gone = new List<PhysicalCard>(_shown);
-        var fresh = new List<PhysicalCard>();
-        var layout = new List<PhysicalCard>();
         var count = hand.Cards.Count;
-        for (var i = 0; i < count; i++)
+        var layout = hand.Cards.Select((card, i) => new PhysicalCard(CardButton(card), KeyOf(card), i, count)).ToList();
+        // A play stays pending until its card has left the hand; a new round drops what is left (a refused play).
+        var round = _presenter.State.Round;
+        _played.RemoveAll(p => p.Round != round);
+        var before = _shown.Select(c => c.Key).ToList();
+        var after = layout.Select(c => c.Key).ToList();
+        var change = HandMotion.Diff(before, after, _played.Select(p => p.Key).ToList());
+        foreach (var key in _played.Select(p => p.Key).Distinct().ToList())
         {
-            var card = hand.Cards[i];
-            var key = KeyOf(card);
-            var physical = new PhysicalCard(CardButton(card), key, i, count);
-            layout.Add(physical);
-            if (kept.GetValueOrDefault(key) > 0)
-            {
-                kept[key]--;
-                gone.Remove(gone.Find(g => g.Key == key)!);
-            }
-            else fresh.Add(physical);
+            var left = before.Count(k => k == key) - after.Count(k => k == key);
+            for (var i = 0; i < left; i++)
+                if (_played.FindIndex(p => p.Key == key) is >= 0 and var at) _played.RemoveAt(at);
         }
-        if (_playedKey is { } played && gone.Find(g => g.Key == played) is { } flown) gone.Remove(flown);
-        _playedKey = null;
+        var gone = new List<PhysicalCard>();
+        foreach (var key in change.Swept)
+            if (_shown.FirstOrDefault(c => c.Key == key && !gone.Contains(c)) is { } card) gone.Add(card);
         Sweep(gone);
         Widgets.Clear(_cards);
         _shown.Clear();
@@ -145,7 +140,7 @@ public partial class HandStrip : PanelContainer
             _cards.AddChild(physical);
             _shown.Add(physical);
         }
-        for (var i = 0; i < fresh.Count; i++) fresh[i].FlipIn(0.05f + i * 0.06f);
+        for (var i = 0; i < change.Drawn.Count; i++) layout[change.Drawn[i]].FlipIn(0.05f + i * 0.06f);
     }
 
     /// <summary>Discarded cards slide off into the used pile, turning as they go.</summary>
@@ -195,7 +190,8 @@ public partial class HandStrip : PanelContainer
     {
         var card = _shown.Find(c => c.Key == $"{play.CardId}:{(play.FromSlot ? play.UnitId : null)}") ?? _shown.Find(c => c.Key.StartsWith(play.CardId + ":"));
         if (card is null) return;
-        _playedKey = card.Key;
+        // Played whether or not it flies: the next layout must not sweep it as a discard.
+        _played.Add((card.Key, _presenter.State.Round));
         if (!PhysicalCard.Animate || Ghost(card) is not { } ghost) return;
         card.Face.Modulate = new Color(1, 1, 1, 0.15f);
         var from = ghost.GlobalPosition;

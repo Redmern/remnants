@@ -21,9 +21,9 @@ Priority: **high** = seen or heard every session (colony buildings, common items
 | Story portraits | 0 | 45 | 0 | 0 | 0 | 0 |
 | Item icons | 0 | 119 | 0 | 0 | 0 | 0 |
 | UI icons | 0 | 24 | 0 | 0 | 0 | 2 |
-| Sounds | 0 | 0 | 0 | 10 | 0 | 0 |
+| Sounds | 0 | 1 | 0 | 10 | 0 | 0 |
 | Sound events | 0 | 16 | 0 | 0 | 3 | 0 |
-| **Total** | 27 | 217 | 6 | 10 | 3 | 5 |
+| **Total** | 27 | 218 | 6 | 10 | 3 | 5 |
 
 Checked against 492 models, 128 sounds, 470 line icons.
 
@@ -387,6 +387,7 @@ Nothing missing.
 
 | Priority | Id | Status | Used in | Should be | Meanwhile |
 |---|---|---|---|---|---|
+| medium | `music_chain_layer` | fallback | sound_events.json layers[chain_layer] | its own chain layer stem | borrows music_scavenge_combat_layer (contact_layer's stem); silent while that one plays |
 | medium | `card_draw` | placeholder | sound_events.json events[juice.card_draw] | juice.card_draw | synthesised blip (PlaceholderSounds) |
 | medium | `card_play` | placeholder | sound_events.json events[scavenge.card_played] | scavenge.card_played | synthesised blip (PlaceholderSounds) |
 | medium | `card_shuffle` | placeholder | sound_events.json events[scavenge.deck_shuffled] | scavenge.deck_shuffled | synthesised blip (PlaceholderSounds) |

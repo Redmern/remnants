@@ -30,6 +30,7 @@ public partial class ScavengeJuice : Node
     private readonly HitStopBudget _budget = new();
     private readonly FlashGate _gate = new();
     private bool _stopping;
+    private bool? _crtStill;
 
     /// <summary>Hit-stop seconds added in the round so far (the pacing check; <c>--juice-log</c> prints each round's).</summary>
     public double StoppedThisRound => _budget.Spent;
@@ -80,6 +81,8 @@ public partial class ScavengeJuice : Node
         _crtLayer.Visible = on;
         if (!on) return;
         var still = GameSettings.ReduceMotion;
+        if (_crtStill == still) return;
+        _crtStill = still;
         _crtMaterial.SetShaderParameter("curve", still ? 0f : 0.035f);
         _crtMaterial.SetShaderParameter("wobble", still ? 0f : 0.0012f);
     }
@@ -152,8 +155,14 @@ public partial class ScavengeJuice : Node
     {
         var feel = ReplayJuice.Feel(impact, Settings);
         if (feel.Shake > 0) _camera.AddTrauma((float)feel.Shake);
-        if (feel.Flash > 0 && _gate.Allow(Time.GetTicksMsec() / 1000.0)) Flash((float)feel.Flash, impact.Killed);
+        if (feel.Flash > 0 && AllowFlash()) Flash((float)feel.Flash, impact.Killed);
     }
+
+    /// <summary>
+    /// Whether a screen flash may show now (a hit's vignette, the sky's lightning): never with reduce motion, and never two
+    /// within <see cref="FlashGate.MinGap"/> (one cap for every flash on this screen). Counts the flash when it may.
+    /// </summary>
+    public bool AllowFlash() => !GameSettings.ReduceMotion && _gate.Allow(Time.GetTicksMsec() / 1000.0);
 
     private void Flash(float strength, bool kill)
     {
@@ -193,9 +202,10 @@ public partial class ScavengeJuice : Node
 
     /// <summary>
     /// Freezes the replay a moment on a blow (its <see cref="Feel.HitStop"/>, within the round's budget): the engine runs
-    /// at a twentieth for that real time. Nothing while skipping animations, for unseen blows or with hit-stop off.
+    /// at a twentieth for that real time. Nothing while skipping animations, for a blow the side did not see (an unseen
+    /// attacker: a hit from the fog), with reduce motion or with hit-stop off.
     /// </summary>
-    public async Task HitStop(ScavengeEvent e)
+    public async Task HitStop(ScavengeEvent e, bool seen)
     {
         if (_stopping || GameSettings.EffectsLevel == EffectsLevel.Off) return;
         var impact = e.Type switch
@@ -206,7 +216,7 @@ public partial class ScavengeJuice : Node
             _ => (Remnants.Core.Scavenge.Impact?)null,
         };
         if (impact is not { } hit) return;
-        var seconds = _budget.Take(ReplayJuice.Feel(hit, Settings).HitStop, Skip);
+        var seconds = _budget.Take(ReplayJuice.Feel(hit, Settings).HitStop, Skip, seen);
         if (seconds <= 0) return;
         _stopping = true;
         Engine.TimeScale = 0.05;
