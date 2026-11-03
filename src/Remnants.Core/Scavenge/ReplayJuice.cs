@@ -3,8 +3,34 @@ namespace Remnants.Core.Scavenge;
 /// <summary>How much screen feel the scavenge replay adds (the settings' master "Effects intensity").</summary>
 public enum EffectsLevel { Off, Low, Normal, High }
 
-/// <summary>The feel settings the screen passes in (Core never reads the UI's settings): level, toggles, reduce motion.</summary>
-public readonly record struct JuiceSettings(EffectsLevel Level, bool Shake, bool HitStop, bool Flashes, bool ReduceMotion);
+/// <summary>
+/// The feel settings the screen passes in (Core never reads the UI's settings): level, toggles, reduce motion, and the
+/// CRT look and music reactivity. <see cref="Save"/> / <see cref="Load"/> are their saved values (settings.cfg
+/// <c>[effects]</c>; reduce motion is saved with the UI's own settings).
+/// </summary>
+public readonly record struct JuiceSettings(EffectsLevel Level, bool Shake, bool HitStop, bool Flashes, bool ReduceMotion)
+{
+    public bool Crt { get; init; } = true;
+    public bool Music { get; init; } = true;
+
+    public static readonly JuiceSettings Default = new(EffectsLevel.Normal, true, true, true, false);
+
+    public Dictionary<string, object> Save() => new()
+    {
+        ["level"] = (int)Level, ["shake"] = Shake, ["hit_stop"] = HitStop, ["flashes"] = Flashes, ["crt"] = Crt, ["music_reactive"] = Music,
+    };
+
+    /// <summary>Saved values over <paramref name="fallback"/>: a missing or bad value keeps the fallback's (a level out of range clamps).</summary>
+    public static JuiceSettings Load(IReadOnlyDictionary<string, object> saved, JuiceSettings fallback)
+    {
+        bool Flag(string key, bool or) => saved.TryGetValue(key, out var v) && v is bool b ? b : or;
+        var level = saved.TryGetValue("level", out var l) && l is int or long ? (EffectsLevel)Math.Clamp(Convert.ToInt32(l), 0, 3) : fallback.Level;
+        return new JuiceSettings(level, Flag("shake", fallback.Shake), Flag("hit_stop", fallback.HitStop), Flag("flashes", fallback.Flashes), fallback.ReduceMotion)
+        {
+            Crt = Flag("crt", fallback.Crt), Music = Flag("music_reactive", fallback.Music),
+        };
+    }
+}
 
 /// <summary>
 /// What landed, as the screen feels it: a hit's tier, arc, exposure and HP (<see cref="ReplayJuice.ImpactOf"/>), or a
@@ -69,6 +95,26 @@ public static class ReplayJuice
     /// <summary>-1 for the first card, 1 for the last, 0 in the middle.</summary>
     private static double FanSpread(int index, int count) => 2.0 * Math.Clamp(index, 0, count - 1) / (count - 1) - 1;
 
+    /// <summary>The most a hovered card tilts toward the mouse (degrees).</summary>
+    public const double HoverTilt = 4;
+
+    /// <summary>A card's pose in the hand: tilt (degrees), offset below its resting line (pixels, negative = lifted), scale, drawn on top.</summary>
+    public readonly record struct Pose(double Angle, double Drop, double Scale, bool Raised);
+
+    /// <summary>
+    /// Card <paramref name="index"/> of <paramref name="count"/>'s pose: in the fan at rest; hovered it lifts, straightens,
+    /// grows a little and tilts toward <paramref name="mouse"/> (-0.5 left edge .. 0.5 right edge). Reduce motion keeps it in
+    /// the fan and only draws it on top; effects Off lays every card flat.
+    /// </summary>
+    public static Pose CardPose(int index, int count, bool hover, double mouse, JuiceSettings settings)
+    {
+        if (settings.Level == EffectsLevel.Off) return new Pose(0, 0, 1, false);
+        var rest = new Pose(FanAngle(index, count), FanDrop(index, count), 1, false);
+        if (!hover) return rest;
+        if (settings.ReduceMotion) return rest with { Raised = true };
+        return new Pose(Math.Clamp(mouse, -0.5, 0.5) * 2 * HoverTilt, -12, 1.06, true);
+    }
+
     /// <summary>The highest a chain sound's pitch climbs (times its own).</summary>
     public const double MaxChainPitch = 1.6;
 
@@ -110,11 +156,12 @@ public static class ReplayJuice
             stop += 0.025 * arcBonus + (impact.Exposed ? 0.02 : 0);
             if (flash > 0 || arcBonus >= 1 && impact.Exposed) flash = Math.Max(flash, 0.3) + 0.1 * arcBonus;
         }
-        var motion = !settings.ReduceMotion;
+        // Reduce motion: no shake, no flash, no freeze.
+        if (settings.ReduceMotion) return default;
         return new Feel(
-            settings.Shake && motion ? Math.Clamp(shake * k, 0, 1) : 0,
+            settings.Shake ? Math.Clamp(shake * k, 0, 1) : 0,
             settings.HitStop ? Math.Clamp(stop * k, 0, MaxHitStop) : 0,
-            settings.Flashes && motion ? Math.Clamp(flash * k, 0, 1) : 0);
+            settings.Flashes ? Math.Clamp(flash * k, 0, 1) : 0);
     }
 }
 
@@ -166,9 +213,10 @@ public sealed class HitStopBudget
 
     public double Spent { get; private set; }
 
-    public double Take(double seconds, bool skip)
+    /// <summary>The seconds a blow may stop the screen: none skipping, for a blow the side did not see, or past the round's budget.</summary>
+    public double Take(double seconds, bool skip, bool seen = true)
     {
-        if (skip || seconds <= 0) return 0;
+        if (skip || !seen || seconds <= 0) return 0;
         var take = Math.Min(seconds, PerRound - Spent);
         if (take <= 0) return 0;
         Spent += take;
@@ -194,5 +242,37 @@ public sealed class FlashGate
         if (_last is { } last && now - last < MinGap) return false;
         _last = now;
         return true;
+    }
+}
+
+/// <summary>
+/// How a hand changed between two layouts, for its motion (UI only): which new positions hold a drawn card, and which
+/// cards left without being played (swept into the used pile). Cards are keys (card id and slot owner); copies count.
+/// A played key excuses one copy that left; a play that left nothing (refused) excuses nothing. Copies are alike: a
+/// key still in hand as often as before counts as kept, not as one played and one drawn.
+/// </summary>
+public static class HandMotion
+{
+    public sealed record Change(List<int> Drawn, List<string> Swept);
+
+    public static Change Diff(IReadOnlyList<string> before, IReadOnlyList<string> after, IReadOnlyList<string> played)
+    {
+        var left = before.GroupBy(k => k).ToDictionary(g => g.Key, g => g.Count());
+        var drawn = new List<int>();
+        for (var i = 0; i < after.Count; i++)
+        {
+            if (left.TryGetValue(after[i], out var n) && n > 0) left[after[i]] = n - 1;
+            else drawn.Add(i);
+        }
+        foreach (var key in played)
+            if (left.TryGetValue(key, out var n) && n > 0) left[key] = n - 1;
+        var swept = new List<string>();
+        foreach (var key in before)
+        {
+            if (left[key] <= 0) continue;
+            left[key]--;
+            swept.Add(key);
+        }
+        return new Change(drawn, swept);
     }
 }

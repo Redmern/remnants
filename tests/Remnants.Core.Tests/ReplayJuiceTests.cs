@@ -188,12 +188,86 @@ public class ReplayJuiceTests
     }
 
     [Fact]
-    public void Reduce_motion_takes_out_shake_and_flashes_but_keeps_the_beat()
+    public void Reduce_motion_takes_out_shake_flashes_and_hit_stop()
     {
         var feel = ReplayJuice.Feel(new Impact(HitTier.Solid, FacingArc.Rear, true, 14), Normal with { ReduceMotion = true });
-        Assert.Equal(0, feel.Shake);
-        Assert.Equal(0, feel.Flash);
-        Assert.True(feel.HitStop > 0);
+        Assert.Equal(default, feel);
+        Assert.Equal(default, ReplayJuice.Feel(Impact.Kill, Normal with { ReduceMotion = true }));
+    }
+
+    [Fact]
+    public void A_blow_the_side_did_not_see_never_stops_the_screen_nor_spends_the_budget()
+    {
+        var budget = new HitStopBudget();
+        Assert.Equal(0, budget.Take(0.1, skip: false, seen: false));
+        Assert.Equal(0, budget.Spent);
+        Assert.Equal(0.1, budget.Take(0.1, skip: false, seen: true), 9);
+    }
+
+    [Fact]
+    public void A_hovered_card_lifts_straightens_and_tilts_to_the_mouse_but_not_with_reduce_motion()
+    {
+        var rest = ReplayJuice.CardPose(0, 5, hover: false, mouse: 0, Normal);
+        Assert.Equal(ReplayJuice.FanAngle(0, 5), rest.Angle, 9);
+        Assert.Equal(ReplayJuice.FanDrop(0, 5), rest.Drop, 9);
+        Assert.Equal(1, rest.Scale, 9);
+        var hover = ReplayJuice.CardPose(0, 5, hover: true, mouse: 0.5, Normal);
+        Assert.True(hover.Drop < 0, "lifts above the fan");
+        Assert.True(hover.Angle > 0 && hover.Angle <= ReplayJuice.HoverTilt);
+        Assert.True(hover.Scale > 1);
+        Assert.True(hover.Raised);
+        // Reduce motion: the card stays in the fan (no lift, no tilt, no grow), only drawn on top.
+        var still = ReplayJuice.CardPose(0, 5, hover: true, mouse: 0.5, Normal with { ReduceMotion = true });
+        Assert.Equal(rest with { Raised = true }, still);
+        // Effects Off: flat, no fan.
+        Assert.Equal(new ReplayJuice.Pose(0, 0, 1, false), ReplayJuice.CardPose(0, 5, false, 0, Normal with { Level = EffectsLevel.Off }));
+    }
+
+    [Fact]
+    public void A_new_hand_says_which_cards_were_drawn_and_which_were_swept_and_a_played_card_is_never_swept()
+    {
+        // Two Shoves and a Feint; one Shove is played, Feint discarded, a Yank drawn.
+        var diff = HandMotion.Diff(["shove:", "shove:", "feint:"], ["shove:", "yank:"], played: ["shove:"]);
+        Assert.Equal([1], diff.Drawn);
+        Assert.Equal(["feint:"], diff.Swept);
+        // Copies are alike: a Shove still in hand is the one kept, not a fresh draw.
+        Assert.Equal([1], HandMotion.Diff(["shove:", "shove:"], ["shove:", "yank:", "shove:"], played: ["shove:"]).Drawn);
+        // A played card counts once: a second copy that also left is swept.
+        Assert.Equal(["shove:"], HandMotion.Diff(["shove:", "shove:"], [], played: ["shove:"]).Swept);
+        // A play that was refused (the card is still there) leaves nothing to sweep and draws nothing.
+        var refused = HandMotion.Diff(["feint:"], ["feint:"], played: ["feint:"]);
+        Assert.Empty(refused.Drawn);
+        Assert.Empty(refused.Swept);
+    }
+
+    [Fact]
+    public void The_effects_settings_round_trip_through_their_saved_values_and_bad_ones_fall_back()
+    {
+        var mine = new JuiceSettings(EffectsLevel.High, Shake: false, HitStop: true, Flashes: false, ReduceMotion: false) { Crt = false, Music = true };
+        Assert.Equal(mine, JuiceSettings.Load(mine.Save(), JuiceSettings.Default));
+        var odd = new Dictionary<string, object> { ["level"] = 9, ["shake"] = "yes" };
+        var loaded = JuiceSettings.Load(odd, JuiceSettings.Default);
+        Assert.Equal(EffectsLevel.High, loaded.Level);
+        Assert.Equal(JuiceSettings.Default.Shake, loaded.Shake);
+        Assert.Equal(JuiceSettings.Default, JuiceSettings.Load(new Dictionary<string, object>(), JuiceSettings.Default));
+    }
+
+    [Fact]
+    public void A_real_blow_from_the_side_reads_as_side_and_a_plain_one_as_front()
+    {
+        // Pins ImpactOf to Combat's own wording: a change to the log line fails here, not silently on screen.
+        var sure = With(r => r with { Combat = r.Combat with { MinHitChance = 1, MaxHitChance = 1 } });
+        foreach (var (facing, arc) in new[] { (new Pos(0, 1), FacingArc.Side), (new Pos(-1, 0), FacingArc.Front) })
+        {
+            var a = SurvivorUnit(1, new(2, 2), weapon: "pipe");
+            var b = SurvivorUnit(2, new(3, 2));
+            var sim = Arena(8, 5, [a, b], data: sure);
+            b.Facing = facing;
+            Assert.True(Blow(sim, a, b, "swing").Ok);
+            var impact = ReplayJuice.ImpactOf(Assert.Single(sim.State.Events, e => e.Type == ScavengeEventType.Attacked));
+            Assert.Equal(arc, impact.Arc);
+            Assert.False(impact.Exposed);
+        }
     }
 
     [Fact]
