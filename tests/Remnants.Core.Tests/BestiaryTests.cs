@@ -77,7 +77,10 @@ public class BestiaryTests
         var a = SurvivorUnit(1, new(0, 0));
         var husk = EnemyUnit("husk", new(1, 0));
         var sim = Arena(4, 3, [a, husk]);
-        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok); // the husk is in reach: it strikes at once
+        // The husk is in reach: it telegraphs the blow, which comes down at the start of its next turn.
+        int Fought() => sim.State.FindParty(1)!.Bestiary.TryGetValue("husk", out var e) ? e.Fought : 0;
+        for (var i = 0; i < 3 && Fought() == 0; i++)
+            Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
         Assert.Equal(1, sim.State.FindParty(1)!.Bestiary["husk"].Fought);
     }
 

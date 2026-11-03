@@ -49,16 +49,17 @@ public class AiPlanTests
     }
 
     [Fact]
-    public void An_enemy_with_a_target_in_reach_strikes_at_once_and_only_moving_then_striking_is_telegraphed()
+    public void An_enemy_with_a_target_in_reach_telegraphs_the_blow_too()
     {
         var u = SurvivorUnit(pos: new(0, 0));
         var near = EnemyUnit("husk", new(1, 0));
         var sim = Arena(8, 3, [u, near]);
         Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
-        Assert.Null(near.Plan);
-        // Striking at once is a tile strike, readied and come down at the sub-round's end; no plan is telegraphed.
-        Assert.Contains(sim.State.Events, e => e.UnitId == near.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
-        Assert.DoesNotContain(sim.State.Events, e => e.UnitId == near.Id && e.Type == ScavengeEventType.IntentDeclared && !e.Message.Contains("readies"));
+        var plan = Assert.IsType<PlannedAction>(near.Plan);
+        Assert.Empty(plan.Path);
+        Assert.Equal(u.Pos, plan.AttackTile);
+        Assert.Empty(sim.State.Strikes);
+        Assert.DoesNotContain(sim.State.Events, e => e.UnitId == near.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
 
         // A turret in reach still only telegraphs its aim.
         ZoneDevice turret = null!;
@@ -224,28 +225,14 @@ public class AiPlanTests
     }
 
     [Fact]
-    public void Striking_at_once_draws_only_the_strikes_dice_though_the_behaviour_runs_twice()
+    public void Declaring_a_blow_in_reach_draws_nothing_from_the_run_rng()
     {
-        (ScavengeSim Sim, Unit U, Unit Near) Make()
-        {
-            var u = SurvivorUnit(pos: new(0, 0));
-            var near = EnemyUnit("husk", new(1, 0));
-            return (Arena(8, 3, [u, near]), u, near);
-        }
-        var (ai, aiU, aiNear) = Make();
-        ScavengeAi.TakeTurn(ai, aiNear);
-        var strikes = ai.State.Strikes.ToList();
-        Assert.NotEmpty(strikes);
-        Assert.Null(aiNear.Plan);
-        TileStrikes.ResolveAll(ai);
-        Assert.Contains(ai.State.Events, e => e.UnitId == aiNear.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
-
-        // The same strikes readied directly, with no look-ahead before them, leave the dice where the AI's turn did.
-        var (direct, u, near) = Make();
-        foreach (var strike in strikes)
-            Assert.True(TileStrikes.Declare(direct, near, new AttackTile(0, near.Id, strike.Tile, strike.ActionId, strike.Mode, strike.Direction)).Ok);
-        TileStrikes.ResolveAll(direct);
-        Assert.Equal(direct.Rng.State, ai.Rng.State);
-        Assert.Equal(u.Hp, aiU.Hp);
+        var u = SurvivorUnit(pos: new(0, 0));
+        var near = EnemyUnit("husk", new(1, 0));
+        var sim = Arena(8, 3, [u, near]);
+        var before = sim.Rng.State;
+        ScavengeAi.TakeTurn(sim, near);
+        Assert.Equal(u.Pos, near.Plan?.AttackTile);
+        Assert.Equal(before, sim.Rng.State);
     }
 }
