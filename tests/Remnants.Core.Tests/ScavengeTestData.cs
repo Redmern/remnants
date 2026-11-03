@@ -146,6 +146,38 @@ public static class ScavengeTestData
     }
 
     /// <summary>
+    /// The tile strike at <paramref name="target"/>'s tile with the action (a stab / slash aimed as the AI aims); an
+    /// unknown or out-of-reach action is sent as is, for Core to refuse.
+    /// </summary>
+    public static AttackTile StrikeOn(ScavengeSim sim, Unit attacker, Unit target, string actionId) =>
+        sim.Profile(attacker).Action(actionId) is { } action && TileStrikes.StrikeAt(sim, attacker, action, target) is { } strike
+            ? strike
+            : new AttackTile(attacker.PlayerId ?? 0, attacker.Id, target.Pos, actionId);
+
+    /// <summary>
+    /// Readies a tile strike at <paramref name="target"/>'s tile (<see cref="StrikeOn"/>), then ends the player units'
+    /// sub-turns until it has come down. Returns the AttackTile's result.
+    /// </summary>
+    public static ScavengeResult StrikeNow(ScavengeSim sim, Unit attacker, Unit target, string actionId)
+    {
+        var result = sim.Execute(StrikeOn(sim, attacker, target, actionId));
+        for (var i = 0; result.Ok && i < 50 && TileStrikes.Readied(sim.State, attacker) && sim.State.CurrentUnit is { PlayerControlled: true } next; i++)
+            Assert.True(sim.Execute(new EndTurn(next.PlayerId!.Value, next.Id)).Ok);
+        return result;
+    }
+
+    /// <summary>
+    /// A blow on its own, for tests of what a hit does: the tile strike at <paramref name="target"/>'s tile is readied
+    /// (Core's checks, AP paid) and comes down on the spot, the turn not moving on. Returns the readying's result.
+    /// </summary>
+    public static ScavengeResult Blow(ScavengeSim sim, Unit attacker, Unit target, string actionId)
+    {
+        var result = TileStrikes.Declare(sim, attacker, StrikeOn(sim, attacker, target, actionId));
+        if (result.Ok) TileStrikes.ResolveAll(sim);
+        return result;
+    }
+
+    /// <summary>
     /// A simple deterministic player bot: extract on an exit, attack anything in reach, else walk toward
     /// the nearest exit, else end the turn. Returns the commands it issued.
     /// </summary>
@@ -172,8 +204,8 @@ public static class ScavengeTestData
         var profile = sim.Profile(u);
         foreach (var target in sim.State.Units.Where(t => t.IsActive && u.HostileTo(t) && Detection.SideSees(sim.Data, sim.State, u.Side, t)).OrderBy(t => t.Id))
             foreach (var a in profile.Actions.Where(a => a.ApCost <= u.Ap))
-                if (Combat.CheckReach(sim.Data, map, u.Pos, a, target.Pos) == ScavengeError.None)
-                    return new Attack(pid, u.Id, target.Id, a.Id);
+                if (Combat.CheckReach(sim.Data, map, u.Pos, a, target.Pos) == ScavengeError.None && TileStrikes.StrikeAt(sim, u, a, target) is { } strike)
+                    return strike;
 
         var exit = map.Exits.OrderBy(e => e.Chebyshev(u.Pos)).First();
         var field = Movement.DistanceField(map, profile.Movement, exit);

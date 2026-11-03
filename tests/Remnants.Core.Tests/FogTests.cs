@@ -81,18 +81,25 @@ public class FogTests
     }
 
     [Fact]
-    public void A_unit_hidden_in_the_fog_cannot_be_targeted()
+    public void A_strike_into_the_fog_gives_away_nothing_about_who_stands_there()
     {
-        var u = SurvivorUnit(pos: new(0, 4), weapon: "pistol");
-        var linked = EnemyUnit("linked", new(5, 4));
-        var sim = Arena(12, 9, [u, linked]);
-
-        var hidden = sim.Execute(new Attack(1, u.Id, linked.Id, "shoot"));
-        var missing = sim.Execute(new Attack(1, u.Id, 99, "shoot"));
-        Assert.Equal(ScavengeError.NotVisible, hidden.Error);
-        // A hidden unit and no unit at all answer alike, so ids cannot be probed.
-        Assert.Equal(missing.Error, hidden.Error);
-        Assert.Equal(missing.Message.Replace("99", "X"), hidden.Message.Replace(linked.Id.ToString(), "X"));
+        (ScavengeSim Sim, ScavengeResult Result) Strike(bool withLinked)
+        {
+            var u = SurvivorUnit(pos: new(0, 4), weapon: "pistol");
+            var units = new List<Unit> { u };
+            if (withLinked) units.Add(EnemyUnit("linked", new(5, 4)));
+            else units.Add(EnemyUnit("linked", new(11, 0)));
+            var sim = Arena(12, 9, units);
+            Assert.All(units.Skip(1), l => Assert.False(Detection.SideSees(sim.Data, sim.State, P1, l)));
+            return (sim, sim.Execute(new AttackTile(1, u.Id, new(5, 4), "shoot")));
+        }
+        var (sim, hidden) = Strike(withLinked: true);
+        var (emptySim, empty) = Strike(withLinked: false);
+        // A tile holding a hidden unit and an empty one answer alike: the strike is readied blind, aimed at nobody.
+        Assert.True(hidden.Ok, hidden.Message);
+        Assert.Equal((empty.Ok, empty.Error, empty.Message, empty.EntityId), (hidden.Ok, hidden.Error, hidden.Message, hidden.EntityId));
+        Assert.Equal(emptySim.State.Events.Single(e => e.Type == ScavengeEventType.IntentDeclared).Message,
+            sim.State.Events.Single(e => e.Type == ScavengeEventType.IntentDeclared && e.UnitId == 1).Message);
     }
 
     [Fact]
@@ -326,7 +333,7 @@ public class FogTests
         var sim = Arena(12, 9, [shooter, listener, husk]);
         Assert.False(Detection.SideSees(sim.Data, sim.State, P1, shooter));
 
-        Assert.True(sim.Execute(new Attack(2, shooter.Id, husk.Id, "shoot")).Ok);
+        Assert.True(StrikeNow(sim, shooter, husk, "shoot").Ok);
 
         var heard = Assert.Single(sim.State.Contacts, c => c.Side == P1);
         Assert.Equal(ContactKind.Noise, heard.Kind);

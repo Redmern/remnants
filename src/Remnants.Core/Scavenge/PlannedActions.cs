@@ -124,36 +124,22 @@ public static class PlannedActions
             var swung = false;
             List<Unit>? struck = null;
             if (action is null) failed = $"can no longer use {id}";
-            else if (plan.Mode is { } mode)
-            {
-                // A stab / slash: every hostile on the covered tiles from where the path ended.
-                if (TileStrikes.Aim(sim, unit, action, tile, mode, plan.Direction) is not { } aim || !Combat.Clear(sim.Data, state.Map, unit.Pos, tile))
-                    failed = $"{tile} is out of reach";
-                else if (Combat.ApCost(action, unit.Pos, tile) > unit.Ap) failed = "has no AP left for the attack";
-                else
-                {
-                    unit.Ap -= Combat.ApCost(action, unit.Pos, tile);
-                    struck = TileStrikes.Strike(sim, unit, action, aim.Tiles, tile, aim.Direction);
-                    if (struck.Count == 0) failed = $"{action.Name} hits nothing at {tile}";
-                    target = struck.FirstOrDefault();
-                    swung = true;
-                }
-            }
-            else if (Combat.CheckReach(sim.Data, state.Map, unit.Pos, action, tile) != ScavengeError.None) failed = $"{tile} is out of reach";
+            // A tile strike from where the path ended: a stab / slash covers its tiles, any other action the one tile.
+            else if (TileStrikes.Aim(sim, unit, action, tile, plan.Mode, plan.Direction) is not { } aim || !Combat.Clear(sim.Data, state.Map, unit.Pos, tile))
+                failed = $"{tile} is out of reach";
             else if (Combat.ApCost(action, unit.Pos, tile) > unit.Ap) failed = "has no AP left for the attack";
-            else if (target is not null && Drones.CanStrike(action, target))
+            else if (plan.Suppress && target is not null && Drones.CanStrike(action, target))
             {
-                if (plan.Suppress) Combat.Suppress(sim, unit, action, target);
-                else Combat.Resolve(sim, unit, action, target);
+                Combat.Suppress(sim, unit, action, target);
                 swung = true;
             }
             else
             {
-                // A swing at an empty tile: the AP goes and the noise carries, nobody is hit.
+                // The blow comes down on every hostile there in sight; with nobody there the AP goes and the noise carries.
                 unit.Ap -= Combat.ApCost(action, unit.Pos, tile);
-                unit.Facing = Combat.Face(unit.Pos, tile);
-                sim.MakeNoise(unit, action.Noise);
-                failed = $"{action.Name} hits nothing at {tile}";
+                struck = TileStrikes.Strike(sim, unit, action, aim.Tiles, tile, aim.Direction);
+                if (struck.Count == 0) failed = $"{action.Name} hits nothing at {tile}";
+                target = struck.FirstOrDefault();
                 swung = true;
             }
             // Only a blow that came down on the tile can be dodged; a plan that fell short dodged nobody.

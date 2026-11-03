@@ -43,25 +43,38 @@ public class ScavengeCommandTests
     }
 
     [Fact]
-    public void Attack_validates_target_action_reach_and_ap()
+    public void A_tile_attack_validates_action_reach_and_ap()
     {
         var a = SurvivorUnit(1, new(0, 0), weapon: "pipe");
         var ally = SurvivorUnit(1, new(1, 0));
         var husk = EnemyUnit("husk", new(4, 0));
         var sim = Arena(6, 2, [a, ally, husk]);
 
-        Assert.Equal(ScavengeError.InvalidTarget, sim.Execute(new Attack(1, a.Id, ally.Id, "swing")).Error);
-        Assert.Equal(ScavengeError.UnknownAction, sim.Execute(new Attack(1, a.Id, husk.Id, "shoot")).Error);
-        Assert.Equal(ScavengeError.OutOfRange, sim.Execute(new Attack(1, a.Id, husk.Id, "swing")).Error);
+        Assert.Equal(ScavengeError.UnknownAction, sim.Execute(new AttackTile(1, a.Id, husk.Pos, "shoot")).Error);
+        Assert.Equal(ScavengeError.OutOfRange, sim.Execute(new AttackTile(1, a.Id, husk.Pos, "swing")).Error);
 
         husk.Pos = new(0, 1);
         a.Ap = 0;
-        Assert.Equal(ScavengeError.NotEnoughAp, sim.Execute(new Attack(1, a.Id, husk.Id, "swing")).Error);
+        Assert.Equal(ScavengeError.NotEnoughAp, sim.Execute(new AttackTile(1, a.Id, husk.Pos, "swing")).Error);
         a.Ap = 3;
-        var result = sim.Execute(new Attack(1, a.Id, husk.Id, "swing"));
+        var result = StrikeNow(sim, a, husk, "swing");
         Assert.True(result.Ok, result.Message);
         Assert.Equal(2, a.Ap);
-        Assert.Contains(sim.State.Events, e => e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
+        Assert.Contains(sim.State.Events, e => e.UnitId == a.Id && e.TargetId == husk.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
+    }
+
+    [Fact]
+    public void A_tile_attack_never_strikes_an_ally_on_the_tile()
+    {
+        var a = SurvivorUnit(1, new(0, 0), weapon: "pipe");
+        var ally = SurvivorUnit(1, new(1, 0));
+        var sim = Arena(6, 2, [a, ally, EnemyUnit("husk", new(5, 1))],
+            data: With(r => r with { Combat = r.Combat with { MinHitChance = 1, MaxHitChance = 1 } }));
+
+        Assert.True(StrikeNow(sim, a, ally, "swing").Ok);
+        Assert.Equal(ally.MaxHp, ally.Hp);
+        Assert.DoesNotContain(sim.State.Events, e => e.TargetId == ally.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
+        Assert.Contains(sim.State.Events, e => e.UnitId == a.Id && e.Type == ScavengeEventType.IntentFizzled);
     }
 
     [Fact]
@@ -312,7 +325,7 @@ public class AiTests
             ".........",
         ]);
         Assert.Equal(AiMode.Idle, listener.Ai.Mode);
-        Assert.True(sim.Execute(new Attack(1, shooter.Id, target.Id, "shoot")).Ok);
+        Assert.True(StrikeNow(sim, shooter, target, "shoot").Ok);
         Assert.Equal(AiMode.Hunting, listener.Ai.Mode);
         Assert.Equal(shooter.Pos, listener.Ai.LastKnown);
     }

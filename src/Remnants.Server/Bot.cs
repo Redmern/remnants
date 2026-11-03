@@ -110,9 +110,10 @@ internal static class Bot
         var shot = profile.Actions
             .SelectMany(x => state.Units.Where(t => t.OnMap && unit.HostileTo(t) && !Talking(t) && Combat.ApCost(x, unit.Pos, t.Pos) <= unit.Ap
                                                     && Combat.CheckReach(view.Data, map, unit.Pos, x, t.Pos) == ScavengeError.None)
-                .Select(t => (Action: x, Target: t, Chance: Combat.HitChance(view.Data, map, unit.Pos, x, t.Pos, view.Profile(t)))))
+                .Select(t => (Strike: TileStrikes.StrikeAt(view, unit, x, t), Chance: Combat.HitChance(view.Data, map, unit.Pos, x, t.Pos, view.Profile(t)))))
+            .Where(o => o.Strike is not null)
             .OrderByDescending(o => o.Chance).FirstOrDefault();
-        if (shot.Target is not null) return new Attack(pid, unit.Id, shot.Target.Id, shot.Action.Id);
+        if (shot.Strike is { } strike) return strike;
         // Step off a tile a seen enemy plan aims at.
         if (BotTactics.Dodge(view, unit, pid) is { } dodge) return dodge;
 

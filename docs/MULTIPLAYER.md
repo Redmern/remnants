@@ -65,7 +65,7 @@ rounds are up or its allies are gone. `--team N` picks a lobby team on a versus 
       │  the last Snapshot (queries only)
 ```
 
-- **Authoritative.** Clients send intents: Core's own scavenge commands (`Move`, `Attack`, `UseItem`, `PickUp`,
+- **Authoritative.** Clients send intents: Core's own scavenge commands (`Move`, `AttackTile`, `UseItem`, `PickUp`,
   `Recruit`, `SetStance`, `Lookout`, `EndTurn`, `Extract`) wrapped in `Command(requestId, intent)`. The host rejects an intent whose
   `PlayerId` is not the sender's seat, then runs it through `ScavengeSim.Execute`, which checks ownership, turn and
   rules as in single player. The verdict comes back as `CommandAccepted` / `CommandRejected` (Core's `ScavengeError`).
@@ -180,7 +180,7 @@ Players can scavenge together. The rules are all in Core (`Alliances`, `CoopActi
 so single player, the server and the bots share them.
 
 - **Teams are sides.** Allied parties share one side (`team:N`; a lone party is `player:N`). Every side-based rule then
-  treats them as one: no friendly fire (an attack on an ally's unit is rejected with `FriendlyFire`), one fog of war
+  treats them as one: no friendly fire (a tile strike only ever comes down on hostiles; an ally on a struck tile is untouched), one fog of war
   (what any ally sees, every contact, reveal, motion sensor and explored tile is the team's), overwatch never fires on
   allies, and an ally next to you watches your back against ambushes. Ownership (`PlayerId`), turns, the turn timer,
   loot and results stay per player. Non-allied players stay hostile exactly as before.
@@ -547,6 +547,10 @@ reset, older colonies migrate and get the starter cards).
   tile, an action, an optional stab / slash `mode` and `direction`; pays now, ends the sub-turn, strikes at the end of
   the sub-round), `plannedAction`'s `mode` / `direction`, `endTurn`'s `wholeTurn`. Views carry the `subRound` and the
   readied `strikes` of the units the side knows, never whom another player's strike was aimed at (`SideFog`).
+- **Tile attacks only (protocol 19, `Protocol.TileAttacksOnlyVersion`).** The `attack` command (a unit struck at once,
+  by id) is gone: every attack is an `attackTile` or a `plannedAction`'s. Since it names a tile, never a unit, there is
+  nothing to probe: a strike into the fog answers the same whether anyone stands there. An older peer would still send
+  `attack`, so the version is bumped.
 - **Plans in views.** A unit's `plan` travels with the unit, so a side sees the path and the threatened tile of exactly
   the units it sees now (a hidden unit's plan never leaves the server). `SideFog.Redacted` strips the plan's card and
   aimed-at unit, and dodge bonuses, from every unit the player does not own (allies included). Enemy AI telegraphs

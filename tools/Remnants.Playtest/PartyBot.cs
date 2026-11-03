@@ -335,8 +335,9 @@ public static class PartyBot
                 .Select(t => (Action: a, Target: t, Chance: Combat.ChanceToHit(sim, unit, a, t))))
             .OrderByDescending(o => o.Chance * (o.Action.MinDamage + o.Action.MaxDamage) / 2 / Combat.ApCost(o.Action, unit.Pos, o.Target.Pos))
             .ThenBy(o => o.Target.Hp).FirstOrDefault();
-        if (attack.Target is not null && attack.Chance >= 0.2 && (fightLinked || !(IsLinked(sim, attack.Target) && attack.Target.Hp > 25)))
-            return new Attack(playerId, unit.Id, attack.Target.Id, attack.Action.Id);
+        if (attack.Target is not null && attack.Chance >= 0.2 && (fightLinked || !(IsLinked(sim, attack.Target) && attack.Target.Hp > 25))
+            && TileStrikes.StrikeAt(sim, unit, attack.Action, attack.Target) is { } strike)
+            return strike;
 
 
 

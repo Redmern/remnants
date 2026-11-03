@@ -101,6 +101,18 @@ public static class TileStrikes
         return best;
     }
 
+    /// <summary>
+    /// The tile strike at <paramref name="target"/>'s tile that a bot, the AI or auto-play issues: a stab / slash aimed to
+    /// cover the most hostiles (<see cref="BestAim"/>), any other action at the one tile in reach. Null when it cannot reach.
+    /// </summary>
+    public static AttackTile? StrikeAt(ScavengeSim sim, Unit unit, ActionProfile action, Unit target)
+    {
+        var pid = unit.PlayerId ?? 0;
+        if (!action.Patterned)
+            return Aim(sim, unit, action, target.Pos) is null ? null : new AttackTile(pid, unit.Id, target.Pos, action.Id);
+        return BestAim(sim, unit, action, target) is { } aim ? new AttackTile(pid, unit.Id, target.Pos, action.Id, aim.Mode, aim.Direction) : null;
+    }
+
     /// <summary>Every tile a unit could strike now with <paramref name="action"/> in <paramref name="mode"/>, any direction.</summary>
     public static HashSet<Pos> Reach(ScavengeSim sim, Unit unit, ActionProfile action, StrikeMode? mode = null)
     {

@@ -250,7 +250,7 @@ public class GearModsTests
             var target = EnemyUnit("husk", new Pos(3, 1));
             var sleeper = EnemyUnit("husk", new Pos(7, 1));
             var sim = Arena(12, 4, [shooter, target, sleeper]);
-            Assert.True(sim.Execute(new Attack(1, shooter.Id, target.Id, "shoot")).Ok);
+            Assert.True(Blow(sim, shooter, target, "shoot").Ok);
             return sleeper.Ai.Mode == AiMode.Hunting;
         }
         Assert.True(Woke("pistol"));
@@ -267,7 +267,7 @@ public class GearModsTests
         Assert.Equal(action.ApCost + 1, Combat.ApCost(action, shooter.Pos, near.Pos));
         Assert.Equal(action.ApCost, Combat.ApCost(action, shooter.Pos, new Pos(8, 1)));
         var ap = shooter.Ap;
-        Assert.True(sim.Execute(new Attack(1, shooter.Id, near.Id, "shoot")).Ok);
+        Assert.True(Blow(sim, shooter, near, "shoot").Ok);
         Assert.Equal(ap - action.ApCost - 1, shooter.Ap);
     }
 
@@ -348,7 +348,7 @@ public class GearModsTests
         for (var i = 0; i < 10 && !drone.Suppressed && drone.IsActive; i++)
         {
             unit.Ap = 5;
-            sim.Execute(new Attack(1, unit.Id, drone.Id, "swing"));
+            StrikeNow(sim, unit, drone, "swing");
         }
         Assert.True(drone.Suppressed || !drone.IsActive);
         Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Suppressed && e.Message.Contains("stunned"));

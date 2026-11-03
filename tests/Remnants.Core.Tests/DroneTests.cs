@@ -196,7 +196,11 @@ public class DroneTests
         var sim = Arena(8, 6, [op, pipe]);
         var drone = Deploy(sim, op, new Pos(3, 2));
         Assert.True(sim.Execute(new EndTurn(1, op.Id)).Ok);
-        Assert.Equal(ScavengeError.OutOfRange, sim.Execute(new Attack(2, pipe.Id, drone.Id, "swing")).Error);
+        // A swing at the drone's tile comes down under it.
+        Assert.True(StrikeNow(sim, pipe, drone, "swing").Ok);
+        Assert.Equal(drone.MaxHp, drone.Hp);
+        Assert.DoesNotContain(sim.State.Events, e => e.TargetId == drone.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
+        Assert.Contains(sim.State.Events, e => e.UnitId == pipe.Id && e.Type == ScavengeEventType.IntentFizzled);
     }
 
     [Fact]

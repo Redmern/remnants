@@ -40,27 +40,6 @@ internal static class ScavengeCommandHandlers
         return ScavengeResult.Success($"{unit.Name} moved to {c.To}.");
     }
 
-    public static ScavengeResult Attack(ScavengeSim sim, Unit unit, Attack c)
-    {
-        var target = sim.State.FindUnit(c.TargetId);
-        // Missing, off the map or unseen all answer alike, so ids cannot be probed for hidden units.
-        if (target is not { OnMap: true } || !Detection.SideSees(sim.Data, sim.State, unit.Side, target))
-            return ScavengeResult.Fail(ScavengeError.NotVisible, $"{unit.Name}'s side sees no unit {c.TargetId}.");
-        if (target.Side == unit.Side && target.PlayerId is { } owner && owner != unit.PlayerId)
-            return ScavengeResult.Fail(ScavengeError.FriendlyFire, $"{target.Name} is an ally.");
-        if (!unit.HostileTo(target))
-            return ScavengeResult.Fail(ScavengeError.InvalidTarget, $"{target.Name} is not a hostile target.");
-        var action = sim.Profile(unit).Action(c.ActionId);
-        if (action is null) return ScavengeResult.Fail(ScavengeError.UnknownAction, $"{unit.Name} cannot use '{c.ActionId}' now.");
-        if (Combat.ApCost(action, unit.Pos, target.Pos) is var apCost && apCost > unit.Ap) return NotEnoughAp(unit, apCost);
-        var reach = Combat.CheckReach(sim.Data, sim.State.Map, unit.Pos, action, target.Pos);
-        if (reach != ScavengeError.None) return ScavengeResult.Fail(reach, $"{target.Name} is not in reach of {action.Name} ({reach}).");
-        if (!Drones.CanStrike(action, target)) return ScavengeResult.Fail(ScavengeError.OutOfRange, $"{action.Name} cannot reach a flying drone.");
-
-        Combat.Resolve(sim, unit, action, target);
-        return ScavengeResult.Success($"{unit.Name} used {action.Name} on {target.Name}.", target.Id);
-    }
-
     public static ScavengeResult UseItem(ScavengeSim sim, Unit unit, UseItem c)
     {
         if (!unit.Pack.Contains(c.ItemId)) return ScavengeResult.Fail(ScavengeError.ItemNotCarried, $"{unit.Name} carries no '{c.ItemId}'.");

@@ -28,11 +28,8 @@ public partial class ScavengeScreen
                 var husk = _presenter.State.Units.Last(x => x.Kind == UnitKind.Enemy && x.OnMap);
                 var action = _presenter.AttackOptions(u, _presenter.Sim.Profile(u).Actions.First()).Count > 0
                     ? _presenter.Sim.Profile(u).Actions.First() : _presenter.Sim.Profile(u).Actions.Last();
-                for (var i = 0; i < 3 && husk.OnMap && husk.Status != UnitStatus.Dead && u.Ap >= action.ApCost; i++)
-                {
-                    await Run(new Attack(pid, u.Id, husk.Id, action.Id));
-                    await Settle();
-                }
+                for (var i = 0; i < 3 && husk.OnMap && husk.Status != UnitStatus.Dead && u.Ap >= action.ApCost && _presenter.ActingUnit?.Id == u.Id; i++)
+                    await StrikeAndLand(u, husk, action.Id);
                 focus = husk.Pos;
                 // Step next to the pile so the pickup panel opens.
                 if (_presenter.ActingUnit?.Id == u.Id

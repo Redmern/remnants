@@ -27,7 +27,7 @@ public class ProtocolTests
     {
         IScavengeCommand[] intents =
         [
-            new Move(1, 2, new Pos(3, 4)), new Attack(1, 2, 9, "pistol_shot"), new UseItem(1, 2, "med_kit", 5), new UseItem(1, 2, "bandage"),
+            new Move(1, 2, new Pos(3, 4)), new AttackTile(1, 2, new Pos(5, 5), "pistol_shot"), new UseItem(1, 2, "med_kit", 5), new UseItem(1, 2, "bandage"),
             new PickUp(1, 2, 3, "scrap"), new Recruit(1, 2, 7), new EndTurn(1, 2), new Extract(1, 2),
             new UseItem(1, 2, "flare", At: new Pos(6, 1)), new SetStance(1, 2, Stance.Overwatch), new Lookout(1, 2),
             new ProposeAlliance(1, 2, 3), new RespondAlliance(1, 2, 3, true), new BreakAlliance(1, 2),
@@ -75,7 +75,16 @@ public class ProtocolTests
         var end = new EndTurn(1, 2, WholeTurn: true);
         Assert.Equal(end, Assert.IsType<Command>(ProtocolJson.Deserialize(ProtocolJson.Serialize(new Command(6, end)))).Intent);
         Assert.Equal(18, Protocol.TileAttacksVersion);
-        Assert.Equal(Protocol.TileAttacksVersion, Protocol.Version);
+    }
+
+    [Fact]
+    public void Attacking_a_unit_directly_is_not_on_the_wire_only_tile_attacks_are()
+    {
+        var json = ProtocolJson.Serialize(new Command(5, new AttackTile(1, 2, new Pos(3, 4), "shoot")));
+        Assert.ThrowsAny<System.Text.Json.JsonException>(() => ProtocolJson.Deserialize(json.Replace("\"attackTile\"", "\"attack\"")));
+        Assert.Null(typeof(IScavengeCommand).Assembly.GetType("Remnants.Core.Scavenge.Attack"));
+        Assert.Equal(19, Protocol.TileAttacksOnlyVersion);
+        Assert.Equal(Protocol.TileAttacksOnlyVersion, Protocol.Version);
     }
 
     [Fact]

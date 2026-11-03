@@ -52,10 +52,12 @@ public class FogNetTests
         Assert.True(Detection.SideSees(f.Sim.Data, f.Sim.State, Unit.PlayerSide(a.Id), victim));
         Assert.True(Combat.AmbushAgainst(f.Sim.Data, f.Sim.State, sniper, victim) is { HitBonus: > 0 });
 
-        var result = a.Do(new Attack(a.Id, sniper.Id, victim.Id, "aimed_shot"));
+        b.Client.TakeEvents();
+        a.Client.TakeEvents();
+        var result = f.StrikeNow(a, sniper, victim, "aimed_shot", a, b);
         Assert.True(result.Ok, result.Message);
 
-        var bobHeard = b.Last<Snapshot>().Events;
+        var bobHeard = b.Client.TakeEvents();
         Assert.Contains(bobHeard, e => e.Type == ScavengeEventType.Ambushed && e.UnitId is null && e.TargetId == victim.Id
                                       && e.Message.Contains("ambushed from the fog"));
         Assert.Contains(bobHeard, e => e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed && e.UnitId is null);
@@ -69,7 +71,7 @@ public class FogNetTests
         Assert.Empty(b.View.Reveals);
 
         // Alice saw her own shot, named.
-        Assert.Contains(a.Last<Snapshot>().Events, e => e.Type == ScavengeEventType.Ambushed && e.UnitId == sniper.Id);
+        Assert.Contains(a.Client.TakeEvents(), e => e.Type == ScavengeEventType.Ambushed && e.UnitId == sniper.Id);
         Assert.DoesNotContain(a.View.Contacts, c => c.Side == bobSide);
         f.AssertNoLeaks();
     }
@@ -81,7 +83,7 @@ public class FogNetTests
         sniper.Pos = new(7, 10); // inside a muzzle flash's range of Bob, still hidden by the cloak
         Assert.False(Detection.SideSees(f.Sim.Data, f.Sim.State, Unit.PlayerSide(b.Id), sniper));
 
-        Assert.True(a.Do(new Attack(a.Id, sniper.Id, victim.Id, "aimed_shot")).Ok);
+        Assert.True(f.StrikeNow(a, sniper, victim, "aimed_shot", a, b).Ok);
 
         Assert.Contains(b.View.Units, u => u.Id == sniper.Id); // muzzle flash
         Assert.Contains(b.View.Reveals, r => r.UnitId == sniper.Id);

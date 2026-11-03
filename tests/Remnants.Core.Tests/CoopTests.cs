@@ -38,8 +38,11 @@ public class CoopTests
         Assert.True(sim.State.Allied(1, 2));
         Assert.False(a.HostileTo(b));
 
-        var hit = sim.Execute(new Attack(1, a.Id, b.Id, "pipe_swing"));
-        Assert.Equal(ScavengeError.FriendlyFire, hit.Error);
+        // A blow at an ally's tile comes down on nobody.
+        Assert.True(StrikeNow(sim, a, b, "swing").Ok);
+        Assert.Equal(100, b.Hp);
+        Assert.Contains(sim.State.Events, e => e.UnitId == a.Id && e.Type == ScavengeEventType.IntentFizzled);
+        Assert.Equal(a.Id, sim.State.CurrentUnitId);
 
         Assert.True(sim.Execute(new SetStance(1, a.Id, Stance.Overwatch)).Ok);
         Assert.Equal(b.Id, sim.State.CurrentUnitId);

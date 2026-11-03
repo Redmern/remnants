@@ -63,7 +63,6 @@ public sealed class ScavengeSim
         {
             ChooseOption c => MissionRules.Choose(this, unit!, c),
             Move c => ScavengeCommandHandlers.Move(this, unit!, c),
-            Attack c => ScavengeCommandHandlers.Attack(this, unit!, c),
             UseItem c => ScavengeCommandHandlers.UseItem(this, unit!, c),
             PickUp c => ScavengeCommandHandlers.PickUp(this, unit!, c),
             TakeAll c => FieldLoot.TakeAll(this, unit!, c),
