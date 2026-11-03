@@ -109,4 +109,60 @@ public class BotTacticsTests
         Assert.Null(BotTactics.StepToward(sim, u, 1, [goal])); // there already
         Assert.Null(BotTactics.StepToward(sim, u, 1, []));
     }
+
+    [Fact]
+    public void A_telegraphed_blow_is_spoiled_or_yanked_before_any_buff_reaction()
+    {
+        var (sim, a, husk, _) = Field("sidestep", "spoil");
+        husk.Pos = new(3, 1);
+        husk.Plan = new PlannedAction { Path = [new(2, 1)], AttackTile = a.Pos, ActionId = "claw", Round = 1 };
+        var card = Assert.IsType<PlayCard>(BotTactics.Card(sim, a, 1));
+        Assert.Equal(("spoil", husk.Id), (card.CardId, card.TargetId));
+        Assert.True(sim.Execute(card).Ok);
+        Assert.Null(husk.Plan);
+    }
+
+    [Fact]
+    public void An_adjacent_enemy_with_a_plan_is_shoved_off_it()
+    {
+        var (sim, a, husk, _) = Field("shove", "steady_aim");
+        husk.Pos = new(2, 1);
+        husk.Plan = new PlannedAction { Path = [new(3, 1)], Round = 1 };
+        var card = Assert.IsType<PlayCard>(BotTactics.Card(sim, a, 1));
+        Assert.Equal(("shove", husk.Id), (card.CardId, card.TargetId));
+        Assert.True(sim.Execute(card).Ok);
+        Assert.Equal(new Pos(3, 1), husk.Pos);
+    }
+
+    [Fact]
+    public void An_enemy_still_to_act_whose_plan_aims_at_the_squad_is_held_back_and_a_threatened_ally_hurried_up()
+    {
+        var a = SurvivorUnit(1, new(1, 1), weapon: "pipe");
+        var f = SurvivorUnit(1, new(1, 4), weapon: "pipe");
+        var husk = EnemyUnit("husk", new(5, 4));
+        var husk2 = EnemyUnit("husk", new(9, 1));
+        var sim = Arena(12, 6, [a, husk2, husk, f]);
+        sim.State.Decks.Add(new SquadDeck { PlayerId = 1, Hand = ["feint", "go_now"], Points = 3, Budget = 3, HandSize = 5 });
+        husk.Plan = new PlannedAction { Path = [new(3, 4)], AttackTile = f.Pos, ActionId = "claw", Round = 1 };
+        var feint = Assert.IsType<PlayCard>(BotTactics.Card(sim, a, 1));
+        Assert.Equal(("feint", husk.Id), (feint.CardId, feint.TargetId));
+        Assert.True(sim.Execute(feint).Ok);
+        var go = Assert.IsType<PlayCard>(BotTactics.Card(sim, a, 1));
+        Assert.Equal(("go_now", f.Id), (go.CardId, go.TargetId));
+        Assert.True(sim.Execute(go).Ok);
+        Assert.Equal([a.Id, f.Id, husk2.Id, husk.Id], sim.State.TurnOrder);
+    }
+
+    [Fact]
+    public void A_melee_fighter_flank_steps_round_to_a_seen_enemy_s_back()
+    {
+        var (sim, a, husk, _) = Field("flank_step");
+        husk.Pos = new(3, 1);
+        husk.Facing = new Pos(-1, 0); // facing a
+        var card = Assert.IsType<PlayCard>(BotTactics.Card(sim, a, 1));
+        Assert.Equal("flank_step", card.CardId);
+        Assert.True(sim.Execute(card).Ok);
+        Assert.NotEqual(FacingArc.Front, Combat.ArcOf(husk, a.Pos));
+        Assert.Equal(1, a.Pos.Chebyshev(husk.Pos));
+    }
 }
