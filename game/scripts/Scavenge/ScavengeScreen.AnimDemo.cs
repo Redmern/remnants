@@ -57,11 +57,9 @@ public partial class ScavengeScreen
                 await Pause(0.4);
                 await Run(new Move(pid, u.Id, beside));
                 await Settle();
-                await Run(new Attack(pid, u.Id, husk.Id, "butt_strike"));
-                await Settle();
+                await StrikeAndLand(u, husk, "butt_strike");
                 await Pause(0.3);
-                await Run(new Attack(pid, u.Id, husk.Id, "aimed_shot"));
-                await Settle();
+                await StrikeAndLand(u, husk, "aimed_shot");
                 await Pause(0.4);
                 await _units.Replay([new ScavengeEvent(_presenter.State.Round, ScavengeEventType.Died, $"{u.Name} died.", u.Id, Pos: u.Pos)],
                     _presenter.Visible);
@@ -78,8 +76,7 @@ public partial class ScavengeScreen
                 await Pause(0.3);
                 for (var shot = 0; shot < 2; shot++)
                 {
-                    await Run(new Attack(pid, c.Id, mark.Id, "arm_gun"));
-                    await Settle();
+                    await StrikeAndLand(c, mark, "arm_gun");
                     await Pause(0.3);
                 }
                 break;

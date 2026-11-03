@@ -351,7 +351,7 @@ public partial class ScavengeScreen : Node3D
         if (clicked is not null)
         {
             if (acting is not null && _selectedId == acting.Id && acting.HostileTo(clicked))
-                _ = Run(new Attack(pid, acting.Id, clicked.Id, _actionPanel.ActionId ?? ""));
+                _ = Run(StrikeOn(acting, clicked, _actionPanel.ActionId ?? ""));
             else
                 Select(clicked.Id);
             return;
@@ -612,6 +612,27 @@ public partial class ScavengeScreen : Node3D
         return TileStrikes.Aim(_presenter.Sim, acting, action, tile, mode) is { } aim ? (action, mode, aim.Tiles) : null;
     }
 
+    /// <summary>
+    /// The tile strike at a hostile's tile with the action: a stab / slash aimed to cover the most hostiles, else the one tile
+    /// (an unknown or out-of-reach action is sent as is, for Core to refuse).
+    /// </summary>
+    private AttackTile StrikeOn(Unit acting, Unit target, string actionId) =>
+        _presenter.Sim.Profile(acting).Action(actionId) is { } action && TileStrikes.StrikeAt(_presenter.Sim, acting, action, target) is { } strike
+            ? strike with { PlayerId = _presenter.PlayerId }
+            : new AttackTile(_presenter.PlayerId, acting.Id, target.Pos, actionId);
+
+    /// <summary>Debug demos: readies a strike at the hostile, then ends the party's sub-turns until it has come down.</summary>
+    private async Task StrikeAndLand(Unit acting, Unit target, string actionId)
+    {
+        if (!await Run(StrikeOn(acting, target, actionId))) return;
+        for (var i = 0; i < 8 && TileStrikes.Readied(_presenter.State, acting) && _presenter.ActingUnit is { } next; i++)
+        {
+            while (_busy) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            await Run(new EndTurn(_presenter.PlayerId, next.Id));
+        }
+        while (_busy) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+    }
+
     /// <summary>Move tiles (Core's Reachable), attack targets with Core's hit chance, or who an item can reach.</summary>
     private void RefreshHighlights(Unit? selected)
     {
@@ -754,7 +775,7 @@ public partial class ScavengeScreen : Node3D
             var exits = _presenter.State.Map.Exits;
             var loot = _presenter.CachesInReach(u).FirstOrDefault();
             IScavengeCommand command;
-            if (attack is not null) command = new Attack(pid, u.Id, attack.Target.Id, attack.Action.Id);
+            if (attack is not null) command = StrikeOn(u, attack.Target, attack.Action.Id);
             else if (loot is not null && u.Ap >= _presenter.Sim.Data.Rules.Turn.PickUpApCost) command = new PickUp(pid, u.Id, loot.Id, loot.Items[0]);
             else if (_presenter.State.Map.IsExit(u.Pos) && i > steps / 2) command = new Extract(pid, u.Id);
             else

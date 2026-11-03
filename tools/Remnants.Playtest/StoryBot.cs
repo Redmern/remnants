@@ -84,8 +84,9 @@ public static class StoryBot
                                                         && Drones.CanStrike(a, t)).Select(a => (t, a)))
             .OrderByDescending(x => Combat.ChanceToHit(sim, u, x.a, x.t) * (x.a.MinDamage + x.a.MaxDamage) / 2)
             .ThenBy(x => x.t.Id).FirstOrDefault();
-        if (target.t is not null && (!_leaveAll || Combat.ChanceToHit(sim, u, target.a, target.t) >= 0.4 || !CanStepOut(sim, u)))
-            return new Attack(pid, u.Id, target.t.Id, target.a.Id);
+        if (target.t is not null && (!_leaveAll || Combat.ChanceToHit(sim, u, target.a, target.t) >= 0.4 || !CanStepOut(sim, u))
+            && TileStrikes.StrikeAt(sim, u, target.a, target.t) is { } strike)
+            return strike;
 
         // A friend is in a fight we can see: join it, two on one (a Husk claws three times a round; one alone loses the trade).
         if (!_leaveAll && run.Outcome != MissionOutcome.Failed)

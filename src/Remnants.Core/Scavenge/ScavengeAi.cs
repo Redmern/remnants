@@ -118,8 +118,7 @@ internal static class ScavengeAi
             Combat.Suppress(sim, unit, action, target);
             return;
         }
-        var aim = action.Patterned ? TileStrikes.BestAim(sim, unit, action, target) : null;
-        TileStrikes.Declare(sim, unit, new AttackTile(unit.PlayerId ?? 0, unit.Id, target.Pos, action.Id, aim?.Mode, aim?.Direction));
+        if (TileStrikes.StrikeAt(sim, unit, action, target) is { } strike) TileStrikes.Declare(sim, unit, strike);
     }
 
     /// <summary>Whether the unit can still do something this sub-turn: up, with AP, and no tile strike readied yet.</summary>
