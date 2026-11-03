@@ -926,7 +926,8 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
   the attacker (`Unit.OutplayedId`, `Combat.OutplayBonus`) and one free counter (`Unit.FreeCounterId`,
   `TileStrikes.FreeCounter`: its next tile strike covering the attacker costs no AP, logged `Countered`); the attacker is
   exposed (`Unit.ExposedUntilRound`, `Combat.Exposed`): the next hit on it does `exposedDamage` times the damage, once.
-  SideFog hides the outplay and the free counter from other sides; exposure is public. Tests: `OutplayTests`.
+  The counter needs the attacker in sight and dodging a counter earns none back (`TileStrike.Counter`). SideFog hides
+  the outplay, the free counter and exposure from other sides. Tests: `OutplayTests`.
 - **Facing** (`Unit.Facing`, `Combat.ArcOf`, `scavenge.json combat.facing`): a unit faces where it last moved, struck or
   planned. A landed blow's damage (before armor) is multiplied by `sideDamage` from the target's flank and `rearDamage`
   from behind, by the 8 steps (within one step of where it faces is the front, two the side, further the rear); a unit

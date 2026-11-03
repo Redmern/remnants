@@ -138,14 +138,15 @@ public static class Combat
     /// <summary>
     /// <paramref name="dodger"/> stepped off the tile <paramref name="attacker"/>'s telegraphed blow came down on: the dodger
     /// gets the outplay hit bonus on it and (rules.combat.outplay) a free counter, both through the next round, and the
-    /// attacker is exposed as long.
+    /// attacker is exposed as long. Without <paramref name="counter"/> (the blow dodged was itself a free counter) no
+    /// counter is earned back.
     /// </summary>
-    internal static void Dodged(ScavengeSim sim, Unit dodger, Unit attacker)
+    internal static void Dodged(ScavengeSim sim, Unit dodger, Unit attacker, bool counter = true)
     {
         var state = sim.State;
         dodger.OutplayedId = attacker.Id;
         dodger.OutplayedUntilRound = state.Round + 1;
-        dodger.FreeCounterId = sim.Data.Rules.Combat.Outplay.FreeCounter ? attacker.Id : null;
+        dodger.FreeCounterId = counter && sim.Data.Rules.Combat.Outplay.FreeCounter ? attacker.Id : null;
         attacker.ExposedUntilRound = state.Round + 1;
         state.Log(new(state.Round, ScavengeEventType.IntentFizzled, $"{dodger.Name} dodges {attacker.Name}'s blow: {attacker.Name} is exposed.",
             attacker.Id, dodger.Id, attacker.Pos));

@@ -122,4 +122,31 @@ public class OutplayTests
         Assert.False(TileStrikes.FreeCounter(sim, b, [new Pos(5, 3)]));
         Assert.True(TileStrikes.FreeCounter(sim, b, [new Pos(5, 3), a.Pos]));
     }
+
+    [Fact]
+    public void The_free_counter_needs_the_attacker_in_sight()
+    {
+        var (sim, a, b) = Dodged();
+        Assert.True(TileStrikes.FreeCounter(sim, b, [a.Pos]));
+        sim.State.Map[new Pos(3, 2)] = Terrain.Wall;
+        sim.State.Map[new Pos(3, 3)] = Terrain.Wall;
+        sim.State.Map[new Pos(3, 1)] = Terrain.Wall;
+        a.Pos = new Pos(1, 2);
+        b.Pos = new Pos(6, 2);
+        Assert.False(Detection.SideSees(sim.Data, sim.State, b.Side, a));
+        Assert.False(TileStrikes.FreeCounter(sim, b, [a.Pos]));
+    }
+
+    [Fact]
+    public void Dodging_a_free_counter_earns_no_counter_back()
+    {
+        var (sim, a, b) = Dodged();
+        b.Pos = new Pos(3, 3);
+        Assert.True(TileStrikes.Declare(sim, b, StrikeOn(sim, b, a, "cut")).Ok); // the free counter, aimed at a's tile
+        a.Pos = new Pos(0, 0);                                                      // a steps off it
+        TileStrikes.ResolveAll(sim);
+        Assert.Equal(b.Id, a.OutplayedId);
+        Assert.True(Combat.Exposed(sim, b));
+        Assert.Null(a.FreeCounterId);
+    }
 }

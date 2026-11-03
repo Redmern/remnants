@@ -16,6 +16,9 @@ public sealed class TileStrike
     public Pos Direction { get; set; }
     public List<Pos> Tiles { get; set; } = new();
     public int? TargetId { get; set; }
+
+    /// <summary>A free counter (<see cref="TileStrikes.FreeCounter"/>): dodging it earns no counter back, so they never chain.</summary>
+    public bool Counter { get; set; }
 }
 
 /// <summary>
@@ -54,7 +57,7 @@ public static class TileStrikes
         state.Strikes.Add(new TileStrike
         {
             UnitId = unit.Id, ActionId = action.Id, Mode = aim.Mode, From = unit.Pos, Tile = c.Tile, Direction = aim.Direction,
-            Tiles = aim.Tiles, TargetId = seen?.Id,
+            Tiles = aim.Tiles, TargetId = seen?.Id, Counter = free,
         });
         var how = aim.Mode is { } mode ? $"a {mode.ToString().ToLowerInvariant()} at {c.Tile}" : $"an attack on {c.Tile}";
         state.Log(new(state.Round, ScavengeEventType.IntentDeclared, $"{unit.Name} readies {how} ({action.Name}).", unit.Id, Pos: unit.Pos));
@@ -85,11 +88,13 @@ public static class TileStrikes
 
     /// <summary>
     /// Whether a tile strike of the unit's over <paramref name="tiles"/> is its free counter: it dodged a telegraphed blow of
-    /// a hostile still standing on one of them (<see cref="Unit.FreeCounterId"/>, good through the round after the dodge).
+    /// a hostile still standing on one of them in its side's sight (<see cref="Unit.FreeCounterId"/>, good through the round
+    /// after the dodge; a strike at a tile in the fog never comes back free, so the cost gives nothing away).
     /// </summary>
     public static bool FreeCounter(ScavengeSim sim, Unit unit, IReadOnlyCollection<Pos> tiles) =>
         unit.FreeCounterId is { } id && sim.State.Round <= unit.OutplayedUntilRound
-        && sim.State.FindUnit(id) is { IsActive: true, OnMap: true } attacker && unit.HostileTo(attacker) && tiles.Contains(attacker.Pos);
+        && sim.State.FindUnit(id) is { IsActive: true, OnMap: true } attacker && unit.HostileTo(attacker) && tiles.Contains(attacker.Pos)
+        && Detection.SideSees(sim.Data, sim.State, unit.Side, attacker);
 
     /// <summary>Whether the unit has a tile strike waiting for this sub-round's end.</summary>
     public static bool Readied(ScavengeState state, Unit unit) => state.Strikes.Any(s => s.UnitId == unit.Id);
@@ -162,7 +167,7 @@ public static class TileStrikes
         else state.Log(new(state.Round, ScavengeEventType.IntentResolved, $"{unit.Name}'s {action.Name} comes down on {strike.Tile}.", unit.Id, Pos: unit.Pos));
         if (strike.TargetId is { } aimed && targets.All(t => t.Id != aimed) && state.FindUnit(aimed) is { IsActive: true } dodger
             && !strike.Tiles.Contains(dodger.Pos))
-            Combat.Dodged(sim, dodger, unit);
+            Combat.Dodged(sim, dodger, unit, counter: !strike.Counter);
     }
 
     /// <summary>
