@@ -1865,7 +1865,10 @@ Measured with `dotnet run --project tools/Remnants.Playtest -c Release -- --data
   ones Workshop L2 with Crafting 10. Before this pass `toolQuality` was never set, so tools did nothing at home.
 - **Haul** (zones.json `haul`): a plain run that gets someone home brings materials besides the packs, rolled from the
   expedition's seed, × (1 − depletion): Town Outskirts 13–18 wood, 3–6 stone; Scrapyard Flats 20–28 wood, 6–10 stone,
-  6–10 scrap; Suburb Ruins 6–10 wood, 4–8 scrap. The after-action report lists it ("Hauled home"). Two fresh adults at a
+  6–10 scrap; Suburb Ruins 6–10 wood, 4–8 scrap. The haul recovers over a day (`haulRecoveryDays` 1, from
+  `ZoneStatus.LastHaulTick`): a run sooner gets elapsed / a day of it, so Outskirts runs chained on one day (they take no
+  colony time) haul next to nothing after the first (13 then 0 and 0 in the test, was ~30 in all). The after-action
+  report lists it ("Hauled home"). Two fresh adults at a
   level 1 Woodcutter cut ~6 wood in a day of work hours, so a first Outskirts run (a day) brings at least 2× that and a
   Scrapyard Flats run (two days on the road) at least 1.6×.
 - **Costs**: level 1 wood down ~25–40% (Farm 10, Woodcutter 6 / 3 stone, Quarry 10, Workshop 18 / 8, Scrapyard 14 / 6,
@@ -1874,7 +1877,8 @@ Measured with `dotnet run --project tools/Remnants.Playtest -c Release -- --data
   run. Town Hall L2 (48 / 30) and House (60 / 40) were cut in a first try and put back: with the haul Town Hall 2 came
   on day 25 instead of ~31.
 
-The bot now crafts a basic tool for each bare-handed gatherer (Workshop, after weapons) and the good one once the
+Rerun after the haul recovery (`e653583`): the same seeds give the same numbers below, since the bot sends a party
+every 3 days and never chains runs. The bot now crafts a basic tool for each bare-handed gatherer (Workshop, after weapons) and the good one once the
 Workshop is level 2: basic tools come about day 6–10, good ones about day 53. It still gives everyone one job.
 
 ### 60 seeds × 60 days

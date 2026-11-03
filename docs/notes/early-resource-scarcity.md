@@ -1,6 +1,8 @@
 # Early resource scarcity: notes
 
-Branch `feat/early-resource-scarcity`. Numbers and results: BALANCE.md "Early resource scarcity".
+Branch `feat/early-resource-scarcity`. Numbers and results: BALANCE.md "Early resource scarcity". This file is the
+branch's progress notes (interpretations, deviations, trade-offs, open questions), kept in the repo next to the docs so
+the reasoning ships with the change; delete it once the branch is merged if notes should not live in `docs/`.
 
 ## Interpretations
 
@@ -32,6 +34,11 @@ Branch `feat/early-resource-scarcity`. Numbers and results: BALANCE.md "Early re
 - Tools go to everyone on the job's roster, on shift or not (a Night Shift crew holds tools too). Simple and stable; a
   per-hour handout would need tools to move between people.
 
+- **TradeNetTests pins the stock** (`Colony()` tops wood/stone up to 60/30) instead of rewriting its expectations: the
+  trade tests check escrow and refund arithmetic from a known stock in about a dozen asserts, not new-game balance.
+  Pinning in the one fixture keeps them independent of `rules.newGame.stock`, so the next stock change does not touch
+  them. ConstructionTests read costs from data instead, since there the cost is the subject.
+
 ## Review follow-ups (fixed)
 
 - Building tooltip, survivor overview and help breakdown now show the stockpile tool (they used the unset
@@ -40,11 +47,11 @@ Branch `feat/early-resource-scarcity`. Numbers and results: BALANCE.md "Early re
   by item. Sandbox picker drops a remembered pick outside the range. A tiny start always has a man and a woman. Tool
   qualities are validated to 0..1.
 
-## Open questions
+- Round 1: **chained Outskirts runs** (no colony time on the road) gave ~30 wood on day 1. The haul now recovers over a
+  day per zone (`ZoneStatus.LastHaulTick`, zone `haulRecoveryDays` 1): a run sooner gets elapsed / a day of it. Loot
+  and caches are unchanged (they had the same property before). `WorkTools.Handout` is computed once per production tick.
 
-- **Outskirts runs can be chained** with no colony time passing (travel 0): three back-to-back runs on day 1 give about
-  15 + 10 + 5 wood, as depletion bites. Each run still risks injuries and deaths, and loot had the same property
-  before. A cooldown or a colony-time cost for doorstep runs would close it; not done here.
+## Open questions
 - Should the building panel name each worker's tool? The breakdowns show the bonus; no per-tool list yet.
 - Should the bot use multiple jobs per person? It still gives everyone one job, so the bot is a little pessimistic
   about the smaller start.
