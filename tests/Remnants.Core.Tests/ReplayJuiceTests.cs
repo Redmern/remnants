@@ -101,6 +101,34 @@ public class ReplayJuiceTests
     }
 
     [Fact]
+    public void A_real_blow_from_behind_on_an_exposed_target_reads_as_rear_and_exposed()
+    {
+        // Every swing lands solid, so the event is Combat's own line, not a hand-written one.
+        var sure = With(r => r with { Combat = r.Combat with { MinHitChance = 1, MaxHitChance = 1, Tiers = r.Combat.Tiers with { GrazeBelow = 0, SolidFrom = 0 } } });
+        var a = SurvivorUnit(1, new(2, 2), weapon: "pipe");
+        var b = SurvivorUnit(2, new(3, 2));
+        var sim = Arena(8, 5, [a, b], data: sure);
+        b.Facing = new Pos(1, 0);
+        (b.ExposedUntilRound, b.ExposedToSide) = (sim.State.Round, a.Side);
+        Assert.True(Blow(sim, a, b, "swing").Ok);
+        var hit = Assert.Single(sim.State.Events, e => e.Type == ScavengeEventType.Attacked);
+        var impact = ReplayJuice.ImpactOf(hit);
+        Assert.Equal(FacingArc.Rear, impact.Arc);
+        Assert.True(impact.Exposed);
+        Assert.Equal(hit.Tier, impact.Tier);
+        Assert.Equal(hit.Amount!.Value, impact.Amount, 9);
+    }
+
+    [Fact]
+    public void A_card_play_and_the_blow_it_sets_up_are_two_links()
+    {
+        var (sim, mine, _, enemy) = Setup();
+        var chain = new HitChain();
+        chain.Step(sim.State, mine.Side, new(1, ScavengeEventType.CardPlayed, "P1 plays Steady Aim.", mine.Id, mine.Id, mine.Pos));
+        Assert.Equal(2, chain.Step(sim.State, mine.Side, Hit(mine, enemy, 5)).Count);
+    }
+
+    [Fact]
     public void Pops_grow_with_the_value_and_the_chain_and_stay_within_bounds()
     {
         Assert.True(ReplayJuice.PopScale(20, 0) > ReplayJuice.PopScale(4, 0));
@@ -189,7 +217,7 @@ public class ReplayJuiceTests
         // 50 big hits a tenth of a second apart (5 s): at most MaxPerSecond flashes in any second.
         for (var i = 0; i < 50; i++)
             if (gate.Allow(i * 0.1)) shown++;
-        Assert.InRange(shown, 1, (int)(5 * FlashGate.MaxPerSecond) + 1);
+        Assert.Equal(10, shown);
         Assert.True(gate.Allow(100));
         Assert.False(gate.Allow(100 + FlashGate.MinGap / 2));
     }

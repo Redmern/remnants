@@ -32,7 +32,9 @@ public partial class WorldTags : Control
     /// <summary>A rising pop-up: kept here, not as metadata on the node, so placing them each frame stays in managed code.</summary>
     private sealed class Popup
     {
-        public Control Chip = null!;
+        public PanelContainer Chip = null!;
+        public Label Label = null!;
+        public StyleBoxFlat Box = null!;
         public Vector3 World;
         public float Offset;
         public float Rise;
@@ -41,6 +43,9 @@ public partial class WorldTags : Control
     }
 
     private readonly List<Popup> _popups = new();
+
+    /// <summary>Pop-ups that have faded, kept for the next (a fight pops dozens; nothing is rebuilt per pop).</summary>
+    private readonly Stack<Popup> _popPool = new();
     private readonly Dictionary<int, string> _unitKeys = new();
     private readonly HashSet<string> _wanted = new();
     private readonly List<string> _gone = new();
@@ -80,17 +85,16 @@ public partial class WorldTags : Control
     /// </summary>
     public void Pop(Vector3 world, string text, Color color, bool big = false, float scale = 1, float jitter = 0)
     {
-        var chip = Chip(text, color, null, Mathf.RoundToInt((big ? 22 : 17) * Mathf.Max(1, scale)), strong: true);
         var anchor = world + Vector3.Up * (HeadHeight + 0.6f);
         // Pop-ups over the same spot queue upwards instead of covering each other.
         var stacked = _popups.Count(p => p.World.DistanceTo(anchor) < 0.5f);
-        var popup = new Popup { Chip = chip, World = anchor, Offset = stacked * 30f * Mathf.Max(1, scale), Jitter = jitter, Born = Now };
+        var popup = TakePopup(text, color, Mathf.RoundToInt((big ? 22 : 17) * Mathf.Max(1, scale)));
+        (popup.World, popup.Offset, popup.Jitter, popup.Born, popup.Rise) = (anchor, stacked * 30f * Mathf.Max(1, scale), jitter, Now, 0);
+        var chip = popup.Chip;
         _popups.Add(popup);
-        AddChild(chip);
         if (scale > 1.05f && !GameSettings.ReduceMotion)
         {
             // Lands big and snaps down to size (pivot at its centre once laid out).
-            chip.Resized += () => chip.PivotOffset = chip.Size / 2;
             chip.Scale = Vector2.One * 1.45f;
             chip.CreateTween().TweenProperty(chip, "scale", Vector2.One, 0.22).SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
         }
@@ -100,8 +104,36 @@ public partial class WorldTags : Control
         tween.TweenCallback(Callable.From(() =>
         {
             _popups.Remove(popup);
-            chip.QueueFree();
+            chip.Visible = false;
+            _popPool.Push(popup);
         }));
+    }
+
+    /// <summary>A pop-up chip from the pool (or a new one), set to the text, colour and size, shown at full opacity.</summary>
+    private Popup TakePopup(string text, Color color, int size)
+    {
+        if (!_popPool.TryPop(out var popup))
+        {
+            var chip = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore };
+            var box = HudTheme.Box(new Color(Palette.Void, 0.82f), color, 2, radius: 3, padX: 6, padY: 1);
+            chip.AddThemeStyleboxOverride("panel", box);
+            var label = Widgets.Label("", "Number", color, size);
+            label.HorizontalAlignment = HorizontalAlignment.Center;
+            chip.AddChild(label);
+            chip.Resized += () => chip.PivotOffset = chip.Size / 2;
+            AddChild(chip);
+            popup = new Popup { Chip = chip, Label = label, Box = box };
+        }
+        popup.Label.Text = text;
+        popup.Label.AddThemeColorOverride("font_color", color);
+        popup.Label.AddThemeFontSizeOverride("font_size", size);
+        popup.Box.BorderColor = color;
+        popup.Chip.Visible = true;
+        popup.Chip.Modulate = Colors.White;
+        popup.Chip.Scale = Vector2.One;
+        // Laid out again for the new text (a pooled chip keeps its last size otherwise).
+        popup.Chip.Size = Vector2.Zero;
+        return popup;
     }
 
     private static float Now => Time.GetTicksMsec() / 1000f;

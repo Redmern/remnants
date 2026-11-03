@@ -29,9 +29,17 @@ public partial class ChainMeter : PanelContainer
         AddChild(row);
         AddThemeStyleboxOverride("panel", new StyleBoxFlat
         {
-            BgColor = new Color(Palette.Panel, 0.82f), CornerRadiusTopLeft = 4, CornerRadiusTopRight = 4, CornerRadiusBottomLeft = 4,
-            CornerRadiusBottomRight = 4, ContentMarginLeft = 12, ContentMarginRight = 12, ContentMarginTop = 3, ContentMarginBottom = 3,
-            BorderWidthBottom = 2, BorderColor = Palette.Amber,
+            BgColor = new Color(Palette.Panel, 0.82f),
+            CornerRadiusTopLeft = 4,
+            CornerRadiusTopRight = 4,
+            CornerRadiusBottomLeft = 4,
+            CornerRadiusBottomRight = 4,
+            ContentMarginLeft = 12,
+            ContentMarginRight = 12,
+            ContentMarginTop = 3,
+            ContentMarginBottom = 3,
+            BorderWidthBottom = 2,
+            BorderColor = Palette.Amber,
         });
         Resized += () => PivotOffset = Size / 2;
     }

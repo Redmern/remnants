@@ -31,7 +31,7 @@ public partial class ScavengeJuice : Node
     private readonly FlashGate _gate = new();
     private bool _stopping;
 
-    /// <summary>Hit-stop seconds added in the round so far and the last finished round's (the pacing check, <c>--juice-log</c>).</summary>
+    /// <summary>Hit-stop seconds added in the round so far (the pacing check; <c>--juice-log</c> prints each round's).</summary>
     public double StoppedThisRound => _budget.Spent;
 
     private static bool Skip => GameSettings.SkipAnimations;
@@ -130,6 +130,17 @@ public partial class ScavengeJuice : Node
         }
     }
 
+    /// <summary>
+    /// The pitch of an event's hit sound: a squad blow climbs with the chain (half the chain tick's climb), the rest
+    /// plays as is. Effects Off: 1.
+    /// </summary>
+    public float HitPitch(ScavengeEvent e)
+    {
+        if (GameSettings.EffectsLevel == EffectsLevel.Off || e.Type != ScavengeEventType.Attacked || _chain.Count < 2
+            || e.UnitId is not { } by || _presenter.State.FindUnit(by)?.Side != _presenter.Side) return 1;
+        return 1 + ((float)ReplayJuice.ChainPitch(_chain.Count) - 1) * 0.5f;
+    }
+
     /// <summary>The music's chain layer swells with the chain (off with "Music follows the fight" off or effects Off).</summary>
     private void Music(int chain)
     {
@@ -191,6 +202,7 @@ public partial class ScavengeJuice : Node
         {
             ScavengeEventType.Attacked when e.TargetId != e.UnitId => ReplayJuice.ImpactOf(e),
             ScavengeEventType.Died => Remnants.Core.Scavenge.Impact.Kill,
+            ScavengeEventType.Displaced => Remnants.Core.Scavenge.Impact.Push,
             _ => (Remnants.Core.Scavenge.Impact?)null,
         };
         if (impact is not { } hit) return;

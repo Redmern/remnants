@@ -72,6 +72,7 @@ public partial class PhysicalCard : Control
             Face.RotationDegrees = tilt;
             Face.Position = new Vector2(0, y);
             if (Face.Scale.X > 0.99f) Face.Scale = Vector2.One * scale;
+            ZIndex = hover ? 1 : 0;
             return;
         }
         var k = Mathf.Min(1, (float)delta * 14);

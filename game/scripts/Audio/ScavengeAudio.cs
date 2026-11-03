@@ -63,13 +63,13 @@ public partial class ScavengeAudio : Node3D
         AudioManager.Instance?.Music.SetLayer("contact_layer", false);
     }
 
-    /// <summary>One replayed event: its sound, at its tile.</summary>
-    public void Step(ScavengeEvent e)
+    /// <summary>One replayed event: its sound, at its tile; <paramref name="hitPitch"/> lifts its hit sound (the squad's chain).</summary>
+    public void Step(ScavengeEvent e, float hitPitch = 1)
     {
         var at = e.Pos is { } p ? TileGrid.ToWorld(p) + Vector3.Up : (Vector3?)null;
         // Moves keep the unit's own sound (servos); their footfalls come from the walk clips (Footstep).
         foreach (var name in EventNames(_presenter.Sim, e))
-            if (e.Type != ScavengeEventType.Moved || !name.StartsWith("scavenge.step")) AudioManager.Fire(name, at);
+            if (e.Type != ScavengeEventType.Moved || !name.StartsWith("scavenge.step")) AudioManager.Fire(name, at, name.StartsWith("scavenge.hit") ? hitPitch : 1);
         // The first work on a device starts the hack; later rounds tick.
         if (e.Type == ScavengeEventType.HackProgress && e.Pos is { } device && _hacking.Add(device)) AudioManager.Fire("scavenge.hack_start", at);
         if (e.Type is ScavengeEventType.Hacked or ScavengeEventType.HackFailed && e.Pos is { } done) _hacking.Remove(done);

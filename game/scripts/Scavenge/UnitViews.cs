@@ -244,6 +244,7 @@ public partial class UnitViews : Node3D
                     Beat();
                     target.Root.Visible = true;
                     await Displace(actor, target, landing, e.TargetId is { } movedId ? _presenter.State.FindUnit(movedId) : null, snap: false);
+                    if (Juice is { } shoveJuice) await shoveJuice.HitStop(e);
                     if (!Mine(e.TargetId) && !Seen(landing)) target.Root.Visible = false;
                     break;
 

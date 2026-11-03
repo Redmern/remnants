@@ -471,8 +471,8 @@ public partial class ScavengeScreen : Node3D
                     _fog.Incoming(e);
                     _telegraphs.Incoming(e);
                     CardFlourish(e);
-                    _audio.Step(e);
                     _juice.Step(e, seen);
+                    _audio.Step(e, _juice.HitPitch(e));
                     WeatherEvent(e);
                     // Follow what others do in sight (enemy turns, recruits) so it never happens off screen; never what the
                     // side did not see, nor while animations are skipped.

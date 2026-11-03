@@ -199,6 +199,8 @@ public partial class HandStrip : PanelContainer
         if (!PhysicalCard.Animate || Ghost(card) is not { } ghost) return;
         card.Face.Modulate = new Color(1, 1, 1, 0.15f);
         var from = ghost.GlobalPosition;
+        // The hand may be rebuilt mid-flight (the play replays, or is refused): read the card only now.
+        var tilt = card.Face.RotationDegrees;
         var viewport = GetViewportRect().Size;
         var to = (TargetPoint?.Invoke(play) ?? new Vector2(viewport.X / 2, viewport.Y * 0.4f)) - ghost.Size / 2;
         var control = new Vector2((from.X + to.X) / 2, Mathf.Min(from.Y, to.Y) - 140);
@@ -210,7 +212,7 @@ public partial class HandStrip : PanelContainer
             var a = from.Lerp(control, t);
             var b = control.Lerp(to, t);
             ghost.GlobalPosition = a.Lerp(b, t);
-            ghost.RotationDegrees = Mathf.Lerp(card.Face.RotationDegrees, spin, t);
+            ghost.RotationDegrees = Mathf.Lerp(tilt, spin, t);
             ghost.Scale = Vector2.One * Mathf.Lerp(1.1f, 0.75f, t);
         }), 0f, 1f, 0.3).SetTrans(Tween.TransitionType.Sine).SetEase(Tween.EaseType.In);
         tween.TweenCallback(Callable.From(() =>
