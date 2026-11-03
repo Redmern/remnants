@@ -840,6 +840,8 @@ public partial class ScavengeScreen : Node3D
     /// </summary>
     private async Task Autoplay(int steps)
     {
+        // --autoplay-policy=cards: play the first card that has a working target before attacking (exercises the hand).
+        var cards = DebugValue("--autoplay-policy") == "cards";
         await ToSignal(GetTree().CreateTimer(0.5), SceneTreeTimer.SignalName.Timeout);
         _autoplaying = true;
         for (var i = 0; i < steps && !_presenter.Done; i++)
@@ -856,7 +858,12 @@ public partial class ScavengeScreen : Node3D
             var exits = _presenter.State.Map.Exits;
             var loot = _presenter.CachesInReach(u).FirstOrDefault();
             IScavengeCommand command;
-            if (attack is not null) command = StrikeOn(u, attack.Target, attack.Action.Id);
+            if (cards && CardPlayFor(u) is { } play)
+            {
+                command = play;
+                _hud.Hand.Played(play);
+            }
+            else if (attack is not null) command = StrikeOn(u, attack.Target, attack.Action.Id);
             else if (loot is not null && u.Ap >= _presenter.Sim.Data.Rules.Turn.PickUpApCost) command = new PickUp(pid, u.Id, loot.Id, loot.Items[0]);
             else if (_presenter.State.Map.IsExit(u.Pos) && i > steps / 2) command = new Extract(pid, u.Id);
             else
@@ -877,9 +884,25 @@ public partial class ScavengeScreen : Node3D
         // The run's state as a digest: the same commands give the same digest at every effects / skip setting (AC-8).
         var save = ScavengeSave.Save(_presenter.State);
         var digest = System.Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(save)))[..16];
-        GD.Print($"Autoplay: done, round {_presenter.State.Round}, {_presenter.State.Events.Count} events, effects {Hud.GameSettings.EffectsLevel}, " +
+        GD.Print($"Autoplay: done, policy {(cards ? "cards" : "attack")}, round {_presenter.State.Round}, {_presenter.State.Events.Count} events, {_presenter.State.Events.Count(e => e.Type == ScavengeEventType.CardPlayed)} cards played, effects {Hud.GameSettings.EffectsLevel}, " +
                  $"skip {Hud.GameSettings.SkipAnimations}, state {digest}");
         if (DebugCapture.HasFlag("--quit-after-autoplay")) GetTree().Quit();
         RefreshHud();
+    }
+
+    /// <summary>Autoplay's card: the first hand card <paramref name="u"/> can play now, on its first working target.</summary>
+    private PlayCard? CardPlayFor(Unit u)
+    {
+        if (_presenter.Hand() is not { } hand) return null;
+        var pid = _presenter.PlayerId;
+        foreach (var card in hand.Cards.Where(c => c.PlayableBy.Contains(u.Id) && !c.Dead))
+        {
+            var fromSlot = card.SlotOf is not null;
+            if (!_presenter.IsAimed(card.Id)) return new PlayCard(pid, u.Id, card.Id, null, FromSlot: fromSlot);
+            if (_presenter.Sim.Data.Cards.Find(card.Id) is not { } def) continue;
+            if (_presenter.Targets(u.Id, card.Id, false, fromSlot).FirstOrDefault(o => o.Ok) is { } target)
+                return new PlayCard(pid, u.Id, card.Id, target.UnitId, false, fromSlot, def.Target == CardTarget.Tile ? target.Tile : null);
+        }
+        return null;
     }
 }
