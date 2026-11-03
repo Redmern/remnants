@@ -653,7 +653,8 @@ public partial class UnitViews : Node3D
             Flash(target, _hitFlash);
             var damage = DamagePattern.Match(e.Message);
             var text = damage.Success ? $"-{damage.Groups[1].Value}" : "hit";
-            if (Juice is { } juice) juice.Pop(target.Root.Position, text, Hud.Palette.Danger, e.Amount ?? 0, e.Tier);
+            var squad = e.UnitId is { } by && _presenter.State.FindUnit(by)?.Side == _presenter.Side;
+            if (Juice is { } juice) juice.Pop(target.Root.Position, text, Hud.Palette.Danger, e.Amount ?? 0, e.Tier, squad);
             else FloatText(target.Root.Position, text, Hud.Palette.Danger);
             if (target.Rig is { } rig && rig.Current is not ("death" or "downed" or "downed_loop")) rig.Once("hit_react");
         }

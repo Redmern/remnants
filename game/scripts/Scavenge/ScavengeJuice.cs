@@ -158,9 +158,10 @@ public partial class ScavengeJuice : Node
 
     /// <summary>
     /// A damage or heal pop over a unit: sized and heated by its value and the chain (<see cref="ReplayJuice.PopScale"/>),
-    /// harder hits shake it. Effects Off gives the plain pop.
+    /// harder hits shake it (<paramref name="squad"/>: the side's own blow, the only kind the chain grows). Effects Off
+    /// gives the plain pop.
     /// </summary>
-    public void Pop(Vector3 at, string text, Color color, double amount, HitTier? tier = null)
+    public void Pop(Vector3 at, string text, Color color, double amount, HitTier? tier = null, bool squad = true)
     {
         var k = (float)Intensity;
         if (k <= 0)
@@ -168,7 +169,8 @@ public partial class ScavengeJuice : Node
             _tags.Pop(at, text, color, text.StartsWith('-'));
             return;
         }
-        var chain = _chain.Count;
+        // Only the squad's own blows ride its chain; a hit taken grows with its value alone.
+        var chain = squad ? _chain.Count : 0;
         var scale = 1 + ((float)ReplayJuice.PopScale(amount, chain) - 1) * Mathf.Min(k, 1.2f);
         var heat = (float)ReplayJuice.PopHeat(amount, chain) * Mathf.Min(k, 1f);
         if (tier == HitTier.Graze) (scale, heat) = (Mathf.Max(1, scale * 0.85f), heat * 0.5f);
