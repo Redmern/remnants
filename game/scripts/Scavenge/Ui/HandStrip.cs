@@ -176,7 +176,10 @@ public partial class HandStrip : PanelContainer
         ghost.FocusMode = FocusModeEnum.None;
         ghost.TopLevel = true;
         ghost.ZIndex = 10;
-        AddChild(ghost);
+        // On the HUD's layer, not in the strip: the strip hides while the play replays and would take the ghost with it.
+        Node layer = this;
+        while (layer.GetParent() is { } up && layer is not CanvasLayer) layer = up;
+        layer.AddChild(ghost);
         ghost.Size = face.Size;
         ghost.PivotOffset = face.Size / 2;
         ghost.GlobalPosition = face.GetGlobalRect().Position;
