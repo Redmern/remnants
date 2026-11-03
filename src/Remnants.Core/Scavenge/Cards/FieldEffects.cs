@@ -27,9 +27,13 @@ public static class FieldEffects
     /// <summary>The terrain a barrier stands for.</summary>
     public const Terrain BarrierTerrain = Terrain.Cover;
 
-    /// <summary>Whether a barrier may go up on the tile: open ground nobody stands on, not an exit, no barrier there yet.</summary>
+    /// <summary>
+    /// Whether a barrier may go up on the tile: open ground with nobody, no device and no loot on it, not an exit, no barrier
+    /// there yet.
+    /// </summary>
     public static bool CanBarrier(ScavengeState state, Pos p) =>
-        state.Map.InBounds(p) && state.Map[p] is Terrain.Floor or Terrain.Rubble && state.UnitAt(p) is null && !state.Map.IsExit(p);
+        state.Map.InBounds(p) && state.Map[p] is Terrain.Floor or Terrain.Rubble && state.UnitAt(p) is null && !state.Map.IsExit(p)
+        && state.DeviceAt(p) is null && !state.Caches.Any(c => c.Pos == p);
 
     /// <summary>The tiles a smoke of <paramref name="radius"/> around <paramref name="center"/> covers (on the map).</summary>
     public static List<Pos> SmokeTiles(TileMap map, Pos center, int radius)

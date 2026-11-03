@@ -9,7 +9,8 @@ namespace Remnants.Core.Tests;
 public class CardSaveTests
 {
     /// <summary>A short fight with every kind of board change: shove, smoke, barrier, feint, swap; returns the saved run.</summary>
-    private static string Script()
+    /// <param name="skip">The UI's skip-animations setting, as its replay would read the events after each command.</param>
+    private static string Script(bool? skip = null)
     {
         var a = SurvivorUnit(1, new(2, 2), weapon: "pipe");
         var f = SurvivorUnit(1, new(1, 3), weapon: "pipe");
@@ -18,7 +19,18 @@ public class CardSaveTests
         var sim = Arena(10, 6, [a, f, b, c], seed: 7);
         sim.State.Decks.Add(new SquadDeck { PlayerId = 1, Hand = ["shove", "barricade", "feint", "smoke_bomb", "switch_places"], Points = 9, Budget = 9,
             HandSize = 5, DrawPile = ["yank", "go_now"] });
-        void Ok(IScavengeCommand cmd) => Assert.True(sim.Execute(cmd).Ok, cmd.ToString());
+        var seen = 0;
+        void Ok(IScavengeCommand cmd)
+        {
+            Assert.True(sim.Execute(cmd).Ok, cmd.ToString());
+            if (skip is not { } fast) return;
+            // Replay the new events as the screen paces them (sight, holds, walks): a view only, it must change nothing.
+            var visible = Visibility.SideVisible(sim.Data, sim.State, a.Side);
+            foreach (var e in sim.State.Events.Skip(seen))
+                _ = ReplayPacing.Hold(0.4, ReplayPacing.InSight(sim.State, a.Side, e, visible, null, null), fast)
+                    + ReplayPacing.WalkSeconds(0.2, 2, false, fast);
+            seen = sim.State.Events.Count;
+        }
         Ok(new PlayCard(1, a.Id, "shove", b.Id));
         Ok(new PlayCard(1, a.Id, "barricade", Tile: new Pos(3, 3)));
         Ok(new PlayCard(1, a.Id, "feint", b.Id));
@@ -33,8 +45,9 @@ public class CardSaveTests
     [Fact]
     public void The_same_commands_give_the_same_run()
     {
-        // Core never reads the UI's animation settings: skipped or not, the commands and so the run are the same.
-        Assert.Equal(Script(), Script());
+        // Core never reads the UI's animation settings: replayed skipped, paced or not at all, the run is the same.
+        Assert.Equal(Script(skip: true), Script(skip: false));
+        Assert.Equal(Script(), Script(skip: true));
     }
 
     [Fact]

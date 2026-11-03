@@ -82,6 +82,8 @@ public static class CardAbilities
             strike = BestBlow(sim, unit, target!);
             if (strike is null) return Fail(ScavengeError.OutOfRange, $"{target!.Name} is not in reach of any of {unit.Name}'s attacks.");
         }
+        // More AP never wakes a unit that spent its own: that would be an extra sub-turn.
+        if (effect.GrantAp > 0 && target!.Ap <= 0) return Fail(ScavengeError.InvalidTarget, $"{target.Name} has spent their AP this round.");
         if (effect.Disrupt && target!.Plan is null) return Fail(ScavengeError.NoIntent, $"{target.Name} has no plan to break.");
         if (effect.PlaceBarrier > 0 && !FieldEffects.CanBarrier(state, tile!.Value))
             return Fail(ScavengeError.InvalidTile, $"No barrier can go up on {tile}.");
@@ -89,8 +91,7 @@ public static class CardAbilities
         {
             var at = state.TurnOrder.IndexOf(target!.Id);
             if (at <= state.TurnIndex) return Fail(ScavengeError.InvalidTarget, $"{target.Name} is not waiting for a turn this sub-round.");
-            if (effect.AdvanceInitiative && at == state.TurnIndex + 1) return Fail(ScavengeError.InvalidTarget, $"{target.Name} is next already.");
-            if (effect.DelayInitiative && at == state.TurnOrder.Count - 1) return Fail(ScavengeError.InvalidTarget, $"{target.Name} is last already.");
+            // Already next (or last) is no refusal: that would tell a client of units it cannot see queued in between.
         }
         if (effect.Push > 0 || effect.Pull > 0)
         {
@@ -113,6 +114,7 @@ public static class CardAbilities
         {
             var from = unit.Pos;
             unit.Pos = stepTo;
+            sim.Moved(unit, from, forced: true);
             // It slips round to face the nearest hostile it sees (a flank: its blow then finds that enemy's side or back).
             if (state.Units.Where(u => u.IsActive && u.OnMap && unit.HostileTo(u) && Detection.SideSees(sim.Data, state, unit.Side, u))
                     .OrderBy(u => u.Pos.Chebyshev(stepTo)).ThenBy(u => u.Id).FirstOrDefault() is { } nearest)
@@ -124,8 +126,8 @@ public static class CardAbilities
         {
             var from = unit.Pos;
             unit.Pos = target.Pos;
-            unit.Displaced = true;
             Displace(sim, target, from, unit);
+            sim.Moved(unit, from, forced: true);
             done.Add($"swaps places with {target.Name}");
         }
         else if (outcome.Landing is { } landing && target is not null)
@@ -259,7 +261,8 @@ public static class CardAbilities
         mover.Pos = to;
         mover.Displaced = true;
         state.Log(new(state.Round, ScavengeEventType.Displaced, $"{by.Name} moves {mover.Name} from {from} to {to}.", by.Id, mover.Id, to,
-            Anonymous: $"{mover.Name} is thrown from {from} to {to} by something in the fog."));
+            Anonymous: $"{mover.Name} is thrown to {to} by something in the fog."));
+        sim.Moved(mover, from, forced: true);
         if (mover.Plan is null) return;
         mover.Plan = null;
         state.Log(new(state.Round, ScavengeEventType.IntentFizzled, $"{mover.Name}'s plan falls through: knocked off the tile it planned from.",

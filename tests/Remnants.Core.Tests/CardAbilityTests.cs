@@ -442,4 +442,71 @@ public class CardAbilityTests
         Assert.Equal(f.MaxHp, f.Hp);
         Assert.True(Combat.Exposed(sim, e1));
     }
+
+    [Fact]
+    public void Barriers_never_read_as_a_salvageable_wreck()
+    {
+        var a = SurvivorUnit(1, new(2, 2));
+        var sim = Table([a], ["t_barrier", "t_barrier"]);
+        var before = Salvaging.Wrecks(sim.State.Map).Count;
+        Assert.True(Play(sim, a, "t_barrier", tile: new(3, 2)).Ok);
+        Assert.True(Play(sim, a, "t_barrier", tile: new(4, 2)).Ok);
+        Assert.Equal(before, Salvaging.Wrecks(sim.State.Map).Count);
+    }
+
+    [Fact]
+    public void A_barrier_does_not_go_up_on_a_loot_pile()
+    {
+        var a = SurvivorUnit(1, new(2, 2));
+        var sim = Table([a], ["t_barrier"]);
+        FieldLoot.Pile(sim.State, new Pos(3, 2), LootPileKind.Remains, "x").Items.Add("bandage");
+        Assert.Equal(ScavengeError.InvalidTile, Play(sim, a, "t_barrier", tile: new(3, 2)).Error);
+    }
+
+    [Fact]
+    public void Forced_and_card_moves_trip_motion_sensors_like_any_move()
+    {
+        var a = SurvivorUnit(1, new(0, 1));
+        var b = SurvivorUnit(2, new(9, 1));
+        var sim = Table([a, b], ["t_step", "t_step"], rows: ["##########", "..........", "##########"], height: 3);
+        sim.State.Sensors.Add(new Sensor(1, b.Side, new Pos(4, 1), 1, "motion_sensor"));
+        Assert.True(Play(sim, a, "t_step", tile: new(2, 1)).Ok);
+        Assert.DoesNotContain(sim.State.Events, e => e.Type == ScavengeEventType.SensorTripped);
+        Assert.True(Play(sim, a, "t_step", tile: new(3, 1)).Ok);
+        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.SensorTripped);
+    }
+
+    [Fact]
+    public void The_swapper_is_not_left_open_to_its_own_side_s_strikes()
+    {
+        var a = SurvivorUnit(1, new(1, 2));
+        var f = SurvivorUnit(1, new(2, 2));
+        var sim = Table([a, f], ["t_swap"]);
+        Assert.True(Play(sim, a, "t_swap", f).Ok);
+        Assert.False(a.Displaced);
+        Assert.True(f.Displaced);
+    }
+
+    [Fact]
+    public void Grant_ap_cannot_wake_a_unit_that_has_spent_its_ap()
+    {
+        var a = SurvivorUnit(1, new(1, 2));
+        var f = SurvivorUnit(1, new(3, 2));
+        var sim = Table([a, f], ["t_ap"]);
+        f.Ap = 0;
+        Assert.Equal(ScavengeError.InvalidTarget, Play(sim, a, "t_ap", f).Error);
+    }
+
+    [Fact]
+    public void Hurrying_the_next_unit_or_holding_back_the_last_is_allowed_and_changes_nothing()
+    {
+        // Refusing it would tell a client about units it cannot see queued in between.
+        var a = SurvivorUnit(1, new(0, 0));
+        var f = SurvivorUnit(1, new(0, 2));
+        var x = SurvivorUnit(2, new(5, 0));
+        var sim = Table([a, f, x], ["t_advance", "t_delay"]);
+        Assert.True(Play(sim, a, "t_advance", f).Ok);
+        Assert.True(Play(sim, a, "t_delay", x).Ok);
+        Assert.Equal([a.Id, f.Id, x.Id], sim.State.TurnOrder);
+    }
 }

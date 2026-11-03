@@ -241,8 +241,11 @@ public static class TacticsView
             landing = land;
             if (e.Swap) affected.Add(unit.Id);
             said.Add($"{target.Name} lands on {land}");
-            if (Blows(sim, unit.Side).FirstOrDefault(b => b.Tiles.Contains(land) && b.UnitId != target.Id) is { Name: { } by })
-                said.Add($"in {by}'s blow: it will be hit");
+            if (Blows(sim, unit.Side).FirstOrDefault(b => b.Tiles.Contains(land) && b.UnitId != target.Id) is { Name: { } by } coming)
+                // A hostile's blow hits it anyway; its own side's only while the shove holds (until its next turn).
+                said.Add(state.FindUnit(coming.UnitId) is { } striker && striker.HostileTo(target)
+                    ? $"in {by}'s blow: it will be hit"
+                    : $"in {by}'s blow: hit unless it acts first");
         }
         if (target is not null && target.HostileTo(unit) && target.Plan is not null && (e.Disrupt || landing is not null && target.Id != unit.Id && e.Step == 0))
             said.Add("breaks its plan, exposed");

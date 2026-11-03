@@ -74,4 +74,15 @@ public class CardFogNetTests
         var known = view.Units.Select(u => u.Id).ToHashSet();
         Assert.Equal(state.TurnOrder.Where(known.Contains), view.TurnOrder.Where(id => id != SideFog.HiddenUnitId));
     }
+
+    [Fact]
+    public void Whether_a_rival_unit_was_shoved_is_not_sent()
+    {
+        var (f, a, b, alice, bob) = Field();
+        bob.Pos = alice.Pos + new Pos(2, 0);
+        bob.Displaced = true;
+        var aliceFog = new SideFog(a.Id, alice.Side);
+        aliceFog.Update(f.Sim);
+        Assert.False(Assert.Single(aliceFog.View(f.Sim).Units, u => u.Id == bob.Id).Displaced);
+    }
 }

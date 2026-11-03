@@ -50,7 +50,7 @@ public class CardPreviewTests
         Assert.True(sim.Execute(new EndTurn(2, b.Id)).Ok);
         var onB = Assert.Single(TacticsView.Targets(sim, 1, a.Id, "shove"), o => o.UnitId == b.Id);
         Assert.Contains($"{e1.Name}", onB.Outcome);
-        Assert.Contains("hit", onB.Outcome);
+        Assert.Contains("hit unless it acts first", onB.Outcome); // e1's own side: the shove only counts until b's next turn
     }
 
     [Fact]

@@ -429,7 +429,9 @@ public sealed class ScavengeSim
     /// After a unit moved (player or AI): motion sensors it entered reveal it to their side, sides it is unseen by but
     /// close to hear it (movement contact), and overwatch may fire on it.
     /// </summary>
-    internal void Moved(Unit unit, Pos from)
+    /// <param name="forced">Moved by a card (shoved, swapped, stepped): sensors, noise, cameras and raised ground as for any
+    /// move, but overwatch does not fire at it.</param>
+    internal void Moved(Unit unit, Pos from, bool forced = false)
     {
         var fog = Data.Rules.Fog;
         foreach (var sensor in State.Sensors.OrderBy(s => s.Id).ToList())
@@ -449,7 +451,7 @@ public sealed class ScavengeSim
                 Detection.AddContact(Data, State, side, unit.Pos, ContactKind.Movement, unit.Id);
         MissionRules.Moved(this, unit);
         Hacking.CameraCheck(this, unit);
-        CheckOverwatch(unit);
+        if (!forced) CheckOverwatch(unit);
     }
 
     /// <summary>A motion sensor goes off: the unit is revealed to the sensor's side, which gets an alert and a contact.</summary>
