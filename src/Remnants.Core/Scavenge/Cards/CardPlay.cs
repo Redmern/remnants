@@ -96,7 +96,7 @@ public static class CardPlay
         if (effect.Mend > 0 && Treatment.Mend(unit.Body, effect.Mend) is { } mended) done.Add(mended);
         if (effect.Draw > 0) { SquadDecks.Draw(sim, deck, effect.Draw); done.Add($"draws {effect.Draw}"); }
         if (effect.Counter && planner is not null) { unit.CounterId = planner.Id; done.Add($"ready to strike {planner.Name} first"); }
-        if (check.Ability is { } ability) done.AddRange(CardAbilities.Apply(sim, unit, effect, ability));
+        if (check.Ability is { } ability) done.AddRange(CardAbilities.Apply(sim, unit, effect, ability, card.Radius));
         // Onto its pile only now, so a draw card never reshuffles itself back into the hand.
         if (!c.FromSlot) (card.Consumable ? deck.Consumed : deck.Used).Add(c.CardId);
         if (!card.Reaction) unit.LastCardId = card.Id;

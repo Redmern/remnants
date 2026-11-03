@@ -23,6 +23,7 @@ public sealed class ScavengeSim
         _rng = new DeterministicRng { State = state.RngState == 0 ? new DeterministicRng(0).State : state.RngState };
         SyncRng();
         state.Stamp = StampSeenBy;
+        FieldEffects.Sync(state);
     }
 
     /// <summary>Sim-owned randomness. Always draw through this so the state stays in the save.</summary>
@@ -280,6 +281,7 @@ public sealed class ScavengeSim
         foreach (var u in State.Units.Where(u => u.OnMap && u.Body.Conditions.Count > 0)) Treatment.CountDown(u.Body);
         UpdateParties();
         Detection.Expire(Data, State);
+        FieldEffects.RoundStarted(State);
         FieldEnvironment.RoundStarted(this);
         Alliances.RoundStarted(this);
         Hacking.RoundStarted(this);

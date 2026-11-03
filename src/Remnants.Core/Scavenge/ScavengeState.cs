@@ -246,6 +246,9 @@ public sealed class ScavengeState
     /// <summary>Units revealed to a side despite their stealth.</summary>
     public List<Reveal> Reveals { get; set; } = new();
     public List<Flare> Flares { get; set; } = new();
+
+    /// <summary>Card barriers and smoke on the map (<see cref="Scavenge.FieldEffects"/>).</summary>
+    public List<FieldEffect> FieldEffects { get; set; } = new();
     public List<Sensor> Sensors { get; set; } = new();
     public int NextSensorId { get; set; } = 1;
 

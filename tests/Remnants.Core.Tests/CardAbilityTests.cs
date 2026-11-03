@@ -32,6 +32,8 @@ public class CardAbilityTests
         Card("t_ap", CardTarget.Ally, new() { GrantAp = 1 }, range: 3),
         Card("t_advance", CardTarget.Unit, new() { AdvanceInitiative = true }),
         Card("t_delay", CardTarget.Enemy, new() { DelayInitiative = true }),
+        Card("t_barrier", CardTarget.Tile, new() { PlaceBarrier = 2 }, range: 2),
+        Card("t_smoke", CardTarget.Tile, new() { Smoke = 2 }, range: 6, radius: 1),
     ];
 
     private static readonly ScavengeData Data = Sure.WithCards(Sure.Cards.Def with { Cards = [.. Sure.Cards.Def.Cards, .. TestCards] });
@@ -315,5 +317,69 @@ public class CardAbilityTests
         Assert.Equal(f.Id, sim.State.CurrentUnitId);
         Assert.NotNull(e.Plan);
         Assert.Equal(f.MaxHp, f.Hp);
+    }
+
+    /// <summary>Ends every turn until <paramref name="round"/> starts.</summary>
+    private static void RunTo(ScavengeSim sim, int round)
+    {
+        while (sim.State.Round < round)
+            Assert.True(sim.Execute(new EndTurn(sim.State.CurrentUnit!.PlayerId!.Value, sim.State.CurrentUnitId!.Value)).Ok);
+    }
+
+    [Fact]
+    public void A_barrier_is_cover_on_an_empty_tile_for_its_rounds_then_goes()
+    {
+        var a = SurvivorUnit(1, new(1, 2));
+        var b = SurvivorUnit(2, new(8, 2));
+        var sim = Table([a, b], ["t_barrier", "t_barrier", "t_barrier", "t_barrier"]);
+        var map = sim.State.Map;
+        Assert.Equal(ScavengeError.OutOfRange, Play(sim, a, "t_barrier", tile: new(4, 2)).Error);
+        Assert.Equal(ScavengeError.InvalidTile, Play(sim, a, "t_barrier", tile: a.Pos).Error);
+        var before = Combat.CoverAgainst(sim.Data, map, a.Pos, b.Pos);
+        Assert.True(Play(sim, a, "t_barrier", tile: new(2, 2)).Ok);
+        Assert.Equal(Terrain.Cover, map[new Pos(2, 2)]);
+        Assert.Equal(Terrain.Floor, map.Tiles[map.Index(new Pos(2, 2))]); // the map itself is not changed
+        Assert.True(Combat.CoverAgainst(sim.Data, map, a.Pos, b.Pos) > before);
+        Assert.Equal(ScavengeError.InvalidTile, Play(sim, a, "t_barrier", tile: new(2, 2)).Error); // one there already
+        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.FieldEffectPlaced);
+
+        RunTo(sim, 2);
+        Assert.Equal(Terrain.Cover, map[new Pos(2, 2)]);
+        RunTo(sim, 3);
+        Assert.Equal(Terrain.Floor, map[new Pos(2, 2)]);
+        Assert.Empty(sim.State.FieldEffects);
+    }
+
+    [Fact]
+    public void Smoke_blocks_sight_through_and_into_it_for_its_rounds()
+    {
+        var a = SurvivorUnit(1, new(1, 2));
+        var b = SurvivorUnit(2, new(7, 2));
+        var c = SurvivorUnit(2, new(4, 0));
+        var sim = Table([a, b, c], ["t_smoke"], width: 10, height: 5);
+        Assert.True(Detection.SideSees(sim.Data, sim.State, a.Side, b));
+        Assert.True(Play(sim, a, "t_smoke", tile: new(4, 2)).Ok);
+        Assert.False(Detection.SideSees(sim.Data, sim.State, a.Side, b));      // through the cloud
+        c.Pos = new(4, 1);
+        Assert.False(Detection.SideSees(sim.Data, sim.State, a.Side, c));      // standing in it
+        Assert.False(Combat.Clear(sim.Data, sim.State.Map, a.Pos, b.Pos));      // no shot through it
+        c.Pos = new(2, 2);
+        Assert.True(Detection.SideSees(sim.Data, sim.State, a.Side, c));       // next to a, outside it
+        RunTo(sim, 3);
+        Assert.True(Detection.SideSees(sim.Data, sim.State, a.Side, b));
+    }
+
+    [Fact]
+    public void Barriers_and_smoke_survive_a_save()
+    {
+        var a = SurvivorUnit(1, new(1, 2));
+        var b = SurvivorUnit(2, new(7, 2));
+        var sim = Table([a, b], ["t_barrier", "t_smoke"]);
+        Assert.True(Play(sim, a, "t_barrier", tile: new(2, 2)).Ok);
+        Assert.True(Play(sim, a, "t_smoke", tile: new(4, 2)).Ok);
+        var loaded = ScavengeSave.Load(sim.Data, ScavengeSave.Save(sim.State));
+        Assert.Equal(2, loaded.State.FieldEffects.Count);
+        Assert.Equal(Terrain.Cover, loaded.State.Map[new Pos(2, 2)]);
+        Assert.False(Detection.SideSees(loaded.Data, loaded.State, a.Side, loaded.State.FindUnit(b.Id)!));
     }
 }

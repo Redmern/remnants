@@ -76,6 +76,8 @@ public static class CardAbilities
             if (Fixed(target)) return Fail(ScavengeError.InvalidTarget, $"{target.Name} cannot be moved.");
             landing = unit.Pos;
         }
+        if (effect.PlaceBarrier > 0 && !FieldEffects.CanBarrier(state, tile!.Value))
+            return Fail(ScavengeError.InvalidTile, $"No barrier can go up on {tile}.");
         if (effect.AdvanceInitiative || effect.DelayInitiative)
         {
             var at = state.TurnOrder.IndexOf(target!.Id);
@@ -95,7 +97,7 @@ public static class CardAbilities
     }
 
     /// <summary>Carries out a checked ability; returns what it did, in words, for the card's log line.</summary>
-    internal static List<string> Apply(ScavengeSim sim, Unit unit, CardEffect effect, Outcome outcome)
+    internal static List<string> Apply(ScavengeSim sim, Unit unit, CardEffect effect, Outcome outcome, int radius)
     {
         var state = sim.State;
         var done = new List<string>();
@@ -123,6 +125,20 @@ public static class CardAbilities
         {
             Displace(sim, target, landing, unit);
             done.Add($"{target.Name} {(effect.Push > 0 ? "shoved" : "dragged")} to {landing}");
+        }
+        if (outcome.Tile is { } at && (effect.PlaceBarrier > 0 || effect.Smoke > 0))
+        {
+            var smoke = effect.Smoke > 0;
+            var rounds = smoke ? effect.Smoke : effect.PlaceBarrier;
+            FieldEffects.Add(state, new FieldEffect
+            {
+                Kind = smoke ? FieldEffectKind.Smoke : FieldEffectKind.Barrier, Tiles = smoke ? FieldEffects.SmokeTiles(state.Map, at, radius) : [at],
+                UntilRound = state.Round + rounds - 1, Side = unit.Side,
+            });
+            var what = smoke ? $"smoke billows round {at}" : $"a barrier goes up at {at}";
+            state.Log(new(state.Round, ScavengeEventType.FieldEffectPlaced, $"{unit.Name}: {what}.", unit.Id, Pos: at,
+                Anonymous: $"Out of the fog, {what}."));
+            done.Add(what);
         }
         if (effect.GrantAp > 0 && target is not null)
         {
