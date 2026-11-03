@@ -12,7 +12,7 @@
       "shove": 2, "flank_step": 2, "yank": 1, "spoil": 1,
       "switch_places": 1, "go_now": 1, "feint": 1,
       "barricade": 2, "smoke_bomb": 1,
-      "steady_aim": 2, "take_cover": 2, "field_dressing": 2
+      "steady_aim": 2, "roll_with_it": 2, "field_dressing": 2
     },
     "slots": {
       "level": 5,
@@ -26,7 +26,7 @@
     ]
   },
   "cards": [
-    { "id": "shove", "name": "Shove", "category": "Attack", "rarity": "Common", "cost": 1, "target": "Enemy", "range": 1,
+    { "id": "shove", "name": "Shove", "category": "Attack", "rarity": "Common", "cost": 2, "target": "Enemy", "range": 1,
       "text": "Shove an enemy next to you a tile back and spin it round: its back is to you. A plan it had falls through and it is exposed. Strong arms shove two tiles.",
       "requirement": { "kind": "Baseline", "anyOf": [ { "attribute": "Strength", "min": 60 } ] },
       "effect": { "push": 1, "spin": true }, "bonus": { "push": 1 } },
@@ -36,8 +36,8 @@
     { "id": "yank", "name": "Yank", "category": "Attack", "rarity": "Common", "cost": 1, "reaction": true, "target": "Enemy", "range": 3,
       "text": "Reaction to a seen enemy's plan, within 3 tiles: yank it a tile toward you. Its plan falls through and it is exposed.",
       "effect": { "pull": 1 } },
-    { "id": "spoil", "name": "Spoil", "category": "Defense", "rarity": "Uncommon", "cost": 2, "reaction": true, "target": "Enemy", "range": 4,
-      "text": "Reaction to a seen enemy's plan, within 4 tiles: break it where it stands. The enemy is exposed: your side's next hit on it lands harder.",
+    { "id": "spoil", "name": "Spoil", "category": "Defense", "rarity": "Uncommon", "cost": 1, "reaction": true, "target": "Enemy", "range": 4,
+      "text": "Reaction to a seen enemy's plan or readied strike, within 4 tiles: call it off where it stands, even on what cannot be moved. The enemy is exposed: your side's next hit on it lands harder.",
       "effect": { "disrupt": true } },
     { "id": "drag_in", "name": "Drag In", "category": "Attack", "rarity": "Uncommon", "cost": 2, "target": "Enemy", "range": 3,
       "text": "Drag an enemy within 3 tiles two tiles toward you: into your reach, or onto a blow already coming down. Breaks its plan.",
@@ -55,7 +55,7 @@
       "text": "Throw up cover on an open tile next to you, for this round and the next.",
       "effect": { "placeBarrier": 2 } },
     { "id": "smoke_bomb", "name": "Smoke Bomb", "category": "Defense", "rarity": "Uncommon", "cost": 2, "target": "Tile", "range": 5, "radius": 1,
-      "text": "Smoke over a seen tile within 5 and the tiles round it, for this round and the next: nobody sees or shoots through it, or into it from further than a step.",
+      "text": "A smoke screen over a seen tile within 5 and the tiles round it (not over yourself), for this round and the next: nobody sees or shoots through it, or into it from further than a step.",
       "effect": { "smoke": 2 } },
     { "id": "second_wind", "name": "Second Wind", "category": "Utility", "rarity": "Uncommon", "cost": 2, "target": "Ally", "range": 2,
       "text": "You or an ally within 2 tiles gets 1 AP more this turn.",

@@ -60,24 +60,68 @@ public class CardDataTests
         Assert.Contains(all, e => e.Strike);
     }
 
-    /// <summary>The effect numbers of a card, by name (0 for none).</summary>
-    private static Dictionary<string, double> Numbers(CardDef c) => typeof(CardEffect).GetProperties()
-        .Where(p => p.PropertyType == typeof(int) || p.PropertyType == typeof(double) || p.PropertyType == typeof(bool))
-        .Where(p => p.CanWrite)
-        .ToDictionary(p => p.Name, p => Convert.ToDouble(p.GetValue(c.Effect)));
+    /// <summary>
+    /// What a card can do, as numbers to compare across kinds: every effect number, range and radius, and what follows from
+    /// them (it breaks a plan, it answers a readied strike, it is played off-turn, it needs no plan to aim at, how broad
+    /// its target is).
+    /// </summary>
+    private static Dictionary<string, double> Capabilities(CardDef c)
+    {
+        var e = c.Effect;
+        var caps = typeof(CardEffect).GetProperties().Where(p => p.CanWrite && p.PropertyType is var t && (t == typeof(int) || t == typeof(double) || t == typeof(bool)))
+            .ToDictionary(p => p.Name, p => Convert.ToDouble(p.GetValue(e)));
+        caps["Range"] = c.Range == 0 ? 99 : c.Range;
+        caps["Radius"] = c.Radius;
+        caps["BreaksPlan"] = e.Disrupt || e.Push > 0 || e.Pull > 0 ? 1 : 0;
+        caps["AnswersStrike"] = e.Disrupt ? 1 : 0;
+        caps["OffTurn"] = c.Reaction ? 1 : 0;
+        caps["NeedsNoPlan"] = c.Reaction ? 0 : 1;
+        caps["Targets"] = c.Target switch { CardTarget.Unit => 2, CardTarget.Ally or CardTarget.Enemy => 1, _ => 0 };
+        return caps;
+    }
 
     [Fact]
-    public void No_starter_card_is_strictly_better_than_another_of_its_kind()
+    public void No_starter_card_is_strictly_better_than_another_whatever_its_kind()
     {
-        // Same target and the same effects: then the dearer one must do more of something.
         foreach (var a in StarterCards)
-            foreach (var b in StarterCards.Where(b => b.Id != a.Id && b.Target == a.Target && b.Reaction == a.Reaction))
+            foreach (var b in StarterCards.Where(b => b.Id != a.Id))
             {
-                var (na, nb) = (Numbers(a), Numbers(b));
-                if (!na.Keys.All(k => (na[k] != 0) == (nb[k] != 0))) continue;
-                var aAtLeast = na.Keys.All(k => na[k] >= nb[k]) && a.Range >= b.Range && a.Radius >= b.Radius;
-                Assert.False(aAtLeast && a.Cost <= b.Cost && (a.Cost < b.Cost || na.Keys.Any(k => na[k] > nb[k])), $"{a.Id} beats {b.Id}");
+                // Same kind of target (a unit card covers ally and enemy cards); then: at least as cheap and as much of everything.
+                if (!(a.Target == b.Target || a.Target == CardTarget.Unit && b.Target is CardTarget.Ally or CardTarget.Enemy)) continue;
+                var (ca, cb) = (Capabilities(a), Capabilities(b));
+                var atLeast = ca.Keys.All(k => ca[k] >= cb[k]);
+                Assert.False(atLeast && a.Cost <= b.Cost && (a.Cost < b.Cost || ca.Keys.Any(k => ca[k] > cb[k])), $"{a.Id} beats {b.Id}");
             }
+    }
+
+    /// <summary>
+    /// A rough value of a card in AP-equivalents (1 AP ~ a move or a cheap blow): the progress notes' card power table. A
+    /// reaction is worth a quarter less (it needs a seen plan to aim at) and a quarter AP more (played off-turn).
+    /// </summary>
+    public static double Power(CardDef c)
+    {
+        var e = c.Effect;
+        var v = (e.Push + e.Pull) * 1.0 + (e.Spin ? 1.0 : 0) + (e.Disrupt || e.Push > 0 || e.Pull > 0 ? 1.0 : 0) + (e.Disrupt ? 0.5 : 0)
+                + e.Step * 0.75 + (e.Swap ? 1.0 : 0) + e.GrantAp * 1.0 + (e.AdvanceInitiative || e.DelayInitiative ? 0.75 : 0)
+                + e.PlaceBarrier * 0.5 + e.Smoke * (2 * c.Radius + 1) * (2 * c.Radius + 1) / 9.0 + (e.Strike ? 2.0 : 0)
+                + e.Hit / 0.1 * 0.5 + e.Cover / 0.15 * 0.5 + e.Guard * 0.75 + e.Mend / 0.1 * 0.75 + e.Draw * 0.5 + (e.Counter ? 1.5 : 0) + e.Move * 0.5
+                + Math.Clamp(c.Range - 1, 0, 5) * 0.1;
+        return c.Reaction ? v * 0.75 + 0.25 : v;
+    }
+
+    [Fact]
+    public void Every_starter_card_is_worth_its_points_none_far_above_the_rest()
+    {
+        var perPoint = StarterCards.ToDictionary(c => c.Id, c => Power(c) / c.Cost);
+        var median = perPoint.Values.Order().ElementAt(perPoint.Count / 2);
+        Assert.All(perPoint, kv => Assert.True(kv.Value >= 0.4 * median && kv.Value <= 2.0 * median, $"{kv.Key} {kv.Value:0.00}/pt vs median {median:0.00}"));
+    }
+
+    [Fact]
+    public void A_guard_card_stays_in_the_starter_deck()
+    {
+        // Without one, hits land a tier heavier: more injuries, fewer expeditions, a weaker colony (raids).
+        Assert.Contains(StarterCards, c => c.Effect.Guard > 0);
     }
 
     [Fact]

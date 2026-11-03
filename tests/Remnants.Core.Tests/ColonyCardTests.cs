@@ -25,8 +25,8 @@ public class ColonyCardTests
     public void The_deck_is_built_from_owned_cards_only()
     {
         var sim = Fresh();
-        Assert.True(sim.Execute(new SetDeck(["shove", "shove", "take_cover"])).Ok);
-        Assert.Equal(["shove", "shove", "take_cover"], sim.State.Cards.Deck);
+        Assert.True(sim.Execute(new SetDeck(["shove", "shove", "roll_with_it"])).Ok);
+        Assert.Equal(["shove", "shove", "roll_with_it"], sim.State.Cards.Deck);
         Assert.Equal(CommandError.NotEnoughCards, sim.Execute(new SetDeck(["shove", "shove", "shove"])).Error);
         Assert.Equal(CommandError.UnknownCard, sim.Execute(new SetDeck(["no_such_card"])).Error);
         ColonyCards.Add(sim.State, Cards, "shove", Cards.Rules.MaxCopies + 1);
@@ -46,7 +46,7 @@ public class ColonyCardTests
         // Two shoves owned: one in the deck, one in the slot; a third use is one too many.
         var other = sim.State.Survivors.Where(x => !x.IsChild).Skip(1).First();
         Assert.Equal(CommandError.NotEnoughCards, sim.Execute(new SetCardSlots(other.Id, ["shove"])).Error);
-        Assert.Equal(CommandError.UnknownSurvivor, sim.Execute(new SetCardSlots(999, ["take_cover"])).Error);
+        Assert.Equal(CommandError.UnknownSurvivor, sim.Execute(new SetCardSlots(999, ["roll_with_it"])).Error);
         Assert.True(sim.Execute(new SetCardSlots(s.Id, [])).Ok);
         Assert.False(sim.State.Cards.Slots.ContainsKey(s.Id));
     }
@@ -72,12 +72,12 @@ public class ColonyCardTests
         var sim = Fresh();
         var adults = sim.State.Survivors.Where(x => !x.IsChild).Take(2).ToList();
         adults[0].Level = Cards.Rules.Slots.Level;
-        Assert.True(sim.Execute(new SetDeck(["shove", "take_cover", "steady_aim"])).Ok);
+        Assert.True(sim.Execute(new SetDeck(["shove", "roll_with_it", "steady_aim"])).Ok);
         Assert.True(sim.Execute(new SetCardSlots(adults[0].Id, ["yank"])).Ok);
         Assert.True(sim.Execute(new LaunchExpedition("outskirts", adults.Select(a => new ExpeditionMember(a.Id)).ToList())).Ok, "launch");
 
         var party = sim.ExpeditionParty();
-        Assert.Equal(["shove", "take_cover", "steady_aim"], party.Deck!.Cards);
+        Assert.Equal(["shove", "roll_with_it", "steady_aim"], party.Deck!.Cards);
         Assert.Equal(Cards.Rules.HandSize, party.Deck.HandSize);
         Assert.Equal(["yank"], party.Members.Single(m => m.Survivor.Id == adults[0].Id).SlotCards);
     }
@@ -95,13 +95,13 @@ public class ColonyCardTests
     public void Cards_survive_save_and_load()
     {
         var sim = Fresh();
-        Assert.True(sim.Execute(new SetDeck(["shove", "take_cover"])).Ok);
+        Assert.True(sim.Execute(new SetDeck(["shove", "roll_with_it"])).Ok);
         var json = SaveGame.Save(sim.State);
         Assert.Contains($"\"version\": {SaveGame.Version}", json);
         Assert.Equal(27, SaveGame.CardsVersion);
         var loaded = SaveGame.Load(TestData.Real, json, ScavengeTestData.Real);
         Assert.Equal(sim.State.Cards.Owned, loaded.State.Cards.Owned);
-        Assert.Equal(["shove", "take_cover"], loaded.State.Cards.Deck);
+        Assert.Equal(["shove", "roll_with_it"], loaded.State.Cards.Deck);
     }
 
     /// <summary>A save as version 26 wrote it: no card collection.</summary>
