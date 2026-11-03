@@ -195,7 +195,7 @@ public partial class ActionPanel : PanelContainer
                 var yield = FieldSalvage.Estimate(sim, node, unit).OrderByDescending(kv => kv.Value).FirstOrDefault();
                 var detail = $"{(yield.Key is null ? "" : $"~{yield.Value:0.#} {ScavengeText.Item(data, yield.Key)} · ")}{actions} action{(actions == 1 ? "" : "s")} left · noise {def.Noise}";
                 var button = Add(_context, "stat_loot", $"Salvage {def.Name}", detail, def.ApCost, first ? "scav_salvage" : null,
-                    $"Salvage the {def.Name.ToLowerInvariant()}: a lot comes off every few actions into your pack (what does not fit stays on the ground). Loud: enemies within {def.Noise} tiles hear it.",
+                    $"Salvage the {def.Name.ToLowerInvariant()}: a lot comes off every few actions into your pack (what does not fit stays on the ground). Loud: enemies within {def.Noise} tiles hear it.\nOr click it on the map.",
                     () => CommandRequested?.Invoke(new Salvage(_presenter.PlayerId, unit.Id, nodeId)));
                 button.SetBlocked(def.ApCost > unit.Ap, def.ApCost > unit.Ap);
                 first = false;

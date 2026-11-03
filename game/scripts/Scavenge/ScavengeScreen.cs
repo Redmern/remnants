@@ -414,6 +414,12 @@ public partial class ScavengeScreen : Node3D
             SelectActing();
             return;
         }
+        // A salvage node next to the unit: the click salvages it (its tooltip says so on hover).
+        if (_presenter.IsExplored(tile) && FieldSalvage.ClickedNode(state, acting, tile) is { } node)
+        {
+            _ = Run(new Salvage(pid, acting.Id, node.Id));
+            return;
+        }
         _ = Run(new Move(pid, acting.Id, tile));
     }
 
