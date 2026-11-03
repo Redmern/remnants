@@ -816,7 +816,9 @@ public partial class ScavengeScreen : Node3D
                     ? new Move(pid, u.Id, to)
                     : new EndTurn(pid, u.Id);
             }
+            var started = Time.GetTicksMsec();
             if (!await Run(command) && command is not EndTurn) await Run(new EndTurn(pid, u.Id));
+            GD.Print($"Autoplay: {command.GetType().Name} replayed in {Time.GetTicksMsec() - started} ms");
             await ToSignal(GetTree().CreateTimer(0.2), SceneTreeTimer.SignalName.Timeout);
         }
         _autoplaying = false;

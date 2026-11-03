@@ -92,6 +92,8 @@ public static class GameSettings
         _booted = true;
         _root = tree.Root;
         Load();
+        // Debug: a run with replays snapped (not saved unless the settings panel saves).
+        if (DebugCapture.HasFlag("--skip-animations")) SkipAnimations = true;
         EnsureBuses();
         Hotkeys.Install();
         Help.HelpLayer.Attach(tree);
