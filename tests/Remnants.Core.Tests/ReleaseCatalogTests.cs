@@ -87,3 +87,35 @@ public class ReleaseCatalogTests
     public void Matches_a_tag_to_the_game_version(string tag, string version, bool expected) =>
         Assert.Equal(expected, ReleaseCatalog.IsVersion(tag, version));
 }
+
+public class ReleaseChoiceTests
+{
+    private static GameRelease R(string tag, string? zip = "https://x/a.zip") => new(tag, tag, DateTimeOffset.UnixEpoch, zip, 1);
+
+    [Fact]
+    public void Current_version_cannot_be_switched_to() =>
+        Assert.False(ReleaseCatalog.CanSwitch(R("v0.3.2-win-preview"), "0.3.2"));
+
+    [Fact]
+    public void Other_version_with_a_zip_can_be_switched_to() =>
+        Assert.True(ReleaseCatalog.CanSwitch(R("v0.3.1-win-preview"), "0.3.2"));
+
+    [Fact]
+    public void Version_without_a_zip_cannot_be_switched_to() =>
+        Assert.False(ReleaseCatalog.CanSwitch(R("v0.3.1-win-preview", zip: null), "0.3.2"));
+
+    [Fact]
+    public void Nothing_selected_cannot_be_switched_to() =>
+        Assert.False(ReleaseCatalog.CanSwitch(null, "0.3.2"));
+
+    [Theory]
+    [InlineData("v0.3.2-win-preview", false, "v0.3.2-win-preview (current)")]
+    [InlineData("v0.3.1-win-preview", true, "v0.3.1-win-preview (installed)")]
+    [InlineData("v0.3.0-win-preview", false, "v0.3.0-win-preview")]
+    public void Labels_mark_the_current_and_installed_versions(string tag, bool installed, string expected) =>
+        Assert.Equal(expected, ReleaseCatalog.Label(R(tag), "0.3.2", installed));
+
+    [Fact]
+    public void Label_marks_a_release_with_no_download() =>
+        Assert.Equal("v0.1.0 (no download)", ReleaseCatalog.Label(R("v0.1.0", zip: null), "0.3.2", installed: false));
+}

@@ -56,6 +56,17 @@ public static class ReleaseCatalog
         return v.Length > 0 && Core(tag) == v;
     }
 
+    /// <summary>Whether the Switch button applies to <paramref name="release"/>: not the running version, and downloadable or already on disk.</summary>
+    public static bool CanSwitch(GameRelease? release, string currentVersion, bool installed = false) =>
+        release is not null && !IsVersion(release.Tag, currentVersion) && (release.Installable || installed);
+
+    /// <summary>The release picker's text for <paramref name="release"/>, marking the running and already-downloaded builds.</summary>
+    public static string Label(GameRelease release, string currentVersion, bool installed) =>
+        IsVersion(release.Tag, currentVersion) ? $"{release.Tag} (current)"
+        : installed ? $"{release.Tag} (installed)"
+        : release.Installable ? release.Tag
+        : $"{release.Tag} (no download)";
+
     private static string Core(string tagOrVersion)
     {
         var s = tagOrVersion.Trim().TrimStart('v', 'V');
