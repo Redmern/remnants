@@ -53,6 +53,17 @@ public class StrikeSelectionTests
     }
 
     [Fact]
+    public void Choosing_a_mode_left_over_from_an_earlier_round_picks_it_afresh()
+    {
+        var pick = new StrikeSelection();
+        pick.Toggle(StrikeMode.Stab, round: 1);
+
+        pick.Toggle(StrikeMode.Stab, round: 2);
+
+        Assert.Equal(StrikeMode.Stab, pick.Mode);
+    }
+
+    [Fact]
     public void Clear_drops_the_mode()
     {
         var pick = new StrikeSelection();

@@ -15,6 +15,7 @@ public sealed class StrikeSelection
     /// <summary>Picks <paramref name="mode"/> in <paramref name="round"/>, or drops it when it was already picked.</summary>
     public void Toggle(StrikeMode mode, int round)
     {
+        Sync(round);
         Mode = Mode == mode ? null : mode;
         _round = round;
     }
