@@ -499,6 +499,20 @@ public sealed record CombatRules
 
     /// <summary>Blows from the side and from behind land harder (see <see cref="FacingRules"/>).</summary>
     public FacingRules Facing { get; init; } = new();
+
+    /// <summary>What dodging a telegraphed blow earns (see <see cref="OutplayRules"/>).</summary>
+    public OutplayRules Outplay { get; init; } = new();
+}
+
+/// <summary>
+/// Outplays (scavenge.json <c>combat.outplay</c>): when a telegraphed blow comes down on a tile its target stepped off,
+/// the attacker is exposed through the next round, and the next hit on it does <see cref="ExposedDamage"/> times the
+/// damage (before armor); with <see cref="FreeCounter"/> the dodger's next tile strike covering the attacker costs no AP.
+/// </summary>
+public sealed record OutplayRules
+{
+    public double ExposedDamage { get; init; } = 1.5;
+    public bool FreeCounter { get; init; } = true;
 }
 
 /// <summary>

@@ -135,6 +135,25 @@ public static class Combat
     public static double OutplayBonus(ScavengeSim sim, Unit attacker, Unit target) =>
         attacker.OutplayedId == target.Id && sim.State.Round <= attacker.OutplayedUntilRound ? sim.Data.Rules.Fog.Ambush.HitBonus : 0;
 
+    /// <summary>
+    /// <paramref name="dodger"/> stepped off the tile <paramref name="attacker"/>'s telegraphed blow came down on: the dodger
+    /// gets the outplay hit bonus on it and (rules.combat.outplay) a free counter, both through the next round, and the
+    /// attacker is exposed as long.
+    /// </summary>
+    internal static void Dodged(ScavengeSim sim, Unit dodger, Unit attacker)
+    {
+        var state = sim.State;
+        dodger.OutplayedId = attacker.Id;
+        dodger.OutplayedUntilRound = state.Round + 1;
+        dodger.FreeCounterId = sim.Data.Rules.Combat.Outplay.FreeCounter ? attacker.Id : null;
+        attacker.ExposedUntilRound = state.Round + 1;
+        state.Log(new(state.Round, ScavengeEventType.IntentFizzled, $"{dodger.Name} dodges {attacker.Name}'s blow: {attacker.Name} is exposed.",
+            attacker.Id, dodger.Id, attacker.Pos));
+    }
+
+    /// <summary>Whether the next hit on the unit lands harder: a telegraphed blow of its was dodged (<see cref="Unit.ExposedUntilRound"/>).</summary>
+    public static bool Exposed(ScavengeSim sim, Unit unit) => unit.ExposedUntilRound > 0 && sim.State.Round <= unit.ExposedUntilRound;
+
     /// <summary>What a drone's mark on the target adds to the attacker's side's hit chance.</summary>
     public static double MarkBonus(ScavengeSim sim, Unit attacker, Unit target) =>
         Drones.IsMarked(sim.State, target.Id, attacker.Side) ? sim.Data.Rules.Drone.MarkHitBonus : 0;
@@ -294,8 +313,10 @@ public static class Combat
         }
 
         var arc = ArcOf(target, attacker.Pos);
+        var exposed = Exposed(sim, target);
+        target.ExposedUntilRound = 0;
         var raw = (action.MinDamage + (action.MaxDamage - action.MinDamage) * sim.Rng.NextDouble()) * (ambush?.DamageMultiplier ?? 1)
-                  * ArcDamage(data.Rules.Combat.Facing, arc);
+                  * ArcDamage(data.Rules.Combat.Facing, arc) * (exposed ? data.Rules.Combat.Outplay.ExposedDamage : 1);
         var part = PickHitLocation(sim, target);
         var defense = sim.Profile(target);
         var armor = Math.Max(0, defense.ArmorAgainst(Body.RegionOf(part), action.Pattern == AttackPattern.Melee) - action.ArmorPierce);
@@ -310,7 +331,8 @@ public static class Combat
         var damage = Math.Max(1, raw - armor);
         if (tier == HitTier.Graze) damage = Math.Max(1, damage * tiers.GrazeDamage);
         var where = (target.Structure ? target.Name : $"{target.Name}'s {part}")
-                    + arc switch { FacingArc.Side => " from the side", FacingArc.Rear => " from behind", _ => "" };
+                    + arc switch { FacingArc.Side => " from the side", FacingArc.Rear => " from behind", _ => "" }
+                    + (exposed ? " (exposed)" : "");
         var (verb, how) = tier switch
         {
             HitTier.Graze => ("grazed", "grazed"),

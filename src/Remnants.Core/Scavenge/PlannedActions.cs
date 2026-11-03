@@ -147,10 +147,7 @@ public static class PlannedActions
             // Only a blow that came down on the tile can be dodged; a plan that fell short dodged nobody.
             if (swung && plan.TargetId is { } aimed && aimed != target?.Id && struck?.Any(u => u.Id == aimed) != true
                 && state.FindUnit(aimed) is { IsActive: true } dodger && dodger.Pos != tile)
-            {
-                dodger.OutplayedId = unit.Id;
-                dodger.OutplayedUntilRound = state.Round + 1;
-            }
+                Combat.Dodged(sim, dodger, unit);
         }
 
         if (failed is null)

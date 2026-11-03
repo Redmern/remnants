@@ -126,6 +126,18 @@ public sealed class Unit
 
     public int OutplayedUntilRound { get; set; }
 
+    /// <summary>
+    /// The attacker whose telegraphed blow this one dodged, while its free counter is unspent: its next tile strike that
+    /// covers that unit costs no AP (<see cref="TileStrikes.FreeCounter"/>). Lapses with <see cref="OutplayedId"/>.
+    /// </summary>
+    public int? FreeCounterId { get; set; }
+
+    /// <summary>
+    /// A telegraphed blow of this unit's was dodged: through this round the next hit on it lands harder
+    /// (<see cref="Combat.Exposed"/>, <see cref="OutplayRules.ExposedDamage"/>), and that hit clears it. 0: not exposed.
+    /// </summary>
+    public int ExposedUntilRound { get; set; }
+
     /// <summary>Personal card slots: cards this character always has to hand (not shuffled), paid from the squad's points.</summary>
     public List<string> SlotCards { get; set; } = new();
 

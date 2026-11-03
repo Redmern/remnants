@@ -216,7 +216,7 @@ public sealed class ScavengeSim
         unit.Lookout = false;
         unit.PingsUsed = 0;
         unit.Moved = false;
-        if (unit.OutplayedUntilRound < State.Round) unit.OutplayedId = null;
+        if (unit.OutplayedUntilRound < State.Round) (unit.OutplayedId, unit.FreeCounterId) = (null, null);
         unit.CardMove = 0;
         unit.CardCover = 0;
         unit.CounterId = null;
