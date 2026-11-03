@@ -30,6 +30,10 @@ public partial class RosterPanel : PanelContainer
     private PopupMenu? _menu;
     private PopupMenu? _assignMenu;
     private readonly List<int> _assignIds = new();
+    private PopupMenu? _moveMenu;
+    private readonly List<int> _moveIds = new();
+    private PopupMenu? _leaveMenu;
+    private readonly List<int> _leaveIds = new();
     private int _menuSurvivor;
     private bool _collapsed;
 
@@ -171,9 +175,21 @@ public partial class RosterPanel : PanelContainer
             _assignMenu = new PopupMenu { Theme = HudTheme.Shared, Name = "AssignTo" };
             _assignMenu.IdPressed += id =>
             {
-                if (id >= 0 && id < _assignIds.Count) _session.Execute(new AssignJob(_menuSurvivor, _assignIds[(int)id], Move: true));
+                if (id >= 0 && id < _assignIds.Count) _session.Execute(JobPicks.Add(_menuSurvivor, _assignIds[(int)id]));
             };
             _menu.AddChild(_assignMenu);
+            _moveMenu = new PopupMenu { Theme = HudTheme.Shared, Name = "MoveTo" };
+            _moveMenu.IdPressed += id =>
+            {
+                if (id >= 0 && id < _moveIds.Count) _session.Execute(JobPicks.Move(_menuSurvivor, _moveIds[(int)id]));
+            };
+            _menu.AddChild(_moveMenu);
+            _leaveMenu = new PopupMenu { Theme = HudTheme.Shared, Name = "LeaveJob" };
+            _leaveMenu.IdPressed += id =>
+            {
+                if (id >= 0 && id < _leaveIds.Count) _session.Execute(JobPicks.Leave(_menuSurvivor, _leaveIds[(int)id]));
+            };
+            _menu.AddChild(_leaveMenu);
             _menu.IdPressed += OnMenu;
             AddChild(_menu, false, InternalMode.Back);
         }
@@ -181,6 +197,10 @@ public partial class RosterPanel : PanelContainer
         _menu.Clear();
         _assignMenu!.Clear();
         _assignIds.Clear();
+        _moveMenu!.Clear();
+        _moveIds.Clear();
+        _leaveMenu!.Clear();
+        _leaveIds.Clear();
         _menu.AddIconItem(Icons.Get("stat_pop", 16), $"Open {s.Name}", 0);
         // Buildings with a free slot, the best fit first; Core still decides when one is picked.
         var free = sim.State.Buildings
@@ -195,12 +215,27 @@ public partial class RosterPanel : PanelContainer
                 $"{ColonyText.BuildingName(sim, b)}  ({sim.State.WorkersAt(b.Id).Count()}/{def.Level(b.Level).WorkerSlots}) · fit {ColonyText.Percent(fit)}", _assignIds.Count);
             _assignIds.Add(b.Id);
         }
-        _menu.AddSubmenuNodeItem("Assign to…", _assignMenu, 1);
+        // "Assign to…" adds a job (their others stay); "Move to…" is the separate replace.
+        var atCap = JobPicks.AtCap(sim.State, sim.Data, s);
+        _menu.AddSubmenuNodeItem(s.Jobs.Count == 0 ? "Assign to…" : "Add a job at…", _assignMenu, 1);
         var canWork = !s.IsInfant && !s.Away && s.PatientAtBuildingId is null;
-        _menu.SetItemDisabled(_menu.GetItemIndex(1), !canWork || free.Count == 0);
-        if (free.Count == 0) _menu.SetItemTooltip(_menu.GetItemIndex(1), "No building has a free slot.");
-        _menu.AddIconItem(Icons.Get("job_idle", 16), "Make idle", 2);
-        _menu.SetItemDisabled(_menu.GetItemIndex(2), s.AssignedBuildingId is null);
+        _menu.SetItemDisabled(_menu.GetItemIndex(1), !canWork || free.Count == 0 || atCap);
+        _menu.SetItemTooltip(_menu.GetItemIndex(1), atCap ? JobPicks.CapNote(sim.Data, s)
+            : free.Count == 0 ? "No building has a free slot."
+            : s.Jobs.Count == 0 ? "" : $"Keeps {JobPicks.Summary(sim.State, sim.Data, s)}; their effort splits between the jobs.");
+        if (s.Jobs.Count > 0)
+        {
+            // Moving to one of their own jobs keeps only that one.
+            foreach (var (b, _) in free) AddBuilding(_moveMenu, _moveIds, sim, b);
+            foreach (var held in s.Jobs.Count > 1 ? s.Jobs : []) if (sim.State.FindBuilding(held) is { } b) AddBuilding(_moveMenu, _moveIds, sim, b, " (only this)");
+            _menu.AddSubmenuNodeItem("Move here (leave other jobs)…", _moveMenu, 4);
+            _menu.SetItemDisabled(_menu.GetItemIndex(4), !canWork || _moveIds.Count == 0);
+            _menu.SetItemTooltip(_menu.GetItemIndex(4), $"Leaves {JobPicks.Summary(sim.State, sim.Data, s)} for one workplace.");
+            foreach (var held in s.Jobs) if (sim.State.FindBuilding(held) is { } b) AddBuilding(_leaveMenu, _leaveIds, sim, b);
+            _menu.AddSubmenuNodeItem("Leave a job…", _leaveMenu, 5);
+        }
+        _menu.AddIconItem(Icons.Get("job_idle", 16), s.Jobs.Count > 1 ? "Make idle (leave all jobs)" : "Make idle", 2);
+        _menu.SetItemDisabled(_menu.GetItemIndex(2), s.Jobs.Count == 0 && sim.State.Construction.SiteOf(s.Id) is null);
         if (sim.Data.Rules.Medical is { } med && sim.State.Buildings.Any(b => b.DefId == med.BuildingId))
         {
             _menu.AddIconItem(Icons.Get("job_patient", 16), "Send to the Med Bay", 3);
@@ -211,6 +246,14 @@ public partial class RosterPanel : PanelContainer
         _menu.Position = (Vector2I)(at.GetScreenPosition() + new Vector2(at.Size.X - 24, 8) * scale);
         _menu.ResetSize();
         _menu.Popup();
+    }
+
+    private static void AddBuilding(PopupMenu menu, List<int> ids, ColonySim sim, Building b, string suffix = "")
+    {
+        var def = sim.Data.Buildings[b.DefId];
+        menu.AddIconItem(Icons.Building(def.Id, def.Category.ToString(), 16),
+            $"{ColonyText.BuildingName(sim, b)}  ({sim.State.WorkersAt(b.Id).Count()}/{def.Level(b.Level).WorkerSlots}){suffix}", ids.Count);
+        ids.Add(b.Id);
     }
 
     private void OnMenu(long id)

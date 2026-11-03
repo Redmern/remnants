@@ -41,6 +41,9 @@ public partial class WorkerSlots : HFlowContainer
     public Func<Survivor, IColonyCommand> Assign { get; set; } = null!;
     public Func<Survivor, IColonyCommand> Unassign { get; set; } = null!;
 
+    /// <summary>The picker's shift-click: move them here, leaving their other jobs; null where there is no such move.</summary>
+    public Func<Survivor, IColonyCommand>? Move { get; set; }
+
     /// <summary>Tooltip on a free slot and an assigned worker.</summary>
     public string FreeTip { get; set; } = "Free slot: click to assign someone.";
     public Func<Survivor, string> WorkerTip { get; set; } = s => s.Name;
@@ -120,9 +123,9 @@ public partial class WorkerSlots : HFlowContainer
         _picker.Open(at);
     }
 
-    internal bool Pick(Survivor s, out string message)
+    internal bool Pick(Survivor s, bool move, out string message)
     {
-        var result = _session.Execute(Assign(s));
+        var result = _session.Execute(move && Move is { } replace ? replace(s) : Assign(s));
         message = result.Message;
         return result.Ok;
     }
@@ -236,7 +239,7 @@ public partial class WorkerPicker : PopupPanel
         var people = sim.State.Survivors.Where(s => _slots.Candidate(sim, s))
             .Select(s => (S: s, Fit: _slots.Fit(sim, s)))
             .OrderByDescending(x => Available(sim, x.S)).ThenByDescending(x => x.Fit?.Score ?? 0).ThenBy(x => x.S.Name).ToList();
-        var signature = string.Join(";", people.Select(x => $"{x.S.Id}:{x.S.AssignedBuildingId}:{Badges(sim, x.S).Count}:{x.Fit?.Score:0.00}"));
+        var signature = string.Join(";", people.Select(x => $"{x.S.Id}:{string.Join(",", x.S.Jobs)}:{Badges(sim, x.S).Count}:{x.Fit?.Score:0.00}"));
         if (signature == _signature) return;
         _signature = signature;
         Widgets.Clear(_rows);
@@ -293,11 +296,12 @@ public partial class WorkerPicker : PopupPanel
             tips.Insert(0, f.Detail);
         }
         button.AddChild(row);
+        if (_slots.Move is not null && s.Jobs.Count > 0) tips.Add("Click: add this job (their others stay). Shift-click: move them here (leave other jobs).");
         button.TooltipText = string.Join("\n", tips.Prepend($"{s.Name}: {Job(sim, s)}"));
         button.Pressed += () =>
         {
             if (sim.State.FindSurvivor(id) is not { } who) return;
-            if (_slots.Pick(who, out var message)) Hide();
+            if (_slots.Pick(who, Input.IsKeyPressed(Key.Shift), out var message)) Hide();
             else
             {
                 _error.Text = message;
@@ -312,10 +316,9 @@ public partial class WorkerPicker : PopupPanel
     {
         if (s.Away) return "Away on an expedition";
         if (s.PatientAtBuildingId is not null) return "Patient in the Med Bay";
-        if (sim.ClassOf(s) is not null) return "In class";
         if (Remnants.Core.Schematics.Research.IsResearching(sim.State, s.Id)) return "Researching";
         if (Remnants.Core.Raids.Guards.PostOf(sim.State, s.Id) is { } post && sim.Raids?.Defense(post.DefId) is { } d) return $"Guard at the {d.Name}";
-        return s.AssignedBuildingId is { } b && sim.State.FindBuilding(b) is { } at ? ColonyText.BuildingName(sim, at) : "Idle";
+        return ColonyText.Job(sim, s);
     }
 
     private static List<(string Icon, Color Color, string Tip)> Badges(ColonySim sim, Survivor s)

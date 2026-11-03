@@ -157,10 +157,11 @@ public partial class BuildingPanel : PanelContainer
             Candidate = (sim, s) => !s.IsInfant && (BuildingId is not { } here || !s.Jobs.Contains(here)),
             Fit = (sim, s) => BuildingId is { } b && sim.State.FindBuilding(b) is { } at && sim.Data.Buildings[at.DefId].Job is { } job
                 ? JobFit(sim.Data.Jobs[job], s) : null,
-            // The roster moves people: they leave their other jobs (Core keeps them when it refuses).
-            Assign = s => new AssignJob(s.Id, BuildingId ?? -1, Move: true),
-            Unassign = s => new Unassign(s.Id, BuildingId),
-            FreeTip = "Free slot: click to pick who works here.\nOr drag a survivor's card onto this panel.",
+            // A pick adds this job (their others stay, effort splits); shift-click moves them here alone.
+            Assign = s => JobPicks.Add(s.Id, BuildingId ?? -1),
+            Move = s => JobPicks.Move(s.Id, BuildingId ?? -1),
+            Unassign = s => JobPicks.Leave(s.Id, BuildingId ?? -1),
+            FreeTip = "Free slot: click to pick who works here (they keep their other jobs).\nOr drag a survivor's card onto this panel.",
         };
         _workers.SurvivorRequested += id => SurvivorRequested?.Invoke(id);
         box.AddChild(_workers);
@@ -366,7 +367,7 @@ public partial class BuildingPanel : PanelContainer
         if (BuildingId is not { } id || SurvivorCard.DraggedId(data) is not { } who) return;
         if (_session.Sim.Site(id) is not null && (_tabs.Selected == _extras[0].Tab || _session.Sim.State.FindBuilding(id) is null))
             _session.Execute(new AssignBuilder(who, id));
-        else _session.Execute(new AssignJob(who, id, Move: true));
+        else _session.Execute(JobPicks.Add(who, id));
     }
 
     private HelpContext WorkerContext()
@@ -636,7 +637,7 @@ public partial class BuildingPanel : PanelContainer
         if (def.Job is null) return;
         _set.Text(_workersLabel, $"WORKERS {workers.Count}/{slots}");
         _set.Tooltip(_workersLabel, $"{workers.Count} of {slots} slots filled. Each worker adds output by their {sim.Data.Jobs[def.Job].Skill} skill and attributes.");
-        _workers.WorkerTip = w => $"{w.Name}\n{JobFit(sim.Data.Jobs[def.Job], w).Detail}";
+        _workers.WorkerTip = w => $"{w.Name}: {ColonyText.Job(sim, w)}\n{JobFit(sim.Data.Jobs[def.Job], w).Detail}";
         _workers.Set(workers, slots);
     }
 

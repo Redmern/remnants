@@ -5,10 +5,11 @@ using Remnants.Core.Colony;
 namespace Remnants.Game.Colony;
 
 /// <summary>
-/// Debug scenes for the review fixes, for the smoke run and screenshots: `--worker-demo=open|assign` empties the
-/// Woodcutter, selects it and clicks a free "+" slot (open: the picker stays up; assign: then clicks the best
-/// candidate and prints <c>[worker-demo]</c> with the result); `--placing-demo` enters build mode for a Farm with a free
-/// plot hovered, so the footprints show.
+/// Debug scenes for the review fixes, for the smoke run and screenshots: `--worker-demo=open|assign|multi` empties the
+/// Woodcutter, selects it and clicks a free "+" slot (open: the picker stays up; assign: then clicks a candidate who
+/// already works elsewhere, else the best, and prints <c>[worker-demo]</c> with the result, failing if they lost their
+/// other job; multi: as assign, then opens their panel to show both jobs); `--placing-demo` enters build mode for a Farm
+/// with a free plot hovered, so the footprints show.
 /// </summary>
 public partial class ColonyScreen
 {
@@ -23,7 +24,7 @@ public partial class ColonyScreen
             GD.PrintErr("[worker-demo] no workplace in this colony");
             return;
         }
-        foreach (var w in sim.State.WorkersAt(cutter.Id).ToList()) _session.Execute(new Unassign(w.Id));
+        foreach (var w in sim.State.WorkersAt(cutter.Id).ToList()) _session.Execute(JobPicks.Leave(w.Id, cutter.Id));
         _session.SetSpeed(0);
         _hud.Roster.Select(null);
         _town.Select(cutter.Id);
@@ -37,18 +38,38 @@ public partial class ColonyScreen
                 return;
             }
             GD.Print($"[worker-demo] picker open: {picker.Rows.Count()} candidates");
-            if (mode != "assign") return;
+            if (mode is not ("assign" or "multi")) return;
             GetTree().CreateTimer(0.3).Timeout += () =>
             {
-                if (picker.Rows.FirstOrDefault() is not { } row)
+                // Someone who already holds another job shows that a pick adds rather than moves.
+                var busy = sim.State.Survivors.FirstOrDefault(s => s.Jobs.Count > 0 && !s.Jobs.Contains(cutter.Id) && !JobPicks.AtCap(sim.State, sim.Data, s));
+                var row = (busy is null ? null : picker.Rows.FirstOrDefault(r => r.Name == $"Pick{busy.Id}")) ?? picker.Rows.FirstOrDefault();
+                if (row is null)
                 {
                     GD.PrintErr("[worker-demo] picker is empty");
                     return;
                 }
+                var before = sim.State.Survivors.FirstOrDefault(s => row.Name == $"Pick{s.Id}")?.Jobs.ToList() ?? new();
                 row.EmitSignal(BaseButton.SignalName.Pressed);
-                var workers = _session.Sim.State.WorkersAt(cutter.Id).Select(w => w.Name).ToList();
-                if (workers.Count == 1) GD.Print($"[worker-demo] assigned {workers[0]} to {sim.Data.Buildings[cutter.DefId].Name}");
-                else GD.PrintErr($"[worker-demo] assign failed: {workers.Count} workers at {sim.Data.Buildings[cutter.DefId].Name}");
+                var workers = _session.Sim.State.WorkersAt(cutter.Id).ToList();
+                if (workers.Count != 1)
+                {
+                    GD.PrintErr($"[worker-demo] assign failed: {workers.Count} workers at {sim.Data.Buildings[cutter.DefId].Name}");
+                    return;
+                }
+                var who = workers[0];
+                if (!before.All(who.Jobs.Contains))
+                {
+                    GD.PrintErr($"[worker-demo] {who.Name} lost a job: had {before.Count}, now {ColonyText.Job(sim, who)}");
+                    return;
+                }
+                GD.Print($"[worker-demo] assigned {who.Name} to {sim.Data.Buildings[cutter.DefId].Name}: {ColonyText.Job(sim, who)}");
+                if (mode == "multi")
+                {
+                    picker.Hide();
+                    _town.Select(null);
+                    _hud.Roster.Select(who.Id);
+                }
             };
         };
     }

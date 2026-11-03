@@ -195,11 +195,15 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   - `RosterPanel` of `SurvivorCard`s down the left (adults then minors; head count, H / M legend, collapse to
     portraits; as tall as its cards, scrolls past the room): card = portrait, name, badges (injured / worsening,
     patient, pregnant, away, homeless with its timer, starving, in class, asleep / night shift / tired, food buffs,
-    perk points), job and age on one line, H and M bars, a `LevelPip` ringed by XP. Left-click selects; right-click
-    opens Assign to… (buildings with a free slot), Send to the Med Bay, Make idle, Open details; a card dragged onto
-    the building panel assigns there (payload `{"survivor": id}`).
-  - `SurvivorPanel` — tabs Overview (labelled health / mood bars, needs and status, nutrition, a job picker that
-    assigns on pick, the output line with `JobOutput`'s formula as tooltip and (i); Body — only the parts that are not
+    perk points), every job with its effort share ("Woodcutter 50% · Farm 50%") and age on one line, H and M bars, a
+    `LevelPip` ringed by XP. Left-click selects; right-click opens Assign to… / Add a job at… (buildings with a free
+    slot; adds the job, off at the activity cap with the reason), Move here (leave other jobs)…, Leave a job…, Send to
+    the Med Bay, Make idle (leave all jobs), Open details; a card dragged onto the building panel adds a job there
+    (payload `{"survivor": id}`). All job menus go through `JobPicks` (Core): `Add` keeps the other jobs, `Move`
+    replaces them, `Leave` drops one workplace only.
+  - `SurvivorPanel` — tabs Overview (labelled health / mood bars, needs and status, nutrition, every job held
+    with its effort share and a button to leave that one, an "Add a job…" picker with a "Move here (leave other jobs)"
+    tick, and the cap explained when reached, the output line with `JobOutput`'s formula as tooltip and (i); Body — only the parts that are not
     healthy, conditions with treatments, humanity — and Family — ties, matchmaking with the current stance — as
     `FoldSection`s), Skills (attributes as a 2×3 grid, trained skills by value, the untrained folded) and Perks
     (`PerksTab`: level, XP, points, discipline switcher, a `PerkTree` of `PerkNode`s owned / open / missing / locked
@@ -213,9 +217,11 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
     `MaxHeight` (the column's room from the screen); past that the tab body scrolls under the header.
   - `WorkerSlots` (also the `DefensePanel`'s guard slots): worker portraits (click: Unassign / Open survivor;
     right-click unassigns at once; new ones enter with `Motion.Enter`) and a focusable "+" per free slot that opens
-    `WorkerPicker` (portrait, current job, the slot's fit score with its parts, injured / tired / child / patient /
-    away / in-class badges, free people first, best first); a click sends the owner's command (`AssignJob` /
-    `AssignGuard`) and Core's refusal shows in red. Debug: `--worker-demo=open|assign`, `--placing-demo`.
+    `WorkerPicker` (portrait, current jobs with shares, the slot's fit score with its parts, injured / tired / child / patient /
+    away / in-class badges, free people first, best first); a click sends the owner's command (`JobPicks.Add` /
+    `AssignGuard`; shift-click `JobPicks.Move` where the owner offers it) and Core's refusal shows in red; removing a
+    worker sends `JobPicks.Leave` for that workplace only. Debug: `--worker-demo=open|assign|multi` (assign fails when
+    the picked survivor loses another job; multi then opens their panel), `--placing-demo`.
   - `BuildMenu` — one row of category icon tabs, a grid of tiles (icon, name, a one-line "what it does", `CostRow`),
     locked tiles with a lock and the reason on the tile (schematic, Town Hall level, already built); picking one starts
     placement, with a cursor tag naming the building, its cost and how to cancel. Fills the column.

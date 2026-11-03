@@ -42,6 +42,13 @@ public partial class SurvivorPanel : PanelContainer
     private readonly OptionButton _jobs = new() { SizeFlagsHorizontal = SizeFlags.ExpandFill, FocusMode = FocusModeEnum.All, ClipText = true, FitToLongestItem = false };
     private readonly Label _jobNote = Widgets.Wrapped("", "Small");
     private readonly List<int?> _jobBuildingIds = new();
+    private readonly VBoxContainer _held = Widgets.Column(2);
+    private readonly CheckBox _move = PanelKit.Focusable(new CheckBox
+    {
+        Text = "Move here (leave other jobs)",
+        TooltipText = "Ticked, a pick replaces every job they hold. Unticked, it adds the job: their effort splits between them.",
+    });
+    private string _heldSignature = "";
     private readonly Label _output = Widgets.Wrapped("", "");
     private readonly HBoxContainer _outputRow;
     private readonly FoldSection _body;
@@ -150,9 +157,12 @@ public partial class SurvivorPanel : PanelContainer
         box.AddChild(_diet);
 
         box.AddChild(Widgets.SectionHeader("Job", "ui_build", new InfoTip("shifts", Context)));
+        box.AddChild(_held);
         _jobs.ItemSelected += PickJob;
-        _jobs.TooltipText = "Pick a workplace: they start there at once. \"Idle\" takes them off work.";
+        _jobs.TooltipText = "Pick a workplace: they take it on as well, and their effort splits between their jobs.\nTick \"Move here\" to leave their other jobs.";
         box.AddChild(_jobs);
+        _move.Toggled += _ => Refresh();
+        box.AddChild(_move);
         _jobNote.AddThemeColorOverride("font_color", Palette.TextMuted);
         box.AddChild(_jobNote);
         _output.MouseFilter = MouseFilterEnum.Stop;
@@ -347,8 +357,10 @@ public partial class SurvivorPanel : PanelContainer
         SurvivorId = survivorId;
         if (changed)
         {
-            _jobs.Clear(); // rebuilt for the new survivor, picking their current job
+            _jobs.Clear(); // rebuilt for the new survivor
             _jobBuildingIds.Clear();
+            _heldSignature = "";
+            _move.SetPressedNoSignal(false);
             _skillOrder = "";
         }
         if (survivorId is null) Visible = false;
@@ -694,12 +706,21 @@ public partial class SurvivorPanel : PanelContainer
         RefreshPairs(sim, s);
     }
 
-    /// <summary>The job picker: "Idle" then every workplace with its head count; picking one assigns at once.</summary>
+    /// <summary>
+    /// Their jobs, one row each with its effort share and a remove button; under them the "Add a job…" picker (every
+    /// workplace they do not hold, with its head count). A pick adds the job, or with "Move here" ticked replaces them all.
+    /// </summary>
     private void RefreshJobs(ColonySim sim, Survivor s)
     {
-        var buildings = sim.State.Buildings.Where(b => sim.Data.Buildings[b.DefId].Job is not null).OrderBy(b => b.Id).ToList();
+        RefreshHeld(sim, s);
+        var atCap = JobPicks.AtCap(sim.State, sim.Data, s);
+        var move = _move.ButtonPressed;
+        var buildings = sim.State.Buildings
+            .Where(b => sim.Data.Buildings[b.DefId].Job is not null && (move ? s.Jobs.Count != 1 || s.Jobs[0] != b.Id : !s.Jobs.Contains(b.Id)))
+            .OrderBy(b => b.Id).ToList();
+        var head = move ? "Move to…" : atCap ? "Add a job… (at the limit: remove one or move)" : s.Jobs.Count == 0 ? "Pick a job…" : "Add a job…";
         var labels = buildings.Select(b =>
-            $"{ColonyText.BuildingName(sim, b)}  ({sim.State.WorkersAt(b.Id).Count()}/{sim.Data.Buildings[b.DefId].Level(b.Level).WorkerSlots})").Prepend("Idle (no job)").ToList();
+            $"{ColonyText.BuildingName(sim, b)}  ({sim.State.WorkersAt(b.Id).Count()}/{sim.Data.Buildings[b.DefId].Level(b.Level).WorkerSlots})").Prepend(head).ToList();
 
         // Rebuild only on change, and never under an open dropdown.
         var unchanged = _jobs.ItemCount == labels.Count && labels.Select((l, i) => _jobs.GetItemText(i) == l).All(same => same);
@@ -707,7 +728,7 @@ public partial class SurvivorPanel : PanelContainer
         {
             _jobs.Clear();
             _jobBuildingIds.Clear();
-            _jobs.AddIconItem(Icons.Get("job_idle", 16), labels[0]);
+            _jobs.AddIconItem(Icons.Get(move ? "job_idle" : "ui_plus", 16, "job_idle"), labels[0]);
             _jobBuildingIds.Add(null);
             for (var i = 0; i < buildings.Count; i++)
             {
@@ -716,28 +737,68 @@ public partial class SurvivorPanel : PanelContainer
                 _jobBuildingIds.Add(buildings[i].Id);
             }
         }
-        if (!_jobs.GetPopup().Visible)
-        {
-            var index = _jobBuildingIds.IndexOf(s.AssignedBuildingId);
-            if (index >= 0 && _jobs.Selected != index) _jobs.Select(index);
-        }
+        if (!_jobs.GetPopup().Visible && _jobs.Selected != 0 && _jobs.ItemCount > 0) _jobs.Select(0);
 
         var why = s.IsInfant ? "Too young to work."
-            : s.Away ? "Away on an expedition: the job waits."
-            : s.PatientAtBuildingId is not null ? "A patient in the Med Bay: the job waits."
-            : buildings.Count == 0 ? "No workplaces yet: build one (B)." : "";
-        _jobs.Disabled = why.Length > 0;
+            : s.Away ? "Away on an expedition: the jobs wait."
+            : s.PatientAtBuildingId is not null ? "A patient in the Med Bay: the jobs wait."
+            : buildings.Count == 0 && s.Jobs.Count == 0 ? "No workplaces yet: build one (B)."
+            : atCap && !move ? JobPicks.CapNote(sim.Data, s) : "";
+        var blocked = s.IsInfant || s.Away || s.PatientAtBuildingId is not null;
+        _jobs.Disabled = blocked || buildings.Count == 0;
+        _move.Disabled = blocked || s.Jobs.Count == 0;
+        _set.Visible(_move, s.Jobs.Count > 0);
         _set.Text(_jobNote, why);
         _set.Visible(_jobNote, why.Length > 0);
     }
 
+    /// <summary>One row per job: icon, "Woodcutter L1", its share of their effort, and a button to leave that job only.</summary>
+    private void RefreshHeld(ColonySim sim, Survivor s)
+    {
+        var jobs = JobPicks.Jobs(sim.State, sim.Data, s);
+        var shared = Activities.Count(sim.State, s) > 1;
+        var signature = string.Join(";", jobs.Select(j => $"{j.BuildingId}:{j.Share:0.00}")) + $"/{shared}/{s.Away}/{s.PatientAtBuildingId}";
+        _set.Visible(_held, jobs.Count > 0);
+        if (signature == _heldSignature) return;
+        _heldSignature = signature;
+        Widgets.Clear(_held);
+        foreach (var job in jobs)
+        {
+            var buildingId = job.BuildingId;
+            var row = Widgets.Row(Space.Xs);
+            var building = sim.State.FindBuilding(buildingId);
+            var def = building is null ? null : sim.Data.Buildings[building.DefId];
+            row.AddChild(Icons.Rect(def is null ? Icons.Get("job_idle", 16) : Icons.Building(def.Id, def.Category.ToString(), 16), 16));
+            var name = Widgets.Label(building is null ? job.Name : ColonyText.BuildingName(sim, building));
+            name.SizeFlagsHorizontal = SizeFlags.ExpandFill;
+            name.ClipText = true;
+            row.AddChild(name);
+            var share = Widgets.Label(JobPicks.Percent(job.Share), "Number", shared ? Palette.Amber : Palette.TextMuted);
+            share.TooltipText = shared
+                ? $"Their effort splits evenly over everything they do: this job gets {JobPicks.Percent(job.Share)} (output, training and XP)."
+                : "Their only activity: full effort.";
+            share.MouseFilter = MouseFilterEnum.Stop;
+            row.AddChild(share);
+            var leave = Widgets.IconButton("ui_minus", "", $"Leave {job.Name} (their other jobs stay)", () =>
+            {
+                if (SurvivorId is not { } id) return;
+                _session.Execute(JobPicks.Leave(id, buildingId));
+                Refresh();
+            });
+            leave.Name = $"Leave{buildingId}";
+            row.AddChild(leave);
+            _held.AddChild(row);
+        }
+    }
+
     private void PickJob(long index)
     {
-        if (SurvivorId is not { } id || index < 0 || index >= _jobBuildingIds.Count) return;
-        var current = _session.Sim.State.FindSurvivor(id)?.AssignedBuildingId;
-        var target = _jobBuildingIds[(int)index];
-        if (target == current) return;
-        _session.Execute(target is { } b ? new AssignJob(id, b, Move: true) : new Unassign(id));
+        if (SurvivorId is not { } id || index <= 0 || index >= _jobBuildingIds.Count) return;
+        if (_jobBuildingIds[(int)index] is not { } b) return;
+        // Adds the job; a move only when asked. A refusal (at the limit, no free slot) shows in the log in red.
+        _session.Execute(_move.ButtonPressed ? JobPicks.Move(id, b) : JobPicks.Add(id, b));
+        _move.SetPressedNoSignal(false);
+        _jobs.Select(0);
         Refresh();
     }
 

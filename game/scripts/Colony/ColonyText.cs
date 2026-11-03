@@ -146,18 +146,28 @@ public static class ColonyText
 
     public static int AgeYears(Survivor s, RulesDef rules) => (int)(s.AgeTicks / rules.TicksPerYear);
 
-    public static string Job(ColonySim sim, Survivor s) =>
-        s.Away ? "Away on expedition"
-        : s.IsInfant ? "Baby"
-        : s.PatientAtBuildingId is not null ? "Patient"
-        : sim.ClassOf(s) is { } study ? (study.StudentId == s.Id ? "In class: " : "Teaching: ")
-            + (study.Skill is { } k ? sim.Data.SkillInfo(k).Name : sim.Data.Perks[study.PerkId!].Name)
-        : sim.State.Schematics.Research is { } r && r.ResearcherId == s.Id
-            ? $"Researching: {sim.Data.Schematics.Find(r.SchematicId)?.Name ?? r.SchematicId}"
-        : s.AssignedBuildingId is { } id && sim.State.FindBuilding(id) is { } b ? sim.Data.Buildings[b.DefId].Name
-        : sim.State.Construction.SiteOf(s.Id) is { } site
-            ? (site.Builders.Contains(s.Id) ? "Building: " : "Helping build: ") + sim.Data.Buildings[site.DefId].Name
-        : "Idle";
+    /// <summary>
+    /// What they do: an exclusive state (away, baby, patient, researching), else every activity they hold with its
+    /// effort share when there are several ("Woodcutter 50% · Farm 50%"), else "Idle".
+    /// </summary>
+    public static string Job(ColonySim sim, Survivor s)
+    {
+        if (s.Away) return "Away on expedition";
+        if (s.IsInfant) return "Baby";
+        if (s.PatientAtBuildingId is not null) return "Patient";
+        if (sim.State.Schematics.Research is { } r && r.ResearcherId == s.Id)
+            return $"Researching: {sim.Data.Schematics.Find(r.SchematicId)?.Name ?? r.SchematicId}";
+        var share = Activities.Count(sim.State, s) > 1 ? " " + JobPicks.Percent(Activities.Share(sim.State, s)) : "";
+        var parts = new List<string>();
+        if (JobPicks.Summary(sim.State, sim.Data, s) is { Length: > 0 } jobs) parts.Add(jobs);
+        if (sim.ClassOf(s) is { } study)
+            parts.Add((study.StudentId == s.Id ? "In class: " : "Teaching: ")
+                      + (study.Skill is { } k ? sim.Data.SkillInfo(k).Name : sim.Data.Perks[study.PerkId!].Name) + share);
+        if (sim.State.Construction.SiteOf(s.Id) is { } site)
+            parts.Add((site.Builders.Contains(s.Id) ? "Building: " : "Helping build: ") + sim.Data.Buildings[site.DefId].Name
+                      + (site.Builders.Contains(s.Id) ? share : ""));
+        return parts.Count > 0 ? string.Join(" · ", parts) : "Idle";
+    }
 
     public static string BuildingName(ColonySim sim, Building b) => $"{sim.Data.Buildings[b.DefId].Name} L{b.Level}";
 

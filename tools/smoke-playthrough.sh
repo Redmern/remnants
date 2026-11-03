@@ -39,6 +39,7 @@ run 21-raid-report      150 --colony --raid-demo=report
 run 22-build-footprints 300 --colony --demo --placing-demo --hour=12
 run 23-worker-picker    300 --colony --worker-demo=open
 run 24-worker-assign    600 --colony --worker-demo=assign
+run 24b-worker-multi    600 --colony --demo --worker-demo=multi
 # UI/UX rework: the expedition planner's steps, InfoTips (hover then click: the tooltip, then the detail popover with live
 # numbers) and the help index. The log says which tip it opened ([help-demo]).
 run 25-planner-review   300 --colony --garage-demo --expedition --zone=suburb_ruins --vehicle=buggy --expedition-step=5
