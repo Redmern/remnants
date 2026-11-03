@@ -335,4 +335,8 @@ public sealed class PlannedAction
 
     /// <summary>The attack is suppressing fire: it pins whoever is on the tile instead of a damage roll.</summary>
     public bool Suppress { get; set; }
+
+    /// <summary>A stab / slash weapon's mode and direction (see <see cref="TileStrikes"/>); null for any other attack.</summary>
+    public Items.StrikeMode? Mode { get; set; }
+    public Pos? Direction { get; set; }
 }

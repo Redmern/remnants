@@ -47,6 +47,8 @@ internal static class ScavengeAi
         public Pos? AttackTile;
         public string? ActionId;
         public bool Suppress;
+        public StrikeMode? Mode;
+        public Pos? Direction;
         public bool Lurk;
     }
 
@@ -86,7 +88,7 @@ internal static class ScavengeAi
         }
         if (plan.Path.Count > 0 || plan.AttackTile is not null)
         {
-            var declared = PlannedActions.Declare(sim, unit, new DeclareIntent(unit.PlayerId ?? 0, unit.Id, plan.Path, plan.AttackTile, plan.ActionId, plan.Suppress));
+            var declared = PlannedActions.Declare(sim, unit, new DeclareIntent(unit.PlayerId ?? 0, unit.Id, plan.Path, plan.AttackTile, plan.ActionId, plan.Suppress, plan.Mode, plan.Direction));
             if (declared.Ok) return;
             // The look-ahead and the plan rules disagree (should not happen): say so, and strike what is in reach now
             // rather than idle.
@@ -105,6 +107,8 @@ internal static class ScavengeAi
             plan.AttackTile = target.Pos;
             plan.ActionId = action.Id;
             plan.Suppress = suppress;
+            if (!suppress && action.Patterned && TileStrikes.BestAim(sim, unit, action, target) is { } best)
+                (plan.Mode, plan.Direction) = (best.Mode, best.Direction);
             unit.Ap = 0;
             return;
         }

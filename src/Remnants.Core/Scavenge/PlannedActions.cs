@@ -47,14 +47,30 @@ public static class PlannedActions
         var end = c.Path.Count > 0 ? c.Path[^1] : start;
 
         int? targetId = null;
+        StrikeMode? mode = null;
+        Pos? direction = null;
         if (c.AttackTile is { } tile)
         {
             var action = sim.Profile(unit).Action(c.ActionId!);
             if (action is null) return ScavengeResult.Fail(ScavengeError.UnknownAction, $"{unit.Name} cannot use '{c.ActionId}' now.");
             if (c.Suppress && action.Pattern == AttackPattern.Melee)
                 return ScavengeResult.Fail(ScavengeError.UnknownAction, $"{action.Name} cannot lay down suppressing fire.");
-            var reach = Combat.CheckReach(sim.Data, state.Map, end, action, tile);
-            if (reach != ScavengeError.None) return ScavengeResult.Fail(reach, $"{tile} is not in reach of {action.Name} from {end} ({reach}).");
+            if (action.Patterned && !c.Suppress)
+            {
+                if (TileStrikes.Aim(sim, unit, action, tile, c.Mode, c.Direction, end) is not { } aim)
+                    return c.Mode is { } m && action.Modes?.Contains(m) != true
+                        ? ScavengeResult.Fail(ScavengeError.InvalidTarget, $"{action.Name} cannot {m.ToString().ToLowerInvariant()}.")
+                        : ScavengeResult.Fail(ScavengeError.OutOfRange, $"{tile} is not in reach of {action.Name} from {end}.");
+                if (!Combat.Clear(sim.Data, state.Map, end, tile))
+                    return ScavengeResult.Fail(ScavengeError.NoLineOfSight, $"{tile} is not in sight of {end}.");
+                (mode, direction) = (aim.Mode, aim.Direction);
+            }
+            else
+            {
+                if (c.Mode is not null) return ScavengeResult.Fail(ScavengeError.InvalidTarget, $"{action.Name} has no stab or slash.");
+                var reach = Combat.CheckReach(sim.Data, state.Map, end, action, tile);
+                if (reach != ScavengeError.None) return ScavengeResult.Fail(reach, $"{tile} is not in reach of {action.Name} from {end} ({reach}).");
+            }
             ap += Combat.ApCost(action, end, tile);
             targetId = TargetAt(state, unit, tile) is { } t && Detection.SideSees(sim.Data, state, unit.Side, t) ? t.Id : null;
         }
@@ -63,7 +79,7 @@ public static class PlannedActions
         unit.Plan = new PlannedAction
         {
             Path = c.Path.ToList(), AttackTile = c.AttackTile, ActionId = c.ActionId, TargetId = targetId, Round = state.Round,
-            CardId = unit.LastCardId, MoveBonus = unit.CardMove, Suppress = c.Suppress,
+            CardId = unit.LastCardId, MoveBonus = unit.CardMove, Suppress = c.Suppress, Mode = mode, Direction = direction,
         };
         var what = (c.Path.Count > 0 ? $"a move to {end}" : "") + (c.Path.Count > 0 && c.AttackTile is not null ? " and " : "")
                    + (c.AttackTile is { } at ? $"an attack on {at}" : "");
@@ -106,7 +122,23 @@ public static class PlannedActions
             var action = sim.Profile(unit).Action(id);
             var target = TargetAt(state, unit, tile);
             var swung = false;
+            List<Unit>? struck = null;
             if (action is null) failed = $"can no longer use {id}";
+            else if (plan.Mode is { } mode)
+            {
+                // A stab / slash: every hostile on the covered tiles from where the path ended.
+                if (TileStrikes.Aim(sim, unit, action, tile, mode, plan.Direction) is not { } aim || !Combat.Clear(sim.Data, state.Map, unit.Pos, tile))
+                    failed = $"{tile} is out of reach";
+                else if (Combat.ApCost(action, unit.Pos, tile) > unit.Ap) failed = "has no AP left for the attack";
+                else
+                {
+                    unit.Ap -= Combat.ApCost(action, unit.Pos, tile);
+                    struck = TileStrikes.Strike(sim, unit, action, aim.Tiles, tile, aim.Direction);
+                    if (struck.Count == 0) failed = $"{action.Name} hits nothing at {tile}";
+                    target = struck.FirstOrDefault();
+                    swung = true;
+                }
+            }
             else if (Combat.CheckReach(sim.Data, state.Map, unit.Pos, action, tile) != ScavengeError.None) failed = $"{tile} is out of reach";
             else if (Combat.ApCost(action, unit.Pos, tile) > unit.Ap) failed = "has no AP left for the attack";
             else if (target is not null && Drones.CanStrike(action, target))
@@ -125,7 +157,8 @@ public static class PlannedActions
                 swung = true;
             }
             // Only a blow that came down on the tile can be dodged; a plan that fell short dodged nobody.
-            if (swung && plan.TargetId is { } aimed && aimed != target?.Id && state.FindUnit(aimed) is { IsActive: true } dodger && dodger.Pos != tile)
+            if (swung && plan.TargetId is { } aimed && aimed != target?.Id && struck?.Any(u => u.Id == aimed) != true
+                && state.FindUnit(aimed) is { IsActive: true } dodger && dodger.Pos != tile)
             {
                 dodger.OutplayedId = unit.Id;
                 dodger.OutplayedUntilRound = state.Round + 1;

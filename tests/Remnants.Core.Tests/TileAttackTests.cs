@@ -28,6 +28,14 @@ public class TileAttackTests
             if (sim.State.CurrentUnitId == f.Id) Assert.True(sim.Execute(new EndTurn(2, f.Id)).Ok);
     }
 
+    /// <summary>Ends the foes' turns until <paramref name="a"/> is up again (its plan resolved), whatever the initiative order.</summary>
+    private static void UntilUp(ScavengeSim sim, Unit a)
+    {
+        for (var i = 0; i < 10 && sim.State.CurrentUnitId != a.Id; i++)
+            Assert.True(sim.Execute(new EndTurn(2, sim.State.CurrentUnitId!.Value)).Ok);
+        Assert.Equal(a.Id, sim.State.CurrentUnitId);
+    }
+
     [Fact]
     public void A_tile_attack_pays_now_ends_the_sub_turn_and_strikes_at_the_end_of_the_sub_round()
     {
@@ -136,5 +144,36 @@ public class TileAttackTests
         Assert.Equal([new Pos(6, 2)], sim.State.Strikes[0].Tiles);
         PassAll(sim, foes);
         Assert.True(foes[0].Hp < foes[0].MaxHp);
+    }
+
+    [Fact]
+    public void A_planned_stab_comes_down_on_every_hostile_on_the_line_from_the_end_of_the_path()
+    {
+        var (sim, a, foes) = Fight("spear", new Pos(5, 2), new Pos(6, 2));
+        var r = sim.Execute(new DeclareIntent(1, a.Id, [new(3, 2)], new Pos(4, 2), "thrust", Mode: StrikeMode.Stab));
+        Assert.True(r.Ok, r.Message);
+        Assert.Equal(StrikeMode.Stab, a.Plan!.Mode);
+        UntilUp(sim, a);
+
+        Assert.Equal(new Pos(3, 2), a.Pos);
+        Assert.All(foes, f => Assert.True(f.Hp < f.MaxHp));
+    }
+
+    [Fact]
+    public void A_planned_slash_keeps_its_mode_and_direction()
+    {
+        var (sim, a, foes) = Fight("sword", new Pos(4, 1), new Pos(4, 3));
+        Assert.True(sim.Execute(new DeclareIntent(1, a.Id, [new(3, 2)], new Pos(4, 2), "blade", Mode: StrikeMode.Slash)).Ok);
+        UntilUp(sim, a);
+        Assert.All(foes, f => Assert.True(f.Hp < f.MaxHp));
+    }
+
+    [Fact]
+    public void A_plan_needs_a_mode_the_weapon_has_and_a_covered_tile()
+    {
+        var (sim, a, _) = Fight("spear", new Pos(7, 2));
+        Assert.Equal(ScavengeError.InvalidTarget, sim.Execute(new DeclareIntent(1, a.Id, [], new Pos(3, 2), "thrust", Mode: StrikeMode.Slash)).Error);
+        Assert.Equal(ScavengeError.OutOfRange, sim.Execute(new DeclareIntent(1, a.Id, [], new Pos(4, 3), "thrust")).Error);
+        Assert.Null(a.Plan);
     }
 }

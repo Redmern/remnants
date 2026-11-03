@@ -27,8 +27,10 @@ public sealed record UseItem(int PlayerId, int UnitId, string ItemId, int? Targe
 /// See <see cref="PlannedActions"/>.
 /// </summary>
 /// <see cref="Suppress"/>: the attack is suppressing fire (a ranged action; no damage, it pins whoever is on the tile).
+/// <see cref="Mode"/> and <see cref="Direction"/>: for a stab / slash weapon, how it strikes and toward where (defaults as
+/// <see cref="AttackTile"/>); it comes down on every hostile on the covered tiles.
 public sealed record DeclareIntent(int PlayerId, int UnitId, IReadOnlyList<Pos> Path, Pos? AttackTile = null, string? ActionId = null,
-    bool Suppress = false) : IScavengeCommand;
+    bool Suppress = false, Items.StrikeMode? Mode = null, Pos? Direction = null) : IScavengeCommand;
 
 /// <summary>
 /// Strike tiles (wire name <c>attackTile</c>): an attack with <see cref="ActionId"/> aimed at <see cref="Tile"/>, toward

@@ -130,26 +130,36 @@ public static class TileStrikes
         if (unit.Pos != strike.From) { Fizzle("moved off their tile"); return; }
         if (sim.Profile(unit).Action(strike.ActionId) is not { } action) { Fizzle($"can no longer use {strike.ActionId}"); return; }
 
-        var tiles = strike.Tiles.Where(p => Combat.Clear(sim.Data, state.Map, unit.Pos, p)).ToList();
-        var targets = TargetsOn(state, unit, action, tiles).ToList();
-        unit.Facing = strike.Direction;
-        if (targets.Count == 0)
-        {
-            sim.MakeNoise(unit, action.Noise);
-            Fizzle($"{action.Name} hits nothing at {strike.Tile}");
-        }
-        else
-        {
-            targets.AddRange(Combat.Splash(sim, unit, action, strike.Tile, targets));
-            Combat.Hit(sim, unit, action, targets);
-            state.Log(new(state.Round, ScavengeEventType.IntentResolved, $"{unit.Name}'s {action.Name} comes down on {strike.Tile}.", unit.Id, Pos: unit.Pos));
-        }
+        var targets = Strike(sim, unit, action, strike.Tiles, strike.Tile, strike.Direction);
+        if (targets.Count == 0) Fizzle($"{action.Name} hits nothing at {strike.Tile}");
+        else state.Log(new(state.Round, ScavengeEventType.IntentResolved, $"{unit.Name}'s {action.Name} comes down on {strike.Tile}.", unit.Id, Pos: unit.Pos));
         if (strike.TargetId is { } aimed && targets.All(t => t.Id != aimed) && state.FindUnit(aimed) is { IsActive: true } dodger
             && !strike.Tiles.Contains(dodger.Pos))
         {
             dodger.OutplayedId = unit.Id;
             dodger.OutplayedUntilRound = state.Round + 1;
         }
+    }
+
+    /// <summary>
+    /// The blow itself, AP already paid: the unit faces <paramref name="direction"/> and strikes every hostile on the
+    /// <paramref name="tiles"/> in its line of sight (plus an area action's splash around <paramref name="tile"/>); with
+    /// nobody there it only makes its noise. Returns who was struck.
+    /// </summary>
+    internal static List<Unit> Strike(ScavengeSim sim, Unit unit, ActionProfile action, List<Pos> tiles, Pos tile, Pos direction)
+    {
+        var state = sim.State;
+        var clear = tiles.Where(p => Combat.Clear(sim.Data, state.Map, unit.Pos, p)).ToList();
+        var targets = TargetsOn(state, unit, action, clear).ToList();
+        unit.Facing = direction;
+        if (targets.Count == 0)
+        {
+            sim.MakeNoise(unit, action.Noise);
+            return targets;
+        }
+        targets.AddRange(Combat.Splash(sim, unit, action, tile, targets));
+        Combat.Hit(sim, unit, action, targets);
+        return targets;
     }
 
     /// <summary>The conscious hostiles on <paramref name="tiles"/> the action can strike, tile by tile, then by id.</summary>
