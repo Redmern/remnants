@@ -17,7 +17,12 @@ public readonly record struct JuiceSettings(EffectsLevel Level, bool Shake, bool
 
     public Dictionary<string, object> Save() => new()
     {
-        ["level"] = (int)Level, ["shake"] = Shake, ["hit_stop"] = HitStop, ["flashes"] = Flashes, ["crt"] = Crt, ["music_reactive"] = Music,
+        ["level"] = (int)Level,
+        ["shake"] = Shake,
+        ["hit_stop"] = HitStop,
+        ["flashes"] = Flashes,
+        ["crt"] = Crt,
+        ["music_reactive"] = Music,
     };
 
     /// <summary>Saved values over <paramref name="fallback"/>: a missing or bad value keeps the fallback's (a level out of range clamps).</summary>
@@ -27,7 +32,8 @@ public readonly record struct JuiceSettings(EffectsLevel Level, bool Shake, bool
         var level = saved.TryGetValue("level", out var l) && l is int or long ? (EffectsLevel)Math.Clamp(Convert.ToInt32(l), 0, 3) : fallback.Level;
         return new JuiceSettings(level, Flag("shake", fallback.Shake), Flag("hit_stop", fallback.HitStop), Flag("flashes", fallback.Flashes), fallback.ReduceMotion)
         {
-            Crt = Flag("crt", fallback.Crt), Music = Flag("music_reactive", fallback.Music),
+            Crt = Flag("crt", fallback.Crt),
+            Music = Flag("music_reactive", fallback.Music),
         };
     }
 }
