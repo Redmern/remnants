@@ -478,9 +478,6 @@ public static class PartyBot
         // The nearest exits (and the vehicle) always stay in the running, however many places are left to loot.
         goals = goals.Take(5).Concat(bySide.Concat(map.Exits).OrderBy(e => e.Chebyshev(unit.Pos)).Take(3)).ToList();
 
-        // Someone who is no enemy stands in the only way out: shove them aside.
-        if (Policy == BotPolicy.Mixed && BotTactics.Unblock(sim, unit, playerId, goals) is { } unblock) return unblock;
-
         var reachable = sim.Reachable(unit).Where(kv => kv.Value <= unit.Mp).ToList();
         // Boxed in (often by our own follower in a doorway): for a few rounds, path around the units in the way.
         if (stalled >= 2) Detours[unit.Id] = state.Round + 3;
@@ -503,6 +500,8 @@ public static class PartyBot
                 .OrderBy(kv => field[kv.Key]).ThenBy(kv => Covered(kv.Key) ? 0 : 1).ThenBy(kv => kv.Value).ThenBy(kv => map.Index(kv.Key))
                 .Select(kv => (Pos?)kv.Key).FirstOrDefault();
             if (step is { } to) return new Move(playerId, unit.Id, to);
+            // Someone who is no enemy stands in the only way on: shove them aside.
+            if (Policy == BotPolicy.Mixed && stalled >= 1 && BotTactics.Unblock(sim, unit, playerId, [goal]) is { } unblock) return unblock;
             // Boxed in for a couple of turns: sidestep to the best free tile.
             if (stalled >= 2 && reachable.Where(kv => field.ContainsKey(kv.Key)).OrderBy(kv => field[kv.Key]).ThenBy(kv => map.Index(kv.Key))
                     .Select(kv => (Pos?)kv.Key).FirstOrDefault() is { } aside)

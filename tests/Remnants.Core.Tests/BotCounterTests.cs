@@ -222,6 +222,37 @@ public class BotUnblockTests
     }
 }
 
+public class FollowerTests
+{
+    private static (ScavengeSim Sim, Unit Leader, Unit Follower) Pair(Pos followerAt)
+    {
+        var leader = SurvivorUnit(1, new(5, 3), weapon: "pipe");
+        var follower = SurvivorUnit(1, followerAt, weapon: "pipe");
+        follower.Kind = UnitKind.Npc;
+        var sim = Arena(14, 7, [leader, follower]);
+        follower.FollowingId = leader.Id;
+        return (sim, leader, follower);
+    }
+
+    [Fact]
+    public void A_follower_within_the_rule_stays_put_so_it_does_not_walk_back_into_a_doorway()
+    {
+        var (sim, leader, follower) = Pair(new(5, 1));
+        Assert.True(sim.Execute(new EndTurn(1, leader.Id)).Ok);
+        Settle(sim);
+        Assert.Equal(new Pos(5, 1), follower.Pos);
+    }
+
+    [Fact]
+    public void A_follower_further_off_closes_in()
+    {
+        var (sim, leader, follower) = Pair(new(10, 3));
+        Assert.True(sim.Execute(new EndTurn(1, leader.Id)).Ok);
+        Settle(sim);
+        Assert.True(follower.Pos.X < 10);
+    }
+}
+
 public class BotAimingTests
 {
     private static (ScavengeSim Sim, Unit A, Unit B, Unit Foe) Field(params string[] hand)

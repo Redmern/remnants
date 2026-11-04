@@ -601,6 +601,9 @@ public sealed record TurnRules
 
     /// <summary>What a unit may plan a round before cards and perks: moves, actions, cards (<see cref="Plans.Limits"/>).</summary>
     public int PlanMoves { get; init; } = 1;
+
+    /// <summary>How far from its leader a recruit lets itself get before it walks: keeps it from stepping back into a doorway the leader needs.</summary>
+    public int FollowWithin { get; init; } = 1;
     public int PlanActions { get; init; } = 1;
     public int PlanCards { get; init; } = 1;
 

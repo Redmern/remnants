@@ -378,7 +378,7 @@ internal static class ScavengeAi
             unit.FollowingId = leader.Id;
             unit.PlayerId = leader.PlayerId;
         }
-        for (var step = 0; step < MaxStepsPerTurn && unit.Mp > 0 && unit.Pos.Chebyshev(leader.Pos) > 1; step++)
+        for (var step = 0; step < MaxStepsPerTurn && unit.Mp > 0 && unit.Pos.Chebyshev(leader.Pos) > sim.Data.Rules.Turn.FollowWithin; step++)
             if (!StepToward(sim, unit, leader.Pos)) return;
     }
 
