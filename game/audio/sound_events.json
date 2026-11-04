@@ -217,6 +217,8 @@
     "scavenge.outcome.adrenaline_gain": "hack_progress_tick",
     "scavenge.outcome.adrenaline_drain": "ui_panel_close",
     "scavenge.outcome.low_stamina": "ui_error",
+    "scavenge.clashed": "hit_metal",
+    "scavenge.recovered": "ui_confirm",
     "scavenge.intent_fizzled": "dodge_whoosh",
     "scavenge.intent_canceled": [],
     "scavenge.countered": "sting_ambush",

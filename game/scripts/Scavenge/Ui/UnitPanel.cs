@@ -40,7 +40,7 @@ public partial class UnitPanel : PanelContainer
     private readonly Label _conditions = Widgets.Label("", "Small", Palette.Warn);
     private readonly Label _bodyOk = Widgets.Label("All parts ok", "Small", Palette.Good);
     private readonly VBoxContainer _gear = Widgets.Column(3);
-    private readonly Label _empty = Widgets.Wrapped("Click a unit. Your units take orders on their turn.", "Muted");
+    private readonly Label _empty = Widgets.Wrapped("Click a unit to see it. Each of your units plans its round.", "Muted");
     private readonly Label _allyText = Widgets.Wrapped("", "Small");
     private PanelContainer _allyCard = null!;
     private PanelContainer _droneCard = null!;
@@ -123,13 +123,13 @@ public partial class UnitPanel : PanelContainer
         profile.AddChild(Stat("stat_sight", "Sight", _sight, "fog"));
         profile.AddChild(Stat("stat_armor", "Armor", _armor, "gear_mods"));
         profile.AddChild(Stat("stat_dodge", "Dodge", _dodge, "stealth"));
-        _moreButton = Widgets.TextButton("", ToggleMore, "AP per turn, initiative and the attacks", "Flat");
+        _moreButton = Widgets.TextButton("", ToggleMore, "AP per round, initiative and the attacks", "Flat");
         _moreButton.CustomMinimumSize = new Vector2(0, 22);
         _moreButton.SizeFlagsHorizontal = SizeFlags.ShrinkBegin;
         _moreButton.AddThemeFontSizeOverride("font_size", 13);
         Motion.OnPress(_moreButton);
         profile.AddChild(_moreButton);
-        _more.AddChild(Stat("stat_ap", "AP per turn", _apMax, "controls"));
+        _more.AddChild(Stat("stat_ap", "AP per round", _apMax, "controls"));
         _more.AddChild(Stat("stat_initiative", "Initiative", _initiative, null,
             "Speed: with stamina, the action and traits it makes up priority, who goes first when the round resolves."));
         _more.AddChild(_attacks);
@@ -260,8 +260,8 @@ public partial class UnitPanel : PanelContainer
         var waiting = acting is not null && !isActing && _presenter.IsMine(unit) && unit.IsActive && unit.Kind != UnitKind.Drone;
         _set.Visible(_turnTag, waiting);
         _set.Visible(_status, !(waiting && unit.Status == UnitStatus.Active)); // "ACTIVE" says nothing next to the tag
-        _set.Text(_turnTag, "NOT THEIR TURN");
-        _set.Tooltip(_turnTag, waiting ? $"The orders on the right are {acting!.Name}'s. {unit.Name} acts at their place in the turn order." : "");
+        _set.Text(_turnTag, "NOT SELECTED FOR ORDERS");
+        _set.Tooltip(_turnTag, waiting ? $"The orders on the right are {acting!.Name}'s. Select {unit.Name} to plan for them." : "");
 
         var health = unit.MaxHp > 0 ? Mathf.Clamp(unit.Hp / unit.MaxHp, 0, 1) : 0;
         var hpKnown = _tier >= BestiaryTier.Killed;
@@ -272,7 +272,7 @@ public partial class UnitPanel : PanelContainer
         // The acting unit's AP is next to Ready in the turn bar; the card shows it for your side's others. A rival's AP spent is its secret.
         _set.Visible(_apRow, !isActing && unit.Side == _presenter.Side && unit.Kind is not (UnitKind.Device or UnitKind.Decoy) && _tier >= BestiaryTier.Fought);
         _ap.Set(unit.Ap, profile.MaxAp, Stuns.Active(_presenter.Sim.State, unit) ? Palette.Warn : Palette.Amber);
-        _set.Tooltip(_ap, $"{unit.Ap} of {profile.MaxAp} action points" + (Stuns.Active(_presenter.Sim.State, unit) ? " · stunned: fewer AP and MP next turn" : ""));
+        _set.Tooltip(_ap, $"{unit.Ap} of {profile.MaxAp} action points" + (Stuns.Active(_presenter.Sim.State, unit) ? " · stunned: fewer AP and MP next round" : ""));
 
         // Stamina and movement are your own side's to read (Core redacts rivals'); adrenaline shows on everyone.
         _set.Visible(_gauges, unit.Kind is not (UnitKind.Device or UnitKind.Decoy));
@@ -367,7 +367,7 @@ public partial class UnitPanel : PanelContainer
         var med = data.Medicine;
         var tags = MedicalText.Tags(med, unit.Body);
         if (unit.CalmUntilRound >= _presenter.Sim.State.Round) tags.Add("calm");
-        if (unit.CrashAp > 0) tags.Add($"stim crash −{unit.CrashAp} AP next turn");
+        if (unit.CrashAp > 0) tags.Add($"stim crash −{unit.CrashAp} AP next round");
         int hurt = 0, lost = 0, fitted = 0;
         foreach (var (part, _) in _parts)
             switch (unit.Body[part].Condition)
@@ -540,7 +540,7 @@ public partial class UnitPanel : PanelContainer
         var weapon = unit.Equipment.TryGetValue(EquipSlot.Weapon, out var held) ? ScavengeText.Item(data, held) : "unarmed";
         _gearCard.Summary($"{weapon} · {profile.Load:0.#}/{profile.CarryCapacity:0} kg", color == Palette.Rust ? Palette.TextMuted : color);
         _gearLoad.Set(fraction, $"{profile.Load:0.#}/{profile.CarryCapacity:0} kg", color);
-        _set.Tooltip(_gearLoad, $"Load / carry capacity. Loaded units move fewer tiles a turn and are louder.{(note.Length > 0 ? $"\n{note}" : "")}");
+        _set.Tooltip(_gearLoad, $"Load / carry capacity. Loaded units move fewer tiles a round and are louder.{(note.Length > 0 ? $"\n{note}" : "")}");
         if (!_gearCard.Open) return;
 
         // The rows only change with the gear and pack (and, for Jury-rig, whose turn it is and the AP); Present runs

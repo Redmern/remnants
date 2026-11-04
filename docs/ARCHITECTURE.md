@@ -58,11 +58,11 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   - `Movement` (reachable tiles per mode, distance fields; the first step of a move always fits, so a range-1 unit can
     slog onto rubble or water), `Combat` (reach, cover, hit chance,
     body-part injuries, limb loss, Downed → bleed-out → Dead; ambushes), `Visibility` (per-side sight + explored, lit tiles).
-  - `ScavengeSim` — `Execute(IScavengeCommand)`; initiative turn order across all units of all
-    sides; AI turns (`ScavengeAi`: Husk, Linked squad, turrets, recruit followers) run inside it. See "Linked squad AI"
-    and "Telegraphed plans and cards" below.
-  - `PlannedActions` (telegraphed plans), `Cards/` (`CardDefs`, `SquadDecks`, `CardPlay`, `CardSlots`, `EnemyCards`,
-    `BotTactics`) — see "Telegraphed plans and cards".
+  - `ScavengeSim` — `Execute(IScavengeCommand)`; simultaneous planning rounds across all units of all
+    sides; AI plans (`ScavengeAi`: Husk, Linked squad, turrets, recruit followers) are made inside it. See "Linked squad AI"
+    and "Rounds, plans and cards" below.
+  - `Plans`, `RoundResolver`, `Priority`, `Defences`, `Pushes`, `Stuns`, `Economy`, `Cards/` (`CardDefs`, `SquadDecks`, `CardPlay`, `CardSlots`, `EnemyCards`,
+    `BotTactics`) — see "Rounds, plans and cards".
   - `Hacking` (devices, the Hack action, Override, placement) and `Drones` (scout drones) — see "Hacking and scout drones".
   - `Network` — the Linked relay graph (groups, shared knowledge, squad focus, pylon alarm and reinforcements).
   - `ExtractionResult` per player — returned survivors (with injuries/health), recruits, deaths, loot.
@@ -300,7 +300,7 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   (`SetFocus`), a red ring on revealed hostiles, burning flares (`item_flare_lit` + a light + the lit disc), the local
   side's motion sensors (`item_motion_sensor` + radius), and a red incoming-fire streak from the source to the victim
   when one of ours is ambushed. Its text (contact `?`, OVERWATCH / BRACED / LOOKOUT / REVEALED, AMBUSH!) is drawn by
-  the HUD's `WorldTags`. `Scavenge/Ui/StancePanel` — Overwatch (O) / Brace (B) / Lookout (L) buttons for the acting
+  the HUD's `WorldTags`. `Scavenge/Ui/StancePanel` — Lookout (L) and Recover (Shift+L) for the acting
   unit. Flares and sensors are "use" items that target a tile (highlighted in range); attack previews say
   `AMBUSH 85% · 8–14` when the target's side cannot see the attacker. Units show only when the side sees them
   (`IScavengeDriver.SeenUnits`), not merely their tile. `--fog-demo` stages an ambush with a unit on overwatch
@@ -434,8 +434,7 @@ models still load and fall back to tweens.
 - **Tick order:** power grid (and the charging bench) → production (+training) → construction sites → crafting → study → research → medical → food → day/night (sleep, night work, evenings) → weather (mood, dust, lightning) →
   relationships (mood, affinity, couples) →
   family (births, conception) → housing → growth (aging, growing up) → world map → raids (upkeep, guards, repairs, scheduler).
-- **Scavenge commands** (`Move`, `AttackTile`, `UseItem` (on a unit, or a tile with `At`), `PickUp`, `Recruit`, `SetStance`
-  (Overwatch / Brace), `Lookout`, `EndTurn`, `Extract`; co-op: `ProposeAlliance`, `RespondAlliance`, `BreakAlliance`,
+- **Scavenge commands** (`Move`, `AttackTile`, `UseItem` (on a unit, or a tile with `At`), `PickUp`, `Recruit`, `Recover`, `Push`, `Dash`, `Lookout`, `EndTurn`, `Extract`; co-op: `ProposeAlliance`, `RespondAlliance`, `BreakAlliance`,
   `PingTile`, `GiveItem`, `Carry`, `PutDown`; tech: `Hack`, `DeployDrone`, `FlyDrone`, `RecallDrone`, `MarkTarget`,
   `DropPayload`; drone roles: `DroneHeal`, `DroneLoad`, `DroneFerry`, `DroneFire`; vehicles: `StashItem`, `TakeFromStash`, `Salvage`) carry a
   `PlayerId` + `UnitId`; Core checks ownership and whose turn it is and returns a `ScavengeResult`
@@ -728,24 +727,19 @@ positions and gear always give the same answer), and per side.
   (Movement), where an attack on one of the side's units came from (Attack, with `Toward` = the victim), a motion sensor
   going off (Sensor). Only party sides keep contacts; the AI hears through `MakeNoise` as before.
 - **Ambush** (`Combat.AmbushAgainst`): an attack whose target's side does not see the attacker as it resolves gets
-  `ambush.hitBonus`, ignores the target's (positive) dodge and multiplies damage by `damageMultiplier`. A **braced** target
-  gives no bonus; an ally next to the target ("watching each other's backs") removes `backsReduction` of it. Afterwards
+  `ambush.hitBonus`, ignores the target's (positive) dodge and multiplies damage by `damageMultiplier`. An ally next to the target ("watching each other's backs") removes `backsReduction` of it. Afterwards
   the attacker is revealed to each side it hit at for the action's `reveal` rounds (guns 2, melee and zappers 1), those
-  sides get an Attack contact, other sides in earshot a Noise contact, and overwatch may react. Previews
+  sides get an Attack contact, other sides in earshot a Noise contact. Previews
   (`Combat.ChanceToHit`) include it. Attacks aim at tiles, not units: a strike into the fog is readied blind and its
   reply is the same whether anyone stands there, so it never tells a side what it cannot see.
-- **Defenses**: `SetStance(Overwatch)` (1 AP; ends the turn; the AP left become reactions, max 2): a free reaction attack
-  (−`accuracyPenalty`) at each hostile that moves into, or reveals itself (by firing, or in a flare) within, its sight and
-  reach, until its next turn; reactions do not set off reactions; +10 detection meanwhile. `SetStance(Brace)` (1 AP; ends
-  the turn): no ambush bonus against it, +`coverBonus` cover, `nextTurnApPenalty` AP less next turn. `Lookout` (1 AP;
-  does not end the turn): +sight and +detection (`detectionBonus + Perception·detectionPerPerception`) until its next
-  turn. Stances and lookout end when the unit's next turn starts.
+- **Lookout** (`Lookout`, 1 AP): +sight and +detection (`detectionBonus + Perception·detectionPerPerception`) until the
+  next round starts. Blocking is on "Rounds, plans and cards".
 - **Gear** (`items.json`): Flare (consumable, `UseItem` at a tile within 5: lights radius 3 for 3 rounds; Electronics
   Lab L1, loot), Motion Sensor (placed on a tile within 1: reveals and privately alerts its side (`ScavengeEvent.Side`)
   when a hostile moves into radius 3; Electronics Lab L1, loot tier 2), Camo Cloak (body, +15 stealth; Tailor L2, loot
   tier 2), Scanner (sees hostiles within 6 through walls and stealth), Binoculars (+10 detection).
-- **The Linked** (`ScavengeAi`): a Linked that knows of nobody waits on overwatch (`fog.ai.linkedLurk`) instead of
-  wandering, and one with AP left after closing in does too; position scoring adds `fog.ai.hiddenWeight` for tiles no
+- **The Linked** (`ScavengeAi`): a Linked that knows of nobody holds still (`fog.ai.linkedLurk`) instead of
+  wandering; position scoring adds `fog.ai.hiddenWeight` for tiles no
   known hostile would detect it on and scores shots with the ambush bonus, so they fire from the fog; drones (Perception
   85) spot for the group; a signal jammer cuts a Linked off from that shared knowledge. Husks do not plan ambushes but
   can still stumble out of the dark.
@@ -891,65 +885,60 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
   extraction, shot down, the Linked vs Husks, melee, Spotter, Payload, jammer, allies, saves), `WorldMapTests` (scouting
   flights), `HackNetTests` (no leaks of devices, hacks or drones; team camera sight; drone sight shared; perks over the wire).
 
-## Telegraphed plans and cards
+## Rounds, plans and cards
 
-- **Reach** (`Combat.Tiles(map, action, from, facing)`): the tiles an attack pattern covers; `Combat.Hittable` adds the
-  line-of-sight rule, `CheckReach` is membership plus LOS, and `Combat.ThreatZone(sim, unit)` unions a unit's attacks.
-- **Tile attacks and sub-rounds** (`TileStrikes`, command `AttackTile`, wire `attackTile`; `ScavengeState.Strikes`,
-  `SubRound`): a round is `scavenge.json turn.subRounds` sub-rounds (data: 2). Every unit acts in each in initiative
-  order on one turn's AP, refilled only when the round starts; `EndTurn` ends the sub-turn, `WholeTurn` the round, and a
-  unit out of AP, on a stance or with a plan sits out later sub-rounds. An attack is declared on a tile and a direction:
-  a weapon with `modes` covers `Combat.Covered` (stab: a line of `reach`, `diagonalReach` along a diagonal; slash: the
-  front tile and its two flanks), any other action the one tile in reach. The AP goes at once and the sub-turn ends; at
-  the sub-round's end strikes come down in initiative order on every hostile on a covered tile in sight, an empty tile is
-  a miss (the one seen there dodged). Plans take a `mode` / `direction` too and strike every hostile on the covered tiles
-  when they resolve. Tile strikes are the only way to attack: there is no command that strikes a unit at once. The AI's,
-  the bots' and auto-play's strikes at once are tile strikes too (`TileStrikes.StrikeAt`: a stab / slash aimed by
-  `TileStrikes.BestAim`, the aim covering the most seen hostiles; any other action at the target's tile). A strike only
-  ever hits hostiles (no friendly fire), only what the action can reach (melee under a flying drone hits nothing), and
-  pays its AP even on an empty tile. `Combat.Resolve` (a blow on one unit at once) is left only for what is out of turn by
-  nature: overwatch reactions, card reactions and `DroneFire`. Readied strikes and patterned plans telegraph their
-  covered tiles (`TacticsView`).
+Combat is simultaneous: everyone plans, then the round resolves. There are no sub-rounds and no unit-by-unit turns.
+
+- **Planning** (`Plans`, `UnitPlan`, `PlanStep`; `ScavengeState.Plans`): every side plans at once and in any order. A unit
+  fills at most one move, one action and one card (`PlanSlot`, `Plans.Limits`; `scavenge.json turn.planMoves` /
+  `planActions` / `planCards`, raised by perks and cards). A plan pays as it is queued and is editable until planning ends:
+  `UndoPlan` clears a slot and refunds what it paid, `ChangePlan` swaps an order into a full slot and leaves the plan as it
+  was if refused. Actions are aimed from where the unit's move ends (`Plans.Anchor`), and changing the move brings them
+  along. `EndTurn` commits a unit; the round resolves once every player-controlled unit is committed.
+- **The round economy** (`Economy`, `scavenge.json turn`): separate MP and AP pools, both draining one stamina pool that
+  carries between rounds. A unit has 1 AP. At 0 stamina it takes no actions and has half its MP. `Recover` is an action
+  that gives stamina back.
+- **What is visible**: only movement is telegraphed. A side sees the planned path of each hostile it sees, live, and a
+  rough map cell for a fogged walk near its units (`scavenge.json fog.moveHintRange`, `moveHintCell`). Attacks, pushes,
+  dashes, blocks and what a rival has spent stay hidden until they resolve (`SideFog` redacts them).
+- **Resolving** (`RoundResolver`): all movement first, then all actions, each by `Priority` (speed, stamina share, the
+  action's weight, adrenaline, with a steep drop under `priority.cliffBelow` stamina). Scores are taken afresh before each
+  pick. Equal scores go by `Priority.TieBreak` (a hash of round and unit), and hostiles on one score clash: all their
+  actions go off at `priority.tieEffect` from the tiles they stood on (`ScavengeEventType.Clashed`). The same plans and seed
+  give the same events.
+- **Tile patterns** (`TileStrikes`, `Patterns`, command `AttackTile`): attacks and defence act on tiles. A weapon with
+  `modes` covers `Combat.Covered` (stab: a line of `reach`; slash: the front tile and its flanks), any other action the
+  one tile in reach; turning a pattern is free. When it comes up the pattern is re-anchored on the unit, keeping its shape,
+  and strikes whoever stands there in line of sight, allies too (the aim warns of them). Nobody there is a fizzle
+  (`IntentFizzled`), which still costs what it paid. `Combat.Tiles` / `Hittable` / `CheckReach` answer reach,
+  `Combat.ThreatZone` unions a unit's attacks. The AI, the bots and auto-play use `TileStrikes.StrikeAt` / `BestAim`.
+- **Block and stun** (`Defences`, `Stuns`, `scavenge.json combat.block`, `stun`): a defence is armed when the action phase
+  opens and holds its tiles against hostiles, whoever stands there. A hit on such a tile does less by `Defences.BlockOf`
+  (the defence's share, plus block skill, armor and perks, amplified by adrenaline, capped). It holds from the start of
+  the phase; whether it has come up by then only decides if the block is perfect. A block may stun the attacker
+  (`Stuns.Chance`): that costs AP, MP and priority next round and never touches what it queued this round.
+- **Push and dash** (`Pushes`, commands `Push`, `Dash`; `combat.push`, `combat.dash`): hidden actions, by priority. A push
+  moves whoever is on its pattern away from the pusher; what they queued still goes off from where they land. A wall or
+  unit stops it with collision damage, and a defended tile takes a tile off. A dash runs straight on and never through anyone.
+- **Adrenaline** (`Adrenaline`, in `Stuns.cs`; `scavenge.json adrenaline`): a meter per unit in plain view, 0 to 100. Hits,
+  pushes, dashes, blocks and stuns raise it; failed actions, being stunned or hit hard, and each round lower it. Each tier
+  adds to damage, priority, block, stun chance and stamina regen. It resets each mission.
 - **Hit tiers** (`Combat.TierOf`, `scavenge.json combat.tiers`): a landed hit is a graze (a share of the damage, no
-  injury), a hit or a solid hit (more injury) by its roll margin; armor, cover and card guard shift it down. Attack
-  events carry the `Tier` and the `Amount`.
-- **Plans** (`PlannedActions`, command `DeclareIntent`, wire `plannedAction`; `Unit.Plan` = `PlannedAction`): a path of
-  whole moves, an optional attack tile and action (or suppressing fire). Free, no noise, ends the turn, locked; it must
-  fit a full turn's AP (`UnitProfile.MaxAp`, what it pays from), whatever the unit has left when it declares. It
-  resolves at the start of the unit's next turn through the plain move rules and a tile strike (`TileStrikes.Strike`, a
-  stab / slash's covered tiles or the one tile) from where the path ended, paid from that turn's AP: a step that no
-  longer works ends the path, whoever hostile is on the tile then is struck (suppressing fire pins them instead), an empty tile is a miss with
-  no refund. Declaring turns the unit toward its first waypoint (or its attack tile). Downed, killed, pinned or stunned
-  cancels the plan.
-- **Outplays** (`Combat.Dodged`, `scavenge.json combat.outplay`): a telegraphed blow (tile strike or plan) that comes
-  down on a tile its aimed-at unit stepped off is dodged. Through the next round the dodger gets the ambush hit bonus on
-  the attacker (`Unit.OutplayedId`, `Combat.OutplayBonus`) and one free counter (`Unit.FreeCounterId`,
-  `TileStrikes.FreeCounter`: its next tile strike covering the attacker takes off `TileStrikes.CounterWaiver`, the unit's
-  cheapest attack's base AP; it needs AP > 0 and the attacker in sight; logged `Countered`; dodging a counter earns none
-  back, `TileStrike.Counter`). The attacker is exposed to the dodger's side (`Unit.ExposedUntilRound`,
-  `Unit.ExposedToSide`, `Combat.ExposedTo`): that side's next hit on it does `exposedDamage` times the damage and uses it
-  up; other sides' hits leave it. Stacked damage multipliers (ambush × facing × exposed) are capped at
-  `combat.maxDamageMultiplier`, the outplay and ambush hit bonuses at `combat.maxHitBonus`. SideFog hides the outplay,
-  the free counter and exposure from other sides; the fog log never names a hidden attacker, its tile, arc or exposure.
-  Tests: `OutplayTests`, `OutplayFogTests`.
-- **Facing** (`Unit.Facing`, `Combat.ArcOf`, `scavenge.json combat.facing`): a unit faces where it last moved, struck or
-  planned. A landed blow's damage (before armor) is multiplied by `sideDamage` from the target's flank and `rearDamage`
-  from behind, by the attacker's true bearing against the facing (front within 67.5°, side to 112.5°, rear past); a unit
-  facing nowhere and a structure are always struck from the front. The log says "from the side" / "from behind".
-  Tests: `FacingTests`.
-- **Enemy AI telegraphs**: `ScavengeAi.Planned` runs a unit's usual behaviour (Spot, TryAttack, Reposition, Retreat,
-  Suppress, shared squad focus) against a look-ahead position and AP and declares what it chose as a plan, a blow at a
-  target already in reach too (a plan with no path, `PlannedAction.Quick`), which comes down at the enemy's next
-  sub-turn, a later sub-round's too, and is then followed by the next: an enemy in reach attacks about as often as
-  before. Every AI plan waits until its target has had its chance to answer (`PlannedActions.Ready`: a sub-turn since it
-  was declared, counted by `ScavengeState.TurnSeq` / `Unit.TurnSeq`; a stance held; done for the round with AP left; a
-  drone's operator answers for it). Only a plan that cannot be declared falls back to a tile strike at once. A turret's
-  plan is its aim tile. Recruits act at once. Tests: `EnemyTelegraphTests`, `TileAttackAiTests`, `AiPlanTests`.
-- **Turn advice** (`TurnAdvice.CanStillAct`): whether the acting unit has an affordable, useful order left (a move, a
-  stance or lookout, an item, a blow at a seen hostile in reach, a playable card, extracting, a pick-up, a hack, salvage,
-  a drone order, a plan with a blow at a seen hostile; the harder ones tried on a copy of the run). The screen ends the
-  turn when it has not (`GameSettings.AutoEndTurn`, default on), after a beat any click or key cancels, after each replay
-  and when it opens. Tests: `TurnAdviceTests`.
+  injury), a hit or a solid hit (more injury) by its roll margin; armor, cover and guard shift it down. Attack events carry
+  the `Tier` and the `Amount`.
+- **Facing** (`Unit.Facing`, `Combat.ArcOf`, `scavenge.json combat.facing`): a unit faces where it last moved or struck. A
+  landed blow's damage (before armor) is multiplied by `sideDamage` from the target's flank and `rearDamage` from behind,
+  by the attacker's true bearing against the facing (front within 67.5 degrees, side to 112.5, rear past); a unit facing
+  nowhere and a structure are always struck from the front. Tests: `FacingTests`.
+- **Enemy AI** (`ScavengeAi`): every AI unit produces a plan when the round opens, before players commit, from what it
+  knows of where others stand, and pays for it like anyone else. It never reads a player's plan.
+- **Field commands**: `UseItem`, `Hack`, drone orders (`DroneFire` too), looting and the like act at once during planning
+  rather than in the resolve phase.
+- **Turn advice** (`TurnAdvice.CanStillAct`): whether the planning unit has an affordable, useful order left. The screen
+  commits it when it has not (`GameSettings.AutoEndTurn`, default on), after a beat any click or key cancels. Tests:
+  `TurnAdviceTests`.
+- Tests: `PlanResolveTests`, `PlanSlotTests`, `PlanningViewTests`, `MoveTelegraphTests`, `PushDashTests`,
+  `StunAdrenalineTests`, `StaminaEconomyTests`, `TileAttackTests`, `TileAttackPatternTests`, `TileAttackAiTests`.
 - **Replay pacing** (`ReplayPacing`, a Core view model; Godot `UnitViews.Replay`): a tile walk takes `GameSettings.WalkTileSeconds` (Settings > Game, walk
   speed, default 0.2 s); `GameSettings.SkipAnimations` (Settings > Game, hotkey `scav_fast_forward`, ".") snaps every
   step to its end in the same frame. An event of another side's unit the side saw nothing of (`UnitViews.InSight`) is
@@ -968,10 +957,9 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
   starter set for new and migrated colonies; cards from loot / salvage rows (the run's `Party.CardPouch`, kept only if
   someone gets out), recipe outputs (`recipes[].card`: a recipe that makes something else teaches its card once per colony,
   `CardCollection.Taught`; a recipe whose only output is the card grants it every craft), trade (`GoodKind.Card`); consumables played leave the collection.
-- **Saves**: scavenge save 16 (`ScavengeSave.TileAttacksVersion`: sub-round, strikes, turn-over round; 15 loads at
-  sub-round 1), from 15 (`ScavengeSave.IntentsVersion`; older runs are refused) and colony save 27
+- **Saves**: scavenge save 19 (`ScavengeSave.PlanSlotsVersion`; 18 still loads, older runs are refused) and colony save 27
   (`SaveGame.CardsVersion`; older colonies get the starter set, and a run in progress inside one starts over from its
-  expedition's seed). Protocol 19 (see MULTIPLAYER.md, "Telegraphed plans and cards over the wire").
+  expedition's seed). Protocol 22 (see MULTIPLAYER.md).
 - **Late-zone retune** (`ZoneDef.Retune`, zones.json `retune`; `LateZoneTuning`, `ZoneTuning.Applies`): a zone's
   alternative enemy count, devices, pylons and reinforcements (waves, count, `afterRounds`). `NewScavenge.Create` applies
   it when `ZoneConditions.LateZones` picks the run (Current; Expeditions: no story mission; Everywhere) and records
@@ -979,7 +967,7 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
   `ColonySim.LateZones` (set from the game's setting when a run opens; not saved). Multiplayer: `HostOptions.LateZones`
   (default Expeditions; the host's "Late zones" picker, the server's `--late-zones`), shown in `LobbyState.LateZones`.
   Tests: `LateZoneTuningTests`.
-- Tests: `ReachTests`, `HitTierTests`, `InjuryEffectTests`, `PlannedActionTests`, `AiPlanTests`, `CardDataTests`,
+- Tests: `ReachTests`, `HitTierTests`, `InjuryEffectTests`, `CardDataTests`,
   `SquadDeckTests`, `PlayCardTests`, `CardSlotTests`, `ColonyCardTests`, `CardSourceTests`, `BotTacticsTests`; Net
   `CardNetTests`, `FogNetTests`.
 - **Bestiary** (`Bestiary`, thresholds `scavenge.json bestiary`): per NPC enemy type, how many a party saw, fought
@@ -1006,10 +994,9 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
   `--colony --deck-demo=deck|slots|upgrades`, `--colony --bestiary-demo`.
 - **Ability cards** (`Scavenge/Cards/CardAbilities.cs`, `FieldEffects.cs`): cards declare a target (self, ally, enemy,
   unit, tile), range and radius in `data/cards.json`, and effects beyond buffs: push / pull / swap / step / spin, grant
-  AP, advance / delay initiative (only units still to act this sub-round), barrier and smoke (`ScavengeState.FieldEffects`
+  AP, advance / delay priority for the round, barrier and smoke (`ScavengeState.FieldEffects`
   laid over the map as `TileMap.Overlay` / `TileMap.Smoke`, never changing the terrain), strike and disrupt. A unit moved
-  by a card loses its plan (exposed if a hostile moved it) and is hit by a declared strike on its new tile whoever's side
-  it is, until its next sub-turn. `TacticsView.Targets` is the targeting preview; Godot's `ScavengeScreen.CardAim` and
+  by a card keeps its plan, which goes off from where it lands, and a blow on its new tile strikes it whoever's side it is. `TacticsView.Targets` is the targeting preview; Godot's `ScavengeScreen.CardAim` and
   `Ui/CardTargetTip` draw it (valid targets lit, invalid greyed with Core's reason, landing tile, affected units).
 
 ## Linked squad AI
@@ -1130,8 +1117,8 @@ All numbers live in `data/perks.json` (`skills`, `xp`, `study`, `disciplines`, `
 
   `NewScavenge` resolves each survivor's perks into `Unit.Hooks` (`ScavengeData.HooksFor`, from perks.json loaded with the
   scavenge data), so the field needs no colony data and a server resolves them from the joined party. Every hook is
-  applied: the profile ones in `ProfileDeriver`, the medic ones in `UseItem`, `loot_bonus` in `PickUp`, overwatch in
-  `SetStance`, the hacking and drone ones in `Hacking` / `Drones` (see "Hacking and scout drones").
+  applied: the profile ones in `ProfileDeriver`, the medic ones in `UseItem`, `loot_bonus` in `PickUp`,
+  the hacking and drone ones in `Hacking` / `Drones` (see "Hacking and scout drones").
 - **Study** (`StudyOrder` in `ColonyState.Studies`; `StartStudy(student, building, skill | perk, mentor?, manual?)`,
   `CancelStudy`): `study.buildings` says what each study building teaches and how many students per level (Town Hall:
   the colony skills; Electronics Lab: Electronics, Hacking, Drone Piloting, and the Tech and Drones perks). Student and
@@ -1905,8 +1892,8 @@ by default, so hand-built test rules and `TestData.Real` keep instant building).
   recipe or a loot weight (tested).
 - `enemies.json` — hp, AI kind, attributes, skills, equipment (a Husk's claws are an item too), `tags` (for weapon
   banes), `loot` (its loot table), `drops` (schematics and fixed items; Linked and Wardens always leave Linked cores) and,
-  for authored enemies, `cards` (see "Telegraphed plans and cards").
-- `cards.json` — tactical cards and the squad deck's rules (see "Telegraphed plans and cards").
+  for authored enemies, `cards` (see "Rounds, plans and cards").
+- `cards.json` — tactical cards and the squad deck's rules (see "Rounds, plans and cards").
 - `loot_tables.json` — loot tables and their scaling rules; `loot_tables.<feature>.json` add tables or extend them (see
   "Field loot and salvage").
 - `salvage.json` — salvage node kinds (table, prop, terrain, work, lots, AP, noise, skill, tools), zone densities, drop and
