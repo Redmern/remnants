@@ -52,7 +52,9 @@ public static class ScavengeSave
     public const int SimultaneousVersion = 18;
     /// <summary>One move, one action, one card a round: units' slot counts and free actions, which an older run lacks and starts at none.</summary>
     public const int PlanSlotsVersion = 19;
-    public const int Version = PlanSlotsVersion;
+    /// <summary>The Defend action and the counters between actions: a new plan entry kind. Older runs load as they are; a newer one has entries an older build cannot read.</summary>
+    public const int DefendVersion = 20;
+    public const int Version = DefendVersion;
     private const int OldestVersion = SimultaneousVersion;
 
     private sealed record Envelope(int Version, ScavengeState Scavenge);

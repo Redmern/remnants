@@ -415,6 +415,13 @@ public sealed record ManualDef
     public double Cap { get; init; } = 35;
 }
 
+/// <summary>A guard's share and the tiles it covers, offsets as [forward, side] with [0, 0] the unit's own tile (data/items.json <c>defend</c>).</summary>
+public sealed record GuardDef
+{
+    public double Block { get; init; }
+    public CardPattern Pattern { get; init; } = new();
+}
+
 public sealed record ItemDef
 {
     public string Id { get; init; } = "";
@@ -466,6 +473,9 @@ public sealed record ItemDef
 
     /// <summary>If set, the colony stores this item as stockpile resources rather than as an item.</summary>
     public SalvageDef? Salvage { get; init; }
+
+    /// <summary>What the gear guards with when its wearer defends (<see cref="Defences"/>): a share and a pattern. Null: it adds nothing.</summary>
+    public GuardDef? Defend { get; init; }
 
     /// <summary>Equipped devices (Tool slot) with a field effect.</summary>
     public DeviceDef? Device { get; init; }

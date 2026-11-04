@@ -122,12 +122,12 @@ public class PlanResolveTests
     }
 
     [Fact]
-    public void Action_weight_puts_recover_before_a_heavy_blow()
+    public void Action_weight_puts_a_defend_before_a_heavy_blow()
     {
         var (sim, a, _) = Duel(weaponA: "sword");
-        var recover = new PlanStep { Kind = PlanStepKind.Recover };
+        var defend = new PlanStep { Kind = PlanStepKind.Defend };
         var heavy = new PlanStep { Kind = PlanStepKind.Strike, Strike = new TileStrike { ActionId = "blade", UnitId = a.Id } };
-        Assert.True(Priority.Action(sim, a, recover) > Priority.Action(sim, a, heavy));
+        Assert.True(Priority.Action(sim, a, defend) > Priority.Action(sim, a, heavy));
     }
 
     [Fact]

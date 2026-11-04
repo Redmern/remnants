@@ -508,6 +508,14 @@ public sealed record DashRules
     public double AttackHit { get; init; } = 0.1;
 }
 
+/// <summary>The defend action (<see cref="Defences"/>, scavenge.json <c>combat.defend</c>): its AP, and the share and pattern of a unit with no guarding gear.</summary>
+public sealed record DefendRules
+{
+    public int ApCost { get; init; } = 1;
+    public double Block { get; init; } = 0.2;
+    public CardPattern Pattern { get; init; } = new() { Offsets = [[0, 0], [1, 0]] };
+}
+
 /// <summary>What a defended tile takes off a hit, beyond its card (<see cref="Defences"/>, scavenge.json <c>combat.block</c>).</summary>
 public sealed record BlockRules
 {
@@ -563,6 +571,9 @@ public sealed record TurnRules
     /// <summary>The recover action: its AP (which costs no stamina) and the stamina it gives back.</summary>
     public int RecoverApCost { get; init; } = 1;
     public int RecoverStamina { get; init; } = 4;
+
+    /// <summary>What a landed blow on a recovering unit adds to its damage, as a share; it also calls the recover off.</summary>
+    public double RecoverHitDamage { get; init; } = 0.25;
     public int PickUpApCost { get; init; } = 1;
     public int RecruitApCost { get; init; } = 1;
     public double InitiativePerAgility { get; init; } = 1.0;
@@ -620,6 +631,7 @@ public sealed record CombatRules
     public double MaxDamageMultiplier { get; init; } = 2;
 
     public BlockRules Block { get; init; } = new();
+    public DefendRules Defend { get; init; } = new();
     public PushRules Push { get; init; } = new();
     public DashRules Dash { get; init; } = new();
 

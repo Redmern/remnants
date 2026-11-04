@@ -3,7 +3,8 @@ namespace Remnants.Core.Scavenge;
 /// <summary>
 /// Push and dash: hidden actions paid at plan time, going off in the action phase by priority. A push moves whoever stands
 /// on its pattern away from the pusher (<see cref="One"/>); what they queued still goes off, from where they land. A dash runs
-/// straight on and never through anyone. Neither is telegraphed: only the movement phase is.
+/// straight on and never through anyone, and a unit with one queued slips a push (<see cref="RoundResolver.DashAway"/>). Neither is
+/// telegraphed: only the movement phase is.
 /// </summary>
 public static class Pushes
 {
@@ -60,23 +61,29 @@ public static class Pushes
     {
         var state = sim.State;
         var clear = tiles.Where(p => Combat.Clear(sim.Data, state.Map, unit.Pos, p)).ToHashSet();
-        var victims = state.Units
+        List<Unit> On() => state.Units
             .Where(u => u.Id != unit.Id && u.IsActive && u.OnMap && u.CarriedById is null && !u.Structure && !CardAbilities.Fixed(u) && clear.Contains(u.Pos))
             .OrderByDescending(u => u.Pos.Chebyshev(unit.Pos)).ThenBy(u => u.Id).ToList();
+        // A dash beats a push: whoever has one queued is off before the shove arrives.
+        var slipped = On().Where(u => unit.HostileTo(u) && RoundResolver.DashAway(sim, u)).ToList();
+        var victims = On();
         if (victims.Count == 0)
-            state.Log(new(state.Round, ScavengeEventType.IntentFizzled, $"{unit.Name}'s push meets nobody.", unit.Id, Pos: unit.Pos));
+            state.Log(new(state.Round, ScavengeEventType.IntentFizzled,
+                slipped.Count > 0 ? $"{unit.Name}'s push finds nobody: {string.Join(" and ", slipped.Select(u => u.Name))} dashed clear." : $"{unit.Name}'s push meets nobody.",
+                unit.Id, Pos: unit.Pos));
         var pushed = victims.Where(v => One(sim, unit, v, Combat.Face(unit.Pos, v.Pos), distance)).ToList();
         Scored(sim, unit, pushed.Count > 0);
         return pushed;
     }
 
     /// <summary>
-    /// One unit pushed: a tile less off a defended tile, and on until a wall or a unit stops it, with collision damage. It is never
+    /// One unit pushed: its own Defend broken if the push is hostile, a tile less off a tile still defended, and on until a wall or a unit stops it, with collision damage. It is never
     /// passed on: whoever it hits stays put. Returns whether it landed: a push held off entirely did not.
     /// </summary>
     internal static bool One(ScavengeSim sim, Unit by, Unit victim, Pos dir, int distance)
     {
         var state = sim.State;
+        Defences.Break(sim, by, victim);
         if (Defences.At(sim, by, victim.Pos) is { } block)
         {
             distance--;

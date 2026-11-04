@@ -141,7 +141,7 @@ public static class TacticsView
     /// <summary>What the unit has queued, for its own side's eyes.</summary>
     public static PlanPreviewView PlanPreview(ScavengeSim sim, Unit unit)
     {
-        var (path, tiles) = (new List<Pos>(), new List<Pos>());
+        var (path, tiles, guarded) = (new List<Pos>(), new List<Pos>(), new List<Pos>());
         var map = sim.State.Map;
         foreach (var step in Plans.Of(sim.State, unit)?.Steps ?? [])
             switch (step.Kind)
@@ -158,6 +158,9 @@ public static class TacticsView
                 case PlanStepKind.Dash:
                     path.AddRange(Line(step.From, step.Direction, step.Landing!.Value));
                     break;
+                case PlanStepKind.Defend:
+                    guarded.AddRange(Defences.Tiles(sim, unit, step.From, step.Direction));
+                    break;
                 case PlanStepKind.Card when step.CardId is { } id && sim.Data.Cards.Find(id) is { } card:
                     if (step.Landing is { } end)
                     {
@@ -169,7 +172,7 @@ public static class TacticsView
                     break;
             }
         var distinct = tiles.Distinct().ToList();
-        return new PlanPreviewView(path, distinct, AllyTiles(sim, unit, distinct), Plans.Anchor(sim.State, unit));
+        return new PlanPreviewView(path, distinct.Union(guarded).ToList(), AllyTiles(sim, unit, distinct), Plans.Anchor(sim.State, unit));
     }
 
     private static IEnumerable<Pos> Line(Pos from, Pos direction, Pos end)
@@ -184,6 +187,10 @@ public static class TacticsView
         var dir = new Pos(Math.Sign(direction.X), Math.Sign(direction.Y));
         return dir == default ? [] : Line(Plans.Anchor(sim.State, unit), dir, Pushes.PlannedLanding(sim, unit, dir, sim.Data.Rules.Combat.Dash.Tiles)).ToList();
     }
+
+    /// <summary>The aim of a Defend from where the unit's plan ends. A guard does an ally on it no harm, so nothing warns of them.</summary>
+    public static PatternAimView DefendAim(ScavengeSim sim, Unit unit, Pos direction) =>
+        new(Defences.Tiles(sim, unit, Plans.Anchor(sim.State, unit), direction), []);
 
     /// <summary>The aim of a push from where the unit's plan ends.</summary>
     public static PatternAimView PushAim(ScavengeSim sim, Unit unit, Pos direction)

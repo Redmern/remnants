@@ -37,7 +37,7 @@ public static class Priority
         var rules = sim.Data.Rules.Priority;
         switch (step.Kind)
         {
-            case PlanStepKind.Recover:
+            case PlanStepKind.Defend:
                 return rules.EarlyWeight;
             case PlanStepKind.Strike when sim.Profile(unit).Action(step.Strike!.ActionId) is { } action:
                 return Blow(rules, action);

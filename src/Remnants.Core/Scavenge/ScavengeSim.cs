@@ -19,6 +19,9 @@ public sealed class ScavengeSim
     /// <summary>What is left of an action's effect right now: below 1 only while a clash resolves (<see cref="RoundResolver"/>).</summary>
     internal double EffectFactor { get; set; } = 1;
 
+    /// <summary>Who has a recover going in the action phase underway, once per recover. It starts and ends inside one resolve, so it is never saved.</summary>
+    internal List<int> Recovering { get; } = new();
+
     public ScavengeData Data { get; }
     public ScavengeState State { get; }
 
@@ -84,6 +87,7 @@ public sealed class ScavengeSim
             Move c => ScavengeCommandHandlers.Move(this, unit!, c),
             Push c => Pushes.Plan(this, unit!, c),
             Dash c => Pushes.Plan(this, unit!, c),
+            Defend c => Defences.Plan(this, unit!, c),
             UseItem c => ScavengeCommandHandlers.UseItem(this, unit!, c),
             PickUp c => ScavengeCommandHandlers.PickUp(this, unit!, c),
             TakeAll c => FieldLoot.TakeAll(this, unit!, c),
@@ -149,7 +153,7 @@ public sealed class ScavengeSim
             if (step.Applied is null) (step.RefundMp, step.RefundAp) = (mpBefore - unit.Mp, apBefore - unit.Ap);
             step.RefundFatigue = unit.Fatigue - fatigueBefore;
         }
-        if (command is Move or AttackTile or PlayCard or Recover or Push or Dash or UndoPlan) plan.Committed = false;
+        if (command is Move or AttackTile or PlayCard or Recover or Push or Dash or Defend or UndoPlan) plan.Committed = false;
     }
 
     private ScavengeResult Commit(Unit unit)

@@ -80,6 +80,9 @@ public sealed record Push(int PlayerId, int UnitId, Pos Direction) : IScavengeCo
 /// <summary>Queue a dash of up to <paramref name="Tiles"/> straight in <paramref name="Direction"/>, in the action phase. Not telegraphed.</summary>
 public sealed record Dash(int PlayerId, int UnitId, Pos Direction, int Tiles) : IScavengeCommand;
 
+/// <summary>Queue a defence: the unit's own tile and its gear's pattern in <paramref name="Direction"/> are guarded (<see cref="Defences"/>).</summary>
+public sealed record Defend(int PlayerId, int UnitId, Pos Direction) : IScavengeCommand;
+
 /// <summary>
 /// Commit the unit's plan. The round resolves once every player-controlled unit is committed; editing the plan first reopens it.
 /// </summary>

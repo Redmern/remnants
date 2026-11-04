@@ -269,7 +269,7 @@ public static class Combat
         }
 
         var arc = ArcOf(target, attacker.Pos);
-        var stacked = Math.Min(data.Rules.Combat.MaxDamageMultiplier, (ambush?.DamageMultiplier ?? 1) * ArcDamage(data.Rules.Combat.Facing, arc));
+        var stacked = Math.Min(data.Rules.Combat.MaxDamageMultiplier, (ambush?.DamageMultiplier ?? 1) * ArcDamage(data.Rules.Combat.Facing, arc) * (1 + Economy.CaughtRecovering(sim, target, attacker)));
         var raw = (action.MinDamage + (action.MaxDamage - action.MinDamage) * sim.Rng.NextDouble()) * stacked * sim.EffectFactor * (1 + Adrenaline.Bonus(sim, attacker));
         var part = PickHitLocation(sim, target);
         var defense = sim.Profile(target);

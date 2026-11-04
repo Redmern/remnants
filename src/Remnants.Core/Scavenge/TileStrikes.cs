@@ -83,6 +83,7 @@ public static class TileStrikes
         foreach (var card in plan.Steps.Where(s => s.Kind == PlanStepKind.Card)) CardPlay.Lost(sim, unit, card);
         plan.Steps.RemoveAll(s => s.Kind != PlanStepKind.Move);
         Defences.Drop(sim.State, unit);
+        sim.Recovering.RemoveAll(id => id == unit.Id);
         sim.State.Log(new(sim.State.Round, ScavengeEventType.IntentCanceled, $"{unit.Name}'s plan is off: {why}.", unit.Id, Pos: unit.Pos));
     }
 

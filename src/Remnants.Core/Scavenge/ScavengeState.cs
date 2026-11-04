@@ -68,6 +68,8 @@ public enum ScavengeEventType
     AdrenalineChanged,
     /// <summary>An action with a pattern is over: its <see cref="ScavengeEvent.Tiles"/>, and whether it <see cref="ScavengeEvent.Landed"/>. No log line.</summary>
     PatternResolved,
+    /// <summary>A push broke the target's Defend: its guard is gone for the round.</summary>
+    GuardBroken,
 }
 
 /// <summary>
