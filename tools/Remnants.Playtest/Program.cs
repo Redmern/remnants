@@ -16,6 +16,7 @@ var seeds = options.TryGetValue("seed", out var one) ? [ulong.Parse(one)]
 var quiet = options.ContainsKey("quiet");
 // --no-salvage: the party bot leaves salvage nodes alone (before/after comparisons of field loot).
 PartyBot.Salvage = !options.ContainsKey("no-salvage");
+// --policy=mixed|walk-attack: how the zone-trial party fights (default mixed); same seeds, so the two compare directly.
 // --no-cards: zone-trial parties go without their squad deck (before/after comparisons of the card layer).
 ZoneTrial.Cards = !options.ContainsKey("no-cards");
 // --late-zones=current|expeditions|everywhere: which runs take the late zones' retune (zones.json "retune"); default expeditions.
@@ -73,6 +74,12 @@ if (options.TryGetValue("mission", out var missionArg))
             int.Parse(options.GetValueOrDefault("party", "2")), options.GetValueOrDefault("kit", "")));
     return;
 }
+PartyBot.Policy = options.GetValueOrDefault("policy", "mixed") switch
+{
+    "mixed" => BotPolicy.Mixed,
+    "walk-attack" => BotPolicy.WalkAttack,
+    var other => throw new ArgumentException($"unknown --policy '{other}' (mixed, walk-attack)"),
+};
 if (options.TryGetValue("zone", out var zoneArg))
 {
     // Zone trial: --zone=ID[,ID...] [--runs=N] [--party=N]; --hour and --weather take lists and sweep every combination.

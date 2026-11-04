@@ -122,10 +122,19 @@ public sealed record PlanCardStats
 /// and (unless <see cref="Salvage"/> is off) works salvage nodes it has seen when nothing hostile is in sight and it
 /// has room for a lot.
 /// </summary>
+/// <summary>
+/// <see cref="WalkAttack"/>: no cards, Defend, push or dash; it walks up to what it sees and hits it.
+/// <see cref="Mixed"/>: everything the bot knows, baiting blows with a dash, guarding, pushing into walls, picking its tile.
+/// </summary>
+public enum BotPolicy { Mixed, WalkAttack }
+
 public static class PartyBot
 {
     /// <summary>Units pathing around other units until this round (they were boxed in).</summary>
     private static readonly Dictionary<int, int> Detours = new();
+
+    /// <summary>How the bot fights (<c>--policy</c>); both loot and head home the same way.</summary>
+    public static BotPolicy Policy { get; set; } = BotPolicy.Mixed;
 
     /// <summary>Whether the bot salvages (<c>--no-salvage</c> turns it off, for before/after comparisons).</summary>
     public static bool Salvage { get; set; } = true;
@@ -294,7 +303,19 @@ public static class PartyBot
 
     /// <summary>What to do next, decided from where the unit's plan ends. A field command that needs it there first simply fails and waits for the round.</summary>
     private static IScavengeCommand Decide(ScavengeSim sim, Unit unit, int playerId, bool recruit, int stalled, bool defenses, bool fightLinked, bool tech) =>
-        Plans.AtAnchor(sim.State, unit, () => DecideHere(sim, unit, playerId, recruit, stalled, defenses, fightLinked, tech));
+        Plans.AtAnchor(sim.State, unit, () => Settled(sim, unit, playerId, DecideHere(sim, unit, playerId, recruit, stalled, defenses, fightLinked, tech)));
+
+    /// <summary>
+    /// A walk that would be refused, or would carry off an aimed blow or card with a hostile in sight, ends the turn instead:
+    /// what is planned goes off from where the walk ends.
+    /// </summary>
+    private static IScavengeCommand Settled(ScavengeSim sim, Unit unit, int playerId, IScavengeCommand command)
+    {
+        if (command is not Move) return command;
+        var aimed = Plans.Of(sim.State, unit)?.Steps.Any(s => s.Kind == PlanStepKind.Strike || s.Kind == PlanStepKind.Card && s.Tile is not null) == true;
+        var seen = sim.State.Units.Any(t => t.IsActive && unit.HostileTo(t) && Detection.SideSees(sim.Data, sim.State, unit.Side, t));
+        return !Plans.HasRoom(sim, unit, PlanSlot.Move) || aimed && seen ? new EndTurn(playerId, unit.Id) : command;
+    }
 
     private static IScavengeCommand DecideHere(ScavengeSim sim, Unit unit, int playerId, bool recruit, int stalled, bool defenses, bool fightLinked, bool tech)
     {
@@ -310,7 +331,10 @@ public static class PartyBot
         var allies = state.Units.Where(t => t.Side == unit.Side && t.PlayerId is not null && t.OnMap && t.Kind == UnitKind.Survivor).ToList();
 
         // 0. Cards first (they mostly cost no AP): a reaction to a plan aimed at us, aim, defense, a mend, a draw.
-        if (BotTactics.Card(sim, unit, playerId) is { } card) return card;
+        var walkAttack = Policy == BotPolicy.WalkAttack;
+        // The mixed bot picks its tile first: what it plans next goes off from there.
+        if (!walkAttack && BotTactics.Position(sim, unit, playerId) is { } tile) return tile;
+        if (!walkAttack && BotTactics.Card(sim, unit, playerId) is { } card) return card;
 
         // 1. A downed ally next to us gets the med-kit; a badly hurt one (or we) a bandage when nobody is adjacent.
         foreach (var ally in allies.Where(a => a.Status == UnitStatus.Downed && a.Pos.Chebyshev(unit.Pos) <= 1))
@@ -349,11 +373,15 @@ public static class PartyBot
         // closes on a hurt unit, a noise decoy to pull hunting Husks off the party.
         if (tech && Electronics(sim, unit, playerId, hostiles) is { } device) return device;
 
-        // 2. Hit what gives the most expected damage per AP.
+        // 1d. The mixed bot's counter, before it settles for a plain blow.
+        if (!walkAttack && BotTactics.Counter(sim, unit, playerId) is { } counter) return counter;
+
+        // 2. Hit what gives the most expected damage per AP (not one its own card is about to move out of the way).
+        var moving = Plans.Of(state, unit)?.Steps.Where(s => s.Kind == PlanStepKind.Card && s.Tile is not null && sim.Data.Cards.Find(s.CardId!) is { Effect: { } e } && (e.Push > 0 || e.Pull > 0)).Select(s => s.Tile!.Value).ToHashSet() ?? [];
         // The true AP counts (a scope costs more up close).
         var attack = profile.Actions.Where(_ => Plans.HasRoom(sim, unit, PlanSlot.Action))
             .SelectMany(a => hostiles
-                .Where(t => BotTactics.Expected(sim, unit.Side, t) is var to && Combat.ApCost(a, unit.Pos, to) <= unit.Ap && Combat.CheckReach(sim.Data, map, unit.Pos, a, to) == ScavengeError.None)
+                .Where(t => !moving.Contains(t.Pos) && BotTactics.Expected(sim, unit.Side, t) is var to && Combat.ApCost(a, unit.Pos, to) <= unit.Ap && Combat.CheckReach(sim.Data, map, unit.Pos, a, to) == ScavengeError.None)
                 .Select(t => (Action: a, Target: t, Chance: Combat.ChanceToHit(sim, unit, a, t))))
             .OrderByDescending(o => o.Chance * (o.Action.MinDamage + o.Action.MaxDamage) / 2 / Combat.ApCost(o.Action, unit.Pos, BotTactics.Expected(sim, unit.Side, o.Target)))
             .ThenBy(o => o.Target.Hp).FirstOrDefault();

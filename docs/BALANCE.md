@@ -1905,3 +1905,55 @@ the Woodcutter leaves, and from about day 30 levels, skill and tools take over.
   unchanged (3 / 3).
 - Late game gathers more than before (a level 3 Woodcutter with a skilled, tooled worker cuts 1.5 an hour against 0.98):
   the payoff the request asked for. Watch the 90-day economy next pass.
+
+## Combat playtest fixes: walk-and-attack against mixed play
+
+The playtest complaint was that a fight comes down to walking up and hitting. `tools/Remnants.Playtest` now has two policies on the same seeds. `walk-attack` plays no cards, Defend, push or dash. It walks up to what it sees and hits it. `mixed` also picks its tile (`BotTactics.Position`), then plays cards and counters (`BotTactics.Counter`): a push into a wall, a dash clear when hurt or with two on it, a guard against a neighbour that stood still, a rest when winded. Both loot and go home the same way, and both only use what their side can see.
+
+Commands, 100 runs each (seeds 1..100, so the same maps and rolls to begin with), party of 3, starting gear, midday:
+
+```
+dotnet run -c Release --project tools/Remnants.Playtest -- --zone=suburb_ruins --runs=100 --party=3 --policy=walk-attack
+dotnet run -c Release --project tools/Remnants.Playtest -- --zone=suburb_ruins --runs=100 --party=3 --policy=mixed
+dotnet run -c Release --project tools/Remnants.Playtest -- --zone=suburb_ruins --runs=100 --party=3 --policy=mixed --no-cards
+```
+
+The same with `--zone=outskirts`. The baselines are the same commands without `--policy`, built from `d997667` (before the simultaneous rework) and `5293faf` (the rework, before this work). Those baselines use the bot as it was at that commit. Fizzled shares are counted from `--trace`: `IntentFizzled` / (`IntentFizzled` + `IntentResolved`).
+
+| Suburb Ruins | Runs with a death | Deaths/run | Taken/run | Dealt/run | Items/run | Kills/run | Rounds/run | Fizzled: party | enemy | all |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `d997667` | 13% | 0.13 | 80 | 192 | 26.8 | 4.5 | 26 | 16% | 11% | 15% |
+| `5293faf` | 5% | 0.05 | 141 | 202 | 13.9 | 3.3 | 42 | 60% | 70% | 64% |
+| walk-attack | 20% | 0.27 | 128 | 195 | 18.5 | 4.4 | 41 | 10% | 15% | 12% |
+| mixed, no cards | 6% | 0.06 | 91 | 215 | 19.3 | 4.7 | 49 | 24% | 72% | 50% |
+| mixed | 5% | 0.05 | 102 | 222 | 18.6 | 4.8 | 48 | 43% | 65% | 53% |
+
+| Outskirts | Runs with a death | Deaths/run | Taken/run | Dealt/run | Items/run | Kills/run | Rounds/run | Fizzled: party | enemy | all |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `d997667` | 0% | 0.00 | 28 | 111 | 25.5 | 2.5 | 20 | 15% | 7% | 13% |
+| `5293faf` | 0% | 0.00 | 70 | 132 | 15.3 | 2.0 | 34 | 62% | 73% | 66% |
+| walk-attack | 2% | 0.02 | 56 | 120 | 19.3 | 2.5 | 30 | 12% | 5% | 10% |
+| mixed, no cards | 1% | 0.01 | 37 | 124 | 19.5 | 2.5 | 31 | 20% | 64% | 38% |
+| mixed | 0% | 0.00 | 37 | 124 | 19.2 | 2.5 | 31 | 37% | 59% | 45% |
+
+**AC-31 is met.** On the same seeds walk-attack takes 25% more damage than mixed in Suburb Ruins (128 against 102) and 51% more in Outskirts (56 against 37), and has about five times the deaths in Suburb Ruins (0.27 against 0.05). Outskirts has too few deaths to mean anything (2 in 100 runs against 0). Mixed also deals more. Cards are not what makes the gap: mixed without cards takes less than either in Suburb Ruins.
+
+**AC-32 is not met for mixed play.** The target was fizzled under 30% of planned actions.
+- Walk-attack is well under it (10-12%), and the party's own share under mixed without cards is 20-24%.
+- Mixed with cards is over it: 37-43% for the party and 45-53% overall. That is down from `5293faf` (64-66%) but well above the pre-rework `d997667` (13-15%), so against that baseline fizzling did not fall.
+- Most of the rest is enemy blows on tiles the party has left (59-72% of enemy actions under mixed). Some of that is the counters working, and those whiffs now leave the enemy exposed, but this table cannot say how much is bait and how much is enemies chasing a party on its way out.
+- Most of the party's rise with cards is displacement and barrier cards aimed at foes who then move. The bots play these badly, and a human may do better; nobody has measured that.
+
+**Also worse than before the rework:** a run is longer and brings home less. Suburb Ruins goes from 26 rounds and 26.8 items at `d997667` to 48 rounds and 18.6 items under mixed. Compared with `5293faf`, items are up 34% and damage taken down 28%, but part of that is bot fixes (below), not rules.
+
+**Bot fixes that move these numbers.** Before these fixes the bot walked on after planning a blow, which dragged the blow off its target. It now stays put with a blow or aimed card planned and a hostile in sight, and it no longer strikes a foe its own card is about to move. So the `5293faf` row is not a pure before for the rules.
+
+**Tuning: no number changed.** Tried on data copies, Suburb Ruins, 100 runs:
+- Husk aim `Lead` instead of `Closest` (60 runs): enemy fizzled 73% against 72%, taken 89 against 84, measured before the guard habit went in. No gain.
+- Every weapon guard's block x1.75: taken 99 against 101. No real gain, so guards stay. The bots block too rarely (about 1.5 blocks a run) for this to show.
+- The mixed bot's guard habit costs it: taken rose from 86 to 101 in Suburb Ruins when it went in, because a guard round is a round without a blow. It stays because bots must use Defend; do not read that as Defend being weak or strong for a person choosing when to use it.
+- Crit numbers (5%, side +5%, rear +15%, x1.5) were not varied.
+
+**Known limits.**
+- `mixed --no-cards` stalled on 1 of 100 Suburb Ruins seeds (seed 10), and that run is left out of its row. The dash loop guard did not clear it. The `walk-attack` and `mixed` rows have no stalled runs.
+- A hurt bot walking one way and dashing back stayed unhit for 300 rounds in a test before the bot got its guard. It is a bot habit now blocked for bots, but the rules still allow it, so a player might find it: worth a human look.

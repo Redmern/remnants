@@ -107,6 +107,9 @@ internal static class Bot
         if (BotTactics.Card(view, unit, pid) is { } card) return card;
         if (Help(view, unit, allies) is { } help) return help;
 
+        // Push into a wall, a dash or a guard when hurt, a rest when winded; not with an alliance on the table.
+        if (!state.Units.Any(t => t.OnMap && unit.HostileTo(t) && Talking(t)) && BotTactics.Counter(view, unit, pid) is { } counter) return counter;
+
         var shot = profile.Actions.Where(_ => Plans.HasRoom(view, unit, PlanSlot.Action))
             .SelectMany(x => state.Units.Where(t => t.OnMap && unit.HostileTo(t) && !Talking(t) && Combat.ApCost(x, Plans.Anchor(state, unit), BotTactics.Expected(view, unit.Side, t)) <= unit.Ap
                                                     && Combat.CheckReach(view.Data, map, Plans.Anchor(state, unit), x, BotTactics.Expected(view, unit.Side, t)) == ScavengeError.None)
