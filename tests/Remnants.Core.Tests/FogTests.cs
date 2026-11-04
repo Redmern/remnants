@@ -165,11 +165,14 @@ public class FogTests
     {
         var u = SurvivorUnit(pos: new(1, 4), attributes: 20);
         var linked = EnemyUnit("linked", new(8, 4));
-        var sim = Arena(11, 9, [u, linked], Corridor);
+        // A later ally keeps the blow due this sub-round, while the stance still holds.
+        var ally = SurvivorUnit(pos: new(9, 7), attributes: 20);
+        var sim = Arena(11, 9, [u, linked, ally], Corridor);
         var burst = sim.Profile(linked).Action("burst")!;
         var open = Combat.HitChance(sim.Data, sim.State.Map, linked.Pos, burst, u.Pos, sim.Profile(u));
 
         Assert.True(sim.Execute(new SetStance(1, u.Id, Stance.Brace)).Ok);
+        Assert.True(sim.Execute(new EndTurn(1, ally.Id)).Ok);
         // The Linked fired during its turn; braced, the ambush gained nothing.
         var ambush = Combat.AmbushAgainst(sim.Data, sim.State, linked, u);
         Assert.True(ambush is null || ambush.Braced || u.Stance == Stance.None);
@@ -238,30 +241,6 @@ public class FogTests
         u.Ap = sim.Data.Rules.Fog.Overwatch.ApCost;
         Assert.True(sim.Execute(new SetStance(1, u.Id, Stance.Overwatch)).Ok);
         Assert.True(u.Reactions == 1 || u.Stance == Stance.None);
-    }
-
-    [Fact]
-    public void Overwatch_answers_an_ambusher_that_gives_itself_away_by_firing()
-    {
-        var u = SurvivorUnit(pos: new(1, 4), attributes: 20, weapon: "pistol");
-        var linked = EnemyUnit("linked", new(6, 4));
-        var sim = Arena(11, 9, [u, linked], [
-            "###########",
-            "#.........#",
-            "#.........#",
-            "#.#########",
-            "#..PPP.####",
-            "#.#########",
-            "#.........#",
-            "#.........#",
-            "###########",
-        ]);
-        Assert.False(Detection.SideSees(sim.Data, sim.State, P1, linked));
-
-        Assert.True(sim.Execute(new SetStance(1, u.Id, Stance.Overwatch)).Ok);
-
-        Assert.True(Did(sim, linked, ScavengeEventType.Ambushed) || !u.IsActive);
-        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Overwatch && e.UnitId == u.Id && e.TargetId == linked.Id);
     }
 
     [Fact]

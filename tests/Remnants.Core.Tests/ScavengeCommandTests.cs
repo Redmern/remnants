@@ -341,6 +341,7 @@ public class AiTests
         ]);
         Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
         Assert.True(Combat.CoverAgainst(Real, sim.State.Map, linked.Pos, u.Pos) > 0, $"Linked at {linked.Pos} has no cover.");
+        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
         Assert.Contains(sim.State.Events, e => e.UnitId == linked.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
     }
 

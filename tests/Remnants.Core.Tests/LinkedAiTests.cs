@@ -113,6 +113,7 @@ public class LinkedAiTests
         Assert.True(Did(sim, linked, ScavengeEventType.Flanked));
         Assert.NotEqual(new Pos(8, 3), linked.Pos);
         Assert.Equal(0, Combat.CoverAgainst(sim.Data, sim.State.Map, u.Pos, linked.Pos));
+        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok); // declared after the last player turn: it lands after the next
         Assert.True(Shot(sim, linked, u));
     }
 
@@ -127,6 +128,8 @@ public class LinkedAiTests
         var sim = Arena(11, 9, [healthy, hurt, a, b]);
 
         Assert.Equal(hurt, Network.Focus(sim, Network.GroupOf(sim, a)!, Network.Known(sim, Network.GroupOf(sim, a)!)));
+        Assert.True(sim.Execute(new EndTurn(1, healthy.Id)).Ok);
+        Assert.True(sim.Execute(new EndTurn(1, hurt.Id)).Ok);
         Assert.True(sim.Execute(new EndTurn(1, healthy.Id)).Ok);
         Assert.True(sim.Execute(new EndTurn(1, hurt.Id)).Ok);
         // Each Linked opens on the hurt survivor (three bursts cannot drop 70 HP, so it is still up for the second).

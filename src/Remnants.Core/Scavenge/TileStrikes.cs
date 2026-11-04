@@ -22,13 +22,17 @@ public sealed class TileStrike
 
     /// <summary>Suppressing fire (an AI's): it pins whoever stands on the tile when it comes down, with no damage roll.</summary>
     public bool Suppress { get; set; }
+
+    /// <summary>An AI's strike declared after the sub-round's last player turn: it sits out one sub-round end, so the player always gets a turn to answer it.</summary>
+    public bool Deferred { get; set; }
 }
 
 /// <summary>
 /// Tile-first attacks. A unit aims at a tile and a direction: a weapon with stab / slash patterns covers the tiles of its
 /// <see cref="StrikeMode"/> (<see cref="Combat.Covered"/>), any other action the one tile aimed at (in reach, as
 /// <see cref="Combat.CheckReach"/> says). The AP is paid when it is declared and the unit's sub-turn ends. When the
-/// sub-round ends the strikes come down in initiative order: whoever hostile stands on a covered tile in the attacker's
+/// sub-round ends the strikes come down in initiative order (an AI's declared with no hostile player left to act that
+/// sub-round waits for the next sub-round's end, the next round's first if none is left, <see cref="TileStrike.Deferred"/>): whoever hostile stands on a covered tile in the attacker's
 /// line of sight then is struck, each with its own roll, so a tile an enemy steps onto can be struck before it gets there.
 /// Nobody there is a miss; the one seen there when it was declared, if it stepped off, dodged it
 /// (<see cref="Unit.OutplayedId"/>). A strike whose attacker went down, left or was moved off its tile falls through;
@@ -63,6 +67,7 @@ public static class TileStrikes
         {
             UnitId = unit.Id, ActionId = action.Id, Mode = aim.Mode, From = unit.Pos, Tile = c.Tile, Direction = aim.Direction,
             Tiles = aim.Tiles, TargetId = seen?.Id, Counter = free, Suppress = suppress,
+            Deferred = sim.DefersStrike(unit),
         });
         var how = aim.Mode is { } mode ? $"a {mode.ToString().ToLowerInvariant()} at {c.Tile}" : $"an attack on {c.Tile}";
         state.Log(new(state.Round, ScavengeEventType.IntentDeclared, $"{unit.Name} readies {how} ({action.Name}).", unit.Id, Pos: unit.Pos));
@@ -159,7 +164,7 @@ public static class TileStrikes
     }
 
     /// <summary>
-    /// Strikes everything declared this sub-round, in initiative order, until the list is empty. A strike lost to one that
+    /// Strikes everything due at this sub-round's end, in initiative order; a deferred strike stays for the next. A strike lost to one that
     /// came down before it (or to a counter card played against it) never lands.
     /// </summary>
     internal static void ResolveAll(ScavengeSim sim)
@@ -171,6 +176,11 @@ public static class TileStrikes
             .OrderBy(t => order.GetValueOrDefault(t.s.UnitId, int.MaxValue)).ThenBy(t => t.i).Select(t => t.s).ToList();
         foreach (var strike in strikes)
         {
+            if (strike.Deferred)
+            {
+                strike.Deferred = false;
+                continue;
+            }
             if (state.FindUnit(strike.UnitId) is { } unit && state.Strikes.Contains(strike)) CardPlay.Counters(sim, unit);
             if (state.Strikes.Remove(strike)) Resolve(sim, strike);
         }

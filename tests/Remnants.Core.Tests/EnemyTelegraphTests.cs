@@ -75,17 +75,20 @@ public class EnemyTelegraphTests
     [Fact]
     public void An_enemy_in_reach_strikes_in_both_sub_rounds_each_blow_telegraphed()
     {
-        // The survivor goes first: the Husk readies a blow in each sub-round, and each comes down as that sub-round ends.
+        // The Husk readies a blow in each sub-round with a player turn still to come, and each comes down as that sub-round ends.
         var u = SurvivorUnit(1, new(2, 2), weapon: "pipe");
         var husk = EnemyUnit("husk", new(3, 2));
+        var last = SurvivorUnit(1, new(9, 4), weapon: "pipe");
         husk.Ai.Mode = AiMode.Hunting;
-        var sim = Arena(10, 5, [u, husk], data: Rounds(2));
+        var sim = Arena(10, 5, [u, husk, last], data: Rounds(2));
         int Blows(ScavengeEventType type) => sim.State.Events.Count(e => e.Round == 1 && e.Type == type && e.UnitId == husk.Id);
         Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
+        Assert.True(sim.Execute(new EndTurn(1, last.Id)).Ok);
         Assert.Equal((1, 2), (sim.State.Round, sim.State.SubRound));
         Assert.Equal((1, 1), (Blows(ScavengeEventType.IntentDeclared), Blows(ScavengeEventType.Attacked)));
         Assert.True(u.Hp < u.MaxHp);
         Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
+        Assert.True(sim.Execute(new EndTurn(1, last.Id)).Ok);
         Assert.Equal((2, 2), (Blows(ScavengeEventType.IntentDeclared), Blows(ScavengeEventType.Attacked)));
     }
 }

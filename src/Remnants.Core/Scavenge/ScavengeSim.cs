@@ -192,6 +192,15 @@ public sealed class ScavengeSim
     private bool SitsOut(Unit unit) =>
         unit.Ap <= 0 || unit.TurnOverRound == State.Round || unit.Stance != Stance.None;
 
+    /// <summary>
+    /// Whether an AI unit's strike declared now must wait a sub-round: player units are hostile to it, and none of them
+    /// has a turn to come this sub-round to answer it with.
+    /// </summary>
+    internal bool DefersStrike(Unit unit) =>
+        !unit.PlayerControlled && State.Units.Any(u => u is { IsActive: true, PlayerControlled: true } && u.HostileTo(unit))
+        && !State.TurnOrder.Skip(State.TurnIndex).Select(State.FindUnit)
+            .Any(u => u is { IsActive: true, PlayerControlled: true } && u.HostileTo(unit) && (State.SubRound == 1 || !SitsOut(u)));
+
     /// <summary>The sub-round's tile attacks come down (<see cref="TileStrikes"/>).</summary>
     private void EndSubRound()
     {

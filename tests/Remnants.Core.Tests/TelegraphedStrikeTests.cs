@@ -260,4 +260,93 @@ public class TelegraphedStrikeTests
 
         Assert.Empty(TacticsView.Telegraphs(sim, near.Side));
     }
+
+    /// <summary>P1's only survivor goes first, so the blade next to it declares after the sub-round's last player turn.</summary>
+    private static (ScavengeSim Sim, Unit Near, Unit Blade) LastToAct(int subRounds)
+    {
+        var near = SurvivorUnit(1, new(6, 2), weapon: "pipe");
+        var blade = EnemyUnit("tally_blade", new(5, 2));
+        var sim = Arena(12, 7, [near, blade], data: SureHits(subRounds));
+        blade.Ai.Mode = AiMode.Hunting;
+        return (sim, near, blade);
+    }
+
+    [Fact]
+    public void AC1b_a_strike_declared_after_the_last_player_turn_waits_for_the_end_of_the_next_sub_round()
+    {
+        var (sim, near, blade) = LastToAct(subRounds: 2);
+
+        Assert.True(sim.Execute(new EndTurn(1, near.Id)).Ok);
+
+        Assert.Equal((1, 2), (sim.State.Round, sim.State.SubRound));
+        Assert.Equal(near.Id, sim.State.CurrentUnitId);
+        Assert.Contains(sim.State.Strikes, s => s.UnitId == blade.Id);
+        Assert.Equal(near.MaxHp, near.Hp);
+
+        Assert.True(sim.Execute(new EndTurn(1, near.Id)).Ok);
+
+        Assert.True(near.Hp < near.MaxHp);
+    }
+
+    [Fact]
+    public void AC1b_with_no_sub_round_left_it_waits_for_the_end_of_the_next_rounds_first_sub_round()
+    {
+        var (sim, near, blade) = LastToAct(subRounds: 1);
+
+        Assert.True(sim.Execute(new EndTurn(1, near.Id)).Ok);
+
+        Assert.Equal((2, 1), (sim.State.Round, sim.State.SubRound));
+        Assert.Equal(near.Id, sim.State.CurrentUnitId);
+        Assert.Contains(sim.State.Strikes, s => s.UnitId == blade.Id);
+        Assert.Equal(near.MaxHp, near.Hp);
+
+        Assert.True(sim.Execute(new EndTurn(1, near.Id)).Ok);
+
+        Assert.True(near.Hp < near.MaxHp);
+    }
+
+    [Fact]
+    public void AC1b_the_player_can_step_out_of_a_deferred_strike_and_earns_the_free_counter()
+    {
+        var (sim, near, blade) = LastToAct(subRounds: 2);
+        Assert.True(sim.Execute(new EndTurn(1, near.Id)).Ok);
+        var covered = Assert.Single(sim.State.Strikes).Tiles;
+        var clear = sim.Reachable(near).Keys.First(p => !covered.Contains(p) && p.Chebyshev(blade.Pos) <= 1);
+
+        Assert.True(sim.Execute(new Move(1, near.Id, clear)).Ok);
+        Assert.True(sim.Execute(new EndTurn(1, near.Id)).Ok);
+
+        Assert.Equal(near.MaxHp, near.Hp);
+        Assert.Equal(blade.Id, near.FreeCounterId);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public void AC1b_a_player_unit_sitting_out_the_sub_round_is_no_turn_to_wait_for(bool nearDoneForTheRound, bool deferred)
+    {
+        var first = SurvivorUnit(1, new(0, 0), weapon: "pipe");
+        var blade = EnemyUnit("tally_blade", new(5, 2));
+        var near = SurvivorUnit(1, new(6, 2), weapon: "pipe");
+        var sim = Arena(12, 7, [first, blade, near], data: SureHits(2));
+        sim.State.SubRound = 2;
+        sim.State.TurnIndex = 1;
+        if (nearDoneForTheRound) near.TurnOverRound = sim.State.Round;
+
+        Assert.True(TileStrikes.Declare(sim, blade, StrikeOn(sim, blade, near, sim.Profile(blade).Actions[0].Id)).Ok);
+
+        Assert.Equal(deferred, Assert.Single(sim.State.Strikes).Deferred);
+    }
+
+    [Fact]
+    public void A_players_strike_is_never_deferred()
+    {
+        var near = SurvivorUnit(1, new(6, 2), weapon: "pipe");
+        var husk = EnemyUnit("husk", new(5, 2));
+        var sim = Arena(12, 7, [near, husk], data: SureHits());
+
+        Assert.True(TileStrikes.Declare(sim, near, StrikeOn(sim, near, husk, sim.Profile(near).Actions[0].Id)).Ok);
+
+        Assert.False(Assert.Single(sim.State.Strikes).Deferred);
+    }
 }
