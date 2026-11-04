@@ -709,7 +709,7 @@ public partial class ScavengeScreen : Node3D
                 _ when _usingItem is { } item => (_actionPanel.ItemHint(item), Hud.Palette.Amber),
                 _ when ownDrone => ($"The drone flies on {acting.Name}'s AP: its orders are under Tech.", Hud.Palette.TextMuted),
                 _ when other => ($"{selected!.Name} is selected; these are {acting.Name}'s orders. {Hud.Hotkeys.KeyName("scav_center")} goes back.", Hud.Palette.Warn),
-                _ when round <= 3 => ("Lit tile: set the move. Choose an action, then click its tiles. Anything can be changed until you commit.", Hud.Palette.TextMuted),
+                _ when round <= 3 => ("Lit tile: set the move. Choose an action, then click its tiles.", Hud.Palette.TextMuted),
                 _ => ($"One move, one action, one card · {Hud.Hotkeys.KeyName("end_turn")} commits the plan · {Hud.Hotkeys.KeyName("scav_next_unit")} next unit.", Hud.Palette.TextMuted),
             };
         }

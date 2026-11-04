@@ -476,7 +476,7 @@ public partial class MapView : Node3D
         // Threats sit just under the move and attack marks, so both read on the same tile.
         quad.Position = TileGrid.ToWorld(p) + new Vector3(0, kind switch
         {
-            HighlightKind.Selected or HighlightKind.Landing or HighlightKind.AllyWarning => 0.13f, HighlightKind.Affected => 0.125f,
+            HighlightKind.Selected or HighlightKind.Landing or HighlightKind.AllyWarning => 0.13f, HighlightKind.Affected or HighlightKind.PlanAction => 0.125f,
             HighlightKind.Threat or HighlightKind.ThreatPlanned => 0.115f, _ => 0.12f,
         }, 0);
         quad.Visible = true;

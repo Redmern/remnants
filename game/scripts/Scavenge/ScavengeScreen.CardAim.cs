@@ -120,7 +120,7 @@ public partial class ScavengeScreen
         var way = TacticsView.AimDirection(_presenter.Sim, unit, hover);
         if (aim == TechAim.Defend)
         {
-            ShowPattern(TacticsView.DefendAim(_presenter.Sim, unit, way), HighlightKind.Use);
+            ShowPattern(TacticsView.DefendAim(_presenter.Sim, unit, way), HighlightKind.PlanAction);
             return;
         }
         if (aim == TechAim.Dash)

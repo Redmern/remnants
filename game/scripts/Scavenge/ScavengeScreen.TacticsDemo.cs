@@ -364,12 +364,22 @@ public partial class ScavengeScreen
                 await Settled();
                 Say("clicked the aim");
                 GD.Print($"Slots demo: planned guard tiles {string.Join(",", Core.Scavenge.TacticsView.PlanPreview(_presenter.Sim, u).ActionTiles)}");
-                if (DisplayServer.GetName() != "headless") break;
+                if (DisplayServer.GetName() != "headless")
+                {
+                    await ToSignal(GetTree().CreateTimer(0.6), SceneTreeTimer.SignalName.Timeout);
+                    if (DebugCapture.Value("--screenshot") is { Length: > 0 } planShot)
+                        GD.Print($"Slots demo: plan shot {GetViewport().GetTexture().GetImage().SavePng(planShot.Replace(".png", "_plan.png"))}");
+                }
                 foreach (var f in _presenter.State.Units.Where(f => f.PlayerId == pid && f.OnMap && f.IsActive).ToList()) await Run(new Core.Scavenge.EndTurn(pid, f.Id));
                 while (_busy) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
                 foreach (var e in _presenter.State.Events.Where(e => e.Type == Core.Scavenge.ScavengeEventType.PatternResolved && e.UnitId == u.Id))
                     GD.Print($"Slots demo: resolved pattern on {string.Join(",", e.Tiles ?? [])} landed {e.Landed}");
                 GD.Print($"Slots demo: round now {_presenter.State.Round}");
+                if (DisplayServer.GetName() != "headless" && DebugCapture.Value("--screenshot") is { Length: > 0 } doneShot)
+                {
+                    GD.Print($"Slots demo: resolved shot {GetViewport().GetTexture().GetImage().SavePng(doneShot.Replace(".png", "_resolved.png"))}");
+                    GetTree().Quit();
+                }
                 break;
             case "slots-recover":
                 await Run(new Core.Scavenge.Recover(pid, u.Id));
