@@ -5,12 +5,11 @@ namespace Remnants.Core.Scavenge;
 /// <summary>How a tile is threatened: by a seen enemy's readied strike, or only within reach of a seen enemy now.</summary>
 public enum ThreatKind { Reach, Strike }
 
-/// <summary>
-/// A seen enemy's readied strike as a side may know it: the tile it is aimed at and the tiles it covers (with those a splash
-/// would reach), never the card behind it. <see cref="AimedAtUs"/>: the blow lands on one of the side's units now.
-/// </summary>
-public sealed record Telegraph(int UnitId, string Name, Pos From, Pos? AttackTile, string? ActionName, bool Suppress,
-    List<Pos> Threatened, bool AimedAtUs);
+/// <summary>A seen hostile's planned walk: where it stands, where it is going, and every tile on the way.</summary>
+public sealed record Telegraph(int UnitId, string Name, Pos From, Pos To, List<Pos> Path);
+
+/// <summary>Something moves in the fog around here: a whole cell of the map, not the tile (<see cref="FogRules.MoveHintCell"/>).</summary>
+public sealed record MoveHint(Pos Center, int Radius);
 
 
 /// <summary>Where an aimed card's pattern falls, and which of those tiles hold an ally (the warning colour).</summary>
@@ -45,8 +44,36 @@ public sealed record PickerRow(int UnitId, string Name, bool Ok, string Reason, 
 /// </summary>
 public static class TacticsView
 {
-    /// <summary>What hostiles have planned is hidden until it comes up: nothing to telegraph but their moves.</summary>
-    public static List<Telegraph> Telegraphs(ScavengeSim sim, string side) => [];
+    private static IEnumerable<(Unit Unit, List<PlanStep> Moves)> HostileMoves(ScavengeSim sim, string side, bool seen)
+    {
+        var state = sim.State;
+        foreach (var plan in state.Plans.OrderBy(p => p.UnitId))
+            if (state.FindUnit(plan.UnitId) is { IsActive: true } u && u.Side != side && u.Side != Unit.NeutralSide
+                && plan.Steps.Where(s => s.Kind == PlanStepKind.Move).ToList() is { Count: > 0 } moves
+                && Detection.SideSees(sim.Data, state, side, u) == seen)
+                yield return (u, moves);
+    }
+
+    /// <summary>What a side sees of hostile plans: only the walks of those it sees. Their actions stay hidden until they come up.</summary>
+    public static List<Telegraph> Telegraphs(ScavengeSim sim, string side) =>
+        HostileMoves(sim, side, seen: true).Select(m => new Telegraph(m.Unit.Id, m.Unit.Name, m.Unit.Pos, m.Moves[^1].To, m.Moves.SelectMany(s => s.Path).ToList())).ToList();
+
+    /// <summary>
+    /// What a side senses of walks it cannot see: within <see cref="FogRules.MoveHintRange"/> of one of its people, the map cell
+    /// a walk ends in. Works from the sim, or from what the server sent a client (<see cref="ScavengeState.MoveHints"/>).
+    /// </summary>
+    public static List<MoveHint> MoveHints(ScavengeSim sim, string side)
+    {
+        var state = sim.State;
+        var rules = sim.Data.Rules.Fog;
+        var ours = state.Units.Where(u => u.Side == side && u.IsActive && u.OnMap).Select(u => u.Pos).ToList();
+        var cell = Math.Max(1, rules.MoveHintCell);
+        var hints = HostileMoves(sim, side, seen: false)
+            .Select(m => m.Moves[^1].To)
+            .Where(to => ours.Any(p => p.Chebyshev(to) <= rules.MoveHintRange))
+            .Select(to => new MoveHint(new Pos(to.X / cell * cell + cell / 2, to.Y / cell * cell + cell / 2), cell / 2));
+        return hints.Concat(state.MoveHints).Distinct().OrderBy(h => h.Center.Y).ThenBy(h => h.Center.X).ToList();
+    }
 
     /// <summary>The aim of a pattern card from where the unit's plan ends: <paramref name="tile"/> for one aimed at a tile, turned to <paramref name="direction"/>.</summary>
     public static PatternAimView PatternAim(ScavengeSim sim, Unit unit, string cardId, Pos? tile, Pos direction)
@@ -78,9 +105,6 @@ public static class TacticsView
         foreach (var u in state.Units.Where(u => u.IsActive && u.Side != side && u.Side != Unit.NeutralSide && Detection.SideSees(sim.Data, state, side, u)))
             foreach (var p in Combat.ThreatZone(sim, u))
                 overlay.TryAdd(p, ThreatKind.Reach);
-        foreach (var t in Telegraphs(sim, side))
-            foreach (var p in t.Threatened)
-                overlay[p] = ThreatKind.Strike;
         return overlay;
     }
 
@@ -249,10 +273,9 @@ public static class TacticsView
         return (landing, affected.Distinct().ToList(), string.Join("; ", said));
     }
 
-    /// <summary>Blows the side knows are coming: seen enemies' telegraphs and its own side's readied strikes.</summary>
+    /// <summary>Blows the side knows are coming: its own side's readied strikes.</summary>
     private static IEnumerable<(int UnitId, string Name, List<Pos> Tiles)> Blows(ScavengeSim sim, string side)
     {
-        foreach (var t in Telegraphs(sim, side)) yield return (t.UnitId, t.Name, t.Threatened);
         foreach (var plan in sim.State.Plans)
             if (sim.State.FindUnit(plan.UnitId) is { IsActive: true } u && u.Side == side)
                 foreach (var s in plan.Steps.Where(s => s.Strike is not null)) yield return (u.Id, u.Name, s.Strike!.Tiles);

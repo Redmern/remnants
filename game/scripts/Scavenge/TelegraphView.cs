@@ -40,25 +40,29 @@ public partial class TelegraphView : Node3D
     public void Sync()
     {
         var telegraphs = _presenter.Telegraphs();
-        var signature = string.Join(";", telegraphs.Select(t => $"{t.UnitId}@{t.From}:{string.Join(",", t.Threatened)}>{t.AttackTile}{(t.AimedAtUs ? "!" : "")}"));
+        var hints = _presenter.MoveHints();
+        var signature = string.Join(";", telegraphs.Select(t => $"{t.UnitId}:{string.Join(",", t.Path)}")) + "|" + string.Join(";", hints);
         if (signature == _signature) return;
         _signature = signature;
         foreach (var child in GetChildren()) child.QueueFree();
         _markers.Clear();
         foreach (var t in telegraphs)
+            foreach (var tile in t.Path)
+                _markers[tile] = Ring(tile, tile == t.To ? _aimed : _strike, 1);
+        // A walk in the fog: one wide ring over the whole cell, never the tile.
+        foreach (var hint in hints) Ring(hint.Center, _strike, 2 * hint.Radius + 1);
+    }
+
+    private MeshInstance3D Ring(Pos tile, Material material, float size)
+    {
+        var ring = new MeshInstance3D
         {
-            foreach (var tile in t.Threatened)
-            {
-                var ring = new MeshInstance3D
-                {
-                    Mesh = _ring, MaterialOverride = t.AimedAtUs && tile == t.AttackTile ? _aimed : _strike,
-                    CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Position = TileGrid.ToWorld(tile) + Vector3.Up * 0.16f,
-                };
-                AddChild(ring);
-                _markers[tile] = ring;
-                Pulse(ring);
-            }
-        }
+            Mesh = _ring, MaterialOverride = material, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            Position = TileGrid.ToWorld(tile) + Vector3.Up * 0.1f, Scale = new Vector3(size, 1, size),
+        };
+        AddChild(ring);
+        if (size == 1) Pulse(ring);
+        return ring;
     }
 
     /// <summary>A telegraph resolving: a strike marker flashes; a blow on an empty tile (dodged) flashes pale.</summary>

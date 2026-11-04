@@ -196,6 +196,9 @@ public sealed class ScavengeState
     /// <summary>The units' plans for the round (<see cref="Scavenge.Plans"/>): gone when the round has resolved.</summary>
     public List<UnitPlan> Plans { get; set; } = new();
 
+    /// <summary>A client's view only: what its side senses of fogged walks (<see cref="TacticsView.MoveHints"/>). Empty on the server.</summary>
+    public List<MoveHint> MoveHints { get; set; } = new();
+
     /// <summary>Tiles held by defence cards: only while the action phase runs (<see cref="Scavenge.Defences"/>).</summary>
     public List<DefendedTiles> Defences { get; set; } = new();
 

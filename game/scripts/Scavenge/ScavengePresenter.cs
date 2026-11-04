@@ -151,6 +151,7 @@ public sealed class ScavengePresenter
 
     /// <summary>Seen enemy strikes as telegraphs (Core's <see cref="TacticsView"/>; never the card).</summary>
     public List<Telegraph> Telegraphs() => TacticsView.Telegraphs(Sim, Side);
+    public List<MoveHint> MoveHints() => TacticsView.MoveHints(Sim, Side);
 
     /// <summary>The threat overlay: planned blows of seen enemies, and what they could hit from where they stand.</summary>
     public Dictionary<Pos, ThreatKind> Threats() => TacticsView.Threats(Sim, Side);

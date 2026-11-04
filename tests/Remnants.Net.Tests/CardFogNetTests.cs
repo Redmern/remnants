@@ -27,6 +27,58 @@ public class CardFogNetTests
     }
 
     [Fact]
+    public void A_rival_in_sight_shows_its_moves_and_nothing_of_its_actions_or_what_it_spent()
+    {
+        var (f, a, b, alice, bob) = Field();
+        alice.Pos = bob.Pos + new Pos(-3, 0);
+        var (ap, tired) = (alice.Ap, alice.Fatigue);
+        var deck = new SquadDeck { PlayerId = a.Id, Hand = ["parry", "shove"], Points = 5, Budget = 5, HandSize = 5 };
+        f.Sim.State.Decks.RemoveAll(d => d.PlayerId == a.Id);
+        f.Sim.State.Decks.Add(deck);
+        var (points, hand) = (deck.Points, deck.Hand.Count);
+        var fog = new SideFog(b.Id, bob.Side);
+        Assert.True(f.Sim.Execute(new Move(a.Id, alice.Id, alice.Pos + new Pos(-1, 0))).Ok);
+        Assert.True(f.Sim.Execute(new Recover(a.Id, alice.Id)).Ok);
+        Assert.True(f.Sim.Execute(new PlayCard(a.Id, alice.Id, "parry", Tile: alice.Pos + new Pos(-1, 0))).Ok);
+        fog.Update(f.Sim);
+        var view = fog.View(f.Sim);
+        var plan = view.Plans.Single(p => p.UnitId == alice.Id);
+        var step = Assert.Single(plan.Steps);
+        Assert.Equal(PlanStepKind.Move, step.Kind);
+        Assert.Equal((0, 0, 0), (step.RefundMp, step.RefundAp, step.RefundFatigue));
+        var seen = view.Units.Single(u => u.Id == alice.Id);
+        Assert.Equal((0, 0, 0, 0.0), (seen.Ap, seen.Mp, seen.Fatigue, seen.PriorityBonus));
+        var shown = view.Decks.Single(d => d.PlayerId == a.Id);
+        Assert.Equal((points, hand), (shown.Points, shown.HandCount));
+        // The plan's owner sees it all.
+        var own = new SideFog(a.Id, alice.Side);
+        own.Update(f.Sim);
+        var mine = own.View(f.Sim);
+        Assert.Equal(3, mine.Plans.Single(p => p.UnitId == alice.Id).Steps.Count);
+        Assert.True(mine.Units.Single(u => u.Id == alice.Id).Ap < ap);
+        Assert.True(mine.Units.Single(u => u.Id == alice.Id).Fatigue > tired);
+    }
+
+    [Fact]
+    public void A_fogged_rivals_move_reaches_a_side_only_as_a_coarse_hint()
+    {
+        var (f, a, b, alice, bob) = Field();
+        var rules = f.Sim.Data.Rules.Fog;
+        alice.Pos = new(bob.Pos.X - rules.MoveHintRange + 2, bob.Pos.Y);
+        var fog = new SideFog(b.Id, bob.Side);
+        fog.Update(f.Sim);
+        Assert.False(Detection.SideSees(f.Sim.Data, f.Sim.State, bob.Side, alice), "the test needs Alice out of Bob's sight");
+        var to = alice.Pos + new Pos(1, 0);
+        Assert.True(f.Sim.Execute(new Move(a.Id, alice.Id, to)).Ok);
+        fog.Update(f.Sim);
+        var view = fog.View(f.Sim);
+        Assert.DoesNotContain(view.Plans, p => p.UnitId == alice.Id);
+        Assert.DoesNotContain(view.Units, u => u.Id == alice.Id);
+        var hint = Assert.Single(view.MoveHints);
+        Assert.True(hint.Center.Chebyshev(to) <= hint.Radius);
+    }
+
+    [Fact]
     public void Adrenaline_and_a_stun_show_on_a_rival_in_sight_and_not_on_one_out_of_it()
     {
         var (f, _, b, alice, bob) = Field();

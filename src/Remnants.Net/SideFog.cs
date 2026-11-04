@@ -98,9 +98,13 @@ public sealed class SideFog(int playerId, string side)
 
     private bool Owns(Unit u) => u.Side == Side || u.PlayerId == PlayerId;
 
+    /// <summary>Slot cards queued on each unit as of the last view: they still count as held to anyone else.</summary>
+    private Dictionary<int, int> _queuedSlots = new();
+
     public ScavengeState View(ScavengeSim sim)
     {
         var state = sim.State;
+        _queuedSlots = state.Plans.ToDictionary(p => p.UnitId, p => p.Steps.Count(s => s.Kind == PlanStepKind.Card && s.FromSlot));
         var units = state.Units.Where(u => Knows(state, u)).Select(u => u.PlayerId == PlayerId ? Copy(u) : Redacted(u)).ToList();
         var known = units.Select(u => u.Id).ToHashSet();
 
@@ -109,9 +113,9 @@ public sealed class SideFog(int playerId, string side)
             ZoneId = state.ZoneId,
             Environment = state.Environment.Copy(),
             Round = state.Round,
-            // The side's own plans in full; of anyone else it knows, only whether they are done planning.
-            Plans = state.Plans.Where(p => known.Contains(p.UnitId)).Select(p => state.FindUnit(p.UnitId)?.Side == Side
-                ? ProtocolCopy.Clone(p) : new UnitPlan { UnitId = p.UnitId, Committed = p.Committed }).ToList(),
+            // The side's own plans in full; of anyone else it knows, whether they are done planning and, of those in sight, their walks.
+            Plans = state.Plans.Where(p => known.Contains(p.UnitId)).Select(p => state.FindUnit(p.UnitId)?.Side == Side ? ProtocolCopy.Clone(p) : Telegraphed(sim, p)).ToList(),
+            MoveHints = TacticsView.MoveHints(sim, Side),
             Finished = state.Finished,
             Map = new TileMap(),
             // Other teams' alliances are none of this player's business: their parties show as on their own.
@@ -122,7 +126,7 @@ public sealed class SideFog(int playerId, string side)
                 Bestiary = p.PlayerId == PlayerId ? new(p.Bestiary, StringComparer.Ordinal) : new(StringComparer.Ordinal),
             }).ToList(),
             // The player's own deck in full; anyone else's (allies too) only as counts, never which cards.
-            Decks = state.Decks.Select(d => d.PlayerId == PlayerId ? Own(d) : Hidden(d)).ToList(),
+            Decks = state.Decks.Select(d => d.PlayerId == PlayerId ? Own(d) : Hidden(state, d)).ToList(),
             Units = units,
             Caches = _knownCaches.Values.OrderBy(c => c.Id).Select(CopyPile).ToList(),
             SalvageNodes = _knownNodes.Values.OrderBy(n => n.Id)
@@ -223,11 +227,28 @@ public sealed class SideFog(int playerId, string side)
         return copy;
     }
 
-    private static SquadDeck Hidden(SquadDeck d) => new()
+    /// <summary>A rival's plan as a side in sight of it may know it: that it is done, and where it walks. A rival out of sight: only that it is done.</summary>
+    private UnitPlan Telegraphed(ScavengeSim sim, UnitPlan plan)
     {
-        PlayerId = d.PlayerId, Hidden = true, HandCount = d.Hand.Count, DrawCount = d.DrawPile.Count, UsedCount = d.Used.Count,
-        Points = d.Points, Budget = d.Budget, HandSize = d.HandSize, DrawPerRound = d.DrawPerRound,
-    };
+        var state = sim.State;
+        var seen = state.FindUnit(plan.UnitId) is { } unit && Detection.SideSees(sim.Data, state, Side, unit);
+        return new UnitPlan
+        {
+            UnitId = plan.UnitId, Committed = plan.Committed,
+            Steps = seen ? plan.Steps.Where(s => s.Kind == PlanStepKind.Move).Select(s => new PlanStep { Kind = PlanStepKind.Move, To = s.To, Path = new(s.Path) }).ToList() : new(),
+        };
+    }
+
+    /// <summary>Someone else's deck as counts, as they stood before the cards they have queued: those stay secret until they come up.</summary>
+    private static SquadDeck Hidden(ScavengeState state, SquadDeck d)
+    {
+        var queued = state.Plans.SelectMany(p => p.Steps).Where(s => s.Kind == PlanStepKind.Card && s.DeckId == d.PlayerId).ToList();
+        return new SquadDeck
+        {
+            PlayerId = d.PlayerId, Hidden = true, HandCount = d.Hand.Count + queued.Count(s => !s.FromSlot), DrawCount = d.DrawPile.Count, UsedCount = d.Used.Count,
+            Points = d.Points + queued.Sum(s => s.RefundPoints), Budget = d.Budget, HandSize = d.HandSize, DrawPerRound = d.DrawPerRound,
+        };
+    }
 
     /// <summary>A side as this player may know it: their own team's as is, another team's as the owner's own side.</summary>
     private string Shown(string side, int? owner) =>
@@ -243,13 +264,21 @@ public sealed class SideFog(int playerId, string side)
         copy.FieldXp = 0;
         copy.DroneBattery = null;
         copy.ChargesUsed = new(StringComparer.Ordinal);
+        // What a rival has spent gives away what it has planned; its priority is its own to know.
+        if (u.Side != Side)
+        {
+            copy.Ap = 0;
+            copy.Mp = 0;
+            copy.Fatigue = 0;
+            copy.PriorityBonus = 0;
+        }
         // Card buffs on it would give away hit chances and moves the cards behind them buy.
         copy.CardHit = 0;
         copy.Guard = 0;
         copy.CardCover = 0;
         copy.CardMove = 0;
         // Personal slot cards: how many, never which; nor the last card played on it.
-        copy.HiddenSlots = u.SlotCards.Count;
+        copy.HiddenSlots = u.SlotCards.Count + _queuedSlots.GetValueOrDefault(u.Id);
         copy.SlotCards = new();
         copy.SlotSpent = new();
         copy.Origin = u.Origin is { } o ? new Survivor { Name = o.Name, Sex = o.Sex, LifeStage = o.LifeStage } : null;

@@ -179,8 +179,12 @@ public sealed class NetFixture
                     FogViolations.Add($"{player.Name} was sent a reveal of unit {r.UnitId} for {r.Side}.");
                 foreach (var u in s.View.Units.Where(u => u.Side != side && u.Ai.TargetId is not null))
                     FogViolations.Add($"{player.Name} was sent {u.Name}'s AI memory.");
-                foreach (var p in s.View.Plans.Where(p => !shown.Contains(p.UnitId) || (s.View.FindUnit(p.UnitId)?.Side != side && p.Steps.Count > 0)))
+                // Of a rival's plan only its walks may arrive, with nothing of what they paid.
+                foreach (var p in s.View.Plans.Where(p => !shown.Contains(p.UnitId) || (s.View.FindUnit(p.UnitId)?.Side != side
+                             && p.Steps.Any(x => x.Kind != PlanStepKind.Move || x.RefundMp != 0 || x.RefundAp != 0 || x.RefundFatigue != 0))))
                     FogViolations.Add($"{player.Name} was sent the plan of unit {p.UnitId}.");
+                foreach (var u in s.View.Units.Where(u => u.Side != side && (u.Ap != 0 || u.Mp != 0 || u.Fatigue != 0 || u.PriorityBonus != 0)))
+                    FogViolations.Add($"{player.Name} was sent what {u.Name} has spent.");
                 foreach (var u in s.View.Units.Where(u => u.PlayerId != me && (u.SlotCards.Count > 0 || u.SlotSpent.Count > 0)))
                     FogViolations.Add($"{player.Name} was sent {u.Name}'s slot cards.");
                 foreach (var u in s.View.Units.Where(u => u.PlayerId != me && (u.CardHit != 0 || u.Guard != 0 || u.CardCover != 0 || u.CardMove != 0)))

@@ -661,6 +661,10 @@ public sealed record HitTierRules
 /// </summary>
 public sealed record FogRules
 {
+    /// <summary>A fogged walk ending within this many tiles of the side gives a hint: the map cell of this size it ends in, no finer.</summary>
+    public int MoveHintRange { get; init; } = 12;
+    public int MoveHintCell { get; init; } = 4;
+
     /// <summary>Stealth = base + (Agility - 50) · perAgility - load · perKg + gear + (leg efficiency - 1) · legEfficiency.</summary>
     public StealthRules Stealth { get; init; } = new();
 

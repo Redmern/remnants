@@ -72,6 +72,8 @@
     "enemiesPerExtraPlayer": 1.0
   },
   "fog": {
+    "moveHintRange": 12,
+    "moveHintCell": 4,
     "stealth": { "base": 10, "perAgility": 0.3, "perKg": 1.0, "legEfficiency": 20 },
     "detection": { "base": 30, "perPerception": 0.5 },
     "closeRange": 1,
@@ -133,6 +135,8 @@
         "thunderChance": 0.3, "lightningChance": 0.12
       },
       "fog": {
+    "moveHintRange": 12,
+    "moveHintCell": 4,
         "sight": { "Human": 0.5, "Husk": 0.7, "Linked": 0.7, "Drone": 0.5, "Camera": 0.5, "Turret": 0.6 },
         "stealthBonus": 10, "minSight": 2
       },

@@ -276,16 +276,31 @@ public class MultiplayerTests(ITestOutputHelper output)
         var unit = f.Sim.State.CurrentUnitId;
         Assert.Equal(30, up.Last<TurnChanged>().SecondsLeft, 3);
 
+        var round = f.Sim.State.Round;
         f.Clock.Advance(29);
         f.Host.Tick();
         Assert.Equal(unit, f.Sim.State.CurrentUnitId);
 
         f.Clock.Advance(2);
         f.Host.Tick();
-        Assert.NotEqual(unit, f.Sim.State.CurrentUnitId);
-        Assert.Contains(a.Link.Inbox.OfType<Notice>(), n => n.Text.Contains("timed out"));
-        // The next player's clock starts fresh.
+        // Everyone still planning is committed at once and the round resolves.
+        Assert.True(f.Sim.State.Round > round);
+        Assert.Contains(a.Link.Inbox.OfType<Notice>(), n => n.Text.Contains("Planning time is up"));
+        // The next round's clock starts fresh.
         Assert.Equal(30, a.Last<TurnChanged>().SecondsLeft, 3);
+    }
+
+    [Fact]
+    public void A_unit_committing_does_not_restart_the_planning_clock()
+    {
+        var f = new NetFixture(new HostOptions { TurnSeconds = 30 });
+        var (a, b) = f.StartTwo();
+        f.Clock.Advance(20);
+        f.Host.Tick();
+        var up = f.PlayerUp(a, b)!;
+        var unit = f.Sim.State.CurrentUnit!;
+        Assert.True(up.Do(new EndTurn(up.Id, unit.Id)).Ok);
+        Assert.Equal(10, up.Last<TurnChanged>().SecondsLeft, 3);
     }
 
     [Fact]
