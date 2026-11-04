@@ -204,4 +204,60 @@ public class TelegraphedStrikeTests
 
         Assert.True(b.Hp < b.MaxHp);
     }
+
+    /// <summary>A seen blade next to P1's survivor, with a walled-off room the side cannot see into.</summary>
+    private static (ScavengeSim Sim, Unit Blade, Unit Near, Pos Hidden) WalledOff()
+    {
+        var near = SurvivorUnit(1, new(2, 1), weapon: "pipe");
+        var blade = EnemyUnit("tally_blade", new(3, 1));
+        var sim = Arena(9, 3, [near, blade], rows: ["....#....", "....#....", "....#...."], data: SureHits());
+        var hidden = new Pos(7, 1);
+        Assert.DoesNotContain(sim.State.Map.Index(hidden), Visibility.SideVisible(sim.Data, sim.State, near.Side));
+        return (sim, blade, near, hidden);
+    }
+
+    [Fact]
+    public void AC4_enemy_strike_markers_appear_only_on_tiles_the_side_can_see()
+    {
+        var (sim, blade, near, hidden) = WalledOff();
+        var seenTile = near.Pos + new Pos(0, 1);
+        sim.State.Strikes.Add(new TileStrike
+        {
+            UnitId = blade.Id, ActionId = sim.Profile(blade).Actions[0].Id, From = blade.Pos, Tile = near.Pos,
+            Direction = new(-1, 0), Tiles = [near.Pos, seenTile, hidden],
+        });
+
+        var telegraph = Assert.Single(TacticsView.Telegraphs(sim, near.Side));
+
+        Assert.Equal(near.Pos, telegraph.AttackTile);
+        Assert.Contains(near.Pos, telegraph.Threatened);
+        Assert.Contains(seenTile, telegraph.Threatened);
+        Assert.DoesNotContain(hidden, telegraph.Threatened);
+        Assert.False(TacticsView.Threats(sim, near.Side).ContainsKey(hidden));
+    }
+
+    [Fact]
+    public void AC4_a_strike_entirely_out_of_vision_shows_no_marker()
+    {
+        var (sim, blade, near, hidden) = WalledOff();
+        sim.State.Strikes.Add(new TileStrike
+        {
+            UnitId = blade.Id, ActionId = sim.Profile(blade).Actions[0].Id, From = blade.Pos, Tile = hidden, Direction = new(1, 0), Tiles = [hidden],
+        });
+
+        Assert.Empty(TacticsView.Telegraphs(sim, near.Side));
+    }
+
+    [Fact]
+    public void AC4_a_strike_by_an_enemy_the_side_does_not_see_shows_no_marker()
+    {
+        var (sim, blade, near, _) = WalledOff();
+        blade.Pos = new(6, 1);
+        sim.State.Strikes.Add(new TileStrike
+        {
+            UnitId = blade.Id, ActionId = sim.Profile(blade).Actions[0].Id, From = blade.Pos, Tile = near.Pos, Direction = new(-1, 0), Tiles = [near.Pos],
+        });
+
+        Assert.Empty(TacticsView.Telegraphs(sim, near.Side));
+    }
 }

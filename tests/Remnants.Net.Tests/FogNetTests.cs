@@ -139,6 +139,21 @@ public class FogNetTests
     }
 
     [Fact]
+    public void A_seen_enemys_strike_never_tells_the_other_side_about_tiles_it_cannot_see()
+    {
+        var (f, a, b, sniper, victim) = Duel();
+        var alice = new SideFog(a.Id, Unit.PlayerSide(a.Id));
+        alice.Update(f.Sim);
+        var hidden = f.Sim.State.Map.AllPositions.First(p => !alice.Visible.Contains(f.Sim.State.Map.Index(p)));
+        f.Sim.State.Strikes.Add(new TileStrike { UnitId = victim.Id, ActionId = "swing", Tile = victim.Pos, Tiles = [victim.Pos, hidden] });
+        var bob = new SideFog(b.Id, Unit.PlayerSide(b.Id));
+        bob.Update(f.Sim);
+
+        Assert.Equal([victim.Pos], Assert.Single(alice.View(f.Sim).Strikes, s => s.UnitId == victim.Id).Tiles);
+        Assert.Contains(hidden, Assert.Single(bob.View(f.Sim).Strikes, s => s.UnitId == victim.Id).Tiles);
+    }
+
+    [Fact]
     public void Readied_tile_strikes_show_only_for_known_units_and_never_whom_they_aim_at()
     {
         var (f, a, b, sniper, victim) = Duel();

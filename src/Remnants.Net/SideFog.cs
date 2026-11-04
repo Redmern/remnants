@@ -124,11 +124,12 @@ public sealed class SideFog(int playerId, string side)
             TurnOrder = order,
             TurnIndex = index,
             SubRound = state.SubRound,
-            // Readied tile strikes of the units this side knows; whom another's was aimed at stays on the server.
+            // Readied tile strikes of the units this side knows; whom another's was aimed at, and what it covers out of this
+            // side's vision, stays on the server.
             Strikes = state.Strikes.Where(x => known.Contains(x.UnitId)).Select(x => new TileStrike
             {
                 UnitId = x.UnitId, ActionId = x.ActionId, Mode = x.Mode, From = x.From, Tile = x.Tile, Direction = x.Direction,
-                Tiles = new(x.Tiles), TargetId = state.FindUnit(x.UnitId)?.PlayerId == PlayerId ? x.TargetId : null, Suppress = x.Suppress,
+                Tiles = x.Tiles.Where(p => state.FindUnit(x.UnitId)?.Side == Side || Visible.Contains(state.Map.Index(p))).ToList(), TargetId = state.FindUnit(x.UnitId)?.PlayerId == PlayerId ? x.TargetId : null, Suppress = x.Suppress,
             }).ToList(),
             Finished = state.Finished,
             Map = new TileMap(),

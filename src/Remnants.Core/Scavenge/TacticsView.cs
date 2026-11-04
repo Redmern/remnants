@@ -41,11 +41,12 @@ public sealed record PickerRow(int UnitId, string Name, bool Ok, string Reason, 
 /// </summary>
 public static class TacticsView
 {
-    /// <summary>Readied strikes of hostiles the side sees now, as telegraphs.</summary>
+    /// <summary>Readied strikes of hostiles the side sees now, as telegraphs, showing only the tiles the side can see (none: no telegraph).</summary>
     public static List<Telegraph> Telegraphs(ScavengeSim sim, string side)
     {
         var state = sim.State;
         var ours = state.Units.Where(u => u.Side == side && u.IsActive).Select(u => u.Pos).ToHashSet();
+        var visible = Visibility.SideVisible(sim.Data, state, side);
         var list = new List<Telegraph>();
         foreach (var strike in state.Strikes)
         {
@@ -57,7 +58,10 @@ public static class TacticsView
             for (var dy = -area; dy <= area; dy++)
                 for (var dx = -area; dx <= area; dx++)
                     if (new Pos(strike.Tile.X + dx, strike.Tile.Y + dy) is var p && state.Map.InBounds(p) && !threatened.Contains(p)) threatened.Add(p);
-            list.Add(new Telegraph(u.Id, u.Name, u.Pos, strike.Tile, action?.Name, strike.Suppress, threatened, threatened.Any(ours.Contains)));
+            threatened.RemoveAll(p => !visible.Contains(state.Map.Index(p)));
+            if (threatened.Count == 0) continue;
+            list.Add(new Telegraph(u.Id, u.Name, u.Pos, threatened.Contains(strike.Tile) ? strike.Tile : null, action?.Name, strike.Suppress, threatened,
+                threatened.Any(ours.Contains)));
         }
         return list;
     }
