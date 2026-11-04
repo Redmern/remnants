@@ -11,7 +11,7 @@ using UiKit = Remnants.Game.Colony.Ui.Ui;
 namespace Remnants.Game.Scavenge.Ui;
 
 /// <summary>What a tech button asks the screen to do with the next map click.</summary>
-public enum TechAim { None, Deploy, Fly, Heal, Fire, Overwatch }
+public enum TechAim { None, Deploy, Fly, Heal, Fire, Push, Dash }
 
 /// <summary>
 /// Hacking and the scout drone for the acting unit, as <see cref="ActionButton"/>s with AP pips and hotkeys: Hack (H) each
@@ -226,7 +226,8 @@ public partial class TechPanel : PanelContainer
         TechAim.Fly => "Click a lit tile to fly the drone there; you pay the AP. Right-click or Esc cancels.",
         TechAim.Heal => "Click a highlighted friend next to the drone to patch them up. Right-click or Esc cancels.",
         TechAim.Fire => "Click a red target the drone sees. Right-click or Esc cancels.",
-        TechAim.Overwatch => "Click a lit tile to watch it, Shift-click for the arc that way. Right-click or Esc cancels.",
+        TechAim.Push => "Point the push: click a lit tile next to where the plan ends. Right-click or Esc cancels.",
+        TechAim.Dash => "Point the dash: click a lit tile next to where the plan ends. Right-click or Esc cancels.",
         _ => "",
     };
 

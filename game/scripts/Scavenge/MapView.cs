@@ -12,7 +12,7 @@ namespace Remnants.Game.Scavenge;
 /// An aimed card adds four: <see cref="CardTarget"/> a target it can go on, <see cref="CardInvalid"/> one it cannot (greyed),
 /// <see cref="Landing"/> where the hovered target's moved unit ends up, <see cref="Affected"/> the units it touches.
 /// </summary>
-public enum HighlightKind { Move, Attack, Use, Selected, Hover, Threat, ThreatPlanned, CardTarget, CardInvalid, Landing, Affected }
+public enum HighlightKind { Move, Attack, Use, Selected, Hover, Threat, ThreatPlanned, CardTarget, CardInvalid, Landing, Affected, PlanPath, PlanAction, AllyWarning }
 
 /// <summary>
 /// The tactical map: terrain props per tile (ground, walls, rubble, wrecked cars), exit markers, loot crates,
@@ -33,6 +33,9 @@ public partial class MapView : Node3D
     private static readonly Color CardTargetColor = new(0.92f, 0.65f, 0.24f, 0.95f);
     private static readonly Color CardInvalidColor = new(0.45f, 0.43f, 0.4f, 0.55f);
     private static readonly Color LandingColor = new(0.55f, 1f, 0.85f, 1f);
+    private static readonly Color PlanPathColor = new(0.4f, 0.75f, 1f, 1f);
+    private static readonly Color PlanActionColor = new(1f, 0.62f, 0.2f, 1f);
+    private static readonly Color AllyWarningColor = new(1f, 0.92f, 0.1f, 1f);
     private static readonly Color AffectedColor = new(1f, 0.42f, 0.2f, 0.9f);
     private static readonly Color BarrierColor = new(0.92f, 0.65f, 0.24f, 1f);
     private static readonly Color SmokeColor = new(0.72f, 0.72f, 0.7f, 0.42f);
@@ -75,6 +78,7 @@ public partial class MapView : Node3D
                      (HighlightKind.Threat, ThreatColor), (HighlightKind.ThreatPlanned, ThreatPlannedColor),
                      (HighlightKind.CardTarget, CardTargetColor), (HighlightKind.CardInvalid, CardInvalidColor),
                      (HighlightKind.Landing, LandingColor), (HighlightKind.Affected, AffectedColor),
+                     (HighlightKind.PlanPath, PlanPathColor), (HighlightKind.PlanAction, PlanActionColor), (HighlightKind.AllyWarning, AllyWarningColor),
                  })
             _highlightMaterials[kind] = Framed(frame, color);
         BuildTerrain();
@@ -472,7 +476,7 @@ public partial class MapView : Node3D
         // Threats sit just under the move and attack marks, so both read on the same tile.
         quad.Position = TileGrid.ToWorld(p) + new Vector3(0, kind switch
         {
-            HighlightKind.Selected or HighlightKind.Landing => 0.13f, HighlightKind.Affected => 0.125f,
+            HighlightKind.Selected or HighlightKind.Landing or HighlightKind.AllyWarning => 0.13f, HighlightKind.Affected => 0.125f,
             HighlightKind.Threat or HighlightKind.ThreatPlanned => 0.115f, _ => 0.12f,
         }, 0);
         quad.Visible = true;
@@ -498,6 +502,7 @@ public partial class MapView : Node3D
             HighlightKind.CardTarget => Hud.Palette.Amber,
             HighlightKind.CardInvalid => Hud.Palette.TextMuted,
             HighlightKind.Landing => LandingColor,
+            HighlightKind.AllyWarning => AllyWarningColor,
             _ => Hud.Palette.Text,
         };
         text.Visible = true;

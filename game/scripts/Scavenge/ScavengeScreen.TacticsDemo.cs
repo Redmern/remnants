@@ -63,6 +63,19 @@ public partial class ScavengeScreen
                     GD.Print($"Tactics demo: aiming {card}, {_cardAim?.Options.Count(o => o.Ok)} of {_cardAim?.Options.Count} targets work; " +
                              $"at {aimTile}: {(_cardAim?.At(aimTile) is { } at ? at.Ok ? at.Outcome : at.Reason : "none")}");
                     break;
+                case "plan":
+                    // A walk and a push in the plan, then Sweep aimed with its pattern up, so the planning HUD shows it all.
+                    u.Ap = _presenter.Sim.Profile(u).MaxAp; u.Mp = _presenter.Sim.Profile(u).MaxMp;
+                    var walk = _presenter.Reachable(u).Where(kv => kv.Value == 2).OrderBy(kv => kv.Key.X).ThenBy(kv => kv.Key.Y).Select(kv => kv.Key).FirstOrDefault();
+                    await Run(new Core.Scavenge.Move(_presenter.PlayerId, u.Id, walk));
+                    while (_busy) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                    _hud.Hand.Choose("sweep");
+                    BeginCardAim("sweep", u.Id, false, false);
+                    var sweepAt = _cardAim?.Options.FirstOrDefault(o => o.Ok)?.Tile;
+                    _hover = sweepAt;
+                    _map.SetHover(sweepAt);
+                    GD.Print($"Tactics demo: planned a walk to {walk}, aiming sweep at {sweepAt}, {_cardAim?.Options.Count(o => o.Ok)} of {_cardAim?.Options.Count} work");
+                    break;
                 case "preview" when husk is not null:
                     // Fresh AP and the Husk two steps off, so the move tiles in reach of a blow show their chances.
                     u.Ap = _presenter.Sim.Profile(u).MaxAp; u.Mp = _presenter.Sim.Profile(u).MaxMp;
@@ -88,6 +101,24 @@ public partial class ScavengeScreen
             var off = _presenter.State.Units.Where(t => t.OnMap && _units.WorldOf(t.Id) is { } w && TileGrid.FromWorld(w) != t.Pos).Select(t => t.Name).ToList();
             GD.Print($"Tactics demo: played {aimed.CardId}; Husk at {aimAt.Pos}, {_presenter.State.FieldEffects.Count} field effects; " +
                      (off.Count == 0 ? "every model on its Core tile" : $"models off their Core tile: {string.Join(", ", off)}"));
+        }
+        // --play-plan: the aimed pattern goes in the plan, the planning unit's plan is taken back and redone, and everyone commits.
+        if (DebugCapture.HasFlag("--play-plan") && _cardAim is { } planned && planned.Options.FirstOrDefault(o => o.Ok) is { } first)
+        {
+            ClickCardAim(planned, first.Tile);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            while (_busy) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            var planner = _presenter.State.FindUnit(planned.UnitId)!;
+            var steps = Core.Scavenge.Plans.Of(_presenter.State, planner)?.Steps.Count ?? 0;
+            await Run(new Core.Scavenge.UndoPlan(_presenter.PlayerId, planner.Id));
+            var after = Core.Scavenge.Plans.Of(_presenter.State, planner)?.Steps.Count ?? 0;
+            var round = _presenter.State.Round;
+            for (var i = 0; i < 8 && _presenter.State.Round == round && _presenter.ActingUnit is { } next; i++)
+            {
+                await Run(new Core.Scavenge.EndTurn(_presenter.PlayerId, next.Id));
+                while (_busy) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            }
+            GD.Print($"Tactics demo: plan had {steps} steps, {after} after taking one back; round {round} -> {_presenter.State.Round}, {planner.Name} at {planner.Pos}");
         }
         if (DebugCapture.Value("--screenshot") is { Length: > 0 } path)
         {

@@ -275,7 +275,7 @@ public static class Hotkeys
         new("open_pantry", "Pantry", "Colony", [Key.K]),
         new("camera_rotate_left", "Rotate camera left", "Colony", [Key.Q]),
         new("camera_rotate_right", "Rotate camera right", "Colony", [Key.R]),
-        new("end_turn", "End turn", "Scavenge", [Key.Space, Key.Enter]),
+        new("end_turn", "Ready: commit the plan", "Scavenge", [Key.Space, Key.Enter]),
         new("scav_fast_forward", "Skip animations on / off (fast-forward replays)", "Scavenge", [Key.Period]),
         // The number keys go down the Actions panel: the attacks first, then the items (2 attacks: items from 3).
         new("scav_attack_1", "Order 1 (attacks, then items)", "Scavenge", [Key.Key1]),
@@ -287,8 +287,11 @@ public static class Hotkeys
         new("scav_item_4", "Order 7", "Scavenge", [Key.Key7]),
         new("scav_item_5", "Order 8", "Scavenge", [Key.Key8]),
         new("scav_item_6", "Order 9", "Scavenge", [Key.Key9]),
-        new("scav_overwatch", "Overwatch", "Scavenge", [Key.O]),
-        new("scav_brace", "Brace", "Scavenge", [Key.B]),
+        new("scav_push", "Push", "Scavenge", [Key.O]),
+        new("scav_dash", "Dash", "Scavenge", [Key.B]),
+        new("scav_recover", "Recover stamina", "Scavenge", [Shift(Key.L)]),
+        new("scav_undo", "Take back the last planned step", "Scavenge", [Shift(Key.Z)]),
+        new("scav_turn_aim", "Turn the aimed pattern", "Scavenge", [Key.Period]),
         new("scav_lookout", "Lookout", "Scavenge", [Key.L]),
         new("scav_loot", "Take all from the nearest pile", "Scavenge", [Key.F]),
         new("scav_salvage", "Salvage the nearest node (a wreck gives parts)", "Scavenge", [Key.I]),
@@ -313,7 +316,7 @@ public static class Hotkeys
         new("scav_ferry", "Cargo drone: ferry the load out", "Scavenge", [Shift(Key.I)]),
         new("scav_next_unit", "Select your next unit", "Scavenge", [Key.Tab]),
         new("scav_center", "Centre the camera on the acting unit", "Scavenge", [Key.Home]),
-        new("scav_cancel", "Cancel aiming (item, drone, ping)", "Scavenge", [Key.Backspace]),
+        new("scav_cancel", "Cancel aiming (item, drone, ping, push, dash)", "Scavenge", [Key.Backspace]),
     ];
 
     /// <summary>A chord: <paramref name="key"/> with Shift held.</summary>

@@ -48,7 +48,8 @@ public static class TacticsDemo
         if (SquadDecks.Of(state, playerId) is { } deck)
         {
             // A hand that shows every kind: a reaction, a hard card, a boost, a dead card.
-            deck.Hand = Mode is "targeting" or "smoke"
+            deck.Hand = Mode == "plan" ? ["sweep", "parry", "shield_wall", "bull_rush", "war_cry"]
+                : Mode is "targeting" or "smoke"
                 ? ["shove", "smoke_bomb", "switch_places", "flank_step", "sidestep"]
                 : ["sidestep", "steady_aim", "dash", "hold_the_line", "take_cover"];
             deck.Points = deck.Budget;

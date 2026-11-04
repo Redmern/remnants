@@ -7,9 +7,8 @@ using Remnants.Game.Colony;
 namespace Remnants.Game.Scavenge;
 
 /// <summary>
-/// Enemy telegraphs on the map (<see cref="TacticsView.Telegraphs"/>): a pulsing strike marker on every tile a seen enemy's
-/// readied strike covers (red when it is aimed at one of ours). A strike coming down flashes its marker; a blow that lands
-/// on an empty tile (dodged) flashes it pale.
+/// Rivals' planned walks on the map (<see cref="TacticsView.Telegraphs"/>): a ring on each tile of a seen walk, the red one
+/// where it ends, and one wide ring over the coarse cell a walk in the fog ends in. Their actions are never shown.
 /// Reads Core's view only; nothing here is a rule.
 /// </summary>
 public partial class TelegraphView : Node3D
@@ -21,6 +20,7 @@ public partial class TelegraphView : Node3D
     private ScavengePresenter _presenter = null!;
     private StandardMaterial3D _strike = null!, _aimed = null!;
     private readonly TorusMesh _ring = new() { InnerRadius = 0.62f, OuterRadius = 0.8f, Rings = 24, RingSegments = 6 };
+    private readonly TorusMesh _wideRing = new() { InnerRadius = 0.76f, OuterRadius = 0.8f, Rings = 48, RingSegments = 6 };
     private readonly Dictionary<Pos, Node3D> _markers = new();
     private string _signature = "";
 
@@ -50,7 +50,7 @@ public partial class TelegraphView : Node3D
             foreach (var tile in t.Path)
                 _markers[tile] = Ring(tile, tile == t.To ? _aimed : _strike, 1);
         // A walk in the fog: one wide ring over the whole cell, never the tile.
-        foreach (var hint in hints) Ring(hint.Center, _strike, 2 * hint.Radius + 1);
+        foreach (var hint in hints) Ring(hint.Center, _strike, 2 * hint.Radius + 1).Mesh = _wideRing;
     }
 
     private MeshInstance3D Ring(Pos tile, Material material, float size)
