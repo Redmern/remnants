@@ -106,6 +106,21 @@ public class CardSaveTests
         Assert.True(loaded.Execute(new ChangePlan(1, again.Id, new Defend(1, again.Id, new Pos(1, 0)))).Ok);
     }
 
+    [Theory]
+    [InlineData(PlanStepKind.UseItem)]
+    [InlineData(PlanStepKind.Hack)]
+    [InlineData(PlanStepKind.DroneFire)]
+    public void A_planned_item_hack_or_shot_round_trips(PlanStepKind kind)
+    {
+        var sim = NewScavenge.Create(WholeTurns, "suburb_ruins", 11, [Party(1)]);
+        sim.Start();
+        var unit = sim.State.CurrentUnit!;
+        Plans.For(sim.State, unit).Steps.Add(new PlanStep { Kind = kind, ItemId = "bandage", DeviceId = 7, TargetId = 3, Tile = new Pos(2, 4), From = unit.Pos });
+        var loaded = ScavengeSave.Load(WholeTurns, ScavengeSave.Save(sim.State));
+        var step = Plans.Of(loaded.State, loaded.State.FindUnit(unit.Id)!)!.Steps.Single();
+        Assert.Equal((kind, "bandage", 7, 3, new Pos(2, 4)), (step.Kind, step.ItemId!, step.DeviceId!.Value, step.TargetId!.Value, step.Tile!.Value));
+    }
+
     [Fact]
     public void A_queued_defend_round_trips_and_this_build_writes_the_new_version()
     {

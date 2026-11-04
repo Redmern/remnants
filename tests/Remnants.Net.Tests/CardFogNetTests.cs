@@ -54,6 +54,23 @@ public class CardFogNetTests
         Assert.Equal(new Pos(-1, 0), seen.LastMove);
     }
 
+    [Theory]
+    [InlineData(PlanStepKind.UseItem)]
+    [InlineData(PlanStepKind.Hack)]
+    [InlineData(PlanStepKind.DroneFire)]
+    public void A_planned_item_hack_or_shot_survives_the_wire_to_its_owner(PlanStepKind kind)
+    {
+        var (f, a, _, alice, _) = Field();
+        f.Sim.State.Plans.RemoveAll(p => p.UnitId == alice.Id);
+        f.Sim.State.Plans.Add(new UnitPlan { UnitId = alice.Id });
+        f.Sim.State.Plans.Single(p => p.UnitId == alice.Id).Steps.Add(new PlanStep { Kind = kind, ItemId = "bandage", DeviceId = 7, TargetId = 3, Tile = new Pos(2, 4), From = alice.Pos });
+        var own = new SideFog(a.Id, alice.Side);
+        own.Update(f.Sim);
+        var wire = System.Text.Json.JsonSerializer.Serialize(own.View(f.Sim).Plans.Single(p => p.UnitId == alice.Id), ProtocolJson.Options);
+        var step = System.Text.Json.JsonSerializer.Deserialize<UnitPlan>(wire, ProtocolJson.Options)!.Steps.Single();
+        Assert.Equal((kind, "bandage", 7, 3, new Pos(2, 4)), (step.Kind, step.ItemId!, step.DeviceId!.Value, step.TargetId!.Value, step.Tile!.Value));
+    }
+
     [Fact]
     public void A_rival_sees_nothing_of_a_planned_item_and_its_owner_does()
     {
