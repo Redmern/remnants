@@ -23,6 +23,7 @@ public partial class MainMenu : Control
 
     public override void _Ready()
     {
+        if (VersionSwitcher.RedirectAtBoot(GetTree())) return;
         GameSettings.Boot(GetTree());
         Theme = HudTheme.Shared;
         TextureFilter = TextureFilterEnum.LinearWithMipmaps;

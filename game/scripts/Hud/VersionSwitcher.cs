@@ -10,12 +10,13 @@ namespace Remnants.Game.Hud;
 /// <summary>
 /// Settings > Game "Versions" rows: the running version, a picker filled from the GitHub releases (Refresh), and Switch,
 /// which downloads the chosen build's zip into <c>user://versions/&lt;tag&gt;/</c>, extracts it, starts its exe and quits this
-/// one. Saves and settings live elsewhere in <c>user://</c> and are left alone. Every failure lands in the status line and
-/// keeps this game running.
+/// one, recording it as the active version so later boots run it too (see <see cref="RedirectAtBoot"/>). Saves and settings
+/// live elsewhere in <c>user://</c> and are left alone. Every failure lands in the status line and keeps this game running.
 /// </summary>
 public partial class VersionSwitcher : VBoxContainer
 {
     private const string VersionsDir = "user://versions";
+    private const string ActiveVersionFile = "user://" + ActiveVersion.FileName;
     private static readonly string[] Headers = { "User-Agent: Remnants-Game", "Accept: application/vnd.github+json" };
 
     private readonly OptionButton _pick = new() { FocusMode = FocusModeEnum.None, Disabled = true };
@@ -33,6 +34,36 @@ public partial class VersionSwitcher : VBoxContainer
     public static string CurrentVersion => ProjectSettings.GetSetting("application/config/version", "").AsString();
 
     private static string Root => ProjectSettings.GlobalizePath(VersionsDir);
+
+    private static string ActiveFile => ProjectSettings.GlobalizePath(ActiveVersionFile);
+
+    private static bool _bootChecked;
+
+    /// <summary>
+    /// Once per process, before the menu is built: starts the active version when this exported Windows build is not it. True
+    /// when it did and this game is quitting. Editor and dev runs stay put, and a failed start just carries on booting.
+    /// </summary>
+    public static bool RedirectAtBoot(SceneTree tree)
+    {
+        if (_bootChecked) return false;
+        _bootChecked = true;
+        if (!OS.HasFeature("template") || OS.GetName() != "Windows") return false;
+        var boot = ActiveVersion.DecideBoot(ActiveVersion.Read(ActiveFile), CurrentVersion, Root, OS.GetExecutablePath());
+        if (boot.PersistTag is { } tag) Persist(tag);
+        if (boot.RedirectExe is not { } exe) return false;
+        if (OS.CreateProcess(exe, Array.Empty<string>()) <= 0)
+        {
+            GD.PushWarning($"[versions] Could not start the active version at {exe}.");
+            return false;
+        }
+        tree.Quit();
+        return true;
+    }
+
+    private static void Persist(string tag)
+    {
+        if (!ActiveVersion.Write(ActiveFile, tag)) GD.PushWarning($"[versions] Could not record {tag} as the active version.");
+    }
 
     public VersionSwitcher()
     {
@@ -254,6 +285,7 @@ public partial class VersionSwitcher : VBoxContainer
             RefreshLabels();
             return;
         }
+        Persist(release.Tag);
         GameSettings.Save();
         GetTree().Quit();
     }
