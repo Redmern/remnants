@@ -59,7 +59,8 @@ public sealed class PlanStep
     {
         var copy = (PlanStep)MemberwiseClone();
         copy.Path = Path.ToList();
-        if (Strike is { } strike) copy.Strike = new TileStrike
+        if (Strike is not { } strike) return copy;
+        copy.Strike = new TileStrike
         {
             UnitId = strike.UnitId, ActionId = strike.ActionId, Mode = strike.Mode, From = strike.From, Tile = strike.Tile, Direction = strike.Direction, Tiles = strike.Tiles.ToList(),
         };
