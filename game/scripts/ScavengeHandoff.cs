@@ -56,7 +56,7 @@ public static class Autopilot
 
             int Distance(Pos p) => map.Exits.Min(e => e.Chebyshev(p));
             var step = sim.Reachable(unit)
-                .Where(kv => kv.Value <= unit.Ap && Distance(kv.Key) < Distance(unit.Pos))
+                .Where(kv => kv.Value <= unit.Mp && Distance(kv.Key) < Distance(unit.Pos))
                 .OrderBy(kv => Distance(kv.Key)).ThenBy(kv => kv.Value).ThenBy(kv => map.Index(kv.Key))
                 .Select(kv => (Pos?)kv.Key)
                 .FirstOrDefault();

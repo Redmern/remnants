@@ -469,9 +469,9 @@ public class CyberFieldTests
     {
         var one = Profile(Cyborg(default, (BodyPart.LeftLeg, "jumper_leg")));
         var jump = Assert.Single(one.Movement.Modes, m => m.Pattern == MovePattern.Knight);
-        Assert.Equal(2, jump.ApCost);
+        Assert.Equal(4, jump.ApCost);
         var pair = Profile(Cyborg(default, (BodyPart.LeftLeg, "jumper_leg"), (BodyPart.RightLeg, "jumper_leg")));
-        Assert.Equal(1, Assert.Single(pair.Movement.Modes, m => m.Pattern == MovePattern.Knight).ApCost);
+        Assert.Equal(2, Assert.Single(pair.Movement.Modes, m => m.Pattern == MovePattern.Knight).ApCost);
     }
 
     [Fact]

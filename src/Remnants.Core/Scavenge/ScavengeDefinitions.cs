@@ -34,6 +34,15 @@ public sealed record EnemyDef
     public double Hp { get; init; } = 50;
     public AiKind Ai { get; init; }
 
+    /// <summary>Per-type overrides of the round pools (<see cref="TurnRules"/>); null: as any unit.</summary>
+    public int? Mp { get; init; }
+    public int? Ap { get; init; }
+    public int? Stamina { get; init; }
+
+    /// <summary>The share of a stun's chance this type shrugs off, and the adrenaline it starts a mission with.</summary>
+    public double StunResist { get; init; }
+    public double AdrenalineStart { get; init; }
+
     /// <summary>Survivors go Downed at 0 HP; most enemies just die.</summary>
     public bool CanBeDowned { get; init; }
 
@@ -394,11 +403,8 @@ public sealed record NetworkRules
     /// <summary>HP fraction at or below which a Linked falls back (unless it is the last of its squad).</summary>
     public double RetreatHpFraction { get; init; } = 0.35;
 
-    /// <summary>Below this hit chance a Linked lays down suppressing fire instead of a real shot.</summary>
-    public double SuppressBelowHitChance { get; init; } = 0.3;
-
-    /// <summary>AP a suppressed unit loses on its next turn.</summary>
-    public int SuppressApPenalty { get; init; } = 1;
+    /// <summary>Below this hit chance a Linked closes in first, and shoots only when it can get no closer.</summary>
+    public double CloseInBelowHitChance { get; init; } = 0.3;
 
     /// <summary>Position scoring: value of cover at the end tile, per point of cover (0..1).</summary>
     public double CoverWeight { get; init; } = 10;
@@ -439,19 +445,124 @@ public sealed record MovementRules
     public List<BodyMovementRule> Body { get; init; } = new();
 }
 
+/// <summary>
+/// Stun (<see cref="Stuns"/>, scavenge.json <c>stun</c>): what it costs next round; the chance a block stuns, base +
+/// (block - power) * <see cref="PerBlock"/> with power = average damage * <see cref="PowerPerDamage"/>, within
+/// <see cref="Min"/>..<see cref="Max"/>; <see cref="RepeatFactor"/> per earlier stun; stamina the parties lose.
+/// </summary>
+public sealed record StunRules
+{
+    public int ApLoss { get; init; } = 1;
+    public int MpLoss { get; init; } = 2;
+    public double PriorityPenalty { get; init; } = 3;
+    public double Base { get; init; } = 0.15;
+    public double PerBlock { get; init; } = 0.5;
+    public double PowerPerDamage { get; init; } = 0.02;
+    public double PerfectBonus { get; init; } = 0.15;
+    public double Min { get; init; } = 0.05;
+    public double Max { get; init; } = 0.6;
+    public double RepeatFactor { get; init; } = 0.6;
+    public int BlockedStamina { get; init; } = 1;
+    public int StunnedStamina { get; init; } = 2;
+    public int DefenderStamina { get; init; } = 1;
+}
+
+/// <summary>Adrenaline (<see cref="Adrenaline"/>, scavenge.json <c>adrenaline</c>): tiers, the share each adds, and what moves the meter.</summary>
+public sealed record AdrenalineRules
+{
+    public double Max { get; init; } = 100;
+    public double[] Tiers { get; init; } = [25, 50, 75, 100];
+    public double[] TierBonus { get; init; } = [0.05, 0.1, 0.15, 0.3];
+
+    /// <summary>Priority a bonus of 1.0 would add.</summary>
+    public double PriorityPoints { get; init; } = 10;
+    public double GainHit { get; init; } = 10;
+    public double GainPush { get; init; } = 20;
+    public double GainDash { get; init; } = 5;
+    public double GainBlock { get; init; } = 10;
+    public double GainStun { get; init; } = 15;
+    public double DrainPerRound { get; init; } = 5;
+    public double DrainFailed { get; init; } = 15;
+    public double DrainStunned { get; init; } = 15;
+    public double DrainHeavyHit { get; init; } = 15;
+
+    /// <summary>A hit for at least this share of max HP is a heavy one.</summary>
+    public double HeavyHitShare { get; init; } = 0.25;
+}
+
+/// <summary>The push action (<see cref="Pushes"/>, scavenge.json <c>combat.push</c>): its tiles and how far, and what a collision does to who is pushed and who is in the way.</summary>
+public sealed record PushRules
+{
+    public int ApCost { get; init; } = 1;
+    public int Tiles { get; init; } = 1;
+    public CardPattern Pattern { get; init; } = new() { Shape = PatternShape.Stab };
+    public double CollisionDamage { get; init; } = 4;
+    public double BlockerDamage { get; init; } = 2;
+}
+
+/// <summary>The dash action (<see cref="Pushes"/>, scavenge.json <c>combat.dash</c>); <see cref="AttackHit"/> is what the run-up adds to a dash card's blow.</summary>
+public sealed record DashRules
+{
+    public int ApCost { get; init; } = 1;
+    public int Tiles { get; init; } = 3;
+    public double AttackHit { get; init; } = 0.1;
+}
+
+/// <summary>What a defended tile takes off a hit, beyond its card (<see cref="Defences"/>, scavenge.json <c>combat.block</c>).</summary>
+public sealed record BlockRules
+{
+    public Skill Skill { get; init; } = Skill.Melee;
+    public double PerSkill { get; init; } = 0.002;
+    public double PerArmor { get; init; } = 0.01;
+    public double Max { get; init; } = 0.9;
+}
+
+/// <summary>
+/// The resolve order (<see cref="Priority"/>, scavenge.json <c>priority</c>): what speed and stamina are worth, how steep the
+/// fall below the low-stamina cliff is, what kinds of action add, and what is left of an action tied with a hostile's.
+/// </summary>
+public sealed record PriorityRules
+{
+    public double SpeedPerInitiative { get; init; } = 0.1;
+    public double StaminaWeight { get; init; } = 10;
+    public double CliffBelow { get; init; } = 0.3;
+    public double CliffPenalty { get; init; } = 6;
+    public double QuickWeight { get; init; } = 2;
+    public double HeavyWeight { get; init; } = -2;
+    public double EarlyWeight { get; init; } = 4;
+
+    /// <summary>A melee blow in one tile's reach doing at most this much is a quick one.</summary>
+    public double LightMaxDamage { get; init; } = 12;
+
+    /// <summary>What a card that hurries a unit along or holds it up shifts its score by, for the round.</summary>
+    public double CardShift { get; init; } = 3;
+    public double TieEffect { get; init; } = 0.6;
+}
+
 public sealed record TurnRules
 {
-    public int BaseAp { get; init; } = 3;
+    public int BaseAp { get; init; } = 2;
+
+    /// <summary>MP a round for a unit of baseline movement range; each step of range above or below it shifts this by <see cref="MpPerRange"/>.</summary>
+    public int BaseMp { get; init; } = 4;
+    public int MpPerRange { get; init; } = 2;
+    public int BaseStamina { get; init; } = 10;
+    public int StaminaPerMp { get; init; } = 1;
+    public int StaminaPerAp { get; init; } = 2;
+
+    /// <summary>Share of its maximum stamina a unit regains at a round start, less <see cref="RegenLoadPenalty"/> times how full its pack is, at least <see cref="MinStaminaRegen"/>.</summary>
+    public double StaminaRegen { get; init; } = 0.4;
+    public double RegenLoadPenalty { get; init; } = 2;
+    public int MinStaminaRegen { get; init; } = 1;
+
+    /// <summary>The recover action: its AP (which costs no stamina) and the stamina it gives back.</summary>
+    public int RecoverApCost { get; init; } = 1;
+    public int RecoverStamina { get; init; } = 4;
     public int PickUpApCost { get; init; } = 1;
     public int RecruitApCost { get; init; } = 1;
     public double InitiativePerAgility { get; init; } = 1.0;
     public double InitiativePerLoad { get; init; } = 0.5;
 
-    /// <summary>
-    /// Sub-rounds in a round: every unit acts in each, in initiative order, on one turn's AP (refilled only when the round
-    /// starts), and the tile attacks declared in a sub-round come down at its end (<see cref="TileStrikes"/>).
-    /// </summary>
-    public int SubRounds { get; init; } = 1;
 }
 
 public sealed record SightRules
@@ -500,25 +611,13 @@ public sealed record CombatRules
     /// <summary>Blows from the side and from behind land harder (see <see cref="FacingRules"/>).</summary>
     public FacingRules Facing { get; init; } = new();
 
-    /// <summary>What dodging a telegraphed blow earns (see <see cref="OutplayRules"/>).</summary>
-    public OutplayRules Outplay { get; init; } = new();
-
     /// <summary>The most the stacked damage multipliers of a blow (ambush × facing × exposed) may come to.</summary>
     public double MaxDamageMultiplier { get; init; } = 2;
 
-    /// <summary>The most the stacked hit bonuses of an outplay and an ambush may add to a hit chance.</summary>
-    public double MaxHitBonus { get; init; } = 0.3;
-}
+    public BlockRules Block { get; init; } = new();
+    public PushRules Push { get; init; } = new();
+    public DashRules Dash { get; init; } = new();
 
-/// <summary>
-/// Outplays (scavenge.json <c>combat.outplay</c>): when a telegraphed blow comes down on a tile its target stepped off,
-/// the attacker is exposed through the next round, and the next hit on it does <see cref="ExposedDamage"/> times the
-/// damage (before armor); with <see cref="FreeCounter"/> the dodger's next tile strike covering the attacker costs no AP.
-/// </summary>
-public sealed record OutplayRules
-{
-    public double ExposedDamage { get; init; } = 1.5;
-    public bool FreeCounter { get; init; } = true;
 }
 
 /// <summary>
@@ -552,7 +651,7 @@ public sealed record HitTierRules
     /// <summary>Armor on the hit region (after pierce) from which the hit shifts down a tier.</summary>
     public double ArmorShiftFrom { get; init; } = 4;
 
-    /// <summary>Cover against the attacker (terrain plus brace) from which the hit shifts down a tier.</summary>
+    /// <summary>Cover against the attacker (terrain plus cards) from which the hit shifts down a tier.</summary>
     public double CoverShiftFrom { get; init; } = 0.25;
 }
 
@@ -562,6 +661,10 @@ public sealed record HitTierRules
 /// </summary>
 public sealed record FogRules
 {
+    /// <summary>A fogged walk ending within this many tiles of the side gives a hint: the map cell of this size it ends in, no finer.</summary>
+    public int MoveHintRange { get; init; } = 12;
+    public int MoveHintCell { get; init; } = 4;
+
     /// <summary>Stealth = base + (Agility - 50) · perAgility - load · perKg + gear + (leg efficiency - 1) · legEfficiency.</summary>
     public StealthRules Stealth { get; init; } = new();
 
@@ -593,8 +696,6 @@ public sealed record FogRules
     public int SensorRevealRounds { get; init; } = 1;
 
     public AmbushRules Ambush { get; init; } = new();
-    public OverwatchRules Overwatch { get; init; } = new();
-    public BraceRules Brace { get; init; } = new();
     public LookoutRules Lookout { get; init; } = new();
     public FogAiRules Ai { get; init; } = new();
 }
@@ -628,21 +729,6 @@ public sealed record AmbushRules
     public double BacksReduction { get; init; } = 0.5;
 }
 
-/// <summary>Overwatch (<see cref="Overwatches"/>): the shots' accuracy penalty and the sharper eyes while on watch.</summary>
-public sealed record OverwatchRules
-{
-    public double AccuracyPenalty { get; init; } = 0.1;
-    public double DetectionBonus { get; init; } = 10;
-}
-
-/// <summary>Brace / hunker: ends the turn; no ambush bonus against the unit, extra cover, fewer AP next turn.</summary>
-public sealed record BraceRules
-{
-    public int ApCost { get; init; } = 1;
-    public double CoverBonus { get; init; } = 0.15;
-    public int NextTurnApPenalty { get; init; } = 1;
-}
-
 /// <summary>Lookout / scan: spend AP for sight and detection until the unit's next turn.</summary>
 public sealed record LookoutRules
 {
@@ -657,9 +743,6 @@ public sealed record FogAiRules
 {
     /// <summary>Position scoring: value of a tile no known hostile would detect the unit on.</summary>
     public double HiddenWeight { get; init; } = 4;
-
-    /// <summary>A Linked that knows of nobody waits on overwatch instead of wandering.</summary>
-    public bool LinkedLurk { get; init; } = true;
 }
 
 /// <summary>
@@ -717,6 +800,9 @@ public sealed record ScavengeRules
     public Dictionary<Terrain, TerrainDef> Terrain { get; init; } = new();
     public MovementRules Movement { get; init; } = new();
     public TurnRules Turn { get; init; } = new();
+    public PriorityRules Priority { get; init; } = new();
+    public StunRules Stun { get; init; } = new();
+    public AdrenalineRules Adrenaline { get; init; } = new();
     public SightRules Sight { get; init; } = new();
     public CarryRules Carry { get; init; } = new();
     public CombatRules Combat { get; init; } = new();

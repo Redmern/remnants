@@ -23,7 +23,7 @@ public partial class ScavengeScreen
             if (_presenter.State.Events.Any(e => e.Type == ScavengeEventType.Ambushed)) break;
             if (_presenter.ActingUnit is not { } u) break;
             var pid = _presenter.PlayerId;
-            await Run(u.Id == watcher ? Overwatches.OnArc(_presenter.Sim, u, pid) ?? new EndTurn(pid, u.Id) : new EndTurn(pid, u.Id));
+            await Run(new EndTurn(pid, u.Id));
         }
         while (_busy) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         var victim = _presenter.State.Events.LastOrDefault(e => e.Type == ScavengeEventType.Ambushed)?.TargetId;

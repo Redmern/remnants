@@ -80,12 +80,12 @@ public static class StoryBot
 
         // Fight what is in reach; on the way out, only a blow worth taking (a wounded arm that can barely hit runs instead).
         var target = state.Units.Where(t => t.IsActive && u.HostileTo(t) && Detection.SideSees(sim.Data, state, side, t))
-            .SelectMany(t => profile.Actions.Where(a => a.ApCost <= u.Ap && Combat.CheckReach(sim.Data, state.Map, u.Pos, a, t.Pos) == ScavengeError.None
+            .SelectMany(t => profile.Actions.Where(a => a.ApCost <= u.Ap && Combat.CheckReach(sim.Data, state.Map, Plans.Anchor(state, u), a, BotTactics.Expected(sim, u.Side, t)) == ScavengeError.None
                                                         && Drones.CanStrike(a, t)).Select(a => (t, a)))
             .OrderByDescending(x => Combat.ChanceToHit(sim, u, x.a, x.t) * (x.a.MinDamage + x.a.MaxDamage) / 2)
             .ThenBy(x => x.t.Id).FirstOrDefault();
         if (target.t is not null && (!_leaveAll || Combat.ChanceToHit(sim, u, target.a, target.t) >= 0.4 || !CanStepOut(sim, u))
-            && TileStrikes.StrikeAt(sim, u, target.a, target.t) is { } strike)
+            && TileStrikes.StrikeAt(sim, u, target.a, target.t, BotTactics.Expected(sim, u.Side, target.t)) is { } strike)
             return strike;
 
         // A friend is in a fight we can see: join it, two on one (a Husk claws three times a round; one alone loses the trade).
@@ -142,7 +142,7 @@ public static class StoryBot
                         // Hold where it matters: by whoever we defend, else right here.
                         var held = state.Units.Find(x => x.Tag == run.Def.Objectives.FirstOrDefault(d => d.Kind == ObjectiveKind.Defend)?.Tag && x.OnMap);
                         if (held is not null && held.Pos.Chebyshev(u.Pos) > 2) { goal = held.Pos; break; }
-                        return Overwatches.OnArc(sim, u, pid) ?? end;
+                        return end;
                     case ObjectiveKind.Carry:
                         // Heavy work: get next to it and stay there until it is done.
                         if (run.Marker(o.Marker).Any(m => m.Chebyshev(u.Pos) <= 1)) return end;
@@ -162,7 +162,7 @@ public static class StoryBot
                 }
                 if (goal is not null) break;
             }
-            if (goal is null && run.Def.AtHome) return Overwatches.OnArc(sim, u, pid) ?? end;
+            if (goal is null && run.Def.AtHome) return end;
             if (goal is null) leave = true;
         }
 
@@ -195,8 +195,8 @@ public static class StoryBot
 
         // Stick together: the one out in front waits for a friend who has fallen behind (a lone survivor is the one who dies).
         if (!run.Def.AtHome && Straggler(sim, u, ours, goal!.Value) is not null)
-            return Overwatches.OnArc(sim, u, pid) ?? end;
-        return Toward(sim, u, goal!.Value, exact: leave) ?? (run.Def.AtHome ? Overwatches.OnArc(sim, u, pid) ?? end : end);
+            return end;
+        return Toward(sim, u, goal!.Value, exact: leave) ?? end;
     }
 
     /// <summary>The party has taken too much: under half its health in all, or someone is down or close to it.</summary>
@@ -214,7 +214,7 @@ public static class StoryBot
             .OrderBy(f => f.Id).FirstOrDefault();
 
     /// <summary>Whether the unit can take a step at all (boxed in, it might as well swing).</summary>
-    private static bool CanStepOut(ScavengeSim sim, Unit u) => sim.Reachable(u).Any(kv => kv.Key != u.Pos && kv.Value <= u.Ap);
+    private static bool CanStepOut(ScavengeSim sim, Unit u) => sim.Reachable(u).Any(kv => kv.Key != u.Pos && kv.Value <= u.Mp);
 
     /// <summary>A move to the affordable reachable tile closest (walking) to a tile next to the goal, if that gets closer.</summary>
     private static IScavengeCommand? Toward(ScavengeSim sim, Unit u, Pos goal, bool exact = false)
@@ -230,7 +230,7 @@ public static class StoryBot
         {
             var field = Movement.DistanceField(state, u, profile, t);
             if (!field.TryGetValue(u.Pos, out var here)) continue;
-            var options = sim.Reachable(u).Where(kv => kv.Value <= u.Ap && field.ContainsKey(kv.Key) && field[kv.Key] < here)
+            var options = sim.Reachable(u).Where(kv => kv.Value <= u.Mp && field.ContainsKey(kv.Key) && field[kv.Key] < here)
                 .OrderBy(kv => field[kv.Key]).ThenBy(kv => kv.Value).ThenBy(kv => state.Map.Index(kv.Key)).ToList();
             return options.Count == 0 ? null : new Move(u.PlayerId!.Value, u.Id, options[0].Key);
         }

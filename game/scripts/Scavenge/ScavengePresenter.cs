@@ -49,7 +49,10 @@ public sealed class ScavengePresenter
     public bool Done => Party.Done || State.Finished;
 
     /// <summary>The unit whose turn it is, if the local player controls it.</summary>
-    public Unit? ActingUnit => State.CurrentUnit is { PlayerControlled: true } u && u.PlayerId == PlayerId ? u : null;
+    public Unit? ActingUnit => TacticsView.PlanningUnit(State, PlayerId, Focus);
+
+    /// <summary>The own unit the player went to (any order, its plan stays open until the round resolves), or null for the next one.</summary>
+    public int? Focus { get; set; }
 
     /// <summary>Tiles the local side sees right now.</summary>
     public IReadOnlySet<int> Visible => _visible;
@@ -142,15 +145,16 @@ public sealed class ScavengePresenter
     {
         var data = Sim.Data;
         var map = State.Map;
-        return State.Units
+        return Plans.AtAnchor(State, unit, () => State.Units
             .Where(t => t.OnMap && unit.HostileTo(t) && CanSee(t) && Drones.CanStrike(action, t)
                         && Combat.CheckReach(data, map, unit.Pos, action, t.Pos) == ScavengeError.None)
             .Select(t => new AttackOption(t, action, Bestiary.ShownChance(Sim.Data.Rules.Bestiary, Combat.ChanceToHit(Sim, unit, action, t), KnowledgeOf(t)), Combat.AmbushAgainst(data, State, unit, t)))
-            .ToList();
+            .ToList());
     }
 
     /// <summary>Seen enemy strikes as telegraphs (Core's <see cref="TacticsView"/>; never the card).</summary>
     public List<Telegraph> Telegraphs() => TacticsView.Telegraphs(Sim, Side);
+    public List<MoveHint> MoveHints() => TacticsView.MoveHints(Sim, Side);
 
     /// <summary>The threat overlay: planned blows of seen enemies, and what they could hit from where they stand.</summary>
     public Dictionary<Pos, ThreatKind> Threats() => TacticsView.Threats(Sim, Side);
@@ -173,11 +177,8 @@ public sealed class ScavengePresenter
     public List<CardTargetOption> Targets(int unitId, string cardId, bool boost, bool fromSlot) =>
         TacticsView.Targets(Sim, PlayerId, unitId, cardId, boost, fromSlot);
 
-    /// <summary>Whether a card is aimed (on the map, after picking who plays it): an ability at a unit or tile, or a reaction.</summary>
-    public bool IsAimed(string cardId) => Sim.Data.Cards.Find(cardId) is { } card && (card.Reaction || card.Target != CardTarget.Self);
-
-    /// <summary>Seen enemies with a readied strike (what a reaction card answers).</summary>
-    public List<Unit> ReactionTargets() => TacticsView.ReactionTargets(Sim, PlayerId);
+    /// <summary>Whether a card is aimed (on the map, after picking who plays it): an ability at a unit or tile, or a pattern to turn.</summary>
+    public bool IsAimed(string cardId) => Sim.Data.Cards.Find(cardId) is { } card && (card.Target != CardTarget.Self || card.Pattern is not null);
 
     /// <summary>
     /// The bestiary tier the local player knows an enemy type at: the colony's (<see cref="BestiaryKnowledge"/>) plus this

@@ -152,9 +152,9 @@ public sealed class RemoteDriver : IScavengeDriver
         if (_client.Turn is not { } turn) return null;
         var left = _client.TurnSecondsLeft(DateTimeOffset.UtcNow);
         var clock = turn.SecondsLeft > 0 ? $" · {Math.Ceiling(left):0}s" : "";
-        return turn.PlayerId is not { } pid ? "AI turn…"
-            : pid == PlayerId ? $"Your turn{clock}"
-            : $"{_client.NameOf(pid)}'s turn{clock}";
+        return turn.PlayerId is not { } pid ? "Resolving…"
+            : pid == PlayerId ? $"Planning{clock}"
+            : $"Planning{clock} · {_client.NameOf(pid)} not ready";
     }
 
     public void Leave() => _client.Leave();

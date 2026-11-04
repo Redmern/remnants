@@ -76,19 +76,6 @@ public partial class FogOverlay : Node3D
         {
             var at = TileGrid.ToWorld(unit.Pos);
             var mine = unit.Side == _presenter.Side;
-            if (unit.Stance == Stance.Overwatch)
-            {
-                var marker = Marker("overwatch_marker", (mine ? OverwatchColor : HostileOverwatchColor) with { A = 0.85f }, 0.9f);
-                marker.Position = at + Vector3.Up * 0.05f;
-                _markers.AddChild(marker);
-                if (mine)
-                {
-                    var range = WatchRange(at, (float)_presenter.Sim.Profile(unit).Sight * TileGrid.TileSize);
-                    range.Visible = _focus.Contains(unit.Id);
-                    _watchRanges[unit.Id] = range;
-                    _markers.AddChild(range);
-                }
-            }
             if (!mine && _presenter.IsRevealed(unit)) _markers.AddChild(Ring(at, 0.95f, RevealedColor with { A = 0.9f }, 0.08f));
         }
 

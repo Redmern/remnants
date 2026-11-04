@@ -19,8 +19,7 @@ public static class TurnAdvice
         if (ap >= sim.Data.Rules.Turn.PickUpApCost && sim.State.Caches.Any(c => c.Items.Count > 0 && c.Pos.Chebyshev(unit.Pos) <= 1)) return true;
         if (CanPlayACard(sim, unit)) return true;
         if (CanHackOrSalvage(sim, unit) || CanUseDrone(sim, unit)) return true;
-        if (ap > 0 && sim.Reachable(unit).Values.Any(cost => cost <= ap)) return true;
-        if (unit.Stance == Stance.None && (fog.Brace.ApCost <= ap || Overwatches.OnArc(sim, unit, unit.PlayerId ?? 0) is not null)) return true;
+        if (sim.Reachable(unit).Values.Any(cost => cost <= unit.Mp)) return true;
         if (!unit.Lookout && fog.Lookout.ApCost <= ap) return true;
         if (unit.Pack.Any(id => sim.Data.Items.TryGetValue(id, out var item) && item.Use is { } use && FieldMedicine.ApCost(unit, use) <= ap))
             return true;
@@ -30,17 +29,17 @@ public static class TurnAdvice
             var reach = TileStrikes.Reach(sim, unit, action);
             if (state.Units.Any(t => t.IsActive && t.OnMap && unit.HostileTo(t) && reach.Contains(t.Pos) && Drones.CanStrike(action, t)
                                      && Detection.SideSees(sim.Data, state, unit.Side, t)
-                                     && Combat.ApCost(action, unit.Pos, t.Pos) - (TileStrikes.FreeCounter(sim, unit, [t.Pos]) ? TileStrikes.CounterWaiver(sim, unit) : 0) <= ap))
+                                     && Combat.ApCost(action, Plans.Anchor(state, unit), t.Pos) <= ap))
                 return true;
         }
         return false;
     }
 
-    /// <summary>A card from the party's hand or the unit's slots that Core would take now (a reaction: on any seen enemy's readied strike).</summary>
+    /// <summary>A card from the party's hand or the unit's slots that Core would take now .</summary>
     private static bool CanPlayACard(ScavengeSim sim, Unit unit)
     {
         if (unit.PlayerId is not { } pid || SquadDecks.Of(sim.State, pid) is not { Hidden: false } deck) return false;
-        var planners = sim.State.Units.Where(u => TileStrikes.Readied(sim.State, u) && unit.HostileTo(u)).Select(u => (int?)u.Id).DefaultIfEmpty(null).ToList();
+        var planners = sim.State.Units.Where(u => u.IsActive && u.OnMap && unit.HostileTo(u) && Detection.SideSees(sim.Data, sim.State, unit.Side, u)).Select(u => (int?)u.Id).Append(null).DefaultIfEmpty(null).ToList();
         bool Playable(string id, bool slot) =>
             planners.Any(t => CardPlay.Check(sim, unit, new PlayCard(pid, unit.Id, id, t, FromSlot: slot)).Ok);
         return deck.Hand.Distinct().Any(id => Playable(id, false)) || unit.SlotCards.Where(id => !unit.SlotSpent.Contains(id)).Any(id => Playable(id, true));

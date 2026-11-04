@@ -38,7 +38,7 @@ public partial class ActionPanel : PanelContainer
     public string? ActionId { get; private set; }
 
     /// <summary>
-    /// How a stab / slash weapon strikes when a tile is clicked (a tile strike that comes down at the sub-round's end);
+    /// How a stab / slash weapon strikes when a tile is clicked (a tile strike that comes down when the round resolves);
     /// null: clicks on enemies attack them at once. Picked for one round: the next round starts without it.
     /// </summary>
     public StrikeMode? Mode
@@ -155,7 +155,7 @@ public partial class ActionPanel : PanelContainer
                 var reach = stab ? $"line {chosen.Reach}, diagonal {chosen.DiagonalRange}" : "front tile and both flanks";
                 var button = Add(_rows, stab ? "ui_stab" : "ui_slash", stab ? "Stab" : "Slash", reach, chosen.ApCost, null,
                     $"{(stab ? "Stab" : "Slash")} with the {chosen.Name}: click a tile to strike it ({reach}). The AP goes now and "
-                    + "your part of the sub-round ends; whoever hostile stands on the covered tiles when the sub-round ends is hit.\nStays picked until the round ends; click again to attack units directly.",
+                    + "it goes in your plan; whoever hostile stands on the covered tiles when its turn comes is hit.\nStays picked until the round ends; click again to attack units directly.",
                     () => { _strike.Toggle(mode, _presenter.State.Round); ActionChosen?.Invoke(ActionId ?? ""); });
                 button.Toggle(Mode == mode);
                 button.SetBlocked(chosen.ApCost > unit.Ap, chosen.ApCost > unit.Ap);

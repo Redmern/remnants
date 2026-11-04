@@ -311,15 +311,6 @@ public partial class UnitViews : Node3D
                     actor.Root.Visible = false;
                     break;
 
-                case ScavengeEventType.Overwatch or ScavengeEventType.Braced when actor is not null && e.TargetId is null && Seen(e.Pos):
-                    Beat();
-                    if (actor.Rig is { } stanceRig && stanceRig.Pick(e.Type == ScavengeEventType.Overwatch ? ["overwatch_aim"] : ["crouch_brace", "take_cover"]) is { } stance)
-                    {
-                        stanceRig.Loop(stance);
-                        await Wait(0.35f);
-                    }
-                    break;
-
                 case ScavengeEventType.Lookout when actor is not null && Seen(e.Pos):
                     Beat();
                     if (actor.Rig?.Once("lookout") == true) await Wait(0.8f);

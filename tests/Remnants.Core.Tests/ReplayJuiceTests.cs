@@ -101,25 +101,6 @@ public class ReplayJuiceTests
     }
 
     [Fact]
-    public void A_real_blow_from_behind_on_an_exposed_target_reads_as_rear_and_exposed()
-    {
-        // Every swing lands solid, so the event is Combat's own line, not a hand-written one.
-        var sure = With(r => r with { Combat = r.Combat with { MinHitChance = 1, MaxHitChance = 1, Tiers = r.Combat.Tiers with { GrazeBelow = 0, SolidFrom = 0 } } });
-        var a = SurvivorUnit(1, new(2, 2), weapon: "pipe");
-        var b = SurvivorUnit(2, new(3, 2));
-        var sim = Arena(8, 5, [a, b], data: sure);
-        b.Facing = new Pos(1, 0);
-        (b.ExposedUntilRound, b.ExposedToSide) = (sim.State.Round, a.Side);
-        Assert.True(Blow(sim, a, b, "swing").Ok);
-        var hit = Assert.Single(sim.State.Events, e => e.Type == ScavengeEventType.Attacked);
-        var impact = ReplayJuice.ImpactOf(hit);
-        Assert.Equal(FacingArc.Rear, impact.Arc);
-        Assert.True(impact.Exposed);
-        Assert.Equal(hit.Tier, impact.Tier);
-        Assert.Equal(hit.Amount!.Value, impact.Amount, 9);
-    }
-
-    [Fact]
     public void A_card_play_and_the_blow_it_sets_up_are_two_links()
     {
         var (sim, mine, _, enemy) = Setup();

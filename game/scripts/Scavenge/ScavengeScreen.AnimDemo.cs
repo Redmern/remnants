@@ -41,7 +41,7 @@ public partial class ScavengeScreen
         {
             case "survivor" when _presenter.ActingUnit is { } u:
                 var husk = _presenter.State.Units.First(x => x.Kind == UnitKind.Enemy && x.OnMap);
-                u.Ap = 30;
+                u.Ap = 30; u.Mp = 30;
                 // The furthest tile the survivor can walk to in one move, with the Husk waiting just beyond it.
                 var map = _presenter.State.Map;
                 bool Open(Pos p) => map.InBounds(p) && map[p] == Terrain.Floor && _presenter.State.UnitAt(p) is null;
@@ -66,7 +66,7 @@ public partial class ScavengeScreen
                 break;
             case "cyborg" when _presenter.ActingUnit is { } c:
                 var mark = _presenter.State.Units.First(x => x.Kind == UnitKind.Enemy && x.OnMap);
-                c.Ap = 30;
+                c.Ap = 30; c.Mp = 30;
                 Select(c.Id);
                 _camera.GlideTo((TileGrid.ToWorld(c.Pos) * 2 + TileGrid.ToWorld(mark.Pos)) / 3);
                 // Close in so the gun arm, jumper legs and thermal eye read.

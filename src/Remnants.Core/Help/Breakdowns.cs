@@ -186,17 +186,16 @@ public static class Breakdowns
         Term("Drone mark", mark);
         Term("Weather", -weather, "dust and rain on ranged shots");
         Term("Radio", radio);
-        Term("Dodged their attack", Combat.OutplayBonus(sim, attacker, target, ambush), "you stepped out of their telegraphed blow");
         Term("Card", attacker.CardHit, "for the next attack");
         var cover = Combat.CoverAgainst(data, sim.State.Map, target.Pos, from);
         if (c.TargetKnown >= BestiaryTier.Killed)
         {
             Term("Target's dodge", -dodge, ambush is { IgnoreDodge: true } ? "caught off guard" : "");
             Term("Cover", -cover, "the tile beside the target, on your side");
-            Term("Brace", -profile.CoverBonus);
+            Term("Card cover", -profile.CoverBonus);
         }
         else Term("Target's defence", -Bestiary.ShownChance(data.Rules.Bestiary, dodge + cover + profile.CoverBonus, c.TargetKnown),
-            "dodge, cover and bracing, roughly: learn it in the Bestiary");
+            "dodge and cover, roughly: learn it in the Bestiary");
         Term("Range", -range, $"{data.Rules.Combat.RangeFalloff * 100:0}% per tile past the first");
         Term("Ambush", ambush?.HitBonus ?? 0, ambush is { Backs: true } ? "an ally beside the target blunts it" : "they cannot see you");
         Term("Bane", bane?.HitBonus ?? 0);

@@ -5,9 +5,9 @@ namespace Remnants.Core.Scavenge;
 
 /// <summary>
 /// Save/load a scavenge instance as JSON. Definitions are not saved; they reload from data/.
-/// Version 2 adds the Network alarm (<see cref="ScavengeState.AlarmRounds"/>, reinforcement waves), suppression and
-/// pylon tiles; version 1 saves load with those at their defaults. Version 3 adds the fog of war: stances, lookout,
-/// contacts, reveals, flares and motion sensors; older saves load with none (everyone out of stance, nothing placed).
+/// Only <see cref="SimultaneousVersion"/> loads; anything older is refused. What each older version added is kept below as history.
+/// Version 2 adds the Network alarm (<see cref="ScavengeState.AlarmRounds"/>, reinforcement waves) and pylon tiles.
+/// Version 3 adds the fog of war: lookout, contacts, reveals, flares and motion sensors.
 /// Version 4 adds co-op: alliance offers and breaks, team pings, the next team id, carried units and pings used, and who
 /// placed a motion sensor; older saves load with every player on their own side and nobody carried.
 /// Version 5 adds hacking and drones: devices (with hacks in progress, lockouts and contents), drone marks, units' perk
@@ -33,28 +33,25 @@ namespace Remnants.Core.Scavenge;
 /// Version 14 adds Story Acts 2–4 field rules: the run's campaign flags, the survivors the Linked took and who they are
 /// holding, the party's survivors at the start and a co-op guest's schematic copies (<see cref="MissionRun"/>), and
 /// devices' failed hacks (<see cref="ZoneDevice.Failures"/>); an older run loads with none of them.
-/// <see cref="IntentsVersion"/> adds telegraphed plans (since dropped), dodged attacks
-/// (<see cref="Unit.OutplayedId"/>) and hit tiers on events, and with them the squad decks, personal card slots and card
-/// effects. Older runs are not migrated: they are refused (old runs reset; a colony save drops its run in progress, see
-/// <see cref="SaveGame"/>).
-/// <see cref="TileAttacksVersion"/> adds sub-rounds: <see cref="ScavengeState.SubRound"/>, the tile attacks waiting for its
-/// end (<see cref="ScavengeState.Strikes"/>) and units' <see cref="Unit.TurnOverRound"/>; an older run loads at sub-round 1.
-/// <see cref="TelegraphedStrikesVersion"/> drops telegraphed plans (enemies declare tile strikes instead) and adds suppressing
-/// strikes; a plan pending in an older run is ignored on load.
+/// <see cref="IntentsVersion"/> adds hit tiers on events, the squad decks, personal card slots and card effects.
+/// <see cref="TileAttacksVersion"/> and <see cref="TelegraphedStrikesVersion"/> are the turn structure before planned rounds.
+/// <see cref="SimultaneousVersion"/> replaces it with plans, stamina, stun and adrenaline. Older runs are not migrated: they
+/// are refused (a colony save drops its run in progress, see <see cref="SaveGame"/>).
 /// </summary>
 public static class ScavengeSave
 {
-    /// <summary>Field loot and salvage (keyed: renumber to the next free version at merge). Older than the oldest loadable run.</summary>
+    /// <summary>Field loot and salvage. Refused on load.</summary>
     public const int LootVersion = 13;
-    /// <summary>Telegraphed plans (keyed: renumber to the next free version at merge).</summary>
+    /// <summary>Squad decks and card effects. Refused on load.</summary>
     public const int IntentsVersion = 15;
-    /// <summary>Tile attacks and sub-rounds (keyed: renumber to the next free version at merge); an older run loads at sub-round 1 with nothing pending.</summary>
+    /// <summary>Tile attacks in the old turn structure. Refused on load.</summary>
     public const int TileAttacksVersion = 16;
-    /// <summary>Enemies declare tile strikes; no more plans (keyed: renumber to the next free version at merge).</summary>
+    /// <summary>Enemies declaring strikes in the old turn structure. Refused on load.</summary>
     public const int TelegraphedStrikesVersion = 17;
-    public const int Version = TelegraphedStrikesVersion;
-    /// <summary>Runs from before plans and decks are not carried over: an older run is refused (and a colony save drops it).</summary>
-    private const int OldestVersion = IntentsVersion;
+    /// <summary>Simultaneous rounds: plans, stamina, stun, adrenaline. A run from before cannot be carried over and is refused (a colony save drops it).</summary>
+    public const int SimultaneousVersion = 18;
+    public const int Version = SimultaneousVersion;
+    private const int OldestVersion = SimultaneousVersion;
 
     private sealed record Envelope(int Version, ScavengeState Scavenge);
 
@@ -125,7 +122,7 @@ public static class ScavengeSave
             if (!state.Map.InBounds(v.Pos)) throw new JsonException($"The {v.Name} is parked off the map at {v.Pos}.");
             foreach (var id in v.Stash) RequireItem(id);
         }
-        foreach (var id in state.TurnOrder)
-            if (state.FindUnit(id) is null) throw new JsonException($"Turn order references unknown unit {id}.");
+        foreach (var plan in state.Plans)
+            if (state.FindUnit(plan.UnitId) is null) throw new JsonException($"A plan references unknown unit {plan.UnitId}.");
     }
 }

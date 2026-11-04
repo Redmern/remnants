@@ -9,16 +9,15 @@ namespace Remnants.Core.Scavenge;
 /// <item>Husk: wander; aggro on sight or noise; close in and attack.</item>
 /// <item>Linked: squad AI over the <see cref="Network"/>. It knows every hostile its group sees, the group shares one
 /// focus (weakest / most exposed), and each unit first takes the best firing position (a shot at the focus, cover,
-/// flanking tiles that strip the focus's cover), then shoots, or lays down suppressing fire when the odds are poor.
+/// flanking tiles that strip the focus's cover), then shoots, or closes in first when the odds are poor.
 /// Badly hurt units fall back to cover while the squad holds. They use the fog: firing positions the focus's side would
-/// not detect them on score higher (an ambush gets the bonus), and a Linked that knows of nobody, or still has AP after
-/// closing in, waits hidden on overwatch. A jammed Linked is cut off and fights like a Husk.</item>
+/// not detect them on score higher (an ambush gets the bonus). A jammed Linked is cut off and fights like a Husk.</item>
 /// <item>Recruit: follow its leader.</item>
 /// </list>
-/// Everything happens live on the unit's sub-turn: it moves, then its blow is a telegraphed tile strike
-/// (<see cref="TileStrikes"/>) that pays its AP at once, ends the sub-turn and comes down when the sub-round ends: a stab /
-/// slash weapon aimed to cover the most hostiles, any other action at the target's tile; suppressing fire pins whoever
-/// stands on the tile then.
+/// Every unit produces a plan when the round opens, like a player: it thinks where its plan has taken it (the unit stands
+/// there only while it thinks) and queues moves and tile strikes (<see cref="TileStrikes"/>) from what it knows of where
+/// others stand, never their plans: a stab / slash weapon aimed to cover the most hostiles, any other action at the target's
+/// tile.
 /// </summary>
 internal static class ScavengeAi
 {
@@ -26,6 +25,16 @@ internal static class ScavengeAi
     private const int MaxStepsPerTurn = 12;
 
     public static void TakeTurn(ScavengeSim sim, Unit unit)
+    {
+        Economy.Afford(sim, unit);
+        var (pos, facing, moved, mp, ap) = (unit.Pos, unit.Facing, unit.Moved, unit.Mp, unit.Ap);
+        Decide(sim, unit);
+        KeepStriking(sim, unit);
+        (unit.Pos, unit.Facing, unit.Moved) = (pos, facing, moved);
+        Economy.Pay(sim, unit, mp - unit.Mp, ap - unit.Ap);
+    }
+
+    private static void Decide(ScavengeSim sim, Unit unit)
     {
         if (unit.FollowingId is not null) Follow(sim, unit);
         else if (unit.Kind == UnitKind.Device) Machine(sim, unit);
@@ -35,12 +44,20 @@ internal static class ScavengeAi
         EnemyCards.Play(sim, unit);
     }
 
-    /// <summary>Readies a tile strike at the target (or suppressing fire on its tile), if the action can be aimed at it and paid for.</summary>
-    private static bool Strike(ScavengeSim sim, Unit unit, ActionProfile action, Unit target, bool suppress = false) =>
-        TileStrikes.StrikeAt(sim, unit, action, target) is { } strike && TileStrikes.Declare(sim, unit, strike, suppress).Ok;
+    /// <summary>Readies a tile strike at the target , if the action can be aimed at it and paid for.</summary>
+    private static bool Strike(ScavengeSim sim, Unit unit, ActionProfile action, Unit target) =>
+        TileStrikes.StrikeAt(sim, unit, action, target) is { } strike && TileStrikes.Declare(sim, unit, strike).Ok;
 
-    /// <summary>Whether the unit can still do something this sub-turn: up, with AP, not stunned or pinned since its turn began, and no tile strike readied yet.</summary>
-    private static bool Acting(ScavengeSim sim, Unit unit) => unit.IsActive && unit.Ap > 0 && !unit.Suppressed && !TileStrikes.Readied(sim.State, unit);
+    /// <summary>Whether the unit can still add to its plan: up, with points left, and no blow queued yet (moves come before blows).</summary>
+    private static bool Acting(ScavengeSim sim, Unit unit) => unit.IsActive && (unit.Ap > 0 || unit.Mp > 0) && !TileStrikes.Readied(sim.State, unit);
+
+    /// <summary>With AP left after its blow, the unit keeps at it: the same blow again, on the same tile.</summary>
+    private static void KeepStriking(ScavengeSim sim, Unit unit)
+    {
+        if (Plans.Of(sim.State, unit)?.Steps.LastOrDefault(s => s.Strike is not null)?.Strike is not { } strike) return;
+        var again = new AttackTile(unit.PlayerId ?? 0, unit.Id, strike.Tile, strike.ActionId, strike.Mode, strike.Direction);
+        for (var guard = 0; guard < 8 && unit.Ap > 0 && TileStrikes.Declare(sim, unit, again).Ok; guard++) { }
+    }
 
     /// <summary>Husk behaviour (and a jammed Linked's): hunt the nearest hostile in sight, close in, attack.</summary>
     private static void Fight(ScavengeSim sim, Unit unit)
@@ -91,8 +108,7 @@ internal static class ScavengeAi
                     .OrderBy(u => u.Id).Select(u => u.Ai.LastKnown).FirstOrDefault();
                 if (last is { } goal && unit.Pos != goal && StepToward(sim, unit, goal)) continue;
                 foreach (var u in group.Units) (u.Ai.Mode, u.Ai.LastKnown) = (AiMode.Idle, null);
-                if (Patrol(sim, unit) || Lurk(sim, unit)) return;
-                Wander(sim, unit);
+                if (!Patrol(sim, unit)) Wander(sim, unit);
                 return;
             }
 
@@ -111,17 +127,13 @@ internal static class ScavengeAi
                 else if (Reposition(sim, unit, focus, known)) continue;
             }
 
-            if (TryAttackAbove(sim, unit, focus, rules.SuppressBelowHitChance)) continue;
-            if (known.Where(t => t.Id != focus.Id).Any(t => TryAttackAbove(sim, unit, t, rules.SuppressBelowHitChance))) continue;
-            if (Suppress(sim, unit, focus)) return;
-            if (retreating || !StepToward(sim, unit, focus.Pos)) break;
+            if (TryAttackAbove(sim, unit, focus, rules.CloseInBelowHitChance)) continue;
+            if (known.Where(t => t.Id != focus.Id).Any(t => TryAttackAbove(sim, unit, t, rules.CloseInBelowHitChance))) continue;
+            if (!retreating && StepToward(sim, unit, focus.Pos)) continue;
+            // No closer to be had: a poor shot beats none.
+            if (!TryAttackAbove(sim, unit, focus, 0)) break;
         }
-        if (unit.IsActive && !retreating && !TileStrikes.Readied(sim.State, unit)) Lurk(sim, unit);
     }
-
-    /// <summary>A Linked with AP for a shot left at the end of its turn holds it on overwatch, toward what it last knew of (rules.fog.ai.linkedLurk).</summary>
-    private static bool Lurk(ScavengeSim sim, Unit unit) =>
-        sim.Data.Rules.Fog.Ai.LinkedLurk && !unit.Suppressed && Overwatches.OnArc(sim, unit, unit.PlayerId ?? 0) is CommitOverwatch watch && Overwatches.Commit(sim, unit, watch).Ok;
 
     /// <summary>Every unit in the group now hunts the focus; one that was idle and does not see it learns of it through the Network.</summary>
     private static void Share(ScavengeSim sim, NetworkGroup group, Unit focus)
@@ -154,18 +166,6 @@ internal static class ScavengeAi
         return best.Action is not null && Strike(sim, unit, best.Action, target);
     }
 
-    /// <summary>Pin the target with the cheapest ranged action that reaches it (if it is not pinned already).</summary>
-    private static bool Suppress(ScavengeSim sim, Unit unit, Unit target)
-    {
-        if (target.Suppressed) return false;
-        var action = sim.Profile(unit).Actions
-            .Where(a => a.Pattern != AttackPattern.Melee && Combat.ApCost(a, unit.Pos, target.Pos) <= unit.Ap && Drones.CanStrike(a, target)
-                        && Combat.CheckReach(sim.Data, sim.State.Map, unit.Pos, a, target.Pos) == ScavengeError.None)
-            .OrderBy(a => a.ApCost).ThenBy(a => a.Id, StringComparer.Ordinal)
-            .FirstOrDefault();
-        return action is not null && Strike(sim, unit, action, target, suppress: true);
-    }
-
     /// <summary>
     /// Scores every tile the unit can reach (and staying put): the expected damage of its best shot at the focus from
     /// there with the AP left (an ambush from a hidden tile counts), plus cover against every known hostile, plus
@@ -183,7 +183,7 @@ internal static class ScavengeAi
 
         double Score(Pos tile, int cost)
         {
-            var ap = unit.Ap - cost;
+            var ap = unit.Ap;
             // Hidden: out of every known hostile's eyes, not in a flare's light, not revealed or scanned there.
             var hidden = !Detection.IsLit(sim.State, tile) && !known.Any(t =>
                 Detection.Spots(data, sim.State, t, unit, targetAt: tile)
@@ -196,25 +196,25 @@ internal static class ScavengeAi
                              * Math.Max(1, (a.MinDamage + a.MaxDamage) / 2 * (ambush?.DamageMultiplier ?? 1) - focusProfile.Armor))
                 .DefaultIfEmpty(0).Max();
             var cover = known.Select(t => Combat.CoverAgainst(data, map, tile, t.Pos)).DefaultIfEmpty(0).Min();
-            return shot + cover * rules.CoverWeight + ap * rules.ApWeight + (hidden ? data.Rules.Fog.Ai.HiddenWeight : 0);
+            return shot + cover * rules.CoverWeight + (unit.Mp - cost) * rules.ApWeight + (hidden ? data.Rules.Fog.Ai.HiddenWeight : 0);
         }
 
         double stay;
-        (Pos Pos, int Ap, double Score) best;
+        (Pos Pos, int Mp, double Score) best;
         // Scoring only looks: every profile stays the same until the move.
         using (ProfileDeriver.Memo(data))
         {
             stay = Score(unit.Pos, 0);
             best = sim.Reachable(unit)
-                .Where(kv => kv.Value <= unit.Ap)
-                .Select(kv => (Pos: kv.Key, Ap: kv.Value, Score: Score(kv.Key, kv.Value)))
-                .OrderByDescending(o => o.Score).ThenBy(o => o.Ap).ThenBy(o => map.Index(o.Pos))
+                .Where(kv => kv.Value <= unit.Mp)
+                .Select(kv => (Pos: kv.Key, Mp: kv.Value, Score: Score(kv.Key, kv.Value)))
+                .OrderByDescending(o => o.Score).ThenBy(o => o.Mp).ThenBy(o => map.Index(o.Pos))
                 .FirstOrDefault();
         }
-        if (best.Ap == 0 || best.Score <= stay + 1e-9) return false;
+        if (best.Mp == 0 || best.Score <= stay + 1e-9) return false;
 
         var coverBefore = Combat.CoverAgainst(data, map, focus.Pos, unit.Pos);
-        MoveTo(sim, unit, best.Pos, best.Ap);
+        MoveTo(sim, unit, best.Pos, best.Mp);
         if (coverBefore > 0 && Combat.CoverAgainst(data, map, focus.Pos, best.Pos) <= 0
             && profile.Actions.Any(a => Combat.CheckReach(data, map, best.Pos, a, focus.Pos) == ScavengeError.None))
             sim.Log(ScavengeEventType.Flanked, $"{unit.Name} flanks {focus.Name}.", unit, focus);
@@ -230,12 +230,12 @@ internal static class ScavengeAi
         double Cover(Pos p) => known.Select(t => Combat.CoverAgainst(data, map, p, t.Pos)).Min();
 
         var best = sim.Reachable(unit)
-            .Where(kv => kv.Value <= unit.Ap)
-            .Select(kv => (Pos: kv.Key, Ap: kv.Value))
-            .OrderByDescending(o => Distance(o.Pos)).ThenByDescending(o => Cover(o.Pos)).ThenBy(o => o.Ap).ThenBy(o => map.Index(o.Pos))
+            .Where(kv => kv.Value <= unit.Mp)
+            .Select(kv => (Pos: kv.Key, Mp: kv.Value))
+            .OrderByDescending(o => Distance(o.Pos)).ThenByDescending(o => Cover(o.Pos)).ThenBy(o => o.Mp).ThenBy(o => map.Index(o.Pos))
             .FirstOrDefault();
-        if (best.Ap == 0 || (Distance(best.Pos), Cover(best.Pos)).CompareTo((Distance(unit.Pos), Cover(unit.Pos))) <= 0) return false;
-        MoveTo(sim, unit, best.Pos, best.Ap);
+        if (best.Mp == 0 || (Distance(best.Pos), Cover(best.Pos)).CompareTo((Distance(unit.Pos), Cover(unit.Pos))) <= 0) return false;
+        MoveTo(sim, unit, best.Pos, best.Mp);
         sim.Log(ScavengeEventType.Retreated, $"{unit.Name} falls back.", unit);
         return true;
     }
@@ -281,15 +281,15 @@ internal static class ScavengeAi
         var field = Movement.DistanceField(sim.State, unit, profile, goal);
         var here = field.GetValueOrDefault(unit.Pos, int.MaxValue);
         var options = sim.Reachable(unit)
-            .Where(kv => kv.Value <= unit.Ap && field.ContainsKey(kv.Key))
-            .Select(kv => (Pos: kv.Key, Ap: kv.Value, Dist: field[kv.Key]))
+            .Where(kv => kv.Value <= unit.Mp && field.ContainsKey(kv.Key))
+            .Select(kv => (Pos: kv.Key, Mp: kv.Value, Dist: field[kv.Key]))
             .Where(o => o.Dist < here)
             .OrderBy(o => o.Dist)
-            .ThenBy(o => o.Ap)
+            .ThenBy(o => o.Mp)
             .ThenBy(o => sim.State.Map.Index(o.Pos))
             .ToList();
         if (options.Count == 0) return false;
-        MoveTo(sim, unit, options[0].Pos, options[0].Ap);
+        MoveTo(sim, unit, options[0].Pos, options[0].Mp);
         return true;
     }
 
@@ -313,7 +313,7 @@ internal static class ScavengeAi
     private static void Wander(ScavengeSim sim, Unit unit)
     {
         if (sim.Rng.NextDouble() >= sim.Data.Rules.Ai.WanderChance) return;
-        var options = sim.Reachable(unit).Where(kv => kv.Value <= unit.Ap)
+        var options = sim.Reachable(unit).Where(kv => kv.Value <= unit.Mp)
             .OrderBy(kv => sim.State.Map.Index(kv.Key)).ToList();
         if (options.Count == 0) return;
         var pick = options[sim.Rng.Next(0, options.Count)];
@@ -334,18 +334,17 @@ internal static class ScavengeAi
             unit.FollowingId = leader.Id;
             unit.PlayerId = leader.PlayerId;
         }
-        for (var step = 0; step < MaxStepsPerTurn && unit.Ap > 0 && unit.Pos.Chebyshev(leader.Pos) > 1; step++)
+        for (var step = 0; step < MaxStepsPerTurn && unit.Mp > 0 && unit.Pos.Chebyshev(leader.Pos) > 1; step++)
             if (!StepToward(sim, unit, leader.Pos)) return;
     }
 
-    private static void MoveTo(ScavengeSim sim, Unit unit, Pos to, int ap)
+    /// <summary>Queues the move, and thinks on from where it ends.</summary>
+    private static void MoveTo(ScavengeSim sim, Unit unit, Pos to, int mp)
     {
         var from = unit.Pos;
+        Plans.AddMove(sim, unit, to, mp);
         unit.Pos = to;
-        unit.Ap -= ap;
         unit.Moved = true;
         unit.Facing = Combat.Face(from, to);
-        sim.State.Log(new(sim.State.Round, ScavengeEventType.Moved, $"{unit.Name} moved {from} -> {to}.", unit.Id, Pos: to));
-        sim.Moved(unit, from);
     }
 }

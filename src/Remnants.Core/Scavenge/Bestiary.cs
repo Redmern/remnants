@@ -79,7 +79,7 @@ public static class Bestiary
     /// <summary>
     /// A hit chance as the side may see it: exact once the target's type is killed (and for players), otherwise to the
     /// nearest <see cref="BestiaryRules.ChanceStep"/> (half steps up), never a sure or hopeless one, so the hidden dodge
-    /// and bracing cannot be read off it (user decision).
+    /// cannot be read off it (user decision).
     /// </summary>
     public static double ShownChance(BestiaryRules rules, double chance, BestiaryTier tier)
     {
@@ -179,7 +179,7 @@ public static class Bestiary
             Behaviour = def.Ai switch
             {
                 AiKind.Linked => "Hunts in squads over the Network: all of them know what one sees, they pick the weakest, flank, " +
-                                 "pin down from cover, fall back when hurt and wait unseen on overwatch.",
+                                 "pin down from cover, and fall back when hurt.",
                 AiKind.Device => "A machine: it never moves and telegraphs where it will fire.",
                 _ => "Wanders until it sees or hears prey, then closes in and strikes; it telegraphs the charge.",
             },

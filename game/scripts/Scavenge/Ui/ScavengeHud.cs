@@ -98,6 +98,7 @@ public partial class ScavengeHud : CanvasLayer
     public event Func<bool>? BackRequested;
 
     public event Action? EndTurnRequested;
+    public event Action? TurnAimRequested;
     public event Action? LeaveRequested;
 
     /// <summary>The fast-forward hotkey: skip animations on or off (<see cref="GameSettings.SkipAnimations"/>). Works mid-replay.</summary>
@@ -278,6 +279,7 @@ public partial class ScavengeHud : CanvasLayer
         {
             if (BackRequested?.Invoke() != true) return;
         }
+        else if (Hotkeys.Pressed(e, "scav_turn_aim")) TurnAimRequested?.Invoke();
         else if (Hotkeys.Pressed(e, "scav_next_unit")) NextUnitRequested?.Invoke();
         else if (Hotkeys.Pressed(e, "scav_center")) CenterRequested?.Invoke();
         else if (!Loot.PressHotkey(e) && !Actions.PressHotkey(e) && !Stances.PressHotkey(e) && !Tech.PressHotkey(e) && !Coop.PressHotkey(e)) return;

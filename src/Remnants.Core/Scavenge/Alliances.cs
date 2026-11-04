@@ -2,8 +2,8 @@ namespace Remnants.Core.Scavenge;
 
 /// <summary>
 /// Teams of players. Allied parties share one side (<see cref="Unit.TeamSide"/>), so every side-based rule treats them
-/// as one: no friendly fire, one fog of war (what any ally sees, contacts, reveals, sensors and explored tiles), overwatch
-/// never fires on allies, and allies count for "watching each other's backs". Ownership, turns and results stay per
+/// as one: not hostile to each other (a blow aimed through an ally's tile still strikes them, and the aim warns of it), one fog
+/// of war (what any ally sees, contacts, reveals, sensors and explored tiles), and allies count for "watching each other's backs". Ownership, turns and results stay per
 /// player (<see cref="Unit.PlayerId"/>).
 /// <list type="bullet">
 /// <item>Teams start allied (a co-op mission, <see cref="PartySetup.Team"/>) or form in the field: a player whose party

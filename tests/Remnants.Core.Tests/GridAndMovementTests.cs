@@ -9,11 +9,12 @@ public class MovementTests
     [Fact]
     public void King_walk_reaches_every_tile_within_range_in_any_direction()
     {
-        var u = SurvivorUnit(pos: new(3, 3)); // agility 50: range 2
+        var u = SurvivorUnit(pos: new(3, 3));
         var sim = Arena(7, 7, [u]);
+        u.Mp = 2;
         var reach = sim.Reachable(u);
         Assert.Equal(24, reach.Count); // 5x5 minus own tile
-        Assert.All(reach.Values, ap => Assert.Equal(1, ap));
+        Assert.All(reach, kv => Assert.Equal(kv.Key.Chebyshev(u.Pos), kv.Value));
         Assert.DoesNotContain(new Pos(3, 0), reach.Keys);
     }
 
@@ -26,8 +27,9 @@ public class MovementTests
             ".r...",
             ".#...",
         ]);
+        u.Mp = 2;
         var reach = sim.Reachable(u).Keys.ToHashSet();
-        Assert.Contains(new Pos(1, 1), reach); // rubble costs 2 = whole range
+        Assert.Contains(new Pos(1, 1), reach); // rubble costs 2 = all the MP left
         Assert.DoesNotContain(new Pos(2, 1), reach);
         Assert.DoesNotContain(new Pos(1, 0), reach); // wall
     }
@@ -86,8 +88,8 @@ public class MovementTests
             "....",
         ]);
         var reach = sim.Reachable(u);
-        Assert.Equal(2, reach[new Pos(1, 2)]);
-        Assert.Equal(2, reach[new Pos(2, 1)]);
+        Assert.Equal(4, reach[new Pos(1, 2)]);
+        Assert.Equal(4, reach[new Pos(2, 1)]);
         Assert.Equal(2, reach.Count);
     }
 
@@ -173,7 +175,7 @@ public class VisibilityTests
         Assert.DoesNotContain(sim.State.Map.Index(new Pos(29, 0)), sim.VisibleTo(1));
         Assert.Contains(sim.State.Map.Index(new Pos(29, 0)), sim.VisibleTo(2));
 
-        Assert.True(sim.Execute(new Move(1, a.Id, new(2, 0))).Ok);
+        Assert.True(Now(sim, new Move(1, a.Id, new(2, 0))).Ok);
         var explored = sim.State.Explored[Unit.PlayerSide(1)];
         Assert.Contains(sim.State.Map.Index(new Pos(8, 0)), explored);
         Assert.DoesNotContain(sim.State.Map.Index(new Pos(20, 0)), explored);

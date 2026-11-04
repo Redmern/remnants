@@ -7,9 +7,9 @@ using Remnants.Game.Hud;
 namespace Remnants.Game.Scavenge.Ui;
 
 /// <summary>
-/// Zone and round, the initiative order for this round as portrait chips with a side-colour edge (the acting unit
-/// larger, framed and named; those that already acted faded; unseen ones a "?"), the acting unit's AP as pips, and
-/// End Turn (Space), Leave and the menu (Esc).
+/// Zone and round, the units as portrait chips with a side-colour edge, your own by priority rank (the planning unit
+/// larger, framed and named; those ready faded; unseen ones a "?"), the planning unit's MP, AP as pips and stamina, and
+/// Ready (Space), Leave and the menu (Esc).
 /// </summary>
 public partial class TurnBar : PanelContainer
 {
@@ -57,7 +57,7 @@ public partial class TurnBar : PanelContainer
         row.AddChild(new VSeparator());
         var orderIcon = Icons.Rect(Icons.Get("stat_initiative", 18), 18, Palette.TextMuted);
         orderIcon.MouseFilter = MouseFilterEnum.Stop;
-        orderIcon.TooltipText = "Turn order this round, by initiative: the acting unit is large and named, those that already acted are faded.";
+        orderIcon.TooltipText = "Your units by priority (#1 goes first; enemy ranks stay hidden): the planning unit is large and named, those that are ready are faded.";
         row.AddChild(orderIcon);
         var scroll = new ScrollContainer
         {
@@ -76,9 +76,9 @@ public partial class TurnBar : PanelContainer
         pips.AddChild(new Hud.Help.InfoTip("controls"));
         ap.AddChild(pips);
         ap.MouseFilter = MouseFilterEnum.Pass;
-        ap.TooltipText = "Action points of the unit whose turn it is. Moving and every order cost AP (■ = 1 AP);\nwhat is left is lost at End turn.";
+        ap.TooltipText = "The planning unit's movement points, action points and stamina. A tile costs MP and 1 stamina, an AP 2 stamina;\nall of it comes back in part at the next round. Nothing happens until every unit is ready.";
         row.AddChild(ap);
-        _endTurn = Widgets.IconButton("ui_end_turn", "End turn", "End this unit's turn", () => EndTurnPressed?.Invoke(), Hotkeys.KeyName("end_turn"), "Primary");
+        _endTurn = Widgets.IconButton("ui_end_turn", "Ready", "Commit this unit's plan. The round resolves when every unit on every side is ready; until then you can still change it.", () => EndTurnPressed?.Invoke(), Hotkeys.KeyName("end_turn"), "Primary");
         _endTurn.CustomMinimumSize = new Vector2(120, 38);
         row.AddChild(_endTurn);
         row.AddChild(Widgets.IconButton("ui_leave", "Leave", "Leave the zone now: the run is suspended, the party stays out", () => LeavePressed?.Invoke(), variation: "Flat"));
@@ -111,16 +111,15 @@ public partial class TurnBar : PanelContainer
         RefreshWeather();
         var state = _presenter.State;
         _zone.Text = _presenter.Sim.Data.Zones.TryGetValue(state.ZoneId, out var z) ? z.Name : state.ZoneId;
-        var subRounds = _presenter.Sim.Data.Rules.Turn.SubRounds;
-        _round.Text = subRounds > 1 ? $"ROUND {state.Round} · {state.SubRound}/{subRounds}" : $"ROUND {state.Round}";
+        _round.Text = $"ROUND {state.Round}";
 
         // One chip per unit, kept across rounds and updated in place (side, acting, acted, HP tint); only a unit never
         // seen in the order before gets a new chip.
         var at = 0;
         _inOrder.Clear();
-        for (var i = 0; i < state.TurnOrder.Count; i++)
+        var ranks = TacticsView.Ranks(_presenter.Sim, _presenter.Side);
+        foreach (var u in state.Units.Where(u => u.OnMap && u.PlayerControlled).OrderBy(u => ranks.GetValueOrDefault(u.Id, int.MaxValue)).ThenBy(u => u.Id))
         {
-            if (state.FindUnit(state.TurnOrder[i]) is not { OnMap: true } u) continue;
             if (!_chips.TryGetValue(u.Id, out var chip))
             {
                 chip = new OrderChip(u.Id);
@@ -132,7 +131,8 @@ public partial class TurnBar : PanelContainer
             if (!chip.Visible) chip.Visible = true;
             if (chip.GetIndex() != at) _order.MoveChild(chip, at);
             at++;
-            chip.Set(_presenter, u, current: i == state.TurnIndex && !state.Finished, acted: i < state.TurnIndex, _presenter.CanSee(u));
+            chip.Set(_presenter, u, current: u.Id == _presenter.ActingUnit?.Id, acted: Plans.Of(state, u) is { Committed: true }, _presenter.CanSee(u));
+            chip.SetRank(ranks.TryGetValue(u.Id, out var rank) ? rank : null);
         }
         foreach (var (id, chip) in _chips)
             if (!_inOrder.Contains(id) && chip.Visible) chip.Visible = false;
@@ -141,23 +141,26 @@ public partial class TurnBar : PanelContainer
         _ap.Text = Status();
         var acting = _presenter.ActingUnit;
         _apPips.Visible = acting is not null;
-        if (acting is not null) _apPips.Set(acting.Ap, _presenter.Sim.Profile(acting).MaxAp, acting.Suppressed ? Palette.Warn : Palette.Amber);
+        if (acting is not null) _apPips.Set(acting.Ap, _presenter.Sim.Profile(acting).MaxAp, Stuns.Active(_presenter.Sim.State, acting) ? Palette.Warn : Palette.Amber);
         _endTurn.Disabled = acting is null || busy;
     }
 
     private readonly System.Collections.Generic.Dictionary<int, OrderChip> _chips = new();
     private readonly System.Collections.Generic.HashSet<int> _inOrder = new();
 
-    /// <summary>AP of the acting unit; in multiplayer also whose turn it is and the turn timer.</summary>
+    /// <summary>The planning unit's pools; in multiplayer also who is not ready and the planning timer.</summary>
     private string Status()
     {
         var acting = _presenter.ActingUnit;
         var remote = _presenter.Driver.TurnStatus();
-        // The acting chip names the unit; this is its AP, next to End turn.
+        // The acting chip names the unit; these are its pools, next to Ready.
         if (acting is not null)
-            return $"{acting.Ap}/{_presenter.Sim.Profile(acting).MaxAp} AP LEFT" + (remote is null ? "" : $" · {remote}");
+            {
+            var p = _presenter.Sim.Profile(acting);
+            return $"MP {acting.Mp}/{p.MaxMp} · AP {acting.Ap}/{p.MaxAp} · STA {Economy.Stamina(_presenter.Sim, acting)}/{p.MaxStamina}" + (remote is null ? "" : $" · {remote}");
+        }
         if (_presenter.Done) return "RUN OVER";
-        return remote ?? (_busy ? "ENEMY TURN…" : "WAITING…");
+        return remote ?? (_busy ? "RESOLVING…" : "WAITING…");
     }
 
     /// <summary>Keeps a multiplayer turn timer counting down between server updates.</summary>
@@ -187,6 +190,8 @@ public partial class OrderChip : PanelContainer
 
     public event Action<int>? Clicked;
 
+    private readonly Label _rank = Widgets.Label("", "Small", Palette.Amber);
+
     public OrderChip() : this(0) { }
 
     public OrderChip(int unitId)
@@ -205,11 +210,20 @@ public partial class OrderChip : PanelContainer
         row.AddChild(_unknown);
         _name.AddThemeFontOverride("font", Fonts.BodyBold);
         row.AddChild(_name);
+        _rank.AddThemeFontOverride("font", Fonts.BodyBold);
+        row.AddChild(_rank);
     }
 
     public override void _GuiInput(InputEvent e)
     {
         if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) Clicked?.Invoke(_unitId);
+    }
+
+    /// <summary>The priority rank, shown on your own units only.</summary>
+    public void SetRank(int? rank)
+    {
+        _rank.Text = rank is { } r ? $"#{r}" : "";
+        _rank.Visible = rank is not null;
     }
 
     public void Set(ScavengePresenter presenter, Unit u, bool current, bool acted, bool known)

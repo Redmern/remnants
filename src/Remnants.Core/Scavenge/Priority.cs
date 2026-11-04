@@ -1,0 +1,61 @@
+namespace Remnants.Core.Scavenge;
+
+/// <summary>
+/// Who resolves first: speed + stamina share × weight + the action's weight + traits, highest first. Below
+/// <see cref="PriorityRules.CliffBelow"/> stamina the score falls steeply, so a drained unit acts late. Pure and without
+/// dice: ties are handled by <see cref="RoundResolver"/>.
+/// </summary>
+public static class Priority
+{
+    /// <summary>
+    /// Who goes first between equal scores: a hash of the round and the unit, so no side or unit always wins and a replay or
+    /// a client gets the same answer. Not <see cref="HashCode"/>, which differs from one process to the next.
+    /// </summary>
+    public static ulong TieBreak(int round, int id)
+    {
+        var x = (((ulong)(uint)round << 32) | (uint)id) + 0x9E3779B97F4A7C15UL;
+        x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9UL;
+        x = (x ^ (x >> 27)) * 0x94D049BB133111EBUL;
+        return x ^ (x >> 31);
+    }
+
+    /// <summary>The unit's score before what it is doing: this is what orders the movement phase.</summary>
+    public static double Movement(ScavengeSim sim, Unit unit)
+    {
+        var rules = sim.Data.Rules.Priority;
+        var p = sim.Profile(unit);
+        var share = p.MaxStamina > 0 ? (double)Economy.Stamina(sim, unit) / p.MaxStamina : 0;
+        var cliff = share < rules.CliffBelow ? rules.CliffPenalty * (1 - share / rules.CliffBelow) : 0;
+        return p.Initiative * rules.SpeedPerInitiative + share * rules.StaminaWeight - cliff + unit.PriorityBonus + Adrenaline.Bonus(sim, unit) * sim.Data.Rules.Adrenaline.PriorityPoints;
+    }
+
+    /// <summary>The score of one queued action of the unit.</summary>
+    public static double Action(ScavengeSim sim, Unit unit, PlanStep step) => Movement(sim, unit) + Weight(sim, unit, step);
+
+    private static double Weight(ScavengeSim sim, Unit unit, PlanStep step)
+    {
+        var rules = sim.Data.Rules.Priority;
+        switch (step.Kind)
+        {
+            case PlanStepKind.Recover:
+                return rules.EarlyWeight;
+            case PlanStepKind.Strike when sim.Profile(unit).Action(step.Strike!.ActionId) is { } action:
+                return Blow(rules, action);
+            case PlanStepKind.Card when step.CardId is { } id && sim.Data.Cards.Find(id) is { } card:
+                if (card.Effect.Block > 0) return rules.EarlyWeight;
+                if (card.Effect.PushAll > 0 || card.Effect.Dash > 0) return rules.QuickWeight;
+                if (card.Effect.Attack) return CardAbilities.MeleeBlow(sim, unit) is { } swing ? Blow(rules, swing) : 0;
+                return card.Effect.Push > 0 || card.Effect.Pull > 0 || card.Effect.Step > 0 ? rules.QuickWeight : 0;
+            case PlanStepKind.Push or PlanStepKind.Dash:
+                return rules.QuickWeight;
+            default:
+                return 0;
+        }
+    }
+
+    private static double Blow(PriorityRules rules, ActionProfile action)
+    {
+        if (action.ApCost >= 2 || action.Area > 0) return rules.HeavyWeight;
+        return action.Pattern == Items.AttackPattern.Melee && action.Reach <= 1 && action.MaxDamage <= rules.LightMaxDamage ? rules.QuickWeight : 0;
+    }
+}

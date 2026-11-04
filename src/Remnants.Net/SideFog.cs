@@ -16,7 +16,6 @@ namespace Remnants.Net;
 /// <item>the side's own contacts and motion sensors, reveals of units it sees, and every burning flare (they light up
 ///   for everyone);</item>
 /// <item>loot caches as the side last saw them (a cache looted out of sight still shows until seen again);</item>
-/// <item>the turn order cut to known units, with <see cref="HiddenUnitId"/> standing in when an unseen unit is up (a card
 ///   that hurried or held up a unit shows in it for every side that knows the unit);</item>
 /// <item>card barriers and smoke the side put up, and the tiles of others' it sees (a tile in sight or next to one),
 ///   never whose they are or how long they last; the client lays them over its map;</item>
@@ -99,39 +98,24 @@ public sealed class SideFog(int playerId, string side)
 
     private bool Owns(Unit u) => u.Side == Side || u.PlayerId == PlayerId;
 
+    /// <summary>Slot cards queued on each unit as of the last view: they still count as held to anyone else.</summary>
+    private Dictionary<int, int> _queuedSlots = new();
+
     public ScavengeState View(ScavengeSim sim)
     {
         var state = sim.State;
+        _queuedSlots = state.Plans.ToDictionary(p => p.UnitId, p => p.Steps.Count(s => s.Kind == PlanStepKind.Card && s.FromSlot));
         var units = state.Units.Where(u => Knows(state, u)).Select(u => u.PlayerId == PlayerId ? Copy(u) : Redacted(u)).ToList();
         var known = units.Select(u => u.Id).ToHashSet();
-
-        var order = new List<int>();
-        var index = -1;
-        for (var i = 0; i < state.TurnOrder.Count; i++)
-        {
-            var id = state.TurnOrder[i];
-            if (i == state.TurnIndex) index = order.Count;
-            if (known.Contains(id)) order.Add(id);
-            else if (i == state.TurnIndex) order.Add(HiddenUnitId);
-        }
-        if (index < 0) index = order.Count;
 
         return new ScavengeState
         {
             ZoneId = state.ZoneId,
             Environment = state.Environment.Copy(),
             Round = state.Round,
-            TurnOrder = order,
-            TurnIndex = index,
-            SubRound = state.SubRound,
-            // Readied tile strikes of the units this side knows; whom another's was aimed at, and what it covers out of this
-            // side's vision, stays on the server.
-            Strikes = state.Strikes.Where(x => known.Contains(x.UnitId)).Select(x => new TileStrike
-            {
-                UnitId = x.UnitId, ActionId = x.ActionId, Mode = x.Mode, From = x.From, Direction = x.Direction,
-                Tile = state.FindUnit(x.UnitId)?.Side == Side || Visible.Contains(state.Map.Index(x.Tile)) ? x.Tile : x.From,
-                Tiles = x.Tiles.Where(p => state.FindUnit(x.UnitId)?.Side == Side || Visible.Contains(state.Map.Index(p))).ToList(), TargetId = state.FindUnit(x.UnitId)?.PlayerId == PlayerId ? x.TargetId : null, Suppress = x.Suppress,
-            }).ToList(),
+            // The side's own plans in full; of anyone else it knows, whether they are done planning and, of those in sight, their walks.
+            Plans = state.Plans.Where(p => known.Contains(p.UnitId)).Select(p => state.FindUnit(p.UnitId)?.Side == Side ? ProtocolCopy.Clone(p) : Telegraphed(sim, p)).ToList(),
+            MoveHints = TacticsView.MoveHints(sim, Side),
             Finished = state.Finished,
             Map = new TileMap(),
             // Other teams' alliances are none of this player's business: their parties show as on their own.
@@ -142,7 +126,7 @@ public sealed class SideFog(int playerId, string side)
                 Bestiary = p.PlayerId == PlayerId ? new(p.Bestiary, StringComparer.Ordinal) : new(StringComparer.Ordinal),
             }).ToList(),
             // The player's own deck in full; anyone else's (allies too) only as counts, never which cards.
-            Decks = state.Decks.Select(d => d.PlayerId == PlayerId ? Own(d) : Hidden(d)).ToList(),
+            Decks = state.Decks.Select(d => d.PlayerId == PlayerId ? Own(d) : Hidden(state, d)).ToList(),
             Units = units,
             Caches = _knownCaches.Values.OrderBy(c => c.Id).Select(CopyPile).ToList(),
             SalvageNodes = _knownNodes.Values.OrderBy(n => n.Id)
@@ -243,11 +227,28 @@ public sealed class SideFog(int playerId, string side)
         return copy;
     }
 
-    private static SquadDeck Hidden(SquadDeck d) => new()
+    /// <summary>A rival's plan as a side in sight of it may know it: that it is done, and where it walks. A rival out of sight: only that it is done.</summary>
+    private UnitPlan Telegraphed(ScavengeSim sim, UnitPlan plan)
     {
-        PlayerId = d.PlayerId, Hidden = true, HandCount = d.Hand.Count, DrawCount = d.DrawPile.Count, UsedCount = d.Used.Count,
-        Points = d.Points, Budget = d.Budget, HandSize = d.HandSize, DrawPerRound = d.DrawPerRound,
-    };
+        var state = sim.State;
+        var seen = state.FindUnit(plan.UnitId) is { } unit && Detection.SideSees(sim.Data, state, Side, unit);
+        return new UnitPlan
+        {
+            UnitId = plan.UnitId, Committed = plan.Committed,
+            Steps = seen ? plan.Steps.Where(s => s.Kind == PlanStepKind.Move).Select(s => new PlanStep { Kind = PlanStepKind.Move, To = s.To, Path = new(s.Path) }).ToList() : new(),
+        };
+    }
+
+    /// <summary>Someone else's deck as counts, as they stood before the cards they have queued: those stay secret until they come up.</summary>
+    private static SquadDeck Hidden(ScavengeState state, SquadDeck d)
+    {
+        var queued = state.Plans.SelectMany(p => p.Steps).Where(s => s.Kind == PlanStepKind.Card && s.DeckId == d.PlayerId).ToList();
+        return new SquadDeck
+        {
+            PlayerId = d.PlayerId, Hidden = true, HandCount = d.Hand.Count + queued.Count(s => !s.FromSlot), DrawCount = d.DrawPile.Count, UsedCount = d.Used.Count,
+            Points = d.Points + queued.Sum(s => s.RefundPoints), Budget = d.Budget, HandSize = d.HandSize, DrawPerRound = d.DrawPerRound,
+        };
+    }
 
     /// <summary>A side as this player may know it: their own team's as is, another team's as the owner's own side.</summary>
     private string Shown(string side, int? owner) =>
@@ -261,29 +262,25 @@ public sealed class SideFog(int playerId, string side)
         copy.Hooks = new(StringComparer.Ordinal);
         copy.CyberHooks = new();
         copy.FieldXp = 0;
-        // That it is on overwatch shows; what it watches only to its own side.
-        if (u.Side != Side) copy.Watch = null;
-        copy.Reactions = 0;
         copy.DroneBattery = null;
         copy.ChargesUsed = new(StringComparer.Ordinal);
+        // What a rival has spent gives away what it has planned; its priority is its own to know.
+        if (u.Side != Side)
+        {
+            copy.Ap = 0;
+            copy.Mp = 0;
+            copy.Fatigue = 0;
+            copy.PriorityBonus = 0;
+        }
         // Card buffs on it would give away hit chances and moves the cards behind them buy.
         copy.CardHit = 0;
         copy.Guard = 0;
         copy.CardCover = 0;
         copy.CardMove = 0;
-        copy.OutplayedId = null;
-        copy.OutplayedUntilRound = 0;
-        copy.FreeCounterId = null;
-        // Exposure would tell of a dodge the side may not have seen.
-        copy.ExposedUntilRound = 0;
-        copy.ExposedToSide = null;
-        // Nor whether a card shoved it (the shove may have been out of sight).
-        copy.Displaced = false;
-        // Personal slot cards: how many, never which; nor the last card played on it or a readied counter.
-        copy.HiddenSlots = u.SlotCards.Count;
+        // Personal slot cards: how many, never which; nor the last card played on it.
+        copy.HiddenSlots = u.SlotCards.Count + _queuedSlots.GetValueOrDefault(u.Id);
         copy.SlotCards = new();
         copy.SlotSpent = new();
-        copy.CounterId = null;
         copy.Origin = u.Origin is { } o ? new Survivor { Name = o.Name, Sex = o.Sex, LifeStage = o.LifeStage } : null;
         // A rival's holo-decoy looks like one of their people until it flickers out.
         if (u.Kind == UnitKind.Decoy && u.Side != Side)

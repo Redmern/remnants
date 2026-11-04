@@ -209,10 +209,9 @@ public partial class WorldTags : Control
             lines.Add(new(effects, preview.NetworkEffects ? Palette.Network : Palette.Amber, "stat_quality", 12, Fade: preview.Unaffordable ? 0.6f : 1f));
 
         var tags = new List<Line>();
-        if (unit.Stance == Stance.Overwatch)
-            tags.Add(new(mine ? "OVERWATCH" : "ON WATCH", mine ? Palette.Amber : Palette.Danger, "stance_overwatch", 12));
-        else if (unit.Stance == Stance.Brace && mine) tags.Add(new("BRACED", Palette.Text, "stance_brace", 12));
         if (unit.Lookout && mine) tags.Add(new("LOOKOUT", Palette.Text, "stance_scan", 12));
+        if (unit.IsActive && Stuns.Active(_presenter.State, unit)) tags.Add(new("STUNNED", Palette.Warn, "stat_warning", 12));
+        if (unit.IsActive && unit.Adrenaline >= 1) tags.Add(new($"ADR {unit.Adrenaline:0}", Palette.Amber, "stat_initiative", 12));
         if (!mine && _presenter.IsRevealed(unit)) tags.Add(new("REVEALED", Palette.Danger, "stat_sight", 12));
         if (unit.EmpUntilRound >= _presenter.State.Round && unit.IsActive) tags.Add(new("EMP · OFF RELAY", Palette.Network, "item_emp", 12));
         if (unit.Kind == UnitKind.Decoy && mine)

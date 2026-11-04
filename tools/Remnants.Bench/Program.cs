@@ -104,7 +104,7 @@ if (Run("scavenge"))
         PartyBot.Timed = (command, ms) =>
         {
             all.Add(ms);
-            if (command is EndTurn or SetStance or CommitOverwatch) ends.Add(ms);
+            if (command is EndTurn) ends.Add(ms);
             else if (command is PlayCard or DiscardDeadCard) cards.Add(ms);
         };
         ZoneTrial.Run(data, scavenge, zone, 2, 3, kit: kit, players: players); // warm-up

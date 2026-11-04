@@ -182,17 +182,12 @@ public class LinkedAiTests
         ]);
         var chance = sim.Profile(linked).Actions.Where(a => a.Pattern == Items.AttackPattern.Ranged)
             .Max(a => Combat.HitChance(sim.Data, sim.State.Map, linked.Pos, a, u.Pos, sim.Profile(u)));
-        Assert.True(chance < sim.Data.Rules.Network.SuppressBelowHitChance, $"hit chance {chance}");
+        Assert.True(chance < sim.Data.Rules.Network.CloseInBelowHitChance, $"hit chance {chance}");
 
-        var maxAp = sim.Profile(u).MaxAp;
-        // Boxed in, it fires from where it stands: the suppressing fire is telegraphed and comes down when the sub-round ends.
+        // Boxed in, it takes the poor shot from where it stands: it can get no closer.
         ScavengeAi.TakeTurn(sim, linked);
-        Assert.True(Assert.Single(sim.State.Strikes, s => s.UnitId == linked.Id).Suppress);
-        Assert.False(Did(sim, linked, ScavengeEventType.Suppressed));
-        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
-        Assert.True(Did(sim, linked, ScavengeEventType.Suppressed), string.Join("\n", sim.State.Events.Select(e => e.Message)));
-        Assert.Equal(maxAp - sim.Data.Rules.Network.SuppressApPenalty, u.Ap);
-        Assert.False(u.Suppressed);
+        Assert.Contains(Strikes(sim), s => s.UnitId == linked.Id);
+        Assert.DoesNotContain(sim.State.Events, e => e.Type == ScavengeEventType.Stunned);
     }
 
     [Fact]

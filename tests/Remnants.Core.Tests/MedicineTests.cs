@@ -381,10 +381,10 @@ public class FieldMedicineTests
         var a = SurvivorUnit(pos: new(0, 0), pack: ["calm_injector"]);
         var sim = Arena(6, 6, [a]);
         a.Hp = 30;
-        a.Suppressed = true;
+        a.StunnedRound = sim.State.Round + 1;
         Assert.True(sim.Execute(new UseItem(1, a.Id, "calm_injector")).Ok);
         Assert.Equal(70, a.Hp);
-        Assert.False(a.Suppressed);
+        Assert.False(Stuns.Active(sim.State, a));
         Assert.True(a.CalmUntilRound >= sim.State.Round);
         Assert.Equal(Body.MaxHumanity - 4, a.Body.Humanity, 9);
     }
@@ -400,6 +400,7 @@ public class FieldMedicineTests
         Treatment.Fracture(med, hurt.Body, BodyPart.LeftLeg);
         var legBefore = hurt.Body.PartEfficiency(BodyPart.LeftLeg);
 
+        medic.Ap = 9;
         Assert.True(sim.Execute(new UseItem(1, medic.Id, "splint", hurt.Id)).Ok);
         Assert.True(hurt.Body.PartEfficiency(BodyPart.LeftLeg) > legBefore);
         Assert.True(sim.Execute(new UseItem(1, medic.Id, "antiseptic", hurt.Id)).Ok);
@@ -423,7 +424,7 @@ public class FieldMedicineTests
         Assert.Equal(full - 1, sim.Profile(a).MaxAp);
         Treatment.Afflict(a.Body, "husk_sickness", 0.6);
         Assert.Equal(full - 1, sim.Profile(a).MaxAp); // capped at field.maxApPenalty
-        Assert.True(sim.Profile(a).MaxAp >= 2);
+        Assert.True(sim.Profile(a).MaxAp >= 1);
     }
 
     [Fact]

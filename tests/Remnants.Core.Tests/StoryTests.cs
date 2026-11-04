@@ -473,10 +473,10 @@ public class ObjectiveTests
                 Actions = [new TriggerAction { Kind = TriggerActionKind.Say, Speaker = "Lantern", Text = "Close." }] }]);
         var me = sim.Mine();
         Assert.Equal(ObjectiveStatus.Active, sim.Status("go"));
-        Assert.True(sim.Execute(new Move(1, me.Id, new Pos(3, 3))).Ok);
+        Assert.True(ScavengeTestData.Now(sim, new Move(1, me.Id, new Pos(3, 3))).Ok);
         Assert.Single(sim.State.Mission!.Chatter);
         Assert.Equal(ObjectiveStatus.Active, sim.Status("go"));
-        Assert.True(sim.Execute(new Move(1, me.Id, new Pos(4, 3))).Ok);
+        Assert.True(ScavengeTestData.Now(sim, new Move(1, me.Id, new Pos(4, 3))).Ok);
         Assert.Equal(ObjectiveStatus.Done, sim.Status("go"));
         Assert.Single(sim.State.Mission.Chatter);
     }
@@ -704,7 +704,7 @@ public class ObjectiveTests
                 enemies: [new MapEnemyDef("husk", "h", "patrol", Patrol: ["w", "e"])]);
             var husk = sim.State.Units.Single(u => u.Tag == "patrol");
             var start = husk.Pos;
-            sim.RunTo(3);
+            sim.RunTo(2);
             Assert.True(husk.Pos.X < start.X);
             return ScavengeSave.Save(sim.State);
         }

@@ -5,15 +5,18 @@ namespace Remnants.Core.Scavenge;
 /// <summary>How a tile is threatened: by a seen enemy's readied strike, or only within reach of a seen enemy now.</summary>
 public enum ThreatKind { Reach, Strike }
 
-/// <summary>
-/// A seen enemy's readied strike as a side may know it: the tile it is aimed at and the tiles it covers (with those a splash
-/// would reach), never the card behind it. <see cref="AimedAtUs"/>: the blow lands on one of the side's units now.
-/// </summary>
-public sealed record Telegraph(int UnitId, string Name, Pos From, Pos? AttackTile, string? ActionName, bool Suppress,
-    List<Pos> Threatened, bool AimedAtUs);
+/// <summary>A seen hostile's planned walk: where it stands, where it is going, and every tile on the way.</summary>
+public sealed record Telegraph(int UnitId, string Name, Pos From, Pos To, List<Pos> Path);
 
-/// <summary>A unit of the side's on overwatch: where it stands and the tiles it watches.</summary>
-public sealed record WatchView(int UnitId, string Name, Pos From, List<Pos> Tiles);
+/// <summary>Something moves in the fog around here: a whole cell of the map, not the tile (<see cref="FogRules.MoveHintCell"/>).</summary>
+public sealed record MoveHint(Pos Center, int Radius);
+
+
+/// <summary>A unit's plan as its own side previews it: the tiles walked, the tiles its actions cover, the allies on those, where it ends.</summary>
+public sealed record PlanPreviewView(List<Pos> Path, List<Pos> ActionTiles, List<Pos> AllyTiles, Pos End);
+
+/// <summary>Where an aimed card's pattern falls, and which of those tiles hold an ally (the warning colour).</summary>
+public sealed record PatternAimView(List<Pos> Tiles, List<Pos> AllyTiles);
 
 /// <summary>An attack as the preview shows it: in reach from the tile, the hit chance, and its terms.</summary>
 public sealed record HitPreviewInfo(bool InReach, double Chance, Breakdown? Breakdown);
@@ -22,7 +25,7 @@ public sealed record HitPreviewInfo(bool InReach, double Chance, Breakdown? Brea
 /// A card in the hand strip (or in a unit's slot, <see cref="SlotOf"/>): its numbers, the units it could be played on now
 /// (<see cref="PlayableBy"/>), and whether it is a dead hard card nobody in the party can use.
 /// </summary>
-public sealed record CardView(string Id, string Name, string Text, CardCategory Category, int Cost, int ApCost, int BoostAp, bool Reaction,
+public sealed record CardView(string Id, string Name, string Text, CardCategory Category, int Cost, int ApCost, int BoostAp,
     bool Consumable, bool ArmLock, string Requirement, CardKind Kind, int? SlotOf, List<int> PlayableBy, bool Dead);
 
 /// <summary>The hand strip: the round's card points, the hand and slot cards, and how many cards are in the draw and used piles.</summary>
@@ -44,36 +47,132 @@ public sealed record PickerRow(int UnitId, string Name, bool Ok, string Reason, 
 /// </summary>
 public static class TacticsView
 {
-    /// <summary>Readied strikes of hostiles the side sees now, as telegraphs, showing only the tiles the side can see (none: no telegraph).</summary>
-    public static List<Telegraph> Telegraphs(ScavengeSim sim, string side)
+    private static IEnumerable<(Unit Unit, List<PlanStep> Moves)> HostileMoves(ScavengeSim sim, string side, bool seen)
     {
         var state = sim.State;
-        var ours = state.Units.Where(u => u.Side == side && u.IsActive).Select(u => u.Pos).ToHashSet();
-        var visible = Visibility.SideVisible(sim.Data, state, side);
-        var list = new List<Telegraph>();
-        foreach (var strike in state.Strikes)
-        {
-            if (state.FindUnit(strike.UnitId) is not { IsActive: true } u || u.Side == side || u.Side == Unit.NeutralSide
-                || !Detection.SideSees(sim.Data, state, side, u)) continue;
-            var action = sim.Profile(u).Action(strike.ActionId);
-            var threatened = new List<Pos>(strike.Tiles);
-            // In another player's view a strike aimed into the fog has its aim tile hidden: no splash to show around it.
-            var area = strike.Tiles.Contains(strike.Tile) ? action?.Area ?? 0 : 0;
-            for (var dy = -area; dy <= area; dy++)
-                for (var dx = -area; dx <= area; dx++)
-                    if (new Pos(strike.Tile.X + dx, strike.Tile.Y + dy) is var p && state.Map.InBounds(p) && !threatened.Contains(p)) threatened.Add(p);
-            threatened.RemoveAll(p => !visible.Contains(state.Map.Index(p)));
-            if (threatened.Count == 0) continue;
-            list.Add(new Telegraph(u.Id, u.Name, u.Pos, threatened.Contains(strike.Tile) ? strike.Tile : null, action?.Name, strike.Suppress, threatened,
-                threatened.Any(ours.Contains)));
-        }
-        return list;
+        foreach (var plan in state.Plans.OrderBy(p => p.UnitId))
+            if (state.FindUnit(plan.UnitId) is { IsActive: true } u && u.Side != side && u.Side != Unit.NeutralSide
+                && plan.Steps.Where(s => s.Kind == PlanStepKind.Move).ToList() is { Count: > 0 } moves
+                && Detection.SideSees(sim.Data, state, side, u) == seen)
+                yield return (u, moves);
     }
 
-    /// <summary>The side's own units on overwatch and what they watch.</summary>
-    public static List<WatchView> Watches(ScavengeSim sim, string side) =>
-        sim.State.Units.Where(u => u.IsActive && u.Side == side && u.Watch is not null).OrderBy(u => u.Id)
-            .Select(u => new WatchView(u.Id, u.Name, u.Pos, Overwatches.Watched(sim, u))).ToList();
+    /// <summary>What a side sees of hostile plans: only the walks of those it sees. Their actions stay hidden until they come up.</summary>
+    public static List<Telegraph> Telegraphs(ScavengeSim sim, string side) =>
+        HostileMoves(sim, side, seen: true).Select(m => new Telegraph(m.Unit.Id, m.Unit.Name, m.Unit.Pos, m.Moves[^1].To, m.Moves.SelectMany(s => s.Path).ToList())).ToList();
+
+    /// <summary>
+    /// What a side senses of walks it cannot see: within <see cref="FogRules.MoveHintRange"/> of one of its people, the map cell
+    /// a walk ends in. Works from the sim, or from what the server sent a client (<see cref="ScavengeState.MoveHints"/>).
+    /// </summary>
+    public static List<MoveHint> MoveHints(ScavengeSim sim, string side)
+    {
+        var state = sim.State;
+        var rules = sim.Data.Rules.Fog;
+        var ours = state.Units.Where(u => u.Side == side && u.IsActive && u.OnMap).Select(u => u.Pos).ToList();
+        var cell = Math.Max(1, rules.MoveHintCell);
+        var hints = HostileMoves(sim, side, seen: false)
+            .Select(m => m.Moves[^1].To)
+            .Where(to => ours.Any(p => p.Chebyshev(to) <= rules.MoveHintRange))
+            .Select(to => new MoveHint(new Pos(to.X / cell * cell + cell / 2, to.Y / cell * cell + cell / 2), cell / 2));
+        return hints.Concat(state.MoveHints).Distinct().OrderBy(h => h.Center.Y).ThenBy(h => h.Center.X).ToList();
+    }
+
+    /// <summary>The aim of a pattern card from where the unit's plan ends: <paramref name="tile"/> for one aimed at a tile, turned to <paramref name="direction"/>.</summary>
+    public static PatternAimView PatternAim(ScavengeSim sim, Unit unit, string cardId, Pos? tile, Pos direction)
+    {
+        var tiles = sim.Data.Cards.Find(cardId)?.Pattern is { } pattern
+            ? Patterns.Tiles(sim.State.Map, pattern, tile ?? Plans.Anchor(sim.State, unit), direction) : [];
+        return new PatternAimView(tiles, AllyTiles(sim, unit, tiles));
+    }
+
+    /// <summary>
+    /// The unit a player is giving orders to: the one they went to, if it is theirs and can act (a plan stays open until the
+    /// round resolves), else their first without a committed plan. Other players' units never stand in the way.
+    /// </summary>
+    public static Unit? PlanningUnit(ScavengeState state, int playerId, int? focus = null)
+    {
+        if (state.Finished) return null;
+        bool Mine(Unit u) => u.IsActive && u.PlayerControlled && u.PlayerId == playerId;
+        if (focus is { } id && state.FindUnit(id) is { } chosen && Mine(chosen)) return chosen;
+        return state.Units.Find(u => Mine(u) && Plans.Of(state, u) is not { Committed: true });
+    }
+
+    /// <summary>The eight ways, clockwise: a pattern turns free of cost.</summary>
+    private static readonly Pos[] Compass = [new(0, -1), new(1, -1), new(1, 0), new(1, 1), new(0, 1), new(-1, 1), new(-1, 0), new(-1, -1)];
+
+    /// <summary>Which way an aim at the tile points from where the unit's plan ends, turned on by <paramref name="turn"/> eighths.</summary>
+    public static Pos AimDirection(ScavengeSim sim, Unit unit, Pos tile, int turn = 0)
+    {
+        var anchor = Plans.Anchor(sim.State, unit);
+        var toward = tile != anchor ? tile - anchor : unit.Facing ?? new Pos(1, 0);
+        var at = Array.IndexOf(Compass, new Pos(Math.Sign(toward.X), Math.Sign(toward.Y)));
+        return Compass[(((Math.Max(at, 0) + turn) % 8) + 8) % 8];
+    }
+
+    /// <summary>A side's own units by priority, 1 first. Rivals' ranks are never shown: they are simply not here.</summary>
+    public static Dictionary<int, int> Ranks(ScavengeSim sim, string side) =>
+        sim.State.Units.Where(u => u.Side == side && u.IsActive && u.OnMap && Plans.Acts(sim, u))
+            .OrderByDescending(u => Priority.Movement(sim, u)).ThenBy(u => Priority.TieBreak(sim.State.Round, u.Id))
+            .Select((u, i) => (u.Id, Rank: i + 1)).ToDictionary(x => x.Id, x => x.Rank);
+
+    /// <summary>What the unit has queued, for its own side's eyes.</summary>
+    public static PlanPreviewView PlanPreview(ScavengeSim sim, Unit unit)
+    {
+        var (path, tiles) = (new List<Pos>(), new List<Pos>());
+        var map = sim.State.Map;
+        foreach (var step in Plans.Of(sim.State, unit)?.Steps ?? [])
+            switch (step.Kind)
+            {
+                case PlanStepKind.Move:
+                    path.AddRange(step.Path);
+                    break;
+                case PlanStepKind.Strike:
+                    tiles.AddRange(step.Strike!.Tiles);
+                    break;
+                case PlanStepKind.Push:
+                    tiles.AddRange(Patterns.Tiles(map, sim.Data.Rules.Combat.Push.Pattern, step.From, step.Direction));
+                    break;
+                case PlanStepKind.Dash:
+                    path.AddRange(Line(step.From, step.Direction, step.Landing!.Value));
+                    break;
+                case PlanStepKind.Card when step.CardId is { } id && sim.Data.Cards.Find(id) is { } card:
+                    if (step.Landing is { } end)
+                    {
+                        path.AddRange(Line(step.From, step.Direction, end));
+                        if (card.Pattern is { } after) tiles.AddRange(Patterns.Tiles(map, after, end, step.Direction));
+                    }
+                    else if (card.Pattern is { } pattern) tiles.AddRange(Patterns.Tiles(map, pattern, step.Tile ?? step.From, step.Direction));
+                    else if (step.Tile is { } tile) tiles.Add(tile);
+                    break;
+            }
+        var distinct = tiles.Distinct().ToList();
+        return new PlanPreviewView(path, distinct, AllyTiles(sim, unit, distinct), Plans.Anchor(sim.State, unit));
+    }
+
+    private static IEnumerable<Pos> Line(Pos from, Pos direction, Pos end)
+    {
+        for (var at = from; at != end;)
+            yield return at += direction;
+    }
+
+    /// <summary>The tiles a dash that way runs over from where the unit's plan ends, its whole reach, going by the terrain alone.</summary>
+    public static List<Pos> DashAim(ScavengeSim sim, Unit unit, Pos direction)
+    {
+        var dir = new Pos(Math.Sign(direction.X), Math.Sign(direction.Y));
+        return dir == default ? [] : Line(Plans.Anchor(sim.State, unit), dir, Pushes.PlannedLanding(sim, unit, dir, sim.Data.Rules.Combat.Dash.Tiles)).ToList();
+    }
+
+    /// <summary>The aim of a push from where the unit's plan ends.</summary>
+    public static PatternAimView PushAim(ScavengeSim sim, Unit unit, Pos direction)
+    {
+        var tiles = Pushes.Tiles(sim, unit, direction);
+        return new PatternAimView(tiles, AllyTiles(sim, unit, tiles));
+    }
+
+    /// <summary>The <paramref name="tiles"/> holding one of the unit's side or an ally: a blow through them strikes them too. Only units it knows of.</summary>
+    public static List<Pos> AllyTiles(ScavengeSim sim, Unit unit, IEnumerable<Pos> tiles) =>
+        tiles.Where(p => sim.State.UnitAt(p) is { } u && u.Id != unit.Id && !unit.HostileTo(u) && u.Side != Unit.NeutralSide).ToList();
 
     /// <summary>
     /// The threat overlay: every tile a seen enemy's telegraphed blow will strike (<see cref="ThreatKind.Strike"/>), and every
@@ -86,9 +185,6 @@ public static class TacticsView
         foreach (var u in state.Units.Where(u => u.IsActive && u.Side != side && u.Side != Unit.NeutralSide && Detection.SideSees(sim.Data, state, side, u)))
             foreach (var p in Combat.ThreatZone(sim, u))
                 overlay.TryAdd(p, ThreatKind.Reach);
-        foreach (var t in Telegraphs(sim, side))
-            foreach (var p in t.Threatened)
-                overlay[p] = ThreatKind.Strike;
         return overlay;
     }
 
@@ -116,22 +212,14 @@ public static class TacticsView
         var map = sim.State.Map;
         var actions = sim.Profile(unit).Actions;
         var result = new Dictionary<Pos, double>();
-        foreach (var (tile, cost) in sim.Reachable(unit).Append(new KeyValuePair<Pos, int>(unit.Pos, 0)))
+        foreach (var (tile, cost) in sim.Reachable(unit).Append(new KeyValuePair<Pos, int>(Plans.Anchor(sim.State, unit), 0)))
         {
-            var best = actions.Where(a => cost + Combat.ApCost(a, tile, target.Pos) <= unit.Ap && Drones.CanStrike(a, target)
+            var best = actions.Where(a => cost <= unit.Mp && Combat.ApCost(a, tile, target.Pos) <= unit.Ap && Drones.CanStrike(a, target)
                                           && Combat.CheckReach(sim.Data, map, tile, a, target.Pos) == ScavengeError.None)
                 .Select(a => Combat.ChanceToHit(sim, unit, a, target, tile)).DefaultIfEmpty(-1).Max();
             if (best >= 0) result[tile] = Bestiary.ShownChance(sim.Data.Rules.Bestiary, best, tier);
         }
         return result;
-    }
-
-    /// <summary>Seen hostiles with a readied strike: what a reaction card can answer.</summary>
-    public static List<Unit> ReactionTargets(ScavengeSim sim, int playerId)
-    {
-        var side = sim.State.FindParty(playerId)?.Side ?? Unit.PlayerSide(playerId);
-        return sim.State.Units.Where(u => u.IsActive && TileStrikes.Readied(sim.State, u) && u.Side != side && u.Side != Unit.NeutralSide
-                                          && Detection.SideSees(sim.Data, sim.State, side, u)).OrderBy(u => u.Id).ToList();
     }
 
     /// <summary>The player's hand strip (null without a deck).</summary>
@@ -142,15 +230,15 @@ public static class TacticsView
         var squad = Squad(sim, playerId);
         CardView View(CardDef c, int? slotOf)
         {
-            // An ability (or a reaction aimed at a unit) is playable by a unit when some target works for it.
-            var aimed = c.Effect.IsAbility || c.Reaction;
+            // An ability is playable by a unit when some target works for it.
+            var aimed = c.Effect.IsAbility;
             var by = squad.Where(u => (slotOf is null || u.Id == slotOf)
                                       && (aimed
                                           ? Targets(sim, playerId, u.Id, c.Id, fromSlot: slotOf is not null).Any(o => o.Ok)
                                           : CardPlay.Check(sim, u, new PlayCard(playerId, u.Id, c.Id, FromSlot: slotOf is not null)).Ok))
                 .Select(u => u.Id).ToList();
             var dead = slotOf is null && c.Requirement.Kind == CardKind.Hard && !squad.Any(c.Requirement.Met);
-            return new CardView(c.Id, c.Name, c.Text, c.Category, c.Cost, c.ApCost, c.BoostAp, c.Reaction, c.Consumable, c.ArmLock,
+            return new CardView(c.Id, c.Name, c.Text, c.Category, c.Cost, c.ApCost, c.BoostAp, c.Consumable, c.ArmLock,
                 c.Requirement.Describe(), c.Requirement.Kind, slotOf, by, dead);
         }
         var cards = deck.Hand.Select(sim.Data.Cards.Find).OfType<CardDef>().Select(c => View(c, null)).ToList();
@@ -187,20 +275,27 @@ public static class TacticsView
         if (data.Cards.Find(cardId) is not { } card || state.FindUnit(unitId) is not { } unit) return [];
         var side = unit.Side;
         var options = new List<CardTargetOption>();
-        CardTargetOption Option(int? target, Pos tile)
+        var from = Plans.Anchor(state, unit);
+        CardTargetOption Option(int? target, Pos tile, Pos? direction = null)
         {
-            var check = CardPlay.Check(sim, unit, new PlayCard(playerId, unit.Id, card.Id, target, boost, fromSlot, card.Target == CardTarget.Tile ? tile : null));
+            var check = CardPlay.Check(sim, unit, new PlayCard(playerId, unit.Id, card.Id, target, boost, fromSlot, card.Target == CardTarget.Tile ? tile : null, direction));
             if (!check.Ok) return new(tile, target, false, check.Result.Message, null, [], "");
-            var (landing, affected, outcome) = Outcome(sim, unit, card, check.Effect!, check.Ability, check.Planner);
+            var (landing, affected, outcome) = Plans.AtAnchor(state, unit, () => Outcome(sim, unit, card, check.Effect!, check.Ability));
             return new(tile, target, true, "", landing, affected, outcome);
         }
         if (card.Target == CardTarget.Tile)
         {
             var visible = card.Range > 0 ? null : Visibility.SideVisible(data, state, side);
-            foreach (var p in state.Map.AllPositions.Where(p => card.Range > 0 ? p.Chebyshev(unit.Pos) <= card.Range : visible!.Contains(state.Map.Index(p))))
+            foreach (var p in state.Map.AllPositions.Where(p => card.Range > 0 ? p.Chebyshev(from) <= card.Range : visible!.Contains(state.Map.Index(p))))
                 options.Add(Option(null, p));
         }
-        else if (card.Target != CardTarget.Self || card.Reaction)
+        // A pattern played from the unit: one option per way it can turn, on the tile that way.
+        else if (card.Target == CardTarget.Self && card.Pattern is not null)
+        {
+            foreach (var dir in Pos.Neighbours8.Where(d => state.Map.InBounds(from + d)))
+                options.Add(Option(null, from + dir, dir));
+        }
+        else if (card.Target != CardTarget.Self)
         {
             foreach (var u in state.Units.Where(u => u.IsActive && u.OnMap && u.CarriedById is null
                                                      && (u.Side == side || Detection.SideSees(data, state, side, u))
@@ -218,10 +313,10 @@ public static class TacticsView
 
     /// <summary>What a checked play does, for the preview: the landing tile, the units touched, and the outcome in words.</summary>
     private static (Pos? Landing, List<int> Affected, string Outcome) Outcome(ScavengeSim sim, Unit unit, CardDef card, CardEffect e,
-        CardAbilities.Outcome? ability, Unit? planner)
+        CardAbilities.Outcome? ability)
     {
         var state = sim.State;
-        var target = ability?.Target ?? planner;
+        var target = ability?.Target;
         var affected = new List<int>();
         var said = new List<string>();
         Pos? landing = null;
@@ -240,15 +335,9 @@ public static class TacticsView
             if (e.Swap) affected.Add(unit.Id);
             said.Add($"{target.Name} lands on {land}");
             if (Blows(sim, unit.Side).FirstOrDefault(b => b.Tiles.Contains(land) && b.UnitId != target.Id
-                && state.FindUnit(b.UnitId) is { } s && (s.PlayerControlled || s.HostileTo(target))) is { Name: { } by } coming)
-                // A hostile's blow hits it anyway; a player's own side's only while the shove holds (until its next turn).
-                said.Add(state.FindUnit(coming.UnitId) is { } striker && striker.HostileTo(target)
-                    ? $"in {by}'s blow: it will be hit"
-                    : $"in {by}'s blow: hit unless it acts first");
+                && state.FindUnit(b.UnitId) is { } s && s.HostileTo(target)) is { Name: { } by } coming)
+                said.Add($"in {by}'s blow: it will be hit");
         }
-        if (target is not null && TileStrikes.Readied(state, target)
-            && (e.Disrupt || landing is not null && target.Id != unit.Id && e.Step == 0))
-            said.Add(target.HostileTo(unit) ? "breaks its strike, exposed" : $"{target.Name}'s strike falls through");
         if (e.Spin && target is not null) said.Add($"{target.Name} turns its back to you");
         if (ability?.Strike is { } blow && target is not null)
         {
@@ -256,8 +345,8 @@ public static class TacticsView
             said.Add($"{blow.Name}: {chance * 100:0}% to hit, {blow.MinDamage:0}-{blow.MaxDamage:0} damage, {Combat.ArcOf(target, unit.Pos).ToString().ToLowerInvariant()} arc");
         }
         if (e.GrantAp > 0 && target is not null) said.Add($"{target.Name} +{e.GrantAp} AP");
-        if (e.AdvanceInitiative && target is not null) said.Add($"{target.Name} goes next");
-        if (e.DelayInitiative && target is not null) said.Add($"{target.Name} goes last this round");
+        if (e.AdvanceInitiative && target is not null) said.Add($"{target.Name} comes up sooner");
+        if (e.DelayInitiative && target is not null) said.Add($"{target.Name} comes up later");
         if (e.PlaceBarrier > 0 && ability?.Tile is { } wall) said.Add($"cover on {wall} for {e.PlaceBarrier} rounds");
         if (e.Smoke > 0 && ability?.Tile is { } center)
         {
@@ -271,12 +360,12 @@ public static class TacticsView
         return (landing, affected.Distinct().ToList(), string.Join("; ", said));
     }
 
-    /// <summary>Blows the side knows are coming: seen enemies' telegraphs and its own side's readied strikes.</summary>
+    /// <summary>Blows the side knows are coming: its own side's readied strikes.</summary>
     private static IEnumerable<(int UnitId, string Name, List<Pos> Tiles)> Blows(ScavengeSim sim, string side)
     {
-        foreach (var t in Telegraphs(sim, side)) yield return (t.UnitId, t.Name, t.Threatened);
-        foreach (var s in sim.State.Strikes)
-            if (sim.State.FindUnit(s.UnitId) is { IsActive: true } u && u.Side == side) yield return (u.Id, u.Name, s.Tiles);
+        foreach (var plan in sim.State.Plans)
+            if (sim.State.FindUnit(plan.UnitId) is { IsActive: true } u && u.Side == side)
+                foreach (var s in plan.Steps.Where(s => s.Strike is not null)) yield return (u.Id, u.Name, s.Strike!.Tiles);
     }
 
     /// <summary>A card effect in words: "+1 move, +10% to hit".</summary>
@@ -289,10 +378,13 @@ public static class TacticsView
         if (e.Cover > 0) parts.Add($"+{e.Cover:P0} cover");
         if (e.Mend > 0) parts.Add($"mends {e.Mend:P0}");
         if (e.Draw > 0) parts.Add($"draw {e.Draw}");
-        if (e.Counter) parts.Add("strikes first when the blow comes");
         if (e.Push > 0) parts.Add($"push {e.Push}");
         if (e.Pull > 0) parts.Add($"pull {e.Pull}");
         if (e.Swap) parts.Add("swap places");
+        if (e.Dash > 0) parts.Add($"dashes {e.Dash}");
+        if (e.PushAll > 0) parts.Add($"pushes the pattern {e.PushAll}");
+        if (e.Attack) parts.Add("swings through the pattern");
+        if (e.Block > 0) parts.Add($"blocks {e.Block:P0} on the pattern");
         if (e.Step > 0) parts.Add($"step {e.Step}");
         if (e.Spin) parts.Add("spin round");
         if (e.GrantAp > 0) parts.Add($"+{e.GrantAp} AP");

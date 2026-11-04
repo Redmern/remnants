@@ -45,10 +45,9 @@ public static class TechDemo
                 husk.Ai.Mode = AiMode.Hunting;
                 husk.Ai.LastKnown = acting.Pos;
                 state.Units.Add(husk);
-                state.TurnOrder.Add(gun.Id);
-                state.TurnOrder.Add(husk.Id);
                 gun.Ap = sim.Profile(gun).MaxAp;
                 husk.Ap = sim.Profile(husk).MaxAp;
+                husk.Mp = sim.Profile(husk).MaxMp;
                 break;
             case "drone":
                 acting.Pack.Add("scout_drone");

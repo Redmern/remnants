@@ -29,7 +29,7 @@ public class ProtocolTests
         [
             new Move(1, 2, new Pos(3, 4)), new AttackTile(1, 2, new Pos(5, 5), "pistol_shot"), new UseItem(1, 2, "med_kit", 5), new UseItem(1, 2, "bandage"),
             new PickUp(1, 2, 3, "scrap"), new Recruit(1, 2, 7), new EndTurn(1, 2), new Extract(1, 2),
-            new UseItem(1, 2, "flare", At: new Pos(6, 1)), new SetStance(1, 2, Stance.Brace), new CommitOverwatch(1, 2, new Pos(4, 4)), new CommitOverwatch(1, 2, Arc: new Pos(1, 0)), new Lookout(1, 2),
+            new UseItem(1, 2, "flare", At: new Pos(6, 1)), new Lookout(1, 2), new UndoPlan(1, 2), new UndoPlan(1, 2, All: true),
             new ProposeAlliance(1, 2, 3), new RespondAlliance(1, 2, 3, true), new BreakAlliance(1, 2),
             new PingTile(1, 2, new Pos(1, 1), PingKind.Loot), new GiveItem(1, 2, 4, "scrap"), new Carry(1, 2, 4), new PutDown(1, 2, new Pos(2, 2)),
             new Hack(1, 2, 7), new Hack(1, 2, TargetId: 5), new DeployDrone(1, 2, new Pos(3, 3)), new FlyDrone(1, 2, new Pos(6, 6)),
@@ -62,7 +62,7 @@ public class ProtocolTests
         var json = ProtocolJson.Serialize(new Command(5, strike));
         Assert.Contains("\"kind\":\"attackTile\"", json);
         Assert.Equal(strike, Assert.IsType<Command>(ProtocolJson.Deserialize(json)).Intent);
-        var end = new EndTurn(1, 2, WholeTurn: true);
+        var end = new EndTurn(1, 2);
         Assert.Equal(end, Assert.IsType<Command>(ProtocolJson.Deserialize(ProtocolJson.Serialize(new Command(6, end)))).Intent);
         Assert.Equal(18, Protocol.TileAttacksVersion);
     }
@@ -74,7 +74,8 @@ public class ProtocolTests
         Assert.ThrowsAny<System.Text.Json.JsonException>(() => ProtocolJson.Deserialize(json.Replace("\"attackTile\"", "\"attack\"")));
         Assert.Null(typeof(IScavengeCommand).Assembly.GetType("Remnants.Core.Scavenge.Attack"));
         Assert.Equal(19, Protocol.TileAttacksOnlyVersion);
-        Assert.Equal(Protocol.TelegraphedStrikesVersion, Protocol.Version);
+        Assert.Equal(21, Protocol.SimultaneousVersion);
+        Assert.Equal(Protocol.SimultaneousVersion, Protocol.Version);
     }
 
     [Fact]
@@ -84,6 +85,7 @@ public class ProtocolTests
                  {
                      (new PlayCard(1, 2, "dash"), "playCard"), (new PlayCard(1, 2, "counterstrike", 9, Boost: true, FromSlot: true), "playCard"),
                      (new PlayCard(1, 2, "smoke_bomb", Tile: new Pos(4, 5)), "playCard"), (new DiscardDeadCard(1, 2, "sprint"), "discardDeadCard"),
+                     (new Push(1, 2, new Pos(1, 0)), "push"), (new Dash(1, 2, new Pos(0, -1), 3), "dash"),
                  })
         {
             var json = ProtocolJson.Serialize(new Command(3, command));

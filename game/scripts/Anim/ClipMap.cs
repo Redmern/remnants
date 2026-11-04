@@ -61,12 +61,10 @@ public static class ClipMap
 
     public static string Work(string? jobId) => jobId is not null && Jobs.TryGetValue(jobId, out var clip) ? clip : "work_craft";
 
-    /// <summary>The loop a standing unit holds between turns: its stance, downed, being carried, hacking.</summary>
+    /// <summary>The loop a standing unit holds between turns: downed, being carried, hacking.</summary>
     public static string[] Hold(Unit unit) =>
         unit.Status == UnitStatus.Downed ? ["downed_loop", "idle"]
         : unit.Kind == UnitKind.Drone || unit.EnemyDefId?.EndsWith("drone") == true ? ["hover", "idle"]
-        : unit.Stance == Stance.Overwatch ? ["overwatch_aim", "idle"]
-        : unit.Stance == Stance.Brace ? ["crouch_brace", "take_cover", "idle"]
         : ["idle", "hover"];
 
     /// <summary>Moving: carrying a downed ally, else walking.</summary>

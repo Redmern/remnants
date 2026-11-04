@@ -20,44 +20,30 @@ public static class FogDemo
         var state = sim.State;
         var map = state.Map;
         var party = state.Units.Where(u => u.PlayerId == playerId && u.OnMap).ToList();
-        var watcher = state.TurnOrder.Select(state.FindUnit).Last(u => u is { PlayerControlled: true } && u.PlayerId == playerId)!;
+        var watcher = party.Last(u => u.PlayerControlled);
         WatcherId = watcher.Id;
         var anchor = party.Where(u => u.Id != watcher.Id).OrderBy(u => u.Id).First();
         foreach (var enemy in state.Units.Where(u => u.Kind == UnitKind.Enemy && u.OnMap)) enemy.Status = UnitStatus.Dead;
         var def = sim.Data.Enemies["linked"];
 
-        // Where the Linked spots the anchor but nobody in the party picks it out (its stealth beats their eyes out
-        // there), the watcher's sharper overwatch eyes included if possible.
-        Pos? Find(bool withOverwatch)
-        {
-            watcher.Stance = withOverwatch ? Stance.Overwatch : Stance.None;
-            try
+        // Where the Linked spots the anchor but nobody in the party picks it out (its stealth beats their eyes out there).
+        var spot = map.AllPositions
+            .Where(p => map[p] == Terrain.Floor && state.UnitAt(p) is null && !map.IsExit(p))
+            .Where(p =>
             {
-                return map.AllPositions
-                    .Where(p => map[p] == Terrain.Floor && state.UnitAt(p) is null && !map.IsExit(p))
-                    .Where(p =>
-                    {
-                        var next = state.NextUnitId;
-                        var probe = NewScavenge.EnemyUnit(sim.Data, state, def, p);
-                        state.NextUnitId = next;
-                        return Detection.Spots(sim.Data, state, probe, anchor) && party.All(u => !Detection.Spots(sim.Data, state, u, probe));
-                    })
-                    .OrderBy(p => p.DistanceSquared(anchor.Pos)).ThenBy(map.Index)
-                    .Select(p => (Pos?)p).FirstOrDefault();
-            }
-            finally
-            {
-                watcher.Stance = Stance.None;
-            }
-        }
-
-        var spot = Find(true) ?? Find(false) ?? anchor.Pos + new Pos(0, -6);
+                var next = state.NextUnitId;
+                var probe = NewScavenge.EnemyUnit(sim.Data, state, def, p);
+                state.NextUnitId = next;
+                return Detection.Spots(sim.Data, state, probe, anchor) && party.All(u => !Detection.Spots(sim.Data, state, u, probe));
+            })
+            .OrderBy(p => p.DistanceSquared(anchor.Pos)).ThenBy(map.Index)
+            .Select(p => (Pos?)p).FirstOrDefault() ?? anchor.Pos + new Pos(0, -6);
         var linked = NewScavenge.EnemyUnit(sim.Data, state, def, spot);
         linked.Ai.Mode = AiMode.Hunting;
         linked.Ai.TargetId = anchor.Id;
         linked.Ai.LastKnown = anchor.Pos;
         state.Units.Add(linked);
-        state.TurnOrder.Add(linked.Id);
         linked.Ap = sim.Profile(linked).MaxAp;
+        linked.Mp = sim.Profile(linked).MaxMp;
     }
 }

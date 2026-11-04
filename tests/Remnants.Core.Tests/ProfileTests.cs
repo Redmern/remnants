@@ -49,7 +49,7 @@ public class MovementProfileTests
     {
         var u = WithAgility(50, tool: "grappling_hook");
         var modes = Derive(u).Movement.Modes;
-        Assert.Contains(modes, m => m is { Pattern: MovePattern.Knight, IgnoresTerrain: true, ApCost: 2 });
+        Assert.Contains(modes, m => m is { Pattern: MovePattern.Knight, IgnoresTerrain: true, ApCost: 4 });
 
         u.Body.Injure(BodyPart.LeftArm, 0.8);
         u.Body.Injure(BodyPart.RightArm, 0.8);
@@ -229,7 +229,7 @@ public class ActionProfileTests
     public void Gear_sets_armor_dodge_initiative_ap_sight_and_carry()
     {
         var bare = Derive(SurvivorUnit());
-        Assert.Equal(3, bare.MaxAp);
+        Assert.Equal(2, bare.MaxAp);
         Assert.Equal(4 + 50 * 0.06, bare.Sight, 9);
         Assert.Equal(10 + 50 * 0.3, bare.CarryCapacity, 9);
 

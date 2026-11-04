@@ -23,22 +23,20 @@ public class EnemyCardAbilityTests
     }
 
     [Fact]
-    public void The_warden_shoves_a_seen_enemy_with_a_readied_strike_off_it_and_leaves_one_without_alone()
+    public void The_warden_shoves_a_seen_enemy_in_reach_and_leaves_one_out_of_it_alone()
     {
         var u = SurvivorUnit(1, new(3, 1));
         var warden = EnemyUnit("linked_warden", new(4, 1));
         var sim = Arena(10, 3, [warden, u]); // the warden is up
         var deck = Deck(sim, warden, "shove");
+        u.Pos = new(0, 1);
         EnemyCards.Play(sim, warden);
-        Assert.Equal(["shove"], deck.Hand); // nothing to break
-        Assert.Equal(new Pos(3, 1), u.Pos);
-
-        Ready(sim, u, warden.Pos, "punch");
+        Assert.Equal(["shove"], deck.Hand); // out of its reach: nothing to break
+        u.Pos = new(3, 1);
         EnemyCards.Play(sim, warden);
         Assert.Empty(deck.Hand);
+        Settle(sim);
         Assert.Equal(new Pos(1, 1), u.Pos); // the Warden's strength shoves two tiles
-        Assert.False(TileStrikes.Readied(sim.State, u));
-        Assert.True(Combat.ExposedTo(sim, u, warden));
     }
 
     [Fact]
@@ -53,6 +51,7 @@ public class EnemyCardAbilityTests
         cole.Body.Injure(BodyPart.Torso, 0.5);
         EnemyCards.Play(sim, cole);
         Assert.Empty(deck.Hand);
+        Settle(sim);
         var cloud = Assert.Single(sim.State.FieldEffects, f => f.Kind == FieldEffectKind.Smoke && f.Side == Unit.EnemySide);
         Assert.DoesNotContain(cole.Pos, cloud.Tiles);
         Assert.False(Detection.SideSees(sim.Data, sim.State, u.Side, cole));

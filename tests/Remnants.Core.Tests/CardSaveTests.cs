@@ -73,38 +73,35 @@ public class CardSaveTests
         Assert.Empty(loaded.State.FieldEffects);
         Assert.Empty(loaded.State.Map.Overlay);
         Assert.Empty(loaded.State.Map.Smoke);
-        Assert.All(loaded.State.Units, u => Assert.False(u.Displaced));
     }
 
     [Theory]
     [InlineData(ScavengeSave.IntentsVersion)]
     [InlineData(ScavengeSave.TileAttacksVersion)]
-    public void An_older_save_with_a_pending_plan_loads_and_plays_on_with_the_plan_gone(int version)
+    [InlineData(ScavengeSave.TelegraphedStrikesVersion)]
+    public void A_run_from_before_simultaneous_rounds_is_refused(int version)
     {
         var sim = NewScavenge.Create(WholeTurns, "suburb_ruins", 11, [Party(1)]);
         sim.Start();
         var node = JsonNode.Parse(ScavengeSave.Save(sim.State))!;
         node["version"] = version;
-        var unit = node["scavenge"]!["units"]!.AsArray().First(u => u!["id"]!.GetValue<int>() == sim.State.CurrentUnitId)!.AsObject();
-        unit["plan"] = new JsonObject
-        {
-            ["path"] = new JsonArray(),
-            ["attackTile"] = new JsonObject { ["x"] = 1, ["y"] = 1 },
-            ["actionId"] = "swing",
-            ["round"] = 1,
-            ["quick"] = true,
-        };
-        unit["stance"] = "Overwatch";
-        unit["reactions"] = 2;
+        Assert.ThrowsAny<System.Text.Json.JsonException>(() => ScavengeSave.Load(WholeTurns, node.ToJsonString()));
+    }
 
-        var loaded = ScavengeSave.Load(WholeTurns, node.ToJsonString());
-
-        var current = loaded.State.CurrentUnit!;
-        Assert.Equal(sim.State.CurrentUnitId, current.Id);
-        Assert.Empty(loaded.State.Strikes);
-        Assert.Null(current.Watch);
-        Assert.Empty(Overwatches.Watched(loaded, current));
-        Assert.True(loaded.Execute(new EndTurn(1, current.Id)).Ok);
+    [Fact]
+    public void Stun_adrenaline_and_a_queued_plan_round_trip()
+    {
+        var sim = NewScavenge.Create(WholeTurns, "suburb_ruins", 11, [Party(1)]);
+        sim.Start();
+        var unit = sim.State.CurrentUnit!;
+        unit.Adrenaline = 42;
+        unit.StunnedRound = sim.State.Round + 1;
+        unit.StunCount = 2;
+        Assert.True(sim.Execute(new Recover(1, unit.Id)).Ok);
+        var loaded = ScavengeSave.Load(WholeTurns, ScavengeSave.Save(sim.State));
+        var again = loaded.State.FindUnit(unit.Id)!;
+        Assert.Equal((42.0, unit.StunnedRound, 2), (again.Adrenaline, again.StunnedRound, again.StunCount));
+        Assert.Equal(PlanStepKind.Recover, Plans.Of(loaded.State, again)!.Steps.Single().Kind);
     }
 
     [Fact]

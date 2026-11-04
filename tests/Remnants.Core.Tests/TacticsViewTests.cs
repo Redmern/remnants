@@ -21,28 +21,12 @@ public class TacticsViewTests
     }
 
     [Fact]
-    public void Telegraphs_show_seen_enemy_strikes_without_their_target()
-    {
-        var (sim, a, _, husk) = Field();
-        Ready(sim, husk, a.Pos, "claw", targetId: a.Id);
-        var t = Assert.Single(TacticsView.Telegraphs(sim, a.Side));
-        Assert.Equal(husk.Id, t.UnitId);
-        Assert.Equal(a.Pos, t.AttackTile);
-        Assert.Contains(a.Pos, t.Threatened);
-        Assert.True(t.AimedAtUs);
-        Assert.DoesNotContain("TargetId", System.Text.Json.JsonSerializer.Serialize(t));
-
-        husk.Pos = new(11, 5); // out of sight: nothing
-        Assert.Empty(TacticsView.Telegraphs(sim, a.Side));
-    }
-
-    [Fact]
-    public void The_threat_overlay_marks_readied_strikes_above_plain_reach()
+    public void The_threat_overlay_shows_plain_reach_and_never_a_planned_strike()
     {
         var (sim, a, _, husk) = Field();
         Ready(sim, husk, new(3, 1), "claw");
         var overlay = TacticsView.Threats(sim, a.Side);
-        Assert.Equal(ThreatKind.Strike, overlay[new Pos(3, 1)]);
+        Assert.False(overlay.ContainsKey(new Pos(3, 1))); // what it has planned is hidden
         Assert.Equal(ThreatKind.Reach, overlay[new Pos(5, 1)]); // next to the husk now
         Assert.False(overlay.ContainsKey(a.Pos));
     }
@@ -56,11 +40,8 @@ public class TacticsViewTests
         Assert.Equal(Combat.ChanceToHit(sim, a, swing, husk, new Pos(5, 1)), preview.Chance, 9);
         Assert.False(TacticsView.HitPreview(sim, a, swing, husk).InReach); // from (1,1) a pipe does not reach
 
-        a.OutplayedId = husk.Id;
-        a.OutplayedUntilRound = sim.State.Round;
         a.CardHit = 0.1;
         var terms = TacticsView.HitPreview(sim, a, swing, husk, new Pos(5, 1)).Breakdown!.Rows.Select(r => r.Label).ToList();
-        Assert.Contains("Dodged their attack", terms);
         Assert.Contains("Card", terms);
 
         husk.Pos = new(4, 1); // within one move and a swing
@@ -78,7 +59,7 @@ public class TacticsViewTests
         Assert.Equal((2, 3, 4, 2, 1), (hand.Points, hand.Budget, hand.Cards.Count(c => c.SlotOf is null), hand.DrawCount, hand.UsedCount));
         var dash = hand.Cards.First(c => c.Id == "dash");
         Assert.Contains(a.Id, dash.PlayableBy);           // a is up
-        Assert.DoesNotContain(b.Id, dash.PlayableBy);     // not b's turn
+        Assert.Contains(b.Id, dash.PlayableBy);           // everyone plans at once
         var hold = hand.Cards.First(c => c.Id == "hold_the_line");
         Assert.Empty(hold.PlayableBy);
         Assert.True(hold.Dead);                           // nobody qualifies: discardable
@@ -94,23 +75,13 @@ public class TacticsViewTests
         Assert.True(rows.Single(r => r.UnitId == a.Id).Ok);
         var no = rows.Single(r => r.UnitId == b.Id);
         Assert.False(no.Ok);
-        Assert.Contains("turn", no.Reason);
+        Assert.Contains("Agility 60", no.Reason);
         a.Attributes[AttributeKind.Agility] = 50;
         Assert.Contains("Agility 60", TacticsView.Picker(sim, 1, "sprint").Single(r => r.UnitId == a.Id).Reason);
         // An AP boost that the unit cannot pay is a reason too.
         a.Ap = 0;
         Assert.Contains("AP", TacticsView.Picker(sim, 1, "dash", boost: true).Single(r => r.UnitId == a.Id).Reason);
         Assert.True(TacticsView.Picker(sim, 1, "dash").Single(r => r.UnitId == a.Id).Ok);
-    }
-
-    [Fact]
-    public void Reactions_are_offered_only_against_a_seen_readied_strike()
-    {
-        var (sim, a, _, husk) = Field();
-        Assert.Empty(TacticsView.ReactionTargets(sim, 1));
-        Ready(sim, husk, a.Pos, "claw");
-        Assert.Equal([husk.Id], TacticsView.ReactionTargets(sim, 1).Select(u => u.Id));
-        Assert.True(TacticsView.Picker(sim, 1, "sidestep", target: husk.Id).Single(r => r.UnitId == a.Id).Ok);
     }
 
     [Fact]

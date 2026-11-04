@@ -171,57 +171,13 @@ public class PlayCardTests
     }
 
     [Fact]
-    public void Only_reactions_may_be_played_on_a_unit_whose_turn_it_is_not()
-    {
-        var a = SurvivorUnit(1, new(0, 1), weapon: "pipe");
-        var a2 = SurvivorUnit(1, new(0, 2), weapon: "pipe");
-        var b = SurvivorUnit(2, new(5, 1), weapon: "pipe");
-        var sim = Arena(10, 3, [a, a2, b], data: Sure);
-        sim.State.Decks.Add(new SquadDeck { PlayerId = 1, Hand = ["dash", "sidestep"], Points = 3, Budget = 3, HandSize = 5 });
-        Ready(sim, b, a2.Pos, "swing");
-
-        Assert.Equal(ScavengeError.NotYourTurn, Play(sim, a2, "dash").Error);
-        Assert.True(Play(sim, a2, "sidestep", target: b.Id).Ok);
-        Assert.Equal(1, a2.Guard);
-    }
-
-    [Fact]
-    public void A_reaction_needs_a_seen_enemy_with_a_readied_strike()
-    {
-        var (sim, a, b, _) = Table("sidestep");
-        Assert.Equal(ScavengeError.NoIntent, Play(sim, a, "sidestep", target: b.Id).Error);
-        Assert.Equal(ScavengeError.NoIntent, Play(sim, a, "sidestep").Error);
-        Ready(sim, b, new(3, 1), "swing");
-        Assert.True(Play(sim, a, "sidestep", target: b.Id).Ok);
-    }
-
-    [Fact]
-    public void A_counterstrike_hits_the_striker_first_when_its_strike_comes_down()
-    {
-        var (sim, a, b, _) = Table("counterstrike");
-        a.Skills[Skill.Melee] = 30;
-        b.Pos = new(1, 1);
-        Ready(sim, b, a.Pos, "swing");
-        Assert.True(Play(sim, a, "counterstrike", target: b.Id).Ok);
-        Assert.Equal(b.Id, a.CounterId);
-        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
-        Assert.True(sim.Execute(new EndTurn(2, b.Id)).Ok);
-
-        var counter = sim.State.Events.FindIndex(e => e.Type == ScavengeEventType.Countered && e.UnitId == a.Id && e.TargetId == b.Id);
-        var blow = sim.State.Events.FindIndex(e => e.Type == ScavengeEventType.Attacked && e.UnitId == b.Id);
-        Assert.True(counter >= 0);
-        Assert.True(blow < 0 || counter < blow);
-        Assert.True(b.Hp < b.MaxHp);
-        Assert.Null(a.CounterId);
-    }
-
-    [Fact]
     public void A_move_card_carries_into_a_move_made_after_it()
     {
         var (sim, a, _, _) = Table("dash");
-        Assert.Equal(ScavengeError.Unreachable, sim.Execute(new Move(1, a.Id, new(3, 1))).Error);
+        a.Mp = 2;
+        Assert.Equal(ScavengeError.Unreachable, Now(sim, new Move(1, a.Id, new(3, 1))).Error);
         Assert.True(Play(sim, a, "dash").Ok);
-        Assert.True(sim.Execute(new Move(1, a.Id, new(3, 1))).Ok);
+        Assert.True(Now(sim, new Move(1, a.Id, new(3, 1))).Ok);
         Assert.Equal(new Pos(3, 1), a.Pos);
     }
 
@@ -241,8 +197,6 @@ public class PlayCardTests
     [InlineData("an unknown card", ScavengeError.NoCard)]
     [InlineData("another player's id", ScavengeError.NotYourUnit)]
     [InlineData("another player's unit", ScavengeError.NotYourUnit)]
-    [InlineData("a reaction at an unseen enemy", ScavengeError.NoIntent)]
-    [InlineData("a reaction at a friend", ScavengeError.NoIntent)]
     public void Forged_card_plays_are_refused_and_change_nothing(string forged, ScavengeError expected)
     {
         var a = SurvivorUnit(1, new(0, 1), weapon: "pipe");
@@ -284,18 +238,4 @@ public class PlayCardTests
         Assert.Equal(["scout_ahead"], deck.Used);
     }
 
-    [Fact]
-    public void A_hit_card_waits_for_the_units_own_attack_not_an_overwatch_shot()
-    {
-        var a = SurvivorUnit(1, new(0, 1), weapon: "pipe");
-        var b = SurvivorUnit(2, new(7, 1), weapon: "pistol");
-        b.Attributes[Survivors.AttributeKind.Agility] = 35;
-        var sim = Arena(10, 3, [a, b], data: Sure);
-        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
-        Assert.True(sim.Execute(new CommitOverwatch(2, b.Id, Arc: new Pos(-1, 0))).Ok);
-        b.CardHit = 0.1;
-        Assert.True(sim.Execute(new Move(1, a.Id, new(2, 1))).Ok);
-        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Overwatch && e.UnitId == b.Id);
-        Assert.Equal(0.1, b.CardHit, 9);
-    }
 }

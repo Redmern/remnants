@@ -14,7 +14,7 @@
     "equipment": ["crawler_mandibles", "crawler_carapace"]
   },
   {
-    "id": "linked", "name": "Linked", "hp": 70, "ai": "Linked", "relayRange": 6, "stealth": 25,
+    "id": "linked", "name": "Linked", "hp": 70, "stunResist": 0.15, "ai": "Linked", "relayRange": 6, "stealth": 25,
     "attributes": { "Strength": 55, "Agility": 55, "Endurance": 60, "Perception": 65 },
     "skills": { "Firearms": 50, "Melee": 40 },
     "loot": "linked",
@@ -33,12 +33,12 @@
     "drops": [ { "item": "electronics", "chance": 0.5 }, { "item": "sch_network_ghost", "chance": 0.02 }, { "item": "sch_drone_payload", "chance": 0.03 } ]
   },
   {
-    "id": "linked_warden", "name": "Linked Warden", "hp": 140, "ai": "Linked", "relayRange": 6,
+    "id": "linked_warden", "name": "Linked Warden", "hp": 140, "stunResist": 0.5, "adrenalineStart": 25, "ai": "Linked", "relayRange": 6,
     "attributes": { "Strength": 85, "Agility": 20, "Endurance": 90, "Perception": 55 },
     "skills": { "Firearms": 45, "Melee": 50 },
     "loot": "linked_warden",
     "equipment": ["warden_pulse", "warden_shell"],
-    "cards": ["hold_the_line", "hold_the_line", "take_cover", "shove", "shove", "steady_aim", "counterstrike"],
+    "cards": ["hold_the_line", "parry", "parry", "take_cover", "shove", "shove", "steady_aim", "counterstrike"],
     "tags": ["network"],
     "drops": [ { "item": "linked_carbine", "chance": 0.6 }, { "item": "sch_linked_carbine", "chance": 0.25 }, { "item": "sch_linked_plating", "chance": 0.15 },
               { "item": "sch_cybernetics", "chance": 0.10 }, { "item": "sch_override", "chance": 0.10 }, { "item": "sch_pulse_rifle", "chance": 0.08 },
@@ -54,7 +54,7 @@
     "tags": ["network"]
   },
   {
-    "id": "turret", "name": "Turret", "hp": 45, "ai": "Device", "stealth": -15,
+    "id": "turret", "name": "Turret", "hp": 45, "stunResist": 0.75, "ai": "Device", "stealth": -15,
     "attributes": { "Strength": 50, "Agility": 30, "Endurance": 80, "Perception": 60 },
     "skills": { "Firearms": 40 },
     "loot": "turret",
@@ -75,11 +75,11 @@
     "equipment": ["machete", "padded_vest"]
   },
   {
-    "id": "cole", "name": "Cole Brannigan", "hp": 90, "ai": "Husk",
+    "id": "cole", "name": "Cole Brannigan", "hp": 90, "stunResist": 0.4, "adrenalineStart": 25, "ai": "Husk",
     "attributes": { "Strength": 55, "Agility": 60, "Endurance": 60, "Perception": 65 },
     "skills": { "Firearms": 50, "Melee": 45 },
     "loot": "cole",
     "equipment": ["pistol", "scout_jacket"],
-    "cards": ["steady_aim", "steady_aim", "called_shot", "roll_with_it", "smoke_bomb", "dash", "sidestep"]
+    "cards": ["steady_aim", "steady_aim", "called_shot", "parry", "smoke_bomb", "dash", "sidestep"]
   }
 ]

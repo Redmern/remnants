@@ -486,8 +486,6 @@ public class FieldDeviceTests
         ZoneDevice camera = null!;
         var sim = Arena(12, 10, [thrower, op, linked, husk], setup: (d, s) => camera = Hacking.Place(d, s, DeviceKind.Camera, new Pos(5, 2)));
         // The operator's drone is out near the blast.
-        sim.State.TurnOrder.Remove(op.Id);
-        sim.State.TurnOrder.Insert(0, op.Id);
         Assert.True(sim.Execute(new DeployDrone(1, op.Id, new Pos(2, 5))).Ok);
         Assert.True(sim.Execute(new FlyDrone(1, op.Id, new Pos(4, 5))).Ok);
         Assert.True(sim.Execute(new EndTurn(1, op.Id)).Ok);
@@ -534,7 +532,6 @@ public class FieldDeviceTests
         Assert.Equal(ScavengeError.ItemNotCarried, sim.Execute(new UseItem(1, u.Id, "holo_decoy", At: new Pos(5, 4))).Error);
         for (var i = 0; i < 3 && !sim.State.Finished; i++) Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
         Assert.NotEqual(UnitStatus.Active, decoy.Status);
-        Assert.DoesNotContain(decoy.Id, sim.State.TurnOrder);
     }
 
     [Fact]
@@ -563,20 +560,6 @@ public class FieldDeviceTests
         Assert.Equal(0, ElectronicWarfare.RadioAccuracy(sim, a));
         Assert.Equal(Real.Rules.Coop.PingsPerTurn + 2, Real.Rules.Coop.PingsPerTurn + ElectronicWarfare.ExtraPings(Real, a));
         Assert.NotNull(shot);
-    }
-
-    [Fact]
-    public void A_squad_radio_on_overwatch_fires_at_what_a_teammate_sees()
-    {
-        // The watcher is half-blind (no perception) but a teammate with good eyes calls the target in.
-        var watcher = SurvivorUnit(1, new Pos(1, 4), attributes: 50, weapon: "pistol", pack: ["squad_radio"]);
-        watcher.Attributes[AttributeKind.Perception] = 0;
-        var spotter = SurvivorUnit(1, new Pos(1, 5), attributes: 90, tool: "binoculars");
-        var linked = EnemyUnit("linked", new Pos(7, 4));
-        var sim = Arena(14, 10, [watcher, spotter, linked]);
-        Assert.True(ElectronicWarfare.SharesOverwatch(sim, watcher, linked) == Detection.SideSees(Real, sim.State, watcher.Side, linked));
-        watcher.Pack.Clear();
-        Assert.False(ElectronicWarfare.SharesOverwatch(sim, watcher, linked));
     }
 
     [Fact]
@@ -654,6 +637,7 @@ public class DroneRoleTests
         var sim = Arena(12, 8, [op, hurt]);
         var drone = Launch(sim, op, new Pos(2, 1));
         Assert.Equal(12, drone.MaxHp);
+        op.Ap = 9;
         Assert.Equal(ScavengeError.TooFar, sim.Execute(new DroneHeal(1, op.Id, hurt.Id)).Error);
         Assert.True(sim.Execute(new FlyDrone(1, op.Id, new Pos(5, 1))).Ok);
         Assert.True(sim.Execute(new DroneHeal(1, op.Id, hurt.Id)).Ok);
@@ -681,7 +665,7 @@ public class DroneRoleTests
         Launch(sim, op, new Pos(2, 1));
         Assert.True(sim.Execute(new FlyDrone(1, op.Id, new Pos(4, 2))).Ok);
         var cache = sim.State.Caches.Single();
-        op.Ap = 9;
+        (op.Ap, op.Fatigue) = (9, -20);
         Assert.True(sim.Execute(new DroneLoad(1, op.Id, cache.Id, "rifle")).Ok);
         Assert.True(sim.Execute(new DroneLoad(1, op.Id, cache.Id, "med_kit")).Ok);
         Assert.Equal(ScavengeError.NotOnExit, sim.Execute(new DroneFerry(1, op.Id)).Error);
@@ -710,6 +694,7 @@ public class DroneRoleTests
         var sim = Arena(12, 8, [op, husk]);
         var drone = Launch(sim, op, new Pos(2, 1));
         Assert.Contains(husk, DroneRoles.FireTargets(sim, op));
+        op.Ap = 9;
         Assert.True(sim.Execute(new DroneFire(1, op.Id, husk.Id)).Ok);
         Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.DroneFired);
         Assert.True(drone.Skills[Skill.Firearms] >= 60);

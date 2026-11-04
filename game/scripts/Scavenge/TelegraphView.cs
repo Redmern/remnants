@@ -7,9 +7,8 @@ using Remnants.Game.Colony;
 namespace Remnants.Game.Scavenge;
 
 /// <summary>
-/// Enemy telegraphs on the map (<see cref="TacticsView.Telegraphs"/>): a pulsing strike marker on every tile a seen enemy's
-/// readied strike covers (red when it is aimed at one of ours). A strike coming down flashes its marker; a blow that lands
-/// on an empty tile (dodged) flashes it pale.
+/// Rivals' planned walks on the map (<see cref="TacticsView.Telegraphs"/>): a ring on each tile of a seen walk, the red one
+/// where it ends, and one wide ring over the coarse cell a walk in the fog ends in. Their actions are never shown.
 /// Reads Core's view only; nothing here is a rule.
 /// </summary>
 public partial class TelegraphView : Node3D
@@ -21,6 +20,7 @@ public partial class TelegraphView : Node3D
     private ScavengePresenter _presenter = null!;
     private StandardMaterial3D _strike = null!, _aimed = null!;
     private readonly TorusMesh _ring = new() { InnerRadius = 0.62f, OuterRadius = 0.8f, Rings = 24, RingSegments = 6 };
+    private readonly TorusMesh _wideRing = new() { InnerRadius = 0.76f, OuterRadius = 0.8f, Rings = 48, RingSegments = 6 };
     private readonly Dictionary<Pos, Node3D> _markers = new();
     private string _signature = "";
 
@@ -40,25 +40,29 @@ public partial class TelegraphView : Node3D
     public void Sync()
     {
         var telegraphs = _presenter.Telegraphs();
-        var signature = string.Join(";", telegraphs.Select(t => $"{t.UnitId}@{t.From}:{string.Join(",", t.Threatened)}>{t.AttackTile}{(t.AimedAtUs ? "!" : "")}"));
+        var hints = _presenter.MoveHints();
+        var signature = string.Join(";", telegraphs.Select(t => $"{t.UnitId}:{string.Join(",", t.Path)}")) + "|" + string.Join(";", hints);
         if (signature == _signature) return;
         _signature = signature;
         foreach (var child in GetChildren()) child.QueueFree();
         _markers.Clear();
         foreach (var t in telegraphs)
+            foreach (var tile in t.Path)
+                _markers[tile] = Ring(tile, tile == t.To ? _aimed : _strike, 1);
+        // A walk in the fog: one wide ring over the whole cell, never the tile.
+        foreach (var hint in hints) Ring(hint.Center, _strike, 2 * hint.Radius + 1).Mesh = _wideRing;
+    }
+
+    private MeshInstance3D Ring(Pos tile, Material material, float size)
+    {
+        var ring = new MeshInstance3D
         {
-            foreach (var tile in t.Threatened)
-            {
-                var ring = new MeshInstance3D
-                {
-                    Mesh = _ring, MaterialOverride = t.AimedAtUs && tile == t.AttackTile ? _aimed : _strike,
-                    CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Position = TileGrid.ToWorld(tile) + Vector3.Up * 0.16f,
-                };
-                AddChild(ring);
-                _markers[tile] = ring;
-                Pulse(ring);
-            }
-        }
+            Mesh = _ring, MaterialOverride = material, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+            Position = TileGrid.ToWorld(tile) + Vector3.Up * 0.1f, Scale = new Vector3(size, 1, size),
+        };
+        AddChild(ring);
+        if (size == 1) Pulse(ring);
+        return ring;
     }
 
     /// <summary>A telegraph resolving: a strike marker flashes; a blow on an empty tile (dodged) flashes pale.</summary>
@@ -66,8 +70,7 @@ public partial class TelegraphView : Node3D
     {
         if (e.Type is not (ScavengeEventType.IntentResolved or ScavengeEventType.IntentFizzled or ScavengeEventType.IntentDeclared)) return;
         if (e.UnitId is not { } id || _presenter.State.FindUnit(id) is not { } unit || !_presenter.CanSee(unit)) return;
-        var at = e.Type == ScavengeEventType.IntentDeclared ? _presenter.State.Strikes.FirstOrDefault(s => s.UnitId == id)?.Tile : null;
-        foreach (var (tile, marker) in _markers.Where(kv => at is null || kv.Key == at))
+        foreach (var (tile, marker) in _markers)
             Flash(marker, e.Type == ScavengeEventType.IntentFizzled ? DodgedColor : AimedColor);
     }
 

@@ -26,6 +26,8 @@ public static class FogLog
         var result = new List<ScavengeEvent>();
         foreach (var e in events)
         {
+            // Logged as the AI plans, on tiles it has not walked to: what it means to do is its own.
+            if (e.Type is ScavengeEventType.Flanked or ScavengeEventType.Retreated && e.UnitId is { } planner && !mine(planner)) continue;
             if (e.Type is ScavengeEventType.RoundStarted or ScavengeEventType.PartyDone or ScavengeEventType.Finished
                 or ScavengeEventType.WeatherChanged or ScavengeEventType.Thunder or ScavengeEventType.Lightning)
             {

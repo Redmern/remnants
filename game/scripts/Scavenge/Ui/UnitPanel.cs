@@ -30,6 +30,7 @@ public partial class UnitPanel : PanelContainer
     private readonly Label _turnTag = Widgets.Label("", "Small", Palette.Warn);
     private readonly StatBar _hp = new("stat_hp");
     private readonly Pips _ap = new();
+    private readonly Label _gauges = Widgets.Label("", "Small", Palette.TextMuted);
     private readonly HBoxContainer _apRow = Widgets.Row(6);
     private readonly VBoxContainer _sections = Widgets.Column(8);
     private readonly Dictionary<BodyPart, (HBoxContainer Row, TextureRect Icon, Label Text, StatBar Bar)> _parts = new();
@@ -93,6 +94,8 @@ public partial class UnitPanel : PanelContainer
         _apRow.AddChild(Widgets.Label("AP", "Heading"));
         _apRow.AddChild(_ap);
         names.AddChild(_apRow);
+        _gauges.AddThemeFontSizeOverride("font_size", 13);
+        names.AddChild(_gauges);
         head.AddChild(names);
         box.AddChild(head);
         box.AddChild(_empty);
@@ -128,7 +131,7 @@ public partial class UnitPanel : PanelContainer
         profile.AddChild(_moreButton);
         _more.AddChild(Stat("stat_ap", "AP per turn", _apMax, "controls"));
         _more.AddChild(Stat("stat_initiative", "Initiative", _initiative, null,
-            "Who acts first each round: the turn order on top is sorted by it."));
+            "Speed: with stamina, the action and traits it makes up priority, who goes first when the round resolves."));
         _more.AddChild(_attacks);
         profile.AddChild(_more);
         _more.Visible = _moreOpen;
@@ -224,6 +227,7 @@ public partial class UnitPanel : PanelContainer
         if (!known)
         {
             _set.Visible(_apRow, false);
+            _set.Visible(_gauges, false);
             _set.Visible(_turnTag, false);
             _set.Visible(_status, false);
             _set.Text(_title, "No unit selected");
@@ -265,11 +269,15 @@ public partial class UnitPanel : PanelContainer
         _set.Tooltip(_hp, unit.Status == UnitStatus.Downed
             ? $"Down: bleeds out in {unit.BleedOut} rounds unless stabilized{(unit.Stabilized ? " (stabilized)" : "")}"
             : hpKnown ? $"Health {unit.Hp:0}/{unit.MaxHp:0}" : "How hurt it looks. Kill one to learn its health (Bestiary).");
-        // The acting unit's AP is next to End turn in the turn bar; the card shows it for the others.
-        _set.Visible(_apRow, !isActing && unit.Kind is not (UnitKind.Device or UnitKind.Decoy) && _tier >= BestiaryTier.Fought);
-        _ap.Set(unit.Ap, profile.MaxAp, unit.Suppressed ? Palette.Warn : Palette.Amber);
-        _set.Tooltip(_ap, $"{unit.Ap} of {profile.MaxAp} action points" + (unit.Suppressed ? " · suppressed: fewer AP next turn" : ""));
+        // The acting unit's AP is next to Ready in the turn bar; the card shows it for your side's others. A rival's AP spent is its secret.
+        _set.Visible(_apRow, !isActing && unit.Side == _presenter.Side && unit.Kind is not (UnitKind.Device or UnitKind.Decoy) && _tier >= BestiaryTier.Fought);
+        _ap.Set(unit.Ap, profile.MaxAp, Stuns.Active(_presenter.Sim.State, unit) ? Palette.Warn : Palette.Amber);
+        _set.Tooltip(_ap, $"{unit.Ap} of {profile.MaxAp} action points" + (Stuns.Active(_presenter.Sim.State, unit) ? " · stunned: fewer AP and MP next turn" : ""));
 
+        // Stamina and movement are your own side's to read (Core redacts rivals'); adrenaline shows on everyone.
+        _set.Visible(_gauges, unit.Kind is not (UnitKind.Device or UnitKind.Decoy));
+        _set.Text(_gauges, (unit.Side == _presenter.Side ? $"MP {unit.Mp}/{profile.MaxMp} · STA {Economy.Stamina(_presenter.Sim, unit)}/{profile.MaxStamina} · " : "")
+                           + $"ADR {unit.Adrenaline:0}" + (Stuns.Active(_presenter.Sim.State, unit) ? " · STUNNED" : ""));
         var allied = _presenter.IsAlly(unit) || unit.CarryingId is not null || unit.CarriedById is not null;
         _set.Visible(_allyCard, allied);
         if (allied)

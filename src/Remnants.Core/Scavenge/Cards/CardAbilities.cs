@@ -8,14 +8,10 @@ namespace Remnants.Core.Scavenge;
 /// <para>
 /// Displacement (push, pull, swap) moves a unit tile by tile along the line and stops before a wall, any other
 /// impassable tile, a blocked door, another unit or the map edge; it never ends on an occupied tile. A displaced unit's
-/// readied strike is lost and, if a hostile moved it, it is exposed to that side
-/// (<see cref="Combat.Exposed"/>). Until its own next sub-turn it is hit by a declared strike on the tile it was moved to,
-/// whoever's side the strike is: friendly fire is allowed for a unit shoved into the line of fire.
+/// queued actions still go off, from where it ends up (<see cref="TileStrikes.Resolve"/>).
 /// </para>
 /// <para>
-/// Initiative cards move a unit that is still to act in this sub-round to go next or last of those (the turn order
-/// is shown to every side that sees the unit); a unit that already acted cannot be moved, so nobody gets a turn twice,
-/// and the next round is ordered by initiative as always.
+/// Initiative cards shift a unit's resolve priority for the round (<see cref="PriorityRules.CardShift"/>).
 /// </para>
 /// </summary>
 public static class CardAbilities
@@ -24,13 +20,13 @@ public static class CardAbilities
     /// What an ability would do, or why not (<see cref="Fail"/>): the unit it acts on and where it lands, the tile aimed at,
     /// the tile the player steps to.
     /// </summary>
-    public sealed record Outcome(ScavengeResult? Fail, Unit? Target = null, Pos? Tile = null, Pos? Landing = null, ActionProfile? Strike = null)
+    public sealed record Outcome(ScavengeResult? Fail, Unit? Target = null, Pos? Tile = null, Pos? Landing = null, ActionProfile? Strike = null, Pos Direction = default, List<Pos>? Tiles = null)
     {
         public bool Ok => Fail is null;
     }
 
     /// <summary>The target an ability card aims at and what its effect would do, without changing anything.</summary>
-    public static Outcome Check(ScavengeSim sim, Unit unit, CardDef card, CardEffect effect, int? targetId, Pos? tile)
+    public static Outcome Check(ScavengeSim sim, Unit unit, CardDef card, CardEffect effect, int? targetId, Pos? tile, Pos? direction = null)
     {
         var state = sim.State;
         var data = sim.Data;
@@ -89,33 +85,36 @@ public static class CardAbilities
             strike = BestBlow(sim, unit, target!);
             if (strike is null) return Fail(ScavengeError.OutOfRange, $"{target!.Name} is not in reach of any of {unit.Name}'s attacks.");
         }
-        // More AP never wakes a unit that spent its own: that would be an extra sub-turn.
+        // More AP never wakes a unit that spent its own.
         if (effect.GrantAp > 0 && target!.Ap <= 0) return Fail(ScavengeError.InvalidTarget, $"{target.Name} has spent their AP this round.");
-        if (effect.Disrupt && !TileStrikes.Readied(state, target!))
-            return Fail(ScavengeError.NoIntent, $"{target!.Name} has no readied strike to break.");
         if (effect.Smoke > 0 && FieldEffects.SmokeTiles(state.Map, tile!.Value, card.Radius).Contains(unit.Pos))
             return Fail(ScavengeError.InvalidTile, $"{card.Name} is a screen: it cannot be thrown over {unit.Name}.");
         if (effect.PlaceBarrier > 0 && !FieldEffects.CanBarrier(state, tile!.Value))
             return Fail(ScavengeError.InvalidTile, $"No barrier can go up on {tile}.");
-        if (effect.AdvanceInitiative || effect.DelayInitiative)
-        {
-            var at = state.TurnOrder.IndexOf(target!.Id);
-            if (at <= state.TurnIndex) return Fail(ScavengeError.InvalidTarget, $"{target.Name} is not waiting for a turn this sub-round.");
-            // Already next (or last) is no refusal: that would tell a client of units it cannot see queued in between.
-        }
         if (effect.Push > 0 || effect.Pull > 0)
         {
             if (target!.Id == unit.Id) return Fail(ScavengeError.InvalidTarget, $"{unit.Name} cannot shove themselves.");
             if (Fixed(target)) return Fail(ScavengeError.InvalidTarget, $"{target.Name} cannot be moved.");
             var dir = effect.Push > 0 ? Combat.Face(unit.Pos, target.Pos) : Combat.Face(target.Pos, unit.Pos);
             landing = Slide(sim, target, dir, Math.Max(effect.Push, effect.Pull));
-            if (landing == target.Pos) return Fail(ScavengeError.InvalidTarget, $"{target.Name} has nowhere to go.");
+            // A shove with nowhere to go is a collision; a pull needs somewhere to pull to.
+            if (landing == target.Pos && effect.Pull > 0) return Fail(ScavengeError.InvalidTarget, $"{target.Name} has nowhere to go.");
         }
-        return new Outcome(null, target, tile, landing, strike);
+        if (effect.Dash > 0)
+        {
+            var way = Combat.Face(default, direction ?? unit.Facing ?? new Pos(1, 0));
+            if (way == default || Slide(sim, unit, way, effect.Dash, terrainOnly: true) == unit.Pos) return Fail(ScavengeError.InvalidTile, $"{unit.Name} has no room to dash that way.");
+        }
+        // Turned as the player aims it: toward the tile aimed at, or the way the unit faces, unless told otherwise.
+        var turned = direction is { } aimed && aimed != default ? Combat.Face(default, aimed)
+            : tile is { } p && p != unit.Pos ? Combat.Face(unit.Pos, p) : unit.Facing ?? new Pos(1, 0);
+        if (effect.Attack && MeleeBlow(sim, unit) is null) return Fail(ScavengeError.UnknownAction, $"{unit.Name} has nothing to swing.");
+        var tiles = card.Pattern is { } pattern ? Patterns.Tiles(state.Map, pattern, tile ?? unit.Pos, turned) : null;
+        return new Outcome(null, target, tile, landing, strike, turned, tiles);
     }
 
     /// <summary>Carries out a checked ability; returns what it did, in words, for the card's log line.</summary>
-    internal static List<string> Apply(ScavengeSim sim, Unit unit, CardEffect effect, Outcome outcome, int radius)
+    internal static List<string> Apply(ScavengeSim sim, Unit unit, CardDef card, CardEffect effect, Outcome outcome)
     {
         var state = sim.State;
         var done = new List<string>();
@@ -124,7 +123,6 @@ public static class CardAbilities
         {
             var from = unit.Pos;
             unit.Pos = stepTo;
-            // The player's own move: overwatch may fire at it.
             sim.Moved(unit, from);
             // It slips round to face the nearest hostile it sees (a flank: its blow then finds that enemy's side or back).
             if (state.Units.Where(u => u.IsActive && u.OnMap && unit.HostileTo(u) && Detection.SideSees(sim.Data, state, unit.Side, u))
@@ -141,6 +139,12 @@ public static class CardAbilities
             sim.Moved(unit, from);
             done.Add($"swaps places with {target.Name}");
         }
+        else if (effect.Push > 0 && target is not null)
+        {
+            var before = target.Pos;
+            Pushes.Scored(sim, unit, Pushes.One(sim, unit, target, Combat.Face(unit.Pos, target.Pos), effect.Push));
+            done.Add(target.Pos != before ? $"{target.Name} shoved to {target.Pos}" : $"{target.Name} is shoved and does not budge");
+        }
         else if (outcome.Landing is { } landing && target is not null)
         {
             Displace(sim, target, landing, unit);
@@ -152,7 +156,7 @@ public static class CardAbilities
             var rounds = smoke ? effect.Smoke : effect.PlaceBarrier;
             FieldEffects.Add(state, new FieldEffect
             {
-                Kind = smoke ? FieldEffectKind.Smoke : FieldEffectKind.Barrier, Tiles = smoke ? FieldEffects.SmokeTiles(state.Map, at, radius) : [at],
+                Kind = smoke ? FieldEffectKind.Smoke : FieldEffectKind.Barrier, Tiles = smoke ? FieldEffects.SmokeTiles(state.Map, at, card.Radius) : [at],
                 UntilRound = state.Round + rounds - 1, Side = unit.Side,
             });
             var what = smoke ? $"smoke billows round {at}" : $"a barrier goes up at {at}";
@@ -160,13 +164,21 @@ public static class CardAbilities
                 Anonymous: $"Out of the fog, {what}."));
             done.Add(what);
         }
-        if (effect.Disrupt && target is not null && TileStrikes.Readied(state, target))
+        if (effect.Disrupt && target is not null)
         {
-            state.Strikes.RemoveAll(x => x.UnitId == target.Id);
-            state.Log(new(state.Round, ScavengeEventType.IntentFizzled, $"{unit.Name} breaks {target.Name}'s strike: {target.Name} is exposed.",
-                target.Id, unit.Id, target.Pos));
-            if (target.HostileTo(unit)) Combat.Expose(sim, target, unit.Side);
-            done.Add($"{target.Name}'s strike broken");
+            // Whether there was anything to break shows only now: a plan is hidden until it comes up.
+            var next = Plans.Of(state, target)?.Steps.FirstOrDefault(s => s.Kind != PlanStepKind.Move);
+            if (next is not null)
+            {
+                Plans.Of(state, target)!.Steps.Remove(next);
+                if (next.Kind == PlanStepKind.Card)
+                {
+                    CardPlay.Lost(sim, target, next);
+                    Defences.Drop(state, target, next.CardId!);
+                }
+                state.Log(new(state.Round, ScavengeEventType.IntentFizzled, $"{unit.Name} breaks {target.Name}'s next move.", target.Id, unit.Id, target.Pos));
+            }
+            done.Add(next is null ? $"{target.Name} had nothing to break" : $"{target.Name}'s next action broken");
         }
         if (outcome.Strike is { } blow && target is { IsActive: true })
         {
@@ -180,14 +192,32 @@ public static class CardAbilities
         }
         if ((effect.AdvanceInitiative || effect.DelayInitiative) && target is not null)
         {
-            // Only the turns still to come this sub-round are reordered: the unit keeps its one turn, just sooner or later.
-            state.TurnOrder.Remove(target.Id);
-            if (effect.AdvanceInitiative) state.TurnOrder.Insert(state.TurnIndex + 1, target.Id);
-            else state.TurnOrder.Add(target.Id);
-            var when = effect.AdvanceInitiative ? "goes next" : "goes last this round";
+            target.PriorityBonus += (effect.AdvanceInitiative ? 1 : -1) * sim.Data.Rules.Priority.CardShift;
+            var when = effect.AdvanceInitiative ? "is hurried along" : "is held up";
             state.Log(new(state.Round, ScavengeEventType.InitiativeChanged, $"{target.Name} {when} ({unit.Name}).", unit.Id, target.Id, target.Pos,
                 Anonymous: $"{target.Name} {when}."));
             done.Add($"{target.Name} {when}");
+        }
+        if (effect.Block > 0)
+        {
+            Defences.CameUp(state, unit, card.Id);
+            done.Add("holds its ground");
+        }
+        if (effect.Dash > 0 && Pushes.Run(sim, unit, outcome.Direction, effect.Dash))
+        {
+            unit.CardHit += sim.Data.Rules.Combat.Dash.AttackHit;
+            done.Add($"dashes to {unit.Pos}");
+        }
+        if (effect.PushAll > 0)
+        {
+            var pushed = Pushes.Over(sim, unit, Patterns.Tiles(state.Map, card.Pattern!, unit.Pos, outcome.Direction), effect.PushAll);
+            done.Add(pushed.Count > 0 ? $"drives back {string.Join(", ", pushed.Select(u => u.Name))}" : "drives back nobody");
+        }
+        if (effect.Attack && MeleeBlow(sim, unit) is { } swing)
+        {
+            var tiles = effect.Dash > 0 ? Patterns.Tiles(state.Map, card.Pattern!, unit.Pos, outcome.Direction) : outcome.Tiles!;
+            var struck = TileStrikes.Strike(sim, unit, swing, tiles, outcome.Tile ?? unit.Pos, outcome.Direction);
+            done.Add(struck.Count > 0 ? $"swings at {string.Join(", ", struck.Select(u => u.Name))}" : "swings at nothing");
         }
         if (effect.Spin && target is not null)
         {
@@ -243,14 +273,20 @@ public static class CardAbilities
             .ThenBy(a => a.Id, StringComparer.Ordinal)
             .FirstOrDefault();
 
+    /// <summary>What an attack card swings: the unit's hardest melee action, by id on a tie; null with none.</summary>
+    public static ActionProfile? MeleeBlow(ScavengeSim sim, Unit unit) =>
+        sim.Profile(unit).Actions.Where(a => a.Pattern != Items.AttackPattern.Ranged)
+            .OrderByDescending(a => a.MaxDamage).ThenBy(a => a.Id, StringComparer.Ordinal).FirstOrDefault();
+
     /// <summary>Devices and vehicles stay put.</summary>
-    private static bool Fixed(Unit u) => u.Kind == UnitKind.Device;
+    internal static bool Fixed(Unit u) => u.Kind == UnitKind.Device;
 
     /// <summary>
     /// Where a unit slid <paramref name="tiles"/> steps in <paramref name="dir"/> stops: before the map edge, impassable
     /// terrain, a door that holds it, another unit, or a diagonal squeeze between two impassable tiles.
     /// </summary>
-    public static Pos Slide(ScavengeSim sim, Unit mover, Pos dir, int tiles)
+    /// <param name="terrainOnly">Ignore who stands in the way: a plan must not learn of hidden units from it.</param>
+    public static Pos Slide(ScavengeSim sim, Unit mover, Pos dir, int tiles, bool terrainOnly = false)
     {
         var state = sim.State;
         var map = state.Map;
@@ -258,7 +294,7 @@ public static class CardAbilities
         for (var i = 0; i < tiles; i++)
         {
             var next = at + dir;
-            if (!Open(sim, mover, next)) break;
+            if (!(terrainOnly ? Passable(sim, next) && !Hacking.Blocks(state, mover, next) : Open(sim, mover, next))) break;
             if (dir.X != 0 && dir.Y != 0 && !Passable(sim, new Pos(next.X, at.Y)) && !Passable(sim, new Pos(at.X, next.Y))) break;
             at = next;
         }
@@ -271,21 +307,15 @@ public static class CardAbilities
     private static bool Open(ScavengeSim sim, Unit mover, Pos p) =>
         Passable(sim, p) && !Hacking.Blocks(sim.State, mover, p) && (sim.State.UnitAt(p) is not { } other || other.Id == mover.Id);
 
-    /// <summary>
-    /// Puts a unit on another tile by force: its readied strike is lost (exposed to <paramref name="by"/>'s side if hostile), and it
-    /// stands in the line of fire of strikes on that tile until its next sub-turn (<see cref="Unit.Displaced"/>).
-    /// </summary>
+    /// <summary>Puts a unit on another tile by force. What it has queued goes off from there.</summary>
     internal static void Displace(ScavengeSim sim, Unit mover, Pos to, Unit by)
     {
         var state = sim.State;
         var from = mover.Pos;
         mover.Pos = to;
-        mover.Displaced = true;
+        if (mover.CarryingId is { } carried && state.FindUnit(carried) is { } load) load.Pos = to;
         state.Log(new(state.Round, ScavengeEventType.Displaced, $"{by.Name} moves {mover.Name} from {from} to {to}.", by.Id, mover.Id, to,
             Anonymous: $"{mover.Name} is thrown to {to} by something in the fog."));
-        sim.Moved(mover, from, forced: true);
-        if (!TileStrikes.Readied(state, mover)) return;
-        TileStrikes.Lose(sim, mover, "knocked off its tile");
-        if (mover.HostileTo(by)) Combat.Expose(sim, mover, by.Side);
+        sim.Moved(mover, from);
     }
 }

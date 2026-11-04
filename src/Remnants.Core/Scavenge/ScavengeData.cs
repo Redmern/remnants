@@ -11,7 +11,7 @@ namespace Remnants.Core.Scavenge;
 public sealed class ScavengeData
 {
     public IReadOnlyDictionary<string, ItemDef> Items { get; }
-    public IReadOnlyDictionary<string, EnemyDef> Enemies { get; }
+    public IReadOnlyDictionary<string, EnemyDef> Enemies { get; private set; }
     public IReadOnlyDictionary<string, ZoneDef> Zones { get; }
     public ScavengeRules Rules { get; private set; }
 
@@ -23,6 +23,14 @@ public sealed class ScavengeData
     {
         var copy = (ScavengeData)MemberwiseClone();
         copy.Rules = Rules with { Turn = turn };
+        return copy;
+    }
+
+    /// <summary>A copy with one enemy definition replaced, everything else shared.</summary>
+    public ScavengeData WithEnemy(EnemyDef enemy)
+    {
+        var copy = (ScavengeData)MemberwiseClone();
+        copy.Enemies = new Dictionary<string, EnemyDef>(Enemies.ToDictionary(kv => kv.Key, kv => kv.Value)) { [enemy.Id] = enemy };
         return copy;
     }
 
@@ -304,6 +312,8 @@ public sealed class ScavengeData
         foreach (var t in Enum.GetValues<Terrain>())
             if (!Rules.Terrain.ContainsKey(t)) throw new GameDataException($"Scavenge rules: terrain '{t}' is not defined.");
         if (Rules.Turn.BaseAp < 1) throw new GameDataException("Scavenge rules: turn.baseAp must be at least 1.");
+        if (Rules.Turn.BaseMp < 1) throw new GameDataException("Scavenge rules: turn.baseMp must be at least 1.");
+        if (Rules.Turn.BaseStamina < 1) throw new GameDataException("Scavenge rules: turn.baseStamina must be at least 1.");
         if (Rules.Movement.AgilityPerRange <= 0) throw new GameDataException("Scavenge rules: movement.agilityPerRange must be positive.");
         if (Rules.Combat.HitLocations.Count == 0 || Rules.Combat.HitLocations.Values.Sum() <= 0)
             throw new GameDataException("Scavenge rules: combat.hitLocations needs positive weights.");

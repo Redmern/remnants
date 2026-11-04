@@ -16,7 +16,7 @@ namespace Remnants.Server;
 /// <para>
 /// As an ally (a co-op mission, <c>--team N</c> in a versus lobby, or an alliance it accepted: it accepts every offer
 /// unless <c>--hostile</c>; with <c>--propose</c> it also offers one to every rival party it is in contact with) it patches up and revives allies next to it, carries a downed one it cannot revive to the
-/// exit, follows the nearest ally instead of the map centre, and covers them on overwatch when there is nothing to
+/// exit, follows the nearest ally instead of the map centre, and waits by them when there is nothing to
 /// shoot; it leaves once the rounds are up or its allies are gone.
 /// </para>
 /// </summary>
@@ -82,7 +82,7 @@ internal static class Bot
     private static IScavengeCommand? Decide(NetClient client, ScavengeSim view, int rounds, bool hostile, HashSet<int>? offered)
     {
         var state = view.State;
-        if (state.CurrentUnit is not { } unit || unit.PlayerId != client.PlayerId || !unit.PlayerControlled) return null;
+        if (TacticsView.PlanningUnit(state, client.PlayerId) is not { } unit) return null;
         var pid = client.PlayerId;
         var map = state.Map;
         var profile = view.Profile(unit);
@@ -103,19 +103,17 @@ internal static class Bot
             (p.FromPlayerId, p.ToPlayerId) == (pid, other) || (p.FromPlayerId, p.ToPlayerId) == (other, pid));
 
         var allies = state.Units.Where(u => u.Side == unit.Side && u.PlayerId != pid && u.Kind == UnitKind.Survivor && u.OnMap).ToList();
-        // Cards first (mostly free): a reaction to a plan aimed at it, aim, defense, a mend, a draw.
+        // Cards first (mostly free): something that breaks an enemy's reach, a block, a swing, aim, defense, a mend, a draw.
         if (BotTactics.Card(view, unit, pid) is { } card) return card;
         if (Help(view, unit, allies) is { } help) return help;
 
         var shot = profile.Actions
-            .SelectMany(x => state.Units.Where(t => t.OnMap && unit.HostileTo(t) && !Talking(t) && Combat.ApCost(x, unit.Pos, t.Pos) <= unit.Ap
-                                                    && Combat.CheckReach(view.Data, map, unit.Pos, x, t.Pos) == ScavengeError.None)
-                .Select(t => (Strike: TileStrikes.StrikeAt(view, unit, x, t), Chance: Combat.HitChance(view.Data, map, unit.Pos, x, t.Pos, view.Profile(t)))))
+            .SelectMany(x => state.Units.Where(t => t.OnMap && unit.HostileTo(t) && !Talking(t) && Combat.ApCost(x, Plans.Anchor(state, unit), BotTactics.Expected(view, unit.Side, t)) <= unit.Ap
+                                                    && Combat.CheckReach(view.Data, map, Plans.Anchor(state, unit), x, BotTactics.Expected(view, unit.Side, t)) == ScavengeError.None)
+                .Select(t => (Strike: TileStrikes.StrikeAt(view, unit, x, t, BotTactics.Expected(view, unit.Side, t)), Chance: Combat.HitChance(view.Data, map, Plans.Anchor(state, unit), x, t.Pos, view.Profile(t)))))
             .Where(o => o.Strike is not null)
             .OrderByDescending(o => o.Chance).FirstOrDefault();
         if (shot.Strike is { } strike) return strike;
-        // Step off a tile a seen enemy's strike covers.
-        if (BotTactics.Dodge(view, unit, pid) is { } dodge) return dodge;
 
         var hadAllies = client.Mission?.Mode == MissionMode.Coop || state.Parties.Any(p => p.PlayerId != pid && p.Side == unit.Side);
         var leaving = state.Round > rounds || unit.CarryingId is not null || (hadAllies && allies.All(a => !a.IsActive));
@@ -124,11 +122,11 @@ internal static class Bot
         var targets = state.Units.Where(t => t.OnMap && t.IsActive && unit.HostileTo(t) && !Talking(t)).ToList();
         if (!leaving && BotTactics.Approach(view, unit, pid, targets) is { } approach) return approach;
 
-        // Follow the nearest ally (a downed one first); once next to them, cover them on overwatch.
+        // Follow the nearest ally (a downed one first); once next to them, wait.
         var buddy = allies.OrderBy(a => a.IsActive ? 1 : 0).ThenBy(a => a.Pos.Chebyshev(unit.Pos)).ThenBy(a => a.Id).FirstOrDefault();
-        if (!leaving && buddy is not null && buddy.Pos.Chebyshev(unit.Pos) <= 2)
+        if (!leaving && buddy is not null && buddy.Pos.Chebyshev(Plans.Anchor(state, unit)) <= 2)
         {
-            return Overwatches.OnArc(view, unit, pid) ?? new EndTurn(pid, unit.Id);
+            return new EndTurn(pid, unit.Id);
         }
         var centre = buddy is not null && !leaving ? buddy.Pos : new Pos(map.Width / 2, map.Height / 2);
         return BotTactics.StepToward(view, unit, pid, leaving ? map.Exits : [centre]) ?? (IScavengeCommand)new EndTurn(pid, unit.Id);

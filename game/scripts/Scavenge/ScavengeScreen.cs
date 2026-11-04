@@ -206,6 +206,7 @@ public partial class ScavengeScreen : Node3D
             if (error) Toast(message);
         };
         _hud.EndTurnRequested += OnEndTurn;
+        _hud.TurnAimRequested += TurnCardAim;
         _hud.FastForwardToggled += () =>
         {
             Hud.GameSettings.SkipAnimations = !Hud.GameSettings.SkipAnimations;
@@ -250,12 +251,12 @@ public partial class ScavengeScreen : Node3D
         _actionPanel.CommandRequested += command => _ = Run(command);
         _hud.Loot.CommandRequested += command => _ = Run(command);
         _stancePanel.CommandRequested += command => _ = Run(command);
-        _stancePanel.OverwatchAimRequested += () =>
+        _stancePanel.AimChosen += aim =>
         {
             CancelCardAim();
+            _aim = _aim == aim ? TechAim.None : aim;
             _usingItem = null;
             _pinging = null;
-            _aim = TechAim.Overwatch;
             RefreshHud();
         };
         _techPanel.CommandRequested += command => _ = Run(command);
@@ -305,7 +306,7 @@ public partial class ScavengeScreen : Node3D
                     _map.SetHover(hover);
                     RefreshFocus();
                     // Aiming a card: the hovered target's landing tile and the units it touches follow the cursor.
-                    if (_cardAim is not null) RefreshHud();
+                    if (_cardAim is not null || _aim is TechAim.Push or TechAim.Dash) RefreshHud();
                 }
                 if (_cardAim is not null)
                 {
@@ -355,15 +356,6 @@ public partial class ScavengeScreen : Node3D
         var acting = _presenter.ActingUnit;
         var pid = _presenter.PlayerId;
 
-        if (_aim == TechAim.Overwatch && acting is not null)
-        {
-            _aim = TechAim.None;
-            _ = Run(Input.IsKeyPressed(Key.Shift)
-                ? new CommitOverwatch(pid, acting.Id, Arc: Combat.Face(acting.Pos, tile))
-                : new CommitOverwatch(pid, acting.Id, Tile: tile));
-            return;
-        }
-
         if (_aim is TechAim.Heal or TechAim.Fire && acting is not null)
         {
             if (clicked is null)
@@ -374,6 +366,20 @@ public partial class ScavengeScreen : Node3D
             var aimed = _aim;
             _aim = TechAim.None;
             _ = Run(aimed == TechAim.Heal ? new DroneHeal(pid, acting.Id, clicked.Id) : new DroneFire(pid, acting.Id, clicked.Id));
+            return;
+        }
+
+        if (_aim is TechAim.Push or TechAim.Dash && acting is not null)
+        {
+            if (tile == Plans.Anchor(state, acting))
+            {
+                Toast("Click a tile next to where the plan ends.");
+                return;
+            }
+            var launch = _aim;
+            _aim = TechAim.None;
+            var way = TacticsView.AimDirection(_presenter.Sim, acting, tile);
+            _ = Run(launch == TechAim.Push ? new Push(pid, acting.Id, way) : new Dash(pid, acting.Id, way, _presenter.Sim.Data.Rules.Combat.Dash.Tiles));
             return;
         }
 
@@ -443,8 +449,7 @@ public partial class ScavengeScreen : Node3D
     private void OnEndTurn()
     {
         if (_busy || _presenter.ActingUnit is not { } acting) return;
-        // Shift: done for the whole round, sitting out its later sub-rounds.
-        _ = Run(new EndTurn(_presenter.PlayerId, acting.Id, WholeTurn: Input.IsKeyPressed(Key.Shift)));
+        _ = Run(new EndTurn(_presenter.PlayerId, acting.Id));
     }
 
     /// <summary>Sends a command; on success replays its events (and any AI turns it set off), then snaps views to state.</summary>
@@ -452,6 +457,8 @@ public partial class ScavengeScreen : Node3D
     {
         if (_busy) return false;
         _busy = true;
+        // Ready sends the player on to their next unit.
+        if (command is EndTurn) _presenter.Focus = null;
         ScavengeResult result;
         using (PerfMonitor.Measure("execute")) result = await _presenter.Execute(command);
         if (result.Ok) _usingItem = null;
@@ -525,19 +532,19 @@ public partial class ScavengeScreen : Node3D
     /// </summary>
     private async void AutoEndTurn()
     {
-        if (!Hud.GameSettings.AutoEndTurn || _autoplaying || _presenter.Done || _presenter.ActingUnit is not { } acting || !_presenter.IsMine(acting)
+        if (!Hud.GameSettings.AutoEndTurn || _autoplaying || _presenter.Done || _presenter.ActingUnit is not { } acting || Plans.Of(_presenter.State, acting) is { Steps.Count: > 0 } || !_presenter.IsMine(acting)
             || TurnAdvice.CanStillAct(_presenter.Sim, acting)) return;
         var id = acting.Id;
-        var round = (_presenter.State.Round, _presenter.State.SubRound);
+        var round = _presenter.State.Round;
         var input = _inputSeq;
-        _hud.Toasts.Show("Turn over", $"{acting.Name} has nothing left to do.", "ui_end_turn", Hud.Palette.TextMuted, key: "auto_end_turn");
+        _hud.Toasts.Show("Nothing to plan", $"{acting.Name} has nothing to do this round.", "ui_end_turn", Hud.Palette.TextMuted, key: "auto_end_turn");
         // A beat so the player sees why (a frame at least: never re-entering the replay that called this).
         if (Hud.GameSettings.SkipAnimations) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         else await ToSignal(GetTree().CreateTimer(0.35), SceneTreeTimer.SignalName.Timeout);
         // The player may have acted (a card, End Turn) during the beat; a remote view may have been replaced: look again.
         // Any click or key in the beat (a card, an order, End Turn itself) is the player's own answer: leave the turn to them.
         if (!IsInsideTree() || _busy || _inputSeq != input || _presenter.ActingUnit is not { } now || now.Id != id
-            || (_presenter.State.Round, _presenter.State.SubRound) != round || TurnAdvice.CanStillAct(_presenter.Sim, now)) return;
+            || _presenter.State.Round != round || TurnAdvice.CanStillAct(_presenter.Sim, now)) return;
         _ = Run(new EndTurn(_presenter.PlayerId, id));
     }
 
@@ -556,6 +563,8 @@ public partial class ScavengeScreen : Node3D
     private void Select(int? unitId)
     {
         _selectedId = unitId;
+        // Going to one of your own units opens its plan, in any order.
+        if (unitId is { } id && _presenter.State.FindUnit(id) is { } unit && _presenter.IsMine(unit) && unit.PlayerControlled && unit.IsActive) _presenter.Focus = id;
         _lastActingId = _presenter.ActingUnit?.Id;
         RefreshHud();
     }
@@ -637,7 +646,7 @@ public partial class ScavengeScreen : Node3D
         {
             _actionPanel.Refresh(false, _usingItem);
             _hud.Loot.Refresh(false);
-            _stancePanel.Refresh(false);
+            _stancePanel.Refresh(false, _aim);
             _techPanel.Refresh(false, _aim);
             _coopPanel.Refresh(false, selected, _pinging);
         }
@@ -663,12 +672,12 @@ public partial class ScavengeScreen : Node3D
         var color = Hud.Palette.TextMuted;
         if (acting is null)
         {
-            title = _presenter.Done ? "Run over" : _busy ? "Enemy turn" : "Waiting";
-            hint = _presenter.Done ? "The run is over." : _busy ? "The others are moving. Watch the map." : _presenter.Driver.TurnStatus() ?? "Waiting for the other units to act…";
+            title = _presenter.Done ? "Run over" : _busy ? "Resolving" : "Waiting";
+            hint = _presenter.Done ? "The run is over." : _busy ? "The round plays out. Watch the map." : _presenter.Driver.TurnStatus() ?? "Waiting for the other units to act…";
         }
         else
         {
-            title = $"{acting.Name}'s turn";
+            title = $"Planning: {acting.Name}";
             var round = _presenter.State.Round;
             (hint, color) = (_busy, _autoplaying) switch
             {
@@ -680,8 +689,8 @@ public partial class ScavengeScreen : Node3D
                 _ when _usingItem is { } item => (_actionPanel.ItemHint(item), Hud.Palette.Amber),
                 _ when ownDrone => ($"The drone flies on {acting.Name}'s AP: its orders are under Tech.", Hud.Palette.TextMuted),
                 _ when other => ($"{selected!.Name} is selected; these are {acting.Name}'s orders. {Hud.Hotkeys.KeyName("scav_center")} goes back.", Hud.Palette.Warn),
-                _ when round <= 3 => ("Click a lit tile to move, a red target to attack with the chosen action.", Hud.Palette.TextMuted),
-                _ => ($"{acting.Ap} AP left · {Hud.Hotkeys.KeyName("end_turn")} ends the turn · {Hud.Hotkeys.KeyName("scav_next_unit")} next unit.", Hud.Palette.TextMuted),
+                _ when round <= 3 => ("Click a lit tile to plan a move, a red target to plan a blow.", Hud.Palette.TextMuted),
+                _ => ($"MP {acting.Mp} · AP {acting.Ap} · {Hud.Hotkeys.KeyName("end_turn")} commits the plan · {Hud.Hotkeys.KeyName("scav_next_unit")} next unit.", Hud.Palette.TextMuted),
             };
         }
         _hud.Acting.Refresh(_presenter, acting, title, hint, color);
@@ -716,13 +725,18 @@ public partial class ScavengeScreen : Node3D
     }
 
     /// <summary>
-    /// The tile strike at a hostile's tile with the action: a stab / slash aimed to cover the most hostiles, else the one tile
+    /// The tile strike at a hostile with the action, where its seen walk ends if that is in reach, else where it stands: a
+    /// stab / slash aimed to cover the most hostiles, else the one tile
     /// (an unknown or out-of-reach action is sent as is, for Core to refuse).
     /// </summary>
-    private AttackTile StrikeOn(Unit acting, Unit target, string actionId) =>
-        _presenter.Sim.Profile(acting).Action(actionId) is { } action && TileStrikes.StrikeAt(_presenter.Sim, acting, action, target) is { } strike
-            ? strike with { PlayerId = _presenter.PlayerId }
-            : new AttackTile(_presenter.PlayerId, acting.Id, target.Pos, actionId);
+    private AttackTile StrikeOn(Unit acting, Unit target, string actionId)
+    {
+        if (_presenter.Sim.Profile(acting).Action(actionId) is { } action
+            && (TileStrikes.StrikeAt(_presenter.Sim, acting, action, target, BotTactics.Expected(_presenter.Sim, acting.Side, target))
+                ?? TileStrikes.StrikeAt(_presenter.Sim, acting, action, target)) is { } strike)
+            return strike with { PlayerId = _presenter.PlayerId };
+        return new AttackTile(_presenter.PlayerId, acting.Id, target.Pos, actionId);
+    }
 
     /// <summary>Debug demos: readies a strike at the hostile, then ends the party's sub-turns until it has come down.</summary>
     private async Task StrikeAndLand(Unit acting, Unit target, string actionId)
@@ -742,14 +756,12 @@ public partial class ScavengeScreen : Node3D
         _map.ClearHighlights();
         var previews = new Dictionary<int, WorldTags.Preview>();
         _hud.Tags.SetPreviews(previews);
-        // The threat overlay: where seen enemies' telegraphed blows land (strong), and what they could hit now (faint).
+        // The threat overlay: what seen enemies could hit from where their walks end.
         if (!_busy && !_presenter.Done)
             foreach (var (tile, kind) in _presenter.Threats())
                 if (_presenter.IsExplored(tile))
                     _map.Highlight(tile, kind == ThreatKind.Strike ? HighlightKind.ThreatPlanned : HighlightKind.Threat);
-        if (!_busy && !_presenter.Done)
-            foreach (var tile in TacticsView.Watches(_presenter.Sim, _presenter.Side).SelectMany(w => w.Tiles))
-                _map.Highlight(tile, HighlightKind.Use);
+        if (!_busy && !_presenter.Done) HighlightPlans();
         if (HighlightCardAim()) return;
         if (selected is null || !selected.OnMap || !_presenter.CanSee(selected)) return;
         _map.Highlight(selected.Pos, HighlightKind.Selected);
@@ -776,9 +788,9 @@ public partial class ScavengeScreen : Node3D
             }
             return;
         }
-        if (isActing && _aim == TechAim.Overwatch)
+        if (isActing && _aim is TechAim.Push or TechAim.Dash)
         {
-            foreach (var p in Overwatches.InReach(_presenter.Sim, acting!)) _map.Highlight(p, HighlightKind.Use);
+            HighlightLaunch(acting!, _aim);
             return;
         }
         if (isActing && _aim != TechAim.None)
@@ -811,8 +823,8 @@ public partial class ScavengeScreen : Node3D
         var fromTiles = hovered is null ? null : _presenter.MovePreview(selected, hovered);
         foreach (var (tile, cost) in _presenter.Reachable(selected))
         {
-            if (isActing && cost > selected.Ap) continue;
-            var label = fromTiles?.TryGetValue(tile, out var chance) == true ? $"{chance * 100:0}%" : cost > 1 ? $"{cost} AP" : null;
+            if (cost > selected.Mp) continue;
+            var label = fromTiles?.TryGetValue(tile, out var chance) == true ? $"{chance * 100:0}%" : cost > 1 ? $"{cost} MP" : null;
             _map.Highlight(tile, HighlightKind.Move, label);
         }
 
@@ -828,9 +840,9 @@ public partial class ScavengeScreen : Node3D
         foreach (var option in _presenter.AttackOptions(selected, action))
         {
             _map.Highlight(option.Target.Pos, HighlightKind.Attack);
-            var ambush = option.Ambush is { Braced: false };
+            var ambush = option.Ambush is not null;
             // True AP from here (a scope costs more up close) and the mod effects that bite on this target.
-            var ap = Combat.ApCost(action, selected.Pos, option.Target.Pos);
+            var ap = Combat.ApCost(action, Plans.Anchor(_presenter.State, selected), option.Target.Pos);
             var effects = ModEffects(action, option.Target, ap);
             previews[option.Target.Id] = new WorldTags.Preview(
                 (ambush ? "AMBUSH " : "") + $"{option.HitChance * 100:0}% · {action.MinDamage:0}–{action.MaxDamage:0}" + (ap > selected.Ap ? " · no AP" : ""),
@@ -899,7 +911,7 @@ public partial class ScavengeScreen : Node3D
             else if (_presenter.State.Map.IsExit(u.Pos) && i > steps / 2) command = new Extract(pid, u.Id);
             else
             {
-                var step = _presenter.Reachable(u).Where(kv => kv.Value <= u.Ap)
+                var step = _presenter.Reachable(u).Where(kv => kv.Value <= u.Mp)
                     .OrderBy(kv => exits.Min(x => x.Chebyshev(kv.Key))).ThenBy(kv => kv.Value)
                     .Select(kv => (Pos?)kv.Key).FirstOrDefault();
                 command = step is { } to && exits.Min(x => x.Chebyshev(to)) < exits.Min(x => x.Chebyshev(u.Pos))
@@ -932,7 +944,8 @@ public partial class ScavengeScreen : Node3D
             if (!_presenter.IsAimed(card.Id)) return new PlayCard(pid, u.Id, card.Id, null, FromSlot: fromSlot);
             if (_presenter.Sim.Data.Cards.Find(card.Id) is not { } def) continue;
             if (_presenter.Targets(u.Id, card.Id, false, fromSlot).FirstOrDefault(o => o.Ok) is { } target)
-                return new PlayCard(pid, u.Id, card.Id, target.UnitId, false, fromSlot, def.Target == CardTarget.Tile ? target.Tile : null);
+                return new PlayCard(pid, u.Id, card.Id, target.UnitId, false, fromSlot, def.Target == CardTarget.Tile ? target.Tile : null,
+                    def.Pattern is null ? null : TacticsView.AimDirection(_presenter.Sim, u, target.Tile));
         }
         return null;
     }

@@ -4,7 +4,7 @@ using Remnants.Core.Trade;
 
 namespace Remnants.Net;
 
-/// <summary>Server settings. <see cref="TurnSeconds"/> 0 turns the AFK timer off.</summary>
+/// <summary>Server settings. <see cref="TurnSeconds"/>: how long the planning phase of a round lasts; 0 turns the timer off.</summary>
 public sealed record HostOptions
 {
     public string ZoneId { get; init; } = "suburb_ruins";
@@ -94,7 +94,7 @@ public sealed class GameHost : IHostSink, TradeDesk.IVenue
     private readonly Dictionary<int, Seat> _byConnection = new();
     private int _nextPlayerId = 1;
     private ScavengeEvent? _lastPublished;
-    private (int Round, int Index, int? Unit) _turnKey;
+    private (int Round, int? Unit) _turnKey;
     private DateTimeOffset? _deadline;
 
     public GameHost(ScavengeData data, HostOptions? options = null, TimeProvider? clock = null)
@@ -210,11 +210,14 @@ public sealed class GameHost : IHostSink, TradeDesk.IVenue
             Broadcast(new PlayerLeft(seat.PlayerId, seat.Name, 0));
             Abandon(seat);
         }
-        if (_deadline is { } deadline && now >= deadline && Sim.State.CurrentUnit is { PlayerControlled: true } unit)
+        if (_deadline is { } deadline && now >= deadline && Sim.State.CurrentUnit is { PlayerControlled: true })
         {
             _deadline = null;
-            Broadcast(new Notice($"{unit.Name}'s turn timed out."));
-            Act(new EndTurn(unit.PlayerId!.Value, unit.Id));
+            Broadcast(new Notice("Planning time is up."));
+            // Everyone still planning commits what they have: the round resolves with the last of them.
+            var round = Sim.State.Round;
+            for (var guard = 0; guard < 1000 && Sim.State.Round == round && !Sim.State.Finished && Sim.State.CurrentUnit is { PlayerControlled: true } unit; guard++)
+                Act(new EndTurn(unit.PlayerId!.Value, unit.Id));
         }
         AfterChange();
     }
@@ -462,17 +465,19 @@ public sealed class GameHost : IHostSink, TradeDesk.IVenue
         // (A connected player whose people are all downed, waiting on an ally, is not playing.)
         bool SomeonePlaying() => _seats.Any(s => s.Connection is not null && state.FindParty(s.PlayerId) is { Done: false }
                                                  && state.Units.Any(u => u.PlayerId == s.PlayerId && u.PlayerControlled && u.IsActive));
-        for (var guard = 0; guard < 10000 && !state.Finished && state.CurrentUnit is { PlayerControlled: true } unit
-                            && SeatOf(unit.PlayerId) is { Connection: null } && SomeonePlaying(); guard++)
+        for (var guard = 0; guard < 10000 && !state.Finished && SomeonePlaying()
+                            && state.Units.Find(u => u.IsActive && u.PlayerControlled && SeatOf(u.PlayerId) is { Connection: null } && Plans.Of(state, u) is not { Committed: true }) is { } unit; guard++)
             Act(new EndTurn(unit.PlayerId!.Value, unit.Id));
 
-        var key = (state.Round, state.TurnIndex, state.CurrentUnitId);
+        var key = (state.Round, state.CurrentUnitId);
         if (forceTurn || key != _turnKey)
         {
+            // One deadline for the whole planning phase: a unit committing does not restart it.
+            var opened = forceTurn || key.Round != _turnKey.Round;
             _turnKey = key;
             var current = state.CurrentUnit;
             var player = current is { PlayerControlled: true } ? current.PlayerId : null;
-            _deadline = player is not null && Options.TurnSeconds > 0 ? _clock.GetUtcNow().AddSeconds(Options.TurnSeconds) : null;
+            if (opened) _deadline = player is not null && Options.TurnSeconds > 0 ? _clock.GetUtcNow().AddSeconds(Options.TurnSeconds) : null;
             foreach (var seat in _seats) SendTurn(seat);
         }
 

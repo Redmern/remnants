@@ -35,7 +35,6 @@ public static class LootDemo
                 var husk = NewScavenge.EnemyUnit(sim.Data, state, sim.Data.Enemies["husk"], spot);
                 husk.Hp = 1;
                 state.Units.Add(husk);
-                state.TurnOrder.Add(husk.Id);
                 // A kill worth showing: the first loot seed whose roll for this Husk has a few things in it.
                 var table = sim.Data.Loot.Tables["husk"];
                 var context = FieldLoot.Context(sim, acting);

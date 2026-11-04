@@ -117,10 +117,6 @@ public partial class ScavengeAudio : Node3D
             case ScavengeEventType.Spotted or ScavengeEventType.Flanked or ScavengeEventType.Retreated:
                 yield return actor?.Kind == UnitKind.Enemy ? $"scavenge.bark.{Who(actor)}" : $"scavenge.{type}";
                 break;
-            case ScavengeEventType.Overwatch:
-                // The same event type both sets the stance and reports a reaction shot (that one has a target).
-                yield return e.TargetId is null ? "scavenge.overwatch" : "scavenge.overwatch_trigger";
-                break;
             default:
                 yield return $"scavenge.{type}";
                 // A hacked device also sounds as it comes over to the hacker: a turret powering up, a door opening.

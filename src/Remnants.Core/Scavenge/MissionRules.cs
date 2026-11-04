@@ -440,6 +440,7 @@ public static class MissionRules
                 unit.Ai.LastKnown = g;
             }
             state.Units.Add(unit);
+            Adrenaline.Joined(sim, unit);
             state.Log(new(state.Round, ScavengeEventType.Reinforced, $"{unit.Name} appears.", unit.Id, Pos: at));
         }
     }

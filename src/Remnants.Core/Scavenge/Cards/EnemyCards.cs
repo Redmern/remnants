@@ -57,7 +57,7 @@ public static class EnemyCards
     {
         var data = sim.Data;
         var state = sim.State;
-        bool Playable(CardDef c) => c.Cost <= deck.Points && c.ApCost == 0 && (c.Requirement.Kind == CardKind.Baseline || c.Requirement.Met(unit))
+        bool Playable(CardDef c) => c.Cost <= deck.Points && c.ApCost <= unit.Ap && (c.Requirement.Kind == CardKind.Baseline || c.Requirement.Met(unit))
                                     && !(c.ArmLock && ProfileDeriver.ArmsLocked(data, unit.Body, twoHanded: false));
         var hand = deck.Hand.Distinct().Select(data.Cards.Find).OfType<CardDef>().Where(Playable).OrderBy(c => c.Id, StringComparer.Ordinal).ToList();
         PlayCard? Try(IEnumerable<CardDef> cards, IEnumerable<Unit?> targets, Pos? tile = null)
@@ -72,17 +72,20 @@ public static class EnemyCards
         var hostiles = state.Units.Where(u => u.IsActive && unit.HostileTo(u) && Detection.SideSees(data, state, unit.Side, u))
             .OrderBy(u => u.Pos.Chebyshev(unit.Pos)).ThenBy(u => u.Id).ToList();
 
-        var threats = hostiles.Where(u => state.Strikes.Any(s => s.UnitId == u.Id && s.Tiles.Contains(unit.Pos)));
-        if (Try(hand.Where(c => c.Reaction).OrderByDescending(Breaks), threats) is { } reaction) return reaction;
-        var buffs = hand.Where(c => !c.Reaction && !c.Effect.IsAbility).ToList();
-        if (Try(hand.Where(c => !c.Reaction && Breaks(c)), hostiles.Where(h => TileStrikes.Readied(state, h))) is { } broken) return broken;
+        var buffs = hand.Where(c => !c.Effect.IsAbility).ToList();
+        var at = Plans.Anchor(state, unit);
+        // A block costs AP, so it needs its own look at the hand. It guards the tile the unit will be on.
+        var guards = deck.Hand.Distinct().Select(data.Cards.Find).OfType<CardDef>()
+            .Where(c => c.Effect.Block > 0 && c.Target == CardTarget.Tile && c.Cost <= deck.Points && c.ApCost <= unit.Ap).OrderBy(c => c.Id, StringComparer.Ordinal);
+        if (!BotTactics.Guarding(state, sim.Data, unit) && hostiles.Any(h => Combat.ThreatZone(sim, h).Contains(at)) && Try(guards, [null], at) is { } block) return block;
+        if (Try(hand.Where(Breaks), hostiles.Where(h => Combat.ThreatZone(sim, h).Contains(at))) is { } broken) return broken;
         PlayCard Buff(CardDef c) => new(0, unit.Id, c.Id);
         var attacks = TileStrikes.Readied(state, unit);
         if (attacks && unit.CardHit <= 0 && buffs.FirstOrDefault(c => c.Effect.Hit > 0) is { } aim) return Buff(aim);
         var seenBy = hostiles.FirstOrDefault(h => Detection.Spots(data, state, h, unit));
         var seen = seenBy is not null;
         if (seenBy is not null && Survivors.Treatment.WorstInjury(unit.Body) >= BotTactics.SmokeInjuryAt)
-            foreach (var c in hand.Where(c => !c.Reaction && c.Effect.Smoke > 0))
+            foreach (var c in hand.Where(c => c.Effect.Smoke > 0))
                 if (Try([c], [null], CardAbilities.ScreenTile(unit, seenBy.Pos, c.Radius)) is { } smoke) return smoke;
         if (unit.Guard == 0 && buffs.FirstOrDefault(c => c.Effect.Guard > 0) is { } guard) return Buff(guard);
         if (unit.CardCover <= 0 && buffs.FirstOrDefault(c => c.Effect.Cover > 0) is { } cover) return Buff(cover);

@@ -16,8 +16,7 @@ namespace Remnants.Core.Scavenge;
 /// exposed) lands on it, so it soaks a round of fire. It fades after its rounds.</item>
 /// <item><b>Noise decoy</b> (<see cref="UseEffect.NoiseRadius"/>): enemies within the radius go to look at the tile — Husks
 /// even off a hunt unless their prey is next to them; the Linked only while they do not see theirs.</item>
-/// <item><b>Radios</b> (<see cref="RadioDef"/>): see <see cref="RadioAccuracy"/>, <see cref="ExtraPings"/> and
-/// <see cref="SharesOverwatch"/>.</item>
+/// <item><b>Radios</b> (<see cref="RadioDef"/>): see <see cref="RadioAccuracy"/> and <see cref="ExtraPings"/>.</item>
 /// <item><b>Network deck trace</b> (<see cref="HackToolDef.TraceChance"/>): see <see cref="TraceCheck"/>.</item>
 /// </list>
 /// </summary>
@@ -69,9 +68,8 @@ public static class ElectronicWarfare
                 u.OffRelayUntilRound = Math.Max(u.OffRelayUntilRound, until);
                 u.EmpUntilRound = Math.Max(u.EmpUntilRound, until);
                 u.Ap = 0;
-                Overwatches.Drop(sim, u, "stunned");
-                u.Stance = Stance.None;
-                if (!u.PlayerControlled) TileStrikes.Lose(sim, u, "stunned");
+                u.Mp = 0;
+                TileStrikes.Lose(sim, u, "stunned");
                 hits.Add(u.Name);
             }
             else if (u.Kind == UnitKind.Survivor)
@@ -176,13 +174,6 @@ public static class ElectronicWarfare
     /// <summary>Team pings a turn a radio adds.</summary>
     public static int ExtraPings(ScavengeData data, Unit unit) => RadioOf(data, unit)?.ExtraPings ?? 0;
 
-    /// <summary>
-    /// A watcher with a squad radio reacts to a hostile its side sees (a teammate calls it in), not only to what it sees itself;
-    /// it still needs reach and line of sight to shoot.
-    /// </summary>
-    public static bool SharesOverwatch(ScavengeSim sim, Unit watcher, Unit target) =>
-        RadioOf(sim.Data, watcher) is { ShareOverwatch: true } && Detection.SideSees(sim.Data, sim.State, watcher.Side, target)
-        && sim.State.Map.HasLineOfSight(sim.Data, watcher.Pos, target.Pos);
 
     /// <summary>
     /// A hack action with a Network deck may be traced: the Linked hunt the hacker and the Network's alarm rises (as a failed

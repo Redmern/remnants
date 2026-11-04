@@ -65,7 +65,9 @@ public static class Protocol
 
     /// <summary>Telegraphed plans gone from the wire (<c>plannedAction</c>); tile strikes carry suppressing fire; overwatch is <c>commitOverwatch</c>.</summary>
     public const int TelegraphedStrikesVersion = 20;
-    public const int Version = TelegraphedStrikesVersion;
+    /// <summary>Simultaneous rounds: plans in the state with only rivals' walks and fog hints, undoPlan / push / dash / recover, one planning deadline; no stance or overwatch commands.</summary>
+    public const int SimultaneousVersion = 21;
+    public const int Version = SimultaneousVersion;
     public const int DefaultPort = 7777;
 }
 

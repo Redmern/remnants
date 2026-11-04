@@ -38,7 +38,7 @@ public class NightNetTests
         Assert.Equal(DayPhase.Night, f.Sim.State.Environment.Phase);
         Assert.Equal(23, f.Sim.State.Environment.Hour);
         // Any intent refreshes the views.
-        Assert.True(a.Do(new SetStance(a.Id, f.Sim.State.CurrentUnit!.Id, Stance.Brace)).Ok);
+        Assert.True(a.Do(new EndTurn(a.Id, f.Sim.State.CurrentUnit!.Id)).Ok);
         foreach (var p in new[] { a, b })
         {
             Assert.Equal(DayPhase.Night, p.View.Environment.Phase);
@@ -59,13 +59,13 @@ public class NightNetTests
     public void A_party_seen_by_day_is_not_sent_at_night()
     {
         var (day, da, db, dayAlice, _) = Standoff(12);
-        Assert.True(da.Do(new SetStance(da.Id, day.Sim.State.CurrentUnit!.Id, Stance.Brace)).Ok);
+        Assert.True(da.Do(new EndTurn(da.Id, day.Sim.State.CurrentUnit!.Id)).Ok);
         Assert.True(Detection.SideSees(day.Sim.Data, day.Sim.State, Unit.PlayerSide(db.Id), dayAlice));
         Assert.Contains(db.View.Units, u => u.Id == dayAlice.Id);
         day.AssertNoLeaks();
 
         var (night, na, nb, nightAlice, nightBob) = Standoff(23);
-        Assert.True(na.Do(new SetStance(na.Id, night.Sim.State.CurrentUnit!.Id, Stance.Brace)).Ok);
+        Assert.True(na.Do(new EndTurn(na.Id, night.Sim.State.CurrentUnit!.Id)).Ok);
         Assert.False(Detection.SideSees(night.Sim.Data, night.Sim.State, Unit.PlayerSide(nb.Id), nightAlice));
         Assert.DoesNotContain(nb.View.Units, u => u.PlayerId == na.Id);
         Assert.DoesNotContain(na.View.Units, u => u.PlayerId == nb.Id);

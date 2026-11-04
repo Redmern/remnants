@@ -12,12 +12,11 @@ public class CardDataTests
     [Fact]
     public void The_catalog_holds_common_or_uncommon_cards_across_every_category()
     {
-        Assert.InRange(Cards.All.Count, 20, 30);
+        Assert.InRange(Cards.All.Count, 20, 40);
         Assert.Equal(Enum.GetValues<CardCategory>().ToHashSet(), Cards.All.Values.Select(c => c.Category).ToHashSet());
         Assert.All(Cards.All.Values, c => Assert.True(c.Rarity is CardRarity.Common or CardRarity.Uncommon, c.Id));
         Assert.NotEmpty(Cards.Rules.Starter);
         Assert.All(Cards.Rules.Starter, kv => Assert.True(Cards.All.ContainsKey(kv.Key) && kv.Value is >= 1 and <= 2, kv.Key));
-        Assert.Contains(Cards.All.Values, c => c.Reaction);
         Assert.True(Cards.All.Values.Count(c => c.ArmLock) >= 2);
         Assert.Contains(Cards.All.Values, c => c.Consumable);
         Assert.Contains(Cards.All.Values, c => c.ApCost > 0);
@@ -37,7 +36,8 @@ public class CardDataTests
         Assert.True(abilities.Count >= 8, $"{abilities.Count} abilities");
         Assert.All(StarterCards, c => Assert.InRange(c.Cost, 1, 2));
         Assert.All(StarterCards.Where(c => !c.Effect.IsAbility), c => Assert.Equal(1, c.Cost));
-        Assert.All(StarterCards, c => Assert.Equal(0, c.ApCost)); // cards cost points, not AP
+        // Cards cost points, not AP, unless they stand in for a blow or a guard.
+        Assert.All(StarterCards.Where(c => !c.Effect.Attack && c.Effect.Block == 0 && c.Effect.Push == 0 && c.Effect.Pull == 0), c => Assert.Equal(0, c.ApCost));
     }
 
     [Fact]
@@ -46,7 +46,7 @@ public class CardDataTests
         // Facing: a step that turns the player round an enemy, a shove that spins one.
         Assert.True(StarterCards.Count(c => c.Effect.Step > 0 || c.Effect.Spin) >= 2);
         // Telegraphs: reactions to a seen plan that break it (a disrupt, a yank off its tile).
-        Assert.True(StarterCards.Count(c => c.Reaction && (c.Effect.Disrupt || c.Effect.Push + c.Effect.Pull > 0)) >= 2);
+        Assert.True(StarterCards.Count(c => (c.Effect.Disrupt || c.Effect.Push + c.Effect.Pull > 0)) >= 2);
         // Every kind of ability is in the catalog.
         var all = Cards.All.Values.Select(c => c.Effect).ToList();
         Assert.Contains(all, e => e.Push > 0);
@@ -74,8 +74,6 @@ public class CardDataTests
         caps["Radius"] = c.Radius;
         caps["BreaksPlan"] = e.Disrupt || e.Push > 0 || e.Pull > 0 ? 1 : 0;
         caps["AnswersStrike"] = e.Disrupt ? 1 : 0;
-        caps["OffTurn"] = c.Reaction ? 1 : 0;
-        caps["NeedsNoPlan"] = c.Reaction ? 0 : 1;
         caps["Targets"] = c.Target switch { CardTarget.Unit => 2, CardTarget.Ally or CardTarget.Enemy => 1, _ => 0 };
         return caps;
     }
@@ -103,10 +101,10 @@ public class CardDataTests
         var e = c.Effect;
         var v = (e.Push + e.Pull) * 1.0 + (e.Spin ? 1.0 : 0) + (e.Disrupt || e.Push > 0 || e.Pull > 0 ? 1.0 : 0) + (e.Disrupt ? 0.5 : 0)
                 + e.Step * 0.75 + (e.Swap ? 1.0 : 0) + e.GrantAp * 1.0 + (e.AdvanceInitiative || e.DelayInitiative ? 0.75 : 0)
-                + e.PlaceBarrier * 0.5 + e.Smoke * (2 * c.Radius + 1) * (2 * c.Radius + 1) / 9.0 + (e.Strike ? 2.0 : 0)
-                + e.Hit / 0.1 * 0.5 + e.Cover / 0.15 * 0.5 + e.Guard * 0.75 + e.Mend / 0.1 * 0.75 + e.Draw * 0.5 + (e.Counter ? 1.5 : 0) + e.Move * 0.5
+                + e.PlaceBarrier * 0.5 + e.Smoke * (2 * c.Radius + 1) * (2 * c.Radius + 1) / 9.0 + (e.Strike ? 2.0 : 0) + (e.Attack ? 1.0 : 0) + e.Block * 2
+                + e.Hit / 0.1 * 0.5 + e.Cover / 0.15 * 0.5 + e.Guard * 0.75 + e.Mend / 0.1 * 0.75 + e.Draw * 0.5 + e.Move * 0.5
                 + Math.Clamp(c.Range - 1, 0, 5) * 0.1;
-        return c.Reaction ? v * 0.75 + 0.25 : v;
+        return v;
     }
 
     [Fact]

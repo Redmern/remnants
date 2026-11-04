@@ -32,8 +32,11 @@ public static class PerkHooks
     // Combat
     public const string AccuracyBonus = "accuracy_bonus";
     public const string MeleeDamageBonus = "melee_damage_bonus";
-    public const string OverwatchReactionsBonus = "overwatch_reactions_bonus";
-    public const string BraceCoverBonus = "brace_cover_bonus";
+    public const string BlockBonus = "block_bonus";
+    public const string StunResist = "stun_resist";
+    public const string AdrenalineStart = "adrenaline_start";
+    public const string AdrenalineGain = "adrenaline_gain";
+    public const string AdrenalineDrain = "adrenaline_drain";
 
     // Survival / scout
     public const string StealthBonus = "stealth_bonus";
@@ -102,8 +105,11 @@ public static class PerkHooks
         [DronePayload] = "Flag: the drone can carry and drop a flare or motion sensor.",
         [AccuracyBonus] = "Added to hit chance with any attack (0.05 = +5 points).",
         [MeleeDamageBonus] = "Melee damage multiplier bonus (0.15 = +15%).",
-        [OverwatchReactionsBonus] = "Extra overwatch reactions.",
-        [BraceCoverBonus] = "Cover added while braced.",
+        [BlockBonus] = "Added to the share of a hit their blocks take off (0.1 = +10 points).",
+        [StunResist] = "Share of a stun's chance shrugged off (0.25 = 25%).",
+        [AdrenalineStart] = "Adrenaline at the start of a mission.",
+        [AdrenalineGain] = "Adrenaline gain multiplier bonus (0.5 = +50%).",
+        [AdrenalineDrain] = "Share of adrenaline drain shrugged off (0.5 = half).",
         [StealthBonus] = "Added to stealth.",
         [DetectionBonus] = "Added to detection.",
         [SightBonus] = "Tiles added to sight.",

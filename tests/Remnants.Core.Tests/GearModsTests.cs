@@ -345,13 +345,13 @@ public class GearModsTests
         unit.Skills[Skill.Melee] = 100;
         var drone = EnemyUnit("linked_drone", new Pos(2, 1));
         var sim = Arena(6, 4, [unit, drone], seed: 3);
-        for (var i = 0; i < 10 && !drone.Suppressed && drone.IsActive; i++)
+        for (var i = 0; i < 10 && !Stuns.Active(sim.State, drone) && drone.IsActive; i++)
         {
             unit.Ap = 5;
             StrikeNow(sim, unit, drone, "swing");
         }
-        Assert.True(drone.Suppressed || !drone.IsActive);
-        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Suppressed && e.Message.Contains("stunned"));
+        Assert.True(Stuns.Active(sim.State, drone) || !drone.IsActive);
+        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Stunned && e.Message.Contains("stunned"));
     }
 
     [Fact]

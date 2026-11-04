@@ -59,7 +59,7 @@ public static class ZoneTrial
         ["network"] = [[.. Legs("network_leg"), (BodyPart.RightArm, "network_arm")], [.. Legs("network_leg"), (BodyPart.LeftArm, "network_arm"), (BodyPart.Eyes, "network_eye")]],
     };
 
-    /// <param name="defenses">The bot uses Overwatch / Brace / Lookout / flares (off = the old bot, for comparison).</param>
+    /// <param name="defenses">The bot uses Lookout / flares (off = the old bot, for comparison).</param>
     /// <param name="kit">"fog": each member also carries two flares and the first a motion sensor. "geared": a crafted
     /// mid-game kit instead of starting gear — pistol / rifle, padded vest / camo cloak, binoculars, med-kit, bandages,
     /// flares and a motion sensor — and the bot stands and fights the Linked.</param>
@@ -250,7 +250,7 @@ public static class ZoneTrial
             linkedKills += stats.LinkedKills;
             rounds += stats.Rounds;
             ambushed += stats.AmbushedTimes;
-            reactions += stats.OverwatchShots;
+            reactions += stats.Blocks;
             defended += stats.DefensesUsed;
             hacked += stats.Hacked;
             hackFailed += stats.HackFailed;
@@ -276,7 +276,7 @@ public static class ZoneTrial
             sb.AppendLine($"  vehicle {field.Name}: stashed items/run {stashed / (double)n:0.0}  wrecked {100.0 * wrecked / n:0}%  (noise ×{conditions!.HuskMultiplier:0.00} Husks)");
         sb.AppendLine($"  items/run {items / (double)n:0.0}  schematics/run {schematics / (double)n:0.00}  kills/run {kills / (double)n:0.0}  Linked kills/run {linkedKills / (double)n:0.00}  rounds/run {rounds / (double)n:0}");
         sb.AppendLine($"  carried home/run: {string.Join("  ", resources.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => $"{kv.Key} {kv.Value / (double)n:0.0}"))}  pick-ups/run {piles / (double)n:0.0}  salvage actions/run {salvaged / (double)n:0.0}");
-        sb.AppendLine($"  ambushed/run {ambushed / (double)n:0.00}  overwatch shots/run {reactions / (double)n:0.00}  defenses used/run {defended / (double)n:0.0}");
+        sb.AppendLine($"  ambushed/run {ambushed / (double)n:0.00}  blocks/run {reactions / (double)n:0.00}  defenses used/run {defended / (double)n:0.0}");
         string Tiers(int[] t) => t.Sum() == 0 ? "-" : $"{100.0 * t[0] / t.Sum():0}/{100.0 * t[1] / t.Sum():0}/{100.0 * t[2] / t.Sum():0}%";
         sb.AppendLine($"  plans/run {tactics.Declared / (double)n:0.0} (enemy {tactics.EnemyDeclared / (double)n:0.0})  resolved {tactics.Resolved / (double)n:0.0}" +
                       $"  fizzled {tactics.Fizzled / (double)n:0.0}  cancelled {tactics.Canceled / (double)n:0.0}  cards played/run {tactics.CardsPlayed / (double)n:0.0}" +

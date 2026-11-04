@@ -565,7 +565,7 @@
       "name": "Sentinel",
       "discipline": "combat",
       "tier": 2,
-      "description": "On overwatch, gets one more reaction shot.",
+      "description": "Keeps their nerve: starts every mission with 25 adrenaline.",
       "requires": {
         "skills": {
           "Firearms": 25
@@ -580,7 +580,7 @@
       },
       "effects": {
         "hooks": {
-          "overwatch_reactions_bonus": 1
+          "adrenaline_start": 25
         }
       }
     },
@@ -613,7 +613,7 @@
       "name": "Dug In",
       "discipline": "combat",
       "tier": 2,
-      "description": "Braced, they are very hard to hit.",
+      "description": "Their blocks take more off a hit.",
       "requires": {
         "attributes": {
           "Endurance": 45
@@ -625,7 +625,7 @@
       },
       "effects": {
         "hooks": {
-          "brace_cover_bonus": 0.15
+          "block_bonus": 0.1
         }
       }
     },
