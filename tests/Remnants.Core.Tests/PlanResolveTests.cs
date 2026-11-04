@@ -278,4 +278,103 @@ public class PlanResolveTests
         }
         Assert.Equal(Plans_(false), Plans_(true));
     }
+
+    // What the retired reaction, overwatch and sub-round tests guarded, where the behaviour lives on.
+
+    private static readonly ScavengeData Certain = With(r => r with
+    {
+        Combat = r.Combat with { MinHitChance = 1, MaxHitChance = 1, Tiers = r.Combat.Tiers with { GrazeBelow = 0, SolidFrom = 1 } },
+    });
+
+    [Fact]
+    public void Stacked_damage_multipliers_are_capped_by_the_data()
+    {
+        double Cut(bool capped, Pos facing)
+        {
+            var data = With(r => r with { Combat = r.Combat with { MinHitChance = 1, MaxHitChance = 1, MaxDamageMultiplier = capped ? 1 : r.Combat.MaxDamageMultiplier } });
+            var a = SurvivorUnit(1, new(3, 3), weapon: "pipe");
+            var b = SurvivorUnit(2, new(4, 3));
+            b.Facing = facing;
+            var sim = Arena(10, 7, [a, b], data: data);
+            Assert.True(sim.Execute(new AttackTile(1, a.Id, b.Pos, "swing")).Ok);
+            Settle(sim);
+            return b.MaxHp - b.Hp;
+        }
+        var front = new Pos(-1, 0);
+        var back = new Pos(1, 0);
+        Assert.True(Cut(capped: false, back) > Cut(capped: false, front), "the test needs a rear hit worth more than a front one");
+        Assert.Equal(Cut(capped: true, front), Cut(capped: true, back), 6);
+    }
+
+    [Fact]
+    public void A_target_that_walks_off_the_aimed_tile_is_not_struck()
+    {
+        var a = SurvivorUnit(1, new(3, 3), weapon: "pipe");
+        var b = SurvivorUnit(2, new(4, 3));
+        var sim = Arena(10, 7, [a, b], data: Certain);
+        Assert.True(sim.Execute(new AttackTile(1, a.Id, b.Pos, "swing")).Ok);
+        Assert.True(sim.Execute(new Move(2, b.Id, new(6, 3))).Ok);
+        Settle(sim);
+        Assert.Equal(b.MaxHp, b.Hp);
+        // Dodging earned nothing: no counter queued, no exposure to cash in.
+        Assert.Empty(sim.State.Plans);
+    }
+
+    [Fact]
+    public void A_plain_hit_leaves_the_victims_queued_blow_standing()
+    {
+        var a = SurvivorUnit(1, new(3, 3), weapon: "pipe");
+        var b = SurvivorUnit(2, new(4, 3), weapon: "pipe");
+        var sim = Arena(10, 7, [a, b], data: Certain);
+        a.PriorityBonus = 20;
+        Assert.True(sim.Execute(new AttackTile(1, a.Id, b.Pos, "swing")).Ok);
+        Assert.True(sim.Execute(new AttackTile(2, b.Id, a.Pos, "swing")).Ok);
+        Settle(sim);
+        Assert.True(a.Hp < a.MaxHp);
+    }
+
+    [Fact]
+    public void Queuing_an_action_tells_the_log_nothing()
+    {
+        var a = SurvivorUnit(1, new(3, 3), weapon: "pipe");
+        var b = SurvivorUnit(2, new(4, 3));
+        var sim = Arena(10, 7, [a, b], data: Certain);
+        var events = sim.State.Events.Count;
+        Assert.True(sim.Execute(new AttackTile(1, a.Id, b.Pos, "swing")).Ok);
+        Assert.Equal(events, sim.State.Events.Count);
+    }
+
+    [Fact]
+    public void A_walker_faces_the_way_it_went_and_counts_as_having_moved()
+    {
+        var a = SurvivorUnit(1, new(3, 3));
+        var sim = Arena(10, 7, [a, SurvivorUnit(2, new(9, 6))], data: Certain);
+        Assert.True(sim.Execute(new Move(1, a.Id, new(3, 5))).Ok);
+        Settle(sim);
+        Assert.Equal(new Pos(0, 1), a.Facing);
+        Assert.True(a.Moved);
+    }
+
+    [Fact]
+    public void A_plan_survives_save_and_load_and_resolves_the_same()
+    {
+        (ScavengeSim Sim, Unit A) Planned()
+        {
+            var a = SurvivorUnit(1, new(1, 3), weapon: "pipe");
+            var b = SurvivorUnit(2, new(5, 3));
+            var sim = Arena(10, 7, [a, b], data: Certain);
+            Assert.True(sim.Execute(new Dash(1, a.Id, new Pos(1, 0), 3)).Ok);
+            a.Ap = 2;
+            Assert.True(sim.Execute(new Push(1, a.Id, new Pos(1, 0))).Ok);
+            Assert.True(sim.Execute(new AttackTile(1, a.Id, b.Pos, "swing")).Ok);
+            return (sim, a);
+        }
+        var (live, _) = Planned();
+        var (saved, aSaved) = Planned();
+        var loaded = ScavengeSave.Load(Certain, ScavengeSave.Save(saved.State));
+        Assert.Equal(new Pos(4, 3), Plans.Anchor(loaded.State, loaded.State.FindUnit(aSaved.Id)!));
+        Settle(live);
+        Settle(loaded);
+        Assert.Equal(live.State.Events.Select(e => e.Message), loaded.State.Events.Select(e => e.Message));
+    }
 }

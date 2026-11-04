@@ -40,6 +40,8 @@
     "armLockBelow": 0.5,
     "tiers": { "grazeBelow": 0.25, "solidFrom": 0.8, "grazeDamage": 0.4, "solidSeverity": 1.5, "armorShiftFrom": 4, "coverShiftFrom": 0.25 },
     "facing": { "sideDamage": 1.25, "rearDamage": 1.5 },
+    "push": { "apCost": 1, "tiles": 1, "pattern": { "shape": "Stab", "length": 1 }, "collisionDamage": 4, "blockerDamage": 2 },
+    "dash": { "apCost": 1, "tiles": 3, "attackHit": 0.1 },
     "block": { "skill": "Melee", "perSkill": 0.002, "perArmor": 0.01, "max": 0.9 },
     "maxDamageMultiplier": 2.0,
     "maxHitBonus": 0.3,

@@ -84,6 +84,7 @@ public class ProtocolTests
                  {
                      (new PlayCard(1, 2, "dash"), "playCard"), (new PlayCard(1, 2, "counterstrike", 9, Boost: true, FromSlot: true), "playCard"),
                      (new PlayCard(1, 2, "smoke_bomb", Tile: new Pos(4, 5)), "playCard"), (new DiscardDeadCard(1, 2, "sprint"), "discardDeadCard"),
+                     (new Push(1, 2, new Pos(1, 0)), "push"), (new Dash(1, 2, new Pos(0, -1), 3), "dash"),
                  })
         {
             var json = ProtocolJson.Serialize(new Command(3, command));

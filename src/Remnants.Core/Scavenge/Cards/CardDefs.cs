@@ -103,11 +103,15 @@ public sealed record CardEffect
     public bool Strike { get; init; }
     public bool Disrupt { get; init; }
     public bool Attack { get; init; }
+
+    /// <summary>Tiles everyone on the card's pattern is pushed; <see cref="Dash"/> tiles the player runs first, along its aim.</summary>
+    public int PushAll { get; init; }
+    public int Dash { get; init; }
     public double Block { get; init; }
 
     /// <summary>Whether it changes the board (anything beyond a buff on the character it is played on).</summary>
     public bool IsAbility => Push > 0 || Pull > 0 || Swap || Step > 0 || Spin || GrantAp > 0 || AdvanceInitiative || DelayInitiative
-                             || PlaceBarrier > 0 || Smoke > 0 || Strike || Disrupt || Attack || Block > 0;
+                             || PlaceBarrier > 0 || Smoke > 0 || Strike || Disrupt || Attack || Block > 0 || PushAll > 0 || Dash > 0;
 
     /// <summary>Whether it acts on a unit other than the player (a target unit is needed).</summary>
     public bool NeedsUnit => Push > 0 || Pull > 0 || Swap || Spin || GrantAp > 0 || AdvanceInitiative || DelayInitiative || Strike || Disrupt;
@@ -125,7 +129,7 @@ public sealed record CardEffect
         GrantAp = GrantAp + other.GrantAp, AdvanceInitiative = AdvanceInitiative || other.AdvanceInitiative,
         DelayInitiative = DelayInitiative || other.DelayInitiative, PlaceBarrier = PlaceBarrier + other.PlaceBarrier,
         Smoke = Smoke + other.Smoke, Strike = Strike || other.Strike, Disrupt = Disrupt || other.Disrupt,
-        Attack = Attack || other.Attack, Block = Block + other.Block,
+        Attack = Attack || other.Attack, Block = Block + other.Block, PushAll = PushAll + other.PushAll, Dash = Dash + other.Dash,
     };
 
     /// <summary>Numbers × <paramref name="factor"/> (whole-number effects round down, never below their base).</summary>
@@ -136,7 +140,7 @@ public sealed record CardEffect
         // Abilities do not scale: a push is as far, a smoke as long, whoever plays it.
         Push = Push, Pull = Pull, Swap = Swap, Step = Step, Spin = Spin, GrantAp = GrantAp, AdvanceInitiative = AdvanceInitiative,
         DelayInitiative = DelayInitiative, PlaceBarrier = PlaceBarrier, Smoke = Smoke, Strike = Strike, Disrupt = Disrupt,
-        Attack = Attack, Block = Block,
+        Attack = Attack, Block = Block, PushAll = PushAll, Dash = Dash,
     };
 }
 
@@ -314,8 +318,8 @@ public sealed class CardCatalog
         var unit = c.Target is CardTarget.Ally or CardTarget.Enemy or CardTarget.Unit;
         if (e.NeedsUnit && !unit) throw new GameDataException($"Card '{c.Id}': its effect needs a unit target.");
         if (e.NeedsTile && c.Target != CardTarget.Tile) throw new GameDataException($"Card '{c.Id}': its effect needs a tile target.");
-        if ((e.Attack || e.Block > 0) && c.Pattern is null) throw new GameDataException($"Card '{c.Id}': an attack or defence needs a pattern.");
-        if ((e.Attack || e.Block > 0) && c.Target is not (CardTarget.Self or CardTarget.Tile)) throw new GameDataException($"Card '{c.Id}': a pattern starts from the player or a tile.");
+        if ((e.Attack || e.Block > 0 || e.PushAll > 0) && c.Pattern is null) throw new GameDataException($"Card '{c.Id}': an attack or defence needs a pattern.");
+        if ((e.Attack || e.Block > 0 || e.PushAll > 0 || e.Dash > 0) && c.Target is not (CardTarget.Self or CardTarget.Tile)) throw new GameDataException($"Card '{c.Id}': a pattern starts from the player or a tile.");
         if (c.Pattern is { } pattern && (pattern.Length < 0 || pattern.Offsets?.Any(o => o.Length != 2) == true)) throw new GameDataException($"Card '{c.Id}': a pattern's offsets are [forward, side] pairs.");
         if (e.Swap && c.Target != CardTarget.Ally) throw new GameDataException($"Card '{c.Id}': a swap is with an ally.");
         if (!e.IsAbility && c.Target is not CardTarget.Self)

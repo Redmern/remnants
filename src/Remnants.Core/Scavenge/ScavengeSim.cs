@@ -74,7 +74,10 @@ public sealed class ScavengeSim
         result ??= command switch
         {
             ChooseOption c => MissionRules.Choose(this, unit!, c),
+            Move when Plans.HasDash(State, unit!) => ScavengeResult.Fail(ScavengeError.NotUsable, "Moves go before a dash: take the dash back first."),
             Move c => ScavengeCommandHandlers.Move(this, unit!, c),
+            Push c => Pushes.Plan(this, unit!, c),
+            Dash c => Pushes.Plan(this, unit!, c),
             UseItem c => ScavengeCommandHandlers.UseItem(this, unit!, c),
             PickUp c => ScavengeCommandHandlers.PickUp(this, unit!, c),
             TakeAll c => FieldLoot.TakeAll(this, unit!, c),
@@ -135,7 +138,7 @@ public sealed class ScavengeSim
             var step = plan.Steps[^1];
             (step.RefundMp, step.RefundAp, step.RefundFatigue) = (mpBefore - unit.Mp, apBefore - unit.Ap, unit.Fatigue - fatigueBefore);
         }
-        if (command is Move or AttackTile or PlayCard or Recover or UndoPlan) plan.Committed = false;
+        if (command is Move or AttackTile or PlayCard or Recover or Push or Dash or UndoPlan) plan.Committed = false;
     }
 
     private ScavengeResult Commit(Unit unit)

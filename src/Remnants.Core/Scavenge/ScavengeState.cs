@@ -56,6 +56,8 @@ public enum ScavengeEventType
     InitiativeChanged,
     /// <summary>A defended tile took some of a hit.</summary>
     Blocked,
+    /// <summary>A pushed unit ran into a wall or a unit.</summary>
+    Collided,
     /// <summary>Hostiles on the same priority: their actions resolved together at reduced effect.</summary>
     Clashed,
     /// <summary>A card put a barrier or smoke on the map.</summary>

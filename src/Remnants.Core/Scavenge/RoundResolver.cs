@@ -128,6 +128,12 @@ internal static class RoundResolver
             case PlanStepKind.Recover:
                 Economy.Recovered(sim, unit);
                 break;
+            case PlanStepKind.Push:
+                Pushes.Resolve(sim, unit, step);
+                break;
+            case PlanStepKind.Dash:
+                Pushes.ResolveDash(sim, unit, step);
+                break;
         }
     }
 }

@@ -56,6 +56,13 @@ public static class TacticsView
         return new PatternAimView(tiles, AllyTiles(sim, unit, tiles));
     }
 
+    /// <summary>The aim of a push from where the unit's plan ends.</summary>
+    public static PatternAimView PushAim(ScavengeSim sim, Unit unit, Pos direction)
+    {
+        var tiles = Pushes.Tiles(sim, unit, direction);
+        return new PatternAimView(tiles, AllyTiles(sim, unit, tiles));
+    }
+
     /// <summary>The <paramref name="tiles"/> holding one of the unit's side or an ally: a blow through them strikes them too. Only units it knows of.</summary>
     public static List<Pos> AllyTiles(ScavengeSim sim, Unit unit, IEnumerable<Pos> tiles) =>
         tiles.Where(p => sim.State.UnitAt(p) is { } u && u.Id != unit.Id && !unit.HostileTo(u) && u.Side != Unit.NeutralSide).ToList();
@@ -264,6 +271,8 @@ public static class TacticsView
         if (e.Push > 0) parts.Add($"push {e.Push}");
         if (e.Pull > 0) parts.Add($"pull {e.Pull}");
         if (e.Swap) parts.Add("swap places");
+        if (e.Dash > 0) parts.Add($"dashes {e.Dash}");
+        if (e.PushAll > 0) parts.Add($"pushes the pattern {e.PushAll}");
         if (e.Attack) parts.Add("swings through the pattern");
         if (e.Block > 0) parts.Add($"blocks {e.Block:P0} on the pattern");
         if (e.Step > 0) parts.Add($"step {e.Step}");

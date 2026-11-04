@@ -74,6 +74,12 @@ public sealed record Recruit(int PlayerId, int UnitId, int NpcId) : IScavengeCom
 /// <summary>Spend AP to catch breath: stamina back (<see cref="TurnRules.RecoverStamina"/>).</summary>
 public sealed record Recover(int PlayerId, int UnitId) : IScavengeCommand;
 
+/// <summary>Queue a push: whoever stands on the tile(s) in <paramref name="Direction"/> is moved away when it comes up.</summary>
+public sealed record Push(int PlayerId, int UnitId, Pos Direction) : IScavengeCommand;
+
+/// <summary>Queue a dash of up to <paramref name="Tiles"/> straight in <paramref name="Direction"/>, in the action phase. Not telegraphed.</summary>
+public sealed record Dash(int PlayerId, int UnitId, Pos Direction, int Tiles) : IScavengeCommand;
+
 /// <summary>
 /// Commit the unit's plan. The round resolves once every player-controlled unit is committed; editing the plan first reopens it.
 /// </summary>

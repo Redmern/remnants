@@ -97,7 +97,13 @@ public static class CardAbilities
             if (Fixed(target)) return Fail(ScavengeError.InvalidTarget, $"{target.Name} cannot be moved.");
             var dir = effect.Push > 0 ? Combat.Face(unit.Pos, target.Pos) : Combat.Face(target.Pos, unit.Pos);
             landing = Slide(sim, target, dir, Math.Max(effect.Push, effect.Pull));
-            if (landing == target.Pos) return Fail(ScavengeError.InvalidTarget, $"{target.Name} has nowhere to go.");
+            // A shove with nowhere to go is a collision; a pull needs somewhere to pull to.
+            if (landing == target.Pos && effect.Pull > 0) return Fail(ScavengeError.InvalidTarget, $"{target.Name} has nowhere to go.");
+        }
+        if (effect.Dash > 0)
+        {
+            var way = Combat.Face(default, direction ?? unit.Facing ?? new Pos(1, 0));
+            if (way == default || Slide(sim, unit, way, effect.Dash, terrainOnly: true) == unit.Pos) return Fail(ScavengeError.InvalidTile, $"{unit.Name} has no room to dash that way.");
         }
         // Turned as the player aims it: toward the tile aimed at, or the way the unit faces, unless told otherwise.
         var turned = direction ?? (tile is { } p && p != unit.Pos ? Combat.Face(unit.Pos, p) : unit.Facing ?? new Pos(1, 0));
@@ -131,6 +137,11 @@ public static class CardAbilities
             Displace(sim, target, from, unit);
             sim.Moved(unit, from);
             done.Add($"swaps places with {target.Name}");
+        }
+        else if (effect.Push > 0 && target is not null)
+        {
+            var moved = Pushes.One(sim, unit, target, Combat.Face(unit.Pos, target.Pos), effect.Push);
+            done.Add(moved ? $"{target.Name} shoved to {target.Pos}" : $"{target.Name} is shoved and does not budge");
         }
         else if (outcome.Landing is { } landing && target is not null)
         {
@@ -190,9 +201,20 @@ public static class CardAbilities
             Defences.CameUp(state, unit, card.Id);
             done.Add("holds its ground");
         }
+        if (effect.Dash > 0 && Pushes.Run(sim, unit, outcome.Direction, effect.Dash))
+        {
+            unit.CardHit += sim.Data.Rules.Combat.Dash.AttackHit;
+            done.Add($"dashes to {unit.Pos}");
+        }
+        if (effect.PushAll > 0)
+        {
+            var pushed = Pushes.Over(sim, unit, Patterns.Tiles(state.Map, card.Pattern!, unit.Pos, outcome.Direction), effect.PushAll);
+            done.Add(pushed.Count > 0 ? $"drives back {string.Join(", ", pushed.Select(u => u.Name))}" : "drives back nobody");
+        }
         if (effect.Attack && MeleeBlow(sim, unit) is { } swing)
         {
-            var struck = TileStrikes.Strike(sim, unit, swing, outcome.Tiles!, outcome.Tile ?? unit.Pos, outcome.Direction);
+            var tiles = effect.Dash > 0 ? Patterns.Tiles(state.Map, card.Pattern!, unit.Pos, outcome.Direction) : outcome.Tiles!;
+            var struck = TileStrikes.Strike(sim, unit, swing, tiles, outcome.Tile ?? unit.Pos, outcome.Direction);
             done.Add(struck.Count > 0 ? $"swings at {string.Join(", ", struck.Select(u => u.Name))}" : "swings at nothing");
         }
         if (effect.Spin && target is not null)
@@ -255,13 +277,14 @@ public static class CardAbilities
             .OrderByDescending(a => a.MaxDamage).ThenBy(a => a.Id, StringComparer.Ordinal).FirstOrDefault();
 
     /// <summary>Devices and vehicles stay put.</summary>
-    private static bool Fixed(Unit u) => u.Kind == UnitKind.Device;
+    internal static bool Fixed(Unit u) => u.Kind == UnitKind.Device;
 
     /// <summary>
     /// Where a unit slid <paramref name="tiles"/> steps in <paramref name="dir"/> stops: before the map edge, impassable
     /// terrain, a door that holds it, another unit, or a diagonal squeeze between two impassable tiles.
     /// </summary>
-    public static Pos Slide(ScavengeSim sim, Unit mover, Pos dir, int tiles)
+    /// <param name="terrainOnly">Ignore who stands in the way: a plan must not learn of hidden units from it.</param>
+    public static Pos Slide(ScavengeSim sim, Unit mover, Pos dir, int tiles, bool terrainOnly = false)
     {
         var state = sim.State;
         var map = state.Map;
@@ -269,7 +292,7 @@ public static class CardAbilities
         for (var i = 0; i < tiles; i++)
         {
             var next = at + dir;
-            if (!Open(sim, mover, next)) break;
+            if (!(terrainOnly ? Passable(sim, next) && !Hacking.Blocks(state, mover, next) : Open(sim, mover, next))) break;
             if (dir.X != 0 && dir.Y != 0 && !Passable(sim, new Pos(next.X, at.Y)) && !Passable(sim, new Pos(at.X, next.Y))) break;
             at = next;
         }
@@ -288,6 +311,7 @@ public static class CardAbilities
         var state = sim.State;
         var from = mover.Pos;
         mover.Pos = to;
+        if (mover.CarryingId is { } carried && state.FindUnit(carried) is { } load) load.Pos = to;
         state.Log(new(state.Round, ScavengeEventType.Displaced, $"{by.Name} moves {mover.Name} from {from} to {to}.", by.Id, mover.Id, to,
             Anonymous: $"{mover.Name} is thrown to {to} by something in the fog."));
         sim.Moved(mover, from);

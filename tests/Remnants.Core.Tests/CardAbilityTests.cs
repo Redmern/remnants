@@ -114,16 +114,14 @@ public class CardAbilityTests
     }
 
     [Fact]
-    public void A_push_with_nowhere_to_go_is_refused_and_costs_nothing()
+    public void A_push_with_nowhere_to_go_is_a_collision()
     {
         var a = SurvivorUnit(1, new(2, 0));
         var b = SurvivorUnit(2, new(3, 0));
         var sim = Table([a, b], ["t_push"], rows: ["....#"], width: 5, height: 1);
-        var r = Play(sim, a, "t_push", b);
-        Assert.Equal(ScavengeError.InvalidTarget, r.Error);
+        Assert.True(Play(sim, a, "t_push", b).Ok);
         Assert.Equal(new Pos(3, 0), b.Pos);
-        Assert.Equal(3, SquadDecks.Of(sim.State, 1)!.Points);
-        Assert.Equal(["t_push"], SquadDecks.Of(sim.State, 1)!.Hand);
+        Assert.Equal(b.MaxHp - sim.Data.Rules.Combat.Push.CollisionDamage, b.Hp, 6);
     }
 
     [Fact]

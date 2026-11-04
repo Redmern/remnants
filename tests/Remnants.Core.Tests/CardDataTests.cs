@@ -12,7 +12,7 @@ public class CardDataTests
     [Fact]
     public void The_catalog_holds_common_or_uncommon_cards_across_every_category()
     {
-        Assert.InRange(Cards.All.Count, 20, 30);
+        Assert.InRange(Cards.All.Count, 20, 40);
         Assert.Equal(Enum.GetValues<CardCategory>().ToHashSet(), Cards.All.Values.Select(c => c.Category).ToHashSet());
         Assert.All(Cards.All.Values, c => Assert.True(c.Rarity is CardRarity.Common or CardRarity.Uncommon, c.Id));
         Assert.NotEmpty(Cards.Rules.Starter);

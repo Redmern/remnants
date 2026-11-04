@@ -336,6 +336,16 @@ public static class Combat
             CardAbilities.Displace(sim, target, landing, attacker);
     }
 
+    /// <summary>A pushed unit hits a wall, or <paramref name="blocker"/>, who takes less. Armor does not help against the ground.</summary>
+    internal static void Collide(ScavengeSim sim, Unit by, Unit victim, Unit? blocker)
+    {
+        var rules = sim.Data.Rules.Combat.Push;
+        sim.State.Log(new(sim.State.Round, ScavengeEventType.Collided, $"{victim.Name} slams into {blocker?.Name ?? "a wall"}.", by.Id, victim.Id, victim.Pos,
+            Anonymous: $"{victim.Name} slams into {blocker?.Name ?? "a wall"}."));
+        ApplyDamage(sim, victim, PickHitLocation(sim, victim), rules.CollisionDamage * sim.EffectFactor, attacker: by);
+        if (blocker is { IsActive: true }) ApplyDamage(sim, blocker, PickHitLocation(sim, blocker), rules.BlockerDamage * sim.EffectFactor, attacker: by);
+    }
+
     /// <summary>
     /// The tier of a landed hit (<paramref name="roll"/> under <paramref name="chance"/>) by its margin, shifted down a tier
     /// each by enough <paramref name="armor"/> on the hit region and enough <paramref name="cover"/>, and by

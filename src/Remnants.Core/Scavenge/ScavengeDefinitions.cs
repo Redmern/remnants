@@ -444,6 +444,24 @@ public sealed record MovementRules
     public List<BodyMovementRule> Body { get; init; } = new();
 }
 
+/// <summary>The push action (<see cref="Pushes"/>, scavenge.json <c>combat.push</c>): its tiles and how far, and what a collision does to who is pushed and who is in the way.</summary>
+public sealed record PushRules
+{
+    public int ApCost { get; init; } = 1;
+    public int Tiles { get; init; } = 1;
+    public CardPattern Pattern { get; init; } = new() { Shape = PatternShape.Stab };
+    public double CollisionDamage { get; init; } = 4;
+    public double BlockerDamage { get; init; } = 2;
+}
+
+/// <summary>The dash action (<see cref="Pushes"/>, scavenge.json <c>combat.dash</c>); <see cref="AttackHit"/> is what the run-up adds to a dash card's blow.</summary>
+public sealed record DashRules
+{
+    public int ApCost { get; init; } = 1;
+    public int Tiles { get; init; } = 3;
+    public double AttackHit { get; init; } = 0.1;
+}
+
 /// <summary>What a defended tile takes off a hit, beyond its card (<see cref="Defences"/>, scavenge.json <c>combat.block</c>).</summary>
 public sealed record BlockRules
 {
@@ -551,9 +569,9 @@ public sealed record CombatRules
     public double MaxDamageMultiplier { get; init; } = 2;
 
     public BlockRules Block { get; init; } = new();
+    public PushRules Push { get; init; } = new();
+    public DashRules Dash { get; init; } = new();
 
-    /// <summary>The most the stacked hit bonuses of an ambush may add to a hit chance.</summary>
-    public double MaxHitBonus { get; init; } = 0.3;
 }
 
 /// <summary>

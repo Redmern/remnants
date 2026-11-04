@@ -1,7 +1,7 @@
 namespace Remnants.Core.Scavenge;
 
 /// <summary>What a queued plan entry is: a move (telegraphed) or one of the hidden actions.</summary>
-public enum PlanStepKind { Move, Strike, Card, Recover }
+public enum PlanStepKind { Move, Strike, Card, Recover, Push, Dash }
 
 /// <summary>
 /// One entry of a unit's plan: a move leg, or an action resolved in the action phase. What it paid (MP, AP, stamina, card
@@ -28,6 +28,10 @@ public sealed class PlanStep
     /// <summary>A card's aim: where the plan had the unit when it was queued, and which way its pattern is turned.</summary>
     public Pos From { get; set; }
     public Pos Direction { get; set; }
+
+    /// <summary>A dash's tiles, and where the plan expects it to end: what comes after it is aimed from there.</summary>
+    public int Reach { get; set; }
+    public Pos? Landing { get; set; }
 
     public int RefundMp { get; set; }
     public int RefundAp { get; set; }
@@ -62,7 +66,10 @@ public static class Plans
 
     /// <summary>Where the unit stands once its planned moves are done, as far as planning can tell.</summary>
     public static Pos Anchor(ScavengeState state, Unit unit) =>
-        Of(state, unit)?.Steps.LastOrDefault(s => s.Kind == PlanStepKind.Move)?.To ?? unit.Pos;
+        Of(state, unit)?.Steps.LastOrDefault(s => s.Kind == PlanStepKind.Move || s.Landing is not null) is { } last ? last.Landing ?? last.To : unit.Pos;
+
+    /// <summary>Whether a dash is queued: moves all go before the actions, so none may follow it.</summary>
+    internal static bool HasDash(ScavengeState state, Unit unit) => Of(state, unit)?.Steps.Any(s => s.Landing is not null) == true;
 
     /// <summary>Runs <paramref name="look"/> with the unit standing where its plan ends. Nothing about it may stick.</summary>
     internal static T AtAnchor<T>(ScavengeState state, Unit unit, Func<T> look)

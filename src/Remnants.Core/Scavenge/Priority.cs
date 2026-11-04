@@ -31,8 +31,11 @@ public static class Priority
                 return Blow(rules, action);
             case PlanStepKind.Card when step.CardId is { } id && sim.Data.Cards.Find(id) is { } card:
                 if (card.Effect.Block > 0) return rules.EarlyWeight;
+                if (card.Effect.PushAll > 0 || card.Effect.Dash > 0) return rules.QuickWeight;
                 if (card.Effect.Attack) return CardAbilities.MeleeBlow(sim, unit) is { } swing ? Blow(rules, swing) : 0;
                 return card.Effect.Push > 0 || card.Effect.Pull > 0 || card.Effect.Step > 0 ? rules.QuickWeight : 0;
+            case PlanStepKind.Push or PlanStepKind.Dash:
+                return rules.QuickWeight;
             default:
                 return 0;
         }

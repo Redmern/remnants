@@ -88,6 +88,7 @@ public static class CardPlay
             {
                 Kind = PlanStepKind.Card, CardId = c.CardId, TargetId = c.TargetId, Tile = c.Tile, Boost = boost, FromSlot = c.FromSlot,
                 DeckId = deckId ?? c.PlayerId, RefundPoints = card.Cost, From = Plans.Anchor(state, unit), Direction = check.Ability?.Direction ?? default,
+                Landing = effect.Dash > 0 ? Pushes.PlannedLanding(sim, unit, check.Ability!.Direction, effect.Dash) : null,
             });
             return ScavengeResult.Success($"{unit.Name} will play {card.Name}.", check.Ability?.Target?.Id);
         }
