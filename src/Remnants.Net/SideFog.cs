@@ -105,7 +105,7 @@ public sealed class SideFog(int playerId, string side)
     {
         var state = sim.State;
         _queuedSlots = state.Plans.ToDictionary(p => p.UnitId, p => p.Steps.Count(s => s.Kind == PlanStepKind.Card && s.FromSlot && s.Applied is null));
-        var units = state.Units.Where(u => Knows(state, u)).Select(u => u.PlayerId == PlayerId ? Copy(u) : Redacted(u)).ToList();
+        var units = state.Units.Where(u => Knows(state, u)).Select(u => u.PlayerId == PlayerId ? Copy(u) : Redacted(state, u)).ToList();
         var known = units.Select(u => u.Id).ToHashSet();
 
         return new ScavengeState
@@ -255,9 +255,13 @@ public sealed class SideFog(int playerId, string side)
     private string Shown(string side, int? owner) =>
         side == Side || side is Unit.EnemySide or Unit.NeutralSide || owner is null ? side : Unit.PlayerSide(owner.Value);
 
-    private Unit Redacted(Unit u)
+    private Unit Redacted(ScavengeState state, Unit u)
     {
         var copy = ProtocolCopy.Clone(u);
+        // Where it stood when the round opened stays its own, and of last round's walk only what this side could have watched.
+        var walkedFrom = u.Pos - u.LastMove;
+        copy.RoundFrom = null;
+        if (u.Side != Side && !(state.Map.InBounds(walkedFrom) && Visible.Contains(state.Map.Index(walkedFrom)))) copy.LastMove = default;
         copy.Side = Shown(u.Side, u.PlayerId);
         copy.Ai = new AiMemory();
         copy.Hooks = new(StringComparer.Ordinal);

@@ -27,6 +27,34 @@ public class CardFogNetTests
     }
 
     [Fact]
+    public void A_rival_in_sight_shows_no_tile_it_was_on_before_it_came_into_view()
+    {
+        var (f, a, b, alice, bob) = Field();
+        alice.Pos = bob.Pos + new Pos(-3, 0);
+        alice.RoundFrom = alice.Pos + new Pos(-20, 0);
+        alice.LastMove = new Pos(20, 0);
+        var fog = new SideFog(b.Id, bob.Side);
+        fog.Update(f.Sim);
+        var seen = fog.View(f.Sim).Units.Single(u => u.Id == alice.Id);
+        Assert.Null(seen.RoundFrom);
+        Assert.Equal(default, seen.LastMove);
+    }
+
+    [Fact]
+    public void A_rival_that_walked_in_plain_sight_shows_that_walk()
+    {
+        var (f, a, b, alice, bob) = Field();
+        alice.Pos = bob.Pos + new Pos(-3, 0);
+        alice.RoundFrom = alice.Pos + new Pos(1, 0);
+        alice.LastMove = new Pos(-1, 0);
+        var fog = new SideFog(b.Id, bob.Side);
+        fog.Update(f.Sim);
+        var seen = fog.View(f.Sim).Units.Single(u => u.Id == alice.Id);
+        Assert.Null(seen.RoundFrom);
+        Assert.Equal(new Pos(-1, 0), seen.LastMove);
+    }
+
+    [Fact]
     public void A_rival_sees_nothing_of_a_planned_item_and_its_owner_does()
     {
         var (f, a, b, alice, bob) = Field();
