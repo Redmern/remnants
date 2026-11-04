@@ -36,11 +36,11 @@ public static class Stuns
         Adrenaline.Gain(sim, defender, sim.Data.Rules.Adrenaline.GainStun);
     }
 
-    /// <summary>Rolls a stun that has its chance worked out already. Structures, the calm and the already stunned are not stunned again.</summary>
+    /// <summary>Rolls a stun that has its chance worked out already. Structures, the calm and a unit stunned now or for next round are not stunned again.</summary>
     internal static bool Try(ScavengeSim sim, Unit victim, double chance, Unit by, string how)
     {
         var state = sim.State;
-        if (!victim.IsActive || victim.Structure || victim.CalmUntilRound >= state.Round || victim.StunnedRound > state.Round) return false;
+        if (!victim.IsActive || victim.Structure || victim.CalmUntilRound >= state.Round || victim.StunnedRound >= state.Round) return false;
         if (sim.Rng.NextDouble() >= chance) return false;
         victim.StunnedRound = state.Round + 1;
         victim.StunCount++;

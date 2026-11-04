@@ -332,4 +332,20 @@ public class StunAdrenalineTests
         }
         Assert.Equal(Run(), Run());
     }
+
+    [Fact]
+    public void A_unit_reeling_this_round_cannot_be_stunned_on_into_the_next()
+    {
+        var a = SurvivorUnit(1, new(2, 2));
+        var b = SurvivorUnit(2, new(3, 2));
+        var sim = Arena(10, 5, [a, b]);
+        b.StunnedRound = sim.State.Round;
+        var count = b.StunCount;
+        Assert.False(Stuns.Try(sim, b, 1, a, "test"));
+        Assert.Equal(sim.State.Round, b.StunnedRound);
+        Assert.Equal(count, b.StunCount);
+        b.StunnedRound = sim.State.Round - 1;
+        Assert.True(Stuns.Try(sim, b, 1, a, "test"));
+        Assert.Equal(sim.State.Round + 1, b.StunnedRound);
+    }
 }
