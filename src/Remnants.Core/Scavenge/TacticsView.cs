@@ -12,6 +12,9 @@ public sealed record Telegraph(int UnitId, string Name, Pos From, Pos To, List<P
 public sealed record MoveHint(Pos Center, int Radius);
 
 
+/// <summary>A unit's plan as its own side previews it: the tiles walked, the tiles its actions cover, the allies on those, where it ends.</summary>
+public sealed record PlanPreviewView(List<Pos> Path, List<Pos> ActionTiles, List<Pos> AllyTiles, Pos End);
+
 /// <summary>Where an aimed card's pattern falls, and which of those tiles hold an ally (the warning colour).</summary>
 public sealed record PatternAimView(List<Pos> Tiles, List<Pos> AllyTiles);
 
@@ -81,6 +84,83 @@ public static class TacticsView
         var tiles = sim.Data.Cards.Find(cardId)?.Pattern is { } pattern
             ? Patterns.Tiles(sim.State.Map, pattern, tile ?? Plans.Anchor(sim.State, unit), direction) : [];
         return new PatternAimView(tiles, AllyTiles(sim, unit, tiles));
+    }
+
+    /// <summary>
+    /// The unit a player is giving orders to: the one they went to, if it is theirs and can act (a plan stays open until the
+    /// round resolves), else their first without a committed plan. Other players' units never stand in the way.
+    /// </summary>
+    public static Unit? PlanningUnit(ScavengeState state, int playerId, int? focus = null)
+    {
+        if (state.Finished) return null;
+        bool Mine(Unit u) => u.IsActive && u.PlayerControlled && u.PlayerId == playerId;
+        if (focus is { } id && state.FindUnit(id) is { } chosen && Mine(chosen)) return chosen;
+        return state.Units.Find(u => Mine(u) && Plans.Of(state, u) is not { Committed: true });
+    }
+
+    /// <summary>The eight ways, clockwise: a pattern turns free of cost.</summary>
+    private static readonly Pos[] Compass = [new(0, -1), new(1, -1), new(1, 0), new(1, 1), new(0, 1), new(-1, 1), new(-1, 0), new(-1, -1)];
+
+    /// <summary>Which way an aim at the tile points from where the unit's plan ends, turned on by <paramref name="turn"/> eighths.</summary>
+    public static Pos AimDirection(ScavengeSim sim, Unit unit, Pos tile, int turn = 0)
+    {
+        var anchor = Plans.Anchor(sim.State, unit);
+        var toward = tile != anchor ? tile - anchor : unit.Facing ?? new Pos(1, 0);
+        var at = Array.IndexOf(Compass, new Pos(Math.Sign(toward.X), Math.Sign(toward.Y)));
+        return Compass[(((Math.Max(at, 0) + turn) % 8) + 8) % 8];
+    }
+
+    /// <summary>A side's own units by priority, 1 first. Rivals' ranks are never shown: they are simply not here.</summary>
+    public static Dictionary<int, int> Ranks(ScavengeSim sim, string side) =>
+        sim.State.Units.Where(u => u.Side == side && u.IsActive && u.OnMap && Plans.Acts(sim, u))
+            .OrderByDescending(u => Priority.Movement(sim, u)).ThenBy(u => u.Id)
+            .Select((u, i) => (u.Id, Rank: i + 1)).ToDictionary(x => x.Id, x => x.Rank);
+
+    /// <summary>What the unit has queued, for its own side's eyes.</summary>
+    public static PlanPreviewView PlanPreview(ScavengeSim sim, Unit unit)
+    {
+        var (path, tiles) = (new List<Pos>(), new List<Pos>());
+        var map = sim.State.Map;
+        foreach (var step in Plans.Of(sim.State, unit)?.Steps ?? [])
+            switch (step.Kind)
+            {
+                case PlanStepKind.Move:
+                    path.AddRange(step.Path);
+                    break;
+                case PlanStepKind.Strike:
+                    tiles.AddRange(step.Strike!.Tiles);
+                    break;
+                case PlanStepKind.Push:
+                    tiles.AddRange(Patterns.Tiles(map, sim.Data.Rules.Combat.Push.Pattern, step.From, step.Direction));
+                    break;
+                case PlanStepKind.Dash:
+                    path.AddRange(Line(step.From, step.Direction, step.Landing!.Value));
+                    break;
+                case PlanStepKind.Card when step.CardId is { } id && sim.Data.Cards.Find(id) is { } card:
+                    if (step.Landing is { } end)
+                    {
+                        path.AddRange(Line(step.From, step.Direction, end));
+                        if (card.Pattern is { } after) tiles.AddRange(Patterns.Tiles(map, after, end, step.Direction));
+                    }
+                    else if (card.Pattern is { } pattern) tiles.AddRange(Patterns.Tiles(map, pattern, step.Tile ?? step.From, step.Direction));
+                    else if (step.Tile is { } tile) tiles.Add(tile);
+                    break;
+            }
+        var distinct = tiles.Distinct().ToList();
+        return new PlanPreviewView(path, distinct, AllyTiles(sim, unit, distinct), Plans.Anchor(sim.State, unit));
+    }
+
+    private static IEnumerable<Pos> Line(Pos from, Pos direction, Pos end)
+    {
+        for (var at = from; at != end;)
+            yield return at += direction;
+    }
+
+    /// <summary>The tiles a dash that way runs over from where the unit's plan ends, its whole reach, going by the terrain alone.</summary>
+    public static List<Pos> DashAim(ScavengeSim sim, Unit unit, Pos direction)
+    {
+        var dir = new Pos(Math.Sign(direction.X), Math.Sign(direction.Y));
+        return dir == default ? [] : Line(Plans.Anchor(sim.State, unit), dir, Pushes.PlannedLanding(sim, unit, dir, sim.Data.Rules.Combat.Dash.Tiles)).ToList();
     }
 
     /// <summary>The aim of a push from where the unit's plan ends.</summary>
@@ -195,9 +275,10 @@ public static class TacticsView
         if (data.Cards.Find(cardId) is not { } card || state.FindUnit(unitId) is not { } unit) return [];
         var side = unit.Side;
         var options = new List<CardTargetOption>();
-        CardTargetOption Option(int? target, Pos tile)
+        var from = Plans.Anchor(state, unit);
+        CardTargetOption Option(int? target, Pos tile, Pos? direction = null)
         {
-            var check = CardPlay.Check(sim, unit, new PlayCard(playerId, unit.Id, card.Id, target, boost, fromSlot, card.Target == CardTarget.Tile ? tile : null));
+            var check = CardPlay.Check(sim, unit, new PlayCard(playerId, unit.Id, card.Id, target, boost, fromSlot, card.Target == CardTarget.Tile ? tile : null, direction));
             if (!check.Ok) return new(tile, target, false, check.Result.Message, null, [], "");
             var (landing, affected, outcome) = Outcome(sim, unit, card, check.Effect!, check.Ability);
             return new(tile, target, true, "", landing, affected, outcome);
@@ -205,8 +286,14 @@ public static class TacticsView
         if (card.Target == CardTarget.Tile)
         {
             var visible = card.Range > 0 ? null : Visibility.SideVisible(data, state, side);
-            foreach (var p in state.Map.AllPositions.Where(p => card.Range > 0 ? p.Chebyshev(unit.Pos) <= card.Range : visible!.Contains(state.Map.Index(p))))
+            foreach (var p in state.Map.AllPositions.Where(p => card.Range > 0 ? p.Chebyshev(from) <= card.Range : visible!.Contains(state.Map.Index(p))))
                 options.Add(Option(null, p));
+        }
+        // A pattern played from the unit: one option per way it can turn, on the tile that way.
+        else if (card.Target == CardTarget.Self && card.Pattern is not null)
+        {
+            foreach (var dir in Pos.Neighbours8.Where(d => state.Map.InBounds(from + d)))
+                options.Add(Option(null, from + dir, dir));
         }
         else if (card.Target != CardTarget.Self)
         {
