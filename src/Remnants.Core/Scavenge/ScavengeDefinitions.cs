@@ -30,7 +30,7 @@ public sealed record TerrainDef
 /// <summary>Where an enemy puts a blow: <see cref="EnemyAim"/>.</summary>
 public enum AimKind { Current, Closest, Lead }
 
-/// <summary>What sets off a habit, all of it what the enemy can see: <see cref="EnemyTacticsAi"/>.</summary>
+/// <summary>What sets off a habit, all of it what the enemy can see: <see cref="EnemyHabits"/>.</summary>
 public enum HabitWhen { Always, Hurt, Threatened, AfterGuard, Cornered, FlankOpen }
 
 /// <summary>What a habit does. Strike ends the list: the unit goes on to its usual close and blow.</summary>
@@ -550,6 +550,18 @@ public sealed record CritRules
     public double Damage { get; init; } = 1.5;
 }
 
+/// <summary>
+/// How the bots play (scavenge.json <c>bot</c>): how often a healthy one guards against a neighbour that stood still, the health share under
+/// which it stops trading blows, what each seen reach takes off a tile it might stand on, and how much better a tile must be to walk there.
+/// </summary>
+public sealed record BotRules
+{
+    public int GuardEvery { get; init; } = 3;
+    public double HurtBelow { get; init; } = 0.5;
+    public double PositionRisk { get; init; } = 0.3;
+    public double PositionGain { get; init; } = 1.45;
+}
+
 /// <summary>What an enemy pays next round for a blow or push on an empty tile.</summary>
 public sealed record ExposedRules
 {
@@ -872,6 +884,9 @@ public sealed record ScavengeRules
     public Dictionary<Terrain, TerrainDef> Terrain { get; init; } = new();
     public MovementRules Movement { get; init; } = new();
     public TurnRules Turn { get; init; } = new();
+
+    /// <summary>How the bots play (<see cref="BotTactics"/>): habits, not rules of the game.</summary>
+    public BotRules Bot { get; init; } = new();
     public PriorityRules Priority { get; init; } = new();
     public StunRules Stun { get; init; } = new();
     public AdrenalineRules Adrenaline { get; init; } = new();

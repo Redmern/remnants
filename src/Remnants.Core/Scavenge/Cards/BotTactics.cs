@@ -15,9 +15,12 @@ public static class BotTactics
     /// <summary>Where <paramref name="side"/> should expect a unit when the round's blows fall: at the end of its telegraphed walk, or where it stands.</summary>
     public static Pos Expected(ScavengeSim sim, string side, Unit u) => TacticsView.Telegraphs(sim, side).Find(t => t.UnitId == u.Id)?.To ?? u.Pos;
 
+    /// <summary>What <paramref name="side"/> can tell a seen unit may reach this round: going by its telegraphed walk and nothing else of its plan.</summary>
+    public static HashSet<Pos> SeenThreat(ScavengeSim sim, string side, Unit u) => Combat.ThreatFrom(sim, u, Expected(sim, side, u));
+
     /// <summary>Seen hostiles that could strike <paramref name="unit"/>'s tile from where they stand.</summary>
     public static List<Unit> Threats(ScavengeSim sim, Unit unit) =>
-        sim.State.Units.Where(u => u.IsActive && unit.HostileTo(u) && Detection.SideSees(sim.Data, sim.State, unit.Side, u) && Combat.ThreatZone(sim, u).Contains(Plans.Anchor(sim.State, unit)))
+        sim.State.Units.Where(u => u.IsActive && unit.HostileTo(u) && Detection.SideSees(sim.Data, sim.State, unit.Side, u) && SeenThreat(sim, unit.Side, u).Contains(Plans.Anchor(sim.State, unit)))
             .OrderBy(u => u.Id).ToList();
 
     /// <summary>
@@ -55,7 +58,7 @@ public static class BotTactics
             .OrderBy(h => h.Pos.Chebyshev(at)).ThenBy(h => h.Id).ToList();
         var squad = state.Units.Where(u => u.PlayerId == playerId && u.PlayerControlled && u.IsActive).ToList();
         // An enemy that could strike one of us is held up; a threatened ally hurried along.
-        var aimedAtUs = hostiles.Where(h => h.PriorityBonus >= 0 && Combat.ThreatZone(sim, h) is var zone && squad.Any(s => zone.Contains(Plans.Anchor(state, s))));
+        var aimedAtUs = hostiles.Where(h => h.PriorityBonus >= 0 && SeenThreat(sim, unit.Side, h) is var zone && squad.Any(s => zone.Contains(Plans.Anchor(state, s))));
         if (Try(playable.Where(c => c.Effect.DelayInitiative), At(aimedAtUs)) is { } hold) return hold;
         var threatened = squad.Where(s => s.Id != unit.Id && s.PriorityBonus <= 0 && Threats(sim, s).Count > 0);
         if (Try(playable.Where(c => c.Effect.AdvanceInitiative), At(threatened)) is { } hurry) return hurry;
@@ -158,12 +161,6 @@ public static class BotTactics
         return null;
     }
 
-    /// <summary>How often, in rounds, a healthy bot guards against a neighbour that stood still (a bot habit, not a game rule).</summary>
-    public const int GuardEvery = 3;
-
-    /// <summary>The share of its health under which a bot stops trading blows.</summary>
-    public const double HurtBelow = 0.5;
-
     /// <summary>
     /// What to do instead of a plain blow, by what the side can see, or null to fight on: a push when it drives a seen
     /// neighbour into something; hurt or with two on it, a dash clear of every seen reach, else a guard toward the nearest;
@@ -172,7 +169,7 @@ public static class BotTactics
     public static IScavengeCommand? Counter(ScavengeSim sim, Unit unit, int playerId)
     {
         if (!Plans.HasRoom(sim, unit, PlanSlot.Action)) return null;
-        var (state, rules) = (sim.State, sim.Data.Rules.Combat);
+        var (state, rules, bot) = (sim.State, sim.Data.Rules.Combat, sim.Data.Rules.Bot);
         var at = Plans.Anchor(state, unit);
         var threats = Threats(sim, unit);
         if (threats.Count == 0)
@@ -189,14 +186,14 @@ public static class BotTactics
                 if (TacticsView.PushPreview(sim, unit, way).Any(o => o.Collides && state.FindUnit(o.UnitId) is { } v && unit.HostileTo(v) && v.LastMove == default && Expected(sim, unit.Side, v) == v.Pos && !BeingMoved(sim, unit.Side).Contains(v.Id)) && !TacticsView.PushPreview(sim, unit, way).Any(o => !unit.HostileTo(state.FindUnit(o.UnitId)!)))
                     return new Push(playerId, unit.Id, way);
 
-        if (unit.Hp >= unit.MaxHp * HurtBelow && threats.Count < 2)
+        if (unit.Hp >= unit.MaxHp * bot.HurtBelow && threats.Count < 2)
             // A neighbour that stood still will likely swing: every so often take it on the guard, for the block and the stun.
-            return (state.Round + unit.Id) % GuardEvery == 0 && nearest.LastMove == default && nearest.Pos.Chebyshev(at) <= 1 && unit.Ap >= rules.Defend.ApCost
+            return (state.Round + unit.Id) % bot.GuardEvery == 0 && nearest.LastMove == default && nearest.Pos.Chebyshev(at) <= 1 && unit.Ap >= rules.Defend.ApCost
                 ? new Defend(playerId, unit.Id, Combat.Face(at, nearest.Pos)) : null;
         // Not twice running: dashing back and forth can stall a run for good.
-        var dashed = state.Events.Any(e => e.Round == state.Round - 1 && e.UnitId == unit.Id && e.Type == ScavengeEventType.Moved && e.Message.Contains(" dashes to "));
+        var dashed = unit.Ai.DashedRound > 0 && unit.Ai.DashedRound == state.Round - 1;
         if (!dashed && unit.Ap >= rules.Dash.ApCost && Clear(sim, unit) is { } clear) return new Dash(playerId, unit.Id, clear.Way, clear.Tiles);
-        return unit.Ap >= rules.Defend.ApCost ? new Defend(playerId, unit.Id, Combat.Face(at, Combat.ThreatZone(sim, nearest).Contains(at) ? Plans.MoveEnd(state, nearest) : nearest.Pos)) : null;
+        return unit.Ap >= rules.Defend.ApCost ? new Defend(playerId, unit.Id, Combat.Face(at, Expected(sim, unit.Side, nearest))) : null;
     }
 
     /// <summary>Whether someone the side can see stands on the tile, or will once the walks are over.</summary>
@@ -208,7 +205,7 @@ public static class BotTactics
     private static (Pos Way, int Tiles)? Clear(ScavengeSim sim, Unit unit)
     {
         var state = sim.State;
-        var zones = state.Units.Where(u => u.IsActive && unit.HostileTo(u) && Detection.SideSees(sim.Data, state, unit.Side, u)).SelectMany(u => Combat.ThreatZone(sim, u)).ToHashSet();
+        var zones = state.Units.Where(u => u.IsActive && unit.HostileTo(u) && Detection.SideSees(sim.Data, state, unit.Side, u)).SelectMany(u => SeenThreat(sim, unit.Side, u)).ToHashSet();
         var from = Plans.Anchor(state, unit);
         var best = ((Pos Way, int Tiles)?)null;
         foreach (var way in Pos.Neighbours8)
@@ -235,7 +232,7 @@ public static class BotTactics
         var (state, data) = (sim.State, sim.Data);
         var seen = state.Units.Where(u => u.IsActive && u.OnMap && unit.HostileTo(u) && !u.Structure && Detection.SideSees(data, state, unit.Side, u)).ToList();
         if (seen.Count == 0) return null;
-        var zones = seen.Select(u => Combat.ThreatZone(sim, u)).ToList();
+        var zones = seen.Select(u => SeenThreat(sim, unit.Side, u)).ToList();
         var actions = sim.Profile(unit).Actions;
         double Worth(Pos tile)
         {
@@ -248,21 +245,15 @@ public static class BotTactics
                     var worth = Combat.ChanceToHit(sim, unit, action, target, tile) * (action.MinDamage + action.MaxDamage) / 2 * Combat.ArcDamage(data.Rules.Combat.Facing, Combat.ArcOf(target, tile));
                     best = Math.Max(best, worth);
                 }
-            return best / (1 + PositionRisk * zones.Count(z => z.Contains(tile)));
+            return best / (1 + data.Rules.Bot.PositionRisk * zones.Count(z => z.Contains(tile)));
         }
         var here = Worth(Plans.Anchor(state, unit));
-        var (top, topWorth) = ((Pos?)null, here * PositionGain);
+        var (top, topWorth) = ((Pos?)null, here * data.Rules.Bot.PositionGain);
         foreach (var (tile, cost) in sim.Reachable(unit).Where(kv => kv.Value <= unit.Mp).OrderBy(kv => kv.Value).ThenBy(kv => state.Map.Index(kv.Key)))
             if (state.UnitAt(tile) is null && Worth(tile) is var worth && worth > topWorth && worth > 0)
                 (top, topWorth) = (tile, worth);
         return top is { } to2 ? new Move(playerId, unit.Id, to2) : null;
     }
-
-    /// <summary>How much each seen reach a tile stands in takes off what a bot makes of it (a bot habit, not a game rule).</summary>
-    private const double PositionRisk = 0.3;
-
-    /// <summary>How much better a tile must be for a bot to walk there.</summary>
-    private const double PositionGain = 1.45;
 
     /// <summary>
     /// One move that brings the unit closer to the nearest of <paramref name="goals"/> by walking distance (round walls), the

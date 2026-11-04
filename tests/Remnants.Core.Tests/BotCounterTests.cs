@@ -60,13 +60,14 @@ public class BotCounterTests
         var a = SurvivorUnit(1, new(4, 3), weapon: "pipe");
         var sim = Arena(14, 7, [a, EnemyUnit("husk", new(5, 3))]);
         var kinds = new List<Type?>();
-        for (var round = 1; round <= BotTactics.GuardEvery; round++)
+        var every = sim.Data.Rules.Bot.GuardEvery;
+        for (var round = 1; round <= every; round++)
         {
             sim.State.Round = round;
             kinds.Add(BotTactics.Counter(sim, a, 1)?.GetType());
         }
         Assert.Equal(1, kinds.Count(k => k == typeof(Defend)));
-        Assert.Equal(BotTactics.GuardEvery - 1, kinds.Count(k => k is null));
+        Assert.Equal(every - 1, kinds.Count(k => k is null));
     }
 
     [Fact]
@@ -102,10 +103,46 @@ public class BotCounterTests
         var foe = EnemyUnit("husk", new(5, 3));
         var sim = Arena(14, 7, [a, foe]);
         a.Hp = a.MaxHp * 0.3;
-        Assert.IsType<Dash>(BotTactics.Counter(sim, a, 1));
-        sim.State.Log(new(sim.State.Round, ScavengeEventType.Moved, $"{a.Name} dashes to (4,5).", a.Id));
-        sim.State.Round++;
+        Assert.True(sim.Execute(Assert.IsType<Dash>(BotTactics.Counter(sim, a, 1))).Ok);
+        var round = sim.State.Round;
+        Settle(sim);
+        Assert.Equal(round, a.Ai.DashedRound);
+        foe.Pos = a.Pos + new Pos(1, 0);
         Assert.IsNotType<Dash>(BotTactics.Counter(sim, a, 1));
+    }
+
+    [Fact]
+    public void What_counts_as_hurt_comes_from_the_data()
+    {
+        var a = SurvivorUnit(1, new(4, 3), weapon: "pipe");
+        var foe = EnemyUnit("husk", new(5, 3));
+        foe.LastMove = new Pos(1, 0);
+        var sim = Arena(14, 7, [a, foe], data: With(r => r with { Bot = r.Bot with { HurtBelow = 0.2 } }));
+        a.Hp = a.MaxHp * 0.3;
+        Assert.Null(BotTactics.Counter(sim, a, 1));
+    }
+
+    [Fact]
+    public void A_foes_hidden_steps_do_not_change_what_a_bot_or_the_overlay_makes_of_it()
+    {
+        var a = SurvivorUnit(1, new(4, 3), weapon: "pipe");
+        var rival = SurvivorUnit(2, new(6, 3), weapon: "pipe");
+        var sim = Arena(14, 7, [a, rival]);
+        a.Hp = a.MaxHp * 0.3;
+        var before = (BotTactics.Threats(sim, a).Select(u => u.Id).ToList(), BotTactics.Counter(sim, a, 1), BotTactics.Position(sim, a, 1),
+            TacticsView.DefendOdds(sim, a).Select(o => o.UnitId).ToList(), TacticsView.Threats(sim, a.Side).Keys.OrderBy(p => p.Y).ThenBy(p => p.X).ToList());
+
+        // Everything a rival can plan out of sight: none of it moves it in the movement phase, so none of it is telegraphed.
+        Plans.For(sim.State, rival).Steps.Add(new PlanStep { Kind = PlanStepKind.Dash, From = rival.Pos, Direction = new(-1, 0), Reach = 1, Landing = new(5, 3) });
+        Plans.For(sim.State, rival).Steps.Add(new PlanStep { Kind = PlanStepKind.Defend, From = rival.Pos, Direction = new(-1, 0) });
+
+        var after = (BotTactics.Threats(sim, a).Select(u => u.Id).ToList(), BotTactics.Counter(sim, a, 1), BotTactics.Position(sim, a, 1),
+            TacticsView.DefendOdds(sim, a).Select(o => o.UnitId).ToList(), TacticsView.Threats(sim, a.Side).Keys.OrderBy(p => p.Y).ThenBy(p => p.X).ToList());
+        Assert.Equal(before.Item1, after.Item1);
+        Assert.Equal(before.Item2, after.Item2);
+        Assert.Equal(before.Item3, after.Item3);
+        Assert.Equal(before.Item4, after.Item4);
+        Assert.Equal(before.Item5, after.Item5);
     }
 
     [Fact]

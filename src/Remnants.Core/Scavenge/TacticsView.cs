@@ -226,7 +226,7 @@ public static class TacticsView
         var state = sim.State;
         var overlay = new Dictionary<Pos, ThreatKind>();
         foreach (var u in state.Units.Where(u => u.IsActive && u.Side != side && u.Side != Unit.NeutralSide && Detection.SideSees(sim.Data, state, side, u)))
-            foreach (var p in Combat.ThreatZone(sim, u))
+            foreach (var p in BotTactics.SeenThreat(sim, side, u))
                 overlay.TryAdd(p, ThreatKind.Reach);
         return overlay;
     }
@@ -320,7 +320,7 @@ public static class TacticsView
         var (state, at) = (sim.State, Plans.Anchor(sim.State, unit));
         var share = Defences.BlockOf(sim, unit, Defences.GuardOf(sim, unit).Block);
         return state.Units.Where(u => u.IsActive && unit.HostileTo(u) && Detection.SideSees(sim.Data, state, unit.Side, u))
-            .Select(u => (Unit: u, Action: sim.Profile(u).Actions.Where(a => Combat.CheckReach(sim.Data, state.Map, u.Pos, a, at) == ScavengeError.None).OrderByDescending(a => a.MaxDamage).ThenBy(a => a.Id, StringComparer.Ordinal).FirstOrDefault()))
+            .Select(u => (Unit: u, Action: sim.Profile(u).Actions.Where(a => Combat.CheckReach(sim.Data, state.Map, BotTactics.Expected(sim, unit.Side, u), a, at) == ScavengeError.None).OrderByDescending(a => a.MaxDamage).ThenBy(a => a.Id, StringComparer.Ordinal).FirstOrDefault()))
             .Where(o => o.Action is not null).OrderBy(o => o.Unit.Pos.Chebyshev(at)).ThenBy(o => o.Unit.Id)
             .Select(o => new GuardOdds(o.Unit.Id, o.Unit.Name, share, Stuns.Chance(sim, unit, o.Unit, o.Action!, share, perfect: false))).ToList();
     }

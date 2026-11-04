@@ -64,7 +64,7 @@ internal static class ScavengeAi
         else
         {
             if (Spot(sim, unit) is null) return false;
-            seen = sim.State.Units.Where(u => u.IsActive && unit.HostileTo(u) && (Detection.IsLit(sim.State, u.Pos) || Detection.Spots(sim.Data, sim.State, unit, u))).ToList();
+            seen = Spotted(sim, unit).ToList();
         }
         return EnemyHabits.Act(sim, unit, seen.OrderBy(u => u.Pos.Chebyshev(unit.Pos)).ThenBy(u => u.Id).ToList());
     }
@@ -283,6 +283,10 @@ internal static class ScavengeAi
         return true;
     }
 
+    /// <summary>The hostiles the unit picks out, by light or by eye.</summary>
+    private static IEnumerable<Unit> Spotted(ScavengeSim sim, Unit unit) =>
+        sim.State.Units.Where(u => u.IsActive && unit.HostileTo(u) && (Detection.IsLit(sim.State, u.Pos) || Detection.Spots(sim.Data, sim.State, unit, u)));
+
     /// <summary>
     /// Nearest conscious hostile it detects (or lit by a flare) and could hit at all (claws do not reach a drone); remembers
     /// it. Falls back to null (and keeps the memory).
@@ -290,9 +294,7 @@ internal static class ScavengeAi
     private static Unit? Spot(ScavengeSim sim, Unit unit)
     {
         var actions = sim.Profile(unit).Actions;
-        var target = sim.State.Units
-            .Where(u => u.IsActive && unit.HostileTo(u) && actions.Any(a => Drones.CanStrike(a, u))
-                        && (Detection.IsLit(sim.State, u.Pos) || Detection.Spots(sim.Data, sim.State, unit, u)))
+        var target = Spotted(sim, unit).Where(u => actions.Any(a => Drones.CanStrike(a, u)))
             .OrderBy(u => u.Pos.Chebyshev(unit.Pos))
             .ThenBy(u => u.Id)
             .FirstOrDefault();

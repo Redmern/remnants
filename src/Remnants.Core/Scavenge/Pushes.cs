@@ -125,6 +125,7 @@ public static class Pushes
         unit.Pos = to;
         if (unit.CarryingId is { } carried && state.FindUnit(carried) is { } load) load.Pos = to;
         unit.Moved = true;
+        unit.Ai.DashedRound = state.Round;
         state.Log(new(state.Round, ScavengeEventType.Moved, $"{unit.Name} dashes to {to}.", unit.Id, Pos: to));
         sim.Moved(unit, from);
         Adrenaline.Gain(sim, unit, sim.Data.Rules.Adrenaline.GainDash);
