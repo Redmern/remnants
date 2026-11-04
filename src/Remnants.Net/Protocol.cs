@@ -63,7 +63,9 @@ public static class Protocol
 
     public const int TileAttacksOnlyVersion = 19;
 
-    public const int Version = TileAttacksOnlyVersion;
+    /// <summary>Telegraphed plans gone from the wire (<c>plannedAction</c>); tile strikes carry suppressing fire.</summary>
+    public const int TelegraphedStrikesVersion = 20;
+    public const int Version = TelegraphedStrikesVersion;
     public const int DefaultPort = 7777;
 }
 

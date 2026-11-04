@@ -4,8 +4,8 @@ using static Remnants.Core.Tests.ScavengeTestData;
 
 namespace Remnants.Core.Tests;
 
-/// <summary>Enemy AI telegraphs (plans), authored enemies play cards, and AI turns always end.</summary>
-public class AiPlanTests
+/// <summary>Enemy AI acts live and telegraphs its blows as readied strikes, authored enemies play cards, and AI turns always end.</summary>
+public class AiTurnTests
 {
     [Fact]
     public void A_turret_telegraphs_only_its_aim()
@@ -14,10 +14,10 @@ public class AiPlanTests
         var u = SurvivorUnit(1, new Pos(1, 1));
         var sim = Arena(10, 8, [u], setup: (d, s) => turret = Hacking.Place(d, s, DeviceKind.Turret, new Pos(4, 1)));
         var gun = sim.State.FindUnit(turret.UnitId!.Value)!;
-        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
-        var plan = Assert.IsType<PlannedAction>(gun.Plan);
-        Assert.Empty(plan.Path);
-        Assert.Equal(u.Pos, plan.AttackTile);
+        ScavengeAi.TakeTurn(sim, gun);
+        var strike = Assert.Single(sim.State.Strikes, s => s.UnitId == gun.Id);
+        Assert.Equal(new Pos(4, 1), gun.Pos);
+        Assert.Equal(u.Pos, strike.Tile);
     }
 
     [Fact]
@@ -29,22 +29,25 @@ public class AiPlanTests
         var l1 = EnemyUnit("linked", new(8, 3));
         var l2 = EnemyUnit("linked", new(8, 5));
         var sim = Arena(11, 9, [a, b, l1, l2]);
-        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
-        Assert.True(sim.Execute(new EndTurn(1, b.Id)).Ok);
-        Assert.Equal(b.Pos, l1.Plan?.AttackTile);
-        Assert.Equal(b.Pos, l2.Plan?.AttackTile);
+        ScavengeAi.TakeTurn(sim, l1);
+        ScavengeAi.TakeTurn(sim, l2);
+        Assert.Equal(b.Pos, Assert.Single(sim.State.Strikes, s => s.UnitId == l1.Id).Tile);
+        Assert.Equal(b.Pos, Assert.Single(sim.State.Strikes, s => s.UnitId == l2.Id).Tile);
         Assert.Equal(b.Id, l1.Ai.TargetId);
     }
 
     [Fact]
-    public void Planning_never_moves_the_unit_or_spends_its_ap_before_the_plan_resolves()
+    public void An_enemy_closes_in_live_and_no_blow_lands_before_the_sub_round_ends()
     {
         var u = SurvivorUnit(pos: new(0, 0));
-        var husk = EnemyUnit("husk", new(5, 0));
+        var husk = EnemyUnit("husk", new(3, 0));
         var sim = Arena(8, 3, [u, husk]);
-        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
-        Assert.Equal(new Pos(5, 0), husk.Pos);
-        Assert.DoesNotContain(sim.State.Events, e => e.UnitId == husk.Id && e.Type is ScavengeEventType.Moved or ScavengeEventType.Attacked or ScavengeEventType.Missed);
+        var ap = husk.Ap;
+        ScavengeAi.TakeTurn(sim, husk);
+        Assert.True(husk.Pos.Chebyshev(u.Pos) < 3);
+        Assert.True(husk.Ap < ap);
+        Assert.Contains(sim.State.Events, e => e.UnitId == husk.Id && e.Type == ScavengeEventType.Moved);
+        Assert.DoesNotContain(sim.State.Events, e => e.UnitId == husk.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
         Assert.Contains(sim.State.Events, e => e.UnitId == husk.Id && e.Type == ScavengeEventType.IntentDeclared);
     }
 
@@ -54,43 +57,17 @@ public class AiPlanTests
         var u = SurvivorUnit(pos: new(0, 0));
         var near = EnemyUnit("husk", new(1, 0));
         var sim = Arena(8, 3, [u, near]);
-        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
-        var plan = Assert.IsType<PlannedAction>(near.Plan);
-        Assert.Empty(plan.Path);
-        Assert.Equal(u.Pos, plan.AttackTile);
-        Assert.Empty(sim.State.Strikes);
+        ScavengeAi.TakeTurn(sim, near);
+        Assert.Equal(u.Pos, Assert.Single(sim.State.Strikes, s => s.UnitId == near.Id).Tile);
         Assert.DoesNotContain(sim.State.Events, e => e.UnitId == near.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
 
         // A turret in reach still only telegraphs its aim.
         ZoneDevice turret = null!;
         var v = SurvivorUnit(1, new Pos(1, 1));
         var sim2 = Arena(10, 8, [v], setup: (d, s) => turret = Hacking.Place(d, s, DeviceKind.Turret, new Pos(4, 1)));
-        Assert.True(sim2.Execute(new EndTurn(1, v.Id)).Ok);
-        Assert.NotNull(sim2.State.FindUnit(turret.UnitId!.Value)!.Plan);
+        ScavengeAi.TakeTurn(sim2, sim2.State.FindUnit(turret.UnitId!.Value)!);
+        Assert.Contains(sim2.State.Strikes, s => s.UnitId == turret.UnitId);
         Assert.DoesNotContain(sim2.State.Events, e => e.UnitId == turret.UnitId && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
-    }
-
-    [Fact]
-    public void A_plan_that_cannot_be_declared_is_logged_and_a_target_in_reach_is_struck_instead()
-    {
-        // Force the rare failure: a plan is already pending (declaring then fails as locked).
-        var u = SurvivorUnit(pos: new(0, 2));
-        var linked = EnemyUnit("linked", new(6, 2));
-        var sim = Arena(9, 5, [u, linked], [".........", ".........", ".........", "......c..", "........."]);
-        Assert.Contains(sim.Profile(linked).Actions, a => Combat.CheckReach(Real, sim.State.Map, linked.Pos, a, u.Pos) == ScavengeError.None);
-        linked.Plan = new PlannedAction { Path = [], Round = 0 };
-        ScavengeAi.TakeTurn(sim, linked);
-        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.IntentCanceled && e.UnitId == linked.Id && e.Message.Contains("could not settle"));
-        Assert.Contains(u.Pos, Assert.Single(sim.State.Strikes, s => s.UnitId == linked.Id).Tiles);
-
-        // Nothing in reach: logged, and it idles (no plan, no blow).
-        var v = SurvivorUnit(pos: new(0, 0));
-        var husk = EnemyUnit("husk", new(5, 0));
-        var sim2 = Arena(8, 3, [v, husk]);
-        husk.Plan = new PlannedAction { Path = [], Round = 0 };
-        ScavengeAi.TakeTurn(sim2, husk);
-        Assert.Contains(sim2.State.Events, e => e.Type == ScavengeEventType.IntentCanceled && e.UnitId == husk.Id);
-        Assert.DoesNotContain(sim2.State.Events, e => e.UnitId == husk.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed or ScavengeEventType.Moved);
     }
 
     [Fact]
@@ -191,40 +168,6 @@ public class AiPlanTests
     }
 
     [Fact]
-    public void A_plan_is_checked_against_a_full_turn_of_ap_not_what_is_left()
-    {
-        var u = SurvivorUnit(1, new(0, 1), weapon: "pipe");
-        var sim = Arena(10, 3, [u, SurvivorUnit(2, new(5, 1))]);
-        Assert.True(sim.Execute(new Move(1, u.Id, new(1, 1))).Ok);
-        u.Ap = 0; // spent this turn
-        Assert.Equal(sim.Profile(u).MaxAp, PlannedActions.Budget(sim, u));
-        Assert.True(sim.Execute(new DeclareIntent(1, u.Id, [new(3, 1), new(4, 1)], new Pos(5, 1), "swing")).Ok);
-    }
-
-    [Fact]
-    public void The_look_ahead_draws_nothing_from_the_run_rng()
-    {
-        // A Husk that has to close in, and a Linked pair: planning and declaring draw no dice.
-        var u = SurvivorUnit(pos: new(0, 0));
-        var husk = EnemyUnit("husk", new(5, 0));
-        var sim = Arena(8, 3, [u, husk]);
-        var before = sim.Rng.State;
-        ScavengeAi.TakeTurn(sim, husk);
-        Assert.NotNull(husk.Plan);
-        Assert.Equal(before, sim.Rng.State);
-
-        var a = SurvivorUnit(pos: new(2, 2));
-        var b = SurvivorUnit(pos: new(2, 6));
-        var l1 = EnemyUnit("linked", new(8, 3));
-        var l2 = EnemyUnit("linked", new(8, 5));
-        var squad = Arena(11, 9, [a, b, l1, l2]);
-        before = squad.Rng.State;
-        ScavengeAi.TakeTurn(squad, l1);
-        Assert.NotNull(l1.Plan);
-        Assert.Equal(before, squad.Rng.State);
-    }
-
-    [Fact]
     public void Declaring_a_blow_in_reach_draws_nothing_from_the_run_rng()
     {
         var u = SurvivorUnit(pos: new(0, 0));
@@ -232,7 +175,7 @@ public class AiPlanTests
         var sim = Arena(8, 3, [u, near]);
         var before = sim.Rng.State;
         ScavengeAi.TakeTurn(sim, near);
-        Assert.Equal(u.Pos, near.Plan?.AttackTile);
+        Assert.Equal(u.Pos, Assert.Single(sim.State.Strikes, s => s.UnitId == near.Id).Tile);
         Assert.Equal(before, sim.Rng.State);
     }
 }

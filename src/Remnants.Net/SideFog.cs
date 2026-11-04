@@ -128,7 +128,7 @@ public sealed class SideFog(int playerId, string side)
             Strikes = state.Strikes.Where(x => known.Contains(x.UnitId)).Select(x => new TileStrike
             {
                 UnitId = x.UnitId, ActionId = x.ActionId, Mode = x.Mode, From = x.From, Tile = x.Tile, Direction = x.Direction,
-                Tiles = new(x.Tiles), TargetId = state.FindUnit(x.UnitId)?.PlayerId == PlayerId ? x.TargetId : null,
+                Tiles = new(x.Tiles), TargetId = state.FindUnit(x.UnitId)?.PlayerId == PlayerId ? x.TargetId : null, Suppress = x.Suppress,
             }).ToList(),
             Finished = state.Finished,
             Map = new TileMap(),
@@ -261,13 +261,6 @@ public sealed class SideFog(int playerId, string side)
         copy.FieldXp = 0;
         copy.DroneBattery = null;
         copy.ChargesUsed = new(StringComparer.Ordinal);
-        // A plan shows what it does (path, tile, action), never the card behind it or whom it was aimed at.
-        if (copy.Plan is { } plan)
-        {
-            plan.CardId = null;
-            plan.TargetId = null;
-            plan.MoveBonus = 0;
-        }
         // Card buffs on it would give away hit chances and moves the cards behind them buy.
         copy.CardHit = 0;
         copy.Guard = 0;
@@ -285,7 +278,6 @@ public sealed class SideFog(int playerId, string side)
         copy.HiddenSlots = u.SlotCards.Count;
         copy.SlotCards = new();
         copy.SlotSpent = new();
-        copy.LastCardId = null;
         copy.CounterId = null;
         copy.Origin = u.Origin is { } o ? new Survivor { Name = o.Name, Sex = o.Sex, LifeStage = o.LifeStage } : null;
         // A rival's holo-decoy looks like one of their people until it flickers out.

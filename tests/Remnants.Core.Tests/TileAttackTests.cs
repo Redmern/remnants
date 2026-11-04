@@ -28,7 +28,7 @@ public class TileAttackTests
             if (sim.State.CurrentUnitId == f.Id) Assert.True(sim.Execute(new EndTurn(2, f.Id)).Ok);
     }
 
-    /// <summary>Ends the foes' turns until <paramref name="a"/> is up again (its plan resolved), whatever the initiative order.</summary>
+    /// <summary>Ends the foes' turns until <paramref name="a"/> is up again (its strike resolved), whatever the initiative order.</summary>
     private static void UntilUp(ScavengeSim sim, Unit a)
     {
         for (var i = 0; i < 10 && sim.State.CurrentUnitId != a.Id; i++)
@@ -147,12 +147,13 @@ public class TileAttackTests
     }
 
     [Fact]
-    public void A_planned_stab_comes_down_on_every_hostile_on_the_line_from_the_end_of_the_path()
+    public void A_stab_after_a_move_comes_down_on_every_hostile_on_the_line_from_where_it_stopped()
     {
         var (sim, a, foes) = Fight("spear", new Pos(5, 2), new Pos(6, 2));
-        var r = sim.Execute(new DeclareIntent(1, a.Id, [new(3, 2)], new Pos(4, 2), "thrust", Mode: StrikeMode.Stab));
+        Assert.True(sim.Execute(new Move(1, a.Id, new(3, 2))).Ok);
+        var r = sim.Execute(new AttackTile(1, a.Id, new(4, 2), "thrust", StrikeMode.Stab));
         Assert.True(r.Ok, r.Message);
-        Assert.Equal(StrikeMode.Stab, a.Plan!.Mode);
+        Assert.Equal(StrikeMode.Stab, sim.State.Strikes[0].Mode);
         UntilUp(sim, a);
 
         Assert.Equal(new Pos(3, 2), a.Pos);
@@ -160,35 +161,56 @@ public class TileAttackTests
     }
 
     [Fact]
-    public void A_planned_slash_keeps_its_mode_and_direction()
+    public void A_slash_after_a_move_keeps_its_mode_and_direction()
     {
         var (sim, a, foes) = Fight("sword", new Pos(4, 1), new Pos(4, 3));
-        Assert.True(sim.Execute(new DeclareIntent(1, a.Id, [new(3, 2)], new Pos(4, 2), "blade", Mode: StrikeMode.Slash)).Ok);
+        Assert.True(sim.Execute(new Move(1, a.Id, new(3, 2))).Ok);
+        Assert.True(sim.Execute(new AttackTile(1, a.Id, new(4, 2), "blade", StrikeMode.Slash)).Ok);
         UntilUp(sim, a);
         Assert.All(foes, f => Assert.True(f.Hp < f.MaxHp));
     }
 
     [Fact]
-    public void A_plan_needs_a_mode_the_weapon_has_and_a_covered_tile()
-    {
-        var (sim, a, _) = Fight("spear", new Pos(7, 2));
-        Assert.Equal(ScavengeError.InvalidTarget, sim.Execute(new DeclareIntent(1, a.Id, [], new Pos(3, 2), "thrust", Mode: StrikeMode.Slash)).Error);
-        Assert.Equal(ScavengeError.OutOfRange, sim.Execute(new DeclareIntent(1, a.Id, [], new Pos(4, 3), "thrust")).Error);
-        Assert.Null(a.Plan);
-    }
-
-    [Fact]
-    public void A_readied_strike_and_a_patterned_plan_show_their_covered_tiles_to_the_other_side()
+    public void Readied_stabs_and_slashes_show_their_covered_tiles_to_the_other_side()
     {
         var (sim, a, foes) = Fight("spear", new Pos(4, 2));
         Assert.True(sim.Execute(new AttackTile(1, a.Id, new(3, 2), "thrust")).Ok);
         var seen = Assert.Single(TacticsView.Telegraphs(sim, foes[0].Side));
         Assert.Equal([new Pos(3, 2), new Pos(4, 2), new Pos(5, 2)], seen.Threatened);
         Assert.True(seen.AimedAtUs);
-        Assert.Equal(ThreatKind.Planned, TacticsView.Threats(sim, foes[0].Side)[new Pos(5, 2)]);
+        Assert.Equal(ThreatKind.Strike, TacticsView.Threats(sim, foes[0].Side)[new Pos(5, 2)]);
 
         var (sim2, a2, foes2) = Fight("sword", new Pos(6, 2));
-        Assert.True(sim2.Execute(new DeclareIntent(1, a2.Id, [new(3, 2)], new Pos(4, 2), "blade", Mode: StrikeMode.Slash)).Ok);
+        Assert.True(sim2.Execute(new Move(1, a2.Id, new(3, 2))).Ok);
+        Assert.True(sim2.Execute(new AttackTile(1, a2.Id, new(4, 2), "blade", StrikeMode.Slash)).Ok);
         Assert.Equal([new Pos(4, 2), new Pos(4, 1), new Pos(4, 3)], Assert.Single(TacticsView.Telegraphs(sim2, foes2[0].Side)).Threatened);
+    }
+
+    [Fact]
+    public void Attack_events_carry_the_hit_tier()
+    {
+        var (sim, a, foes) = Fight("pipe", new Pos(3, 2));
+        Assert.True(StrikeNow(sim, a, foes[0], "swing").Ok);
+        var hit = Assert.Single(sim.State.Events, e => e.Type == ScavengeEventType.Attacked);
+        Assert.Equal(HitTier.Hit, hit.Tier);
+        Assert.Equal(foes[0].MaxHp - foes[0].Hp, hit.Amount!.Value, 9);
+    }
+
+    [Fact]
+    public void Same_seed_and_commands_give_the_same_game()
+    {
+        string Play()
+        {
+            var a = SurvivorUnit(1, new(0, 1), weapon: "pipe");
+            var b = SurvivorUnit(2, new(5, 1), weapon: "pipe");
+            var sim = Arena(10, 3, [a, b]);
+            sim.Execute(new Move(1, a.Id, new(2, 1)));
+            sim.Execute(new AttackTile(1, a.Id, new(3, 1), "swing"));
+            sim.Execute(new Move(2, b.Id, new(3, 1)));
+            sim.Execute(new EndTurn(2, b.Id));
+            sim.Execute(new EndTurn(1, a.Id));
+            return ScavengeSave.Save(sim.State);
+        }
+        Assert.Equal(Play(), Play());
     }
 }

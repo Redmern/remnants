@@ -91,17 +91,17 @@ public class CardPreviewTests
     }
 
     [Fact]
-    public void Swapping_with_an_ally_that_has_a_plan_warns_that_the_plan_falls_through()
+    public void Swapping_with_an_ally_that_has_a_readied_strike_warns_that_it_falls_through()
     {
         var a = SurvivorUnit(1, new(2, 2));
         var f = SurvivorUnit(1, new(3, 2), weapon: "pipe");
         var sim = Arena(10, 5, [a, f]);
         sim.State.Decks.Add(new SquadDeck { PlayerId = 1, Hand = ["switch_places"], Points = 3, Budget = 3, HandSize = 5 });
-        f.Plan = new PlannedAction { Path = [new(4, 2)], Round = 1 };
+        Ready(sim, f, new(4, 2), "swing");
         var onF = Assert.Single(TacticsView.Targets(sim, 1, a.Id, "switch_places"), o => o.UnitId == f.Id);
         Assert.Contains($"{f.Name}'s plan falls through", onF.Outcome);
         Assert.True(sim.Execute(new PlayCard(1, a.Id, "switch_places", f.Id)).Ok);
-        Assert.Null(f.Plan);
+        Assert.False(TileStrikes.Readied(sim.State, f));
         Assert.False(Combat.Exposed(sim, f)); // no hostile moved it
     }
 }

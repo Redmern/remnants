@@ -163,7 +163,7 @@ public static class Combat
     }
 
     /// <summary>
-    /// The unit was outplayed (its blow dodged, its plan disrupted): the next hit by <paramref name="side"/> lands harder,
+    /// The unit was outplayed (its blow dodged, its strike disrupted): the next hit by <paramref name="side"/> lands harder,
     /// through the next round.
     /// </summary>
     internal static void Expose(ScavengeSim sim, Unit unit, string side)
@@ -275,14 +275,14 @@ public static class Combat
     };
 
     /// <summary>
-    /// Suppressing fire: no damage roll, but the target is pinned and loses AP next turn. Needs a ranged action that
-    /// reaches the target. Gives the attacker away like any shot.
+    /// Suppressing fire comes down (its AP paid when declared): no damage roll, but the target is pinned and loses AP next
+    /// turn, and an AI loses the strike it had readied. Gives the attacker away like any shot.
     /// </summary>
     internal static void Suppress(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target)
     {
-        attacker.Ap -= action.ApCost;
         sim.MakeNoise(attacker, action.Noise);
         target.Suppressed = target.CalmUntilRound < sim.State.Round;
+        if (target.Suppressed && !target.PlayerControlled) TileStrikes.Lose(sim, target, "pinned down");
         Bestiary.Fought(sim, attacker, target);
         sim.State.Log(new(sim.State.Round, ScavengeEventType.Suppressed,
             $"{attacker.Name} pins {target.Name} down with suppressing fire ({action.Name}).", attacker.Id, target.Id, target.Pos,
@@ -374,6 +374,7 @@ public static class Combat
             target.Suppressed = true;
             state.Log(new(state.Round, ScavengeEventType.Suppressed, $"{target.Name} is stunned ({action.Name}).", attacker.Id, target.Id, target.Pos,
                 Anonymous: $"{target.Name} is stunned."));
+            if (!target.PlayerControlled) TileStrikes.Lose(sim, target, "stunned");
         }
         if (bane is { DisruptRounds: > 0 } && target.IsActive && Network.IsLinked(data, target))
         {
@@ -474,13 +475,13 @@ public static class Combat
             target.Hp = 1;
             target.Status = UnitStatus.Evacuated;
             target.CarriedById = null;
-            target.Plan = null;
+            TileStrikes.Lose(sim, target, "down");
             state.Log(new(state.Round, ScavengeEventType.Downed, $"{target.Name} is down and dragged to safety.", target.Id, Pos: target.Pos));
             sim.UpdateParties();
             return;
         }
         target.Status = UnitStatus.Downed;
-        PlannedActions.Cancel(sim, target, "down");
+        TileStrikes.Lose(sim, target, "down");
         target.BleedOut = c.BleedOutRounds;
         target.Stabilized = false;
         target.Ap = 0;

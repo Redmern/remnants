@@ -23,7 +23,7 @@ public class EnemyCardAbilityTests
     }
 
     [Fact]
-    public void The_warden_shoves_a_seen_enemy_with_a_plan_off_it_and_leaves_one_without_alone()
+    public void The_warden_shoves_a_seen_enemy_with_a_readied_strike_off_it_and_leaves_one_without_alone()
     {
         var u = SurvivorUnit(1, new(3, 1));
         var warden = EnemyUnit("linked_warden", new(4, 1));
@@ -33,11 +33,11 @@ public class EnemyCardAbilityTests
         Assert.Equal(["shove"], deck.Hand); // nothing to break
         Assert.Equal(new Pos(3, 1), u.Pos);
 
-        u.Plan = new PlannedAction { Path = [new(3, 2)], Round = 1 };
+        Ready(sim, u, warden.Pos, "punch");
         EnemyCards.Play(sim, warden);
         Assert.Empty(deck.Hand);
         Assert.Equal(new Pos(1, 1), u.Pos); // the Warden's strength shoves two tiles
-        Assert.Null(u.Plan);
+        Assert.False(TileStrikes.Readied(sim.State, u));
         Assert.True(Combat.ExposedTo(sim, u, warden));
     }
 

@@ -71,6 +71,7 @@ public static class ElectronicWarfare
                 u.Ap = 0;
                 u.Stance = Stance.None;
                 u.Reactions = 0;
+                if (!u.PlayerControlled) TileStrikes.Lose(sim, u, "stunned");
                 hits.Add(u.Name);
             }
             else if (u.Kind == UnitKind.Survivor)

@@ -27,13 +27,13 @@ public class TileAttackAiTests
     private static List<Pos> Threatened(ScavengeSim sim, Unit enemy) =>
         Assert.Single(TacticsView.Telegraphs(sim, Unit.PlayerSide(1)), t => t.UnitId == enemy.Id).Threatened;
 
-    /// <summary>Ends P1's turns until the enemy's current plan has come down.</summary>
+    /// <summary>Ends P1's turns until the enemy's readied strike has come down.</summary>
     private static void UntilResolved(ScavengeSim sim, Unit enemy)
     {
-        var plan = Assert.IsType<PlannedAction>(enemy.Plan);
-        for (var i = 0; i < 12 && ReferenceEquals(enemy.Plan, plan); i++)
+        var strike = Assert.Single(sim.State.Strikes, s => s.UnitId == enemy.Id);
+        for (var i = 0; i < 12 && sim.State.Strikes.Contains(strike); i++)
             Assert.True(sim.Execute(new EndTurn(1, sim.State.CurrentUnitId!.Value, WholeTurn: true)).Ok);
-        Assert.False(ReferenceEquals(enemy.Plan, plan));
+        Assert.DoesNotContain(strike, sim.State.Strikes);
     }
 
     [Fact]
@@ -44,9 +44,7 @@ public class TileAttackAiTests
 
         Assert.Equal(near.Id, sim.State.CurrentUnitId);
         Assert.Equal(near.MaxHp, near.Hp);
-        Assert.Empty(sim.State.Strikes);
-        var plan = Assert.IsType<PlannedAction>(blade.Plan);
-        Assert.Equal(Items.StrikeMode.Slash, plan.Mode);
+        Assert.Equal(Items.StrikeMode.Slash, Assert.Single(sim.State.Strikes, s => s.UnitId == blade.Id).Mode);
         Assert.Contains(near.Pos, Threatened(sim, blade));
     }
 
@@ -61,7 +59,7 @@ public class TileAttackAiTests
         Assert.True(sim.Execute(new EndTurn(1, far.Id)).Ok);
 
         Assert.Equal(near.MaxHp, near.Hp);
-        Assert.Null(husk.Plan!.Mode);
+        Assert.Null(Assert.Single(sim.State.Strikes, s => s.UnitId == husk.Id).Mode);
         Assert.Equal([near.Pos], Threatened(sim, husk));
         UntilResolved(sim, husk);
         Assert.True(near.Hp < near.MaxHp);

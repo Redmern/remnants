@@ -167,6 +167,16 @@ public static class ScavengeTestData
     }
 
     /// <summary>
+    /// Stages a readied one-tile strike of the unit's (no checks, no AP), as a declaration earlier this sub-round leaves it.
+    /// </summary>
+    public static TileStrike Ready(ScavengeSim sim, Unit unit, Pos tile, string actionId, int? targetId = null)
+    {
+        var strike = new TileStrike { UnitId = unit.Id, ActionId = actionId, From = unit.Pos, Tile = tile, Direction = Combat.Face(unit.Pos, tile), Tiles = [tile], TargetId = targetId };
+        sim.State.Strikes.Add(strike);
+        return strike;
+    }
+
+    /// <summary>
     /// A blow on its own, for tests of what a hit does: the tile strike at <paramref name="target"/>'s tile is readied
     /// (Core's checks, AP paid) and comes down on the spot, the turn not moving on. Returns the readying's result.
     /// </summary>

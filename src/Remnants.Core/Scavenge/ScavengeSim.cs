@@ -72,7 +72,6 @@ public sealed class ScavengeSim
             Salvage c => FieldSalvage.Salvage(this, unit!, c),
             Recruit c => ScavengeCommandHandlers.Recruit(this, unit!, c),
             SetStance c => ScavengeCommandHandlers.SetStance(this, unit!, c),
-            DeclareIntent c => PlannedActions.Declare(this, unit!, c),
             AttackTile c => TileStrikes.Declare(this, unit!, c),
             PlayCard c => CardPlay.Play(this, unit!, c),
             DiscardDeadCard c => CardPlay.DiscardDead(this, unit!, c),
@@ -105,9 +104,9 @@ public sealed class ScavengeSim
         {
             MissionRules.Update(this);
             UpdateParties();
-            // The acting unit's turn ends on EndTurn, a stance or a plan, or when it left the map or can no longer act; its
-            // sub-turn ends on a tile attack.
-            if (command is EndTurn or SetStance or DeclareIntent or AttackTile || unit is not { IsActive: true })
+            // The acting unit's turn ends on EndTurn or a stance, or when it left the map or can no longer act; its sub-turn
+            // ends on a tile attack.
+            if (command is EndTurn or SetStance or AttackTile || unit is not { IsActive: true })
             {
                 State.TurnIndex++;
                 AdvanceTurns();
@@ -140,10 +139,7 @@ public sealed class ScavengeSim
                 continue;
             }
             var unit = State.CurrentUnit;
-            // An AI plan that waited (its target had no turn yet) or a blow in reach comes down in a later sub-round too.
-            var resolveNow = State.SubRound > 1 && unit is { IsActive: true, PlayerControlled: false, Plan: { } waiting } && unit.Ap > 0
-                             && (waiting.Quick || waiting.Round < State.Round) && PlannedActions.Ready(State, unit);
-            if (unit is not { IsActive: true } || State.SubRound > 1 && SitsOut(unit) && !resolveNow)
+            if (unit is not { IsActive: true } || State.SubRound > 1 && SitsOut(unit))
             {
                 State.TurnIndex++;
                 continue;
@@ -152,17 +148,6 @@ public sealed class ScavengeSim
             {
                 // A later sub-round: the turn goes on with the AP left.
                 StartSubTurn(unit);
-                if (resolveNow)
-                {
-                    PlannedActions.Resolve(this, unit);
-                    MissionRules.Update(this);
-                    UpdateParties();
-                    if (!unit.IsActive)
-                    {
-                        State.TurnIndex++;
-                        continue;
-                    }
-                }
                 if (unit.PlayerControlled) return;
                 ScavengeAi.TakeTurn(this, unit);
                 MissionRules.Update(this);
@@ -172,30 +157,11 @@ public sealed class ScavengeSim
             }
             BeginTurn(unit);
             StartSubTurn(unit);
-            if (unit.Suppressed) PlannedActions.Cancel(this, unit, "pinned down");
-            if (unit.EmpUntilRound >= State.Round) PlannedActions.Cancel(this, unit, "stunned");
             if (unit.Suppressed)
             {
                 unit.Suppressed = false;
                 unit.Ap = Math.Max(1, unit.Ap - Data.Rules.Network.SuppressApPenalty);
                 State.Log(new(State.Round, ScavengeEventType.Suppressed, $"{unit.Name} is pinned down ({unit.Ap} AP).", unit.Id, Pos: unit.Pos));
-            }
-            if (unit.Plan is not null && !PlannedActions.Ready(State, unit))
-            {
-                // Its target has not had a turn since the blow was declared: it waits (for a later sub-round).
-                State.TurnIndex++;
-                continue;
-            }
-            if (unit.Plan is not null)
-            {
-                PlannedActions.Resolve(this, unit);
-                MissionRules.Update(this);
-                UpdateParties();
-                if (!unit.IsActive)
-                {
-                    State.TurnIndex++;
-                    continue;
-                }
             }
             if (unit.PlayerControlled) return;
 
@@ -221,10 +187,10 @@ public sealed class ScavengeSim
     }
 
     /// <summary>
-    /// Whether the unit skips a later sub-round: out of AP, done for the round, holding a stance or waiting on a plan.
+    /// Whether the unit skips a later sub-round: out of AP, done for the round or holding a stance.
     /// </summary>
     private bool SitsOut(Unit unit) =>
-        unit.Ap <= 0 || unit.TurnOverRound == State.Round || unit.Stance != Stance.None || unit.Plan is not null;
+        unit.Ap <= 0 || unit.TurnOverRound == State.Round || unit.Stance != Stance.None;
 
     /// <summary>The sub-round's tile attacks come down (<see cref="TileStrikes"/>).</summary>
     private void EndSubRound()
@@ -250,7 +216,6 @@ public sealed class ScavengeSim
         unit.CardMove = 0;
         unit.CardCover = 0;
         unit.CounterId = null;
-        unit.LastCardId = null;
         unit.Ap = Profile(unit).MaxAp;
         if (State.Round == 1 && unit.FirstRoundAp != 0) unit.Ap = Math.Max(1, unit.Ap + unit.FirstRoundAp);
         if (braced) unit.Ap = Math.Max(1, unit.Ap - Data.Rules.Fog.Brace.NextTurnApPenalty);
@@ -377,7 +342,7 @@ public sealed class ScavengeSim
         unit.Status = UnitStatus.Dead;
         unit.Hp = Math.Min(unit.Hp, 0);
         unit.Ap = 0;
-        unit.Plan = null;
+        TileStrikes.Lose(this, unit, "dead");
         Bestiary.Killed(this, unit, killer);
         State.Log(new(State.Round, type, message, unit.Id, Pos: unit.Pos));
         if (unit.Kind == UnitKind.Drone)

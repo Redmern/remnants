@@ -49,10 +49,9 @@ public static class CardPlay
         if (card.Reaction)
         {
             planner = c.TargetId is { } id ? state.FindUnit(id) : null;
-            // A plan, or (for a disrupt) a tile strike readied this sub-round.
-            if (planner is not { IsActive: true } || planner.Plan is null && !(card.Effect.Disrupt && TileStrikes.Readied(state, planner))
+            if (planner is not { IsActive: true } || !TileStrikes.Readied(state, planner)
                 || !unit.HostileTo(planner) || !Detection.SideSees(data, state, unit.Side, planner))
-                return Fail(ScavengeError.NoIntent, $"{card.Name} needs a seen enemy with a plan.");
+                return Fail(ScavengeError.NoIntent, $"{card.Name} needs a seen enemy with a readied strike.");
         }
 
         var effect = card.Effect.Plus(qualified && card.Requirement.Kind == CardKind.Baseline ? card.Bonus : null).Plus(boost ? card.Boost : null);
@@ -101,7 +100,6 @@ public static class CardPlay
         if (check.Ability is { } ability) done.AddRange(CardAbilities.Apply(sim, unit, effect, ability, card.Radius));
         // Onto its pile only now, so a draw card never reshuffles itself back into the hand.
         if (!c.FromSlot) (card.Consumable ? deck.Consumed : deck.Used).Add(c.CardId);
-        if (!card.Reaction) unit.LastCardId = card.Id;
 
         var side = deckId is null ? state.FindParty(c.PlayerId)?.Side ?? unit.Side : unit.Side;
         var text = $"{unit.Name} plays {card.Name}{(boost ? " (boosted)" : "")}: {string.Join(", ", done)}.";
@@ -127,7 +125,7 @@ public static class CardPlay
     }
 
     /// <summary>
-    /// A planner's plan comes: everyone who played a counter against it strikes it first (a reaction, no AP), by id, if
+    /// A readied strike comes down: everyone who played a counter against its unit strikes it first (a reaction, no AP), by id, if
     /// they still see it and reach it.
     /// </summary>
     internal static void Counters(ScavengeSim sim, Unit planner)

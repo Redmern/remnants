@@ -227,9 +227,9 @@ public class HackingTests
         Assert.True(Hack(sim, hacker, turret).Ok);
         Assert.Equal(P1, gun.Side);
         Assert.False(gun.PlayerControlled, "a turret is the AI's to run, for its new side");
-        EndTurns(sim, 1);
         // It telegraphs its aim at the husk's tile (a turret never moves, even with the husk in reach).
-        Assert.Equal(husk.Pos, gun.Plan?.AttackTile);
+        ScavengeAi.TakeTurn(sim, gun);
+        Assert.Equal(husk.Pos, Assert.Single(sim.State.Strikes, s => s.UnitId == gun.Id).Tile);
         return (sim, gun, husk, hacker);
     }
 

@@ -729,7 +729,7 @@ public partial class ScavengeScreen : Node3D
         if (!_busy && !_presenter.Done)
             foreach (var (tile, kind) in _presenter.Threats())
                 if (_presenter.IsExplored(tile))
-                    _map.Highlight(tile, kind == ThreatKind.Planned ? HighlightKind.ThreatPlanned : HighlightKind.Threat);
+                    _map.Highlight(tile, kind == ThreatKind.Strike ? HighlightKind.ThreatPlanned : HighlightKind.Threat);
         if (HighlightCardAim()) return;
         if (selected is null || !selected.OnMap || !_presenter.CanSee(selected)) return;
         _map.Highlight(selected.Pos, HighlightKind.Selected);

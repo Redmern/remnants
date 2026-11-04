@@ -33,12 +33,14 @@ namespace Remnants.Core.Scavenge;
 /// Version 14 adds Story Acts 2–4 field rules: the run's campaign flags, the survivors the Linked took and who they are
 /// holding, the party's survivors at the start and a co-op guest's schematic copies (<see cref="MissionRun"/>), and
 /// devices' failed hacks (<see cref="ZoneDevice.Failures"/>); an older run loads with none of them.
-/// <see cref="IntentsVersion"/> adds telegraphed plans (<see cref="Unit.Plan"/>), dodged attacks
+/// <see cref="IntentsVersion"/> adds telegraphed plans (since dropped), dodged attacks
 /// (<see cref="Unit.OutplayedId"/>) and hit tiers on events, and with them the squad decks, personal card slots and card
 /// effects. Older runs are not migrated: they are refused (old runs reset; a colony save drops its run in progress, see
 /// <see cref="SaveGame"/>).
 /// <see cref="TileAttacksVersion"/> adds sub-rounds: <see cref="ScavengeState.SubRound"/>, the tile attacks waiting for its
 /// end (<see cref="ScavengeState.Strikes"/>) and units' <see cref="Unit.TurnOverRound"/>; an older run loads at sub-round 1.
+/// <see cref="TelegraphedStrikesVersion"/> drops telegraphed plans (enemies declare tile strikes instead) and adds suppressing
+/// strikes; a plan pending in an older run is ignored on load.
 /// </summary>
 public static class ScavengeSave
 {
@@ -48,7 +50,9 @@ public static class ScavengeSave
     public const int IntentsVersion = 15;
     /// <summary>Tile attacks and sub-rounds (keyed: renumber to the next free version at merge); an older run loads at sub-round 1 with nothing pending.</summary>
     public const int TileAttacksVersion = 16;
-    public const int Version = TileAttacksVersion;
+    /// <summary>Enemies declare tile strikes; no more plans (keyed: renumber to the next free version at merge).</summary>
+    public const int TelegraphedStrikesVersion = 17;
+    public const int Version = TelegraphedStrikesVersion;
     /// <summary>Runs from before plans and decks are not carried over: an older run is refused (and a colony save drops it).</summary>
     private const int OldestVersion = IntentsVersion;
 
@@ -86,7 +90,6 @@ public static class ScavengeSave
             foreach (var id in u.AllItems) RequireItem(id);
             foreach (var (slot, id) in u.Equipment)
                 if (data.Items[id].Slot != slot) throw new JsonException($"Unit {u.Id} has '{id}' in the {slot} slot.");
-            if (u.Plan is { } plan) ValidatePlan(state, u, plan);
         }
         foreach (var id in state.Caches.SelectMany(c => c.Items)) RequireItem(id);
         foreach (var id in state.Decks.SelectMany(d => d.DrawPile.Concat(d.Hand).Concat(d.Used).Concat(d.Consumed))
@@ -124,26 +127,5 @@ public static class ScavengeSave
         }
         foreach (var id in state.TurnOrder)
             if (state.FindUnit(id) is null) throw new JsonException($"Turn order references unknown unit {id}.");
-    }
-
-    /// <summary>
-    /// A pending plan belongs to a unit that can still act, aims (if at all) at a unit that exists, stays on the map,
-    /// and walks from where the unit stands in steps that each move (no step on the tile it is already on). How far a
-    /// step goes is not checked: legs hurt or a heavier pack since declaring legally shrink the unit's moves, and the
-    /// plan then stops short when it resolves. Its rules were checked when it was declared; this catches a hand-edited
-    /// or stale save.
-    /// </summary>
-    private static void ValidatePlan(ScavengeState state, Unit u, PlannedAction plan)
-    {
-        if (!u.IsActive) throw new JsonException($"Unit {u.Id} has a plan but cannot act ({u.Status}).");
-        if (plan.TargetId is { } t && state.FindUnit(t) is null) throw new JsonException($"Unit {u.Id}'s plan aims at unknown unit {t}.");
-        if (plan.AttackTile is { } tile && !state.Map.InBounds(tile)) throw new JsonException($"Unit {u.Id}'s plan attacks {tile}, off the map.");
-        var at = u.Pos;
-        foreach (var step in plan.Path)
-        {
-            if (!state.Map.InBounds(step)) throw new JsonException($"Unit {u.Id}'s plan leaves the map at {step}.");
-            if (step == at) throw new JsonException($"Unit {u.Id}'s plan steps from {at} onto the same tile.");
-            at = step;
-        }
     }
 }

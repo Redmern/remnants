@@ -38,8 +38,7 @@ public static class TacticsDemo
             var husk = NewScavenge.EnemyUnit(data, state, data.Enemies["husk"], huskAt);
             state.Units.Add(husk);
             husk.Ai.Mode = AiMode.Hunting;
-            var step = new Pos(anchor.X, anchor.Y + 2 * dir);
-            husk.Plan = new PlannedAction { Path = state.Map.InBounds(step) ? [step] : [], AttackTile = mine[0].Pos, ActionId = "claw", Round = state.Round };
+            state.Strikes.Add(new TileStrike { UnitId = husk.Id, ActionId = "claw", From = husk.Pos, Tile = mine[0].Pos, Direction = Combat.Face(husk.Pos, mine[0].Pos), Tiles = [mine[0].Pos] });
         }
         if (Free(-3, 5 * dir) is { } linkedAt)
         {
@@ -47,7 +46,7 @@ public static class TacticsDemo
             state.Units.Add(linked);
             linked.Ai.Mode = AiMode.Hunting;
             var target = mine.Count > 1 ? mine[1].Pos : new Pos(anchor.X - 1, anchor.Y);
-            linked.Plan = new PlannedAction { Path = [], AttackTile = target, ActionId = sim.Profile(linked).Actions.First().Id, Round = state.Round };
+            state.Strikes.Add(new TileStrike { UnitId = linked.Id, ActionId = sim.Profile(linked).Actions.First().Id, From = linked.Pos, Tile = target, Direction = Combat.Face(linked.Pos, target), Tiles = [target] });
         }
         // The staged enemies act after everyone already in the order; the unit up now (whose turn has begun) stays up.
         foreach (var e in state.Units.Where(u => u.Kind == UnitKind.Enemy && u.IsActive && !state.TurnOrder.Contains(u.Id)))

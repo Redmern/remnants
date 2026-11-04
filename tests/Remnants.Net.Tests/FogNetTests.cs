@@ -119,19 +119,21 @@ public class FogNetTests
     }
 
     [Fact]
-    public void A_hidden_units_plan_never_reaches_the_other_side()
+    public void A_hidden_units_readied_strike_never_reaches_the_other_side()
     {
         var (f, a, b, sniper, victim) = Duel();
         Assert.False(Detection.SideSees(f.Sim.Data, f.Sim.State, Unit.PlayerSide(b.Id), sniper));
-        var result = a.Do(new DeclareIntent(a.Id, sniper.Id, [], victim.Pos, "aimed_shot"));
+        var result = a.Do(new AttackTile(a.Id, sniper.Id, victim.Pos, "aimed_shot"));
         Assert.True(result.Ok, result.Message);
-        Assert.NotNull(sniper.Plan);
+        Assert.True(TileStrikes.Readied(f.Sim.State, sniper));
 
         Assert.DoesNotContain(b.View.Units, u => u.Id == sniper.Id);
+        Assert.DoesNotContain(b.View.Strikes, s => s.UnitId == sniper.Id);
         Assert.DoesNotContain(b.Last<Snapshot>().Events, e => e.Type == ScavengeEventType.IntentDeclared);
-        // Alice sees her own plan, aimed at the one she saw on the tile.
-        var mine = Assert.Single(a.View.Units, u => u.Id == sniper.Id);
-        Assert.Equal(victim.Pos, mine.Plan?.AttackTile);
+        // Alice sees her own strike, aimed at the one she saw on the tile.
+        var mine = Assert.Single(a.View.Strikes, s => s.UnitId == sniper.Id);
+        Assert.Equal(victim.Pos, mine.Tile);
+        Assert.Equal(victim.Id, mine.TargetId);
         Assert.Contains(a.Last<Snapshot>().Events, e => e.Type == ScavengeEventType.IntentDeclared && e.UnitId == sniper.Id);
         f.AssertNoLeaks();
     }
@@ -157,44 +159,43 @@ public class FogNetTests
     }
 
     [Fact]
-    public void A_seen_units_plan_shows_its_path_and_tile_but_never_its_card_or_target()
+    public void A_seen_units_strike_shows_its_tile_and_kind_but_never_its_target()
     {
         var (f, a, b, sniper, victim) = Duel();
-        victim.Plan = new PlannedAction { Path = [new(3, 10)], AttackTile = new(4, 10), ActionId = "swing", TargetId = sniper.Id, CardId = "secret_card", Round = 1 };
+        f.Sim.State.Strikes.Add(new TileStrike { UnitId = victim.Id, ActionId = "swing", Tile = new(4, 10), Tiles = [new(4, 10)], TargetId = sniper.Id, Suppress = true });
         victim.OutplayedId = sniper.Id;
-        sniper.Plan = new PlannedAction { Path = [new(10, 10)], AttackTile = new(3, 10), ActionId = "aimed_shot", TargetId = victim.Id, CardId = "hidden_card", Round = 1 };
+        f.Sim.State.Strikes.Add(new TileStrike { UnitId = sniper.Id, ActionId = "aimed_shot", Tile = new(3, 10), Tiles = [new(3, 10)], TargetId = victim.Id });
 
         var alice = new SideFog(a.Id, Unit.PlayerSide(a.Id));
         alice.Update(f.Sim);
-        var seen = Assert.Single(alice.View(f.Sim).Units, u => u.Id == victim.Id);
-        var plan = Assert.IsType<PlannedAction>(seen.Plan);
-        Assert.Equal([new Pos(3, 10)], plan.Path);
-        Assert.Equal(new Pos(4, 10), plan.AttackTile);
-        Assert.Null(plan.CardId);
-        Assert.Null(plan.TargetId);
-        Assert.Null(seen.OutplayedId);
+        var view = alice.View(f.Sim);
+        var seen = Assert.Single(view.Strikes, s => s.UnitId == victim.Id);
+        Assert.Equal(new Pos(4, 10), seen.Tile);
+        Assert.True(seen.Suppress);
+        Assert.Null(seen.TargetId);
+        Assert.Null(Assert.Single(view.Units, u => u.Id == victim.Id).OutplayedId);
         // Her own unit keeps everything.
-        Assert.Equal("hidden_card", Assert.Single(alice.View(f.Sim).Units, u => u.Id == sniper.Id).Plan?.CardId);
+        Assert.Equal(victim.Id, Assert.Single(view.Strikes, s => s.UnitId == sniper.Id).TargetId);
 
         var bob = new SideFog(b.Id, Unit.PlayerSide(b.Id));
         bob.Update(f.Sim);
-        var json = ProtocolJson.Serialize(new Snapshot(bob.View(f.Sim), [], []));
-        Assert.DoesNotContain("hidden_card", json);
-        Assert.DoesNotContain(bob.View(f.Sim).Units, u => u.Id == sniper.Id);
-        // Bob's own unit's plan keeps its card in his own view.
-        Assert.Contains("secret_card", ProtocolJson.Serialize(new Snapshot(bob.View(f.Sim), [], [])));
+        var bobs = bob.View(f.Sim);
+        Assert.DoesNotContain(bobs.Strikes, s => s.UnitId == sniper.Id);
+        Assert.DoesNotContain(bobs.Units, u => u.Id == sniper.Id);
+        // Bob's own unit's strike keeps its target in his own view.
+        Assert.Equal(sniper.Id, Assert.Single(bobs.Strikes, s => s.UnitId == victim.Id).TargetId);
     }
 
     [Fact]
-    public void An_ally_and_a_side_that_only_has_it_revealed_get_the_plan_without_its_card()
+    public void An_ally_and_a_side_that_only_has_it_revealed_get_the_strike_without_its_target()
     {
         var (f, a, b, sniper, victim) = Duel();
         var state = f.Sim.State;
-        sniper.Plan = new PlannedAction { Path = [new(10, 10)], AttackTile = new(3, 10), ActionId = "aimed_shot", TargetId = victim.Id, CardId = "hidden_card", Round = 1 };
+        state.Strikes.Add(new TileStrike { UnitId = sniper.Id, ActionId = "aimed_shot", Tile = new(3, 10), Tiles = [new(3, 10)], TargetId = victim.Id });
         sniper.OutplayedId = victim.Id;
         sniper.OutplayedUntilRound = state.Round + 1;
 
-        // Bob cannot see the cloaked sniper, but a motion sensor reveals it to his side: the plan comes, the card does not.
+        // Bob cannot see the cloaked sniper, but a motion sensor reveals it to his side: the strike comes, its target does not.
         var bobSide = Unit.PlayerSide(b.Id);
         state.Units.Single(u => u.PlayerId == b.Id && u.Id != victim.Id).Pos = new(7, 10); // in sight range, but the cloak hides the sniper
         Assert.False(Detection.SideSees(f.Sim.Data, state, bobSide, sniper));
@@ -202,43 +203,41 @@ public class FogNetTests
         Assert.True(Detection.SideSees(f.Sim.Data, state, bobSide, sniper));
         var bob = new SideFog(b.Id, bobSide);
         bob.Update(f.Sim);
-        var revealed = Assert.Single(bob.View(f.Sim).Units, u => u.Id == sniper.Id);
-        Assert.Equal(new Pos(3, 10), revealed.Plan?.AttackTile);
-        Assert.Null(revealed.Plan?.CardId);
-        Assert.Null(revealed.Plan?.TargetId);
-        Assert.Null(revealed.OutplayedId);
+        var revealed = Assert.Single(bob.View(f.Sim).Strikes, s => s.UnitId == sniper.Id);
+        Assert.Equal(new Pos(3, 10), revealed.Tile);
+        Assert.Null(revealed.TargetId);
+        Assert.Null(Assert.Single(bob.View(f.Sim).Units, u => u.Id == sniper.Id).OutplayedId);
 
-        // Allied on one team side: Bob sees his ally's plan in full, except the card and the target.
+        // Allied on one team side: Bob sees his ally's strike in full, except the target.
         var team = Unit.TeamSide(1);
         foreach (var p in state.Parties) p.Side = team;
         foreach (var u in state.Units.Where(u => u.PlayerId is not null)) u.Side = team;
         var ally = new SideFog(b.Id, bobSide);
         ally.Update(f.Sim);
-        var shown = Assert.Single(ally.View(f.Sim).Units, u => u.Id == sniper.Id);
-        Assert.Equal([new Pos(10, 10)], shown.Plan?.Path);
-        Assert.Null(shown.Plan?.CardId);
-        Assert.Null(shown.Plan?.TargetId);
-        Assert.DoesNotContain("hidden_card", ProtocolJson.Serialize(new Snapshot(ally.View(f.Sim), [], [])));
+        var shown = Assert.Single(ally.View(f.Sim).Strikes, s => s.UnitId == sniper.Id);
+        Assert.Equal([new Pos(3, 10)], shown.Tiles);
+        Assert.Null(shown.TargetId);
     }
 
     [Fact]
-    public void A_pending_plan_resolves_through_turn_timeouts_after_its_player_drops()
+    public void A_readied_strike_comes_down_through_turn_timeouts_after_its_player_drops()
     {
         var f = new NetFixture(new HostOptions { TurnSeconds = 10, ReconnectSeconds = 600 });
         var (a, b) = f.StartTwo();
         f.EndTurnsUntil(() => f.PlayerUp(a, b) == a, a, b);
         var unit = f.Sim.State.CurrentUnit!;
-        var to = f.Sim.Reachable(unit).Where(kv => kv.Value <= unit.Ap).Select(kv => kv.Key).OrderBy(p => p.Y).ThenBy(p => p.X).First();
-        var declared = a.Do(new DeclareIntent(a.Id, unit.Id, [to]));
+        var action = f.Sim.Profile(unit).Actions[0];
+        var tile = Pos.Neighbours8.Select(d => unit.Pos + d).First(p => TileStrikes.Aim(f.Sim, unit, action, p) is not null);
+        var declared = a.Do(new AttackTile(a.Id, unit.Id, tile, action.Id));
         Assert.True(declared.Ok, declared.Message);
         a.Link.Close();
 
-        for (var i = 0; i < 100 && unit.Plan is not null && f.Host.Phase == HostPhase.Playing; i++)
+        for (var i = 0; i < 100 && TileStrikes.Readied(f.Sim.State, unit) && f.Host.Phase == HostPhase.Playing; i++)
         {
             f.Clock.Advance(11);
             f.Host.Tick();
         }
-        Assert.Null(unit.Plan);
+        Assert.False(TileStrikes.Readied(f.Sim.State, unit));
         Assert.Contains(f.Sim.State.Events, e => e.UnitId == unit.Id
             && e.Type is ScavengeEventType.IntentResolved or ScavengeEventType.IntentFizzled or ScavengeEventType.IntentCanceled);
         f.AssertNoLeaks();

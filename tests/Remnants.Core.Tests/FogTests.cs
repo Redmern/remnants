@@ -335,7 +335,7 @@ public class FogTests
         var sim = Arena(12, 9, [shooter, listener, husk]);
         Assert.False(Detection.SideSees(sim.Data, sim.State, P1, shooter));
 
-        Assert.True(StrikeNow(sim, shooter, husk, "shoot").Ok);
+        Assert.True(Blow(sim, shooter, husk, "shoot").Ok);
 
         var heard = Assert.Single(sim.State.Contacts, c => c.Side == P1);
         Assert.Equal(ContactKind.Noise, heard.Kind);
@@ -394,8 +394,8 @@ public class FogTests
         Assert.False(Detection.Spots(sim.Data, sim.State, linked, u), "the Linked cannot pick out the cloaked survivor itself");
         Assert.True(Detection.Spots(sim.Data, sim.State, drone, u));
 
-        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
-        Assert.Equal(!jammer, linked.Plan?.AttackTile == u.Pos); // spotted through the drone: the shot is telegraphed
+        ScavengeAi.TakeTurn(sim, linked);
+        Assert.Equal(!jammer, sim.State.Strikes.Any(s => s.UnitId == linked.Id && s.Tile == u.Pos)); // spotted through the drone: the shot is telegraphed
         Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
 
         if (jammer) Assert.False(Shot(sim, linked, u));
