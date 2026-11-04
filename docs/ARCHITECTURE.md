@@ -917,9 +917,22 @@ Combat is simultaneous: everyone plans, then the round resolves. There are no su
   (the defence's share, plus block skill, armor and perks, amplified by adrenaline, capped). It holds from the start of
   the phase; whether it has come up by then only decides if the block is perfect. A block may stun the attacker
   (`Stuns.Chance`): that costs AP, MP and priority next round and never touches what it queued this round.
+- **Defend** (`Defences.Plan`, command `Defend`, `PlanStepKind.Defend`; `combat.defend`, `items.json defend`): the action
+  anyone with AP has, no card needed. It guards the unit's own tile plus a pattern in a direction, armed with the block cards
+  when the action phase opens and resolving through the same `BlockOf` / `Stuns` rules. Share and pattern are the strongest
+  `defend` among the unit's gear (`Defences.GuardOf`), else `combat.defend`. Block cards have a higher share than any Defend
+  and stand up to a push.
 - **Push and dash** (`Pushes`, commands `Push`, `Dash`; `combat.push`, `combat.dash`): hidden actions, by priority. A push
   moves whoever is on its pattern away from the pusher; what they queued still goes off from where they land. A wall or
-  unit stops it with collision damage, and a defended tile takes a tile off. A dash runs straight on and never through anyone.
+  unit stops it with collision damage, and a tile defended by a card or an ally's guard takes a tile off. A dash runs straight
+  on and never through anyone.
+- **Counters** (`RoundResolver`, `Defences.Break`, `Economy.CaughtRecovering`; pinned pair by pair in `CounterMatrixTests`):
+  Defend beats Attack (block and stun roll). A hostile push on a unit breaks its Defend for the round (`GuardBroken`), and
+  the push goes its full way. A blow that lands first hits a pusher or dasher and does not cancel what it queued. A queued
+  dash goes off ahead of its score when a hostile's push is about to reach it (the push fizzles, logged) or when a blow is
+  about to come down on its landing and not its tile (`RoundResolver.DashAway`, `RunsInto`); in a clash such a dash goes
+  first. A recover pays only after all the actions (`ScavengeSim.Recovering`, never saved): a landed blow cancels it and does
+  `turn.recoverHitDamage` more.
 - **Adrenaline** (`Adrenaline`, in `Stuns.cs`; `scavenge.json adrenaline`): a meter per unit in plain view, 0 to 100. Hits,
   pushes, dashes, blocks and stuns raise it; failed actions, being stunned or hit hard, and each round lower it. Each tier
   adds to damage, priority, block, stun chance and stamina regen. It resets each mission.
@@ -937,7 +950,7 @@ Combat is simultaneous: everyone plans, then the round resolves. There are no su
 - **Turn advice** (`TurnAdvice.CanStillAct`): whether the planning unit has an affordable, useful order left. The screen
   commits it when it has not (`GameSettings.AutoEndTurn`, default on), after a beat any click or key cancels. Tests:
   `TurnAdviceTests`.
-- Tests: `PlanResolveTests`, `PlanSlotTests`, `PlanningViewTests`, `MoveTelegraphTests`, `PushDashTests`,
+- Tests: `DefendTests`, `CounterMatrixTests`, `PlanResolveTests`, `PlanSlotTests`, `PlanningViewTests`, `MoveTelegraphTests`, `PushDashTests`,
   `StunAdrenalineTests`, `StaminaEconomyTests`, `TileAttackTests`, `TileAttackPatternTests`, `TileAttackAiTests`.
 - **Replay pacing** (`ReplayPacing`, a Core view model; Godot `UnitViews.Replay`): a tile walk takes `GameSettings.WalkTileSeconds` (Settings > Game, walk
   speed, default 0.2 s); `GameSettings.SkipAnimations` (Settings > Game, hotkey `scav_fast_forward`, ".") snaps every
@@ -957,9 +970,9 @@ Combat is simultaneous: everyone plans, then the round resolves. There are no su
   starter set for new and migrated colonies; cards from loot / salvage rows (the run's `Party.CardPouch`, kept only if
   someone gets out), recipe outputs (`recipes[].card`: a recipe that makes something else teaches its card once per colony,
   `CardCollection.Taught`; a recipe whose only output is the card grants it every craft), trade (`GoodKind.Card`); consumables played leave the collection.
-- **Saves**: scavenge save 19 (`ScavengeSave.PlanSlotsVersion`; 18 still loads, older runs are refused) and colony save 27
+- **Saves**: scavenge save 20 (`ScavengeSave.DefendVersion`; 18 and 19 still load, older runs are refused) and colony save 27
   (`SaveGame.CardsVersion`; older colonies get the starter set, and a run in progress inside one starts over from its
-  expedition's seed). Protocol 22 (see MULTIPLAYER.md).
+  expedition's seed). Protocol 23 (see MULTIPLAYER.md).
 - **Late-zone retune** (`ZoneDef.Retune`, zones.json `retune`; `LateZoneTuning`, `ZoneTuning.Applies`): a zone's
   alternative enemy count, devices, pylons and reinforcements (waves, count, `afterRounds`). `NewScavenge.Create` applies
   it when `ZoneConditions.LateZones` picks the run (Current; Expeditions: no story mission; Everywhere) and records
@@ -989,7 +1002,7 @@ Combat is simultaneous: everyone plans, then the round resolves. There are no su
   `ScavengePresenter.KnowledgeOf` and `BestiaryKnowledge.Colony`), and the colony overlays `DeckBuilderPanel` and
   `BestiaryPanel` (Deck and Bestiary in the top bar). Sound cues are `scavenge.intent_*`, `scavenge.card_*`,
   `scavenge.countered`, `scavenge.displaced`, `scavenge.initiative_changed`, `scavenge.field_effect_placed` in
-  `game/audio/sound_events.json`. Debug captures: `--scavenge --tactics-demo[=overlay|picker|reaction|enemy|preview|slots|slots-push|slots-dash|slots-recover|slots-ally|slots-change|slots-input|outcomes|resolve|
+  `game/audio/sound_events.json`. Debug captures: `--scavenge --tactics-demo[=overlay|picker|reaction|enemy|preview|slots|slots-push|slots-dash|slots-defend|slots-recover|slots-ally|slots-change|slots-input|outcomes|resolve|
   targeting|smoke]` (`--play-aim` then plays the aimed card and checks every model is on its Core tile),
   `--colony --deck-demo=deck|slots|upgrades`, `--colony --bestiary-demo`.
 - **Ability cards** (`Scavenge/Cards/CardAbilities.cs`, `FieldEffects.cs`): cards declare a target (self, ally, enemy,

@@ -84,7 +84,7 @@
       "id": "planning",
       "title": "Planning and resolving",
       "short": "Everyone plans at once. Then all movement resolves by priority, then all actions by priority.",
-      "long": "## A round\n\n- **Planning**: every side plans at the same time. Each unit plans at most **one move, one action and one card**, and some cards and perks allow more. You can change or clear each of them until planning ends, and everything it paid comes back. A card that acts at once stays played.\n- **Resolving**: all movement goes first, by priority. Then all actions, by priority. A unit's own actions go in the order you queued them.\n\n## MP, AP and stamina\n\n- MP pay for moves, AP for actions, and a unit has 1 AP. Each MP costs 1 stamina, each AP 2. A card takes no AP, but one with an AP cost on it pays that cost in stamina.\n- About 40% of stamina comes back each round, less when loaded. **Recover** spends AP for more.\n- At 0 stamina a unit takes no actions and has half its MP.\n\n## Priority\n\n- Priority is speed, plus how much stamina is left, plus what the action is: pushes, dashes and light blows are quick, heavy blows slow, recover and blocks come early. Under about 30% stamina it drops steeply.\n- Hostile units on the same priority both act, at reduced effect.\n- You see your own units' rank, never the enemy's.\n\n## Lookout\n\n- **Lookout** (L) sees further for the round.",
+      "long": "## A round\n\n- **Planning**: every side plans at the same time. Each unit plans at most **one move, one action and one card**, and some cards and perks allow more. You can change or clear each of them until planning ends, and everything it paid comes back. A card that acts at once stays played.\n- **Resolving**: all movement goes first, by priority. Then all actions, by priority. A unit's own actions go in the order you queued them.\n\n## MP, AP and stamina\n\n- MP pay for moves, AP for actions, and a unit has 1 AP. Each MP costs 1 stamina, each AP 2. A card takes no AP, but one with an AP cost on it pays that cost in stamina.\n- About 40% of stamina comes back each round, less when loaded. **Recover** spends AP for more, unless a blow lands on the unit first (see [[defend]]).\n- At 0 stamina a unit takes no actions and has half its MP.\n\n## Priority\n\n- Priority is speed, plus how much stamina is left, plus what the action is: pushes, dashes and light blows are quick, heavy blows slow, blocks come early. A recover pays once the actions are done. Under about 30% stamina it drops steeply.\n- Hostile units on the same priority both act, at reduced effect.\n- You see your own units' rank, never the enemy's.\n\n## Lookout\n\n- **Lookout** (L) sees further for the round.",
       "related": [
         "ambush",
         "fog",
@@ -296,10 +296,32 @@
       ]
     },
     {
+      "id": "defend",
+      "title": "Defend and counters",
+      "short": "Defend takes your action to guard your own tile and your weapon's tiles in front of you. It beats an attack, loses to a push. Every action has an answer.",
+      "long": "## Defend\n\n- Anyone with AP can **Defend**, no card needed. It takes the action slot. Point it, and the tiles it guards show on the map.\n- It guards your own tile plus a pattern from your weapon: bare hands and guns one tile in front, a machete or sword the three in front, a spear two in a line.\n- A hostile blow on a guarded tile does less, and may stun the attacker. A block fills your adrenaline and drains theirs.\n- The guard holds from the moment actions start, so priority only decides whether it is a perfect block.\n- **Parry**, **Shield Wall** and **Hold the Gap** are stronger: they block more, and a push does not break them.\n\n## What beats what\n\n- **Defend beats Attack**: the blow is blocked and may stun.\n- **Push beats Defend**: the guard breaks for the round and the push goes its full way.\n- **Attack beats Push and Dash** if it lands first, or if it covers where a dash lands. Being hit does not stop a push.\n- **Dash beats Push**: a unit with a dash planned is gone before the push arrives, and the push is wasted. A dash with no room to run is pushed after all.\n- **Recover loses to any blow that lands**: no stamina, and the blow does extra damage. If nothing lands, it pays when the actions are done.\n\n## Reading them\n\nOnly movement is telegraphed. Guess what they will do, and answer that.",
+      "related": [
+        "planning",
+        "telegraphs",
+        "cards"
+      ],
+      "keywords": [
+        "block",
+        "guard",
+        "defend",
+        "parry",
+        "counter",
+        "stun",
+        "push",
+        "dash",
+        "recover"
+      ]
+    },
+    {
       "id": "telegraphs",
       "title": "What you can see coming",
-      "short": "Only movement is telegraphed: precise for units you see, a rough patch for those you do not. Attacks, pushes, dashes and blocks stay hidden until they resolve.",
-      "long": "## Movement\n\n- You see the planned path of every hostile you can see, live, as it plans.\n- A move in the fog near your people shows only as a rough patch of the map.\n\n## Everything else\n\n- Attacks, pushes, dashes, blocks and their targets are hidden until they resolve. So is what a rival has spent.\n- You read where they are going and decide what to do about it.\n\n## Patterns\n\n- Attack and block cards cover a **pattern** of tiles. Turning it is free. The aim shows it on the map and warns of allies on it: a blow strikes **anyone** on its tiles, friends too.\n\n## Blocks and stun\n\n- A blocked tile takes a share off any hostile hit on it at resolve time, whoever stands there. The share is the card's, plus block skill and armor.\n- A block may **stun** the attacker: less AP, MP and priority next round. What it queued this round still goes off. Heavies resist, and repeats are less likely.\n\n## Push and dash\n\n- A **push** moves whoever is on its tiles away from you. What they queued still goes off, from where they land, with its pattern moved along. A wall or unit stops it with a knock to both. A blocked tile takes a tile off.\n- A **dash** runs straight in the action phase and stops at the first thing in the way.\n\n## Adrenaline\n\n- Every unit has a meter, 0 to 100, in plain view. Hits, pushes, dashes, blocks and stuns raise it; misses, being blocked, stunned or hit hard lower it, and it drains each round.\n- At 25, 50, 75 and 100 it boosts damage, priority, block, stun chance and stamina regen. It resets each mission.",
+      "short": "Only movement is telegraphed: precise for units you see, a rough patch for those you do not. Attacks, pushes, dashes, defends and blocks stay hidden until they resolve.",
+      "long": "## Movement\n\n- You see the planned path of every hostile you can see, live, as it plans.\n- A move in the fog near your people shows only as a rough patch of the map.\n\n## Everything else\n\n- Attacks, pushes, dashes, blocks and their targets are hidden until they resolve. So is what a rival has spent.\n- You read where they are going and decide what to do about it.\n\n## Patterns\n\n- Attack and block cards cover a **pattern** of tiles. Turning it is free. The aim shows it on the map and warns of allies on it: a blow strikes **anyone** on its tiles, friends too.\n\n## Blocks and stun\n\n- A blocked tile takes a share off any hostile hit on it at resolve time, whoever stands there. The share is the guard's or card's, plus block skill and armor (see [[defend]]).\n- A block may **stun** the attacker: less AP, MP and priority next round. What it queued this round still goes off. Heavies resist, and repeats are less likely.\n\n## Push and dash\n\n- A **push** moves whoever is on its tiles away from you. What they queued still goes off, from where they land, with its pattern moved along. A wall or unit stops it with a knock to both. A tile blocked by a card or an ally's guard takes a tile off. A push on a unit that is defending breaks its guard.\n- A **dash** runs straight in the action phase and stops at the first thing in the way. It slips a push, but runs into a blow aimed at where it lands.\n\n## Adrenaline\n\n- Every unit has a meter, 0 to 100, in plain view. Hits, pushes, dashes, blocks and stuns raise it; misses, being blocked, stunned or hit hard lower it, and it drains each round.\n- At 25, 50, 75 and 100 it boosts damage, priority, block, stun chance and stamina regen. It resets each mission.",
       "related": [
         "cards",
         "hit_chance",

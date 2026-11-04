@@ -111,13 +111,18 @@ public partial class ScavengeScreen
         }
     }
 
-    /// <summary>Pointing a push or a dash: the tiles around where the plan ends, and for the hovered way what it covers or where it runs.</summary>
+    /// <summary>Pointing a push, a dash or a defend: the tiles around where the plan ends, and for the hovered way what it covers or where it runs.</summary>
     private void HighlightLaunch(Unit unit, TechAim aim)
     {
         var from = Plans.Anchor(_presenter.State, unit);
         foreach (var d in Pos.Neighbours8) _map.Highlight(from + d, HighlightKind.Use);
         if (_hover is not { } hover || hover == from) return;
         var way = TacticsView.AimDirection(_presenter.Sim, unit, hover);
+        if (aim == TechAim.Defend)
+        {
+            ShowPattern(TacticsView.DefendAim(_presenter.Sim, unit, way), HighlightKind.Use);
+            return;
+        }
         if (aim == TechAim.Dash)
         {
             var run = TacticsView.DashAim(_presenter.Sim, unit, way);

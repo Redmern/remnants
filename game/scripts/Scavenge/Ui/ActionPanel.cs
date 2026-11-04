@@ -56,6 +56,9 @@ public partial class ActionPanel : PanelContainer
     public event Action<string>? UseItemChosen;
     public event Action<IScavengeCommand>? CommandRequested;
 
+    /// <summary>Defend chosen: it is pointed on the map.</summary>
+    public event Action<TechAim>? AimChosen;
+
     public ActionPanel(ScavengePresenter presenter)
     {
         _presenter = presenter;
@@ -64,7 +67,7 @@ public partial class ActionPanel : PanelContainer
         var tip = new InfoTip("hit_chance");
         var header = Widgets.SectionHeader("Actions", "ui_attack", tip);
         header.MouseFilter = MouseFilterEnum.Pass;
-        header.TooltipText = "Orders for the unit whose turn it is. The number on a tile is its AP cost; hover a tile for what it does.\nHover a red target on the map for the hit chance.";
+        header.TooltipText = "The action this unit plans this round: one, unless a card or perk gives more. The number on a tile is its AP cost.\nChoose one, then click tiles on the map: it comes down on whoever stands there when it resolves.";
         box.AddChild(header);
         var content = new HFlowContainer();
         content.AddThemeConstantOverride("h_separation", 4);
@@ -98,12 +101,12 @@ public partial class ActionPanel : PanelContainer
         return true;
     }
 
-    public void Refresh(bool busy, string? usingItem)
+    public void Refresh(bool busy, string? usingItem, TechAim aim = TechAim.None)
     {
         _rows.Begin();
         _context.Begin();
         _buttons.Clear();
-        var shown = Build(busy, usingItem);
+        var shown = Build(busy, usingItem, aim);
         _rows.End();
         _context.End();
         Presence.Set(this, shown);
@@ -122,7 +125,7 @@ public partial class ActionPanel : PanelContainer
 
     private bool _contextUsed;
 
-    private bool Build(bool busy, string? usingItem)
+    private bool Build(bool busy, string? usingItem, TechAim aim)
     {
         _contextUsed = false;
         var unit = _presenter.ActingUnit;
@@ -133,13 +136,23 @@ public partial class ActionPanel : PanelContainer
         var profile = sim.Profile(unit);
         if (ActionId is null || profile.Action(ActionId) is null) ActionId = profile.Actions.FirstOrDefault()?.Id;
 
+        var guard = Defences.GuardOf(sim, unit);
+        var defendCost = data.Rules.Combat.Defend.ApCost;
+        _rows.Heading("GUARD", "defend", "Defend and what beats what.");
+        var defend = Add(_rows, "stance_brace", "Defend", $"{Fmt.Percent(guard.Block)} block · your tile + front", defendCost, "scav_defend",
+            $"Guard your own tile and the tiles in front of you, pointed on the map. A hostile blow there does {Fmt.Percent(guard.Block)} less, plus skill and armor, and may stun the attacker.\n"
+            + "Beats: Attack. Loses to: Push, which breaks the guard. Block cards are stronger, and a push does not break them.",
+            () => AimChosen?.Invoke(TechAim.Defend));
+        defend.Toggle(aim == TechAim.Defend);
+        defend.SetBlocked(defendCost > Plans.ApToSpend(_presenter.State, unit), defendCost > Plans.ApToSpend(_presenter.State, unit));
+
         var slot = 0;
         foreach (var a in profile.Actions)
         {
             var icon = a.Pattern == AttackPattern.Melee ? "skill_melee" : "skill_firearms";
             var hotkey = slot < 3 ? Slots[slot++] : null;
             var button = Add(_rows, icon, a.Name, $"{a.Pattern} {a.Reach} · {a.MinDamage:0}–{a.MaxDamage:0} dmg · {Fmt.Percent(a.Accuracy)}",
-                a.ApCost, hotkey, $"{a.Name}: choose it for clicks on targets. Hover a target for its hit chance."
+                a.ApCost, hotkey, $"{a.Name}: choose it, then click a tile. It strikes whoever stands there when it resolves. Hover someone for the hit chance if they stay put.\nBeats: Push and Dash, if it lands first or covers where a dash lands; Recover. Loses to: Defend."
                     + (a.CloseApPenalty > 0 ? $"\n+{a.CloseApPenalty} AP within {a.CloseRange} tiles (scope)." : "")
                     + (a.ArmorPierce > 0 ? $"\nPierces {a.ArmorPierce:0.#} armor." : ""), () => SetAction(a.Id));
             button.Toggle(a.Id == ActionId);
@@ -154,8 +167,8 @@ public partial class ActionPanel : PanelContainer
                 var stab = mode == StrikeMode.Stab;
                 var reach = stab ? $"line {chosen.Reach}, diagonal {chosen.DiagonalRange}" : "front tile and both flanks";
                 var button = Add(_rows, stab ? "ui_stab" : "ui_slash", stab ? "Stab" : "Slash", reach, chosen.ApCost, null,
-                    $"{(stab ? "Stab" : "Slash")} with the {chosen.Name}: click a tile to strike it ({reach}). The AP goes now and "
-                    + "it goes in your plan; whoever hostile stands on the covered tiles when its turn comes is hit.\nStays picked until the round ends; click again to attack units directly.",
+                    $"{(stab ? "Stab" : "Slash")} with the {chosen.Name}: click a tile to strike it ({reach}). It goes in your plan; "
+                    + "anyone on the covered tiles when it resolves is hit, friends too.\nStays picked until the round ends; click it again to turn it off.",
                     () => { _strike.Toggle(mode, _presenter.State.Round); ActionChosen?.Invoke(ActionId ?? ""); });
                 button.Toggle(Mode == mode);
                 button.SetBlocked(chosen.ApCost > Plans.ApToSpend(_presenter.State, unit), chosen.ApCost > Plans.ApToSpend(_presenter.State, unit));

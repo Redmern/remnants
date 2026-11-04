@@ -65,17 +65,17 @@ public partial class StancePanel : PanelContainer
         AddSlots(unit, pid);
         var fog = _presenter.Sim.Data.Rules.Fog;
         Add("stance_scan", unit.Lookout ? "On lookout" : "Lookout", $"+{fog.Lookout.SightBonus:0} sight this round", "scav_lookout",
-            $"+{fog.Lookout.SightBonus:0} sight and sharper eyes until {unit.Name}'s next turn (see Stealth in Help).",
+            $"+{fog.Lookout.SightBonus:0} sight and sharper eyes until the next round starts (see Stealth in Help).",
             fog.Lookout.ApCost, () => CommandRequested?.Invoke(new Lookout(pid, unit.Id)), unit, unit.Lookout);
         var rules = _presenter.Sim.Data.Rules;
         Add("stance_brace", "Recover", $"+{rules.Turn.RecoverStamina} stamina", "scav_recover",
-            $"Spend the round's breath: {unit.Name} gets {rules.Turn.RecoverStamina} stamina back when the round resolves.",
+            $"{unit.Name} gets {rules.Turn.RecoverStamina} stamina back once the actions are done.\nLoses to: any blow that lands, which cancels it and does {Fmt.Percent(rules.Turn.RecoverHitDamage)} more damage.",
             rules.Turn.RecoverApCost, () => CommandRequested?.Invoke(new Recover(pid, unit.Id)), unit, false);
         Add("ui_attack", "Push", $"{rules.Combat.Push.Tiles} tile away", "scav_push",
-            "Shove what stands on the pattern away from where you end up. It resolves by priority: a pushed unit acts from its new tile.",
+            "Shove what stands on the pattern away from where you end up. It resolves by priority: a pushed unit acts from its new tile.\nBeats: Defend, whose guard it breaks. Loses to: Dash, which gets away; an Attack that lands first.",
             rules.Combat.Push.ApCost, () => AimChosen?.Invoke(TechAim.Push), unit, aim == TechAim.Push);
         Add("ui_move", "Dash", $"{rules.Combat.Dash.Tiles} tiles straight", "scav_dash",
-            "Run straight on, resolved by priority with the actions. It stops short of anything in the way.",
+            "Run straight on, resolved by priority with the actions. It stops short of anything in the way.\nBeats: Push, which finds you gone. Loses to: an Attack that lands first or covers where you land.",
             rules.Combat.Dash.ApCost, () => AimChosen?.Invoke(TechAim.Dash), unit, aim == TechAim.Dash);
         _rows.End();
     }

@@ -89,8 +89,10 @@ public partial class ScavengeScreen
                     await SlotsInputDemo(u);
                     GetTree().Quit();
                     return;
-                case "slots" or "slots-push" or "slots-dash" or "slots-recover" or "slots-ally" or "slots-change":
+                case "slots" or "slots-push" or "slots-dash" or "slots-defend" or "slots-recover" or "slots-ally" or "slots-change":
                     await SlotsDemo(u);
+                    // Headless there is nothing to look at and no screenshot to wait for.
+                    if (TacticsDemo.Mode == "slots-defend" && DisplayServer.GetName() == "headless") GetTree().Quit();
                     break;
                 case "preview" when husk is not null:
                     // Fresh AP and the Husk two steps off, so the move tiles in reach of a blow show their chances.
@@ -346,6 +348,28 @@ public partial class ScavengeScreen
                 OnTileClicked(east);
                 await Settled();
                 Say("clicked the aim");
+                break;
+            case "slots-defend":
+                // The real hotkey, the real aim, the real click, then the round resolves.
+                var pressed = _actionPanel.PressHotkey(new InputEventKey { Keycode = Key.G, ShiftPressed = true, Pressed = true });
+                Say($"hotkey pressed {pressed}, aim {_aim}");
+                _hover = east;
+                _map.SetHover(east);
+                RefreshHud();
+                GD.Print($"Slots demo: aim tiles {string.Join(",", Core.Scavenge.TacticsView.DefendAim(_presenter.Sim, u, Core.Scavenge.TacticsView.AimDirection(_presenter.Sim, u, east)).Tiles)} from {end}");
+                await ToSignal(GetTree().CreateTimer(1.0), SceneTreeTimer.SignalName.Timeout);
+                if (DebugCapture.Value("--screenshot") is { Length: > 0 } defendShot)
+                    GD.Print($"Slots demo: aim shot {GetViewport().GetTexture().GetImage().SavePng(defendShot.Replace(".png", "_aim.png"))}");
+                OnTileClicked(east);
+                await Settled();
+                Say("clicked the aim");
+                GD.Print($"Slots demo: planned guard tiles {string.Join(",", Core.Scavenge.TacticsView.PlanPreview(_presenter.Sim, u).ActionTiles)}");
+                if (DisplayServer.GetName() != "headless") break;
+                foreach (var f in _presenter.State.Units.Where(f => f.PlayerId == pid && f.OnMap && f.IsActive).ToList()) await Run(new Core.Scavenge.EndTurn(pid, f.Id));
+                while (_busy) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+                foreach (var e in _presenter.State.Events.Where(e => e.Type == Core.Scavenge.ScavengeEventType.PatternResolved && e.UnitId == u.Id))
+                    GD.Print($"Slots demo: resolved pattern on {string.Join(",", e.Tiles ?? [])} landed {e.Landed}");
+                GD.Print($"Slots demo: round now {_presenter.State.Round}");
                 break;
             case "slots-recover":
                 await Run(new Core.Scavenge.Recover(pid, u.Id));

@@ -254,14 +254,16 @@ public partial class ScavengeScreen : Node3D
         _actionPanel.CommandRequested += command => _ = Run(command);
         _hud.Loot.CommandRequested += command => _ = Run(command);
         _stancePanel.CommandRequested += command => _ = Run(command);
-        _stancePanel.AimChosen += aim =>
+        void ChooseAim(TechAim aim)
         {
             CancelCardAim();
             _aim = _aim == aim ? TechAim.None : aim;
             _usingItem = null;
             _pinging = null;
             RefreshHud();
-        };
+        }
+        _stancePanel.AimChosen += ChooseAim;
+        _actionPanel.AimChosen += ChooseAim;
         _techPanel.CommandRequested += command => _ = Run(command);
         _unitPanel.CommandRequested += command => _ = Run(command);
         _techPanel.AimChosen += aim =>
@@ -309,7 +311,7 @@ public partial class ScavengeScreen : Node3D
                     _map.SetHover(hover);
                     RefreshFocus();
                     // Aiming a card: the hovered target's landing tile and the units it touches follow the cursor.
-                    if (_cardAim is not null || _aim is TechAim.Push or TechAim.Dash) RefreshHud();
+                    if (_cardAim is not null || _aim is TechAim.Push or TechAim.Dash or TechAim.Defend) RefreshHud();
                 }
                 if (_cardAim is not null)
                 {
@@ -372,7 +374,7 @@ public partial class ScavengeScreen : Node3D
             return;
         }
 
-        if (_aim is TechAim.Push or TechAim.Dash && acting is not null)
+        if (_aim is TechAim.Push or TechAim.Dash or TechAim.Defend && acting is not null)
         {
             if (tile == Plans.Anchor(state, acting))
             {
@@ -382,7 +384,12 @@ public partial class ScavengeScreen : Node3D
             var launch = _aim;
             _aim = TechAim.None;
             var way = TacticsView.AimDirection(_presenter.Sim, acting, tile);
-            _ = Run(launch == TechAim.Push ? new Push(pid, acting.Id, way) : new Dash(pid, acting.Id, way, _presenter.Sim.Data.Rules.Combat.Dash.Tiles));
+            _ = Run(launch switch
+            {
+                TechAim.Push => new Push(pid, acting.Id, way),
+                TechAim.Defend => new Defend(pid, acting.Id, way),
+                _ => new Dash(pid, acting.Id, way, _presenter.Sim.Data.Rules.Combat.Dash.Tiles),
+            });
             return;
         }
 
@@ -657,7 +664,7 @@ public partial class ScavengeScreen : Node3D
         // While a turn replays the orders stay as they are (dimmed, nothing moves); they catch up when it is over.
         if (!_busy)
         {
-            _actionPanel.Refresh(false, _usingItem);
+            _actionPanel.Refresh(false, _usingItem, _aim);
             _hud.Loot.Refresh(false);
             _stancePanel.Refresh(false, _aim);
             _techPanel.Refresh(false, _aim);
@@ -702,7 +709,7 @@ public partial class ScavengeScreen : Node3D
                 _ when _usingItem is { } item => (_actionPanel.ItemHint(item), Hud.Palette.Amber),
                 _ when ownDrone => ($"The drone flies on {acting.Name}'s AP: its orders are under Tech.", Hud.Palette.TextMuted),
                 _ when other => ($"{selected!.Name} is selected; these are {acting.Name}'s orders. {Hud.Hotkeys.KeyName("scav_center")} goes back.", Hud.Palette.Warn),
-                _ when round <= 3 => ("Lit tile: set the move. Red target: plan the action. Click again to change.", Hud.Palette.TextMuted),
+                _ when round <= 3 => ("Lit tile: set the move. Choose an action, then click its tiles. Anything can be changed until you commit.", Hud.Palette.TextMuted),
                 _ => ($"One move, one action, one card · {Hud.Hotkeys.KeyName("end_turn")} commits the plan · {Hud.Hotkeys.KeyName("scav_next_unit")} next unit.", Hud.Palette.TextMuted),
             };
         }
@@ -801,7 +808,7 @@ public partial class ScavengeScreen : Node3D
             }
             return;
         }
-        if (isActing && _aim is TechAim.Push or TechAim.Dash)
+        if (isActing && _aim is TechAim.Push or TechAim.Dash or TechAim.Defend)
         {
             HighlightLaunch(acting!, _aim);
             return;
