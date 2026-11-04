@@ -250,7 +250,12 @@ public class StunAdrenalineTests
     }
 
     [Theory]
-    [InlineData(0, 0)] [InlineData(24, 0)] [InlineData(25, 1)] [InlineData(50, 2)] [InlineData(75, 3)] [InlineData(100, 4)]
+    [InlineData(0, 0)]
+    [InlineData(24, 0)]
+    [InlineData(25, 1)]
+    [InlineData(50, 2)]
+    [InlineData(75, 3)]
+    [InlineData(100, 4)]
     public void The_tiers_are_quarter_steps_with_a_bigger_one_at_the_top(double meter, int tier)
     {
         var a = SurvivorUnit(1, new(3, 3));

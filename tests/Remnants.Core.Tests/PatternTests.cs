@@ -24,8 +24,14 @@ public class PatternTests
     private static CardPattern Custom(params int[][] offsets) => new() { Offsets = offsets.ToList() };
 
     [Theory]
-    [InlineData(1, 0)] [InlineData(0, 1)] [InlineData(-1, 0)] [InlineData(0, -1)]
-    [InlineData(1, 1)] [InlineData(1, -1)] [InlineData(-1, 1)] [InlineData(-1, -1)]
+    [InlineData(1, 0)]
+    [InlineData(0, 1)]
+    [InlineData(-1, 0)]
+    [InlineData(0, -1)]
+    [InlineData(1, 1)]
+    [InlineData(1, -1)]
+    [InlineData(-1, 1)]
+    [InlineData(-1, -1)]
     public void Named_shapes_cover_what_a_stab_and_a_slash_cover(int x, int y)
     {
         var map = new TileMap(12, 12);

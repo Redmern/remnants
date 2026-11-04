@@ -31,7 +31,9 @@ public static class Defences
                 if (sim.Data.Cards.Find(step.CardId!) is { Pattern: { } pattern, Effect.Block: > 0 } card)
                     state.Defences.Add(new DefendedTiles
                     {
-                        UnitId = plan.UnitId, CardId = card.Id, CardBlock = card.Effect.Block,
+                        UnitId = plan.UnitId,
+                        CardId = card.Id,
+                        CardBlock = card.Effect.Block,
                         Tiles = Patterns.Tiles(state.Map, pattern, step.Tile ?? step.From, step.Direction),
                     });
         }
