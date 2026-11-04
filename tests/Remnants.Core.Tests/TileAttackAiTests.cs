@@ -6,18 +6,18 @@ namespace Remnants.Core.Tests;
 /// <summary>The AI telegraphs blows with patterned weapons, and runs on sub-rounds with tile strikes stay deterministic.</summary>
 public class TileAttackAiTests
 {
-    private static ScavengeData Rounds(int n) => With(r => r with
+    private static readonly ScavengeData SureHits = With(r => r with
     {
         Combat = r.Combat with { MinHitChance = 1, MaxHitChance = 1, Tiers = r.Combat.Tiers with { GrazeBelow = 0, SolidFrom = 1 } },
     });
 
     /// <summary>P1's far survivor first, then a Tally blade (machete: slash only) next to P1's near survivor, who goes last.</summary>
-    private static (ScavengeSim Sim, Unit Far, Unit Blade, Unit Near) Ambush(int subRounds = 1)
+    private static (ScavengeSim Sim, Unit Far, Unit Blade, Unit Near) Ambush()
     {
         var far = SurvivorUnit(1, new(0, 0), weapon: "pipe");
         var blade = EnemyUnit("tally_blade", new(5, 2));
         var near = SurvivorUnit(1, new(6, 2), weapon: "pipe");
-        var sim = Arena(10, 5, [far, blade, near], data: Rounds(subRounds));
+        var sim = Arena(10, 5, [far, blade, near], data: SureHits);
         blade.Ai.Mode = AiMode.Hunting;
         return (sim, far, blade, near);
     }
@@ -48,7 +48,7 @@ public class TileAttackAiTests
         var far = SurvivorUnit(1, new(0, 0), weapon: "pipe");
         var husk = EnemyUnit("husk", new(5, 2));
         var near = SurvivorUnit(1, new(6, 2), weapon: "pipe");
-        var sim = Arena(10, 5, [far, husk, near], data: Rounds(1));
+        var sim = Arena(10, 5, [far, husk, near], data: SureHits);
         husk.Ai.Mode = AiMode.Hunting;
         sim.Start();
 

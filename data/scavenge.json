@@ -56,8 +56,6 @@
     "pylonRange": 8,
     "reinforceAfterRounds": 3,
     "retreatHpFraction": 0.35,
-    "suppressBelowHitChance": 0.3,
-    "suppressApPenalty": 1,
     "coverWeight": 10,
     "apWeight": 0.5
   },
@@ -135,8 +133,6 @@
         "thunderChance": 0.3, "lightningChance": 0.12
       },
       "fog": {
-    "moveHintRange": 12,
-    "moveHintCell": 4,
         "sight": { "Human": 0.5, "Husk": 0.7, "Linked": 0.7, "Drone": 0.5, "Camera": 0.5, "Turret": 0.6 },
         "stealthBonus": 10, "minSight": 2
       },
