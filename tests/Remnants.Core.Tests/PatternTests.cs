@@ -192,6 +192,7 @@ public class PatternTests
             Assert.True(sim.Execute(new AttackTile(1, a.Id, b.Pos, "swing")).Ok);
             Settle(sim);
             var block = Assert.Single(sim.State.Events, e => e.Type == ScavengeEventType.Blocked);
+            Assert.Equal(early ? OutcomeKind.PerfectBlock : OutcomeKind.Block, ReplayFeedback.Of(block)!.Kind);
             return block.Message.Contains("perfect");
         }
         Assert.True(Perfect(early: true));

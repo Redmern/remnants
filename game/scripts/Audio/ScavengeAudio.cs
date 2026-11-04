@@ -99,6 +99,13 @@ public partial class ScavengeAudio : Node3D
         var actor = e.UnitId is { } a ? state.FindUnit(a) : null;
         var target = e.TargetId is { } t ? state.FindUnit(t) : null;
         var type = AudioNames.Snake(e.Type.ToString());
+        var outcome = ReplayFeedback.Of(e);
+        if (outcome is { Kind: OutcomeKind.Dash }) yield return outcome.Sound;
+        if (outcome is { Kind: OutcomeKind.Block or OutcomeKind.PerfectBlock or OutcomeKind.Stun or OutcomeKind.Collision or OutcomeKind.AdrenalineGain or OutcomeKind.AdrenalineDrain })
+        {
+            yield return outcome.Sound;
+            yield break;
+        }
         switch (e.Type)
         {
             case ScavengeEventType.Attacked or ScavengeEventType.Missed:

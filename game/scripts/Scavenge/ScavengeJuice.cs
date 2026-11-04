@@ -127,8 +127,14 @@ public partial class ScavengeJuice : Node
             case ScavengeEventType.Downed:
                 Jolt(Impact.Kill with { Killed = false, Tier = HitTier.Solid, Amount = 0 });
                 break;
-            case ScavengeEventType.Displaced:
+            case ScavengeEventType.Displaced or ScavengeEventType.Stunned:
                 Jolt(Impact.Push);
+                break;
+            case ScavengeEventType.Collided:
+                Jolt(Impact.Kill with { Killed = false, Tier = HitTier.Hit, Amount = 0 });
+                break;
+            case ScavengeEventType.Blocked when ReplayFeedback.Of(e) is { Kind: OutcomeKind.PerfectBlock }:
+                Jolt(Impact.Kill with { Killed = false, Tier = HitTier.Solid, Amount = 0 });
                 break;
         }
     }

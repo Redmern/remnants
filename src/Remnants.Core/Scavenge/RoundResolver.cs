@@ -139,6 +139,47 @@ internal static class RoundResolver
 
     private static void Resolve(ScavengeSim sim, Unit unit, PlanStep step)
     {
+        var (logged, from) = (sim.State.Logged, unit.Pos);
+        Act(sim, unit, step);
+        if (PatternOf(sim, unit, step, from) is not { } tiles) return;
+        var state = sim.State;
+        var news = state.Events.TakeLast(state.Logged - logged).Where(e => e.UnitId == unit.Id).ToList();
+        bool Did(params ScavengeEventType[] types) => news.Exists(e => types.Contains(e.Type));
+        var effect = step.CardId is { } id ? sim.Data.Cards.Find(id)?.Effect : null;
+        var landed = step.Kind switch
+        {
+            PlanStepKind.Strike => Did(ScavengeEventType.Attacked),
+            PlanStepKind.Push => Did(ScavengeEventType.Displaced, ScavengeEventType.Collided),
+            _ when effect is { Attack: true } => Did(ScavengeEventType.Attacked),
+            _ => !Did(ScavengeEventType.IntentFizzled),
+        };
+        state.Log(new(state.Round, ScavengeEventType.PatternResolved, "", unit.Id, Pos: unit.Pos, Tiles: tiles, Landed: landed));
+    }
+
+    /// <summary>The tiles a resolved action covered, as it came up from <paramref name="from"/>: null for one without a pattern.</summary>
+    private static List<Pos>? PatternOf(ScavengeSim sim, Unit unit, PlanStep step, Pos from)
+    {
+        var map = sim.State.Map;
+        switch (step.Kind)
+        {
+            case PlanStepKind.Strike:
+                var shift = from - step.Strike!.From;
+                return step.Strike.Tiles.Select(p => p + shift).Where(map.InBounds).ToList();
+            case PlanStepKind.Push:
+                return Patterns.Tiles(map, sim.Data.Rules.Combat.Push.Pattern, from, step.Direction);
+            case PlanStepKind.Dash:
+                var ran = unit.Pos == from ? step.Reach : unit.Pos.Chebyshev(from);
+                return Enumerable.Range(1, ran).Select(i => from + new Pos(step.Direction.X * i, step.Direction.Y * i)).Where(map.InBounds).ToList();
+            case PlanStepKind.Card when sim.Data.Cards.Find(step.CardId!) is { Pattern: { } pattern, Effect: var effect }:
+                var aim = effect.Attack && step.Tile is { } t ? t + (from - step.From) : step.Tile ?? step.From;
+                return Patterns.Tiles(map, pattern, aim, step.Direction);
+            default:
+                return null;
+        }
+    }
+
+    private static void Act(ScavengeSim sim, Unit unit, PlanStep step)
+    {
         switch (step.Kind)
         {
             case PlanStepKind.Strike:

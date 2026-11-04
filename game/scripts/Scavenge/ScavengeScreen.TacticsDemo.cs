@@ -77,6 +77,18 @@ public partial class ScavengeScreen
                     _map.SetHover(sweepAt);
                     GD.Print($"Tactics demo: planned a walk to {walk}, aiming sweep at {sweepAt}, {_cardAim?.Options.Count(o => o.Ok)} of {_cardAim?.Options.Count} work");
                     break;
+                case "outcomes" when husk is not null:
+                    await OutcomesDemo(u, husk);
+                    GetTree().Quit();
+                    return;
+                case "resolve" when husk is not null:
+                    await ResolveDemo(u, husk);
+                    GetTree().Quit();
+                    return;
+                case "slots-input":
+                    await SlotsInputDemo(u);
+                    GetTree().Quit();
+                    return;
                 case "slots" or "slots-push" or "slots-dash" or "slots-recover" or "slots-ally" or "slots-change":
                     await SlotsDemo(u);
                     break;
@@ -130,6 +142,173 @@ public partial class ScavengeScreen
             GD.Print(error == Error.Ok ? $"Screenshot saved to {path}" : $"Screenshot failed: {error}");
             if (DebugCapture.HasFlag("--quit")) GetTree().Quit();
         }
+    }
+
+    /// <summary>
+    /// The plan panel by real input: mouse and key events pushed into the viewport, through GUI and hotkey handling as a player's
+    /// are: a walk clicked on the map, slot rows clicked clear, the Recover, Push and Dash buttons, aiming clicks and the clear key.
+    /// </summary>
+    private async Task SlotsInputDemo(Core.Scavenge.Unit u)
+    {
+        async Task Settled()
+        {
+            for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            while (_busy) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            for (var i = 0; i < 4; i++) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        }
+        void Say(string what) => GD.Print($"Input demo: {what}: " + string.Join(" | ", Core.Scavenge.TacticsView.Slots(_presenter.Sim, u).Select(s => $"{s.Slot} {s.Used}/{s.Limit} {s.Text}")) + $" | MP {u.Mp} AP {u.Ap} aim {_aim}");
+        async Task ClickAt(Vector2 at)
+        {
+            var viewport = GetViewport();
+            viewport.PushInput(new InputEventMouseMotion { Position = at, GlobalPosition = at }, true);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            viewport.PushInput(new InputEventMouseButton { Position = at, GlobalPosition = at, ButtonIndex = MouseButton.Left, ButtonMask = MouseButtonMask.Left, Pressed = true }, true);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            viewport.PushInput(new InputEventMouseButton { Position = at, GlobalPosition = at, ButtonIndex = MouseButton.Left, Pressed = false }, true);
+            await Settled();
+        }
+        Task ClickRow(string title) => ClickAt(_hud.Stances.FindChildren("*", nameof(Button), true, false).OfType<ActionButton>().First(b => b.Visible && b.Title.StartsWith(title)).GetGlobalRect().GetCenter());
+        Task ClickTile(Core.Scavenge.Pos tile)
+        {
+            _camera.Focus(TileGrid.ToWorld(tile));
+            return ClickWhenFramed(tile);
+        }
+        async Task ClickWhenFramed(Core.Scavenge.Pos tile)
+        {
+            await ToSignal(GetTree().CreateTimer(0.2), SceneTreeTimer.SignalName.Timeout);
+            await ClickAt(_camera.Camera.UnprojectPosition(TileGrid.ToWorld(tile)));
+        }
+        var walks = _presenter.Reachable(u).Where(kv => kv.Value == 2).OrderBy(kv => kv.Key.X).ThenBy(kv => kv.Key.Y).Select(kv => kv.Key).ToList();
+        Say("start");
+        await ClickTile(walks[0]);
+        Say($"mouse on tile {walks[0]}");
+        await ClickRow("Recover");
+        Say("mouse on Recover");
+        await ClickRow("Action:");
+        Say("mouse on the Action row");
+        await ClickRow("Recover");
+        Say("mouse on Recover again");
+        GetViewport().PushInput(new InputEventKey { Keycode = Key.Z, PhysicalKeycode = Key.Z, ShiftPressed = true, Pressed = true }, true);
+        await Settled();
+        GetViewport().PushInput(new InputEventKey { Keycode = Key.Z, PhysicalKeycode = Key.Z, ShiftPressed = true, Pressed = false }, true);
+        Say("Shift+Z, the latest slot");
+        var east = Core.Scavenge.Plans.Anchor(_presenter.State, u) + new Core.Scavenge.Pos(0, -1);
+        await ClickRow("Dash");
+        Say("mouse on Dash");
+        await ClickTile(east);
+        Say($"aim clicked at {east}");
+        await ClickRow("Push");
+        Say("mouse on Push, to change the action");
+        await ClickTile(east);
+        Say($"aim clicked at {east}");
+        await ClickRow("Move:");
+        Say("mouse on the Move row");
+        if (DebugCapture.Value("--screenshot") is { Length: > 0 } shot) GD.Print($"Input demo: shot {GetViewport().GetTexture().GetImage().SavePng(shot)}");
+    }
+
+    /// <summary><c>--outcome-shots=DIR</c>: each outcome's first showing, a moment in, saved as DIR/Kind.png and named in the log.</summary>
+    private void ShootOutcome(Core.Scavenge.ScavengeEvent e)
+    {
+        if (DebugCapture.Value("--outcome-shots") is not { Length: > 0 }) return;
+        if (Core.Scavenge.ReplayFeedback.Of(e) is { } outcome)
+        {
+            GD.Print($"Outcome: {outcome.Kind} \"{outcome.Text}\" sound {outcome.Sound}");
+            Shoot(outcome.Kind.ToString());
+        }
+        else if (e.Type == Core.Scavenge.ScavengeEventType.PatternResolved)
+        {
+            GD.Print($"Outcome: pattern {(e.Landed ? "landed" : "failed")} on {string.Join(",", e.Tiles ?? [])}");
+            Shoot(e.Landed ? "PatternLanded" : "PatternFailed", 0.25);
+        }
+    }
+
+    private readonly System.Collections.Generic.HashSet<string> _shot = [];
+
+    private async void Shoot(string name, double after = 0.14)
+    {
+        if (DebugCapture.Value("--outcome-shots") is not { Length: > 0 } dir || !_shot.Add(name)) return;
+        await ToSignal(GetTree().CreateTimer(after), SceneTreeTimer.SignalName.Timeout);
+        GD.Print($"Outcome shot {name}: {GetViewport().GetTexture().GetImage().SavePng($"{dir}/{name}.png")}");
+    }
+
+    /// <summary>
+    /// Every outcome in turn through the real replay, on made-up events (a real round cannot be made to roll them all), then a unit
+    /// run low on stamina. The rules' side of these events is in ReplayFeedbackTests.
+    /// </summary>
+    private async Task OutcomesDemo(Core.Scavenge.Unit u, Core.Scavenge.Unit husk)
+    {
+        var state = _presenter.State;
+        var map = state.Map;
+        bool Free(Core.Scavenge.Pos p) => map.InBounds(p) && _presenter.Sim.Data.Terrain(map[p]).Passable && state.UnitAt(p) is null;
+        var way = Core.Scavenge.Pos.Neighbours8.First(d => d.X != 0 && d.Y == 0 || d.X == 0 && d.Y != 0 ? Free(u.Pos + d) && Free(u.Pos + d + d) && Free(u.Pos + d + d + d) : false);
+        var (start, dashed, beside) = (u.Pos, u.Pos + way + way, u.Pos + way + way + way);
+        husk.Pos = beside;
+        SyncAll();
+        var shoved = Core.Scavenge.Pos.Neighbours8.First(d => Free(beside + d) && beside + d != dashed && (beside + d).Chebyshev(dashed) == 2) + beside;
+        var round = state.Round;
+        Core.Scavenge.ScavengeEvent E(Core.Scavenge.ScavengeEventType type, string text, int? unit, int? target = null, Core.Scavenge.Pos? at = null, double? amount = null,
+            System.Collections.Generic.List<Core.Scavenge.Pos>? tiles = null, bool landed = false) => new(round, type, text, unit, target, at, Amount: amount, Tiles: tiles, Landed: landed);
+        var hit = new System.Collections.Generic.List<Core.Scavenge.Pos> { beside };
+        var events = new System.Collections.Generic.List<Core.Scavenge.ScavengeEvent>
+        {
+            E(Core.Scavenge.ScavengeEventType.Moved, $"{u.Name} dashes to {dashed}.", u.Id, at: dashed),
+            E(Core.Scavenge.ScavengeEventType.PatternResolved, "", u.Id, at: dashed, tiles: [start + way, dashed], landed: true),
+            E(Core.Scavenge.ScavengeEventType.Attacked, $"{u.Name} hit {husk.Name}'s Torso for 12 (Pipe).", u.Id, husk.Id, beside, 12),
+            E(Core.Scavenge.ScavengeEventType.AdrenalineChanged, "", u.Id, at: dashed, amount: 10),
+            E(Core.Scavenge.ScavengeEventType.PatternResolved, "", u.Id, at: dashed, tiles: hit, landed: true),
+            E(Core.Scavenge.ScavengeEventType.Missed, $"{u.Name} missed {husk.Name}.", u.Id, husk.Id, beside),
+            E(Core.Scavenge.ScavengeEventType.PatternResolved, "", u.Id, at: dashed, tiles: hit),
+            E(Core.Scavenge.ScavengeEventType.IntentFizzled, $"{u.Name}'s strike falls through: Pipe hits nothing.", u.Id, at: dashed),
+            E(Core.Scavenge.ScavengeEventType.Blocked, $"{u.Name}'s block takes 40% off the hit on {husk.Name}.", u.Id, husk.Id, beside),
+            E(Core.Scavenge.ScavengeEventType.Blocked, $"{u.Name}'s perfect block takes 70% off the hit on {husk.Name}.", u.Id, husk.Id, beside),
+            E(Core.Scavenge.ScavengeEventType.Stunned, $"{husk.Name} is stunned (the block).", u.Id, husk.Id, beside),
+            E(Core.Scavenge.ScavengeEventType.Displaced, $"{husk.Name} is shoved.", u.Id, husk.Id, shoved),
+            E(Core.Scavenge.ScavengeEventType.Collided, $"{husk.Name} slams into a wall.", u.Id, husk.Id, shoved),
+            E(Core.Scavenge.ScavengeEventType.AdrenalineChanged, "", u.Id, at: dashed, amount: -5),
+        };
+        u.Pos = dashed;
+        husk.Pos = shoved;
+        u.Adrenaline = 30;
+        husk.StunnedRound = round + 1;
+        await _units.Replay(events, Enumerable.Range(0, map.Width * map.Height).ToHashSet(), OnReplayStep);
+        await ToSignal(GetTree().CreateTimer(0.4), SceneTreeTimer.SignalName.Timeout);
+        u.Fatigue = _presenter.Sim.Profile(u).MaxStamina - _presenter.Sim.Data.Rules.Turn.StaminaPerAp;
+        SyncAll();
+        Shoot("LowStamina");
+        await ToSignal(GetTree().CreateTimer(0.5), SceneTreeTimer.SignalName.Timeout);
+    }
+
+    /// <summary>
+    /// A real round through the real resolve: every unit walks, then one strikes an empty tile, one pushes the Husk and one recovers.
+    /// Prints each step of the playback and where the camera is, to check the order.
+    /// </summary>
+    private async Task ResolveDemo(Core.Scavenge.Unit u, Core.Scavenge.Unit husk)
+    {
+        var state = _presenter.State;
+        var pid = _presenter.PlayerId;
+        _units.StepStarted += e => GD.Print($"Step: {e.Type} unit {e.UnitId}: {e.Message}");
+        var party = state.Units.Where(f => f.PlayerId == pid && f.OnMap).OrderBy(f => f.Id).ToList();
+        foreach (var f in party)
+        {
+            var walk = _presenter.Reachable(f).Where(kv => kv.Value == 2).OrderBy(kv => kv.Key.X).ThenBy(kv => kv.Key.Y).Select(kv => kv.Key).FirstOrDefault(p => state.UnitAt(p) is null);
+            if (walk != default) GD.Print($"Plan: {f.Name} walk to {walk}: {(await _presenter.Execute(new Core.Scavenge.Move(pid, f.Id, walk))).Message}");
+        }
+        var way = new Core.Scavenge.Pos(1, 0);
+        var pusher = party[0];
+        husk.Pos = Core.Scavenge.Plans.Anchor(state, pusher) + way;
+        GD.Print($"Plan: {pusher.Name} push: {(await _presenter.Execute(new Core.Scavenge.Push(pid, pusher.Id, way))).Message}");
+        if (party.Count > 1)
+        {
+            var striker = party[1];
+            var action = _presenter.Sim.Profile(striker).Actions[0];
+            var aim = Core.Scavenge.TileStrikes.Reach(_presenter.Sim, striker, action).Where(p => state.UnitAt(p) is null).OrderBy(p => p.X).ThenBy(p => p.Y).First();
+            GD.Print($"Plan: {striker.Name} strike {aim}: {(await _presenter.Execute(new Core.Scavenge.AttackTile(pid, striker.Id, aim, action.Id))).Message}");
+        }
+        if (party.Count > 2) GD.Print($"Plan: {party[2].Name} recover: {(await _presenter.Execute(new Core.Scavenge.Recover(pid, party[2].Id))).Message}");
+        SyncAll();
+        foreach (var f in party) await Run(new Core.Scavenge.EndTurn(pid, f.Id));
+        while (_busy) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+        GD.Print($"Resolve demo: round now {state.Round}");
     }
 
     /// <summary>

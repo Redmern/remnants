@@ -25,6 +25,9 @@ public partial class ActionButton : Button
     private int _apCost;
     private string _iconId = "";
 
+    /// <summary>What the button reads.</summary>
+    public string Title => _title.Text;
+
     /// <summary>The InputMap action that presses this button, if any.</summary>
     public string? Hotkey { get; private set; }
 

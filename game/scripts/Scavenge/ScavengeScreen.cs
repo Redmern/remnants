@@ -234,6 +234,9 @@ public partial class ScavengeScreen : Node3D
             return true;
         };
         _units.Floated += (at, text, color, big) => _hud.Tags.Pop(at, text, color, big);
+        _units.StepStarted += OnStepStarted;
+        _units.TilesFlashed += (tiles, landed) => _map.FlashTiles(tiles, landed);
+        _units.AdrenalinePulsed += (id, gain) => _hud.Tags.PulseAdrenaline(id, gain);
         _fog.Popped += (at, text, color) => _hud.Tags.Pop(at, text, color, true);
         _presenter.Pushed += OnPushed;
         _turnBar.UnitClicked += id =>
@@ -487,6 +490,28 @@ public partial class ScavengeScreen : Node3D
         _ = ReplayNew();
     }
 
+    /// <summary>One replayed event at its beat.</summary>
+    private void OnReplayStep(ScavengeEvent e, bool seen)
+    {
+        _log.Event(e);
+        _fog.Incoming(e);
+        _telegraphs.Incoming(e);
+        CardFlourish(e);
+        _juice.Step(e, seen);
+        _audio.Step(e, _juice.HitPitch(e));
+        WeatherEvent(e);
+        ShootOutcome(e);
+    }
+
+    /// <summary>The camera goes to each step of a resolve's playback: where a walk ends, who acts, or what was hit from the fog.</summary>
+    private void OnStepStarted(ScavengeEvent e)
+    {
+        var at = e.Type == ScavengeEventType.Moved && e.Pos is { } to ? TileGrid.ToWorld(to)
+            : e.UnitId is { } actor && _units.WorldOf(actor) is { } there ? there
+            : e.Pos is { } tile ? TileGrid.ToWorld(tile) : (Vector3?)null;
+        if (at is { } point) _camera.GlideTo(point);
+    }
+
     /// <summary>Replays every event not shown yet against what the side saw before and sees now, then syncs. Expects <see cref="_busy"/> set.</summary>
     private async Task ReplayNew()
     {
@@ -501,23 +526,7 @@ public partial class ScavengeScreen : Node3D
                 _map.ClearHighlights();
                 RefreshHud();
                 _map.Sync();
-                await _units.Replay(events, seenBefore, (e, seen) =>
-                {
-                    _log.Event(e);
-                    _fog.Incoming(e);
-                    _telegraphs.Incoming(e);
-                    CardFlourish(e);
-                    _juice.Step(e, seen);
-                    _audio.Step(e, _juice.HitPitch(e));
-                    WeatherEvent(e);
-                    // Follow what others do in sight (enemy turns, recruits) so it never happens off screen; never what the
-                    // side did not see, nor while animations are skipped.
-                    if (seen && !Hud.GameSettings.SkipAnimations
-                        && e.Type is ScavengeEventType.Moved or ScavengeEventType.Attacked or ScavengeEventType.Missed
-                        && e.UnitId is { } actor && _presenter.State.FindUnit(actor) is { } u && u.PlayerId != _presenter.PlayerId
-                        && _units.WorldOf(actor) is { } at)
-                        _camera.Follow(e.Type == ScavengeEventType.Moved && e.Pos is { } to ? TileGrid.ToWorld(to) : at);
-                });
+                await _units.Replay(events, seenBefore, OnReplayStep);
             }
         } while (_pushPending);
         _busy = false;
