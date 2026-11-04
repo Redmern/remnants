@@ -54,6 +54,18 @@ public sealed class PlanStep
     public double AppliedAdrenaline { get; set; }
     public MendUndo? AppliedMend { get; set; }
 
+    /// <summary>A copy with its own lists, to put back if a change of plan is refused.</summary>
+    internal PlanStep Copy()
+    {
+        var copy = (PlanStep)MemberwiseClone();
+        copy.Path = Path.ToList();
+        if (Strike is { } strike) copy.Strike = new TileStrike
+        {
+            UnitId = strike.UnitId, ActionId = strike.ActionId, Mode = strike.Mode, From = strike.From, Tile = strike.Tile, Direction = strike.Direction, Tiles = strike.Tiles.ToList(),
+        };
+        return copy;
+    }
+
     /// <summary>An action paid with a free action (<see cref="Unit.FreeActions"/>) rather than AP.</summary>
     public bool Free { get; set; }
 }
@@ -161,12 +173,14 @@ public static class Plans
     public static Dictionary<Pos, int> MoveChoices(ScavengeSim sim, Unit unit)
     {
         var moves = Of(sim.State, unit)?.Steps.Where(s => s.Kind == PlanStepKind.Move).ToList() ?? [];
-        return moves.Count == 0 || HasRoom(sim, unit, PlanSlot.Move)
-            ? sim.Reachable(unit)
-            : Movement.Reachable(sim.State, unit, sim.Profile(unit).Movement, unit.Mp + moves.Sum(s => s.RefundMp));
+        if (moves.Count == 0 || HasRoom(sim, unit, PlanSlot.Move)) return sim.Reachable(unit);
+        var real = unit.Pos;
+        unit.Pos = moves.Count > 1 ? moves[^2].To : real;
+        try { return Movement.Reachable(sim.State, unit, sim.Profile(unit).Movement, unit.Mp + moves[^1].RefundMp); }
+        finally { unit.Pos = real; }
     }
 
-    /// <summary>The slot an order would change rather than add to: it is full and holds something to clear. The screen clears it first.</summary>
+    /// <summary>The slot an order would change rather than add to: it is full and holds something to clear. The screen sends it as a <see cref="ChangePlan"/>.</summary>
     public static PlanSlot? Replaces(ScavengeSim sim, IScavengeCommand command)
     {
         PlanSlot? slot = command switch
@@ -179,9 +193,12 @@ public static class Plans
                && Of(sim.State, unit)?.Steps.Exists(x => SlotOf(x) == s) == true ? s : null;
     }
 
-    /// <summary>The AP an action could cost now: what is left, plus what clearing the planned actions would give back.</summary>
-    public static int ApToSpend(ScavengeState state, Unit unit) =>
-        unit.Ap + (Of(state, unit)?.Steps.Where(s => SlotOf(s) == PlanSlot.Action).Sum(s => s.RefundAp) ?? 0);
+    /// <summary>The AP an action could cost now: what is left, plus what changing the last planned action would give back. A free action pays any cost.</summary>
+    public static int ApToSpend(ScavengeState state, Unit unit)
+    {
+        var last = Of(state, unit)?.Steps.FindLast(s => SlotOf(s) == PlanSlot.Action);
+        return unit.FreeActions > 0 || last is { Free: true } ? int.MaxValue : unit.Ap + (last?.RefundAp ?? 0);
+    }
 
     /// <summary>Runs <paramref name="look"/> with the unit standing where its plan ends. Nothing about it may stick.</summary>
     public static T AtAnchor<T>(ScavengeState state, Unit unit, Func<T> look)
@@ -221,9 +238,13 @@ public static class Plans
     /// </summary>
     private static void Rebase(ScavengeSim sim, Unit unit, Pos was)
     {
-        var shift = MoveEnd(sim.State, unit) - was;
-        if (shift == default || Of(sim.State, unit) is not { } plan) return;
-        foreach (var step in plan.Steps.Where(s => s.Kind != PlanStepKind.Move))
+        if (Of(sim.State, unit) is { } plan) Shift(sim, unit, plan.Steps, MoveEnd(sim.State, unit) - was);
+    }
+
+    private static void Shift(ScavengeSim sim, Unit unit, IEnumerable<PlanStep> steps, Pos shift)
+    {
+        if (shift == default) return;
+        foreach (var step in steps.Where(s => s.Kind != PlanStepKind.Move))
         {
             step.From += shift;
             if (step.Tile is { } tile) step.Tile = tile + shift;
@@ -257,10 +278,33 @@ public static class Plans
         return ScavengeResult.Success($"{unit.Name}'s plan is changed.");
     }
 
+    /// <summary>
+    /// The order takes the place of its slot's last entry. Its handler judges it as if that entry were gone; if it refuses, steps
+    /// and pools go back as they were, so a refused change costs nothing.
+    /// </summary>
+    internal static ScavengeResult Change(ScavengeSim sim, Unit unit, ChangePlan c)
+    {
+        if (c.Order is ChangePlan || c.Order.UnitId != unit.Id || c.Order.PlayerId != c.PlayerId || Replaces(sim, c.Order) is not { } slot)
+            return ScavengeResult.Fail(ScavengeError.NoPlan, $"{unit.Name} has nothing there to change.");
+        var plan = Of(sim.State, unit)!;
+        var steps = plan.Steps.Select(s => s.Copy()).ToList();
+        var (mp, ap, fatigue, free) = (unit.Mp, unit.Ap, unit.Fatigue, unit.FreeActions);
+        TakeOff(sim, unit, plan, plan.Steps.FindLast(s => SlotOf(s) == slot)!);
+        var result = sim.Execute(c.Order);
+        if (result.Ok) return result;
+        plan.Steps.Clear();
+        plan.Steps.AddRange(steps);
+        (unit.Mp, unit.Ap, unit.Fatigue, unit.FreeActions) = (mp, ap, fatigue, free);
+        return result;
+    }
+
     private static void TakeOff(ScavengeSim sim, Unit unit, UnitPlan plan, PlanStep step)
     {
         var was = MoveEnd(sim.State, unit);
+        var index = plan.Steps.IndexOf(step);
         plan.Steps.Remove(step);
+        // What came after a dash no longer starts where it landed.
+        if (step.Landing is { } landed) Shift(sim, unit, plan.Steps.Skip(index), step.From - landed);
         unit.Mp += step.RefundMp;
         unit.Ap += step.RefundAp;
         unit.Fatigue -= step.RefundFatigue;
@@ -273,6 +317,7 @@ public static class Plans
     internal static void Settle(ScavengeSim sim, Unit unit)
     {
         if (Of(sim.State, unit) is not { } plan) return;
+        var had = plan.Steps.Count;
         void Trim(Func<PlanStep, bool> which, Func<bool> over)
         {
             while (over() && plan.Steps.FindLast(s => which(s)) is { } last) TakeOff(sim, unit, plan, last);
@@ -281,6 +326,8 @@ public static class Plans
         Trim(s => s.Free, () => unit.FreeActions < 0);
         Trim(s => SlotOf(s) == PlanSlot.Action, () => unit.Ap < 0 || Used(sim.State, unit).Actions > Limits(sim, unit).Actions);
         Trim(s => s.Kind == PlanStepKind.Card, () => Used(sim.State, unit).Cards > Limits(sim, unit).Cards);
+        // A plan that lost entries is open again, whoever cleared the card.
+        if (plan.Steps.Count != had) plan.Committed = false;
         // What was spent on the spot (a loot, a hack) stays spent.
         unit.Mp = Math.Max(0, unit.Mp);
         unit.Ap = Math.Max(0, unit.Ap);

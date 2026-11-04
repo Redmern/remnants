@@ -364,6 +364,152 @@ public class PlanSlotTests
     }
 
     [Fact]
+    public void Clearing_a_card_that_gave_mp_or_ap_costs_no_stamina()
+    {
+        var (sim, a, _, _) = Table("dash", "press_on");
+        var stamina = Economy.Stamina(sim, a);
+        Assert.True(Play(sim, a, "dash").Ok);
+        Assert.True(sim.Execute(new UndoPlan(1, a.Id, Slot: PlanSlot.Card)).Ok);
+        Assert.True(Play(sim, a, "press_on").Ok);
+        Assert.True(sim.Execute(new UndoPlan(1, a.Id, Slot: PlanSlot.Card)).Ok);
+        Assert.Equal(stamina, Economy.Stamina(sim, a));
+    }
+
+    [Fact]
+    public void A_refused_change_leaves_the_plan_as_it_was()
+    {
+        var a = SurvivorUnit(1, new(0, 2), weapon: "pipe");
+        var b = SurvivorUnit(2, new(1, 2), weapon: "pipe");
+        var sim = Arena(12, 6, [a, b], data: Real);
+        Assert.True(sim.Execute(new AttackTile(1, a.Id, b.Pos, "swing")).Ok);
+        var (ap, fatigue) = (a.Ap, a.Fatigue);
+        var refused = sim.Execute(new ChangePlan(1, a.Id, new Dash(1, a.Id, new Pos(-1, 0), 2)));
+        Assert.False(refused.Ok);
+        Assert.Equal("Swing", TacticsView.Slots(sim, a)[1].Text[..5]);
+        Assert.Equal((ap, fatigue), (a.Ap, a.Fatigue));
+        Assert.Equal(b.Pos, Plans.Of(sim.State, a)!.Steps.Single().Strike!.Tile);
+    }
+
+    [Fact]
+    public void A_refused_change_of_move_keeps_the_aim_on_where_the_walk_ends()
+    {
+        var (sim, a, _, _) = Table();
+        Assert.True(sim.Execute(new Move(1, a.Id, new Pos(1, 3))).Ok);
+        Assert.True(sim.Execute(new AttackTile(1, a.Id, new Pos(1, 4), "swing")).Ok);
+        var (mp, tile) = (a.Mp, Plans.Of(sim.State, a)!.Steps.Single(s => s.Strike is not null).Strike!.Tile);
+        Assert.False(sim.Execute(new ChangePlan(1, a.Id, new Move(1, a.Id, new Pos(99, 99)))).Ok);
+        var plan = Plans.Of(sim.State, a)!;
+        Assert.Equal(new Pos(1, 3), plan.Steps.Single(s => s.Kind == PlanStepKind.Move).To);
+        Assert.Equal((mp, tile), (a.Mp, plan.Steps.Single(s => s.Strike is not null).Strike!.Tile));
+    }
+
+    [Fact]
+    public void A_change_replaces_the_entry_and_refunds_it()
+    {
+        var (sim, a, b, _) = Table();
+        Assert.True(sim.Execute(new AttackTile(1, a.Id, b.Pos, "swing")).Ok);
+        Assert.True(sim.Execute(new ChangePlan(1, a.Id, new Recover(1, a.Id))).Ok);
+        Assert.Equal("Recover", TacticsView.Slots(sim, a)[1].Text);
+        Assert.Equal(1, Plans.Used(sim.State, a).Actions);
+        Assert.False(sim.Execute(new ChangePlan(1, a.Id, new Move(1, a.Id, new Pos(1, 3)))).Ok);
+    }
+
+    [Fact]
+    public void A_change_takes_only_the_last_entry_of_a_slot_with_room_for_two()
+    {
+        var (sim, a, b, _) = Table("press_on");
+        Assert.True(Play(sim, a, "press_on").Ok);
+        Assert.True(sim.Execute(new AttackTile(1, a.Id, b.Pos, "swing")).Ok);
+        Assert.True(sim.Execute(new Recover(1, a.Id)).Ok);
+        Assert.True(sim.Execute(new ChangePlan(1, a.Id, new Push(1, a.Id, new Pos(1, 0)))).Ok);
+        Assert.Equal(["Strike", "Push"], Plans.Of(sim.State, a)!.Steps.Where(s => s.Applied is null).Select(s => s.Kind.ToString()));
+    }
+
+    [Fact]
+    public void Clearing_a_card_drawn_back_by_a_reshuffle_makes_no_copy()
+    {
+        var a = SurvivorUnit(1, new(1, 2));
+        var f = SurvivorUnit(1, new(2, 3));
+        var b = SurvivorUnit(2, new(8, 2));
+        var sim = Arena(12, 6, [a, f, b], data: Real);
+        var deck = new SquadDeck { PlayerId = 1, Hand = ["take_cover", "scout_ahead"], Points = 9, Budget = 9, HandSize = 5 };
+        sim.State.Decks.Add(deck);
+        Assert.True(sim.Execute(new PlayCard(1, a.Id, "take_cover")).Ok);
+        Assert.True(sim.Execute(new PlayCard(1, f.Id, "scout_ahead")).Ok);
+        Assert.Contains("take_cover", deck.Hand);
+        Assert.True(sim.Execute(new UndoPlan(1, a.Id, Slot: PlanSlot.Card)).Ok);
+        Assert.Single(deck.Hand, c => c == "take_cover");
+    }
+
+    [Fact]
+    public void Clearing_a_card_that_emptied_stamina_gives_back_the_ap_and_mp_too()
+    {
+        var (sim, a, _, _) = Table("called_shot");
+        a.Skills[Survivors.Skill.Firearms] = 40;
+        a.Fatigue = sim.Profile(a).MaxStamina - 2;
+        var (mp, ap) = (a.Mp, a.Ap);
+        var played = Play(sim, a, "called_shot");
+        Assert.True(played.Ok, played.Message);
+        Assert.True(sim.Execute(new UndoPlan(1, a.Id, Slot: PlanSlot.Card)).Ok);
+        Assert.Equal((mp, ap), (a.Mp, a.Ap));
+    }
+
+    [Fact]
+    public void Clearing_a_card_trims_and_reopens_an_ally_that_was_ready()
+    {
+        var a = SurvivorUnit(1, new(1, 2));
+        var f = SurvivorUnit(1, new(2, 2), weapon: "pipe");
+        var b = SurvivorUnit(2, new(8, 2));
+        var sim = Arena(12, 6, [a, f, b], data: Real);
+        sim.State.Decks.Add(new SquadDeck { PlayerId = 1, Hand = ["second_wind"], Points = 9, Budget = 9, HandSize = 5 });
+        Assert.True(sim.Execute(new PlayCard(1, a.Id, "second_wind", f.Id)).Ok);
+        Assert.True(sim.Execute(new AttackTile(1, f.Id, new Pos(3, 2), "swing")).Ok);
+        Assert.True(sim.Execute(new Recover(1, f.Id)).Ok);
+        Assert.True(sim.Execute(new EndTurn(1, f.Id)).Ok);
+        Assert.True(sim.Execute(new UndoPlan(1, a.Id, Slot: PlanSlot.Card)).Ok);
+        Assert.Equal(1, Plans.Used(sim.State, f).Actions);
+        Assert.False(Plans.Of(sim.State, f)!.Committed);
+    }
+
+    [Fact]
+    public void Clearing_a_dash_card_brings_later_aims_back_with_it()
+    {
+        var (sim, a, b, _) = Table("rushing_strike");
+        b.Pos = new Pos(9, 4);
+        Assert.True(sim.Execute(new PlayCard(1, a.Id, "rushing_strike", null, false, false, new Pos(2, 2), new Pos(1, 0))).Ok);
+        var landing = Plans.Anchor(sim.State, a);
+        Assert.NotEqual(a.Pos, landing);
+        Assert.True(sim.Execute(new AttackTile(1, a.Id, landing + new Pos(1, 0), "swing")).Ok);
+        Assert.True(sim.Execute(new UndoPlan(1, a.Id, Slot: PlanSlot.Card)).Ok);
+        var strike = Plans.Of(sim.State, a)!.Steps.Single().Strike!;
+        Assert.Equal((a.Pos, a.Pos + new Pos(1, 0)), (strike.From, strike.Tile));
+    }
+
+    [Fact]
+    public void A_dash_cards_flash_is_where_it_struck_from_the_landing()
+    {
+        var (sim, a, b, _) = Table("rushing_strike");
+        b.Pos = new Pos(9, 4);
+        Assert.True(sim.Execute(new PlayCard(1, a.Id, "rushing_strike", null, false, false, new Pos(2, 2), new Pos(1, 0))).Ok);
+        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
+        Assert.True(sim.Execute(new EndTurn(2, b.Id)).Ok);
+        var flash = sim.State.Events.Single(e => e.Type == ScavengeEventType.PatternResolved && e.UnitId == a.Id);
+        Assert.Contains(a.Pos + new Pos(1, 0), flash.Tiles!);
+    }
+
+    [Fact]
+    public void A_free_action_means_cost_does_not_block_the_buttons()
+    {
+        var (sim, a, _, _) = Table("quick_reflex");
+        a.Ap = 0;
+        Assert.Equal(0, Plans.ApToSpend(sim.State, a));
+        Assert.True(Play(sim, a, "quick_reflex").Ok);
+        Assert.True(Plans.ApToSpend(sim.State, a) > 100);
+        Assert.True(sim.Execute(new Recover(1, a.Id)).Ok);
+        Assert.True(Plans.ApToSpend(sim.State, a) > 100);
+    }
+
+    [Fact]
     public void The_slot_rows_say_what_is_planned()
     {
         var (sim, a, b, _) = Table("take_cover");

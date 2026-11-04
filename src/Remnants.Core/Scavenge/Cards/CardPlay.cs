@@ -83,7 +83,10 @@ public static class CardPlay
         deck.Points -= card.Cost;
         unit.Ap -= ap;
         unit.CardsPlayed++;
+        // Running out of stamina on it takes AP and MP too: clearing the card gives those back.
+        var (apHad, mpHad) = (unit.Ap, unit.Mp);
         Economy.Drain(sim, unit, card.ApCost * sim.Data.Rules.Turn.StaminaPerAp);
+        var (apLost, mpLost) = (apHad - unit.Ap, mpHad - unit.Mp);
         if (c.FromSlot) unit.SlotCards.Remove(c.CardId);
         else deck.Hand.Remove(c.CardId);
 
@@ -120,7 +123,8 @@ public static class CardPlay
                 FromSlot = c.FromSlot,
                 DeckId = deckId ?? c.PlayerId,
                 RefundPoints = card.Cost,
-                RefundAp = ap,
+                RefundAp = ap + apLost,
+                RefundMp = mpLost,
                 Applied = effect,
                 AppliedAdrenaline = unit.Adrenaline - adrenaline,
                 AppliedMend = mended,
@@ -200,18 +204,21 @@ public static class CardPlay
     {
         if (SquadDecks.Of(sim.State, step.DeckId) is not { } deck) return;
         deck.Points += step.RefundPoints;
-        unit.CardsPlayed--;
+        unit.CardsPlayed = Math.Max(0, unit.CardsPlayed - 1);
+        var back = true;
         if (step.Applied is { } effect)
         {
-            Unspent(unit, deck, step);
+            back = Unspent(unit, deck, step);
             Undo(sim, unit, step, effect);
         }
+        // A reshuffle and a draw may have brought it back to hand already.
+        if (!back) return;
         if (step.FromSlot) unit.SlotCards.Add(step.CardId!);
         else deck.Hand.Add(step.CardId!);
     }
 
-    /// <summary>Off the pile it went to when played (a reshuffle may have moved it to the draw pile).</summary>
-    private static void Unspent(Unit unit, SquadDeck deck, PlanStep step)
+    /// <summary>Off the pile it went to when played (a reshuffle may have moved it to the draw pile). False when it is on none: it is back in hand.</summary>
+    private static bool Unspent(Unit unit, SquadDeck deck, PlanStep step)
     {
         var id = step.CardId!;
         if (step.FromSlot)
@@ -219,8 +226,9 @@ public static class CardPlay
             unit.SlotCards.Remove(id);
             unit.SlotSpent.Remove(id);
             deck.Consumed.Remove(id);
+            return true;
         }
-        else if (!deck.Used.Remove(id) && !deck.Consumed.Remove(id)) deck.DrawPile.Remove(id);
+        return deck.Used.Remove(id) || deck.Consumed.Remove(id) || deck.DrawPile.Remove(id);
     }
 
     /// <summary>What the card did when played comes off again; a buff used up by now is simply gone.</summary>
@@ -241,7 +249,8 @@ public static class CardPlay
         {
             var part = unit.Body[mend.Part];
             (part.Condition, part.Severity, part.Dressing, part.ConditionPenalty) = (PartCondition.Injured, mend.Severity, mend.Dressing, mend.Penalty);
-            unit.Body.Conditions.AddRange(mend.Conditions.Where(c => !unit.Body.Conditions.Contains(c)));
+            unit.Body.Conditions.RemoveAll(c => c.Part == mend.Part);
+            unit.Body.Conditions.AddRange(mend.Conditions);
         }
         if (step.TargetId is { } id && sim.State.FindUnit(id) is { } target)
         {

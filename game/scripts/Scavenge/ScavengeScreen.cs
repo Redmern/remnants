@@ -465,9 +465,8 @@ public partial class ScavengeScreen : Node3D
         ScavengeResult result;
         using (PerfMonitor.Measure("execute"))
         {
-            // An order into a full slot changes it.
-            if (Plans.Replaces(_presenter.Sim, command) is { } full) await _presenter.Execute(new UndoPlan(command.PlayerId, command.UnitId, Slot: full));
-            result = await _presenter.Execute(command);
+            // An order into a full slot changes it, and a refused one leaves the plan as it was.
+            result = await _presenter.Execute(Plans.Replaces(_presenter.Sim, command) is null ? command : new ChangePlan(command.PlayerId, command.UnitId, command));
         }
         if (result.Ok) _usingItem = null;
         if (result.Ok) CancelCardAim();

@@ -241,6 +241,24 @@ public class ReplayFeedbackTests
     }
 
     [Fact]
+    public void A_flash_on_someone_in_the_fog_stays_hidden()
+    {
+        var (sim, a, b) = Duel(new(9, 2), new(10, 2));
+        Assert.True(sim.Execute(new Push(1, a.Id, new Pos(1, 0))).Ok);
+        var flash = Round(sim, a, b).Single(e => e.Type == ScavengeEventType.PatternResolved) with { SeenBy = null };
+        Assert.Equal(b.Id, flash.TargetId);
+        Assert.Empty(FogLog.Filter([flash], "them", _ => false, id => id == a.Id, _ => true));
+        Assert.Single(FogLog.Filter([flash], "them", _ => false, _ => true, _ => true));
+    }
+
+    [Fact]
+    public void A_recover_then_the_same_units_next_action_are_two_steps()
+    {
+        ScavengeEvent E(ScavengeEventType type) => new(1, type, "x", 1);
+        Assert.Equal([0, 1], ReplayPacing.StepStarts([E(ScavengeEventType.Recovered), E(ScavengeEventType.Attacked)]));
+    }
+
+    [Fact]
     public void A_rival_out_of_sight_keeps_its_pattern_to_itself()
     {
         var tiles = new List<Pos> { new(5, 5) };

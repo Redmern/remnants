@@ -99,6 +99,7 @@ public sealed class ScavengeSim
             Recover => Economy.Recover(this, unit!),
             EndTurn => Commit(unit!),
             UndoPlan c => Plans.Undo(this, unit!, c),
+            ChangePlan c => Plans.Change(this, unit!, c),
             Extract => ScavengeCommandHandlers.Extract(this, unit!),
             TakeFromStash c => ParkedVehicles.Unstash(this, unit!, c),
             ProposeAlliance c => Alliances.Propose(this, unit!, c),
@@ -121,9 +122,12 @@ public sealed class ScavengeSim
             _ => ScavengeResult.Fail(ScavengeError.UnknownCommand, $"Unknown command {command.GetType().Name}."),
         };
 
+        // The order inside has been through here on its own.
+        if (command is ChangePlan) return result;
         if (result.Ok)
         {
-            if (command is not Recover) Economy.Pay(this, unit!, mpBefore - unit!.Mp, apBefore - unit.Ap);
+            // Clearing a card takes back MP or AP it gave: not spending.
+            if (command is not (Recover or UndoPlan)) Economy.Pay(this, unit!, mpBefore - unit!.Mp, apBefore - unit.Ap);
             AfterCommand(command, unit!, stepsBefore, mpBefore, apBefore, fatigueBefore);
             MissionRules.Update(this);
             UpdateParties();

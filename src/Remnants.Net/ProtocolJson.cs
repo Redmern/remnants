@@ -65,6 +65,7 @@ public static class ProtocolJson
                     new JsonDerivedType(typeof(FieldMod), "fieldMod"),
                     new JsonDerivedType(typeof(AttackTile), "attackTile"),
                     new JsonDerivedType(typeof(UndoPlan), "undoPlan"),
+                    new JsonDerivedType(typeof(ChangePlan), "changePlan"),
                     new JsonDerivedType(typeof(PlayCard), "playCard"),
                     new JsonDerivedType(typeof(DiscardDeadCard), "discardDeadCard"),
                 },

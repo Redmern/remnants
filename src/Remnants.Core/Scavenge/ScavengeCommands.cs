@@ -86,6 +86,9 @@ public sealed record Dash(int PlayerId, int UnitId, Pos Direction, int Tiles) : 
 public sealed record EndTurn(int PlayerId, int UnitId) : IScavengeCommand;
 
 /// <summary>Clear one of the unit's plan slots (<see cref="Slot"/>), or else take back its last entry (<see cref="All"/>: its whole plan), refunding what it paid.</summary>
+/// <summary>An order into a full slot: it takes the slot's last entry's place, and if it is refused, the plan stays as it was.</summary>
+public sealed record ChangePlan(int PlayerId, int UnitId, IScavengeCommand Order) : IScavengeCommand;
+
 public sealed record UndoPlan(int PlayerId, int UnitId, bool All = false, PlanSlot? Slot = null) : IScavengeCommand;
 
 /// <summary>Leave the map from an exit tile or next to the side's parked vehicle, taking nearby followers along.</summary>

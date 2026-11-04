@@ -40,6 +40,7 @@ public partial class UnitViews : Node3D
     {
         public int Id;
         public bool Low;
+        public bool Synced;
         public Node3D Root = null!;
         public Node3D Model = null!;
         public Node3D Pose = null!;
@@ -112,7 +113,7 @@ public partial class UnitViews : Node3D
                 view.Model.QueueFree();
                 Build(view, unit);
                 view.BodyKey = bodyKey;
-                view.Low = false;
+                if (view.Low) TintLow(view);
             }
             Hold(view, unit);
             FaceCore(view, unit);
@@ -208,12 +209,20 @@ public partial class UnitViews : Node3D
     private void SyncStamina(View view, Unit unit)
     {
         var low = unit.IsActive && unit.Side == _presenter.Side && unit.Kind == UnitKind.Survivor && ReplayFeedback.LowStamina(_presenter.Sim, unit);
+        var first = !view.Synced;
+        view.Synced = true;
         if (low == view.Low) return;
         view.Low = low;
-        foreach (var m in view.Model.FindChildren("*", nameof(MeshInstance3D), true, false).OfType<MeshInstance3D>()) m.MaterialOverlay = low ? _lowStamina : null;
-        if (!low || !view.Root.Visible) return;
+        TintLow(view);
+        // A unit already low when the screen opens (a loaded run) says nothing.
+        if (!low || first || !view.Root.Visible) return;
         Floated?.Invoke(view.Root.Position, "Winded", LowStaminaColor, false);
         Audio.AudioManager.Fire(ReplayFeedback.LowStaminaSound, view.Root.Position + Vector3.Up);
+    }
+
+    private void TintLow(View view)
+    {
+        foreach (var m in view.Model.FindChildren("*", nameof(MeshInstance3D), true, false).OfType<MeshInstance3D>()) m.MaterialOverlay = view.Low ? _lowStamina : null;
     }
 
     /// <summary>What the model shows: limb conditions (and prosthetic kind) plus worn gear; the model is rebuilt when it changes.</summary>
@@ -281,6 +290,7 @@ public partial class UnitViews : Node3D
                     actor.Root.Visible = true;
                     FloatText(actor.Root.Position, outcome.Text, Hud.Palette.Amber);
                     await Dash(actor, unit, dashed);
+                    if (!Mine(e.UnitId) && !Seen(dashed)) actor.Root.Visible = false;
                     break;
 
                 // The defended tile rings; a perfect block rings wider, brighter and holds longer.

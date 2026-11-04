@@ -354,7 +354,7 @@ public partial class ScavengeScreen
                 break;
             case "slots-ally":
                 // A friend beside where the plan ends: Sweep's aim warns of them.
-                var friend = _presenter.State.Units.First(f => f.PlayerId == pid && f.Id != u.Id && f.OnMap);
+                var friend = _presenter.State.UnitAt(east) ?? _presenter.State.Units.First(f => f.PlayerId == pid && f.Id != u.Id && f.OnMap);
                 friend.Pos = east;
                 SyncAll();
                 _hud.Hand.Choose("sweep");

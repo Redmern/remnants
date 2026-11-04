@@ -82,7 +82,7 @@
       "requirement": { "kind": "Baseline", "anyOf": [ { "skill": "Melee", "min": 30 }, { "attribute": "Strength", "min": 60 } ] },
       "effect": { "hit": 0.1 }, "bonus": { "hit": 0.05 }, "boost": { "hit": 0.1 } },
     { "id": "called_shot", "name": "Called Shot", "category": "Attack", "rarity": "Uncommon", "cost": 2, "apCost": 1, "armLock": true,
-      "text": "+25% to hit on your next attack, for 1 AP. Marksmen only; needs working arms.",
+      "text": "+25% to hit on your next attack, for 2 stamina. Marksmen only; needs working arms.",
       "requirement": { "kind": "Hard", "anyOf": [ { "skill": "Firearms", "min": 40 }, { "attribute": "Perception", "min": 65 } ] },
       "scaling": { "level": true, "per": 0.02, "max": 0.4 },
       "effect": { "hit": 0.25 } },

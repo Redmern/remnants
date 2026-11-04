@@ -42,7 +42,8 @@ public static class ReplayPacing
                 case ScavengeEventType.Attacked or ScavengeEventType.Missed or ScavengeEventType.Displaced or ScavengeEventType.IntentFizzled
                     or ScavengeEventType.Recovered or ScavengeEventType.CardPlayed or ScavengeEventType.Clashed:
                     if (!open || e.UnitId != acting) starts.Add(i);
-                    (open, acting) = (true, e.UnitId);
+                    // A recover or a card has no pattern to close it: the unit's next action is a step of its own.
+                    (open, acting) = (e.Type is not (ScavengeEventType.Recovered or ScavengeEventType.CardPlayed), e.UnitId);
                     break;
             }
         }
