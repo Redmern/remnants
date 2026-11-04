@@ -1955,5 +1955,5 @@ The same with `--zone=outskirts`. The baselines are the same commands without `-
 - Crit numbers (5%, side +5%, rear +15%, x1.5) were not varied.
 
 **Known limits.**
-- `mixed --no-cards` stalled on 1 of 100 Suburb Ruins seeds (seed 10), and that run is left out of its row. The dash loop guard did not clear it. The `walk-attack` and `mixed` rows have no stalled runs.
-- A hurt bot walking one way and dashing back stayed unhit for 300 rounds in a test before the bot got its guard. It is a bot habit now blocked for bots, but the rules still allow it, so a player might find it: worth a human look.
+- `mixed --no-cards` stalled on 1 of 100 Suburb Ruins seeds (seed 26), and that run is left out of its row. One survivor walked between two tiles every three rounds until the 300-round cap. The cause was not found. The `walk-attack` and `mixed` rows have no stalled runs.
+- A hurt bot walking one way and dashing back stayed unhit by a Husk Crawler for rounds on end, up to the 300-round cap. Bots no longer dash two rounds running, but the rules still allow it, so a player might find it: worth a human look.
