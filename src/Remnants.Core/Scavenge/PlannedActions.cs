@@ -59,14 +59,21 @@ public static class PlannedActions
     internal static void Resolve(ScavengeSim sim, Unit unit, PlanStep step)
     {
         var (pid, ap) = (unit.PlayerId ?? 0, unit.Ap);
+        ScavengeResult result;
         unit.Ap = int.MaxValue / 2;
-        var result = step.Kind switch
+        try
         {
-            PlanStepKind.UseItem => ScavengeCommandHandlers.UseItem(sim, unit, new UseItem(pid, unit.Id, step.ItemId!, step.TargetId, step.Tile)),
-            PlanStepKind.Hack => Hacking.Hack(sim, unit, new Hack(pid, unit.Id, step.DeviceId, step.TargetId)),
-            _ => DroneRoles.FireAt(sim, unit, step.Tile!.Value),
-        };
-        unit.Ap = ap;
+            result = step.Kind switch
+            {
+                PlanStepKind.UseItem => ScavengeCommandHandlers.UseItem(sim, unit, new UseItem(pid, unit.Id, step.ItemId!, step.TargetId, step.Tile)),
+                PlanStepKind.Hack => Hacking.Hack(sim, unit, new Hack(pid, unit.Id, step.DeviceId, step.TargetId)),
+                _ => DroneRoles.FireAt(sim, unit, step.Tile!.Value),
+            };
+        }
+        finally
+        {
+            unit.Ap = ap;
+        }
         if (!result.Ok)
             sim.State.Log(new(sim.State.Round, ScavengeEventType.IntentFizzled, $"{unit.Name}'s plan falls through: {result.Message}", unit.Id, Pos: unit.Pos));
     }
