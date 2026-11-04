@@ -7,6 +7,6 @@ public class SalvageCostTests
     {
         var data = ScavengeTestData.Real;
         Assert.All(data.Salvage.Nodes, n => Assert.Equal(1, n.ApCost));
-        Assert.True(data.Rules.Turn.BaseAp >= 3 * data.Salvage.Nodes.Max(n => n.ApCost));
+        Assert.True(data.Rules.Turn.BaseAp >= 2 * data.Salvage.Nodes.Max(n => n.ApCost));
     }
 }

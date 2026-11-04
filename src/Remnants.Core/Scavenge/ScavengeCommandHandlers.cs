@@ -26,11 +26,11 @@ internal static class ScavengeCommandHandlers
     {
         if (!sim.Reachable(unit).TryGetValue(c.To, out var cost))
             return ScavengeResult.Fail(ScavengeError.Unreachable, $"{unit.Name} cannot reach {c.To} in one move.");
-        if (cost > unit.Ap) return NotEnoughAp(unit, cost);
+        if (cost > unit.Mp) return ScavengeResult.Fail(ScavengeError.NotEnoughMp, $"{unit.Name} needs {cost} MP (has {unit.Mp}).");
 
         var from = unit.Pos;
         unit.Pos = c.To;
-        unit.Ap -= cost;
+        unit.Mp -= cost;
         unit.Moved = true;
         unit.Facing = Combat.Face(from, c.To);
         // The carried unit moves along before anything reacts to the move.

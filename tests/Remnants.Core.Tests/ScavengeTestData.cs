@@ -127,7 +127,7 @@ public static class ScavengeTestData
         setup?.Invoke(data, state);
         state.TurnOrder = state.Units.Where(u => u.IsActive && u.Side != Unit.NeutralSide && u.Kind != UnitKind.Drone).Select(u => u.Id).ToList();
         var sim = new ScavengeSim(data, state);
-        foreach (var u in state.Units) u.Ap = sim.Profile(u).MaxAp;
+        foreach (var u in state.Units) (u.Ap, u.Mp) = (sim.Profile(u).MaxAp, sim.Profile(u).MaxMp);
         return sim;
     }
 
@@ -221,7 +221,7 @@ public static class ScavengeTestData
         var field = Movement.DistanceField(map, profile.Movement, exit);
         var here = field.GetValueOrDefault(u.Pos, int.MaxValue);
         var step = sim.Reachable(u)
-            .Where(kv => kv.Value <= u.Ap && field.ContainsKey(kv.Key) && field[kv.Key] < here)
+            .Where(kv => kv.Value <= u.Mp && field.ContainsKey(kv.Key) && field[kv.Key] < here)
             .OrderBy(kv => field[kv.Key]).ThenBy(kv => map.Index(kv.Key))
             .Select(kv => (Pos?)kv.Key).FirstOrDefault();
         return step is { } to ? new Move(pid, u.Id, to) : new EndTurn(pid, u.Id);

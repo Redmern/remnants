@@ -50,7 +50,7 @@ public class HackingTests
         bare.Pack.Remove("hacking_kit");
         bare.Equipment[Items.EquipSlot.Tool] = "cyberdeck";
         Assert.True(Hack(sim, bare, terminal).Ok, "a cyberdeck reaches 3 tiles");
-        Assert.Equal(1, bare.Ap);
+        Assert.Equal(0, bare.Ap);
         Assert.Equal(ScavengeError.NotEnoughAp, Hack(sim, bare, terminal).Error);
         Assert.Equal(ScavengeError.UnknownDevice, sim.Execute(new Hack(1, bare.Id, 99)).Error);
     }
@@ -306,6 +306,7 @@ public class HackingTests
         var cache = Assert.Single(sim.State.Caches);
         Assert.Equal(locker.Pos, cache.Pos);
         Assert.Equal(["med_kit", "flare"], cache.Items);
+        hacker.Ap = 1;
         Assert.True(sim.Execute(new PickUp(1, hacker.Id, cache.Id, "flare")).Ok);
     }
 
@@ -493,6 +494,7 @@ public class HackingTests
         Assert.True(sim.Execute(new UseItem(1, medic.Id, "bandage", hurt.Id)).Ok);
         var heal = Real.Items["bandage"].Use!.Heal;
         Assert.Equal(50 + heal * 1.25, hurt.Hp, 6);
+        medic.Ap = 2;
         Assert.True(sim.Execute(new UseItem(1, medic.Id, "med_kit", downed.Id)).Ok);
         Assert.Equal(Real.Items["med_kit"].Use!.ReviveHp + 10, downed.Hp, 6);
     }

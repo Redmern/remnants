@@ -237,6 +237,7 @@ public class FogTests
 
         Assert.True(sim.Execute(new UseItem(1, a.Id, "motion_sensor", At: new(1, 0))).Ok);
         Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
+        b.Mp = 9;
         Assert.True(sim.Execute(new Move(2, b.Id, new(7, 0))).Ok);
         Assert.False(Detection.SideSees(sim.Data, sim.State, P1, b), "a camo cloak hides it out here");
         Assert.True(sim.Execute(new Move(2, b.Id, new(5, 0))).Ok);
@@ -318,6 +319,7 @@ public class FogTests
         Assert.Equal(Stance.Overwatch, linked.Stance);
         Assert.Equal(new Pos(9, 7), linked.Pos);
 
+        u.Mp = 9;
         Assert.True(sim.Execute(new Move(1, u.Id, new(3, 3))).Ok);
         Assert.True(sim.Execute(new Move(1, u.Id, new(5, 3))).Ok);
         Assert.True(sim.Execute(new Move(1, u.Id, new(7, 4))).Ok);
@@ -364,6 +366,7 @@ public class FogTests
         var u = SurvivorUnit(pos: new(0, 4), pack: ["flare", "motion_sensor"]);
         var linked = EnemyUnit("linked", new(5, 4));
         var sim = Arena(12, 9, [u, linked]);
+        u.Ap = 3;
         Assert.True(sim.Execute(new UseItem(1, u.Id, "flare", At: new(5, 5))).Ok);
         Assert.True(sim.Execute(new UseItem(1, u.Id, "motion_sensor", At: new(1, 4))).Ok);
         Assert.True(sim.Execute(new Lookout(1, u.Id)).Ok);

@@ -90,7 +90,7 @@ public static class CardPlay
         else deck.Hand.Remove(c.CardId);
 
         var done = new List<string>();
-        if (effect.Move > 0) { unit.CardMove += effect.Move; done.Add($"+{effect.Move} move"); }
+        if (effect.Move > 0) { unit.CardMove += effect.Move; unit.Mp += effect.Move * sim.Data.Rules.Turn.MpPerRange; done.Add($"+{effect.Move} move"); }
         if (effect.Hit > 0) { unit.CardHit += effect.Hit; done.Add($"+{effect.Hit:P0} to hit next"); }
         if (effect.Guard > 0) { unit.Guard += effect.Guard; done.Add($"next hit {effect.Guard} tier{(effect.Guard > 1 ? "s" : "")} lighter"); }
         if (effect.Cover > 0) { unit.CardCover += effect.Cover; done.Add($"+{effect.Cover:P0} cover"); }

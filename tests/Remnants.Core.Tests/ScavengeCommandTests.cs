@@ -14,12 +14,12 @@ public class ScavengeCommandTests
         var sim = Arena(8, 8, [u]);
 
         Assert.True(sim.Execute(new Move(1, u.Id, new(2, 2))).Ok);
-        Assert.Equal((new Pos(2, 2), 2), (u.Pos, u.Ap));
+        Assert.Equal((new Pos(2, 2), 2, 2), (u.Pos, u.Mp, u.Ap));
         Assert.Equal(ScavengeError.Unreachable, sim.Execute(new Move(1, u.Id, new(7, 7))).Error);
         Assert.Equal(ScavengeError.Unreachable, sim.Execute(new Move(1, u.Id, new(2, 2))).Error);
 
-        u.Ap = 0;
-        Assert.Equal(ScavengeError.NotEnoughAp, sim.Execute(new Move(1, u.Id, new(3, 3))).Error);
+        u.Mp = 0;
+        Assert.Equal(ScavengeError.Unreachable, sim.Execute(new Move(1, u.Id, new(3, 3))).Error);
         Assert.Equal(new Pos(2, 2), u.Pos);
     }
 
@@ -91,7 +91,7 @@ public class ScavengeCommandTests
 
         Assert.True(sim.Execute(new PickUp(1, u.Id, 1, "sch_scanner")).Ok);
         Assert.Equal(["sch_scanner"], u.Pack);
-        Assert.Equal(2, u.Ap);
+        Assert.Equal(1, u.Ap);
 
         u.Pack.AddRange(Enumerable.Repeat("scrap", 24)); // capacity 25 kg, 24.1 carried
         Assert.Equal(ScavengeError.CarryLimitExceeded, sim.Execute(new PickUp(1, u.Id, 1, "scrap")).Error);
@@ -114,7 +114,7 @@ public class ScavengeCommandTests
         Assert.Equal(UnitStatus.Active, hurt.Status);
         Assert.Equal(15, hurt.Hp);
         Assert.Empty(medic.Pack);
-        Assert.Equal(1, medic.Ap);
+        Assert.Equal(0, medic.Ap);
     }
 
     [Fact]
@@ -266,7 +266,7 @@ public class TurnTests
         Assert.Equal(2, sim.State.Round);
         Assert.Equal([fast.Id, mid.Id, slow.Id], sim.State.TurnOrder);
         Assert.Equal(fast.Id, sim.State.CurrentUnitId);
-        Assert.Equal(3, fast.Ap);
+        Assert.Equal(2, fast.Ap);
     }
 
     [Fact]

@@ -466,7 +466,7 @@ public static class PartyBot
         // The nearest exits (and the vehicle) always stay in the running, however many places are left to loot.
         goals = goals.Take(5).Concat(bySide.Concat(map.Exits).OrderBy(e => e.Chebyshev(unit.Pos)).Take(3)).ToList();
 
-        var reachable = sim.Reachable(unit).Where(kv => kv.Value <= unit.Ap).ToList();
+        var reachable = sim.Reachable(unit).Where(kv => kv.Value <= unit.Mp).ToList();
         // Boxed in (often by our own follower in a doorway): for a few rounds, path around the units in the way.
         if (stalled >= 2) Detours[unit.Id] = state.Round + 3;
         var detour = Detours.GetValueOrDefault(unit.Id) >= state.Round;

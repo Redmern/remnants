@@ -340,6 +340,7 @@ public class CoopTests
         hurt.Status = UnitStatus.Downed;
         hurt.Hp = 0;
         hurt.BleedOut = 2;
+        medic.Ap = 2;
         Assert.True(sim.Execute(new UseItem(1, medic.Id, "med_kit", hurt.Id)).Ok);
         Assert.Equal(UnitStatus.Active, hurt.Status);
     }

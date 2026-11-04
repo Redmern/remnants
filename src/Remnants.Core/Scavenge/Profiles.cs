@@ -7,6 +7,7 @@ namespace Remnants.Core.Scavenge;
 /// <summary>
 /// One concrete way a unit can move this turn. <see cref="Source"/> names what gave it its pattern
 /// (an item name or a body state such as "missing legs"); null for the plain base walk.
+/// The primary mode's walk pays MP per terrain cost; any other mode's move costs a flat <see cref="ApCost"/> in MP.
 /// </summary>
 public sealed record MoveMode(MovePattern Pattern, int Range, int ApCost, bool IgnoresTerrain, string? Source = null);
 
@@ -71,7 +72,9 @@ public sealed record UnitProfile(
     double CoverBonus = 0,
     IReadOnlyDictionary<BodyRegion, double>? RegionArmor = null,
     double InjuryResist = 0,
-    double MeleeArmor = 0)
+    double MeleeArmor = 0,
+    int MaxMp = 0,
+    int MaxStamina = 0)
 {
     public ActionProfile? Action(string id) => Actions.FirstOrDefault(a => a.Id == id);
 
@@ -161,10 +164,11 @@ public static class ProfileDeriver
             + (unit.Body.RegionEfficiency(BodyRegion.Legs) - 1) * fog.Stealth.LegEfficiency
             + unit.Hook(PerkHooks.StealthBonus);
 
+        var movement = DeriveMovement(data, unit, active, capacity > 0 ? load / capacity : double.PositiveInfinity);
         return new UnitProfile(
-            Movement: DeriveMovement(data, unit, active, capacity > 0 ? load / capacity : double.PositiveInfinity),
+            Movement: movement,
             Actions: DeriveActions(data, unit, working, fitted),
-            MaxAp: MaxAp(rules.Turn.BaseAp + equipped.Sum(i => i.ApBonus), Treatment.FieldApPenalty(data.Medicine, unit.Body)),
+            MaxAp: MaxAp((enemy?.Ap ?? rules.Turn.BaseAp) + equipped.Sum(i => i.ApBonus), Treatment.FieldApPenalty(data.Medicine, unit.Body)),
             Initiative: agility * rules.Turn.InitiativePerAgility + equipped.Sum(i => i.Initiative) - load * rules.Turn.InitiativePerLoad,
             Sight: Math.Max(1, sight * head),
             CarryCapacity: capacity,
@@ -176,7 +180,9 @@ public static class ProfileDeriver
             CoverBonus: (unit.Stance == Stance.Brace ? fog.Brace.CoverBonus + unit.Hook(PerkHooks.BraceCoverBonus) : 0) + unit.CardCover,
             RegionArmor: RegionArmor(equipped),
             InjuryResist: 1 - equipped.Aggregate(1.0, (keep, i) => keep * (1 - Math.Clamp(i.InjuryResist, 0, 1))),
-            MeleeArmor: equipped.Sum(i => i.MeleeArmor));
+            MeleeArmor: equipped.Sum(i => i.MeleeArmor),
+            MaxMp: enemy?.Mp ?? MaxMp(rules, movement.Primary.Range),
+            MaxStamina: enemy?.Stamina ?? rules.Turn.BaseStamina);
     }
 
     /// <summary>Armor of gear with coverage, per region it covers (null when no gear has coverage).</summary>
@@ -247,7 +253,7 @@ public static class ProfileDeriver
         modes.AddRange(extraModes
             .GroupBy(m => (m.Mode.Pattern, m.Mode.Range, m.Mode.IgnoresTerrain))
             .Select(g => g.OrderBy(m => m.Mode.ApCost).First())
-            .Select(m => new MoveMode(m.Mode.Pattern, m.Mode.Range, m.Mode.ApCost, m.Mode.IgnoresTerrain, m.Source)));
+            .Select(m => new MoveMode(m.Mode.Pattern, m.Mode.Range, m.Mode.ApCost * data.Rules.Turn.MpPerRange, m.Mode.IgnoresTerrain, m.Source)));
         return new MovementProfile(modes, costs);
     }
 
@@ -279,10 +285,19 @@ public static class ProfileDeriver
     }
 
     /// <summary>
-    /// AP a turn: the gear's, less what conditions and pain take (medicine.json), which never leaves fewer than 2 (a unit
-    /// in pain still crosses rubble and still acts); never below 1 at all.
+    /// AP a round: the gear's, less what conditions and pain take (medicine.json); never below 1.
     /// </summary>
-    private static int MaxAp(int gear, int medical) => Math.Max(1, gear - Math.Min(medical, Math.Max(0, gear - 2)));
+    private static int MaxAp(int gear, int medical) => Math.Max(1, gear - medical);
+
+    /// <summary>
+    /// MP a round: the base for a unit of baseline range (an average walker, attributes 50), shifted per step of range its
+    /// agility, load, legs and gear give it above or below that.
+    /// </summary>
+    private static int MaxMp(ScavengeRules rules, int range)
+    {
+        var baseline = rules.Movement.BaseRange + (int)Math.Floor(50.0 / rules.Movement.AgilityPerRange);
+        return Math.Max(1, rules.Turn.BaseMp + (range - baseline) * rules.Turn.MpPerRange);
+    }
 
     /// <summary>
     /// Weapon actions, attacks built into cybernetic arms, plus bare hands. Accuracy adds skill and Perception, then scales with the arms

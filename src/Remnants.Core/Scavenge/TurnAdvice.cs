@@ -19,7 +19,7 @@ public static class TurnAdvice
         if (ap >= sim.Data.Rules.Turn.PickUpApCost && sim.State.Caches.Any(c => c.Items.Count > 0 && c.Pos.Chebyshev(unit.Pos) <= 1)) return true;
         if (CanPlayACard(sim, unit)) return true;
         if (CanHackOrSalvage(sim, unit) || CanUseDrone(sim, unit)) return true;
-        if (ap > 0 && sim.Reachable(unit).Values.Any(cost => cost <= ap)) return true;
+        if (sim.Reachable(unit).Values.Any(cost => cost <= unit.Mp)) return true;
         if (unit.Stance == Stance.None && (fog.Brace.ApCost <= ap || Overwatches.OnArc(sim, unit, unit.PlayerId ?? 0) is not null)) return true;
         if (!unit.Lookout && fog.Lookout.ApCost <= ap) return true;
         if (unit.Pack.Any(id => sim.Data.Items.TryGetValue(id, out var item) && item.Use is { } use && FieldMedicine.ApCost(unit, use) <= ap))

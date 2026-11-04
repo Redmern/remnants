@@ -77,6 +77,12 @@ public sealed class Unit
     public double Hp { get; set; }
     public double MaxHp { get; set; }
     public int Ap { get; set; }
+
+    /// <summary>Movement points left this round (terrain cost per tile).</summary>
+    public int Mp { get; set; }
+
+    /// <summary>Stamina spent of the profile's maximum (<see cref="Economy"/>): 0 is fresh.</summary>
+    public int Fatigue { get; set; }
     public UnitStatus Status { get; set; }
     public bool CanBeDowned { get; set; } = true;
 

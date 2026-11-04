@@ -33,7 +33,7 @@ public partial class ScavengeScreen
                 focus = husk.Pos;
                 // Step next to the pile so the pickup panel opens.
                 if (_presenter.ActingUnit?.Id == u.Id
-                    && _presenter.Sim.Reachable(u).Where(kv => kv.Value < u.Ap && kv.Key.Chebyshev(husk.Pos) == 1).OrderBy(kv => kv.Value)
+                    && _presenter.Sim.Reachable(u).Where(kv => kv.Value <= u.Mp && kv.Key.Chebyshev(husk.Pos) == 1).OrderBy(kv => kv.Value)
                         .Select(kv => (Pos?)kv.Key).FirstOrDefault() is { } next)
                 {
                     await Run(new Move(pid, u.Id, next));

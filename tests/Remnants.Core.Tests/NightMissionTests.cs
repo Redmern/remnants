@@ -114,7 +114,7 @@ public class NightMissionTests
             var target = EnemyUnit("husk", new Pos(2, 2));
             var listener = EnemyUnit("husk", new Pos(11, 2));
             var sim = At(phase, [shooter, target, listener]);
-            var r = StrikeNow(sim, shooter, target, "shoot");
+            var r = Blow(sim, shooter, target, "shoot");
             Assert.True(r.Ok, r.Message);
             return listener.Ai.Mode;
         }

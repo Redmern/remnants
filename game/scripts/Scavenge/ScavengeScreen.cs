@@ -899,7 +899,7 @@ public partial class ScavengeScreen : Node3D
             else if (_presenter.State.Map.IsExit(u.Pos) && i > steps / 2) command = new Extract(pid, u.Id);
             else
             {
-                var step = _presenter.Reachable(u).Where(kv => kv.Value <= u.Ap)
+                var step = _presenter.Reachable(u).Where(kv => kv.Value <= u.Mp)
                     .OrderBy(kv => exits.Min(x => x.Chebyshev(kv.Key))).ThenBy(kv => kv.Value)
                     .Select(kv => (Pos?)kv.Key).FirstOrDefault();
                 command = step is { } to && exits.Min(x => x.Chebyshev(to)) < exits.Min(x => x.Chebyshev(u.Pos))

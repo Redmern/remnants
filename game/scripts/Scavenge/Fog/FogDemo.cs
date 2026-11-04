@@ -59,5 +59,6 @@ public static class FogDemo
         state.Units.Add(linked);
         state.TurnOrder.Add(linked.Id);
         linked.Ap = sim.Profile(linked).MaxAp;
+        linked.Mp = sim.Profile(linked).MaxMp;
     }
 }

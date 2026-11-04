@@ -34,6 +34,11 @@ public sealed record EnemyDef
     public double Hp { get; init; } = 50;
     public AiKind Ai { get; init; }
 
+    /// <summary>Per-type overrides of the round pools (<see cref="TurnRules"/>); null: as any unit.</summary>
+    public int? Mp { get; init; }
+    public int? Ap { get; init; }
+    public int? Stamina { get; init; }
+
     /// <summary>Survivors go Downed at 0 HP; most enemies just die.</summary>
     public bool CanBeDowned { get; init; }
 
@@ -441,7 +446,23 @@ public sealed record MovementRules
 
 public sealed record TurnRules
 {
-    public int BaseAp { get; init; } = 3;
+    public int BaseAp { get; init; } = 2;
+
+    /// <summary>MP a round for a unit of baseline movement range; each step of range above or below it shifts this by <see cref="MpPerRange"/>.</summary>
+    public int BaseMp { get; init; } = 4;
+    public int MpPerRange { get; init; } = 2;
+    public int BaseStamina { get; init; } = 10;
+    public int StaminaPerMp { get; init; } = 1;
+    public int StaminaPerAp { get; init; } = 2;
+
+    /// <summary>Share of its maximum stamina a unit regains at a round start, less <see cref="RegenLoadPenalty"/> times how full its pack is, at least <see cref="MinStaminaRegen"/>.</summary>
+    public double StaminaRegen { get; init; } = 0.4;
+    public double RegenLoadPenalty { get; init; } = 2;
+    public int MinStaminaRegen { get; init; } = 1;
+
+    /// <summary>The recover action: its AP (which costs no stamina) and the stamina it gives back.</summary>
+    public int RecoverApCost { get; init; } = 1;
+    public int RecoverStamina { get; init; } = 4;
     public int PickUpApCost { get; init; } = 1;
     public int RecruitApCost { get; init; } = 1;
     public double InitiativePerAgility { get; init; } = 1.0;

@@ -19,7 +19,7 @@ public class TurnAdviceTests
     {
         var a = SurvivorUnit(1, new(2, 2), weapon: "pipe");
         var sim = Arena(16, 5, [a, SurvivorUnit(2, new(15, 4))]);
-        a.Ap = 0;
+        (a.Ap, a.Mp) = (0, 0);
         Assert.False(TurnAdvice.CanStillAct(sim, a));
     }
 
@@ -110,7 +110,7 @@ public class TurnAdviceTests
         var b = SurvivorUnit(2, new(2, 2));
         var sim = Arena(8, 5, [a, b], data: DearStances);
         Assert.True(TurnAdvice.CanStillAct(sim, a));
-        a.Ap = 0;
+        (a.Ap, a.Mp) = (0, 0);
         Assert.False(TurnAdvice.CanStillAct(sim, a), "a blow is paid when it is readied");
     }
 

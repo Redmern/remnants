@@ -56,6 +56,8 @@ public enum ScavengeEventType
     InitiativeChanged,
     /// <summary>A card put a barrier or smoke on the map.</summary>
     FieldEffectPlaced,
+    /// <summary>A unit used the recover action.</summary>
+    Recovered,
 }
 
 /// <summary>

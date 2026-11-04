@@ -400,6 +400,7 @@ public class FieldMedicineTests
         Treatment.Fracture(med, hurt.Body, BodyPart.LeftLeg);
         var legBefore = hurt.Body.PartEfficiency(BodyPart.LeftLeg);
 
+        medic.Ap = 9;
         Assert.True(sim.Execute(new UseItem(1, medic.Id, "splint", hurt.Id)).Ok);
         Assert.True(hurt.Body.PartEfficiency(BodyPart.LeftLeg) > legBefore);
         Assert.True(sim.Execute(new UseItem(1, medic.Id, "antiseptic", hurt.Id)).Ok);
@@ -423,7 +424,7 @@ public class FieldMedicineTests
         Assert.Equal(full - 1, sim.Profile(a).MaxAp);
         Treatment.Afflict(a.Body, "husk_sickness", 0.6);
         Assert.Equal(full - 1, sim.Profile(a).MaxAp); // capped at field.maxApPenalty
-        Assert.True(sim.Profile(a).MaxAp >= 2);
+        Assert.True(sim.Profile(a).MaxAp >= 1);
     }
 
     [Fact]

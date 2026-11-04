@@ -44,7 +44,7 @@ public partial class ScavengeScreen
                     break;
                 case "targeting" or "smoke" when husk is not null:
                     // The Husk right next to the acting unit, so Shove reaches it; the aim hovers it, tooltip and all.
-                    u.Ap = _presenter.Sim.Profile(u).MaxAp;
+                    u.Ap = _presenter.Sim.Profile(u).MaxAp; u.Mp = _presenter.Sim.Profile(u).MaxMp;
                     if (Core.Scavenge.Pos.Neighbours8.Select(d => u.Pos + d)
                             .FirstOrDefault(p => _presenter.State.Map.InBounds(p) && _presenter.Sim.Data.Terrain(_presenter.State.Map[p]).Passable
                                                  && _presenter.State.UnitAt(p) is null) is var next && next != default)
@@ -65,7 +65,7 @@ public partial class ScavengeScreen
                     break;
                 case "preview" when husk is not null:
                     // Fresh AP and the Husk two steps off, so the move tiles in reach of a blow show their chances.
-                    u.Ap = _presenter.Sim.Profile(u).MaxAp;
+                    u.Ap = _presenter.Sim.Profile(u).MaxAp; u.Mp = _presenter.Sim.Profile(u).MaxMp;
                     if (Core.Scavenge.Pos.Neighbours8.Select(d => new Core.Scavenge.Pos(u.Pos.X + 2 * d.X, u.Pos.Y + 2 * d.Y))
                             .FirstOrDefault(p => _presenter.State.Map.InBounds(p) && _presenter.Sim.Data.Terrain(_presenter.State.Map[p]).Passable
                                                  && _presenter.State.UnitAt(p) is null) is var near && near != default)

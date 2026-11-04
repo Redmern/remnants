@@ -219,6 +219,7 @@ public class PlayCardTests
     public void A_move_card_carries_into_a_move_made_after_it()
     {
         var (sim, a, _, _) = Table("dash");
+        a.Mp = 2;
         Assert.Equal(ScavengeError.Unreachable, sim.Execute(new Move(1, a.Id, new(3, 1))).Error);
         Assert.True(Play(sim, a, "dash").Ok);
         Assert.True(sim.Execute(new Move(1, a.Id, new(3, 1))).Ok);

@@ -32,7 +32,7 @@ public class SubRoundTests
     {
         var (sim, a, b) = Duel();
         var max = sim.Profile(a).MaxAp;
-        Assert.True(sim.Execute(new Move(1, a.Id, new(3, 2))).Ok);
+        Assert.True(sim.Execute(new Lookout(1, a.Id)).Ok);
         Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
         Assert.True(sim.Execute(new EndTurn(2, b.Id)).Ok);
 
@@ -84,7 +84,7 @@ public class SubRoundTests
         var c = SurvivorUnit(1, new(2, 3), weapon: "sword");
         var b = SurvivorUnit(2, new(6, 2), weapon: "pipe");
         var sim = Arena(10, 5, [a, c, b], data: Rounds(3));
-        a.Ap = 1;
+        (a.Ap, a.Mp) = (1, 0);
         Assert.True(sim.Execute(new AttackTile(1, a.Id, new(3, 2), "blade", StrikeMode.Stab)).Ok);
         Assert.True(sim.Execute(new EndTurn(1, c.Id, WholeTurn: true)).Ok);
         Assert.True(sim.Execute(new EndTurn(2, b.Id)).Ok);

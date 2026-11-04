@@ -95,7 +95,7 @@ public class BotTacticsTests
         var moves = 0;
         for (var turn = 0; turn < 8 && u.Pos != goal; turn++)
         {
-            u.Ap = sim.Profile(u).MaxAp;
+            (u.Ap, u.Mp) = (sim.Profile(u).MaxAp, sim.Profile(u).MaxMp);
             while (BotTactics.StepToward(sim, u, 1, [goal]) is { } step)
             {
                 Assert.True(sim.Execute(step).Ok);

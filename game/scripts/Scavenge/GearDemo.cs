@@ -28,6 +28,7 @@ public static class GearDemo
         acting.Pack.AddRange(["mod_reflex_sight", "mod_laser"]);
         acting.Hooks[mods.Def.Rules.FieldHook] = 1;
         acting.Ap = sim.Profile(acting).MaxAp;
+        acting.Mp = sim.Profile(acting).MaxMp;
 
         bool Free(Pos p) => map.InBounds(p) && map[p] == Terrain.Floor && state.UnitAt(p) is null && !map.IsExit(p) && state.Caches.All(c => c.Pos != p);
         var spot = map.AllPositions.Where(p => Free(p) && p.Chebyshev(acting.Pos) == 2

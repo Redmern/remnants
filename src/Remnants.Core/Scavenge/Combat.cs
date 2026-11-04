@@ -490,6 +490,7 @@ public static class Combat
         target.BleedOut = c.BleedOutRounds;
         target.Stabilized = false;
         target.Ap = 0;
+        target.Mp = 0;
         state.Log(new(state.Round, ScavengeEventType.Downed,
             $"{target.Name} is down and bleeding out ({c.BleedOutRounds} rounds).", target.Id, Pos: target.Pos));
     }

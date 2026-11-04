@@ -80,6 +80,9 @@ public sealed record Salvage(int PlayerId, int UnitId, int NodeId) : IScavengeCo
 /// <summary>Talk an adjacent NPC survivor into following the unit to the exit.</summary>
 public sealed record Recruit(int PlayerId, int UnitId, int NpcId) : IScavengeCommand;
 
+/// <summary>Spend AP to catch breath: stamina back (<see cref="TurnRules.RecoverStamina"/>).</summary>
+public sealed record Recover(int PlayerId, int UnitId) : IScavengeCommand;
+
 /// <summary>Wait: end this unit's turn, forfeiting remaining AP.</summary>
 /// <summary>
 /// End the unit's part of this sub-round; it acts again in the next with the AP it has left. <see cref="WholeTurn"/>: it is
@@ -157,6 +160,7 @@ public enum ScavengeError
     NotYourTurn,
     Incapacitated,
     NotEnoughAp,
+    NotEnoughMp,
     Unreachable,
     UnknownAction,
     InvalidTarget,

@@ -43,6 +43,7 @@ public static class ProtocolJson
                     new JsonDerivedType(typeof(TakeFromStash), "takeFromStash"),
                     new JsonDerivedType(typeof(SetStance), "setStance"),
                     new JsonDerivedType(typeof(Lookout), "lookout"),
+                    new JsonDerivedType(typeof(Recover), "recover"),
                     new JsonDerivedType(typeof(ProposeAlliance), "proposeAlliance"),
                     new JsonDerivedType(typeof(RespondAlliance), "respondAlliance"),
                     new JsonDerivedType(typeof(BreakAlliance), "breakAlliance"),

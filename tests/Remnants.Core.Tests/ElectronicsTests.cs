@@ -654,6 +654,7 @@ public class DroneRoleTests
         var sim = Arena(12, 8, [op, hurt]);
         var drone = Launch(sim, op, new Pos(2, 1));
         Assert.Equal(12, drone.MaxHp);
+        op.Ap = 9;
         Assert.Equal(ScavengeError.TooFar, sim.Execute(new DroneHeal(1, op.Id, hurt.Id)).Error);
         Assert.True(sim.Execute(new FlyDrone(1, op.Id, new Pos(5, 1))).Ok);
         Assert.True(sim.Execute(new DroneHeal(1, op.Id, hurt.Id)).Ok);
@@ -681,7 +682,7 @@ public class DroneRoleTests
         Launch(sim, op, new Pos(2, 1));
         Assert.True(sim.Execute(new FlyDrone(1, op.Id, new Pos(4, 2))).Ok);
         var cache = sim.State.Caches.Single();
-        op.Ap = 9;
+        (op.Ap, op.Fatigue) = (9, -20);
         Assert.True(sim.Execute(new DroneLoad(1, op.Id, cache.Id, "rifle")).Ok);
         Assert.True(sim.Execute(new DroneLoad(1, op.Id, cache.Id, "med_kit")).Ok);
         Assert.Equal(ScavengeError.NotOnExit, sim.Execute(new DroneFerry(1, op.Id)).Error);
@@ -710,6 +711,7 @@ public class DroneRoleTests
         var sim = Arena(12, 8, [op, husk]);
         var drone = Launch(sim, op, new Pos(2, 1));
         Assert.Contains(husk, DroneRoles.FireTargets(sim, op));
+        op.Ap = 9;
         Assert.True(sim.Execute(new DroneFire(1, op.Id, husk.Id)).Ok);
         Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.DroneFired);
         Assert.True(drone.Skills[Skill.Firearms] >= 60);

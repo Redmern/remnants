@@ -704,7 +704,7 @@ public class ObjectiveTests
                 enemies: [new MapEnemyDef("husk", "h", "patrol", Patrol: ["w", "e"])]);
             var husk = sim.State.Units.Single(u => u.Tag == "patrol");
             var start = husk.Pos;
-            sim.RunTo(3);
+            sim.RunTo(2);
             Assert.True(husk.Pos.X < start.X);
             return ScavengeSave.Save(sim.State);
         }

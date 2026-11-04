@@ -126,7 +126,7 @@ public static class BotTactics
                                              && Detection.SideSees(sim.Data, state, unit.Side, u))
             .SelectMany(s => s.Tiles).ToHashSet();
         double Cover(Pos p) => threats.Select(t => Combat.CoverAgainst(sim.Data, state.Map, p, t.Pos)).Min();
-        var to = sim.Reachable(unit).Where(kv => kv.Value <= unit.Ap && !aimed.Contains(kv.Key))
+        var to = sim.Reachable(unit).Where(kv => kv.Value <= unit.Mp && !aimed.Contains(kv.Key))
             .OrderByDescending(kv => Cover(kv.Key)).ThenBy(kv => kv.Value).ThenBy(kv => state.Map.Index(kv.Key))
             .Select(kv => (Pos?)kv.Key).FirstOrDefault();
         return to is { } tile ? new Move(playerId, unit.Id, tile) : null;
@@ -145,7 +145,7 @@ public static class BotTactics
         int Distance(Pos p) => fields.Select(f => f.TryGetValue(p, out var d) ? d : int.MaxValue).Min() is var walk && walk < int.MaxValue
             ? walk : 1000 + goals.Min(g => g.Chebyshev(p));
         var here = Distance(unit.Pos);
-        var step = sim.Reachable(unit).Where(kv => kv.Value <= unit.Ap && Distance(kv.Key) < here)
+        var step = sim.Reachable(unit).Where(kv => kv.Value <= unit.Mp && Distance(kv.Key) < here)
             .OrderBy(kv => Distance(kv.Key)).ThenBy(kv => kv.Value).ThenBy(kv => map.Index(kv.Key))
             .Select(kv => (Pos?)kv.Key).FirstOrDefault();
         return step is { } to ? new Move(playerId, unit.Id, to) : null;
@@ -164,7 +164,7 @@ public static class BotTactics
         {
             var best = sim.Reachable(unit)
                 .SelectMany(kv => actions
-                    .Where(a => Drones.CanStrike(a, target) && kv.Value + Combat.ApCost(a, kv.Key, target.Pos) <= unit.Ap
+                    .Where(a => Drones.CanStrike(a, target) && kv.Value <= unit.Mp && Combat.ApCost(a, kv.Key, target.Pos) <= unit.Ap
                                 && Combat.CheckReach(data, map, kv.Key, a, target.Pos) == ScavengeError.None)
                     .Select(a => (Tile: kv.Key, Cost: kv.Value, Action: a, Value: (a.MinDamage + a.MaxDamage) / 2 * a.Accuracy)))
                 .OrderByDescending(o => o.Value).ThenBy(o => o.Cost).ThenBy(o => map.Index(o.Tile)).ThenBy(o => o.Action.Id, StringComparer.Ordinal)

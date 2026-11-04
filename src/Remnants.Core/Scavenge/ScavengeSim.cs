@@ -36,8 +36,8 @@ public sealed class ScavengeSim
         return p with { Sight = FieldEnvironment.Sight(Data, State, unit, p.Sight) };
     }
 
-    /// <summary>Tiles the unit can move to with one move action now, with AP cost (for UI highlights).</summary>
-    public Dictionary<Pos, int> Reachable(Unit unit) => Movement.Reachable(State, unit, Profile(unit).Movement);
+    /// <summary>Tiles the unit can move to with one move now, with MP cost (for UI highlights).</summary>
+    public Dictionary<Pos, int> Reachable(Unit unit) => Movement.Reachable(State, unit, Profile(unit).Movement, unit.Mp);
 
     /// <summary>Tile indices the player's side sees right now.</summary>
     public HashSet<int> VisibleTo(int playerId) =>
@@ -60,7 +60,9 @@ public sealed class ScavengeSim
 
     public ScavengeResult Execute(IScavengeCommand command)
     {
-        var result = ScavengeCommandHandlers.Validate(this, command, out var unit) ?? MissionRules.Blocked(this, command) ?? command switch
+        var result = ScavengeCommandHandlers.Validate(this, command, out var unit) ?? MissionRules.Blocked(this, command);
+        var (mpBefore, apBefore) = (unit?.Mp ?? 0, unit?.Ap ?? 0);
+        result ??= command switch
         {
             ChooseOption c => MissionRules.Choose(this, unit!, c),
             Move c => ScavengeCommandHandlers.Move(this, unit!, c),
@@ -78,6 +80,7 @@ public sealed class ScavengeSim
             DiscardDeadCard c => CardPlay.DiscardDead(this, unit!, c),
             Lookout c => ScavengeCommandHandlers.Lookout(this, unit!, c),
             FieldMod c => ScavengeCommandHandlers.FieldMod(this, unit!, c),
+            Recover => Economy.Recover(this, unit!),
             EndTurn c => FinishTurn(unit!, c),
             Extract => ScavengeCommandHandlers.Extract(this, unit!),
             TakeFromStash c => ParkedVehicles.Unstash(this, unit!, c),
@@ -103,6 +106,7 @@ public sealed class ScavengeSim
 
         if (result.Ok)
         {
+            if (command is not Recover) Economy.Pay(this, unit!, mpBefore - unit!.Mp, apBefore - unit.Ap);
             MissionRules.Update(this);
             UpdateParties();
             // The acting unit's turn ends on EndTurn or a stance, or when it left the map or can no longer act; its sub-turn
@@ -191,7 +195,7 @@ public sealed class ScavengeSim
     /// Whether the unit skips a later sub-round: out of AP, done for the round or holding a stance.
     /// </summary>
     private bool SitsOut(Unit unit) =>
-        unit.Ap <= 0 || unit.TurnOverRound == State.Round || unit.Stance != Stance.None;
+        unit.Ap <= 0 && unit.Mp <= 0 || unit.TurnOverRound == State.Round || unit.Stance != Stance.None;
 
     /// <summary>
     /// Whether an AI unit's strike declared now must wait a sub-round: player units are hostile to it, and none of them
@@ -226,7 +230,7 @@ public sealed class ScavengeSim
         unit.CardCover = 0;
         // A counter card holds while the strike it answers is still coming (that strike comes down after this turn begins).
         if (unit.CounterId is { } countered && State.Strikes.All(s => s.UnitId != countered)) unit.CounterId = null;
-        unit.Ap = Profile(unit).MaxAp;
+        Economy.RoundStarted(this, unit);
         if (State.Round == 1 && unit.FirstRoundAp != 0) unit.Ap = Math.Max(1, unit.Ap + unit.FirstRoundAp);
         if (braced) unit.Ap = Math.Max(1, unit.Ap - Data.Rules.Fog.Brace.NextTurnApPenalty);
         if (unit.CrashAp > 0)
@@ -238,8 +242,10 @@ public sealed class ScavengeSim
         if (unit.EmpUntilRound >= State.Round)
         {
             unit.Ap = 0;
+            unit.Mp = 0;
             State.Log(new(State.Round, ScavengeEventType.EmpBurst, $"{unit.Name} is still down from the EMP.", unit.Id, Pos: unit.Pos));
         }
+        if (Economy.Stamina(this, unit) <= 0) unit.Ap = 0;
     }
 
     /// <summary>Bleeding ticks down, then everyone conscious (except idle NPCs) is ordered by initiative.</summary>

@@ -27,6 +27,13 @@ internal static class ScavengeAi
 
     public static void TakeTurn(ScavengeSim sim, Unit unit)
     {
+        var (mp, ap) = (unit.Mp, unit.Ap);
+        Decide(sim, unit);
+        Economy.Pay(sim, unit, mp - unit.Mp, ap - unit.Ap);
+    }
+
+    private static void Decide(ScavengeSim sim, Unit unit)
+    {
         if (unit.FollowingId is not null) Follow(sim, unit);
         else if (unit.Kind == UnitKind.Device) Machine(sim, unit);
         else if (unit.Kind != UnitKind.Enemy) return;
@@ -40,7 +47,7 @@ internal static class ScavengeAi
         TileStrikes.StrikeAt(sim, unit, action, target) is { } strike && TileStrikes.Declare(sim, unit, strike, suppress).Ok;
 
     /// <summary>Whether the unit can still do something this sub-turn: up, with AP, not stunned or pinned since its turn began, and no tile strike readied yet.</summary>
-    private static bool Acting(ScavengeSim sim, Unit unit) => unit.IsActive && unit.Ap > 0 && !unit.Suppressed && !TileStrikes.Readied(sim.State, unit);
+    private static bool Acting(ScavengeSim sim, Unit unit) => unit.IsActive && (unit.Ap > 0 || unit.Mp > 0) && !unit.Suppressed && !TileStrikes.Readied(sim.State, unit);
 
     /// <summary>Husk behaviour (and a jammed Linked's): hunt the nearest hostile in sight, close in, attack.</summary>
     private static void Fight(ScavengeSim sim, Unit unit)
@@ -183,7 +190,7 @@ internal static class ScavengeAi
 
         double Score(Pos tile, int cost)
         {
-            var ap = unit.Ap - cost;
+            var ap = unit.Ap;
             // Hidden: out of every known hostile's eyes, not in a flare's light, not revealed or scanned there.
             var hidden = !Detection.IsLit(sim.State, tile) && !known.Any(t =>
                 Detection.Spots(data, sim.State, t, unit, targetAt: tile)
@@ -196,25 +203,25 @@ internal static class ScavengeAi
                              * Math.Max(1, (a.MinDamage + a.MaxDamage) / 2 * (ambush?.DamageMultiplier ?? 1) - focusProfile.Armor))
                 .DefaultIfEmpty(0).Max();
             var cover = known.Select(t => Combat.CoverAgainst(data, map, tile, t.Pos)).DefaultIfEmpty(0).Min();
-            return shot + cover * rules.CoverWeight + ap * rules.ApWeight + (hidden ? data.Rules.Fog.Ai.HiddenWeight : 0);
+            return shot + cover * rules.CoverWeight + (unit.Mp - cost) * rules.ApWeight + (hidden ? data.Rules.Fog.Ai.HiddenWeight : 0);
         }
 
         double stay;
-        (Pos Pos, int Ap, double Score) best;
+        (Pos Pos, int Mp, double Score) best;
         // Scoring only looks: every profile stays the same until the move.
         using (ProfileDeriver.Memo(data))
         {
             stay = Score(unit.Pos, 0);
             best = sim.Reachable(unit)
-                .Where(kv => kv.Value <= unit.Ap)
-                .Select(kv => (Pos: kv.Key, Ap: kv.Value, Score: Score(kv.Key, kv.Value)))
-                .OrderByDescending(o => o.Score).ThenBy(o => o.Ap).ThenBy(o => map.Index(o.Pos))
+                .Where(kv => kv.Value <= unit.Mp)
+                .Select(kv => (Pos: kv.Key, Mp: kv.Value, Score: Score(kv.Key, kv.Value)))
+                .OrderByDescending(o => o.Score).ThenBy(o => o.Mp).ThenBy(o => map.Index(o.Pos))
                 .FirstOrDefault();
         }
-        if (best.Ap == 0 || best.Score <= stay + 1e-9) return false;
+        if (best.Mp == 0 || best.Score <= stay + 1e-9) return false;
 
         var coverBefore = Combat.CoverAgainst(data, map, focus.Pos, unit.Pos);
-        MoveTo(sim, unit, best.Pos, best.Ap);
+        MoveTo(sim, unit, best.Pos, best.Mp);
         if (coverBefore > 0 && Combat.CoverAgainst(data, map, focus.Pos, best.Pos) <= 0
             && profile.Actions.Any(a => Combat.CheckReach(data, map, best.Pos, a, focus.Pos) == ScavengeError.None))
             sim.Log(ScavengeEventType.Flanked, $"{unit.Name} flanks {focus.Name}.", unit, focus);
@@ -230,12 +237,12 @@ internal static class ScavengeAi
         double Cover(Pos p) => known.Select(t => Combat.CoverAgainst(data, map, p, t.Pos)).Min();
 
         var best = sim.Reachable(unit)
-            .Where(kv => kv.Value <= unit.Ap)
-            .Select(kv => (Pos: kv.Key, Ap: kv.Value))
-            .OrderByDescending(o => Distance(o.Pos)).ThenByDescending(o => Cover(o.Pos)).ThenBy(o => o.Ap).ThenBy(o => map.Index(o.Pos))
+            .Where(kv => kv.Value <= unit.Mp)
+            .Select(kv => (Pos: kv.Key, Mp: kv.Value))
+            .OrderByDescending(o => Distance(o.Pos)).ThenByDescending(o => Cover(o.Pos)).ThenBy(o => o.Mp).ThenBy(o => map.Index(o.Pos))
             .FirstOrDefault();
-        if (best.Ap == 0 || (Distance(best.Pos), Cover(best.Pos)).CompareTo((Distance(unit.Pos), Cover(unit.Pos))) <= 0) return false;
-        MoveTo(sim, unit, best.Pos, best.Ap);
+        if (best.Mp == 0 || (Distance(best.Pos), Cover(best.Pos)).CompareTo((Distance(unit.Pos), Cover(unit.Pos))) <= 0) return false;
+        MoveTo(sim, unit, best.Pos, best.Mp);
         sim.Log(ScavengeEventType.Retreated, $"{unit.Name} falls back.", unit);
         return true;
     }
@@ -281,15 +288,15 @@ internal static class ScavengeAi
         var field = Movement.DistanceField(sim.State, unit, profile, goal);
         var here = field.GetValueOrDefault(unit.Pos, int.MaxValue);
         var options = sim.Reachable(unit)
-            .Where(kv => kv.Value <= unit.Ap && field.ContainsKey(kv.Key))
-            .Select(kv => (Pos: kv.Key, Ap: kv.Value, Dist: field[kv.Key]))
+            .Where(kv => kv.Value <= unit.Mp && field.ContainsKey(kv.Key))
+            .Select(kv => (Pos: kv.Key, Mp: kv.Value, Dist: field[kv.Key]))
             .Where(o => o.Dist < here)
             .OrderBy(o => o.Dist)
-            .ThenBy(o => o.Ap)
+            .ThenBy(o => o.Mp)
             .ThenBy(o => sim.State.Map.Index(o.Pos))
             .ToList();
         if (options.Count == 0) return false;
-        MoveTo(sim, unit, options[0].Pos, options[0].Ap);
+        MoveTo(sim, unit, options[0].Pos, options[0].Mp);
         return true;
     }
 
@@ -313,7 +320,7 @@ internal static class ScavengeAi
     private static void Wander(ScavengeSim sim, Unit unit)
     {
         if (sim.Rng.NextDouble() >= sim.Data.Rules.Ai.WanderChance) return;
-        var options = sim.Reachable(unit).Where(kv => kv.Value <= unit.Ap)
+        var options = sim.Reachable(unit).Where(kv => kv.Value <= unit.Mp)
             .OrderBy(kv => sim.State.Map.Index(kv.Key)).ToList();
         if (options.Count == 0) return;
         var pick = options[sim.Rng.Next(0, options.Count)];
@@ -334,15 +341,15 @@ internal static class ScavengeAi
             unit.FollowingId = leader.Id;
             unit.PlayerId = leader.PlayerId;
         }
-        for (var step = 0; step < MaxStepsPerTurn && unit.Ap > 0 && unit.Pos.Chebyshev(leader.Pos) > 1; step++)
+        for (var step = 0; step < MaxStepsPerTurn && unit.Mp > 0 && unit.Pos.Chebyshev(leader.Pos) > 1; step++)
             if (!StepToward(sim, unit, leader.Pos)) return;
     }
 
-    private static void MoveTo(ScavengeSim sim, Unit unit, Pos to, int ap)
+    private static void MoveTo(ScavengeSim sim, Unit unit, Pos to, int mp)
     {
         var from = unit.Pos;
         unit.Pos = to;
-        unit.Ap -= ap;
+        unit.Mp -= mp;
         unit.Moved = true;
         unit.Facing = Combat.Face(from, to);
         sim.State.Log(new(sim.State.Round, ScavengeEventType.Moved, $"{unit.Name} moved {from} -> {to}.", unit.Id, Pos: to));

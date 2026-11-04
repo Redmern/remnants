@@ -118,7 +118,7 @@ public static class TacticsView
         var result = new Dictionary<Pos, double>();
         foreach (var (tile, cost) in sim.Reachable(unit).Append(new KeyValuePair<Pos, int>(unit.Pos, 0)))
         {
-            var best = actions.Where(a => cost + Combat.ApCost(a, tile, target.Pos) <= unit.Ap && Drones.CanStrike(a, target)
+            var best = actions.Where(a => cost <= unit.Mp && Combat.ApCost(a, tile, target.Pos) <= unit.Ap && Drones.CanStrike(a, target)
                                           && Combat.CheckReach(sim.Data, map, tile, a, target.Pos) == ScavengeError.None)
                 .Select(a => Combat.ChanceToHit(sim, unit, a, target, tile)).DefaultIfEmpty(-1).Max();
             if (best >= 0) result[tile] = Bestiary.ShownChance(sim.Data.Rules.Bestiary, best, tier);

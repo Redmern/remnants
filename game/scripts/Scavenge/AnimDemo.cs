@@ -58,6 +58,7 @@ public static class AnimDemo
                     state.Units.Add(enemy);
                     state.TurnOrder.Add(enemy.Id);
                     enemy.Ap = sim.Profile(enemy).MaxAp;
+                    enemy.Mp = sim.Profile(enemy).MaxMp;
                 }
                 break;
         }

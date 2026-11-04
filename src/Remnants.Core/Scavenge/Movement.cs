@@ -6,10 +6,11 @@ namespace Remnants.Core.Scavenge;
 public static class Movement
 {
     /// <summary>
-    /// Every tile reachable in one move action, with the cheapest AP cost among the unit's modes.
+    /// Every tile reachable in one move, with the cheapest MP cost among the unit's modes: the primary mode walks up to
+    /// <paramref name="budget"/> MP of terrain (default: its range) and pays what it walked, any other mode its flat cost.
     /// Walking and lines pass through allies but not hostiles; nobody ends on an occupied tile.
     /// </summary>
-    public static Dictionary<Pos, int> Reachable(ScavengeState state, Unit unit, MovementProfile profile)
+    public static Dictionary<Pos, int> Reachable(ScavengeState state, Unit unit, MovementProfile profile, int? budget = null)
     {
         var result = new Dictionary<Pos, int>();
         void Offer(Pos p, int ap)
@@ -17,18 +18,21 @@ public static class Movement
             if (!result.TryGetValue(p, out var existing) || ap < existing) result[p] = ap;
         }
 
-        foreach (var mode in profile.Modes)
+        if (budget <= 0) return result;
+        foreach (var (mode, i) in profile.Modes.Select((m, i) => (m, i)))
         {
-            IEnumerable<Pos> tiles = mode.Pattern switch
+            var range = i == 0 ? budget ?? mode.Range : mode.Range;
+            var walk = mode with { Range = range };
+            IEnumerable<KeyValuePair<Pos, int>> tiles = mode.Pattern switch
             {
-                MovePattern.King => Walk(state, unit, profile, mode),
-                MovePattern.Rook => Lines(state, unit, profile, mode, Pos.Orthogonal),
-                MovePattern.Bishop => Lines(state, unit, profile, mode, Pos.Diagonal),
-                MovePattern.Queen => Lines(state, unit, profile, mode, Pos.Neighbours8),
+                MovePattern.King => Walk(state, unit, profile, walk),
+                MovePattern.Rook => Lines(state, unit, profile, walk, Pos.Orthogonal),
+                MovePattern.Bishop => Lines(state, unit, profile, walk, Pos.Diagonal),
+                MovePattern.Queen => Lines(state, unit, profile, walk, Pos.Neighbours8),
                 MovePattern.Knight => Jumps(state, unit, profile),
                 _ => [],
             };
-            foreach (var p in tiles) Offer(p, mode.ApCost);
+            foreach (var (p, walked) in tiles) Offer(p, i == 0 && mode.Pattern != MovePattern.Knight ? walked : mode.ApCost);
         }
         result.Remove(unit.Pos);
         return result;
@@ -45,7 +49,7 @@ public static class Movement
     /// Multi-step walk in 8 directions, summing terrain costs up to the range (Dijkstra). One step is always allowed,
     /// so a slow unit can still slog onto rubble or water instead of being stuck behind it.
     /// </summary>
-    private static IEnumerable<Pos> Walk(ScavengeState state, Unit unit, MovementProfile profile, MoveMode mode)
+    private static IEnumerable<KeyValuePair<Pos, int>> Walk(ScavengeState state, Unit unit, MovementProfile profile, MoveMode mode)
     {
         var map = state.Map;
         var best = new Dictionary<Pos, int> { [unit.Pos] = 0 };
@@ -68,7 +72,7 @@ public static class Movement
                 queue.Enqueue(n, (cost, map.Index(n)));
             }
         }
-        return best.Keys.Where(p => Free(state, unit, p));
+        return best.Where(kv => Free(state, unit, kv.Key));
     }
 
     /// <summary>No squeezing diagonally between two impassable tiles.</summary>
@@ -76,7 +80,7 @@ public static class Movement
         profile.Cost(map[new Pos(from.X + d.X, from.Y)]) is not null || profile.Cost(map[new Pos(from.X, from.Y + d.Y)]) is not null;
 
     /// <summary>Straight lines: stops at impassable terrain or a hostile, costs summed up to the range (the first step always fits).</summary>
-    private static IEnumerable<Pos> Lines(ScavengeState state, Unit unit, MovementProfile profile, MoveMode mode, Pos[] directions)
+    private static IEnumerable<KeyValuePair<Pos, int>> Lines(ScavengeState state, Unit unit, MovementProfile profile, MoveMode mode, Pos[] directions)
     {
         var map = state.Map;
         foreach (var d in directions)
@@ -91,17 +95,18 @@ public static class Movement
                 cost += mode.IgnoresTerrain ? 1 : step;
                 if (p == unit.Pos) cost = Math.Min(cost, mode.Range);
                 if (cost > mode.Range || !CanPass(state, unit, n)) break;
-                if (Free(state, unit, n)) yield return n;
+                if (Free(state, unit, n)) yield return new(n, cost);
                 p = n;
             }
         }
     }
 
     /// <summary>Knight jumps: land on any free passable tile an L away, whatever is in between.</summary>
-    private static IEnumerable<Pos> Jumps(ScavengeState state, Unit unit, MovementProfile profile) =>
+    private static IEnumerable<KeyValuePair<Pos, int>> Jumps(ScavengeState state, Unit unit, MovementProfile profile) =>
         Pos.KnightJumps
             .Select(d => unit.Pos + d)
-            .Where(n => state.Map.InBounds(n) && profile.Cost(state.Map[n]) is not null && Free(state, unit, n) && !Hacking.Blocks(state, unit, n));
+            .Where(n => state.Map.InBounds(n) && profile.Cost(state.Map[n]) is not null && Free(state, unit, n) && !Hacking.Blocks(state, unit, n))
+            .Select(n => new KeyValuePair<Pos, int>(n, 0));
 
     /// <summary>
     /// Walking distance (terrain-cost weighted, ignoring units) from every tile to <paramref name="target"/>.

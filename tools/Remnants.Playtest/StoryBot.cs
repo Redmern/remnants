@@ -214,7 +214,7 @@ public static class StoryBot
             .OrderBy(f => f.Id).FirstOrDefault();
 
     /// <summary>Whether the unit can take a step at all (boxed in, it might as well swing).</summary>
-    private static bool CanStepOut(ScavengeSim sim, Unit u) => sim.Reachable(u).Any(kv => kv.Key != u.Pos && kv.Value <= u.Ap);
+    private static bool CanStepOut(ScavengeSim sim, Unit u) => sim.Reachable(u).Any(kv => kv.Key != u.Pos && kv.Value <= u.Mp);
 
     /// <summary>A move to the affordable reachable tile closest (walking) to a tile next to the goal, if that gets closer.</summary>
     private static IScavengeCommand? Toward(ScavengeSim sim, Unit u, Pos goal, bool exact = false)
@@ -230,7 +230,7 @@ public static class StoryBot
         {
             var field = Movement.DistanceField(state, u, profile, t);
             if (!field.TryGetValue(u.Pos, out var here)) continue;
-            var options = sim.Reachable(u).Where(kv => kv.Value <= u.Ap && field.ContainsKey(kv.Key) && field[kv.Key] < here)
+            var options = sim.Reachable(u).Where(kv => kv.Value <= u.Mp && field.ContainsKey(kv.Key) && field[kv.Key] < here)
                 .OrderBy(kv => field[kv.Key]).ThenBy(kv => kv.Value).ThenBy(kv => state.Map.Index(kv.Key)).ToList();
             return options.Count == 0 ? null : new Move(u.PlayerId!.Value, u.Id, options[0].Key);
         }
