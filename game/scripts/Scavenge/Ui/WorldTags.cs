@@ -8,7 +8,7 @@ namespace Remnants.Game.Scavenge.Ui;
 
 /// <summary>
 /// Everything written over the map, as HUD chips with backgrounds in one stack per unit so nothing overlaps. From the
-/// head up: name with an HP bar (focused, hurt or downed units), status tags (OVERWATCH / ON WATCH / BRACED / LOOKOUT /
+/// head up: name with an HP bar (focused, hurt or downed units), status tags (EXPOSED / STUNNED / LOOKOUT /
 /// REVEALED), the attack preview for the chosen action (hit chance, damage, AMBUSH), and short pop-ups (damage, miss,
 /// DOWN, AMBUSH!) that rise from the top of the stack. Contacts ("?") the side heard get a chip on their tile unless a
 /// seen unit stands there. Purely visual: reads the presenter, positions follow the unit views every frame.

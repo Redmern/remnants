@@ -318,10 +318,10 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   `SidePalette` colours rings, labels and turn chips alike (other players' parties violet). Units that leave a remote
   view are hidden; the turn bar shows whose turn it is and the turn timer in multiplayer. HUD in `Scavenge/Ui/`, laid out
   by `ScavengeHud` (which also owns the hotkeys and the pause menu). Turn bar on top: `TurnBar` (zone, round, the
-  initiative order as `OrderChip`s kept per unit — side-colour edge, the acting unit larger, framed and named, those
-  that acted faded, unseen ones "?", HP as a bottom-edge tint —, the acting unit's AP pips, End Turn, Leave, menu), the
+  party as `OrderChip`s kept per unit — side-colour edge, the unit planning larger, framed and named, those
+  done planning faded, unseen ones "?", HP as a bottom-edge tint —, its stamina, Ready, Leave, menu), the
   `AllianceBanner` under it. Left: `UnitPanel`, summary first — header (portrait rendered from the unit's model with
-  its gear, name, kind, status, "Not their turn" when one of yours is selected while another acts, HP bar, AP pips
+  its gear, name, kind, status, "Not selected for orders" when one of yours is selected while another plans, HP bar, AP pips
   unless it is the acting unit) and folding sections (`Scavenge/Ui/Expander`: chevron, icon, title, a one-line summary
   while folded, an (i); open state remembered per section for the session): Body ("All parts ok", else only hurt, lost
   and prosthetic parts), Field profile (Move, Sight, Armor, Dodge with an (i) each; AP, initiative and attacks behind

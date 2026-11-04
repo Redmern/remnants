@@ -13,8 +13,8 @@ namespace Remnants.Game.Scavenge.Ui;
 
 /// <summary>
 /// The selected unit, summary first: a header (portrait from the 3D model with its gear, name, kind, status, a "Not
-/// their turn" tag when one of yours is selected while another acts, HP bar, AP pips unless it is the acting unit, whose
-/// AP sits next to End turn) and folding sections (<see cref="Expander"/>, remembered per section): Body ("All parts ok",
+/// selected for orders" tag when one of yours is selected while another plans, HP bar, AP pips unless it is the unit planning,
+/// whose AP sits next to Ready) and folding sections (<see cref="Expander"/>, remembered per section): Body ("All parts ok",
 /// or only the hurt, lost and prosthetic parts with their bars, like the colony Body tab), Field profile (four labelled
 /// values: Move, Sight, Armor, Dodge, each with an (i); AP, initiative and the attacks behind More) and Gear (folded by
 /// default with a one-line summary; slots, pack, load). An ally's unit (co-op) gets an Ally section on top: whose party
