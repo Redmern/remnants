@@ -18,10 +18,10 @@ public class StaminaEconomyTests
         var sim = Solo(out var u);
         var p = sim.Profile(u);
         Assert.Equal(4, p.MaxMp);
-        Assert.Equal(2, p.MaxAp);
+        Assert.Equal(1, p.MaxAp);
         Assert.Equal(10, p.MaxStamina);
         Assert.Equal(4, u.Mp);
-        Assert.Equal(2, u.Ap);
+        Assert.Equal(1, u.Ap);
         Assert.Equal(10, Economy.Stamina(sim, u));
     }
 
@@ -61,7 +61,7 @@ public class StaminaEconomyTests
         var sim = Solo(out var u);
         Assert.True(Now(sim, new Move(1, u.Id, new Pos(5, 2))).Ok);
         Assert.Equal(1, u.Mp);
-        Assert.Equal(2, u.Ap);
+        Assert.Equal(1, u.Ap);
         Assert.Equal(7, Economy.Stamina(sim, u));
     }
 
@@ -80,7 +80,7 @@ public class StaminaEconomyTests
     {
         var sim = Solo(out var u);
         Assert.True(sim.Execute(new Lookout(1, u.Id)).Ok);
-        Assert.Equal(1, u.Ap);
+        Assert.Equal(0, u.Ap);
         Assert.Equal(8, Economy.Stamina(sim, u));
     }
 
@@ -92,7 +92,7 @@ public class StaminaEconomyTests
         Economy.RoundStarted(sim, u);
         Assert.Equal(6, Economy.Stamina(sim, u));
         Assert.Equal(4, u.Mp);
-        Assert.Equal(2, u.Ap);
+        Assert.Equal(1, u.Ap);
     }
 
     [Fact]
@@ -126,7 +126,7 @@ public class StaminaEconomyTests
         u.Fatigue = 6;
         var rules = sim.Data.Rules.Turn;
         Assert.True(sim.Execute(new Recover(1, u.Id)).Ok);
-        Assert.Equal(2 - rules.RecoverApCost, u.Ap);
+        Assert.Equal(1 - rules.RecoverApCost, u.Ap);
         Assert.Equal(4, Economy.Stamina(sim, u));
         Settle(sim);
         Assert.Equal(4 + rules.RecoverStamina, Economy.Stamina(sim, u));

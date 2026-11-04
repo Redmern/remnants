@@ -481,6 +481,11 @@ public partial class MapView : Node3D
         }, 0);
         quad.Visible = true;
         if (label is null) return;
+        // A warning is about whoever stands there: at chest height, off the legs that would break up the word.
+        var labelAt = TileGrid.ToWorld(p) + new Vector3(0, kind == HighlightKind.AllyWarning ? 1.25f : 0.5f, 0);
+        // The same tile marked twice (a plan's warning and the aim's) keeps one label.
+        for (var i = 0; i < _labelsUsed; i++)
+            if (_labels[i].Text == label && _labels[i].Position == labelAt) return;
         if (_labelsUsed == _labels.Count)
         {
             // Tile notes sit low (move cost, who an item reaches); text over units is the HUD's (Ui.WorldTags).
@@ -488,14 +493,14 @@ public partial class MapView : Node3D
             {
                 FontSize = 30, PixelSize = 0.01f, OutlineSize = 12, Font = Hud.Fonts.BodyBold,
                 OutlineModulate = new Color(Hud.Palette.Void, 0.9f),
-                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, NoDepthTest = true,
+                Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, NoDepthTest = true, RenderPriority = 20, OutlineRenderPriority = 19,
             };
             _labels.Add(made);
             _highlights.AddChild(made);
         }
         var text = _labels[_labelsUsed++];
         text.Text = label;
-        text.Position = TileGrid.ToWorld(p) + new Vector3(0, 0.5f, 0);
+        text.Position = labelAt;
         text.Modulate = kind switch
         {
             HighlightKind.Use => Hud.Palette.Good,
@@ -506,6 +511,25 @@ public partial class MapView : Node3D
             _ => Hud.Palette.Text,
         };
         text.Visible = true;
+    }
+
+    /// <summary>An action's tiles flash and fade: green if it landed, else red.</summary>
+    public void FlashTiles(IEnumerable<Pos> tiles, bool landed)
+    {
+        foreach (var p in tiles)
+        {
+            if (!_presenter.State.Map.InBounds(p)) continue;
+            var material = Placeholders.Material(new Color(landed ? Hud.Palette.Good : Hud.Palette.Danger, 0.8f), unshaded: true);
+            var quad = new MeshInstance3D
+            {
+                Mesh = _highlightQuad, MaterialOverride = material, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+                Position = TileGrid.ToWorld(p) + new Vector3(0, 0.14f, 0),
+            };
+            _highlights.AddChild(quad);
+            var tween = quad.CreateTween();
+            tween.TweenProperty(material, "albedo_color:a", 0f, 0.6).SetDelay(0.15);
+            tween.TweenCallback(Callable.From(quad.QueueFree));
+        }
     }
 
     public void SetHover(Pos? p)

@@ -137,8 +137,8 @@ public sealed class ScavengePresenter
         return null;
     }
 
-    /// <summary>Tiles <paramref name="unit"/> can move to with one move action, with AP cost (Core's movement rules).</summary>
-    public Dictionary<Pos, int> Reachable(Unit unit) => unit.IsActive ? Sim.Reachable(unit) : new();
+    /// <summary>Tiles <paramref name="unit"/> can set or change its move to, with MP cost (Core's movement rules).</summary>
+    public Dictionary<Pos, int> Reachable(Unit unit) => unit.IsActive ? Plans.MoveChoices(Sim, unit) : new();
 
     /// <summary>Visible hostile targets in reach of <paramref name="action"/>, with Core's hit chance.</summary>
     public List<AttackOption> AttackOptions(Unit unit, ActionProfile action)

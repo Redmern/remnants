@@ -243,6 +243,7 @@ public class CoopTests
         Assert.Null(downed.CarriedById);
 
         // A carrier that goes down drops their load on a free tile next to them.
+        carrier.Ap = 1;
         Assert.True(sim.Execute(new Carry(1, carrier.Id, downed.Id)).Ok);
         carrier.Status = UnitStatus.Downed;
         sim.UpdateParties();

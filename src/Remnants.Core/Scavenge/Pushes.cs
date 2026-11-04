@@ -18,9 +18,8 @@ public static class Pushes
     {
         var rules = sim.Data.Rules.Combat.Push;
         if (Straight(c.Direction) is not { } dir) return ScavengeResult.Fail(ScavengeError.InvalidTile, $"{unit.Name} must push some way.");
-        if (rules.ApCost > unit.Ap) return ScavengeResult.Fail(ScavengeError.NotEnoughAp, $"{unit.Name} needs {rules.ApCost} AP to push (has {unit.Ap}).");
-        unit.Ap -= rules.ApCost;
-        Plans.For(sim.State, unit).Steps.Add(new PlanStep { Kind = PlanStepKind.Push, From = Plans.Anchor(sim.State, unit), Direction = dir });
+        if (Plans.PayAction(sim, unit, rules.ApCost, "to push", out var free) is { } refused) return refused;
+        Plans.For(sim.State, unit).Steps.Add(new PlanStep { Kind = PlanStepKind.Push, From = Plans.Anchor(sim.State, unit), Direction = dir, Free = free });
         return ScavengeResult.Success($"{unit.Name} will push.");
     }
 
@@ -30,12 +29,11 @@ public static class Pushes
         var rules = sim.Data.Rules.Combat.Dash;
         if (Straight(c.Direction) is not { } dir) return ScavengeResult.Fail(ScavengeError.InvalidTile, $"{unit.Name} must dash some way.");
         if (c.Tiles < 1 || c.Tiles > rules.Tiles) return ScavengeResult.Fail(ScavengeError.OutOfRange, $"{unit.Name} dashes 1 to {rules.Tiles} tiles.");
-        if (rules.ApCost > unit.Ap) return ScavengeResult.Fail(ScavengeError.NotEnoughAp, $"{unit.Name} needs {rules.ApCost} AP to dash (has {unit.Ap}).");
         var from = Plans.Anchor(sim.State, unit);
         var landing = PlannedLanding(sim, unit, dir, c.Tiles);
         if (landing == from) return ScavengeResult.Fail(ScavengeError.InvalidTile, $"{unit.Name} has no room to dash that way.");
-        unit.Ap -= rules.ApCost;
-        Plans.For(sim.State, unit).Steps.Add(new PlanStep { Kind = PlanStepKind.Dash, From = from, Direction = dir, Reach = c.Tiles, Landing = landing });
+        if (Plans.PayAction(sim, unit, rules.ApCost, "to dash", out var free) is { } refused) return refused;
+        Plans.For(sim.State, unit).Steps.Add(new PlanStep { Kind = PlanStepKind.Dash, From = from, Direction = dir, Reach = c.Tiles, Landing = landing, Free = free });
         return ScavengeResult.Success($"{unit.Name} will dash.");
     }
 

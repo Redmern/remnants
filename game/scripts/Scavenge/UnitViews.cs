@@ -31,9 +31,16 @@ public partial class UnitViews : Node3D
 
     private static readonly Regex DamagePattern = new(@"for (\d+)", RegexOptions.Compiled);
 
+    private static readonly Color BlockColor = new(0.45f, 0.75f, 1f);
+    private static readonly Color PerfectColor = new(1f, 0.85f, 0.3f);
+    private static readonly Color StunColor = new(1f, 0.9f, 0.2f);
+    private static readonly Color LowStaminaColor = new(0.35f, 0.5f, 1f);
+
     private sealed class View
     {
         public int Id;
+        public bool Low;
+        public bool Synced;
         public Node3D Root = null!;
         public Node3D Model = null!;
         public Node3D Pose = null!;
@@ -46,13 +53,22 @@ public partial class UnitViews : Node3D
     private ScavengePresenter _presenter = null!;
     private ScavengeModels _models = null!;
     private readonly Dictionary<int, View> _views = new();
-    private StandardMaterial3D _hitFlash = null!, _healFlash = null!, _networkFlash = null!;
+    private StandardMaterial3D _hitFlash = null!, _healFlash = null!, _networkFlash = null!, _whiffFlash = null!, _blockFlash = null!, _perfectFlash = null!, _stunFlash = null!, _lowStamina = null!;
 
     /// <summary>The screen's feel (juiced pops, hit-stop); null plays the plain replay.</summary>
     public ScavengeJuice? Juice { get; set; }
 
     /// <summary>A pop-up for the HUD: where (unit position), what, which colour, and whether it is a big one.</summary>
     public event System.Action<Vector3, string, Color, bool>? Floated;
+
+    /// <summary>A step of a resolve's playback begins, in sight: the camera goes there.</summary>
+    public event System.Action<ScavengeEvent>? StepStarted;
+
+    /// <summary>An action's pattern tiles flash: green if it landed, else red.</summary>
+    public event System.Action<List<Pos>, bool>? TilesFlashed;
+
+    /// <summary>A unit's adrenaline went up (true) or down: its meter pulses.</summary>
+    public event System.Action<int, bool>? AdrenalinePulsed;
 
     /// <summary>A footfall of a unit (from its walk clip, or one per tile without a rig), for the step sounds.</summary>
     public event System.Action<int, Vector3>? Footstep;
@@ -63,6 +79,11 @@ public partial class UnitViews : Node3D
         _models = models;
         _hitFlash = Placeholders.Material(new Color(1f, 0.15f, 0.1f, 0.65f), unshaded: true);
         _healFlash = Placeholders.Material(new Color(0.4f, 1f, 0.45f, 0.55f), unshaded: true);
+        _whiffFlash = Placeholders.Material(new Color(0.55f, 0.55f, 0.55f, 0.6f), unshaded: true);
+        _blockFlash = Placeholders.Material(new Color(BlockColor, 0.6f), unshaded: true);
+        _perfectFlash = Placeholders.Material(new Color(PerfectColor, 0.8f), unshaded: true);
+        _stunFlash = Placeholders.Material(new Color(StunColor, 0.65f), unshaded: true);
+        _lowStamina = Placeholders.Material(new Color(LowStaminaColor, 0.14f), unshaded: true);
         _networkFlash = Placeholders.Material(new Color(0.3f, 0.9f, 1f, 0.6f), unshaded: true);
     }
 
@@ -92,9 +113,12 @@ public partial class UnitViews : Node3D
                 view.Model.QueueFree();
                 Build(view, unit);
                 view.BodyKey = bodyKey;
+                if (view.Low) TintLow(view);
             }
             Hold(view, unit);
             FaceCore(view, unit);
+            SyncStamina(view, unit);
+            if (view.Low) ((StandardMaterial3D)view.Ring.MaterialOverride).AlbedoColor = LowStaminaColor;
         }
     }
 
@@ -181,6 +205,26 @@ public partial class UnitViews : Node3D
         }
     }
 
+    /// <summary>A unit of the side low on stamina is tinted, with a word and a sound as it gets there. A rival's stamina is its secret.</summary>
+    private void SyncStamina(View view, Unit unit)
+    {
+        var low = unit.IsActive && unit.Side == _presenter.Side && unit.Kind == UnitKind.Survivor && ReplayFeedback.LowStamina(_presenter.Sim, unit);
+        var first = !view.Synced;
+        view.Synced = true;
+        if (low == view.Low) return;
+        view.Low = low;
+        TintLow(view);
+        // A unit already low when the screen opens (a loaded run) says nothing.
+        if (!low || first || !view.Root.Visible) return;
+        Floated?.Invoke(view.Root.Position, "Winded", LowStaminaColor, false);
+        Audio.AudioManager.Fire(ReplayFeedback.LowStaminaSound, view.Root.Position + Vector3.Up);
+    }
+
+    private void TintLow(View view)
+    {
+        foreach (var m in view.Model.FindChildren("*", nameof(MeshInstance3D), true, false).OfType<MeshInstance3D>()) m.MaterialOverlay = view.Low ? _lowStamina : null;
+    }
+
     /// <summary>What the model shows: limb conditions (and prosthetic kind) plus worn gear; the model is rebuilt when it changes.</summary>
     private static string BodyKey(Unit unit) => unit.Side + "|" +
         string.Join(",", unit.Body.Parts.OrderBy(kv => kv.Key).Select(kv => SurvivorDressing.LimbKey(kv.Value)))
@@ -199,9 +243,12 @@ public partial class UnitViews : Node3D
         bool Seen(Pos? p) => p is { } at && map.InBounds(at) && visible.Contains(map.Index(at));
         bool Mine(int? id) => id is { } i && _presenter.State.FindUnit(i) is { } u && u.Side == _presenter.Side;
 
+        var steps = ReplayPacing.StepStarts(events).ToHashSet();
+        var index = -1;
         ScavengeEvent? previous = null;
         foreach (var e in events)
         {
+            index++;
             var actor = e.UnitId is { } a && _views.TryGetValue(a, out var av) ? av : null;
             var target = e.TargetId is { } t && _views.TryGetValue(t, out var tv) ? tv : null;
             var unit = e.UnitId is { } uid ? _presenter.State.FindUnit(uid) : null;
@@ -229,8 +276,70 @@ public partial class UnitViews : Node3D
                 continue;
             }
 
+            if (steps.Contains(index) && !Fast)
+            {
+                StepStarted?.Invoke(e);
+                await Wait((float)ReplayPacing.StepPause);
+            }
+
+            var outcome = ReplayFeedback.Of(e);
             switch (e.Type)
             {
+                case ScavengeEventType.Moved when actor is not null && e.Pos is { } dashed && outcome is { Kind: OutcomeKind.Dash }:
+                    Beat();
+                    actor.Root.Visible = true;
+                    FloatText(actor.Root.Position, outcome.Text, Hud.Palette.Amber);
+                    await Dash(actor, unit, dashed);
+                    if (!Mine(e.UnitId) && !Seen(dashed)) actor.Root.Visible = false;
+                    break;
+
+                // The defended tile rings; a perfect block rings wider, brighter and holds longer.
+                case ScavengeEventType.Blocked when outcome is not null && (target ?? actor) is { } guarded:
+                    Beat();
+                    var perfect = outcome.Kind == OutcomeKind.PerfectBlock;
+                    Flash(guarded, perfect ? _perfectFlash : _blockFlash, perfect ? 0.45f : 0.25f);
+                    Burst(guarded.Root.Position, perfect ? PerfectColor : BlockColor, perfect ? 2.6f : 1.5f, perfect ? 0.5f : 0.3f);
+                    FloatText(guarded.Root.Position, outcome.Text, perfect ? PerfectColor : BlockColor);
+                    await Wait(perfect ? 0.45f : 0.25f);
+                    break;
+
+                // The unit reels; WorldTags keeps the icon on it while the stun lasts.
+                case ScavengeEventType.Stunned when outcome is not null && ReplayFeedback.VictimOf(e) is { } stunnedId && _views.TryGetValue(stunnedId, out var stunned):
+                    Beat();
+                    Flash(stunned, _stunFlash, 0.35f);
+                    Burst(stunned.Root.Position + Vector3.Up * 1.9f, StunColor, 0.8f, 0.4f);
+                    FloatText(stunned.Root.Position, outcome.Text, StunColor);
+                    await Reel(stunned);
+                    break;
+
+                case ScavengeEventType.Collided when outcome is not null && target is not null:
+                    Beat();
+                    Flash(target, _hitFlash, 0.2f);
+                    Burst(target.Root.Position, Hud.Palette.Warn, 1.6f, 0.25f);
+                    FloatText(target.Root.Position, outcome.Text, Hud.Palette.Warn);
+                    await Wait(0.3f);
+                    break;
+
+                case ScavengeEventType.IntentFizzled when outcome is not null && actor is not null:
+                    Beat();
+                    Flash(actor, _whiffFlash, 0.3f);
+                    FloatText(actor.Root.Position, outcome.Text, Hud.Palette.TextMuted);
+                    await Wait(0.2f);
+                    break;
+
+                case ScavengeEventType.AdrenalineChanged when outcome is not null && actor is not null:
+                    Beat();
+                    AdrenalinePulsed?.Invoke(actor.Id, outcome.Kind == OutcomeKind.AdrenalineGain);
+                    // Above the meter, which it would cover.
+                    Floated?.Invoke(actor.Root.Position + Vector3.Up * 0.7f, outcome.Text, outcome.Kind == OutcomeKind.AdrenalineGain ? Hud.Palette.Amber : Hud.Palette.TextMuted, false);
+                    break;
+
+                case ScavengeEventType.PatternResolved when e.Tiles is { } flashed:
+                    Beat();
+                    if (!Fast) TilesFlashed?.Invoke(flashed, e.Landed);
+                    await Wait(0.3f);
+                    break;
+
                 case ScavengeEventType.Moved or ScavengeEventType.DroneFlown when actor is not null && e.Pos is { } to:
                     Beat();
                     var from = TileGrid.FromWorld(actor.Root.Position);
@@ -244,6 +353,7 @@ public partial class UnitViews : Node3D
                     Beat();
                     target.Root.Visible = true;
                     await Displace(actor, target, landing, e.TargetId is { } movedId ? _presenter.State.FindUnit(movedId) : null, snap: false);
+                    if (outcome is not null) FloatText(target.Root.Position, outcome.Text, Hud.Palette.Warn);
                     if (Juice is { } shoveJuice) await shoveJuice.HitStop(e, seen: true);
                     if (!Mine(e.TargetId) && !Seen(landing)) target.Root.Visible = false;
                     break;
@@ -485,6 +595,77 @@ public partial class UnitViews : Node3D
         if (unit is not null && rig.Pick(ClipMap.Hold(unit)) is { } hold) rig.Loop(hold);
     }
 
+    /// <summary>A dash: much quicker than a walk, in a straight line, a streak behind it.</summary>
+    private async Task Dash(View view, Unit? unit, Pos to)
+    {
+        var (from, end) = (view.Root.Position, TileGrid.ToWorld(to));
+        Face(view, end, 0.05f);
+        if (Fast)
+        {
+            view.Root.Position = end;
+            return;
+        }
+        Streak(from, end);
+        view.Rig?.Loop(view.Rig.Pick(["run", "walk"]) ?? "idle");
+        await TweenTo(view.Root, end, 0.2f, linear: true);
+        if (unit is not null && view.Rig?.Pick(ClipMap.Hold(unit)) is { } hold) view.Rig.Loop(hold);
+    }
+
+    /// <summary>A bright bar along the ground from one point to another, fading fast.</summary>
+    private void Streak(Vector3 from, Vector3 to)
+    {
+        var length = from.DistanceTo(to);
+        if (length < 0.01f) return;
+        var material = Placeholders.Material(new Color(Hud.Palette.Amber, 0.85f), unshaded: true);
+        var bar = new MeshInstance3D
+        {
+            Mesh = new BoxMesh { Size = new Vector3(0.28f, 0.06f, length) }, MaterialOverride = material,
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+        };
+        AddChild(bar);
+        bar.Position = (from + to) / 2 + Vector3.Up * 0.3f;
+        bar.Rotation = new Vector3(0, Mathf.Atan2(to.X - from.X, to.Z - from.Z), 0);
+        var tween = bar.CreateTween();
+        tween.TweenProperty(material, "albedo_color:a", 0f, 0.45);
+        tween.TweenCallback(Callable.From(bar.QueueFree));
+    }
+
+    /// <summary>A flat ring sweeping out from a point while it fades. Nothing while skipping animations.</summary>
+    private void Burst(Vector3 at, Color color, float radius, float seconds)
+    {
+        if (Fast) return;
+        var material = Placeholders.Material(new Color(color, 0.9f), unshaded: true);
+        var ring = new MeshInstance3D
+        {
+            Mesh = new TorusMesh { InnerRadius = 0.86f, OuterRadius = 1f, Rings = 32, RingSegments = 4 }, MaterialOverride = material,
+            CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Scale = new Vector3(0.3f, 0.3f, 0.3f),
+        };
+        AddChild(ring);
+        ring.Position = at + Vector3.Up * 0.25f;
+        var tween = ring.CreateTween().SetParallel();
+        if (!Hud.GameSettings.ReduceMotion) tween.TweenProperty(ring, "scale", new Vector3(radius, 0.3f, radius), seconds).SetEase(Tween.EaseType.Out);
+        else ring.Scale = new Vector3(radius, 0.3f, radius);
+        tween.TweenProperty(material, "albedo_color:a", 0f, seconds);
+        tween.Chain().TweenCallback(Callable.From(ring.QueueFree));
+    }
+
+    /// <summary>A stunned unit rocks on its feet (holds still with reduce motion).</summary>
+    private async Task Reel(View view)
+    {
+        if (Fast) return;
+        if (Hud.GameSettings.ReduceMotion)
+        {
+            await Wait(0.3f);
+            return;
+        }
+        var rest = view.Pose.RotationDegrees;
+        var tween = CreateTween();
+        foreach (var lean in new[] { 9f, -7f, 4f })
+            tween.TweenProperty(view.Pose, "rotation_degrees", rest + new Vector3(0, 0, lean), 0.1f).SetTrans(Tween.TransitionType.Sine);
+        tween.TweenProperty(view.Pose, "rotation_degrees", rest, 0.1f);
+        await ToSignal(tween, Tween.SignalName.Finished);
+    }
+
     /// <summary>
     /// A unit put on another tile by a card (<see cref="ScavengeEventType.Displaced"/>): it slides there with no walk, a
     /// swap's player takes the tile it left (Core logs only the moved unit: the player is the one standing on the landing
@@ -650,7 +831,11 @@ public partial class UnitViews : Node3D
             else FloatText(target.Root.Position, text, Hud.Palette.Danger);
             if (target.Rig is { } rig && rig.Current is not ("death" or "downed" or "downed_loop")) rig.Once("hit_react");
         }
-        else FloatText(target.Root.Position, "miss", Hud.Palette.TextMuted);
+        else
+        {
+            Flash(target, _whiffFlash, 0.3f);
+            FloatText(target.Root.Position, ReplayFeedback.Of(e)?.Text ?? "Whiff", Hud.Palette.TextMuted);
+        }
     }
 
     /// <summary>Turns the model toward a world point (models face +Z).</summary>
@@ -821,7 +1006,7 @@ public partial class UnitViews : Node3D
         foreach (var m in meshes) m.MaterialOverlay = overlay;
         GetTree().CreateTimer(seconds).Timeout += () =>
         {
-            foreach (var m in meshes.Where(GodotObject.IsInstanceValid)) m.MaterialOverlay = null;
+            foreach (var m in meshes.Where(GodotObject.IsInstanceValid)) m.MaterialOverlay = view.Low ? _lowStamina : null;
         };
     }
 

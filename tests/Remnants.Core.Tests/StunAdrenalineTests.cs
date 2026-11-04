@@ -66,6 +66,7 @@ public class StunAdrenalineTests
         var b = SurvivorUnit(2, new(4, 3));
         var sim = Table(Always, [a, b], "parry");
         Assert.True(sim.Execute(new PlayCard(2, b.Id, "parry", Tile: b.Pos)).Ok);
+        (a.Ap, a.ExtraActions) = (2, 1);
         Assert.True(sim.Execute(new AttackTile(1, a.Id, b.Pos, "swing")).Ok);
         Assert.True(sim.Execute(new Recover(1, a.Id)).Ok);
         Settle(sim);

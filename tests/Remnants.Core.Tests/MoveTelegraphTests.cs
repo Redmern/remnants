@@ -31,6 +31,7 @@ public class MoveTelegraphTests
     public void Chained_legs_are_one_path_and_actions_never_show()
     {
         var (sim, a, b) = Duel(new(8, 2));
+        b.ExtraMoves = 1;
         Assert.True(sim.Execute(new Move(2, b.Id, new(7, 2))).Ok);
         Assert.True(sim.Execute(new Move(2, b.Id, new(6, 2))).Ok);
         Assert.True(sim.Execute(new Push(2, b.Id, new Pos(-1, 0))).Ok);

@@ -13,6 +13,43 @@ public static class ReplayPacing
     /// <summary>The longest one move's walk may take: long moves speed up so turns keep their pace.</summary>
     public const double MaxWalkSeconds = 1.4;
 
+    /// <summary>The short pause before each step of a resolve's playback.</summary>
+    public const double StepPause = 0.25;
+
+    /// <summary>
+    /// Where a batch of events steps to the next thing to watch: each walk or dash, and each unit's action. What follows from an
+    /// action (a block, a stun, more targets of the same blow) belongs to its step. Commands in planning have no steps.
+    /// </summary>
+    public static List<int> StepStarts(IReadOnlyList<ScavengeEvent> events)
+    {
+        var starts = new List<int>();
+        if (!events.Any(e => e.Type is ScavengeEventType.Moved or ScavengeEventType.PatternResolved or ScavengeEventType.Recovered or ScavengeEventType.RoundStarted))
+            return starts;
+        int? acting = null;
+        var open = false;
+        for (var i = 0; i < events.Count; i++)
+        {
+            var e = events[i];
+            switch (e.Type)
+            {
+                case ScavengeEventType.Moved:
+                    starts.Add(i);
+                    open = false;
+                    break;
+                case ScavengeEventType.PatternResolved or ScavengeEventType.RoundStarted:
+                    open = false;
+                    break;
+                case ScavengeEventType.Attacked or ScavengeEventType.Missed or ScavengeEventType.Displaced or ScavengeEventType.IntentFizzled
+                    or ScavengeEventType.Recovered or ScavengeEventType.CardPlayed or ScavengeEventType.Clashed:
+                    if (!open || e.UnitId != acting) starts.Add(i);
+                    // A recover or a card has no pattern to close it: the unit's next action is a step of its own.
+                    (open, acting) = (e.Type is not (ScavengeEventType.Recovered or ScavengeEventType.CardPlayed), e.UnitId);
+                    break;
+            }
+        }
+        return starts;
+    }
+
     /// <summary>
     /// Whether the side saw anything of an event: it is about one of the side's own units (actor or target), or the
     /// event's tile, the actor's (<paramref name="actorAt"/>) or the target's (<paramref name="targetAt"/>) was in sight

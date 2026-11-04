@@ -487,6 +487,7 @@ public class FieldDeviceTests
         var sim = Arena(12, 10, [thrower, op, linked, husk], setup: (d, s) => camera = Hacking.Place(d, s, DeviceKind.Camera, new Pos(5, 2)));
         // The operator's drone is out near the blast.
         Assert.True(sim.Execute(new DeployDrone(1, op.Id, new Pos(2, 5))).Ok);
+        op.Ap = 1;
         Assert.True(sim.Execute(new FlyDrone(1, op.Id, new Pos(4, 5))).Ok);
         Assert.True(sim.Execute(new EndTurn(1, op.Id)).Ok);
         while (sim.State.CurrentUnitId != thrower.Id) sim.Execute(new EndTurn(1, sim.State.CurrentUnitId!.Value));
@@ -601,6 +602,7 @@ public class ElectronicsSaveTests
         var u = SurvivorUnit(1, new Pos(1, 1), pack: ["holo_decoy", "motion_sensor_mk2"]);
         var linked = EnemyUnit("linked", new Pos(8, 6));
         var sim = Arena(12, 8, [u, linked]);
+        u.Ap = 2;
         Assert.True(sim.Execute(new UseItem(1, u.Id, "holo_decoy", At: new Pos(3, 3))).Ok);
         Assert.True(sim.Execute(new UseItem(1, u.Id, "motion_sensor_mk2", At: new Pos(2, 2))).Ok);
         linked.EmpUntilRound = 4;
@@ -625,6 +627,7 @@ public class DroneRoleTests
     {
         var r = sim.Execute(new DeployDrone(op.PlayerId!.Value, op.Id, at));
         Assert.True(r.Ok, r.Message);
+        op.Ap = 3; // These tests fly and fire it in the same round.
         return sim.State.FindUnit(op.DroneId!.Value)!;
     }
 

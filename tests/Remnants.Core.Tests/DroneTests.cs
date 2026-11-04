@@ -26,6 +26,7 @@ public class DroneTests
     {
         var r = sim.Execute(new DeployDrone(1, op.Id, at));
         Assert.True(r.Ok, r.Message);
+        op.Ap = 3; // These tests fly and fire it in the same round.
         return sim.State.FindUnit(op.DroneId!.Value)!;
     }
 
@@ -71,7 +72,7 @@ public class DroneTests
         Assert.Equal(ScavengeError.InvalidTile, sim.Execute(new FlyDrone(1, op.Id, new Pos(5, 3))).Error);
         Assert.Contains(new Pos(6, 3), Drones.FlightTargets(sim, op));
         Assert.True(sim.Execute(new FlyDrone(1, op.Id, new Pos(6, 3))).Ok, "straight over the wall");
-        Assert.Equal(0, op.Ap);
+        Assert.Equal(2, op.Ap);
         Assert.True(Detection.SideSees(Real, sim.State, op.Side, husk), "the drone sees it");
         Assert.Contains(sim.State.Map.Index(new Pos(10, 3)), sim.VisibleTo(1));
         Assert.True(op.Get(Skill.DronePiloting) > 0);

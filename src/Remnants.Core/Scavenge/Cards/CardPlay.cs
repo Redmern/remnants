@@ -4,8 +4,9 @@ namespace Remnants.Core.Scavenge;
 
 /// <summary>
 /// Playing a card (<see cref="PlayCard"/>) on a character of the party: from the squad hand, or from that character's
-/// personal slots. It costs card points from the squad's round budget and, for some cards, the character's AP (more for a
-/// boost). A card that acts on the board is an action like any other (<see cref="Queued"/>): aimed from where the plan ends,
+/// personal slots. It fills the card slot of the character's plan, separate from its action (<see cref="Plans.Limits"/>): it
+/// costs card points from the squad's round budget and stamina for a card with an AP cost, as an action of that size would, but
+/// leaves the AP for the action. Only a boost takes AP. A card that acts on the board is an action like any other (<see cref="Queued"/>): aimed from where the plan ends,
 /// paid now, taken back with the plan, and it comes up in the action phase, judged afresh then; a buff, or a card that only
 /// hands out AP or priority, takes effect at once. Hard cards need a qualified character, baseline cards give a qualified one their bonus; the
 /// effect then scales (<see cref="CardScaling"/>). Arm-locked cards wait for working arms. A dead hard card nobody in the
@@ -47,6 +48,7 @@ public static class CardPlay
         if (!held || data.Cards.Find(c.CardId) is not { } card)
             return Fail(ScavengeError.NoCard, c.FromSlot ? $"{unit.Name} has no '{c.CardId}' ready in a slot." : $"No '{c.CardId}' in hand.");
         if (!unit.IsActive) return Fail(ScavengeError.Incapacitated, $"{unit.Name} cannot act ({unit.Status}).");
+        if (!Plans.HasRoom(sim, unit, PlanSlot.Card)) return new PlayCheck(Plans.Full(unit, PlanSlot.Card));
         var qualified = card.Requirement.Met(unit);
         if (card.Requirement.Kind == CardKind.Hard && !qualified)
             return Fail(ScavengeError.NotQualified, $"{unit.Name} cannot use {card.Name}: needs {card.Requirement.Describe()}.");
@@ -54,7 +56,7 @@ public static class CardPlay
             return Fail(ScavengeError.ArmsLocked, $"{unit.Name}'s arms are too hurt for {card.Name}.");
         if (card.Cost > deck.Points) return Fail(ScavengeError.NotEnoughPoints, $"{card.Name} needs {card.Cost} card points ({deck.Points} left).");
         var boost = c.Boost && card.BoostAp > 0;
-        var ap = card.ApCost + (boost ? card.BoostAp : 0);
+        var ap = boost ? card.BoostAp : 0;
         if (ap > unit.Ap) return Fail(ScavengeError.NotEnoughAp, $"{unit.Name} needs {ap} AP for {card.Name} (has {unit.Ap}).");
         if (Economy.Stamina(sim, unit) <= 0) return Fail(ScavengeError.NotEnoughAp, $"{unit.Name} has no stamina left for {card.Name}.");
 
@@ -80,6 +82,11 @@ public static class CardPlay
 
         deck.Points -= card.Cost;
         unit.Ap -= ap;
+        unit.CardsPlayed++;
+        // Running out of stamina on it takes AP and MP too: clearing the card gives those back.
+        var (apHad, mpHad) = (unit.Ap, unit.Mp);
+        Economy.Drain(sim, unit, card.ApCost * sim.Data.Rules.Turn.StaminaPerAp);
+        var (apLost, mpLost) = (apHad - unit.Ap, mpHad - unit.Mp);
         if (c.FromSlot) unit.SlotCards.Remove(c.CardId);
         else deck.Hand.Remove(c.CardId);
 
@@ -97,12 +104,38 @@ public static class CardPlay
                 RefundPoints = card.Cost,
                 From = Plans.Anchor(state, unit),
                 Direction = check.Ability?.Direction ?? default,
+                Reach = effect.Dash,
                 Landing = effect.Dash > 0 ? Pushes.PlannedLanding(sim, unit, check.Ability!.Direction, effect.Dash) : null,
             });
             return ScavengeResult.Success($"{unit.Name} will play {card.Name}.", check.Ability?.Target?.Id);
         }
+        var mended = effect.Mend > 0 && Treatment.WorstPart(unit.Body) is { } part ? Before(unit.Body, part) : null;
+        var adrenaline = unit.Adrenaline;
         var text = Take(sim, unit, deck, card, effect, check.Ability, boost, c.FromSlot, deckId ?? c.PlayerId);
+        // A draw has shown the cards: nothing to take back. Anything else holds the slot, and can be undone until planning ends.
+        if (effect.Draw == 0)
+            Plans.For(state, unit).Steps.Add(new PlanStep
+            {
+                Kind = PlanStepKind.Card,
+                CardId = c.CardId,
+                TargetId = check.Ability?.Target?.Id,
+                Boost = boost,
+                FromSlot = c.FromSlot,
+                DeckId = deckId ?? c.PlayerId,
+                RefundPoints = card.Cost,
+                RefundAp = ap + apLost,
+                RefundMp = mpLost,
+                Applied = effect,
+                AppliedAdrenaline = unit.Adrenaline - adrenaline,
+                AppliedMend = mended,
+            });
         return ScavengeResult.Success(text, check.Ability?.Target?.Id);
+    }
+
+    private static MendUndo Before(Body body, BodyPart part)
+    {
+        var p = body[part];
+        return new MendUndo(part, p.Severity, p.Dressing, p.ConditionPenalty, body.Conditions.Where(c => c.Part == part).ToList());
     }
 
     /// <summary>The card takes effect, goes to its pile and is logged to its side; returns the log text.</summary>
@@ -116,6 +149,10 @@ public static class CardPlay
         if (effect.Cover > 0) { unit.CardCover += effect.Cover; done.Add($"+{effect.Cover:P0} cover"); }
         if (effect.Mend > 0 && Treatment.Mend(unit.Body, effect.Mend) is { } mended) done.Add(mended);
         if (effect.Adrenaline > 0) { Adrenaline.Gain(sim, unit, effect.Adrenaline); done.Add($"+{effect.Adrenaline} adrenaline"); }
+        if (effect.ExtraMove > 0) { unit.ExtraMoves += effect.ExtraMove; done.Add($"+{effect.ExtraMove} move"); }
+        if (effect.ExtraAction > 0) { unit.ExtraActions += effect.ExtraAction; unit.Ap += effect.ExtraAction; done.Add($"+{effect.ExtraAction} action"); }
+        if (effect.FreeAction > 0) { unit.FreeActions += effect.FreeAction; done.Add($"+{effect.FreeAction} free action"); }
+        if (effect.ExtraCard > 0) { unit.ExtraCards += effect.ExtraCard; done.Add($"+{effect.ExtraCard} card"); }
         if (effect.Draw > 0) { SquadDecks.Draw(sim, deck, effect.Draw); done.Add($"draws {effect.Draw}"); }
         if (ability is not null) done.AddRange(CardAbilities.Apply(sim, unit, card, effect, ability));
         // Onto its pile only now, so a draw card never reshuffles itself back into the hand.
@@ -158,16 +195,71 @@ public static class CardPlay
     /// <summary>A queued card that will not come up: it is played and gone all the same.</summary>
     internal static void Lost(ScavengeSim sim, Unit unit, PlanStep step)
     {
+        if (step.Applied is not null) return;
         if (SquadDecks.Of(sim.State, step.DeckId) is { } deck && sim.Data.Cards.Find(step.CardId!) is { } card) Spent(unit, deck, card, step.FromSlot);
     }
 
-    /// <summary>A queued card taken back: into the hand or slot it came from, its points returned.</summary>
+    /// <summary>A card taken back: into the hand or slot it came from, its points returned, and what it did already undone.</summary>
     internal static void TakeBack(ScavengeSim sim, Unit unit, PlanStep step)
     {
         if (SquadDecks.Of(sim.State, step.DeckId) is not { } deck) return;
         deck.Points += step.RefundPoints;
+        unit.CardsPlayed = Math.Max(0, unit.CardsPlayed - 1);
+        var back = true;
+        if (step.Applied is { } effect)
+        {
+            back = Unspent(unit, deck, step);
+            Undo(sim, unit, step, effect);
+        }
+        // A reshuffle and a draw may have brought it back to hand already.
+        if (!back) return;
         if (step.FromSlot) unit.SlotCards.Add(step.CardId!);
         else deck.Hand.Add(step.CardId!);
+    }
+
+    /// <summary>Off the pile it went to when played (a reshuffle may have moved it to the draw pile). False when it is on none: it is back in hand.</summary>
+    private static bool Unspent(Unit unit, SquadDeck deck, PlanStep step)
+    {
+        var id = step.CardId!;
+        if (step.FromSlot)
+        {
+            unit.SlotCards.Remove(id);
+            unit.SlotSpent.Remove(id);
+            deck.Consumed.Remove(id);
+            return true;
+        }
+        return deck.Used.Remove(id) || deck.Consumed.Remove(id) || deck.DrawPile.Remove(id);
+    }
+
+    /// <summary>What the card did when played comes off again; a buff used up by now is simply gone.</summary>
+    private static void Undo(ScavengeSim sim, Unit unit, PlanStep step, CardEffect e)
+    {
+        unit.CardMove = Math.Max(0, unit.CardMove - e.Move);
+        unit.Mp -= e.Move * sim.Data.Rules.Turn.MpPerRange;
+        unit.CardHit = Math.Max(0, unit.CardHit - e.Hit);
+        unit.Guard = Math.Max(0, unit.Guard - e.Guard);
+        unit.CardCover = Math.Max(0, unit.CardCover - e.Cover);
+        unit.Adrenaline = Math.Max(0, unit.Adrenaline - step.AppliedAdrenaline);
+        unit.ExtraMoves -= e.ExtraMove;
+        unit.ExtraActions -= e.ExtraAction;
+        unit.Ap -= e.ExtraAction;
+        unit.FreeActions -= e.FreeAction;
+        unit.ExtraCards -= e.ExtraCard;
+        if (step.AppliedMend is { } mend)
+        {
+            var part = unit.Body[mend.Part];
+            (part.Condition, part.Severity, part.Dressing, part.ConditionPenalty) = (PartCondition.Injured, mend.Severity, mend.Dressing, mend.Penalty);
+            unit.Body.Conditions.RemoveAll(c => c.Part == mend.Part);
+            unit.Body.Conditions.AddRange(mend.Conditions);
+        }
+        if (step.TargetId is { } id && sim.State.FindUnit(id) is { } target)
+        {
+            target.Ap -= e.GrantAp;
+            target.ExtraActions -= e.GrantAp;
+            target.PriorityBonus -= ((e.AdvanceInitiative ? 1 : 0) - (e.DelayInitiative ? 1 : 0)) * sim.Data.Rules.Priority.CardShift;
+            if (target.Id != unit.Id) Plans.Settle(sim, target);
+        }
+        Plans.Settle(sim, unit);
     }
 
     internal static ScavengeResult DiscardDead(ScavengeSim sim, Unit unit, DiscardDeadCard c)

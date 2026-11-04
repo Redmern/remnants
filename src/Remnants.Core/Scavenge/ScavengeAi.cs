@@ -51,6 +51,9 @@ internal static class ScavengeAi
     /// <summary>Whether the unit can still add to its plan: up, with points left, and no blow queued yet (moves come before blows).</summary>
     private static bool Acting(ScavengeSim sim, Unit unit) => unit.IsActive && (unit.Ap > 0 || unit.Mp > 0) && !TileStrikes.Readied(sim.State, unit);
 
+    /// <summary>Whether its plan has a move left to fill.</summary>
+    private static bool CanWalk(ScavengeSim sim, Unit unit) => Plans.HasRoom(sim, unit, PlanSlot.Move);
+
     /// <summary>With AP left after its blow, the unit keeps at it: the same blow again, on the same tile.</summary>
     private static void KeepStriking(ScavengeSim sim, Unit unit)
     {
@@ -69,6 +72,7 @@ internal static class ScavengeAi
             {
                 if (unit.Ai.Mode == AiMode.Hunting && unit.Ai.LastKnown is { } last)
                 {
+                    if (!CanWalk(sim, unit)) return;
                     if (unit.Pos == last || !StepToward(sim, unit, last))
                     {
                         unit.Ai.Mode = AiMode.Idle;
@@ -103,6 +107,7 @@ internal static class ScavengeAi
             var known = Network.Known(sim, group);
             if (known.Count == 0)
             {
+                if (!CanWalk(sim, unit)) return;
                 // Nobody in the group sees anything: chase the last shared sighting, else wander.
                 var last = group.Units.Where(u => u.Ai.Mode == AiMode.Hunting && u.Ai.LastKnown is not null)
                     .OrderBy(u => u.Id).Select(u => u.Ai.LastKnown).FirstOrDefault();
@@ -175,6 +180,7 @@ internal static class ScavengeAi
     /// </summary>
     private static bool Reposition(ScavengeSim sim, Unit unit, Unit focus, List<Unit> known)
     {
+        if (!CanWalk(sim, unit)) return false;
         var data = sim.Data;
         var map = sim.State.Map;
         var rules = data.Rules.Network;
@@ -224,6 +230,7 @@ internal static class ScavengeAi
     /// <summary>Fall back: the reachable tile farthest from the nearest known hostile, then with the most cover.</summary>
     private static bool Retreat(ScavengeSim sim, Unit unit, List<Unit> known)
     {
+        if (!CanWalk(sim, unit)) return false;
         var data = sim.Data;
         var map = sim.State.Map;
         int Distance(Pos p) => known.Min(t => t.Pos.Chebyshev(p));
@@ -277,6 +284,7 @@ internal static class ScavengeAi
     /// <summary>Move to the affordable reachable tile that is closest (by walking distance) to the goal, if that is closer than now.</summary>
     private static bool StepToward(ScavengeSim sim, Unit unit, Pos goal)
     {
+        if (!CanWalk(sim, unit)) return false;
         var profile = sim.Profile(unit).Movement;
         var field = Movement.DistanceField(sim.State, unit, profile, goal);
         var here = field.GetValueOrDefault(unit.Pos, int.MaxValue);
@@ -312,7 +320,7 @@ internal static class ScavengeAi
 
     private static void Wander(ScavengeSim sim, Unit unit)
     {
-        if (sim.Rng.NextDouble() >= sim.Data.Rules.Ai.WanderChance) return;
+        if (!CanWalk(sim, unit) || sim.Rng.NextDouble() >= sim.Data.Rules.Ai.WanderChance) return;
         var options = sim.Reachable(unit).Where(kv => kv.Value <= unit.Mp)
             .OrderBy(kv => sim.State.Map.Index(kv.Key)).ToList();
         if (options.Count == 0) return;

@@ -9,7 +9,7 @@
     "upgradeAt": ["armory", "tailor"],
     // Fitting or removing a mod in the field needs this perk hook (Jury-rig) and costs AP.
     "fieldHook": "field_repair",
-    "fieldApCost": 2,
+    "fieldApCost": 1,
     // A ranged attack after moving this turn loses accuracy (a stock takes some of it away). The Linked and
     // machines aim on the move.
     "movedAccuracyPenalty": 0.06,

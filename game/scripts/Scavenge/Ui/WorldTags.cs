@@ -211,6 +211,7 @@ public partial class WorldTags : Control
         var tags = new List<Line>();
         if (unit.Lookout && mine) tags.Add(new("LOOKOUT", Palette.Text, "stance_scan", 12));
         if (unit.IsActive && Stuns.Active(_presenter.State, unit)) tags.Add(new("STUNNED", Palette.Warn, "stat_warning", 12));
+        if (mine && unit.IsActive && unit.Kind == UnitKind.Survivor && ReplayFeedback.LowStamina(_presenter.Sim, unit)) tags.Add(new("WINDED", Palette.Network, "stat_warning", 12));
         if (unit.IsActive && unit.Adrenaline >= 1) tags.Add(new($"ADR {unit.Adrenaline:0}", Palette.Amber, "stat_initiative", 12));
         if (!mine && _presenter.IsRevealed(unit)) tags.Add(new("REVEALED", Palette.Danger, "stat_sight", 12));
         if (unit.EmpUntilRound >= _presenter.State.Round && unit.IsActive) tags.Add(new("EMP · OFF RELAY", Palette.Network, "item_emp", 12));
@@ -227,6 +228,22 @@ public partial class WorldTags : Control
                 Hp: downed ? null : health));
         }
         return lines;
+    }
+
+    /// <summary>The unit's adrenaline meter pulses as it goes up (bright, swelling) or down (dull, shrinking).</summary>
+    public void PulseAdrenaline(int unitId, bool gain)
+    {
+        if (!_unitKeys.TryGetValue(unitId, out var key) || !_stacks.TryGetValue(key, out var stack)) return;
+        foreach (var chip in stack.Box.GetChildren().OfType<TagChip>())
+        {
+            if (!chip.Visible || !chip.Shows("ADR")) continue;
+            chip.PivotOffset = chip.Size / 2;
+            chip.Modulate = gain ? new Color(1.8f, 1.5f, 0.6f) : new Color(0.55f, 0.55f, 0.6f);
+            if (!GameSettings.ReduceMotion) chip.Scale = Vector2.One * (gain ? 1.5f : 0.75f);
+            var tween = chip.CreateTween().SetParallel();
+            tween.TweenProperty(chip, "scale", Vector2.One, 0.35).SetTrans(Tween.TransitionType.Back).SetEase(Tween.EaseType.Out);
+            tween.TweenProperty(chip, "modulate", Colors.White, 0.45);
+        }
     }
 
     private void Place(string key, Vector3 world, List<Line> lines)
@@ -311,6 +328,9 @@ public partial class TagChip : PanelContainer
     private int _size;
     private bool? _strong;
     private Color _color;
+
+    /// <summary>Whether the line reads this at its start.</summary>
+    public bool Shows(string start) => _label.Text.StartsWith(start);
 
     public TagChip()
     {

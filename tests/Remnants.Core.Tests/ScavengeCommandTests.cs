@@ -14,7 +14,7 @@ public class ScavengeCommandTests
         var sim = Arena(8, 8, [u]);
 
         Assert.True(Now(sim, new Move(1, u.Id, new(2, 2))).Ok);
-        Assert.Equal((new Pos(2, 2), 2, 2), (u.Pos, u.Mp, u.Ap));
+        Assert.Equal((new Pos(2, 2), 2, 1), (u.Pos, u.Mp, u.Ap));
         Assert.Equal(ScavengeError.Unreachable, Now(sim, new Move(1, u.Id, new(7, 7))).Error);
         Assert.Equal(ScavengeError.Unreachable, Now(sim, new Move(1, u.Id, new(2, 2))).Error);
 
@@ -87,8 +87,9 @@ public class ScavengeCommandTests
 
         Assert.True(sim.Execute(new PickUp(1, u.Id, 1, "sch_scanner")).Ok);
         Assert.Equal(["sch_scanner"], u.Pack);
-        Assert.Equal(1, u.Ap);
+        Assert.Equal(0, u.Ap);
 
+        u.Ap = 2;
         u.Pack.AddRange(Enumerable.Repeat("scrap", 24)); // capacity 25 kg, 24.1 carried
         Assert.Equal(ScavengeError.CarryLimitExceeded, sim.Execute(new PickUp(1, u.Id, 1, "scrap")).Error);
         u.Pack.RemoveAt(u.Pack.Count - 1);
@@ -133,6 +134,7 @@ public class ScavengeCommandTests
         Combat.ApplyDamage(sim, far, BodyPart.Torso, 100);
         far.Pos = new(1, 1);
         u.Pack.Add("bandage");
+        u.Ap = 1;
         Assert.Equal(ScavengeError.NotUsable, sim.Execute(new UseItem(1, u.Id, "bandage", far.Id)).Error); // bandages cannot stop bleeding out
     }
 
@@ -230,7 +232,7 @@ public class ScavengeCommandTests
         // Walk to the exit; the recruit keeps up on its own turns.
         while (a.Pos != new Pos(0, 0))
         {
-            var step = sim.Reachable(a).Where(kv => kv.Value <= a.Ap).OrderBy(kv => kv.Key.Chebyshev(new(0, 0))).First().Key;
+            var step = sim.Reachable(a).Where(kv => kv.Value <= a.Mp).OrderBy(kv => kv.Key.Chebyshev(new(0, 0))).First().Key;
             Assert.True(Now(sim, new Move(1, a.Id, step)).Ok);
             Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
         }
@@ -260,7 +262,7 @@ public class TurnTests
         Assert.True(sim.Execute(new EndTurn(2, fast.Id)).Ok);
 
         Assert.Equal(2, sim.State.Round);
-        Assert.Equal(2, fast.Ap);
+        Assert.Equal(1, fast.Ap);
     }
 
     [Fact]

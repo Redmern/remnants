@@ -38,6 +38,12 @@ public static class PerkHooks
     public const string AdrenalineGain = "adrenaline_gain";
     public const string AdrenalineDrain = "adrenaline_drain";
 
+    // Planning: on top of what a unit may plan a round (Scavenge.Plans.Limits). An extra action comes with the AP for it; a free action costs no AP or stamina.
+    public const string ExtraMove = "extra_move";
+    public const string ExtraAction = "extra_action";
+    public const string FreeAction = "free_action";
+    public const string ExtraCard = "extra_card";
+
     // Survival / scout
     public const string StealthBonus = "stealth_bonus";
     public const string DetectionBonus = "detection_bonus";

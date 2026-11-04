@@ -107,7 +107,7 @@ internal static class Bot
         if (BotTactics.Card(view, unit, pid) is { } card) return card;
         if (Help(view, unit, allies) is { } help) return help;
 
-        var shot = profile.Actions
+        var shot = profile.Actions.Where(_ => Plans.HasRoom(view, unit, PlanSlot.Action))
             .SelectMany(x => state.Units.Where(t => t.OnMap && unit.HostileTo(t) && !Talking(t) && Combat.ApCost(x, Plans.Anchor(state, unit), BotTactics.Expected(view, unit.Side, t)) <= unit.Ap
                                                     && Combat.CheckReach(view.Data, map, Plans.Anchor(state, unit), x, BotTactics.Expected(view, unit.Side, t)) == ScavengeError.None)
                 .Select(t => (Strike: TileStrikes.StrikeAt(view, unit, x, t, BotTactics.Expected(view, unit.Side, t)), Chance: Combat.HitChance(view.Data, map, Plans.Anchor(state, unit), x, t.Pos, view.Profile(t)))))

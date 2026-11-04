@@ -55,7 +55,7 @@ public static class Priority
 
     private static double Blow(PriorityRules rules, ActionProfile action)
     {
-        if (action.ApCost >= 2 || action.Area > 0) return rules.HeavyWeight;
+        if (action.Heavy || action.ApCost >= 2 || action.Area > 0) return rules.HeavyWeight;
         return action.Pattern == Items.AttackPattern.Melee && action.Reach <= 1 && action.MaxDamage <= rules.LightMaxDamage ? rules.QuickWeight : 0;
     }
 }

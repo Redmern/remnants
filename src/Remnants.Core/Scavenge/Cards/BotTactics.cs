@@ -26,7 +26,7 @@ public static class BotTactics
     /// shove, a pull, a disrupt), a block when one has it in reach, a free strike, a swing or an aim card when it can attack a hostile now, a flank step round to a seen enemy's side or back when
     /// none is in reach; a smoke screen toward who sees it when hurt, a defense card or a barrier toward the hostiles when seen; a
     /// mend when it is hurt; a draw when the hand runs low; else a dead hard card nobody can use is discarded. Only cards
-    /// the rules accept now (<see cref="CardPlay.Check"/>) that cost no AP or leave AP for a blow.
+    /// the rules accept now (<see cref="CardPlay.Check"/>).
     /// </summary>
     public static IScavengeCommand? Card(ScavengeSim sim, Unit unit, int playerId)
     {
@@ -35,11 +35,9 @@ public static class BotTactics
         if (SquadDecks.Of(state, playerId) is not { Hidden: false } deck) return null;
         var at = Plans.Anchor(state, unit);
         var profile = sim.Profile(unit);
-        var cheapest = profile.Actions.Select(a => a.ApCost).DefaultIfEmpty(1).Min();
         bool Playable(CardDef c) =>
-            c.Cost <= deck.Points && (c.Requirement.Kind == CardKind.Baseline || c.Requirement.Met(unit))
-            && !(c.ArmLock && ProfileDeriver.ArmsLocked(data, unit.Body, twoHanded: false))
-            && (c.ApCost == 0 || unit.Ap >= c.ApCost + cheapest);
+            Plans.HasRoom(sim, unit, PlanSlot.Card) && c.Cost <= deck.Points && (c.Requirement.Kind == CardKind.Baseline || c.Requirement.Met(unit))
+            && !(c.ArmLock && ProfileDeriver.ArmsLocked(data, unit.Body, twoHanded: false));
         var hand = deck.Hand.Distinct().Select(data.Cards.Find).OfType<CardDef>().OrderBy(c => c.Id, StringComparer.Ordinal).ToList();
         var playable = hand.Where(Playable).ToList();
         PlayCard Play(CardDef c, int? target = null, Pos? tile = null, Pos? direction = null) => new(playerId, unit.Id, c.Id, target, Tile: tile, Direction: direction);
@@ -70,7 +68,7 @@ public static class BotTactics
         var inReach = hostiles.Where(h => profile.Actions.Any(a => a.ApCost <= unit.Ap && Combat.CheckReach(data, state.Map, at, a, Expected(sim, unit.Side, h)) == ScavengeError.None)).ToList();
         if (Try(playable.Where(c => c.Effect.Strike), At(inReach)) is { } strike) return strike;
         // A swing through the most hostiles it can see, never through a friend.
-        foreach (var c in hand.Where(c => c.Effect.Attack && c.Pattern is not null && c.Cost <= deck.Points && c.ApCost <= unit.Ap && (c.Requirement.Kind == CardKind.Baseline || c.Requirement.Met(unit))))
+        foreach (var c in hand.Where(c => c.Effect.Attack && c.Pattern is not null && c.Cost <= deck.Points && (c.Requirement.Kind == CardKind.Baseline || c.Requirement.Met(unit))))
         {
             var best = Pos.Neighbours8.Select(d => (Dir: d, Tiles: TacticsView.PatternAim(sim, unit, c.Id, null, d)))
                 .Where(o => o.Tiles.AllyTiles.Count == 0)
@@ -130,7 +128,7 @@ public static class BotTactics
     /// </summary>
     public static Move? StepToward(ScavengeSim sim, Unit unit, int playerId, IReadOnlyList<Pos> goals)
     {
-        if (goals.Count == 0) return null;
+        if (goals.Count == 0 || !Plans.HasRoom(sim, unit, PlanSlot.Move)) return null;
         var map = sim.State.Map;
         var movement = sim.Profile(unit).Movement;
         var fields = goals.Select(g => Movement.DistanceField(sim.State, unit, movement, g)).ToList();
@@ -149,6 +147,7 @@ public static class BotTactics
     /// </summary>
     public static Move? Approach(ScavengeSim sim, Unit unit, int playerId, IReadOnlyList<Unit> targets)
     {
+        if (!Plans.HasRoom(sim, unit, PlanSlot.Move)) return null;
         var data = sim.Data;
         var map = sim.State.Map;
         var actions = sim.Profile(unit).Actions;

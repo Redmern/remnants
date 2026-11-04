@@ -143,7 +143,7 @@ public partial class ActionPanel : PanelContainer
                     + (a.CloseApPenalty > 0 ? $"\n+{a.CloseApPenalty} AP within {a.CloseRange} tiles (scope)." : "")
                     + (a.ArmorPierce > 0 ? $"\nPierces {a.ArmorPierce:0.#} armor." : ""), () => SetAction(a.Id));
             button.Toggle(a.Id == ActionId);
-            button.SetBlocked(a.ApCost > unit.Ap, a.ApCost > unit.Ap);
+            button.SetBlocked(a.ApCost > Plans.ApToSpend(_presenter.State, unit), a.ApCost > Plans.ApToSpend(_presenter.State, unit));
         }
 
         if (ActionId is not null && profile.Action(ActionId) is { Patterned: true } chosen)
@@ -158,7 +158,7 @@ public partial class ActionPanel : PanelContainer
                     + "it goes in your plan; whoever hostile stands on the covered tiles when its turn comes is hit.\nStays picked until the round ends; click again to attack units directly.",
                     () => { _strike.Toggle(mode, _presenter.State.Round); ActionChosen?.Invoke(ActionId ?? ""); });
                 button.Toggle(Mode == mode);
-                button.SetBlocked(chosen.ApCost > unit.Ap, chosen.ApCost > unit.Ap);
+                button.SetBlocked(chosen.ApCost > Plans.ApToSpend(_presenter.State, unit), chosen.ApCost > Plans.ApToSpend(_presenter.State, unit));
             }
         }
 

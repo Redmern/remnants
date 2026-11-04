@@ -50,6 +50,7 @@ public partial class ScavengeLog : PanelContainer
 
     public void Event(ScavengeEvent e)
     {
+        if (e.Message.Length == 0) return; // feedback only (a meter's pulse, a pattern's flash)
         var (icon, color) = e.Type switch
         {
             ScavengeEventType.Downed or ScavengeEventType.BledOut => ("stat_injured", Palette.Danger),

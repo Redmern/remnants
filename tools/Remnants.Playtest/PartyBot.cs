@@ -351,7 +351,7 @@ public static class PartyBot
 
         // 2. Hit what gives the most expected damage per AP.
         // The true AP counts (a scope costs more up close).
-        var attack = profile.Actions
+        var attack = profile.Actions.Where(_ => Plans.HasRoom(sim, unit, PlanSlot.Action))
             .SelectMany(a => hostiles
                 .Where(t => BotTactics.Expected(sim, unit.Side, t) is var to && Combat.ApCost(a, unit.Pos, to) <= unit.Ap && Combat.CheckReach(sim.Data, map, unit.Pos, a, to) == ScavengeError.None)
                 .Select(t => (Action: a, Target: t, Chance: Combat.ChanceToHit(sim, unit, a, t))))

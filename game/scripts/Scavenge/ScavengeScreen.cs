@@ -234,6 +234,9 @@ public partial class ScavengeScreen : Node3D
             return true;
         };
         _units.Floated += (at, text, color, big) => _hud.Tags.Pop(at, text, color, big);
+        _units.StepStarted += OnStepStarted;
+        _units.TilesFlashed += (tiles, landed) => _map.FlashTiles(tiles, landed);
+        _units.AdrenalinePulsed += (id, gain) => _hud.Tags.PulseAdrenaline(id, gain);
         _fog.Popped += (at, text, color) => _hud.Tags.Pop(at, text, color, true);
         _presenter.Pushed += OnPushed;
         _turnBar.UnitClicked += id =>
@@ -460,7 +463,11 @@ public partial class ScavengeScreen : Node3D
         // Ready sends the player on to their next unit.
         if (command is EndTurn) _presenter.Focus = null;
         ScavengeResult result;
-        using (PerfMonitor.Measure("execute")) result = await _presenter.Execute(command);
+        using (PerfMonitor.Measure("execute"))
+        {
+            // An order into a full slot changes it, and a refused one leaves the plan as it was.
+            result = await _presenter.Execute(Plans.Replaces(_presenter.Sim, command) is null ? command : new ChangePlan(command.PlayerId, command.UnitId, command));
+        }
         if (result.Ok) _usingItem = null;
         if (result.Ok) CancelCardAim();
         if (result.Ok) _aim = TechAim.None;
@@ -482,6 +489,28 @@ public partial class ScavengeScreen : Node3D
         _ = ReplayNew();
     }
 
+    /// <summary>One replayed event at its beat.</summary>
+    private void OnReplayStep(ScavengeEvent e, bool seen)
+    {
+        _log.Event(e);
+        _fog.Incoming(e);
+        _telegraphs.Incoming(e);
+        CardFlourish(e);
+        _juice.Step(e, seen);
+        _audio.Step(e, _juice.HitPitch(e));
+        WeatherEvent(e);
+        ShootOutcome(e);
+    }
+
+    /// <summary>The camera goes to each step of a resolve's playback: where a walk ends, who acts, or what was hit from the fog.</summary>
+    private void OnStepStarted(ScavengeEvent e)
+    {
+        var at = e.Type == ScavengeEventType.Moved && e.Pos is { } to ? TileGrid.ToWorld(to)
+            : e.UnitId is { } actor && _units.WorldOf(actor) is { } there ? there
+            : e.Pos is { } tile ? TileGrid.ToWorld(tile) : (Vector3?)null;
+        if (at is { } point) _camera.GlideTo(point);
+    }
+
     /// <summary>Replays every event not shown yet against what the side saw before and sees now, then syncs. Expects <see cref="_busy"/> set.</summary>
     private async Task ReplayNew()
     {
@@ -496,23 +525,7 @@ public partial class ScavengeScreen : Node3D
                 _map.ClearHighlights();
                 RefreshHud();
                 _map.Sync();
-                await _units.Replay(events, seenBefore, (e, seen) =>
-                {
-                    _log.Event(e);
-                    _fog.Incoming(e);
-                    _telegraphs.Incoming(e);
-                    CardFlourish(e);
-                    _juice.Step(e, seen);
-                    _audio.Step(e, _juice.HitPitch(e));
-                    WeatherEvent(e);
-                    // Follow what others do in sight (enemy turns, recruits) so it never happens off screen; never what the
-                    // side did not see, nor while animations are skipped.
-                    if (seen && !Hud.GameSettings.SkipAnimations
-                        && e.Type is ScavengeEventType.Moved or ScavengeEventType.Attacked or ScavengeEventType.Missed
-                        && e.UnitId is { } actor && _presenter.State.FindUnit(actor) is { } u && u.PlayerId != _presenter.PlayerId
-                        && _units.WorldOf(actor) is { } at)
-                        _camera.Follow(e.Type == ScavengeEventType.Moved && e.Pos is { } to ? TileGrid.ToWorld(to) : at);
-                });
+                await _units.Replay(events, seenBefore, OnReplayStep);
             }
         } while (_pushPending);
         _busy = false;
@@ -689,8 +702,8 @@ public partial class ScavengeScreen : Node3D
                 _ when _usingItem is { } item => (_actionPanel.ItemHint(item), Hud.Palette.Amber),
                 _ when ownDrone => ($"The drone flies on {acting.Name}'s AP: its orders are under Tech.", Hud.Palette.TextMuted),
                 _ when other => ($"{selected!.Name} is selected; these are {acting.Name}'s orders. {Hud.Hotkeys.KeyName("scav_center")} goes back.", Hud.Palette.Warn),
-                _ when round <= 3 => ("Click a lit tile to plan a move, a red target to plan a blow.", Hud.Palette.TextMuted),
-                _ => ($"MP {acting.Mp} · AP {acting.Ap} · {Hud.Hotkeys.KeyName("end_turn")} commits the plan · {Hud.Hotkeys.KeyName("scav_next_unit")} next unit.", Hud.Palette.TextMuted),
+                _ when round <= 3 => ("Lit tile: set the move. Red target: plan the action. Click again to change.", Hud.Palette.TextMuted),
+                _ => ($"One move, one action, one card · {Hud.Hotkeys.KeyName("end_turn")} commits the plan · {Hud.Hotkeys.KeyName("scav_next_unit")} next unit.", Hud.Palette.TextMuted),
             };
         }
         _hud.Acting.Refresh(_presenter, acting, title, hint, color);
@@ -823,7 +836,6 @@ public partial class ScavengeScreen : Node3D
         var fromTiles = hovered is null ? null : _presenter.MovePreview(selected, hovered);
         foreach (var (tile, cost) in _presenter.Reachable(selected))
         {
-            if (cost > selected.Mp) continue;
             var label = fromTiles?.TryGetValue(tile, out var chance) == true ? $"{chance * 100:0}%" : cost > 1 ? $"{cost} MP" : null;
             _map.Highlight(tile, HighlightKind.Move, label);
         }
@@ -845,8 +857,8 @@ public partial class ScavengeScreen : Node3D
             var ap = Combat.ApCost(action, Plans.Anchor(_presenter.State, selected), option.Target.Pos);
             var effects = ModEffects(action, option.Target, ap);
             previews[option.Target.Id] = new WorldTags.Preview(
-                (ambush ? "AMBUSH " : "") + $"{option.HitChance * 100:0}% · {action.MinDamage:0}–{action.MaxDamage:0}" + (ap > selected.Ap ? " · no AP" : ""),
-                ambush, ap > selected.Ap, effects.Count == 0 ? null : string.Join(" · ", effects.Select(e => e.Text)),
+                (ambush ? "AMBUSH " : "") + $"{option.HitChance * 100:0}% · {action.MinDamage:0}–{action.MaxDamage:0}" + (ap > Plans.ApToSpend(_presenter.State, selected) ? " · no AP" : ""),
+                ambush, ap > Plans.ApToSpend(_presenter.State, selected), effects.Count == 0 ? null : string.Join(" · ", effects.Select(e => e.Text)),
                 effects.Count > 0 && effects.All(e => e.Network));
         }
     }
@@ -914,7 +926,7 @@ public partial class ScavengeScreen : Node3D
                 var step = _presenter.Reachable(u).Where(kv => kv.Value <= u.Mp)
                     .OrderBy(kv => exits.Min(x => x.Chebyshev(kv.Key))).ThenBy(kv => kv.Value)
                     .Select(kv => (Pos?)kv.Key).FirstOrDefault();
-                command = step is { } to && exits.Min(x => x.Chebyshev(to)) < exits.Min(x => x.Chebyshev(u.Pos))
+                command = step is { } to && Plans.HasRoom(_presenter.Sim, u, PlanSlot.Move) && exits.Min(x => x.Chebyshev(to)) < exits.Min(x => x.Chebyshev(u.Pos))
                     ? new Move(pid, u.Id, to)
                     : new EndTurn(pid, u.Id);
             }

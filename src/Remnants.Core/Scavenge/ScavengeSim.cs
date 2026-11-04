@@ -1,3 +1,4 @@
+using Remnants.Core.Colony;
 using Remnants.Core.Items;
 using Remnants.Core.Random;
 using Remnants.Core.Survivors;
@@ -41,9 +42,14 @@ public sealed class ScavengeSim
         return p with { Sight = FieldEnvironment.Sight(Data, State, unit, p.Sight) };
     }
 
-    /// <summary>Tiles the unit can move to with one more planned move, from where its plan ends, with MP cost (for UI highlights).</summary>
-    public Dictionary<Pos, int> Reachable(Unit unit) =>
-        Plans.AtAnchor(State, unit, () => Movement.Reachable(State, unit, Profile(unit).Movement, unit.Mp));
+    /// <summary>Tiles the unit can move to with one more planned move, from where its walking ends, with MP cost (for UI highlights).</summary>
+    public Dictionary<Pos, int> Reachable(Unit unit)
+    {
+        var real = unit.Pos;
+        unit.Pos = Plans.MoveEnd(State, unit);
+        try { return Movement.Reachable(State, unit, Profile(unit).Movement, unit.Mp); }
+        finally { unit.Pos = real; }
+    }
 
     /// <summary>Tile indices the player's side sees right now.</summary>
     public HashSet<int> VisibleTo(int playerId) =>
@@ -71,11 +77,10 @@ public sealed class ScavengeSim
     {
         var result = ScavengeCommandHandlers.Validate(this, command, out var unit) ?? MissionRules.Blocked(this, command);
         var (mpBefore, apBefore, fatigueBefore) = (unit?.Mp ?? 0, unit?.Ap ?? 0, unit?.Fatigue ?? 0);
-        var stepsBefore = unit is null ? 0 : Plans.Of(State, unit)?.Steps.Count ?? 0;
+        var stepsBefore = unit is null ? [] : Plans.Of(State, unit)?.Steps.ToList() ?? [];
         result ??= command switch
         {
             ChooseOption c => MissionRules.Choose(this, unit!, c),
-            Move when Plans.HasDash(State, unit!) => ScavengeResult.Fail(ScavengeError.NotUsable, "Moves go before a dash: take the dash back first."),
             Move c => ScavengeCommandHandlers.Move(this, unit!, c),
             Push c => Pushes.Plan(this, unit!, c),
             Dash c => Pushes.Plan(this, unit!, c),
@@ -94,6 +99,7 @@ public sealed class ScavengeSim
             Recover => Economy.Recover(this, unit!),
             EndTurn => Commit(unit!),
             UndoPlan c => Plans.Undo(this, unit!, c),
+            ChangePlan c => Plans.Change(this, unit!, c),
             Extract => ScavengeCommandHandlers.Extract(this, unit!),
             TakeFromStash c => ParkedVehicles.Unstash(this, unit!, c),
             ProposeAlliance c => Alliances.Propose(this, unit!, c),
@@ -116,9 +122,12 @@ public sealed class ScavengeSim
             _ => ScavengeResult.Fail(ScavengeError.UnknownCommand, $"Unknown command {command.GetType().Name}."),
         };
 
+        // The order inside has been through here on its own.
+        if (command is ChangePlan) return result;
         if (result.Ok)
         {
-            if (command is not Recover) Economy.Pay(this, unit!, mpBefore - unit!.Mp, apBefore - unit.Ap);
+            // Clearing a card takes back MP or AP it gave: not spending.
+            if (command is not (Recover or UndoPlan)) Economy.Pay(this, unit!, mpBefore - unit!.Mp, apBefore - unit.Ap);
             AfterCommand(command, unit!, stepsBefore, mpBefore, apBefore, fatigueBefore);
             MissionRules.Update(this);
             UpdateParties();
@@ -131,13 +140,14 @@ public sealed class ScavengeSim
     }
 
     /// <summary>A new plan entry remembers what it cost; a plan that changes is open again.</summary>
-    private void AfterCommand(IScavengeCommand command, Unit unit, int stepsBefore, int mpBefore, int apBefore, int fatigueBefore)
+    private void AfterCommand(IScavengeCommand command, Unit unit, List<PlanStep> stepsBefore, int mpBefore, int apBefore, int fatigueBefore)
     {
         if (Plans.Of(State, unit) is not { } plan) return;
-        if (plan.Steps.Count > stepsBefore)
+        if (plan.Steps.Find(s => !stepsBefore.Contains(s)) is { } step)
         {
-            var step = plan.Steps[^1];
-            (step.RefundMp, step.RefundAp, step.RefundFatigue) = (mpBefore - unit.Mp, apBefore - unit.Ap, unit.Fatigue - fatigueBefore);
+            // A card that acted at once undoes its own effect on the pools (CardPlay.TakeBack); RefundAp is its boost.
+            if (step.Applied is null) (step.RefundMp, step.RefundAp) = (mpBefore - unit.Mp, apBefore - unit.Ap);
+            step.RefundFatigue = unit.Fatigue - fatigueBefore;
         }
         if (command is Move or AttackTile or PlayCard or Recover or Push or Dash or UndoPlan) plan.Committed = false;
     }
@@ -190,11 +200,20 @@ public sealed class ScavengeSim
         unit.CardMove = 0;
         unit.CardCover = 0;
         unit.PriorityBonus = 0;
+        unit.CardsPlayed = 0;
+        unit.ExtraMoves = 0;
+        unit.ExtraActions = 0;
+        unit.ExtraCards = 0;
+        unit.FreeActions = (int)Math.Round(unit.Hook(PerkHooks.FreeAction));
         Economy.RoundStarted(this, unit);
-        if (State.Round == 1 && unit.FirstRoundAp != 0) unit.Ap = Math.Max(1, unit.Ap + unit.FirstRoundAp);
+        if (State.Round == 1 && unit.FirstRoundAp != 0)
+        {
+            unit.Ap = Math.Max(1, unit.Ap + unit.FirstRoundAp);
+            unit.ExtraActions += Math.Max(0, unit.FirstRoundAp);
+        }
         if (unit.CrashAp > 0)
         {
-            unit.Ap = Math.Max(1, unit.Ap - unit.CrashAp);
+            unit.Ap = Math.Max(0, unit.Ap - unit.CrashAp);
             unit.CrashAp = 0;
             State.Log(new(State.Round, ScavengeEventType.Crashed, $"{unit.Name} crashes off the stim ({unit.Ap} AP).", unit.Id, Pos: unit.Pos));
         }

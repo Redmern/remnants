@@ -247,8 +247,8 @@ public class PushDashTests
         Assert.True(sim.Execute(new Move(1, a.Id, new(2, 3))).Ok);
         Assert.True(sim.Execute(new Dash(1, a.Id, East, 3)).Ok);
         Assert.Equal(new Pos(5, 3), Plans.Anchor(sim.State, a));
-        Assert.False(sim.Execute(new Move(1, a.Id, new(5, 4))).Ok);
-        a.Ap = 2;
+        Assert.Equal(ScavengeError.SlotFull, sim.Execute(new Move(1, a.Id, new(5, 4))).Error);
+        (a.Ap, a.ExtraActions) = (2, 1);
         Assert.True(sim.Execute(new AttackTile(1, a.Id, b.Pos, "swing")).Ok);
         Settle(sim);
         Assert.Equal(new Pos(5, 3), a.Pos);
@@ -263,7 +263,7 @@ public class PushDashTests
         var where = SurvivorUnit(2, new(5, 3));
         var sim = Table([a, blocker, where]);
         Assert.True(sim.Execute(new Dash(1, a.Id, East, 3)).Ok);
-        a.Ap = 2;
+        (a.Ap, a.ExtraActions) = (2, 1);
         Assert.True(sim.Execute(new AttackTile(1, a.Id, where.Pos, "swing")).Ok);
         Settle(sim);
         Assert.Equal(new Pos(2, 3), a.Pos);

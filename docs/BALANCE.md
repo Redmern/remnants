@@ -748,7 +748,7 @@ Key numbers (first pass):
 | on Medicine at the Med Bay | an infection fades at 0.003/h | herbal remedies hold it back without antibiotics |
 | fracture | 35% when a limb hit leaves it at ≥ 0.45; −0.25 efficiency, heals ×0.5; splinted −0.08, heals ×1.25 | a splint is worth 2 AP in the field |
 | pain | worst injury ≥ 0.55: −15% output; no field AP cost (see below) | |
-| fever in the field | infection ≥ 0.5, sickness ≥ 0.4–0.6: −1 AP (never more than 1, never below 2 AP) | sick people should stay home |
+| fever in the field | infection ≥ 0.5, sickness ≥ 0.4–0.6: −1 AP (never more than 1, never below 1 AP, so no effect at the base 1 AP) | sick people should stay home |
 | painkiller | ignores 60% of injury penalties for 4 rounds / 24 h; 3 doses close together start a dependency (−0.08 mood/h × severity, fades in ~4 days) | mild and self-limiting; the Med Bay never doses someone near it |
 | food / Husk sickness | −30% / −45% output; fade 0.012 / 0.003 per hour; Husk sickness drains health from 0.7 | Husk meat is a real gamble |
 | blood bag | revive with 45 HP (med-kit 15); the donor gives 20 health and needs 70+ | |

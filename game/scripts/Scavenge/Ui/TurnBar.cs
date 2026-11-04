@@ -8,8 +8,8 @@ namespace Remnants.Game.Scavenge.Ui;
 
 /// <summary>
 /// Zone and round, the units as portrait chips with a side-colour edge, your own by priority rank (the planning unit
-/// larger, framed and named; those ready faded; unseen ones a "?"), the planning unit's MP, AP as pips and stamina, and
-/// Ready (Space), Leave and the menu (Esc).
+/// larger, framed and named; those ready faded; unseen ones a "?"; your own with their Move, Action and Card slots lit as they
+/// fill), the planning unit's stamina (MP and AP in the tooltip), and Ready (Space), Leave and the menu (Esc).
 /// </summary>
 public partial class TurnBar : PanelContainer
 {
@@ -21,7 +21,6 @@ public partial class TurnBar : PanelContainer
     private readonly Label _round = Widgets.Label("", "Heading");
     private readonly HBoxContainer _order = Widgets.Row(4);
     private readonly Label _ap = Widgets.Label("", "Number");
-    private readonly Pips _apPips = new();
     private readonly Button _endTurn;
 
     public event Action? EndTurnPressed;
@@ -72,11 +71,10 @@ public partial class TurnBar : PanelContainer
         _ap.AddThemeFontSizeOverride("font_size", 14);
         ap.AddChild(_ap);
         var pips = Widgets.Row(4);
-        pips.AddChild(_apPips);
         pips.AddChild(new Hud.Help.InfoTip("controls"));
         ap.AddChild(pips);
         ap.MouseFilter = MouseFilterEnum.Pass;
-        ap.TooltipText = "The planning unit's movement points, action points and stamina. A tile costs MP and 1 stamina, an AP 2 stamina;\nall of it comes back in part at the next round. Nothing happens until every unit is ready.";
+        ap.TooltipText = "The planning unit's stamina. A tile costs MP and 1 stamina, an AP 2 stamina;\nall of it comes back in part at the next round. Nothing happens until every unit is ready.";
         row.AddChild(ap);
         _endTurn = Widgets.IconButton("ui_end_turn", "Ready", "Commit this unit's plan. The round resolves when every unit on every side is ready; until then you can still change it.", () => EndTurnPressed?.Invoke(), Hotkeys.KeyName("end_turn"), "Primary");
         _endTurn.CustomMinimumSize = new Vector2(120, 38);
@@ -133,6 +131,7 @@ public partial class TurnBar : PanelContainer
             at++;
             chip.Set(_presenter, u, current: u.Id == _presenter.ActingUnit?.Id, acted: Plans.Of(state, u) is { Committed: true }, _presenter.CanSee(u));
             chip.SetRank(ranks.TryGetValue(u.Id, out var rank) ? rank : null);
+            chip.SetSlots(_presenter.IsMine(u) ? TacticsView.Slots(_presenter.Sim, u) : null);
         }
         foreach (var (id, chip) in _chips)
             if (!_inOrder.Contains(id) && chip.Visible) chip.Visible = false;
@@ -140,8 +139,11 @@ public partial class TurnBar : PanelContainer
         _busy = busy;
         _ap.Text = Status();
         var acting = _presenter.ActingUnit;
-        _apPips.Visible = acting is not null;
-        if (acting is not null) _apPips.Set(acting.Ap, _presenter.Sim.Profile(acting).MaxAp, Stuns.Active(_presenter.Sim.State, acting) ? Palette.Warn : Palette.Amber);
+        if (acting is not null)
+        {
+            var p = _presenter.Sim.Profile(acting);
+            _ap.TooltipText = $"{acting.Name}: {acting.Mp} of {p.MaxMp} MP, {acting.Ap} of {p.MaxAp} AP" + (Stuns.Active(_presenter.Sim.State, acting) ? " · stunned" : "");
+        }
         _endTurn.Disabled = acting is null || busy;
     }
 
@@ -157,7 +159,7 @@ public partial class TurnBar : PanelContainer
         if (acting is not null)
             {
             var p = _presenter.Sim.Profile(acting);
-            return $"MP {acting.Mp}/{p.MaxMp} · AP {acting.Ap}/{p.MaxAp} · STA {Economy.Stamina(_presenter.Sim, acting)}/{p.MaxStamina}" + (remote is null ? "" : $" · {remote}");
+            return $"STA {Economy.Stamina(_presenter.Sim, acting)}/{p.MaxStamina}" + (remote is null ? "" : $" · {remote}");
         }
         if (_presenter.Done) return "RUN OVER";
         return remote ?? (_busy ? "RESOLVING…" : "WAITING…");
@@ -192,6 +194,10 @@ public partial class OrderChip : PanelContainer
 
     private readonly Label _rank = Widgets.Label("", "Small", Palette.Amber);
 
+    /// <summary>M, A and C, lit as the unit's Move, Action and Card slots fill.</summary>
+    private readonly Label[] _slots = [Widgets.Label("M", "Small", Palette.TextDim), Widgets.Label("A", "Small", Palette.TextDim), Widgets.Label("C", "Small", Palette.TextDim)];
+    private readonly HBoxContainer _slotRow = Widgets.Row(2);
+
     public OrderChip() : this(0) { }
 
     public OrderChip(int unitId)
@@ -212,6 +218,22 @@ public partial class OrderChip : PanelContainer
         row.AddChild(_name);
         _rank.AddThemeFontOverride("font", Fonts.BodyBold);
         row.AddChild(_rank);
+        _slotRow.MouseFilter = MouseFilterEnum.Ignore;
+        foreach (var slot in _slots)
+        {
+            slot.AddThemeFontOverride("font", Fonts.BodyBold);
+            _slotRow.AddChild(slot);
+        }
+        row.AddChild(_slotRow);
+    }
+
+    /// <summary>The unit's slots, shown on your own units only.</summary>
+    public void SetSlots(System.Collections.Generic.List<PlanSlotView>? slots)
+    {
+        _set.Visible(_slotRow, slots is not null);
+        if (slots is null) return;
+        for (var i = 0; i < _slots.Length; i++)
+            _slots[i].AddThemeColorOverride("font_color", slots[i].Used > 0 ? Palette.Amber : Palette.TextDim);
     }
 
     public override void _GuiInput(InputEvent e)

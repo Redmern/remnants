@@ -164,7 +164,7 @@ public class ActionProfileTests
     {
         var actions = Derive(SurvivorUnit(weapon: "rifle")).Actions;
         var shot = actions.Single(a => a.Id == "aimed_shot");
-        Assert.Equal((AttackPattern.Ranged, 10, 2, "rifle"), (shot.Pattern, shot.Reach, shot.ApCost, shot.ItemId));
+        Assert.Equal((AttackPattern.Ranged, 10, 1, true, "rifle"), (shot.Pattern, shot.Reach, shot.ApCost, shot.Heavy, shot.ItemId));
         Assert.Contains(actions, a => a.Id == "butt_strike");
     }
 
@@ -229,7 +229,7 @@ public class ActionProfileTests
     public void Gear_sets_armor_dodge_initiative_ap_sight_and_carry()
     {
         var bare = Derive(SurvivorUnit());
-        Assert.Equal(2, bare.MaxAp);
+        Assert.Equal(1, bare.MaxAp);
         Assert.Equal(4 + 50 * 0.06, bare.Sight, 9);
         Assert.Equal(10 + 50 * 0.3, bare.CarryCapacity, 9);
 

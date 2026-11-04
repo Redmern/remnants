@@ -64,6 +64,10 @@ public enum ScavengeEventType
     FieldEffectPlaced,
     /// <summary>A unit used the recover action.</summary>
     Recovered,
+    /// <summary>A unit's adrenaline went up or down in play (<see cref="ScavengeEvent.Amount"/>). No log line.</summary>
+    AdrenalineChanged,
+    /// <summary>An action with a pattern is over: its <see cref="ScavengeEvent.Tiles"/>, and whether it <see cref="ScavengeEvent.Landed"/>. No log line.</summary>
+    PatternResolved,
 }
 
 /// <summary>
@@ -79,7 +83,7 @@ public enum ScavengeEventType
 public sealed record ScavengeEvent(
     int Round, ScavengeEventType Type, string Message, int? UnitId = null, int? TargetId = null, Pos? Pos = null,
     string? Anonymous = null, string? Side = null, List<string>? SeenBy = null, List<string>? Sides = null, HitTier? Tier = null,
-    double? Amount = null);
+    double? Amount = null, List<Pos>? Tiles = null, bool Landed = false);
 
 /// <summary>A side knows something is near a tile without knowing what: a "?" on its map.</summary>
 public enum ContactKind
@@ -309,9 +313,13 @@ public sealed class ScavengeState
     [System.Text.Json.Serialization.JsonIgnore]
     public Func<ScavengeEvent, ScavengeEvent>? Stamp { get; set; }
 
+    /// <summary>Events logged so far, trimmed or not: the new ones since a count, whatever <see cref="MaxEvents"/> took off the front.</summary>
+    internal int Logged;
+
     public void Log(ScavengeEvent e)
     {
         if (Stamp is { } stamp) e = stamp(e);
+        Logged++;
         Events.Add(e);
         if (Events.Count > MaxEvents) Events.RemoveRange(0, Events.Count - MaxEvents);
     }

@@ -75,13 +75,22 @@ public static class Adrenaline
     public static double Bonus(ScavengeSim sim, Unit unit) => Tier(sim, unit) is var tier and > 0 ? sim.Data.Rules.Adrenaline.TierBonus[tier - 1] : 0;
 
     internal static void Gain(ScavengeSim sim, Unit unit, double amount) =>
-        Set(sim, unit, unit.Adrenaline + amount * (1 + unit.Hook(Colony.PerkHooks.AdrenalineGain)));
+        Change(sim, unit, unit.Adrenaline + amount * (1 + unit.Hook(Colony.PerkHooks.AdrenalineGain)));
 
     internal static void Drain(ScavengeSim sim, Unit unit, double amount) =>
-        Set(sim, unit, unit.Adrenaline - amount * Math.Max(0, 1 - unit.Hook(Colony.PerkHooks.AdrenalineDrain)));
+        Change(sim, unit, unit.Adrenaline - amount * Math.Max(0, 1 - unit.Hook(Colony.PerkHooks.AdrenalineDrain)));
 
     /// <summary>A miss, a blocked attack, a whiffed push.</summary>
     internal static void Failed(ScavengeSim sim, Unit unit) => Drain(sim, unit, sim.Data.Rules.Adrenaline.DrainFailed);
+
+    /// <summary>A change in play, which the meter shows.</summary>
+    private static void Change(ScavengeSim sim, Unit unit, double value)
+    {
+        var was = unit.Adrenaline;
+        Set(sim, unit, value);
+        if (unit.Adrenaline != was)
+            sim.State.Log(new(sim.State.Round, ScavengeEventType.AdrenalineChanged, "", unit.Id, Pos: unit.Pos, Amount: unit.Adrenaline - was));
+    }
 
     private static void Set(ScavengeSim sim, Unit unit, double value)
     {

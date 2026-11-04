@@ -289,7 +289,7 @@ public static class Combat
             damage = Math.Max(1, damage * (1 - block.Share));
             state.Log(new(state.Round, ScavengeEventType.Blocked,
                 $"{block.Defender.Name}'s {(block.Perfect ? "perfect " : "")}block takes {block.Share * 100:0}% off the hit on {target.Name}.", block.Defender.Id, target.Id, target.Pos,
-                Anonymous: $"The hit on {target.Name} is blocked."));
+                Anonymous: $"The hit on {target.Name} is blocked{(block.Perfect ? " perfectly" : "")}."));
             Stuns.Blocked(sim, attacker, action, block.Defender, block.Share, block.Perfect);
         }
         else Adrenaline.Gain(sim, attacker, data.Rules.Adrenaline.GainHit);

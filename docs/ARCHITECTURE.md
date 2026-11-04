@@ -1001,7 +1001,7 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
   `ScavengePresenter.KnowledgeOf` and `BestiaryKnowledge.Colony`), and the colony overlays `DeckBuilderPanel` and
   `BestiaryPanel` (Deck and Bestiary in the top bar). Sound cues are `scavenge.intent_*`, `scavenge.card_*`,
   `scavenge.countered`, `scavenge.displaced`, `scavenge.initiative_changed`, `scavenge.field_effect_placed` in
-  `game/audio/sound_events.json`. Debug captures: `--scavenge --tactics-demo[=overlay|picker|reaction|enemy|preview|
+  `game/audio/sound_events.json`. Debug captures: `--scavenge --tactics-demo[=overlay|picker|reaction|enemy|preview|slots|slots-push|slots-dash|slots-recover|slots-ally|slots-change|slots-input|outcomes|resolve|
   targeting|smoke]` (`--play-aim` then plays the aimed card and checks every model is on its Core tile),
   `--colony --deck-demo=deck|slots|upgrades`, `--colony --bestiary-demo`.
 - **Ability cards** (`Scavenge/Cards/CardAbilities.cs`, `FieldEffects.cs`): cards declare a target (self, ally, enemy,
@@ -1096,6 +1096,7 @@ All numbers live in `data/perks.json` (`skills`, `xp`, `study`, `disciplines`, `
   | `hack_alarm_reduction` | share of a hack's alarm/noise removed (0.5 = half) | Network Ghost |
   | `can_hack_linked` | flag: can hack Linked units, not only Husks and devices | Override |
   | `hack_ap_discount` | AP off a hack's cost | Hacking II |
+  | `extra_move`, `extra_action`, `free_action`, `extra_card` | more of a plan slot each round (`Plans.Limits`); an extra action comes with its AP, a free action costs no AP or stamina | none yet |
   | `field_repair` | flag/strength: jury-rig gear and devices in the field | Jury-rig |
   | `drone_range_bonus` | tiles added to a scout drone's control range | Drone Operator I/II |
   | `drone_battery_bonus` | rounds added to a scout drone's battery | Drone Operator I/II |

@@ -188,6 +188,7 @@ public static class CardAbilities
         if (effect.GrantAp > 0 && target is not null)
         {
             target.Ap += effect.GrantAp;
+            target.ExtraActions += effect.GrantAp;
             done.Add($"{target.Name} +{effect.GrantAp} AP");
         }
         if ((effect.AdvanceInitiative || effect.DelayInitiative) && target is not null)

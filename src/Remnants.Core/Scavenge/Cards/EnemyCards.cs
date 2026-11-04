@@ -57,7 +57,7 @@ public static class EnemyCards
     {
         var data = sim.Data;
         var state = sim.State;
-        bool Playable(CardDef c) => c.Cost <= deck.Points && c.ApCost <= unit.Ap && (c.Requirement.Kind == CardKind.Baseline || c.Requirement.Met(unit))
+        bool Playable(CardDef c) => c.Cost <= deck.Points && (c.Requirement.Kind == CardKind.Baseline || c.Requirement.Met(unit))
                                     && !(c.ArmLock && ProfileDeriver.ArmsLocked(data, unit.Body, twoHanded: false));
         var hand = deck.Hand.Distinct().Select(data.Cards.Find).OfType<CardDef>().Where(Playable).OrderBy(c => c.Id, StringComparer.Ordinal).ToList();
         PlayCard? Try(IEnumerable<CardDef> cards, IEnumerable<Unit?> targets, Pos? tile = null)
@@ -74,9 +74,9 @@ public static class EnemyCards
 
         var buffs = hand.Where(c => !c.Effect.IsAbility).ToList();
         var at = Plans.Anchor(state, unit);
-        // A block costs AP, so it needs its own look at the hand. It guards the tile the unit will be on.
+        // A block guards the tile the unit will be on.
         var guards = deck.Hand.Distinct().Select(data.Cards.Find).OfType<CardDef>()
-            .Where(c => c.Effect.Block > 0 && c.Target == CardTarget.Tile && c.Cost <= deck.Points && c.ApCost <= unit.Ap).OrderBy(c => c.Id, StringComparer.Ordinal);
+            .Where(c => c.Effect.Block > 0 && c.Target == CardTarget.Tile && c.Cost <= deck.Points).OrderBy(c => c.Id, StringComparer.Ordinal);
         if (!BotTactics.Guarding(state, sim.Data, unit) && hostiles.Any(h => Combat.ThreatZone(sim, h).Contains(at)) && Try(guards, [null], at) is { } block) return block;
         if (Try(hand.Where(Breaks), hostiles.Where(h => Combat.ThreatZone(sim, h).Contains(at))) is { } broken) return broken;
         PlayCard Buff(CardDef c) => new(0, unit.Id, c.Id);

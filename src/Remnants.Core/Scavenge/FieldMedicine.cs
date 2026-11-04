@@ -34,6 +34,7 @@ public static class FieldMedicine
         if (use.StimAp > 0)
         {
             unit.Ap += use.StimAp;
+            unit.ExtraActions += use.StimAp;
             unit.CrashAp = Math.Max(unit.CrashAp, use.CrashAp);
             done.Add($"+{use.StimAp} AP now, a crash next turn");
         }

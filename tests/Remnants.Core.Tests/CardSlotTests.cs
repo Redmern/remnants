@@ -46,6 +46,7 @@ public class CardSlotTests
         var deck = new SquadDeck { PlayerId = 1, Points = 3, Budget = 3, HandSize = 5 };
         sim.State.Decks.Add(deck);
         a.SlotCards = ["take_cover", "field_dressing"];
+        a.ExtraCards = 1;
         a.Body.Injure(BodyPart.Torso, 0.4);
 
         Assert.True(sim.Execute(new PlayCard(1, a.Id, "take_cover", FromSlot: true)).Ok);

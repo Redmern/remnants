@@ -541,7 +541,12 @@ public sealed record PriorityRules
 
 public sealed record TurnRules
 {
-    public int BaseAp { get; init; } = 2;
+    public int BaseAp { get; init; } = 1;
+
+    /// <summary>What a unit may plan a round before cards and perks: moves, actions, cards (<see cref="Plans.Limits"/>).</summary>
+    public int PlanMoves { get; init; } = 1;
+    public int PlanActions { get; init; } = 1;
+    public int PlanCards { get; init; } = 1;
 
     /// <summary>MP a round for a unit of baseline movement range; each step of range above or below it shifts this by <see cref="MpPerRange"/>.</summary>
     public int BaseMp { get; init; } = 4;

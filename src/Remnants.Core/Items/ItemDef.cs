@@ -112,6 +112,9 @@ public sealed record ActionDef
     /// <summary>Unusable while the arms are badly hurt (see <c>ProfileDeriver.ArmsLocked</c>).</summary>
     public bool ArmLock { get; init; }
 
+    /// <summary>A slow blow: it comes down late in the action phase (<see cref="Scavenge.PriorityRules.HeavyWeight"/>).</summary>
+    public bool Heavy { get; init; }
+
     /// <summary>Splash radius (Chebyshev) around the target: other hostiles of the attacker in it are attacked too, each with its own roll.</summary>
     public int Area { get; init; }
 

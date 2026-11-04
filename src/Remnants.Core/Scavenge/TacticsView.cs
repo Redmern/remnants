@@ -25,6 +25,9 @@ public sealed record HitPreviewInfo(bool InReach, double Chance, Breakdown? Brea
 /// A card in the hand strip (or in a unit's slot, <see cref="SlotOf"/>): its numbers, the units it could be played on now
 /// (<see cref="PlayableBy"/>), and whether it is a dead hard card nobody in the party can use.
 /// </summary>
+/// <summary>One of a unit's plan slots: how many are filled and allowed, what is in it, and whether it can be cleared.</summary>
+public sealed record PlanSlotView(PlanSlot Slot, int Used, int Limit, string Text, bool Clearable);
+
 public sealed record CardView(string Id, string Name, string Text, CardCategory Category, int Cost, int ApCost, int BoostAp,
     bool Consumable, bool ArmLock, string Requirement, CardKind Kind, int? SlotOf, List<int> PlayableBy, bool Dead);
 
@@ -115,6 +118,25 @@ public static class TacticsView
         sim.State.Units.Where(u => u.Side == side && u.IsActive && u.OnMap && Plans.Acts(sim, u))
             .OrderByDescending(u => Priority.Movement(sim, u)).ThenBy(u => Priority.TieBreak(sim.State.Round, u.Id))
             .Select((u, i) => (u.Id, Rank: i + 1)).ToDictionary(x => x.Id, x => x.Rank);
+
+    /// <summary>The unit's Move, Action and Card slots, for its own side's eyes.</summary>
+    public static List<PlanSlotView> Slots(ScavengeSim sim, Unit unit)
+    {
+        var (steps, used, limit) = (Plans.Of(sim.State, unit)?.Steps ?? [], Plans.Used(sim.State, unit), Plans.Limits(sim, unit));
+        var walks = steps.Where(s => s.Kind == PlanStepKind.Move).ToList();
+        var actions = steps.Where(s => Plans.SlotOf(s) == PlanSlot.Action).Select(s => s.Kind switch
+        {
+            PlanStepKind.Strike => sim.Profile(unit).Action(s.Strike!.ActionId)?.Name ?? s.Strike.ActionId,
+            _ => s.Kind.ToString(),
+        }).ToList();
+        var cards = steps.Where(s => s.Kind == PlanStepKind.Card).Select(s => sim.Data.Cards.Find(s.CardId!)?.Name ?? s.CardId!).ToList();
+        return
+        [
+            new(PlanSlot.Move, used.Moves, limit.Moves, walks.Count == 0 ? "Stay" : $"Walk, {walks.Sum(s => s.RefundMp)} MP", walks.Count > 0),
+            new(PlanSlot.Action, used.Actions, limit.Actions, actions.Count == 0 ? "None" : string.Join(", ", actions), actions.Count > 0),
+            new(PlanSlot.Card, used.Cards, limit.Cards, cards.Count > 0 ? string.Join(", ", cards) : used.Cards > 0 ? "Played" : "None", cards.Count > 0),
+        ];
+    }
 
     /// <summary>What the unit has queued, for its own side's eyes.</summary>
     public static PlanPreviewView PlanPreview(ScavengeSim sim, Unit unit)
@@ -388,6 +410,10 @@ public static class TacticsView
         if (e.Step > 0) parts.Add($"step {e.Step}");
         if (e.Spin) parts.Add("spin round");
         if (e.GrantAp > 0) parts.Add($"+{e.GrantAp} AP");
+        if (e.ExtraMove > 0) parts.Add($"+{e.ExtraMove} move");
+        if (e.ExtraAction > 0) parts.Add($"+{e.ExtraAction} action");
+        if (e.FreeAction > 0) parts.Add($"+{e.FreeAction} free action");
+        if (e.ExtraCard > 0) parts.Add($"+{e.ExtraCard} card");
         if (e.AdvanceInitiative) parts.Add("goes next");
         if (e.DelayInitiative) parts.Add("goes last");
         if (e.PlaceBarrier > 0) parts.Add($"barrier {e.PlaceBarrier} rounds");
