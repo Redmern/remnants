@@ -282,4 +282,80 @@ public class PlanningViewTests
         Tie(sim, pusher, dasher);
         Assert.True(dasher.Pos.X > 4); // pushed to (4,3), then on from there
     }
+
+    /// <summary>Two tied hostiles walk for one tile in the given round; who got there.</summary>
+    private static int RaceWinner(int round)
+    {
+        var mine = SurvivorUnit(1, new(2, 3));
+        var theirs = SurvivorUnit(2, new(6, 3));
+        var sim = Table([mine, theirs]);
+        sim.State.Round = round;
+        Assert.True(sim.Execute(new Move(1, mine.Id, new(4, 3))).Ok);
+        Assert.True(sim.Execute(new Move(2, theirs.Id, new(4, 3))).Ok);
+        Assert.Equal(Priority.Movement(sim, mine), Priority.Movement(sim, theirs));
+        Settle(sim);
+        return mine.Pos == new Pos(4, 3) ? 1 : theirs.Pos == new Pos(4, 3) ? 2 : 0;
+    }
+
+    [Fact]
+    public void A_tied_race_for_a_tile_is_replayable_and_not_always_won_by_the_same_side()
+    {
+        var rounds = Enumerable.Range(1, 40).ToList();
+        var winners = rounds.Select(RaceWinner).ToList();
+        Assert.Equal(winners, rounds.Select(RaceWinner).ToList());
+        Assert.DoesNotContain(0, winners);
+        Assert.InRange(winners.Count(w => w == 1), 10, 30);
+    }
+
+    [Fact]
+    public void The_tie_break_is_a_pure_function_of_round_and_unit()
+    {
+        Assert.Equal(Priority.TieBreak(7, 3), Priority.TieBreak(7, 3));
+        Assert.NotEqual(Priority.TieBreak(7, 3), Priority.TieBreak(8, 3));
+        Assert.NotEqual(Priority.TieBreak(7, 3), Priority.TieBreak(7, 4));
+    }
+
+    [Fact]
+    public void Own_ranks_show_the_order_a_tie_will_really_go_in()
+    {
+        var a = SurvivorUnit(1, new(2, 2));
+        var c = SurvivorUnit(1, new(2, 4));
+        var sim = Table([a, c, SurvivorUnit(2, new(9, 2))]);
+        foreach (var round in Enumerable.Range(1, 12))
+        {
+            sim.State.Round = round;
+            var first = Priority.TieBreak(round, a.Id) < Priority.TieBreak(round, c.Id) ? a : c;
+            Assert.Equal(1, TacticsView.Ranks(sim, a.Side)[first.Id]);
+        }
+    }
+
+    /// <summary>Three hostiles on one score, whatever their plans are: A shoves B, B yanks C, C swings.</summary>
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(6)]
+    [InlineData(7)]
+    [InlineData(8)]
+    public void A_three_way_clash_never_leaves_two_units_on_one_tile(int round)
+    {
+        var a = SurvivorUnit(1, new(2, 3));
+        var b = SurvivorUnit(2, new(3, 3));
+        var c = SurvivorUnit(3, new(5, 3), weapon: "pipe");
+        var sim = Table([a, b, c], "yank");
+        sim.State.Round = round;
+        Assert.True(sim.Execute(new Push(1, a.Id, East)).Ok);
+        Assert.True(sim.Execute(new PlayCard(2, b.Id, "yank", c.Id)).Ok);
+        Assert.True(sim.Execute(new AttackTile(3, c.Id, new(4, 3), "swing")).Ok);
+        var score = Priority.Action(sim, a, Plans.Of(sim.State, a)!.Steps[0]);
+        b.PriorityBonus += score - Priority.Action(sim, b, Plans.Of(sim.State, b)!.Steps[0]);
+        c.PriorityBonus += score - Priority.Action(sim, c, Plans.Of(sim.State, c)!.Steps[0]);
+        foreach (var u in new[] { a, b, c }) Assert.True(sim.Execute(new EndTurn(u.PlayerId!.Value, u.Id)).Ok);
+        Settle(sim);
+        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Clashed);
+        var tiles = new[] { a, b, c }.Where(u => u.OnMap).Select(u => u.Pos).ToList();
+        Assert.Equal(tiles.Count, tiles.Distinct().Count());
+    }
 }

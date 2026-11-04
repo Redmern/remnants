@@ -113,7 +113,7 @@ public static class TacticsView
     /// <summary>A side's own units by priority, 1 first. Rivals' ranks are never shown: they are simply not here.</summary>
     public static Dictionary<int, int> Ranks(ScavengeSim sim, string side) =>
         sim.State.Units.Where(u => u.Side == side && u.IsActive && u.OnMap && Plans.Acts(sim, u))
-            .OrderByDescending(u => Priority.Movement(sim, u)).ThenBy(u => u.Id)
+            .OrderByDescending(u => Priority.Movement(sim, u)).ThenBy(u => Priority.TieBreak(sim.State.Round, u.Id))
             .Select((u, i) => (u.Id, Rank: i + 1)).ToDictionary(x => x.Id, x => x.Rank);
 
     /// <summary>What the unit has queued, for its own side's eyes.</summary>

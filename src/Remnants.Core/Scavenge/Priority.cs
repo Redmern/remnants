@@ -7,6 +7,18 @@ namespace Remnants.Core.Scavenge;
 /// </summary>
 public static class Priority
 {
+    /// <summary>
+    /// Who goes first between equal scores: a hash of the round and the unit, so no side or unit always wins and a replay or
+    /// a client gets the same answer. Not <see cref="HashCode"/>, which differs from one process to the next.
+    /// </summary>
+    public static ulong TieBreak(int round, int id)
+    {
+        var x = (((ulong)(uint)round << 32) | (uint)id) + 0x9E3779B97F4A7C15UL;
+        x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9UL;
+        x = (x ^ (x >> 27)) * 0x94D049BB133111EBUL;
+        return x ^ (x >> 31);
+    }
+
     /// <summary>The unit's score before what it is doing: this is what orders the movement phase.</summary>
     public static double Movement(ScavengeSim sim, Unit unit)
     {

@@ -25,7 +25,7 @@ internal static class RoundResolver
     {
         var state = sim.State;
         var order = state.Plans.Select(p => state.FindUnit(p.UnitId)).OfType<Unit>().Where(u => u.IsActive)
-            .OrderByDescending(u => Priority.Movement(sim, u)).ThenBy(u => u.Id).ToList();
+            .OrderByDescending(u => Priority.Movement(sim, u)).ThenBy(u => Priority.TieBreak(state.Round, u.Id)).ToList();
         foreach (var unit in order)
         {
             if (state.Finished) return;
@@ -81,7 +81,7 @@ internal static class RoundResolver
                 .ToList();
             if (heads.Count == 0) break;
             var best = heads.Max(h => h.Score);
-            var top = heads.Where(h => h.Score >= best - Epsilon).ToList();
+            var top = heads.Where(h => h.Score >= best - Epsilon).OrderBy(h => Priority.TieBreak(state.Round, h.Unit.Id)).ToList();
             var clash = top.Where(h => top.Any(o => o.Unit.HostileTo(h.Unit))).ToList();
             if (clash.Count > 1) Clash(sim, clash.Select(h => (h.Unit, h.Plan, h.Step)).ToList());
             else
@@ -115,10 +115,13 @@ internal static class RoundResolver
                 Resolve(sim, unit, group[i].Step);
                 continue;
             }
+            // From its tile at the start, unless something has been put there since. Back afterwards, unless its own tile was
+            // taken while it was away: then it stays, so no two units ever share a tile.
             var now = unit.Pos;
-            unit.Pos = tiles[i];
+            var from = state.UnitAt(tiles[i]) is { } there && there.Id != unit.Id ? now : tiles[i];
+            unit.Pos = from;
             Resolve(sim, unit, group[i].Step);
-            if (unit.Pos == tiles[i]) unit.Pos = now;
+            if (unit.Pos == from && state.UnitAt(now) is null) unit.Pos = now;
         }
         sim.EffectFactor = 1;
     }
