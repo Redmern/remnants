@@ -108,7 +108,10 @@ public class BotCounterTests
         Settle(sim);
         Assert.Equal(round, a.Ai.DashedRound);
         foe.Pos = a.Pos + new Pos(1, 0);
-        Assert.IsNotType<Dash>(BotTactics.Counter(sim, a, 1));
+        sim.State.Round++;
+        sim.BeginRound(a);
+        a.Ap = 2;
+        Assert.IsType<Defend>(BotTactics.Counter(sim, a, 1));
     }
 
     [Fact]
@@ -134,7 +137,7 @@ public class BotCounterTests
     }
 
     [Fact]
-    public void A_foes_hidden_steps_do_not_change_what_a_bot_or_the_overlay_makes_of_it()
+    public void A_foes_hidden_dash_and_guard_do_not_change_what_a_bot_or_the_overlay_makes_of_it()
     {
         var a = SurvivorUnit(1, new(4, 3), weapon: "pipe");
         var rival = SurvivorUnit(2, new(6, 3), weapon: "pipe");
@@ -174,6 +177,28 @@ public class BotCounterTests
         var sim = Arena(14, 7, [a, EnemyUnit("husk", new(7, 3))]);
         a.Fatigue = sim.Profile(a).MaxStamina - 1;
         Assert.IsType<Recover>(BotTactics.Counter(sim, a, 1));
+    }
+
+    [Fact]
+    public void A_walk_it_cannot_see_stays_out_of_what_a_bot_expects()
+    {
+        var nearSighted = With(r => r with { Fog = r.Fog with { CloseRange = 1, PerTile = 1000 } });
+        var a = SurvivorUnit(1, new(4, 3), weapon: "pipe");
+        var rival = SurvivorUnit(2, new(8, 3), weapon: "pipe");
+        var sim = Arena(14, 7, [a, rival], data: nearSighted);
+        Assert.True(sim.Execute(new Move(2, rival.Id, new(7, 3))).Ok);
+        Assert.Equal(new Pos(8, 3), BotTactics.Expected(sim, a.Side, rival));
+    }
+
+    [Fact]
+    public void The_guard_odds_count_a_foe_by_the_walk_it_shows()
+    {
+        var a = SurvivorUnit(1, new(4, 3), weapon: "pipe");
+        var rival = SurvivorUnit(2, new(6, 3), weapon: "pipe");
+        var sim = Arena(14, 7, [a, rival]);
+        Assert.Empty(TacticsView.DefendOdds(sim, a));
+        Assert.True(sim.Execute(new Move(2, rival.Id, new(5, 3))).Ok);
+        Assert.Equal(rival.Id, Assert.Single(TacticsView.DefendOdds(sim, a)).UnitId);
     }
 
     [Fact]

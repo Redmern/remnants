@@ -558,8 +558,8 @@ public sealed record BotRules
 {
     public int GuardEvery { get; init; } = 3;
     public double HurtBelow { get; init; } = 0.5;
-    public double PositionRisk { get; init; } = 0.3;
-    public double PositionGain { get; init; } = 1.45;
+    public double PositionRisk { get; init; } = 1;
+    public double PositionGain { get; init; } = 1.05;
 }
 
 /// <summary>What an enemy pays next round for a blow or push on an empty tile.</summary>

@@ -60,7 +60,7 @@ public sealed record PlanCardStats
                 EnemyRounds += state.Units.Count(u => u.IsActive && u.Kind is UnitKind.Enemy or UnitKind.Device);
                 break;
             case ScavengeEventType.IntentResolved or ScavengeEventType.IntentFizzled or ScavengeEventType.IntentCanceled:
-                // Plans come out only as they resolve: nothing announces one.
+                // Only blows log IntentResolved, so a Defend, push, dash or card that worked is not here, though one that fizzled is.
                 Declared++;
                 if (Enemy(e.UnitId)) EnemyDeclared++;
                 if (e.Type == ScavengeEventType.IntentResolved) Resolved++;

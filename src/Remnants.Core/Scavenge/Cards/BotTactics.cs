@@ -163,8 +163,8 @@ public static class BotTactics
 
     /// <summary>
     /// What to do instead of a plain blow, by what the side can see, or null to fight on: a push when it drives a seen
-    /// neighbour into something; hurt or with two on it, a dash clear of every seen reach, else a guard toward the nearest;
-    /// winded with nothing in reach, a rest. Never looks at a plan its side cannot see.
+    /// neighbour into something; hurt or with two on it, a dash clear of every seen reach, else a guard toward the nearest,
+    /// but nothing if it moved last round without dashing, so it fights instead of backing off every round; winded with nothing in reach, a rest. Never looks at a plan its side cannot see.
     /// </summary>
     public static IScavengeCommand? Counter(ScavengeSim sim, Unit unit, int playerId)
     {
@@ -228,7 +228,7 @@ public static class BotTactics
     /// </summary>
     public static Move? Position(ScavengeSim sim, Unit unit, int playerId)
     {
-        // One walk to a tile, then the blow: circling a foe that holds for a walker would go on for ever.
+        // One walk to a tile, then the blow: circling a foe would go on for ever.
         if (unit.LastMove != default || !Plans.HasRoom(sim, unit, PlanSlot.Move) || !Plans.HasRoom(sim, unit, PlanSlot.Action)) return null;
         var (state, data) = (sim.State, sim.Data);
         var seen = state.Units.Where(u => u.IsActive && u.OnMap && unit.HostileTo(u) && !u.Structure && Detection.SideSees(data, state, unit.Side, u)).ToList();

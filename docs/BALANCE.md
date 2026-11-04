@@ -1941,7 +1941,8 @@ The same with `--zone=outskirts`. The baselines are the same commands without `-
 **AC-32 is not met in Suburb Ruins, and only reaches the line in Outskirts.** The target was fizzled under 30% of planned actions.
 - Mixed is at 36% in Suburb Ruins and 30% in Outskirts, down from 64-66% at `5293faf`.
 - Against the pre-rework `d997667` (13-15%) fizzling is still higher.
-- Most of what is left is enemy blows (43% and 34%). Enemies plan when the round opens and may not read plans, so a target that steps off makes them whiff. That is the bait the rework asks for (AC-19), so the two goals pull against each other.
+- These shares are not quite of all planned actions. Only blows log a resolved line, so a Defend, push, dash or card that worked is not counted, though one that fizzled is (mostly a push that met nobody). Counting blows alone, mixed is at 34% in Suburb Ruins and 27% in Outskirts, `5293faf` 64% and 66%, `d997667` 11% and 11%, walk-attack 11% and 9%. So Outskirts meets the target for blows, and Suburb Ruins misses it either way.
+- Enemy blows fizzle the most (43% and 34%). Enemies plan when the round opens and may not read plans, so a target that steps off makes them whiff. That is the bait the rework asks for (AC-19), so the two goals pull against each other.
 - An earlier tuning reached 29% and 37% by making Husk types hold their blow on anyone who walked last round. It was removed: enemies never struck a walker, and a fight could stall for good (AC-19, AC-21).
 
 **A read pays off.**

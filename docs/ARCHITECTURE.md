@@ -314,9 +314,9 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   survivors dressed by `SurvivorDressing` with their gear and prosthetics, side rings; names only for the selected,
   hovered and acting units, an HP bar when focused or hurt; replays events with
   tweens and hit flashes, skipping what the local side cannot see), `TacticalCamera` (orthographic, yaw 45°, pitch
-  35.264°; WASD/middle-drag pan, wheel zoom, Q/E rotate 90°; starts on the party, follows other units' visible actions).
+  35.264°; WASD/middle-drag pan, wheel zoom, Q/E rotate 90°; starts on the party, follows the visible actions when a round resolves).
   `SidePalette` colours rings, labels and turn chips alike (other players' parties violet). Units that leave a remote
-  view are hidden; the turn bar shows whose turn it is and the turn timer in multiplayer. HUD in `Scavenge/Ui/`, laid out
+  view are hidden; the turn bar shows who is done planning and the round timer in multiplayer. HUD in `Scavenge/Ui/`, laid out
   by `ScavengeHud` (which also owns the hotkeys and the pause menu). Turn bar on top: `TurnBar` (zone, round, the
   party as `OrderChip`s kept per unit — side-colour edge, the unit planning larger, framed and named, those
   done planning faded, unseen ones "?", HP as a bottom-edge tint —, its stamina, Ready, Leave, menu), the
@@ -328,7 +328,7 @@ Everything targets **net8.0** (GodotSharp 4.7.2 ships net8.0; Core must load ins
   More), Gear (folded, summary; slots, pack, load), and an Ally section for a co-op ally's read-only unit — with
   `LootPanel` docked under it while the acting unit stands at a pile, on an exit with a pack, or is slowed (one load bar
   against the encumbrance steps, item chips per pile, Take all (F) amber when it slows, `PackRow`s with Drop 1 and Stash
-  on an exit). Right: one fixed-width column — `ActingHeader` (the acting unit's portrait and "Silas's turn", and a
+  on an exit). Right: one fixed-width column — `ActingHeader` (the planning unit's portrait and name, and a
   reserved two-line hint: what a click does while aiming an item / ping / drone order, another unit selected, enemy
   turn, autoplay; its height never changes, so the buttons below never move), `MissionPanel`, then the orders in a
   fixed order: `ActionPanel` (Attack · Use, numbered 1–9, attacks then items), `StancePanel`, `ActionPanel.Context`
@@ -437,7 +437,7 @@ models still load and fall back to tweens.
 - **Scavenge commands** (`Move`, `AttackTile`, `UseItem` (on a unit, or a tile with `At`), `PickUp`, `Recruit`, `Recover`, `Push`, `Dash`, `Lookout`, `EndTurn`, `Extract`; co-op: `ProposeAlliance`, `RespondAlliance`, `BreakAlliance`,
   `PingTile`, `GiveItem`, `Carry`, `PutDown`; tech: `Hack`, `DeployDrone`, `FlyDrone`, `RecallDrone`, `MarkTarget`,
   `DropPayload`; drone roles: `DroneHeal`, `DroneLoad`, `DroneFerry`, `DroneFire`; vehicles: `StashItem`, `TakeFromStash`, `Salvage`) carry a
-  `PlayerId` + `UnitId`; Core checks ownership and whose turn it is and returns a `ScavengeResult`
+  `PlayerId` + `UnitId`; Core checks ownership and whether the round is open for planning and returns a `ScavengeResult`
   with a `ScavengeError`. Several players' parties can share one instance (each party is a side).
   A party is done when it has no conscious controllable unit left (its downed die, recruits stay or go over to an ally),
   unless an ally is still up to carry its downed out; the instance finishes when every party is done.
