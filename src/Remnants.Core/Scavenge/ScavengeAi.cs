@@ -119,16 +119,9 @@ internal static class ScavengeAi
         if (unit.IsActive && !retreating && !TileStrikes.Readied(sim.State, unit)) Lurk(sim, unit);
     }
 
-    /// <summary>A Linked with AP for it left at the end of its turn waits on overwatch (rules.fog.ai.linkedLurk).</summary>
-    private static bool Lurk(ScavengeSim sim, Unit unit)
-    {
-        var fog = sim.Data.Rules.Fog;
-        if (!fog.Ai.LinkedLurk || unit.Ap < fog.Overwatch.ApCost || unit.Stance != Stance.None) return false;
-        var left = unit.Ap - fog.Overwatch.ApCost;
-        unit.Ap = 0;
-        ScavengeCommandHandlers.Enter(sim, unit, Stance.Overwatch, left);
-        return true;
-    }
+    /// <summary>A Linked with AP for a shot left at the end of its turn holds it on overwatch, toward what it last knew of (rules.fog.ai.linkedLurk).</summary>
+    private static bool Lurk(ScavengeSim sim, Unit unit) =>
+        sim.Data.Rules.Fog.Ai.LinkedLurk && Overwatches.OnArc(sim, unit, unit.PlayerId ?? 0) is CommitOverwatch watch && Overwatches.Commit(sim, unit, watch).Ok;
 
     /// <summary>Every unit in the group now hunts the focus; one that was idle and does not see it learns of it through the Network.</summary>
     private static void Share(ScavengeSim sim, NetworkGroup group, Unit focus)

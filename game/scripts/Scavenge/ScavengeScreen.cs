@@ -250,6 +250,14 @@ public partial class ScavengeScreen : Node3D
         _actionPanel.CommandRequested += command => _ = Run(command);
         _hud.Loot.CommandRequested += command => _ = Run(command);
         _stancePanel.CommandRequested += command => _ = Run(command);
+        _stancePanel.OverwatchAimRequested += () =>
+        {
+            CancelCardAim();
+            _usingItem = null;
+            _pinging = null;
+            _aim = TechAim.Overwatch;
+            RefreshHud();
+        };
         _techPanel.CommandRequested += command => _ = Run(command);
         _unitPanel.CommandRequested += command => _ = Run(command);
         _techPanel.AimChosen += aim =>
@@ -346,6 +354,15 @@ public partial class ScavengeScreen : Node3D
         var clicked = state.UnitAt(tile) is { } u && _presenter.CanSee(u) ? u : null;
         var acting = _presenter.ActingUnit;
         var pid = _presenter.PlayerId;
+
+        if (_aim == TechAim.Overwatch && acting is not null)
+        {
+            _aim = TechAim.None;
+            _ = Run(Input.IsKeyPressed(Key.Shift)
+                ? new CommitOverwatch(pid, acting.Id, Arc: Combat.Face(acting.Pos, tile))
+                : new CommitOverwatch(pid, acting.Id, Tile: tile));
+            return;
+        }
 
         if (_aim is TechAim.Heal or TechAim.Fire && acting is not null)
         {
@@ -730,6 +747,9 @@ public partial class ScavengeScreen : Node3D
             foreach (var (tile, kind) in _presenter.Threats())
                 if (_presenter.IsExplored(tile))
                     _map.Highlight(tile, kind == ThreatKind.Strike ? HighlightKind.ThreatPlanned : HighlightKind.Threat);
+        if (!_busy && !_presenter.Done)
+            foreach (var tile in TacticsView.Watches(_presenter.Sim, _presenter.Side).SelectMany(w => w.Tiles))
+                _map.Highlight(tile, HighlightKind.Use);
         if (HighlightCardAim()) return;
         if (selected is null || !selected.OnMap || !_presenter.CanSee(selected)) return;
         _map.Highlight(selected.Pos, HighlightKind.Selected);
@@ -754,6 +774,11 @@ public partial class ScavengeScreen : Node3D
                     previews[t.Id] = new WorldTags.Preview($"DRONE {Bestiary.ShownChance(_presenter.Sim.Data.Rules.Bestiary, Combat.ChanceToHit(_presenter.Sim, gunship, gun, t), _presenter.KnowledgeOf(t)) * 100:0}% · {gun.MinDamage:0}–{gun.MaxDamage:0}",
                         false, gun.ApCost > acting!.Ap);
             }
+            return;
+        }
+        if (isActing && _aim == TechAim.Overwatch)
+        {
+            foreach (var p in Overwatches.InReach(_presenter.Sim, acting!)) _map.Highlight(p, HighlightKind.Use);
             return;
         }
         if (isActing && _aim != TechAim.None)

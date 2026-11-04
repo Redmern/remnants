@@ -292,7 +292,7 @@ public class PlayCardTests
         b.Attributes[Survivors.AttributeKind.Agility] = 35;
         var sim = Arena(10, 3, [a, b], data: Sure);
         Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
-        Assert.True(sim.Execute(new SetStance(2, b.Id, Stance.Overwatch)).Ok);
+        Assert.True(sim.Execute(new CommitOverwatch(2, b.Id, Arc: new Pos(-1, 0))).Ok);
         b.CardHit = 0.1;
         Assert.True(sim.Execute(new Move(1, a.Id, new(2, 1))).Ok);
         Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Overwatch && e.UnitId == b.Id);

@@ -451,8 +451,8 @@ public class HackingTests
         var watcher = SurvivorUnit(1, new Pos(1, 1), weapon: "pistol");
         watcher.Hooks = Real.HooksFor(["sentinel"]);
         var sim = Arena(6, 6, [watcher, SurvivorUnit(1, new Pos(1, 2)), EnemyUnit("husk", new Pos(5, 5))]);
-        Assert.True(sim.Execute(new SetStance(1, watcher.Id, Stance.Overwatch)).Ok);
-        Assert.Equal(3, watcher.Reactions);
+        Assert.True(sim.Execute(new CommitOverwatch(1, watcher.Id, Arc: new Pos(1, 1))).Ok);
+        Assert.Equal(1, watcher.Reactions);
     }
 
     [Fact]

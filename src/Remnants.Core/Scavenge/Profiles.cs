@@ -41,7 +41,8 @@ public sealed record ActionProfile(
     IReadOnlyList<BaneDef>? ExtraBanes = null,
     double NetworkFeedback = 0,
     int? DiagonalReach = null,
-    IReadOnlyList<StrikeMode>? Modes = null)
+    IReadOnlyList<StrikeMode>? Modes = null,
+    int Knockback = 0)
 {
     /// <summary>Reach along a diagonal.</summary>
     public int DiagonalRange => DiagonalReach ?? Reach;
@@ -317,7 +318,7 @@ public static class ProfileDeriver
 
             result.Add(new ActionProfile(a.Id, a.Name, itemId, a.Pattern, a.Reach,
                 a.MinDamage * damageScale, a.MaxDamage * damageScale, a.ApCost, Math.Max(0, accuracy), a.Noise, a.Area, a.Reveal, a.Bane,
-                a.ArmorPierce, a.InjuryMultiplier, a.CloseRange, a.CloseApPenalty, a.ExtraBanes, a.NetworkFeedback, a.DiagonalReach, a.Modes));
+                a.ArmorPierce, a.InjuryMultiplier, a.CloseRange, a.CloseApPenalty, a.ExtraBanes, a.NetworkFeedback, a.DiagonalReach, a.Modes, a.Knockback));
         }
 
         foreach (var item in working)

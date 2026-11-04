@@ -260,6 +260,9 @@ public sealed class SideFog(int playerId, string side)
         copy.Hooks = new(StringComparer.Ordinal);
         copy.CyberHooks = new();
         copy.FieldXp = 0;
+        // That it is on overwatch shows; what it watches does not.
+        copy.Watch = null;
+        copy.Reactions = 0;
         copy.DroneBattery = null;
         copy.ChargesUsed = new(StringComparer.Ordinal);
         // Card buffs on it would give away hit chances and moves the cards behind them buy.

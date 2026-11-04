@@ -151,7 +151,7 @@ public static class ScavengeSession
         if (int.TryParse(DebugCapture.Value("--rounds"), out var rounds))
             for (var i = 0; i < 200 && sim.State.Round < rounds && sim.State.CurrentUnit is { } u && !sim.State.Finished; i++)
                 sim.Execute(sim.State.Mission?.Pending is { } p ? new ChooseOption(u.PlayerId!.Value, u.Id, p.Id, p.Options[0].Id)
-                    : u.Ap >= 1 && i % 2 == 0 ? new SetStance(u.PlayerId!.Value, u.Id, Stance.Overwatch) : new EndTurn(u.PlayerId!.Value, u.Id));
+                    : i % 2 == 0 ? Overwatches.OnArc(sim, u, u.PlayerId!.Value) ?? new EndTurn(u.PlayerId!.Value, u.Id) : new EndTurn(u.PlayerId!.Value, u.Id));
         return sim;
     }
 

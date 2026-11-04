@@ -305,7 +305,6 @@ public static class Combat
             if (state.Units.Any(u => u.Side == side && u.IsActive && u.Pos.Chebyshev(attacker.Pos) <= action.Noise)
                 && !Detection.SideSees(data, state, side, attacker))
                 Detection.AddContact(data, state, side, attacker.Pos, ContactKind.Noise, attacker.Id);
-        sim.CheckOverwatch(attacker);
     }
 
     private static void Strike(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, AmbushInfo? ambush, bool reaction = false)
@@ -375,6 +374,7 @@ public static class Combat
             state.Log(new(state.Round, ScavengeEventType.Suppressed, $"{target.Name} is stunned ({action.Name}).", attacker.Id, target.Id, target.Pos,
                 Anonymous: $"{target.Name} is stunned."));
             if (!target.PlayerControlled) TileStrikes.Lose(sim, target, "stunned");
+            Overwatches.Drop(sim, target, "stunned");
         }
         if (bane is { DisruptRounds: > 0 } && target.IsActive && Network.IsLinked(data, target))
         {
@@ -382,6 +382,9 @@ public static class Combat
             state.Log(new(state.Round, ScavengeEventType.RelayDisrupted, $"{target.Name} is knocked off the relay.", attacker.Id, target.Id, target.Pos,
                 Anonymous: $"{target.Name} is knocked off the relay."));
         }
+        if (action.Knockback > 0 && target.IsActive && !target.Structure
+            && CardAbilities.Slide(sim, target, Face(attacker.Pos, target.Pos), action.Knockback) is var landing && landing != target.Pos)
+            CardAbilities.Displace(sim, target, landing, attacker);
     }
 
     /// <summary>
@@ -476,12 +479,14 @@ public static class Combat
             target.Status = UnitStatus.Evacuated;
             target.CarriedById = null;
             TileStrikes.Lose(sim, target, "down");
+            Overwatches.Drop(sim, target, "down");
             state.Log(new(state.Round, ScavengeEventType.Downed, $"{target.Name} is down and dragged to safety.", target.Id, Pos: target.Pos));
             sim.UpdateParties();
             return;
         }
         target.Status = UnitStatus.Downed;
         TileStrikes.Lose(sim, target, "down");
+        Overwatches.Drop(sim, target, "down");
         target.BleedOut = c.BleedOutRounds;
         target.Stabilized = false;
         target.Ap = 0;

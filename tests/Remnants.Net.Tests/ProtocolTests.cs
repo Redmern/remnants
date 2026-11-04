@@ -29,7 +29,7 @@ public class ProtocolTests
         [
             new Move(1, 2, new Pos(3, 4)), new AttackTile(1, 2, new Pos(5, 5), "pistol_shot"), new UseItem(1, 2, "med_kit", 5), new UseItem(1, 2, "bandage"),
             new PickUp(1, 2, 3, "scrap"), new Recruit(1, 2, 7), new EndTurn(1, 2), new Extract(1, 2),
-            new UseItem(1, 2, "flare", At: new Pos(6, 1)), new SetStance(1, 2, Stance.Overwatch), new Lookout(1, 2),
+            new UseItem(1, 2, "flare", At: new Pos(6, 1)), new SetStance(1, 2, Stance.Brace), new CommitOverwatch(1, 2, new Pos(4, 4)), new CommitOverwatch(1, 2, Arc: new Pos(1, 0)), new Lookout(1, 2),
             new ProposeAlliance(1, 2, 3), new RespondAlliance(1, 2, 3, true), new BreakAlliance(1, 2),
             new PingTile(1, 2, new Pos(1, 1), PingKind.Loot), new GiveItem(1, 2, 4, "scrap"), new Carry(1, 2, 4), new PutDown(1, 2, new Pos(2, 2)),
             new Hack(1, 2, 7), new Hack(1, 2, TargetId: 5), new DeployDrone(1, 2, new Pos(3, 3)), new FlyDrone(1, 2, new Pos(6, 6)),

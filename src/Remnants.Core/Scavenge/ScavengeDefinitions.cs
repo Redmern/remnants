@@ -628,17 +628,9 @@ public sealed record AmbushRules
     public double BacksReduction { get; init; } = 0.5;
 }
 
-/// <summary>
-/// Overwatch stance: ends the turn; reacts to hostiles that move or reveal themselves in sight and reach. The AP left
-/// after paying for it become reactions (at least one, at most <see cref="Reactions"/>).
-/// </summary>
+/// <summary>Overwatch (<see cref="Overwatches"/>): the shots' accuracy penalty and the sharper eyes while on watch.</summary>
 public sealed record OverwatchRules
 {
-    /// <summary>AP needed to go on overwatch.</summary>
-    public int ApCost { get; init; } = 1;
-
-    /// <summary>Most reactions one overwatch holds.</summary>
-    public int Reactions { get; init; } = 2;
     public double AccuracyPenalty { get; init; } = 0.1;
     public double DetectionBonus { get; init; } = 10;
 }

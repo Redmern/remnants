@@ -12,6 +12,9 @@ public enum ThreatKind { Reach, Strike }
 public sealed record Telegraph(int UnitId, string Name, Pos From, Pos? AttackTile, string? ActionName, bool Suppress,
     List<Pos> Threatened, bool AimedAtUs);
 
+/// <summary>A unit of the side's on overwatch: where it stands and the tiles it watches.</summary>
+public sealed record WatchView(int UnitId, string Name, Pos From, List<Pos> Tiles);
+
 /// <summary>An attack as the preview shows it: in reach from the tile, the hit chance, and its terms.</summary>
 public sealed record HitPreviewInfo(bool InReach, double Chance, Breakdown? Breakdown);
 
@@ -65,6 +68,11 @@ public static class TacticsView
         }
         return list;
     }
+
+    /// <summary>The side's own units on overwatch and what they watch.</summary>
+    public static List<WatchView> Watches(ScavengeSim sim, string side) =>
+        sim.State.Units.Where(u => u.IsActive && u.Side == side && u.Watch is not null).OrderBy(u => u.Id)
+            .Select(u => new WatchView(u.Id, u.Name, u.Pos, Overwatches.Watched(sim, u))).ToList();
 
     /// <summary>
     /// The threat overlay: every tile a seen enemy's telegraphed blow will strike (<see cref="ThreatKind.Strike"/>), and every
@@ -239,7 +247,7 @@ public static class TacticsView
         }
         if (target is not null && TileStrikes.Readied(state, target)
             && (e.Disrupt || landing is not null && target.Id != unit.Id && e.Step == 0))
-            said.Add(target.HostileTo(unit) ? "breaks its plan, exposed" : $"{target.Name}'s plan falls through");
+            said.Add(target.HostileTo(unit) ? "breaks its strike, exposed" : $"{target.Name}'s strike falls through");
         if (e.Spin && target is not null) said.Add($"{target.Name} turns its back to you");
         if (ability?.Strike is { } blow && target is not null)
         {
@@ -292,7 +300,7 @@ public static class TacticsView
         if (e.PlaceBarrier > 0) parts.Add($"barrier {e.PlaceBarrier} rounds");
         if (e.Smoke > 0) parts.Add($"smoke {e.Smoke} rounds");
         if (e.Strike) parts.Add("strike now");
-        if (e.Disrupt) parts.Add("breaks the plan");
+        if (e.Disrupt) parts.Add("breaks the strike");
         return string.Join(", ", parts);
     }
 

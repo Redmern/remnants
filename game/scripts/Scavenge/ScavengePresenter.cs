@@ -149,7 +149,7 @@ public sealed class ScavengePresenter
             .ToList();
     }
 
-    /// <summary>Seen enemy plans as telegraphs (Core's <see cref="TacticsView"/>; never the card).</summary>
+    /// <summary>Seen enemy strikes as telegraphs (Core's <see cref="TacticsView"/>; never the card).</summary>
     public List<Telegraph> Telegraphs() => TacticsView.Telegraphs(Sim, Side);
 
     /// <summary>The threat overlay: planned blows of seen enemies, and what they could hit from where they stand.</summary>
@@ -176,7 +176,7 @@ public sealed class ScavengePresenter
     /// <summary>Whether a card is aimed (on the map, after picking who plays it): an ability at a unit or tile, or a reaction.</summary>
     public bool IsAimed(string cardId) => Sim.Data.Cards.Find(cardId) is { } card && (card.Reaction || card.Target != CardTarget.Self);
 
-    /// <summary>Seen enemies with a plan (what a reaction card answers).</summary>
+    /// <summary>Seen enemies with a readied strike (what a reaction card answers).</summary>
     public List<Unit> ReactionTargets() => TacticsView.ReactionTargets(Sim, PlayerId);
 
     /// <summary>

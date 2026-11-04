@@ -199,8 +199,8 @@ public static class Hacking
         target.Side = unit.Side;
         target.OverrideUntilRound = state.Round + rules.OverrideRounds - 1;
         target.Ai = new AiMemory();
+        Overwatches.Drop(sim, target, "overridden");
         target.Stance = Stance.None;
-        target.Reactions = 0;
         Trained(unit, rules.SkillOnSuccess, rules.XpOnSuccess);
         state.Log(new(state.Round, ScavengeEventType.Overridden,
             $"{unit.Name} overrides {target.Name} ({chance:P0}): it fights for them for {rules.OverrideRounds} rounds.", unit.Id, target.Id, target.Pos));

@@ -39,8 +39,14 @@ public sealed record PlayCard(int PlayerId, int UnitId, string CardId, int? Targ
 /// <summary>Discard a hard card nobody in the party qualifies for, at no cost, once a round.</summary>
 public sealed record DiscardDeadCard(int PlayerId, int UnitId, string CardId) : IScavengeCommand;
 
-/// <summary>Go on overwatch or brace. Either ends the unit's turn and holds until its next one.</summary>
+/// <summary>Brace. It ends the unit's turn and holds until its next one. Overwatch takes <see cref="CommitOverwatch"/>.</summary>
 public sealed record SetStance(int PlayerId, int UnitId, Stance Stance) : IScavengeCommand;
+
+/// <summary>
+/// Go on overwatch (wire name <c>commitOverwatch</c>), watching one <see cref="Tile"/> in reach or the front arc of one
+/// <see cref="Arc"/> direction, never both. The AP left is held for shots for the round. See <see cref="Overwatches"/>.
+/// </summary>
+public sealed record CommitOverwatch(int PlayerId, int UnitId, Pos? Tile = null, Pos? Arc = null) : IScavengeCommand;
 
 /// <summary>Scan the surroundings: more sight and detection until the unit's next turn. Does not end the turn.</summary>
 public sealed record Lookout(int PlayerId, int UnitId) : IScavengeCommand;
@@ -213,7 +219,6 @@ public enum ScavengeError
     NodeDepleted,
     /// <summary>Gear mods: the mod does not fit, the slot is full or empty, or there is no gear there.</summary>
     CannotMod,
-    /// <summary>The unit already has a plan waiting: plans cannot be revised or cancelled.</summary>
     /// <summary>The card is not in the hand (or the character's ready slots), or the party has no deck.</summary>
     NoCard,
     /// <summary>The character does not meet a hard card's requirement.</summary>
@@ -221,7 +226,7 @@ public enum ScavengeError
     NotEnoughPoints,
     /// <summary>An arm-locked card while the character's arms are too hurt.</summary>
     ArmsLocked,
-    /// <summary>A reaction card needs a seen enemy with a telegraphed plan.</summary>
+    /// <summary>A reaction card needs a seen enemy with a readied strike.</summary>
     NoIntent,
     /// <summary>A dead card was discarded this round already.</summary>
     DeadCardSpent,

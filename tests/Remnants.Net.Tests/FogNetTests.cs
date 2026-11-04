@@ -100,7 +100,7 @@ public class FogNetTests
         Assert.Empty(b.View.Sensors);
         Assert.DoesNotContain(b.Last<Snapshot>().Events, e => e.Type == ScavengeEventType.SensorPlaced);
 
-        Assert.True(a.Do(new SetStance(a.Id, sniper.Id, Stance.Overwatch)).Ok);
+        Assert.True(a.Do(new CommitOverwatch(a.Id, sniper.Id, Arc: new Pos(1, 0))).Ok);
         Assert.Equal(Stance.Overwatch, a.View.Units.Single(u => u.Id == sniper.Id).Stance);
 
         // Bob walks into the sensor's radius: Alice's sensor reveals him, the overwatch may fire; Bob only hears about
@@ -136,6 +136,23 @@ public class FogNetTests
         Assert.Equal(victim.Id, mine.TargetId);
         Assert.Contains(a.Last<Snapshot>().Events, e => e.Type == ScavengeEventType.IntentDeclared && e.UnitId == sniper.Id);
         f.AssertNoLeaks();
+    }
+
+    [Fact]
+    public void What_a_unit_watches_on_overwatch_stays_with_its_own_player()
+    {
+        var (f, a, b, sniper, victim) = Duel();
+        victim.Stance = Stance.Overwatch;
+        victim.Watch = new OverwatchWatch { Tile = new(4, 10) };
+        var alice = new SideFog(a.Id, Unit.PlayerSide(a.Id));
+        alice.Update(f.Sim);
+        var bob = new SideFog(b.Id, Unit.PlayerSide(b.Id));
+        bob.Update(f.Sim);
+
+        var seen = alice.View(f.Sim).Units.Single(u => u.Id == victim.Id);
+        Assert.Equal(Stance.Overwatch, seen.Stance);
+        Assert.Null(seen.Watch);
+        Assert.NotNull(bob.View(f.Sim).Units.Single(u => u.Id == victim.Id).Watch);
     }
 
     [Fact]

@@ -128,8 +128,7 @@ internal static class Bot
         var buddy = allies.OrderBy(a => a.IsActive ? 1 : 0).ThenBy(a => a.Pos.Chebyshev(unit.Pos)).ThenBy(a => a.Id).FirstOrDefault();
         if (!leaving && buddy is not null && buddy.Pos.Chebyshev(unit.Pos) <= 2)
         {
-            var cost = view.Data.Rules.Fog.Overwatch.ApCost;
-            return profile.Actions.Count > 0 && unit.Ap > cost ? new SetStance(pid, unit.Id, Stance.Overwatch) : new EndTurn(pid, unit.Id);
+            return Overwatches.OnArc(view, unit, pid) ?? new EndTurn(pid, unit.Id);
         }
         var centre = buddy is not null && !leaving ? buddy.Pos : new Pos(map.Width / 2, map.Height / 2);
         return BotTactics.StepToward(view, unit, pid, leaving ? map.Exits : [centre]) ?? (IScavengeCommand)new EndTurn(pid, unit.Id);

@@ -25,7 +25,7 @@ public partial class UnitViews : Node3D
 {
     private const float MoveSeconds = 0.2f;
     private const float StrikeSeconds = 0.16f;
-    private const float TurnSeconds = 0.18f;    // a unit turning on the spot (a plan declared, Core's facing synced)
+    private const float TurnSeconds = 0.18f;    // a unit turning on the spot (a strike readied, Core's facing synced)
     private const float WalkStride = 2f;        // m per walk cycle at speed 1 (two footfalls)
     private const float RunStride = 2.4f;
 
@@ -98,7 +98,7 @@ public partial class UnitViews : Node3D
         }
     }
 
-    /// <summary>Turns the model to where Core says the unit faces, if it does not already (a plan declared, a strike readied).</summary>
+    /// <summary>Turns the model to where Core says the unit faces, if it does not already (a strike readied).</summary>
     private void FaceCore(View view, Unit unit)
     {
         if (unit.Facing is not { } f || f == default || unit.CarriedById is not null) return;
@@ -262,7 +262,7 @@ public partial class UnitViews : Node3D
                     await Wait(0.3f);
                     break;
 
-                // A plan declared in sight: the unit turns to where it means to go or strike, so the telegraph reads in its stance.
+                // A strike readied in sight: the unit turns to where it means to strike, so the telegraph reads in its stance.
                 case ScavengeEventType.IntentDeclared when actor is not null && unit is not null && !Mine(e.UnitId):
                     Beat();
                     FaceCore(actor, unit);

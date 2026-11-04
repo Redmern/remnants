@@ -5,7 +5,7 @@ namespace Remnants.Core.Scavenge;
 /// <summary>
 /// Playing a card (<see cref="PlayCard"/>) on a character of the party: from the squad hand, or from that character's
 /// personal slots. It costs card points from the squad's round budget and, for some cards, the character's AP (more for a
-/// boost); it must be the character's turn unless the card is a reaction (played against a seen enemy's plan during any
+/// boost); it must be the character's turn unless the card is a reaction (played against a seen enemy's readied strike during any
 /// of the player's turns). Hard cards need a qualified character, baseline cards give a qualified one their bonus; the
 /// effect then scales (<see cref="CardScaling"/>). Arm-locked cards wait for working arms. A dead hard card nobody in the
 /// party qualifies for may be discarded for nothing once a round (<see cref="DiscardDeadCard"/>). Card events go to the

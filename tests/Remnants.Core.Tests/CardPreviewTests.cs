@@ -99,7 +99,7 @@ public class CardPreviewTests
         sim.State.Decks.Add(new SquadDeck { PlayerId = 1, Hand = ["switch_places"], Points = 3, Budget = 3, HandSize = 5 });
         Ready(sim, f, new(4, 2), "swing");
         var onF = Assert.Single(TacticsView.Targets(sim, 1, a.Id, "switch_places"), o => o.UnitId == f.Id);
-        Assert.Contains($"{f.Name}'s plan falls through", onF.Outcome);
+        Assert.Contains($"{f.Name}'s strike falls through", onF.Outcome);
         Assert.True(sim.Execute(new PlayCard(1, a.Id, "switch_places", f.Id)).Ok);
         Assert.False(TileStrikes.Readied(sim.State, f));
         Assert.False(Combat.Exposed(sim, f)); // no hostile moved it

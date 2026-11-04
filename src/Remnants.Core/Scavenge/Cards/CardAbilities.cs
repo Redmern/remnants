@@ -163,10 +163,10 @@ public static class CardAbilities
         if (effect.Disrupt && target is not null && TileStrikes.Readied(state, target))
         {
             state.Strikes.RemoveAll(x => x.UnitId == target.Id);
-            state.Log(new(state.Round, ScavengeEventType.IntentFizzled, $"{unit.Name} breaks {target.Name}'s plan: {target.Name} is exposed.",
+            state.Log(new(state.Round, ScavengeEventType.IntentFizzled, $"{unit.Name} breaks {target.Name}'s strike: {target.Name} is exposed.",
                 target.Id, unit.Id, target.Pos));
             if (target.HostileTo(unit)) Combat.Expose(sim, target, unit.Side);
-            done.Add($"{target.Name}'s plan broken");
+            done.Add($"{target.Name}'s strike broken");
         }
         if (outcome.Strike is { } blow && target is { IsActive: true })
         {
@@ -272,7 +272,7 @@ public static class CardAbilities
         Passable(sim, p) && !Hacking.Blocks(sim.State, mover, p) && (sim.State.UnitAt(p) is not { } other || other.Id == mover.Id);
 
     /// <summary>
-    /// Puts a unit on another tile by force: its plan fizzles (exposed to <paramref name="by"/>'s side if hostile), and it
+    /// Puts a unit on another tile by force: its readied strike is lost (exposed to <paramref name="by"/>'s side if hostile), and it
     /// stands in the line of fire of strikes on that tile until its next sub-turn (<see cref="Unit.Displaced"/>).
     /// </summary>
     internal static void Displace(ScavengeSim sim, Unit mover, Pos to, Unit by)

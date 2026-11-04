@@ -72,6 +72,7 @@ public sealed class ScavengeSim
             Salvage c => FieldSalvage.Salvage(this, unit!, c),
             Recruit c => ScavengeCommandHandlers.Recruit(this, unit!, c),
             SetStance c => ScavengeCommandHandlers.SetStance(this, unit!, c),
+            CommitOverwatch c => Overwatches.Commit(this, unit!, c),
             AttackTile c => TileStrikes.Declare(this, unit!, c),
             PlayCard c => CardPlay.Play(this, unit!, c),
             DiscardDeadCard c => CardPlay.DiscardDead(this, unit!, c),
@@ -106,7 +107,7 @@ public sealed class ScavengeSim
             UpdateParties();
             // The acting unit's turn ends on EndTurn or a stance, or when it left the map or can no longer act; its sub-turn
             // ends on a tile attack.
-            if (command is EndTurn or SetStance or AttackTile || unit is not { IsActive: true })
+            if (command is EndTurn or SetStance or CommitOverwatch or AttackTile || unit is not { IsActive: true })
             {
                 State.TurnIndex++;
                 AdvanceTurns();
@@ -217,7 +218,6 @@ public sealed class ScavengeSim
     {
         var braced = unit.Stance == Stance.Brace;
         unit.Stance = Stance.None;
-        unit.Reactions = 0;
         unit.Lookout = false;
         unit.PingsUsed = 0;
         unit.Moved = false;
@@ -244,6 +244,7 @@ public sealed class ScavengeSim
     /// <summary>Bleeding ticks down, then everyone conscious (except idle NPCs) is ordered by initiative.</summary>
     private void StartRound()
     {
+        Overwatches.RoundEnded(State);
         State.Round++;
         State.SubRound = 1;
         State.Log(new(State.Round, ScavengeEventType.RoundStarted, $"Round {State.Round}."));
@@ -352,6 +353,7 @@ public sealed class ScavengeSim
         unit.Hp = Math.Min(unit.Hp, 0);
         unit.Ap = 0;
         TileStrikes.Lose(this, unit, "dead");
+        Overwatches.Drop(this, unit, "dead");
         Bestiary.Killed(this, unit, killer);
         State.Log(new(State.Round, type, message, unit.Id, Pos: unit.Pos));
         if (unit.Kind == UnitKind.Drone)
@@ -390,8 +392,6 @@ public sealed class ScavengeSim
         }
     }
 
-    private bool _reacting;
-
     /// <summary>Records which party sides see an event's actor right now (see <see cref="FogLog"/>).</summary>
     private ScavengeEvent StampSeenBy(ScavengeEvent e)
     {
@@ -400,14 +400,15 @@ public sealed class ScavengeSim
     }
 
     /// <summary>
-    /// After a unit moved (player or AI): motion sensors it entered reveal it to their side, sides it is unseen by but
-    /// close to hear it (movement contact), and overwatch may fire on it.
+    /// After a unit moved (player or AI): its own overwatch is off, motion sensors it entered reveal it to their side, sides
+    /// it is unseen by but close to hear it (movement contact), and overwatch on the tile it entered may fire on it.
     /// </summary>
     /// <param name="forced">Moved by a card (shoved, swapped, stepped): sensors, noise, cameras and raised ground as for any
     /// move, but overwatch does not fire at it.</param>
     internal void Moved(Unit unit, Pos from, bool forced = false)
     {
         var fog = Data.Rules.Fog;
+        Overwatches.Drop(this, unit, "moved");
         foreach (var sensor in State.Sensors.OrderBy(s => s.Id).ToList())
         {
             if (sensor.Side == unit.Side || unit.Side == Unit.NeutralSide) continue;
@@ -425,7 +426,7 @@ public sealed class ScavengeSim
                 Detection.AddContact(Data, State, side, unit.Pos, ContactKind.Movement, unit.Id);
         MissionRules.Moved(this, unit);
         Hacking.CameraCheck(this, unit);
-        if (!forced) CheckOverwatch(unit);
+        if (!forced) Overwatches.Entered(this, unit);
     }
 
     /// <summary>A motion sensor goes off: the unit is revealed to the sensor's side, which gets an alert and a contact.</summary>
@@ -436,44 +437,6 @@ public sealed class ScavengeSim
         State.Log(new(State.Round, ScavengeEventType.SensorTripped,
             $"{Item(sensor.ItemId).Name} at {sensor.Pos}: {unit.Name} moving at {unit.Pos}!", unit.Id, Pos: unit.Pos,
             Anonymous: $"{Item(sensor.ItemId).Name} at {sensor.Pos}: movement at {unit.Pos}!", Side: sensor.Side));
-    }
-
-    /// <summary>
-    /// Overwatch: every unit on overwatch hostile to <paramref name="unit"/> that sees it now (by its own eyes, or as
-    /// revealed to its side, <see cref="Detection.SeesRevealed"/>) and reaches it fires one reaction, by id, while the unit stands. A
-    /// reaction does not set off further reactions.
-    /// </summary>
-    internal void CheckOverwatch(Unit unit)
-    {
-        if (_reacting || !unit.IsActive) return;
-        _reacting = true;
-        try
-        {
-            foreach (var watcher in State.Units.Where(u => u.IsActive && u.Stance == Stance.Overwatch && u.Reactions > 0 && u.HostileTo(unit))
-                         .OrderBy(u => u.Id).ToList())
-            {
-                if (!unit.IsActive) break;
-                if (!watcher.IsActive || watcher.Reactions <= 0) continue;
-                var sees = Detection.Spots(Data, State, watcher, unit) || Detection.SeesRevealed(Data, State, watcher, unit)
-                           || ElectronicWarfare.SharesOverwatch(this, watcher, unit);
-                if (!sees) continue;
-                var action = Profile(watcher).Actions
-                    .Where(a => Drones.CanStrike(a, unit) && Combat.CheckReach(Data, State.Map, watcher.Pos, a, unit.Pos) == ScavengeError.None)
-                    .OrderByDescending(a => Combat.ChanceToHit(this, watcher, a, unit) * (a.MinDamage + a.MaxDamage) / 2)
-                    .ThenBy(a => a.Id, StringComparer.Ordinal)
-                    .FirstOrDefault();
-                if (action is null) continue;
-                watcher.Reactions--;
-                State.Log(new(State.Round, ScavengeEventType.Overwatch,
-                    $"{watcher.Name} reacts on overwatch: {action.Name} at {unit.Name}!", watcher.Id, unit.Id, unit.Pos,
-                    Anonymous: $"Overwatch fire from the fog at {unit.Name}!"));
-                Combat.Resolve(this, watcher, action, unit, reaction: true);
-            }
-        }
-        finally
-        {
-            _reacting = false;
-        }
     }
 
     internal void Log(ScavengeEventType type, string message, Unit? unit = null, Unit? target = null) =>

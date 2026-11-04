@@ -69,8 +69,8 @@ public static class ElectronicWarfare
                 u.OffRelayUntilRound = Math.Max(u.OffRelayUntilRound, until);
                 u.EmpUntilRound = Math.Max(u.EmpUntilRound, until);
                 u.Ap = 0;
+                Overwatches.Drop(sim, u, "stunned");
                 u.Stance = Stance.None;
-                u.Reactions = 0;
                 if (!u.PlayerControlled) TileStrikes.Lose(sim, u, "stunned");
                 hits.Add(u.Name);
             }

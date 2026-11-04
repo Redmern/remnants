@@ -28,7 +28,7 @@ public enum AiMode { Idle, Hunting }
 public enum Stance
 {
     None,
-    /// <summary>Reaction attack on the first hostile that moves or reveals itself in sight and reach.</summary>
+    /// <summary>Watching a tile or an arc for the round, its AP held for shots (<see cref="Overwatches"/>).</summary>
     Overwatch,
     /// <summary>Hunkered down: no ambush bonus against it, extra cover, fewer AP next turn.</summary>
     Brace,
@@ -105,7 +105,7 @@ public sealed class Unit
     /// <summary>The direction it last moved or attacked in (sign per axis; a weapon light points there). Null until then.</summary>
     public Pos? Facing { get; set; }
 
-    /// <summary>Held until this unit's next turn starts.</summary>
+    /// <summary>Brace holds until this unit's next turn starts, overwatch until the round ends.</summary>
     public Stance Stance { get; set; }
 
     /// <summary>The round in which the unit ended its whole turn (<see cref="EndTurn.WholeTurn"/>): it sits out that round's later sub-rounds.</summary>
@@ -168,7 +168,10 @@ public sealed class Unit
     /// </summary>
     public bool Displaced { get; set; }
 
-    /// <summary>Overwatch reactions left this stance.</summary>
+    /// <summary>What it watches on overwatch (<see cref="Overwatches"/>); null otherwise.</summary>
+    public OverwatchWatch? Watch { get; set; }
+
+    /// <summary>A perk's extra overwatch shots left this watch: they fire once the held AP has run out.</summary>
     public int Reactions { get; set; }
 
     /// <summary>On lookout (scanning) until its next turn: more sight and detection.</summary>
@@ -329,4 +332,11 @@ public sealed class LootCache
     public LootPileKind Kind { get; set; }
     public string? Source { get; set; }
     public int? PlayerId { get; set; }
+}
+
+/// <summary>What an overwatch is committed to: one tile, or the front arc of one direction.</summary>
+public sealed class OverwatchWatch
+{
+    public Pos? Tile { get; set; }
+    public Pos? Arc { get; set; }
 }

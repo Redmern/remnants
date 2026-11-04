@@ -71,6 +71,7 @@ public static class TileStrikes
         });
         var how = aim.Mode is { } mode ? $"a {mode.ToString().ToLowerInvariant()} at {c.Tile}" : $"an attack on {c.Tile}";
         state.Log(new(state.Round, ScavengeEventType.IntentDeclared, $"{unit.Name} readies {how} ({action.Name}).", unit.Id, Pos: unit.Pos));
+        Overwatches.StruckInto(sim, unit, aim.Tiles);
         return ScavengeResult.Success($"{unit.Name} readies {how}.");
     }
 
@@ -220,13 +221,13 @@ public static class TileStrikes
     /// <summary>
     /// The blow itself, AP already paid: the unit faces <paramref name="direction"/> and strikes every hostile on the
     /// <paramref name="tiles"/> in its line of sight (plus an area action's splash around <paramref name="tile"/>); with
-    /// nobody there it only makes its noise. Returns who was struck.
+    /// nobody there it only makes its noise. An overwatch shot is a <paramref name="reaction"/>. Returns who was struck.
     /// </summary>
-    internal static List<Unit> Strike(ScavengeSim sim, Unit unit, ActionProfile action, List<Pos> tiles, Pos tile, Pos direction)
+    internal static List<Unit> Strike(ScavengeSim sim, Unit unit, ActionProfile action, List<Pos> tiles, Pos tile, Pos direction, bool reaction = false)
     {
         var state = sim.State;
         var clear = tiles.Where(p => Combat.Clear(sim.Data, state.Map, unit.Pos, p)).ToList();
-        var targets = TargetsOn(state, unit, action, clear).ToList();
+        var targets = TargetsOn(state, unit, action, clear, friendlyFire: reaction || unit.PlayerControlled).ToList();
         unit.Facing = direction;
         if (targets.Count == 0)
         {
@@ -234,17 +235,17 @@ public static class TileStrikes
             return targets;
         }
         targets.AddRange(Combat.Splash(sim, unit, action, tile, targets));
-        Combat.Hit(sim, unit, action, targets);
+        Combat.Hit(sim, unit, action, targets, reaction);
         return targets;
     }
 
     /// <summary>
-    /// The conscious hostiles on <paramref name="tiles"/> the action can strike, tile by tile, then by id; and, for a player's
-    /// strike, anyone a card shoved there (<see cref="Unit.Displaced"/>), whoever's side: friendly fire. An AI's strike only
-    /// ever hits hostiles.
+    /// The conscious hostiles on <paramref name="tiles"/> the action can strike, tile by tile, then by id; and, with
+    /// <paramref name="friendlyFire"/> (a player's strike, any overwatch shot; default by who strikes), anyone a card shoved
+    /// there (<see cref="Unit.Displaced"/>), whoever's side. An AI's strike only ever hits hostiles.
     /// </summary>
-    private static IEnumerable<Unit> TargetsOn(ScavengeState state, Unit attacker, ActionProfile action, List<Pos> tiles) =>
-        state.Units.Where(u => u.IsActive && u.OnMap && u.CarriedById is null && (attacker.HostileTo(u) || attacker.PlayerControlled && u.Displaced && u.Id != attacker.Id)
+    private static IEnumerable<Unit> TargetsOn(ScavengeState state, Unit attacker, ActionProfile action, List<Pos> tiles, bool? friendlyFire = null) =>
+        state.Units.Where(u => u.IsActive && u.OnMap && u.CarriedById is null && (attacker.HostileTo(u) || (friendlyFire ?? attacker.PlayerControlled) && u.Displaced && u.Id != attacker.Id)
                                && tiles.Contains(u.Pos) && Drones.CanStrike(action, u))
             .OrderBy(u => tiles.IndexOf(u.Pos)).ThenBy(u => u.Id);
 }

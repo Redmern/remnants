@@ -70,17 +70,17 @@ public sealed record CardScaling
 
 /// <summary>
 /// What a card does to the character it is played on, in the game's own terms: <see cref="Move"/> tiles more move range
-/// (this turn, and for a plan declared now), <see cref="Hit"/> on its next attack, <see cref="Guard"/> tiers off the next
+/// (this turn), <see cref="Hit"/> on its next attack, <see cref="Guard"/> tiers off the next
 /// hit it takes, <see cref="Cover"/> until its next turn, <see cref="Mend"/> off its worst injury (field mending),
-/// <see cref="Draw"/> cards for the squad, and <see cref="Counter"/>: a reaction blow at an enemy whose plan it reads,
-/// struck when that plan resolves.
+/// <see cref="Draw"/> cards for the squad, and <see cref="Counter"/>: a reaction blow at an enemy whose strike it reads,
+/// struck just before that strike comes down.
 /// Abilities change the board instead (<see cref="CardAbilities"/>): <see cref="Push"/> / <see cref="Pull"/> the target
 /// that many tiles along the line from / to the player, <see cref="Swap"/> places with an ally, <see cref="Step"/> the
 /// player up to that many tiles to the target tile, <see cref="Spin"/> the target's back to the player,
 /// <see cref="GrantAp"/>, <see cref="AdvanceInitiative"/> / <see cref="DelayInitiative"/> the target within the
 /// current round, <see cref="PlaceBarrier"/> (cover on the tile for that many rounds), <see cref="Smoke"/> (sight-blocking
 /// smoke for that many rounds), <see cref="Strike"/> the target now with the player's best attack, and
-/// <see cref="Disrupt"/> the target's plan.
+/// <see cref="Disrupt"/> the target's readied strike.
 /// </summary>
 public sealed record CardEffect
 {
@@ -141,7 +141,7 @@ public sealed record CardEffect
 /// A tactical card (data/cards.json). <see cref="Cost"/> card points from the squad's round budget; <see cref="ApCost"/> AP
 /// of the character it is played on (most cost none); <see cref="BoostAp"/> more AP adds <see cref="Boost"/>.
 /// <see cref="Consumable"/>: gone for good once played (else it goes to the used pile). <see cref="Reaction"/>: played
-/// against a seen enemy's telegraphed plan. <see cref="ArmLock"/>: not while the character's arms are badly hurt.
+/// against a seen enemy's readied strike. <see cref="ArmLock"/>: not while the character's arms are badly hurt.
 /// An ability is aimed at its <see cref="Target"/> within <see cref="Range"/> tiles (0: any distance in sight); a
 /// smoke covers <see cref="Radius"/> tiles around its tile.
 /// </summary>
@@ -300,7 +300,7 @@ public sealed class CardCatalog
 
     /// <summary>
     /// An ability's target fits what it does: unit effects need a unit (a swap an ally), tile effects a tile, never both;
-    /// a reaction answers an enemy's plan; no negative range or radius.
+    /// a reaction answers an enemy's strike; no negative range or radius.
     /// </summary>
     private static void CheckTarget(CardDef c)
     {
@@ -312,7 +312,7 @@ public sealed class CardCatalog
         if (e.NeedsTile && c.Target != CardTarget.Tile) throw new GameDataException($"Card '{c.Id}': its effect needs a tile target.");
         if (e.Swap && c.Target != CardTarget.Ally) throw new GameDataException($"Card '{c.Id}': a swap is with an ally.");
         if (c.Reaction && c.Target is not (CardTarget.Self or CardTarget.Enemy))
-            throw new GameDataException($"Card '{c.Id}': a reaction answers an enemy's plan.");
+            throw new GameDataException($"Card '{c.Id}': a reaction answers an enemy's strike.");
         if (!e.IsAbility && c.Target is not CardTarget.Self && !c.Reaction)
             throw new GameDataException($"Card '{c.Id}': a buff is played on the character itself.");
     }

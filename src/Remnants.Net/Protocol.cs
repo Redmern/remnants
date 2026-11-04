@@ -63,7 +63,7 @@ public static class Protocol
 
     public const int TileAttacksOnlyVersion = 19;
 
-    /// <summary>Telegraphed plans gone from the wire (<c>plannedAction</c>); tile strikes carry suppressing fire.</summary>
+    /// <summary>Telegraphed plans gone from the wire (<c>plannedAction</c>); tile strikes carry suppressing fire; overwatch is <c>commitOverwatch</c>.</summary>
     public const int TelegraphedStrikesVersion = 20;
     public const int Version = TelegraphedStrikesVersion;
     public const int DefaultPort = 7777;

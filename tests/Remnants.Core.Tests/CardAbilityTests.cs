@@ -549,7 +549,7 @@ public class CardAbilityTests
         var b = SurvivorUnit(2, new(5, 1), weapon: "pistol");
         var a = SurvivorUnit(1, new(0, 1));
         var sim = Table([b, a], ["t_step"], rows: ["##########", "..........", "##########"], height: 3, width: 10);
-        Assert.True(sim.Execute(new SetStance(2, b.Id, Stance.Overwatch)).Ok);
+        Assert.True(sim.Execute(new CommitOverwatch(2, b.Id, Arc: new Pos(-1, 0))).Ok);
         var before = sim.State.Events.Count;
         Assert.True(Play(sim, a, "t_step", tile: new(2, 1)).Ok);
         Assert.Contains(sim.State.Events.Skip(before), e => e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed && e.UnitId == b.Id && e.TargetId == a.Id);
@@ -581,7 +581,7 @@ public class CardAbilityTests
         var a = SurvivorUnit(1, new(0, 1));
         var e = SurvivorUnit(3, new(1, 1));
         var sim = Table([b, a, e], ["t_push"], rows: ["##########", "..........", "##########"], height: 3, width: 10);
-        Assert.True(sim.Execute(new SetStance(2, b.Id, Stance.Overwatch)).Ok);
+        Assert.True(sim.Execute(new CommitOverwatch(2, b.Id, Arc: new Pos(-1, 0))).Ok);
         var before = sim.State.Events.Count;
         Assert.True(Play(sim, a, "t_push", e).Ok);
         Assert.Equal(new Pos(3, 1), e.Pos);

@@ -23,6 +23,9 @@ public partial class StancePanel : PanelContainer
 
     public event Action<IScavengeCommand>? CommandRequested;
 
+    /// <summary>The Overwatch button: the screen asks where to watch (a tile or an arc).</summary>
+    public event Action? OverwatchAimRequested;
+
     public StancePanel(ScavengePresenter presenter)
     {
         _presenter = presenter;
@@ -59,21 +62,21 @@ public partial class StancePanel : PanelContainer
         _rows.Begin();
         _buttons.Clear();
         var fog = _presenter.Sim.Data.Rules.Fog;
-        Add("stance_overwatch", unit.Stance == Stance.Overwatch ? "On overwatch" : "Overwatch", "ends the turn", "scav_overwatch",
-            "Fire at the first hostile that moves or reveals itself in sight and reach (once).",
-            fog.Overwatch.ApCost, new SetStance(pid, unit.Id, Stance.Overwatch), unit, unit.Stance == Stance.Overwatch);
+        Add("stance_overwatch", unit.Stance == Stance.Overwatch ? "On overwatch" : "Overwatch", "holds your AP · ends the turn", "scav_overwatch",
+            "Pick a tile, or Shift-click for an arc. Fire on hostiles that enter it or strike into it; each shot spends its AP. Lasts the round.",
+            _presenter.Sim.Profile(unit).Actions.Select(a => a.ApCost).DefaultIfEmpty(0).Min(), () => OverwatchAimRequested?.Invoke(), unit, unit.Stance == Stance.Overwatch);
         Add("stance_brace", unit.Stance == Stance.Brace ? "Braced" : "Brace", $"+{fog.Brace.CoverBonus * 100:0}% cover · ends the turn", "scav_brace",
             $"No ambush bonus against {unit.Name}, +{fog.Brace.CoverBonus * 100:0}% cover; {fog.Brace.NextTurnApPenalty} AP less next turn.",
-            fog.Brace.ApCost, new SetStance(pid, unit.Id, Stance.Brace), unit, unit.Stance == Stance.Brace);
+            fog.Brace.ApCost, () => CommandRequested?.Invoke(new SetStance(pid, unit.Id, Stance.Brace)), unit, unit.Stance == Stance.Brace);
         Add("stance_scan", unit.Lookout ? "On lookout" : "Lookout", $"+{fog.Lookout.SightBonus:0} sight this round", "scav_lookout",
             $"+{fog.Lookout.SightBonus:0} sight and sharper eyes until {unit.Name}'s next turn (see Stealth in Help).",
-            fog.Lookout.ApCost, new Lookout(pid, unit.Id), unit, unit.Lookout);
+            fog.Lookout.ApCost, () => CommandRequested?.Invoke(new Lookout(pid, unit.Id)), unit, unit.Lookout);
         _rows.End();
     }
 
-    private void Add(string icon, string text, string detail, string hotkey, string tooltip, int cost, IScavengeCommand command, Unit unit, bool active)
+    private void Add(string icon, string text, string detail, string hotkey, string tooltip, int cost, Action pressed, Unit unit, bool active)
     {
-        var button = _rows.Button(icon, text, detail, cost, hotkey, tooltip, () => CommandRequested?.Invoke(command));
+        var button = _rows.Button(icon, text, detail, cost, hotkey, tooltip, pressed);
         button.SetBlocked(active || cost > unit.Ap, cost > unit.Ap);
         if (active) button.ThemeTypeVariation = "Primary";
         _buttons.Add(button);

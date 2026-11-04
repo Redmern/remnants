@@ -44,7 +44,7 @@ public class CoopTests
         Assert.Contains(sim.State.Events, e => e.UnitId == a.Id && e.Type == ScavengeEventType.IntentFizzled);
         Assert.Equal(a.Id, sim.State.CurrentUnitId);
 
-        Assert.True(sim.Execute(new SetStance(1, a.Id, Stance.Overwatch)).Ok);
+        Assert.True(sim.Execute(new CommitOverwatch(1, a.Id, Arc: new Pos(1, 0))).Ok);
         Assert.Equal(b.Id, sim.State.CurrentUnitId);
         Assert.True(sim.Execute(new Move(2, b.Id, new(3, 2))).Ok);
         Assert.DoesNotContain(sim.State.Events, e => e.Type == ScavengeEventType.Overwatch && e.TargetId == b.Id);

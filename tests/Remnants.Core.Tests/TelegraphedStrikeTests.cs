@@ -223,8 +223,12 @@ public class TelegraphedStrikeTests
         var seenTile = near.Pos + new Pos(0, 1);
         sim.State.Strikes.Add(new TileStrike
         {
-            UnitId = blade.Id, ActionId = sim.Profile(blade).Actions[0].Id, From = blade.Pos, Tile = near.Pos,
-            Direction = new(-1, 0), Tiles = [near.Pos, seenTile, hidden],
+            UnitId = blade.Id,
+            ActionId = sim.Profile(blade).Actions[0].Id,
+            From = blade.Pos,
+            Tile = near.Pos,
+            Direction = new(-1, 0),
+            Tiles = [near.Pos, seenTile, hidden],
         });
 
         var telegraph = Assert.Single(TacticsView.Telegraphs(sim, near.Side));
@@ -242,7 +246,12 @@ public class TelegraphedStrikeTests
         var (sim, blade, near, hidden) = WalledOff();
         sim.State.Strikes.Add(new TileStrike
         {
-            UnitId = blade.Id, ActionId = sim.Profile(blade).Actions[0].Id, From = blade.Pos, Tile = hidden, Direction = new(1, 0), Tiles = [hidden],
+            UnitId = blade.Id,
+            ActionId = sim.Profile(blade).Actions[0].Id,
+            From = blade.Pos,
+            Tile = hidden,
+            Direction = new(1, 0),
+            Tiles = [hidden],
         });
 
         Assert.Empty(TacticsView.Telegraphs(sim, near.Side));
@@ -255,7 +264,12 @@ public class TelegraphedStrikeTests
         blade.Pos = new(6, 1);
         sim.State.Strikes.Add(new TileStrike
         {
-            UnitId = blade.Id, ActionId = sim.Profile(blade).Actions[0].Id, From = blade.Pos, Tile = near.Pos, Direction = new(-1, 0), Tiles = [near.Pos],
+            UnitId = blade.Id,
+            ActionId = sim.Profile(blade).Actions[0].Id,
+            From = blade.Pos,
+            Tile = near.Pos,
+            Direction = new(-1, 0),
+            Tiles = [near.Pos],
         });
 
         Assert.Empty(TacticsView.Telegraphs(sim, near.Side));
