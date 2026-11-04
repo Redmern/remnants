@@ -232,6 +232,6 @@ public static class ScavengeTestData
             .Where(kv => kv.Value <= u.Mp && field.ContainsKey(kv.Key) && field[kv.Key] < here)
             .OrderBy(kv => field[kv.Key]).ThenBy(kv => map.Index(kv.Key))
             .Select(kv => (Pos?)kv.Key).FirstOrDefault();
-        return step is { } to ? new Move(pid, u.Id, to) : new EndTurn(pid, u.Id);
+        return step is { } to && Plans.HasRoom(sim, u, PlanSlot.Move) ? new Move(pid, u.Id, to) : new EndTurn(pid, u.Id);
     }
 }

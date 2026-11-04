@@ -338,19 +338,26 @@ public partial class ScavengeScreen
         {
             case "slots-push" or "slots-dash":
                 _aim = TacticsDemo.Mode == "slots-push" ? TechAim.Push : TechAim.Dash;
+                // Someone to shove, for the push's preview of where they end up.
+                if (TacticsDemo.Mode == "slots-push") DemoFoeAt(east);
                 _hover = east;
                 _map.SetHover(east);
                 RefreshHud();
                 Say($"aiming {_aim} at {east}");
                 await ToSignal(GetTree().CreateTimer(1.0), SceneTreeTimer.SignalName.Timeout);
                 if (DebugCapture.Value("--screenshot") is { Length: > 0 } aimShot)
+                {
                     GD.Print($"Slots demo: aim shot {GetViewport().GetTexture().GetImage().SavePng(aimShot.Replace(".png", "_aim.png"))}");
+                    if (DisplayServer.GetName() != "headless") GetTree().Quit();
+                }
                 OnTileClicked(east);
                 await Settled();
                 Say("clicked the aim");
                 break;
             case "slots-defend":
                 // The real hotkey, the real aim, the real click, then the round resolves.
+                // Someone with it in reach, for the guard's odds.
+                DemoFoeAt(east);
                 var pressed = _actionPanel.PressHotkey(new InputEventKey { Keycode = Key.G, ShiftPressed = true, Pressed = true });
                 Say($"hotkey pressed {pressed}, aim {_aim}");
                 _hover = east;
@@ -437,4 +444,16 @@ public partial class ScavengeScreen
         _cardAim?.At(husk) is { Ok: true } || _cardAim is null ? husk
         : _cardAim.Options.Where(o => o.Ok).OrderBy(o => o.Tile.Chebyshev(husk)).ThenBy(o => o.Tile.Y).ThenBy(o => o.Tile.X)
             .Select(o => o.Tile).DefaultIfEmpty(husk).First();
+
+    /// <summary>The demo's first enemy on that tile, anyone there stepping aside first.</summary>
+    private void DemoFoeAt(Core.Scavenge.Pos tile)
+    {
+        var state = _presenter.State;
+        if (state.Units.FirstOrDefault(t => t.Kind == Core.Scavenge.UnitKind.Enemy) is not { } foe) return;
+        if (state.UnitAt(tile) is { } there && there.Id != foe.Id)
+            there.Pos = Core.Scavenge.Pos.Neighbours8.Select(d => tile + d)
+                .First(p => state.Map.InBounds(p) && _presenter.Sim.Data.Terrain(state.Map[p]).Passable && state.UnitAt(p) is null);
+        foe.Pos = tile;
+        SyncAll();
+    }
 }

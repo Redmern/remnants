@@ -541,6 +541,15 @@ public sealed record DashRules
 }
 
 /// <summary>The defend action (<see cref="Defences"/>, scavenge.json <c>combat.defend</c>): its AP, and the share and pattern of a unit with no guarding gear.</summary>
+/// <summary>The chance a landed blow is a crit, what the side and the rear add to it, and what a crit multiplies damage by (inside the damage cap).</summary>
+public sealed record CritRules
+{
+    public double Chance { get; init; } = 0.05;
+    public double Side { get; init; } = 0.05;
+    public double Rear { get; init; } = 0.15;
+    public double Damage { get; init; } = 1.5;
+}
+
 /// <summary>What an enemy pays next round for a blow or push on an empty tile.</summary>
 public sealed record ExposedRules
 {
@@ -662,6 +671,9 @@ public sealed record CombatRules
 
     /// <summary>How a landed hit resolves: graze, hit or solid (see <see cref="HitTierRules"/>).</summary>
     public HitTierRules Tiers { get; init; } = new();
+
+    /// <summary>A landed blow may crit, more so from the side and from behind (see <see cref="CritRules"/>).</summary>
+    public CritRules Crit { get; init; } = new();
 
     /// <summary>Blows from the side and from behind land harder (see <see cref="FacingRules"/>).</summary>
     public FacingRules Facing { get; init; } = new();

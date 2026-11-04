@@ -221,6 +221,10 @@ public static class Combat
     /// <summary>The arc a blow from <paramref name="from"/> comes at <paramref name="target"/> (a structure has no back: the front).</summary>
     public static FacingArc ArcOf(Unit target, Pos from) => target.Structure ? FacingArc.Front : ArcOf(target.Pos, target.Facing, from);
 
+    /// <summary>The chance a landed blow from that arc is a crit.</summary>
+    public static double CritChance(CritRules rules, FacingArc arc) =>
+        rules.Chance + arc switch { FacingArc.Side => rules.Side, FacingArc.Rear => rules.Rear, _ => 0 };
+
     /// <summary>What a blow from that arc does to the damage (rules.combat.facing).</summary>
     public static double ArcDamage(FacingRules rules, FacingArc arc) => arc switch
     {
@@ -272,7 +276,8 @@ public static class Combat
         }
 
         var arc = ArcOf(target, attacker.Pos);
-        var stacked = Math.Min(data.Rules.Combat.MaxDamageMultiplier, (ambush?.DamageMultiplier ?? 1) * ArcDamage(data.Rules.Combat.Facing, arc) * (1 + Economy.CaughtRecovering(sim, target, attacker)));
+        var crit = sim.Rng.NextDouble() < CritChance(data.Rules.Combat.Crit, arc);
+        var stacked = Math.Min(data.Rules.Combat.MaxDamageMultiplier, (crit ? data.Rules.Combat.Crit.Damage : 1) * (ambush?.DamageMultiplier ?? 1) * ArcDamage(data.Rules.Combat.Facing, arc) * (1 + Economy.CaughtRecovering(sim, target, attacker)));
         var raw = (action.MinDamage + (action.MaxDamage - action.MinDamage) * sim.Rng.NextDouble()) * stacked * sim.EffectFactor * (1 + Adrenaline.Bonus(sim, attacker));
         var part = PickHitLocation(sim, target);
         var defense = sim.Profile(target);
@@ -305,7 +310,7 @@ public static class Combat
             _ => ("hit", "hit"),
         };
         state.Log(new(state.Round, ScavengeEventType.Attacked,
-            $"{attacker.Name} {verb} {where} for {damage:0} ({action.Name}).", attacker.Id, target.Id, target.Pos,
+            $"{attacker.Name} {verb} {where} for {damage:0} ({action.Name}{(crit ? ", critical" : "")}).", attacker.Id, target.Id, target.Pos,
             Anonymous: target.Structure ? $"{target.Name} was {how} for {damage:0} from the fog." : $"{target.Name} was {how} in the {part} for {damage:0} from the fog.",
             Tier: tier, Amount: damage));
         var severity = action.InjuryMultiplier * (1 - Math.Clamp(defense.InjuryResist, 0, 1)) * (tier == HitTier.Solid ? tiers.SolidSeverity : 1);

@@ -120,7 +120,11 @@ public partial class ScavengeScreen
         var way = TacticsView.AimDirection(_presenter.Sim, unit, hover);
         if (aim == TechAim.Defend)
         {
-            ShowPattern(TacticsView.DefendAim(_presenter.Sim, unit, way), HighlightKind.PlanAction);
+            var guard = TacticsView.DefendAim(_presenter.Sim, unit, way);
+            ShowPattern(guard, HighlightKind.PlanAction);
+            // What it would do against who has this unit in reach, on the tile the guard points at.
+            if (TacticsView.DefendOdds(_presenter.Sim, unit).FirstOrDefault() is { } odds && guard.Tiles.LastOrDefault() is var front)
+                _map.Highlight(front, HighlightKind.PlanAction, $"BLOCK {odds.Block * 100:0}% · STUN {odds.Stun * 100:0}%");
             return;
         }
         if (aim == TechAim.Dash)
@@ -131,6 +135,9 @@ public partial class ScavengeScreen
             return;
         }
         ShowPattern(TacticsView.PushAim(_presenter.Sim, unit, way), HighlightKind.Attack);
+        // An ally there has its warning already; the same spot cannot hold two labels.
+        foreach (var outcome in TacticsView.PushPreview(_presenter.Sim, unit, way).Where(o => _presenter.State.FindUnit(o.UnitId) is { } v && unit.HostileTo(v)))
+            _map.Highlight(outcome.Landing, outcome.Collides ? HighlightKind.AllyWarning : HighlightKind.Landing, outcome.Text);
     }
 
     private void ShowPattern(PatternAimView view, HighlightKind kind)

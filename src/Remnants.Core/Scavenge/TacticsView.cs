@@ -21,6 +21,15 @@ public sealed record PatternAimView(List<Pos> Tiles, List<Pos> AllyTiles);
 /// <summary>An attack as the preview shows it: in reach from the tile, the hit chance, and its terms.</summary>
 public sealed record HitPreviewInfo(bool InReach, double Chance, Breakdown? Breakdown);
 
+/// <summary>What a blow may do, all shares of 1: the tiers, with the crit chance of a landed blow, the chance of being stunned if the target guards, and what changes the result, named.</summary>
+public sealed record HitOdds(double Miss, double Graze, double Hit, double Solid, double Crit, double StunIfGuarded, List<string> Factors);
+
+/// <summary>What a push would do to one unit on its tiles: where it ends, whether it hits something, in words.</summary>
+public sealed record PushOutcome(int UnitId, Pos Landing, bool Collides, string Text);
+
+/// <summary>What a Defend would do against one seen hostile with the unit in reach: the share blocked, and the chance of stunning it.</summary>
+public sealed record GuardOdds(int UnitId, string Name, double Block, double Stun);
+
 /// <summary>
 /// A card in the hand strip (or in a unit's slot, <see cref="SlotOf"/>): its numbers, the units it could be played on now
 /// (<see cref="PlayableBy"/>), and whether it is a dead hard card nobody in the party can use.
@@ -235,6 +244,85 @@ public static class TacticsView
         var breakdown = Breakdowns.For(Breakdowns.HitChance,
             new HelpContext { Scavenge = sim, Attacker = attacker, Action = action, Target = target, From = from, TargetKnown = tier });
         return new HitPreviewInfo(inReach, chance, breakdown);
+    }
+
+    /// <summary>The odds of a blow from <paramref name="from"/> (default: where the plan ends), going by the torso's armor. Dice only: the same rules as the blow.</summary>
+    public static HitOdds Odds(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target, Pos? from = null, BestiaryTier tier = BestiaryTier.Killed)
+    {
+        var rules = sim.Data.Rules.Combat;
+        var at = from ?? Plans.Anchor(sim.State, attacker);
+        var chance = Bestiary.ShownChance(sim.Data.Rules.Bestiary, Combat.ChanceToHit(sim, attacker, action, target, at), tier);
+        var defense = sim.Profile(target);
+        var armor = Math.Max(0, defense.ArmorAgainst(Survivors.Body.RegionOf(Survivors.BodyPart.Torso), action.Pattern == Items.AttackPattern.Melee) - action.ArmorPierce);
+        var cover = Combat.CoverAgainst(sim.Data, sim.State.Map, target.Pos, at) + defense.CoverBonus;
+        var (graze, hit, solid) = (0.0, 0.0, 0.0);
+        // A landed roll's margin is even over 0 to 1, so each band of it is a share; armor and cover may shift a band's tier.
+        var (low, high) = (rules.Tiers.GrazeBelow, rules.Tiers.SolidFrom);
+        foreach (var (margin, share) in new[] { (low / 2, low), ((low + high) / 2, high - low), ((high + 1) / 2, 1 - high) })
+            switch (Combat.TierOf(rules.Tiers, 1, 1 - margin, armor, cover))
+            {
+                case HitTier.Graze: graze += share * chance; break;
+                case HitTier.Solid: solid += share * chance; break;
+                default: hit += share * chance; break;
+            }
+        var arc = Combat.ArcOf(target, at);
+        var factors = new List<string>();
+        if (arc == FacingArc.Rear) factors.Add($"rear +{(rules.Facing.RearDamage - 1) * 100:0}%");
+        if (arc == FacingArc.Side) factors.Add($"side +{(rules.Facing.SideDamage - 1) * 100:0}%");
+        if (cover > 0) factors.Add($"cover {cover * 100:0}%");
+        factors.AddRange(Factors(sim, attacker));
+        var block = Defences.BlockOf(sim, target, Defences.GuardOf(sim, target).Block);
+        return new HitOdds(1 - chance, graze, hit, solid, Combat.CritChance(rules.Crit, arc), Stuns.Chance(sim, target, attacker, action, block, perfect: false), factors);
+    }
+
+    /// <summary>What about the unit itself changes how its round goes, named as the player should read it.</summary>
+    public static List<string> Factors(ScavengeSim sim, Unit unit)
+    {
+        var factors = new List<string>();
+        var (p, rules) = (sim.Profile(unit), sim.Data.Rules.Priority);
+        if (p.MaxStamina > 0 && (double)Economy.Stamina(sim, unit) / p.MaxStamina < rules.CliffBelow) factors.Add("low stamina: acts later");
+        if (Adrenaline.Bonus(sim, unit) is var bonus and > 0) factors.Add($"adrenaline +{bonus * 100:0}%");
+        if (Stuns.Active(sim.State, unit)) factors.Add("stunned: acts later");
+        return factors;
+    }
+
+    /// <summary>What a push that way would do, as the unit's side can know it: walls and the units it sees, never one it does not.</summary>
+    public static List<PushOutcome> PushPreview(ScavengeSim sim, Unit unit, Pos direction)
+    {
+        var (state, rules) = (sim.State, sim.Data.Rules.Combat.Push);
+        var from = Plans.Anchor(state, unit);
+        var tiles = Pushes.Tiles(sim, unit, direction);
+        var result = new List<PushOutcome>();
+        foreach (var victim in state.Units.Where(u => u.Id != unit.Id && u.IsActive && u.OnMap && u.CarriedById is null && !u.Structure && !CardAbilities.Fixed(u) && tiles.Contains(u.Pos)
+                                                      && Detection.SideSees(sim.Data, state, unit.Side, u)).OrderBy(u => u.Id))
+        {
+            var way = Combat.Face(from, victim.Pos);
+            var landing = victim.Pos;
+            string? into = null;
+            for (var i = 0; i < rules.Tiles && into is null; i++)
+            {
+                var next = CardAbilities.Slide(sim, victim, way, i + 1, terrainOnly: true);
+                if (next == landing) into = "a wall";
+                else if (state.UnitAt(next) is { } other && other.Id != victim.Id && other.Id != unit.Id && Detection.SideSees(sim.Data, state, unit.Side, other)) into = other.Name;
+                else landing = next;
+            }
+            var breaks = unit.HostileTo(victim) ? ", breaks a guard" : "";
+            result.Add(new PushOutcome(victim.Id, landing, into is not null, into is null
+                ? $"{victim.Name} to {landing}{breaks}"
+                : $"into {(into == "a wall" ? "wall" : into)}: {rules.CollisionDamage:0} damage{breaks}"));
+        }
+        return result;
+    }
+
+    /// <summary>What a Defend would do against each seen hostile that could strike the unit where its plan ends, nearest first.</summary>
+    public static List<GuardOdds> DefendOdds(ScavengeSim sim, Unit unit)
+    {
+        var (state, at) = (sim.State, Plans.Anchor(sim.State, unit));
+        var share = Defences.BlockOf(sim, unit, Defences.GuardOf(sim, unit).Block);
+        return state.Units.Where(u => u.IsActive && unit.HostileTo(u) && Detection.SideSees(sim.Data, state, unit.Side, u))
+            .Select(u => (Unit: u, Action: sim.Profile(u).Actions.Where(a => Combat.CheckReach(sim.Data, state.Map, u.Pos, a, at) == ScavengeError.None).OrderByDescending(a => a.MaxDamage).ThenBy(a => a.Id, StringComparer.Ordinal).FirstOrDefault()))
+            .Where(o => o.Action is not null).OrderBy(o => o.Unit.Pos.Chebyshev(at)).ThenBy(o => o.Unit.Id)
+            .Select(o => new GuardOdds(o.Unit.Id, o.Unit.Name, share, Stuns.Chance(sim, unit, o.Unit, o.Action!, share, perfect: false))).ToList();
     }
 
     /// <summary>

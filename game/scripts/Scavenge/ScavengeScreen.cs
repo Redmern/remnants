@@ -863,6 +863,10 @@ public partial class ScavengeScreen : Node3D
             // True AP from here (a scope costs more up close) and the mod effects that bite on this target.
             var ap = Combat.ApCost(action, Plans.Anchor(_presenter.State, selected), option.Target.Pos);
             var effects = ModEffects(action, option.Target, ap);
+            // The odds before committing: the tiers, the crit, the stun if it guards, and what changes them.
+            var odds = TacticsView.Odds(_presenter.Sim, selected, action, option.Target, tier: _presenter.KnowledgeOf(option.Target));
+            effects.Insert(0, ($"graze {odds.Graze * 100:0} · hit {odds.Hit * 100:0} · solid {odds.Solid * 100:0} · crit {odds.Crit * 100:0} · stun if guarded {odds.StunIfGuarded * 100:0}", false));
+            effects.AddRange(odds.Factors.Select(f => (f, false)));
             previews[option.Target.Id] = new WorldTags.Preview(
                 (ambush ? "AMBUSH " : "") + $"{option.HitChance * 100:0}% · {action.MinDamage:0}–{action.MaxDamage:0}" + (ap > Plans.ApToSpend(_presenter.State, selected) ? " · no AP" : ""),
                 ambush, ap > Plans.ApToSpend(_presenter.State, selected), effects.Count == 0 ? null : string.Join(" · ", effects.Select(e => e.Text)),

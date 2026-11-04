@@ -41,6 +41,7 @@
     "instantDeathHp": -40,
     "armLockBelow": 0.5,
     "tiers": { "grazeBelow": 0.25, "solidFrom": 0.8, "grazeDamage": 0.4, "solidSeverity": 1.5, "armorShiftFrom": 4, "coverShiftFrom": 0.25 },
+    "crit": { "chance": 0.05, "side": 0.05, "rear": 0.15, "damage": 1.5 },
     "facing": { "sideDamage": 1.25, "rearDamage": 1.5 },
     "push": { "apCost": 1, "tiles": 1, "pattern": { "shape": "Stab", "length": 1 }, "collisionDamage": 4, "blockerDamage": 2 },
     "dash": { "apCost": 1, "tiles": 3, "attackHit": 0.1 },
