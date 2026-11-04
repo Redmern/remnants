@@ -9,7 +9,7 @@ namespace Remnants.Core.Scavenge;
 /// <item>Husk: wander; aggro on sight or noise; close in and attack.</item>
 /// <item>Linked: squad AI over the <see cref="Network"/>. It knows every hostile its group sees, the group shares one
 /// focus (weakest / most exposed), and each unit first takes the best firing position (a shot at the focus, cover,
-/// flanking tiles that strip the focus's cover), then shoots, or lays down suppressing fire when the odds are poor.
+/// flanking tiles that strip the focus's cover), then shoots, or closes in first when the odds are poor.
 /// Badly hurt units fall back to cover while the squad holds. They use the fog: firing positions the focus's side would
 /// not detect them on score higher (an ambush gets the bonus). A jammed Linked is cut off and fights like a Husk.</item>
 /// <item>Recruit: follow its leader.</item>
@@ -17,7 +17,7 @@ namespace Remnants.Core.Scavenge;
 /// Every unit produces a plan when the round opens, like a player: it thinks where its plan has taken it (the unit stands
 /// there only while it thinks) and queues moves and tile strikes (<see cref="TileStrikes"/>) from what it knows of where
 /// others stand, never their plans: a stab / slash weapon aimed to cover the most hostiles, any other action at the target's
-/// tile; suppressing fire pins whoever stands on the tile then.
+/// tile.
 /// </summary>
 internal static class ScavengeAi
 {
@@ -43,9 +43,9 @@ internal static class ScavengeAi
         EnemyCards.Play(sim, unit);
     }
 
-    /// <summary>Readies a tile strike at the target (or suppressing fire on its tile), if the action can be aimed at it and paid for.</summary>
-    private static bool Strike(ScavengeSim sim, Unit unit, ActionProfile action, Unit target, bool suppress = false) =>
-        TileStrikes.StrikeAt(sim, unit, action, target) is { } strike && TileStrikes.Declare(sim, unit, strike, suppress).Ok;
+    /// <summary>Readies a tile strike at the target , if the action can be aimed at it and paid for.</summary>
+    private static bool Strike(ScavengeSim sim, Unit unit, ActionProfile action, Unit target) =>
+        TileStrikes.StrikeAt(sim, unit, action, target) is { } strike && TileStrikes.Declare(sim, unit, strike).Ok;
 
     /// <summary>Whether the unit can still add to its plan: up, with points left, and no blow queued yet (moves come before blows).</summary>
     private static bool Acting(ScavengeSim sim, Unit unit) => unit.IsActive && (unit.Ap > 0 || unit.Mp > 0) && !TileStrikes.Readied(sim.State, unit);
@@ -53,7 +53,7 @@ internal static class ScavengeAi
     /// <summary>With AP left after its blow, the unit keeps at it: the same blow again, on the same tile.</summary>
     private static void KeepStriking(ScavengeSim sim, Unit unit)
     {
-        if (Plans.Of(sim.State, unit)?.Steps.LastOrDefault(s => s.Strike is { Suppress: false })?.Strike is not { } strike) return;
+        if (Plans.Of(sim.State, unit)?.Steps.LastOrDefault(s => s.Strike is not null)?.Strike is not { } strike) return;
         var again = new AttackTile(unit.PlayerId ?? 0, unit.Id, strike.Tile, strike.ActionId, strike.Mode, strike.Direction);
         for (var guard = 0; guard < 8 && unit.Ap > 0 && TileStrikes.Declare(sim, unit, again).Ok; guard++) { }
     }
@@ -126,10 +126,11 @@ internal static class ScavengeAi
                 else if (Reposition(sim, unit, focus, known)) continue;
             }
 
-            if (TryAttackAbove(sim, unit, focus, rules.SuppressBelowHitChance)) continue;
-            if (known.Where(t => t.Id != focus.Id).Any(t => TryAttackAbove(sim, unit, t, rules.SuppressBelowHitChance))) continue;
-            if (Suppress(sim, unit, focus)) return;
-            if (retreating || !StepToward(sim, unit, focus.Pos)) break;
+            if (TryAttackAbove(sim, unit, focus, rules.CloseInBelowHitChance)) continue;
+            if (known.Where(t => t.Id != focus.Id).Any(t => TryAttackAbove(sim, unit, t, rules.CloseInBelowHitChance))) continue;
+            if (!retreating && StepToward(sim, unit, focus.Pos)) continue;
+            // No closer to be had: a poor shot beats none.
+            if (!TryAttackAbove(sim, unit, focus, 0)) break;
         }
     }
 
@@ -162,19 +163,6 @@ internal static class ScavengeAi
             .ThenBy(x => x.Action.Id, StringComparer.Ordinal)
             .FirstOrDefault();
         return best.Action is not null && Strike(sim, unit, best.Action, target);
-    }
-
-    /// <summary>Pin the target with the cheapest ranged action that reaches it (if it is not pinned already).</summary>
-    private static bool Suppress(ScavengeSim sim, Unit unit, Unit target)
-    {
-        if (target.Suppressed) return false;
-        if (unit.Ap <= 0) return false;
-        var action = sim.Profile(unit).Actions
-            .Where(a => a.Pattern != AttackPattern.Melee && Combat.ApCost(a, unit.Pos, target.Pos) <= unit.Ap && Drones.CanStrike(a, target)
-                        && Combat.CheckReach(sim.Data, sim.State.Map, unit.Pos, a, target.Pos) == ScavengeError.None)
-            .OrderBy(a => a.ApCost).ThenBy(a => a.Id, StringComparer.Ordinal)
-            .FirstOrDefault();
-        return action is not null && Strike(sim, unit, action, target, suppress: true);
     }
 
     /// <summary>

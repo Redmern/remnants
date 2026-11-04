@@ -278,17 +278,6 @@ public class PatternTests
     }
 
     [Fact]
-    public void Suppressing_fire_never_pins_a_friend()
-    {
-        var a = SurvivorUnit(1, new(3, 3), weapon: "pipe");
-        var friend = SurvivorUnit(1, new(4, 3));
-        var sim = Table([a, friend, SurvivorUnit(2, new(9, 3))]);
-        Assert.True(TileStrikes.Declare(sim, a, new AttackTile(1, a.Id, friend.Pos, "swing"), suppress: true).Ok);
-        Settle(sim);
-        Assert.False(friend.Suppressed);
-    }
-
-    [Fact]
     public void The_same_seed_and_plans_give_the_same_block_outcome()
     {
         List<string> Run()

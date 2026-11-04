@@ -174,7 +174,7 @@ public class DroneTests
         Assert.Equal(drone.Pos, Strikes(sim).First(s => s.UnitId == linked.Id).Tile); // it telegraphs a shot at the drone
         Assert.True(sim.Execute(new EndTurn(1, op.Id)).Ok);
         Assert.Contains(sim.State.Events, e => e.UnitId == linked.Id && e.TargetId == drone.Id
-                                               && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed or ScavengeEventType.Suppressed);
+                                               && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed or ScavengeEventType.Stunned);
 
         var op2 = Operator(new Pos(1, 1));
         var husk = EnemyUnit("husk", new Pos(9, 3));

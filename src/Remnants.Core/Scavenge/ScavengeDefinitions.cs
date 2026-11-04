@@ -39,6 +39,10 @@ public sealed record EnemyDef
     public int? Ap { get; init; }
     public int? Stamina { get; init; }
 
+    /// <summary>The share of a stun's chance this type shrugs off, and the adrenaline it starts a mission with.</summary>
+    public double StunResist { get; init; }
+    public double AdrenalineStart { get; init; }
+
     /// <summary>Survivors go Downed at 0 HP; most enemies just die.</summary>
     public bool CanBeDowned { get; init; }
 
@@ -399,11 +403,8 @@ public sealed record NetworkRules
     /// <summary>HP fraction at or below which a Linked falls back (unless it is the last of its squad).</summary>
     public double RetreatHpFraction { get; init; } = 0.35;
 
-    /// <summary>Below this hit chance a Linked lays down suppressing fire instead of a real shot.</summary>
-    public double SuppressBelowHitChance { get; init; } = 0.3;
-
-    /// <summary>AP a suppressed unit loses on its next turn.</summary>
-    public int SuppressApPenalty { get; init; } = 1;
+    /// <summary>Below this hit chance a Linked closes in first, and shoots only when it can get no closer.</summary>
+    public double CloseInBelowHitChance { get; init; } = 0.3;
 
     /// <summary>Position scoring: value of cover at the end tile, per point of cover (0..1).</summary>
     public double CoverWeight { get; init; } = 10;
@@ -442,6 +443,51 @@ public sealed record MovementRules
     public int MinRange { get; init; } = 1;
     public List<EncumbranceStep> Encumbrance { get; init; } = new();
     public List<BodyMovementRule> Body { get; init; } = new();
+}
+
+/// <summary>
+/// Stun (<see cref="Stuns"/>, scavenge.json <c>stun</c>): what it costs next round; the chance a block stuns, base +
+/// (block - power) * <see cref="PerBlock"/> with power = average damage * <see cref="PowerPerDamage"/>, within
+/// <see cref="Min"/>..<see cref="Max"/>; <see cref="RepeatFactor"/> per earlier stun; stamina the parties lose.
+/// </summary>
+public sealed record StunRules
+{
+    public int ApLoss { get; init; } = 1;
+    public int MpLoss { get; init; } = 2;
+    public double PriorityPenalty { get; init; } = 3;
+    public double Base { get; init; } = 0.15;
+    public double PerBlock { get; init; } = 0.5;
+    public double PowerPerDamage { get; init; } = 0.02;
+    public double PerfectBonus { get; init; } = 0.15;
+    public double Min { get; init; } = 0.05;
+    public double Max { get; init; } = 0.6;
+    public double RepeatFactor { get; init; } = 0.6;
+    public int BlockedStamina { get; init; } = 1;
+    public int StunnedStamina { get; init; } = 2;
+    public int DefenderStamina { get; init; } = 1;
+}
+
+/// <summary>Adrenaline (<see cref="Adrenaline"/>, scavenge.json <c>adrenaline</c>): tiers, the share each adds, and what moves the meter.</summary>
+public sealed record AdrenalineRules
+{
+    public double Max { get; init; } = 100;
+    public double[] Tiers { get; init; } = [25, 50, 75, 100];
+    public double[] TierBonus { get; init; } = [0.05, 0.1, 0.15, 0.3];
+
+    /// <summary>Priority a bonus of 1.0 would add.</summary>
+    public double PriorityPoints { get; init; } = 10;
+    public double GainHit { get; init; } = 10;
+    public double GainPush { get; init; } = 20;
+    public double GainDash { get; init; } = 5;
+    public double GainBlock { get; init; } = 10;
+    public double GainStun { get; init; } = 15;
+    public double DrainPerRound { get; init; } = 5;
+    public double DrainFailed { get; init; } = 15;
+    public double DrainStunned { get; init; } = 15;
+    public double DrainHeavyHit { get; init; } = 15;
+
+    /// <summary>A hit for at least this share of max HP is a heavy one.</summary>
+    public double HeavyHitShare { get; init; } = 0.25;
 }
 
 /// <summary>The push action (<see cref="Pushes"/>, scavenge.json <c>combat.push</c>): its tiles and how far, and what a collision does to who is pushed and who is in the way.</summary>
@@ -751,6 +797,8 @@ public sealed record ScavengeRules
     public MovementRules Movement { get; init; } = new();
     public TurnRules Turn { get; init; } = new();
     public PriorityRules Priority { get; init; } = new();
+    public StunRules Stun { get; init; } = new();
+    public AdrenalineRules Adrenaline { get; init; } = new();
     public SightRules Sight { get; init; } = new();
     public CarryRules Carry { get; init; } = new();
     public CombatRules Combat { get; init; } = new();

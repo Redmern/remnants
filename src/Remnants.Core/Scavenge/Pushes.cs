@@ -67,12 +67,14 @@ public static class Pushes
             .OrderByDescending(u => u.Pos.Chebyshev(unit.Pos)).ThenBy(u => u.Id).ToList();
         if (victims.Count == 0)
             state.Log(new(state.Round, ScavengeEventType.IntentFizzled, $"{unit.Name}'s push meets nobody.", unit.Id, Pos: unit.Pos));
-        return victims.Where(v => One(sim, unit, v, Combat.Face(unit.Pos, v.Pos), distance)).ToList();
+        var pushed = victims.Where(v => One(sim, unit, v, Combat.Face(unit.Pos, v.Pos), distance)).ToList();
+        Scored(sim, unit, pushed.Count > 0);
+        return pushed;
     }
 
     /// <summary>
     /// One unit pushed: a tile less off a defended tile, and on until a wall or a unit stops it, with collision damage. It is never
-    /// passed on: whoever it hits stays put. Returns whether it moved.
+    /// passed on: whoever it hits stays put. Returns whether it landed: a push held off entirely did not.
     /// </summary>
     internal static bool One(ScavengeSim sim, Unit by, Unit victim, Pos dir, int distance)
     {
@@ -89,7 +91,14 @@ public static class Pushes
         var landing = CardAbilities.Slide(sim, victim, dir, distance);
         if (landing != from) CardAbilities.Displace(sim, victim, landing, by);
         if (landing.Chebyshev(from) < distance && victim.IsActive) Combat.Collide(sim, by, victim, state.UnitAt(landing + dir));
-        return landing != from;
+        return true;
+    }
+
+    /// <summary>How a push went for the pusher's adrenaline: a strong gain, or a failed action.</summary>
+    internal static void Scored(ScavengeSim sim, Unit unit, bool landed)
+    {
+        if (landed) Adrenaline.Gain(sim, unit, sim.Data.Rules.Adrenaline.GainPush);
+        else Adrenaline.Failed(sim, unit);
     }
 
     /// <summary>The unit runs straight on until something stops it. Returns whether it got anywhere.</summary>
@@ -102,6 +111,7 @@ public static class Pushes
         if (to == from)
         {
             state.Log(new(state.Round, ScavengeEventType.IntentFizzled, $"{unit.Name}'s dash is blocked.", unit.Id, Pos: from));
+            Adrenaline.Failed(sim, unit);
             return false;
         }
         unit.Pos = to;
@@ -109,6 +119,7 @@ public static class Pushes
         unit.Moved = true;
         state.Log(new(state.Round, ScavengeEventType.Moved, $"{unit.Name} dashes to {to}.", unit.Id, Pos: to));
         sim.Moved(unit, from);
+        Adrenaline.Gain(sim, unit, sim.Data.Rules.Adrenaline.GainDash);
         return true;
     }
 }

@@ -267,8 +267,8 @@ public partial class UnitPanel : PanelContainer
             : hpKnown ? $"Health {unit.Hp:0}/{unit.MaxHp:0}" : "How hurt it looks. Kill one to learn its health (Bestiary).");
         // The acting unit's AP is next to End turn in the turn bar; the card shows it for the others.
         _set.Visible(_apRow, !isActing && unit.Kind is not (UnitKind.Device or UnitKind.Decoy) && _tier >= BestiaryTier.Fought);
-        _ap.Set(unit.Ap, profile.MaxAp, unit.Suppressed ? Palette.Warn : Palette.Amber);
-        _set.Tooltip(_ap, $"{unit.Ap} of {profile.MaxAp} action points" + (unit.Suppressed ? " · suppressed: fewer AP next turn" : ""));
+        _ap.Set(unit.Ap, profile.MaxAp, Stuns.Active(_presenter.Sim.State, unit) ? Palette.Warn : Palette.Amber);
+        _set.Tooltip(_ap, $"{unit.Ap} of {profile.MaxAp} action points" + (Stuns.Active(_presenter.Sim.State, unit) ? " · stunned: fewer AP and MP next turn" : ""));
 
         var allied = _presenter.IsAlly(unit) || unit.CarryingId is not null || unit.CarriedById is not null;
         _set.Visible(_allyCard, allied);

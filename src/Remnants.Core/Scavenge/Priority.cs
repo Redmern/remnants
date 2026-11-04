@@ -14,7 +14,7 @@ public static class Priority
         var p = sim.Profile(unit);
         var share = p.MaxStamina > 0 ? (double)Economy.Stamina(sim, unit) / p.MaxStamina : 0;
         var cliff = share < rules.CliffBelow ? rules.CliffPenalty * (1 - share / rules.CliffBelow) : 0;
-        return p.Initiative * rules.SpeedPerInitiative + share * rules.StaminaWeight - cliff + unit.PriorityBonus;
+        return p.Initiative * rules.SpeedPerInitiative + share * rules.StaminaWeight - cliff + unit.PriorityBonus + Adrenaline.Bonus(sim, unit) * sim.Data.Rules.Adrenaline.PriorityPoints;
     }
 
     /// <summary>The score of one queued action of the unit.</summary>

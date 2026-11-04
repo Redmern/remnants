@@ -107,6 +107,9 @@ public sealed record CardEffect
     /// <summary>Tiles everyone on the card's pattern is pushed; <see cref="Dash"/> tiles the player runs first, along its aim.</summary>
     public int PushAll { get; init; }
     public int Dash { get; init; }
+
+    /// <summary>Adrenaline given at once.</summary>
+    public int Adrenaline { get; init; }
     public double Block { get; init; }
 
     /// <summary>Whether it changes the board (anything beyond a buff on the character it is played on).</summary>
@@ -119,7 +122,7 @@ public sealed record CardEffect
     /// <summary>Whether it acts on a tile (a target tile is needed).</summary>
     public bool NeedsTile => Step > 0 || PlaceBarrier > 0 || Smoke > 0;
 
-    public bool IsEmpty => Move == 0 && Hit == 0 && Guard == 0 && Cover == 0 && Mend == 0 && Draw == 0 && !IsAbility;
+    public bool IsEmpty => Move == 0 && Hit == 0 && Guard == 0 && Cover == 0 && Mend == 0 && Draw == 0 && Adrenaline == 0 && !IsAbility;
 
     public CardEffect Plus(CardEffect? other) => other is null ? this : new()
     {
@@ -129,7 +132,7 @@ public sealed record CardEffect
         GrantAp = GrantAp + other.GrantAp, AdvanceInitiative = AdvanceInitiative || other.AdvanceInitiative,
         DelayInitiative = DelayInitiative || other.DelayInitiative, PlaceBarrier = PlaceBarrier + other.PlaceBarrier,
         Smoke = Smoke + other.Smoke, Strike = Strike || other.Strike, Disrupt = Disrupt || other.Disrupt,
-        Attack = Attack || other.Attack, Block = Block + other.Block, PushAll = PushAll + other.PushAll, Dash = Dash + other.Dash,
+        Attack = Attack || other.Attack, Block = Block + other.Block, PushAll = PushAll + other.PushAll, Dash = Dash + other.Dash, Adrenaline = Adrenaline + other.Adrenaline,
     };
 
     /// <summary>Numbers × <paramref name="factor"/> (whole-number effects round down, never below their base).</summary>
@@ -140,7 +143,7 @@ public sealed record CardEffect
         // Abilities do not scale: a push is as far, a smoke as long, whoever plays it.
         Push = Push, Pull = Pull, Swap = Swap, Step = Step, Spin = Spin, GrantAp = GrantAp, AdvanceInitiative = AdvanceInitiative,
         DelayInitiative = DelayInitiative, PlaceBarrier = PlaceBarrier, Smoke = Smoke, Strike = Strike, Disrupt = Disrupt,
-        Attack = Attack, Block = Block, PushAll = PushAll, Dash = Dash,
+        Attack = Attack, Block = Block, PushAll = PushAll, Dash = Dash, Adrenaline = Adrenaline,
     };
 }
 

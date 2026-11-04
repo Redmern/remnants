@@ -64,7 +64,7 @@ public partial class ScavengeLog : PanelContainer
             ScavengeEventType.Healed or ScavengeEventType.Stabilized or ScavengeEventType.Revived => ("stat_health", Palette.Good),
             ScavengeEventType.PickedUp => ("stat_loot", Palette.Good),
             ScavengeEventType.RoundStarted => ("stat_time", Palette.Amber),
-            ScavengeEventType.Reinforced or ScavengeEventType.Flanked or ScavengeEventType.Suppressed => ("stat_linked", Palette.Network),
+            ScavengeEventType.Reinforced or ScavengeEventType.Flanked or ScavengeEventType.Stunned => ("stat_linked", Palette.Network),
             ScavengeEventType.Ambushed => ("stat_warning", Palette.Danger),
             ScavengeEventType.Alarm or ScavengeEventType.OverrideEnded => ("stat_linked", Palette.Network),
             ScavengeEventType.HackFailed => ("stat_warning", Palette.Danger),

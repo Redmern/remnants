@@ -139,7 +139,7 @@ public partial class TurnBar : PanelContainer
         _ap.Text = Status();
         var acting = _presenter.ActingUnit;
         _apPips.Visible = acting is not null;
-        if (acting is not null) _apPips.Set(acting.Ap, _presenter.Sim.Profile(acting).MaxAp, acting.Suppressed ? Palette.Warn : Palette.Amber);
+        if (acting is not null) _apPips.Set(acting.Ap, _presenter.Sim.Profile(acting).MaxAp, Stuns.Active(_presenter.Sim.State, acting) ? Palette.Warn : Palette.Amber);
         _endTurn.Disabled = acting is null || busy;
     }
 

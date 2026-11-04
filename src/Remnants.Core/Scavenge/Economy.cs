@@ -18,7 +18,7 @@ public static class Economy
         var p = sim.Profile(unit);
         var load = p.CarryCapacity > 0 ? Math.Min(1, p.Load / p.CarryCapacity) : 1;
         var regen = (int)Math.Round(p.MaxStamina * turn.StaminaRegen - load * turn.RegenLoadPenalty, MidpointRounding.AwayFromZero);
-        return Math.Max(turn.MinStaminaRegen, regen);
+        return (int)Math.Ceiling(Math.Max(turn.MinStaminaRegen, regen) * (1 + Adrenaline.Bonus(sim, unit)));
     }
 
     /// <summary>A round starts for the unit: stamina regenerates and both pools refill (an exhausted unit gets half its MP and no AP).</summary>

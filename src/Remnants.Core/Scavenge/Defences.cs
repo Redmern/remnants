@@ -52,12 +52,12 @@ public static class Defences
     /// <summary>All the unit's defences end.</summary>
     internal static void Drop(ScavengeState state, Unit unit) => state.Defences.RemoveAll(d => d.UnitId == unit.Id);
 
-    /// <summary>Block share: the card's, plus the defender's block skill, plus its armor; capped.</summary>
+    /// <summary>Block share: the card's, plus the defender's block skill, its armor and perks, amplified by its adrenaline; capped.</summary>
     public static double BlockOf(ScavengeSim sim, Unit defender, double cardBlock)
     {
         var rules = sim.Data.Rules.Combat.Block;
-        var share = cardBlock + defender.Get(rules.Skill) * rules.PerSkill + sim.Profile(defender).Armor * rules.PerArmor;
-        return Math.Clamp(share, 0, rules.Max);
+        var share = cardBlock + defender.Get(rules.Skill) * rules.PerSkill + sim.Profile(defender).Armor * rules.PerArmor + defender.Hook(Colony.PerkHooks.BlockBonus);
+        return Math.Clamp(share * (1 + Adrenaline.Bonus(sim, defender)), 0, rules.Max);
     }
 
     /// <summary>The strongest defence against <paramref name="attacker"/> on the tile, or null: the share it blocks, and who holds it.</summary>

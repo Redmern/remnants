@@ -16,8 +16,6 @@ public sealed class TileStrike
     public Pos Direction { get; set; }
     public List<Pos> Tiles { get; set; } = new();
 
-    /// <summary>Suppressing fire (an AI's): it pins whoever stands on the tile when it comes down, with no damage roll.</summary>
-    public bool Suppress { get; set; }
 }
 
 /// <summary>
@@ -30,7 +28,7 @@ public sealed class TileStrike
 /// </summary>
 public static class TileStrikes
 {
-    internal static ScavengeResult Declare(ScavengeSim sim, Unit unit, AttackTile c, bool suppress = false)
+    internal static ScavengeResult Declare(ScavengeSim sim, Unit unit, AttackTile c)
     {
         var state = sim.State;
         var from = Plans.Anchor(state, unit);
@@ -47,7 +45,7 @@ public static class TileStrikes
         Plans.For(state, unit).Steps.Add(new PlanStep
         {
             Kind = PlanStepKind.Strike,
-            Strike = new TileStrike { UnitId = unit.Id, ActionId = action.Id, Mode = aim.Mode, From = from, Tile = c.Tile, Direction = aim.Direction, Tiles = aim.Tiles, Suppress = suppress },
+            Strike = new TileStrike { UnitId = unit.Id, ActionId = action.Id, Mode = aim.Mode, From = from, Tile = c.Tile, Direction = aim.Direction, Tiles = aim.Tiles },
         });
         var how = aim.Mode is { } mode ? $"a {mode.ToString().ToLowerInvariant()}" : "an attack";
         return ScavengeResult.Success($"{unit.Name} plans {how} at {c.Tile}.");
@@ -145,23 +143,9 @@ public static class TileStrikes
         var shift = unit.Pos - strike.From;
         var tiles = strike.Tiles.Select(p => p + shift).Where(state.Map.InBounds).ToList();
         var at = new TileStrike { Tiles = tiles, Tile = strike.Tile + shift, Direction = strike.Direction };
-        var targets = strike.Suppress ? Pin(sim, unit, action, at) : Strike(sim, unit, action, tiles, at.Tile, strike.Direction);
+        var targets = Strike(sim, unit, action, tiles, at.Tile, strike.Direction);
         if (targets.Count == 0) Fizzle($"{action.Name} hits nothing");
         else state.Log(new(state.Round, ScavengeEventType.IntentResolved, $"{unit.Name}'s {action.Name} comes down.", unit.Id, Pos: unit.Pos));
-    }
-
-    /// <summary>Suppressing fire comes down: it pins the first one on the tiles in sight of the unit; with nobody there it only makes its noise.</summary>
-    private static List<Unit> Pin(ScavengeSim sim, Unit unit, ActionProfile action, TileStrike strike)
-    {
-        var clear = strike.Tiles.Where(p => Combat.Clear(sim.Data, sim.State.Map, unit.Pos, p)).ToList();
-        unit.Facing = strike.Direction;
-        if (TargetsOn(sim.State, unit, action, clear).FirstOrDefault(unit.HostileTo) is not { } target)
-        {
-            sim.MakeNoise(unit, action.Noise);
-            return [];
-        }
-        Combat.Suppress(sim, unit, action, target);
-        return [target];
     }
 
     /// <summary>
@@ -178,6 +162,7 @@ public static class TileStrikes
         if (targets.Count == 0)
         {
             sim.MakeNoise(unit, action.Noise);
+            Adrenaline.Failed(sim, unit);
             return targets;
         }
         targets.AddRange(Combat.Splash(sim, unit, action, tile, targets));

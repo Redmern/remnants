@@ -89,8 +89,12 @@ public sealed class Unit
     /// <summary>AP added (negative: taken, never below 1) at the start of its first-round turn: a good meal or bad rations on the way.</summary>
     public int FirstRoundAp { get; set; }
 
-    /// <summary>Pinned by suppressing fire: loses AP at the start of its next turn.</summary>
-    public bool Suppressed { get; set; }
+    /// <summary>The round a stun costs this unit AP, MP and priority (<see cref="Stuns"/>); its stuns so far this mission.</summary>
+    public int StunnedRound { get; set; }
+    public int StunCount { get; set; }
+
+    /// <summary>The meter of <see cref="Scavenge.Adrenaline"/>.</summary>
+    public double Adrenaline { get; set; }
 
     /// <summary>A stim wears off: its next turn starts this many AP short.</summary>
     public int CrashAp { get; set; }

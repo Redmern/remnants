@@ -226,21 +226,6 @@ public static class Combat
         _ => 1,
     };
 
-    /// <summary>
-    /// Suppressing fire comes down (its AP paid when declared): no damage roll, but the target is pinned and loses AP next
-    /// round. Gives the attacker away like any shot.
-    /// </summary>
-    internal static void Suppress(ScavengeSim sim, Unit attacker, ActionProfile action, Unit target)
-    {
-        sim.MakeNoise(attacker, action.Noise);
-        target.Suppressed = target.CalmUntilRound < sim.State.Round;
-        Bestiary.Fought(sim, attacker, target);
-        sim.State.Log(new(sim.State.Round, ScavengeEventType.Suppressed,
-            $"{attacker.Name} pins {target.Name} down with suppressing fire ({action.Name}).", attacker.Id, target.Id, target.Pos,
-            Anonymous: $"{target.Name} is pinned down by fire from the fog."));
-        AfterAttack(sim, attacker, action, [target]);
-    }
-
     private static void AfterAttack(ScavengeSim sim, Unit attacker, ActionProfile action, List<Unit> targets)
     {
         var state = sim.State;
@@ -279,12 +264,13 @@ public static class Combat
                 // The log is shared and cannot know a colony's bestiary: an NPC enemy's chance shows to the nearest 5%.
                 $"{attacker.Name} missed {target.Name} ({action.Name}, {(Bestiary.Subject(target) ? Bestiary.ShownChance(data.Rules.Bestiary, chance, BestiaryTier.Unknown) : chance):P0}).", attacker.Id, target.Id, target.Pos,
                 Anonymous: $"An attack from the fog missed {target.Name}."));
+            Adrenaline.Failed(sim, attacker);
             return;
         }
 
         var arc = ArcOf(target, attacker.Pos);
         var stacked = Math.Min(data.Rules.Combat.MaxDamageMultiplier, (ambush?.DamageMultiplier ?? 1) * ArcDamage(data.Rules.Combat.Facing, arc));
-        var raw = (action.MinDamage + (action.MaxDamage - action.MinDamage) * sim.Rng.NextDouble()) * stacked * sim.EffectFactor;
+        var raw = (action.MinDamage + (action.MaxDamage - action.MinDamage) * sim.Rng.NextDouble()) * stacked * sim.EffectFactor * (1 + Adrenaline.Bonus(sim, attacker));
         var part = PickHitLocation(sim, target);
         var defense = sim.Profile(target);
         var armor = Math.Max(0, defense.ArmorAgainst(Body.RegionOf(part), action.Pattern == AttackPattern.Melee) - action.ArmorPierce);
@@ -304,7 +290,9 @@ public static class Combat
             state.Log(new(state.Round, ScavengeEventType.Blocked,
                 $"{block.Defender.Name}'s {(block.Perfect ? "perfect " : "")}block takes {block.Share * 100:0}% off the hit on {target.Name}.", block.Defender.Id, target.Id, target.Pos,
                 Anonymous: $"The hit on {target.Name} is blocked."));
+            Stuns.Blocked(sim, attacker, action, block.Defender, block.Share, block.Perfect);
         }
+        else Adrenaline.Gain(sim, attacker, data.Rules.Adrenaline.GainHit);
         var where = (target.Structure ? target.Name : $"{target.Name}'s {part}")
                     + arc switch { FacingArc.Side => " from the side", FacingArc.Rear => " from behind", _ => "" };
         var (verb, how) = tier switch
@@ -319,12 +307,8 @@ public static class Combat
             Tier: tier, Amount: damage));
         var severity = action.InjuryMultiplier * (1 - Math.Clamp(defense.InjuryResist, 0, 1)) * (tier == HitTier.Solid ? tiers.SolidSeverity : 1);
         ApplyDamage(sim, target, part, damage, severity, attacker, injure: tier != HitTier.Graze);
-        if (bane is { Stun: true } && target.IsActive && !target.Suppressed)
-        {
-            target.Suppressed = true;
-            state.Log(new(state.Round, ScavengeEventType.Suppressed, $"{target.Name} is stunned ({action.Name}).", attacker.Id, target.Id, target.Pos,
-                Anonymous: $"{target.Name} is stunned."));
-        }
+        if (damage >= target.MaxHp * data.Rules.Adrenaline.HeavyHitShare) Adrenaline.Drain(sim, target, data.Rules.Adrenaline.DrainHeavyHit);
+        if (bane is { Stun: true }) Stuns.Try(sim, target, Stuns.Scale(sim, target), attacker, action.Name);
         if (bane is { DisruptRounds: > 0 } && target.IsActive && Network.IsLinked(data, target))
         {
             target.OffRelayUntilRound = Math.Max(target.OffRelayUntilRound, state.Round + bane.DisruptRounds - 1);

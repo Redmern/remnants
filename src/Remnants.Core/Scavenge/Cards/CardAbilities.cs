@@ -140,8 +140,9 @@ public static class CardAbilities
         }
         else if (effect.Push > 0 && target is not null)
         {
-            var moved = Pushes.One(sim, unit, target, Combat.Face(unit.Pos, target.Pos), effect.Push);
-            done.Add(moved ? $"{target.Name} shoved to {target.Pos}" : $"{target.Name} is shoved and does not budge");
+            var before = target.Pos;
+            Pushes.Scored(sim, unit, Pushes.One(sim, unit, target, Combat.Face(unit.Pos, target.Pos), effect.Push));
+            done.Add(target.Pos != before ? $"{target.Name} shoved to {target.Pos}" : $"{target.Name} is shoved and does not budge");
         }
         else if (outcome.Landing is { } landing && target is not null)
         {

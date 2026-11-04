@@ -34,7 +34,7 @@ public enum ScavengeEventType
 {
     RoundStarted, Moved, Attacked, Missed, Injured, LimbLost, Downed, Died, BledOut,
     Stabilized, Revived, Healed, Fractured, Treated, Crashed, Evacuated, Extracted, PickedUp, Recruited, Spotted, PartyDone, Finished,
-    Suppressed, Flanked, Retreated, Reinforced,
+    Stunned, Flanked, Retreated, Reinforced,
     Ambushed, Lookout, Revealed, FlareLit, SensorPlaced, SensorTripped,
     AllianceProposed, AllianceAccepted, AllianceDeclined, AllianceBreakWarning, AllianceBroken,
     Pinged, ItemGiven, PickedUpBody, PutDown,

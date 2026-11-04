@@ -56,6 +56,7 @@ public sealed class ScavengeSim
     {
         if (State.Round == 0)
         {
+            Adrenaline.Started(this);
             MissionRules.Started(this);
             StartRound();
         }
@@ -181,7 +182,7 @@ public sealed class ScavengeSim
     }
 
     /// <summary>The round opens for a unit: its lookout and the round's card effects end, and it gets fresh points.</summary>
-    private void BeginRound(Unit unit)
+    internal void BeginRound(Unit unit)
     {
         unit.Lookout = false;
         unit.PingsUsed = 0;
@@ -203,12 +204,8 @@ public sealed class ScavengeSim
             unit.Mp = 0;
             State.Log(new(State.Round, ScavengeEventType.EmpBurst, $"{unit.Name} is still down from the EMP.", unit.Id, Pos: unit.Pos));
         }
-        if (unit.Suppressed)
-        {
-            unit.Suppressed = false;
-            unit.Ap = Math.Max(1, unit.Ap - Data.Rules.Network.SuppressApPenalty);
-            State.Log(new(State.Round, ScavengeEventType.Suppressed, $"{unit.Name} is pinned down ({unit.Ap} AP).", unit.Id, Pos: unit.Pos));
-        }
+        Stuns.RoundStarted(this, unit);
+        Adrenaline.RoundStarted(this, unit);
         if (Economy.Stamina(this, unit) <= 0) unit.Ap = 0;
     }
 

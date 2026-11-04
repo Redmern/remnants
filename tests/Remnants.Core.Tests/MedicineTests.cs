@@ -381,10 +381,10 @@ public class FieldMedicineTests
         var a = SurvivorUnit(pos: new(0, 0), pack: ["calm_injector"]);
         var sim = Arena(6, 6, [a]);
         a.Hp = 30;
-        a.Suppressed = true;
+        a.StunnedRound = sim.State.Round + 1;
         Assert.True(sim.Execute(new UseItem(1, a.Id, "calm_injector")).Ok);
         Assert.Equal(70, a.Hp);
-        Assert.False(a.Suppressed);
+        Assert.False(Stuns.Active(sim.State, a));
         Assert.True(a.CalmUntilRound >= sim.State.Round);
         Assert.Equal(Body.MaxHumanity - 4, a.Body.Humanity, 9);
     }

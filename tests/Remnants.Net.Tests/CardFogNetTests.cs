@@ -27,6 +27,23 @@ public class CardFogNetTests
     }
 
     [Fact]
+    public void Adrenaline_and_a_stun_show_on_a_rival_in_sight_and_not_on_one_out_of_it()
+    {
+        var (f, _, b, alice, bob) = Field();
+        alice.Adrenaline = 60;
+        alice.StunnedRound = f.Sim.State.Round + 1;
+        var fog = new SideFog(b.Id, bob.Side);
+        fog.Update(f.Sim);
+        Assert.DoesNotContain(fog.View(f.Sim).Units, u => u.Id == alice.Id && u.Adrenaline > 0);
+
+        alice.Pos = bob.Pos + new Pos(-1, 0);
+        fog.Update(f.Sim);
+        var seen = fog.View(f.Sim).Units.Single(u => u.Id == alice.Id);
+        Assert.Equal(60, seen.Adrenaline);
+        Assert.True(Stuns.Active(f.Sim.State, seen));
+    }
+
+    [Fact]
     public void A_side_gets_the_barriers_and_smoke_it_sees_and_its_own()
     {
         var (f, a, b, alice, bob) = Field();

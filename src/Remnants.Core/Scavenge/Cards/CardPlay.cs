@@ -106,6 +106,7 @@ public static class CardPlay
         if (effect.Guard > 0) { unit.Guard += effect.Guard; done.Add($"next hit {effect.Guard} tier{(effect.Guard > 1 ? "s" : "")} lighter"); }
         if (effect.Cover > 0) { unit.CardCover += effect.Cover; done.Add($"+{effect.Cover:P0} cover"); }
         if (effect.Mend > 0 && Treatment.Mend(unit.Body, effect.Mend) is { } mended) done.Add(mended);
+        if (effect.Adrenaline > 0) { Adrenaline.Gain(sim, unit, effect.Adrenaline); done.Add($"+{effect.Adrenaline} adrenaline"); }
         if (effect.Draw > 0) { SquadDecks.Draw(sim, deck, effect.Draw); done.Add($"draws {effect.Draw}"); }
         if (ability is not null) done.AddRange(CardAbilities.Apply(sim, unit, card, effect, ability));
         // Onto its pile only now, so a draw card never reshuffles itself back into the hand.

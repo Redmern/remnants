@@ -40,8 +40,8 @@ public static class FieldMedicine
         if (use.CalmRounds > 0)
         {
             target.CalmUntilRound = Math.Max(target.CalmUntilRound, sim.State.Round + use.CalmRounds - 1);
-            target.Suppressed = false;
-            done.Add("calm: cannot be pinned down");
+            target.StunnedRound = 0;
+            done.Add("calm: cannot be stunned");
         }
         if (done.Count == 0) return false;
         if (use.HumanityCost > 0) target.Body.HumanityLoss += use.HumanityCost;

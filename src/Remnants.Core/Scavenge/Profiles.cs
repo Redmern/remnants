@@ -74,7 +74,9 @@ public sealed record UnitProfile(
     double InjuryResist = 0,
     double MeleeArmor = 0,
     int MaxMp = 0,
-    int MaxStamina = 0)
+    int MaxStamina = 0,
+    double StunResist = 0,
+    double AdrenalineStart = 0)
 {
     public ActionProfile? Action(string id) => Actions.FirstOrDefault(a => a.Id == id);
 
@@ -181,7 +183,9 @@ public static class ProfileDeriver
             InjuryResist: 1 - equipped.Aggregate(1.0, (keep, i) => keep * (1 - Math.Clamp(i.InjuryResist, 0, 1))),
             MeleeArmor: equipped.Sum(i => i.MeleeArmor),
             MaxMp: enemy?.Mp ?? MaxMp(rules, movement.Primary.Range),
-            MaxStamina: enemy?.Stamina ?? rules.Turn.BaseStamina);
+            MaxStamina: enemy?.Stamina ?? rules.Turn.BaseStamina,
+            StunResist: (enemy?.StunResist ?? 0) + unit.Hook(PerkHooks.StunResist),
+            AdrenalineStart: (enemy?.AdrenalineStart ?? 0) + unit.Hook(PerkHooks.AdrenalineStart));
     }
 
     /// <summary>Armor of gear with coverage, per region it covers (null when no gear has coverage).</summary>
