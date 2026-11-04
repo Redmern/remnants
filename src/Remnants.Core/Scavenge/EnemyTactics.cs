@@ -41,6 +41,9 @@ public static class EnemyAim
         return Open(sim, unit, tile) ? tile : null;
     }
 
+    /// <summary>Whether its type holds its blow for this target this round (<see cref="EnemyTactics.HoldIfMoved"/>).</summary>
+    internal static bool Holds(ScavengeSim sim, Unit unit, Unit target) => Of(sim, unit) is { HoldIfMoved: true } && target.LastMove != default;
+
     /// <summary>On the map, walkable, and no friend standing there to hit.</summary>
     private static bool Open(ScavengeSim sim, Unit unit, Pos tile) =>
         sim.State.Map.InBounds(tile) && sim.Data.Terrain(sim.State.Map[tile]).Passable

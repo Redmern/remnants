@@ -46,7 +46,7 @@ public class TileAttackAiTests
     public void An_enemy_with_a_plain_attack_telegraphs_the_one_tile()
     {
         var far = SurvivorUnit(1, new(0, 0), weapon: "pipe");
-        var husk = EnemyUnit("husk", new(5, 2));
+        var husk = EnemyUnit("turret", new(5, 2));
         var near = SurvivorUnit(1, new(6, 2), weapon: "pipe");
         var sim = Arena(10, 5, [far, husk, near], data: SureHits);
         husk.Ai.Mode = AiMode.Hunting;

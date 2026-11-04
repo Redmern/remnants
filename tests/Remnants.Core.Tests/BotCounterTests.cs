@@ -82,6 +82,20 @@ public class BotCounterTests
     }
 
     [Fact]
+    public void A_dash_does_not_land_where_a_friend_is_walking_to()
+    {
+        var a = SurvivorUnit(1, new(4, 3), weapon: "pipe");
+        var friend = SurvivorUnit(1, new(1, 1), weapon: "pipe");
+        var sim = Arena(14, 7, [a, friend, EnemyUnit("husk", new(5, 3))]);
+        a.Hp = a.MaxHp * 0.3;
+        var first = Assert.IsType<Dash>(BotTactics.Counter(sim, a, 1));
+        var landing = Pushes.PlannedLanding(sim, a, first.Direction, first.Tiles);
+        Plans.For(sim.State, friend).Steps.Add(new PlanStep { Kind = PlanStepKind.Move, To = landing, Path = [landing] });
+        var again = Assert.IsType<Dash>(BotTactics.Counter(sim, a, 1));
+        Assert.NotEqual(landing, Pushes.PlannedLanding(sim, a, again.Direction, again.Tiles));
+    }
+
+    [Fact]
     public void A_unit_that_dashed_last_round_does_not_dash_again()
     {
         var a = SurvivorUnit(1, new(4, 3), weapon: "pipe");
@@ -144,6 +158,17 @@ public class BotCounterTests
         var sim = Arena(14, 7, [a, foe]);
         var move = Assert.IsType<Move>(BotTactics.Position(sim, a, 1));
         Assert.NotEqual(FacingArc.Front, Combat.ArcOf(foe, move.To));
+    }
+
+    [Fact]
+    public void It_does_not_keep_circling_a_foe_it_walked_up_to()
+    {
+        var a = SurvivorUnit(1, new(4, 3), weapon: "pipe");
+        var foe = EnemyUnit("husk", new(6, 3));
+        foe.Facing = new Pos(-1, 0);
+        var sim = Arena(14, 7, [a, foe]);
+        a.LastMove = new Pos(1, 0);
+        Assert.Null(BotTactics.Position(sim, a, 1));
     }
 
     [Fact]

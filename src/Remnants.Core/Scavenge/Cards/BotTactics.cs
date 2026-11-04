@@ -90,7 +90,7 @@ public static class BotTactics
         if (seenBy.Count > 0 && unit.Guard == 0 && playable.FirstOrDefault(c => c.Effect.Guard > 0) is { } guard) return Play(guard);
         if (seenBy.FirstOrDefault(h => h.Pos.Chebyshev(at) > 1) is { } shooter
             && Combat.CoverAgainst(data, state.Map, at, shooter.Pos) <= 0
-            && !hostiles.Any(h => Expected(sim, unit.Side, h) == at + Combat.Face(at, shooter.Pos))
+            && !WalkedOnto(sim, unit, at + Combat.Face(at, shooter.Pos))
             && Try(playable.Where(c => c.Effect.PlaceBarrier > 0), [(null, at + Combat.Face(at, shooter.Pos))]) is { } barrier) return barrier;
         if (hurt >= MendInjuryAt && playable.FirstOrDefault(c => c.Effect.Mend > 0) is { } mend) return Play(mend);
         if (deck.Hand.Count <= 2 && playable.FirstOrDefault(c => c.Effect.Draw > 0) is { } draw) return Play(draw);
@@ -199,6 +199,11 @@ public static class BotTactics
         return unit.Ap >= rules.Defend.ApCost ? new Defend(playerId, unit.Id, Combat.Face(at, Combat.ThreatZone(sim, nearest).Contains(at) ? Plans.MoveEnd(state, nearest) : nearest.Pos)) : null;
     }
 
+    /// <summary>Whether someone the side can see stands on the tile, or will once the walks are over.</summary>
+    private static bool WalkedOnto(ScavengeSim sim, Unit unit, Pos tile) =>
+        sim.State.Units.Any(u => u.Id != unit.Id && u.IsActive && u.OnMap && Detection.SideSees(sim.Data, sim.State, unit.Side, u)
+                                 && (u.Pos == tile || (u.Side == unit.Side ? Plans.MoveEnd(sim.State, u) : Expected(sim, unit.Side, u)) == tile));
+
     /// <summary>The shortest dash that lands the unit out of every seen hostile's reach, or null.</summary>
     private static (Pos Way, int Tiles)? Clear(ScavengeSim sim, Unit unit)
     {
@@ -211,7 +216,7 @@ public static class BotTactics
             {
                 // A dash never goes through anyone it can see.
                 var landing = Pushes.PlannedLanding(sim, unit, way, tiles);
-                if (landing != from + new Pos(way.X * tiles, way.Y * tiles) || state.UnitAt(landing) is { } there && Detection.SideSees(sim.Data, state, unit.Side, there)) break;
+                if (landing != from + new Pos(way.X * tiles, way.Y * tiles) || WalkedOnto(sim, unit, landing)) break;
                 if (zones.Contains(landing)) continue;
                 if (best is null || tiles < best.Value.Tiles) best = (way, tiles);
                 break;
@@ -225,7 +230,8 @@ public static class BotTactics
     /// </summary>
     public static Move? Position(ScavengeSim sim, Unit unit, int playerId)
     {
-        if (!Plans.HasRoom(sim, unit, PlanSlot.Move) || !Plans.HasRoom(sim, unit, PlanSlot.Action)) return null;
+        // One walk to a tile, then the blow: circling a foe that holds for a walker would go on for ever.
+        if (unit.LastMove != default || !Plans.HasRoom(sim, unit, PlanSlot.Move) || !Plans.HasRoom(sim, unit, PlanSlot.Action)) return null;
         var (state, data) = (sim.State, sim.Data);
         var seen = state.Units.Where(u => u.IsActive && u.OnMap && unit.HostileTo(u) && !u.Structure && Detection.SideSees(data, state, unit.Side, u)).ToList();
         if (seen.Count == 0) return null;

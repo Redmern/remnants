@@ -312,7 +312,7 @@ public static class PartyBot
     private static IScavengeCommand Settled(ScavengeSim sim, Unit unit, int playerId, IScavengeCommand command)
     {
         if (command is not Move) return command;
-        var aimed = Plans.Of(sim.State, unit)?.Steps.Any(s => s.Kind == PlanStepKind.Strike || s.Kind == PlanStepKind.Card && s.Tile is not null) == true;
+        var aimed = Plans.Of(sim.State, unit)?.Steps.Any(s => s.Kind == PlanStepKind.Strike || s.Kind == PlanStepKind.Card && (s.Tile is not null || s.TargetId is not null)) == true;
         var seen = sim.State.Units.Any(t => t.IsActive && unit.HostileTo(t) && Detection.SideSees(sim.Data, sim.State, unit.Side, t));
         return !Plans.HasRoom(sim, unit, PlanSlot.Move) || aimed && seen ? new EndTurn(playerId, unit.Id) : command;
     }

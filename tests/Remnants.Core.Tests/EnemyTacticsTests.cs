@@ -378,3 +378,46 @@ public class EnemyTacticsTests
         Assert.Equal(Real.Enemies["husk"].Tactics!.Read, Bestiary.Describe(Real, "husk", BestiaryTier.Fought).Habits);
     }
 }
+
+public class EnemyHoldTests
+{
+    private static (ScavengeSim Sim, Unit Husk, Unit A) Field()
+    {
+        var a = SurvivorUnit(1, new(5, 3), weapon: "pipe");
+        var husk = EnemyUnit("husk", new(6, 3));
+        return (Arena(14, 7, [a, husk]), husk, a);
+    }
+
+    [Fact]
+    public void A_husk_holds_its_blow_when_the_target_walked_last_round()
+    {
+        var (sim, husk, a) = Field();
+        a.LastMove = new Pos(1, 0);
+        Assert.True(EnemyAim.Holds(sim, husk, a));
+    }
+
+    [Fact]
+    public void A_husk_strikes_a_target_that_stood_still()
+    {
+        var (sim, husk, a) = Field();
+        Assert.False(EnemyAim.Holds(sim, husk, a));
+    }
+
+    [Fact]
+    public void A_linked_does_not_hold_because_it_leads_instead()
+    {
+        var a = SurvivorUnit(1, new(5, 3), weapon: "pipe");
+        var linked = EnemyUnit("linked", new(6, 3));
+        var sim = Arena(14, 7, [a, linked]);
+        a.LastMove = new Pos(1, 0);
+        Assert.False(EnemyAim.Holds(sim, linked, a));
+    }
+
+    [Fact]
+    public void A_husk_blow_sweeps_three_tiles()
+    {
+        var (sim, husk, _) = Field();
+        var claw = sim.Profile(husk).Action("claw")!;
+        Assert.Equal(3, Combat.Covered(sim.State.Map, claw, Remnants.Core.Items.StrikeMode.Slash, husk.Pos, new Pos(-1, 0)).Count());
+    }
+}
