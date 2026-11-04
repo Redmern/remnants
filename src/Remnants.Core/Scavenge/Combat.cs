@@ -39,12 +39,15 @@ public static class Combat
     /// Every tile <paramref name="unit"/> could hit right now with any of its attacks, from where it stands and facing
     /// where it faces. Empty for a unit that cannot act (downed, dead, gone).
     /// </summary>
-    public static HashSet<Pos> ThreatZone(ScavengeSim sim, Unit unit)
+    public static HashSet<Pos> ThreatZone(ScavengeSim sim, Unit unit) => ThreatFrom(sim, unit, Plans.MoveEnd(sim.State, unit));
+
+    /// <summary>The same from <paramref name="from"/>. The AI passes where a unit stands, so as to read nobody's plan, not even a telegraphed walk.</summary>
+    public static HashSet<Pos> ThreatFrom(ScavengeSim sim, Unit unit, Pos from)
     {
         var zone = new HashSet<Pos>();
         if (!unit.IsActive) return zone;
         foreach (var action in sim.Profile(unit).Actions)
-            zone.UnionWith(Hittable(sim.Data, sim.State.Map, action, Plans.Anchor(sim.State, unit), unit.Facing));
+            zone.UnionWith(Hittable(sim.Data, sim.State.Map, action, from, unit.Facing));
         return zone;
     }
 

@@ -926,7 +926,9 @@ Combat is simultaneous: everyone plans, then the round resolves. There are no su
   moves whoever is on its pattern away from the pusher; what they queued still goes off from where they land. A wall or
   unit stops it with collision damage, and a tile defended by a card or an ally's guard takes a tile off. A dash runs straight
   on and never through anyone.
-- **Counters** (`RoundResolver`, `Defences.Break`, `Economy.CaughtRecovering`; pinned pair by pair in `CounterMatrixTests`):
+- **Enemy aim and habits** (`EnemyTactics.cs`, `tactics` in `data/enemies.json`). Enemies plan at round open, before players, so aim uses only where a target stands and its `LastMove`, never a plan: `Current`, `Closest` (Husk: out of reach but two tiles off, it swings at the tile between) or `Lead` (Linked: ahead along last round's move, as far as a clear shot goes). `habits` is an ordered list of `when` and `do` that an interpreter tries first (`EnemyHabits`); no per-type code. `read` is the same in words, shown in the Bestiary from the Fought tier. An enemy whose blow or push finds nobody is `Exposed` next round: later priority, less stamina.
+
+**Counters** (`RoundResolver`, `Defences.Break`, `Economy.CaughtRecovering`; pinned pair by pair in `CounterMatrixTests`):
   Defend beats Attack (block and stun roll). A hostile push on a unit breaks its Defend for the round (`GuardBroken`), and
   the push goes its full way. A blow that lands first hits a pusher or dasher and does not cancel what it queued. A queued
   dash goes off ahead of its score when a hostile's push is about to reach it (the push fizzles, logged) or when a blow is

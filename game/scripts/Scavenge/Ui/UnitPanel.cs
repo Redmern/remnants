@@ -367,6 +367,7 @@ public partial class UnitPanel : PanelContainer
         var med = data.Medicine;
         var tags = MedicalText.Tags(med, unit.Body);
         if (unit.CalmUntilRound >= _presenter.Sim.State.Round) tags.Add("calm");
+        if (Exposed.Active(_presenter.Sim.State, unit)) tags.Add("exposed: acts later, short of breath");
         if (unit.CrashAp > 0) tags.Add($"stim crash −{unit.CrashAp} AP next round");
         int hurt = 0, lost = 0, fitted = 0;
         foreach (var (part, _) in _parts)

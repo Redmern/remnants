@@ -68,9 +68,12 @@ public static class Pushes
         var slipped = On().Where(u => unit.HostileTo(u) && RoundResolver.DashAway(sim, u)).ToList();
         var victims = On();
         if (victims.Count == 0)
+        {
             state.Log(new(state.Round, ScavengeEventType.IntentFizzled,
                 slipped.Count > 0 ? $"{unit.Name}'s push finds nobody: {string.Join(" and ", slipped.Select(u => u.Name))} dashed clear." : $"{unit.Name}'s push meets nobody.",
                 unit.Id, Pos: unit.Pos));
+            Exposed.Mark(sim, unit);
+        }
         var pushed = victims.Where(v => One(sim, unit, v, Combat.Face(unit.Pos, v.Pos), distance)).ToList();
         Scored(sim, unit, pushed.Count > 0);
         return pushed;

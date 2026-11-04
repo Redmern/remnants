@@ -70,6 +70,7 @@ public enum ScavengeEventType
     PatternResolved,
     /// <summary>A push broke the target's Defend: its guard is gone for the round.</summary>
     GuardBroken,
+    Exposed,
 }
 
 /// <summary>

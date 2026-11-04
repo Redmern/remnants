@@ -211,6 +211,7 @@ public partial class WorldTags : Control
         var tags = new List<Line>();
         if (unit.Lookout && mine) tags.Add(new("LOOKOUT", Palette.Text, "stance_scan", 12));
         if (unit.IsActive && Stuns.Active(_presenter.State, unit)) tags.Add(new("STUNNED", Palette.Warn, "stat_warning", 12));
+        if (unit.IsActive && Exposed.Active(_presenter.State, unit)) tags.Add(new("EXPOSED", Palette.Good, "stat_warning", 12));
         if (mine && unit.IsActive && unit.Kind == UnitKind.Survivor && ReplayFeedback.LowStamina(_presenter.Sim, unit)) tags.Add(new("WINDED", Palette.Network, "stat_warning", 12));
         if (unit.IsActive && unit.Adrenaline >= 1) tags.Add(new($"ADR {unit.Adrenaline:0}", Palette.Amber, "stat_initiative", 12));
         if (!mine && _presenter.IsRevealed(unit)) tags.Add(new("REVEALED", Palette.Danger, "stat_sight", 12));

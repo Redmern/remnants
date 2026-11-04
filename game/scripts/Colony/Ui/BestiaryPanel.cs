@@ -63,6 +63,7 @@ public partial class BestiaryPanel : Overlay
             column.AddChild(head);
             if (card.Weapons is { } weapons) column.AddChild(Line($"Weapons {string.Join(", ", weapons)} · reach {card.Reach}"));
             if (card.Ap is { } ap) column.AddChild(Line($"{ap} AP · moves {Remnants.Game.Scavenge.Ui.UnitPanel.MoveWords(card.Movement!)}"));
+            if (!string.IsNullOrEmpty(card.Habits)) column.AddChild(Widgets.Wrapped(card.Habits, "Small", Palette.TextMuted));
             if (card.Hp is { } hp)
             {
                 column.AddChild(Line($"Health {hp:0} · armor {card.Armor:0.#} · dodge {card.Dodge * 100:0}%"));

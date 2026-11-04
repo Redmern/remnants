@@ -44,6 +44,7 @@
     "facing": { "sideDamage": 1.25, "rearDamage": 1.5 },
     "push": { "apCost": 1, "tiles": 1, "pattern": { "shape": "Stab", "length": 1 }, "collisionDamage": 4, "blockerDamage": 2 },
     "dash": { "apCost": 1, "tiles": 3, "attackHit": 0.1 },
+    "exposed": { "priorityPenalty": 3, "stamina": 2 },
     "defend": { "apCost": 1, "block": 0.2, "pattern": { "offsets": [[0, 0], [1, 0]] } },
     "block": { "skill": "Melee", "perSkill": 0.002, "perArmor": 0.01, "max": 0.9 },
     "maxDamageMultiplier": 2.0,

@@ -77,8 +77,8 @@ public static class EnemyCards
         // A block guards the tile the unit will be on.
         var guards = deck.Hand.Distinct().Select(data.Cards.Find).OfType<CardDef>()
             .Where(c => c.Effect.Block > 0 && c.Target == CardTarget.Tile && c.Cost <= deck.Points).OrderBy(c => c.Id, StringComparer.Ordinal);
-        if (!BotTactics.Guarding(state, sim.Data, unit) && hostiles.Any(h => Combat.ThreatZone(sim, h).Contains(at)) && Try(guards, [null], at) is { } block) return block;
-        if (Try(hand.Where(Breaks), hostiles.Where(h => Combat.ThreatZone(sim, h).Contains(at))) is { } broken) return broken;
+        if (!BotTactics.Guarding(state, sim.Data, unit) && hostiles.Any(h => Combat.ThreatFrom(sim, h, h.Pos).Contains(at)) && Try(guards, [null], at) is { } block) return block;
+        if (Try(hand.Where(Breaks), hostiles.Where(h => Combat.ThreatFrom(sim, h, h.Pos).Contains(at))) is { } broken) return broken;
         PlayCard Buff(CardDef c) => new(0, unit.Id, c.Id);
         var attacks = TileStrikes.Readied(state, unit);
         if (attacks && unit.CardHit <= 0 && buffs.FirstOrDefault(c => c.Effect.Hit > 0) is { } aim) return Buff(aim);

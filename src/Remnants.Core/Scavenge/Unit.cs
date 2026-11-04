@@ -32,6 +32,10 @@ public sealed class AiMemory
 
     /// <summary>Where it last saw its target or heard a noise.</summary>
     public Pos? LastKnown { get; set; }
+
+    /// <summary>The round it last raised a guard, and last dashed: a habit (<see cref="EnemyTactics"/>) does not repeat the very next round.</summary>
+    public int GuardedRound { get; set; }
+    public int DashedRound { get; set; }
 }
 
 /// <summary>
@@ -91,6 +95,13 @@ public sealed class Unit
 
     /// <summary>The round a stun costs this unit AP, MP and priority (<see cref="Stuns"/>); its stuns so far this mission.</summary>
     public int StunnedRound { get; set; }
+
+    /// <summary>The round an enemy pays for a blow on an empty tile: it acts later and starts short of breath (<see cref="Exposed"/>).</summary>
+    public int ExposedRound { get; set; }
+
+    /// <summary>Where it stood when the round opened, and how far that took it last round: what anyone watching saw it do.</summary>
+    public Pos? RoundFrom { get; set; }
+    public Pos LastMove { get; set; }
     public int StunCount { get; set; }
 
     /// <summary>The meter of <see cref="Scavenge.Adrenaline"/>.</summary>

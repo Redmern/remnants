@@ -27,6 +27,35 @@ public sealed record TerrainDef
     public double Cover { get; init; }
 }
 
+/// <summary>Where an enemy puts a blow: <see cref="EnemyAim"/>.</summary>
+public enum AimKind { Current, Closest, Lead }
+
+/// <summary>What sets off a habit, all of it what the enemy can see: <see cref="EnemyTacticsAi"/>.</summary>
+public enum HabitWhen { Always, Hurt, Threatened, AfterGuard, Cornered, FlankOpen }
+
+/// <summary>What a habit does. Strike ends the list: the unit goes on to its usual close and blow.</summary>
+public enum HabitDo { Strike, Defend, Push, Dash }
+
+public sealed record EnemyHabit
+{
+    public HabitWhen When { get; init; }
+    public HabitDo Do { get; init; }
+    /// <summary>For <see cref="HabitWhen.Hurt"/>: at under this share of its HP.</summary>
+    public double HpBelow { get; init; } = 0.5;
+}
+
+/// <summary>A type's aim and habits, first match wins, and <see cref="Read"/>, the same thing in words for the player.</summary>
+public sealed record EnemyTactics
+{
+    public AimKind Aim { get; init; }
+    /// <summary><see cref="AimKind.Closest"/>: with the target this near (and out of reach), swing at the next tile toward it.</summary>
+    public int SwingRange { get; init; } = 2;
+    /// <summary><see cref="AimKind.Lead"/>: how many tiles ahead of a target that moved last round.</summary>
+    public int LeadTiles { get; init; } = 2;
+    public List<EnemyHabit> Habits { get; init; } = new();
+    public string Read { get; init; } = "";
+}
+
 public sealed record EnemyDef
 {
     public string Id { get; init; } = "";
@@ -54,6 +83,9 @@ public sealed record EnemyDef
     /// Most enemies have none.
     /// </summary>
     public List<string> Cards { get; init; } = new();
+
+    /// <summary>How this type aims and what it does besides strike; null: it aims where the target stands and only strikes.</summary>
+    public EnemyTactics? Tactics { get; init; }
 
     /// <summary>Added to the derived stealth: Linked move like hunters, Husks shamble.</summary>
     public double Stealth { get; init; }
@@ -509,6 +541,13 @@ public sealed record DashRules
 }
 
 /// <summary>The defend action (<see cref="Defences"/>, scavenge.json <c>combat.defend</c>): its AP, and the share and pattern of a unit with no guarding gear.</summary>
+/// <summary>What an enemy pays next round for a blow or push on an empty tile.</summary>
+public sealed record ExposedRules
+{
+    public double PriorityPenalty { get; init; } = 3;
+    public int Stamina { get; init; } = 2;
+}
+
 public sealed record DefendRules
 {
     public int ApCost { get; init; } = 1;
@@ -632,6 +671,7 @@ public sealed record CombatRules
 
     public BlockRules Block { get; init; } = new();
     public DefendRules Defend { get; init; } = new();
+    public ExposedRules Exposed { get; init; } = new();
     public PushRules Push { get; init; } = new();
     public DashRules Dash { get; init; } = new();
 

@@ -39,14 +39,48 @@ internal static class ScavengeAi
         if (unit.FollowingId is not null) Follow(sim, unit);
         else if (unit.Kind == UnitKind.Device) Machine(sim, unit);
         else if (unit.Kind != UnitKind.Enemy) return;
-        else if (Network.GroupOf(sim, unit) is { } group) Squad(sim, unit, group);
-        else Fight(sim, unit);
+        else
+        {
+            var group = Network.GroupOf(sim, unit);
+            if (!Habits(sim, unit, group))
+            {
+                if (group is not null) Squad(sim, unit, group);
+                else Fight(sim, unit);
+            }
+        }
         EnemyCards.Play(sim, unit);
     }
 
-    /// <summary>Readies a tile strike at the target , if the action can be aimed at it and paid for.</summary>
+    /// <summary>Tries the type's habits on who it sees (its group's knowledge, for a squad). Whoever it acts on, it has spotted.</summary>
+    private static bool Habits(ScavengeSim sim, Unit unit, NetworkGroup? group)
+    {
+        if (unit.EnemyDefId is not { } id || !sim.Data.Enemies.TryGetValue(id, out var def) || def.Tactics is not { Habits.Count: > 0 }) return false;
+        List<Unit> seen;
+        if (group is not null)
+        {
+            seen = Network.Known(sim, group);
+            if (seen.Count > 0) Share(sim, group, Network.Focus(sim, group, seen)!);
+        }
+        else
+        {
+            if (Spot(sim, unit) is null) return false;
+            seen = sim.State.Units.Where(u => u.IsActive && unit.HostileTo(u) && (Detection.IsLit(sim.State, u.Pos) || Detection.Spots(sim.Data, sim.State, unit, u))).ToList();
+        }
+        return EnemyHabits.Act(sim, unit, seen.OrderBy(u => u.Pos.Chebyshev(unit.Pos)).ThenBy(u => u.Id).ToList());
+    }
+
+    /// <summary>Readies a tile strike by the type's aim (<see cref="EnemyAim"/>), if the action can be aimed there and paid for.</summary>
     private static bool Strike(ScavengeSim sim, Unit unit, ActionProfile action, Unit target) =>
-        TileStrikes.StrikeAt(sim, unit, action, target) is { } strike && TileStrikes.Declare(sim, unit, strike).Ok;
+        TileStrikes.StrikeAt(sim, unit, action, target, EnemyAim.Tile(sim, unit, action, target)) is { } strike && TileStrikes.Declare(sim, unit, strike).Ok;
+
+    /// <summary>Out of reach but close: a swing at the tile it would have to step on (<see cref="EnemyAim.Swing"/>).</summary>
+    private static void Swing(ScavengeSim sim, Unit unit, Unit target)
+    {
+        if (EnemyAim.Swing(sim, unit, target) is not { } tile) return;
+        var best = sim.Profile(unit).Actions.Where(a => Drones.CanStrike(a, target) && Combat.ApCost(a, unit.Pos, tile) <= unit.Ap && TileStrikes.Aim(sim, unit, a, tile) is not null)
+            .OrderByDescending(a => a.MinDamage + a.MaxDamage).ThenBy(a => a.Id, StringComparer.Ordinal).FirstOrDefault();
+        if (best is not null && TileStrikes.StrikeAt(sim, unit, best, target, tile) is { } strike) TileStrikes.Declare(sim, unit, strike);
+    }
 
     /// <summary>Whether the unit can still add to its plan: up, with points left, and no blow queued yet (moves come before blows).</summary>
     private static bool Acting(ScavengeSim sim, Unit unit) => unit.IsActive && (unit.Ap > 0 || unit.Mp > 0) && !TileStrikes.Readied(sim.State, unit);
@@ -85,7 +119,9 @@ internal static class ScavengeAi
             }
 
             if (TryAttack(sim, unit, target)) continue;
-            if (!StepToward(sim, unit, target.Pos)) return;
+            if (StepToward(sim, unit, target.Pos)) continue;
+            Swing(sim, unit, target);
+            return;
         }
     }
 
