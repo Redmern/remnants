@@ -139,7 +139,10 @@ public partial class ScavengeHud : CanvasLayer
         // The pickup panel docks under the unit card, off the map's middle.
         Loot = new LootPanel(presenter);
         left.AddChild(Loot);
-        middle.AddChild(new Control { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore });
+        // The gap between the columns holds the hand at its foot, so an open picker never takes height from the order panels.
+        var gap = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore };
+        gap.AddChild(new Control { SizeFlagsVertical = Control.SizeFlags.ExpandFill, MouseFilter = Control.MouseFilterEnum.Ignore });
+        middle.AddChild(gap);
         // The right column: whose turn (and what a click does), then a fixed order: Attack · Use, Stance, what is in
         // reach here, Tech, Team. It is one fixed width; panels that come and go only move what is below them.
         Orders = new VBoxContainer
@@ -164,11 +167,11 @@ public partial class ScavengeHud : CanvasLayer
         Orders.AddChild(Coop);
         _orderPanels = [Actions, Stances, Actions.Context, Tech, Coop];
 
-        // The squad's hand of cards, centred above the log row (hidden without a deck).
+        // The squad's hand of cards, centred above the log row, between the columns (hidden without a deck).
         Hand = new HandStrip(presenter);
         var handRow = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore, Alignment = BoxContainer.AlignmentMode.Center };
         handRow.AddChild(Hand);
-        column.AddChild(handRow);
+        gap.AddChild(handRow);
 
         var bottom = new HBoxContainer { MouseFilter = Control.MouseFilterEnum.Ignore };
         bottom.AddThemeConstantOverride("separation", 8);
