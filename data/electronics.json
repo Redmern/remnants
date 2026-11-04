@@ -22,7 +22,7 @@
     {"id": "motion_sensor_mk2", "name": "Sensor Kit Mk II", "kind": "Consumable", "weight": 0.8, "tier": 2, "use": {"range": 2, "apCost": 1, "sensorRadius": 4, "charges": 3}},
     {"id": "motion_sensor_mk3", "name": "Sensor Kit Mk III", "kind": "Consumable", "weight": 0.8, "tier": 3, "use": {"range": 3, "apCost": 1, "sensorRadius": 5, "charges": 4}},
     {"id": "handheld_radio", "name": "Handheld Radio", "kind": "Tool", "weight": 0.6, "tier": 1, "lootWeight": 0.2, "radio": {"range": 8, "accuracyBonus": 0.03, "extraPings": 1}},
-    {"id": "squad_radio", "name": "Squad Radio", "kind": "Tool", "weight": 0.9, "tier": 2, "radio": {"range": 12, "accuracyBonus": 0.05, "extraPings": 2, "shareOverwatch": true}},
+    {"id": "squad_radio", "name": "Squad Radio", "kind": "Tool", "weight": 0.9, "tier": 2, "radio": {"range": 12, "accuracyBonus": 0.05, "extraPings": 2}},
     {"id": "rangefinder", "name": "Rangefinder", "kind": "Tool", "weight": 0.9, "tier": 2, "sightBonus": 4, "detection": 12, "rangedAccuracy": 0.06},
 
     {"id": "jammer_mk2", "name": "Signal Jammer Mk II", "kind": "Tool", "weight": 2, "tier": 3, "device": {"effect": "Jammer", "radius": 6}},

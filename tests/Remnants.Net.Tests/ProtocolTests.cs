@@ -74,7 +74,8 @@ public class ProtocolTests
         Assert.ThrowsAny<System.Text.Json.JsonException>(() => ProtocolJson.Deserialize(json.Replace("\"attackTile\"", "\"attack\"")));
         Assert.Null(typeof(IScavengeCommand).Assembly.GetType("Remnants.Core.Scavenge.Attack"));
         Assert.Equal(19, Protocol.TileAttacksOnlyVersion);
-        Assert.Equal(Protocol.TelegraphedStrikesVersion, Protocol.Version);
+        Assert.Equal(21, Protocol.SimultaneousVersion);
+        Assert.Equal(Protocol.SimultaneousVersion, Protocol.Version);
     }
 
     [Fact]

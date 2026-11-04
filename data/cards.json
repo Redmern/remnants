@@ -10,7 +10,7 @@
     "tradeValues": { "Common": 6, "Uncommon": 15, "Rare": 30 },
     "starter": {
       "shove": 2, "flank_step": 2, "yank": 1, "spoil": 1,
-      "switch_places": 1, "go_now": 1, "feint": 1,
+      "switch_places": 1, "parry": 1, "sweep": 1,
       "barricade": 2, "smoke_bomb": 1,
       "steady_aim": 2, "roll_with_it": 2, "field_dressing": 2
     },

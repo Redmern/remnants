@@ -126,4 +126,83 @@ public class BotTacticsTests
         Assert.NotEqual(FacingArc.Front, Combat.ArcOf(husk, a.Pos));
         Assert.Equal(1, a.Pos.Chebyshev(husk.Pos));
     }
+
+    private static ScavengeSim WithHand(IEnumerable<Unit> units, params string[] hand)
+    {
+        var sim = Arena(12, 7, units);
+        sim.State.Decks.Add(new SquadDeck { PlayerId = 1, Hand = hand.ToList(), Points = 9, Budget = 9, HandSize = 9 });
+        return sim;
+    }
+
+    [Fact]
+    public void A_bot_guards_where_it_will_stand_once_someone_has_it_in_reach()
+    {
+        var a = SurvivorUnit(1, new(3, 3), weapon: "pipe");
+        var foe = SurvivorUnit(2, new(4, 3), weapon: "pipe");
+        var sim = WithHand([a, foe], "parry", "parry");
+        var card = Assert.IsType<PlayCard>(BotTactics.Card(sim, a, 1));
+        Assert.Equal("parry", card.CardId);
+        Assert.Equal(a.Pos, card.Tile);
+        Assert.True(sim.Execute(card).Ok);
+        Assert.False(BotTactics.Card(sim, a, 1) is PlayCard { CardId: "parry" });
+    }
+
+    [Fact]
+    public void A_bot_swings_a_pattern_at_the_most_hostiles_and_never_through_a_friend()
+    {
+        var a = SurvivorUnit(1, new(3, 3), weapon: "pipe");
+        var one = SurvivorUnit(2, new(4, 3));
+        var two = SurvivorUnit(2, new(4, 4));
+        var lone = SurvivorUnit(2, new(2, 3));
+        var sim = WithHand([a, one, two, lone], "sweep");
+        var card = Assert.IsType<PlayCard>(BotTactics.Card(sim, a, 1));
+        var tiles = TacticsView.PatternAim(sim, a, "sweep", null, card.Direction!.Value).Tiles;
+        Assert.Contains(one.Pos, tiles);
+        Assert.Contains(two.Pos, tiles);
+
+        var b = SurvivorUnit(1, new(3, 3), weapon: "pipe");
+        var friend = SurvivorUnit(1, new(4, 3));
+        var foe = SurvivorUnit(2, new(4, 4));
+        var sim2 = WithHand([b, friend, foe], "lunge");
+        var aimed = BotTactics.Card(sim2, b, 1) as PlayCard;
+        Assert.True(aimed is null || !TacticsView.PatternAim(sim2, b, "lunge", null, aimed.Direction!.Value).Tiles.Contains(friend.Pos));
+    }
+
+    [Fact]
+    public void A_bot_does_not_read_a_rivals_queued_actions()
+    {
+        var a = SurvivorUnit(1, new(3, 3), weapon: "pipe");
+        var foe = SurvivorUnit(2, new(4, 3), weapon: "pipe");
+        var sim = WithHand([a, foe], "parry");
+        var first = BotTactics.Card(sim, a, 1);
+        Assert.True(sim.Execute(new Recover(2, foe.Id)).Ok);
+        Assert.Equal(first, BotTactics.Card(sim, a, 1));
+    }
+
+    [Fact]
+    public void A_bot_aims_where_a_seen_hostile_is_walking_to()
+    {
+        var a = SurvivorUnit(1, new(3, 3), weapon: "pipe");
+        var foe = SurvivorUnit(2, new(6, 3));
+        var sim = WithHand([a, foe]);
+        Assert.Equal(foe.Pos, BotTactics.Expected(sim, a.Side, foe));
+        Assert.True(sim.Execute(new Move(2, foe.Id, new(4, 3))).Ok);
+        Assert.Equal(new Pos(4, 3), BotTactics.Expected(sim, a.Side, foe));
+        var strike = TileStrikes.StrikeAt(sim, a, sim.Profile(a).Action("swing")!, foe, new Pos(4, 3));
+        Assert.Equal(new Pos(4, 3), strike!.Tile);
+        Assert.True(sim.Execute(strike).Ok);
+        Settle(sim);
+        Assert.Contains(sim.State.Events, e => e.UnitId == a.Id && e.TargetId == foe.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
+    }
+
+    [Fact]
+    public void A_threat_zone_is_from_where_a_seen_hostile_is_walking_to()
+    {
+        var a = SurvivorUnit(1, new(3, 3));
+        var foe = SurvivorUnit(2, new(8, 3), weapon: "pipe");
+        var sim = WithHand([a, foe]);
+        Assert.DoesNotContain(new Pos(5, 3), Combat.ThreatZone(sim, foe));
+        Assert.True(sim.Execute(new Move(2, foe.Id, new(6, 3))).Ok);
+        Assert.Contains(new Pos(5, 3), Combat.ThreatZone(sim, foe));
+    }
 }

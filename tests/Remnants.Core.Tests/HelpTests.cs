@@ -24,7 +24,7 @@ public class HelpTests
                  {
                      "attributes", "skills", "jobs_output", "shifts", "food", "spoilage", "food_buffs", "health", "injuries", "infection",
                      "humanity", "prosthetic_tiers", "schematics", "research", "power", "weather", "raids", "defenses", "expeditions",
-                     "travel", "rations", "vehicles", "fog", "stealth", "ambush", "overwatch", "hacking", "drones", "gear_mods", "loot",
+                     "travel", "rations", "vehicles", "fog", "stealth", "ambush", "planning", "hacking", "drones", "gear_mods", "loot",
                      "salvage", "trading", "coop", "alliances",
                  })
             Assert.True(help.Contains(id), $"no help topic '{id}'");

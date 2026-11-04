@@ -5,11 +5,11 @@
       "id": "fog",
       "title": "Fog of war",
       "short": "You see tiles, not always who stands on them. An enemy is seen only when your detection beats their stealth at that distance.",
-      "long": "In the field you see the map your survivors have explored, but enemies only when someone actually spots them.\n\n## Seeing someone\n\nA hostile in sight range with a clear line is **seen** when your unit's detection, minus their stealth, minus 2.5 per tile past the first, is 0 or more. Next to you, always. See [[stealth]].\n\n## Contacts\n\nWhat you hear shows as a fuzzy marker, up to a tile off, for two rounds: gunfire within earshot, unseen enemies moving within 3 tiles, where an attack came from, a motion sensor going off.\n\n## Lighting things up\n\n- A **flare** lights a small area for a few rounds, for every side.\n- A **motion sensor** warns you when something moves near it.\n- A **scanner** sees hostiles nearby through walls and stealth.\n- Firing reveals the shooter for a round or two.\n\n## Night and weather\n\nAt night people see only 60% as far; fog, rain and dust cut sight further (see [[weather]]).\n\n## Tips\n\n- Use **Lookout** before moving into the unknown (see [[overwatch]]).",
+      "long": "In the field you see the map your survivors have explored, but enemies only when someone actually spots them.\n\n## Seeing someone\n\nA hostile in sight range with a clear line is **seen** when your unit's detection, minus their stealth, minus 2.5 per tile past the first, is 0 or more. Next to you, always. See [[stealth]].\n\n## Contacts\n\nWhat you hear shows as a fuzzy marker, up to a tile off, for two rounds: gunfire within earshot, unseen enemies moving within 3 tiles, where an attack came from, a motion sensor going off.\n\n## Lighting things up\n\n- A **flare** lights a small area for a few rounds, for every side.\n- A **motion sensor** warns you when something moves near it.\n- A **scanner** sees hostiles nearby through walls and stealth.\n- Firing reveals the shooter for a round or two.\n\n## Night and weather\n\nAt night people see only 60% as far; fog, rain and dust cut sight further (see [[weather]]).\n\n## Tips\n\n- Use **Lookout** before moving into the unknown (see [[planning]]).",
       "related": [
         "stealth",
         "ambush",
-        "overwatch",
+        "planning",
         "weather"
       ],
       "keywords": [
@@ -26,7 +26,7 @@
       "id": "stealth",
       "title": "Stealth and detection",
       "short": "Stealth comes from Agility, light loads and quiet gear; detection from Perception and optics. Night adds +15 stealth against people and Husks.",
-      "long": "## Stealth\n\nStarts at 10, then:\n\n- +0.3 per Agility point above 50 (less below).\n- −1 per kg carried: loot is loud.\n- Gear: rag coat +3, scout jacket +4, camo cloak +15; riot armor −10.\n- Hurt legs or peg legs are loud.\n- Perks such as Light Step and Ghost.\n\n## Detection\n\nStarts at 30, +0.5 per Perception point above 50, plus gear (binoculars +10, scanner +15), lookout and overwatch bonuses, all scaled by the head's condition.\n\n## Light and weather\n\n- Dawn and dusk +5 stealth, night +15, but not against the Linked's sensors, cameras or turrets.\n- Rain, fog and dust add a little more.\n\n## Range\n\nEach tile of distance past the first takes 2.5 off detection. See [[fog]] for the full rule.\n\n## Tips\n\n- A heavy pack is the quickest way to get seen: drop or stash loot before sneaking.",
+      "long": "## Stealth\n\nStarts at 10, then:\n\n- +0.3 per Agility point above 50 (less below).\n- −1 per kg carried: loot is loud.\n- Gear: rag coat +3, scout jacket +4, camo cloak +15; riot armor −10.\n- Hurt legs or peg legs are loud.\n- Perks such as Light Step and Ghost.\n\n## Detection\n\nStarts at 30, +0.5 per Perception point above 50, plus gear (binoculars +10, scanner +15), and lookout bonuses, all scaled by the head's condition.\n\n## Light and weather\n\n- Dawn and dusk +5 stealth, night +15, but not against the Linked's sensors, cameras or turrets.\n- Rain, fog and dust add a little more.\n\n## Range\n\nEach tile of distance past the first takes 2.5 off detection. See [[fog]] for the full rule.\n\n## Tips\n\n- A heavy pack is the quickest way to get seen: drop or stash loot before sneaking.",
       "related": [
         "fog",
         "ambush",
@@ -45,11 +45,11 @@
       "id": "ambush",
       "title": "Ambush",
       "short": "An attack from someone the target's side cannot see gets +20% to hit, ignores dodge and does ×1.25 damage. Bracing or an ally beside you blunts it.",
-      "long": "When the target's side cannot see the attacker as the shot lands, it is an **ambush**.\n\n## The bonus\n\n- +20% hit chance.\n- The target's dodge does not count.\n- ×1.25 damage.\n\n## Blunting it\n\n- A **braced** target gives no ambush bonus at all (see [[overwatch]]).\n- An ally next to the target, \"watching each other's backs\", halves it.\n\n## Afterwards\n\nThe attacker is revealed to those it shot at for a round or two (guns longer than melee), they get a marker for where the attack came from, and anyone in earshot hears it.\n\n## Both ways\n\nThe Linked plan ambushes: they lurk on overwatch and fire from the fog. Husks do not plan them but can stumble out of the dark.\n\n## Tips\n\n- Strike first from the dark, and keep your people in pairs.\n- The hit-chance preview includes the ambush bonus (see [[hit_chance]]).",
+      "long": "When the target's side cannot see the attacker as the shot lands, it is an **ambush**.\n\n## The bonus\n\n- +20% hit chance.\n- The target's dodge does not count.\n- ×1.25 damage.\n\n## Blunting it\n\n- An ally next to the target, \"watching each other's backs\", halves it.\n\n## Afterwards\n\nThe attacker is revealed to those it shot at for a round or two (guns longer than melee), they get a marker for where the attack came from, and anyone in earshot hears it.\n\n## Both ways\n\nThe Linked plan ambushes: they wait out of sight and fire from the fog. Husks do not plan them but can stumble out of the dark.\n\n## Tips\n\n- Strike first from the dark, and keep your people in pairs.\n- The hit-chance preview includes the ambush bonus (see [[hit_chance]]).",
       "related": [
         "stealth",
         "fog",
-        "overwatch",
+        "planning",
         "hit_chance"
       ],
       "keywords": [
@@ -63,11 +63,11 @@
       "id": "hit_chance",
       "title": "Hit chance",
       "short": "The attack's accuracy, minus dodge, cover, bracing and range, plus ambush, drone marks and radios. Always between 5% and 95%.",
-      "long": "Hover an attack to see its hit chance. The breakdown below shows every term for the attack being previewed.\n\n## The terms\n\n- **Accuracy**: the weapon's, raised by skill and Perception, mods and perks; lowered by a hurt arm.\n- **Dodge**: the target's (ignored in an ambush).\n- **Cover**: the tile beside the target on your side: rubble 10%, a car 25%, cover 30%, a wall 40%, an armored vehicle 45%.\n- **Brace**: +15% cover for a braced target.\n- **Range**: −3% per tile past the first.\n- **Ambush**: +20% if they cannot see you (see [[ambush]]).\n- **Drone mark**: +10% (see [[drones]]).\n- **Radio**: a bonus when two radios link your side.\n- **Weather**: dust spoils ranged shots.\n- **Bane**: some weapons are better against certain enemies, such as an EMP coil against the Linked.\n- A ranged shot after moving this turn loses some accuracy.\n\nThe result is clamped between 5% and 95%.\n\n## Tips\n\n- Flank: shooting from where the target has no cover often beats moving closer.",
+      "long": "Hover an attack to see its hit chance. The breakdown below shows every term for the attack being previewed.\n\n## The terms\n\n- **Accuracy**: the weapon's, raised by skill and Perception, mods and perks; lowered by a hurt arm.\n- **Dodge**: the target's (ignored in an ambush).\n- **Cover**: the tile beside the target on your side: rubble 10%, a car 25%, cover 30%, a wall 40%, an armored vehicle 45%.\n- **Range**: −3% per tile past the first.\n- **Ambush**: +20% if they cannot see you (see [[ambush]]).\n- **Drone mark**: +10% (see [[drones]]).\n- **Radio**: a bonus when two radios link your side.\n- **Weather**: dust spoils ranged shots.\n- **Bane**: some weapons are better against certain enemies, such as an EMP coil against the Linked.\n- A ranged shot after moving this turn loses some accuracy.\n\nThe result is clamped between 5% and 95%.\n\n## Tips\n\n- Flank: shooting from where the target has no cover often beats moving closer.",
       "provider": "hit_chance",
       "related": [
         "ambush",
-        "overwatch",
+        "planning",
         "drones",
         "gear_mods"
       ],
@@ -81,10 +81,10 @@
       ]
     },
     {
-      "id": "overwatch",
-      "title": "Overwatch, brace and lookout",
-      "short": "Overwatch (O) holds your AP to shoot what enters a tile or arc you pick; Brace (B) adds cover and denies ambushes; Lookout (L) sees further and keeps your turn going.",
-      "long": "## Overwatch (O)\n\n- Pick a tile to watch, or Shift-click for the arc that way. It needs AP for a shot but spends none until one fires. It ends the turn and holds your AP for the round.\n- Fires at −10% accuracy when a hostile in sight walks onto a watched tile or commits a strike into one. Each shot spends that attack's AP.\n- A hit that stuns, downs, pins or knocks back the enemy cancels the strike it declared.\n- +10 detection while on watch. It drops if the holder is stunned, goes down or moves. Only allies shoved onto the tiles a shot covers are hit.\n\n## Brace (B)\n\nCosts 1 AP and lasts until the unit's next turn.\n\n- Ends the turn.\n- +15% cover, and no ambush bonus against this unit.\n- 1 AP less next turn.\n\n## Lookout (L)\n\n- Does **not** end the turn.\n- +2 sight and +15 detection, more with Perception.\n\n## Tips\n\n- Lookout first, then move: you see what is waiting before you step into it.\n- Watch the tile an ally stands on: an enemy that strikes it draws your fire first.\n- Brace a survivor you cannot get out of the open.\n- The Linked use overwatch too: an enemy that stops moving may be waiting for you.",
+      "id": "planning",
+      "title": "Planning and resolving",
+      "short": "Everyone plans at once. Then all movement resolves by priority, then all actions by priority.",
+      "long": "## A round\n\n- **Planning**: every side plans at the same time. You can change your plan until planning ends; each unit's plan can be undone step by step, and everything it paid comes back.\n- **Resolving**: all movement goes first, by priority. Then all actions, by priority. A unit's own actions go in the order you queued them.\n\n## MP, AP and stamina\n\n- MP pay for moves, AP for actions. Each MP costs 1 stamina, each AP 2.\n- About 40% of stamina comes back each round, less when loaded. **Recover** spends AP for more.\n- At 0 stamina a unit takes no actions and has half its MP.\n\n## Priority\n\n- Priority is speed, plus how much stamina is left, plus what the action is: pushes, dashes and light blows are quick, heavy blows slow, recover and blocks come early. Under about 30% stamina it drops steeply.\n- Hostile units on the same priority both act, at reduced effect.\n- You see your own units' rank, never the enemy's.\n\n## Lookout\n\n- **Lookout** (L) sees further for the round.",
       "related": [
         "ambush",
         "fog",
@@ -225,7 +225,7 @@
       "id": "coop",
       "title": "Co-op",
       "short": "Allies share one side: one fog of war, no friendly fire, and watching each other's backs. Loot and survivors stay with their own player.",
-      "long": "In a co-op mission, or once an alliance forms, allied parties are one **team**.\n\n## Shared\n\n- Sight: what any ally sees, every contact, sensor and explored tile is the team's.\n- No friendly fire; overwatch never aims at allies.\n- An ally next to you halves an ambush against you (see [[ambush]]).\n\n## Kept apart\n\n- Turns, ownership, loot and results stay per player. Loot is first come, first served.\n- Hand an item to an adjacent ally with **Give** (1 AP); it goes home with them.\n- Heal or revive an ally with your own items, or carry them out (see [[carry_downed]]).\n- A recruit joins whoever escorts it out.\n\n## Difficulty\n\nThere are more enemies for each extra player in the mission.\n\n## Talking\n\nMark tiles for your team with [[pings]].\n\n## Tips\n\n- Trade with your ally afterwards, live, between missions (see [[trading]]).",
+      "long": "In a co-op mission, or once an alliance forms, allied parties are one **team**.\n\n## Shared\n\n- Sight: what any ally sees, every contact, sensor and explored tile is the team's.\n- A blow through an ally's tile strikes them too: the aim warns of it.\n- An ally next to you halves an ambush against you (see [[ambush]]).\n\n## Kept apart\n\n- Turns, ownership, loot and results stay per player. Loot is first come, first served.\n- Hand an item to an adjacent ally with **Give** (1 AP); it goes home with them.\n- Heal or revive an ally with your own items, or carry them out (see [[carry_downed]]).\n- A recruit joins whoever escorts it out.\n\n## Difficulty\n\nThere are more enemies for each extra player in the mission.\n\n## Talking\n\nMark tiles for your team with [[pings]].\n\n## Tips\n\n- Trade with your ally afterwards, live, between missions (see [[trading]]).",
       "related": [
         "alliances",
         "pings",
@@ -244,7 +244,7 @@
       "id": "alliances",
       "title": "Alliances",
       "short": "Meet another party in the field and offer an alliance. If they accept, you share sight. Breaking one gives everyone a round's warning.",
-      "long": "In a versus mission you may run into another player's party.\n\n## Offering\n\n- When your party and theirs see each other, offer an alliance on your turn (free).\n- They answer on their own turn. The offer lapses after 2 rounds.\n- On accept, both parties join one team at once and share sight (see [[coop]]).\n\n## Breaking\n\n- Announce the break on your turn. It takes effect after a full round's warning, with a banner for everyone, so there is no instant backstab.\n- Each side keeps a copy of what the team knew. Motion sensors and pings go with whoever placed them; carried allies are put down.\n- From then on, sight is separate and fire is open.\n\n## Tips\n\n- An alliance halves ambushes against people standing next to each other and doubles your eyes; it costs nothing until it breaks.\n- Watch the break banner: when it shows, step away from your former allies.",
+      "long": "In a versus mission you may run into another player's party.\n\n## Offering\n\n- When your party and theirs see each other, offer an alliance while planning (free).\n- They answer on their own turn. The offer lapses after 2 rounds.\n- On accept, both parties join one team at once and share sight (see [[coop]]).\n\n## Breaking\n\n- Announce the break while planning. It takes effect after a full round's warning, with a banner for everyone, so there is no instant backstab.\n- Each side keeps a copy of what the team knew. Motion sensors and pings go with whoever placed them; carried allies are put down.\n- From then on, sight is separate and fire is open.\n\n## Tips\n\n- An alliance halves ambushes against people standing next to each other and doubles your eyes; it costs nothing until it breaks.\n- Watch the break banner: when it shows, step away from your former allies.",
       "related": [
         "coop",
         "pings",
@@ -279,8 +279,8 @@
     {
       "id": "cards",
       "title": "Tactical cards",
-      "short": "Your squad shares a hand of cards: shoves, steps, smoke, turn-order tricks and a few bonuses. They cost card points, not AP; points refill each round.",
-      "long": "## The hand\n\n- One shared deck per party. Each round the hand refills to its size and the card points refill to the budget.\n- Played cards go to the used pile and come back when the draw pile runs out; consumable cards are gone for good.\n\n## Playing a card\n\n- Pick a card, then pick who it goes on. The picker shows who can take it now and, for the rest, why not.\n- **Hard** cards need a qualified character (a skill, attribute or perk). **Baseline** cards work for anyone; a qualified character gets more.\n- Some cost AP; some take extra AP for a **boost**. Arm-heavy cards wait for working arms.\n- **Reactions** answer a seen enemy's readied strike, also on another unit's turn.\n\n## Abilities\n\nMost cards change the board instead of adding a bonus. Pick the card, then its target: an enemy, an ally or a tile. The preview shows where everyone lands and what it does; targets it cannot take are greyed with the reason.\n\n- **Shove / Yank / Drag In** move an enemy along the line, stopping before walls, units and the map edge. A moved enemy's readied strike falls through and it is **exposed** (your side's next hit lands harder). **Shove** also turns its back to you.\n- Shoving anyone onto a tile a blow is about to come down on gets them hit, **even by their own side**.\n- **Flank Step** slips you up to two tiles and turns you to the nearest enemy: hit it from the side or back.\n- **Flank Step** and **Switch Places** are your own moves: hurt legs shorten them, you cannot do them carrying someone, and overwatch may fire. A unit you shove is not fired at for it.\n- **Switch Places** trades tiles with one of your own people; **Second Wind** gives 1 AP. Cards never move or hurry a co-op partner's people.\n- **Go Now!** lets an ally who has not acted go next; **Feint** makes an enemy that has not acted go last. Nobody ever gets an extra turn.\n- **Barricade** puts up cover next to you; **Smoke Bomb** throws a screen (never over yourself) that blocks sight through and into a patch for two rounds.\n- **Spoil** calls off a seen readied strike, even of what cannot be moved; **Snap Strike** attacks now for no AP.\n- A hard card nobody can use can be discarded for free, once a round.\n\n## Slots\n\nSome characters hold personal slot cards: always to hand for them, paid from the squad's points.",
+      "short": "Your squad shares a hand of cards: shoves, steps, smoke, priority tricks and a few bonuses. They cost card points, not AP; points refill each round.",
+      "long": "## The hand\n\n- One shared deck per party. Each round the hand refills to its size and the card points refill to the budget.\n- Played cards go to the used pile and come back when the draw pile runs out; consumable cards are gone for good.\n\n## Playing a card\n\n- Pick a card, then pick who it goes on. The picker shows who can take it now and, for the rest, why not.\n- **Hard** cards need a qualified character (a skill, attribute or perk). **Baseline** cards work for anyone; a qualified character gets more.\n- Some cost AP; some take extra AP for a **boost**. Arm-heavy cards wait for working arms.\n- A card that acts on the board is queued like any other action and resolves by priority.\n\n## Abilities\n\nMost cards change the board instead of adding a bonus. Pick the card, then its target: an enemy, an ally or a tile. The preview shows where everyone lands and what it does; targets it cannot take are greyed with the reason.\n\n- **Shove / Yank / Drag In** move an enemy along the line, stopping before walls, units and the map edge. What a moved enemy queued still goes off, from where it lands. A shove into a wall or a unit hurts. **Shove** also turns its back to you.\n- Shoving anyone onto a tile a blow is about to come down on gets them hit, **even by their own side**.\n- **Flank Step** slips you up to two tiles and turns you to the nearest enemy: hit it from the side or back.\n- **Flank Step** and **Switch Places** are your own moves: hurt legs shorten them, you cannot do them carrying someone. A unit you shove is not fired at for it.\n- **Switch Places** trades tiles with one of your own people; **Second Wind** gives 1 AP. Cards never move or hurry a co-op partner's people.\n- **Go Now!** lets an ally who has not acted go next; **Feint** makes an enemy that has not acted go last. Nobody ever gets an extra turn.\n- **Barricade** puts up cover next to you; **Smoke Bomb** throws a screen (never over yourself) that blocks sight through and into a patch for two rounds.\n- **Spoil** calls off a seen readied strike, even of what cannot be moved; **Snap Strike** attacks now for no AP.\n- A hard card nobody can use can be discarded for free, once a round.\n\n## Slots\n\nSome characters hold personal slot cards: always to hand for them, paid from the squad's points.",
       "related": [
         "telegraphs",
         "hit_chance",
@@ -295,15 +295,15 @@
         "slot"
       ]
     },
-{
+    {
       "id": "telegraphs",
-      "title": "Telegraphs and threats",
-      "short": "Enemies move on their turn, then declare a strike: rings on the tiles it covers. Step off them before it lands.",
-      "long": "## Telegraphs\n\n- Enemies move at once on their turn. Every blow is then declared: rings show the tiles it covers that you can see, and its AP is already spent. It lands when the half-round ends, and never before you have had a turn to step off: declared after your last turn, it waits for the end of the next half-round. Turrets telegraph their aim.\n- An enemy stunned, pinned, downed or moved before then loses its strike. A plain hit does not stop it.\n- A blow on an empty tile hits nothing. Dodge one and that enemy is **exposed** to your side: your next hit on it does ×1.5 damage. Your next attack on it gets +20% to hit, and your next strike that covers it is a free counter (your cheapest attack's AP is waived), until the end of the next round. Bonuses stack to at most ×2 damage.\n\n## Facing\n\n- Units face where they last moved or struck. A blow from the side does ×1.25 damage, from behind ×1.5.\n\n## The threat overlay\n\n- Strong red: a declared strike lands here.\n- Faint orange: a seen enemy could hit this tile from where it stands.\n\n## Hit preview\n\nHover a hostile with an attack chosen: every tile you can move to shows your hit chance from there.",
+      "title": "What you can see coming",
+      "short": "Only movement is telegraphed: precise for units you see, a rough patch for those you do not. Attacks, pushes, dashes and blocks stay hidden until they resolve.",
+      "long": "## Movement\n\n- You see the planned path of every hostile you can see, live, as it plans.\n- A move in the fog near your people shows only as a rough patch of the map.\n\n## Everything else\n\n- Attacks, pushes, dashes, blocks and their targets are hidden until they resolve. So is what a rival has spent.\n- You read where they are going and decide what to do about it.\n\n## Patterns\n\n- Attack and block cards cover a **pattern** of tiles. Turning it is free. The aim shows it on the map and warns of allies on it: a blow strikes **anyone** on its tiles, friends too.\n\n## Blocks and stun\n\n- A blocked tile takes a share off any hostile hit on it at resolve time, whoever stands there. The share is the card's, plus block skill and armor.\n- A block may **stun** the attacker: less AP, MP and priority next round. What it queued this round still goes off. Heavies resist, and repeats are less likely.\n\n## Push and dash\n\n- A **push** moves whoever is on its tiles away from you. What they queued still goes off, from where they land, with its pattern moved along. A wall or unit stops it with a knock to both. A blocked tile takes a tile off.\n- A **dash** runs straight in the action phase and stops at the first thing in the way.\n\n## Adrenaline\n\n- Every unit has a meter, 0 to 100, in plain view. Hits, pushes, dashes, blocks and stuns raise it; misses, being blocked, stunned or hit hard lower it, and it drains each round.\n- At 25, 50, 75 and 100 it boosts damage, priority, block, stun chance and stamina regen. It resets each mission.",
       "related": [
         "cards",
         "hit_chance",
-        "overwatch"
+        "planning"
       ],
       "keywords": [
         "intent",
@@ -317,7 +317,7 @@
         "counter"
       ]
     },
-{
+    {
       "id": "bestiary",
       "title": "The bestiary",
       "short": "What your colony knows of each enemy type grows with every sighting, fight and kill.",

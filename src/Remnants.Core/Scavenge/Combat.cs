@@ -44,7 +44,7 @@ public static class Combat
         var zone = new HashSet<Pos>();
         if (!unit.IsActive) return zone;
         foreach (var action in sim.Profile(unit).Actions)
-            zone.UnionWith(Hittable(sim.Data, sim.State.Map, action, unit.Pos, unit.Facing));
+            zone.UnionWith(Hittable(sim.Data, sim.State.Map, action, Plans.Anchor(sim.State, unit), unit.Facing));
         return zone;
     }
 

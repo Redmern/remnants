@@ -12,6 +12,9 @@ public static class BotTactics
     /// <summary>A bot plays a mend card once a body part is at least this badly hurt (a bot habit, not a game rule).</summary>
     public const double MendInjuryAt = 0.2;
 
+    /// <summary>Where <paramref name="side"/> should expect a unit when the round's blows fall: at the end of its telegraphed walk, or where it stands.</summary>
+    public static Pos Expected(ScavengeSim sim, string side, Unit u) => TacticsView.Telegraphs(sim, side).Find(t => t.UnitId == u.Id)?.To ?? u.Pos;
+
     /// <summary>Seen hostiles that could strike <paramref name="unit"/>'s tile from where they stand.</summary>
     public static List<Unit> Threats(ScavengeSim sim, Unit unit) =>
         sim.State.Units.Where(u => u.IsActive && unit.HostileTo(u) && Detection.SideSees(sim.Data, sim.State, unit.Side, u) && Combat.ThreatZone(sim, u).Contains(Plans.Anchor(sim.State, unit)))
@@ -20,7 +23,7 @@ public static class BotTactics
     /// <summary>
     /// The card to play on <paramref name="unit"/> now, or null. By priority: holding back a seen enemy with one of the squad
     /// in its reach, hurrying up a threatened ally, breaking what a seen enemy with the unit in reach may be planning (a
-    /// shove, a pull, a disrupt), a free strike or an aim card when it can attack a hostile now, a flank step round to a seen enemy's side or back when
+    /// shove, a pull, a disrupt), a block when one has it in reach, a free strike, a swing or an aim card when it can attack a hostile now, a flank step round to a seen enemy's side or back when
     /// none is in reach; a smoke screen toward who sees it when hurt, a defense card or a barrier toward the hostiles when seen; a
     /// mend when it is hurt; a draw when the hand runs low; else a dead hard card nobody can use is discarded. Only cards
     /// the rules accept now (<see cref="CardPlay.Check"/>) that cost no AP or leave AP for a blow.
@@ -39,7 +42,7 @@ public static class BotTactics
             && (c.ApCost == 0 || unit.Ap >= c.ApCost + cheapest);
         var hand = deck.Hand.Distinct().Select(data.Cards.Find).OfType<CardDef>().OrderBy(c => c.Id, StringComparer.Ordinal).ToList();
         var playable = hand.Where(Playable).ToList();
-        PlayCard Play(CardDef c, int? target = null, Pos? tile = null) => new(playerId, unit.Id, c.Id, target, Tile: tile);
+        PlayCard Play(CardDef c, int? target = null, Pos? tile = null, Pos? direction = null) => new(playerId, unit.Id, c.Id, target, Tile: tile, Direction: direction);
         PlayCard? Try(IEnumerable<CardDef> cards, IEnumerable<(int? Target, Pos? Tile)> aims)
         {
             var list = aims.ToList();
@@ -59,9 +62,22 @@ public static class BotTactics
         var threatened = squad.Where(s => s.Id != unit.Id && s.PriorityBonus <= 0 && Threats(sim, s).Count > 0);
         if (Try(playable.Where(c => c.Effect.AdvanceInitiative), At(threatened)) is { } hurry) return hurry;
         if (Try(playable.Where(Breaks), At(Threats(sim, unit))) is { } broken) return broken;
+        // In reach of someone: guard where it will stand, turned toward the nearest of them.
+        if (!Guarding(state, data, unit) && Threats(sim, unit).FirstOrDefault() is { } threat)
+            foreach (var c in playable.Where(c => c.Effect.Block > 0))
+                if (Play(c, tile: c.Target == CardTarget.Tile ? at : null, direction: Combat.Face(at, threat.Pos)) is var guarded && CardPlay.Check(sim, unit, guarded).Ok) return guarded;
 
-        var inReach = hostiles.Where(h => profile.Actions.Any(a => a.ApCost <= unit.Ap && Combat.CheckReach(data, state.Map, at, a, h.Pos) == ScavengeError.None)).ToList();
+        var inReach = hostiles.Where(h => profile.Actions.Any(a => a.ApCost <= unit.Ap && Combat.CheckReach(data, state.Map, at, a, Expected(sim, unit.Side, h)) == ScavengeError.None)).ToList();
         if (Try(playable.Where(c => c.Effect.Strike), At(inReach)) is { } strike) return strike;
+        // A swing through the most hostiles it can see, never through a friend.
+        foreach (var c in hand.Where(c => c.Effect.Attack && c.Pattern is not null && c.Cost <= deck.Points && c.ApCost <= unit.Ap && (c.Requirement.Kind == CardKind.Baseline || c.Requirement.Met(unit))))
+        {
+            var best = Pos.Neighbours8.Select(d => (Dir: d, Tiles: TacticsView.PatternAim(sim, unit, c.Id, null, d)))
+                .Where(o => o.Tiles.AllyTiles.Count == 0)
+                .Select(o => (o.Dir, Hits: hostiles.Count(h => o.Tiles.Tiles.Contains(Expected(sim, unit.Side, h)))))
+                .Where(o => o.Hits > 0).OrderByDescending(o => o.Hits).ThenBy(o => o.Dir.Y).ThenBy(o => o.Dir.X).FirstOrDefault();
+            if (best.Hits > 0 && Play(c, direction: best.Dir) is var swing && CardPlay.Check(sim, unit, swing).Ok) return swing;
+        }
         if (inReach.Count > 0 && unit.CardHit <= 0 && playable.FirstOrDefault(c => c.Effect.Hit > 0) is { } aim) return Play(aim);
         if (inReach.Count == 0 && Try(playable.Where(c => c.Effect.Step > 0), FlankTiles(sim, unit, hostiles)) is { } flank) return flank;
 
@@ -82,6 +98,10 @@ public static class BotTactics
             return new DiscardDeadCard(playerId, unit.Id, dead.Id);
         return null;
     }
+
+    /// <summary>Whether the unit has a block queued already this round.</summary>
+    internal static bool Guarding(ScavengeState state, ScavengeData data, Unit unit) =>
+        Plans.Of(state, unit)?.Steps.Any(s => s.Kind == PlanStepKind.Card && data.Cards.Find(s.CardId!)?.Effect.Block > 0) == true;
 
     /// <summary>A bot throws a smoke screen once a body part is at least this badly hurt and a hostile sees it (a bot habit).</summary>
     public const double SmokeInjuryAt = 0.3;
@@ -134,10 +154,11 @@ public static class BotTactics
         var actions = sim.Profile(unit).Actions;
         foreach (var target in targets.OrderBy(t => t.Pos.Chebyshev(unit.Pos)).ThenBy(t => t.Id))
         {
+            var to = Expected(sim, unit.Side, target);
             var best = sim.Reachable(unit)
                 .SelectMany(kv => actions
-                    .Where(a => Drones.CanStrike(a, target) && kv.Value <= unit.Mp && Combat.ApCost(a, kv.Key, target.Pos) <= unit.Ap
-                                && Combat.CheckReach(data, map, kv.Key, a, target.Pos) == ScavengeError.None)
+                    .Where(a => Drones.CanStrike(a, target) && kv.Value <= unit.Mp && Combat.ApCost(a, kv.Key, to) <= unit.Ap
+                                && Combat.CheckReach(data, map, kv.Key, a, to) == ScavengeError.None)
                     .Select(a => (Tile: kv.Key, Cost: kv.Value, Action: a, Value: (a.MinDamage + a.MaxDamage) / 2 * a.Accuracy)))
                 .OrderByDescending(o => o.Value).ThenBy(o => o.Cost).ThenBy(o => map.Index(o.Tile)).ThenBy(o => o.Action.Id, StringComparer.Ordinal)
                 .FirstOrDefault();

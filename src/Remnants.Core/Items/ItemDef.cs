@@ -304,15 +304,13 @@ public sealed record DecoyDef
 
 /// <summary>
 /// A handheld radio, carried anywhere: every unit of its side within <see cref="Range"/> of a carrier coordinates
-/// (<see cref="AccuracyBonus"/>), team pings reach <see cref="PingRangeBonus"/> further, and with
-/// <see cref="ShareOverwatch"/> a carrier on overwatch also fires at hostiles its side sees.
+/// (<see cref="AccuracyBonus"/>) and team pings reach <see cref="PingRangeBonus"/> further.
 /// </summary>
 public sealed record RadioDef
 {
     public int Range { get; init; } = 8;
     public double AccuracyBonus { get; init; }
     public int ExtraPings { get; init; }
-    public bool ShareOverwatch { get; init; }
 }
 
 /// <summary>A replacement limb fitted at the Med Bay. Quality is the part's efficiency (above 1 beats the original).</summary>

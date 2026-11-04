@@ -90,8 +90,10 @@ public static class TileStrikes
     /// The aim at <paramref name="target"/>'s tile that covers the most hostiles the unit's side sees (in line of sight),
     /// ties to the action's mode order, then the direction order; null when no mode covers it.
     /// </summary>
-    public static (StrikeMode? Mode, Pos Direction)? BestAim(ScavengeSim sim, Unit unit, ActionProfile action, Unit target)
+    /// <param name="at">Where to expect the target, when not where it stands (<see cref="BotTactics.Expected"/>).</param>
+    public static (StrikeMode? Mode, Pos Direction)? BestAim(ScavengeSim sim, Unit unit, ActionProfile action, Unit target, Pos? at = null)
     {
+        var tile = at ?? target.Pos;
         var state = sim.State;
         var from = Plans.Anchor(state, unit);
         var best = ((StrikeMode? Mode, Pos Direction)?)null;
@@ -99,12 +101,12 @@ public static class TileStrikes
         foreach (var mode in action.Modes ?? [])
             foreach (var dir in Pos.Neighbours8)
             {
-                if (Aim(sim, unit, action, target.Pos, mode, dir) is not { } aim) continue;
+                if (Aim(sim, unit, action, tile, mode, dir) is not { } aim) continue;
                 var tiles = aim.Tiles.Where(p => Combat.Clear(sim.Data, state.Map, from, p)).ToList();
-                if (!tiles.Contains(target.Pos)) continue;
+                if (!tiles.Contains(tile)) continue;
                 var struck = TargetsOn(state, unit, action, tiles).ToList();
                 if (struck.Any(t => !unit.HostileTo(t))) continue;
-                var score = struck.Count(t => Detection.SideSees(sim.Data, state, unit.Side, t));
+                var score = 1 + struck.Count(t => Detection.SideSees(sim.Data, state, unit.Side, t));
                 if (score <= bestScore) continue;
                 (best, bestScore) = ((mode, dir), score);
             }
@@ -115,12 +117,13 @@ public static class TileStrikes
     /// The tile strike at <paramref name="target"/>'s tile that a bot, the AI or auto-play issues: a stab / slash aimed to
     /// cover the most hostiles (<see cref="BestAim"/>), any other action at the one tile in reach. Null when it cannot reach.
     /// </summary>
-    public static AttackTile? StrikeAt(ScavengeSim sim, Unit unit, ActionProfile action, Unit target)
+    public static AttackTile? StrikeAt(ScavengeSim sim, Unit unit, ActionProfile action, Unit target, Pos? at = null)
     {
         var pid = unit.PlayerId ?? 0;
+        var tile = at ?? target.Pos;
         if (!action.Patterned)
-            return Aim(sim, unit, action, target.Pos) is null ? null : new AttackTile(pid, unit.Id, target.Pos, action.Id);
-        return BestAim(sim, unit, action, target) is { } aim ? new AttackTile(pid, unit.Id, target.Pos, action.Id, aim.Mode, aim.Direction) : null;
+            return Aim(sim, unit, action, tile) is null ? null : new AttackTile(pid, unit.Id, tile, action.Id);
+        return BestAim(sim, unit, action, target, at) is { } aim ? new AttackTile(pid, unit.Id, tile, action.Id, aim.Mode, aim.Direction) : null;
     }
 
     /// <summary>Every tile a unit could strike from where its plan ends with <paramref name="action"/> in <paramref name="mode"/>, any direction.</summary>

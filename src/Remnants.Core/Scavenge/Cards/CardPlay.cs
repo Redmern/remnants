@@ -133,7 +133,9 @@ public static class CardPlay
         var effect = EffectOf(card, unit, step.Boost);
         // An attack's pattern moved with the unit if it did not end where its plan said.
         var aim = effect.Attack && step.Tile is { } t ? t + (unit.Pos - step.From) : step.Tile;
-        var ability = CardAbilities.Check(sim, unit, card, effect, step.TargetId, aim, step.Direction);
+        // A block holds its tiles from the start of the phase (Defences), wherever its owner has got to.
+        var ability = effect.Block > 0 ? new CardAbilities.Outcome(null, null, step.Tile, null, null, step.Direction)
+            : CardAbilities.Check(sim, unit, card, effect, step.TargetId, aim, step.Direction);
         if (ability.Fail is { } fail)
         {
             Spent(unit, deck, card, step.FromSlot);

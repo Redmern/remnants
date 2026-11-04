@@ -52,9 +52,10 @@ public static class ScavengeSave
     public const int TileAttacksVersion = 16;
     /// <summary>Enemies declare tile strikes; no more plans (keyed: renumber to the next free version at merge).</summary>
     public const int TelegraphedStrikesVersion = 17;
-    public const int Version = TelegraphedStrikesVersion;
-    /// <summary>Runs from before plans and decks are not carried over: an older run is refused (and a colony save drops it).</summary>
-    private const int OldestVersion = IntentsVersion;
+    /// <summary>Simultaneous rounds: plans, stamina, stun, adrenaline. A run from before cannot be carried over and is refused (a colony save drops it).</summary>
+    public const int SimultaneousVersion = 18;
+    public const int Version = SimultaneousVersion;
+    private const int OldestVersion = SimultaneousVersion;
 
     private sealed record Envelope(int Version, ScavengeState Scavenge);
 

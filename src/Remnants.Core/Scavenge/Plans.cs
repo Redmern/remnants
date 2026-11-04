@@ -72,7 +72,7 @@ public static class Plans
     internal static bool HasDash(ScavengeState state, Unit unit) => Of(state, unit)?.Steps.Any(s => s.Landing is not null) == true;
 
     /// <summary>Runs <paramref name="look"/> with the unit standing where its plan ends. Nothing about it may stick.</summary>
-    internal static T AtAnchor<T>(ScavengeState state, Unit unit, Func<T> look)
+    public static T AtAnchor<T>(ScavengeState state, Unit unit, Func<T> look)
     {
         var real = unit.Pos;
         unit.Pos = Anchor(state, unit);

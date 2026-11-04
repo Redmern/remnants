@@ -7,7 +7,7 @@ namespace Remnants.Playtest;
 
 /// <summary>What one scavenge run looked like from the party's side.</summary>
 public sealed record RunStats(int Rounds, int Kills, int LinkedSeen, int LinkedKills, int ItemsLooted, int Reinforcements,
-    int AmbushedTimes = 0, int OverwatchShots = 0, int DefensesUsed = 0,
+    int AmbushedTimes = 0, int Blocks = 0, int DefensesUsed = 0,
     int Hacked = 0, int HackFailed = 0, int Overrides = 0, int DroneFlights = 0, int DronesLost = 0, int Marks = 0, int FromDevices = 0,
     int LimbLocks = 0, int Emps = 0, int Decoys = 0, int NoiseDecoys = 0, int DroneHeals = 0, int Ferried = 0, int DroneShots = 0,
     int Salvaged = 0, int PilesLooted = 0)
@@ -50,7 +50,7 @@ public sealed record PlanCardStats
     {
         bool Mine(int? id) => id is { } i && mine.Contains(i);
         bool Enemy(int? id) => id is { } i && state.FindUnit(i)?.Kind is UnitKind.Enemy or UnitKind.Device;
-        if (Enemy(e.UnitId) && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed or ScavengeEventType.Suppressed && e.TargetId is not null)
+        if (Enemy(e.UnitId) && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed or ScavengeEventType.Stunned && e.TargetId is not null)
             EnemyAttacks++;
         switch (e.Type)
         {
@@ -242,12 +242,12 @@ public static class PartyBot
         var reinforcements = enemies.Count(u => !enemiesAtStart.Contains(u.Id));
         var mine = state.Units.Where(u => u.PlayerId is { } p && playerIds.Contains(p)).Select(u => u.Id).ToHashSet();
         var ambushed = state.Events.Count(e => e.Type == ScavengeEventType.Ambushed && e.TargetId is { } t && mine.Contains(t));
-        var reactions = 0;
+        var blocks = state.Events.Count(e => e.Type == ScavengeEventType.Blocked && e.UnitId is { } b && mine.Contains(b));
         var defended = state.Events.Count(e => e.UnitId is { } d && mine.Contains(d) && e.Type is ScavengeEventType.Lookout or ScavengeEventType.FlareLit or ScavengeEventType.SensorPlaced);
         int Count(ScavengeEventType type) => state.Events.Count(e => e.Type == type && e.UnitId is { } u && mine.Contains(u));
         var dronesLost = state.Units.Count(u => u.Kind == UnitKind.Drone && u.Status == UnitStatus.Dead && u.PlayerId is { } p && playerIds.Contains(p));
         var fromDevices = state.Devices.Count(d => d.Used && d.Hacked);
-        return (playerIds.Select(sim.ResultFor).ToList(), new RunStats(state.Round, kills, linkedSeen.Count, linkedKills, looted, reinforcements, ambushed, reactions, defended,
+        return (playerIds.Select(sim.ResultFor).ToList(), new RunStats(state.Round, kills, linkedSeen.Count, linkedKills, looted, reinforcements, ambushed, blocks, defended,
             state.Events.Count(e => e.Type == ScavengeEventType.Hacked && e.Side is null && e.UnitId is { } h && mine.Contains(h)),
             Count(ScavengeEventType.HackFailed), Count(ScavengeEventType.Overridden),
             state.Events.Count(e => e.Type == ScavengeEventType.DroneFlown && e.UnitId is { } d && state.FindUnit(d)?.PlayerId is { } p && playerIds.Contains(p)),
@@ -292,7 +292,11 @@ public static class PartyBot
         }
     }
 
-    private static IScavengeCommand Decide(ScavengeSim sim, Unit unit, int playerId, bool recruit, int stalled, bool defenses, bool fightLinked, bool tech)
+    /// <summary>What to do next, decided from where the unit's plan ends. A field command that needs it there first simply fails and waits for the round.</summary>
+    private static IScavengeCommand Decide(ScavengeSim sim, Unit unit, int playerId, bool recruit, int stalled, bool defenses, bool fightLinked, bool tech) =>
+        Plans.AtAnchor(sim.State, unit, () => DecideHere(sim, unit, playerId, recruit, stalled, defenses, fightLinked, tech));
+
+    private static IScavengeCommand DecideHere(ScavengeSim sim, Unit unit, int playerId, bool recruit, int stalled, bool defenses, bool fightLinked, bool tech)
     {
         var state = sim.State;
         var map = state.Map;
@@ -349,12 +353,12 @@ public static class PartyBot
         // The true AP counts (a scope costs more up close).
         var attack = profile.Actions
             .SelectMany(a => hostiles
-                .Where(t => Combat.ApCost(a, unit.Pos, t.Pos) <= unit.Ap && Combat.CheckReach(sim.Data, map, unit.Pos, a, t.Pos) == ScavengeError.None)
+                .Where(t => BotTactics.Expected(sim, unit.Side, t) is var to && Combat.ApCost(a, unit.Pos, to) <= unit.Ap && Combat.CheckReach(sim.Data, map, unit.Pos, a, to) == ScavengeError.None)
                 .Select(t => (Action: a, Target: t, Chance: Combat.ChanceToHit(sim, unit, a, t))))
-            .OrderByDescending(o => o.Chance * (o.Action.MinDamage + o.Action.MaxDamage) / 2 / Combat.ApCost(o.Action, unit.Pos, o.Target.Pos))
+            .OrderByDescending(o => o.Chance * (o.Action.MinDamage + o.Action.MaxDamage) / 2 / Combat.ApCost(o.Action, unit.Pos, BotTactics.Expected(sim, unit.Side, o.Target)))
             .ThenBy(o => o.Target.Hp).FirstOrDefault();
         if (attack.Target is not null && attack.Chance >= 0.2 && (fightLinked || !(IsLinked(sim, attack.Target) && attack.Target.Hp > 25))
-            && TileStrikes.StrikeAt(sim, unit, attack.Action, attack.Target) is { } strike)
+            && TileStrikes.StrikeAt(sim, unit, attack.Action, attack.Target, BotTactics.Expected(sim, unit.Side, attack.Target)) is { } strike)
             return strike;
 
 

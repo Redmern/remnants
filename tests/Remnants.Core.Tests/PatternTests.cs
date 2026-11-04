@@ -213,6 +213,22 @@ public class PatternTests
     }
 
     [Fact]
+    public void A_block_whose_owner_was_moved_away_still_comes_up_and_holds_its_tile()
+    {
+        var a = SurvivorUnit(1, new(2, 3), weapon: "pipe");
+        var b = SurvivorUnit(2, new(3, 3));
+        var c = SurvivorUnit(2, new Pos(3, 4));
+        var sim = Table([a, b, c], "parry");
+        Assert.True(sim.Execute(new PlayCard(2, c.Id, "parry", Tile: b.Pos)).Ok);
+        c.PriorityBonus = -30;
+        c.Pos = new Pos(9, 6);
+        Assert.True(sim.Execute(new AttackTile(1, a.Id, b.Pos, "swing")).Ok);
+        Settle(sim);
+        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Blocked && e.TargetId == b.Id);
+        Assert.DoesNotContain(sim.State.Events, e => e.Type == ScavengeEventType.IntentFizzled && e.UnitId == c.Id);
+    }
+
+    [Fact]
     public void A_planned_defence_is_hidden_and_taking_it_back_refunds_it()
     {
         var a = SurvivorUnit(1, new(2, 3));
