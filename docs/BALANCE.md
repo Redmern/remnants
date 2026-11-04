@@ -1924,38 +1924,44 @@ The same with `--zone=outskirts`. The baselines are the same commands without `-
 |---|---|---|---|---|---|---|---|---|---|---|
 | `d997667` | 13% | 0.13 | 80 | 192 | 26.8 | 4.5 | 26 | 16% | 11% | 15% |
 | `5293faf` | 5% | 0.05 | 141 | 202 | 13.9 | 3.3 | 42 | 60% | 70% | 64% |
-| walk-attack | 17% | 0.23 | 143 | 197 | 18.8 | 4.5 | 41 | 11% | 12% | 11% |
-| mixed, no cards | 2% | 0.02 | 87 | 201 | 19.6 | 4.5 | 44 | 19% | 53% | 32% |
-| mixed | 2% | 0.02 | 87 | 195 | 19.0 | 4.5 | 48 | 25% | 54% | 37% |
+| walk-attack | 35% | 0.52 | 213 | 189 | 13.9 | 4.3 | 40 | 10% | 12% | 11% |
+| mixed, no cards | 2% | 0.02 | 157 | 195 | 17.2 | 4.4 | 44 | 17% | 45% | 32% |
+| mixed | 4% | 0.04 | 159 | 196 | 16.8 | 4.5 | 47 | 26% | 43% | 36% |
 
 | Outskirts | Runs with a death | Deaths/run | Taken/run | Dealt/run | Items/run | Kills/run | Rounds/run | Fizzled: party | enemy | all |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `d997667` | 0% | 0.00 | 28 | 111 | 25.5 | 2.5 | 20 | 15% | 7% | 13% |
 | `5293faf` | 0% | 0.00 | 70 | 132 | 15.3 | 2.0 | 34 | 62% | 73% | 66% |
-| walk-attack | 1% | 0.01 | 57 | 114 | 19.5 | 2.4 | 30 | 12% | 1% | 10% |
-| mixed, no cards | 0% | 0.00 | 38 | 122 | 19.2 | 2.5 | 31 | 19% | 39% | 24% |
-| mixed | 0% | 0.00 | 34 | 120 | 18.7 | 2.4 | 32 | 25% | 42% | 29% |
+| walk-attack | 5% | 0.06 | 93 | 115 | 17.3 | 2.4 | 30 | 12% | 5% | 9% |
+| mixed, no cards | 0% | 0.00 | 73 | 117 | 18.2 | 2.4 | 31 | 19% | 34% | 25% |
+| mixed | 0% | 0.00 | 84 | 126 | 16.7 | 2.5 | 33 | 27% | 34% | 30% |
 
-**AC-31 is met.** On the same seeds walk-attack takes 64% more damage than mixed in Suburb Ruins (143 against 87) and 68% more in Outskirts (57 against 34), with far more deaths in Suburb Ruins (0.23 against 0.02). Outskirts has too few deaths to compare (1 in 100 runs against 0). Mixed deaths did not rise: 0.02 against 0.05 at `5293faf`.
+**AC-31 is met, by less in Outskirts.** On the same seeds walk-attack takes 34% more damage than mixed in Suburb Ruins (213 against 159) and 11% more in Outskirts (93 against 84). It has far more deaths in Suburb Ruins (0.52 against 0.04) and some in Outskirts (0.06 against 0). In Outskirts the damage gap is small. Playing cards costs damage there: mixed without cards takes 73, with cards 84.
 
-**AC-32 is met in Outskirts and not in Suburb Ruins.** The target was fizzled under 30% of planned actions.
-- Mixed is at 29% in Outskirts and 37% in Suburb Ruins, down from 64-66% at `5293faf`.
-- Against the pre-rework `d997667` (13-15%) fizzling is still higher. Blows there were not planned ahead the same way, so it cannot get near that while enemies plan before they see a move.
-- The party's own share is under target in both zones (25%). What is left is enemy blows (54% in Suburb Ruins), which is enough to carry the total over.
-- Why it stops there: enemies plan when the round opens, and about four in five whiffs we classified were on a target that walked after that. The AI may not read plans, so that part cannot be aimed away. Suburb Ruins also has Linked, whose Burst missed about 2.5 times for every hit in a 60-run sample, largely at a party leaving on sight. Making Linked hold as well only gave 34% and would end their Lead habit, so it was not adopted.
+**AC-32 is not met in Suburb Ruins, and only reaches the line in Outskirts.** The target was fizzled under 30% of planned actions.
+- Mixed is at 36% in Suburb Ruins and 30% in Outskirts, down from 64-66% at `5293faf`.
+- Against the pre-rework `d997667` (13-15%) fizzling is still higher.
+- Most of what is left is enemy blows (43% and 34%). Enemies plan when the round opens and may not read plans, so a target that steps off makes them whiff. That is the bait the rework asks for (AC-19), so the two goals pull against each other.
+- An earlier tuning reached 29% and 37% by making Husk types hold their blow on anyone who walked last round. It was removed: enemies never struck a walker, and a fight could stall for good (AC-19, AC-21).
 
-**Still worse than before the rework:** Suburb Ruins goes from 26 rounds and 26.8 items at `d997667` to 48 rounds and 19.0 items under mixed.
+**A read pays off.**
+- One read, 300 seeds: a stab at the tile a quicker rival dashes to lands 78% of the time, and a stab at the tile it left lands 0%.
+- Across a run, enemy blows whiff far more often against mixed than against walk-attack: 43% against 12% in Suburb Ruins, 34% against 5% in Outskirts. This counts every enemy blow, so it is not only reads.
+- The party's own blows fizzle more under mixed (26-27% against 10-12%), because it aims at telegraphed walks and foes that step off.
 
-**The bots changed too,** so the `5293faf` row is not a pure before for the rules. They no longer walk off a planned blow or aimed card, no longer aim at a foe a friend is about to move or one seen walking off, and no longer circle a foe.
+**Still worse than a baseline:**
+- Mixed takes more damage than at `5293faf` (159 against 141, 84 against 70) and at `d997667` (80, 28), since Husk Claw and Crawler Bite now sweep three tiles. Mixed deaths did not rise against `5293faf` (0.04 against 0.05, and 0 in both in Outskirts).
+- Suburb Ruins goes from 26 rounds and 26.8 items at `d997667` to 47 rounds and 16.8 items under mixed.
+
+**The bots changed too,** so the `5293faf` row is not a pure before for the rules. They no longer walk off a planned blow or aimed card, no longer aim at a foe a friend is about to move or one seen walking off, and go by telegraphed walks only. They weigh seen reach more when picking a tile, and a hurt unit that moved last round fights instead of backing off again.
 
 **What the tuning changed.**
-- Husk Claw and Crawler Bite now sweep three tiles (`modes: ["Slash"]`, `data/items.json`).
-- Husk, Crawler and Tally Blade hold a blow on a target that walked last round and come on instead (`holdIfMoved`, `data/enemies.json`). This needed a small code hook as well as the data.
+- Husk Claw and Crawler Bite now sweep three tiles (`modes: ["Slash"]`, `data/items.json`). Damage is unchanged: 80% and lower narrowed the AC-31 gap to nothing in Outskirts.
+- Bot habits moved to `bot` in `data/scavenge.json`: `positionRisk` 0.3 to 1, `positionGain` 1.45 to 1.05. Guarding more often or backing off sooner made deaths worse.
 - Recruits stop within two tiles of their leader (`turn.followWithin`). This one fixes a stall, not balance.
-- Crit, stun, Defend values and the exposed penalty are unchanged: the trials gave them no reason to move.
+- Crit, stun, Defend values and the exposed penalty are unchanged. A wider aim lead (`leadTiles` 3) changed nothing. `swingRange` 1 lowered damage but stops a Husk swinging at a walker stepping adjacent, so it was not used.
 
-The full table of trials is in the orchestration folder's `progress/U5.md`.
+No run stalled in any row above. The full table of trials is in the orchestration folder's `progress/U5.md`.
 
 **Known limits.**
-- A unit that walks every round is not struck by a Husk type. That is now stated in its read text. It was already close to true, since those blows landed on the tile it had left. The cost is that it deals no damage and loots nothing while it does so, and it still has to stop some time. Move then dash back gives the same dodge. Accepted rather than closed: stopping the dash alone would leave the walk. A human should judge whether it feels like an exploit.
 - Only bots played these numbers, and a person may use counters and cards quite differently.
