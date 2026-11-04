@@ -326,6 +326,58 @@ public class HackingTests
     }
 
     [Fact]
+    public void An_overridden_linked_loses_the_strike_it_had_readied()
+    {
+        var hacker = Hacker(new Pos(1, 1));
+        hacker.Hooks = Real.HooksFor(["override"]);
+        var ally = SurvivorUnit(1, new Pos(3, 2));
+        var linked = EnemyUnit("linked", new Pos(2, 1));
+        var sim = Arena(8, 8, [hacker, ally, linked], data: Rolls(1));
+        Assert.True(TileStrikes.Declare(sim, linked, StrikeOn(sim, linked, ally, sim.Profile(linked).Actions[0].Id)).Ok);
+
+        Assert.True(sim.Execute(new Hack(1, hacker.Id, TargetId: linked.Id)).Ok);
+
+        Assert.Equal(P1, linked.Side);
+        Assert.DoesNotContain(sim.State.Strikes, s => s.UnitId == linked.Id);
+    }
+
+    [Fact]
+    public void A_hacked_turret_loses_the_strike_it_had_readied()
+    {
+        ZoneDevice turret = null!;
+        var hacker = Hacker(new Pos(1, 1));
+        var sim = Arena(10, 8, [hacker, EnemyUnit("husk", new Pos(9, 7))], data: Rolls(1), setup: (d, s) => turret = Hacking.Place(d, s, DeviceKind.Turret, new Pos(2, 1)));
+        var gun = sim.State.FindUnit(turret.UnitId!.Value)!;
+        Assert.True(TileStrikes.Declare(sim, gun, StrikeOn(sim, gun, hacker, sim.Profile(gun).Actions[0].Id)).Ok);
+        turret.Progress.Add(new HackProgress(P1, hacker.Id, 2, 3));
+
+        Assert.True(Hack(sim, hacker, turret).Ok);
+
+        Assert.Equal(P1, gun.Side);
+        Assert.DoesNotContain(sim.State.Strikes, s => s.UnitId == gun.Id);
+    }
+
+    [Fact]
+    public void A_linked_whose_override_ends_loses_its_readied_strike_and_its_watch()
+    {
+        var hacker = Hacker(new Pos(1, 1));
+        hacker.Hooks = Real.HooksFor(["override"]);
+        var linked = EnemyUnit("linked", new Pos(2, 1));
+        var husk = EnemyUnit("husk", new Pos(3, 1));
+        var sim = Arena(8, 8, [hacker, linked, husk], data: Rolls(1));
+        Assert.True(sim.Execute(new Hack(1, hacker.Id, TargetId: linked.Id)).Ok);
+        Assert.True(TileStrikes.Declare(sim, linked, StrikeOn(sim, linked, husk, sim.Profile(linked).Actions[0].Id)).Ok);
+        Assert.True(Overwatches.Commit(sim, linked, new CommitOverwatch(1, linked.Id, Arc: new Pos(1, 0))).Ok);
+        sim.State.Round = linked.OverrideUntilRound!.Value + 1;
+
+        Hacking.RoundStarted(sim);
+
+        Assert.Equal(Unit.EnemySide, linked.Side);
+        Assert.DoesNotContain(sim.State.Strikes, s => s.UnitId == linked.Id);
+        Assert.Null(linked.Watch);
+    }
+
+    [Fact]
     public void Override_turns_a_linked_for_a_while_but_never_a_husk()
     {
         var hacker = Hacker(new Pos(1, 1));
