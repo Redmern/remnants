@@ -157,16 +157,31 @@ public static class Plans
         return null;
     }
 
-    /// <summary>The tiles a move can go to right now: with the slots full, the ones it could change to, with the MP it would get back.</summary>
+    /// <summary>The tiles a move can go to right now: with the slot full, the ones it could change to, with the MP it would get back.</summary>
     public static Dictionary<Pos, int> MoveChoices(ScavengeSim sim, Unit unit)
     {
         var moves = Of(sim.State, unit)?.Steps.Where(s => s.Kind == PlanStepKind.Move).ToList() ?? [];
-        if (moves.Count == 0 || HasRoom(sim, unit, PlanSlot.Move)) return sim.Reachable(unit);
-        var real = unit.Pos;
-        unit.Pos = moves.Count > 1 ? moves[^2].To : real;
-        try { return Movement.Reachable(sim.State, unit, sim.Profile(unit).Movement, unit.Mp + moves[^1].RefundMp); }
-        finally { unit.Pos = real; }
+        return moves.Count == 0 || HasRoom(sim, unit, PlanSlot.Move)
+            ? sim.Reachable(unit)
+            : Movement.Reachable(sim.State, unit, sim.Profile(unit).Movement, unit.Mp + moves.Sum(s => s.RefundMp));
     }
+
+    /// <summary>The slot an order would change rather than add to: it is full and holds something to clear. The screen clears it first.</summary>
+    public static PlanSlot? Replaces(ScavengeSim sim, IScavengeCommand command)
+    {
+        PlanSlot? slot = command switch
+        {
+            Move => PlanSlot.Move,
+            AttackTile or Push or Dash or Recover => PlanSlot.Action,
+            _ => null,
+        };
+        return slot is { } s && sim.State.FindUnit(command.UnitId) is { } unit && !HasRoom(sim, unit, s)
+               && Of(sim.State, unit)?.Steps.Exists(x => SlotOf(x) == s) == true ? s : null;
+    }
+
+    /// <summary>The AP an action could cost now: what is left, plus what clearing the planned actions would give back.</summary>
+    public static int ApToSpend(ScavengeState state, Unit unit) =>
+        unit.Ap + (Of(state, unit)?.Steps.Where(s => SlotOf(s) == PlanSlot.Action).Sum(s => s.RefundAp) ?? 0);
 
     /// <summary>Runs <paramref name="look"/> with the unit standing where its plan ends. Nothing about it may stick.</summary>
     public static T AtAnchor<T>(ScavengeState state, Unit unit, Func<T> look)

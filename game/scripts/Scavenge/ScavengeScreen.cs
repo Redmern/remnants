@@ -460,7 +460,12 @@ public partial class ScavengeScreen : Node3D
         // Ready sends the player on to their next unit.
         if (command is EndTurn) _presenter.Focus = null;
         ScavengeResult result;
-        using (PerfMonitor.Measure("execute")) result = await _presenter.Execute(command);
+        using (PerfMonitor.Measure("execute"))
+        {
+            // An order into a full slot changes it.
+            if (Plans.Replaces(_presenter.Sim, command) is { } full) await _presenter.Execute(new UndoPlan(command.PlayerId, command.UnitId, Slot: full));
+            result = await _presenter.Execute(command);
+        }
         if (result.Ok) _usingItem = null;
         if (result.Ok) CancelCardAim();
         if (result.Ok) _aim = TechAim.None;
@@ -689,8 +694,8 @@ public partial class ScavengeScreen : Node3D
                 _ when _usingItem is { } item => (_actionPanel.ItemHint(item), Hud.Palette.Amber),
                 _ when ownDrone => ($"The drone flies on {acting.Name}'s AP: its orders are under Tech.", Hud.Palette.TextMuted),
                 _ when other => ($"{selected!.Name} is selected; these are {acting.Name}'s orders. {Hud.Hotkeys.KeyName("scav_center")} goes back.", Hud.Palette.Warn),
-                _ when round <= 3 => ("Click a lit tile to plan a move, a red target to plan a blow.", Hud.Palette.TextMuted),
-                _ => ($"MP {acting.Mp} · AP {acting.Ap} · {Hud.Hotkeys.KeyName("end_turn")} commits the plan · {Hud.Hotkeys.KeyName("scav_next_unit")} next unit.", Hud.Palette.TextMuted),
+                _ when round <= 3 => ("Lit tile: set the move. Red target: plan the action. Click again to change.", Hud.Palette.TextMuted),
+                _ => ($"One move, one action, one card · {Hud.Hotkeys.KeyName("end_turn")} commits the plan · {Hud.Hotkeys.KeyName("scav_next_unit")} next unit.", Hud.Palette.TextMuted),
             };
         }
         _hud.Acting.Refresh(_presenter, acting, title, hint, color);
@@ -823,7 +828,6 @@ public partial class ScavengeScreen : Node3D
         var fromTiles = hovered is null ? null : _presenter.MovePreview(selected, hovered);
         foreach (var (tile, cost) in _presenter.Reachable(selected))
         {
-            if (cost > selected.Mp) continue;
             var label = fromTiles?.TryGetValue(tile, out var chance) == true ? $"{chance * 100:0}%" : cost > 1 ? $"{cost} MP" : null;
             _map.Highlight(tile, HighlightKind.Move, label);
         }
@@ -845,8 +849,8 @@ public partial class ScavengeScreen : Node3D
             var ap = Combat.ApCost(action, Plans.Anchor(_presenter.State, selected), option.Target.Pos);
             var effects = ModEffects(action, option.Target, ap);
             previews[option.Target.Id] = new WorldTags.Preview(
-                (ambush ? "AMBUSH " : "") + $"{option.HitChance * 100:0}% · {action.MinDamage:0}–{action.MaxDamage:0}" + (ap > selected.Ap ? " · no AP" : ""),
-                ambush, ap > selected.Ap, effects.Count == 0 ? null : string.Join(" · ", effects.Select(e => e.Text)),
+                (ambush ? "AMBUSH " : "") + $"{option.HitChance * 100:0}% · {action.MinDamage:0}–{action.MaxDamage:0}" + (ap > Plans.ApToSpend(_presenter.State, selected) ? " · no AP" : ""),
+                ambush, ap > Plans.ApToSpend(_presenter.State, selected), effects.Count == 0 ? null : string.Join(" · ", effects.Select(e => e.Text)),
                 effects.Count > 0 && effects.All(e => e.Network));
         }
     }

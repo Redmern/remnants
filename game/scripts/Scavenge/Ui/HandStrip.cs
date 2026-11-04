@@ -97,7 +97,7 @@ public partial class HandStrip : PanelContainer
     {
         var hand = _presenter.Hand();
         var signature = hand is null || busy ? "" :
-            $"{hand.Points}/{hand.Budget}|{hand.DrawCount}|{hand.UsedCount}|{_presenter.State.CurrentUnitId}|{_presenter.ActingUnit?.Ap}|" +
+            $"{hand.Points}/{hand.Budget}|{hand.DrawCount}|{hand.UsedCount}|{_presenter.State.CurrentUnitId}|{_presenter.ActingUnit?.Ap}|{_presenter.ActingUnit?.CardsPlayed}|" +
             string.Join(",", hand.Cards.Select(c => $"{c.Id}:{c.SlotOf}:{string.Join(".", c.PlayableBy)}:{c.Dead}")) +
             $"|{_chosen}:{_chosenSlot}:{_boost}|{Aiming}";
         if (signature == _signature) return;
@@ -233,7 +233,8 @@ public partial class HandStrip : PanelContainer
         var playable = card.PlayableBy.Count > 0;
         var chosen = card.Id == _chosen && card.SlotOf == _chosenSlot;
         var slotOwner = card.SlotOf is { } owner ? _presenter.State.FindUnit(owner)?.Name : null;
-        var text = $"{card.Name}\n{card.Cost} pt{(card.ApCost > 0 ? $" · {card.ApCost} AP" : "")}";
+        var stamina = card.ApCost * _presenter.Sim.Data.Rules.Turn.StaminaPerAp;
+        var text = $"{card.Name}\n{card.Cost} pt{(stamina > 0 ? $" · {stamina} STA" : "")}";
         var tip = $"{card.Name} ({card.Category}{(card.Kind == CardKind.Hard ? ", " + card.Requirement : "")})\n{card.Text}"
                   + (slotOwner is not null ? $"\nIn {slotOwner}'s slot: always to hand for them." : "")
                   + (card.Consumable ? "\nUsed up when played." : "")

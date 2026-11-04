@@ -1001,7 +1001,7 @@ Tuned in `scavenge.json` (`hacking`, `devices`, `drone`, `world.droneScout`), it
   `ScavengePresenter.KnowledgeOf` and `BestiaryKnowledge.Colony`), and the colony overlays `DeckBuilderPanel` and
   `BestiaryPanel` (Deck and Bestiary in the top bar). Sound cues are `scavenge.intent_*`, `scavenge.card_*`,
   `scavenge.countered`, `scavenge.displaced`, `scavenge.initiative_changed`, `scavenge.field_effect_placed` in
-  `game/audio/sound_events.json`. Debug captures: `--scavenge --tactics-demo[=overlay|picker|reaction|enemy|preview|
+  `game/audio/sound_events.json`. Debug captures: `--scavenge --tactics-demo[=overlay|picker|reaction|enemy|preview|slots|slots-push|slots-dash|slots-recover|slots-ally|slots-change|
   targeting|smoke]` (`--play-aim` then plays the aimed card and checks every model is on its Core tile),
   `--colony --deck-demo=deck|slots|upgrades`, `--colony --bestiary-demo`.
 - **Ability cards** (`Scavenge/Cards/CardAbilities.cs`, `FieldEffects.cs`): cards declare a target (self, ally, enemy,

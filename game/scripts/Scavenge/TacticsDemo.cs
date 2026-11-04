@@ -4,7 +4,7 @@ using Remnants.Core.Scavenge;
 namespace Remnants.Game.Scavenge;
 
 /// <summary>
-/// Debug (<c>--tactics-demo[=overlay|picker|reaction|enemy|preview|targeting|smoke]</c>, for screenshots): stages a Husk and a Linked in sight of the party
+/// Debug (<c>--tactics-demo[=overlay|picker|reaction|enemy|preview|slots*|targeting|smoke]</c>, for screenshots): stages a Husk and a Linked in sight of the party
 /// with readied strikes (one aimed at a survivor's tile), so the threat overlay, the telegraphs and the hand strip show;
 /// <c>picker</c> also opens the character picker, <c>reaction</c> on a reaction card against the aimed strike; <c>targeting</c>
 /// aims Shove at the Husk (brought next to the party) and <c>smoke</c> a smoke bomb, with a hand of ability cards.
@@ -48,7 +48,7 @@ public static class TacticsDemo
         if (SquadDecks.Of(state, playerId) is { } deck)
         {
             // A hand that shows every kind: a reaction, a hard card, a boost, a dead card.
-            deck.Hand = Mode == "plan" ? ["sweep", "parry", "shield_wall", "bull_rush", "war_cry"]
+            deck.Hand = Mode == "plan" || Mode.StartsWith("slots") ? ["sweep", "parry", "shield_wall", "bull_rush", "war_cry"]
                 : Mode is "targeting" or "smoke"
                 ? ["shove", "smoke_bomb", "switch_places", "flank_step", "sidestep"]
                 : ["sidestep", "steady_aim", "dash", "hold_the_line", "take_cover"];

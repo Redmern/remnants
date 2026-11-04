@@ -290,7 +290,7 @@ public static class Hotkeys
         new("scav_push", "Push", "Scavenge", [Key.O]),
         new("scav_dash", "Dash", "Scavenge", [Key.B]),
         new("scav_recover", "Recover stamina", "Scavenge", [Shift(Key.L)]),
-        new("scav_undo", "Take back the last planned step", "Scavenge", [Shift(Key.Z)]),
+        new("scav_undo", "Clear the latest plan slot", "Scavenge", [Shift(Key.Z)]),
         new("scav_turn_aim", "Turn the aimed pattern", "Scavenge", [Key.Period]),
         new("scav_lookout", "Lookout", "Scavenge", [Key.L]),
         new("scav_loot", "Take all from the nearest pile", "Scavenge", [Key.F]),

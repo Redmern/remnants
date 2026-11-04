@@ -363,6 +363,76 @@ public class PlanSlotTests
         Assert.Equal(ScavengeError.NoPlan, sim.Execute(new UndoPlan(1, a.Id, Slot: PlanSlot.Card)).Error);
     }
 
+    [Fact]
+    public void The_slot_rows_say_what_is_planned()
+    {
+        var (sim, a, b, _) = Table("take_cover");
+        Assert.Equal(["Stay", "None", "None"], TacticsView.Slots(sim, a).Select(s => s.Text));
+        Assert.All(TacticsView.Slots(sim, a), s => Assert.False(s.Clearable));
+
+        Assert.True(sim.Execute(new Move(1, a.Id, new Pos(1, 4))).Ok);
+        Assert.True(sim.Execute(new AttackTile(1, a.Id, b.Pos + new Pos(0, 2), "swing")).Ok);
+        Assert.True(Play(sim, a, "take_cover").Ok);
+        var rows = TacticsView.Slots(sim, a);
+        Assert.Equal([PlanSlot.Move, PlanSlot.Action, PlanSlot.Card], rows.Select(s => s.Slot));
+        Assert.Equal(["Walk, 2 MP", sim.Profile(a).Action("swing")!.Name, Real.Cards.Find("take_cover")!.Name], rows.Select(s => s.Text));
+        Assert.All(rows, s => Assert.True(s.Clearable));
+    }
+
+    [Theory]
+    [InlineData("push")]
+    [InlineData("dash")]
+    [InlineData("recover")]
+    public void The_slot_row_names_each_action(string action)
+    {
+        var (sim, a, _, _) = Table();
+        IScavengeCommand order = action switch
+        {
+            "push" => new Push(1, a.Id, new Pos(1, 0)),
+            "dash" => new Dash(1, a.Id, new Pos(0, 1), 2),
+            _ => new Recover(1, a.Id),
+        };
+        Assert.True(sim.Execute(order).Ok);
+        Assert.Equal(char.ToUpperInvariant(action[0]) + action[1..], TacticsView.Slots(sim, a)[1].Text);
+    }
+
+    [Fact]
+    public void A_draw_shows_as_played_and_cannot_be_cleared()
+    {
+        var (sim, a, _, deck) = Table("scout_ahead");
+        deck.DrawPile = ["dash", "dash"];
+        Assert.True(Play(sim, a, "scout_ahead").Ok);
+        var card = TacticsView.Slots(sim, a)[2];
+        Assert.Equal(("Played", false, 1), (card.Text, card.Clearable, card.Used));
+    }
+
+    [Fact]
+    public void An_order_into_a_full_slot_says_which_slot_it_changes()
+    {
+        var (sim, a, b, _) = Table();
+        var walk = new Move(1, a.Id, new Pos(1, 3));
+        var blow = new AttackTile(1, a.Id, b.Pos, "swing");
+        Assert.Null(Plans.Replaces(sim, walk));
+        Assert.True(sim.Execute(walk).Ok);
+        Assert.Equal(PlanSlot.Move, Plans.Replaces(sim, new Move(1, a.Id, new Pos(1, 0))));
+        Assert.Null(Plans.Replaces(sim, blow));
+        Assert.True(sim.Execute(blow).Ok);
+        Assert.Equal(PlanSlot.Action, Plans.Replaces(sim, new Recover(1, a.Id)));
+        Assert.Equal(PlanSlot.Action, Plans.Replaces(sim, new Push(1, a.Id, new Pos(1, 0))));
+        Assert.Equal(PlanSlot.Action, Plans.Replaces(sim, new Dash(1, a.Id, new Pos(1, 0), 1)));
+        Assert.Null(Plans.Replaces(sim, new EndTurn(1, a.Id)));
+    }
+
+    [Fact]
+    public void An_order_changing_the_action_counts_the_ap_it_would_get_back()
+    {
+        var (sim, a, b, _) = Table();
+        Assert.Equal(1, Plans.ApToSpend(sim.State, a));
+        Assert.True(sim.Execute(new AttackTile(1, a.Id, b.Pos, "swing")).Ok);
+        Assert.Equal(0, a.Ap);
+        Assert.Equal(1, Plans.ApToSpend(sim.State, a));
+    }
+
     [Theory]
     [InlineData("husk")]
     [InlineData("linked")]

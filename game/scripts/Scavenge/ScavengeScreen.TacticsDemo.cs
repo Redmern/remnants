@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Godot;
+using Remnants.Game.Scavenge.Ui;
 
 namespace Remnants.Game.Scavenge;
 
@@ -76,6 +77,9 @@ public partial class ScavengeScreen
                     _map.SetHover(sweepAt);
                     GD.Print($"Tactics demo: planned a walk to {walk}, aiming sweep at {sweepAt}, {_cardAim?.Options.Count(o => o.Ok)} of {_cardAim?.Options.Count} work");
                     break;
+                case "slots" or "slots-push" or "slots-dash" or "slots-recover" or "slots-ally" or "slots-change":
+                    await SlotsDemo(u);
+                    break;
                 case "preview" when husk is not null:
                     // Fresh AP and the Husk two steps off, so the move tiles in reach of a blow show their chances.
                     u.Ap = _presenter.Sim.Profile(u).MaxAp; u.Mp = _presenter.Sim.Profile(u).MaxMp;
@@ -126,6 +130,90 @@ public partial class ScavengeScreen
             GD.Print(error == Error.Ok ? $"Screenshot saved to {path}" : $"Screenshot failed: {error}");
             if (DebugCapture.HasFlag("--quit")) GetTree().Quit();
         }
+    }
+
+    /// <summary>
+    /// The Move, Action and Card slots, through the same clicks a player makes: a walk, then per mode an action aimed or planned
+    /// and a card, or (slots-change) the move, action and card changed and cleared. Prints each step for the log.
+    /// </summary>
+    private async Task SlotsDemo(Core.Scavenge.Unit u)
+    {
+        async Task Settled()
+        {
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            while (_busy) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            SelectActing();
+        }
+        void Say(string what) => GD.Print($"Slots demo: {what}: " + string.Join(" | ", Core.Scavenge.TacticsView.Slots(_presenter.Sim, u).Select(s => $"{s.Slot} {s.Used}/{s.Limit} {s.Text}")) + $" | MP {u.Mp} AP {u.Ap} STA {Core.Scavenge.Economy.Stamina(_presenter.Sim, u)}");
+        var pid = _presenter.PlayerId;
+        var walks = _presenter.Reachable(u).Where(kv => kv.Value == 2).OrderBy(kv => kv.Key.X).ThenBy(kv => kv.Key.Y).Select(kv => kv.Key).ToList();
+        Say("start");
+        OnTileClicked(walks[0]);
+        await Settled();
+        Say($"clicked {walks[0]}");
+        var end = Core.Scavenge.Plans.Anchor(_presenter.State, u);
+        var east = end + new Core.Scavenge.Pos(1, 0);
+        switch (TacticsDemo.Mode)
+        {
+            case "slots-push" or "slots-dash":
+                _aim = TacticsDemo.Mode == "slots-push" ? TechAim.Push : TechAim.Dash;
+                _hover = east;
+                _map.SetHover(east);
+                RefreshHud();
+                Say($"aiming {_aim} at {east}");
+                await ToSignal(GetTree().CreateTimer(1.0), SceneTreeTimer.SignalName.Timeout);
+                if (DebugCapture.Value("--screenshot") is { Length: > 0 } aimShot)
+                    GD.Print($"Slots demo: aim shot {GetViewport().GetTexture().GetImage().SavePng(aimShot.Replace(".png", "_aim.png"))}");
+                OnTileClicked(east);
+                await Settled();
+                Say("clicked the aim");
+                break;
+            case "slots-recover":
+                await Run(new Core.Scavenge.Recover(pid, u.Id));
+                await Settled();
+                Say("recover");
+                break;
+            case "slots-ally":
+                // A friend beside where the plan ends: Sweep's aim warns of them.
+                var friend = _presenter.State.Units.First(f => f.PlayerId == pid && f.Id != u.Id && f.OnMap);
+                friend.Pos = east;
+                SyncAll();
+                _hud.Hand.Choose("sweep");
+                BeginCardAim("sweep", u.Id, false, false);
+                _hover = east;
+                _map.SetHover(east);
+                RefreshHud();
+                GD.Print($"Slots demo: ally warning tiles {string.Join(",", Core.Scavenge.TacticsView.PatternAim(_presenter.Sim, u, "sweep", null, Core.Scavenge.TacticsView.AimDirection(_presenter.Sim, u, east)).AllyTiles)}");
+                break;
+            case "slots-change":
+                OnTileClicked(walks[^1]);
+                await Settled();
+                Say($"changed the move to {walks[^1]}");
+                await Run(new Core.Scavenge.Recover(pid, u.Id));
+                await Settled();
+                Say("planned recover");
+                await Run(new Core.Scavenge.Push(pid, u.Id, new Core.Scavenge.Pos(1, 0)));
+                await Settled();
+                Say("changed the action to a push");
+                await Run(new Core.Scavenge.PlayCard(pid, u.Id, "war_cry"));
+                await Settled();
+                Say("played war_cry");
+                await Run(new Core.Scavenge.UndoPlan(pid, u.Id, Slot: Core.Scavenge.PlanSlot.Card));
+                await Settled();
+                Say($"cleared the card (adrenaline {u.Adrenaline})");
+                await Run(new Core.Scavenge.UndoPlan(pid, u.Id, Slot: Core.Scavenge.PlanSlot.Move));
+                await Settled();
+                Say("cleared the move");
+                break;
+            default:
+                await Run(new Core.Scavenge.Push(pid, u.Id, new Core.Scavenge.Pos(1, 0)));
+                await Settled();
+                await Run(new Core.Scavenge.PlayCard(pid, u.Id, "war_cry"));
+                await Settled();
+                Say("all three");
+                break;
+        }
+        RefreshHud();
     }
 
     /// <summary>
