@@ -69,7 +69,9 @@ public static class Protocol
     public const int SimultaneousVersion = 21;
     /// <summary>One move, one action, one card a round: undoPlan's slot, the slotFull error, units' plan slot counts.</summary>
     public const int PlanSlotsVersion = 22;
-    public const int Version = PlanSlotsVersion;
+    /// <summary>The Defend action and the counters between actions: the defend command, the Defend plan entry, the guardBroken event.</summary>
+    public const int DefendVersion = 23;
+    public const int Version = DefendVersion;
     public const int DefaultPort = 7777;
 }
 

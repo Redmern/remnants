@@ -61,6 +61,34 @@ public class CardFogNetTests
     }
 
     [Fact]
+    public void A_rival_sees_nothing_of_a_defend_until_it_resolves_and_its_owner_sees_it_all()
+    {
+        var (f, a, b, alice, bob) = Field();
+        alice.Pos = bob.Pos + new Pos(-3, 0);
+        Assert.True(f.Sim.Execute(new Defend(a.Id, alice.Id, new Pos(1, 0))).Ok);
+        var fog = new SideFog(b.Id, bob.Side);
+        fog.Update(f.Sim);
+        var view = fog.View(f.Sim);
+        Assert.Empty(view.Plans.Single(p => p.UnitId == alice.Id).Steps);
+        Assert.Empty(view.Defences);
+        var seen = view.Units.Single(u => u.Id == alice.Id);
+        Assert.Equal((0, 0), (seen.Ap, seen.Fatigue));
+        var own = new SideFog(a.Id, alice.Side);
+        own.Update(f.Sim);
+        Assert.Equal(PlanStepKind.Defend, own.View(f.Sim).Plans.Single(p => p.UnitId == alice.Id).Steps.Single().Kind);
+    }
+
+    [Fact]
+    public void A_fogged_pusher_breaking_a_guard_is_not_named_to_the_defender()
+    {
+        var mine = new[] { 1 };
+        var events = new[] { new ScavengeEvent(1, ScavengeEventType.GuardBroken, "Bob's push breaks Alice's guard.", 2, 1, new Pos(3, 3), Anonymous: "Alice's guard is broken by a push.") };
+        var heard = FogLog.Filter(events, "p1", id => mine.Contains(id), _ => false, _ => false).Single();
+        Assert.Null(heard.UnitId);
+        Assert.DoesNotContain("Bob", heard.Message);
+    }
+
+    [Fact]
     public void A_fogged_rivals_move_reaches_a_side_only_as_a_coarse_hint()
     {
         var (f, a, b, alice, bob) = Field();

@@ -535,6 +535,8 @@ never go over the wire.
 
 ## Telegraphed plans and cards over the wire
 
+Protocol 23 adds the `defend` command, the `Defend` plan entry and the `guardBroken` event. A rival's view of a plan keeps only its moves (`SideFog.Telegraphed`), so a Defend is hidden until it resolves. Some of what follows predates simultaneous rounds; `docs/ARCHITECTURE.md`, "Rounds, plans and cards", is current.
+
 Protocol version 17 (`Protocol.TacticsVersion`), with the run's scavenge save 15 and the colony's save 27 (older runs are
 reset, older colonies migrate and get the starter cards).
 
