@@ -74,6 +74,10 @@ public partial class LootTip : PanelContainer
         _chips.Visible = _chips.GetChildCount() > 0;
         var tools = def.Tools.Count == 0 ? "" : $" Tools: {string.Join(", ", def.Tools.Keys.Select(t => ScavengeText.Item(sim.Data, t)))}.";
         _effect.Text = $"Noise: heard {def.Noise} tiles away.{(def.Skill is { } s ? $" Skill: {s}." : "")}{tools}";
+        if (unit is not null && presenter.IsMine(unit))
+            _effect.Text += FieldSalvage.ClickedNode(presenter.State, unit, node.Pos) is null
+                ? $"\nStand next to it, then click it to salvage ({def.ApCost} AP)."
+                : $"\nClick to salvage ({def.ApCost} AP).";
         Place(screen);
     }
 

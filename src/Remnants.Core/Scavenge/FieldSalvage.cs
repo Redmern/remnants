@@ -23,7 +23,7 @@ public sealed record SalvageNodeDef
     public Terrain Terrain { get; init; } = Terrain.Floor;
     public int Work { get; init; } = 1;
     public int[] Lots { get; init; } = [1, 1];
-    public int ApCost { get; init; } = 2;
+    public int ApCost { get; init; } = 1;
     public int Noise { get; init; } = 3;
     public Skill? Skill { get; init; }
     public double YieldPerSkill { get; init; } = 0.005;
@@ -147,6 +147,10 @@ public static class FieldSalvage
         var context = unit is null ? new LootContext(FieldLoot.FindTier(sim)) : Context(sim, def, unit);
         return sim.Data.Loot.Expected(table, context);
     }
+
+    /// <summary>The node a click on <paramref name="tile"/> salvages: one with lots left there, next to <paramref name="unit"/>; else null.</summary>
+    public static SalvageNode? ClickedNode(ScavengeState state, Unit unit, Pos tile) =>
+        state.SalvageNodes.Find(n => n.Pos == tile && !n.Depleted && n.Pos.Chebyshev(unit.Pos) <= 1);
 
     public static ScavengeResult Salvage(ScavengeSim sim, Unit unit, Salvage c)
     {
