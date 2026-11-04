@@ -111,7 +111,7 @@ public static class Movement
     }
 
     /// <summary>No squeezing diagonally between two impassable tiles.</summary>
-    private static bool CornerOpen(TileMap map, MovementProfile profile, Pos from, Pos d) =>
+    internal static bool CornerOpen(TileMap map, MovementProfile profile, Pos from, Pos d) =>
         profile.Cost(map[new Pos(from.X + d.X, from.Y)]) is not null || profile.Cost(map[new Pos(from.X, from.Y + d.Y)]) is not null;
 
     /// <summary>Straight lines: stops at impassable terrain or a hostile, costs summed up to the range (the first step always fits).</summary>

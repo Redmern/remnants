@@ -59,7 +59,9 @@ public static class BotTactics
         if (Try(playable.Where(c => c.Effect.DelayInitiative), At(aimedAtUs)) is { } hold) return hold;
         var threatened = squad.Where(s => s.Id != unit.Id && s.PriorityBonus <= 0 && Threats(sim, s).Count > 0);
         if (Try(playable.Where(c => c.Effect.AdvanceInitiative), At(threatened)) is { } hurry) return hurry;
-        if (Try(playable.Where(Breaks), At(Threats(sim, unit))) is { } broken) return broken;
+        // A foe seen walking off, or that a friend is about to move, would only be a card wasted.
+        var moved = BeingMoved(sim, unit.Side);
+        if (Try(playable.Where(Breaks), At(Threats(sim, unit).Where(t => !moved.Contains(t.Id) && Expected(sim, unit.Side, t) == t.Pos))) is { } broken) return broken;
         // In reach of someone: guard where it will stand, turned toward the nearest of them.
         if (!Guarding(state, data, unit) && Threats(sim, unit).FirstOrDefault() is { } threat)
             foreach (var c in playable.Where(c => c.Effect.Block > 0))
@@ -88,6 +90,7 @@ public static class BotTactics
         if (seenBy.Count > 0 && unit.Guard == 0 && playable.FirstOrDefault(c => c.Effect.Guard > 0) is { } guard) return Play(guard);
         if (seenBy.FirstOrDefault(h => h.Pos.Chebyshev(at) > 1) is { } shooter
             && Combat.CoverAgainst(data, state.Map, at, shooter.Pos) <= 0
+            && !hostiles.Any(h => Expected(sim, unit.Side, h) == at + Combat.Face(at, shooter.Pos))
             && Try(playable.Where(c => c.Effect.PlaceBarrier > 0), [(null, at + Combat.Face(at, shooter.Pos))]) is { } barrier) return barrier;
         if (hurt >= MendInjuryAt && playable.FirstOrDefault(c => c.Effect.Mend > 0) is { } mend) return Play(mend);
         if (deck.Hand.Count <= 2 && playable.FirstOrDefault(c => c.Effect.Draw > 0) is { } draw) return Play(draw);
@@ -122,6 +125,39 @@ public static class BotTactics
                 yield return (null, t);
     }
 
+    /// <summary>Who the side's own plans are about to shove or pull off their tile.</summary>
+    public static HashSet<int> BeingMoved(ScavengeSim sim, string side)
+    {
+        var (state, moved) = (sim.State, new HashSet<int>());
+        foreach (var unit in state.Units.Where(u => u.Side == side))
+            foreach (var step in Plans.Of(state, unit)?.Steps ?? [])
+                if (step.Kind == PlanStepKind.Card && step.TargetId is { } id && sim.Data.Cards.Find(step.CardId!) is { } card && Breaks(card)) moved.Add(id);
+                else if (step.Kind == PlanStepKind.Push)
+                    foreach (var tile in Patterns.Tiles(state.Map, sim.Data.Rules.Combat.Push.Pattern, step.From, step.Direction))
+                        if (state.UnitAt(tile) is { } on) moved.Add(on.Id);
+        return moved;
+    }
+
+    /// <summary>A push on someone who is no enemy and stands where the unit must go, or null.</summary>
+    public static Push? Unblock(ScavengeSim sim, Unit unit, int playerId, IReadOnlyList<Pos> goals)
+    {
+        var (state, movement) = (sim.State, sim.Profile(unit).Movement);
+        if (!Plans.HasRoom(sim, unit, PlanSlot.Action) || unit.Ap < sim.Data.Rules.Combat.Push.ApCost) return null;
+        var at = Plans.Anchor(state, unit);
+        // Boxed in: every step that gets it closer is taken, and one of them by someone who is no enemy.
+        foreach (var goal in goals)
+        {
+            var field = Movement.DistanceField(state.Map, movement, goal);
+            if (!field.TryGetValue(at, out var here)) continue;
+            var closer = Pos.Neighbours8.Where(way => field.GetValueOrDefault(at + way, int.MaxValue) < here && (way.X == 0 || way.Y == 0 || Movement.CornerOpen(state.Map, movement, at, way))).ToList();
+            if (closer.Count == 0 || closer.Any(way => state.UnitAt(at + way) is null)) continue;
+            foreach (var way in closer)
+                if (state.UnitAt(at + way) is { } there && !unit.HostileTo(there))
+                    return new Push(playerId, unit.Id, way);
+        }
+        return null;
+    }
+
     /// <summary>How often, in rounds, a healthy bot guards against a neighbour that stood still (a bot habit, not a game rule).</summary>
     public const int GuardEvery = 3;
 
@@ -150,7 +186,7 @@ public static class BotTactics
         var nearest = threats.OrderBy(t => t.Pos.Chebyshev(at)).ThenBy(t => t.Id).First();
         if (unit.Ap >= rules.Push.ApCost)
             foreach (var way in Pos.Neighbours8)
-                if (TacticsView.PushPreview(sim, unit, way).Any(o => o.Collides && state.FindUnit(o.UnitId) is { } v && unit.HostileTo(v) && v.LastMove == default && Expected(sim, unit.Side, v) == v.Pos) && !TacticsView.PushPreview(sim, unit, way).Any(o => !unit.HostileTo(state.FindUnit(o.UnitId)!)))
+                if (TacticsView.PushPreview(sim, unit, way).Any(o => o.Collides && state.FindUnit(o.UnitId) is { } v && unit.HostileTo(v) && v.LastMove == default && Expected(sim, unit.Side, v) == v.Pos && !BeingMoved(sim, unit.Side).Contains(v.Id)) && !TacticsView.PushPreview(sim, unit, way).Any(o => !unit.HostileTo(state.FindUnit(o.UnitId)!)))
                     return new Push(playerId, unit.Id, way);
 
         if (unit.Hp >= unit.MaxHp * HurtBelow && threats.Count < 2)

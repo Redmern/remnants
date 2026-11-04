@@ -376,12 +376,12 @@ public static class PartyBot
         // 1d. The mixed bot's counter, before it settles for a plain blow.
         if (!walkAttack && BotTactics.Counter(sim, unit, playerId) is { } counter) return counter;
 
-        // 2. Hit what gives the most expected damage per AP (not one its own card is about to move out of the way).
-        var moving = Plans.Of(state, unit)?.Steps.Where(s => s.Kind == PlanStepKind.Card && s.Tile is not null && sim.Data.Cards.Find(s.CardId!) is { Effect: { } e } && (e.Push > 0 || e.Pull > 0)).Select(s => s.Tile!.Value).ToHashSet() ?? [];
+        // 2. Hit what gives the most expected damage per AP (not one the side's own plans are about to move out of the way).
+        var moving = BotTactics.BeingMoved(sim, unit.Side);
         // The true AP counts (a scope costs more up close).
         var attack = profile.Actions.Where(_ => Plans.HasRoom(sim, unit, PlanSlot.Action))
             .SelectMany(a => hostiles
-                .Where(t => !moving.Contains(t.Pos) && BotTactics.Expected(sim, unit.Side, t) is var to && Combat.ApCost(a, unit.Pos, to) <= unit.Ap && Combat.CheckReach(sim.Data, map, unit.Pos, a, to) == ScavengeError.None)
+                .Where(t => !moving.Contains(t.Id) && BotTactics.Expected(sim, unit.Side, t) is var to && Combat.ApCost(a, unit.Pos, to) <= unit.Ap && Combat.CheckReach(sim.Data, map, unit.Pos, a, to) == ScavengeError.None)
                 .Select(t => (Action: a, Target: t, Chance: Combat.ChanceToHit(sim, unit, a, t))))
             .OrderByDescending(o => o.Chance * (o.Action.MinDamage + o.Action.MaxDamage) / 2 / Combat.ApCost(o.Action, unit.Pos, BotTactics.Expected(sim, unit.Side, o.Target)))
             .ThenBy(o => o.Target.Hp).FirstOrDefault();
@@ -477,6 +477,9 @@ public static class PartyBot
         }
         // The nearest exits (and the vehicle) always stay in the running, however many places are left to loot.
         goals = goals.Take(5).Concat(bySide.Concat(map.Exits).OrderBy(e => e.Chebyshev(unit.Pos)).Take(3)).ToList();
+
+        // Someone who is no enemy stands in the only way out: shove them aside.
+        if (Policy == BotPolicy.Mixed && BotTactics.Unblock(sim, unit, playerId, goals) is { } unblock) return unblock;
 
         var reachable = sim.Reachable(unit).Where(kv => kv.Value <= unit.Mp).ToList();
         // Boxed in (often by our own follower in a doorway): for a few rounds, path around the units in the way.

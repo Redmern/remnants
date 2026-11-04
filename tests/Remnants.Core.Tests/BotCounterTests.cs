@@ -156,3 +156,115 @@ public class BotCounterTests
         Assert.Null(BotTactics.Position(sim, a, 1));
     }
 }
+
+public class BotUnblockTests
+{
+    private static string[] Doorway() =>
+    [
+        "..............",
+        "..............",
+        "....###.......",
+        "....#.........",
+        "....###.......",
+        "..............",
+        "..............",
+    ];
+
+    private static (ScavengeSim Sim, Unit A, Unit Stranger) Boxed()
+    {
+        var a = SurvivorUnit(1, new(5, 3), weapon: "pipe");
+        var stranger = SurvivorUnit(2, new(6, 3), weapon: "pipe");
+        stranger.Side = Unit.NeutralSide;
+        return (Arena(14, 7, [a, stranger], rows: Doorway()), a, stranger);
+    }
+
+    [Fact]
+    public void A_unit_boxed_in_by_someone_who_is_no_enemy_pushes_them_out_of_the_way()
+    {
+        var (sim, a, _) = Boxed();
+        var push = Assert.IsType<Push>(BotTactics.Unblock(sim, a, 1, [new(10, 3)]));
+        Assert.Equal(new Pos(1, 0), push.Direction);
+    }
+
+    [Fact]
+    public void A_unit_boxed_in_by_its_own_follower_pushes_it_out_of_the_way()
+    {
+        var (sim, a, follower) = Boxed();
+        follower.Side = a.Side;
+        Assert.IsType<Push>(BotTactics.Unblock(sim, a, 1, [new(10, 3)]));
+    }
+
+    [Fact]
+    public void The_push_clears_the_doorway()
+    {
+        var (sim, a, stranger) = Boxed();
+        Assert.True(sim.Execute(BotTactics.Unblock(sim, a, 1, [new(10, 3)])!).Ok);
+        Settle(sim);
+        Assert.Equal(new Pos(7, 3), stranger.Pos);
+    }
+
+    [Fact]
+    public void Nobody_in_the_way_means_no_push()
+    {
+        var a = SurvivorUnit(1, new(5, 3), weapon: "pipe");
+        var sim = Arena(14, 7, [a], rows: Doorway());
+        Assert.Null(BotTactics.Unblock(sim, a, 1, [new(10, 3)]));
+    }
+
+    [Fact]
+    public void A_way_round_the_stranger_means_no_push()
+    {
+        var a = SurvivorUnit(1, new(5, 3), weapon: "pipe");
+        var stranger = SurvivorUnit(2, new(6, 3), weapon: "pipe");
+        stranger.Side = Unit.NeutralSide;
+        var sim = Arena(14, 7, [a, stranger]);
+        Assert.Null(BotTactics.Unblock(sim, a, 1, [new(10, 3)]));
+    }
+}
+
+public class BotAimingTests
+{
+    private static (ScavengeSim Sim, Unit A, Unit B, Unit Foe) Field(params string[] hand)
+    {
+        var a = SurvivorUnit(1, new(4, 3), weapon: "pipe");
+        var b = SurvivorUnit(1, new(4, 4), weapon: "pipe");
+        var foe = EnemyUnit("husk", new(5, 3));
+        var sim = Arena(14, 7, [a, b, foe]);
+        sim.State.Decks.Add(new SquadDeck { PlayerId = 1, Hand = hand.ToList(), Points = 3, Budget = 3, HandSize = 5 });
+        return (sim, a, b, foe);
+    }
+
+    [Fact]
+    public void A_foe_an_ally_is_about_to_push_counts_as_being_moved()
+    {
+        var (sim, a, b, foe) = Field();
+        Assert.DoesNotContain(foe.Id, BotTactics.BeingMoved(sim, a.Side));
+        Assert.True(sim.Execute(new Push(1, b.Id, new(1, -1))).Ok);
+        Assert.Contains(foe.Id, BotTactics.BeingMoved(sim, a.Side));
+    }
+
+    [Fact]
+    public void A_foe_an_ally_is_about_to_shove_counts_as_being_moved()
+    {
+        var (sim, a, b, foe) = Field("shove");
+        Assert.True(sim.Execute(new PlayCard(1, a.Id, "shove", foe.Id)).Ok);
+        Assert.Contains(foe.Id, BotTactics.BeingMoved(sim, b.Side));
+    }
+
+    [Fact]
+    public void It_does_not_shove_a_foe_it_can_see_walking_off()
+    {
+        var (sim, a, _, foe) = Field("shove");
+        Assert.Equal("shove", Assert.IsType<PlayCard>(BotTactics.Card(sim, a, 1)).CardId);
+        Plans.For(sim.State, foe).Steps.Add(new PlanStep { Kind = PlanStepKind.Move, To = new(5, 4), Path = [new(5, 4)] });
+        Assert.NotEqual("shove", (BotTactics.Card(sim, a, 1) as PlayCard)?.CardId);
+    }
+
+    [Fact]
+    public void It_does_not_shove_a_foe_an_ally_is_already_shoving()
+    {
+        var (sim, a, b, foe) = Field("shove", "shove");
+        Assert.True(sim.Execute(new PlayCard(1, a.Id, "shove", foe.Id)).Ok);
+        Assert.NotEqual("shove", (BotTactics.Card(sim, b, 1) as PlayCard)?.CardId);
+    }
+}
