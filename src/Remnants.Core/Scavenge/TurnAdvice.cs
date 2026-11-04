@@ -39,7 +39,7 @@ public static class TurnAdvice
     private static bool CanPlayACard(ScavengeSim sim, Unit unit)
     {
         if (unit.PlayerId is not { } pid || SquadDecks.Of(sim.State, pid) is not { Hidden: false } deck) return false;
-        var planners = sim.State.Units.Where(u => TileStrikes.Readied(sim.State, u) && unit.HostileTo(u)).Select(u => (int?)u.Id).DefaultIfEmpty(null).ToList();
+        var planners = sim.State.Units.Where(u => u.IsActive && u.OnMap && unit.HostileTo(u) && Detection.SideSees(sim.Data, sim.State, unit.Side, u)).Select(u => (int?)u.Id).Append(null).DefaultIfEmpty(null).ToList();
         bool Playable(string id, bool slot) =>
             planners.Any(t => CardPlay.Check(sim, unit, new PlayCard(pid, unit.Id, id, t, FromSlot: slot)).Ok);
         return deck.Hand.Distinct().Any(id => Playable(id, false)) || unit.SlotCards.Where(id => !unit.SlotSpent.Contains(id)).Any(id => Playable(id, true));

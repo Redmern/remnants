@@ -56,6 +56,7 @@ public static class CardPlay
         var boost = c.Boost && card.BoostAp > 0;
         var ap = card.ApCost + (boost ? card.BoostAp : 0);
         if (ap > unit.Ap) return Fail(ScavengeError.NotEnoughAp, $"{unit.Name} needs {ap} AP for {card.Name} (has {unit.Ap}).");
+        if (Economy.Stamina(sim, unit) <= 0) return Fail(ScavengeError.NotEnoughAp, $"{unit.Name} has no stamina left for {card.Name}.");
 
         var effect = EffectOf(card, unit, boost);
         if (effect.Mend > 0 && Treatment.WorstInjury(unit.Body) <= 0 && effect with { Mend = 0 } is { IsEmpty: true })

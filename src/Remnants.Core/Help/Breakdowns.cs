@@ -195,7 +195,7 @@ public static class Breakdowns
             Term("Card cover", -profile.CoverBonus);
         }
         else Term("Target's defence", -Bestiary.ShownChance(data.Rules.Bestiary, dodge + cover + profile.CoverBonus, c.TargetKnown),
-            "dodge, cover and bracing, roughly: learn it in the Bestiary");
+            "dodge and cover, roughly: learn it in the Bestiary");
         Term("Range", -range, $"{data.Rules.Combat.RangeFalloff * 100:0}% per tile past the first");
         Term("Ambush", ambush?.HitBonus ?? 0, ambush is { Backs: true } ? "an ally beside the target blunts it" : "they cannot see you");
         Term("Bane", bane?.HitBonus ?? 0);

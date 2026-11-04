@@ -325,7 +325,7 @@ public static class Combat
     {
         var rules = sim.Data.Rules.Combat.Push;
         sim.State.Log(new(sim.State.Round, ScavengeEventType.Collided, $"{victim.Name} slams into {blocker?.Name ?? "a wall"}.", by.Id, victim.Id, victim.Pos,
-            Anonymous: $"{victim.Name} slams into {blocker?.Name ?? "a wall"}."));
+            Anonymous: $"{victim.Name} slams into something."));
         ApplyDamage(sim, victim, PickHitLocation(sim, victim), rules.CollisionDamage * sim.EffectFactor, attacker: by);
         if (blocker is { IsActive: true }) ApplyDamage(sim, blocker, PickHitLocation(sim, blocker), rules.BlockerDamage * sim.EffectFactor, attacker: by);
     }

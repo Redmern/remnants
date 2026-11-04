@@ -269,8 +269,8 @@ public partial class UnitPanel : PanelContainer
         _set.Tooltip(_hp, unit.Status == UnitStatus.Downed
             ? $"Down: bleeds out in {unit.BleedOut} rounds unless stabilized{(unit.Stabilized ? " (stabilized)" : "")}"
             : hpKnown ? $"Health {unit.Hp:0}/{unit.MaxHp:0}" : "How hurt it looks. Kill one to learn its health (Bestiary).");
-        // The acting unit's AP is next to End turn in the turn bar; the card shows it for the others.
-        _set.Visible(_apRow, !isActing && unit.Kind is not (UnitKind.Device or UnitKind.Decoy) && _tier >= BestiaryTier.Fought);
+        // The acting unit's AP is next to Ready in the turn bar; the card shows it for your side's others. A rival's AP spent is its secret.
+        _set.Visible(_apRow, !isActing && unit.Side == _presenter.Side && unit.Kind is not (UnitKind.Device or UnitKind.Decoy) && _tier >= BestiaryTier.Fought);
         _ap.Set(unit.Ap, profile.MaxAp, Stuns.Active(_presenter.Sim.State, unit) ? Palette.Warn : Palette.Amber);
         _set.Tooltip(_ap, $"{unit.Ap} of {profile.MaxAp} action points" + (Stuns.Active(_presenter.Sim.State, unit) ? " · stunned: fewer AP and MP next turn" : ""));
 

@@ -5,7 +5,7 @@ using Remnants.Game.Hud;
 namespace Remnants.Game.Scavenge.Ui;
 
 /// <summary>
-/// The alliance banner under the turn bar: an open offer to the local player (answer on your turn: Y / U), a break
+/// The alliance banner under the turn bar: an open offer to the local player (answer while planning: Y / U), a break
 /// announced on the team (with the round it takes effect), and for a few seconds the latest alliance news (allied,
 /// declined, broken). Ally green for offers and news, warning amber for a coming break. Hidden otherwise.
 /// </summary>
@@ -67,7 +67,7 @@ public partial class AllianceBanner : PanelContainer
             (title, color) = ($"{_presenter.PlayerName(offer.FromPlayerId).ToUpperInvariant()} OFFERS AN ALLIANCE", Palette.Ally);
             var accept = Hotkeys.KeyName("scav_ally");
             var decline = Hotkeys.KeyName("scav_decline");
-            text = $"Shared sight, no friendly fire. Answer on your turn: {accept} accept · {decline} decline. Open until round {offer.Round + _presenter.Sim.Data.Rules.Coop.ProposalRounds - 1}.";
+            text = $"Shared sight, no friendly fire. Answer while planning: {accept} accept · {decline} decline. Open until round {offer.Round + _presenter.Sim.Data.Rules.Coop.ProposalRounds - 1}.";
         }
         else if (leaving is not null)
         {

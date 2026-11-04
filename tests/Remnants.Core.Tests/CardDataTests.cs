@@ -37,7 +37,7 @@ public class CardDataTests
         Assert.All(StarterCards, c => Assert.InRange(c.Cost, 1, 2));
         Assert.All(StarterCards.Where(c => !c.Effect.IsAbility), c => Assert.Equal(1, c.Cost));
         // Cards cost points, not AP, unless they stand in for a blow or a guard.
-        Assert.All(StarterCards.Where(c => !c.Effect.Attack && c.Effect.Block == 0), c => Assert.Equal(0, c.ApCost));
+        Assert.All(StarterCards.Where(c => !c.Effect.Attack && c.Effect.Block == 0 && c.Effect.Push == 0 && c.Effect.Pull == 0), c => Assert.Equal(0, c.ApCost));
     }
 
     [Fact]

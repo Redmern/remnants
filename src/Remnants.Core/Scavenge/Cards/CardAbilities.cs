@@ -106,7 +106,8 @@ public static class CardAbilities
             if (way == default || Slide(sim, unit, way, effect.Dash, terrainOnly: true) == unit.Pos) return Fail(ScavengeError.InvalidTile, $"{unit.Name} has no room to dash that way.");
         }
         // Turned as the player aims it: toward the tile aimed at, or the way the unit faces, unless told otherwise.
-        var turned = direction ?? (tile is { } p && p != unit.Pos ? Combat.Face(unit.Pos, p) : unit.Facing ?? new Pos(1, 0));
+        var turned = direction is { } aimed && aimed != default ? Combat.Face(default, aimed)
+            : tile is { } p && p != unit.Pos ? Combat.Face(unit.Pos, p) : unit.Facing ?? new Pos(1, 0);
         if (effect.Attack && MeleeBlow(sim, unit) is null) return Fail(ScavengeError.UnknownAction, $"{unit.Name} has nothing to swing.");
         var tiles = card.Pattern is { } pattern ? Patterns.Tiles(state.Map, pattern, tile ?? unit.Pos, turned) : null;
         return new Outcome(null, target, tile, landing, strike, turned, tiles);

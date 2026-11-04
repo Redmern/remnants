@@ -33,6 +33,19 @@ public static class Economy
         unit.Mp /= 2;
     }
 
+    /// <summary>
+    /// Cuts an AI unit's pools to what its stamina pays for, since it pays for its whole plan at once: half the stamina for
+    /// actions, the rest for walking. Players meet the same limit one order at a time.
+    /// </summary>
+    internal static void Afford(ScavengeSim sim, Unit unit)
+    {
+        var turn = sim.Data.Rules.Turn;
+        var stamina = Stamina(sim, unit);
+        if (stamina <= 0 || unit.Mp * turn.StaminaPerMp + unit.Ap * turn.StaminaPerAp <= stamina) return;
+        unit.Ap = Math.Min(unit.Ap, (stamina / Math.Max(1, turn.StaminaPerAp) + 1) / 2);
+        unit.Mp = Math.Min(unit.Mp, (stamina - unit.Ap * turn.StaminaPerAp) / Math.Max(1, turn.StaminaPerMp));
+    }
+
     /// <summary>Charges stamina for spent points. The point that empties the pool also ends the unit's actions and halves its MP left.</summary>
     internal static void Pay(ScavengeSim sim, Unit unit, int mp, int ap)
     {
@@ -67,7 +80,7 @@ public static class Economy
     /// <summary>A queued recover comes up.</summary>
     internal static void Recovered(ScavengeSim sim, Unit unit)
     {
-        unit.Fatigue = Math.Max(0, unit.Fatigue - sim.Data.Rules.Turn.RecoverStamina);
+        unit.Fatigue = Math.Max(0, unit.Fatigue - (int)Math.Round(sim.Data.Rules.Turn.RecoverStamina * sim.EffectFactor));
         sim.Log(ScavengeEventType.Recovered, $"{unit.Name} catches their breath.", unit);
     }
 }

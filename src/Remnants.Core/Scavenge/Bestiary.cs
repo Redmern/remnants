@@ -79,7 +79,7 @@ public static class Bestiary
     /// <summary>
     /// A hit chance as the side may see it: exact once the target's type is killed (and for players), otherwise to the
     /// nearest <see cref="BestiaryRules.ChanceStep"/> (half steps up), never a sure or hopeless one, so the hidden dodge
-    /// and bracing cannot be read off it (user decision).
+    /// cannot be read off it (user decision).
     /// </summary>
     public static double ShownChance(BestiaryRules rules, double chance, BestiaryTier tier)
     {

@@ -57,7 +57,7 @@ public static class EnemyCards
     {
         var data = sim.Data;
         var state = sim.State;
-        bool Playable(CardDef c) => c.Cost <= deck.Points && c.ApCost == 0 && (c.Requirement.Kind == CardKind.Baseline || c.Requirement.Met(unit))
+        bool Playable(CardDef c) => c.Cost <= deck.Points && c.ApCost <= unit.Ap && (c.Requirement.Kind == CardKind.Baseline || c.Requirement.Met(unit))
                                     && !(c.ArmLock && ProfileDeriver.ArmsLocked(data, unit.Body, twoHanded: false));
         var hand = deck.Hand.Distinct().Select(data.Cards.Find).OfType<CardDef>().Where(Playable).OrderBy(c => c.Id, StringComparer.Ordinal).ToList();
         PlayCard? Try(IEnumerable<CardDef> cards, IEnumerable<Unit?> targets, Pos? tile = null)

@@ -26,14 +26,14 @@
     ]
   },
   "cards": [
-    { "id": "shove", "name": "Shove", "category": "Attack", "rarity": "Common", "cost": 2, "target": "Enemy", "range": 1,
+    { "id": "shove", "name": "Shove", "category": "Attack", "rarity": "Common", "cost": 2, "apCost": 1, "target": "Enemy", "range": 1,
       "text": "Shove an enemy next to you a tile back and spin it round: its back is to you. What it queued still goes off, from where it lands. Into a wall or a unit it takes a knock. Strong arms shove two tiles.",
       "requirement": { "kind": "Baseline", "anyOf": [ { "attribute": "Strength", "min": 60 } ] },
       "effect": { "push": 1, "spin": true }, "bonus": { "push": 1 } },
     { "id": "flank_step", "name": "Flank Step", "category": "Movement", "rarity": "Common", "cost": 1, "target": "Tile", "range": 2,
       "text": "Slip up to two tiles, no AP, and turn to the nearest enemy you see: get round to its side or back before you strike.",
       "effect": { "step": 2 } },
-    { "id": "yank", "name": "Yank", "category": "Attack", "rarity": "Common", "cost": 1, "target": "Enemy", "range": 3,
+    { "id": "yank", "name": "Yank", "category": "Attack", "rarity": "Common", "cost": 1, "apCost": 1, "target": "Enemy", "range": 3,
       "text": "Yank a seen enemy within 3 tiles a tile toward you. What it has planned still goes off, from where it lands.",
       "effect": { "pull": 1 } },
     { "id": "spoil", "name": "Spoil", "category": "Defense", "rarity": "Uncommon", "cost": 1, "target": "Enemy", "range": 4,

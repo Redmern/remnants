@@ -95,6 +95,9 @@ public static class Adrenaline
         foreach (var unit in sim.State.Units) Set(sim, unit, sim.Profile(unit).AdrenalineStart);
     }
 
+    /// <summary>A unit that turns up mid-mission starts as it would have at the start.</summary>
+    internal static void Joined(ScavengeSim sim, Unit unit) => Set(sim, unit, sim.Profile(unit).AdrenalineStart);
+
     internal static void RoundStarted(ScavengeSim sim, Unit unit)
     {
         if (sim.State.Round > 1) Drain(sim, unit, sim.Data.Rules.Adrenaline.DrainPerRound);

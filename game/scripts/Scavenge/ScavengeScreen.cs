@@ -532,12 +532,12 @@ public partial class ScavengeScreen : Node3D
     /// </summary>
     private async void AutoEndTurn()
     {
-        if (!Hud.GameSettings.AutoEndTurn || _autoplaying || _presenter.Done || _presenter.ActingUnit is not { } acting || !_presenter.IsMine(acting)
+        if (!Hud.GameSettings.AutoEndTurn || _autoplaying || _presenter.Done || _presenter.ActingUnit is not { } acting || Plans.Of(_presenter.State, acting) is { Steps.Count: > 0 } || !_presenter.IsMine(acting)
             || TurnAdvice.CanStillAct(_presenter.Sim, acting)) return;
         var id = acting.Id;
         var round = _presenter.State.Round;
         var input = _inputSeq;
-        _hud.Toasts.Show("Turn over", $"{acting.Name} has nothing left to do.", "ui_end_turn", Hud.Palette.TextMuted, key: "auto_end_turn");
+        _hud.Toasts.Show("Nothing to plan", $"{acting.Name} has nothing to do this round.", "ui_end_turn", Hud.Palette.TextMuted, key: "auto_end_turn");
         // A beat so the player sees why (a frame at least: never re-entering the replay that called this).
         if (Hud.GameSettings.SkipAnimations) await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         else await ToSignal(GetTree().CreateTimer(0.35), SceneTreeTimer.SignalName.Timeout);
@@ -823,6 +823,7 @@ public partial class ScavengeScreen : Node3D
         var fromTiles = hovered is null ? null : _presenter.MovePreview(selected, hovered);
         foreach (var (tile, cost) in _presenter.Reachable(selected))
         {
+            if (cost > selected.Mp) continue;
             var label = fromTiles?.TryGetValue(tile, out var chance) == true ? $"{chance * 100:0}%" : cost > 1 ? $"{cost} MP" : null;
             _map.Highlight(tile, HighlightKind.Move, label);
         }

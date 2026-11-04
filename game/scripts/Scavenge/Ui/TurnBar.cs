@@ -57,7 +57,7 @@ public partial class TurnBar : PanelContainer
         row.AddChild(new VSeparator());
         var orderIcon = Icons.Rect(Icons.Get("stat_initiative", 18), 18, Palette.TextMuted);
         orderIcon.MouseFilter = MouseFilterEnum.Stop;
-        orderIcon.TooltipText = "Your units by priority (#1 goes first; enemy ranks stay hidden): the planning unit is large and named, those that are ready acted are faded.";
+        orderIcon.TooltipText = "Your units by priority (#1 goes first; enemy ranks stay hidden): the planning unit is large and named, those that are ready are faded.";
         row.AddChild(orderIcon);
         var scroll = new ScrollContainer
         {

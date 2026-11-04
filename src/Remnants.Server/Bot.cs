@@ -82,7 +82,7 @@ internal static class Bot
     private static IScavengeCommand? Decide(NetClient client, ScavengeSim view, int rounds, bool hostile, HashSet<int>? offered)
     {
         var state = view.State;
-        if (state.CurrentUnit is not { } unit || unit.PlayerId != client.PlayerId || !unit.PlayerControlled) return null;
+        if (TacticsView.PlanningUnit(state, client.PlayerId) is not { } unit) return null;
         var pid = client.PlayerId;
         var map = state.Map;
         var profile = view.Profile(unit);

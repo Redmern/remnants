@@ -95,7 +95,10 @@ internal static class RoundResolver
         state.Defences.Clear();
     }
 
-    /// <summary>Hostiles on one score: all their actions go off, at reduced effect, from the tiles they stood on when it began.</summary>
+    /// <summary>
+    /// Hostiles on one score: all their actions go off, at reduced effect, from the tiles they stood on when it began. Blows
+    /// come first, then shoves, then dashes, so nothing turns on which unit is older. A dash runs from wherever the shoves left it.
+    /// </summary>
     private static void Clash(ScavengeSim sim, List<(Unit Unit, UnitPlan Plan, PlanStep Step)> group)
     {
         var state = sim.State;
@@ -104,15 +107,29 @@ internal static class RoundResolver
         state.Log(new(state.Round, ScavengeEventType.Clashed, $"{string.Join(" and ", group.Select(g => g.Unit.Name))} act in the same instant.",
             group[0].Unit.Id, group[1].Unit.Id, group[0].Unit.Pos));
         sim.EffectFactor = sim.Data.Rules.Priority.TieEffect;
-        for (var i = 0; i < group.Count; i++)
+        foreach (var i in Enumerable.Range(0, group.Count).OrderBy(i => ClashOrder(sim, group[i].Step)))
         {
             var unit = group[i].Unit;
+            if (ClashOrder(sim, group[i].Step) == DashesLast)
+            {
+                Resolve(sim, unit, group[i].Step);
+                continue;
+            }
             var now = unit.Pos;
             unit.Pos = tiles[i];
             Resolve(sim, unit, group[i].Step);
             if (unit.Pos == tiles[i]) unit.Pos = now;
         }
         sim.EffectFactor = 1;
+    }
+
+    private const int DashesLast = 2;
+
+    private static int ClashOrder(ScavengeSim sim, PlanStep step)
+    {
+        if (step.Kind == PlanStepKind.Dash || step.Landing is not null) return DashesLast;
+        if (step.Kind == PlanStepKind.Push) return 1;
+        return step.CardId is { } id && sim.Data.Cards.Find(id)?.Effect is { } e && (e.Push > 0 || e.Pull > 0 || e.Swap || e.PushAll > 0) ? 1 : 0;
     }
 
     private static void Resolve(ScavengeSim sim, Unit unit, PlanStep step)

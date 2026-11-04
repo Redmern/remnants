@@ -26,6 +26,7 @@ internal static class ScavengeAi
 
     public static void TakeTurn(ScavengeSim sim, Unit unit)
     {
+        Economy.Afford(sim, unit);
         var (pos, facing, moved, mp, ap) = (unit.Pos, unit.Facing, unit.Moved, unit.Mp, unit.Ap);
         Decide(sim, unit);
         KeepStriking(sim, unit);

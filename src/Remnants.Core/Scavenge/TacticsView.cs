@@ -212,7 +212,7 @@ public static class TacticsView
         var map = sim.State.Map;
         var actions = sim.Profile(unit).Actions;
         var result = new Dictionary<Pos, double>();
-        foreach (var (tile, cost) in sim.Reachable(unit).Append(new KeyValuePair<Pos, int>(unit.Pos, 0)))
+        foreach (var (tile, cost) in sim.Reachable(unit).Append(new KeyValuePair<Pos, int>(Plans.Anchor(sim.State, unit), 0)))
         {
             var best = actions.Where(a => cost <= unit.Mp && Combat.ApCost(a, tile, target.Pos) <= unit.Ap && Drones.CanStrike(a, target)
                                           && Combat.CheckReach(sim.Data, map, tile, a, target.Pos) == ScavengeError.None)
@@ -280,7 +280,7 @@ public static class TacticsView
         {
             var check = CardPlay.Check(sim, unit, new PlayCard(playerId, unit.Id, card.Id, target, boost, fromSlot, card.Target == CardTarget.Tile ? tile : null, direction));
             if (!check.Ok) return new(tile, target, false, check.Result.Message, null, [], "");
-            var (landing, affected, outcome) = Outcome(sim, unit, card, check.Effect!, check.Ability);
+            var (landing, affected, outcome) = Plans.AtAnchor(state, unit, () => Outcome(sim, unit, card, check.Effect!, check.Ability));
             return new(tile, target, true, "", landing, affected, outcome);
         }
         if (card.Target == CardTarget.Tile)

@@ -153,7 +153,7 @@ public partial class ScavengeScreen
     private bool HighlightCardAim()
     {
         if (_cardAim is not { } aim || _busy || _presenter.Done) return false;
-        if (_presenter.State.FindUnit(aim.UnitId) is { } user && user.OnMap) _map.Highlight(user.Pos, HighlightKind.Selected);
+        if (_presenter.State.FindUnit(aim.UnitId) is { } user && user.OnMap) _map.Highlight(Plans.Anchor(_presenter.State, user), HighlightKind.Selected);
         var hovered = _hover is { } h ? aim.At(h) : null;
         foreach (var o in aim.Options)
             _map.Highlight(o.Tile, o.Ok ? HighlightKind.CardTarget : HighlightKind.CardInvalid, o == hovered ? (o.Ok ? "PLAY" : "✕") : null);

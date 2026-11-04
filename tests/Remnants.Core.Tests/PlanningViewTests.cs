@@ -1,3 +1,4 @@
+using Remnants.Core.Items;
 using Remnants.Core.Scavenge;
 using Remnants.Core.Survivors;
 using static Remnants.Core.Tests.ScavengeTestData;
@@ -182,5 +183,103 @@ public class PlanningViewTests
         var straight = TacticsView.PatternAim(sim, a, "shield_wall", new(5, 3), East).Tiles;
         var turned = TacticsView.PatternAim(sim, a, "shield_wall", new(5, 3), TacticsView.AimDirection(sim, a, new(5, 3), 2)).Tiles;
         Assert.NotEqual(straight, turned);
+    }
+
+    [Fact]
+    public void A_shove_into_a_friends_queued_blow_says_who_will_hit_the_target()
+    {
+        var friend = SurvivorUnit(1, new(5, 2), weapon: "knife");
+        var b = SurvivorUnit(2, new(3, 2));
+        var a = SurvivorUnit(1, new(2, 2));
+        var sim = Table([friend, b, a], "shove");
+        Assert.True(sim.Execute(new AttackTile(1, friend.Id, new(4, 2), "cut", StrikeMode.Stab)).Ok);
+        var onB = Assert.Single(TacticsView.Targets(sim, 1, a.Id, "shove"), o => o.UnitId == b.Id);
+        Assert.Contains($"in {friend.Name}'s blow", onB.Outcome);
+    }
+
+    [Fact]
+    public void An_enemy_low_on_stamina_plans_only_what_it_can_pay_for()
+    {
+        var data = With(r => r with { Turn = r.Turn with { BaseStamina = 4, StaminaRegen = 0, MinStaminaRegen = 0 } });
+        var survivor = SurvivorUnit(1, new(2, 2));
+        var husk = EnemyUnit("husk", new(6, 2));
+        husk.Ai.Mode = AiMode.Hunting;
+        var sim = Arena(12, 6, [survivor, husk], data: data);
+        sim.Start();
+        Assert.Equal(4, sim.Profile(husk).MaxStamina);
+        var steps = Plans.Of(sim.State, husk)?.Steps ?? [];
+        Assert.NotEmpty(steps);
+        var cost = steps.Sum(s => s.Kind == PlanStepKind.Move ? s.Path.Count : s.Strike is not null ? 2 : 0);
+        Assert.InRange(cost, 1, 4);
+    }
+
+    [Theory]
+    [InlineData("steady_aim")]
+    [InlineData("shove")]
+    public void Zero_stamina_means_no_cards_even_free_ones(string card)
+    {
+        var a = SurvivorUnit(1, new(2, 3));
+        var foe = SurvivorUnit(2, new(3, 3));
+        var sim = Table([a, foe], card);
+        a.Fatigue = sim.Profile(a).MaxStamina;
+        var target = sim.Data.Cards.Find(card)!.Target == CardTarget.Enemy ? foe.Id : (int?)null;
+        Assert.False(sim.Execute(new PlayCard(1, a.Id, card, target)).Ok);
+    }
+
+    [Theory]
+    [InlineData("shove")]
+    [InlineData("yank")]
+    public void A_card_that_pushes_costs_one_ap(string card) => Assert.Equal(1, Sure.Cards.Find(card)!.ApCost);
+
+    [Fact]
+    public void A_card_dash_given_a_long_direction_still_runs_its_own_length()
+    {
+        var a = SurvivorUnit(1, new(1, 3), weapon: "pipe");
+        var sim = Table([a, SurvivorUnit(2, new(11, 6))], "rushing_strike");
+        Assert.True(sim.Execute(new PlayCard(1, a.Id, "rushing_strike", Direction: new Pos(4, 0))).Ok);
+        Assert.Equal(East, Plans.Of(sim.State, a)!.Steps[^1].Direction);
+        Assert.Equal(new Pos(1 + sim.Data.Cards.Find("rushing_strike")!.Effect.Dash, 3), TacticsView.PlanPreview(sim, a).End);
+    }
+
+    /// <summary>Plans both, then evens out their priority so the two actions tie.</summary>
+    private static void Tie(ScavengeSim sim, Unit a, Unit b)
+    {
+        var (first, second) = (Plans.Of(sim.State, a)!.Steps[0], Plans.Of(sim.State, b)!.Steps[0]);
+        b.PriorityBonus += Priority.Action(sim, a, first) - Priority.Action(sim, b, second);
+        Assert.True(sim.Execute(new EndTurn(a.PlayerId!.Value, a.Id)).Ok);
+        Assert.True(sim.Execute(new EndTurn(b.PlayerId!.Value, b.Id)).Ok);
+        Settle(sim);
+        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Clashed);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void A_tied_blow_lands_before_a_tied_dash_whichever_unit_is_older(bool strikerOlder)
+    {
+        var older = SurvivorUnit(strikerOlder ? 1 : 2, new(strikerOlder ? 2 : 3, 3), weapon: strikerOlder ? "pipe" : null);
+        var younger = SurvivorUnit(strikerOlder ? 2 : 1, new(strikerOlder ? 3 : 2, 3), weapon: strikerOlder ? null : "pipe");
+        var (striker, dasher) = strikerOlder ? (older, younger) : (younger, older);
+        var sim = Table([older, younger]);
+        Assert.True(sim.Execute(new AttackTile(1, striker.Id, dasher.Pos, "swing")).Ok);
+        Assert.True(sim.Execute(new Dash(2, dasher.Id, East, 3)).Ok);
+        Tie(sim, striker, dasher);
+        Assert.True(dasher.Hp < dasher.MaxHp);
+        Assert.True(dasher.Pos.X > 3); // shorter than untied: a tie cuts its reach too
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void A_unit_pushed_in_a_tie_dashes_from_where_the_push_left_it(bool pusherOlder)
+    {
+        var older = SurvivorUnit(pusherOlder ? 1 : 2, new(pusherOlder ? 2 : 3, 3));
+        var younger = SurvivorUnit(pusherOlder ? 2 : 1, new(pusherOlder ? 3 : 2, 3));
+        var (pusher, dasher) = pusherOlder ? (older, younger) : (younger, older);
+        var sim = Table([older, younger]);
+        Assert.True(sim.Execute(new Push(1, pusher.Id, East)).Ok);
+        Assert.True(sim.Execute(new Dash(2, dasher.Id, East, 3)).Ok);
+        Tie(sim, pusher, dasher);
+        Assert.True(dasher.Pos.X > 4); // pushed to (4,3), then on from there
     }
 }
