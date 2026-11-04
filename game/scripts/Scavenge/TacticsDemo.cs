@@ -38,19 +38,13 @@ public static class TacticsDemo
             var husk = NewScavenge.EnemyUnit(data, state, data.Enemies["husk"], huskAt);
             state.Units.Add(husk);
             husk.Ai.Mode = AiMode.Hunting;
-            state.Strikes.Add(new TileStrike { UnitId = husk.Id, ActionId = "claw", From = husk.Pos, Tile = mine[0].Pos, Direction = Combat.Face(husk.Pos, mine[0].Pos), Tiles = [mine[0].Pos] });
         }
         if (Free(-3, 5 * dir) is { } linkedAt)
         {
             var linked = NewScavenge.EnemyUnit(data, state, data.Enemies["linked"], linkedAt);
             state.Units.Add(linked);
             linked.Ai.Mode = AiMode.Hunting;
-            var target = mine.Count > 1 ? mine[1].Pos : new Pos(anchor.X - 1, anchor.Y);
-            state.Strikes.Add(new TileStrike { UnitId = linked.Id, ActionId = sim.Profile(linked).Actions.First().Id, From = linked.Pos, Tile = target, Direction = Combat.Face(linked.Pos, target), Tiles = [target] });
         }
-        // The staged enemies act after everyone already in the order; the unit up now (whose turn has begun) stays up.
-        foreach (var e in state.Units.Where(u => u.Kind == UnitKind.Enemy && u.IsActive && !state.TurnOrder.Contains(u.Id)))
-            state.TurnOrder.Add(e.Id);
         if (SquadDecks.Of(state, playerId) is { } deck)
         {
             // A hand that shows every kind: a reaction, a hard card, a boost, a dead card.

@@ -16,7 +16,6 @@ namespace Remnants.Net;
 /// <item>the side's own contacts and motion sensors, reveals of units it sees, and every burning flare (they light up
 ///   for everyone);</item>
 /// <item>loot caches as the side last saw them (a cache looted out of sight still shows until seen again);</item>
-/// <item>the turn order cut to known units, with <see cref="HiddenUnitId"/> standing in when an unseen unit is up (a card
 ///   that hurried or held up a unit shows in it for every side that knows the unit);</item>
 /// <item>card barriers and smoke the side put up, and the tiles of others' it sees (a tile in sight or next to one),
 ///   never whose they are or how long they last; the client lays them over its map;</item>
@@ -105,33 +104,14 @@ public sealed class SideFog(int playerId, string side)
         var units = state.Units.Where(u => Knows(state, u)).Select(u => u.PlayerId == PlayerId ? Copy(u) : Redacted(u)).ToList();
         var known = units.Select(u => u.Id).ToHashSet();
 
-        var order = new List<int>();
-        var index = -1;
-        for (var i = 0; i < state.TurnOrder.Count; i++)
-        {
-            var id = state.TurnOrder[i];
-            if (i == state.TurnIndex) index = order.Count;
-            if (known.Contains(id)) order.Add(id);
-            else if (i == state.TurnIndex) order.Add(HiddenUnitId);
-        }
-        if (index < 0) index = order.Count;
-
         return new ScavengeState
         {
             ZoneId = state.ZoneId,
             Environment = state.Environment.Copy(),
             Round = state.Round,
-            TurnOrder = order,
-            TurnIndex = index,
-            SubRound = state.SubRound,
-            // Readied tile strikes of the units this side knows; whom another's was aimed at, and what it covers out of this
-            // side's vision, stays on the server.
-            Strikes = state.Strikes.Where(x => known.Contains(x.UnitId)).Select(x => new TileStrike
-            {
-                UnitId = x.UnitId, ActionId = x.ActionId, Mode = x.Mode, From = x.From, Direction = x.Direction,
-                Tile = state.FindUnit(x.UnitId)?.Side == Side || Visible.Contains(state.Map.Index(x.Tile)) ? x.Tile : x.From,
-                Tiles = x.Tiles.Where(p => state.FindUnit(x.UnitId)?.Side == Side || Visible.Contains(state.Map.Index(p))).ToList(), TargetId = state.FindUnit(x.UnitId)?.PlayerId == PlayerId ? x.TargetId : null, Suppress = x.Suppress,
-            }).ToList(),
+            // The side's own plans in full; of anyone else it knows, only whether they are done planning.
+            Plans = state.Plans.Where(p => known.Contains(p.UnitId)).Select(p => state.FindUnit(p.UnitId)?.Side == Side
+                ? ProtocolCopy.Clone(p) : new UnitPlan { UnitId = p.UnitId, Committed = p.Committed }).ToList(),
             Finished = state.Finished,
             Map = new TileMap(),
             // Other teams' alliances are none of this player's business: their parties show as on their own.
@@ -261,9 +241,6 @@ public sealed class SideFog(int playerId, string side)
         copy.Hooks = new(StringComparer.Ordinal);
         copy.CyberHooks = new();
         copy.FieldXp = 0;
-        // That it is on overwatch shows; what it watches only to its own side.
-        if (u.Side != Side) copy.Watch = null;
-        copy.Reactions = 0;
         copy.DroneBattery = null;
         copy.ChargesUsed = new(StringComparer.Ordinal);
         // Card buffs on it would give away hit chances and moves the cards behind them buy.
@@ -271,19 +248,10 @@ public sealed class SideFog(int playerId, string side)
         copy.Guard = 0;
         copy.CardCover = 0;
         copy.CardMove = 0;
-        copy.OutplayedId = null;
-        copy.OutplayedUntilRound = 0;
-        copy.FreeCounterId = null;
-        // Exposure would tell of a dodge the side may not have seen.
-        copy.ExposedUntilRound = 0;
-        copy.ExposedToSide = null;
-        // Nor whether a card shoved it (the shove may have been out of sight).
-        copy.Displaced = false;
-        // Personal slot cards: how many, never which; nor the last card played on it or a readied counter.
+        // Personal slot cards: how many, never which; nor the last card played on it.
         copy.HiddenSlots = u.SlotCards.Count;
         copy.SlotCards = new();
         copy.SlotSpent = new();
-        copy.CounterId = null;
         copy.Origin = u.Origin is { } o ? new Survivor { Name = o.Name, Sex = o.Sex, LifeStage = o.LifeStage } : null;
         // A rival's holo-decoy looks like one of their people until it flickers out.
         if (u.Kind == UnitKind.Decoy && u.Side != Side)

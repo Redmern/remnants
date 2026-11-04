@@ -187,7 +187,7 @@ public class LinkedAiTests
         var maxAp = sim.Profile(u).MaxAp;
         // Boxed in, it fires from where it stands: the suppressing fire is telegraphed and comes down when the sub-round ends.
         ScavengeAi.TakeTurn(sim, linked);
-        Assert.True(Assert.Single(sim.State.Strikes, s => s.UnitId == linked.Id).Suppress);
+        Assert.True(Strikes(sim).First(s => s.UnitId == linked.Id).Suppress);
         Assert.False(Did(sim, linked, ScavengeEventType.Suppressed));
         Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
         Assert.True(Did(sim, linked, ScavengeEventType.Suppressed), string.Join("\n", sim.State.Events.Select(e => e.Message)));

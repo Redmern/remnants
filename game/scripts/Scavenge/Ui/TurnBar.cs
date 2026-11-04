@@ -111,16 +111,14 @@ public partial class TurnBar : PanelContainer
         RefreshWeather();
         var state = _presenter.State;
         _zone.Text = _presenter.Sim.Data.Zones.TryGetValue(state.ZoneId, out var z) ? z.Name : state.ZoneId;
-        var subRounds = _presenter.Sim.Data.Rules.Turn.SubRounds;
-        _round.Text = subRounds > 1 ? $"ROUND {state.Round} · {state.SubRound}/{subRounds}" : $"ROUND {state.Round}";
+        _round.Text = $"ROUND {state.Round}";
 
         // One chip per unit, kept across rounds and updated in place (side, acting, acted, HP tint); only a unit never
         // seen in the order before gets a new chip.
         var at = 0;
         _inOrder.Clear();
-        for (var i = 0; i < state.TurnOrder.Count; i++)
+        foreach (var u in state.Units.Where(u => u.OnMap && u.PlayerControlled))
         {
-            if (state.FindUnit(state.TurnOrder[i]) is not { OnMap: true } u) continue;
             if (!_chips.TryGetValue(u.Id, out var chip))
             {
                 chip = new OrderChip(u.Id);
@@ -132,7 +130,7 @@ public partial class TurnBar : PanelContainer
             if (!chip.Visible) chip.Visible = true;
             if (chip.GetIndex() != at) _order.MoveChild(chip, at);
             at++;
-            chip.Set(_presenter, u, current: i == state.TurnIndex && !state.Finished, acted: i < state.TurnIndex, _presenter.CanSee(u));
+            chip.Set(_presenter, u, current: u.Id == state.CurrentUnitId, acted: Plans.Of(state, u) is { Committed: true }, _presenter.CanSee(u));
         }
         foreach (var (id, chip) in _chips)
             if (!_inOrder.Contains(id) && chip.Visible) chip.Visible = false;

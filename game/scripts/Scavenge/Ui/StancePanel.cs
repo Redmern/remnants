@@ -23,8 +23,6 @@ public partial class StancePanel : PanelContainer
 
     public event Action<IScavengeCommand>? CommandRequested;
 
-    /// <summary>The Overwatch button: the screen asks where to watch (a tile or an arc).</summary>
-    public event Action? OverwatchAimRequested;
 
     public StancePanel(ScavengePresenter presenter)
     {
@@ -53,7 +51,7 @@ public partial class StancePanel : PanelContainer
         var unit = _presenter.ActingUnit;
         var pid = _presenter.PlayerId;
         // The buttons only change with the acting unit and its AP and stances; the HUD refreshes after every event.
-        var signature = unit is null || busy ? "" : $"{pid}|{unit.Id}|{unit.Name}|{unit.Ap}|{unit.Stance}|{unit.Lookout}";
+        var signature = unit is null || busy ? "" : $"{pid}|{unit.Id}|{unit.Name}|{unit.Ap}|{unit.Lookout}";
         if (signature == _signature) return;
         _signature = signature;
         Presence.Set(this, unit is not null && !busy);
@@ -62,12 +60,6 @@ public partial class StancePanel : PanelContainer
         _rows.Begin();
         _buttons.Clear();
         var fog = _presenter.Sim.Data.Rules.Fog;
-        Add("stance_overwatch", unit.Stance == Stance.Overwatch ? "On overwatch" : "Overwatch", "holds your AP · ends the turn", "scav_overwatch",
-            "Pick a tile, or Shift-click for an arc. Fire on hostiles that enter it or strike into it; each shot spends its AP. Lasts the round.",
-            _presenter.Sim.Profile(unit).Actions.Select(a => a.ApCost).DefaultIfEmpty(0).Min(), () => OverwatchAimRequested?.Invoke(), unit, unit.Stance == Stance.Overwatch);
-        Add("stance_brace", unit.Stance == Stance.Brace ? "Braced" : "Brace", $"+{fog.Brace.CoverBonus * 100:0}% cover · ends the turn", "scav_brace",
-            $"No ambush bonus against {unit.Name}, +{fog.Brace.CoverBonus * 100:0}% cover; {fog.Brace.NextTurnApPenalty} AP less next turn.",
-            fog.Brace.ApCost, () => CommandRequested?.Invoke(new SetStance(pid, unit.Id, Stance.Brace)), unit, unit.Stance == Stance.Brace);
         Add("stance_scan", unit.Lookout ? "On lookout" : "Lookout", $"+{fog.Lookout.SightBonus:0} sight this round", "scav_lookout",
             $"+{fog.Lookout.SightBonus:0} sight and sharper eyes until {unit.Name}'s next turn (see Stealth in Help).",
             fog.Lookout.ApCost, () => CommandRequested?.Invoke(new Lookout(pid, unit.Id)), unit, unit.Lookout);

@@ -142,7 +142,7 @@ public static class StoryBot
                         // Hold where it matters: by whoever we defend, else right here.
                         var held = state.Units.Find(x => x.Tag == run.Def.Objectives.FirstOrDefault(d => d.Kind == ObjectiveKind.Defend)?.Tag && x.OnMap);
                         if (held is not null && held.Pos.Chebyshev(u.Pos) > 2) { goal = held.Pos; break; }
-                        return Overwatches.OnArc(sim, u, pid) ?? end;
+                        return end;
                     case ObjectiveKind.Carry:
                         // Heavy work: get next to it and stay there until it is done.
                         if (run.Marker(o.Marker).Any(m => m.Chebyshev(u.Pos) <= 1)) return end;
@@ -162,7 +162,7 @@ public static class StoryBot
                 }
                 if (goal is not null) break;
             }
-            if (goal is null && run.Def.AtHome) return Overwatches.OnArc(sim, u, pid) ?? end;
+            if (goal is null && run.Def.AtHome) return end;
             if (goal is null) leave = true;
         }
 
@@ -195,8 +195,8 @@ public static class StoryBot
 
         // Stick together: the one out in front waits for a friend who has fallen behind (a lone survivor is the one who dies).
         if (!run.Def.AtHome && Straggler(sim, u, ours, goal!.Value) is not null)
-            return Overwatches.OnArc(sim, u, pid) ?? end;
-        return Toward(sim, u, goal!.Value, exact: leave) ?? (run.Def.AtHome ? Overwatches.OnArc(sim, u, pid) ?? end : end);
+            return end;
+        return Toward(sim, u, goal!.Value, exact: leave) ?? end;
     }
 
     /// <summary>The party has taken too much: under half its health in all, or someone is down or close to it.</summary>

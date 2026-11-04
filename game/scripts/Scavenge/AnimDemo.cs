@@ -56,7 +56,6 @@ public static class AnimDemo
                     enemy.Ai.Mode = AiMode.Hunting;
                     enemy.Ai.LastKnown = acting.Pos;
                     state.Units.Add(enemy);
-                    state.TurnOrder.Add(enemy.Id);
                     enemy.Ap = sim.Profile(enemy).MaxAp;
                     enemy.Mp = sim.Profile(enemy).MaxMp;
                 }

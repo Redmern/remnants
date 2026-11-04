@@ -82,7 +82,7 @@ public class FacingTests
         var a = SurvivorUnit(1, new(2, 2), weapon: "pipe");
         var b = SurvivorUnit(2, new(7, 2));
         var sim = Arena(8, 5, [a, b], data: Sure);
-        Assert.True(sim.Execute(new Move(1, a.Id, new(2, 3))).Ok);
+        Assert.True(Now(sim, new Move(1, a.Id, new(2, 3))).Ok);
         Assert.Equal(new Pos(0, 1), a.Facing);
     }
 
@@ -92,22 +92,22 @@ public class FacingTests
         var a = SurvivorUnit(1, new(2, 2), weapon: "pipe");
         var b = SurvivorUnit(2, new(3, 1));
         var sim = Arena(8, 5, [a, b], data: Sure);
-        Assert.True(sim.Execute(StrikeOn(sim, a, b, "swing")).Ok);
+        Assert.True(StrikeNow(sim, a, b, "swing").Ok);
         Assert.Equal(new Pos(1, -1), a.Facing);
     }
 
     [Fact]
-    public void Readying_a_strike_turns_the_unit_toward_its_attack_even_at_an_empty_tile()
+    public void A_strike_turns_the_unit_toward_its_attack_even_at_an_empty_tile()
     {
         var a = SurvivorUnit(1, new(2, 2), weapon: "pipe");
         var b = SurvivorUnit(2, new(5, 2));
         var sim = Arena(8, 5, [a, b], data: Sure);
         a.Facing = new Pos(-1, 0);
-        Assert.True(sim.Execute(new AttackTile(1, a.Id, new(3, 3), "swing")).Ok);
+        Assert.True(Now(sim, new AttackTile(1, a.Id, new(3, 3), "swing")).Ok);
         Assert.Equal(new Pos(1, 1), a.Facing);
 
         b.Facing = new Pos(1, 0);
-        Assert.True(sim.Execute(new AttackTile(2, b.Id, new(4, 2), "punch")).Ok, "nobody there: still a strike");
+        Assert.True(Now(sim, new AttackTile(2, b.Id, new(4, 2), "punch")).Ok, "nobody there: still a strike");
         Assert.Equal(new Pos(-1, 0), b.Facing);
     }
 }

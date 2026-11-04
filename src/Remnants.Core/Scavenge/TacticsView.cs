@@ -12,8 +12,6 @@ public enum ThreatKind { Reach, Strike }
 public sealed record Telegraph(int UnitId, string Name, Pos From, Pos? AttackTile, string? ActionName, bool Suppress,
     List<Pos> Threatened, bool AimedAtUs);
 
-/// <summary>A unit of the side's on overwatch: where it stands and the tiles it watches.</summary>
-public sealed record WatchView(int UnitId, string Name, Pos From, List<Pos> Tiles);
 
 /// <summary>An attack as the preview shows it: in reach from the tile, the hit chance, and its terms.</summary>
 public sealed record HitPreviewInfo(bool InReach, double Chance, Breakdown? Breakdown);
@@ -22,7 +20,7 @@ public sealed record HitPreviewInfo(bool InReach, double Chance, Breakdown? Brea
 /// A card in the hand strip (or in a unit's slot, <see cref="SlotOf"/>): its numbers, the units it could be played on now
 /// (<see cref="PlayableBy"/>), and whether it is a dead hard card nobody in the party can use.
 /// </summary>
-public sealed record CardView(string Id, string Name, string Text, CardCategory Category, int Cost, int ApCost, int BoostAp, bool Reaction,
+public sealed record CardView(string Id, string Name, string Text, CardCategory Category, int Cost, int ApCost, int BoostAp,
     bool Consumable, bool ArmLock, string Requirement, CardKind Kind, int? SlotOf, List<int> PlayableBy, bool Dead);
 
 /// <summary>The hand strip: the round's card points, the hand and slot cards, and how many cards are in the draw and used piles.</summary>
@@ -44,36 +42,8 @@ public sealed record PickerRow(int UnitId, string Name, bool Ok, string Reason, 
 /// </summary>
 public static class TacticsView
 {
-    /// <summary>Readied strikes of hostiles the side sees now, as telegraphs, showing only the tiles the side can see (none: no telegraph).</summary>
-    public static List<Telegraph> Telegraphs(ScavengeSim sim, string side)
-    {
-        var state = sim.State;
-        var ours = state.Units.Where(u => u.Side == side && u.IsActive).Select(u => u.Pos).ToHashSet();
-        var visible = Visibility.SideVisible(sim.Data, state, side);
-        var list = new List<Telegraph>();
-        foreach (var strike in state.Strikes)
-        {
-            if (state.FindUnit(strike.UnitId) is not { IsActive: true } u || u.Side == side || u.Side == Unit.NeutralSide
-                || !Detection.SideSees(sim.Data, state, side, u)) continue;
-            var action = sim.Profile(u).Action(strike.ActionId);
-            var threatened = new List<Pos>(strike.Tiles);
-            // In another player's view a strike aimed into the fog has its aim tile hidden: no splash to show around it.
-            var area = strike.Tiles.Contains(strike.Tile) ? action?.Area ?? 0 : 0;
-            for (var dy = -area; dy <= area; dy++)
-                for (var dx = -area; dx <= area; dx++)
-                    if (new Pos(strike.Tile.X + dx, strike.Tile.Y + dy) is var p && state.Map.InBounds(p) && !threatened.Contains(p)) threatened.Add(p);
-            threatened.RemoveAll(p => !visible.Contains(state.Map.Index(p)));
-            if (threatened.Count == 0) continue;
-            list.Add(new Telegraph(u.Id, u.Name, u.Pos, threatened.Contains(strike.Tile) ? strike.Tile : null, action?.Name, strike.Suppress, threatened,
-                threatened.Any(ours.Contains)));
-        }
-        return list;
-    }
-
-    /// <summary>The side's own units on overwatch and what they watch.</summary>
-    public static List<WatchView> Watches(ScavengeSim sim, string side) =>
-        sim.State.Units.Where(u => u.IsActive && u.Side == side && u.Watch is not null).OrderBy(u => u.Id)
-            .Select(u => new WatchView(u.Id, u.Name, u.Pos, Overwatches.Watched(sim, u))).ToList();
+    /// <summary>What hostiles have planned is hidden until it comes up: nothing to telegraph but their moves.</summary>
+    public static List<Telegraph> Telegraphs(ScavengeSim sim, string side) => [];
 
     /// <summary>
     /// The threat overlay: every tile a seen enemy's telegraphed blow will strike (<see cref="ThreatKind.Strike"/>), and every
@@ -126,14 +96,6 @@ public static class TacticsView
         return result;
     }
 
-    /// <summary>Seen hostiles with a readied strike: what a reaction card can answer.</summary>
-    public static List<Unit> ReactionTargets(ScavengeSim sim, int playerId)
-    {
-        var side = sim.State.FindParty(playerId)?.Side ?? Unit.PlayerSide(playerId);
-        return sim.State.Units.Where(u => u.IsActive && TileStrikes.Readied(sim.State, u) && u.Side != side && u.Side != Unit.NeutralSide
-                                          && Detection.SideSees(sim.Data, sim.State, side, u)).OrderBy(u => u.Id).ToList();
-    }
-
     /// <summary>The player's hand strip (null without a deck).</summary>
     public static HandView? Hand(ScavengeSim sim, int playerId)
     {
@@ -142,15 +104,15 @@ public static class TacticsView
         var squad = Squad(sim, playerId);
         CardView View(CardDef c, int? slotOf)
         {
-            // An ability (or a reaction aimed at a unit) is playable by a unit when some target works for it.
-            var aimed = c.Effect.IsAbility || c.Reaction;
+            // An ability is playable by a unit when some target works for it.
+            var aimed = c.Effect.IsAbility;
             var by = squad.Where(u => (slotOf is null || u.Id == slotOf)
                                       && (aimed
                                           ? Targets(sim, playerId, u.Id, c.Id, fromSlot: slotOf is not null).Any(o => o.Ok)
                                           : CardPlay.Check(sim, u, new PlayCard(playerId, u.Id, c.Id, FromSlot: slotOf is not null)).Ok))
                 .Select(u => u.Id).ToList();
             var dead = slotOf is null && c.Requirement.Kind == CardKind.Hard && !squad.Any(c.Requirement.Met);
-            return new CardView(c.Id, c.Name, c.Text, c.Category, c.Cost, c.ApCost, c.BoostAp, c.Reaction, c.Consumable, c.ArmLock,
+            return new CardView(c.Id, c.Name, c.Text, c.Category, c.Cost, c.ApCost, c.BoostAp, c.Consumable, c.ArmLock,
                 c.Requirement.Describe(), c.Requirement.Kind, slotOf, by, dead);
         }
         var cards = deck.Hand.Select(sim.Data.Cards.Find).OfType<CardDef>().Select(c => View(c, null)).ToList();
@@ -191,7 +153,7 @@ public static class TacticsView
         {
             var check = CardPlay.Check(sim, unit, new PlayCard(playerId, unit.Id, card.Id, target, boost, fromSlot, card.Target == CardTarget.Tile ? tile : null));
             if (!check.Ok) return new(tile, target, false, check.Result.Message, null, [], "");
-            var (landing, affected, outcome) = Outcome(sim, unit, card, check.Effect!, check.Ability, check.Planner);
+            var (landing, affected, outcome) = Outcome(sim, unit, card, check.Effect!, check.Ability);
             return new(tile, target, true, "", landing, affected, outcome);
         }
         if (card.Target == CardTarget.Tile)
@@ -200,7 +162,7 @@ public static class TacticsView
             foreach (var p in state.Map.AllPositions.Where(p => card.Range > 0 ? p.Chebyshev(unit.Pos) <= card.Range : visible!.Contains(state.Map.Index(p))))
                 options.Add(Option(null, p));
         }
-        else if (card.Target != CardTarget.Self || card.Reaction)
+        else if (card.Target != CardTarget.Self)
         {
             foreach (var u in state.Units.Where(u => u.IsActive && u.OnMap && u.CarriedById is null
                                                      && (u.Side == side || Detection.SideSees(data, state, side, u))
@@ -218,10 +180,10 @@ public static class TacticsView
 
     /// <summary>What a checked play does, for the preview: the landing tile, the units touched, and the outcome in words.</summary>
     private static (Pos? Landing, List<int> Affected, string Outcome) Outcome(ScavengeSim sim, Unit unit, CardDef card, CardEffect e,
-        CardAbilities.Outcome? ability, Unit? planner)
+        CardAbilities.Outcome? ability)
     {
         var state = sim.State;
-        var target = ability?.Target ?? planner;
+        var target = ability?.Target;
         var affected = new List<int>();
         var said = new List<string>();
         Pos? landing = null;
@@ -240,15 +202,9 @@ public static class TacticsView
             if (e.Swap) affected.Add(unit.Id);
             said.Add($"{target.Name} lands on {land}");
             if (Blows(sim, unit.Side).FirstOrDefault(b => b.Tiles.Contains(land) && b.UnitId != target.Id
-                && state.FindUnit(b.UnitId) is { } s && (s.PlayerControlled || s.HostileTo(target))) is { Name: { } by } coming)
-                // A hostile's blow hits it anyway; a player's own side's only while the shove holds (until its next turn).
-                said.Add(state.FindUnit(coming.UnitId) is { } striker && striker.HostileTo(target)
-                    ? $"in {by}'s blow: it will be hit"
-                    : $"in {by}'s blow: hit unless it acts first");
+                && state.FindUnit(b.UnitId) is { } s && s.HostileTo(target)) is { Name: { } by } coming)
+                said.Add($"in {by}'s blow: it will be hit");
         }
-        if (target is not null && TileStrikes.Readied(state, target)
-            && (e.Disrupt || landing is not null && target.Id != unit.Id && e.Step == 0))
-            said.Add(target.HostileTo(unit) ? "breaks its strike, exposed" : $"{target.Name}'s strike falls through");
         if (e.Spin && target is not null) said.Add($"{target.Name} turns its back to you");
         if (ability?.Strike is { } blow && target is not null)
         {
@@ -256,8 +212,8 @@ public static class TacticsView
             said.Add($"{blow.Name}: {chance * 100:0}% to hit, {blow.MinDamage:0}-{blow.MaxDamage:0} damage, {Combat.ArcOf(target, unit.Pos).ToString().ToLowerInvariant()} arc");
         }
         if (e.GrantAp > 0 && target is not null) said.Add($"{target.Name} +{e.GrantAp} AP");
-        if (e.AdvanceInitiative && target is not null) said.Add($"{target.Name} goes next");
-        if (e.DelayInitiative && target is not null) said.Add($"{target.Name} goes last this round");
+        if (e.AdvanceInitiative && target is not null) said.Add($"{target.Name} comes up sooner");
+        if (e.DelayInitiative && target is not null) said.Add($"{target.Name} comes up later");
         if (e.PlaceBarrier > 0 && ability?.Tile is { } wall) said.Add($"cover on {wall} for {e.PlaceBarrier} rounds");
         if (e.Smoke > 0 && ability?.Tile is { } center)
         {
@@ -275,8 +231,9 @@ public static class TacticsView
     private static IEnumerable<(int UnitId, string Name, List<Pos> Tiles)> Blows(ScavengeSim sim, string side)
     {
         foreach (var t in Telegraphs(sim, side)) yield return (t.UnitId, t.Name, t.Threatened);
-        foreach (var s in sim.State.Strikes)
-            if (sim.State.FindUnit(s.UnitId) is { IsActive: true } u && u.Side == side) yield return (u.Id, u.Name, s.Tiles);
+        foreach (var plan in sim.State.Plans)
+            if (sim.State.FindUnit(plan.UnitId) is { IsActive: true } u && u.Side == side)
+                foreach (var s in plan.Steps.Where(s => s.Strike is not null)) yield return (u.Id, u.Name, s.Strike!.Tiles);
     }
 
     /// <summary>A card effect in words: "+1 move, +10% to hit".</summary>
@@ -289,7 +246,6 @@ public static class TacticsView
         if (e.Cover > 0) parts.Add($"+{e.Cover:P0} cover");
         if (e.Mend > 0) parts.Add($"mends {e.Mend:P0}");
         if (e.Draw > 0) parts.Add($"draw {e.Draw}");
-        if (e.Counter) parts.Add("strikes first when the blow comes");
         if (e.Push > 0) parts.Add($"push {e.Push}");
         if (e.Pull > 0) parts.Add($"pull {e.Pull}");
         if (e.Swap) parts.Add("swap places");

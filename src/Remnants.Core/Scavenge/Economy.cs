@@ -53,15 +53,21 @@ public static class Economy
         unit.Mp /= 2;
     }
 
-    /// <summary>The recover action: spends AP (which costs no stamina itself) to get stamina back.</summary>
+    /// <summary>Queues the recover action: spends AP now (which costs no stamina itself) to get stamina back when it comes up.</summary>
     internal static ScavengeResult Recover(ScavengeSim sim, Unit unit)
     {
         var turn = sim.Data.Rules.Turn;
         if (turn.RecoverApCost > unit.Ap)
             return ScavengeResult.Fail(ScavengeError.NotEnoughAp, $"{unit.Name} needs {turn.RecoverApCost} AP to recover (has {unit.Ap}).");
         unit.Ap -= turn.RecoverApCost;
-        unit.Fatigue = Math.Max(0, unit.Fatigue - turn.RecoverStamina);
+        Plans.For(sim.State, unit).Steps.Add(new PlanStep { Kind = PlanStepKind.Recover });
+        return ScavengeResult.Success($"{unit.Name} will catch their breath.");
+    }
+
+    /// <summary>A queued recover comes up.</summary>
+    internal static void Recovered(ScavengeSim sim, Unit unit)
+    {
+        unit.Fatigue = Math.Max(0, unit.Fatigue - sim.Data.Rules.Turn.RecoverStamina);
         sim.Log(ScavengeEventType.Recovered, $"{unit.Name} catches their breath.", unit);
-        return ScavengeResult.Success($"{unit.Name} recovers.");
     }
 }

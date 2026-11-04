@@ -20,7 +20,6 @@ public static class TurnAdvice
         if (CanPlayACard(sim, unit)) return true;
         if (CanHackOrSalvage(sim, unit) || CanUseDrone(sim, unit)) return true;
         if (sim.Reachable(unit).Values.Any(cost => cost <= unit.Mp)) return true;
-        if (unit.Stance == Stance.None && (fog.Brace.ApCost <= ap || Overwatches.OnArc(sim, unit, unit.PlayerId ?? 0) is not null)) return true;
         if (!unit.Lookout && fog.Lookout.ApCost <= ap) return true;
         if (unit.Pack.Any(id => sim.Data.Items.TryGetValue(id, out var item) && item.Use is { } use && FieldMedicine.ApCost(unit, use) <= ap))
             return true;
@@ -30,13 +29,13 @@ public static class TurnAdvice
             var reach = TileStrikes.Reach(sim, unit, action);
             if (state.Units.Any(t => t.IsActive && t.OnMap && unit.HostileTo(t) && reach.Contains(t.Pos) && Drones.CanStrike(action, t)
                                      && Detection.SideSees(sim.Data, state, unit.Side, t)
-                                     && Combat.ApCost(action, unit.Pos, t.Pos) - (TileStrikes.FreeCounter(sim, unit, [t.Pos]) ? TileStrikes.CounterWaiver(sim, unit) : 0) <= ap))
+                                     && Combat.ApCost(action, Plans.Anchor(state, unit), t.Pos) <= ap))
                 return true;
         }
         return false;
     }
 
-    /// <summary>A card from the party's hand or the unit's slots that Core would take now (a reaction: on any seen enemy's readied strike).</summary>
+    /// <summary>A card from the party's hand or the unit's slots that Core would take now .</summary>
     private static bool CanPlayACard(ScavengeSim sim, Unit unit)
     {
         if (unit.PlayerId is not { } pid || SquadDecks.Of(sim.State, pid) is not { Hidden: false } deck) return false;

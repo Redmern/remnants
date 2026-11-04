@@ -99,7 +99,7 @@ public partial class HandStrip : PanelContainer
         var signature = hand is null || busy ? "" :
             $"{hand.Points}/{hand.Budget}|{hand.DrawCount}|{hand.UsedCount}|{_presenter.State.CurrentUnitId}|{_presenter.ActingUnit?.Ap}|" +
             string.Join(",", hand.Cards.Select(c => $"{c.Id}:{c.SlotOf}:{string.Join(".", c.PlayableBy)}:{c.Dead}")) +
-            $"|{_chosen}:{_chosenSlot}:{_boost}|{Aiming}|{string.Join(",", _presenter.ReactionTargets().Select(u => u.Id))}";
+            $"|{_chosen}:{_chosenSlot}:{_boost}|{Aiming}";
         if (signature == _signature) return;
         _signature = signature;
         Presence.Set(this, hand is not null && !busy && !_presenter.Done);
@@ -233,7 +233,7 @@ public partial class HandStrip : PanelContainer
         var playable = card.PlayableBy.Count > 0;
         var chosen = card.Id == _chosen && card.SlotOf == _chosenSlot;
         var slotOwner = card.SlotOf is { } owner ? _presenter.State.FindUnit(owner)?.Name : null;
-        var text = $"{card.Name}\n{card.Cost} pt{(card.ApCost > 0 ? $" · {card.ApCost} AP" : "")}{(card.Reaction ? " · reaction" : "")}";
+        var text = $"{card.Name}\n{card.Cost} pt{(card.ApCost > 0 ? $" · {card.ApCost} AP" : "")}";
         var tip = $"{card.Name} ({card.Category}{(card.Kind == CardKind.Hard ? ", " + card.Requirement : "")})\n{card.Text}"
                   + (slotOwner is not null ? $"\nIn {slotOwner}'s slot: always to hand for them." : "")
                   + (card.Consumable ? "\nUsed up when played." : "")
@@ -268,8 +268,6 @@ public partial class HandStrip : PanelContainer
                 Refresh(false);
             }, "Spend more AP for the card's boost", _boost ? "Primary" : ""));
         var aimed = _presenter.IsAimed(card.Id);
-        if (card.Reaction && _presenter.ReactionTargets().Count == 0)
-            options.AddChild(Widgets.Label("No seen enemy strike to answer.", "Small", Palette.Warn));
         if (Aiming is { } now && now.CardId == card.Id)
             options.AddChild(Widgets.TextButton("Cancel aim", () => AimCancelled?.Invoke(), "Stop aiming (right-click or Esc)"));
         if (card.Dead && !hand.DeadDiscardUsed && _presenter.ActingUnit is { } acting)

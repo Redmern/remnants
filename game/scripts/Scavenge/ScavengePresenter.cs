@@ -173,11 +173,8 @@ public sealed class ScavengePresenter
     public List<CardTargetOption> Targets(int unitId, string cardId, bool boost, bool fromSlot) =>
         TacticsView.Targets(Sim, PlayerId, unitId, cardId, boost, fromSlot);
 
-    /// <summary>Whether a card is aimed (on the map, after picking who plays it): an ability at a unit or tile, or a reaction.</summary>
-    public bool IsAimed(string cardId) => Sim.Data.Cards.Find(cardId) is { } card && (card.Reaction || card.Target != CardTarget.Self);
-
-    /// <summary>Seen enemies with a readied strike (what a reaction card answers).</summary>
-    public List<Unit> ReactionTargets() => TacticsView.ReactionTargets(Sim, PlayerId);
+    /// <summary>Whether a card is aimed (on the map, after picking who plays it): an ability at a unit or tile.</summary>
+    public bool IsAimed(string cardId) => Sim.Data.Cards.Find(cardId) is { } card && card.Target != CardTarget.Self;
 
     /// <summary>
     /// The bestiary tier the local player knows an enemy type at: the colony's (<see cref="BestiaryKnowledge"/>) plus this

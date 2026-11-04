@@ -52,7 +52,6 @@ public class DroneTests
         Assert.DoesNotContain("scout_drone", op.Pack);
         Assert.Equal(Real.Items["scout_drone"].Drone!.Battery, drone.Battery);
         Assert.False(drone.PlayerControlled, "the operator flies it; it takes no turns");
-        Assert.DoesNotContain(drone.Id, sim.State.TurnOrder);
         Assert.Equal(ScavengeError.DroneAlreadyOut, sim.Execute(new DeployDrone(1, op.Id, new Pos(1, 2))).Error);
 
         var none = SurvivorUnit(1, new Pos(8, 2));
@@ -172,7 +171,7 @@ public class DroneTests
         var drone = sim.State.FindUnit(op.DroneId!.Value)!;
         drone.Pos = new Pos(8, 2);
         ScavengeAi.TakeTurn(sim, linked);
-        Assert.Equal(drone.Pos, Assert.Single(sim.State.Strikes, s => s.UnitId == linked.Id).Tile); // it telegraphs a shot at the drone
+        Assert.Equal(drone.Pos, Strikes(sim).First(s => s.UnitId == linked.Id).Tile); // it telegraphs a shot at the drone
         Assert.True(sim.Execute(new EndTurn(1, op.Id)).Ok);
         Assert.Contains(sim.State.Events, e => e.UnitId == linked.Id && e.TargetId == drone.Id
                                                && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed or ScavengeEventType.Suppressed);
@@ -183,7 +182,7 @@ public class DroneTests
         var drone2 = Deploy(sim2, op2, new Pos(2, 1));
         drone2.Pos = new Pos(9, 2);
         ScavengeAi.TakeTurn(sim2, husk);
-        Assert.DoesNotContain(sim2.State.Strikes, s => s.UnitId == husk.Id && s.Tile == drone2.Pos);
+        Assert.DoesNotContain(Strikes(sim2), s => s.UnitId == husk.Id && s.Tile == drone2.Pos);
         Assert.True(sim2.Execute(new EndTurn(1, op2.Id)).Ok);
         Assert.True(sim2.Execute(new EndTurn(1, op2.Id)).Ok);
         Assert.DoesNotContain(sim2.State.Events, e => e.UnitId == husk.Id && e.TargetId == drone2.Id);

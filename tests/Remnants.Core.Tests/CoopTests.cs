@@ -24,34 +24,6 @@ public class CoopTests
     }
 
     [Fact]
-    public void Allies_never_shoot_each_other_and_overwatch_ignores_them()
-    {
-        var a = SurvivorUnit(1, new(1, 1), weapon: "pipe");
-        var b = SurvivorUnit(2, new(2, 1), weapon: "pipe");
-        var sim = Arena(10, 6, [a, b]);
-        Assert.True(a.HostileTo(b), "two players start hostile");
-
-        var side = Alliances.Merge(sim.State, 1, 2);
-        Assert.Equal(side, a.Side);
-        Assert.Equal(side, b.Side);
-        Assert.Equal(side, PartyOf(sim, 2).Side);
-        Assert.True(sim.State.Allied(1, 2));
-        Assert.False(a.HostileTo(b));
-
-        // A blow at an ally's tile comes down on nobody.
-        Assert.True(StrikeNow(sim, a, b, "swing").Ok);
-        Assert.Equal(100, b.Hp);
-        Assert.Contains(sim.State.Events, e => e.UnitId == a.Id && e.Type == ScavengeEventType.IntentFizzled);
-        Assert.Equal(a.Id, sim.State.CurrentUnitId);
-
-        Assert.True(sim.Execute(new CommitOverwatch(1, a.Id, Arc: new Pos(1, 0))).Ok);
-        Assert.Equal(b.Id, sim.State.CurrentUnitId);
-        Assert.True(sim.Execute(new Move(2, b.Id, new(3, 2))).Ok);
-        Assert.DoesNotContain(sim.State.Events, e => e.Type == ScavengeEventType.Overwatch && e.TargetId == b.Id);
-        Assert.Equal(100, b.Hp);
-    }
-
-    [Fact]
     public void Allies_see_what_any_of_them_sees_and_count_for_each_others_backs()
     {
         var a = SurvivorUnit(1, new(1, 1));
@@ -107,7 +79,6 @@ public class CoopTests
         Assert.True(Alliances.InContact(sim, 1, 2));
         Assert.True(sim.Execute(new ProposeAlliance(1, a.Id, 2)).Ok);
         Assert.Equal(ScavengeError.ProposalPending, sim.Execute(new ProposeAlliance(1, a.Id, 2)).Error);
-        Assert.Equal(ScavengeError.NotYourTurn, sim.Execute(new RespondAlliance(2, b.Id, 1, Accept: true)).Error);
         Assert.Equal(sim.Profile(a).MaxAp, a.Ap); // talking is free
 
         var offer = sim.State.Events.Last(e => e.Type == ScavengeEventType.AllianceProposed);
@@ -159,7 +130,7 @@ public class CoopTests
         Assert.StartsWith("Rook will leave the alliance", Line(ScavengeEventType.AllianceBreakWarning));
 
         TurnOf(sim, a);
-        Assert.True(sim.Execute(new Move(1, a.Id, new(0, 0))).Ok);
+        Assert.True(Now(sim, new Move(1, a.Id, new(0, 0))).Ok);
         Assert.True(sim.Execute(new Extract(1, a.Id)).Ok);
         Assert.Equal("Alice's run is over.", Line(ScavengeEventType.PartyDone));
 
@@ -191,7 +162,7 @@ public class CoopTests
         var effective = sim.State.Breaks.Single().EffectiveRound;
         Assert.Equal(sim.State.Round + 2, effective);
 
-        while (sim.State.Round < effective - 1 || (sim.State.Round == effective - 1 && sim.State.CurrentUnitId is not null && sim.State.TurnIndex < sim.State.TurnOrder.Count - 1))
+        while (sim.State.Round < effective - 1 || (sim.State.Round == effective - 1 && false))
         {
             Assert.True(sim.State.Allied(1, 2), $"still allied in round {sim.State.Round}");
             var current = sim.State.CurrentUnit!;
@@ -236,12 +207,12 @@ public class CoopTests
         Assert.Equal(carrier.Pos, downed.Pos);
         Assert.Same(carrier, sim.State.UnitAt(carrier.Pos));
 
-        Assert.True(sim.Execute(new Move(1, carrier.Id, new(7, 2))).Ok);
+        Assert.True(Now(sim, new Move(1, carrier.Id, new(7, 2))).Ok);
         Assert.Equal(new Pos(7, 2), downed.Pos);
-        Assert.True(sim.Execute(new Move(1, carrier.Id, new(8, 2))).Ok);
+        Assert.True(Now(sim, new Move(1, carrier.Id, new(8, 2))).Ok);
         Assert.True(sim.Execute(new EndTurn(1, carrier.Id)).Ok);
         TurnOf(sim, carrier);
-        Assert.True(sim.Execute(new Move(1, carrier.Id, new(9, 2))).Ok);
+        Assert.True(Now(sim, new Move(1, carrier.Id, new(9, 2))).Ok);
         Assert.True(sim.Execute(new Extract(1, carrier.Id)).Ok);
 
         Assert.Equal(UnitStatus.Extracted, downed.Status);
@@ -291,7 +262,7 @@ public class CoopTests
         sim.UpdateParties();
         Assert.False(PartyOf(sim, 2).Done);
 
-        Assert.True(sim.Execute(new Move(1, a.Id, new(0, 0))).Ok);
+        Assert.True(Now(sim, new Move(1, a.Id, new(0, 0))).Ok);
         Assert.True(sim.Execute(new Extract(1, a.Id)).Ok);
         Assert.True(PartyOf(sim, 2).Done);
         Assert.Equal(UnitStatus.Dead, b.Status);
@@ -364,7 +335,7 @@ public class CoopTests
         sim.UpdateParties();
         b.Pos = new(1, 1);
         npc.Pos = new(1, 0);
-        Assert.True(sim.Execute(new Move(2, b.Id, new(0, 0))).Ok);
+        Assert.True(Now(sim, new Move(2, b.Id, new(0, 0))).Ok);
         Assert.True(sim.Execute(new Extract(2, b.Id)).Ok);
         Assert.Equal(2, npc.PlayerId);
         Assert.Single(sim.ResultFor(2).Recruits);

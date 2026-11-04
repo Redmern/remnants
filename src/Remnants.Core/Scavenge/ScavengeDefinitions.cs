@@ -444,6 +444,28 @@ public sealed record MovementRules
     public List<BodyMovementRule> Body { get; init; } = new();
 }
 
+/// <summary>
+/// The resolve order (<see cref="Priority"/>, scavenge.json <c>priority</c>): what speed and stamina are worth, how steep the
+/// fall below the low-stamina cliff is, what kinds of action add, and what is left of an action tied with a hostile's.
+/// </summary>
+public sealed record PriorityRules
+{
+    public double SpeedPerInitiative { get; init; } = 0.1;
+    public double StaminaWeight { get; init; } = 10;
+    public double CliffBelow { get; init; } = 0.3;
+    public double CliffPenalty { get; init; } = 6;
+    public double QuickWeight { get; init; } = 2;
+    public double HeavyWeight { get; init; } = -2;
+    public double EarlyWeight { get; init; } = 4;
+
+    /// <summary>A melee blow in one tile's reach doing at most this much is a quick one.</summary>
+    public double LightMaxDamage { get; init; } = 12;
+
+    /// <summary>What a card that hurries a unit along or holds it up shifts its score by, for the round.</summary>
+    public double CardShift { get; init; } = 3;
+    public double TieEffect { get; init; } = 0.6;
+}
+
 public sealed record TurnRules
 {
     public int BaseAp { get; init; } = 2;
@@ -468,11 +490,6 @@ public sealed record TurnRules
     public double InitiativePerAgility { get; init; } = 1.0;
     public double InitiativePerLoad { get; init; } = 0.5;
 
-    /// <summary>
-    /// Sub-rounds in a round: every unit acts in each, in initiative order, on one turn's AP (refilled only when the round
-    /// starts), and the tile attacks declared in a sub-round come down at its end (<see cref="TileStrikes"/>).
-    /// </summary>
-    public int SubRounds { get; init; } = 1;
 }
 
 public sealed record SightRules
@@ -521,25 +538,11 @@ public sealed record CombatRules
     /// <summary>Blows from the side and from behind land harder (see <see cref="FacingRules"/>).</summary>
     public FacingRules Facing { get; init; } = new();
 
-    /// <summary>What dodging a telegraphed blow earns (see <see cref="OutplayRules"/>).</summary>
-    public OutplayRules Outplay { get; init; } = new();
-
     /// <summary>The most the stacked damage multipliers of a blow (ambush × facing × exposed) may come to.</summary>
     public double MaxDamageMultiplier { get; init; } = 2;
 
-    /// <summary>The most the stacked hit bonuses of an outplay and an ambush may add to a hit chance.</summary>
+    /// <summary>The most the stacked hit bonuses of an ambush may add to a hit chance.</summary>
     public double MaxHitBonus { get; init; } = 0.3;
-}
-
-/// <summary>
-/// Outplays (scavenge.json <c>combat.outplay</c>): when a telegraphed blow comes down on a tile its target stepped off,
-/// the attacker is exposed through the next round, and the next hit on it does <see cref="ExposedDamage"/> times the
-/// damage (before armor); with <see cref="FreeCounter"/> the dodger's next tile strike covering the attacker costs no AP.
-/// </summary>
-public sealed record OutplayRules
-{
-    public double ExposedDamage { get; init; } = 1.5;
-    public bool FreeCounter { get; init; } = true;
 }
 
 /// <summary>
@@ -573,7 +576,7 @@ public sealed record HitTierRules
     /// <summary>Armor on the hit region (after pierce) from which the hit shifts down a tier.</summary>
     public double ArmorShiftFrom { get; init; } = 4;
 
-    /// <summary>Cover against the attacker (terrain plus brace) from which the hit shifts down a tier.</summary>
+    /// <summary>Cover against the attacker (terrain plus cards) from which the hit shifts down a tier.</summary>
     public double CoverShiftFrom { get; init; } = 0.25;
 }
 
@@ -614,8 +617,6 @@ public sealed record FogRules
     public int SensorRevealRounds { get; init; } = 1;
 
     public AmbushRules Ambush { get; init; } = new();
-    public OverwatchRules Overwatch { get; init; } = new();
-    public BraceRules Brace { get; init; } = new();
     public LookoutRules Lookout { get; init; } = new();
     public FogAiRules Ai { get; init; } = new();
 }
@@ -649,21 +650,6 @@ public sealed record AmbushRules
     public double BacksReduction { get; init; } = 0.5;
 }
 
-/// <summary>Overwatch (<see cref="Overwatches"/>): the shots' accuracy penalty and the sharper eyes while on watch.</summary>
-public sealed record OverwatchRules
-{
-    public double AccuracyPenalty { get; init; } = 0.1;
-    public double DetectionBonus { get; init; } = 10;
-}
-
-/// <summary>Brace / hunker: ends the turn; no ambush bonus against the unit, extra cover, fewer AP next turn.</summary>
-public sealed record BraceRules
-{
-    public int ApCost { get; init; } = 1;
-    public double CoverBonus { get; init; } = 0.15;
-    public int NextTurnApPenalty { get; init; } = 1;
-}
-
 /// <summary>Lookout / scan: spend AP for sight and detection until the unit's next turn.</summary>
 public sealed record LookoutRules
 {
@@ -678,9 +664,6 @@ public sealed record FogAiRules
 {
     /// <summary>Position scoring: value of a tile no known hostile would detect the unit on.</summary>
     public double HiddenWeight { get; init; } = 4;
-
-    /// <summary>A Linked that knows of nobody waits on overwatch instead of wandering.</summary>
-    public bool LinkedLurk { get; init; } = true;
 }
 
 /// <summary>
@@ -738,6 +721,7 @@ public sealed record ScavengeRules
     public Dictionary<Terrain, TerrainDef> Terrain { get; init; } = new();
     public MovementRules Movement { get; init; } = new();
     public TurnRules Turn { get; init; } = new();
+    public PriorityRules Priority { get; init; } = new();
     public SightRules Sight { get; init; } = new();
     public CarryRules Carry { get; init; } = new();
     public CombatRules Combat { get; init; } = new();

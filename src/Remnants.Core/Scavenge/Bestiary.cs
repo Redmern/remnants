@@ -179,7 +179,7 @@ public static class Bestiary
             Behaviour = def.Ai switch
             {
                 AiKind.Linked => "Hunts in squads over the Network: all of them know what one sees, they pick the weakest, flank, " +
-                                 "pin down from cover, fall back when hurt and wait unseen on overwatch.",
+                                 "pin down from cover, and fall back when hurt.",
                 AiKind.Device => "A machine: it never moves and telegraphs where it will fire.",
                 _ => "Wanders until it sees or hears prey, then closes in and strikes; it telegraphs the charge.",
             },

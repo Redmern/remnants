@@ -175,7 +175,7 @@ public class VisibilityTests
         Assert.DoesNotContain(sim.State.Map.Index(new Pos(29, 0)), sim.VisibleTo(1));
         Assert.Contains(sim.State.Map.Index(new Pos(29, 0)), sim.VisibleTo(2));
 
-        Assert.True(sim.Execute(new Move(1, a.Id, new(2, 0))).Ok);
+        Assert.True(Now(sim, new Move(1, a.Id, new(2, 0))).Ok);
         var explored = sim.State.Explored[Unit.PlayerSide(1)];
         Assert.Contains(sim.State.Map.Index(new Pos(8, 0)), explored);
         Assert.DoesNotContain(sim.State.Map.Index(new Pos(20, 0)), explored);

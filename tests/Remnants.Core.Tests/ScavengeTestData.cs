@@ -12,13 +12,8 @@ public static class ScavengeTestData
 
     public static ScavengeData Real => RealData.Value;
 
-    private static readonly Lazy<ScavengeData> WholeTurnData = new(() => Real.WithTurn(Real.Rules.Turn with { SubRounds = 1 }));
-
-    /// <summary>
-    /// The real data played in whole turns (one sub-round a round): the default for <see cref="Arena"/> and <see cref="With"/>,
-    /// so tests of other rules count rounds as before. Sub-round tests set <see cref="TurnRules.SubRounds"/> themselves.
-    /// </summary>
-    public static ScavengeData WholeTurns => WholeTurnData.Value;
+    /// <summary>The real data: the default for <see cref="Arena"/>.</summary>
+    public static ScavengeData WholeTurns => Real;
 
     public static Survivor Survivor(string name = "Test", double attributes = 50)
     {
@@ -87,10 +82,10 @@ public static class ScavengeTestData
     /// The turn order is exactly the units in the given order (not initiative), and the first one is up
     /// with full AP, so tests control who acts. Optional rows draw terrain: . floor, # wall, P pylon, r rubble, c cover, ~ water, E exit.
     /// </summary>
-    /// <summary>The real data, in whole turns (<see cref="WholeTurns"/>), with scavenge rules changed (e.g. a fixed hack chance).</summary>
+    /// <summary>The real data with scavenge rules changed (e.g. a fixed hack chance).</summary>
     public static ScavengeData With(Func<ScavengeRules, ScavengeRules> change) =>
         new(Real.Items.Values.Where(i => i.BaseId is null), Real.Enemies.Values, Real.Zones.Values,
-            change(Real.Rules with { Turn = Real.Rules.Turn with { SubRounds = 1 } }), Real.PerkHooks, Real.Cybernetics?.Def, Real.Schematics, Real.Electronics, medicine: Real.Medicine?.Def,
+            change(Real.Rules), Real.PerkHooks, Real.Cybernetics?.Def, Real.Schematics, Real.Electronics, medicine: Real.Medicine?.Def,
             loot: Real.LootFiles, salvage: Real.Salvage, cards: Real.Cards.Def);
 
     /// <summary>The data with other loot tables (and optionally salvage rules) in place of the real ones.</summary>
@@ -125,7 +120,6 @@ public static class ScavengeTestData
                 state.Parties.Add(new Party { PlayerId = pid, Side = Unit.PlayerSide(pid) });
         }
         setup?.Invoke(data, state);
-        state.TurnOrder = state.Units.Where(u => u.IsActive && u.Side != Unit.NeutralSide && u.Kind != UnitKind.Drone).Select(u => u.Id).ToList();
         var sim = new ScavengeSim(data, state);
         foreach (var u in state.Units) (u.Ap, u.Mp) = (sim.Profile(u).MaxAp, sim.Profile(u).MaxMp);
         return sim;
@@ -154,36 +148,49 @@ public static class ScavengeTestData
             ? strike
             : new AttackTile(attacker.PlayerId ?? 0, attacker.Id, target.Pos, actionId);
 
+    /// <summary>Every strike planned so far.</summary>
+    public static List<TileStrike> Strikes(ScavengeSim sim) => sim.State.Plans.SelectMany(p => p.Steps).Where(s => s.Strike is not null).Select(s => s.Strike!).ToList();
+
     /// <summary>
-    /// Readies a tile strike at <paramref name="target"/>'s tile (<see cref="StrikeOn"/>), then ends the player units'
-    /// sub-turns until it has come down. Returns the AttackTile's result.
+    /// Everything planned so far resolves on the spot, the round not moving on (no refills, no AI): for tests of what a
+    /// move or action does.
     /// </summary>
-    public static ScavengeResult StrikeNow(ScavengeSim sim, Unit attacker, Unit target, string actionId)
+    public static void Settle(ScavengeSim sim)
     {
-        var result = sim.Execute(StrikeOn(sim, attacker, target, actionId));
-        for (var i = 0; result.Ok && i < 50 && TileStrikes.Readied(sim.State, attacker) && sim.State.CurrentUnit is { PlayerControlled: true } next; i++)
-            Assert.True(sim.Execute(new EndTurn(next.PlayerId!.Value, next.Id)).Ok);
+        RoundResolver.Movement(sim);
+        RoundResolver.Actions(sim);
+        sim.State.Plans.Clear();
+        Visibility.UpdateExplored(sim.Data, sim.State);
+    }
+
+    /// <summary>A command that is planned and then resolves on the spot (<see cref="Settle"/>). Returns its result.</summary>
+    public static ScavengeResult Now(ScavengeSim sim, IScavengeCommand command)
+    {
+        var result = sim.Execute(command);
+        if (result.Ok) Settle(sim);
         return result;
     }
 
-    /// <summary>
-    /// Stages a readied one-tile strike of the unit's (no checks, no AP), as a declaration earlier this sub-round leaves it.
-    /// </summary>
-    public static TileStrike Ready(ScavengeSim sim, Unit unit, Pos tile, string actionId, int? targetId = null)
+    /// <summary>Plans a tile strike at <paramref name="target"/>'s tile (<see cref="StrikeOn"/>) and resolves it. Returns the AttackTile's result.</summary>
+    public static ScavengeResult StrikeNow(ScavengeSim sim, Unit attacker, Unit target, string actionId) =>
+        Now(sim, StrikeOn(sim, attacker, target, actionId));
+
+    /// <summary>Stages a planned one-tile strike of the unit's (no checks, no AP).</summary>
+    public static TileStrike Ready(ScavengeSim sim, Unit unit, Pos tile, string actionId)
     {
-        var strike = new TileStrike { UnitId = unit.Id, ActionId = actionId, From = unit.Pos, Tile = tile, Direction = Combat.Face(unit.Pos, tile), Tiles = [tile], TargetId = targetId };
-        sim.State.Strikes.Add(strike);
+        var strike = new TileStrike { UnitId = unit.Id, ActionId = actionId, From = unit.Pos, Tile = tile, Direction = Combat.Face(unit.Pos, tile), Tiles = [tile] };
+        Plans.For(sim.State, unit).Steps.Add(new PlanStep { Kind = PlanStepKind.Strike, Strike = strike });
         return strike;
     }
 
     /// <summary>
-    /// A blow on its own, for tests of what a hit does: the tile strike at <paramref name="target"/>'s tile is readied
-    /// (Core's checks, AP paid) and comes down on the spot, the turn not moving on. Returns the readying's result.
+    /// A blow on its own, for tests of what a hit does (works for AI units too): the strike is planned (Core's checks, AP
+    /// paid) and comes down on the spot. Returns the planning's result.
     /// </summary>
     public static ScavengeResult Blow(ScavengeSim sim, Unit attacker, Unit target, string actionId)
     {
         var result = TileStrikes.Declare(sim, attacker, StrikeOn(sim, attacker, target, actionId));
-        if (result.Ok) TileStrikes.ResolveAll(sim);
+        if (result.Ok) Settle(sim);
         return result;
     }
 
@@ -210,16 +217,17 @@ public static class ScavengeTestData
         var pid = u.PlayerId!.Value;
         var map = sim.State.Map;
         if (map.IsExit(u.Pos)) return new Extract(pid, u.Id);
+        var at = Plans.Anchor(sim.State, u);
 
         var profile = sim.Profile(u);
         foreach (var target in sim.State.Units.Where(t => t.IsActive && u.HostileTo(t) && Detection.SideSees(sim.Data, sim.State, u.Side, t)).OrderBy(t => t.Id))
             foreach (var a in profile.Actions.Where(a => a.ApCost <= u.Ap))
-                if (Combat.CheckReach(sim.Data, map, u.Pos, a, target.Pos) == ScavengeError.None && TileStrikes.StrikeAt(sim, u, a, target) is { } strike)
+                if (Combat.CheckReach(sim.Data, map, at, a, target.Pos) == ScavengeError.None && TileStrikes.StrikeAt(sim, u, a, target) is { } strike)
                     return strike;
 
-        var exit = map.Exits.OrderBy(e => e.Chebyshev(u.Pos)).First();
+        var exit = map.Exits.OrderBy(e => e.Chebyshev(at)).First();
         var field = Movement.DistanceField(map, profile.Movement, exit);
-        var here = field.GetValueOrDefault(u.Pos, int.MaxValue);
+        var here = field.GetValueOrDefault(at, int.MaxValue);
         var step = sim.Reachable(u)
             .Where(kv => kv.Value <= u.Mp && field.ContainsKey(kv.Key) && field[kv.Key] < here)
             .OrderBy(kv => field[kv.Key]).ThenBy(kv => map.Index(kv.Key))

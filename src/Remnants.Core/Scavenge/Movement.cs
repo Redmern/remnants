@@ -38,6 +38,41 @@ public static class Movement
         return result;
     }
 
+    /// <summary>
+    /// The tiles of the cheapest walk from where the unit stands to <paramref name="to"/>, without its start; the landing
+    /// alone when no walk within <paramref name="budget"/> gets there (a jump or a line).
+    /// </summary>
+    public static List<Pos> Path(ScavengeState state, Unit unit, MovementProfile profile, Pos to, int budget)
+    {
+        var map = state.Map;
+        var best = new Dictionary<Pos, int> { [unit.Pos] = 0 };
+        var from = new Dictionary<Pos, Pos>();
+        var queue = new PriorityQueue<Pos, (int, int)>();
+        queue.Enqueue(unit.Pos, (0, map.Index(unit.Pos)));
+        while (queue.TryDequeue(out var p, out var key))
+        {
+            if (key.Item1 > best[p]) continue;
+            foreach (var d in Pos.Neighbours8)
+            {
+                var n = p + d;
+                if (!map.InBounds(n) || profile.Cost(map[n]) is not { } step) continue;
+                if (d.X != 0 && d.Y != 0 && !CornerOpen(map, profile, p, d)) continue;
+                if (!CanPass(state, unit, n)) continue;
+                var cost = key.Item1 + step;
+                if (p == unit.Pos) cost = Math.Min(cost, budget);
+                if (cost > budget || (best.TryGetValue(n, out var b) && b <= cost)) continue;
+                best[n] = cost;
+                from[n] = p;
+                queue.Enqueue(n, (cost, map.Index(n)));
+            }
+        }
+        if (!from.ContainsKey(to)) return [to];
+        var path = new List<Pos>();
+        for (var p = to; p != unit.Pos; p = from[p]) path.Add(p);
+        path.Reverse();
+        return path;
+    }
+
     private static bool Free(ScavengeState state, Unit mover, Pos p) =>
         state.UnitAt(p) is not { } other || other.Id == mover.Id;
 

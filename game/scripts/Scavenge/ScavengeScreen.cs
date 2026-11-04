@@ -250,14 +250,6 @@ public partial class ScavengeScreen : Node3D
         _actionPanel.CommandRequested += command => _ = Run(command);
         _hud.Loot.CommandRequested += command => _ = Run(command);
         _stancePanel.CommandRequested += command => _ = Run(command);
-        _stancePanel.OverwatchAimRequested += () =>
-        {
-            CancelCardAim();
-            _usingItem = null;
-            _pinging = null;
-            _aim = TechAim.Overwatch;
-            RefreshHud();
-        };
         _techPanel.CommandRequested += command => _ = Run(command);
         _unitPanel.CommandRequested += command => _ = Run(command);
         _techPanel.AimChosen += aim =>
@@ -355,15 +347,6 @@ public partial class ScavengeScreen : Node3D
         var acting = _presenter.ActingUnit;
         var pid = _presenter.PlayerId;
 
-        if (_aim == TechAim.Overwatch && acting is not null)
-        {
-            _aim = TechAim.None;
-            _ = Run(Input.IsKeyPressed(Key.Shift)
-                ? new CommitOverwatch(pid, acting.Id, Arc: Combat.Face(acting.Pos, tile))
-                : new CommitOverwatch(pid, acting.Id, Tile: tile));
-            return;
-        }
-
         if (_aim is TechAim.Heal or TechAim.Fire && acting is not null)
         {
             if (clicked is null)
@@ -443,8 +426,7 @@ public partial class ScavengeScreen : Node3D
     private void OnEndTurn()
     {
         if (_busy || _presenter.ActingUnit is not { } acting) return;
-        // Shift: done for the whole round, sitting out its later sub-rounds.
-        _ = Run(new EndTurn(_presenter.PlayerId, acting.Id, WholeTurn: Input.IsKeyPressed(Key.Shift)));
+        _ = Run(new EndTurn(_presenter.PlayerId, acting.Id));
     }
 
     /// <summary>Sends a command; on success replays its events (and any AI turns it set off), then snaps views to state.</summary>
@@ -528,7 +510,7 @@ public partial class ScavengeScreen : Node3D
         if (!Hud.GameSettings.AutoEndTurn || _autoplaying || _presenter.Done || _presenter.ActingUnit is not { } acting || !_presenter.IsMine(acting)
             || TurnAdvice.CanStillAct(_presenter.Sim, acting)) return;
         var id = acting.Id;
-        var round = (_presenter.State.Round, _presenter.State.SubRound);
+        var round = _presenter.State.Round;
         var input = _inputSeq;
         _hud.Toasts.Show("Turn over", $"{acting.Name} has nothing left to do.", "ui_end_turn", Hud.Palette.TextMuted, key: "auto_end_turn");
         // A beat so the player sees why (a frame at least: never re-entering the replay that called this).
@@ -537,7 +519,7 @@ public partial class ScavengeScreen : Node3D
         // The player may have acted (a card, End Turn) during the beat; a remote view may have been replaced: look again.
         // Any click or key in the beat (a card, an order, End Turn itself) is the player's own answer: leave the turn to them.
         if (!IsInsideTree() || _busy || _inputSeq != input || _presenter.ActingUnit is not { } now || now.Id != id
-            || (_presenter.State.Round, _presenter.State.SubRound) != round || TurnAdvice.CanStillAct(_presenter.Sim, now)) return;
+            || _presenter.State.Round != round || TurnAdvice.CanStillAct(_presenter.Sim, now)) return;
         _ = Run(new EndTurn(_presenter.PlayerId, id));
     }
 
@@ -747,9 +729,6 @@ public partial class ScavengeScreen : Node3D
             foreach (var (tile, kind) in _presenter.Threats())
                 if (_presenter.IsExplored(tile))
                     _map.Highlight(tile, kind == ThreatKind.Strike ? HighlightKind.ThreatPlanned : HighlightKind.Threat);
-        if (!_busy && !_presenter.Done)
-            foreach (var tile in TacticsView.Watches(_presenter.Sim, _presenter.Side).SelectMany(w => w.Tiles))
-                _map.Highlight(tile, HighlightKind.Use);
         if (HighlightCardAim()) return;
         if (selected is null || !selected.OnMap || !_presenter.CanSee(selected)) return;
         _map.Highlight(selected.Pos, HighlightKind.Selected);
@@ -774,11 +753,6 @@ public partial class ScavengeScreen : Node3D
                     previews[t.Id] = new WorldTags.Preview($"DRONE {Bestiary.ShownChance(_presenter.Sim.Data.Rules.Bestiary, Combat.ChanceToHit(_presenter.Sim, gunship, gun, t), _presenter.KnowledgeOf(t)) * 100:0}% · {gun.MinDamage:0}–{gun.MaxDamage:0}",
                         false, gun.ApCost > acting!.Ap);
             }
-            return;
-        }
-        if (isActing && _aim == TechAim.Overwatch)
-        {
-            foreach (var p in Overwatches.InReach(_presenter.Sim, acting!)) _map.Highlight(p, HighlightKind.Use);
             return;
         }
         if (isActing && _aim != TechAim.None)
@@ -828,7 +802,7 @@ public partial class ScavengeScreen : Node3D
         foreach (var option in _presenter.AttackOptions(selected, action))
         {
             _map.Highlight(option.Target.Pos, HighlightKind.Attack);
-            var ambush = option.Ambush is { Braced: false };
+            var ambush = option.Ambush is not null;
             // True AP from here (a scope costs more up close) and the mod effects that bite on this target.
             var ap = Combat.ApCost(action, selected.Pos, option.Target.Pos);
             var effects = ModEffects(action, option.Target, ap);

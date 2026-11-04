@@ -79,10 +79,11 @@ public class BestiaryTests
         var last = SurvivorUnit(1, new(3, 2));
         var sim = Arena(4, 3, [a, husk, last]);
         int Fought() => sim.State.FindParty(1)!.Bestiary.TryGetValue("husk", out var e) ? e.Fought : 0;
-        // The husk is in reach: it readies the blow (not a fight yet), which comes down when the sub-round ends.
-        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
+        // The husk is in reach: it plans the blow (not a fight yet), which comes down when the round resolves.
+        sim.Start();
         Assert.True(TileStrikes.Readied(sim.State, husk));
         Assert.Equal(0, Fought());
+        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
         Assert.True(sim.Execute(new EndTurn(1, last.Id)).Ok);
         Assert.Contains(sim.State.Events, e => e.UnitId == husk.Id && e.TargetId == a.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
         Assert.Equal(1, sim.State.FindParty(1)!.Bestiary["husk"].Fought);
@@ -178,12 +179,12 @@ public class BestiaryTests
         var a = SurvivorUnit(1, new(1, 1), weapon: "pistol");
         var husk = EnemyUnit("husk", new(5, 1));
         var sim = Arena(8, 4, [a, husk]);
-        husk.Stance = Stance.Brace;
+        husk.CardCover = 0.15;
         var shoot = sim.Profile(a).Actions.First(x => x.Reach > 1);
         HelpContext Ctx(BestiaryTier tier) => new() { Scavenge = sim, Attacker = a, Action = shoot, Target = husk, TargetKnown = tier };
 
         var full = Breakdowns.For("hit_chance", Ctx(BestiaryTier.Killed))!;
-        Assert.Contains(full.Rows, r => r.Label == "Brace");
+        Assert.Contains(full.Rows, r => r.Label == "Card cover");
         var hidden = Breakdowns.For("hit_chance", Ctx(BestiaryTier.Fought))!;
         var labels = hidden.Rows.Select(r => r.Label).ToList();
         Assert.DoesNotContain("Target's dodge", labels);

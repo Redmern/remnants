@@ -125,7 +125,7 @@ public static class ScavengeSave
             if (!state.Map.InBounds(v.Pos)) throw new JsonException($"The {v.Name} is parked off the map at {v.Pos}.");
             foreach (var id in v.Stash) RequireItem(id);
         }
-        foreach (var id in state.TurnOrder)
-            if (state.FindUnit(id) is null) throw new JsonException($"Turn order references unknown unit {id}.");
+        foreach (var plan in state.Plans)
+            if (state.FindUnit(plan.UnitId) is null) throw new JsonException($"A plan references unknown unit {plan.UnitId}.");
     }
 }

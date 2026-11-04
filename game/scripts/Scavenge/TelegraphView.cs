@@ -66,8 +66,7 @@ public partial class TelegraphView : Node3D
     {
         if (e.Type is not (ScavengeEventType.IntentResolved or ScavengeEventType.IntentFizzled or ScavengeEventType.IntentDeclared)) return;
         if (e.UnitId is not { } id || _presenter.State.FindUnit(id) is not { } unit || !_presenter.CanSee(unit)) return;
-        var at = e.Type == ScavengeEventType.IntentDeclared ? _presenter.State.Strikes.FirstOrDefault(s => s.UnitId == id)?.Tile : null;
-        foreach (var (tile, marker) in _markers.Where(kv => at is null || kv.Key == at))
+        foreach (var (tile, marker) in _markers)
             Flash(marker, e.Type == ScavengeEventType.IntentFizzled ? DodgedColor : AimedColor);
     }
 

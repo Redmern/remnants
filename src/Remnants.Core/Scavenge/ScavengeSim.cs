@@ -6,12 +6,17 @@ namespace Remnants.Core.Scavenge;
 
 /// <summary>
 /// One scavenge instance: definitions + state + seeded RNG. Changes only through <see cref="Execute"/>;
-/// AI turns, bleeding out and round changes run inside it, so the same seed and commands give the same game.
-/// Turns follow initiative across every unit on the map, whichever player or AI owns it.
+/// AI plans, bleeding out and round changes run inside it, so the same seed and commands give the same game.
+/// A round opens with the AI's plans made; players plan at once (<see cref="Plans"/>), and when all are committed the round
+/// resolves (<see cref="RoundResolver"/>). Orders outside combat (loot, items, hacks, drones, co-op) are not queued: they take
+/// effect as given, from where the unit stands.
 /// </summary>
 public sealed class ScavengeSim
 {
     private readonly DeterministicRng _rng;
+
+    /// <summary>What is left of an action's effect right now: below 1 only while a clash resolves (<see cref="RoundResolver"/>).</summary>
+    internal double EffectFactor { get; set; } = 1;
 
     public ScavengeData Data { get; }
     public ScavengeState State { get; }
@@ -36,8 +41,9 @@ public sealed class ScavengeSim
         return p with { Sight = FieldEnvironment.Sight(Data, State, unit, p.Sight) };
     }
 
-    /// <summary>Tiles the unit can move to with one move now, with MP cost (for UI highlights).</summary>
-    public Dictionary<Pos, int> Reachable(Unit unit) => Movement.Reachable(State, unit, Profile(unit).Movement, unit.Mp);
+    /// <summary>Tiles the unit can move to with one more planned move, from where its plan ends, with MP cost (for UI highlights).</summary>
+    public Dictionary<Pos, int> Reachable(Unit unit) =>
+        Plans.AtAnchor(State, unit, () => Movement.Reachable(State, unit, Profile(unit).Movement, unit.Mp));
 
     /// <summary>Tile indices the player's side sees right now.</summary>
     public HashSet<int> VisibleTo(int playerId) =>
@@ -45,14 +51,16 @@ public sealed class ScavengeSim
 
     public ExtractionResult ResultFor(int playerId) => ExtractionResult.Build(this, playerId);
 
-    /// <summary>Starts round 1 and runs AI turns until the first player-controlled unit is up.</summary>
+    /// <summary>Starts round 1 and has the AI plan it.</summary>
     public void Start()
     {
         if (State.Round == 0)
         {
             MissionRules.Started(this);
-            AdvanceTurns();
+            StartRound();
         }
+        PlanAi();
+        Advance();
         Visibility.UpdateExplored(Data, State);
         Bestiary.Observe(this);
         SyncRng();
@@ -61,7 +69,8 @@ public sealed class ScavengeSim
     public ScavengeResult Execute(IScavengeCommand command)
     {
         var result = ScavengeCommandHandlers.Validate(this, command, out var unit) ?? MissionRules.Blocked(this, command);
-        var (mpBefore, apBefore) = (unit?.Mp ?? 0, unit?.Ap ?? 0);
+        var (mpBefore, apBefore, fatigueBefore) = (unit?.Mp ?? 0, unit?.Ap ?? 0, unit?.Fatigue ?? 0);
+        var stepsBefore = unit is null ? 0 : Plans.Of(State, unit)?.Steps.Count ?? 0;
         result ??= command switch
         {
             ChooseOption c => MissionRules.Choose(this, unit!, c),
@@ -73,15 +82,14 @@ public sealed class ScavengeSim
             StashItem c => FieldLoot.Stash(this, unit!, c),
             Salvage c => FieldSalvage.Salvage(this, unit!, c),
             Recruit c => ScavengeCommandHandlers.Recruit(this, unit!, c),
-            SetStance c => ScavengeCommandHandlers.SetStance(this, unit!, c),
-            CommitOverwatch c => Overwatches.Commit(this, unit!, c),
             AttackTile c => TileStrikes.Declare(this, unit!, c),
             PlayCard c => CardPlay.Play(this, unit!, c),
             DiscardDeadCard c => CardPlay.DiscardDead(this, unit!, c),
             Lookout c => ScavengeCommandHandlers.Lookout(this, unit!, c),
             FieldMod c => ScavengeCommandHandlers.FieldMod(this, unit!, c),
             Recover => Economy.Recover(this, unit!),
-            EndTurn c => FinishTurn(unit!, c),
+            EndTurn => Commit(unit!),
+            UndoPlan c => Plans.Undo(this, unit!, c),
             Extract => ScavengeCommandHandlers.Extract(this, unit!),
             TakeFromStash c => ParkedVehicles.Unstash(this, unit!, c),
             ProposeAlliance c => Alliances.Propose(this, unit!, c),
@@ -107,15 +115,10 @@ public sealed class ScavengeSim
         if (result.Ok)
         {
             if (command is not Recover) Economy.Pay(this, unit!, mpBefore - unit!.Mp, apBefore - unit.Ap);
+            AfterCommand(command, unit!, stepsBefore, mpBefore, apBefore, fatigueBefore);
             MissionRules.Update(this);
             UpdateParties();
-            // The acting unit's turn ends on EndTurn or a stance, or when it left the map or can no longer act; its sub-turn
-            // ends on a tile attack.
-            if (command is EndTurn or SetStance or CommitOverwatch or AttackTile || unit is not { IsActive: true })
-            {
-                State.TurnIndex++;
-                AdvanceTurns();
-            }
+            Advance();
             Visibility.UpdateExplored(Data, State);
             Bestiary.Observe(this);
         }
@@ -123,116 +126,68 @@ public sealed class ScavengeSim
         return result;
     }
 
-    /// <summary>
-    /// Moves along the turn order: skips units that can no longer act, runs AI turns, starts new rounds,
-    /// and stops at the next player-controlled unit (with fresh AP) or when the instance is finished.
-    /// </summary>
-    private void AdvanceTurns()
+    /// <summary>A new plan entry remembers what it cost; a plan that changes is open again.</summary>
+    private void AfterCommand(IScavengeCommand command, Unit unit, int stepsBefore, int mpBefore, int apBefore, int fatigueBefore)
     {
-        while (!State.Finished)
+        if (Plans.Of(State, unit) is not { } plan) return;
+        if (plan.Steps.Count > stepsBefore)
         {
-            if (State.TurnIndex >= State.TurnOrder.Count)
-            {
-                EndSubRound();
-                if (State.Finished) break;
-                if (State.Round > 0 && State.SubRound < Data.Rules.Turn.SubRounds)
-                {
-                    State.SubRound++;
-                    State.TurnIndex = 0;
-                }
-                else StartRound();
-                continue;
-            }
-            var unit = State.CurrentUnit;
-            if (unit is not { IsActive: true } || State.SubRound > 1 && SitsOut(unit))
-            {
-                State.TurnIndex++;
-                continue;
-            }
-            if (State.SubRound > 1)
-            {
-                // A later sub-round: the turn goes on with the AP left.
-                StartSubTurn(unit);
-                if (unit.PlayerControlled) return;
-                ScavengeAi.TakeTurn(this, unit);
-                MissionRules.Update(this);
-                UpdateParties();
-                State.TurnIndex++;
-                continue;
-            }
-            BeginTurn(unit);
-            StartSubTurn(unit);
-            if (unit.Suppressed)
-            {
-                unit.Suppressed = false;
-                unit.Ap = Math.Max(1, unit.Ap - Data.Rules.Network.SuppressApPenalty);
-                State.Log(new(State.Round, ScavengeEventType.Suppressed, $"{unit.Name} is pinned down ({unit.Ap} AP).", unit.Id, Pos: unit.Pos));
-            }
-            if (unit.PlayerControlled) return;
+            var step = plan.Steps[^1];
+            (step.RefundMp, step.RefundAp, step.RefundFatigue) = (mpBefore - unit.Mp, apBefore - unit.Ap, unit.Fatigue - fatigueBefore);
+        }
+        if (command is Move or AttackTile or PlayCard or Recover or UndoPlan) plan.Committed = false;
+    }
 
-            ScavengeAi.TakeTurn(this, unit);
-            MissionRules.Update(this);
-            UpdateParties();
-            State.TurnIndex++;
+    private ScavengeResult Commit(Unit unit)
+    {
+        Plans.For(State, unit).Committed = true;
+        return ScavengeResult.Success($"{unit.Name} is ready.");
+    }
+
+    /// <summary>While nobody is left planning: the round resolves and the next opens, with the AI's plans made.</summary>
+    private void Advance()
+    {
+        for (var guard = 0; guard < 1000 && !State.Finished && Plans.AllCommitted(State); guard++)
+        {
+            PlanAi();
+            RoundResolver.Run(this);
+            AfterStep();
+            if (State.Finished) return;
+            StartRound();
+            PlanAi();
         }
     }
 
-    /// <summary>A unit's sub-turn begins: it gets the next <see cref="ScavengeState.TurnSeq"/> and is on its feet again (no longer <see cref="Unit.Displaced"/>).</summary>
-    private void StartSubTurn(Unit unit)
+    /// <summary>Whatever a resolved step changed for the mission and the parties.</summary>
+    internal void AfterStep()
     {
-        unit.TurnSeq = ++State.TurnSeq;
-        unit.Displaced = false;
-    }
-
-    private ScavengeResult FinishTurn(Unit unit, EndTurn c)
-    {
-        if (!c.WholeTurn) return ScavengeResult.Success($"{unit.Name} ends their turn.");
-        unit.TurnOverRound = State.Round;
-        return ScavengeResult.Success($"{unit.Name} is done for the round.");
-    }
-
-    /// <summary>
-    /// Whether the unit skips a later sub-round: out of AP, done for the round or holding a stance.
-    /// </summary>
-    private bool SitsOut(Unit unit) =>
-        unit.Ap <= 0 && unit.Mp <= 0 || unit.TurnOverRound == State.Round || unit.Stance != Stance.None;
-
-    /// <summary>
-    /// Whether an AI unit's strike declared now must wait a sub-round: player units are hostile to it, and none of them
-    /// has a turn to come this sub-round to answer it with.
-    /// </summary>
-    internal bool DefersStrike(Unit unit) =>
-        !unit.PlayerControlled && State.Units.Any(u => u is { IsActive: true, PlayerControlled: true } && u.HostileTo(unit))
-        && !State.TurnOrder.Skip(State.TurnIndex).Select(State.FindUnit)
-            .Any(u => u is { IsActive: true, PlayerControlled: true } && u.HostileTo(unit) && (State.SubRound == 1 || !SitsOut(u)));
-
-    /// <summary>The sub-round's tile attacks come down (<see cref="TileStrikes"/>).</summary>
-    private void EndSubRound()
-    {
-        TileStrikes.ResolveAll(this);
         MissionRules.Update(this);
         UpdateParties();
     }
 
     /// <summary>
-    /// A unit's turn starts: its stance and lookout end (bracing costs <see cref="BraceRules.NextTurnApPenalty"/> AP),
-    /// then it gets fresh AP.
+    /// The AI units plan the round, once, by id, when it opens: they see where everyone stands and never anyone's plan, and
+    /// players see their moves while they plan in turn.
     /// </summary>
-    private void BeginTurn(Unit unit)
+    private void PlanAi()
     {
-        var braced = unit.Stance == Stance.Brace;
-        unit.Stance = Stance.None;
+        if (State.AiPlannedRound >= State.Round) return;
+        State.AiPlannedRound = State.Round;
+        foreach (var unit in State.Units.Where(u => u.IsActive && !u.PlayerControlled && Plans.Acts(this, u) && Plans.Of(State, u) is null).OrderBy(u => u.Id).ToList())
+            ScavengeAi.TakeTurn(this, unit);
+    }
+
+    /// <summary>The round opens for a unit: its lookout and the round's card effects end, and it gets fresh points.</summary>
+    private void BeginRound(Unit unit)
+    {
         unit.Lookout = false;
         unit.PingsUsed = 0;
         unit.Moved = false;
-        if (unit.OutplayedUntilRound < State.Round) (unit.OutplayedId, unit.FreeCounterId) = (null, null);
         unit.CardMove = 0;
         unit.CardCover = 0;
-        // A counter card holds while the strike it answers is still coming (that strike comes down after this turn begins).
-        if (unit.CounterId is { } countered && State.Strikes.All(s => s.UnitId != countered)) unit.CounterId = null;
+        unit.PriorityBonus = 0;
         Economy.RoundStarted(this, unit);
         if (State.Round == 1 && unit.FirstRoundAp != 0) unit.Ap = Math.Max(1, unit.Ap + unit.FirstRoundAp);
-        if (braced) unit.Ap = Math.Max(1, unit.Ap - Data.Rules.Fog.Brace.NextTurnApPenalty);
         if (unit.CrashAp > 0)
         {
             unit.Ap = Math.Max(1, unit.Ap - unit.CrashAp);
@@ -245,15 +200,19 @@ public sealed class ScavengeSim
             unit.Mp = 0;
             State.Log(new(State.Round, ScavengeEventType.EmpBurst, $"{unit.Name} is still down from the EMP.", unit.Id, Pos: unit.Pos));
         }
+        if (unit.Suppressed)
+        {
+            unit.Suppressed = false;
+            unit.Ap = Math.Max(1, unit.Ap - Data.Rules.Network.SuppressApPenalty);
+            State.Log(new(State.Round, ScavengeEventType.Suppressed, $"{unit.Name} is pinned down ({unit.Ap} AP).", unit.Id, Pos: unit.Pos));
+        }
         if (Economy.Stamina(this, unit) <= 0) unit.Ap = 0;
     }
 
-    /// <summary>Bleeding ticks down, then everyone conscious (except idle NPCs) is ordered by initiative.</summary>
+    /// <summary>Bleeding ticks down, the zone's systems move on, then every unit that acts gets its points for the round.</summary>
     private void StartRound()
     {
-        Overwatches.RoundEnded(State);
         State.Round++;
-        State.SubRound = 1;
         State.Log(new(State.Round, ScavengeEventType.RoundStarted, $"Round {State.Round}."));
         foreach (var u in State.Units.Where(u => u.Status == UnitStatus.Downed && !u.Stabilized).ToList())
         {
@@ -275,17 +234,7 @@ public sealed class ScavengeSim
         if (State.Finished) return;
         SquadDecks.RoundStarted(this);
         ParkedVehicles.RoundStarted(this);
-
-        // Drones fly on their operator's AP and cameras only watch: neither takes turns.
-        State.TurnOrder = State.Units
-            .Where(u => u.IsActive && u.Side != Unit.NeutralSide && u.Kind is not (UnitKind.Drone or UnitKind.Decoy)
-                        && (u.Kind != UnitKind.Device || Profile(u).Actions.Count > 0))
-            .Select(u => (u.Id, Profile(u).Initiative))
-            .OrderByDescending(t => t.Initiative)
-            .ThenBy(t => t.Id)
-            .Select(t => t.Id)
-            .ToList();
-        State.TurnIndex = 0;
+        foreach (var unit in State.Units.Where(u => u.IsActive && Plans.Acts(this, u)).ToList()) BeginRound(unit);
     }
 
     /// <summary>
@@ -340,11 +289,7 @@ public sealed class ScavengeSim
         if (State.FindParty(playerId) is not { Left: false } party) return;
         party.Left = true;
         UpdateParties();
-        if (State.CurrentUnit is not { IsActive: true })
-        {
-            State.TurnIndex++;
-            AdvanceTurns();
-        }
+        Advance();
         Visibility.UpdateExplored(Data, State);
         SyncRng();
     }
@@ -360,7 +305,6 @@ public sealed class ScavengeSim
         unit.Hp = Math.Min(unit.Hp, 0);
         unit.Ap = 0;
         TileStrikes.Lose(this, unit, "dead");
-        Overwatches.Drop(this, unit, "dead");
         Bestiary.Killed(this, unit, killer);
         State.Log(new(State.Round, type, message, unit.Id, Pos: unit.Pos));
         if (unit.Kind == UnitKind.Drone)
@@ -407,15 +351,12 @@ public sealed class ScavengeSim
     }
 
     /// <summary>
-    /// After a unit moved (player or AI): its own overwatch is off, motion sensors it entered reveal it to their side, sides
-    /// it is unseen by but close to hear it (movement contact), and overwatch on the tile it entered may fire on it.
+    /// After a unit moved (by its feet or by force): motion sensors it entered reveal it to their side, sides it is unseen by
+    /// but close to hear it (movement contact).
     /// </summary>
-    /// <param name="forced">Moved by a card (shoved, swapped, stepped): sensors, noise, cameras and raised ground as for any
-    /// move, but overwatch does not fire at it.</param>
-    internal void Moved(Unit unit, Pos from, bool forced = false)
+    internal void Moved(Unit unit, Pos from)
     {
         var fog = Data.Rules.Fog;
-        Overwatches.Drop(this, unit, "moved");
         foreach (var sensor in State.Sensors.OrderBy(s => s.Id).ToList())
         {
             if (sensor.Side == unit.Side || unit.Side == Unit.NeutralSide) continue;
@@ -433,7 +374,6 @@ public sealed class ScavengeSim
                 Detection.AddContact(Data, State, side, unit.Pos, ContactKind.Movement, unit.Id);
         MissionRules.Moved(this, unit);
         Hacking.CameraCheck(this, unit);
-        if (!forced) Overwatches.Entered(this, unit);
     }
 
     /// <summary>A motion sensor goes off: the unit is revealed to the sensor's side, which gets an alert and a contact.</summary>

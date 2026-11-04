@@ -55,7 +55,7 @@ public sealed record ActionProfile(
 /// <summary>
 /// Everything the rules need about a unit, derived from attributes + carried gear + body state + stance.
 /// <see cref="Stealth"/> and <see cref="Detection"/> decide who sees whom inside sight (<see cref="Detection"/>);
-/// <see cref="CoverBonus"/> is extra cover from bracing.
+/// <see cref="CoverBonus"/> is extra cover from cards.
 /// </summary>
 public sealed record UnitProfile(
     MovementProfile Movement,
@@ -150,7 +150,6 @@ public static class ProfileDeriver
             sight += fog.Lookout.SightBonus;
             detection += fog.Lookout.DetectionBonus + unit.Get(AttributeKind.Perception) * fog.Lookout.DetectionPerPerception;
         }
-        if (unit.Stance == Stance.Overwatch) detection += fog.Overwatch.DetectionBonus;
         if (unit.Raised)
         {
             sight += rules.Story.RaisedSight;
@@ -177,7 +176,7 @@ public static class ProfileDeriver
             Dodge: (agility - 50) * rules.Combat.DodgePerAgility + equipped.Sum(i => i.Dodge),
             Stealth: stealth,
             Detection: detection * head,
-            CoverBonus: (unit.Stance == Stance.Brace ? fog.Brace.CoverBonus + unit.Hook(PerkHooks.BraceCoverBonus) : 0) + unit.CardCover,
+            CoverBonus: unit.CardCover,
             RegionArmor: RegionArmor(equipped),
             InjuryResist: 1 - equipped.Aggregate(1.0, (keep, i) => keep * (1 - Math.Clamp(i.InjuryResist, 0, 1))),
             MeleeArmor: equipped.Sum(i => i.MeleeArmor),

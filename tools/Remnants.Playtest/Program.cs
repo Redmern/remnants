@@ -29,7 +29,6 @@ if (options.GetValueOrDefault("late-zones") is { } lateZones)
     ZoneTrial.LateZones = lateMode;
 }
 // --no-dodge: the party bot does not step off tiles seen enemy plans aim at (comparisons).
-PartyBot.Dodge = !options.ContainsKey("no-dodge");
 var schematics = options.GetValueOrDefault("schematics", "") is { Length: > 0 } list
     ? list == "vehicles"
         ? ["sch_bicycle_cart", "sch_garage_2", "sch_biofuel_still", "sch_motorbike", "sch_small_engine", "sch_buggy",

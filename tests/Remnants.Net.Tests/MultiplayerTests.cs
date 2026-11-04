@@ -64,7 +64,7 @@ public class MultiplayerTests(ITestOutputHelper output)
     }
 
     [Fact]
-    public void Only_the_player_whose_unit_is_up_may_act_and_ids_cannot_be_spoofed()
+    public void Ids_cannot_be_spoofed()
     {
         var f = new NetFixture();
         var (a, b) = f.StartTwo();
@@ -74,10 +74,6 @@ public class MultiplayerTests(ITestOutputHelper output)
 
         var spoof = other.Do(new EndTurn(up.Id, unitId));
         Assert.Equal(ScavengeError.NotYourUnit, spoof.Error);
-
-        var otherUnit = f.Sim.State.Units.First(u => u.PlayerId == other.Id);
-        var early = other.Do(new EndTurn(other.Id, otherUnit.Id));
-        Assert.Equal(ScavengeError.NotYourTurn, early.Error);
 
         var snapshots = other.Link.Inbox.OfType<Snapshot>().Count();
         var ok = up.Do(new EndTurn(up.Id, unitId));
@@ -100,7 +96,7 @@ public class MultiplayerTests(ITestOutputHelper output)
             var unit = f.Sim.State.CurrentUnitId!.Value;
             Assert.Equal(unit, up.Last<TurnChanged>().UnitId);
             Assert.Equal(up.Id, (up == a ? b : a).Last<TurnChanged>().PlayerId);
-            Assert.True(up.Do(new EndTurn(up.Id, unit, WholeTurn: true)).Ok);
+            Assert.True(up.Do(new EndTurn(up.Id, unit)).Ok);
         }
         Assert.Contains(a.Id, actors);
         Assert.Contains(b.Id, actors);

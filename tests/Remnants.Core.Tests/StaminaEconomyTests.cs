@@ -59,7 +59,7 @@ public class StaminaEconomyTests
     public void A_move_pays_mp_per_terrain_cost_and_one_stamina_per_mp()
     {
         var sim = Solo(out var u);
-        Assert.True(sim.Execute(new Move(1, u.Id, new Pos(5, 2))).Ok);
+        Assert.True(Now(sim, new Move(1, u.Id, new Pos(5, 2))).Ok);
         Assert.Equal(1, u.Mp);
         Assert.Equal(2, u.Ap);
         Assert.Equal(7, Economy.Stamina(sim, u));
@@ -69,7 +69,7 @@ public class StaminaEconomyTests
     public void A_move_past_the_remaining_mp_is_refused()
     {
         var sim = Solo(out var u);
-        var result = sim.Execute(new Move(1, u.Id, new Pos(7, 2)));
+        var result = Now(sim, new Move(1, u.Id, new Pos(7, 2)));
         Assert.False(result.Ok);
         Assert.Equal(new Pos(2, 2), u.Pos);
         Assert.Equal(4, u.Mp);
@@ -127,6 +127,8 @@ public class StaminaEconomyTests
         var rules = sim.Data.Rules.Turn;
         Assert.True(sim.Execute(new Recover(1, u.Id)).Ok);
         Assert.Equal(2 - rules.RecoverApCost, u.Ap);
+        Assert.Equal(4, Economy.Stamina(sim, u));
+        Settle(sim);
         Assert.Equal(4 + rules.RecoverStamina, Economy.Stamina(sim, u));
     }
 
@@ -152,7 +154,7 @@ public class StaminaEconomyTests
         Economy.RoundStarted(sim, u);
         Assert.Equal(0, u.Ap);
         Assert.Equal(2, u.Mp);
-        Assert.True(sim.Execute(new Move(1, u.Id, new Pos(4, 2))).Ok);
+        Assert.True(Now(sim, new Move(1, u.Id, new Pos(4, 2))).Ok);
         Assert.Equal(new Pos(4, 2), u.Pos);
     }
 }

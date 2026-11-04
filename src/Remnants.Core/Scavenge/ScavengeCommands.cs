@@ -21,15 +21,15 @@ public sealed record UseItem(int PlayerId, int UnitId, string ItemId, int? Targe
 /// <summary>
 /// Strike tiles (wire name <c>attackTile</c>): an attack with <see cref="ActionId"/> aimed at <see cref="Tile"/>, toward
 /// <see cref="Direction"/> (default: the step from the unit toward the tile), in <see cref="Mode"/> (default: the weapon's
-/// first) for a weapon with stab / slash patterns. The AP is paid now and the unit's sub-turn ends; whoever hostile stands
-/// on the covered tiles when the sub-round ends is struck. See <see cref="TileStrikes"/>.
+/// first) for a weapon with stab / slash patterns. It is queued in the unit's plan and pays its AP now; whoever hostile stands
+/// on the covered tiles when it comes up in the action phase is struck. See <see cref="TileStrikes"/>.
 /// </summary>
 public sealed record AttackTile(int PlayerId, int UnitId, Pos Tile, string ActionId, Items.StrikeMode? Mode = null, Pos? Direction = null)
     : IScavengeCommand;
 
 /// <summary>
 /// Play a card on <see cref="UnitId"/> (the character it applies to): from the squad hand, or from that character's
-/// personal slots (<see cref="FromSlot"/>). <see cref="TargetId"/>: the enemy whose readied strike a reaction answers.
+/// personal slots (<see cref="FromSlot"/>).
 /// <see cref="Boost"/>: pay the card's extra AP for its boost. An ability card aims at <see cref="TargetId"/> (a unit) or
 /// <see cref="Tile"/> (<see cref="CardDef.Target"/>). See <see cref="CardPlay"/>.
 /// </summary>
@@ -39,16 +39,7 @@ public sealed record PlayCard(int PlayerId, int UnitId, string CardId, int? Targ
 /// <summary>Discard a hard card nobody in the party qualifies for, at no cost, once a round.</summary>
 public sealed record DiscardDeadCard(int PlayerId, int UnitId, string CardId) : IScavengeCommand;
 
-/// <summary>Brace. It ends the unit's turn and holds until its next one. Overwatch takes <see cref="CommitOverwatch"/>.</summary>
-public sealed record SetStance(int PlayerId, int UnitId, Stance Stance) : IScavengeCommand;
-
-/// <summary>
-/// Go on overwatch (wire name <c>commitOverwatch</c>), watching one <see cref="Tile"/> in reach or the front arc of one
-/// <see cref="Arc"/> direction, never both. The AP left is held for shots for the round. See <see cref="Overwatches"/>.
-/// </summary>
-public sealed record CommitOverwatch(int PlayerId, int UnitId, Pos? Tile = null, Pos? Arc = null) : IScavengeCommand;
-
-/// <summary>Scan the surroundings: more sight and detection until the unit's next turn. Does not end the turn.</summary>
+/// <summary>Scan the surroundings: more sight and detection until the next round starts.</summary>
 public sealed record Lookout(int PlayerId, int UnitId) : IScavengeCommand;
 
 /// <summary>
@@ -83,12 +74,13 @@ public sealed record Recruit(int PlayerId, int UnitId, int NpcId) : IScavengeCom
 /// <summary>Spend AP to catch breath: stamina back (<see cref="TurnRules.RecoverStamina"/>).</summary>
 public sealed record Recover(int PlayerId, int UnitId) : IScavengeCommand;
 
-/// <summary>Wait: end this unit's turn, forfeiting remaining AP.</summary>
 /// <summary>
-/// End the unit's part of this sub-round; it acts again in the next with the AP it has left. <see cref="WholeTurn"/>: it is
-/// done for the round and sits out the remaining sub-rounds.
+/// Commit the unit's plan. The round resolves once every player-controlled unit is committed; editing the plan first reopens it.
 /// </summary>
-public sealed record EndTurn(int PlayerId, int UnitId, bool WholeTurn = false) : IScavengeCommand;
+public sealed record EndTurn(int PlayerId, int UnitId) : IScavengeCommand;
+
+/// <summary>Take back the unit's last planned entry (<see cref="All"/>: its whole plan), refunding what it paid.</summary>
+public sealed record UndoPlan(int PlayerId, int UnitId, bool All = false) : IScavengeCommand;
 
 /// <summary>Leave the map from an exit tile or next to the side's parked vehicle, taking nearby followers along.</summary>
 public sealed record Extract(int PlayerId, int UnitId) : IScavengeCommand;
@@ -230,8 +222,8 @@ public enum ScavengeError
     NotEnoughPoints,
     /// <summary>An arm-locked card while the character's arms are too hurt.</summary>
     ArmsLocked,
-    /// <summary>A reaction card needs a seen enemy with a readied strike.</summary>
-    NoIntent,
+    /// <summary>There is no planned entry to take back.</summary>
+    NoPlan,
     /// <summary>A dead card was discarded this round already.</summary>
     DeadCardSpent,
     /// <summary>Only a hard card nobody in the party can play may be discarded.</summary>

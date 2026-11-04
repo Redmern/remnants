@@ -73,7 +73,6 @@ public class CardSaveTests
         Assert.Empty(loaded.State.FieldEffects);
         Assert.Empty(loaded.State.Map.Overlay);
         Assert.Empty(loaded.State.Map.Smoke);
-        Assert.All(loaded.State.Units, u => Assert.False(u.Displaced));
     }
 
     [Theory]
@@ -101,9 +100,6 @@ public class CardSaveTests
 
         var current = loaded.State.CurrentUnit!;
         Assert.Equal(sim.State.CurrentUnitId, current.Id);
-        Assert.Empty(loaded.State.Strikes);
-        Assert.Null(current.Watch);
-        Assert.Empty(Overwatches.Watched(loaded, current));
         Assert.True(loaded.Execute(new EndTurn(1, current.Id)).Ok);
     }
 

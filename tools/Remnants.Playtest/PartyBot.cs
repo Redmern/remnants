@@ -112,7 +112,7 @@ public sealed record PlanCardStats
 /// or out of caches. It knows where caches are (a player would find them by exploring), not where enemies are, and
 /// only fights what its side actually sees (stealth hides the Linked). Against the fog (unless <c>defenses</c> is off)
 /// it scans (Lookout) when it hears something it cannot see, throws a flare at where an ambush came from, keeps close to
-/// an ally, and ends idle turns on overwatch, or braced once it has been shot at from the fog.
+/// an ally.
 /// With a hacking tool (unless <c>tech</c> is off) it hacks lockers and terminals it can reach when nothing hostile is in
 /// sight and the chance is decent (<see cref="HackFloor"/>), a camera that watches it, a relay node once the Linked are
 /// about, and with Override a Linked next to it; it walks to devices worth hacking like to caches. With a scout drone it
@@ -130,8 +130,6 @@ public static class PartyBot
     /// <summary>Whether the bot salvages (<c>--no-salvage</c> turns it off, for before/after comparisons).</summary>
     public static bool Salvage { get; set; } = true;
 
-    /// <summary>Whether the bot steps off tiles seen enemy plans aim at (<c>--no-dodge</c> turns it off, for comparisons).</summary>
-    public static bool Dodge { get; set; } = true;
     /// <summary>Benchmarks: called after every command the bot sends, with the wall-clock milliseconds its Execute took (AI turns included).</summary>
     public static Action<IScavengeCommand, double>? Timed { get; set; }
 
@@ -219,7 +217,7 @@ public static class PartyBot
                 linkedSeen.Add(u.Id);
             var command = Decide(sim, unit, playerId, recruit, stalls.GetValueOrDefault(unit.Id), defenses, fightLinked, tech);
             // A turn ended without doing anything counts as a stall; any action resets it.
-            var ends = command is EndTurn or SetStance or CommitOverwatch;
+            var ends = command is EndTurn;
             if (ends && !acted.Contains(unit.Id)) stalls[unit.Id] = stalls.GetValueOrDefault(unit.Id) + 1;
             else if (!ends) stalls[unit.Id] = 0;
             if (ends) acted.Remove(unit.Id);
@@ -244,10 +242,8 @@ public static class PartyBot
         var reinforcements = enemies.Count(u => !enemiesAtStart.Contains(u.Id));
         var mine = state.Units.Where(u => u.PlayerId is { } p && playerIds.Contains(p)).Select(u => u.Id).ToHashSet();
         var ambushed = state.Events.Count(e => e.Type == ScavengeEventType.Ambushed && e.TargetId is { } t && mine.Contains(t));
-        var reactions = state.Events.Count(e => e.Type == ScavengeEventType.Overwatch && e.TargetId is not null && e.UnitId is { } w && mine.Contains(w));
-        var defended = state.Events.Count(e => e.UnitId is { } d && mine.Contains(d) && e.Type is ScavengeEventType.Braced
-            or ScavengeEventType.Lookout or ScavengeEventType.FlareLit or ScavengeEventType.SensorPlaced
-            || (e.Type == ScavengeEventType.Overwatch && e.TargetId is null && e.UnitId is { } o && mine.Contains(o)));
+        var reactions = 0;
+        var defended = state.Events.Count(e => e.UnitId is { } d && mine.Contains(d) && e.Type is ScavengeEventType.Lookout or ScavengeEventType.FlareLit or ScavengeEventType.SensorPlaced);
         int Count(ScavengeEventType type) => state.Events.Count(e => e.Type == type && e.UnitId is { } u && mine.Contains(u));
         var dronesLost = state.Units.Count(u => u.Kind == UnitKind.Drone && u.Status == UnitStatus.Dead && u.PlayerId is { } p && playerIds.Contains(p));
         var fromDevices = state.Devices.Count(d => d.Used && d.Hacked);
@@ -382,18 +378,6 @@ public static class PartyBot
         // The drone gets the last AP of a turn (or the turn when there is nowhere to walk), so it never slows the party.
         if (tech && TryDrone(sim, unit, playerId, hostiles, lastAp: unit.Ap <= 1) is { } droneOrder) return droneOrder;
 
-        // 2b. Against the fog when not fleeing: a Linked in view but out of reach is left to come to us on overwatch;
-        // shot at from the fog with nothing to see, brace (the next ambush gains nothing).
-        if (defenses && fightLinked && unit.Ap == profile.MaxAp)
-        {
-            var ranged = profile.Actions.Any(a => a.Pattern != AttackPattern.Melee);
-            var reach = profile.Actions.Select(a => a.Reach).DefaultIfEmpty(1).Max();
-            if (ranged && hostiles.Any(h => IsLinked(sim, h) && h.Pos.Chebyshev(unit.Pos) <= reach + 2) && Overwatches.OnArc(sim, unit, playerId) is { } watch)
-                return watch;
-            if (hostiles.Count == 0 && shotAt.Count > 0 && unit.Ap >= fog.Brace.ApCost)
-                return new SetStance(playerId, unit.Id, Stance.Brace);
-        }
-
         // 2c. Beside the party's vehicle: load the haul into it (the vehicle carries it home), heaviest first.
         var parked = ParkedVehicles.Of(state, playerId) is { Wrecked: false } pv ? pv : null;
         var room = parked is null ? 0 : parked.CargoKg - ParkedVehicles.Load(sim.Data, parked);
@@ -415,10 +399,6 @@ public static class PartyBot
         var unload = loaded && unit.Pack.Any(id => sim.Data.Items[id].Kind is ItemKind.Material or ItemKind.Schematic && sim.Data.Items[id].Weight <= room + 1e-9);
         var leaving = Leaving(sim, unit, hostiles, allies, fightLinked, tech, unload);
         if (leaving && (map.IsExit(unit.Pos) || ParkedVehicles.Beside(state, unit) is not null)) return new Extract(playerId, unit.Id);
-        // A seen enemy plan aims at our tile: step off it (the blow lands on an empty tile). Not when leaving: the way out
-        // moves us off anyway, and dodging every turn could keep us from the exit.
-        if (Dodge && !leaving && BotTactics.Dodge(sim, unit, playerId) is { } dodge) return dodge;
-
         var strangers = recruit
             ? state.Units.Where(u => u.Kind == UnitKind.Npc && u.IsActive && u.Side == Unit.NeutralSide && visible.Contains(map.Index(u.Pos))).ToList()
             : [];
@@ -498,7 +478,7 @@ public static class PartyBot
         if (tech && TryDrone(sim, unit, playerId, hostiles, lastAp: true) is { } idleDrone) return idleDrone;
         // Nothing in reach but a hostile we would fight: close in, with the AP for a blow left.
         if (!leaving && BotTactics.Approach(sim, unit, playerId, hostiles.Where(h => fightLinked || !IsLinked(sim, h)).ToList()) is { } approach) return approach;
-        return defenses ? Hold(sim, unit, playerId, hostiles, contacts, shotAt) : new EndTurn(playerId, unit.Id);
+        return new EndTurn(playerId, unit.Id);
     }
 
     /// <summary>Out when hurt, loaded, late, an ally is down, or nothing is left to loot (or hack); a starting party also on sighting a Linked.</summary>
@@ -653,21 +633,6 @@ public static class PartyBot
         if (Drones.PackedBattery(sim.Data, unit, item) < Math.Max(rules.MinBattery, 3)) return null;
         var spot = Pos.Neighbours8.Select(d => unit.Pos + d).Where(p => Drones.CanHover(sim, p)).OrderBy(state.Map.Index).Select(p => (Pos?)p).FirstOrDefault();
         return spot is { } at ? new DeployDrone(playerId, unit.Id, at) : null;
-    }
-
-    /// <summary>
-    /// Ending a turn with AP left: brace when the side was just shot at from the fog or a Linked is about (an ambush
-    /// gains nothing then), else overwatch when there is something out there (a contact, a hostile in sight), else wait.
-    /// </summary>
-    private static IScavengeCommand Hold(ScavengeSim sim, Unit unit, int playerId, List<Unit> hostiles, List<Contact> contacts, List<Contact> shotAt)
-    {
-        var fog = sim.Data.Rules.Fog;
-        var threatened = shotAt.Count > 0 || hostiles.Any(h => IsLinked(sim, h));
-        if (threatened && unit.Ap >= fog.Brace.ApCost && !hostiles.Any(h => h.Pos.Chebyshev(unit.Pos) <= 1))
-            return new SetStance(playerId, unit.Id, Stance.Brace);
-        if ((contacts.Count > 0 || hostiles.Count > 0) && Overwatches.OnArc(sim, unit, playerId) is { } watch)
-            return watch;
-        return new EndTurn(playerId, unit.Id);
     }
 
     private static int ThrowRange(ScavengeSim sim, Unit unit, string baseId) =>

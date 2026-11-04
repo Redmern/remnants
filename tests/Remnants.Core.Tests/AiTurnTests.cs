@@ -15,7 +15,7 @@ public class AiTurnTests
         var sim = Arena(10, 8, [u], setup: (d, s) => turret = Hacking.Place(d, s, DeviceKind.Turret, new Pos(4, 1)));
         var gun = sim.State.FindUnit(turret.UnitId!.Value)!;
         ScavengeAi.TakeTurn(sim, gun);
-        var strike = Assert.Single(sim.State.Strikes, s => s.UnitId == gun.Id);
+        var strike = Strikes(sim).First(s => s.UnitId == gun.Id);
         Assert.Equal(new Pos(4, 1), gun.Pos);
         Assert.Equal(u.Pos, strike.Tile);
     }
@@ -31,24 +31,23 @@ public class AiTurnTests
         var sim = Arena(11, 9, [a, b, l1, l2]);
         ScavengeAi.TakeTurn(sim, l1);
         ScavengeAi.TakeTurn(sim, l2);
-        Assert.Equal(b.Pos, Assert.Single(sim.State.Strikes, s => s.UnitId == l1.Id).Tile);
-        Assert.Equal(b.Pos, Assert.Single(sim.State.Strikes, s => s.UnitId == l2.Id).Tile);
+        Assert.Equal(b.Pos, Strikes(sim).First(s => s.UnitId == l1.Id).Tile);
+        Assert.Equal(b.Pos, Strikes(sim).First(s => s.UnitId == l2.Id).Tile);
         Assert.Equal(b.Id, l1.Ai.TargetId);
     }
 
     [Fact]
-    public void An_enemy_closes_in_live_and_no_blow_lands_before_the_sub_round_ends()
+    public void An_enemy_plans_its_move_and_blow_and_nothing_happens_until_they_resolve()
     {
         var u = SurvivorUnit(pos: new(0, 0));
         var husk = EnemyUnit("husk", new(3, 0));
         var sim = Arena(8, 3, [u, husk]);
         var ap = husk.Ap;
         ScavengeAi.TakeTurn(sim, husk);
-        Assert.True(husk.Pos.Chebyshev(u.Pos) < 3);
+        Assert.True(Plans.Anchor(sim.State, husk).Chebyshev(u.Pos) < 3);
+        Assert.Equal(new Pos(3, 0), husk.Pos);
         Assert.True(husk.Ap < ap);
-        Assert.Contains(sim.State.Events, e => e.UnitId == husk.Id && e.Type == ScavengeEventType.Moved);
-        Assert.DoesNotContain(sim.State.Events, e => e.UnitId == husk.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
-        Assert.Contains(sim.State.Events, e => e.UnitId == husk.Id && e.Type == ScavengeEventType.IntentDeclared);
+        Assert.DoesNotContain(sim.State.Events, e => e.UnitId == husk.Id && e.Type is ScavengeEventType.Moved or ScavengeEventType.Attacked or ScavengeEventType.Missed);
     }
 
     [Fact]
@@ -58,7 +57,7 @@ public class AiTurnTests
         var near = EnemyUnit("husk", new(1, 0));
         var sim = Arena(8, 3, [u, near]);
         ScavengeAi.TakeTurn(sim, near);
-        Assert.Equal(u.Pos, Assert.Single(sim.State.Strikes, s => s.UnitId == near.Id).Tile);
+        Assert.Equal(u.Pos, Strikes(sim).First(s => s.UnitId == near.Id).Tile);
         Assert.DoesNotContain(sim.State.Events, e => e.UnitId == near.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
 
         // A turret in reach still only telegraphs its aim.
@@ -66,7 +65,7 @@ public class AiTurnTests
         var v = SurvivorUnit(1, new Pos(1, 1));
         var sim2 = Arena(10, 8, [v], setup: (d, s) => turret = Hacking.Place(d, s, DeviceKind.Turret, new Pos(4, 1)));
         ScavengeAi.TakeTurn(sim2, sim2.State.FindUnit(turret.UnitId!.Value)!);
-        Assert.Contains(sim2.State.Strikes, s => s.UnitId == turret.UnitId);
+        Assert.Contains(Strikes(sim2), s => s.UnitId == turret.UnitId);
         Assert.DoesNotContain(sim2.State.Events, e => e.UnitId == turret.UnitId && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
     }
 
@@ -101,7 +100,6 @@ public class AiTurnTests
             Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
         }
         Assert.Equal(start + 30, sim.State.Round);
-        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.IntentDeclared);
         Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.IntentResolved);
     }
 
@@ -175,7 +173,7 @@ public class AiTurnTests
         var sim = Arena(8, 3, [u, near]);
         var before = sim.Rng.State;
         ScavengeAi.TakeTurn(sim, near);
-        Assert.Equal(u.Pos, Assert.Single(sim.State.Strikes, s => s.UnitId == near.Id).Tile);
+        Assert.Equal(u.Pos, Strikes(sim).First(s => s.UnitId == near.Id).Tile);
         Assert.Equal(before, sim.Rng.State);
     }
 }

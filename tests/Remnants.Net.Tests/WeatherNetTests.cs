@@ -31,8 +31,12 @@ public class WeatherNetTests
     }
 
     /// <summary>Any intent refreshes every view.</summary>
-    private static void Refresh(NetFixture f, TestPlayer a) =>
-        Assert.True(a.Do(new SetStance(a.Id, f.Sim.State.CurrentUnit!.Id, Stance.Brace)).Ok);
+    private static void Refresh(NetFixture f, TestPlayer a)
+    {
+        var unit = f.Sim.State.CurrentUnit!;
+        (unit.Lookout, unit.Ap, unit.Fatigue) = (false, 2, 0);
+        Assert.True(a.Do(new Lookout(a.Id, unit.Id)).Ok);
+    }
 
     [Fact]
     public void The_server_decides_the_weather_and_every_client_gets_it()

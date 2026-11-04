@@ -22,22 +22,13 @@ public class TileAttackTests
         return (sim, a, others);
     }
 
-    private static void PassAll(ScavengeSim sim, IEnumerable<Unit> foes)
-    {
-        foreach (var f in foes)
-            if (sim.State.CurrentUnitId == f.Id) Assert.True(sim.Execute(new EndTurn(2, f.Id)).Ok);
-    }
+    private static void PassAll(ScavengeSim sim, List<Unit> foes) => Settle(sim);
 
     /// <summary>Ends the foes' turns until <paramref name="a"/> is up again (its strike resolved), whatever the initiative order.</summary>
-    private static void UntilUp(ScavengeSim sim, Unit a)
-    {
-        for (var i = 0; i < 10 && sim.State.CurrentUnitId != a.Id; i++)
-            Assert.True(sim.Execute(new EndTurn(2, sim.State.CurrentUnitId!.Value)).Ok);
-        Assert.Equal(a.Id, sim.State.CurrentUnitId);
-    }
+    private static void UntilUp(ScavengeSim sim, Unit a) => Settle(sim);
 
     [Fact]
-    public void A_tile_attack_pays_now_ends_the_sub_turn_and_strikes_at_the_end_of_the_sub_round()
+    public void A_tile_attack_pays_when_planned_and_strikes_when_it_comes_up()
     {
         var (sim, a, foes) = Fight("sword", new Pos(4, 2));
         var b = foes[0];
@@ -45,14 +36,13 @@ public class TileAttackTests
         var r = sim.Execute(new AttackTile(1, a.Id, new(3, 2), "blade", StrikeMode.Stab));
         Assert.True(r.Ok, r.Message);
         Assert.Equal(ap - 1, a.Ap);
-        Assert.Equal(b.Id, sim.State.CurrentUnitId);
         Assert.Equal(b.MaxHp, b.Hp);
-        var strike = Assert.Single(sim.State.Strikes);
+        var strike = Assert.Single(Strikes(sim));
         Assert.Equal([new Pos(3, 2), new Pos(4, 2)], strike.Tiles);
 
         PassAll(sim, foes);
         Assert.True(b.Hp < b.MaxHp);
-        Assert.Empty(sim.State.Strikes);
+        Assert.Empty(Strikes(sim));
         Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Attacked && e.UnitId == a.Id && e.TargetId == b.Id);
     }
 
@@ -62,24 +52,9 @@ public class TileAttackTests
         var (sim, a, foes) = Fight("spear", new Pos(7, 2));
         var b = foes[0];
         Assert.True(sim.Execute(new AttackTile(1, a.Id, new(5, 2), "thrust")).Ok);
-        Assert.True(sim.Execute(new Move(2, b.Id, new(5, 2))).Ok, "walk into the spear");
+        Assert.True(Now(sim, new Move(2, b.Id, new(5, 2))).Ok, "walk into the spear");
         PassAll(sim, foes);
         Assert.True(b.Hp < b.MaxHp);
-    }
-
-    [Fact]
-    public void An_empty_tile_is_a_miss_and_the_one_who_stepped_off_dodged_it()
-    {
-        var (sim, a, foes) = Fight("knife", new Pos(3, 2));
-        var b = foes[0];
-        var ap = a.Ap;
-        Assert.True(sim.Execute(new AttackTile(1, a.Id, new(3, 2), "cut", StrikeMode.Stab)).Ok);
-        Assert.Equal(ap - 1, a.Ap);
-        Assert.True(sim.Execute(new Move(2, b.Id, new(4, 3))).Ok, "step away");
-        PassAll(sim, foes);
-        Assert.Equal(b.MaxHp, b.Hp);
-        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.IntentFizzled && e.UnitId == a.Id);
-        Assert.Equal(a.Id, b.OutplayedId);
     }
 
     [Fact]
@@ -108,8 +83,7 @@ public class TileAttackTests
         var b = SurvivorUnit(2, new(4, 2), weapon: "pipe");
         var sim = Arena(10, 5, [a, friend, b], data: Sure);
         Assert.True(sim.Execute(new AttackTile(1, a.Id, new(4, 2), "thrust")).Ok);
-        Assert.True(sim.Execute(new EndTurn(1, friend.Id)).Ok);
-        Assert.True(sim.Execute(new EndTurn(2, b.Id)).Ok);
+        Settle(sim);
         Assert.Equal(friend.MaxHp, friend.Hp);
         Assert.True(b.Hp < b.MaxHp);
     }
@@ -123,7 +97,7 @@ public class TileAttackTests
         Assert.Equal(ScavengeError.InvalidTarget, sim.Execute(new AttackTile(1, a.Id, new(3, 2), "thrust", StrikeMode.Slash)).Error);
         a.Ap = 0;
         Assert.Equal(ScavengeError.NotEnoughAp, sim.Execute(new AttackTile(1, a.Id, new(3, 2), "thrust")).Error);
-        Assert.Empty(sim.State.Strikes);
+        Assert.Empty(Strikes(sim));
     }
 
     [Fact]
@@ -131,7 +105,7 @@ public class TileAttackTests
     {
         var (sim, a, foes) = Fight("sword", new Pos(3, 2), new Pos(2, 3));
         Assert.True(sim.Execute(new AttackTile(1, a.Id, new(3, 2), "blade", StrikeMode.Slash, Direction: new Pos(1, 1))).Ok);
-        Assert.Equal([new Pos(3, 3), new Pos(3, 2), new Pos(2, 3)], sim.State.Strikes[0].Tiles);
+        Assert.Equal([new Pos(3, 3), new Pos(3, 2), new Pos(2, 3)], Strikes(sim)[0].Tiles);
         PassAll(sim, foes);
         Assert.All(foes, f => Assert.True(f.Hp < f.MaxHp));
     }
@@ -141,7 +115,7 @@ public class TileAttackTests
     {
         var (sim, a, foes) = Fight("pistol", new Pos(6, 2));
         Assert.True(sim.Execute(new AttackTile(1, a.Id, new(6, 2), "shoot")).Ok);
-        Assert.Equal([new Pos(6, 2)], sim.State.Strikes[0].Tiles);
+        Assert.Equal([new Pos(6, 2)], Strikes(sim)[0].Tiles);
         PassAll(sim, foes);
         Assert.True(foes[0].Hp < foes[0].MaxHp);
     }
@@ -150,10 +124,10 @@ public class TileAttackTests
     public void A_stab_after_a_move_comes_down_on_every_hostile_on_the_line_from_where_it_stopped()
     {
         var (sim, a, foes) = Fight("spear", new Pos(5, 2), new Pos(6, 2));
-        Assert.True(sim.Execute(new Move(1, a.Id, new(3, 2))).Ok);
+        Assert.True(Now(sim, new Move(1, a.Id, new(3, 2))).Ok);
         var r = sim.Execute(new AttackTile(1, a.Id, new(4, 2), "thrust", StrikeMode.Stab));
         Assert.True(r.Ok, r.Message);
-        Assert.Equal(StrikeMode.Stab, sim.State.Strikes[0].Mode);
+        Assert.Equal(StrikeMode.Stab, Strikes(sim)[0].Mode);
         UntilUp(sim, a);
 
         Assert.Equal(new Pos(3, 2), a.Pos);
@@ -164,26 +138,19 @@ public class TileAttackTests
     public void A_slash_after_a_move_keeps_its_mode_and_direction()
     {
         var (sim, a, foes) = Fight("sword", new Pos(4, 1), new Pos(4, 3));
-        Assert.True(sim.Execute(new Move(1, a.Id, new(3, 2))).Ok);
+        Assert.True(Now(sim, new Move(1, a.Id, new(3, 2))).Ok);
         Assert.True(sim.Execute(new AttackTile(1, a.Id, new(4, 2), "blade", StrikeMode.Slash)).Ok);
         UntilUp(sim, a);
         Assert.All(foes, f => Assert.True(f.Hp < f.MaxHp));
     }
 
     [Fact]
-    public void Readied_stabs_and_slashes_show_their_covered_tiles_to_the_other_side()
+    public void A_planned_strike_is_hidden_from_the_other_side()
     {
         var (sim, a, foes) = Fight("spear", new Pos(4, 2));
         Assert.True(sim.Execute(new AttackTile(1, a.Id, new(3, 2), "thrust")).Ok);
-        var seen = Assert.Single(TacticsView.Telegraphs(sim, foes[0].Side));
-        Assert.Equal([new Pos(3, 2), new Pos(4, 2), new Pos(5, 2)], seen.Threatened);
-        Assert.True(seen.AimedAtUs);
-        Assert.Equal(ThreatKind.Strike, TacticsView.Threats(sim, foes[0].Side)[new Pos(5, 2)]);
-
-        var (sim2, a2, foes2) = Fight("sword", new Pos(6, 2));
-        Assert.True(sim2.Execute(new Move(1, a2.Id, new(3, 2))).Ok);
-        Assert.True(sim2.Execute(new AttackTile(1, a2.Id, new(4, 2), "blade", StrikeMode.Slash)).Ok);
-        Assert.Equal([new Pos(4, 2), new Pos(4, 1), new Pos(4, 3)], Assert.Single(TacticsView.Telegraphs(sim2, foes2[0].Side)).Threatened);
+        Assert.Empty(TacticsView.Telegraphs(sim, foes[0].Side));
+        Assert.DoesNotContain(ThreatKind.Strike, TacticsView.Threats(sim, foes[0].Side).Values);
     }
 
     [Fact]
@@ -204,9 +171,9 @@ public class TileAttackTests
             var a = SurvivorUnit(1, new(0, 1), weapon: "pipe");
             var b = SurvivorUnit(2, new(5, 1), weapon: "pipe");
             var sim = Arena(10, 3, [a, b]);
-            sim.Execute(new Move(1, a.Id, new(2, 1)));
+            Now(sim, new Move(1, a.Id, new(2, 1)));
             sim.Execute(new AttackTile(1, a.Id, new(3, 1), "swing"));
-            sim.Execute(new Move(2, b.Id, new(3, 1)));
+            Now(sim, new Move(2, b.Id, new(3, 1)));
             sim.Execute(new EndTurn(2, b.Id));
             sim.Execute(new EndTurn(1, a.Id));
             return ScavengeSave.Save(sim.State);

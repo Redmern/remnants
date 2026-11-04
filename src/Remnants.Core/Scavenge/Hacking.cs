@@ -185,8 +185,6 @@ public static class Hacking
     private static void ChangedHands(ScavengeSim sim, Unit unit)
     {
         TileStrikes.Lose(sim, unit, "changed hands");
-        Overwatches.Drop(sim, unit, "changed hands");
-        unit.Stance = Stance.None;
     }
 
     /// <summary>Override: one action, one roll. A turned Linked fights for the side until its time is up.</summary>

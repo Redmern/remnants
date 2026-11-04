@@ -13,13 +13,13 @@ public class ScavengeCommandTests
         var u = SurvivorUnit(pos: new(0, 0));
         var sim = Arena(8, 8, [u]);
 
-        Assert.True(sim.Execute(new Move(1, u.Id, new(2, 2))).Ok);
+        Assert.True(Now(sim, new Move(1, u.Id, new(2, 2))).Ok);
         Assert.Equal((new Pos(2, 2), 2, 2), (u.Pos, u.Mp, u.Ap));
-        Assert.Equal(ScavengeError.Unreachable, sim.Execute(new Move(1, u.Id, new(7, 7))).Error);
-        Assert.Equal(ScavengeError.Unreachable, sim.Execute(new Move(1, u.Id, new(2, 2))).Error);
+        Assert.Equal(ScavengeError.Unreachable, Now(sim, new Move(1, u.Id, new(7, 7))).Error);
+        Assert.Equal(ScavengeError.Unreachable, Now(sim, new Move(1, u.Id, new(2, 2))).Error);
 
         u.Mp = 0;
-        Assert.Equal(ScavengeError.Unreachable, sim.Execute(new Move(1, u.Id, new(3, 3))).Error);
+        Assert.Equal(ScavengeError.Unreachable, Now(sim, new Move(1, u.Id, new(3, 3))).Error);
         Assert.Equal(new Pos(2, 2), u.Pos);
     }
 
@@ -33,8 +33,6 @@ public class ScavengeCommandTests
 
         Assert.Equal(ScavengeError.UnknownUnit, sim.Execute(new EndTurn(1, 99)).Error);
         Assert.Equal(ScavengeError.NotYourUnit, sim.Execute(new EndTurn(2, a.Id)).Error);
-        Assert.Equal(ScavengeError.NotYourTurn, sim.Execute(new Move(1, b.Id, new(1, 1))).Error);
-        Assert.Equal(ScavengeError.NotYourTurn, sim.Execute(new EndTurn(2, c.Id)).Error);
 
         Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
         Assert.Equal(b.Id, sim.State.CurrentUnitId);
@@ -170,7 +168,7 @@ public class ScavengeCommandTests
         var sim = Arena(4, 2, [a, b], ["E...", "...."]);
 
         Assert.Equal(ScavengeError.NotOnExit, sim.Execute(new Extract(1, a.Id)).Error);
-        Assert.True(sim.Execute(new Move(1, a.Id, new(0, 0))).Ok);
+        Assert.True(Now(sim, new Move(1, a.Id, new(0, 0))).Ok);
         Assert.True(sim.Execute(new Extract(1, a.Id)).Ok);
         Assert.Equal(UnitStatus.Extracted, a.Status);
         Assert.Equal(b.Id, sim.State.CurrentUnitId);
@@ -186,7 +184,7 @@ public class ScavengeCommandTests
         Combat.ApplyDamage(sim, downed, BodyPart.Torso, 100);
         Assert.Equal(ScavengeError.Incapacitated, sim.Execute(new EndTurn(1, downed.Id)).Error);
 
-        Assert.True(sim.Execute(new Move(1, ally.Id, new(0, 0))).Ok);
+        Assert.True(Now(sim, new Move(1, ally.Id, new(0, 0))).Ok);
         Assert.True(sim.Execute(new Extract(1, ally.Id)).Ok);
 
         Assert.True(sim.State.Finished);
@@ -235,7 +233,7 @@ public class ScavengeCommandTests
         while (a.Pos != new Pos(0, 0))
         {
             var step = sim.Reachable(a).Where(kv => kv.Value <= a.Ap).OrderBy(kv => kv.Key.Chebyshev(new(0, 0))).First().Key;
-            Assert.True(sim.Execute(new Move(1, a.Id, step)).Ok);
+            Assert.True(Now(sim, new Move(1, a.Id, step)).Ok);
             Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
         }
         Assert.True(npc.Pos.Chebyshev(a.Pos) <= 2);
@@ -258,14 +256,12 @@ public class TurnTests
         fast.Attributes[AttributeKind.Agility] = 80;
         var sim = Arena(8, 8, [slow, mid, fast]);
 
-        Assert.True(sim.Execute(new Move(1, slow.Id, new(1, 0))).Ok);
+        Assert.True(Now(sim, new Move(1, slow.Id, new(1, 0))).Ok);
         Assert.True(sim.Execute(new EndTurn(1, slow.Id)).Ok);
         Assert.True(sim.Execute(new EndTurn(1, mid.Id)).Ok);
         Assert.True(sim.Execute(new EndTurn(2, fast.Id)).Ok);
 
         Assert.Equal(2, sim.State.Round);
-        Assert.Equal([fast.Id, mid.Id, slow.Id], sim.State.TurnOrder);
-        Assert.Equal(fast.Id, sim.State.CurrentUnitId);
         Assert.Equal(2, fast.Ap);
     }
 

@@ -85,8 +85,6 @@ public partial class ScavengeLog : PanelContainer
             ScavengeEventType.DroneLoaded => ("stat_loot", Palette.Amber),
             ScavengeEventType.DroneFerried => ("ui_extract", Palette.Good),
             ScavengeEventType.DroneFired => ("skill_firearms", Palette.Warn),
-            ScavengeEventType.Overwatch => ("stance_overwatch", Palette.Amber),
-            ScavengeEventType.Braced => ("stance_brace", Palette.Amber),
             ScavengeEventType.Lookout => ("stance_scan", Palette.Amber),
             ScavengeEventType.SensorTripped or ScavengeEventType.FlareLit or ScavengeEventType.SensorPlaced => ("stat_sight", Palette.Good),
             ScavengeEventType.AllianceProposed or ScavengeEventType.AllianceAccepted => ("stat_ally", Palette.Ally),

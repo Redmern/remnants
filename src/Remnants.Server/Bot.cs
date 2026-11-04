@@ -115,7 +115,6 @@ internal static class Bot
             .OrderByDescending(o => o.Chance).FirstOrDefault();
         if (shot.Strike is { } strike) return strike;
         // Step off a tile a seen enemy's strike covers.
-        if (BotTactics.Dodge(view, unit, pid) is { } dodge) return dodge;
 
         var hadAllies = client.Mission?.Mode == MissionMode.Coop || state.Parties.Any(p => p.PlayerId != pid && p.Side == unit.Side);
         var leaving = state.Round > rounds || unit.CarryingId is not null || (hadAllies && allies.All(a => !a.IsActive));
@@ -128,7 +127,7 @@ internal static class Bot
         var buddy = allies.OrderBy(a => a.IsActive ? 1 : 0).ThenBy(a => a.Pos.Chebyshev(unit.Pos)).ThenBy(a => a.Id).FirstOrDefault();
         if (!leaving && buddy is not null && buddy.Pos.Chebyshev(unit.Pos) <= 2)
         {
-            return Overwatches.OnArc(view, unit, pid) ?? new EndTurn(pid, unit.Id);
+            return new EndTurn(pid, unit.Id);
         }
         var centre = buddy is not null && !leaving ? buddy.Pos : new Pos(map.Width / 2, map.Height / 2);
         return BotTactics.StepToward(view, unit, pid, leaving ? map.Exits : [centre]) ?? (IScavengeCommand)new EndTurn(pid, unit.Id);

@@ -443,7 +443,7 @@ public class WeatherTests
         var rows = Enumerable.Repeat("...#........", 5).ToArray();
         var sim = Arena(12, 5, [walker, watcher], rows: rows, setup: (_, st) => st.Environment = ScavengeEnvironment.At(12, DayPhase.Day, weather));
         if (thunder) sim.State.Environment.ThunderRound = sim.State.Round;
-        Assert.True(sim.Execute(new Move(2, walker.Id, new Pos(4, 2))).Ok);
+        Assert.True(Now(sim, new Move(2, walker.Id, new Pos(4, 2))).Ok);
         return sim.State.Contacts.Any(c => c.Side == watcher.Side && c.Kind == ContactKind.Movement);
     }
 

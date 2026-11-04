@@ -37,7 +37,6 @@ public static class GearDemo
         if (!map.InBounds(spot)) return;
         var linked = NewScavenge.EnemyUnit(data, state, data.Enemies["linked"], spot);
         state.Units.Add(linked);
-        state.TurnOrder.Add(linked.Id);
         state.Reveals.Add(new Reveal(linked.Id, acting.Side, state.Round + 5));
         Visibility.UpdateExplored(data, state);
     }

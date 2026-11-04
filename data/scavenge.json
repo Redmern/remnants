@@ -21,7 +21,8 @@
       { "region": "Legs", "condition": "Prosthetic", "minCount": 2, "minQuality": 1.2, "modifier": { "rangeBonus": 1 } }
     ]
   },
-  "turn": { "baseAp": 2, "baseMp": 4, "mpPerRange": 2, "baseStamina": 10, "staminaPerMp": 1, "staminaPerAp": 2, "staminaRegen": 0.4, "regenLoadPenalty": 2, "minStaminaRegen": 1, "recoverApCost": 1, "recoverStamina": 4, "subRounds": 2, "pickUpApCost": 1, "recruitApCost": 1, "initiativePerAgility": 1.0, "initiativePerLoad": 0.5 },
+  "priority": { "speedPerInitiative": 0.1, "staminaWeight": 10, "cliffBelow": 0.3, "cliffPenalty": 6, "quickWeight": 2, "heavyWeight": -2, "earlyWeight": 4, "lightMaxDamage": 12, "cardShift": 3, "tieEffect": 0.6 },
+  "turn": { "baseAp": 2, "baseMp": 4, "mpPerRange": 2, "baseStamina": 10, "staminaPerMp": 1, "staminaPerAp": 2, "staminaRegen": 0.4, "regenLoadPenalty": 2, "minStaminaRegen": 1, "recoverApCost": 1, "recoverStamina": 4, "pickUpApCost": 1, "recruitApCost": 1, "initiativePerAgility": 1.0, "initiativePerLoad": 0.5 },
   "sight": { "base": 4, "perPerception": 0.06 },
   "carry": { "base": 10, "perStrength": 0.3 },
   "combat": {
@@ -39,7 +40,6 @@
     "armLockBelow": 0.5,
     "tiers": { "grazeBelow": 0.25, "solidFrom": 0.8, "grazeDamage": 0.4, "solidSeverity": 1.5, "armorShiftFrom": 4, "coverShiftFrom": 0.25 },
     "facing": { "sideDamage": 1.25, "rearDamage": 1.5 },
-    "outplay": { "exposedDamage": 1.5, "freeCounter": true },
     "maxDamageMultiplier": 2.0,
     "maxHitBonus": 0.3,
     "unarmed": { "id": "punch", "name": "Punch", "pattern": "Melee", "reach": 1, "minDamage": 2, "maxDamage": 5,
@@ -77,10 +77,8 @@
     "revealSightMultiplier": 1.5,
     "sensorRevealRounds": 1,
     "ambush": { "hitBonus": 0.2, "damageMultiplier": 1.25, "ignoreDodge": true, "backsReduction": 0.5 },
-    "overwatch": { "accuracyPenalty": 0.1, "detectionBonus": 10 },
-    "brace": { "apCost": 1, "coverBonus": 0.15, "nextTurnApPenalty": 1 },
     "lookout": { "apCost": 1, "sightBonus": 2, "detectionBonus": 15, "detectionPerPerception": 0.2 },
-    "ai": { "hiddenWeight": 4, "linkedLurk": true }
+    "ai": { "hiddenWeight": 4 }
   },
   "world": {
     "colonyPos": [0.22, 0.7],

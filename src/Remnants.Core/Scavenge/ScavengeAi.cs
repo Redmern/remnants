@@ -11,14 +11,13 @@ namespace Remnants.Core.Scavenge;
 /// focus (weakest / most exposed), and each unit first takes the best firing position (a shot at the focus, cover,
 /// flanking tiles that strip the focus's cover), then shoots, or lays down suppressing fire when the odds are poor.
 /// Badly hurt units fall back to cover while the squad holds. They use the fog: firing positions the focus's side would
-/// not detect them on score higher (an ambush gets the bonus), and a Linked that knows of nobody, or still has AP after
-/// closing in, waits hidden on overwatch. A jammed Linked is cut off and fights like a Husk.</item>
+/// not detect them on score higher (an ambush gets the bonus). A jammed Linked is cut off and fights like a Husk.</item>
 /// <item>Recruit: follow its leader.</item>
 /// </list>
-/// Everything happens live on the unit's sub-turn: it moves, then its blow is a telegraphed tile strike
-/// (<see cref="TileStrikes"/>) that pays its AP at once, ends the sub-turn and comes down when the sub-round ends: a stab /
-/// slash weapon aimed to cover the most hostiles, any other action at the target's tile; suppressing fire pins whoever
-/// stands on the tile then.
+/// Every unit produces a plan when the round opens, like a player: it thinks where its plan has taken it (the unit stands
+/// there only while it thinks) and queues moves and tile strikes (<see cref="TileStrikes"/>) from what it knows of where
+/// others stand, never their plans: a stab / slash weapon aimed to cover the most hostiles, any other action at the target's
+/// tile; suppressing fire pins whoever stands on the tile then.
 /// </summary>
 internal static class ScavengeAi
 {
@@ -27,8 +26,10 @@ internal static class ScavengeAi
 
     public static void TakeTurn(ScavengeSim sim, Unit unit)
     {
-        var (mp, ap) = (unit.Mp, unit.Ap);
+        var (pos, facing, moved, mp, ap) = (unit.Pos, unit.Facing, unit.Moved, unit.Mp, unit.Ap);
         Decide(sim, unit);
+        KeepStriking(sim, unit);
+        (unit.Pos, unit.Facing, unit.Moved) = (pos, facing, moved);
         Economy.Pay(sim, unit, mp - unit.Mp, ap - unit.Ap);
     }
 
@@ -46,8 +47,16 @@ internal static class ScavengeAi
     private static bool Strike(ScavengeSim sim, Unit unit, ActionProfile action, Unit target, bool suppress = false) =>
         TileStrikes.StrikeAt(sim, unit, action, target) is { } strike && TileStrikes.Declare(sim, unit, strike, suppress).Ok;
 
-    /// <summary>Whether the unit can still do something this sub-turn: up, with AP, not stunned or pinned since its turn began, and no tile strike readied yet.</summary>
-    private static bool Acting(ScavengeSim sim, Unit unit) => unit.IsActive && (unit.Ap > 0 || unit.Mp > 0) && !unit.Suppressed && !TileStrikes.Readied(sim.State, unit);
+    /// <summary>Whether the unit can still add to its plan: up, with points left, and no blow queued yet (moves come before blows).</summary>
+    private static bool Acting(ScavengeSim sim, Unit unit) => unit.IsActive && (unit.Ap > 0 || unit.Mp > 0) && !TileStrikes.Readied(sim.State, unit);
+
+    /// <summary>With AP left after its blow, the unit keeps at it: the same blow again, on the same tile.</summary>
+    private static void KeepStriking(ScavengeSim sim, Unit unit)
+    {
+        if (Plans.Of(sim.State, unit)?.Steps.LastOrDefault(s => s.Strike is { Suppress: false })?.Strike is not { } strike) return;
+        var again = new AttackTile(unit.PlayerId ?? 0, unit.Id, strike.Tile, strike.ActionId, strike.Mode, strike.Direction);
+        for (var guard = 0; guard < 8 && unit.Ap > 0 && TileStrikes.Declare(sim, unit, again).Ok; guard++) { }
+    }
 
     /// <summary>Husk behaviour (and a jammed Linked's): hunt the nearest hostile in sight, close in, attack.</summary>
     private static void Fight(ScavengeSim sim, Unit unit)
@@ -98,8 +107,7 @@ internal static class ScavengeAi
                     .OrderBy(u => u.Id).Select(u => u.Ai.LastKnown).FirstOrDefault();
                 if (last is { } goal && unit.Pos != goal && StepToward(sim, unit, goal)) continue;
                 foreach (var u in group.Units) (u.Ai.Mode, u.Ai.LastKnown) = (AiMode.Idle, null);
-                if (Patrol(sim, unit) || Lurk(sim, unit)) return;
-                Wander(sim, unit);
+                if (!Patrol(sim, unit)) Wander(sim, unit);
                 return;
             }
 
@@ -123,12 +131,7 @@ internal static class ScavengeAi
             if (Suppress(sim, unit, focus)) return;
             if (retreating || !StepToward(sim, unit, focus.Pos)) break;
         }
-        if (unit.IsActive && !retreating && !TileStrikes.Readied(sim.State, unit)) Lurk(sim, unit);
     }
-
-    /// <summary>A Linked with AP for a shot left at the end of its turn holds it on overwatch, toward what it last knew of (rules.fog.ai.linkedLurk).</summary>
-    private static bool Lurk(ScavengeSim sim, Unit unit) =>
-        sim.Data.Rules.Fog.Ai.LinkedLurk && !unit.Suppressed && Overwatches.OnArc(sim, unit, unit.PlayerId ?? 0) is CommitOverwatch watch && Overwatches.Commit(sim, unit, watch).Ok;
 
     /// <summary>Every unit in the group now hunts the focus; one that was idle and does not see it learns of it through the Network.</summary>
     private static void Share(ScavengeSim sim, NetworkGroup group, Unit focus)
@@ -165,6 +168,7 @@ internal static class ScavengeAi
     private static bool Suppress(ScavengeSim sim, Unit unit, Unit target)
     {
         if (target.Suppressed) return false;
+        if (unit.Ap <= 0) return false;
         var action = sim.Profile(unit).Actions
             .Where(a => a.Pattern != AttackPattern.Melee && Combat.ApCost(a, unit.Pos, target.Pos) <= unit.Ap && Drones.CanStrike(a, target)
                         && Combat.CheckReach(sim.Data, sim.State.Map, unit.Pos, a, target.Pos) == ScavengeError.None)
@@ -345,14 +349,13 @@ internal static class ScavengeAi
             if (!StepToward(sim, unit, leader.Pos)) return;
     }
 
+    /// <summary>Queues the move, and thinks on from where it ends.</summary>
     private static void MoveTo(ScavengeSim sim, Unit unit, Pos to, int mp)
     {
         var from = unit.Pos;
+        Plans.AddMove(sim, unit, to, mp);
         unit.Pos = to;
-        unit.Mp -= mp;
         unit.Moved = true;
         unit.Facing = Combat.Face(from, to);
-        sim.State.Log(new(sim.State.Round, ScavengeEventType.Moved, $"{unit.Name} moved {from} -> {to}.", unit.Id, Pos: to));
-        sim.Moved(unit, from);
     }
 }

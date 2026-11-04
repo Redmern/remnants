@@ -72,15 +72,13 @@ public sealed record CardScaling
 /// What a card does to the character it is played on, in the game's own terms: <see cref="Move"/> tiles more move range
 /// (this turn), <see cref="Hit"/> on its next attack, <see cref="Guard"/> tiers off the next
 /// hit it takes, <see cref="Cover"/> until its next turn, <see cref="Mend"/> off its worst injury (field mending),
-/// <see cref="Draw"/> cards for the squad, and <see cref="Counter"/>: a reaction blow at an enemy whose strike it reads,
-/// struck just before that strike comes down.
+/// and <see cref="Draw"/> cards for the squad.
 /// Abilities change the board instead (<see cref="CardAbilities"/>): <see cref="Push"/> / <see cref="Pull"/> the target
 /// that many tiles along the line from / to the player, <see cref="Swap"/> places with an ally, <see cref="Step"/> the
 /// player up to that many tiles to the target tile, <see cref="Spin"/> the target's back to the player,
-/// <see cref="GrantAp"/>, <see cref="AdvanceInitiative"/> / <see cref="DelayInitiative"/> the target within the
-/// current round, <see cref="PlaceBarrier"/> (cover on the tile for that many rounds), <see cref="Smoke"/> (sight-blocking
+/// <see cref="GrantAp"/>, <see cref="AdvanceInitiative"/> / <see cref="DelayInitiative"/> the target's priority this round, <see cref="PlaceBarrier"/> (cover on the tile for that many rounds), <see cref="Smoke"/> (sight-blocking
 /// smoke for that many rounds), <see cref="Strike"/> the target now with the player's best attack, and
-/// <see cref="Disrupt"/> the target's readied strike.
+/// <see cref="Disrupt"/> the target's next queued action, if it has not gone off yet.
 /// </summary>
 public sealed record CardEffect
 {
@@ -90,7 +88,6 @@ public sealed record CardEffect
     public double Cover { get; init; }
     public double Mend { get; init; }
     public int Draw { get; init; }
-    public bool Counter { get; init; }
     public int Push { get; init; }
     public int Pull { get; init; }
     public bool Swap { get; init; }
@@ -114,12 +111,12 @@ public sealed record CardEffect
     /// <summary>Whether it acts on a tile (a target tile is needed).</summary>
     public bool NeedsTile => Step > 0 || PlaceBarrier > 0 || Smoke > 0;
 
-    public bool IsEmpty => Move == 0 && Hit == 0 && Guard == 0 && Cover == 0 && Mend == 0 && Draw == 0 && !Counter && !IsAbility;
+    public bool IsEmpty => Move == 0 && Hit == 0 && Guard == 0 && Cover == 0 && Mend == 0 && Draw == 0 && !IsAbility;
 
     public CardEffect Plus(CardEffect? other) => other is null ? this : new()
     {
         Move = Move + other.Move, Hit = Hit + other.Hit, Guard = Guard + other.Guard, Cover = Cover + other.Cover,
-        Mend = Mend + other.Mend, Draw = Draw + other.Draw, Counter = Counter || other.Counter,
+        Mend = Mend + other.Mend, Draw = Draw + other.Draw,
         Push = Push + other.Push, Pull = Pull + other.Pull, Swap = Swap || other.Swap, Step = Step + other.Step, Spin = Spin || other.Spin,
         GrantAp = GrantAp + other.GrantAp, AdvanceInitiative = AdvanceInitiative || other.AdvanceInitiative,
         DelayInitiative = DelayInitiative || other.DelayInitiative, PlaceBarrier = PlaceBarrier + other.PlaceBarrier,
@@ -130,7 +127,7 @@ public sealed record CardEffect
     public CardEffect Scaled(double factor) => new()
     {
         Move = Math.Max(Move, (int)Math.Floor(Move * factor + 1e-9)), Hit = Hit * factor, Guard = Math.Max(Guard, (int)Math.Floor(Guard * factor + 1e-9)),
-        Cover = Cover * factor, Mend = Mend * factor, Draw = Draw, Counter = Counter,
+        Cover = Cover * factor, Mend = Mend * factor, Draw = Draw,
         // Abilities do not scale: a push is as far, a smoke as long, whoever plays it.
         Push = Push, Pull = Pull, Swap = Swap, Step = Step, Spin = Spin, GrantAp = GrantAp, AdvanceInitiative = AdvanceInitiative,
         DelayInitiative = DelayInitiative, PlaceBarrier = PlaceBarrier, Smoke = Smoke, Strike = Strike, Disrupt = Disrupt,
@@ -140,8 +137,7 @@ public sealed record CardEffect
 /// <summary>
 /// A tactical card (data/cards.json). <see cref="Cost"/> card points from the squad's round budget; <see cref="ApCost"/> AP
 /// of the character it is played on (most cost none); <see cref="BoostAp"/> more AP adds <see cref="Boost"/>.
-/// <see cref="Consumable"/>: gone for good once played (else it goes to the used pile). <see cref="Reaction"/>: played
-/// against a seen enemy's readied strike. <see cref="ArmLock"/>: not while the character's arms are badly hurt.
+/// <see cref="Consumable"/>: gone for good once played (else it goes to the used pile). <see cref="ArmLock"/>: not while the character's arms are badly hurt.
 /// An ability is aimed at its <see cref="Target"/> within <see cref="Range"/> tiles (0: any distance in sight); a
 /// smoke covers <see cref="Radius"/> tiles around its tile.
 /// </summary>
@@ -156,7 +152,6 @@ public sealed record CardDef
     public int ApCost { get; init; }
     public int BoostAp { get; init; }
     public bool Consumable { get; init; }
-    public bool Reaction { get; init; }
     public bool ArmLock { get; init; }
     public CardTarget Target { get; init; }
     public int Range { get; init; }
@@ -311,9 +306,7 @@ public sealed class CardCatalog
         if (e.NeedsUnit && !unit) throw new GameDataException($"Card '{c.Id}': its effect needs a unit target.");
         if (e.NeedsTile && c.Target != CardTarget.Tile) throw new GameDataException($"Card '{c.Id}': its effect needs a tile target.");
         if (e.Swap && c.Target != CardTarget.Ally) throw new GameDataException($"Card '{c.Id}': a swap is with an ally.");
-        if (c.Reaction && c.Target is not (CardTarget.Self or CardTarget.Enemy))
-            throw new GameDataException($"Card '{c.Id}': a reaction answers an enemy's strike.");
-        if (!e.IsAbility && c.Target is not CardTarget.Self && !c.Reaction)
+        if (!e.IsAbility && c.Target is not CardTarget.Self)
             throw new GameDataException($"Card '{c.Id}': a buff is played on the character itself.");
     }
 

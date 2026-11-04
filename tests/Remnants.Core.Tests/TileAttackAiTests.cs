@@ -8,7 +8,6 @@ public class TileAttackAiTests
 {
     private static ScavengeData Rounds(int n) => With(r => r with
     {
-        Turn = r.Turn with { SubRounds = n },
         Combat = r.Combat with { MinHitChance = 1, MaxHitChance = 1, Tiers = r.Combat.Tiers with { GrazeBelow = 0, SolidFrom = 1 } },
     });
 
@@ -23,28 +22,23 @@ public class TileAttackAiTests
         return (sim, far, blade, near);
     }
 
-    /// <summary>What P1's side sees the enemy's telegraphed blow cover.</summary>
-    private static List<Pos> Threatened(ScavengeSim sim, Unit enemy) =>
-        Assert.Single(TacticsView.Telegraphs(sim, Unit.PlayerSide(1)), t => t.UnitId == enemy.Id).Threatened;
+    /// <summary>What the AI has planned for the enemy's blow to cover.</summary>
+    private static List<Pos> Threatened(ScavengeSim sim, Unit enemy) => Strikes(sim).First(s => s.UnitId == enemy.Id).Tiles;
 
-    /// <summary>Ends P1's turns until the enemy's readied strike has come down.</summary>
+    /// <summary>The planned strike comes down.</summary>
     private static void UntilResolved(ScavengeSim sim, Unit enemy)
     {
-        var strike = Assert.Single(sim.State.Strikes, s => s.UnitId == enemy.Id);
-        for (var i = 0; i < 12 && sim.State.Strikes.Contains(strike); i++)
-            Assert.True(sim.Execute(new EndTurn(1, sim.State.CurrentUnitId!.Value, WholeTurn: true)).Ok);
-        Assert.DoesNotContain(strike, sim.State.Strikes);
+        Strikes(sim).First(s => s.UnitId == enemy.Id);
+        Settle(sim);
     }
 
     [Fact]
     public void An_enemy_with_a_patterned_weapon_telegraphs_a_slash_in_reach()
     {
         var (sim, far, blade, near) = Ambush();
-        Assert.True(sim.Execute(new EndTurn(1, far.Id)).Ok);
-
-        Assert.Equal(near.Id, sim.State.CurrentUnitId);
+        sim.Start();
         Assert.Equal(near.MaxHp, near.Hp);
-        Assert.Equal(Items.StrikeMode.Slash, Assert.Single(sim.State.Strikes, s => s.UnitId == blade.Id).Mode);
+        Assert.Equal(Items.StrikeMode.Slash, Strikes(sim).First(s => s.UnitId == blade.Id).Mode);
         Assert.Contains(near.Pos, Threatened(sim, blade));
     }
 
@@ -56,10 +50,10 @@ public class TileAttackAiTests
         var near = SurvivorUnit(1, new(6, 2), weapon: "pipe");
         var sim = Arena(10, 5, [far, husk, near], data: Rounds(1));
         husk.Ai.Mode = AiMode.Hunting;
-        Assert.True(sim.Execute(new EndTurn(1, far.Id)).Ok);
+        sim.Start();
 
         Assert.Equal(near.MaxHp, near.Hp);
-        Assert.Null(Assert.Single(sim.State.Strikes, s => s.UnitId == husk.Id).Mode);
+        Assert.Null(Strikes(sim).First(s => s.UnitId == husk.Id).Mode);
         Assert.Equal([near.Pos], Threatened(sim, husk));
         UntilResolved(sim, husk);
         Assert.True(near.Hp < near.MaxHp);
@@ -69,12 +63,12 @@ public class TileAttackAiTests
     public void The_enemy_slash_lands_on_whoever_stays_and_misses_who_steps_out_of_its_arc()
     {
         var (sim, far, blade, near) = Ambush();
-        Assert.True(sim.Execute(new EndTurn(1, far.Id)).Ok);
+        sim.Start();
         UntilResolved(sim, blade);
         Assert.True(near.Hp < near.MaxHp);
 
         var (sim2, far2, blade2, near2) = Ambush();
-        Assert.True(sim2.Execute(new EndTurn(1, far2.Id)).Ok);
+        sim2.Start();
         var covered = Threatened(sim2, blade2);
         var away = sim2.Reachable(near2).Keys.Where(p => !covered.Contains(p) && p.Chebyshev(blade2.Pos) > 1).OrderBy(p => p.X).ThenBy(p => p.Y).First();
         Assert.True(sim2.Execute(new Move(1, near2.Id, away)).Ok);
@@ -90,7 +84,7 @@ public class TileAttackAiTests
         {
             var a = SurvivorUnit(1, new(1, 2), weapon: "spear");
             var units = new List<Unit> { a, EnemyUnit("tally_blade", new(7, 2)), EnemyUnit("husk", new(8, 4)), EnemyUnit("tally_blade", new(8, 0)) };
-            var sim = Arena(10, 5, units, data: With(r => r with { Turn = r.Turn with { SubRounds = 2 } }), seed: 7);
+            var sim = Arena(10, 5, units, seed: 7);
             foreach (var u in units.Skip(1)) u.Ai.Mode = AiMode.Hunting;
             for (var i = 0; i < 20 && !sim.State.Finished && a.IsActive; i++)
             {
@@ -100,7 +94,7 @@ public class TileAttackAiTests
             return string.Join("\n", sim.State.Events.Select(e => e.Message));
         }
         var first = Play();
-        Assert.Contains("readies", first);
+        Assert.Contains("comes down", first);
         Assert.Equal(first, Play());
     }
 }

@@ -3,8 +3,8 @@ using Remnants.Core.Items;
 namespace Remnants.Core.Scavenge;
 
 /// <summary>
-/// A tile attack waiting for the end of its sub-round (<see cref="AttackTile"/>): who strikes, with what, from where, and
-/// the tiles it covers. <see cref="TargetId"/> (the hostile seen on a covered tile when it was declared) is the server's own.
+/// A planned tile attack (<see cref="AttackTile"/>): who strikes, with what, from where its plan ended, and the tiles it
+/// covers. Hidden from everyone but its side until it comes down.
 /// </summary>
 public sealed class TileStrike
 {
@@ -15,75 +15,53 @@ public sealed class TileStrike
     public Pos Tile { get; set; }
     public Pos Direction { get; set; }
     public List<Pos> Tiles { get; set; } = new();
-    public int? TargetId { get; set; }
-
-    /// <summary>A free counter (<see cref="TileStrikes.FreeCounter"/>): dodging it earns no counter back, so they never chain.</summary>
-    public bool Counter { get; set; }
 
     /// <summary>Suppressing fire (an AI's): it pins whoever stands on the tile when it comes down, with no damage roll.</summary>
     public bool Suppress { get; set; }
-
-    /// <summary>An AI's strike declared after the sub-round's last player turn: it sits out one sub-round end, so the player always gets a turn to answer it.</summary>
-    public bool Deferred { get; set; }
 }
 
 /// <summary>
-/// Tile-first attacks. A unit aims at a tile and a direction: a weapon with stab / slash patterns covers the tiles of its
-/// <see cref="StrikeMode"/> (<see cref="Combat.Covered"/>), any other action the one tile aimed at (in reach, as
-/// <see cref="Combat.CheckReach"/> says). The AP is paid when it is declared and the unit's sub-turn ends. When the
-/// sub-round ends the strikes come down in initiative order (an AI's declared with no hostile player left to act that
-/// sub-round waits for the next sub-round's end, the next round's first if none is left, <see cref="TileStrike.Deferred"/>): whoever hostile stands on a covered tile in the attacker's
-/// line of sight then is struck, each with its own roll, so a tile an enemy steps onto can be struck before it gets there.
-/// Nobody there is a miss; the one seen there when it was declared, if it stepped off, dodged it
-/// (<see cref="Unit.OutplayedId"/>). A strike whose attacker went down, left or was moved off its tile falls through;
-/// an AI's is also lost when it is pinned or stunned before it comes down (<see cref="Lose"/>). A plain hit does not stop it.
+/// Tile-first attacks. A unit aims at a tile and a direction from where its planned moves end: a weapon with stab / slash
+/// patterns covers the tiles of its <see cref="StrikeMode"/> (<see cref="Combat.Covered"/>), any other action the one tile
+/// aimed at (in reach, as <see cref="Combat.CheckReach"/> says). The AP is paid when it is queued. It comes down in the
+/// action phase, by priority: whoever hostile stands on a covered tile in the attacker's line of sight then is struck, each with
+/// its own roll. Nobody there is a miss. If the attacker is somewhere else by then (stopped short, pushed), the pattern
+/// keeps its shape and direction, re-anchored on the unit. A unit that is down or gone loses it (<see cref="Lose"/>).
 /// </summary>
 public static class TileStrikes
 {
     internal static ScavengeResult Declare(ScavengeSim sim, Unit unit, AttackTile c, bool suppress = false)
     {
         var state = sim.State;
+        var from = Plans.Anchor(state, unit);
         var action = sim.Profile(unit).Action(c.ActionId);
         if (action is null) return ScavengeResult.Fail(ScavengeError.UnknownAction, $"{unit.Name} cannot use '{c.ActionId}' now.");
-        if (Aim(sim, unit, action, c.Tile, c.Mode, c.Direction) is not { } aim)
+        if (Aim(sim, unit, action, c.Tile, c.Mode, c.Direction, from) is not { } aim)
             return c.Mode is { } m && action.Modes?.Contains(m) != true
                 ? ScavengeResult.Fail(ScavengeError.InvalidTarget, $"{action.Name} cannot {m.ToString().ToLowerInvariant()}.")
-                : ScavengeResult.Fail(ScavengeError.OutOfRange, $"{c.Tile} is not in reach of {action.Name} from {unit.Pos}.");
-        var free = FreeCounter(sim, unit, aim.Tiles);
-        var cost = Combat.ApCost(action, unit.Pos, c.Tile) - (free ? CounterWaiver(sim, unit) : 0);
-        cost = Math.Max(0, cost);
+                : ScavengeResult.Fail(ScavengeError.OutOfRange, $"{c.Tile} is not in reach of {action.Name} from {from}.");
+        var cost = Combat.ApCost(action, from, c.Tile);
         if (cost > unit.Ap) return ScavengeResult.Fail(ScavengeError.NotEnoughAp, $"{unit.Name} needs {cost} AP for {action.Name} (has {unit.Ap}).");
 
         unit.Ap -= cost;
-        unit.Facing = aim.Direction;
-        if (free && state.FindUnit(unit.FreeCounterId!.Value) is { } dodged)
+        Plans.For(state, unit).Steps.Add(new PlanStep
         {
-            unit.FreeCounterId = null;
-            state.Log(new(state.Round, ScavengeEventType.Countered, $"{unit.Name} turns {dodged.Name}'s miss against them: a free counter.",
-                unit.Id, dodged.Id, unit.Pos));
-        }
-        var seen = TargetsOn(state, unit, action, aim.Tiles).FirstOrDefault(t => Detection.SideSees(sim.Data, state, unit.Side, t));
-        state.Strikes.Add(new TileStrike
-        {
-            UnitId = unit.Id, ActionId = action.Id, Mode = aim.Mode, From = unit.Pos, Tile = c.Tile, Direction = aim.Direction,
-            Tiles = aim.Tiles, TargetId = seen?.Id, Counter = free, Suppress = suppress,
-            Deferred = sim.DefersStrike(unit),
+            Kind = PlanStepKind.Strike,
+            Strike = new TileStrike { UnitId = unit.Id, ActionId = action.Id, Mode = aim.Mode, From = from, Tile = c.Tile, Direction = aim.Direction, Tiles = aim.Tiles, Suppress = suppress },
         });
         var how = aim.Mode is { } mode ? $"a {mode.ToString().ToLowerInvariant()}" : "an attack";
-        state.Log(new(state.Round, ScavengeEventType.IntentDeclared, $"{unit.Name} readies {how} ({action.Name}).", unit.Id, Pos: unit.Pos));
-        Overwatches.StruckInto(sim, unit, aim.Tiles);
-        return ScavengeResult.Success($"{unit.Name} readies {how} at {c.Tile}.");
+        return ScavengeResult.Success($"{unit.Name} plans {how} at {c.Tile}.");
     }
 
     /// <summary>
-    /// Where a strike aimed at <paramref name="tile"/> would come down from <paramref name="from"/> (default: where the unit
-    /// stands): the mode (the action's first if none is given; null for an action without patterns), the direction (default:
+    /// Where a strike aimed at <paramref name="tile"/> would come down from <paramref name="from"/> (default: where the unit's
+    /// plan ends): the mode (the action's first if none is given; null for an action without patterns), the direction (default:
     /// the step toward the tile) and the covered tiles, which must include the tile. Null when that cannot be aimed.
     /// </summary>
     public static (StrikeMode? Mode, Pos Direction, List<Pos> Tiles)? Aim(ScavengeSim sim, Unit unit, ActionProfile action, Pos tile,
         StrikeMode? mode = null, Pos? direction = null, Pos? from = null)
     {
-        var at = from ?? unit.Pos;
+        var at = from ?? Plans.Anchor(sim.State, unit);
         var map = sim.State.Map;
         var dir = direction ?? Combat.Face(at, tile);
         if (dir == default || Math.Abs(dir.X) > 1 || Math.Abs(dir.Y) > 1) return null;
@@ -97,29 +75,16 @@ public static class TileStrikes
         return tiles.Contains(tile) ? (m, dir, tiles) : null;
     }
 
-    /// <summary>
-    /// Whether a tile strike of the unit's over <paramref name="tiles"/> is its free counter: it dodged a telegraphed blow of
-    /// a hostile still standing on one of them in its side's sight (<see cref="Unit.FreeCounterId"/>, good through the round
-    /// after the dodge; a strike at a tile in the fog never comes back free, so the cost gives nothing away). The unit must
-    /// have AP to act at all: the counter waives <see cref="CounterWaiver"/> of the strike's cost, never more.
-    /// </summary>
-    public static bool FreeCounter(ScavengeSim sim, Unit unit, IReadOnlyCollection<Pos> tiles) =>
-        unit.FreeCounterId is { } id && unit.Ap > 0 && sim.State.Round <= unit.OutplayedUntilRound
-        && sim.State.FindUnit(id) is { IsActive: true, OnMap: true } attacker && unit.HostileTo(attacker) && tiles.Contains(attacker.Pos)
-        && Detection.SideSees(sim.Data, sim.State, unit.Side, attacker);
+    /// <summary>Whether the unit has a tile strike planned.</summary>
+    public static bool Readied(ScavengeState state, Unit unit) => Plans.Of(state, unit)?.Steps.Any(s => s.Kind == PlanStepKind.Strike) == true;
 
-    /// <summary>The AP a free counter takes off a strike: the unit's cheapest attack's base cost (a dear attack pays the rest).</summary>
-    public static int CounterWaiver(ScavengeSim sim, Unit unit) =>
-        sim.Profile(unit).Actions.Select(a => a.ApCost).DefaultIfEmpty(0).Min();
-
-    /// <summary>Whether the unit has a tile strike waiting for this sub-round's end.</summary>
-    public static bool Readied(ScavengeState state, Unit unit) => state.Strikes.Any(s => s.UnitId == unit.Id);
-
-    /// <summary>The unit's readied strike is off, saying why. Its AP stays spent.</summary>
+    /// <summary>The unit's queued actions are off, saying why. What they paid stays spent.</summary>
     internal static void Lose(ScavengeSim sim, Unit unit, string why)
     {
-        if (sim.State.Strikes.RemoveAll(s => s.UnitId == unit.Id) == 0) return;
-        sim.State.Log(new(sim.State.Round, ScavengeEventType.IntentCanceled, $"{unit.Name}'s strike is off: {why}.", unit.Id, Pos: unit.Pos));
+        if (Plans.Of(sim.State, unit) is not { } plan || !plan.Steps.Exists(s => s.Kind != PlanStepKind.Move)) return;
+        foreach (var card in plan.Steps.Where(s => s.Kind == PlanStepKind.Card)) CardPlay.Lost(sim, unit, card);
+        plan.Steps.RemoveAll(s => s.Kind != PlanStepKind.Move);
+        sim.State.Log(new(sim.State.Round, ScavengeEventType.IntentCanceled, $"{unit.Name}'s plan is off: {why}.", unit.Id, Pos: unit.Pos));
     }
 
     /// <summary>
@@ -129,13 +94,14 @@ public static class TileStrikes
     public static (StrikeMode? Mode, Pos Direction)? BestAim(ScavengeSim sim, Unit unit, ActionProfile action, Unit target)
     {
         var state = sim.State;
+        var from = Plans.Anchor(state, unit);
         var best = ((StrikeMode? Mode, Pos Direction)?)null;
         var bestScore = 0;
         foreach (var mode in action.Modes ?? [])
             foreach (var dir in Pos.Neighbours8)
             {
                 if (Aim(sim, unit, action, target.Pos, mode, dir) is not { } aim) continue;
-                var tiles = aim.Tiles.Where(p => Combat.Clear(sim.Data, state.Map, unit.Pos, p)).ToList();
+                var tiles = aim.Tiles.Where(p => Combat.Clear(sim.Data, state.Map, from, p)).ToList();
                 if (!tiles.Contains(target.Pos)) continue;
                 var score = TargetsOn(state, unit, action, tiles).Count(t => unit.HostileTo(t) && Detection.SideSees(sim.Data, state, unit.Side, t));
                 if (score <= bestScore) continue;
@@ -156,52 +122,29 @@ public static class TileStrikes
         return BestAim(sim, unit, action, target) is { } aim ? new AttackTile(pid, unit.Id, target.Pos, action.Id, aim.Mode, aim.Direction) : null;
     }
 
-    /// <summary>Every tile a unit could strike now with <paramref name="action"/> in <paramref name="mode"/>, any direction.</summary>
+    /// <summary>Every tile a unit could strike from where its plan ends with <paramref name="action"/> in <paramref name="mode"/>, any direction.</summary>
     public static HashSet<Pos> Reach(ScavengeSim sim, Unit unit, ActionProfile action, StrikeMode? mode = null)
     {
-        if (!action.Patterned) return Combat.Hittable(sim.Data, sim.State.Map, action, unit.Pos, unit.Facing).ToHashSet();
+        var from = Plans.Anchor(sim.State, unit);
+        if (!action.Patterned) return Combat.Hittable(sim.Data, sim.State.Map, action, from, unit.Facing).ToHashSet();
         var m = mode ?? action.Modes![0];
-        return Pos.Neighbours8.SelectMany(d => Combat.Covered(sim.State.Map, action, m, unit.Pos, d)).ToHashSet();
+        return Pos.Neighbours8.SelectMany(d => Combat.Covered(sim.State.Map, action, m, from, d)).ToHashSet();
     }
 
-    /// <summary>
-    /// Strikes everything due at this sub-round's end, in initiative order; a deferred strike stays for the next. A strike lost to one that
-    /// came down before it (or to a counter card played against it) never lands.
-    /// </summary>
-    internal static void ResolveAll(ScavengeSim sim)
+    /// <summary>The strike comes up: re-anchored on the unit, it comes down on whoever is there now.</summary>
+    internal static void Resolve(ScavengeSim sim, Unit unit, TileStrike strike)
     {
         var state = sim.State;
-        if (state.Strikes.Count == 0) return;
-        var order = state.TurnOrder.Select((id, i) => (id, i)).ToDictionary(t => t.id, t => t.i);
-        var strikes = state.Strikes.Select((s, i) => (s, i))
-            .OrderBy(t => order.GetValueOrDefault(t.s.UnitId, int.MaxValue)).ThenBy(t => t.i).Select(t => t.s).ToList();
-        foreach (var strike in strikes)
-        {
-            if (strike.Deferred)
-            {
-                strike.Deferred = false;
-                continue;
-            }
-            if (state.FindUnit(strike.UnitId) is { } unit && state.Strikes.Contains(strike)) CardPlay.Counters(sim, unit);
-            if (state.Strikes.Remove(strike)) Resolve(sim, strike);
-        }
-    }
-
-    private static void Resolve(ScavengeSim sim, TileStrike strike)
-    {
-        var state = sim.State;
-        if (state.FindUnit(strike.UnitId) is not { IsActive: true, OnMap: true } unit) return;
         void Fizzle(string why) =>
             state.Log(new(state.Round, ScavengeEventType.IntentFizzled, $"{unit.Name}'s strike falls through: {why}.", unit.Id, Pos: unit.Pos));
-        if (unit.Pos != strike.From) { Fizzle("moved off their tile"); return; }
         if (sim.Profile(unit).Action(strike.ActionId) is not { } action) { Fizzle($"can no longer use {strike.ActionId}"); return; }
 
-        var targets = strike.Suppress ? Pin(sim, unit, action, strike) : Strike(sim, unit, action, strike.Tiles, strike.Tile, strike.Direction);
+        var shift = unit.Pos - strike.From;
+        var tiles = strike.Tiles.Select(p => p + shift).Where(state.Map.InBounds).ToList();
+        var at = new TileStrike { Tiles = tiles, Tile = strike.Tile + shift, Direction = strike.Direction };
+        var targets = strike.Suppress ? Pin(sim, unit, action, at) : Strike(sim, unit, action, tiles, at.Tile, strike.Direction);
         if (targets.Count == 0) Fizzle($"{action.Name} hits nothing");
         else state.Log(new(state.Round, ScavengeEventType.IntentResolved, $"{unit.Name}'s {action.Name} comes down.", unit.Id, Pos: unit.Pos));
-        if (strike.TargetId is { } aimed && targets.All(t => t.Id != aimed) && state.FindUnit(aimed) is { IsActive: true } dodger
-            && !strike.Tiles.Contains(dodger.Pos))
-            Combat.Dodged(sim, dodger, unit, counter: !strike.Counter);
     }
 
     /// <summary>Suppressing fire comes down: it pins the first one on the tiles in sight of the unit; with nobody there it only makes its noise.</summary>
@@ -221,13 +164,13 @@ public static class TileStrikes
     /// <summary>
     /// The blow itself, AP already paid: the unit faces <paramref name="direction"/> and strikes every hostile on the
     /// <paramref name="tiles"/> in its line of sight (plus an area action's splash around <paramref name="tile"/>); with
-    /// nobody there it only makes its noise. An overwatch shot is a <paramref name="reaction"/>. Returns who was struck.
+    /// nobody there it only makes its noise. Returns who was struck.
     /// </summary>
-    internal static List<Unit> Strike(ScavengeSim sim, Unit unit, ActionProfile action, List<Pos> tiles, Pos tile, Pos direction, bool reaction = false)
+    internal static List<Unit> Strike(ScavengeSim sim, Unit unit, ActionProfile action, List<Pos> tiles, Pos tile, Pos direction)
     {
         var state = sim.State;
         var clear = tiles.Where(p => Combat.Clear(sim.Data, state.Map, unit.Pos, p)).ToList();
-        var targets = TargetsOn(state, unit, action, clear, friendlyFire: reaction || unit.PlayerControlled).ToList();
+        var targets = TargetsOn(state, unit, action, clear).ToList();
         unit.Facing = direction;
         if (targets.Count == 0)
         {
@@ -235,17 +178,13 @@ public static class TileStrikes
             return targets;
         }
         targets.AddRange(Combat.Splash(sim, unit, action, tile, targets));
-        Combat.Hit(sim, unit, action, targets, reaction);
+        Combat.Hit(sim, unit, action, targets);
         return targets;
     }
 
-    /// <summary>
-    /// The conscious hostiles on <paramref name="tiles"/> the action can strike, tile by tile, then by id; and, with
-    /// <paramref name="friendlyFire"/> (a player's strike, any overwatch shot; default by who strikes), anyone a card shoved
-    /// there (<see cref="Unit.Displaced"/>), whoever's side. An AI's strike only ever hits hostiles.
-    /// </summary>
-    private static IEnumerable<Unit> TargetsOn(ScavengeState state, Unit attacker, ActionProfile action, List<Pos> tiles, bool? friendlyFire = null) =>
-        state.Units.Where(u => u.IsActive && u.OnMap && u.CarriedById is null && (attacker.HostileTo(u) || (friendlyFire ?? attacker.PlayerControlled) && u.Displaced && u.Id != attacker.Id)
+    /// <summary>The conscious hostiles on <paramref name="tiles"/> the action can strike, tile by tile, then by id.</summary>
+    private static IEnumerable<Unit> TargetsOn(ScavengeState state, Unit attacker, ActionProfile action, List<Pos> tiles) =>
+        state.Units.Where(u => u.IsActive && u.OnMap && u.CarriedById is null && attacker.HostileTo(u)
                                && tiles.Contains(u.Pos) && Drones.CanStrike(action, u))
             .OrderBy(u => tiles.IndexOf(u.Pos)).ThenBy(u => u.Id);
 }

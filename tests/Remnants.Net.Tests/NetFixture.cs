@@ -179,14 +179,10 @@ public sealed class NetFixture
                     FogViolations.Add($"{player.Name} was sent a reveal of unit {r.UnitId} for {r.Side}.");
                 foreach (var u in s.View.Units.Where(u => u.Side != side && u.Ai.TargetId is not null))
                     FogViolations.Add($"{player.Name} was sent {u.Name}'s AI memory.");
-                foreach (var u in s.View.Units.Where(u => u.PlayerId != me && u.OutplayedId is not null))
-                    FogViolations.Add($"{player.Name} was sent {u.Name}'s dodge.");
-                foreach (var x in s.View.Strikes.Where(x => !shown.Contains(x.UnitId)))
-                    FogViolations.Add($"{player.Name} was sent the readied strike of unit {x.UnitId}, whom they do not see.");
-                foreach (var x in s.View.Strikes.Where(x => x.TargetId is not null && s.View.FindUnit(x.UnitId)?.PlayerId != me))
-                    FogViolations.Add($"{player.Name} was sent the target of unit {x.UnitId}'s readied strike.");
-                foreach (var u in s.View.Units.Where(u => u.PlayerId != me && (u.SlotCards.Count > 0 || u.SlotSpent.Count > 0 || u.CounterId is not null)))
-                    FogViolations.Add($"{player.Name} was sent {u.Name}'s slot cards or counter.");
+                foreach (var p in s.View.Plans.Where(p => !shown.Contains(p.UnitId) || (s.View.FindUnit(p.UnitId)?.Side != side && p.Steps.Count > 0)))
+                    FogViolations.Add($"{player.Name} was sent the plan of unit {p.UnitId}.");
+                foreach (var u in s.View.Units.Where(u => u.PlayerId != me && (u.SlotCards.Count > 0 || u.SlotSpent.Count > 0)))
+                    FogViolations.Add($"{player.Name} was sent {u.Name}'s slot cards.");
                 foreach (var u in s.View.Units.Where(u => u.PlayerId != me && (u.CardHit != 0 || u.Guard != 0 || u.CardCover != 0 || u.CardMove != 0)))
                     FogViolations.Add($"{player.Name} was sent {u.Name}'s card buffs.");
                 foreach (var d in s.View.Decks.Where(d => d.PlayerId != me && (!d.Hidden || d.Hand.Count + d.DrawPile.Count + d.Used.Count + d.Consumed.Count > 0)))

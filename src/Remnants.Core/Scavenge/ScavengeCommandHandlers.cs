@@ -5,7 +5,7 @@ namespace Remnants.Core.Scavenge;
 
 internal static class ScavengeCommandHandlers
 {
-    /// <summary>Checks shared by every command: instance running, unit exists, belongs to the player, and it is its turn.</summary>
+    /// <summary>Checks shared by every command: instance running, unit exists, belongs to the player, and it can act.</summary>
     public static ScavengeResult? Validate(ScavengeSim sim, IScavengeCommand c, out Unit? unit)
     {
         unit = null;
@@ -15,29 +15,17 @@ internal static class ScavengeCommandHandlers
         if (unit.PlayerId != c.PlayerId || !unit.PlayerControlled)
             return ScavengeResult.Fail(ScavengeError.NotYourUnit, $"{unit.Name} does not take orders from player {c.PlayerId}.");
         if (!unit.IsActive) return ScavengeResult.Fail(ScavengeError.Incapacitated, $"{unit.Name} cannot act ({unit.Status}).");
-        // Cards may be played on any of the player's units during one of their turns (CardPlay then holds all but
-        // reactions to the unit whose turn it is).
-        var cardOnOwnTurn = c is PlayCard or DiscardDeadCard && sim.State.CurrentUnit?.PlayerId == c.PlayerId;
-        if (sim.State.CurrentUnitId != unit.Id && !cardOnOwnTurn) return ScavengeResult.Fail(ScavengeError.NotYourTurn, $"It is not {unit.Name}'s turn.");
         return null;
     }
 
+    /// <summary>Queues a move from where the plan ends: its MP is paid now, it is walked in the movement phase.</summary>
     public static ScavengeResult Move(ScavengeSim sim, Unit unit, Move c)
     {
         if (!sim.Reachable(unit).TryGetValue(c.To, out var cost))
             return ScavengeResult.Fail(ScavengeError.Unreachable, $"{unit.Name} cannot reach {c.To} in one move.");
         if (cost > unit.Mp) return ScavengeResult.Fail(ScavengeError.NotEnoughMp, $"{unit.Name} needs {cost} MP (has {unit.Mp}).");
-
-        var from = unit.Pos;
-        unit.Pos = c.To;
-        unit.Mp -= cost;
-        unit.Moved = true;
-        unit.Facing = Combat.Face(from, c.To);
-        // The carried unit moves along before anything reacts to the move.
-        if (unit.CarryingId is { } carried && sim.State.FindUnit(carried) is { } load) load.Pos = c.To;
-        sim.State.Log(new(sim.State.Round, ScavengeEventType.Moved, $"{unit.Name} moved {from} -> {c.To}.", unit.Id, Pos: c.To));
-        sim.Moved(unit, from);
-        return ScavengeResult.Success($"{unit.Name} moved to {c.To}.");
+        Plans.AddMove(sim, unit, c.To, cost);
+        return ScavengeResult.Success($"{unit.Name} will move to {c.To}.");
     }
 
     public static ScavengeResult UseItem(ScavengeSim sim, Unit unit, UseItem c)
@@ -128,19 +116,6 @@ internal static class ScavengeCommandHandlers
                                                      && u.Pos.Chebyshev(at) <= sensor.Radius).OrderBy(u => u.Id).ToList())
                 sim.Trip(sensor, u);
         }
-    }
-
-    /// <summary>Brace: pays the AP and ends the turn (see <see cref="ScavengeSim"/>). Overwatch has its own command.</summary>
-    public static ScavengeResult SetStance(ScavengeSim sim, Unit unit, SetStance c)
-    {
-        if (c.Stance == Stance.Overwatch) return ScavengeResult.Fail(ScavengeError.InvalidStance, "Overwatch needs a tile or an arc to watch.");
-        if (c.Stance != Stance.Brace) return ScavengeResult.Fail(ScavengeError.InvalidStance, $"'{c.Stance}' is not a stance a unit can take.");
-        var cost = sim.Data.Rules.Fog.Brace.ApCost;
-        if (cost > unit.Ap) return NotEnoughAp(unit, cost);
-        unit.Ap = 0;
-        unit.Stance = Stance.Brace;
-        sim.State.Log(new(sim.State.Round, ScavengeEventType.Braced, $"{unit.Name} braces for an ambush.", unit.Id, Pos: unit.Pos));
-        return ScavengeResult.Success($"{unit.Name} braces.");
     }
 
     public static ScavengeResult Lookout(ScavengeSim sim, Unit unit, Lookout c)

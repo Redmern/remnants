@@ -35,7 +35,7 @@ public enum ScavengeEventType
     RoundStarted, Moved, Attacked, Missed, Injured, LimbLost, Downed, Died, BledOut,
     Stabilized, Revived, Healed, Fractured, Treated, Crashed, Evacuated, Extracted, PickedUp, Recruited, Spotted, PartyDone, Finished,
     Suppressed, Flanked, Retreated, Reinforced,
-    Ambushed, Overwatch, Braced, Lookout, Revealed, FlareLit, SensorPlaced, SensorTripped,
+    Ambushed, Lookout, Revealed, FlareLit, SensorPlaced, SensorTripped,
     AllianceProposed, AllianceAccepted, AllianceDeclined, AllianceBreakWarning, AllianceBroken,
     Pinged, ItemGiven, PickedUpBody, PutDown,
     HackProgress, Hacked, HackFailed, Alarm, Overridden, OverrideEnded, DeviceDisabled,
@@ -52,8 +52,10 @@ public enum ScavengeEventType
     DeckShuffled, CardPlayed, CardDiscarded, CardFound, Countered,
     /// <summary>A card moved a unit by force (push, pull, swap).</summary>
     Displaced,
-    /// <summary>A card changed a unit's place in the round's turn order.</summary>
+    /// <summary>A card changed a unit's priority for the round.</summary>
     InitiativeChanged,
+    /// <summary>Hostiles on the same priority: their actions resolved together at reduced effect.</summary>
+    Clashed,
     /// <summary>A card put a barrier or smoke on the map.</summary>
     FieldEffectPlaced,
     /// <summary>A unit used the recover action.</summary>
@@ -187,18 +189,11 @@ public sealed class ScavengeState
     public ulong RngState { get; set; }
     public int Round { get; set; }
 
-    /// <summary>Unit ids in initiative order for the current round.</summary>
-    public List<int> TurnOrder { get; set; } = new();
-    public int TurnIndex { get; set; }
+    /// <summary>The units' plans for the round (<see cref="Scavenge.Plans"/>): gone when the round has resolved.</summary>
+    public List<UnitPlan> Plans { get; set; } = new();
 
-    /// <summary>Which of the round's sub-rounds is being played, from 1 (<see cref="TurnRules.SubRounds"/>).</summary>
-    public int SubRound { get; set; } = 1;
-
-    /// <summary>Sub-turns begun so far in the run (<see cref="Unit.TurnSeq"/>): orders "has it had a turn since".</summary>
-    public int TurnSeq { get; set; }
-
-    /// <summary>Tile attacks declared this sub-round, in declaration order; they strike at its end (<see cref="TileStrikes"/>).</summary>
-    public List<TileStrike> Strikes { get; set; } = new();
+    /// <summary>The round the AI units last planned for.</summary>
+    public int AiPlannedRound { get; set; }
     public bool Finished { get; set; }
 
     public int NextUnitId { get; set; } = 1;
@@ -295,7 +290,8 @@ public sealed class ScavengeState
     /// <summary>Whether two players are on one team right now.</summary>
     public bool Allied(int a, int b) => a != b && FindParty(a) is { } pa && FindParty(b) is { } pb && pa.Side == pb.Side;
 
-    public int? CurrentUnitId => !Finished && TurnIndex < TurnOrder.Count ? TurnOrder[TurnIndex] : null;
+    /// <summary>The first unit a player still has to commit a plan for; null once none is left.</summary>
+    public int? CurrentUnitId => Finished ? null : Units.Find(u => u.IsActive && u.PlayerControlled && !Plans.Exists(p => p.UnitId == u.Id && p.Committed))?.Id;
 
     public Unit? CurrentUnit => CurrentUnitId is { } id ? FindUnit(id) : null;
 

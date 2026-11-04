@@ -98,8 +98,6 @@ public class FogTests
         // A tile holding a hidden unit and an empty one answer alike: the strike is readied blind, aimed at nobody.
         Assert.True(hidden.Ok, hidden.Message);
         Assert.Equal((empty.Ok, empty.Error, empty.Message, empty.EntityId), (hidden.Ok, hidden.Error, hidden.Message, hidden.EntityId));
-        Assert.Equal(emptySim.State.Events.Single(e => e.Type == ScavengeEventType.IntentDeclared).Message,
-            sim.State.Events.Single(e => e.Type == ScavengeEventType.IntentDeclared && e.UnitId == 1).Message);
     }
 
     [Fact]
@@ -161,33 +159,6 @@ public class FogTests
     }
 
     [Fact]
-    public void Bracing_removes_the_ambush_bonus_adds_cover_and_costs_ap_next_turn()
-    {
-        var u = SurvivorUnit(pos: new(1, 4), attributes: 20);
-        var linked = EnemyUnit("linked", new(8, 4));
-        // A later ally keeps the blow due this sub-round, while the stance still holds.
-        var ally = SurvivorUnit(pos: new(9, 7), attributes: 20);
-        var sim = Arena(11, 9, [u, linked, ally], Corridor);
-        var burst = sim.Profile(linked).Action("burst")!;
-        var open = Combat.HitChance(sim.Data, sim.State.Map, linked.Pos, burst, u.Pos, sim.Profile(u));
-
-        Assert.True(sim.Execute(new SetStance(1, u.Id, Stance.Brace)).Ok);
-        Assert.True(sim.Execute(new EndTurn(1, ally.Id)).Ok);
-        // The Linked fired during its turn; braced, the ambush gained nothing.
-        var ambush = Combat.AmbushAgainst(sim.Data, sim.State, linked, u);
-        Assert.True(ambush is null || ambush.Braced || u.Stance == Stance.None);
-        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Ambushed && e.Message.Contains("braced"));
-
-        Assert.Equal(u.Id, sim.State.CurrentUnitId); // a new round, back to the survivor
-        Assert.Equal(Stance.None, u.Stance);
-        Assert.Equal(sim.Profile(u).MaxAp - sim.Data.Rules.Fog.Brace.NextTurnApPenalty, u.Ap);
-
-        u.Stance = Stance.Brace;
-        var braced = Combat.ChanceToHit(sim, linked, burst, u);
-        Assert.Equal(Math.Max(sim.Data.Rules.Combat.MinHitChance, open - sim.Data.Rules.Fog.Brace.CoverBonus), braced, 6);
-    }
-
-    [Fact]
     public void An_ally_next_to_the_target_halves_the_ambush_bonus()
     {
         var u = SurvivorUnit(pos: new(1, 4), attributes: 20);
@@ -238,11 +209,11 @@ public class FogTests
         Assert.True(sim.Execute(new UseItem(1, a.Id, "motion_sensor", At: new(1, 0))).Ok);
         Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
         b.Mp = 9;
-        Assert.True(sim.Execute(new Move(2, b.Id, new(7, 0))).Ok);
+        Assert.True(Now(sim, new Move(2, b.Id, new(7, 0))).Ok);
         Assert.False(Detection.SideSees(sim.Data, sim.State, P1, b), "a camo cloak hides it out here");
-        Assert.True(sim.Execute(new Move(2, b.Id, new(5, 0))).Ok);
+        Assert.True(Now(sim, new Move(2, b.Id, new(5, 0))).Ok);
         Assert.False(Detection.IsRevealed(sim.State, b.Id, P1));
-        Assert.True(sim.Execute(new Move(2, b.Id, new(4, 0))).Ok);
+        Assert.True(Now(sim, new Move(2, b.Id, new(4, 0))).Ok);
 
         Assert.True(Detection.IsRevealed(sim.State, b.Id, P1));
         Assert.True(Detection.SideSees(sim.Data, sim.State, P1, b));
@@ -297,36 +268,6 @@ public class FogTests
         Assert.Empty(sim.State.Contacts);
     }
 
-    [Fact]
-    public void A_linked_that_knows_of_nobody_waits_hidden_on_overwatch_and_fires_on_whoever_walks_in()
-    {
-        var u = SurvivorUnit(pos: new(1, 1));
-        var linked = EnemyUnit("linked", new(9, 7));
-        // Two sub-rounds: its watch, taken last in the first, still holds when the survivor walks in during the second.
-        var sim = Arena(11, 9, [u, linked], data: With(r => r with { Turn = r.Turn with { SubRounds = 2 } }), rows: [
-            "...........",
-            "...........",
-            "...........",
-            "...........",
-            "#######.###",
-            "...........",
-            "...........",
-            "...........",
-            "...........",
-        ]);
-
-        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
-        Assert.Equal(Stance.Overwatch, linked.Stance);
-        Assert.Equal(new Pos(9, 7), linked.Pos);
-
-        u.Mp = 9;
-        Assert.True(sim.Execute(new Move(1, u.Id, new(3, 3))).Ok);
-        Assert.True(sim.Execute(new Move(1, u.Id, new(5, 3))).Ok);
-        Assert.True(sim.Execute(new Move(1, u.Id, new(7, 4))).Ok);
-        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Overwatch && e.UnitId == linked.Id && e.TargetId == u.Id);
-        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Ambushed && e.UnitId == linked.Id);
-    }
-
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -340,7 +281,7 @@ public class FogTests
         Assert.True(Detection.Spots(sim.Data, sim.State, drone, u));
 
         ScavengeAi.TakeTurn(sim, linked);
-        Assert.Equal(!jammer, sim.State.Strikes.Any(s => s.UnitId == linked.Id && s.Tile == u.Pos)); // spotted through the drone: the shot is telegraphed
+        Assert.Equal(!jammer, Strikes(sim).Any(s => s.UnitId == linked.Id && s.Tile == u.Pos)); // spotted through the drone: the shot is telegraphed
         Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
 
         if (jammer) Assert.False(Shot(sim, linked, u));

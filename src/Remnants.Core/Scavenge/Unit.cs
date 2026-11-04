@@ -24,16 +24,6 @@ public enum UnitStatus
 
 public enum AiMode { Idle, Hunting }
 
-/// <summary>A defensive stance held from the end of a unit's turn until its next turn starts.</summary>
-public enum Stance
-{
-    None,
-    /// <summary>Watching a tile or an arc for the round, its AP held for shots (<see cref="Overwatches"/>).</summary>
-    Overwatch,
-    /// <summary>Hunkered down: no ambush bonus against it, extra cover, fewer AP next turn.</summary>
-    Brace,
-}
-
 /// <summary>What an AI-controlled unit remembers between turns.</summary>
 public sealed class AiMemory
 {
@@ -83,6 +73,9 @@ public sealed class Unit
 
     /// <summary>Stamina spent of the profile's maximum (<see cref="Economy"/>): 0 is fresh.</summary>
     public int Fatigue { get; set; }
+
+    /// <summary>What cards added to (or took off) its resolve priority this round (<see cref="Priority"/>).</summary>
+    public double PriorityBonus { get; set; }
     public UnitStatus Status { get; set; }
     public bool CanBeDowned { get; set; } = true;
 
@@ -111,39 +104,6 @@ public sealed class Unit
     /// <summary>The direction it last moved or attacked in (sign per axis; a weapon light points there). Null until then.</summary>
     public Pos? Facing { get; set; }
 
-    /// <summary>Brace holds until this unit's next turn starts, overwatch until the round ends.</summary>
-    public Stance Stance { get; set; }
-
-    /// <summary>The round in which the unit ended its whole turn (<see cref="EndTurn.WholeTurn"/>): it sits out that round's later sub-rounds.</summary>
-    public int TurnOverRound { get; set; }
-
-    /// <summary>
-    /// The unit whose telegraphed attack this one dodged: its next attack on that unit gets the ambush hit bonus
-    /// (<see cref="Combat.OutplayBonus"/>), then this clears. Good through <see cref="OutplayedUntilRound"/> (the round
-    /// after the dodge, so the dodger always gets its next turn to use it).
-    /// </summary>
-    public int? OutplayedId { get; set; }
-
-    public int OutplayedUntilRound { get; set; }
-
-    /// <summary>
-    /// The attacker whose telegraphed blow this one dodged, while its free counter is unspent: its next tile strike that
-    /// covers that unit costs no AP (<see cref="TileStrikes.FreeCounter"/>). Lapses with <see cref="OutplayedId"/>.
-    /// </summary>
-    public int? FreeCounterId { get; set; }
-
-    /// <summary>
-    /// A telegraphed blow of this unit's was dodged: through this round the next hit on it lands harder
-    /// (<see cref="Combat.Exposed"/>, <see cref="OutplayRules.ExposedDamage"/>), and that hit clears it. 0: not exposed.
-    /// </summary>
-    public int ExposedUntilRound { get; set; }
-
-    /// <summary>The side that dodged it: only that side's hits cash the exposure in (<see cref="Combat.ExposedTo"/>).</summary>
-    public string? ExposedToSide { get; set; }
-
-    /// <summary>The <see cref="ScavengeState.TurnSeq"/> its latest sub-turn began at.</summary>
-    public int TurnSeq { get; set; }
-
     /// <summary>Personal card slots: cards this character always has to hand (not shuffled), paid from the squad's points.</summary>
     public List<string> SlotCards { get; set; } = new();
 
@@ -164,21 +124,6 @@ public sealed class Unit
 
     /// <summary>Cover cards added until this unit's next turn.</summary>
     public double CardCover { get; set; }
-
-    /// <summary>The enemy this unit will strike first when its readied strike comes down (a counter card), until its own next turn.</summary>
-    public int? CounterId { get; set; }
-
-    /// <summary>
-    /// Moved by force (a card's push, pull or swap) since its last sub-turn began: a declared strike on its tile hits it
-    /// whoever's side the strike is (<see cref="CardAbilities"/>).
-    /// </summary>
-    public bool Displaced { get; set; }
-
-    /// <summary>What it watches on overwatch (<see cref="Overwatches"/>); null otherwise.</summary>
-    public OverwatchWatch? Watch { get; set; }
-
-    /// <summary>A perk's extra overwatch shots left this watch: they fire once the held AP has run out.</summary>
-    public int Reactions { get; set; }
 
     /// <summary>On lookout (scanning) until its next turn: more sight and detection.</summary>
     public bool Lookout { get; set; }
@@ -340,9 +285,3 @@ public sealed class LootCache
     public int? PlayerId { get; set; }
 }
 
-/// <summary>What an overwatch is committed to: one tile, or the front arc of one direction.</summary>
-public sealed class OverwatchWatch
-{
-    public Pos? Tile { get; set; }
-    public Pos? Arc { get; set; }
-}

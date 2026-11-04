@@ -174,7 +174,7 @@ public class HackingTests
         var linked = EnemyUnit("linked", new Pos(10, 10));
         var sim = Arena(16, 16, [scout, linked], rows: Rows(16, 16, (8, 8, 15, 8)),
             setup: (d, s) => Hacking.Place(d, s, DeviceKind.Camera, new Pos(2, 1)));
-        Assert.True(sim.Execute(new Move(1, scout.Id, new Pos(2, 4))).Ok);
+        Assert.True(Now(sim, new Move(1, scout.Id, new Pos(2, 4))).Ok);
         Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Spotted && e.TargetId == scout.Id);
         Assert.Equal(AiMode.Hunting, linked.Ai.Mode);
         Assert.Equal(scout.Id, linked.Ai.TargetId);
@@ -229,7 +229,7 @@ public class HackingTests
         Assert.False(gun.PlayerControlled, "a turret is the AI's to run, for its new side");
         // It telegraphs its aim at the husk's tile (a turret never moves, even with the husk in reach).
         ScavengeAi.TakeTurn(sim, gun);
-        Assert.Equal(husk.Pos, Assert.Single(sim.State.Strikes, s => s.UnitId == gun.Id).Tile);
+        Assert.Equal(husk.Pos, Strikes(sim).First(s => s.UnitId == gun.Id).Tile);
         return (sim, gun, husk, hacker);
     }
 
@@ -339,7 +339,7 @@ public class HackingTests
         Assert.True(sim.Execute(new Hack(1, hacker.Id, TargetId: linked.Id)).Ok);
 
         Assert.Equal(P1, linked.Side);
-        Assert.DoesNotContain(sim.State.Strikes, s => s.UnitId == linked.Id);
+        Assert.DoesNotContain(Strikes(sim), s => s.UnitId == linked.Id);
     }
 
     [Fact]
@@ -355,27 +355,7 @@ public class HackingTests
         Assert.True(Hack(sim, hacker, turret).Ok);
 
         Assert.Equal(P1, gun.Side);
-        Assert.DoesNotContain(sim.State.Strikes, s => s.UnitId == gun.Id);
-    }
-
-    [Fact]
-    public void A_linked_whose_override_ends_loses_its_readied_strike_and_its_watch()
-    {
-        var hacker = Hacker(new Pos(1, 1));
-        hacker.Hooks = Real.HooksFor(["override"]);
-        var linked = EnemyUnit("linked", new Pos(2, 1));
-        var husk = EnemyUnit("husk", new Pos(3, 1));
-        var sim = Arena(8, 8, [hacker, linked, husk], data: Rolls(1));
-        Assert.True(sim.Execute(new Hack(1, hacker.Id, TargetId: linked.Id)).Ok);
-        Assert.True(TileStrikes.Declare(sim, linked, StrikeOn(sim, linked, husk, sim.Profile(linked).Actions[0].Id)).Ok);
-        Assert.True(Overwatches.Commit(sim, linked, new CommitOverwatch(1, linked.Id, Arc: new Pos(1, 0))).Ok);
-        sim.State.Round = linked.OverrideUntilRound!.Value + 1;
-
-        Hacking.RoundStarted(sim);
-
-        Assert.Equal(Unit.EnemySide, linked.Side);
-        Assert.DoesNotContain(sim.State.Strikes, s => s.UnitId == linked.Id);
-        Assert.Null(linked.Watch);
+        Assert.DoesNotContain(Strikes(sim), s => s.UnitId == gun.Id);
     }
 
     [Fact]
@@ -476,8 +456,6 @@ public class HackingTests
         Assert.Equal(plain.Sight + 1, P(With("keen_eye")).Sight, 6);
         Assert.Equal(plain.CarryCapacity + 10, P(With("pack_mule")).CarryCapacity, 6);
         var braced = With("dug_in");
-        braced.Stance = Stance.Brace;
-        Assert.Equal(Real.Rules.Fog.Brace.CoverBonus + 0.15, P(braced).CoverBonus, 6);
     }
 
     [Fact]
@@ -497,16 +475,6 @@ public class HackingTests
         medic.Ap = 2;
         Assert.True(sim.Execute(new UseItem(1, medic.Id, "med_kit", downed.Id)).Ok);
         Assert.Equal(Real.Items["med_kit"].Use!.ReviveHp + 10, downed.Hp, 6);
-    }
-
-    [Fact]
-    public void Sentinel_holds_an_extra_overwatch_reaction()
-    {
-        var watcher = SurvivorUnit(1, new Pos(1, 1), weapon: "pistol");
-        watcher.Hooks = Real.HooksFor(["sentinel"]);
-        var sim = Arena(6, 6, [watcher, SurvivorUnit(1, new Pos(1, 2)), EnemyUnit("husk", new Pos(5, 5))]);
-        Assert.True(sim.Execute(new CommitOverwatch(1, watcher.Id, Arc: new Pos(1, 1))).Ok);
-        Assert.Equal(1, watcher.Reactions);
     }
 
     [Fact]

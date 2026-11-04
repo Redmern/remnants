@@ -94,7 +94,7 @@ public sealed class GameHost : IHostSink, TradeDesk.IVenue
     private readonly Dictionary<int, Seat> _byConnection = new();
     private int _nextPlayerId = 1;
     private ScavengeEvent? _lastPublished;
-    private (int Round, int Index, int? Unit) _turnKey;
+    private (int Round, int? Unit) _turnKey;
     private DateTimeOffset? _deadline;
 
     public GameHost(ScavengeData data, HostOptions? options = null, TimeProvider? clock = null)
@@ -462,11 +462,11 @@ public sealed class GameHost : IHostSink, TradeDesk.IVenue
         // (A connected player whose people are all downed, waiting on an ally, is not playing.)
         bool SomeonePlaying() => _seats.Any(s => s.Connection is not null && state.FindParty(s.PlayerId) is { Done: false }
                                                  && state.Units.Any(u => u.PlayerId == s.PlayerId && u.PlayerControlled && u.IsActive));
-        for (var guard = 0; guard < 10000 && !state.Finished && state.CurrentUnit is { PlayerControlled: true } unit
-                            && SeatOf(unit.PlayerId) is { Connection: null } && SomeonePlaying(); guard++)
+        for (var guard = 0; guard < 10000 && !state.Finished && SomeonePlaying()
+                            && state.Units.Find(u => u.IsActive && u.PlayerControlled && SeatOf(u.PlayerId) is { Connection: null } && Plans.Of(state, u) is not { Committed: true }) is { } unit; guard++)
             Act(new EndTurn(unit.PlayerId!.Value, unit.Id));
 
-        var key = (state.Round, state.TurnIndex, state.CurrentUnitId);
+        var key = (state.Round, state.CurrentUnitId);
         if (forceTurn || key != _turnKey)
         {
             _turnKey = key;
