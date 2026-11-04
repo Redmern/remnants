@@ -88,7 +88,7 @@ public sealed class ScavengeSim
             Push c => Pushes.Plan(this, unit!, c),
             Dash c => Pushes.Plan(this, unit!, c),
             Defend c => Defences.Plan(this, unit!, c),
-            UseItem c => ScavengeCommandHandlers.UseItem(this, unit!, c),
+            UseItem c => PlannedActions.UseItem(this, unit!, c),
             PickUp c => ScavengeCommandHandlers.PickUp(this, unit!, c),
             TakeAll c => FieldLoot.TakeAll(this, unit!, c),
             DropItem c => FieldLoot.Drop(this, unit!, c),
@@ -113,7 +113,7 @@ public sealed class ScavengeSim
             GiveItem c => CoopActions.Give(this, unit!, c),
             Carry c => CoopActions.Carry(this, unit!, c),
             PutDown c => CoopActions.PutDown(this, unit!, c),
-            Hack c => Hacking.Hack(this, unit!, c),
+            Hack c => PlannedActions.Hack(this, unit!, c),
             DeployDrone c => Drones.Deploy(this, unit!, c),
             FlyDrone c => Drones.Fly(this, unit!, c),
             RecallDrone => Drones.Recall(this, unit!),
@@ -122,7 +122,7 @@ public sealed class ScavengeSim
             DroneHeal c => DroneRoles.Heal(this, unit!, c),
             DroneLoad c => DroneRoles.Load(this, unit!, c),
             DroneFerry => DroneRoles.Ferry(this, unit!),
-            DroneFire c => DroneRoles.Fire(this, unit!, c),
+            DroneFire c => PlannedActions.DroneFire(this, unit!, c),
             _ => ScavengeResult.Fail(ScavengeError.UnknownCommand, $"Unknown command {command.GetType().Name}."),
         };
 
@@ -153,7 +153,7 @@ public sealed class ScavengeSim
             if (step.Applied is null) (step.RefundMp, step.RefundAp) = (mpBefore - unit.Mp, apBefore - unit.Ap);
             step.RefundFatigue = unit.Fatigue - fatigueBefore;
         }
-        if (command is Move or AttackTile or PlayCard or Recover or Push or Dash or Defend or UndoPlan) plan.Committed = false;
+        if (command is Move or AttackTile or PlayCard or Recover or Push or Dash or Defend or UseItem or Hack or DroneFire or UndoPlan) plan.Committed = false;
     }
 
     private ScavengeResult Commit(Unit unit)

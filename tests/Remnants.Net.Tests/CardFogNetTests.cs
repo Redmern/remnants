@@ -27,6 +27,26 @@ public class CardFogNetTests
     }
 
     [Fact]
+    public void A_rival_sees_nothing_of_a_planned_item_and_its_owner_does()
+    {
+        var (f, a, b, alice, bob) = Field();
+        alice.Pos = bob.Pos + new Pos(-3, 0);
+        alice.Pack.Add("bandage");
+        var pack = alice.Pack.Count;
+        var fog = new SideFog(b.Id, bob.Side);
+        Assert.True(f.Sim.Execute(new UseItem(a.Id, alice.Id, "bandage")).Ok);
+        fog.Update(f.Sim);
+        var view = fog.View(f.Sim);
+        Assert.Empty(view.Plans.Single(p => p.UnitId == alice.Id).Steps);
+        Assert.Equal((0, 0), (view.Units.Single(u => u.Id == alice.Id).Ap, view.Units.Single(u => u.Id == alice.Id).Fatigue));
+        var own = new SideFog(a.Id, alice.Side);
+        own.Update(f.Sim);
+        var step = own.View(f.Sim).Plans.Single(p => p.UnitId == alice.Id).Steps.Single();
+        Assert.Equal((PlanStepKind.UseItem, "bandage"), (step.Kind, step.ItemId));
+        Assert.Equal(pack, alice.Pack.Count);
+    }
+
+    [Fact]
     public void A_rival_in_sight_shows_its_moves_and_nothing_of_its_actions_or_what_it_spent()
     {
         var (f, a, b, alice, bob) = Field();

@@ -127,6 +127,8 @@ public static class TacticsView
         var actions = steps.Where(s => Plans.SlotOf(s) == PlanSlot.Action).Select(s => s.Kind switch
         {
             PlanStepKind.Strike => sim.Profile(unit).Action(s.Strike!.ActionId)?.Name ?? s.Strike.ActionId,
+            PlanStepKind.UseItem => $"Use {sim.Item(s.ItemId!).Name}",
+            PlanStepKind.DroneFire => "Drone shot",
             _ => s.Kind.ToString(),
         }).ToList();
         var cards = steps.Where(s => s.Kind == PlanStepKind.Card).Select(s => sim.Data.Cards.Find(s.CardId!)?.Name ?? s.CardId!).ToList();
@@ -160,6 +162,9 @@ public static class TacticsView
                     break;
                 case PlanStepKind.Defend:
                     guarded.AddRange(Defences.Tiles(sim, unit, step.From, step.Direction));
+                    break;
+                case PlanStepKind.UseItem or PlanStepKind.DroneFire when step.Tile is { } aimed:
+                    tiles.Add(aimed);
                     break;
                 case PlanStepKind.Card when step.CardId is { } id && sim.Data.Cards.Find(id) is { } card:
                     if (step.Landing is { } end)

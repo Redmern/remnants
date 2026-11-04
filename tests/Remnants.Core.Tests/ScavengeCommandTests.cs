@@ -128,7 +128,7 @@ public class ScavengeCommandTests
         Assert.Equal(ScavengeError.InvalidTarget, sim.Execute(new UseItem(1, u.Id, "bandage", husk.Id)).Error);
 
         u.Hp = 50;
-        Assert.True(sim.Execute(new UseItem(1, u.Id, "bandage")).Ok);
+        Assert.True(Now(sim, new UseItem(1, u.Id, "bandage")).Ok);
         Assert.Equal(60, u.Hp);
 
         Combat.ApplyDamage(sim, far, BodyPart.Torso, 100);

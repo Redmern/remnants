@@ -96,6 +96,8 @@ public class FogNetTests
         var (f, a, b, sniper, victim) = Duel();
         sniper.Pack.Add("motion_sensor");
         Assert.True(a.Do(new UseItem(a.Id, sniper.Id, "motion_sensor", At: sniper.Pos + new Pos(-1, 0))).Ok);
+        // In a fight it is a planned action: it goes down when the round resolves.
+        f.EndTurnsUntil(() => f.Sim.State.Sensors.Count > 0, a, b);
         Assert.Single(a.View.Sensors);
         Assert.Empty(b.View.Sensors);
         Assert.DoesNotContain(b.Last<Snapshot>().Events, e => e.Type == ScavengeEventType.SensorPlaced);

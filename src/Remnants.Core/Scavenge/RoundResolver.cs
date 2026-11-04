@@ -270,6 +270,9 @@ internal static class RoundResolver
             case PlanStepKind.Dash:
                 Pushes.ResolveDash(sim, unit, step);
                 break;
+            case PlanStepKind.UseItem or PlanStepKind.Hack or PlanStepKind.DroneFire:
+                PlannedActions.Resolve(sim, unit, step);
+                break;
         }
     }
 }

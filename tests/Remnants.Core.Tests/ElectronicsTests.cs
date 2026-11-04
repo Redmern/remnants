@@ -493,7 +493,7 @@ public class FieldDeviceTests
         while (sim.State.CurrentUnitId != thrower.Id) sim.Execute(new EndTurn(1, sim.State.CurrentUnitId!.Value));
 
         thrower.Ap = 5;
-        Assert.True(sim.Execute(new UseItem(1, thrower.Id, "emp_grenade", At: new Pos(5, 4))).Ok);
+        Assert.True(Now(sim, new UseItem(1, thrower.Id, "emp_grenade", At: new Pos(5, 4))).Ok);
         Assert.DoesNotContain("emp_grenade", thrower.Pack);
         Assert.True(Devices.IsJammed(sim, linked), "off the relay");
         Assert.True(linked.EmpUntilRound >= sim.State.Round);
@@ -698,7 +698,7 @@ public class DroneRoleTests
         var drone = Launch(sim, op, new Pos(2, 1));
         Assert.Contains(husk, DroneRoles.FireTargets(sim, op));
         op.Ap = 9;
-        Assert.True(sim.Execute(new DroneFire(1, op.Id, husk.Id)).Ok);
+        Assert.True(Now(sim, new DroneFire(1, op.Id, husk.Id)).Ok);
         Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.DroneFired);
         Assert.True(drone.Skills[Skill.Firearms] >= 60);
     }
