@@ -24,7 +24,7 @@
   "stun": { "apLoss": 1, "mpLoss": 2, "priorityPenalty": 3, "base": 0.15, "perBlock": 0.5, "powerPerDamage": 0.02, "perfectBonus": 0.15, "min": 0.05, "max": 0.6, "repeatFactor": 0.6, "blockedStamina": 1, "stunnedStamina": 2, "defenderStamina": 1 },
   "adrenaline": { "max": 100, "tiers": [25, 50, 75, 100], "tierBonus": [0.05, 0.1, 0.15, 0.3], "priorityPoints": 10, "gainHit": 10, "gainPush": 20, "gainDash": 5, "gainBlock": 10, "gainStun": 15, "drainPerRound": 5, "drainFailed": 15, "drainStunned": 15, "drainHeavyHit": 15, "heavyHitShare": 0.25 },
   "priority": { "speedPerInitiative": 0.1, "staminaWeight": 10, "cliffBelow": 0.3, "cliffPenalty": 6, "quickWeight": 2, "heavyWeight": -2, "earlyWeight": 4, "lightMaxDamage": 12, "cardShift": 3, "tieEffect": 0.6 },
-  "bot": { "guardEvery": 3, "hurtBelow": 0.5, "positionRisk": 0.3, "positionGain": 1.45 },
+  "bot": { "guardEvery": 3, "hurtBelow": 0.5, "positionRisk": 1, "positionGain": 1.05 },
   "turn": { "baseAp": 1, "planMoves": 1, "followWithin": 2, "planActions": 1, "planCards": 1, "baseMp": 4, "mpPerRange": 2, "baseStamina": 10, "staminaPerMp": 1, "staminaPerAp": 2, "staminaRegen": 0.4, "regenLoadPenalty": 2, "minStaminaRegen": 1, "recoverApCost": 1, "recoverStamina": 4, "recoverHitDamage": 0.25, "pickUpApCost": 1, "recruitApCost": 1, "initiativePerAgility": 1.0, "initiativePerLoad": 0.5 },
   "sight": { "base": 4, "perPerception": 0.06 },
   "carry": { "base": 10, "perStrength": 0.3 },

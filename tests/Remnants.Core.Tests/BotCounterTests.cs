@@ -112,6 +112,17 @@ public class BotCounterTests
     }
 
     [Fact]
+    public void A_hurt_unit_that_walked_last_round_fights_instead_of_dashing_again()
+    {
+        var a = SurvivorUnit(1, new(4, 3), weapon: "pipe");
+        var foe = EnemyUnit("husk", new(5, 3));
+        var sim = Arena(14, 7, [a, foe]);
+        a.Hp = a.MaxHp * 0.3;
+        a.LastMove = new Pos(1, 0);
+        Assert.Null(BotTactics.Counter(sim, a, 1));
+    }
+
+    [Fact]
     public void What_counts_as_hurt_comes_from_the_data()
     {
         var a = SurvivorUnit(1, new(4, 3), weapon: "pipe");

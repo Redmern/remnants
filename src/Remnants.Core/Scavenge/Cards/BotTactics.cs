@@ -190,8 +190,9 @@ public static class BotTactics
             // A neighbour that stood still will likely swing: every so often take it on the guard, for the block and the stun.
             return (state.Round + unit.Id) % bot.GuardEvery == 0 && nearest.LastMove == default && nearest.Pos.Chebyshev(at) <= 1 && unit.Ap >= rules.Defend.ApCost
                 ? new Defend(playerId, unit.Id, Combat.Face(at, nearest.Pos)) : null;
-        // Not twice running: dashing back and forth can stall a run for good.
+        // Moved last round, by a dash or on foot: stand and fight. Backing off every round can stall a run for good.
         var dashed = unit.Ai.DashedRound > 0 && unit.Ai.DashedRound == state.Round - 1;
+        if (unit.LastMove != default && !dashed) return null;
         if (!dashed && unit.Ap >= rules.Dash.ApCost && Clear(sim, unit) is { } clear) return new Dash(playerId, unit.Id, clear.Way, clear.Tiles);
         return unit.Ap >= rules.Defend.ApCost ? new Defend(playerId, unit.Id, Combat.Face(at, Expected(sim, unit.Side, nearest))) : null;
     }
