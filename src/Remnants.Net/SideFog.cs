@@ -128,7 +128,8 @@ public sealed class SideFog(int playerId, string side)
             // side's vision, stays on the server.
             Strikes = state.Strikes.Where(x => known.Contains(x.UnitId)).Select(x => new TileStrike
             {
-                UnitId = x.UnitId, ActionId = x.ActionId, Mode = x.Mode, From = x.From, Tile = x.Tile, Direction = x.Direction,
+                UnitId = x.UnitId, ActionId = x.ActionId, Mode = x.Mode, From = x.From, Direction = x.Direction,
+                Tile = state.FindUnit(x.UnitId)?.Side == Side || Visible.Contains(state.Map.Index(x.Tile)) ? x.Tile : x.From,
                 Tiles = x.Tiles.Where(p => state.FindUnit(x.UnitId)?.Side == Side || Visible.Contains(state.Map.Index(p))).ToList(), TargetId = state.FindUnit(x.UnitId)?.PlayerId == PlayerId ? x.TargetId : null, Suppress = x.Suppress,
             }).ToList(),
             Finished = state.Finished,
@@ -260,8 +261,8 @@ public sealed class SideFog(int playerId, string side)
         copy.Hooks = new(StringComparer.Ordinal);
         copy.CyberHooks = new();
         copy.FieldXp = 0;
-        // That it is on overwatch shows; what it watches does not.
-        copy.Watch = null;
+        // That it is on overwatch shows; what it watches only to its own side.
+        if (u.Side != Side) copy.Watch = null;
         copy.Reactions = 0;
         copy.DroneBattery = null;
         copy.ChargesUsed = new(StringComparer.Ordinal);

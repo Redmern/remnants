@@ -46,7 +46,7 @@ public class TelegraphedStrikeTests
 
         Assert.True(sim.Execute(new EndTurn(1, near.Id)).Ok);
 
-        Assert.DoesNotContain(sim.State.Strikes, s => s.UnitId == blade.Id && s.Tiles.Contains(near.Pos) && near.Hp == near.MaxHp);
+        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.IntentResolved && e.UnitId == blade.Id);
         Assert.True(near.Hp < near.MaxHp);
     }
 
@@ -188,6 +188,7 @@ public class TelegraphedStrikeTests
         TileStrikes.ResolveAll(sim);
 
         Assert.Equal(hp, mate.Hp);
+        Assert.True(near.Hp < near.MaxHp); // the blow did come down
     }
 
     [Fact]
@@ -362,5 +363,97 @@ public class TelegraphedStrikeTests
         Assert.True(TileStrikes.Declare(sim, near, StrikeOn(sim, near, husk, sim.Profile(near).Actions[0].Id)).Ok);
 
         Assert.False(Assert.Single(sim.State.Strikes).Deferred);
+    }
+
+    [Fact]
+    public void An_enemy_faces_where_it_walked_and_counts_as_having_moved()
+    {
+        var far = SurvivorUnit(1, new(0, 0), weapon: "pipe");
+        var husk = EnemyUnit("husk", new(2, 3));
+        var near = SurvivorUnit(1, new(10, 3), weapon: "pipe");
+        var sim = Arena(12, 7, [far, husk, near], data: SureHits());
+        husk.Ai.Mode = AiMode.Hunting;
+        husk.Ai.LastKnown = near.Pos;
+        husk.Facing = new(1, 1); // away from where it is about to walk
+        husk.Moved = false;
+        var from = husk.Pos;
+
+        Assert.True(sim.Execute(new EndTurn(1, far.Id)).Ok);
+
+        Assert.NotEqual(from, husk.Pos);
+        Assert.Equal(new Pos(0, -1), husk.Facing); // its last step, toward the survivor at (0, 0)
+        Assert.True(husk.Moved);
+    }
+
+    [Fact]
+    public void AC3_an_enemy_stunned_as_it_walks_declares_no_strike_after()
+    {
+        var first = SurvivorUnit(1, new(2, 3), weapon: "pistol");
+        var linked = EnemyUnit("linked", new(5, 3));
+        var last = SurvivorUnit(1, new(6, 3), weapon: "pipe");
+        var sim = Arena(12, 7, [first, linked, last], data: SureHits());
+        linked.Ai.Mode = AiMode.Hunting;
+        linked.Suppressed = true;
+
+        ScavengeAi.TakeTurn(sim, linked);
+
+        Assert.DoesNotContain(sim.State.Strikes, s => s.UnitId == linked.Id);
+        Assert.Equal(Stance.None, linked.Stance);
+    }
+
+    [Fact]
+    public void A_deferred_strike_survives_save_and_load_still_deferred()
+    {
+        var (sim, near, blade) = LastToAct(subRounds: 2);
+        sim.State.TurnIndex = 1;
+        Assert.True(TileStrikes.Declare(sim, blade, StrikeOn(sim, blade, near, sim.Profile(blade).Actions[0].Id)).Ok);
+        Assert.True(Assert.Single(sim.State.Strikes).Deferred);
+
+        var loaded = ScavengeSave.Load(sim.Data, ScavengeSave.Save(sim.State));
+
+        Assert.True(Assert.Single(loaded.State.Strikes).Deferred);
+    }
+
+    [Fact]
+    public void A_counter_card_on_an_ally_yet_to_act_is_still_there_when_the_strike_comes_down()
+    {
+        var a = SurvivorUnit(1, new(0, 0), weapon: "pipe");
+        var b = SurvivorUnit(1, new(6, 2), weapon: "pipe");
+        var blade = EnemyUnit("tally_blade", new(5, 2));
+        var sim = Arena(12, 7, [a, b, blade], data: SureHits());
+        Assert.True(TileStrikes.Declare(sim, blade, StrikeOn(sim, blade, b, sim.Profile(blade).Actions[0].Id)).Ok);
+        b.CounterId = blade.Id;
+
+        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
+        Assert.Equal(blade.Id, b.CounterId);
+        Assert.True(sim.Execute(new EndTurn(1, b.Id)).Ok);
+
+        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Countered && e.UnitId == b.Id && e.TargetId == blade.Id);
+    }
+
+    [Fact]
+    public void A_counter_card_lapses_at_the_next_turn_with_no_strike_coming()
+    {
+        var b = SurvivorUnit(1, new(6, 2), weapon: "pipe");
+        var a = SurvivorUnit(1, new(0, 0), weapon: "pipe");
+        var husk = EnemyUnit("husk", new(11, 6));
+        var sim = Arena(12, 7, [a, b, husk], data: SureHits());
+        b.CounterId = husk.Id;
+
+        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
+
+        Assert.Null(b.CounterId);
+    }
+
+    [Fact]
+    public void The_declare_log_never_names_the_tile_a_strike_is_aimed_at()
+    {
+        var (sim, far, _, _) = Ambush();
+
+        Assert.True(sim.Execute(new EndTurn(1, far.Id)).Ok);
+
+        var strike = Assert.Single(sim.State.Strikes);
+        var declared = Assert.Single(sim.State.Events, e => e.Type == ScavengeEventType.IntentDeclared);
+        Assert.DoesNotContain(strike.Tile.ToString(), declared.Message);
     }
 }

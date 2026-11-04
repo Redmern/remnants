@@ -57,7 +57,8 @@ public static class TacticsView
                 || !Detection.SideSees(sim.Data, state, side, u)) continue;
             var action = sim.Profile(u).Action(strike.ActionId);
             var threatened = new List<Pos>(strike.Tiles);
-            var area = action?.Area ?? 0;
+            // In another player's view a strike aimed into the fog has its aim tile hidden: no splash to show around it.
+            var area = strike.Tiles.Contains(strike.Tile) ? action?.Area ?? 0 : 0;
             for (var dy = -area; dy <= area; dy++)
                 for (var dx = -area; dx <= area; dx++)
                     if (new Pos(strike.Tile.X + dx, strike.Tile.Y + dy) is var p && state.Map.InBounds(p) && !threatened.Contains(p)) threatened.Add(p);

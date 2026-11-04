@@ -156,6 +156,34 @@ public class FogNetTests
     }
 
     [Fact]
+    public void An_allys_watch_shows_to_its_partner()
+    {
+        var (f, a, b, sniper, victim) = Duel();
+        Alliances.Merge(f.Sim.State, a.Id, b.Id);
+        victim.Stance = Stance.Overwatch;
+        victim.Watch = new OverwatchWatch { Tile = new(4, 10) };
+        var alice = new SideFog(a.Id, f.Sim.State.FindParty(a.Id)!.Side);
+        alice.Update(f.Sim);
+
+        Assert.NotNull(alice.View(f.Sim).Units.Single(u => u.Id == victim.Id).Watch);
+    }
+
+    [Fact]
+    public void A_strike_aimed_into_the_fog_never_tells_the_other_side_its_aim_tile()
+    {
+        var (f, a, b, sniper, victim) = Duel();
+        var alice = new SideFog(a.Id, Unit.PlayerSide(a.Id));
+        alice.Update(f.Sim);
+        var hidden = f.Sim.State.Map.AllPositions.First(p => !alice.Visible.Contains(f.Sim.State.Map.Index(p)));
+        f.Sim.State.Strikes.Add(new TileStrike { UnitId = victim.Id, ActionId = "swing", From = victim.Pos, Tile = hidden, Tiles = [hidden] });
+
+        var seen = Assert.Single(alice.View(f.Sim).Strikes, s => s.UnitId == victim.Id);
+
+        Assert.NotEqual(hidden, seen.Tile);
+        Assert.Empty(seen.Tiles);
+    }
+
+    [Fact]
     public void A_seen_enemys_strike_never_tells_the_other_side_about_tiles_it_cannot_see()
     {
         var (f, a, b, sniper, victim) = Duel();

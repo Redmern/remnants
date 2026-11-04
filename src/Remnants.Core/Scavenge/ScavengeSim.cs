@@ -224,7 +224,8 @@ public sealed class ScavengeSim
         if (unit.OutplayedUntilRound < State.Round) (unit.OutplayedId, unit.FreeCounterId) = (null, null);
         unit.CardMove = 0;
         unit.CardCover = 0;
-        unit.CounterId = null;
+        // A counter card holds while the strike it answers is still coming (that strike comes down after this turn begins).
+        if (unit.CounterId is { } countered && State.Strikes.All(s => s.UnitId != countered)) unit.CounterId = null;
         unit.Ap = Profile(unit).MaxAp;
         if (State.Round == 1 && unit.FirstRoundAp != 0) unit.Ap = Math.Max(1, unit.Ap + unit.FirstRoundAp);
         if (braced) unit.Ap = Math.Max(1, unit.Ap - Data.Rules.Fog.Brace.NextTurnApPenalty);

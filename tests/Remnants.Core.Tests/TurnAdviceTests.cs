@@ -52,7 +52,7 @@ public class TurnAdviceTests
             {
                 Fog = r.Fog with
                 {
-                            Brace = r.Fog.Brace with { ApCost = 5 },
+                    Brace = r.Fog.Brace with { ApCost = 5 },
                     Lookout = r.Fog.Lookout with { ApCost = 5 },
                 },
             }));

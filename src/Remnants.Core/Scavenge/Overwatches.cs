@@ -21,8 +21,8 @@ public static class Overwatches
         unit.Watch = new OverwatchWatch { Tile = c.Tile, Arc = c.Arc };
         unit.Facing = c.Arc ?? Combat.Face(unit.Pos, c.Tile!.Value);
         unit.Reactions = (int)Math.Round(unit.Hook(PerkHooks.OverwatchReactionsBonus));
-        var what = c.Tile is { } tile ? $"{tile}" : "an arc";
-        sim.State.Log(new(sim.State.Round, ScavengeEventType.Overwatch, $"{unit.Name} goes on overwatch, watching {what}.", unit.Id, Pos: unit.Pos));
+        unit.TurnOverRound = sim.State.Round;
+        sim.State.Log(new(sim.State.Round, ScavengeEventType.Overwatch, $"{unit.Name} goes on overwatch.", unit.Id, Pos: unit.Pos));
         return ScavengeResult.Success($"{unit.Name} is on overwatch.");
     }
 
@@ -114,10 +114,12 @@ public static class Overwatches
     private static void Shoot(ScavengeSim sim, Unit watcher, Unit target)
     {
         var state = sim.State;
-        var shot = sim.Profile(watcher).Actions
-            .Where(a => Drones.CanStrike(a, target) && (Combat.ApCost(a, watcher.Pos, target.Pos) <= watcher.Ap || watcher.Reactions > 0))
+        var options = sim.Profile(watcher).Actions.Where(a => Drones.CanStrike(a, target))
             .Select(a => (Action: a, Aim: Aimed(sim, watcher, a, target)))
-            .Where(s => s.Aim is not null)
+            .Where(s => s.Aim is not null).ToList();
+        // A perk's extra shot only once the AP cannot pay for any shot at it.
+        var paid = options.Where(s => Combat.ApCost(s.Action, watcher.Pos, target.Pos) <= watcher.Ap).ToList();
+        var shot = (paid.Count > 0 ? paid : watcher.Reactions > 0 ? options : [])
             .OrderByDescending(s => Combat.ChanceToHit(sim, watcher, s.Action, target) * (s.Action.MinDamage + s.Action.MaxDamage) / 2)
             .ThenBy(s => s.Action.Id, StringComparer.Ordinal)
             .FirstOrDefault();

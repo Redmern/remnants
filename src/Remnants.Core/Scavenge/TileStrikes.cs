@@ -69,10 +69,10 @@ public static class TileStrikes
             Tiles = aim.Tiles, TargetId = seen?.Id, Counter = free, Suppress = suppress,
             Deferred = sim.DefersStrike(unit),
         });
-        var how = aim.Mode is { } mode ? $"a {mode.ToString().ToLowerInvariant()} at {c.Tile}" : $"an attack on {c.Tile}";
+        var how = aim.Mode is { } mode ? $"a {mode.ToString().ToLowerInvariant()}" : "an attack";
         state.Log(new(state.Round, ScavengeEventType.IntentDeclared, $"{unit.Name} readies {how} ({action.Name}).", unit.Id, Pos: unit.Pos));
         Overwatches.StruckInto(sim, unit, aim.Tiles);
-        return ScavengeResult.Success($"{unit.Name} readies {how}.");
+        return ScavengeResult.Success($"{unit.Name} readies {how} at {c.Tile}.");
     }
 
     /// <summary>
@@ -197,8 +197,8 @@ public static class TileStrikes
         if (sim.Profile(unit).Action(strike.ActionId) is not { } action) { Fizzle($"can no longer use {strike.ActionId}"); return; }
 
         var targets = strike.Suppress ? Pin(sim, unit, action, strike) : Strike(sim, unit, action, strike.Tiles, strike.Tile, strike.Direction);
-        if (targets.Count == 0) Fizzle($"{action.Name} hits nothing at {strike.Tile}");
-        else state.Log(new(state.Round, ScavengeEventType.IntentResolved, $"{unit.Name}'s {action.Name} comes down on {strike.Tile}.", unit.Id, Pos: unit.Pos));
+        if (targets.Count == 0) Fizzle($"{action.Name} hits nothing");
+        else state.Log(new(state.Round, ScavengeEventType.IntentResolved, $"{unit.Name}'s {action.Name} comes down.", unit.Id, Pos: unit.Pos));
         if (strike.TargetId is { } aimed && targets.All(t => t.Id != aimed) && state.FindUnit(aimed) is { IsActive: true } dodger
             && !strike.Tiles.Contains(dodger.Pos))
             Combat.Dodged(sim, dodger, unit, counter: !strike.Counter);

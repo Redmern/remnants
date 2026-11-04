@@ -104,8 +104,9 @@ public class OverwatchTests
             _ => new CommitOverwatch(1, watcher.Id, Tile: watcher.Pos),
         };
 
-        Assert.False(sim.Execute(command).Ok);
+        var result = sim.Execute(command);
 
+        Assert.Equal(how is "far" or "own" ? ScavengeError.OutOfRange : ScavengeError.InvalidTarget, result.Error);
         Assert.Equal(Stance.None, watcher.Stance);
     }
 
@@ -115,8 +116,8 @@ public class OverwatchTests
         var watcher = SurvivorUnit(1, new(1, 1), weapon: "pipe");
         var sim = Arena(5, 3, [watcher, EnemyUnit("husk", new(4, 1))], ["###..", "#.#..", "###.."], data: Sure());
 
-        Assert.False(sim.Execute(new CommitOverwatch(1, watcher.Id, Tile: new Pos(2, 1))).Ok);
-        Assert.False(sim.Execute(new CommitOverwatch(1, watcher.Id, Arc: new Pos(1, 0))).Ok);
+        Assert.Equal(ScavengeError.OutOfRange, sim.Execute(new CommitOverwatch(1, watcher.Id, Tile: new Pos(2, 1))).Error);
+        Assert.Equal(ScavengeError.OutOfRange, sim.Execute(new CommitOverwatch(1, watcher.Id, Arc: new Pos(1, 0))).Error);
     }
 
     [Fact]
@@ -289,7 +290,7 @@ public class OverwatchTests
     }
 
     [Fact]
-    public void AC7_a_stunning_or_pinning_overwatch_hit_cancels_the_enemys_strike()
+    public void AC7_a_stunning_overwatch_hit_which_sets_the_pin_flag_cancels_the_enemys_strike()
     {
         var (sim, _, _, foe) = StrikeWatched(a => a with { Bane = new BaneDef { Tag = "network", Stun = true } });
 
@@ -389,5 +390,49 @@ public class OverwatchTests
         var loaded = ScavengeSave.Load(sim.Data, ScavengeSave.Save(sim.State));
 
         Assert.Equal([new Pos(5, 3)], Overwatches.Watched(loaded, loaded.State.FindUnit(watcher.Id)!));
+    }
+
+    [Fact]
+    public void A_dropped_watch_gives_the_holder_no_turn_back_this_round()
+    {
+        var (sim, watcher, ally, foe) = Field(Sure(subRounds: 2), enemyAt: new(11, 0));
+        Assert.True(sim.Execute(new CommitOverwatch(1, watcher.Id, Tile: new Pos(5, 3))).Ok);
+        CardAbilities.Displace(sim, watcher, watcher.Pos + new Pos(0, 1), foe);
+        Assert.Equal(Stance.None, watcher.Stance);
+
+        Assert.True(sim.Execute(new EndTurn(1, ally.Id)).Ok);
+
+        Assert.Equal((1, 2), (sim.State.Round, sim.State.SubRound));
+        Assert.Equal(ally.Id, sim.State.CurrentUnitId);
+    }
+
+    [Fact]
+    public void A_perks_extra_shot_never_buys_a_dearer_attack_while_ap_is_held()
+    {
+        // The pistol's free melee fallback aside, the survivor's fists cost what it holds; the gun would cost more.
+        var (sim, watcher, _, foe) = Field(Sure(pistol: a => a with { ApCost = 9 }));
+        watcher.Hooks = Real.HooksFor(["sentinel"]);
+        foe.Pos = watcher.Pos + new Pos(3, 0);
+        watcher.Reactions = 1;
+        watcher.Stance = Stance.Overwatch;
+        watcher.Watch = new OverwatchWatch { Tile = new Pos(3, 3) };
+        var melee = sim.Profile(watcher).Actions.Where(a => a.ApCost <= watcher.Ap).ToList();
+        var ap = watcher.Ap;
+
+        WalkTo(sim, foe, new Pos(3, 3));
+
+        Assert.NotEmpty(melee);
+        Assert.Equal(1, watcher.Reactions);
+        Assert.True(watcher.Ap < ap);
+    }
+
+    [Fact]
+    public void The_commit_log_never_names_the_watched_tile()
+    {
+        var (sim, watcher, _, _) = Field();
+
+        Assert.True(sim.Execute(new CommitOverwatch(1, watcher.Id, Tile: new Pos(5, 3))).Ok);
+
+        Assert.DoesNotContain(sim.State.Events, e => e.UnitId == watcher.Id && e.Type == ScavengeEventType.Overwatch && e.Message.Contains(new Pos(5, 3).ToString()));
     }
 }

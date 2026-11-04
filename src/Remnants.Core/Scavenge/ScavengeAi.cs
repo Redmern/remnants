@@ -39,8 +39,8 @@ internal static class ScavengeAi
     private static bool Strike(ScavengeSim sim, Unit unit, ActionProfile action, Unit target, bool suppress = false) =>
         TileStrikes.StrikeAt(sim, unit, action, target) is { } strike && TileStrikes.Declare(sim, unit, strike, suppress).Ok;
 
-    /// <summary>Whether the unit can still do something this sub-turn: up, with AP, and no tile strike readied yet.</summary>
-    private static bool Acting(ScavengeSim sim, Unit unit) => unit.IsActive && unit.Ap > 0 && !TileStrikes.Readied(sim.State, unit);
+    /// <summary>Whether the unit can still do something this sub-turn: up, with AP, not stunned or pinned since its turn began, and no tile strike readied yet.</summary>
+    private static bool Acting(ScavengeSim sim, Unit unit) => unit.IsActive && unit.Ap > 0 && !unit.Suppressed && !TileStrikes.Readied(sim.State, unit);
 
     /// <summary>Husk behaviour (and a jammed Linked's): hunt the nearest hostile in sight, close in, attack.</summary>
     private static void Fight(ScavengeSim sim, Unit unit)
@@ -121,7 +121,7 @@ internal static class ScavengeAi
 
     /// <summary>A Linked with AP for a shot left at the end of its turn holds it on overwatch, toward what it last knew of (rules.fog.ai.linkedLurk).</summary>
     private static bool Lurk(ScavengeSim sim, Unit unit) =>
-        sim.Data.Rules.Fog.Ai.LinkedLurk && Overwatches.OnArc(sim, unit, unit.PlayerId ?? 0) is CommitOverwatch watch && Overwatches.Commit(sim, unit, watch).Ok;
+        sim.Data.Rules.Fog.Ai.LinkedLurk && !unit.Suppressed && Overwatches.OnArc(sim, unit, unit.PlayerId ?? 0) is CommitOverwatch watch && Overwatches.Commit(sim, unit, watch).Ok;
 
     /// <summary>Every unit in the group now hunts the focus; one that was idle and does not see it learns of it through the Network.</summary>
     private static void Share(ScavengeSim sim, NetworkGroup group, Unit focus)
@@ -343,6 +343,8 @@ internal static class ScavengeAi
         var from = unit.Pos;
         unit.Pos = to;
         unit.Ap -= ap;
+        unit.Moved = true;
+        unit.Facing = Combat.Face(from, to);
         sim.State.Log(new(sim.State.Round, ScavengeEventType.Moved, $"{unit.Name} moved {from} -> {to}.", unit.Id, Pos: to));
         sim.Moved(unit, from);
     }

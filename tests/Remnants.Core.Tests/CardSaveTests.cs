@@ -88,7 +88,11 @@ public class CardSaveTests
         var unit = node["scavenge"]!["units"]!.AsArray().First(u => u!["id"]!.GetValue<int>() == sim.State.CurrentUnitId)!.AsObject();
         unit["plan"] = new JsonObject
         {
-            ["path"] = new JsonArray(), ["attackTile"] = new JsonObject { ["x"] = 1, ["y"] = 1 }, ["actionId"] = "swing", ["round"] = 1, ["quick"] = true,
+            ["path"] = new JsonArray(),
+            ["attackTile"] = new JsonObject { ["x"] = 1, ["y"] = 1 },
+            ["actionId"] = "swing",
+            ["round"] = 1,
+            ["quick"] = true,
         };
         unit["stance"] = "Overwatch";
         unit["reactions"] = 2;
