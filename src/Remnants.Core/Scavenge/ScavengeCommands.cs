@@ -33,7 +33,7 @@ public sealed record AttackTile(int PlayerId, int UnitId, Pos Tile, string Actio
 /// <see cref="Boost"/>: pay the card's extra AP for its boost. An ability card aims at <see cref="TargetId"/> (a unit) or
 /// <see cref="Tile"/> (<see cref="CardDef.Target"/>). See <see cref="CardPlay"/>.
 /// </summary>
-public sealed record PlayCard(int PlayerId, int UnitId, string CardId, int? TargetId = null, bool Boost = false, bool FromSlot = false, Pos? Tile = null)
+public sealed record PlayCard(int PlayerId, int UnitId, string CardId, int? TargetId = null, bool Boost = false, bool FromSlot = false, Pos? Tile = null, Pos? Direction = null)
     : IScavengeCommand;
 
 /// <summary>Discard a hard card nobody in the party qualifies for, at no cost, once a round.</summary>

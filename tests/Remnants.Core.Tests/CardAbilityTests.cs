@@ -156,7 +156,7 @@ public class CardAbilityTests
     }
 
     [Fact]
-    public void A_friendly_unit_that_walks_onto_a_strike_is_not_hit_by_its_own_side()
+    public void A_friendly_unit_that_walks_onto_a_strike_is_hit_by_it()
     {
         var e1 = SurvivorUnit(2, new(6, 2), weapon: "knife");
         var e2 = SurvivorUnit(2, new(3, 2));
@@ -164,9 +164,7 @@ public class CardAbilityTests
         var sim = Table([e1, e2, a], []);
         Assert.True(sim.Execute(new AttackTile(2, e1.Id, new(5, 2), "cut", StrikeMode.Stab)).Ok);
         Assert.True(Now(sim, new Move(2, e2.Id, new(5, 2))).Ok);
-        Assert.True(sim.Execute(new EndTurn(2, e2.Id)).Ok);
-        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
-        Assert.Equal(e2.MaxHp, e2.Hp);
+        Assert.True(e2.Hp < e2.MaxHp);
     }
 
     [Fact]

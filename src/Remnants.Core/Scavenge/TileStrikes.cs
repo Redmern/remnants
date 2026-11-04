@@ -25,7 +25,7 @@ public sealed class TileStrike
 /// patterns covers the tiles of its <see cref="StrikeMode"/> (<see cref="Combat.Covered"/>), any other action the one tile
 /// aimed at (in reach, as <see cref="Combat.CheckReach"/> says). The AP is paid when it is queued. It comes down in the
 /// action phase, by priority: whoever hostile stands on a covered tile in the attacker's line of sight then is struck, each with
-/// its own roll. Nobody there is a miss. If the attacker is somewhere else by then (stopped short, pushed), the pattern
+/// its own roll, and so is any ally there: the aim warns of them. Nobody there is a miss. If the attacker is somewhere else by then (stopped short, pushed), the pattern
 /// keeps its shape and direction, re-anchored on the unit. A unit that is down or gone loses it (<see cref="Lose"/>).
 /// </summary>
 public static class TileStrikes
@@ -84,6 +84,7 @@ public static class TileStrikes
         if (Plans.Of(sim.State, unit) is not { } plan || !plan.Steps.Exists(s => s.Kind != PlanStepKind.Move)) return;
         foreach (var card in plan.Steps.Where(s => s.Kind == PlanStepKind.Card)) CardPlay.Lost(sim, unit, card);
         plan.Steps.RemoveAll(s => s.Kind != PlanStepKind.Move);
+        Defences.Drop(sim.State, unit);
         sim.State.Log(new(sim.State.Round, ScavengeEventType.IntentCanceled, $"{unit.Name}'s plan is off: {why}.", unit.Id, Pos: unit.Pos));
     }
 
@@ -103,7 +104,9 @@ public static class TileStrikes
                 if (Aim(sim, unit, action, target.Pos, mode, dir) is not { } aim) continue;
                 var tiles = aim.Tiles.Where(p => Combat.Clear(sim.Data, state.Map, from, p)).ToList();
                 if (!tiles.Contains(target.Pos)) continue;
-                var score = TargetsOn(state, unit, action, tiles).Count(t => unit.HostileTo(t) && Detection.SideSees(sim.Data, state, unit.Side, t));
+                var struck = TargetsOn(state, unit, action, tiles).ToList();
+                if (struck.Any(t => !unit.HostileTo(t))) continue;
+                var score = struck.Count(t => Detection.SideSees(sim.Data, state, unit.Side, t));
                 if (score <= bestScore) continue;
                 (best, bestScore) = ((mode, dir), score);
             }
@@ -152,7 +155,7 @@ public static class TileStrikes
     {
         var clear = strike.Tiles.Where(p => Combat.Clear(sim.Data, sim.State.Map, unit.Pos, p)).ToList();
         unit.Facing = strike.Direction;
-        if (TargetsOn(sim.State, unit, action, clear).FirstOrDefault() is not { } target)
+        if (TargetsOn(sim.State, unit, action, clear).FirstOrDefault(unit.HostileTo) is not { } target)
         {
             sim.MakeNoise(unit, action.Noise);
             return [];
@@ -162,7 +165,7 @@ public static class TileStrikes
     }
 
     /// <summary>
-    /// The blow itself, AP already paid: the unit faces <paramref name="direction"/> and strikes every hostile on the
+    /// The blow itself, AP already paid: the unit faces <paramref name="direction"/> and strikes everyone on the
     /// <paramref name="tiles"/> in its line of sight (plus an area action's splash around <paramref name="tile"/>); with
     /// nobody there it only makes its noise. Returns who was struck.
     /// </summary>
@@ -182,9 +185,12 @@ public static class TileStrikes
         return targets;
     }
 
-    /// <summary>The conscious hostiles on <paramref name="tiles"/> the action can strike, tile by tile, then by id.</summary>
+    /// <summary>
+    /// Whoever conscious stands on <paramref name="tiles"/> that the action can strike, tile by tile, then by id: hostiles, and
+    /// the attacker's own side too, whom the aim warns of (<see cref="TacticsView.AllyTiles"/>).
+    /// </summary>
     private static IEnumerable<Unit> TargetsOn(ScavengeState state, Unit attacker, ActionProfile action, List<Pos> tiles) =>
-        state.Units.Where(u => u.IsActive && u.OnMap && u.CarriedById is null && attacker.HostileTo(u)
+        state.Units.Where(u => u.IsActive && u.OnMap && u.CarriedById is null && u.Id != attacker.Id && (attacker.HostileTo(u) || u.Side != Unit.NeutralSide)
                                && tiles.Contains(u.Pos) && Drones.CanStrike(action, u))
             .OrderBy(u => tiles.IndexOf(u.Pos)).ThenBy(u => u.Id);
 }

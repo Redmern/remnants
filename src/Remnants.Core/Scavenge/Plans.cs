@@ -25,6 +25,10 @@ public sealed class PlanStep
     public bool FromSlot { get; set; }
     public int DeckId { get; set; }
 
+    /// <summary>A card's aim: where the plan had the unit when it was queued, and which way its pattern is turned.</summary>
+    public Pos From { get; set; }
+    public Pos Direction { get; set; }
+
     public int RefundMp { get; set; }
     public int RefundAp { get; set; }
     public int RefundFatigue { get; set; }

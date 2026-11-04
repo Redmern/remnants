@@ -444,6 +444,15 @@ public sealed record MovementRules
     public List<BodyMovementRule> Body { get; init; } = new();
 }
 
+/// <summary>What a defended tile takes off a hit, beyond its card (<see cref="Defences"/>, scavenge.json <c>combat.block</c>).</summary>
+public sealed record BlockRules
+{
+    public Skill Skill { get; init; } = Skill.Melee;
+    public double PerSkill { get; init; } = 0.002;
+    public double PerArmor { get; init; } = 0.01;
+    public double Max { get; init; } = 0.9;
+}
+
 /// <summary>
 /// The resolve order (<see cref="Priority"/>, scavenge.json <c>priority</c>): what speed and stamina are worth, how steep the
 /// fall below the low-stamina cliff is, what kinds of action add, and what is left of an action tied with a hostile's.
@@ -540,6 +549,8 @@ public sealed record CombatRules
 
     /// <summary>The most the stacked damage multipliers of a blow (ambush × facing × exposed) may come to.</summary>
     public double MaxDamageMultiplier { get; init; } = 2;
+
+    public BlockRules Block { get; init; } = new();
 
     /// <summary>The most the stacked hit bonuses of an ambush may add to a hit chance.</summary>
     public double MaxHitBonus { get; init; } = 0.3;

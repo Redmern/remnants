@@ -100,7 +100,7 @@ public class CardDataTests
         var e = c.Effect;
         var v = (e.Push + e.Pull) * 1.0 + (e.Spin ? 1.0 : 0) + (e.Disrupt || e.Push > 0 || e.Pull > 0 ? 1.0 : 0) + (e.Disrupt ? 0.5 : 0)
                 + e.Step * 0.75 + (e.Swap ? 1.0 : 0) + e.GrantAp * 1.0 + (e.AdvanceInitiative || e.DelayInitiative ? 0.75 : 0)
-                + e.PlaceBarrier * 0.5 + e.Smoke * (2 * c.Radius + 1) * (2 * c.Radius + 1) / 9.0 + (e.Strike ? 2.0 : 0)
+                + e.PlaceBarrier * 0.5 + e.Smoke * (2 * c.Radius + 1) * (2 * c.Radius + 1) / 9.0 + (e.Strike ? 2.0 : 0) + (e.Attack ? 1.5 : 0) + e.Block * 3
                 + e.Hit / 0.1 * 0.5 + e.Cover / 0.15 * 0.5 + e.Guard * 0.75 + e.Mend / 0.1 * 0.75 + e.Draw * 0.5 + e.Move * 0.5
                 + Math.Clamp(c.Range - 1, 0, 5) * 0.1;
         return v;

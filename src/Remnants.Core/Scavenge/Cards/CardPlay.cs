@@ -63,7 +63,7 @@ public static class CardPlay
         CardAbilities.Outcome? ability = null;
         if (effect.IsAbility)
         {
-            ability = CardAbilities.Check(sim, unit, card, effect, c.TargetId, c.Tile);
+            ability = CardAbilities.Check(sim, unit, card, effect, c.TargetId, c.Tile, c.Direction);
             if (!ability.Ok) return new PlayCheck(ability.Fail!);
         }
         return new PlayCheck(ScavengeResult.Success($"{card.Name} on {unit.Name}."), deck, card, effect, ap, boost, ability);
@@ -87,7 +87,7 @@ public static class CardPlay
             Plans.For(state, unit).Steps.Add(new PlanStep
             {
                 Kind = PlanStepKind.Card, CardId = c.CardId, TargetId = c.TargetId, Tile = c.Tile, Boost = boost, FromSlot = c.FromSlot,
-                DeckId = deckId ?? c.PlayerId, RefundPoints = card.Cost,
+                DeckId = deckId ?? c.PlayerId, RefundPoints = card.Cost, From = Plans.Anchor(state, unit), Direction = check.Ability?.Direction ?? default,
             });
             return ScavengeResult.Success($"{unit.Name} will play {card.Name}.", check.Ability?.Target?.Id);
         }
@@ -106,7 +106,7 @@ public static class CardPlay
         if (effect.Cover > 0) { unit.CardCover += effect.Cover; done.Add($"+{effect.Cover:P0} cover"); }
         if (effect.Mend > 0 && Treatment.Mend(unit.Body, effect.Mend) is { } mended) done.Add(mended);
         if (effect.Draw > 0) { SquadDecks.Draw(sim, deck, effect.Draw); done.Add($"draws {effect.Draw}"); }
-        if (ability is not null) done.AddRange(CardAbilities.Apply(sim, unit, effect, ability, card.Radius));
+        if (ability is not null) done.AddRange(CardAbilities.Apply(sim, unit, card, effect, ability));
         // Onto its pile only now, so a draw card never reshuffles itself back into the hand.
         Spent(unit, deck, card, fromSlot);
 
@@ -129,7 +129,9 @@ public static class CardPlay
         var state = sim.State;
         if (SquadDecks.Of(state, step.DeckId) is not { } deck || sim.Data.Cards.Find(step.CardId!) is not { } card) return;
         var effect = EffectOf(card, unit, step.Boost);
-        var ability = CardAbilities.Check(sim, unit, card, effect, step.TargetId, step.Tile);
+        // An attack's pattern moved with the unit if it did not end where its plan said.
+        var aim = effect.Attack && step.Tile is { } t ? t + (unit.Pos - step.From) : step.Tile;
+        var ability = CardAbilities.Check(sim, unit, card, effect, step.TargetId, aim, step.Direction);
         if (ability.Fail is { } fail)
         {
             Spent(unit, deck, card, step.FromSlot);

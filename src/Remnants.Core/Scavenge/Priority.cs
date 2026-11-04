@@ -28,12 +28,19 @@ public static class Priority
             case PlanStepKind.Recover:
                 return rules.EarlyWeight;
             case PlanStepKind.Strike when sim.Profile(unit).Action(step.Strike!.ActionId) is { } action:
-                if (action.ApCost >= 2 || action.Area > 0) return rules.HeavyWeight;
-                return action.Pattern == Items.AttackPattern.Melee && action.Reach <= 1 && action.MaxDamage <= rules.LightMaxDamage ? rules.QuickWeight : 0;
+                return Blow(rules, action);
             case PlanStepKind.Card when step.CardId is { } id && sim.Data.Cards.Find(id) is { } card:
+                if (card.Effect.Block > 0) return rules.EarlyWeight;
+                if (card.Effect.Attack) return CardAbilities.MeleeBlow(sim, unit) is { } swing ? Blow(rules, swing) : 0;
                 return card.Effect.Push > 0 || card.Effect.Pull > 0 || card.Effect.Step > 0 ? rules.QuickWeight : 0;
             default:
                 return 0;
         }
+    }
+
+    private static double Blow(PriorityRules rules, ActionProfile action)
+    {
+        if (action.ApCost >= 2 || action.Area > 0) return rules.HeavyWeight;
+        return action.Pattern == Items.AttackPattern.Melee && action.Reach <= 1 && action.MaxDamage <= rules.LightMaxDamage ? rules.QuickWeight : 0;
     }
 }

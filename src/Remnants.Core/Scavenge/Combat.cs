@@ -298,6 +298,13 @@ public static class Combat
         target.Guard = 0;
         var damage = Math.Max(1, raw - armor);
         if (tier == HitTier.Graze) damage = Math.Max(1, damage * tiers.GrazeDamage);
+        if (Defences.At(sim, attacker, target.Pos) is { } block)
+        {
+            damage = Math.Max(1, damage * (1 - block.Share));
+            state.Log(new(state.Round, ScavengeEventType.Blocked,
+                $"{block.Defender.Name}'s {(block.Perfect ? "perfect " : "")}block takes {block.Share * 100:0}% off the hit on {target.Name}.", block.Defender.Id, target.Id, target.Pos,
+                Anonymous: $"The hit on {target.Name} is blocked."));
+        }
         var where = (target.Structure ? target.Name : $"{target.Name}'s {part}")
                     + arc switch { FacingArc.Side => " from the side", FacingArc.Rear => " from behind", _ => "" };
         var (verb, how) = tier switch

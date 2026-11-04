@@ -54,6 +54,8 @@ public enum ScavengeEventType
     Displaced,
     /// <summary>A card changed a unit's priority for the round.</summary>
     InitiativeChanged,
+    /// <summary>A defended tile took some of a hit.</summary>
+    Blocked,
     /// <summary>Hostiles on the same priority: their actions resolved together at reduced effect.</summary>
     Clashed,
     /// <summary>A card put a barrier or smoke on the map.</summary>
@@ -191,6 +193,9 @@ public sealed class ScavengeState
 
     /// <summary>The units' plans for the round (<see cref="Scavenge.Plans"/>): gone when the round has resolved.</summary>
     public List<UnitPlan> Plans { get; set; } = new();
+
+    /// <summary>Tiles held by defence cards: only while the action phase runs (<see cref="Scavenge.Defences"/>).</summary>
+    public List<DefendedTiles> Defences { get; set; } = new();
 
     /// <summary>The round the AI units last planned for.</summary>
     public int AiPlannedRound { get; set; }

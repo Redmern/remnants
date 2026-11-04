@@ -13,6 +13,9 @@ public sealed record Telegraph(int UnitId, string Name, Pos From, Pos? AttackTil
     List<Pos> Threatened, bool AimedAtUs);
 
 
+/// <summary>Where an aimed card's pattern falls, and which of those tiles hold an ally (the warning colour).</summary>
+public sealed record PatternAimView(List<Pos> Tiles, List<Pos> AllyTiles);
+
 /// <summary>An attack as the preview shows it: in reach from the tile, the hit chance, and its terms.</summary>
 public sealed record HitPreviewInfo(bool InReach, double Chance, Breakdown? Breakdown);
 
@@ -44,6 +47,18 @@ public static class TacticsView
 {
     /// <summary>What hostiles have planned is hidden until it comes up: nothing to telegraph but their moves.</summary>
     public static List<Telegraph> Telegraphs(ScavengeSim sim, string side) => [];
+
+    /// <summary>The aim of a pattern card from where the unit's plan ends: <paramref name="tile"/> for one aimed at a tile, turned to <paramref name="direction"/>.</summary>
+    public static PatternAimView PatternAim(ScavengeSim sim, Unit unit, string cardId, Pos? tile, Pos direction)
+    {
+        var tiles = sim.Data.Cards.Find(cardId)?.Pattern is { } pattern
+            ? Patterns.Tiles(sim.State.Map, pattern, tile ?? Plans.Anchor(sim.State, unit), direction) : [];
+        return new PatternAimView(tiles, AllyTiles(sim, unit, tiles));
+    }
+
+    /// <summary>The <paramref name="tiles"/> holding one of the unit's side or an ally: a blow through them strikes them too. Only units it knows of.</summary>
+    public static List<Pos> AllyTiles(ScavengeSim sim, Unit unit, IEnumerable<Pos> tiles) =>
+        tiles.Where(p => sim.State.UnitAt(p) is { } u && u.Id != unit.Id && !unit.HostileTo(u) && u.Side != Unit.NeutralSide).ToList();
 
     /// <summary>
     /// The threat overlay: every tile a seen enemy's telegraphed blow will strike (<see cref="ThreatKind.Strike"/>), and every
@@ -249,6 +264,8 @@ public static class TacticsView
         if (e.Push > 0) parts.Add($"push {e.Push}");
         if (e.Pull > 0) parts.Add($"pull {e.Pull}");
         if (e.Swap) parts.Add("swap places");
+        if (e.Attack) parts.Add("swings through the pattern");
+        if (e.Block > 0) parts.Add($"blocks {e.Block:P0} on the pattern");
         if (e.Step > 0) parts.Add($"step {e.Step}");
         if (e.Spin) parts.Add("spin round");
         if (e.GrantAp > 0) parts.Add($"+{e.GrantAp} AP");

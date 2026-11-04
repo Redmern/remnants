@@ -76,7 +76,7 @@ public class TileAttackTests
     }
 
     [Fact]
-    public void A_friend_on_a_covered_tile_is_not_struck()
+    public void A_friend_on_a_covered_tile_is_struck_too()
     {
         var a = SurvivorUnit(1, new(2, 2), weapon: "spear");
         var friend = SurvivorUnit(1, new(3, 2), weapon: "pipe");
@@ -84,7 +84,7 @@ public class TileAttackTests
         var sim = Arena(10, 5, [a, friend, b], data: Sure);
         Assert.True(sim.Execute(new AttackTile(1, a.Id, new(4, 2), "thrust")).Ok);
         Settle(sim);
-        Assert.Equal(friend.MaxHp, friend.Hp);
+        Assert.True(friend.Hp < friend.MaxHp);
         Assert.True(b.Hp < b.MaxHp);
     }
 

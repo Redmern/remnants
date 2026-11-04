@@ -102,12 +102,11 @@ public class CoopNetTests
         Assert.Contains(b.Client.TakeEvents().Concat(a.Client.TakeEvents()), e => e.Type == ScavengeEventType.Pinged);
         Assert.True(up.Do(new GiveItem(up.Id, mine.Id, other.Id, "bandage")).Ok, "give over the wire");
         Assert.Equal(2, f.Sim.State.FindUnit(other.Id)!.Pack.Count(i => i == "bandage"));
-        // A blow at an ally's tile comes down on nobody.
-        var hp = f.Sim.State.FindUnit(other.Id)!.Hp;
+        // A blow at an ally's tile comes down on them: the aim only warns.
         var swing = f.Sim.Profile(mine).Actions.First(x => TileStrikes.Aim(f.Sim, mine, x, other.Pos) is not null).Id;
         Assert.True(up.Do(new AttackTile(up.Id, mine.Id, other.Pos, swing)).Ok, "a strike at an ally's tile over the wire");
         f.EndTurnsUntil(() => !TileStrikes.Readied(f.Sim.State, mine), a, b);
-        Assert.Equal(hp, f.Sim.State.FindUnit(other.Id)!.Hp);
+        Assert.Contains(f.Sim.State.Events, e => e.UnitId == mine.Id && e.TargetId == other.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
 
         PlayOut(f, a, b);
         var ra = a.Last<MissionEnded>().Result;

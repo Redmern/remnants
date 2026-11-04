@@ -71,6 +71,7 @@ internal static class RoundResolver
     internal static void Actions(ScavengeSim sim)
     {
         var state = sim.State;
+        Defences.Arm(sim);
         while (!state.Finished)
         {
             var heads = state.Plans.OrderBy(p => p.UnitId)
@@ -78,7 +79,7 @@ internal static class RoundResolver
                 .Where(h => h.Unit is { IsActive: true } && h.Plan.Steps.Count > 0)
                 .Select(h => (Unit: h.Unit!, Step: h.Plan.Steps[0], Plan: h.Plan, Score: Priority.Action(sim, h.Unit!, h.Plan.Steps[0])))
                 .ToList();
-            if (heads.Count == 0) return;
+            if (heads.Count == 0) break;
             var best = heads.Max(h => h.Score);
             var top = heads.Where(h => h.Score >= best - Epsilon).ToList();
             var clash = top.Where(h => top.Any(o => o.Unit.HostileTo(h.Unit))).ToList();
@@ -91,6 +92,7 @@ internal static class RoundResolver
             }
             sim.AfterStep();
         }
+        state.Defences.Clear();
     }
 
     /// <summary>Hostiles on one score: all their actions go off, at reduced effect, from the tiles they stood on when it began.</summary>

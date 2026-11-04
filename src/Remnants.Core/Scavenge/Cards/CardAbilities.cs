@@ -20,13 +20,13 @@ public static class CardAbilities
     /// What an ability would do, or why not (<see cref="Fail"/>): the unit it acts on and where it lands, the tile aimed at,
     /// the tile the player steps to.
     /// </summary>
-    public sealed record Outcome(ScavengeResult? Fail, Unit? Target = null, Pos? Tile = null, Pos? Landing = null, ActionProfile? Strike = null)
+    public sealed record Outcome(ScavengeResult? Fail, Unit? Target = null, Pos? Tile = null, Pos? Landing = null, ActionProfile? Strike = null, Pos Direction = default, List<Pos>? Tiles = null)
     {
         public bool Ok => Fail is null;
     }
 
     /// <summary>The target an ability card aims at and what its effect would do, without changing anything.</summary>
-    public static Outcome Check(ScavengeSim sim, Unit unit, CardDef card, CardEffect effect, int? targetId, Pos? tile)
+    public static Outcome Check(ScavengeSim sim, Unit unit, CardDef card, CardEffect effect, int? targetId, Pos? tile, Pos? direction = null)
     {
         var state = sim.State;
         var data = sim.Data;
@@ -99,11 +99,15 @@ public static class CardAbilities
             landing = Slide(sim, target, dir, Math.Max(effect.Push, effect.Pull));
             if (landing == target.Pos) return Fail(ScavengeError.InvalidTarget, $"{target.Name} has nowhere to go.");
         }
-        return new Outcome(null, target, tile, landing, strike);
+        // Turned as the player aims it: toward the tile aimed at, or the way the unit faces, unless told otherwise.
+        var turned = direction ?? (tile is { } p && p != unit.Pos ? Combat.Face(unit.Pos, p) : unit.Facing ?? new Pos(1, 0));
+        if (effect.Attack && MeleeBlow(sim, unit) is null) return Fail(ScavengeError.UnknownAction, $"{unit.Name} has nothing to swing.");
+        var tiles = card.Pattern is { } pattern ? Patterns.Tiles(state.Map, pattern, tile ?? unit.Pos, turned) : null;
+        return new Outcome(null, target, tile, landing, strike, turned, tiles);
     }
 
     /// <summary>Carries out a checked ability; returns what it did, in words, for the card's log line.</summary>
-    internal static List<string> Apply(ScavengeSim sim, Unit unit, CardEffect effect, Outcome outcome, int radius)
+    internal static List<string> Apply(ScavengeSim sim, Unit unit, CardDef card, CardEffect effect, Outcome outcome)
     {
         var state = sim.State;
         var done = new List<string>();
@@ -139,7 +143,7 @@ public static class CardAbilities
             var rounds = smoke ? effect.Smoke : effect.PlaceBarrier;
             FieldEffects.Add(state, new FieldEffect
             {
-                Kind = smoke ? FieldEffectKind.Smoke : FieldEffectKind.Barrier, Tiles = smoke ? FieldEffects.SmokeTiles(state.Map, at, radius) : [at],
+                Kind = smoke ? FieldEffectKind.Smoke : FieldEffectKind.Barrier, Tiles = smoke ? FieldEffects.SmokeTiles(state.Map, at, card.Radius) : [at],
                 UntilRound = state.Round + rounds - 1, Side = unit.Side,
             });
             var what = smoke ? $"smoke billows round {at}" : $"a barrier goes up at {at}";
@@ -154,7 +158,11 @@ public static class CardAbilities
             if (next is not null)
             {
                 Plans.Of(state, target)!.Steps.Remove(next);
-                if (next.Kind == PlanStepKind.Card) CardPlay.Lost(sim, target, next);
+                if (next.Kind == PlanStepKind.Card)
+                {
+                    CardPlay.Lost(sim, target, next);
+                    Defences.Drop(state, target, next.CardId!);
+                }
                 state.Log(new(state.Round, ScavengeEventType.IntentFizzled, $"{unit.Name} breaks {target.Name}'s next move.", target.Id, unit.Id, target.Pos));
             }
             done.Add(next is null ? $"{target.Name} had nothing to break" : $"{target.Name}'s next action broken");
@@ -176,6 +184,16 @@ public static class CardAbilities
             state.Log(new(state.Round, ScavengeEventType.InitiativeChanged, $"{target.Name} {when} ({unit.Name}).", unit.Id, target.Id, target.Pos,
                 Anonymous: $"{target.Name} {when}."));
             done.Add($"{target.Name} {when}");
+        }
+        if (effect.Block > 0)
+        {
+            Defences.CameUp(state, unit, card.Id);
+            done.Add("holds its ground");
+        }
+        if (effect.Attack && MeleeBlow(sim, unit) is { } swing)
+        {
+            var struck = TileStrikes.Strike(sim, unit, swing, outcome.Tiles!, outcome.Tile ?? unit.Pos, outcome.Direction);
+            done.Add(struck.Count > 0 ? $"swings at {string.Join(", ", struck.Select(u => u.Name))}" : "swings at nothing");
         }
         if (effect.Spin && target is not null)
         {
@@ -230,6 +248,11 @@ public static class CardAbilities
             .OrderByDescending(a => Combat.ChanceToHit(sim, unit, a, target) * (a.MinDamage + a.MaxDamage) / 2)
             .ThenBy(a => a.Id, StringComparer.Ordinal)
             .FirstOrDefault();
+
+    /// <summary>What an attack card swings: the unit's hardest melee action, by id on a tie; null with none.</summary>
+    public static ActionProfile? MeleeBlow(ScavengeSim sim, Unit unit) =>
+        sim.Profile(unit).Actions.Where(a => a.Pattern != Items.AttackPattern.Ranged)
+            .OrderByDescending(a => a.MaxDamage).ThenBy(a => a.Id, StringComparer.Ordinal).FirstOrDefault();
 
     /// <summary>Devices and vehicles stay put.</summary>
     private static bool Fixed(Unit u) => u.Kind == UnitKind.Device;

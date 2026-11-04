@@ -79,6 +79,8 @@ public sealed record CardScaling
 /// <see cref="GrantAp"/>, <see cref="AdvanceInitiative"/> / <see cref="DelayInitiative"/> the target's priority this round, <see cref="PlaceBarrier"/> (cover on the tile for that many rounds), <see cref="Smoke"/> (sight-blocking
 /// smoke for that many rounds), <see cref="Strike"/> the target now with the player's best attack, and
 /// <see cref="Disrupt"/> the target's next queued action, if it has not gone off yet.
+/// <see cref="Attack"/> swings the player's melee weapon through the card's <see cref="CardDef.Pattern"/>; <see cref="Block"/>
+/// is the share of a hit the pattern's tiles take off (<see cref="Defences"/>).
 /// </summary>
 public sealed record CardEffect
 {
@@ -100,10 +102,12 @@ public sealed record CardEffect
     public int Smoke { get; init; }
     public bool Strike { get; init; }
     public bool Disrupt { get; init; }
+    public bool Attack { get; init; }
+    public double Block { get; init; }
 
     /// <summary>Whether it changes the board (anything beyond a buff on the character it is played on).</summary>
     public bool IsAbility => Push > 0 || Pull > 0 || Swap || Step > 0 || Spin || GrantAp > 0 || AdvanceInitiative || DelayInitiative
-                             || PlaceBarrier > 0 || Smoke > 0 || Strike || Disrupt;
+                             || PlaceBarrier > 0 || Smoke > 0 || Strike || Disrupt || Attack || Block > 0;
 
     /// <summary>Whether it acts on a unit other than the player (a target unit is needed).</summary>
     public bool NeedsUnit => Push > 0 || Pull > 0 || Swap || Spin || GrantAp > 0 || AdvanceInitiative || DelayInitiative || Strike || Disrupt;
@@ -121,6 +125,7 @@ public sealed record CardEffect
         GrantAp = GrantAp + other.GrantAp, AdvanceInitiative = AdvanceInitiative || other.AdvanceInitiative,
         DelayInitiative = DelayInitiative || other.DelayInitiative, PlaceBarrier = PlaceBarrier + other.PlaceBarrier,
         Smoke = Smoke + other.Smoke, Strike = Strike || other.Strike, Disrupt = Disrupt || other.Disrupt,
+        Attack = Attack || other.Attack, Block = Block + other.Block,
     };
 
     /// <summary>Numbers × <paramref name="factor"/> (whole-number effects round down, never below their base).</summary>
@@ -131,6 +136,7 @@ public sealed record CardEffect
         // Abilities do not scale: a push is as far, a smoke as long, whoever plays it.
         Push = Push, Pull = Pull, Swap = Swap, Step = Step, Spin = Spin, GrantAp = GrantAp, AdvanceInitiative = AdvanceInitiative,
         DelayInitiative = DelayInitiative, PlaceBarrier = PlaceBarrier, Smoke = Smoke, Strike = Strike, Disrupt = Disrupt,
+        Attack = Attack, Block = Block,
     };
 }
 
@@ -154,6 +160,9 @@ public sealed record CardDef
     public bool Consumable { get; init; }
     public bool ArmLock { get; init; }
     public CardTarget Target { get; init; }
+
+    /// <summary>The tiles an attack or defence card covers, from its target tile or the player, turned as the player aims it.</summary>
+    public CardPattern? Pattern { get; init; }
     public int Range { get; init; }
     public int Radius { get; init; }
     public CardRequirement Requirement { get; init; } = new();
@@ -305,6 +314,9 @@ public sealed class CardCatalog
         var unit = c.Target is CardTarget.Ally or CardTarget.Enemy or CardTarget.Unit;
         if (e.NeedsUnit && !unit) throw new GameDataException($"Card '{c.Id}': its effect needs a unit target.");
         if (e.NeedsTile && c.Target != CardTarget.Tile) throw new GameDataException($"Card '{c.Id}': its effect needs a tile target.");
+        if ((e.Attack || e.Block > 0) && c.Pattern is null) throw new GameDataException($"Card '{c.Id}': an attack or defence needs a pattern.");
+        if ((e.Attack || e.Block > 0) && c.Target is not (CardTarget.Self or CardTarget.Tile)) throw new GameDataException($"Card '{c.Id}': a pattern starts from the player or a tile.");
+        if (c.Pattern is { } pattern && (pattern.Length < 0 || pattern.Offsets?.Any(o => o.Length != 2) == true)) throw new GameDataException($"Card '{c.Id}': a pattern's offsets are [forward, side] pairs.");
         if (e.Swap && c.Target != CardTarget.Ally) throw new GameDataException($"Card '{c.Id}': a swap is with an ally.");
         if (!e.IsAbility && c.Target is not CardTarget.Self)
             throw new GameDataException($"Card '{c.Id}': a buff is played on the character itself.");

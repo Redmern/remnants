@@ -62,7 +62,7 @@ public class ScavengeCommandTests
     }
 
     [Fact]
-    public void A_tile_attack_never_strikes_an_ally_on_the_tile()
+    public void A_tile_attack_strikes_an_ally_on_the_tile()
     {
         var a = SurvivorUnit(1, new(0, 0), weapon: "pipe");
         var ally = SurvivorUnit(1, new(1, 0));
@@ -70,9 +70,7 @@ public class ScavengeCommandTests
             data: With(r => r with { Combat = r.Combat with { MinHitChance = 1, MaxHitChance = 1 } }));
 
         Assert.True(StrikeNow(sim, a, ally, "swing").Ok);
-        Assert.Equal(ally.MaxHp, ally.Hp);
-        Assert.DoesNotContain(sim.State.Events, e => e.TargetId == ally.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
-        Assert.Contains(sim.State.Events, e => e.UnitId == a.Id && e.Type == ScavengeEventType.IntentFizzled);
+        Assert.True(ally.Hp < ally.MaxHp);
     }
 
     [Fact]
