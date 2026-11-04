@@ -1,7 +1,7 @@
 [
   {
     "id": "husk", "name": "Husk", "hp": 40, "ai": "Husk", "stealth": -2,
-    "tactics": { "aim": "Closest", "holdIfMoved": true, "read": "Sweeps three tiles in front of it, where you stood when the round opened. If you walked last round it holds its blow and comes on, so it strikes when you stop. It never guards or shoves." },
+    "tactics": { "aim": "Closest", "read": "Sweeps three tiles in front of it, where you stood when the round opened, and at the tile between you when you are two tiles off. Step well clear and hit it while it is exposed. It never guards or shoves." },
     "attributes": { "Strength": 60, "Agility": 40, "Endurance": 70, "Perception": 35 },
     "skills": { "Melee": 30 },
     "loot": "husk",
@@ -9,7 +9,7 @@
   },
   {
     "id": "husk_crawler", "name": "Husk Crawler", "hp": 22, "ai": "Husk",
-    "tactics": { "aim": "Closest", "holdIfMoved": true, "read": "Sweeps like a Husk, and holds its bite while you keep walking. Stop next to it and it bites." },
+    "tactics": { "aim": "Closest", "read": "Sweeps like a Husk, at the tile between you when you are two tiles off. Let it hit air." },
     "attributes": { "Strength": 40, "Agility": 75, "Endurance": 45, "Perception": 40 },
     "skills": { "Melee": 25 },
     "loot": "husk_crawler",
@@ -76,7 +76,7 @@
   },
   {
     "id": "tally_blade", "name": "Tally Cutter", "hp": 60, "ai": "Husk",
-    "tactics": { "aim": "Closest", "holdIfMoved": true, "habits": [ { "when": "Cornered", "do": "Push" } ], "read": "Holds its blow while you keep walking, swings when you stop, and shoves you into any wall behind you." },
+    "tactics": { "aim": "Closest", "habits": [ { "when": "Cornered", "do": "Push" } ], "read": "Swings at the tile between you when you are two tiles off, and shoves you into any wall behind you." },
     "attributes": { "Strength": 60, "Agility": 55, "Endurance": 55, "Perception": 50 },
     "skills": { "Firearms": 20, "Melee": 45 },
     "loot": "tally_blade",

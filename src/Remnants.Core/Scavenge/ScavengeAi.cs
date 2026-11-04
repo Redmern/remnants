@@ -71,12 +71,12 @@ internal static class ScavengeAi
 
     /// <summary>Readies a tile strike by the type's aim (<see cref="EnemyAim"/>), if the action can be aimed there and paid for.</summary>
     private static bool Strike(ScavengeSim sim, Unit unit, ActionProfile action, Unit target) =>
-        !EnemyAim.Holds(sim, unit, target) && TileStrikes.StrikeAt(sim, unit, action, target, EnemyAim.Tile(sim, unit, action, target)) is { } strike && TileStrikes.Declare(sim, unit, strike).Ok;
+        TileStrikes.StrikeAt(sim, unit, action, target, EnemyAim.Tile(sim, unit, action, target)) is { } strike && TileStrikes.Declare(sim, unit, strike).Ok;
 
     /// <summary>Out of reach but close: a swing at the tile it would have to step on (<see cref="EnemyAim.Swing"/>).</summary>
     private static void Swing(ScavengeSim sim, Unit unit, Unit target)
     {
-        if (EnemyAim.Holds(sim, unit, target) || EnemyAim.Swing(sim, unit, target) is not { } tile) return;
+        if (EnemyAim.Swing(sim, unit, target) is not { } tile) return;
         var best = sim.Profile(unit).Actions.Where(a => Drones.CanStrike(a, target) && Combat.ApCost(a, unit.Pos, tile) <= unit.Ap && TileStrikes.Aim(sim, unit, a, tile) is not null)
             .OrderByDescending(a => a.MinDamage + a.MaxDamage).ThenBy(a => a.Id, StringComparer.Ordinal).FirstOrDefault();
         if (best is not null && TileStrikes.StrikeAt(sim, unit, best, target, tile) is { } strike) TileStrikes.Declare(sim, unit, strike);

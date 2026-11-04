@@ -50,9 +50,6 @@ public sealed record EnemyTactics
     public AimKind Aim { get; init; }
     /// <summary><see cref="AimKind.Closest"/>: with the target this near (and out of reach), swing at the next tile toward it.</summary>
     public int SwingRange { get; init; } = 2;
-
-    /// <summary>It does not swing at a target that walked last round: it comes on instead, and strikes once the target stops.</summary>
-    public bool HoldIfMoved { get; init; }
     /// <summary><see cref="AimKind.Lead"/>: how many tiles ahead of a target that moved last round.</summary>
     public int LeadTiles { get; init; } = 2;
     public List<EnemyHabit> Habits { get; init; } = new();

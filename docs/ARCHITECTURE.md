@@ -926,8 +926,6 @@ Combat is simultaneous: everyone plans, then the round resolves. There are no su
   moves whoever is on its pattern away from the pusher; what they queued still goes off from where they land. A wall or
   unit stops it with collision damage, and a tile defended by a card or an ally's guard takes a tile off. A dash runs straight
   on and never through anyone.
-- **Holding a blow.** A type with `holdIfMoved` (`EnemyAim.Holds`) plans no blow on a target that walked last round: it comes on and strikes once the target stops, so a chase does not fill the log with blows on empty tiles.
-
 **Odds and previews** (`TacticsView.Odds`, `PushPreview`, `DefendOdds`, `Factors`). The same rules as the blow, as shares the UI only renders: tiers, crit, stun if guarded, and what changes them, named. Crit is a seeded roll on a landed blow (`combat.crit`), raised from the side and the rear, multiplied inside the damage cap. Previews use what the side sees: a hidden unit behind a pushed target shows nothing.
 
 **Planned actions** (`PlannedActions.cs`). While a unit's side sees a hostile that can act, `UseItem`, `Hack` and `DroneFire` take the Action slot: the handlers check once when planned, from where the plan ends, and run when the step comes up, with AP already paid. A check that no longer holds fizzles with a log line. A drone shot comes down on the tile it was aimed at, through block. With nobody hostile in sight they stay instant, as do looting and the other field commands.
