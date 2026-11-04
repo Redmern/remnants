@@ -22,6 +22,8 @@ public sealed record RunStats(int Rounds, int Kills, int LinkedSeen, int LinkedK
 /// </summary>
 public sealed record PlanCardStats
 {
+    /// <summary>The counters the party planned, by kind: Defend, Push, Dash, Recover.</summary>
+    public int[] Counters { get; } = new int[4];
     public int Declared { get; set; }
     public int EnemyDeclared { get; set; }
     public int Resolved { get; set; }
@@ -57,13 +59,14 @@ public sealed record PlanCardStats
             case ScavengeEventType.RoundStarted:
                 EnemyRounds += state.Units.Count(u => u.IsActive && u.Kind is UnitKind.Enemy or UnitKind.Device);
                 break;
-            case ScavengeEventType.IntentDeclared:
+            case ScavengeEventType.IntentResolved or ScavengeEventType.IntentFizzled or ScavengeEventType.IntentCanceled:
+                // Plans come out only as they resolve: nothing announces one.
                 Declared++;
                 if (Enemy(e.UnitId)) EnemyDeclared++;
+                if (e.Type == ScavengeEventType.IntentResolved) Resolved++;
+                else if (e.Type == ScavengeEventType.IntentFizzled) Fizzled++;
+                else Canceled++;
                 break;
-            case ScavengeEventType.IntentResolved: Resolved++; break;
-            case ScavengeEventType.IntentFizzled: Fizzled++; break;
-            case ScavengeEventType.IntentCanceled: Canceled++; break;
             case ScavengeEventType.CardPlayed:
                 if (Mine(e.UnitId))
                 {
@@ -103,6 +106,7 @@ public sealed record PlanCardStats
         Displaced += o.Displaced; Reordered += o.Reordered; EnemyDisplaced += o.EnemyDisplaced;
         foreach (var (name, count) in o.CardsByName) CardsByName[name] = CardsByName.GetValueOrDefault(name) + count;
         for (var i = 0; i < 3; i++) { TiersDealt[i] += o.TiersDealt[i]; TiersTaken[i] += o.TiersTaken[i]; }
+        for (var i = 0; i < Counters.Length; i++) Counters[i] += o.Counters[i];
     }
 }
 
@@ -234,6 +238,8 @@ public static class PartyBot
             var started = System.Diagnostics.Stopwatch.GetTimestamp();
             var result = sim.Execute(command);
             Timed?.Invoke(command, System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+            if (result.Ok && command is Defend or Push or Dash or Recover)
+                tactics.Counters[command switch { Defend => 0, Push => 1, Dash => 2, _ => 3 }]++;
             if (result.Ok && command is PickUp or TakeAll) looted++;
             if (result.Ok && command is Salvage) salvaged++;
             if (!result.Ok && command is not EndTurn)

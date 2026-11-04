@@ -276,11 +276,12 @@ public static class ZoneTrial
             sb.AppendLine($"  vehicle {field.Name}: stashed items/run {stashed / (double)n:0.0}  wrecked {100.0 * wrecked / n:0}%  (noise ×{conditions!.HuskMultiplier:0.00} Husks)");
         sb.AppendLine($"  items/run {items / (double)n:0.0}  schematics/run {schematics / (double)n:0.00}  kills/run {kills / (double)n:0.0}  Linked kills/run {linkedKills / (double)n:0.00}  rounds/run {rounds / (double)n:0}");
         sb.AppendLine($"  carried home/run: {string.Join("  ", resources.OrderBy(kv => kv.Key, StringComparer.Ordinal).Select(kv => $"{kv.Key} {kv.Value / (double)n:0.0}"))}  pick-ups/run {piles / (double)n:0.0}  salvage actions/run {salvaged / (double)n:0.0}");
-        sb.AppendLine($"  ambushed/run {ambushed / (double)n:0.00}  blocks/run {reactions / (double)n:0.00}  defenses used/run {defended / (double)n:0.0}");
+        sb.AppendLine($"  ambushed/run {ambushed / (double)n:0.00}  blocks/run {reactions / (double)n:0.00}  defenses used/run {(defended + tactics.Counters[0]) / (double)n:0.0}");
         string Tiers(int[] t) => t.Sum() == 0 ? "-" : $"{100.0 * t[0] / t.Sum():0}/{100.0 * t[1] / t.Sum():0}/{100.0 * t[2] / t.Sum():0}%";
         sb.AppendLine($"  plans/run {tactics.Declared / (double)n:0.0} (enemy {tactics.EnemyDeclared / (double)n:0.0})  resolved {tactics.Resolved / (double)n:0.0}" +
                       $"  fizzled {tactics.Fizzled / (double)n:0.0}  cancelled {tactics.Canceled / (double)n:0.0}  cards played/run {tactics.CardsPlayed / (double)n:0.0}" +
                       (tactics.EnemyCardsPlayed > 0 ? $" (enemy {tactics.EnemyCardsPlayed / (double)n:0.0})" : ""));
+        sb.AppendLine($"  counters planned/run: defend {tactics.Counters[0] / (double)n:0.0}  push {tactics.Counters[1] / (double)n:0.0}  dash {tactics.Counters[2] / (double)n:0.0}  recover {tactics.Counters[3] / (double)n:0.0}");
         sb.AppendLine($"  enemy attacks/run {tactics.EnemyAttacks / (double)n:0.0}  per enemy-round {tactics.EnemyAttacks / (double)Math.Max(1, tactics.EnemyRounds):0.000}" +
                       $"  damage dealt/run {tactics.DamageDealt / n:0}  taken/run {tactics.DamageTaken / n:0}" +
                       $"  graze/hit/solid dealt {Tiers(tactics.TiersDealt)}  taken {Tiers(tactics.TiersTaken)}");
