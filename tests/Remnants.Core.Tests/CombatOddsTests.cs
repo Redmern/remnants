@@ -209,21 +209,30 @@ public class CombatOddsTests
 
     // A correct read (AC-29)
 
-    [Fact]
-    public void A_correct_read_wins_clearly_more_often_than_not_but_not_always()
+    /// <summary>The share of 300 seeds in which a stab at <paramref name="aimedAt"/> hurts a quicker rival dashing from (5,2) to (5,3).</summary>
+    private static double LandsAt(Pos aimedAt)
     {
-        // The read: B will dash south, so A swings at the tile it lands on.
-        var (wins, runs) = (0, 300);
+        var (lands, runs) = (0, 300);
         for (var seed = 1UL; seed <= (ulong)runs; seed++)
         {
             var a = SurvivorUnit(1, new(4, 3), weapon: "pipe");
             var b = SurvivorUnit(2, new(5, 2), weapon: "pipe");
             var sim = Arena(14, 7, [a, b], seed: seed);
+            b.PriorityBonus = 5;
             Assert.True(sim.Execute(new Dash(2, b.Id, new(0, 1), 1)).Ok);
-            Assert.True(sim.Execute(new AttackTile(1, a.Id, new(5, 3), "swing", StrikeMode.Stab, new(1, 0))).Ok);
+            Assert.True(sim.Execute(new AttackTile(1, a.Id, aimedAt, "swing", StrikeMode.Stab, Combat.Face(a.Pos, aimedAt))).Ok);
             Settle(sim);
-            if (b.Hp < b.MaxHp) wins++;
+            if (b.Hp < b.MaxHp) lands++;
         }
-        Assert.InRange(wins, runs * 6 / 10, runs * 95 / 100);
+        return (double)lands / runs;
+    }
+
+    [Fact]
+    public void A_correct_read_wins_clearly_more_often_than_a_wrong_one_but_not_always()
+    {
+        var right = LandsAt(new(5, 3));
+        var wrong = LandsAt(new(5, 2));
+        Assert.InRange(right, 0.6, 0.95);
+        Assert.Equal(0, wrong);
     }
 }
