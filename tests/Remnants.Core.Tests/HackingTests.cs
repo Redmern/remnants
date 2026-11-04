@@ -164,7 +164,7 @@ public class HackingTests
         var perked = Hacker(new Pos(1, 1), "hacking_kit", "hacking_1", "hacking_2");
         Assert.Equal(baseline + 0.2, Hacking.Chance(sim, perked, terminal), 6);
         Assert.Equal(1, Hacking.ApCost(Real, perked));
-        Assert.Equal(2, Hacking.ApCost(Real, novice));
+        Assert.Equal(1, Hacking.ApCost(Real, novice));
     }
 
     [Fact]

@@ -80,7 +80,7 @@ public static class StoryBot
 
         // Fight what is in reach; on the way out, only a blow worth taking (a wounded arm that can barely hit runs instead).
         var target = state.Units.Where(t => t.IsActive && u.HostileTo(t) && Detection.SideSees(sim.Data, state, side, t))
-            .SelectMany(t => profile.Actions.Where(a => a.ApCost <= u.Ap && Combat.CheckReach(sim.Data, state.Map, Plans.Anchor(state, u), a, BotTactics.Expected(sim, u.Side, t)) == ScavengeError.None
+            .SelectMany(t => profile.Actions.Where(a => Plans.HasRoom(sim, u, PlanSlot.Action) && a.ApCost <= u.Ap && Combat.CheckReach(sim.Data, state.Map, Plans.Anchor(state, u), a, BotTactics.Expected(sim, u.Side, t)) == ScavengeError.None
                                                         && Drones.CanStrike(a, t)).Select(a => (t, a)))
             .OrderByDescending(x => Combat.ChanceToHit(sim, u, x.a, x.t) * (x.a.MinDamage + x.a.MaxDamage) / 2)
             .ThenBy(x => x.t.Id).FirstOrDefault();

@@ -75,7 +75,8 @@ public class ProtocolTests
         Assert.Null(typeof(IScavengeCommand).Assembly.GetType("Remnants.Core.Scavenge.Attack"));
         Assert.Equal(19, Protocol.TileAttacksOnlyVersion);
         Assert.Equal(21, Protocol.SimultaneousVersion);
-        Assert.Equal(Protocol.SimultaneousVersion, Protocol.Version);
+        Assert.Equal(22, Protocol.PlanSlotsVersion);
+        Assert.Equal(Protocol.PlanSlotsVersion, Protocol.Version);
     }
 
     [Fact]

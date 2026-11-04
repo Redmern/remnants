@@ -48,6 +48,7 @@ public class CardFogNetTests
         Assert.Equal((0, 0, 0), (step.RefundMp, step.RefundAp, step.RefundFatigue));
         var seen = view.Units.Single(u => u.Id == alice.Id);
         Assert.Equal((0, 0, 0, 0.0), (seen.Ap, seen.Mp, seen.Fatigue, seen.PriorityBonus));
+        Assert.Equal((0, 0, 0, 0, 0), (seen.CardsPlayed, seen.ExtraMoves, seen.ExtraActions, seen.ExtraCards, seen.FreeActions));
         var shown = view.Decks.Single(d => d.PlayerId == a.Id);
         Assert.Equal((points, hand), (shown.Points, shown.HandCount));
         // The plan's owner sees it all.

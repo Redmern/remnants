@@ -96,6 +96,7 @@ public class PlanningViewTests
     {
         var a = SurvivorUnit(1, new(2, 3), weapon: "pipe");
         var sim = Table([a, SurvivorUnit(2, new(11, 6))]);
+        (a.Ap, a.ExtraActions) = (3, 2);
         Assert.True(sim.Execute(new Dash(1, a.Id, East, 2)).Ok);
         Assert.Equal(new Pos(4, 3), TacticsView.PlanPreview(sim, a).End);
         Assert.Equal([new Pos(3, 3), new Pos(4, 3)], TacticsView.PlanPreview(sim, a).Path);

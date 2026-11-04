@@ -50,7 +50,9 @@ public static class ScavengeSave
     public const int TelegraphedStrikesVersion = 17;
     /// <summary>Simultaneous rounds: plans, stamina, stun, adrenaline. A run from before cannot be carried over and is refused (a colony save drops it).</summary>
     public const int SimultaneousVersion = 18;
-    public const int Version = SimultaneousVersion;
+    /// <summary>One move, one action, one card a round: units' slot counts and free actions, which an older run lacks and starts at none.</summary>
+    public const int PlanSlotsVersion = 19;
+    public const int Version = PlanSlotsVersion;
     private const int OldestVersion = SimultaneousVersion;
 
     private sealed record Envelope(int Version, ScavengeState Scavenge);

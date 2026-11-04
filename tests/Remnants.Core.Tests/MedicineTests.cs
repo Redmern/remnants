@@ -415,8 +415,9 @@ public class FieldMedicineTests
     public void A_fever_costs_ap_in_the_field_and_pain_does_not()
     {
         var a = SurvivorUnit(pos: new(0, 0));
-        var sim = Arena(4, 4, [a]);
+        var sim = Arena(4, 4, [a], data: With(r => r with { Turn = r.Turn with { BaseAp = 2 } }));
         var full = sim.Profile(a).MaxAp;
+        Assert.Equal(2, full);
         a.Body.Injure(BodyPart.Torso, 0.7);
         Assert.True(Treatment.InPain(sim.Data.Medicine!, a.Body));
         Assert.Equal(full, sim.Profile(a).MaxAp);
@@ -484,6 +485,7 @@ public class MedicineIntegrationTests
         hurt.Body.Injure(BodyPart.LeftLeg, 0.5);
         Treatment.Fracture(sim.Data.Medicine!, hurt.Body, BodyPart.LeftLeg);
         Assert.True(sim.Execute(new DeployDrone(1, op.Id, new Pos(2, 1))).Ok);
+        op.Ap = 1;
         var r = sim.Execute(new DroneHeal(1, op.Id, hurt.Id));
         Assert.True(r.Ok, r.Message);
         Assert.True(hurt.Body.Find("fracture")!.Treated);

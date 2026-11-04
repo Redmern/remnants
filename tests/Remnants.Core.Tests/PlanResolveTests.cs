@@ -59,6 +59,7 @@ public class PlanResolveTests
     public void Moves_chain_from_where_the_last_planned_move_ends()
     {
         var (sim, a, _) = Duel();
+        a.ExtraMoves = 1;
         Assert.True(sim.Execute(new Move(1, a.Id, new Pos(3, 2))).Ok);
         Assert.Equal(new Pos(3, 2), Plans.Anchor(sim.State, a));
         Assert.True(sim.Reachable(a).ContainsKey(new Pos(5, 2)));
@@ -87,7 +88,7 @@ public class PlanResolveTests
         Assert.Equal(ScavengeError.OutOfRange, sim.Execute(new AttackTile(1, a.Id, new Pos(4, 2), "swing")).Error);
         Assert.True(sim.Execute(new Move(1, a.Id, new Pos(3, 2))).Ok);
         Assert.True(sim.Execute(new AttackTile(1, a.Id, new Pos(4, 2), "swing")).Ok);
-        Assert.Equal(1, a.Ap);
+        Assert.Equal(0, a.Ap);
         Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
         Assert.True(sim.Execute(new EndTurn(2, b.Id)).Ok);
         Assert.Contains(sim.State.Events, e => e.UnitId == a.Id && e.TargetId == b.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
@@ -134,6 +135,7 @@ public class PlanResolveTests
     {
         var (sim, a, b) = Duel(new Pos(1, 2), new Pos(2, 2));
         a.Fatigue = 6;
+        (a.Ap, a.ExtraActions) = (2, 1);
         Assert.True(sim.Execute(new AttackTile(1, a.Id, b.Pos, "swing")).Ok);
         Assert.True(sim.Execute(new Recover(1, a.Id)).Ok);
         Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
@@ -364,7 +366,7 @@ public class PlanResolveTests
             var b = SurvivorUnit(2, new(5, 3));
             var sim = Arena(10, 7, [a, b], data: Certain);
             Assert.True(sim.Execute(new Dash(1, a.Id, new Pos(1, 0), 3)).Ok);
-            a.Ap = 2;
+            (a.Ap, a.ExtraActions) = (2, 2);
             Assert.True(sim.Execute(new Push(1, a.Id, new Pos(1, 0))).Ok);
             Assert.True(sim.Execute(new AttackTile(1, a.Id, b.Pos, "swing")).Ok);
             return (sim, a);

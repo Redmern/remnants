@@ -62,6 +62,7 @@ public class BestiaryTests
         Assert.Single(counts);
 
         a.Pos = new(1, 1);
+        a.Ap = 2;
         Assert.True(Blow(sim, a, h1, "swing").Ok);
         Assert.True(Blow(sim, a, h1, "swing").Ok);
         Assert.Equal(1, counts["husk"].Fought);

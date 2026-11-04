@@ -100,6 +100,7 @@ public class CoopNetTests
         Assert.Contains(a.View.Pings, p => p.Pos == other.Pos);
         Assert.Contains(b.View.Pings, p => p.Pos == other.Pos);
         Assert.Contains(b.Client.TakeEvents().Concat(a.Client.TakeEvents()), e => e.Type == ScavengeEventType.Pinged);
+        mine.Ap = 2;
         Assert.True(up.Do(new GiveItem(up.Id, mine.Id, other.Id, "bandage")).Ok, "give over the wire");
         Assert.Equal(2, f.Sim.State.FindUnit(other.Id)!.Pack.Count(i => i == "bandage"));
         // A blow at an ally's tile comes down on them: the aim only warns.

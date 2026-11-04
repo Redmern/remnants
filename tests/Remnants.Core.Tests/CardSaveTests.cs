@@ -19,6 +19,7 @@ public class CardSaveTests
         var sim = Arena(10, 6, [a, f, b, c], seed: 7);
         sim.State.Decks.Add(new SquadDeck { PlayerId = 1, Hand = ["shove", "barricade", "feint", "smoke_bomb", "switch_places"], Points = 9, Budget = 9,
             HandSize = 5, DrawPile = ["yank", "go_now"] });
+        a.ExtraCards = 4;
         var seen = 0;
         void Ok(IScavengeCommand cmd)
         {

@@ -70,10 +70,8 @@ public static class Economy
     internal static ScavengeResult Recover(ScavengeSim sim, Unit unit)
     {
         var turn = sim.Data.Rules.Turn;
-        if (turn.RecoverApCost > unit.Ap)
-            return ScavengeResult.Fail(ScavengeError.NotEnoughAp, $"{unit.Name} needs {turn.RecoverApCost} AP to recover (has {unit.Ap}).");
-        unit.Ap -= turn.RecoverApCost;
-        Plans.For(sim.State, unit).Steps.Add(new PlanStep { Kind = PlanStepKind.Recover });
+        if (Plans.PayAction(sim, unit, turn.RecoverApCost, "to recover", out var free) is { } refused) return refused;
+        Plans.For(sim.State, unit).Steps.Add(new PlanStep { Kind = PlanStepKind.Recover, Free = free });
         return ScavengeResult.Success($"{unit.Name} will catch their breath.");
     }
 

@@ -78,12 +78,14 @@ public class PlayCardTests
     {
         var (sim, a, _, deck) = Table("called_shot", "heavy_swing", "sprint");
         a.Skills[Skill.Firearms] = 40;
-        var ap = a.Ap;
+        a.ExtraCards = 2;
+        var (ap, stamina) = (a.Ap, Economy.Stamina(sim, a));
         Assert.True(Play(sim, a, "called_shot").Ok);
-        Assert.Equal(ap - 1, a.Ap);
+        Assert.Equal(ap, a.Ap); // A card leaves the AP for the action, but what it costs in AP it pays in stamina.
+        Assert.Equal(stamina - 2, Economy.Stamina(sim, a));
         Assert.Equal(1, deck.Points);
         Assert.True(Play(sim, a, "heavy_swing", boost: true).Ok);
-        Assert.Equal(ap - 2, a.Ap);
+        Assert.Equal(ap - 1, a.Ap);
         Assert.Equal(0, deck.Points);
         a.Attributes[AttributeKind.Agility] = 60;
         Assert.Equal(ScavengeError.NotEnoughPoints, Play(sim, a, "sprint").Error);

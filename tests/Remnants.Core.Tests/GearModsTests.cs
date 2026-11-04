@@ -266,6 +266,8 @@ public class GearModsTests
         var action = sim.Profile(shooter).Action("shoot")!;
         Assert.Equal(action.ApCost + 1, Combat.ApCost(action, shooter.Pos, near.Pos));
         Assert.Equal(action.ApCost, Combat.ApCost(action, shooter.Pos, new Pos(8, 1)));
+        Assert.Equal(ScavengeError.NotEnoughAp, Blow(sim, shooter, near, "shoot").Error);
+        shooter.Ap = 2;
         var ap = shooter.Ap;
         Assert.True(Blow(sim, shooter, near, "shoot").Ok);
         Assert.Equal(ap - action.ApCost - 1, shooter.Ap);

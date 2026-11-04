@@ -120,6 +120,17 @@ public sealed class Unit
     /// <summary>Move range cards added this turn.</summary>
     public int CardMove { get; set; }
 
+    /// <summary>Cards played on the unit this round: one of its plan slots (<see cref="Plans.Limits"/>).</summary>
+    public int CardsPlayed { get; set; }
+
+    /// <summary>This round's extra plan slots, from cards; perks add theirs on top (<see cref="Plans.Limits"/>).</summary>
+    public int ExtraMoves { get; set; }
+    public int ExtraActions { get; set; }
+    public int ExtraCards { get; set; }
+
+    /// <summary>Actions it may still plan this round for no AP and no stamina.</summary>
+    public int FreeActions { get; set; }
+
     /// <summary>Hit chance cards added to this unit's next attack.</summary>
     public double CardHit { get; set; }
 

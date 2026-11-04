@@ -67,7 +67,9 @@ public static class Protocol
     public const int TelegraphedStrikesVersion = 20;
     /// <summary>Simultaneous rounds: plans in the state with only rivals' walks and fog hints, undoPlan / push / dash / recover, one planning deadline; no stance or overwatch commands.</summary>
     public const int SimultaneousVersion = 21;
-    public const int Version = SimultaneousVersion;
+    /// <summary>One move, one action, one card a round: undoPlan's slot, the slotFull error, units' plan slot counts.</summary>
+    public const int PlanSlotsVersion = 22;
+    public const int Version = PlanSlotsVersion;
     public const int DefaultPort = 7777;
 }
 

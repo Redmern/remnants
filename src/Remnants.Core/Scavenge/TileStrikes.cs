@@ -39,12 +39,12 @@ public static class TileStrikes
                 ? ScavengeResult.Fail(ScavengeError.InvalidTarget, $"{action.Name} cannot {m.ToString().ToLowerInvariant()}.")
                 : ScavengeResult.Fail(ScavengeError.OutOfRange, $"{c.Tile} is not in reach of {action.Name} from {from}.");
         var cost = Combat.ApCost(action, from, c.Tile);
-        if (cost > unit.Ap) return ScavengeResult.Fail(ScavengeError.NotEnoughAp, $"{unit.Name} needs {cost} AP for {action.Name} (has {unit.Ap}).");
+        if (Plans.PayAction(sim, unit, cost, $"for {action.Name}", out var free) is { } refused) return refused;
 
-        unit.Ap -= cost;
         Plans.For(state, unit).Steps.Add(new PlanStep
         {
             Kind = PlanStepKind.Strike,
+            Free = free,
             Strike = new TileStrike { UnitId = unit.Id, ActionId = action.Id, Mode = aim.Mode, From = from, Tile = c.Tile, Direction = aim.Direction, Tiles = aim.Tiles },
         });
         var how = aim.Mode is { } mode ? $"a {mode.ToString().ToLowerInvariant()}" : "an attack";

@@ -914,7 +914,7 @@ public partial class ScavengeScreen : Node3D
                 var step = _presenter.Reachable(u).Where(kv => kv.Value <= u.Mp)
                     .OrderBy(kv => exits.Min(x => x.Chebyshev(kv.Key))).ThenBy(kv => kv.Value)
                     .Select(kv => (Pos?)kv.Key).FirstOrDefault();
-                command = step is { } to && exits.Min(x => x.Chebyshev(to)) < exits.Min(x => x.Chebyshev(u.Pos))
+                command = step is { } to && Plans.HasRoom(_presenter.Sim, u, PlanSlot.Move) && exits.Min(x => x.Chebyshev(to)) < exits.Min(x => x.Chebyshev(u.Pos))
                     ? new Move(pid, u.Id, to)
                     : new EndTurn(pid, u.Id);
             }

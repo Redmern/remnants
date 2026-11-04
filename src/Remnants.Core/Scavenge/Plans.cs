@@ -1,7 +1,15 @@
+using Remnants.Core.Colony;
+
 namespace Remnants.Core.Scavenge;
 
 /// <summary>What a queued plan entry is: a move (telegraphed) or one of the hidden actions.</summary>
 public enum PlanStepKind { Move, Strike, Card, Recover, Push, Dash }
+
+/// <summary>What a unit fills in for a round: its walk, its action, its card.</summary>
+public enum PlanSlot { Move, Action, Card }
+
+/// <summary>A count for each <see cref="PlanSlot"/>: how many a unit may plan, or has.</summary>
+public sealed record PlanSlots(int Moves, int Actions, int Cards);
 
 /// <summary>
 /// One entry of a unit's plan: a move leg, or an action resolved in the action phase. What it paid (MP, AP, stamina, card
@@ -37,6 +45,9 @@ public sealed class PlanStep
     public int RefundAp { get; set; }
     public int RefundFatigue { get; set; }
     public int RefundPoints { get; set; }
+
+    /// <summary>An action paid with a free action (<see cref="Unit.FreeActions"/>) rather than AP.</summary>
+    public bool Free { get; set; }
 }
 
 /// <summary>A unit's plan for the round: its entries in the order queued, and whether its player has committed it.</summary>
@@ -49,8 +60,9 @@ public sealed class UnitPlan
 
 /// <summary>
 /// The planning phase: everyone plans at once and in any order, a plan pays as it is queued and is editable until planning
-/// ends; the round resolves (<see cref="RoundResolver"/>) once every player-controlled unit is committed. Actions are aimed
-/// from where the unit's planned moves end (<see cref="Anchor"/>).
+/// ends; the round resolves (<see cref="RoundResolver"/>) once every player-controlled unit is committed. A unit plans at most
+/// one move, one action and one card (<see cref="Limits"/>; data, perks and cards raise them). Actions are aimed from where the
+/// unit's planned moves end (<see cref="Anchor"/>), and moving that end brings them along.
 /// </summary>
 public static class Plans
 {
@@ -68,8 +80,82 @@ public static class Plans
     public static Pos Anchor(ScavengeState state, Unit unit) =>
         Of(state, unit)?.Steps.LastOrDefault(s => s.Kind == PlanStepKind.Move || s.Landing is not null) is { } last ? last.Landing ?? last.To : unit.Pos;
 
-    /// <summary>Whether a dash is queued: moves all go before the actions, so none may follow it.</summary>
-    internal static bool HasDash(ScavengeState state, Unit unit) => Of(state, unit)?.Steps.Any(s => s.Landing is not null) == true;
+    /// <summary>Where the unit's planned walking ends: the next move starts here, even with a dash queued after it.</summary>
+    internal static Pos MoveEnd(ScavengeState state, Unit unit) =>
+        Of(state, unit)?.Steps.LastOrDefault(s => s.Kind == PlanStepKind.Move) is { } last ? last.To : unit.Pos;
+
+    /// <summary>The slot a plan entry fills.</summary>
+    public static PlanSlot SlotOf(PlanStep step) => step.Kind switch
+    {
+        PlanStepKind.Move => PlanSlot.Move,
+        PlanStepKind.Card => PlanSlot.Card,
+        _ => PlanSlot.Action,
+    };
+
+    /// <summary>How many moves, actions and cards the unit may plan this round. A free action comes on top, used or not.</summary>
+    public static PlanSlots Limits(ScavengeSim sim, Unit unit)
+    {
+        var turn = sim.Data.Rules.Turn;
+        var freeUsed = Of(sim.State, unit)?.Steps.Count(s => s.Free) ?? 0;
+        return new PlanSlots(
+            turn.PlanMoves + Bonus(unit, PerkHooks.ExtraMove) + unit.ExtraMoves,
+            turn.PlanActions + Bonus(unit, PerkHooks.ExtraAction) + unit.ExtraActions + unit.FreeActions + freeUsed,
+            turn.PlanCards + Bonus(unit, PerkHooks.ExtraCard) + unit.ExtraCards);
+    }
+
+    private static int Bonus(Unit unit, string hook) => (int)Math.Round(unit.Hook(hook));
+
+    /// <summary>How many the unit has planned this round. A card that acted at once counts: it cannot be taken back.</summary>
+    public static PlanSlots Used(ScavengeState state, Unit unit)
+    {
+        var steps = Of(state, unit)?.Steps ?? [];
+        return new PlanSlots(steps.Count(s => SlotOf(s) == PlanSlot.Move), steps.Count(s => SlotOf(s) == PlanSlot.Action), unit.CardsPlayed);
+    }
+
+    /// <summary>Whether the unit can plan one more of <paramref name="slot"/>.</summary>
+    public static bool HasRoom(ScavengeSim sim, Unit unit, PlanSlot slot)
+    {
+        var (limit, used) = (Limits(sim, unit), Used(sim.State, unit));
+        return slot switch
+        {
+            PlanSlot.Move => used.Moves < limit.Moves,
+            PlanSlot.Action => used.Actions < limit.Actions,
+            _ => used.Cards < limit.Cards,
+        };
+    }
+
+    internal static ScavengeResult Full(Unit unit, PlanSlot slot) =>
+        ScavengeResult.Fail(ScavengeError.SlotFull, $"{unit.Name} has no {slot.ToString().ToLowerInvariant()} left to plan this round.");
+
+    /// <summary>
+    /// Pays for one more action, a free one first: null when paid, else why not. Whatever the action's cost, nobody gets more
+    /// actions than <see cref="Limits"/> allows.
+    /// </summary>
+    internal static ScavengeResult? PayAction(ScavengeSim sim, Unit unit, int cost, string what, out bool free)
+    {
+        free = false;
+        if (!HasRoom(sim, unit, PlanSlot.Action)) return Full(unit, PlanSlot.Action);
+        if (unit.FreeActions > 0 && Economy.Stamina(sim, unit) > 0)
+        {
+            unit.FreeActions--;
+            free = true;
+            return null;
+        }
+        if (cost > unit.Ap) return ScavengeResult.Fail(ScavengeError.NotEnoughAp, $"{unit.Name} needs {cost} AP {what} (has {unit.Ap}).");
+        unit.Ap -= cost;
+        return null;
+    }
+
+    /// <summary>The tiles a move can go to right now: with the slots full, the ones it could change to, with the MP it would get back.</summary>
+    public static Dictionary<Pos, int> MoveChoices(ScavengeSim sim, Unit unit)
+    {
+        var moves = Of(sim.State, unit)?.Steps.Where(s => s.Kind == PlanStepKind.Move).ToList() ?? [];
+        if (moves.Count == 0 || HasRoom(sim, unit, PlanSlot.Move)) return sim.Reachable(unit);
+        var real = unit.Pos;
+        unit.Pos = moves.Count > 1 ? moves[^2].To : real;
+        try { return Movement.Reachable(sim.State, unit, sim.Profile(unit).Movement, unit.Mp + moves[^1].RefundMp); }
+        finally { unit.Pos = real; }
+    }
 
     /// <summary>Runs <paramref name="look"/> with the unit standing where its plan ends. Nothing about it may stick.</summary>
     public static T AtAnchor<T>(ScavengeState state, Unit unit, Func<T> look)
@@ -88,28 +174,69 @@ public static class Plans
     /// <summary>Whether no player-controlled unit is still planning.</summary>
     public static bool AllCommitted(ScavengeState state) => state.CurrentUnitId is null;
 
-    /// <summary>Queues a move to <paramref name="to"/> from where the plan ends, paying its MP.</summary>
+    /// <summary>Queues a move to <paramref name="to"/> from where the walking ends, paying its MP. Moves go ahead of the actions, which it brings along.</summary>
     internal static void AddMove(ScavengeSim sim, Unit unit, Pos to, int cost)
     {
-        var path = AtAnchor(sim.State, unit, () => Movement.Path(sim.State, unit, sim.Profile(unit).Movement, to, unit.Mp));
-        For(sim.State, unit).Steps.Add(new PlanStep { Kind = PlanStepKind.Move, To = to, Path = path });
+        var was = MoveEnd(sim.State, unit);
+        var real = unit.Pos;
+        unit.Pos = was;
+        var path = Movement.Path(sim.State, unit, sim.Profile(unit).Movement, to, unit.Mp);
+        unit.Pos = real;
+        var steps = For(sim.State, unit).Steps;
+        var at = steps.FindIndex(s => s.Kind != PlanStepKind.Move);
+        steps.Insert(at < 0 ? steps.Count : at, new PlanStep { Kind = PlanStepKind.Move, To = to, Path = path });
         unit.Mp -= cost;
+        Rebase(sim, unit, was);
     }
 
-    /// <summary>Takes back the last entry of the plan (or all of them), refunding what they paid.</summary>
+    /// <summary>
+    /// The walking now ends somewhere else than <paramref name="was"/>: what is queued keeps its shape round the unit, a dash is
+    /// worked out again from its new start, and what follows it moves by the same.
+    /// </summary>
+    private static void Rebase(ScavengeSim sim, Unit unit, Pos was)
+    {
+        var shift = MoveEnd(sim.State, unit) - was;
+        if (shift == default || Of(sim.State, unit) is not { } plan) return;
+        foreach (var step in plan.Steps.Where(s => s.Kind != PlanStepKind.Move))
+        {
+            step.From += shift;
+            if (step.Tile is { } tile) step.Tile = tile + shift;
+            if (step.Strike is { } strike)
+            {
+                strike.From += shift;
+                strike.Tile += shift;
+                strike.Tiles = strike.Tiles.Select(p => p + shift).ToList();
+            }
+            if (step.Landing is not { } landed) continue;
+            var real = unit.Pos;
+            unit.Pos = step.From;
+            var landing = CardAbilities.Slide(sim, unit, step.Direction, step.Reach, terrainOnly: true);
+            unit.Pos = real;
+            step.Landing = landing;
+            shift = landing - landed;
+        }
+    }
+
+    /// <summary>Takes back one slot's entries, or else the last entry of the plan (or all of them), refunding what they paid.</summary>
     internal static ScavengeResult Undo(ScavengeSim sim, Unit unit, UndoPlan c)
     {
         var plan = Of(sim.State, unit);
-        if (plan is not { Steps.Count: > 0 }) return ScavengeResult.Fail(ScavengeError.NoPlan, $"{unit.Name} has nothing planned.");
-        do
+        var taken = plan is null ? []
+            : c.Slot is { } slot ? plan.Steps.Where(s => SlotOf(s) == slot).Reverse().ToList()
+            : c.All ? Enumerable.Reverse(plan.Steps).ToList()
+            : plan.Steps.TakeLast(1).ToList();
+        if (taken.Count == 0) return ScavengeResult.Fail(ScavengeError.NoPlan, $"{unit.Name} has nothing planned.");
+        var was = MoveEnd(sim.State, unit);
+        foreach (var step in taken)
         {
-            var step = plan.Steps[^1];
-            plan.Steps.RemoveAt(plan.Steps.Count - 1);
+            plan!.Steps.Remove(step);
             unit.Mp += step.RefundMp;
             unit.Ap += step.RefundAp;
             unit.Fatigue -= step.RefundFatigue;
+            if (step.Free) unit.FreeActions++;
             if (step.Kind == PlanStepKind.Card) CardPlay.TakeBack(sim, unit, step);
-        } while (c.All && plan.Steps.Count > 0);
+        }
+        Rebase(sim, unit, was);
         return ScavengeResult.Success($"{unit.Name}'s plan is changed.");
     }
 }

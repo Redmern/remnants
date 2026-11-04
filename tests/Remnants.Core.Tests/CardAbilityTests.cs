@@ -46,6 +46,8 @@ public class CardAbilityTests
     {
         var sim = Arena(width, height, units, rows, data: Data);
         sim.State.Decks.Add(new SquadDeck { PlayerId = 1, Hand = hand.ToList(), Points = 3, Budget = 3, HandSize = 5 });
+        // These tests are about what cards do, several to a test; one a round is PlanSlotTests'.
+        foreach (var u in sim.State.Units) u.ExtraCards = 5;
         return sim;
     }
 

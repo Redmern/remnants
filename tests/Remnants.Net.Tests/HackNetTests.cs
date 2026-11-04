@@ -123,6 +123,7 @@ public class HackNetTests
         Assert.Contains(a.View.Units, u => u.Id == drone.Id && u.Kind == UnitKind.Drone);
 
         // It flies up to Bob: now he sees it, but not who flies it.
+        alice.Ap = 2;
         Assert.True(a.Do(new FlyDrone(a.Id, alice.Id, new Pos(5, 16))).Ok);
         drone.Pos = new Pos(9, 3);
         Assert.True(a.Do(new EndTurn(a.Id, alice.Id)).Ok);

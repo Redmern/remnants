@@ -150,6 +150,7 @@ public class FieldLootTests
         var dropped = Assert.Single(sim.State.Caches);
         Assert.Equal(LootPileKind.Dropped, dropped.Kind);
 
+        unit.Ap = 2;
         Assert.True(sim.Execute(new StashItem(1, unit.Id, "stone")).Ok);
         Assert.True(sim.Execute(new StashItem(1, unit.Id, "stone")).Ok);
         var stash = Assert.Single(sim.State.Caches, c => c.Kind == LootPileKind.Stash);

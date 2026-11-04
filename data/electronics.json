@@ -27,7 +27,7 @@
 
     {"id": "jammer_mk2", "name": "Signal Jammer Mk II", "kind": "Tool", "weight": 2, "tier": 3, "device": {"effect": "Jammer", "radius": 6}},
     {"id": "jammer_mk3", "name": "Signal Jammer Mk III", "kind": "Tool", "weight": 1.8, "tier": 3, "networkGrade": true, "device": {"effect": "Jammer", "radius": 8}},
-    {"id": "emp_grenade", "name": "EMP Grenade", "kind": "Consumable", "weight": 0.6, "tier": 3, "lootWeight": 0.15, "use": {"range": 4, "apCost": 2, "emp": {"radius": 2, "rounds": 2}}},
+    {"id": "emp_grenade", "name": "EMP Grenade", "kind": "Consumable", "weight": 0.6, "tier": 3, "lootWeight": 0.15, "use": {"range": 4, "apCost": 1, "emp": {"radius": 2, "rounds": 2}}},
     {"id": "holo_decoy", "name": "Holo-decoy", "kind": "Consumable", "weight": 0.5, "tier": 2, "use": {"range": 4, "apCost": 1, "decoy": {"rounds": 2, "hp": 4, "lureRadius": 6}}},
     {"id": "noise_decoy", "name": "Noise Decoy", "kind": "Consumable", "weight": 0.3, "tier": 1, "lootWeight": 0.3, "use": {"range": 5, "apCost": 1, "noiseRadius": 8}},
 
@@ -36,7 +36,7 @@
     {"id": "medic_drone", "name": "Medic Drone", "kind": "Tool", "weight": 3.2, "tier": 3, "drone": {"battery": 7, "flyRange": 4, "controlRange": 6, "role": "Medic", "hp": 12}},
     {"id": "cargo_drone", "name": "Cargo Drone", "kind": "Tool", "weight": 3.5, "tier": 3, "drone": {"battery": 8, "flyRange": 4, "controlRange": 7, "role": "Cargo", "hp": 10, "cargo": 3}},
     {"id": "combat_drone", "name": "Combat Drone", "kind": "Tool", "weight": 3.8, "tier": 3, "drone": {"battery": 6, "flyRange": 4, "controlRange": 6, "role": "Combat", "hp": 18, "weapon": "drone_gun", "requiresHook": "drone_range_bonus"}},
-    {"id": "drone_gun", "name": "Drone Gun", "kind": "Weapon", "weight": 0, "natural": true, "actions": [{"id": "drone_burst", "name": "Drone burst", "pattern": "Ranged", "reach": 5, "minDamage": 5, "maxDamage": 9, "apCost": 2, "accuracy": 0.62, "skill": "Firearms", "noise": 7, "reveal": 2}]},
+    {"id": "drone_gun", "name": "Drone Gun", "kind": "Weapon", "weight": 0, "natural": true, "actions": [{"id": "drone_burst", "name": "Drone burst", "pattern": "Ranged", "reach": 5, "minDamage": 5, "maxDamage": 9, "apCost": 1, "heavy": true, "accuracy": 0.62, "skill": "Firearms", "noise": 7, "reveal": 2}]},
 
     {"id": "network_deck", "name": "Network Deck", "kind": "Tool", "weight": 1.6, "tier": 3, "networkGrade": true, "hackTool": {"range": 4, "chanceBonus": 0.25, "progress": 3, "traceChance": 0.2}}
   ],

@@ -43,7 +43,8 @@ public sealed record ActionProfile(
     double NetworkFeedback = 0,
     int? DiagonalReach = null,
     IReadOnlyList<StrikeMode>? Modes = null,
-    int Knockback = 0)
+    int Knockback = 0,
+    bool Heavy = false)
 {
     /// <summary>Reach along a diagonal.</summary>
     public int DiagonalRange => DiagonalReach ?? Reach;
@@ -169,7 +170,7 @@ public static class ProfileDeriver
         return new UnitProfile(
             Movement: movement,
             Actions: DeriveActions(data, unit, working, fitted),
-            MaxAp: MaxAp((enemy?.Ap ?? rules.Turn.BaseAp) + equipped.Sum(i => i.ApBonus), Treatment.FieldApPenalty(data.Medicine, unit.Body)),
+            MaxAp: MaxAp((enemy?.Ap ?? rules.Turn.BaseAp) + equipped.Sum(i => i.ApBonus) + (int)Math.Round(unit.Hook(PerkHooks.ExtraAction)), Treatment.FieldApPenalty(data.Medicine, unit.Body)),
             Initiative: agility * rules.Turn.InitiativePerAgility + equipped.Sum(i => i.Initiative) - load * rules.Turn.InitiativePerLoad,
             Sight: Math.Max(1, sight * head),
             CarryCapacity: capacity,
@@ -336,7 +337,7 @@ public static class ProfileDeriver
 
             result.Add(new ActionProfile(a.Id, a.Name, itemId, a.Pattern, a.Reach,
                 a.MinDamage * damageScale, a.MaxDamage * damageScale, a.ApCost, Math.Max(0, accuracy), a.Noise, a.Area, a.Reveal, a.Bane,
-                a.ArmorPierce, a.InjuryMultiplier, a.CloseRange, a.CloseApPenalty, a.ExtraBanes, a.NetworkFeedback, a.DiagonalReach, a.Modes, a.Knockback));
+                a.ArmorPierce, a.InjuryMultiplier, a.CloseRange, a.CloseApPenalty, a.ExtraBanes, a.NetworkFeedback, a.DiagonalReach, a.Modes, a.Knockback, a.Heavy));
         }
 
         foreach (var item in working)

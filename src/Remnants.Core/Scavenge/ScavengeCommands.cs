@@ -85,8 +85,8 @@ public sealed record Dash(int PlayerId, int UnitId, Pos Direction, int Tiles) : 
 /// </summary>
 public sealed record EndTurn(int PlayerId, int UnitId) : IScavengeCommand;
 
-/// <summary>Take back the unit's last planned entry (<see cref="All"/>: its whole plan), refunding what it paid.</summary>
-public sealed record UndoPlan(int PlayerId, int UnitId, bool All = false) : IScavengeCommand;
+/// <summary>Clear one of the unit's plan slots (<see cref="Slot"/>), or else take back its last entry (<see cref="All"/>: its whole plan), refunding what it paid.</summary>
+public sealed record UndoPlan(int PlayerId, int UnitId, bool All = false, PlanSlot? Slot = null) : IScavengeCommand;
 
 /// <summary>Leave the map from an exit tile or next to the side's parked vehicle, taking nearby followers along.</summary>
 public sealed record Extract(int PlayerId, int UnitId) : IScavengeCommand;
@@ -234,6 +234,8 @@ public enum ScavengeError
     DeadCardSpent,
     /// <summary>Only a hard card nobody in the party can play may be discarded.</summary>
     CardPlayable,
+    /// <summary>The unit has planned all the moves, actions or cards it may this round: clear one to change it.</summary>
+    SlotFull,
 }
 
 /// <summary>Outcome of a scavenge command. <see cref="EntityId"/> carries e.g. the attacked unit.</summary>

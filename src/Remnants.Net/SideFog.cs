@@ -271,6 +271,11 @@ public sealed class SideFog(int playerId, string side)
             copy.Mp = 0;
             copy.Fatigue = 0;
             copy.PriorityBonus = 0;
+            copy.CardsPlayed = 0;
+            copy.ExtraMoves = 0;
+            copy.ExtraActions = 0;
+            copy.ExtraCards = 0;
+            copy.FreeActions = 0;
         }
         // Card buffs on it would give away hit chances and moves the cards behind them buy.
         copy.CardHit = 0;

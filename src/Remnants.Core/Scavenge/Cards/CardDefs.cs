@@ -112,6 +112,15 @@ public sealed record CardEffect
     public int Adrenaline { get; init; }
     public double Block { get; init; }
 
+    /// <summary>
+    /// This round's plan limits (<see cref="Plans.Limits"/>): one more move, card, action (with the AP for it), or free action
+    /// (no AP, no stamina), given at once.
+    /// </summary>
+    public int ExtraMove { get; init; }
+    public int ExtraAction { get; init; }
+    public int FreeAction { get; init; }
+    public int ExtraCard { get; init; }
+
     /// <summary>Whether it changes the board (anything beyond a buff on the character it is played on).</summary>
     public bool IsAbility => Push > 0 || Pull > 0 || Swap || Step > 0 || Spin || GrantAp > 0 || AdvanceInitiative || DelayInitiative
                              || PlaceBarrier > 0 || Smoke > 0 || Strike || Disrupt || Attack || Block > 0 || PushAll > 0 || Dash > 0;
@@ -122,7 +131,7 @@ public sealed record CardEffect
     /// <summary>Whether it acts on a tile (a target tile is needed).</summary>
     public bool NeedsTile => Step > 0 || PlaceBarrier > 0 || Smoke > 0;
 
-    public bool IsEmpty => Move == 0 && Hit == 0 && Guard == 0 && Cover == 0 && Mend == 0 && Draw == 0 && Adrenaline == 0 && !IsAbility;
+    public bool IsEmpty => Move == 0 && Hit == 0 && Guard == 0 && Cover == 0 && Mend == 0 && Draw == 0 && Adrenaline == 0 && ExtraMove == 0 && ExtraAction == 0 && FreeAction == 0 && ExtraCard == 0 && !IsAbility;
 
     public CardEffect Plus(CardEffect? other) => other is null ? this : new()
     {
@@ -133,6 +142,7 @@ public sealed record CardEffect
         DelayInitiative = DelayInitiative || other.DelayInitiative, PlaceBarrier = PlaceBarrier + other.PlaceBarrier,
         Smoke = Smoke + other.Smoke, Strike = Strike || other.Strike, Disrupt = Disrupt || other.Disrupt,
         Attack = Attack || other.Attack, Block = Block + other.Block, PushAll = PushAll + other.PushAll, Dash = Dash + other.Dash, Adrenaline = Adrenaline + other.Adrenaline,
+        ExtraMove = ExtraMove + other.ExtraMove, ExtraAction = ExtraAction + other.ExtraAction, FreeAction = FreeAction + other.FreeAction, ExtraCard = ExtraCard + other.ExtraCard,
     };
 
     /// <summary>Numbers × <paramref name="factor"/> (whole-number effects round down, never below their base).</summary>
@@ -144,6 +154,7 @@ public sealed record CardEffect
         Push = Push, Pull = Pull, Swap = Swap, Step = Step, Spin = Spin, GrantAp = GrantAp, AdvanceInitiative = AdvanceInitiative,
         DelayInitiative = DelayInitiative, PlaceBarrier = PlaceBarrier, Smoke = Smoke, Strike = Strike, Disrupt = Disrupt,
         Attack = Attack, Block = Block, PushAll = PushAll, Dash = Dash, Adrenaline = Adrenaline,
+        ExtraMove = ExtraMove, ExtraAction = ExtraAction, FreeAction = FreeAction, ExtraCard = ExtraCard,
     };
 }
 

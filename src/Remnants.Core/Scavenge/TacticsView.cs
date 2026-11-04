@@ -388,6 +388,10 @@ public static class TacticsView
         if (e.Step > 0) parts.Add($"step {e.Step}");
         if (e.Spin) parts.Add("spin round");
         if (e.GrantAp > 0) parts.Add($"+{e.GrantAp} AP");
+        if (e.ExtraMove > 0) parts.Add($"+{e.ExtraMove} move");
+        if (e.ExtraAction > 0) parts.Add($"+{e.ExtraAction} action");
+        if (e.FreeAction > 0) parts.Add($"+{e.FreeAction} free action");
+        if (e.ExtraCard > 0) parts.Add($"+{e.ExtraCard} card");
         if (e.AdvanceInitiative) parts.Add("goes next");
         if (e.DelayInitiative) parts.Add("goes last");
         if (e.PlaceBarrier > 0) parts.Add($"barrier {e.PlaceBarrier} rounds");

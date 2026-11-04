@@ -21,6 +21,7 @@ internal static class ScavengeCommandHandlers
     /// <summary>Queues a move from where the plan ends: its MP is paid now, it is walked in the movement phase.</summary>
     public static ScavengeResult Move(ScavengeSim sim, Unit unit, Move c)
     {
+        if (!Plans.HasRoom(sim, unit, PlanSlot.Move)) return Plans.Full(unit, PlanSlot.Move);
         if (!sim.Reachable(unit).TryGetValue(c.To, out var cost))
             return ScavengeResult.Fail(ScavengeError.Unreachable, $"{unit.Name} cannot reach {c.To} in one move.");
         if (cost > unit.Mp) return ScavengeResult.Fail(ScavengeError.NotEnoughMp, $"{unit.Name} needs {cost} MP (has {unit.Mp}).");
