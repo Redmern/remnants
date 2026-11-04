@@ -141,7 +141,9 @@ public sealed class ScavengeSim
         if (Plans.Of(State, unit) is not { } plan) return;
         if (plan.Steps.Find(s => !stepsBefore.Contains(s)) is { } step)
         {
-            (step.RefundMp, step.RefundAp, step.RefundFatigue) = (mpBefore - unit.Mp, apBefore - unit.Ap, unit.Fatigue - fatigueBefore);
+            // A card that acted at once undoes its own effect on the pools (CardPlay.TakeBack); RefundAp is its boost.
+            if (step.Applied is null) (step.RefundMp, step.RefundAp) = (mpBefore - unit.Mp, apBefore - unit.Ap);
+            step.RefundFatigue = unit.Fatigue - fatigueBefore;
         }
         if (command is Move or AttackTile or PlayCard or Recover or Push or Dash or UndoPlan) plan.Committed = false;
     }

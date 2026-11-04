@@ -75,15 +75,17 @@ public static class Treatment
         return "splinted the fracture";
     }
 
+    /// <summary>The worst injured part, which a mend goes to.</summary>
+    public static BodyPart? WorstPart(Body body) => body.Parts.Where(kv => kv.Value.Condition == PartCondition.Injured)
+        .OrderByDescending(kv => kv.Value.Severity).ThenBy(kv => kv.Key).Select(kv => (BodyPart?)kv.Key).FirstOrDefault();
+
     /// <summary>
     /// Field mending (stitches, a trauma kit): the worst injury's severity drops by <paramref name="amount"/>, healed
     /// outright at 0. Null when nothing is injured.
     /// </summary>
     public static string? Mend(Body body, double amount)
     {
-        var worst = body.Parts.Where(kv => kv.Value.Condition == PartCondition.Injured)
-            .OrderByDescending(kv => kv.Value.Severity).ThenBy(kv => kv.Key).Select(kv => (BodyPart?)kv.Key).FirstOrDefault();
-        if (worst is not { } part || amount <= 0) return null;
+        if (WorstPart(body) is not { } part || amount <= 0) return null;
         var p = body[part];
         p.Severity -= amount;
         if (p.Severity > 1e-9) return $"stitched up the {part}";

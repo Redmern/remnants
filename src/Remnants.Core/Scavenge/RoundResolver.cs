@@ -71,6 +71,8 @@ internal static class RoundResolver
     internal static void Actions(ScavengeSim sim)
     {
         var state = sim.State;
+        // Cards that acted when played only held their slot until now.
+        foreach (var plan in state.Plans) plan.Steps.RemoveAll(s => s.Applied is not null);
         Defences.Arm(sim);
         while (!state.Finished)
         {

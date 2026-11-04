@@ -46,9 +46,20 @@ public sealed class PlanStep
     public int RefundFatigue { get; set; }
     public int RefundPoints { get; set; }
 
+    /// <summary>
+    /// A card that acted when played (a buff, more AP, a priority shift): what it did, so clearing it can undo that. It is in
+    /// the plan only to hold the card slot, and leaves when the round resolves.
+    /// </summary>
+    public CardEffect? Applied { get; set; }
+    public double AppliedAdrenaline { get; set; }
+    public MendUndo? AppliedMend { get; set; }
+
     /// <summary>An action paid with a free action (<see cref="Unit.FreeActions"/>) rather than AP.</summary>
     public bool Free { get; set; }
 }
+
+/// <summary>The part a card mended, as it was before.</summary>
+public sealed record MendUndo(Survivors.BodyPart Part, double Severity, Survivors.Dressing Dressing, double Penalty, List<Survivors.BodyCondition> Conditions);
 
 /// <summary>A unit's plan for the round: its entries in the order queued, and whether its player has committed it.</summary>
 public sealed class UnitPlan
@@ -226,17 +237,38 @@ public static class Plans
             : c.All ? Enumerable.Reverse(plan.Steps).ToList()
             : plan.Steps.TakeLast(1).ToList();
         if (taken.Count == 0) return ScavengeResult.Fail(ScavengeError.NoPlan, $"{unit.Name} has nothing planned.");
-        var was = MoveEnd(sim.State, unit);
-        foreach (var step in taken)
-        {
-            plan!.Steps.Remove(step);
-            unit.Mp += step.RefundMp;
-            unit.Ap += step.RefundAp;
-            unit.Fatigue -= step.RefundFatigue;
-            if (step.Free) unit.FreeActions++;
-            if (step.Kind == PlanStepKind.Card) CardPlay.TakeBack(sim, unit, step);
-        }
-        Rebase(sim, unit, was);
+        // Taking back a card can take other entries with it (Settle).
+        foreach (var step in taken.Where(plan!.Steps.Contains)) TakeOff(sim, unit, plan, step);
         return ScavengeResult.Success($"{unit.Name}'s plan is changed.");
+    }
+
+    private static void TakeOff(ScavengeSim sim, Unit unit, UnitPlan plan, PlanStep step)
+    {
+        var was = MoveEnd(sim.State, unit);
+        plan.Steps.Remove(step);
+        unit.Mp += step.RefundMp;
+        unit.Ap += step.RefundAp;
+        unit.Fatigue -= step.RefundFatigue;
+        if (step.Free) unit.FreeActions++;
+        Rebase(sim, unit, was);
+        if (step.Kind == PlanStepKind.Card) CardPlay.TakeBack(sim, unit, step);
+    }
+
+    /// <summary>A card that raised the unit's limits or points is gone: what no longer fits is taken back, the last first.</summary>
+    internal static void Settle(ScavengeSim sim, Unit unit)
+    {
+        if (Of(sim.State, unit) is not { } plan) return;
+        void Trim(Func<PlanStep, bool> which, Func<bool> over)
+        {
+            while (over() && plan.Steps.FindLast(s => which(s)) is { } last) TakeOff(sim, unit, plan, last);
+        }
+        Trim(s => s.Kind == PlanStepKind.Move, () => unit.Mp < 0 || Used(sim.State, unit).Moves > Limits(sim, unit).Moves);
+        Trim(s => s.Free, () => unit.FreeActions < 0);
+        Trim(s => SlotOf(s) == PlanSlot.Action, () => unit.Ap < 0 || Used(sim.State, unit).Actions > Limits(sim, unit).Actions);
+        Trim(s => s.Kind == PlanStepKind.Card, () => Used(sim.State, unit).Cards > Limits(sim, unit).Cards);
+        // What was spent on the spot (a loot, a hack) stays spent.
+        unit.Mp = Math.Max(0, unit.Mp);
+        unit.Ap = Math.Max(0, unit.Ap);
+        unit.FreeActions = Math.Max(0, unit.FreeActions);
     }
 }

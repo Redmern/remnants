@@ -104,7 +104,7 @@ public sealed class SideFog(int playerId, string side)
     public ScavengeState View(ScavengeSim sim)
     {
         var state = sim.State;
-        _queuedSlots = state.Plans.ToDictionary(p => p.UnitId, p => p.Steps.Count(s => s.Kind == PlanStepKind.Card && s.FromSlot));
+        _queuedSlots = state.Plans.ToDictionary(p => p.UnitId, p => p.Steps.Count(s => s.Kind == PlanStepKind.Card && s.FromSlot && s.Applied is null));
         var units = state.Units.Where(u => Knows(state, u)).Select(u => u.PlayerId == PlayerId ? Copy(u) : Redacted(u)).ToList();
         var known = units.Select(u => u.Id).ToHashSet();
 
@@ -245,7 +245,8 @@ public sealed class SideFog(int playerId, string side)
         var queued = state.Plans.SelectMany(p => p.Steps).Where(s => s.Kind == PlanStepKind.Card && s.DeckId == d.PlayerId).ToList();
         return new SquadDeck
         {
-            PlayerId = d.PlayerId, Hidden = true, HandCount = d.Hand.Count + queued.Count(s => !s.FromSlot), DrawCount = d.DrawPile.Count, UsedCount = d.Used.Count,
+            PlayerId = d.PlayerId, Hidden = true, HandCount = d.Hand.Count + queued.Count(s => !s.FromSlot), DrawCount = d.DrawPile.Count,
+            UsedCount = d.Used.Count - queued.Count(s => s.Applied is not null && !s.FromSlot && d.Used.Contains(s.CardId!)),
             Points = d.Points + queued.Sum(s => s.RefundPoints), Budget = d.Budget, HandSize = d.HandSize, DrawPerRound = d.DrawPerRound,
         };
     }

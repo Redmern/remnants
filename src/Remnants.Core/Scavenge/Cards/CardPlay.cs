@@ -106,8 +106,32 @@ public static class CardPlay
             });
             return ScavengeResult.Success($"{unit.Name} will play {card.Name}.", check.Ability?.Target?.Id);
         }
+        var mended = effect.Mend > 0 && Treatment.WorstPart(unit.Body) is { } part ? Before(unit.Body, part) : null;
+        var adrenaline = unit.Adrenaline;
         var text = Take(sim, unit, deck, card, effect, check.Ability, boost, c.FromSlot, deckId ?? c.PlayerId);
+        // A draw has shown the cards: nothing to take back. Anything else holds the slot, and can be undone until planning ends.
+        if (effect.Draw == 0)
+            Plans.For(state, unit).Steps.Add(new PlanStep
+            {
+                Kind = PlanStepKind.Card,
+                CardId = c.CardId,
+                TargetId = check.Ability?.Target?.Id,
+                Boost = boost,
+                FromSlot = c.FromSlot,
+                DeckId = deckId ?? c.PlayerId,
+                RefundPoints = card.Cost,
+                RefundAp = ap,
+                Applied = effect,
+                AppliedAdrenaline = unit.Adrenaline - adrenaline,
+                AppliedMend = mended,
+            });
         return ScavengeResult.Success(text, check.Ability?.Target?.Id);
+    }
+
+    private static MendUndo Before(Body body, BodyPart part)
+    {
+        var p = body[part];
+        return new MendUndo(part, p.Severity, p.Dressing, p.ConditionPenalty, body.Conditions.Where(c => c.Part == part).ToList());
     }
 
     /// <summary>The card takes effect, goes to its pile and is logged to its side; returns the log text.</summary>
@@ -167,17 +191,66 @@ public static class CardPlay
     /// <summary>A queued card that will not come up: it is played and gone all the same.</summary>
     internal static void Lost(ScavengeSim sim, Unit unit, PlanStep step)
     {
+        if (step.Applied is not null) return;
         if (SquadDecks.Of(sim.State, step.DeckId) is { } deck && sim.Data.Cards.Find(step.CardId!) is { } card) Spent(unit, deck, card, step.FromSlot);
     }
 
-    /// <summary>A queued card taken back: into the hand or slot it came from, its points returned.</summary>
+    /// <summary>A card taken back: into the hand or slot it came from, its points returned, and what it did already undone.</summary>
     internal static void TakeBack(ScavengeSim sim, Unit unit, PlanStep step)
     {
         if (SquadDecks.Of(sim.State, step.DeckId) is not { } deck) return;
         deck.Points += step.RefundPoints;
         unit.CardsPlayed--;
+        if (step.Applied is { } effect)
+        {
+            Unspent(unit, deck, step);
+            Undo(sim, unit, step, effect);
+        }
         if (step.FromSlot) unit.SlotCards.Add(step.CardId!);
         else deck.Hand.Add(step.CardId!);
+    }
+
+    /// <summary>Off the pile it went to when played (a reshuffle may have moved it to the draw pile).</summary>
+    private static void Unspent(Unit unit, SquadDeck deck, PlanStep step)
+    {
+        var id = step.CardId!;
+        if (step.FromSlot)
+        {
+            unit.SlotCards.Remove(id);
+            unit.SlotSpent.Remove(id);
+            deck.Consumed.Remove(id);
+        }
+        else if (!deck.Used.Remove(id) && !deck.Consumed.Remove(id)) deck.DrawPile.Remove(id);
+    }
+
+    /// <summary>What the card did when played comes off again; a buff used up by now is simply gone.</summary>
+    private static void Undo(ScavengeSim sim, Unit unit, PlanStep step, CardEffect e)
+    {
+        unit.CardMove = Math.Max(0, unit.CardMove - e.Move);
+        unit.Mp -= e.Move * sim.Data.Rules.Turn.MpPerRange;
+        unit.CardHit = Math.Max(0, unit.CardHit - e.Hit);
+        unit.Guard = Math.Max(0, unit.Guard - e.Guard);
+        unit.CardCover = Math.Max(0, unit.CardCover - e.Cover);
+        unit.Adrenaline = Math.Max(0, unit.Adrenaline - step.AppliedAdrenaline);
+        unit.ExtraMoves -= e.ExtraMove;
+        unit.ExtraActions -= e.ExtraAction;
+        unit.Ap -= e.ExtraAction;
+        unit.FreeActions -= e.FreeAction;
+        unit.ExtraCards -= e.ExtraCard;
+        if (step.AppliedMend is { } mend)
+        {
+            var part = unit.Body[mend.Part];
+            (part.Condition, part.Severity, part.Dressing, part.ConditionPenalty) = (PartCondition.Injured, mend.Severity, mend.Dressing, mend.Penalty);
+            unit.Body.Conditions.AddRange(mend.Conditions.Where(c => !unit.Body.Conditions.Contains(c)));
+        }
+        if (step.TargetId is { } id && sim.State.FindUnit(id) is { } target)
+        {
+            target.Ap -= e.GrantAp;
+            target.ExtraActions -= e.GrantAp;
+            target.PriorityBonus -= ((e.AdvanceInitiative ? 1 : 0) - (e.DelayInitiative ? 1 : 0)) * sim.Data.Rules.Priority.CardShift;
+            if (target.Id != unit.Id) Plans.Settle(sim, target);
+        }
+        Plans.Settle(sim, unit);
     }
 
     internal static ScavengeResult DiscardDead(ScavengeSim sim, Unit unit, DiscardDeadCard c)

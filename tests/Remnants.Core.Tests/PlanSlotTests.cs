@@ -241,6 +241,128 @@ public class PlanSlotTests
         Assert.Equal(1, a.FreeActions);
     }
 
+    [Fact]
+    public void A_buff_card_is_cleared_with_its_effect_and_its_points()
+    {
+        var (sim, a, _, deck) = Table("take_cover");
+        Assert.True(Play(sim, a, "take_cover").Ok);
+        Assert.True(a.CardCover > 0);
+        Assert.DoesNotContain("take_cover", deck.Hand);
+        Assert.True(sim.Execute(new UndoPlan(1, a.Id, Slot: PlanSlot.Card)).Ok);
+        Assert.Equal(0, a.CardCover);
+        Assert.Contains("take_cover", deck.Hand);
+        Assert.DoesNotContain("take_cover", deck.Used);
+        Assert.Equal(9, deck.Points);
+        Assert.Equal(new PlanSlots(0, 0, 0), Plans.Used(sim.State, a));
+    }
+
+    [Fact]
+    public void A_buff_card_can_be_changed_for_another()
+    {
+        var (sim, a, _, _) = Table("take_cover", "steady_aim");
+        Assert.True(Play(sim, a, "take_cover").Ok);
+        Assert.True(sim.Execute(new UndoPlan(1, a.Id, Slot: PlanSlot.Card)).Ok);
+        Assert.True(Play(sim, a, "steady_aim").Ok);
+        Assert.Equal(0, a.CardCover);
+        Assert.True(a.CardHit > 0);
+    }
+
+    [Fact]
+    public void A_buff_stays_on_when_the_round_resolves_and_goes_to_its_pile_once()
+    {
+        var (sim, a, b, deck) = Table("steady_aim");
+        deck.DrawPile = ["dash", "dash", "dash", "dash", "dash", "dash"];
+        Assert.True(Play(sim, a, "steady_aim").Ok);
+        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
+        Assert.True(sim.Execute(new EndTurn(2, b.Id)).Ok);
+        Assert.Equal(2, sim.State.Round);
+        Assert.True(a.CardHit > 0);
+        Assert.Single(deck.Used, c => c == "steady_aim");
+        Assert.Null(Plans.Of(sim.State, a));
+    }
+
+    [Fact]
+    public void Clearing_a_move_card_takes_its_mp_back_and_a_walk_that_needed_it()
+    {
+        var (sim, a, _, _) = Table("dash");
+        var mp = a.Mp;
+        Assert.True(Play(sim, a, "dash").Ok);
+        Assert.True(a.Mp > mp);
+        Assert.True(sim.Execute(new Move(1, a.Id, new Pos(1 + a.Mp, 2))).Ok);
+        Assert.True(sim.Execute(new UndoPlan(1, a.Id, Slot: PlanSlot.Card)).Ok);
+        Assert.Equal(mp, a.Mp);
+        Assert.Equal(0, Plans.Used(sim.State, a).Moves);
+        Assert.Equal(10, Economy.Stamina(sim, a));
+    }
+
+    [Fact]
+    public void Clearing_a_card_that_opened_a_slot_takes_back_what_went_in_it()
+    {
+        var (sim, a, b, _) = Table("press_on");
+        Assert.True(Play(sim, a, "press_on").Ok);
+        Assert.True(sim.Execute(new AttackTile(1, a.Id, b.Pos, "swing")).Ok);
+        Assert.True(sim.Execute(new Recover(1, a.Id)).Ok);
+        Assert.True(sim.Execute(new UndoPlan(1, a.Id, Slot: PlanSlot.Card)).Ok);
+        Assert.Equal(new PlanSlots(0, 1, 0), Plans.Used(sim.State, a));
+        Assert.Equal(new PlanSlots(1, 1, 1), Plans.Limits(sim, a));
+        Assert.Equal(0, a.Ap);
+    }
+
+    [Fact]
+    public void Clearing_a_free_action_card_takes_back_the_action_it_paid_for()
+    {
+        var (sim, a, b, _) = Table("quick_reflex");
+        Assert.True(Play(sim, a, "quick_reflex").Ok);
+        Assert.True(sim.Execute(new AttackTile(1, a.Id, b.Pos, "swing")).Ok);
+        Assert.True(sim.Execute(new UndoPlan(1, a.Id, Slot: PlanSlot.Card)).Ok);
+        Assert.Equal(0, a.FreeActions);
+        Assert.Equal(0, Plans.Used(sim.State, a).Actions);
+        Assert.Equal(1, a.Ap);
+    }
+
+    [Fact]
+    public void Clearing_a_priority_or_ap_card_undoes_it_on_its_target()
+    {
+        var a = SurvivorUnit(1, new(1, 2));
+        var f = SurvivorUnit(1, new(2, 3));
+        var b = SurvivorUnit(2, new(6, 2));
+        var sim = Arena(12, 6, [a, f, b], data: Real);
+        sim.State.Decks.Add(new SquadDeck { PlayerId = 1, Hand = ["second_wind", "go_now"], Points = 9, Budget = 9, HandSize = 5 });
+        Assert.True(sim.Execute(new PlayCard(1, a.Id, "second_wind", f.Id)).Ok);
+        Assert.Equal((2, 2), (f.Ap, Plans.Limits(sim, f).Actions));
+        Assert.True(sim.Execute(new UndoPlan(1, a.Id, Slot: PlanSlot.Card)).Ok);
+        Assert.Equal((1, 1), (f.Ap, Plans.Limits(sim, f).Actions));
+        Assert.True(sim.Execute(new PlayCard(1, a.Id, "go_now", f.Id)).Ok);
+        Assert.True(f.PriorityBonus > 0);
+        Assert.True(sim.Execute(new UndoPlan(1, a.Id, Slot: PlanSlot.Card)).Ok);
+        Assert.Equal(0, f.PriorityBonus);
+    }
+
+    [Fact]
+    public void Clearing_a_mend_or_adrenaline_card_puts_it_back_as_it_was()
+    {
+        var (sim, a, _, _) = Table("field_dressing", "war_cry");
+        a.Body.Injure(Survivors.BodyPart.Torso, 0.05);
+        Assert.True(Play(sim, a, "field_dressing").Ok);
+        Assert.Equal(0, Survivors.Treatment.WorstInjury(a.Body));
+        Assert.True(sim.Execute(new UndoPlan(1, a.Id, Slot: PlanSlot.Card)).Ok);
+        Assert.Equal(0.05, Survivors.Treatment.WorstInjury(a.Body), 6);
+        Assert.True(Play(sim, a, "war_cry").Ok);
+        Assert.True(a.Adrenaline > 0);
+        Assert.True(sim.Execute(new UndoPlan(1, a.Id, Slot: PlanSlot.Card)).Ok);
+        Assert.Equal(0, a.Adrenaline);
+    }
+
+    [Fact]
+    public void A_draw_card_stays_played_since_it_has_shown_the_cards()
+    {
+        var (sim, a, _, deck) = Table("scout_ahead");
+        deck.DrawPile = ["take_cover", "steady_aim", "dash"];
+        Assert.True(Play(sim, a, "scout_ahead").Ok);
+        Assert.Equal(1, Plans.Used(sim.State, a).Cards);
+        Assert.Equal(ScavengeError.NoPlan, sim.Execute(new UndoPlan(1, a.Id, Slot: PlanSlot.Card)).Error);
+    }
+
     [Theory]
     [InlineData("husk")]
     [InlineData("linked")]
@@ -305,7 +427,8 @@ public class PlanSlotTests
         var loaded = ScavengeSave.Load(Real, json);
         var back = loaded.State.FindUnit(a.Id)!;
         Assert.Equal((1, 2), (back.CardsPlayed, Plans.Limits(loaded, back).Actions));
-        Assert.True(Plans.Of(loaded.State, back)!.Steps.Single().Free);
+        Assert.True(Plans.Of(loaded.State, back)!.Steps.Single(x => x.Strike is not null).Free);
+        Assert.NotNull(Plans.Of(loaded.State, back)!.Steps.Single(x => x.CardId is not null).Applied);
 
         var older = json.Replace($"\"version\": {ScavengeSave.Version}", $"\"version\": {ScavengeSave.SimultaneousVersion}");
         Assert.NotEqual(json, older);

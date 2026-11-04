@@ -1096,6 +1096,7 @@ All numbers live in `data/perks.json` (`skills`, `xp`, `study`, `disciplines`, `
   | `hack_alarm_reduction` | share of a hack's alarm/noise removed (0.5 = half) | Network Ghost |
   | `can_hack_linked` | flag: can hack Linked units, not only Husks and devices | Override |
   | `hack_ap_discount` | AP off a hack's cost | Hacking II |
+  | `extra_move`, `extra_action`, `free_action`, `extra_card` | more of a plan slot each round (`Plans.Limits`); an extra action comes with its AP, a free action costs no AP or stamina | none yet |
   | `field_repair` | flag/strength: jury-rig gear and devices in the field | Jury-rig |
   | `drone_range_bonus` | tiles added to a scout drone's control range | Drone Operator I/II |
   | `drone_battery_bonus` | rounds added to a scout drone's battery | Drone Operator I/II |

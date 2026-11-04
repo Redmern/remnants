@@ -79,7 +79,7 @@ public static class TileStrikes
     /// <summary>The unit's queued actions are off, saying why. What they paid stays spent.</summary>
     internal static void Lose(ScavengeSim sim, Unit unit, string why)
     {
-        if (Plans.Of(sim.State, unit) is not { } plan || !plan.Steps.Exists(s => s.Kind != PlanStepKind.Move)) return;
+        if (Plans.Of(sim.State, unit) is not { } plan || !plan.Steps.Exists(s => s.Kind != PlanStepKind.Move && s.Applied is null)) return;
         foreach (var card in plan.Steps.Where(s => s.Kind == PlanStepKind.Card)) CardPlay.Lost(sim, unit, card);
         plan.Steps.RemoveAll(s => s.Kind != PlanStepKind.Move);
         Defences.Drop(sim.State, unit);
