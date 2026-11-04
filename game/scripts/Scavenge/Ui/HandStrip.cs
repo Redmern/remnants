@@ -269,7 +269,7 @@ public partial class HandStrip : PanelContainer
             }, "Spend more AP for the card's boost", _boost ? "Primary" : ""));
         var aimed = _presenter.IsAimed(card.Id);
         if (card.Reaction && _presenter.ReactionTargets().Count == 0)
-            options.AddChild(Widgets.Label("No seen enemy plan to answer.", "Small", Palette.Warn));
+            options.AddChild(Widgets.Label("No seen enemy strike to answer.", "Small", Palette.Warn));
         if (Aiming is { } now && now.CardId == card.Id)
             options.AddChild(Widgets.TextButton("Cancel aim", () => AimCancelled?.Invoke(), "Stop aiming (right-click or Esc)"));
         if (card.Dead && !hand.DeadDiscardUsed && _presenter.ActingUnit is { } acting)

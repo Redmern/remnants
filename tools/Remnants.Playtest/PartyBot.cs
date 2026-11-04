@@ -219,7 +219,7 @@ public static class PartyBot
                 linkedSeen.Add(u.Id);
             var command = Decide(sim, unit, playerId, recruit, stalls.GetValueOrDefault(unit.Id), defenses, fightLinked, tech);
             // A turn ended without doing anything counts as a stall; any action resets it.
-            var ends = command is EndTurn or SetStance or DeclareIntent;
+            var ends = command is EndTurn or SetStance or CommitOverwatch;
             if (ends && !acted.Contains(unit.Id)) stalls[unit.Id] = stalls.GetValueOrDefault(unit.Id) + 1;
             else if (!ends) stalls[unit.Id] = 0;
             if (ends) acted.Remove(unit.Id);
@@ -388,8 +388,8 @@ public static class PartyBot
         {
             var ranged = profile.Actions.Any(a => a.Pattern != AttackPattern.Melee);
             var reach = profile.Actions.Select(a => a.Reach).DefaultIfEmpty(1).Max();
-            if (ranged && hostiles.Any(h => IsLinked(sim, h) && h.Pos.Chebyshev(unit.Pos) <= reach + 2) && unit.Ap >= fog.Overwatch.ApCost)
-                return new SetStance(playerId, unit.Id, Stance.Overwatch);
+            if (ranged && hostiles.Any(h => IsLinked(sim, h) && h.Pos.Chebyshev(unit.Pos) <= reach + 2) && Overwatches.OnArc(sim, unit, playerId) is { } watch)
+                return watch;
             if (hostiles.Count == 0 && shotAt.Count > 0 && unit.Ap >= fog.Brace.ApCost)
                 return new SetStance(playerId, unit.Id, Stance.Brace);
         }
@@ -496,8 +496,8 @@ public static class PartyBot
         if ((map.IsExit(unit.Pos) || ParkedVehicles.Beside(state, unit) is not null) && (leaving || state.Round > MaxRounds / 2))
             return new Extract(playerId, unit.Id);
         if (tech && TryDrone(sim, unit, playerId, hostiles, lastAp: true) is { } idleDrone) return idleDrone;
-        // Nothing in reach but a hostile we would fight: telegraph a move and a blow at it for next turn.
-        if (!leaving && BotTactics.Plan(sim, unit, playerId, hostiles.Where(h => fightLinked || !IsLinked(sim, h)).ToList()) is { } plan) return plan;
+        // Nothing in reach but a hostile we would fight: close in, with the AP for a blow left.
+        if (!leaving && BotTactics.Approach(sim, unit, playerId, hostiles.Where(h => fightLinked || !IsLinked(sim, h)).ToList()) is { } approach) return approach;
         return defenses ? Hold(sim, unit, playerId, hostiles, contacts, shotAt) : new EndTurn(playerId, unit.Id);
     }
 
@@ -665,8 +665,8 @@ public static class PartyBot
         var threatened = shotAt.Count > 0 || hostiles.Any(h => IsLinked(sim, h));
         if (threatened && unit.Ap >= fog.Brace.ApCost && !hostiles.Any(h => h.Pos.Chebyshev(unit.Pos) <= 1))
             return new SetStance(playerId, unit.Id, Stance.Brace);
-        if ((contacts.Count > 0 || hostiles.Count > 0) && unit.Ap >= fog.Overwatch.ApCost)
-            return new SetStance(playerId, unit.Id, Stance.Overwatch);
+        if ((contacts.Count > 0 || hostiles.Count > 0) && Overwatches.OnArc(sim, unit, playerId) is { } watch)
+            return watch;
         return new EndTurn(playerId, unit.Id);
     }
 

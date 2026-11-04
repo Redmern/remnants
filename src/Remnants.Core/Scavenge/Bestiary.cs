@@ -43,7 +43,7 @@ public sealed record BestiaryCard(
 /// (<see cref="Observe"/>, after every command), fights (attacks either way) and kills, each enemy once, by enemy type in
 /// <see cref="Party.Bestiary"/>; what a party learned comes home with it (only if someone gets out) and adds to the
 /// colony's (<see cref="ColonyState.Bestiary"/>). The tier (<see cref="TierOf"/>) gates the stats shown
-/// (<see cref="Describe"/>); anyone in sight shows its position, facing, plan and weapon reach regardless.
+/// (<see cref="Describe"/>); anyone in sight shows its position, facing, readied strike and weapon reach regardless.
 /// </summary>
 public static class Bestiary
 {

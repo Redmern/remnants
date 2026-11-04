@@ -15,13 +15,10 @@ namespace Remnants.Core.Scavenge;
 /// closing in, waits hidden on overwatch. A jammed Linked is cut off and fights like a Husk.</item>
 /// <item>Recruit: follow its leader.</item>
 /// </list>
-/// Enemies and turrets telegraph: their turn runs these same behaviours as a plan (<see cref="Planned"/>), from where
-/// they stand with the AP a plan may use, and declares the path and the attack it chose (<see cref="PlannedActions"/>);
-/// it resolves at the start of their next turn. Every blow is telegraphed, a target already in reach too (a plan with no
-/// path), so whoever it is aimed at always gets a turn to step out of it; a turret's plan is only its aim tile; suppressing
-/// fire is planned as such (it pins whoever stands on the tile then). Recruits act at once. Only a plan that cannot be
-/// declared falls back to a strike at once, a tile strike (<see cref="TileStrikes"/>), which ends the unit's sub-turn: a
-/// stab / slash weapon aimed to cover the most hostiles, any other action at the target's tile.
+/// Everything happens live on the unit's sub-turn: it moves, then its blow is a telegraphed tile strike
+/// (<see cref="TileStrikes"/>) that pays its AP at once, ends the sub-turn and comes down when the sub-round ends: a stab /
+/// slash weapon aimed to cover the most hostiles, any other action at the target's tile; suppressing fire pins whoever
+/// stands on the tile then.
 /// </summary>
 internal static class ScavengeAi
 {
@@ -31,96 +28,19 @@ internal static class ScavengeAi
     public static void TakeTurn(ScavengeSim sim, Unit unit)
     {
         if (unit.FollowingId is not null) Follow(sim, unit);
-        else if (unit.Kind == UnitKind.Device) Planned(sim, unit, () => Machine(sim, unit));
+        else if (unit.Kind == UnitKind.Device) Machine(sim, unit);
         else if (unit.Kind != UnitKind.Enemy) return;
-        else if (Network.GroupOf(sim, unit) is { } group) Planned(sim, unit, () => Squad(sim, unit, group));
-        else Planned(sim, unit, () => Fight(sim, unit));
+        else if (Network.GroupOf(sim, unit) is { } group) Squad(sim, unit, group);
+        else Fight(sim, unit);
         EnemyCards.Play(sim, unit);
     }
 
-    /// <summary>
-    /// What a planning turn has chosen so far: the moves (waypoints) and the one attack. While it is set, moves and
-    /// attacks only change the unit's position and AP for the behaviour to look ahead with; nothing happens in the run.
-    /// </summary>
-    private sealed class Plan
-    {
-        public readonly List<Pos> Path = new();
-        public Pos? AttackTile;
-        public string? ActionId;
-        public bool Suppress;
-        public StrikeMode? Mode;
-        public Pos? Direction;
-        public bool Lurk;
-    }
+    /// <summary>Readies a tile strike at the target (or suppressing fire on its tile), if the action can be aimed at it and paid for.</summary>
+    private static bool Strike(ScavengeSim sim, Unit unit, ActionProfile action, Unit target, bool suppress = false) =>
+        TileStrikes.StrikeAt(sim, unit, action, target) is { } strike && TileStrikes.Declare(sim, unit, strike, suppress).Ok;
 
-    /// <summary>
-    /// The plan being chosen, if this unit's turn is the look-ahead pass. Ambient rather than a parameter so every
-    /// behaviour (Fight, Squad, Machine and all they call) runs unchanged in both passes; per thread, so parallel sims
-    /// (the playtest runner) never share one. The look-ahead draws no dice (AiPlanTests).
-    /// </summary>
-    [ThreadStatic] private static Plan? _plan;
-
-    /// <summary>
-    /// Runs <paramref name="behaviour"/> as a plan: from where the unit stands, with the AP a plan may use
-    /// (<see cref="PlannedActions.Budget"/>). Then the unit is put back and declares what it chose; with nothing to do it
-    /// may wait on overwatch (a Linked's lurk) as before. A blow at a target already in reach is a plan too (no path).
-    /// </summary>
-    private static void Planned(ScavengeSim sim, Unit unit, Action behaviour)
-    {
-        var (pos, ap, facing) = (unit.Pos, unit.Ap, unit.Facing);
-        var plan = _plan = new Plan();
-        unit.Ap = PlannedActions.Budget(sim, unit);
-        try
-        {
-            behaviour();
-        }
-        finally
-        {
-            _plan = null;
-            (unit.Pos, unit.Ap, unit.Facing) = (pos, ap, facing);
-        }
-        if (!unit.IsActive) return;
-        if (plan.Path.Count > 0 || plan.AttackTile is not null)
-        {
-            var declared = PlannedActions.Declare(sim, unit, new DeclareIntent(unit.PlayerId ?? 0, unit.Id, plan.Path, plan.AttackTile, plan.ActionId, plan.Suppress, plan.Mode, plan.Direction));
-            if (declared.Ok)
-            {
-                // A blow in reach comes down at its next sub-turn (once the target had a turn), not a whole turn later.
-                if (plan.Path.Count == 0 && plan.AttackTile is not null) unit.Plan!.Quick = true;
-                return;
-            }
-            // The look-ahead and the plan rules disagree (should not happen): say so, and strike what is in reach now
-            // rather than idle.
-            sim.State.Log(new(sim.State.Round, ScavengeEventType.IntentCanceled, $"{unit.Name} could not settle on a plan ({declared.Message})",
-                unit.Id, Pos: unit.Pos));
-            if (Spot(sim, unit) is { } target && TryAttack(sim, unit, target)) return;
-        }
-        if (plan.Lurk) Lurk(sim, unit);
-    }
-
-    /// <summary>An attack: carried out now, or while planning, chosen as the plan's attack (and the look-ahead ends).</summary>
-    private static void Strike(ScavengeSim sim, Unit unit, ActionProfile action, Unit target, bool suppress = false)
-    {
-        if (_plan is { } plan)
-        {
-            plan.AttackTile = target.Pos;
-            plan.ActionId = action.Id;
-            plan.Suppress = suppress;
-            if (!suppress && action.Patterned && TileStrikes.BestAim(sim, unit, action, target) is { } best)
-                (plan.Mode, plan.Direction) = (best.Mode, best.Direction);
-            unit.Ap = 0;
-            return;
-        }
-        if (suppress)
-        {
-            Combat.Suppress(sim, unit, action, target);
-            return;
-        }
-        if (TileStrikes.StrikeAt(sim, unit, action, target) is { } strike) TileStrikes.Declare(sim, unit, strike);
-    }
-
-    /// <summary>Whether the unit can still do something this sub-turn: up, with AP, and no tile strike readied yet.</summary>
-    private static bool Acting(ScavengeSim sim, Unit unit) => unit.IsActive && unit.Ap > 0 && !TileStrikes.Readied(sim.State, unit);
+    /// <summary>Whether the unit can still do something this sub-turn: up, with AP, not stunned or pinned since its turn began, and no tile strike readied yet.</summary>
+    private static bool Acting(ScavengeSim sim, Unit unit) => unit.IsActive && unit.Ap > 0 && !unit.Suppressed && !TileStrikes.Readied(sim.State, unit);
 
     /// <summary>Husk behaviour (and a jammed Linked's): hunt the nearest hostile in sight, close in, attack.</summary>
     private static void Fight(ScavengeSim sim, Unit unit)
@@ -196,25 +116,12 @@ internal static class ScavengeAi
             if (Suppress(sim, unit, focus)) return;
             if (retreating || !StepToward(sim, unit, focus.Pos)) break;
         }
-        if (unit.IsActive && !retreating) Lurk(sim, unit);
+        if (unit.IsActive && !retreating && !TileStrikes.Readied(sim.State, unit)) Lurk(sim, unit);
     }
 
-    /// <summary>A Linked with AP for it left at the end of its turn waits on overwatch (rules.fog.ai.linkedLurk).</summary>
-    private static bool Lurk(ScavengeSim sim, Unit unit)
-    {
-        var fog = sim.Data.Rules.Fog;
-        if (!fog.Ai.LinkedLurk || unit.Ap < fog.Overwatch.ApCost || unit.Stance != Stance.None) return false;
-        if (_plan is { } plan)
-        {
-            // Planning: wait on overwatch only if the turn chose nothing else (decided after the look-ahead).
-            plan.Lurk = true;
-            return true;
-        }
-        var left = unit.Ap - fog.Overwatch.ApCost;
-        unit.Ap = 0;
-        ScavengeCommandHandlers.Enter(sim, unit, Stance.Overwatch, left);
-        return true;
-    }
+    /// <summary>A Linked with AP for a shot left at the end of its turn holds it on overwatch, toward what it last knew of (rules.fog.ai.linkedLurk).</summary>
+    private static bool Lurk(ScavengeSim sim, Unit unit) =>
+        sim.Data.Rules.Fog.Ai.LinkedLurk && !unit.Suppressed && Overwatches.OnArc(sim, unit, unit.PlayerId ?? 0) is CommitOverwatch watch && Overwatches.Commit(sim, unit, watch).Ok;
 
     /// <summary>Every unit in the group now hunts the focus; one that was idle and does not see it learns of it through the Network.</summary>
     private static void Share(ScavengeSim sim, NetworkGroup group, Unit focus)
@@ -244,9 +151,7 @@ internal static class ScavengeAi
             .OrderByDescending(x => x.Chance * (x.Action.MinDamage + x.Action.MaxDamage) / 2)
             .ThenBy(x => x.Action.Id, StringComparer.Ordinal)
             .FirstOrDefault();
-        if (best.Action is null) return false;
-        Strike(sim, unit, best.Action, target);
-        return true;
+        return best.Action is not null && Strike(sim, unit, best.Action, target);
     }
 
     /// <summary>Pin the target with the cheapest ranged action that reaches it (if it is not pinned already).</summary>
@@ -254,13 +159,11 @@ internal static class ScavengeAi
     {
         if (target.Suppressed) return false;
         var action = sim.Profile(unit).Actions
-            .Where(a => a.Pattern != AttackPattern.Melee && a.ApCost <= unit.Ap && Drones.CanStrike(a, target)
+            .Where(a => a.Pattern != AttackPattern.Melee && Combat.ApCost(a, unit.Pos, target.Pos) <= unit.Ap && Drones.CanStrike(a, target)
                         && Combat.CheckReach(sim.Data, sim.State.Map, unit.Pos, a, target.Pos) == ScavengeError.None)
             .OrderBy(a => a.ApCost).ThenBy(a => a.Id, StringComparer.Ordinal)
             .FirstOrDefault();
-        if (action is null) return false;
-        Strike(sim, unit, action, target, suppress: true);
-        return true;
+        return action is not null && Strike(sim, unit, action, target, suppress: true);
     }
 
     /// <summary>
@@ -368,9 +271,7 @@ internal static class ScavengeAi
             .OrderByDescending(a => Combat.ChanceToHit(sim, unit, a, target) * (a.MinDamage + a.MaxDamage) / 2)
             .ThenBy(a => a.Id, StringComparer.Ordinal)
             .FirstOrDefault();
-        if (best is null) return false;
-        Strike(sim, unit, best, target);
-        return true;
+        return best is not null && Strike(sim, unit, best, target);
     }
 
     /// <summary>Move to the affordable reachable tile that is closest (by walking distance) to the goal, if that is closer than now.</summary>
@@ -439,16 +340,11 @@ internal static class ScavengeAi
 
     private static void MoveTo(ScavengeSim sim, Unit unit, Pos to, int ap)
     {
-        if (_plan is { } plan)
-        {
-            plan.Path.Add(to);
-            unit.Pos = to;
-            unit.Ap -= ap;
-            return;
-        }
         var from = unit.Pos;
         unit.Pos = to;
         unit.Ap -= ap;
+        unit.Moved = true;
+        unit.Facing = Combat.Face(from, to);
         sim.State.Log(new(sim.State.Round, ScavengeEventType.Moved, $"{unit.Name} moved {from} -> {to}.", unit.Id, Pos: to));
         sim.Moved(unit, from);
     }

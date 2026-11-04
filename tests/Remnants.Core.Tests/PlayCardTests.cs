@@ -178,7 +178,7 @@ public class PlayCardTests
         var b = SurvivorUnit(2, new(5, 1), weapon: "pipe");
         var sim = Arena(10, 3, [a, a2, b], data: Sure);
         sim.State.Decks.Add(new SquadDeck { PlayerId = 1, Hand = ["dash", "sidestep"], Points = 3, Budget = 3, HandSize = 5 });
-        b.Plan = new PlannedAction { Path = [], AttackTile = a2.Pos, ActionId = "swing", Round = 1 };
+        Ready(sim, b, a2.Pos, "swing");
 
         Assert.Equal(ScavengeError.NotYourTurn, Play(sim, a2, "dash").Error);
         Assert.True(Play(sim, a2, "sidestep", target: b.Id).Ok);
@@ -186,25 +186,26 @@ public class PlayCardTests
     }
 
     [Fact]
-    public void A_reaction_needs_a_seen_enemy_plan()
+    public void A_reaction_needs_a_seen_enemy_with_a_readied_strike()
     {
         var (sim, a, b, _) = Table("sidestep");
         Assert.Equal(ScavengeError.NoIntent, Play(sim, a, "sidestep", target: b.Id).Error);
         Assert.Equal(ScavengeError.NoIntent, Play(sim, a, "sidestep").Error);
-        b.Plan = new PlannedAction { Path = [new(3, 1)], Round = 1 };
+        Ready(sim, b, new(3, 1), "swing");
         Assert.True(Play(sim, a, "sidestep", target: b.Id).Ok);
     }
 
     [Fact]
-    public void A_counterstrike_hits_the_planner_first_when_its_plan_comes()
+    public void A_counterstrike_hits_the_striker_first_when_its_strike_comes_down()
     {
         var (sim, a, b, _) = Table("counterstrike");
         a.Skills[Skill.Melee] = 30;
-        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
-        Assert.True(sim.Execute(new DeclareIntent(2, b.Id, [new(3, 1), new(1, 1)], new Pos(0, 1), "swing")).Ok);
+        b.Pos = new(1, 1);
+        Ready(sim, b, a.Pos, "swing");
         Assert.True(Play(sim, a, "counterstrike", target: b.Id).Ok);
         Assert.Equal(b.Id, a.CounterId);
         Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
+        Assert.True(sim.Execute(new EndTurn(2, b.Id)).Ok);
 
         var counter = sim.State.Events.FindIndex(e => e.Type == ScavengeEventType.Countered && e.UnitId == a.Id && e.TargetId == b.Id);
         var blow = sim.State.Events.FindIndex(e => e.Type == ScavengeEventType.Attacked && e.UnitId == b.Id);
@@ -215,14 +216,12 @@ public class PlayCardTests
     }
 
     [Fact]
-    public void A_move_card_carries_into_a_plan_declared_after_it()
+    public void A_move_card_carries_into_a_move_made_after_it()
     {
-        var (sim, a, b, _) = Table("dash");
-        Assert.Equal(ScavengeError.Unreachable, sim.Execute(new DeclareIntent(1, a.Id, [new(3, 1)])).Error);
+        var (sim, a, _, _) = Table("dash");
+        Assert.Equal(ScavengeError.Unreachable, sim.Execute(new Move(1, a.Id, new(3, 1))).Error);
         Assert.True(Play(sim, a, "dash").Ok);
-        Assert.True(sim.Execute(new DeclareIntent(1, a.Id, [new(3, 1)])).Ok);
-        Assert.Equal("dash", a.Plan!.CardId);
-        Assert.True(sim.Execute(new EndTurn(2, b.Id)).Ok);
+        Assert.True(sim.Execute(new Move(1, a.Id, new(3, 1))).Ok);
         Assert.Equal(new Pos(3, 1), a.Pos);
     }
 
@@ -252,8 +251,8 @@ public class PlayCardTests
         var sim = Arena(14, 3, [a, a2, b], data: Sure);
         var deck = new SquadDeck { PlayerId = 1, Hand = ["sidestep", "dash"], Points = 3, Budget = 3, HandSize = 5 };
         sim.State.Decks.Add(deck);
-        b.Plan = new PlannedAction { Path = [], AttackTile = a.Pos, ActionId = "swing", Round = 1 };
-        a2.Plan = new PlannedAction { Path = [new(1, 2)], Round = 1 };
+        Ready(sim, b, a.Pos, "swing");
+        Ready(sim, a2, new(1, 2), "swing");
         if (forged == "a reaction at an unseen enemy")
         {
             b.Pos = new(13, 1);
@@ -293,7 +292,7 @@ public class PlayCardTests
         b.Attributes[Survivors.AttributeKind.Agility] = 35;
         var sim = Arena(10, 3, [a, b], data: Sure);
         Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
-        Assert.True(sim.Execute(new SetStance(2, b.Id, Stance.Overwatch)).Ok);
+        Assert.True(sim.Execute(new CommitOverwatch(2, b.Id, Arc: new Pos(-1, 0))).Ok);
         b.CardHit = 0.1;
         Assert.True(sim.Execute(new Move(1, a.Id, new(2, 1))).Ok);
         Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Overwatch && e.UnitId == b.Id);

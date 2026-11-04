@@ -117,9 +117,6 @@ internal static class ScavengeCommandHandlers
             var rounds = Math.Max(1, (int)Math.Round(use.LightRounds * effects.FlareRoundsMultiplier));
             state.Flares.Add(new Flare(at, use.LightRadius * effects.FlareRadiusMultiplier, state.Round + rounds - 1));
             state.Log(new(state.Round, ScavengeEventType.FlareLit, $"{unit.Name} throws a {item.Name}: {at} is lit up.", unit.Id, Pos: at));
-            // Hostiles standing in the light are seen now; overwatch on them may fire.
-            foreach (var u in state.Units.Where(u => u.IsActive && Detection.IsLit(state, u.Pos)).OrderBy(u => u.Id).ToList())
-                sim.CheckOverwatch(u);
         }
         if (use.SensorRadius > 0)
         {
@@ -133,40 +130,17 @@ internal static class ScavengeCommandHandlers
         }
     }
 
-    /// <summary>Overwatch or brace: pays the AP and ends the turn (see <see cref="ScavengeSim"/>).</summary>
+    /// <summary>Brace: pays the AP and ends the turn (see <see cref="ScavengeSim"/>). Overwatch has its own command.</summary>
     public static ScavengeResult SetStance(ScavengeSim sim, Unit unit, SetStance c)
     {
-        var fog = sim.Data.Rules.Fog;
-        var cost = c.Stance switch
-        {
-            Stance.Overwatch => fog.Overwatch.ApCost,
-            Stance.Brace => fog.Brace.ApCost,
-            _ => -1,
-        };
-        if (cost < 0) return ScavengeResult.Fail(ScavengeError.InvalidStance, $"'{c.Stance}' is not a stance a unit can take.");
+        if (c.Stance == Stance.Overwatch) return ScavengeResult.Fail(ScavengeError.InvalidStance, "Overwatch needs a tile or an arc to watch.");
+        if (c.Stance != Stance.Brace) return ScavengeResult.Fail(ScavengeError.InvalidStance, $"'{c.Stance}' is not a stance a unit can take.");
+        var cost = sim.Data.Rules.Fog.Brace.ApCost;
         if (cost > unit.Ap) return NotEnoughAp(unit, cost);
-        if (c.Stance == Stance.Overwatch && sim.Profile(unit).Actions.Count == 0)
-            return ScavengeResult.Fail(ScavengeError.InvalidStance, $"{unit.Name} has nothing to fire on overwatch.");
-
-        var left = unit.Ap - cost;
         unit.Ap = 0;
-        Enter(sim, unit, c.Stance, left);
-        return ScavengeResult.Success(c.Stance == Stance.Overwatch ? $"{unit.Name} is on overwatch." : $"{unit.Name} braces.");
-    }
-
-    /// <summary>
-    /// Puts a unit in a stance and logs it (players through <see cref="SetStance"/>, the Linked lurking). On overwatch the
-    /// <paramref name="apLeft"/> after paying become its reactions (1..<see cref="OverwatchRules.Reactions"/>).
-    /// </summary>
-    internal static void Enter(ScavengeSim sim, Unit unit, Stance stance, int apLeft)
-    {
-        unit.Stance = stance;
-        var max = sim.Data.Rules.Fog.Overwatch.Reactions + (int)Math.Round(unit.Hook(PerkHooks.OverwatchReactionsBonus));
-        unit.Reactions = stance == Stance.Overwatch ? Math.Clamp(apLeft + (max - sim.Data.Rules.Fog.Overwatch.Reactions), 1, max) : 0;
-        if (stance == Stance.Overwatch)
-            sim.State.Log(new(sim.State.Round, ScavengeEventType.Overwatch, $"{unit.Name} goes on overwatch.", unit.Id, Pos: unit.Pos));
-        else
-            sim.State.Log(new(sim.State.Round, ScavengeEventType.Braced, $"{unit.Name} braces for an ambush.", unit.Id, Pos: unit.Pos));
+        unit.Stance = Stance.Brace;
+        sim.State.Log(new(sim.State.Round, ScavengeEventType.Braced, $"{unit.Name} braces for an ambush.", unit.Id, Pos: unit.Pos));
+        return ScavengeResult.Success($"{unit.Name} braces.");
     }
 
     public static ScavengeResult Lookout(ScavengeSim sim, Unit unit, Lookout c)

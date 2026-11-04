@@ -29,7 +29,7 @@ public class ProtocolTests
         [
             new Move(1, 2, new Pos(3, 4)), new AttackTile(1, 2, new Pos(5, 5), "pistol_shot"), new UseItem(1, 2, "med_kit", 5), new UseItem(1, 2, "bandage"),
             new PickUp(1, 2, 3, "scrap"), new Recruit(1, 2, 7), new EndTurn(1, 2), new Extract(1, 2),
-            new UseItem(1, 2, "flare", At: new Pos(6, 1)), new SetStance(1, 2, Stance.Overwatch), new Lookout(1, 2),
+            new UseItem(1, 2, "flare", At: new Pos(6, 1)), new SetStance(1, 2, Stance.Brace), new CommitOverwatch(1, 2, new Pos(4, 4)), new CommitOverwatch(1, 2, Arc: new Pos(1, 0)), new Lookout(1, 2),
             new ProposeAlliance(1, 2, 3), new RespondAlliance(1, 2, 3, true), new BreakAlliance(1, 2),
             new PingTile(1, 2, new Pos(1, 1), PingKind.Loot), new GiveItem(1, 2, 4, "scrap"), new Carry(1, 2, 4), new PutDown(1, 2, new Pos(2, 2)),
             new Hack(1, 2, 7), new Hack(1, 2, TargetId: 5), new DeployDrone(1, 2, new Pos(3, 3)), new FlyDrone(1, 2, new Pos(6, 6)),
@@ -47,22 +47,12 @@ public class ProtocolTests
     }
 
     [Fact]
-    public void A_planned_action_round_trips_under_its_wire_name()
+    public void A_planned_action_is_gone_from_the_wire()
     {
-        var plan = new DeclareIntent(1, 2, [new Pos(3, 4), new Pos(4, 4)], new Pos(5, 4), "swing");
-        var json = ProtocolJson.Serialize(new Command(7, plan));
-        Assert.Contains("\"kind\":\"plannedAction\"", json);
-        var back = Assert.IsType<DeclareIntent>(Assert.IsType<Command>(ProtocolJson.Deserialize(json)).Intent);
-        Assert.Equal(plan.Path, back.Path);
-        Assert.Equal((plan.AttackTile, plan.ActionId), (back.AttackTile, back.ActionId));
-        Assert.Equal(json, ProtocolJson.Serialize(new Command(7, back)));
-
-        var pin = new DeclareIntent(1, 2, [], new Pos(6, 4), "burst", Suppress: true);
-        var pinBack = Assert.IsType<DeclareIntent>(Assert.IsType<Command>(ProtocolJson.Deserialize(ProtocolJson.Serialize(new Command(9, pin)))).Intent);
-        Assert.True(pinBack.Suppress);
-        var moveOnly = ProtocolJson.Serialize(new Command(8, new DeclareIntent(1, 2, [new Pos(1, 1)])));
-        Assert.IsType<DeclareIntent>(Assert.IsType<Command>(ProtocolJson.Deserialize(moveOnly)).Intent);
+        var json = ProtocolJson.Serialize(new Command(7, new AttackTile(1, 2, new Pos(5, 4), "swing"))).Replace("attackTile", "plannedAction");
+        Assert.ThrowsAny<Exception>(() => ProtocolJson.Deserialize(json));
         Assert.Equal(17, Protocol.TacticsVersion);
+        Assert.Equal(20, Protocol.TelegraphedStrikesVersion);
     }
 
     [Fact]
@@ -84,7 +74,7 @@ public class ProtocolTests
         Assert.ThrowsAny<System.Text.Json.JsonException>(() => ProtocolJson.Deserialize(json.Replace("\"attackTile\"", "\"attack\"")));
         Assert.Null(typeof(IScavengeCommand).Assembly.GetType("Remnants.Core.Scavenge.Attack"));
         Assert.Equal(19, Protocol.TileAttacksOnlyVersion);
-        Assert.Equal(Protocol.TileAttacksOnlyVersion, Protocol.Version);
+        Assert.Equal(Protocol.TelegraphedStrikesVersion, Protocol.Version);
     }
 
     [Fact]

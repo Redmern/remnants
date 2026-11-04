@@ -89,6 +89,9 @@ public sealed record ActionDef
 
     /// <summary>The ways the weapon strikes tiles, the first the default; empty: it strikes the one tile aimed at.</summary>
     public List<StrikeMode> Modes { get; init; } = new();
+
+    /// <summary>Tiles a landed hit throws the target straight back (a displacement, like a shove); 0: none.</summary>
+    public int Knockback { get; init; }
     public int MinDamage { get; init; }
     public int MaxDamage { get; init; }
     public int ApCost { get; init; } = 1;

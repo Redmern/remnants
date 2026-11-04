@@ -124,11 +124,13 @@ public sealed class SideFog(int playerId, string side)
             TurnOrder = order,
             TurnIndex = index,
             SubRound = state.SubRound,
-            // Readied tile strikes of the units this side knows; whom another's was aimed at stays on the server.
+            // Readied tile strikes of the units this side knows; whom another's was aimed at, and what it covers out of this
+            // side's vision, stays on the server.
             Strikes = state.Strikes.Where(x => known.Contains(x.UnitId)).Select(x => new TileStrike
             {
-                UnitId = x.UnitId, ActionId = x.ActionId, Mode = x.Mode, From = x.From, Tile = x.Tile, Direction = x.Direction,
-                Tiles = new(x.Tiles), TargetId = state.FindUnit(x.UnitId)?.PlayerId == PlayerId ? x.TargetId : null,
+                UnitId = x.UnitId, ActionId = x.ActionId, Mode = x.Mode, From = x.From, Direction = x.Direction,
+                Tile = state.FindUnit(x.UnitId)?.Side == Side || Visible.Contains(state.Map.Index(x.Tile)) ? x.Tile : x.From,
+                Tiles = x.Tiles.Where(p => state.FindUnit(x.UnitId)?.Side == Side || Visible.Contains(state.Map.Index(p))).ToList(), TargetId = state.FindUnit(x.UnitId)?.PlayerId == PlayerId ? x.TargetId : null, Suppress = x.Suppress,
             }).ToList(),
             Finished = state.Finished,
             Map = new TileMap(),
@@ -259,15 +261,11 @@ public sealed class SideFog(int playerId, string side)
         copy.Hooks = new(StringComparer.Ordinal);
         copy.CyberHooks = new();
         copy.FieldXp = 0;
+        // That it is on overwatch shows; what it watches only to its own side.
+        if (u.Side != Side) copy.Watch = null;
+        copy.Reactions = 0;
         copy.DroneBattery = null;
         copy.ChargesUsed = new(StringComparer.Ordinal);
-        // A plan shows what it does (path, tile, action), never the card behind it or whom it was aimed at.
-        if (copy.Plan is { } plan)
-        {
-            plan.CardId = null;
-            plan.TargetId = null;
-            plan.MoveBonus = 0;
-        }
         // Card buffs on it would give away hit chances and moves the cards behind them buy.
         copy.CardHit = 0;
         copy.Guard = 0;
@@ -285,7 +283,6 @@ public sealed class SideFog(int playerId, string side)
         copy.HiddenSlots = u.SlotCards.Count;
         copy.SlotCards = new();
         copy.SlotSpent = new();
-        copy.LastCardId = null;
         copy.CounterId = null;
         copy.Origin = u.Origin is { } o ? new Survivor { Name = o.Name, Sex = o.Sex, LifeStage = o.LifeStage } : null;
         // A rival's holo-decoy looks like one of their people until it flickers out.

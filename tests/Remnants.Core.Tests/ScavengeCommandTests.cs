@@ -68,7 +68,7 @@ public class ScavengeCommandTests
     {
         var a = SurvivorUnit(1, new(0, 0), weapon: "pipe");
         var ally = SurvivorUnit(1, new(1, 0));
-        var sim = Arena(6, 2, [a, ally, EnemyUnit("husk", new(5, 1))],
+        var sim = Arena(40, 2, [a, ally, EnemyUnit("husk", new(39, 1))],
             data: With(r => r with { Combat = r.Combat with { MinHitChance = 1, MaxHitChance = 1 } }));
 
         Assert.True(StrikeNow(sim, a, ally, "swing").Ok);
@@ -300,11 +300,8 @@ public class AiTests
 
         Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
         Assert.Equal(AiMode.Hunting, husk.Ai.Mode);
-        // It telegraphs: a path up to the survivor and a blow at the survivor's tile, carried out next turn.
-        var plan = Assert.IsType<PlannedAction>(husk.Plan);
-        Assert.Equal(u.Pos, plan.AttackTile);
-        Assert.Equal(1, plan.Path[^1].Chebyshev(u.Pos));
-        Assert.Equal(new Pos(5, 0), husk.Pos);
+        Assert.True(husk.Pos.Chebyshev(u.Pos) < 5); // it closes in live, then readies a blow that comes down as the sub-round ends
+        for (var i = 0; i < 4 && husk.Pos.Chebyshev(u.Pos) > 1; i++) Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
         Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
         Assert.Equal(1, husk.Pos.Chebyshev(u.Pos));
         Assert.Contains(sim.State.Events, e => e.UnitId == husk.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
@@ -343,9 +340,8 @@ public class AiTests
             ".........",
         ]);
         Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
-        Assert.NotNull(linked.Plan); // telegraphed: into cover, then the shot, next turn
-        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
         Assert.True(Combat.CoverAgainst(Real, sim.State.Map, linked.Pos, u.Pos) > 0, $"Linked at {linked.Pos} has no cover.");
+        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
         Assert.Contains(sim.State.Events, e => e.UnitId == linked.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed);
     }
 

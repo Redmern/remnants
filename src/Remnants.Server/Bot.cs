@@ -114,22 +114,21 @@ internal static class Bot
             .Where(o => o.Strike is not null)
             .OrderByDescending(o => o.Chance).FirstOrDefault();
         if (shot.Strike is { } strike) return strike;
-        // Step off a tile a seen enemy plan aims at.
+        // Step off a tile a seen enemy's strike covers.
         if (BotTactics.Dodge(view, unit, pid) is { } dodge) return dodge;
 
         var hadAllies = client.Mission?.Mode == MissionMode.Coop || state.Parties.Any(p => p.PlayerId != pid && p.Side == unit.Side);
         var leaving = state.Round > rounds || unit.CarryingId is not null || (hadAllies && allies.All(a => !a.IsActive));
         if (leaving && map.IsExit(unit.Pos)) return new Extract(pid, unit.Id);
-        // A hostile in view but out of reach: telegraph a move and a blow at it for next turn.
+        // A hostile in view but out of reach: close in, with the AP for a blow left.
         var targets = state.Units.Where(t => t.OnMap && t.IsActive && unit.HostileTo(t) && !Talking(t)).ToList();
-        if (!leaving && BotTactics.Plan(view, unit, pid, targets) is { } plan) return plan;
+        if (!leaving && BotTactics.Approach(view, unit, pid, targets) is { } approach) return approach;
 
         // Follow the nearest ally (a downed one first); once next to them, cover them on overwatch.
         var buddy = allies.OrderBy(a => a.IsActive ? 1 : 0).ThenBy(a => a.Pos.Chebyshev(unit.Pos)).ThenBy(a => a.Id).FirstOrDefault();
         if (!leaving && buddy is not null && buddy.Pos.Chebyshev(unit.Pos) <= 2)
         {
-            var cost = view.Data.Rules.Fog.Overwatch.ApCost;
-            return profile.Actions.Count > 0 && unit.Ap > cost ? new SetStance(pid, unit.Id, Stance.Overwatch) : new EndTurn(pid, unit.Id);
+            return Overwatches.OnArc(view, unit, pid) ?? new EndTurn(pid, unit.Id);
         }
         var centre = buddy is not null && !leaving ? buddy.Pos : new Pos(map.Width / 2, map.Height / 2);
         return BotTactics.StepToward(view, unit, pid, leaving ? map.Exits : [centre]) ?? (IScavengeCommand)new EndTurn(pid, unit.Id);

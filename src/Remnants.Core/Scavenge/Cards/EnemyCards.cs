@@ -3,9 +3,9 @@ namespace Remnants.Core.Scavenge;
 /// <summary>
 /// Cards on the enemy side: authored enemies (<see cref="EnemyDef.Cards"/>) bring their cards into one enemy deck, dealt
 /// and refilled with the same rules as a party's (<see cref="SquadDecks"/>), under <see cref="DeckId"/>. After an
-/// authored enemy's turn (its plan declared), it plays what it can by a simple priority: a reaction against a seen
-/// hostile whose plan aims at its tile (one that breaks the plan first), breaking a seen hostile's plan (a shove, a pull,
-/// a disrupt), an attack card when its plan attacks, a smoke screen toward who sees it when hurt, a defense card, and a mend or
+/// authored enemy's turn (its strike declared), it plays what it can by a simple priority: a reaction against a seen
+/// hostile whose readied strike covers its tile (one that breaks the strike first), breaking a seen hostile's strike (a
+/// shove, a pull, a disrupt), an attack card when it readied a strike, a smoke screen toward who sees it when hurt, a defense card, and a mend or
 /// a draw. Only what the card rules accept (<see cref="CardPlay.Check"/>). Units without cards never play.
 /// </summary>
 public static class EnemyCards
@@ -72,12 +72,12 @@ public static class EnemyCards
         var hostiles = state.Units.Where(u => u.IsActive && unit.HostileTo(u) && Detection.SideSees(data, state, unit.Side, u))
             .OrderBy(u => u.Pos.Chebyshev(unit.Pos)).ThenBy(u => u.Id).ToList();
 
-        var threats = hostiles.Where(u => u.Plan is { AttackTile: { } t } && t == unit.Pos);
+        var threats = hostiles.Where(u => state.Strikes.Any(s => s.UnitId == u.Id && s.Tiles.Contains(unit.Pos)));
         if (Try(hand.Where(c => c.Reaction).OrderByDescending(Breaks), threats) is { } reaction) return reaction;
         var buffs = hand.Where(c => !c.Reaction && !c.Effect.IsAbility).ToList();
-        if (Try(hand.Where(c => !c.Reaction && Breaks(c)), hostiles.Where(h => h.Plan is not null)) is { } broken) return broken;
+        if (Try(hand.Where(c => !c.Reaction && Breaks(c)), hostiles.Where(h => TileStrikes.Readied(state, h))) is { } broken) return broken;
         PlayCard Buff(CardDef c) => new(0, unit.Id, c.Id);
-        var attacks = unit.Plan?.AttackTile is not null;
+        var attacks = TileStrikes.Readied(state, unit);
         if (attacks && unit.CardHit <= 0 && buffs.FirstOrDefault(c => c.Effect.Hit > 0) is { } aim) return Buff(aim);
         var seenBy = hostiles.FirstOrDefault(h => Detection.Spots(data, state, h, unit));
         var seen = seenBy is not null;

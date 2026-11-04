@@ -47,12 +47,12 @@ public class OutplayTests
     }
 
     [Fact]
-    public void A_dodged_plan_leaves_the_attacker_exposed()
+    public void A_dodged_shot_at_range_leaves_the_attacker_exposed()
     {
-        var a = SurvivorUnit(1, new(0, 1), weapon: "pipe");
+        var a = SurvivorUnit(1, new(0, 1), weapon: "pistol");
         var b = SurvivorUnit(2, new(5, 1), weapon: "pipe");
         var sim = Arena(10, 3, [a, b], data: Sure);
-        Assert.True(sim.Execute(new DeclareIntent(1, a.Id, [new(2, 1), new(4, 1)], new Pos(5, 1), "swing")).Ok);
+        Assert.True(sim.Execute(new AttackTile(1, a.Id, new(5, 1), "shoot")).Ok);
         Assert.True(sim.Execute(new Move(2, b.Id, new(6, 1))).Ok);
         Assert.True(sim.Execute(new EndTurn(2, b.Id)).Ok);
         Assert.Equal(a.Id, b.OutplayedId);

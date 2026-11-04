@@ -8,8 +8,7 @@ public static class TurnAdvice
     /// <summary>
     /// Whether the unit has an affordable, useful order left: a move, a stance or lookout, a blow at a hostile its side sees
     /// in reach, an item it carries, a card it can play (hand or slot), extracting, picking up from a pile in reach, a hack,
-    /// a drone order, salvage, or a plan with a blow at a seen hostile (free to declare, paid next turn). Orders whose rules
-    /// are not simple to restate are tried on a copy of the run (<see cref="Accepts"/>), so Core itself decides.
+    /// a drone order or salvage. Orders whose rules are not simple to restate are tried on a copy of the run (<see cref="Accepts"/>), so Core itself decides.
     /// </summary>
     public static bool CanStillAct(ScavengeSim sim, Unit unit)
     {
@@ -19,9 +18,9 @@ public static class TurnAdvice
         if (sim.State.Map.IsExit(unit.Pos) || ParkedVehicles.Beside(sim.State, unit) is not null) return true;
         if (ap >= sim.Data.Rules.Turn.PickUpApCost && sim.State.Caches.Any(c => c.Items.Count > 0 && c.Pos.Chebyshev(unit.Pos) <= 1)) return true;
         if (CanPlayACard(sim, unit)) return true;
-        if (CanHackOrSalvage(sim, unit) || CanUseDrone(sim, unit) || CanPlanABlow(sim, unit)) return true;
+        if (CanHackOrSalvage(sim, unit) || CanUseDrone(sim, unit)) return true;
         if (ap > 0 && sim.Reachable(unit).Values.Any(cost => cost <= ap)) return true;
-        if (unit.Stance == Stance.None && Math.Min(fog.Overwatch.ApCost, fog.Brace.ApCost) <= ap) return true;
+        if (unit.Stance == Stance.None && (fog.Brace.ApCost <= ap || Overwatches.OnArc(sim, unit, unit.PlayerId ?? 0) is not null)) return true;
         if (!unit.Lookout && fog.Lookout.ApCost <= ap) return true;
         if (unit.Pack.Any(id => sim.Data.Items.TryGetValue(id, out var item) && item.Use is { } use && FieldMedicine.ApCost(unit, use) <= ap))
             return true;
@@ -37,11 +36,11 @@ public static class TurnAdvice
         return false;
     }
 
-    /// <summary>A card from the party's hand or the unit's slots that Core would take now (a reaction: on any seen enemy plan).</summary>
+    /// <summary>A card from the party's hand or the unit's slots that Core would take now (a reaction: on any seen enemy's readied strike).</summary>
     private static bool CanPlayACard(ScavengeSim sim, Unit unit)
     {
         if (unit.PlayerId is not { } pid || SquadDecks.Of(sim.State, pid) is not { Hidden: false } deck) return false;
-        var planners = sim.State.Units.Where(u => u.Plan is not null && unit.HostileTo(u)).Select(u => (int?)u.Id).DefaultIfEmpty(null).ToList();
+        var planners = sim.State.Units.Where(u => TileStrikes.Readied(sim.State, u) && unit.HostileTo(u)).Select(u => (int?)u.Id).DefaultIfEmpty(null).ToList();
         bool Playable(string id, bool slot) =>
             planners.Any(t => CardPlay.Check(sim, unit, new PlayCard(pid, unit.Id, id, t, FromSlot: slot)).Ok);
         return deck.Hand.Distinct().Any(id => Playable(id, false)) || unit.SlotCards.Where(id => !unit.SlotSpent.Contains(id)).Any(id => Playable(id, true));
@@ -76,25 +75,5 @@ public static class TurnAdvice
                 .Any(at => Accepts(sim, new DeployDrone(pid, unit.Id, at)));
         if (rules.RecallApCost <= unit.Ap && Accepts(sim, new RecallDrone(pid, unit.Id))) return true;
         return rules.FlyApCost <= unit.Ap && Drones.FlightTargets(sim, unit).Take(1).Any(to => Accepts(sim, new FlyDrone(pid, unit.Id, to)));
-    }
-
-    /// <summary>Whether a plan with a blow at a hostile its side sees (from here or one move away) would be taken.</summary>
-    private static bool CanPlanABlow(ScavengeSim sim, Unit unit)
-    {
-        if (unit.Plan is not null) return false;
-        var state = sim.State;
-        var pid = unit.PlayerId ?? 0;
-        var seen = state.Units.Where(t => t.IsActive && t.OnMap && unit.HostileTo(t) && Detection.SideSees(sim.Data, state, unit.Side, t)).ToList();
-        if (seen.Count == 0) return false;
-        var ends = new[] { unit.Pos }.Concat(sim.Reachable(unit).Keys).ToList();
-        var tries = 0;
-        foreach (var action in sim.Profile(unit).Actions)
-            foreach (var t in seen)
-                foreach (var end in ends.Where(e => e.Chebyshev(t.Pos) <= Math.Max(action.Reach, action.DiagonalRange)).OrderBy(e => e.Chebyshev(unit.Pos)))
-                {
-                    if (++tries > 12) return false;
-                    if (Accepts(sim, new DeclareIntent(pid, unit.Id, end == unit.Pos ? [] : [end], t.Pos, action.Id))) return true;
-                }
-        return false;
     }
 }

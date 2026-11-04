@@ -181,6 +181,14 @@ public static class Hacking
         return ScavengeResult.Success($"{unit.Name} failed to hack the {name}.", device.Id);
     }
 
+    /// <summary>A unit changed sides: what it was doing for the old one is off, its readied strike and any stance.</summary>
+    private static void ChangedHands(ScavengeSim sim, Unit unit)
+    {
+        TileStrikes.Lose(sim, unit, "changed hands");
+        Overwatches.Drop(sim, unit, "changed hands");
+        unit.Stance = Stance.None;
+    }
+
     /// <summary>Override: one action, one roll. A turned Linked fights for the side until its time is up.</summary>
     private static ScavengeResult Override(ScavengeSim sim, Unit unit, Unit target, HackToolDef kit)
     {
@@ -199,8 +207,7 @@ public static class Hacking
         target.Side = unit.Side;
         target.OverrideUntilRound = state.Round + rules.OverrideRounds - 1;
         target.Ai = new AiMemory();
-        target.Stance = Stance.None;
-        target.Reactions = 0;
+        ChangedHands(sim, target);
         Trained(unit, rules.SkillOnSuccess, rules.XpOnSuccess);
         state.Log(new(state.Round, ScavengeEventType.Overridden,
             $"{unit.Name} overrides {target.Name} ({chance:P0}): it fights for them for {rules.OverrideRounds} rounds.", unit.Id, target.Id, target.Pos));
@@ -225,7 +232,7 @@ public static class Hacking
             machine.Side = unit.Side;
             machine.PlayerId = unit.PlayerId;
             machine.Ai = new AiMemory();
-            machine.Stance = Stance.None;
+            ChangedHands(sim, machine);
         }
         switch (device.Kind)
         {
@@ -318,7 +325,7 @@ public static class Hacking
             if (!u.OnMap) continue;
             u.Side = Unit.EnemySide;
             u.Ai = new AiMemory();
-            u.Stance = Stance.None;
+            ChangedHands(sim, u);
             state.Log(new(state.Round, ScavengeEventType.OverrideEnded, $"{u.Name} reconnects to the Network.", u.Id, Pos: u.Pos));
         }
     }

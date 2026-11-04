@@ -233,7 +233,7 @@ public partial class UnitPanel : PanelContainer
 
         var data = _presenter.Sim.Data;
         var profile = _presenter.Sim.Profile(unit!);
-        // An enemy shows what the colony's bestiary knows: position, facing and plan always; AP and moves once fought;
+        // An enemy shows what the colony's bestiary knows: position, facing and readied strike always; AP and moves once fought;
         // health numbers, armor, dodge and damage once killed.
         _tier = _presenter.KnowledgeOf(unit!);
         var side = SidePalette.For(_presenter, unit!);

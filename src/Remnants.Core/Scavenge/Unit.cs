@@ -28,7 +28,7 @@ public enum AiMode { Idle, Hunting }
 public enum Stance
 {
     None,
-    /// <summary>Reaction attack on the first hostile that moves or reveals itself in sight and reach.</summary>
+    /// <summary>Watching a tile or an arc for the round, its AP held for shots (<see cref="Overwatches"/>).</summary>
     Overwatch,
     /// <summary>Hunkered down: no ambush bonus against it, extra cover, fewer AP next turn.</summary>
     Brace,
@@ -105,17 +105,11 @@ public sealed class Unit
     /// <summary>The direction it last moved or attacked in (sign per axis; a weapon light points there). Null until then.</summary>
     public Pos? Facing { get; set; }
 
-    /// <summary>Held until this unit's next turn starts.</summary>
+    /// <summary>Brace holds until this unit's next turn starts, overwatch until the round ends.</summary>
     public Stance Stance { get; set; }
 
     /// <summary>The round in which the unit ended its whole turn (<see cref="EndTurn.WholeTurn"/>): it sits out that round's later sub-rounds.</summary>
     public int TurnOverRound { get; set; }
-
-    /// <summary>
-    /// A telegraphed plan waiting for the start of this unit's next turn (see <see cref="PlannedActions"/>); null when
-    /// none. Locked once declared; being downed, killed, pinned or stunned cancels it.
-    /// </summary>
-    public PlannedAction? Plan { get; set; }
 
     /// <summary>
     /// The unit whose telegraphed attack this one dodged: its next attack on that unit gets the ambush hit bonus
@@ -153,7 +147,7 @@ public sealed class Unit
     /// <summary>Slot cards played this round: they come back at the next round start (consumable ones are gone instead).</summary>
     public List<string> SlotSpent { get; set; } = new();
 
-    /// <summary>Move range cards added this turn (carried into a plan declared now).</summary>
+    /// <summary>Move range cards added this turn.</summary>
     public int CardMove { get; set; }
 
     /// <summary>Hit chance cards added to this unit's next attack.</summary>
@@ -165,7 +159,7 @@ public sealed class Unit
     /// <summary>Cover cards added until this unit's next turn.</summary>
     public double CardCover { get; set; }
 
-    /// <summary>The enemy this unit will strike first when its plan resolves (a counter card), until its own next turn.</summary>
+    /// <summary>The enemy this unit will strike first when its readied strike comes down (a counter card), until its own next turn.</summary>
     public int? CounterId { get; set; }
 
     /// <summary>
@@ -174,10 +168,10 @@ public sealed class Unit
     /// </summary>
     public bool Displaced { get; set; }
 
-    /// <summary>The last card (not a reaction) played on this unit this turn: a plan declared now carries it, server-side only.</summary>
-    public string? LastCardId { get; set; }
+    /// <summary>What it watches on overwatch (<see cref="Overwatches"/>); null otherwise.</summary>
+    public OverwatchWatch? Watch { get; set; }
 
-    /// <summary>Overwatch reactions left this stance.</summary>
+    /// <summary>A perk's extra overwatch shots left this watch: they fire once the held AP has run out.</summary>
     public int Reactions { get; set; }
 
     /// <summary>On lookout (scanning) until its next turn: more sight and detection.</summary>
@@ -340,36 +334,9 @@ public sealed class LootCache
     public int? PlayerId { get; set; }
 }
 
-/// <summary>
-/// A telegraphed plan (the wire calls it <c>plannedAction</c>): the path to walk and the tile to attack with an action,
-/// declared in <see cref="Round"/>. <see cref="TargetId"/> (who stood on the tile, seen, when it was declared) and
-/// <see cref="CardId"/> (a card played with it) are the server's own: a view never carries them.
-/// </summary>
-public sealed class PlannedAction
+/// <summary>What an overwatch is committed to: one tile, or the front arc of one direction.</summary>
+public sealed class OverwatchWatch
 {
-    public List<Pos> Path { get; set; } = new();
-    public Pos? AttackTile { get; set; }
-    public string? ActionId { get; set; }
-    public int? TargetId { get; set; }
-    public string? CardId { get; set; }
-    public int Round { get; set; }
-
-    /// <summary>Move range a card added when the plan was declared: its path still has it when it resolves.</summary>
-    public int MoveBonus { get; set; }
-
-    /// <summary>The attack is suppressing fire: it pins whoever is on the tile instead of a damage roll.</summary>
-    public bool Suppress { get; set; }
-
-    /// <summary>A stab / slash weapon's mode and direction (see <see cref="TileStrikes"/>); null for any other attack.</summary>
-    public Items.StrikeMode? Mode { get; set; }
-    public Pos? Direction { get; set; }
-
-    /// <summary><see cref="ScavengeState.TurnSeq"/> when it was declared (see <see cref="PlannedActions.Ready"/>).</summary>
-    public int DeclaredSeq { get; set; }
-
-    /// <summary>
-    /// An AI blow at a target already in reach (no path): it comes down at the unit's next sub-turn, a later sub-round's
-    /// too, once its target has had a turn (<see cref="PlannedActions.Ready"/>).
-    /// </summary>
-    public bool Quick { get; set; }
+    public Pos? Tile { get; set; }
+    public Pos? Arc { get; set; }
 }

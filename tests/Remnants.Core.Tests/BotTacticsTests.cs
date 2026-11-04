@@ -4,7 +4,7 @@ using static Remnants.Core.Tests.ScavengeTestData;
 
 namespace Remnants.Core.Tests;
 
-/// <summary>The simple heuristics the playtest and server bots share: card play, dodging a telegraph, declaring a plan.</summary>
+/// <summary>The simple heuristics the playtest and server bots share: card play, dodging a telegraph, closing in to strike.</summary>
 public class BotTacticsTests
 {
     private static (ScavengeSim Sim, Unit A, Unit Husk, SquadDeck Deck) Field(params string[] hand)
@@ -21,7 +21,7 @@ public class BotTacticsTests
     public void A_telegraphed_blow_at_the_unit_is_answered_with_a_reaction_card_then_dodged()
     {
         var (sim, a, husk, _) = Field("sidestep", "take_cover");
-        husk.Plan = new PlannedAction { Path = [new(2, 1)], AttackTile = a.Pos, ActionId = "claw", Round = 1 };
+        Ready(sim, husk, a.Pos, "claw");
         var card = Assert.IsType<PlayCard>(BotTactics.Card(sim, a, 1));
         Assert.Equal(("sidestep", husk.Id), (card.CardId, card.TargetId));
         Assert.True(sim.Execute(card).Ok);
@@ -67,23 +67,22 @@ public class BotTacticsTests
         foreach (var card in Real.Cards.All.Keys)
         {
             var (sim, a, husk, _) = Field(card);
-            husk.Plan = new PlannedAction { Path = [], AttackTile = a.Pos, ActionId = "claw", Round = 1 };
             husk.Pos = new(2, 1);
+            Ready(sim, husk, a.Pos, "claw");
             a.Body.Injure(BodyPart.LeftArm, 0.3);
             if (BotTactics.Card(sim, a, 1) is { } pick) Assert.True(sim.Execute(pick).Ok, $"{card}: {sim.Execute(pick).Message}");
         }
     }
 
     [Fact]
-    public void Out_of_reach_the_bot_declares_a_move_and_an_attack_on_the_target()
+    public void Out_of_reach_the_bot_moves_to_where_its_attack_reaches_the_target()
     {
         var (sim, a, husk, _) = Field();
         husk.Pos = new(4, 1);
-        var plan = Assert.IsType<DeclareIntent>(BotTactics.Plan(sim, a, 1, [husk]));
-        Assert.Equal(husk.Pos, plan.AttackTile);
-        Assert.Single(plan.Path);
-        Assert.True(sim.Execute(plan).Ok);
-        Assert.Null(BotTactics.Plan(Field().Sim, a, 1, [])); // nobody to go for
+        var move = Assert.IsType<Move>(BotTactics.Approach(sim, a, 1, [husk]));
+        Assert.True(sim.Execute(move).Ok);
+        Assert.True(sim.Execute(StrikeOn(sim, a, husk, "swing")).Ok); // with the AP for the blow left
+        Assert.Null(BotTactics.Approach(Field().Sim, a, 1, [])); // nobody to go for
     }
 
     [Fact]
@@ -115,19 +114,19 @@ public class BotTacticsTests
     {
         var (sim, a, husk, _) = Field("sidestep", "spoil");
         husk.Pos = new(3, 1);
-        husk.Plan = new PlannedAction { Path = [new(2, 1)], AttackTile = a.Pos, ActionId = "claw", Round = 1 };
+        Ready(sim, husk, a.Pos, "claw");
         var card = Assert.IsType<PlayCard>(BotTactics.Card(sim, a, 1));
         Assert.Equal(("spoil", husk.Id), (card.CardId, card.TargetId));
         Assert.True(sim.Execute(card).Ok);
-        Assert.Null(husk.Plan);
+        Assert.False(TileStrikes.Readied(sim.State, husk));
     }
 
     [Fact]
-    public void An_adjacent_enemy_with_a_plan_is_shoved_off_it()
+    public void An_adjacent_enemy_with_a_readied_strike_is_shoved_off_it()
     {
         var (sim, a, husk, _) = Field("shove", "steady_aim");
         husk.Pos = new(2, 1);
-        husk.Plan = new PlannedAction { Path = [new(3, 1)], Round = 1 };
+        Ready(sim, husk, a.Pos, "claw");
         var card = Assert.IsType<PlayCard>(BotTactics.Card(sim, a, 1));
         Assert.Equal(("shove", husk.Id), (card.CardId, card.TargetId));
         Assert.True(sim.Execute(card).Ok);
@@ -135,15 +134,15 @@ public class BotTacticsTests
     }
 
     [Fact]
-    public void An_enemy_still_to_act_whose_plan_aims_at_the_squad_is_held_back_and_a_threatened_ally_hurried_up()
+    public void An_enemy_still_to_act_with_the_squad_in_its_reach_is_held_back_and_a_threatened_ally_hurried_up()
     {
         var a = SurvivorUnit(1, new(1, 1), weapon: "pipe");
         var f = SurvivorUnit(1, new(1, 4), weapon: "pipe");
-        var husk = EnemyUnit("husk", new(5, 4));
+        var husk = EnemyUnit("husk", new(2, 4));
         var husk2 = EnemyUnit("husk", new(9, 1));
         var sim = Arena(12, 6, [a, husk2, husk, f]);
         sim.State.Decks.Add(new SquadDeck { PlayerId = 1, Hand = ["feint", "go_now"], Points = 3, Budget = 3, HandSize = 5 });
-        husk.Plan = new PlannedAction { Path = [new(3, 4)], AttackTile = f.Pos, ActionId = "claw", Round = 1 };
+        Ready(sim, husk, f.Pos, "claw");
         var feint = Assert.IsType<PlayCard>(BotTactics.Card(sim, a, 1));
         Assert.Equal(("feint", husk.Id), (feint.CardId, feint.TargetId));
         Assert.True(sim.Execute(feint).Ok);

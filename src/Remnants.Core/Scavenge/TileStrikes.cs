@@ -19,20 +19,28 @@ public sealed class TileStrike
 
     /// <summary>A free counter (<see cref="TileStrikes.FreeCounter"/>): dodging it earns no counter back, so they never chain.</summary>
     public bool Counter { get; set; }
+
+    /// <summary>Suppressing fire (an AI's): it pins whoever stands on the tile when it comes down, with no damage roll.</summary>
+    public bool Suppress { get; set; }
+
+    /// <summary>An AI's strike declared after the sub-round's last player turn: it sits out one sub-round end, so the player always gets a turn to answer it.</summary>
+    public bool Deferred { get; set; }
 }
 
 /// <summary>
 /// Tile-first attacks. A unit aims at a tile and a direction: a weapon with stab / slash patterns covers the tiles of its
 /// <see cref="StrikeMode"/> (<see cref="Combat.Covered"/>), any other action the one tile aimed at (in reach, as
 /// <see cref="Combat.CheckReach"/> says). The AP is paid when it is declared and the unit's sub-turn ends. When the
-/// sub-round ends the strikes come down in initiative order: whoever hostile stands on a covered tile in the attacker's
+/// sub-round ends the strikes come down in initiative order (an AI's declared with no hostile player left to act that
+/// sub-round waits for the next sub-round's end, the next round's first if none is left, <see cref="TileStrike.Deferred"/>): whoever hostile stands on a covered tile in the attacker's
 /// line of sight then is struck, each with its own roll, so a tile an enemy steps onto can be struck before it gets there.
 /// Nobody there is a miss; the one seen there when it was declared, if it stepped off, dodged it
-/// (<see cref="Unit.OutplayedId"/>). A strike whose attacker went down, left or was moved off its tile falls through.
+/// (<see cref="Unit.OutplayedId"/>). A strike whose attacker went down, left or was moved off its tile falls through;
+/// an AI's is also lost when it is pinned or stunned before it comes down (<see cref="Lose"/>). A plain hit does not stop it.
 /// </summary>
 public static class TileStrikes
 {
-    internal static ScavengeResult Declare(ScavengeSim sim, Unit unit, AttackTile c)
+    internal static ScavengeResult Declare(ScavengeSim sim, Unit unit, AttackTile c, bool suppress = false)
     {
         var state = sim.State;
         var action = sim.Profile(unit).Action(c.ActionId);
@@ -58,11 +66,13 @@ public static class TileStrikes
         state.Strikes.Add(new TileStrike
         {
             UnitId = unit.Id, ActionId = action.Id, Mode = aim.Mode, From = unit.Pos, Tile = c.Tile, Direction = aim.Direction,
-            Tiles = aim.Tiles, TargetId = seen?.Id, Counter = free,
+            Tiles = aim.Tiles, TargetId = seen?.Id, Counter = free, Suppress = suppress,
+            Deferred = sim.DefersStrike(unit),
         });
-        var how = aim.Mode is { } mode ? $"a {mode.ToString().ToLowerInvariant()} at {c.Tile}" : $"an attack on {c.Tile}";
+        var how = aim.Mode is { } mode ? $"a {mode.ToString().ToLowerInvariant()}" : "an attack";
         state.Log(new(state.Round, ScavengeEventType.IntentDeclared, $"{unit.Name} readies {how} ({action.Name}).", unit.Id, Pos: unit.Pos));
-        return ScavengeResult.Success($"{unit.Name} readies {how}.");
+        Overwatches.StruckInto(sim, unit, aim.Tiles);
+        return ScavengeResult.Success($"{unit.Name} readies {how} at {c.Tile}.");
     }
 
     /// <summary>
@@ -105,6 +115,13 @@ public static class TileStrikes
     /// <summary>Whether the unit has a tile strike waiting for this sub-round's end.</summary>
     public static bool Readied(ScavengeState state, Unit unit) => state.Strikes.Any(s => s.UnitId == unit.Id);
 
+    /// <summary>The unit's readied strike is off, saying why. Its AP stays spent.</summary>
+    internal static void Lose(ScavengeSim sim, Unit unit, string why)
+    {
+        if (sim.State.Strikes.RemoveAll(s => s.UnitId == unit.Id) == 0) return;
+        sim.State.Log(new(sim.State.Round, ScavengeEventType.IntentCanceled, $"{unit.Name}'s strike is off: {why}.", unit.Id, Pos: unit.Pos));
+    }
+
     /// <summary>
     /// The aim at <paramref name="target"/>'s tile that covers the most hostiles the unit's side sees (in line of sight),
     /// ties to the action's mode order, then the direction order; null when no mode covers it.
@@ -120,7 +137,7 @@ public static class TileStrikes
                 if (Aim(sim, unit, action, target.Pos, mode, dir) is not { } aim) continue;
                 var tiles = aim.Tiles.Where(p => Combat.Clear(sim.Data, state.Map, unit.Pos, p)).ToList();
                 if (!tiles.Contains(target.Pos)) continue;
-                var score = TargetsOn(state, unit, action, tiles).Count(t => Detection.SideSees(sim.Data, state, unit.Side, t));
+                var score = TargetsOn(state, unit, action, tiles).Count(t => unit.HostileTo(t) && Detection.SideSees(sim.Data, state, unit.Side, t));
                 if (score <= bestScore) continue;
                 (best, bestScore) = ((mode, dir), score);
             }
@@ -147,7 +164,10 @@ public static class TileStrikes
         return Pos.Neighbours8.SelectMany(d => Combat.Covered(sim.State.Map, action, m, unit.Pos, d)).ToHashSet();
     }
 
-    /// <summary>Strikes everything declared this sub-round, in initiative order, then clears the list.</summary>
+    /// <summary>
+    /// Strikes everything due at this sub-round's end, in initiative order; a deferred strike stays for the next. A strike lost to one that
+    /// came down before it (or to a counter card played against it) never lands.
+    /// </summary>
     internal static void ResolveAll(ScavengeSim sim)
     {
         var state = sim.State;
@@ -155,8 +175,16 @@ public static class TileStrikes
         var order = state.TurnOrder.Select((id, i) => (id, i)).ToDictionary(t => t.id, t => t.i);
         var strikes = state.Strikes.Select((s, i) => (s, i))
             .OrderBy(t => order.GetValueOrDefault(t.s.UnitId, int.MaxValue)).ThenBy(t => t.i).Select(t => t.s).ToList();
-        state.Strikes.Clear();
-        foreach (var strike in strikes) Resolve(sim, strike);
+        foreach (var strike in strikes)
+        {
+            if (strike.Deferred)
+            {
+                strike.Deferred = false;
+                continue;
+            }
+            if (state.FindUnit(strike.UnitId) is { } unit && state.Strikes.Contains(strike)) CardPlay.Counters(sim, unit);
+            if (state.Strikes.Remove(strike)) Resolve(sim, strike);
+        }
     }
 
     private static void Resolve(ScavengeSim sim, TileStrike strike)
@@ -168,24 +196,38 @@ public static class TileStrikes
         if (unit.Pos != strike.From) { Fizzle("moved off their tile"); return; }
         if (sim.Profile(unit).Action(strike.ActionId) is not { } action) { Fizzle($"can no longer use {strike.ActionId}"); return; }
 
-        var targets = Strike(sim, unit, action, strike.Tiles, strike.Tile, strike.Direction);
-        if (targets.Count == 0) Fizzle($"{action.Name} hits nothing at {strike.Tile}");
-        else state.Log(new(state.Round, ScavengeEventType.IntentResolved, $"{unit.Name}'s {action.Name} comes down on {strike.Tile}.", unit.Id, Pos: unit.Pos));
+        var targets = strike.Suppress ? Pin(sim, unit, action, strike) : Strike(sim, unit, action, strike.Tiles, strike.Tile, strike.Direction);
+        if (targets.Count == 0) Fizzle($"{action.Name} hits nothing");
+        else state.Log(new(state.Round, ScavengeEventType.IntentResolved, $"{unit.Name}'s {action.Name} comes down.", unit.Id, Pos: unit.Pos));
         if (strike.TargetId is { } aimed && targets.All(t => t.Id != aimed) && state.FindUnit(aimed) is { IsActive: true } dodger
             && !strike.Tiles.Contains(dodger.Pos))
             Combat.Dodged(sim, dodger, unit, counter: !strike.Counter);
     }
 
+    /// <summary>Suppressing fire comes down: it pins the first one on the tiles in sight of the unit; with nobody there it only makes its noise.</summary>
+    private static List<Unit> Pin(ScavengeSim sim, Unit unit, ActionProfile action, TileStrike strike)
+    {
+        var clear = strike.Tiles.Where(p => Combat.Clear(sim.Data, sim.State.Map, unit.Pos, p)).ToList();
+        unit.Facing = strike.Direction;
+        if (TargetsOn(sim.State, unit, action, clear).FirstOrDefault() is not { } target)
+        {
+            sim.MakeNoise(unit, action.Noise);
+            return [];
+        }
+        Combat.Suppress(sim, unit, action, target);
+        return [target];
+    }
+
     /// <summary>
     /// The blow itself, AP already paid: the unit faces <paramref name="direction"/> and strikes every hostile on the
     /// <paramref name="tiles"/> in its line of sight (plus an area action's splash around <paramref name="tile"/>); with
-    /// nobody there it only makes its noise. Returns who was struck.
+    /// nobody there it only makes its noise. An overwatch shot is a <paramref name="reaction"/>. Returns who was struck.
     /// </summary>
-    internal static List<Unit> Strike(ScavengeSim sim, Unit unit, ActionProfile action, List<Pos> tiles, Pos tile, Pos direction)
+    internal static List<Unit> Strike(ScavengeSim sim, Unit unit, ActionProfile action, List<Pos> tiles, Pos tile, Pos direction, bool reaction = false)
     {
         var state = sim.State;
         var clear = tiles.Where(p => Combat.Clear(sim.Data, state.Map, unit.Pos, p)).ToList();
-        var targets = TargetsOn(state, unit, action, clear).ToList();
+        var targets = TargetsOn(state, unit, action, clear, friendlyFire: reaction || unit.PlayerControlled).ToList();
         unit.Facing = direction;
         if (targets.Count == 0)
         {
@@ -193,16 +235,17 @@ public static class TileStrikes
             return targets;
         }
         targets.AddRange(Combat.Splash(sim, unit, action, tile, targets));
-        Combat.Hit(sim, unit, action, targets);
+        Combat.Hit(sim, unit, action, targets, reaction);
         return targets;
     }
 
     /// <summary>
-    /// The conscious hostiles on <paramref name="tiles"/> the action can strike, tile by tile, then by id; and anyone a card
-    /// shoved there (<see cref="Unit.Displaced"/>), whoever's side: friendly fire.
+    /// The conscious hostiles on <paramref name="tiles"/> the action can strike, tile by tile, then by id; and, with
+    /// <paramref name="friendlyFire"/> (a player's strike, any overwatch shot; default by who strikes), anyone a card shoved
+    /// there (<see cref="Unit.Displaced"/>), whoever's side. An AI's strike only ever hits hostiles.
     /// </summary>
-    private static IEnumerable<Unit> TargetsOn(ScavengeState state, Unit attacker, ActionProfile action, List<Pos> tiles) =>
-        state.Units.Where(u => u.IsActive && u.OnMap && u.CarriedById is null && (attacker.HostileTo(u) || u.Displaced && u.Id != attacker.Id)
+    private static IEnumerable<Unit> TargetsOn(ScavengeState state, Unit attacker, ActionProfile action, List<Pos> tiles, bool? friendlyFire = null) =>
+        state.Units.Where(u => u.IsActive && u.OnMap && u.CarriedById is null && (attacker.HostileTo(u) || (friendlyFire ?? attacker.PlayerControlled) && u.Displaced && u.Id != attacker.Id)
                                && tiles.Contains(u.Pos) && Drones.CanStrike(action, u))
             .OrderBy(u => tiles.IndexOf(u.Pos)).ThenBy(u => u.Id);
 }

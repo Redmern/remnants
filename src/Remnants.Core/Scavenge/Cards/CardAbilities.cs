@@ -8,15 +8,14 @@ namespace Remnants.Core.Scavenge;
 /// <para>
 /// Displacement (push, pull, swap) moves a unit tile by tile along the line and stops before a wall, any other
 /// impassable tile, a blocked door, another unit or the map edge; it never ends on an occupied tile. A displaced unit's
-/// plan fizzles (it left the tile it planned from) and, if a hostile moved it, it is exposed to that side
+/// readied strike is lost and, if a hostile moved it, it is exposed to that side
 /// (<see cref="Combat.Exposed"/>). Until its own next sub-turn it is hit by a declared strike on the tile it was moved to,
 /// whoever's side the strike is: friendly fire is allowed for a unit shoved into the line of fire.
 /// </para>
 /// <para>
 /// Initiative cards move a unit that is still to act in this sub-round to go next or last of those (the turn order
 /// is shown to every side that sees the unit); a unit that already acted cannot be moved, so nobody gets a turn twice,
-/// and the next round is ordered by initiative as always. An AI plan still waits for its target's turn
-/// (<see cref="PlannedActions.Ready"/>), however its unit was hurried.
+/// and the next round is ordered by initiative as always.
 /// </para>
 /// </summary>
 public static class CardAbilities
@@ -92,8 +91,8 @@ public static class CardAbilities
         }
         // More AP never wakes a unit that spent its own: that would be an extra sub-turn.
         if (effect.GrantAp > 0 && target!.Ap <= 0) return Fail(ScavengeError.InvalidTarget, $"{target.Name} has spent their AP this round.");
-        if (effect.Disrupt && target!.Plan is null && !TileStrikes.Readied(state, target))
-            return Fail(ScavengeError.NoIntent, $"{target.Name} has no plan or readied strike to break.");
+        if (effect.Disrupt && !TileStrikes.Readied(state, target!))
+            return Fail(ScavengeError.NoIntent, $"{target!.Name} has no readied strike to break.");
         if (effect.Smoke > 0 && FieldEffects.SmokeTiles(state.Map, tile!.Value, card.Radius).Contains(unit.Pos))
             return Fail(ScavengeError.InvalidTile, $"{card.Name} is a screen: it cannot be thrown over {unit.Name}.");
         if (effect.PlaceBarrier > 0 && !FieldEffects.CanBarrier(state, tile!.Value))
@@ -161,14 +160,13 @@ public static class CardAbilities
                 Anonymous: $"Out of the fog, {what}."));
             done.Add(what);
         }
-        if (effect.Disrupt && target is not null && (target.Plan is not null || TileStrikes.Readied(state, target)))
+        if (effect.Disrupt && target is not null && TileStrikes.Readied(state, target))
         {
-            target.Plan = null;
             state.Strikes.RemoveAll(x => x.UnitId == target.Id);
-            state.Log(new(state.Round, ScavengeEventType.IntentFizzled, $"{unit.Name} breaks {target.Name}'s plan: {target.Name} is exposed.",
+            state.Log(new(state.Round, ScavengeEventType.IntentFizzled, $"{unit.Name} breaks {target.Name}'s strike: {target.Name} is exposed.",
                 target.Id, unit.Id, target.Pos));
             if (target.HostileTo(unit)) Combat.Expose(sim, target, unit.Side);
-            done.Add($"{target.Name}'s plan broken");
+            done.Add($"{target.Name}'s strike broken");
         }
         if (outcome.Strike is { } blow && target is { IsActive: true })
         {
@@ -274,7 +272,7 @@ public static class CardAbilities
         Passable(sim, p) && !Hacking.Blocks(sim.State, mover, p) && (sim.State.UnitAt(p) is not { } other || other.Id == mover.Id);
 
     /// <summary>
-    /// Puts a unit on another tile by force: its plan fizzles (exposed to <paramref name="by"/>'s side if hostile), and it
+    /// Puts a unit on another tile by force: its readied strike is lost (exposed to <paramref name="by"/>'s side if hostile), and it
     /// stands in the line of fire of strikes on that tile until its next sub-turn (<see cref="Unit.Displaced"/>).
     /// </summary>
     internal static void Displace(ScavengeSim sim, Unit mover, Pos to, Unit by)
@@ -286,10 +284,8 @@ public static class CardAbilities
         state.Log(new(state.Round, ScavengeEventType.Displaced, $"{by.Name} moves {mover.Name} from {from} to {to}.", by.Id, mover.Id, to,
             Anonymous: $"{mover.Name} is thrown to {to} by something in the fog."));
         sim.Moved(mover, from, forced: true);
-        if (mover.Plan is null) return;
-        mover.Plan = null;
-        state.Log(new(state.Round, ScavengeEventType.IntentFizzled, $"{mover.Name}'s plan falls through: knocked off the tile it planned from.",
-            mover.Id, Pos: to));
+        if (!TileStrikes.Readied(state, mover)) return;
+        TileStrikes.Lose(sim, mover, "knocked off its tile");
         if (mover.HostileTo(by)) Combat.Expose(sim, mover, by.Side);
     }
 }

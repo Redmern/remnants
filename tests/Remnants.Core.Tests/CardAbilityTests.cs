@@ -156,16 +156,16 @@ public class CardAbilityTests
     }
 
     [Fact]
-    public void A_displaced_unit_with_a_plan_loses_it_and_is_exposed_to_the_shover()
+    public void A_displaced_unit_with_a_readied_strike_loses_it_and_is_exposed_to_the_shover()
     {
         var b = SurvivorUnit(2, new(3, 2), weapon: "pipe");
         var a = SurvivorUnit(1, new(2, 2));
         var sim = Table([b, a], ["t_push"]);
-        Assert.True(sim.Execute(new DeclareIntent(2, b.Id, [new(4, 1)], null, null)).Ok);
+        Assert.True(sim.Execute(new AttackTile(2, b.Id, a.Pos, "swing")).Ok);
         Assert.Equal(a.Id, sim.State.CurrentUnitId);
         Assert.True(Play(sim, a, "t_push", b).Ok);
-        Assert.Null(b.Plan);
-        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.IntentFizzled && e.UnitId == b.Id);
+        Assert.False(TileStrikes.Readied(sim.State, b));
+        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.IntentCanceled && e.UnitId == b.Id);
         Assert.True(Combat.ExposedTo(sim, b, a));
     }
 
@@ -304,24 +304,6 @@ public class CardAbilityTests
         Assert.Equal(NextRound(false), NextRound(true));
     }
 
-    [Fact]
-    public void An_advanced_enemy_plan_still_waits_for_its_target_s_turn()
-    {
-        // The tally cutter's blow is aimed at f, declared before f had a turn; a hurries the cutter up ahead of f.
-        var a = SurvivorUnit(1, new(0, 0));
-        var f = SurvivorUnit(1, new(3, 2));
-        var e = EnemyUnit("tally_blade", new(4, 2));
-        var sim = Table([a, f, e], ["t_advance"]);
-        var swing = sim.Profile(e).Actions.First(x => x.Pattern == AttackPattern.Melee);
-        e.Plan = new PlannedAction { AttackTile = f.Pos, ActionId = swing.Id, TargetId = f.Id, Round = 1, DeclaredSeq = sim.State.TurnSeq };
-        Assert.True(Play(sim, a, "t_advance", e).Ok);
-        Assert.Equal([a.Id, e.Id, f.Id], sim.State.TurnOrder);
-        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
-        Assert.Equal(f.Id, sim.State.CurrentUnitId);
-        Assert.NotNull(e.Plan);
-        Assert.Equal(f.MaxHp, f.Hp);
-    }
-
     /// <summary>Ends every turn until <paramref name="round"/> starts.</summary>
     private static void RunTo(ScavengeSim sim, int round)
     {
@@ -402,42 +384,40 @@ public class CardAbilityTests
     }
 
     [Fact]
-    public void A_disrupt_reaction_breaks_a_seen_enemy_plan_on_another_unit_s_turn_and_exposes_the_planner()
+    public void A_disrupt_reaction_breaks_a_seen_enemy_strike_on_another_unit_s_turn_and_exposes_the_striker()
     {
-        var b = SurvivorUnit(2, new(5, 2), weapon: "pipe");
         var f = SurvivorUnit(1, new(0, 0));
+        var b = SurvivorUnit(2, new(3, 2), weapon: "pipe");
+        var g = SurvivorUnit(1, new(0, 4));
         var a = SurvivorUnit(1, new(2, 2));
-        var sim = Table([f, b, a], ["t_disrupt", "t_disrupt"]);
-        Assert.Equal(ScavengeError.NoIntent, Play(sim, a, "t_disrupt", b).Error); // no plan yet
+        var sim = Table([f, b, g, a], ["t_disrupt", "t_disrupt"]);
+        Assert.Equal(ScavengeError.NoIntent, Play(sim, a, "t_disrupt", b).Error); // no strike yet
         Assert.True(sim.Execute(new EndTurn(1, f.Id)).Ok);
-        Assert.True(sim.Execute(new DeclareIntent(2, b.Id, [new(3, 2)], new Pos(2, 2), "swing")).Ok);
-        Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
-        Assert.Equal(f.Id, sim.State.CurrentUnitId); // round 2: f is up, a is not
+        Assert.True(sim.Execute(new AttackTile(2, b.Id, a.Pos, "swing")).Ok);
+        Assert.Equal(g.Id, sim.State.CurrentUnitId); // g is up, a is not
         Assert.True(Play(sim, a, "t_disrupt", b).Ok);
-        Assert.Null(b.Plan);
+        Assert.False(TileStrikes.Readied(sim.State, b));
         Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.IntentFizzled && e.UnitId == b.Id);
         Assert.True(Combat.ExposedTo(sim, b, a));
     }
 
     [Fact]
-    public void A_plan_s_blow_lands_on_whoever_is_shoved_onto_its_tile_and_its_dodged_target_leaves_it_exposed()
+    public void A_strike_lands_on_whoever_is_shoved_onto_its_tile_and_its_dodged_target_leaves_it_exposed()
     {
-        // e1 plans a swing at f on (4,2). f steps off; a shoves e1's ally e2 onto (4,2): e1's blow comes down on e2.
+        // e1 readies a swing at f on (4,2). f steps off; a shoves e1's ally e2 onto (4,2): e1's blow comes down on e2.
         var e1 = SurvivorUnit(2, new(5, 2), attributes: 90, weapon: "pipe");
         var e2 = SurvivorUnit(2, new(3, 1));
         var f = SurvivorUnit(1, new(4, 2));
         var a = SurvivorUnit(1, new(2, 0));
         var sim = Table([e1, e2, f, a], ["t_nudge"]);
-        Assert.True(sim.Execute(new DeclareIntent(2, e1.Id, [], new Pos(4, 2), "swing")).Ok);
+        Assert.True(sim.Execute(new AttackTile(2, e1.Id, new(4, 2), "swing")).Ok);
         Assert.True(sim.Execute(new EndTurn(2, e2.Id)).Ok);
         Assert.True(sim.Execute(new Move(1, f.Id, new(4, 4))).Ok);
         Assert.True(sim.Execute(new EndTurn(1, f.Id)).Ok);
         Assert.True(Play(sim, a, "t_nudge", e2).Ok);
         Assert.Equal(new Pos(4, 2), e2.Pos);
         Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
-        // Round 2 goes by initiative: the quick e1 is first, and its plan comes down before e2 could step off.
-        Assert.Equal(e1.Id, sim.State.TurnOrder[0]);
-        Assert.Null(e1.Plan);
+        Assert.False(TileStrikes.Readied(sim.State, e1)); // it came down as the sub-round ended
         Assert.True(e2.Hp < e2.MaxHp);
         Assert.Equal(f.MaxHp, f.Hp);
         Assert.True(Combat.Exposed(sim, e1));
@@ -569,7 +549,7 @@ public class CardAbilityTests
         var b = SurvivorUnit(2, new(5, 1), weapon: "pistol");
         var a = SurvivorUnit(1, new(0, 1));
         var sim = Table([b, a], ["t_step"], rows: ["##########", "..........", "##########"], height: 3, width: 10);
-        Assert.True(sim.Execute(new SetStance(2, b.Id, Stance.Overwatch)).Ok);
+        Assert.True(sim.Execute(new CommitOverwatch(2, b.Id, Arc: new Pos(-1, 0))).Ok);
         var before = sim.State.Events.Count;
         Assert.True(Play(sim, a, "t_step", tile: new(2, 1)).Ok);
         Assert.Contains(sim.State.Events.Skip(before), e => e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed && e.UnitId == b.Id && e.TargetId == a.Id);
@@ -578,18 +558,18 @@ public class CardAbilityTests
     [Fact]
     public void A_shove_only_counts_toward_friendly_fire_until_the_unit_s_next_turn()
     {
-        // e2 is shoved onto e1's planned tile, then takes its own turn and stays: e1's blow (next round) passes it by.
+        // e2 is shoved onto e1's readied tile, then takes its own turn and stays: e1's blow (at the sub-round's end) passes it by.
         var e1 = SurvivorUnit(2, new(5, 2), weapon: "pipe");
         var a = SurvivorUnit(1, new(2, 0));
         var e2 = SurvivorUnit(2, new(3, 1));
         var sim = Table([e1, a, e2], ["t_nudge"]);
-        Assert.True(sim.Execute(new DeclareIntent(2, e1.Id, [], new Pos(4, 2), "swing")).Ok);
+        Assert.True(sim.Execute(new AttackTile(2, e1.Id, new(4, 2), "swing")).Ok);
         Assert.True(Play(sim, a, "t_nudge", e2).Ok);
         Assert.True(sim.Execute(new EndTurn(1, a.Id)).Ok);
         Assert.Equal(e2.Id, sim.State.CurrentUnitId);
         Assert.False(e2.Displaced); // its own sub-turn began
         Assert.True(sim.Execute(new EndTurn(2, e2.Id)).Ok);
-        while (e1.Plan is not null) Assert.True(sim.Execute(new EndTurn(sim.State.CurrentUnit!.PlayerId!.Value, sim.State.CurrentUnitId!.Value)).Ok);
+        Assert.False(TileStrikes.Readied(sim.State, e1));
         Assert.Equal(e2.MaxHp, e2.Hp);
     }
 
@@ -601,7 +581,7 @@ public class CardAbilityTests
         var a = SurvivorUnit(1, new(0, 1));
         var e = SurvivorUnit(3, new(1, 1));
         var sim = Table([b, a, e], ["t_push"], rows: ["##########", "..........", "##########"], height: 3, width: 10);
-        Assert.True(sim.Execute(new SetStance(2, b.Id, Stance.Overwatch)).Ok);
+        Assert.True(sim.Execute(new CommitOverwatch(2, b.Id, Arc: new Pos(-1, 0))).Ok);
         var before = sim.State.Events.Count;
         Assert.True(Play(sim, a, "t_push", e).Ok);
         Assert.Equal(new Pos(3, 1), e.Pos);

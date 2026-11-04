@@ -72,7 +72,7 @@ public sealed class ScavengeSim
             Salvage c => FieldSalvage.Salvage(this, unit!, c),
             Recruit c => ScavengeCommandHandlers.Recruit(this, unit!, c),
             SetStance c => ScavengeCommandHandlers.SetStance(this, unit!, c),
-            DeclareIntent c => PlannedActions.Declare(this, unit!, c),
+            CommitOverwatch c => Overwatches.Commit(this, unit!, c),
             AttackTile c => TileStrikes.Declare(this, unit!, c),
             PlayCard c => CardPlay.Play(this, unit!, c),
             DiscardDeadCard c => CardPlay.DiscardDead(this, unit!, c),
@@ -105,9 +105,9 @@ public sealed class ScavengeSim
         {
             MissionRules.Update(this);
             UpdateParties();
-            // The acting unit's turn ends on EndTurn, a stance or a plan, or when it left the map or can no longer act; its
-            // sub-turn ends on a tile attack.
-            if (command is EndTurn or SetStance or DeclareIntent or AttackTile || unit is not { IsActive: true })
+            // The acting unit's turn ends on EndTurn or a stance, or when it left the map or can no longer act; its sub-turn
+            // ends on a tile attack.
+            if (command is EndTurn or SetStance or CommitOverwatch or AttackTile || unit is not { IsActive: true })
             {
                 State.TurnIndex++;
                 AdvanceTurns();
@@ -140,10 +140,7 @@ public sealed class ScavengeSim
                 continue;
             }
             var unit = State.CurrentUnit;
-            // An AI plan that waited (its target had no turn yet) or a blow in reach comes down in a later sub-round too.
-            var resolveNow = State.SubRound > 1 && unit is { IsActive: true, PlayerControlled: false, Plan: { } waiting } && unit.Ap > 0
-                             && (waiting.Quick || waiting.Round < State.Round) && PlannedActions.Ready(State, unit);
-            if (unit is not { IsActive: true } || State.SubRound > 1 && SitsOut(unit) && !resolveNow)
+            if (unit is not { IsActive: true } || State.SubRound > 1 && SitsOut(unit))
             {
                 State.TurnIndex++;
                 continue;
@@ -152,17 +149,6 @@ public sealed class ScavengeSim
             {
                 // A later sub-round: the turn goes on with the AP left.
                 StartSubTurn(unit);
-                if (resolveNow)
-                {
-                    PlannedActions.Resolve(this, unit);
-                    MissionRules.Update(this);
-                    UpdateParties();
-                    if (!unit.IsActive)
-                    {
-                        State.TurnIndex++;
-                        continue;
-                    }
-                }
                 if (unit.PlayerControlled) return;
                 ScavengeAi.TakeTurn(this, unit);
                 MissionRules.Update(this);
@@ -172,30 +158,11 @@ public sealed class ScavengeSim
             }
             BeginTurn(unit);
             StartSubTurn(unit);
-            if (unit.Suppressed) PlannedActions.Cancel(this, unit, "pinned down");
-            if (unit.EmpUntilRound >= State.Round) PlannedActions.Cancel(this, unit, "stunned");
             if (unit.Suppressed)
             {
                 unit.Suppressed = false;
                 unit.Ap = Math.Max(1, unit.Ap - Data.Rules.Network.SuppressApPenalty);
                 State.Log(new(State.Round, ScavengeEventType.Suppressed, $"{unit.Name} is pinned down ({unit.Ap} AP).", unit.Id, Pos: unit.Pos));
-            }
-            if (unit.Plan is not null && !PlannedActions.Ready(State, unit))
-            {
-                // Its target has not had a turn since the blow was declared: it waits (for a later sub-round).
-                State.TurnIndex++;
-                continue;
-            }
-            if (unit.Plan is not null)
-            {
-                PlannedActions.Resolve(this, unit);
-                MissionRules.Update(this);
-                UpdateParties();
-                if (!unit.IsActive)
-                {
-                    State.TurnIndex++;
-                    continue;
-                }
             }
             if (unit.PlayerControlled) return;
 
@@ -221,10 +188,19 @@ public sealed class ScavengeSim
     }
 
     /// <summary>
-    /// Whether the unit skips a later sub-round: out of AP, done for the round, holding a stance or waiting on a plan.
+    /// Whether the unit skips a later sub-round: out of AP, done for the round or holding a stance.
     /// </summary>
     private bool SitsOut(Unit unit) =>
-        unit.Ap <= 0 || unit.TurnOverRound == State.Round || unit.Stance != Stance.None || unit.Plan is not null;
+        unit.Ap <= 0 || unit.TurnOverRound == State.Round || unit.Stance != Stance.None;
+
+    /// <summary>
+    /// Whether an AI unit's strike declared now must wait a sub-round: player units are hostile to it, and none of them
+    /// has a turn to come this sub-round to answer it with.
+    /// </summary>
+    internal bool DefersStrike(Unit unit) =>
+        !unit.PlayerControlled && State.Units.Any(u => u is { IsActive: true, PlayerControlled: true } && u.HostileTo(unit))
+        && !State.TurnOrder.Skip(State.TurnIndex).Select(State.FindUnit)
+            .Any(u => u is { IsActive: true, PlayerControlled: true } && u.HostileTo(unit) && (State.SubRound == 1 || !SitsOut(u)));
 
     /// <summary>The sub-round's tile attacks come down (<see cref="TileStrikes"/>).</summary>
     private void EndSubRound()
@@ -242,15 +218,14 @@ public sealed class ScavengeSim
     {
         var braced = unit.Stance == Stance.Brace;
         unit.Stance = Stance.None;
-        unit.Reactions = 0;
         unit.Lookout = false;
         unit.PingsUsed = 0;
         unit.Moved = false;
         if (unit.OutplayedUntilRound < State.Round) (unit.OutplayedId, unit.FreeCounterId) = (null, null);
         unit.CardMove = 0;
         unit.CardCover = 0;
-        unit.CounterId = null;
-        unit.LastCardId = null;
+        // A counter card holds while the strike it answers is still coming (that strike comes down after this turn begins).
+        if (unit.CounterId is { } countered && State.Strikes.All(s => s.UnitId != countered)) unit.CounterId = null;
         unit.Ap = Profile(unit).MaxAp;
         if (State.Round == 1 && unit.FirstRoundAp != 0) unit.Ap = Math.Max(1, unit.Ap + unit.FirstRoundAp);
         if (braced) unit.Ap = Math.Max(1, unit.Ap - Data.Rules.Fog.Brace.NextTurnApPenalty);
@@ -270,6 +245,7 @@ public sealed class ScavengeSim
     /// <summary>Bleeding ticks down, then everyone conscious (except idle NPCs) is ordered by initiative.</summary>
     private void StartRound()
     {
+        Overwatches.RoundEnded(State);
         State.Round++;
         State.SubRound = 1;
         State.Log(new(State.Round, ScavengeEventType.RoundStarted, $"Round {State.Round}."));
@@ -377,7 +353,8 @@ public sealed class ScavengeSim
         unit.Status = UnitStatus.Dead;
         unit.Hp = Math.Min(unit.Hp, 0);
         unit.Ap = 0;
-        unit.Plan = null;
+        TileStrikes.Lose(this, unit, "dead");
+        Overwatches.Drop(this, unit, "dead");
         Bestiary.Killed(this, unit, killer);
         State.Log(new(State.Round, type, message, unit.Id, Pos: unit.Pos));
         if (unit.Kind == UnitKind.Drone)
@@ -416,8 +393,6 @@ public sealed class ScavengeSim
         }
     }
 
-    private bool _reacting;
-
     /// <summary>Records which party sides see an event's actor right now (see <see cref="FogLog"/>).</summary>
     private ScavengeEvent StampSeenBy(ScavengeEvent e)
     {
@@ -426,14 +401,15 @@ public sealed class ScavengeSim
     }
 
     /// <summary>
-    /// After a unit moved (player or AI): motion sensors it entered reveal it to their side, sides it is unseen by but
-    /// close to hear it (movement contact), and overwatch may fire on it.
+    /// After a unit moved (player or AI): its own overwatch is off, motion sensors it entered reveal it to their side, sides
+    /// it is unseen by but close to hear it (movement contact), and overwatch on the tile it entered may fire on it.
     /// </summary>
     /// <param name="forced">Moved by a card (shoved, swapped, stepped): sensors, noise, cameras and raised ground as for any
     /// move, but overwatch does not fire at it.</param>
     internal void Moved(Unit unit, Pos from, bool forced = false)
     {
         var fog = Data.Rules.Fog;
+        Overwatches.Drop(this, unit, "moved");
         foreach (var sensor in State.Sensors.OrderBy(s => s.Id).ToList())
         {
             if (sensor.Side == unit.Side || unit.Side == Unit.NeutralSide) continue;
@@ -451,7 +427,7 @@ public sealed class ScavengeSim
                 Detection.AddContact(Data, State, side, unit.Pos, ContactKind.Movement, unit.Id);
         MissionRules.Moved(this, unit);
         Hacking.CameraCheck(this, unit);
-        if (!forced) CheckOverwatch(unit);
+        if (!forced) Overwatches.Entered(this, unit);
     }
 
     /// <summary>A motion sensor goes off: the unit is revealed to the sensor's side, which gets an alert and a contact.</summary>
@@ -462,44 +438,6 @@ public sealed class ScavengeSim
         State.Log(new(State.Round, ScavengeEventType.SensorTripped,
             $"{Item(sensor.ItemId).Name} at {sensor.Pos}: {unit.Name} moving at {unit.Pos}!", unit.Id, Pos: unit.Pos,
             Anonymous: $"{Item(sensor.ItemId).Name} at {sensor.Pos}: movement at {unit.Pos}!", Side: sensor.Side));
-    }
-
-    /// <summary>
-    /// Overwatch: every unit on overwatch hostile to <paramref name="unit"/> that sees it now (by its own eyes, or as
-    /// revealed to its side, <see cref="Detection.SeesRevealed"/>) and reaches it fires one reaction, by id, while the unit stands. A
-    /// reaction does not set off further reactions.
-    /// </summary>
-    internal void CheckOverwatch(Unit unit)
-    {
-        if (_reacting || !unit.IsActive) return;
-        _reacting = true;
-        try
-        {
-            foreach (var watcher in State.Units.Where(u => u.IsActive && u.Stance == Stance.Overwatch && u.Reactions > 0 && u.HostileTo(unit))
-                         .OrderBy(u => u.Id).ToList())
-            {
-                if (!unit.IsActive) break;
-                if (!watcher.IsActive || watcher.Reactions <= 0) continue;
-                var sees = Detection.Spots(Data, State, watcher, unit) || Detection.SeesRevealed(Data, State, watcher, unit)
-                           || ElectronicWarfare.SharesOverwatch(this, watcher, unit);
-                if (!sees) continue;
-                var action = Profile(watcher).Actions
-                    .Where(a => Drones.CanStrike(a, unit) && Combat.CheckReach(Data, State.Map, watcher.Pos, a, unit.Pos) == ScavengeError.None)
-                    .OrderByDescending(a => Combat.ChanceToHit(this, watcher, a, unit) * (a.MinDamage + a.MaxDamage) / 2)
-                    .ThenBy(a => a.Id, StringComparer.Ordinal)
-                    .FirstOrDefault();
-                if (action is null) continue;
-                watcher.Reactions--;
-                State.Log(new(State.Round, ScavengeEventType.Overwatch,
-                    $"{watcher.Name} reacts on overwatch: {action.Name} at {unit.Name}!", watcher.Id, unit.Id, unit.Pos,
-                    Anonymous: $"Overwatch fire from the fog at {unit.Name}!"));
-                Combat.Resolve(this, watcher, action, unit, reaction: true);
-            }
-        }
-        finally
-        {
-            _reacting = false;
-        }
     }
 
     internal void Log(ScavengeEventType type, string message, Unit? unit = null, Unit? target = null) =>

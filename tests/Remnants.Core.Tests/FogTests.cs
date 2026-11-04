@@ -165,11 +165,14 @@ public class FogTests
     {
         var u = SurvivorUnit(pos: new(1, 4), attributes: 20);
         var linked = EnemyUnit("linked", new(8, 4));
-        var sim = Arena(11, 9, [u, linked], Corridor);
+        // A later ally keeps the blow due this sub-round, while the stance still holds.
+        var ally = SurvivorUnit(pos: new(9, 7), attributes: 20);
+        var sim = Arena(11, 9, [u, linked, ally], Corridor);
         var burst = sim.Profile(linked).Action("burst")!;
         var open = Combat.HitChance(sim.Data, sim.State.Map, linked.Pos, burst, u.Pos, sim.Profile(u));
 
         Assert.True(sim.Execute(new SetStance(1, u.Id, Stance.Brace)).Ok);
+        Assert.True(sim.Execute(new EndTurn(1, ally.Id)).Ok);
         // The Linked fired during its turn; braced, the ambush gained nothing.
         var ambush = Combat.AmbushAgainst(sim.Data, sim.State, linked, u);
         Assert.True(ambush is null || ambush.Braced || u.Stance == Stance.None);
@@ -201,67 +204,6 @@ public class FogTests
         var alone = Combat.AmbushAgainst(sim.Data, sim.State, linked, u)!;
         Assert.Equal(rules.HitBonus, alone.HitBonus, 6);
         Assert.Equal(rules.DamageMultiplier, alone.DamageMultiplier, 6);
-    }
-
-    [Fact]
-    public void Overwatch_turns_the_ap_left_into_reactions_at_hostiles_that_walk_into_sight()
-    {
-        var u = SurvivorUnit(pos: new(0, 4), weapon: "pistol");
-        // Slow, so the husk's turn (when its telegraphed walk-in resolves) comes before the overwatch ends.
-        u.Attributes[AttributeKind.Agility] = 10;
-        var husk = EnemyUnit("husk", new(7, 4)); // every step it takes ends in sight and reach
-        husk.Ai.Mode = AiMode.Hunting;
-        husk.Ai.LastKnown = u.Pos;
-        var sim = Arena(12, 9, [u, husk]);
-        var rules = sim.Data.Rules.Fog.Overwatch;
-
-        Assert.Equal(ScavengeError.InvalidStance, sim.Execute(new SetStance(1, u.Id, Stance.None)).Error);
-        Assert.True(sim.Execute(new SetStance(1, u.Id, Stance.Overwatch)).Ok);
-
-        // The husk telegraphed its walk in (round 1) and walked it at the start of its round-2 turn, ahead of the survivor's.
-        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.IntentDeclared && e.UnitId == husk.Id);
-        Assert.True(sim.State.TurnOrder.IndexOf(husk.Id) < sim.State.TurnOrder.IndexOf(u.Id));
-        // Full AP (3) less the cost leaves 2 reactions; the husk keeps walking in, so both fire, and no more.
-        var expected = Math.Min(rules.Reactions, sim.Profile(u).MaxAp - rules.ApCost);
-        var reactions = sim.State.Events.Count(e => e.Type == ScavengeEventType.Overwatch && e.UnitId == u.Id && e.TargetId == husk.Id);
-        Assert.Equal(expected, reactions);
-        Assert.True(Shot(sim, u, husk));
-        Assert.Equal(expected, sim.State.Events.Count(e => e.UnitId == u.Id && e.Type is ScavengeEventType.Attacked or ScavengeEventType.Missed));
-    }
-
-    [Fact]
-    public void Overwatch_with_little_ap_left_still_holds_one_reaction()
-    {
-        var u = SurvivorUnit(pos: new(0, 4), weapon: "pistol");
-        var husk = EnemyUnit("husk", new(10, 4));
-        var sim = Arena(12, 9, [u, husk]);
-        u.Ap = sim.Data.Rules.Fog.Overwatch.ApCost;
-        Assert.True(sim.Execute(new SetStance(1, u.Id, Stance.Overwatch)).Ok);
-        Assert.True(u.Reactions == 1 || u.Stance == Stance.None);
-    }
-
-    [Fact]
-    public void Overwatch_answers_an_ambusher_that_gives_itself_away_by_firing()
-    {
-        var u = SurvivorUnit(pos: new(1, 4), attributes: 20, weapon: "pistol");
-        var linked = EnemyUnit("linked", new(6, 4));
-        var sim = Arena(11, 9, [u, linked], [
-            "###########",
-            "#.........#",
-            "#.........#",
-            "#.#########",
-            "#..PPP.####",
-            "#.#########",
-            "#.........#",
-            "#.........#",
-            "###########",
-        ]);
-        Assert.False(Detection.SideSees(sim.Data, sim.State, P1, linked));
-
-        Assert.True(sim.Execute(new SetStance(1, u.Id, Stance.Overwatch)).Ok);
-
-        Assert.True(Did(sim, linked, ScavengeEventType.Ambushed) || !u.IsActive);
-        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.Overwatch && e.UnitId == u.Id && e.TargetId == linked.Id);
     }
 
     [Fact]
@@ -335,7 +277,7 @@ public class FogTests
         var sim = Arena(12, 9, [shooter, listener, husk]);
         Assert.False(Detection.SideSees(sim.Data, sim.State, P1, shooter));
 
-        Assert.True(StrikeNow(sim, shooter, husk, "shoot").Ok);
+        Assert.True(Blow(sim, shooter, husk, "shoot").Ok);
 
         var heard = Assert.Single(sim.State.Contacts, c => c.Side == P1);
         Assert.Equal(ContactKind.Noise, heard.Kind);
@@ -359,7 +301,8 @@ public class FogTests
     {
         var u = SurvivorUnit(pos: new(1, 1));
         var linked = EnemyUnit("linked", new(9, 7));
-        var sim = Arena(11, 9, [u, linked], [
+        // Two sub-rounds: its watch, taken last in the first, still holds when the survivor walks in during the second.
+        var sim = Arena(11, 9, [u, linked], data: With(r => r with { Turn = r.Turn with { SubRounds = 2 } }), rows: [
             "...........",
             "...........",
             "...........",
@@ -394,8 +337,8 @@ public class FogTests
         Assert.False(Detection.Spots(sim.Data, sim.State, linked, u), "the Linked cannot pick out the cloaked survivor itself");
         Assert.True(Detection.Spots(sim.Data, sim.State, drone, u));
 
-        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
-        Assert.Equal(!jammer, linked.Plan?.AttackTile == u.Pos); // spotted through the drone: the shot is telegraphed
+        ScavengeAi.TakeTurn(sim, linked);
+        Assert.Equal(!jammer, sim.State.Strikes.Any(s => s.UnitId == linked.Id && s.Tile == u.Pos)); // spotted through the drone: the shot is telegraphed
         Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
 
         if (jammer) Assert.False(Shot(sim, linked, u));

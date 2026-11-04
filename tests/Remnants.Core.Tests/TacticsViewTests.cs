@@ -21,29 +21,28 @@ public class TacticsViewTests
     }
 
     [Fact]
-    public void Telegraphs_show_seen_enemy_plans_without_their_card()
+    public void Telegraphs_show_seen_enemy_strikes_without_their_target()
     {
         var (sim, a, _, husk) = Field();
-        husk.Plan = new PlannedAction { Path = [new(4, 1), new(2, 1)], AttackTile = a.Pos, ActionId = "claw", CardId = "secret", TargetId = a.Id, Round = 1 };
+        Ready(sim, husk, a.Pos, "claw", targetId: a.Id);
         var t = Assert.Single(TacticsView.Telegraphs(sim, a.Side));
         Assert.Equal(husk.Id, t.UnitId);
-        Assert.Equal([new Pos(4, 1), new Pos(2, 1)], t.Path);
         Assert.Equal(a.Pos, t.AttackTile);
         Assert.Contains(a.Pos, t.Threatened);
         Assert.True(t.AimedAtUs);
-        Assert.DoesNotContain("secret", System.Text.Json.JsonSerializer.Serialize(t));
+        Assert.DoesNotContain("TargetId", System.Text.Json.JsonSerializer.Serialize(t));
 
         husk.Pos = new(11, 5); // out of sight: nothing
         Assert.Empty(TacticsView.Telegraphs(sim, a.Side));
     }
 
     [Fact]
-    public void The_threat_overlay_marks_planned_blows_above_plain_reach()
+    public void The_threat_overlay_marks_readied_strikes_above_plain_reach()
     {
         var (sim, a, _, husk) = Field();
-        husk.Plan = new PlannedAction { Path = [new(4, 1)], AttackTile = new(3, 1), ActionId = "claw", Round = 1 };
+        Ready(sim, husk, new(3, 1), "claw");
         var overlay = TacticsView.Threats(sim, a.Side);
-        Assert.Equal(ThreatKind.Planned, overlay[new Pos(3, 1)]);
+        Assert.Equal(ThreatKind.Strike, overlay[new Pos(3, 1)]);
         Assert.Equal(ThreatKind.Reach, overlay[new Pos(5, 1)]); // next to the husk now
         Assert.False(overlay.ContainsKey(a.Pos));
     }
@@ -105,11 +104,11 @@ public class TacticsViewTests
     }
 
     [Fact]
-    public void Reactions_are_offered_only_against_a_seen_plan()
+    public void Reactions_are_offered_only_against_a_seen_readied_strike()
     {
         var (sim, a, _, husk) = Field();
         Assert.Empty(TacticsView.ReactionTargets(sim, 1));
-        husk.Plan = new PlannedAction { Path = [], AttackTile = a.Pos, ActionId = "claw", Round = 1 };
+        Ready(sim, husk, a.Pos, "claw");
         Assert.Equal([husk.Id], TacticsView.ReactionTargets(sim, 1).Select(u => u.Id));
         Assert.True(TacticsView.Picker(sim, 1, "sidestep", target: husk.Id).Single(r => r.UnitId == a.Id).Ok);
     }

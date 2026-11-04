@@ -110,11 +110,10 @@ public class LinkedAiTests
         Assert.True(Combat.CoverAgainst(sim.Data, sim.State.Map, u.Pos, linked.Pos) > 0);
 
         Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
-        Assert.True(Did(sim, linked, ScavengeEventType.Flanked)); // the flank is telegraphed...
-        Assert.Equal(u.Pos, linked.Plan?.AttackTile);
-        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);           // ...and carried out next turn
+        Assert.True(Did(sim, linked, ScavengeEventType.Flanked));
         Assert.NotEqual(new Pos(8, 3), linked.Pos);
         Assert.Equal(0, Combat.CoverAgainst(sim.Data, sim.State.Map, u.Pos, linked.Pos));
+        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok); // declared after the last player turn: it lands after the next
         Assert.True(Shot(sim, linked, u));
     }
 
@@ -131,9 +130,6 @@ public class LinkedAiTests
         Assert.Equal(hurt, Network.Focus(sim, Network.GroupOf(sim, a)!, Network.Known(sim, Network.GroupOf(sim, a)!)));
         Assert.True(sim.Execute(new EndTurn(1, healthy.Id)).Ok);
         Assert.True(sim.Execute(new EndTurn(1, hurt.Id)).Ok);
-        // Both telegraph at the hurt survivor's tile, and shoot when their plans come.
-        Assert.Equal(hurt.Pos, a.Plan?.AttackTile);
-        Assert.Equal(hurt.Pos, b.Plan?.AttackTile);
         Assert.True(sim.Execute(new EndTurn(1, healthy.Id)).Ok);
         Assert.True(sim.Execute(new EndTurn(1, hurt.Id)).Ok);
         // Each Linked opens on the hurt survivor (three bursts cannot drop 70 HP, so it is still up for the second).
@@ -189,9 +185,9 @@ public class LinkedAiTests
         Assert.True(chance < sim.Data.Rules.Network.SuppressBelowHitChance, $"hit chance {chance}");
 
         var maxAp = sim.Profile(u).MaxAp;
-        // Boxed in, it fires from where it stands: the suppressing fire is telegraphed and comes down next turn.
-        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
-        Assert.True(linked.Plan is { Suppress: true, Path.Count: 0 });
+        // Boxed in, it fires from where it stands: the suppressing fire is telegraphed and comes down when the sub-round ends.
+        ScavengeAi.TakeTurn(sim, linked);
+        Assert.True(Assert.Single(sim.State.Strikes, s => s.UnitId == linked.Id).Suppress);
         Assert.False(Did(sim, linked, ScavengeEventType.Suppressed));
         Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
         Assert.True(Did(sim, linked, ScavengeEventType.Suppressed), string.Join("\n", sim.State.Events.Select(e => e.Message)));
@@ -210,10 +206,8 @@ public class LinkedAiTests
         var before = hurt.Pos.Chebyshev(u.Pos);
 
         Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
-        Assert.True(Did(sim, hurt, ScavengeEventType.Retreated)); // the fall-back is telegraphed...
-        Assert.True(hurt.Plan!.Path[^1].Chebyshev(u.Pos) > before);
-        Assert.True(sim.Execute(new EndTurn(1, u.Id)).Ok);
-        Assert.True(hurt.Pos.Chebyshev(u.Pos) > before);           // ...and carried out next turn
+        Assert.True(Did(sim, hurt, ScavengeEventType.Retreated));
+        Assert.True(hurt.Pos.Chebyshev(u.Pos) > before);
         Assert.False(Did(sim, buddy, ScavengeEventType.Retreated));
     }
 
@@ -327,7 +321,7 @@ public class EnemyVariantTests
         var far = EnemyUnit("husk", new(2, 5));
         var sim = Arena(9, 6, [gunner, a, b, far]);
         Assert.Equal(1, sim.Profile(gunner).Action("pulse")!.Area);
-        Assert.True(StrikeNow(sim, gunner, a, "pulse").Ok);
+        Assert.True(Blow(sim, gunner, a, "pulse").Ok);
         Assert.Contains(sim.State.Events, e => e.UnitId == gunner.Id && e.TargetId == a.Id);
         Assert.Contains(sim.State.Events, e => e.UnitId == gunner.Id && e.TargetId == b.Id);
         Assert.DoesNotContain(sim.State.Events, e => e.UnitId == gunner.Id && e.TargetId == far.Id);
