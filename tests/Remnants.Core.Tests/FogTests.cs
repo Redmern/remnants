@@ -308,8 +308,8 @@ public class FogTests
         var linked = EnemyUnit("linked", new(5, 4));
         var sim = Arena(12, 9, [u, linked]);
         u.Ap = 3;
-        Assert.True(sim.Execute(new UseItem(1, u.Id, "flare", At: new(5, 5))).Ok);
-        Assert.True(sim.Execute(new UseItem(1, u.Id, "motion_sensor", At: new(1, 4))).Ok);
+        Assert.True(Now(sim, new UseItem(1, u.Id, "flare", At: new(5, 5))).Ok);
+        Assert.True(Now(sim, new UseItem(1, u.Id, "motion_sensor", At: new(1, 4))).Ok);
         Assert.True(sim.Execute(new Lookout(1, u.Id)).Ok);
         sim.State.Contacts.Add(new Contact(P1, new(6, 6), ContactKind.Attack, sim.State.Round, u.Pos));
 

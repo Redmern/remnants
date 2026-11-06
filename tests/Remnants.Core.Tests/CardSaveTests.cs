@@ -89,6 +89,51 @@ public class CardSaveTests
         Assert.ThrowsAny<System.Text.Json.JsonException>(() => ScavengeSave.Load(WholeTurns, node.ToJsonString()));
     }
 
+    [Theory]
+    [InlineData(ScavengeSave.SimultaneousVersion)]
+    [InlineData(ScavengeSave.PlanSlotsVersion)]
+    public void A_run_from_before_defend_loads_with_its_plan_and_plays_on(int version)
+    {
+        var sim = NewScavenge.Create(WholeTurns, "suburb_ruins", 11, [Party(1)]);
+        sim.Start();
+        var unit = sim.State.CurrentUnit!;
+        Assert.True(sim.Execute(new Recover(1, unit.Id)).Ok);
+        var node = JsonNode.Parse(ScavengeSave.Save(sim.State))!;
+        node["version"] = version;
+        var loaded = ScavengeSave.Load(WholeTurns, node.ToJsonString());
+        var again = loaded.State.FindUnit(unit.Id)!;
+        Assert.Equal(PlanStepKind.Recover, Plans.Of(loaded.State, again)!.Steps.Single().Kind);
+        Assert.True(loaded.Execute(new ChangePlan(1, again.Id, new Defend(1, again.Id, new Pos(1, 0)))).Ok);
+    }
+
+    [Theory]
+    [InlineData(PlanStepKind.UseItem)]
+    [InlineData(PlanStepKind.Hack)]
+    [InlineData(PlanStepKind.DroneFire)]
+    public void A_planned_item_hack_or_shot_round_trips(PlanStepKind kind)
+    {
+        var sim = NewScavenge.Create(WholeTurns, "suburb_ruins", 11, [Party(1)]);
+        sim.Start();
+        var unit = sim.State.CurrentUnit!;
+        Plans.For(sim.State, unit).Steps.Add(new PlanStep { Kind = kind, ItemId = "bandage", DeviceId = 7, TargetId = 3, Tile = new Pos(2, 4), From = unit.Pos });
+        var loaded = ScavengeSave.Load(WholeTurns, ScavengeSave.Save(sim.State));
+        var step = Plans.Of(loaded.State, loaded.State.FindUnit(unit.Id)!)!.Steps.Single();
+        Assert.Equal((kind, "bandage", 7, 3, new Pos(2, 4)), (step.Kind, step.ItemId!, step.DeviceId!.Value, step.TargetId!.Value, step.Tile!.Value));
+    }
+
+    [Fact]
+    public void A_queued_defend_round_trips_and_this_build_writes_the_new_version()
+    {
+        var sim = NewScavenge.Create(WholeTurns, "suburb_ruins", 11, [Party(1)]);
+        sim.Start();
+        var unit = sim.State.CurrentUnit!;
+        Assert.True(sim.Execute(new Defend(1, unit.Id, new Pos(0, 1))).Ok);
+        Assert.Equal(20, ScavengeSave.Version);
+        var loaded = ScavengeSave.Load(WholeTurns, ScavengeSave.Save(sim.State));
+        var step = Plans.Of(loaded.State, loaded.State.FindUnit(unit.Id)!)!.Steps.Single();
+        Assert.Equal((PlanStepKind.Defend, new Pos(0, 1)), (step.Kind, step.Direction));
+    }
+
     [Fact]
     public void Stun_adrenaline_and_a_queued_plan_round_trip()
     {

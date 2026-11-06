@@ -149,7 +149,7 @@ public static class ScavengeText
         ScavengeError.Finished => "Run over",
         ScavengeError.UnknownUnit => "No such unit",
         ScavengeError.NotYourUnit => "Not your unit",
-        ScavengeError.NotYourTurn => "Not their turn",
+        ScavengeError.NotYourTurn => "Can't act now",
         ScavengeError.Incapacitated => "Can't act",
         ScavengeError.NotEnoughAp => "Not enough AP",
         ScavengeError.Unreachable => "Can't move there",

@@ -287,11 +287,12 @@ public static class Hotkeys
         new("scav_item_4", "Order 7", "Scavenge", [Key.Key7]),
         new("scav_item_5", "Order 8", "Scavenge", [Key.Key8]),
         new("scav_item_6", "Order 9", "Scavenge", [Key.Key9]),
+        new("scav_defend", "Defend", "Scavenge", [Shift(Key.G)]),
         new("scav_push", "Push", "Scavenge", [Key.O]),
         new("scav_dash", "Dash", "Scavenge", [Key.B]),
         new("scav_recover", "Recover stamina", "Scavenge", [Shift(Key.L)]),
         new("scav_undo", "Clear the latest plan slot", "Scavenge", [Shift(Key.Z)]),
-        new("scav_turn_aim", "Turn the aimed pattern", "Scavenge", [Key.Period]),
+        new("scav_turn_aim", "Turn the aimed pattern", "Scavenge", [Key.Comma]),
         new("scav_lookout", "Lookout", "Scavenge", [Key.L]),
         new("scav_loot", "Take all from the nearest pile", "Scavenge", [Key.F]),
         new("scav_salvage", "Salvage the nearest node (a wreck gives parts)", "Scavenge", [Key.I]),
@@ -316,7 +317,7 @@ public static class Hotkeys
         new("scav_ferry", "Cargo drone: ferry the load out", "Scavenge", [Shift(Key.I)]),
         new("scav_next_unit", "Select your next unit", "Scavenge", [Key.Tab]),
         new("scav_center", "Centre the camera on the acting unit", "Scavenge", [Key.Home]),
-        new("scav_cancel", "Cancel aiming (item, drone, ping, push, dash)", "Scavenge", [Key.Backspace]),
+        new("scav_cancel", "Cancel aiming (item, drone, ping, defend, push, dash)", "Scavenge", [Key.Backspace]),
     ];
 
     /// <summary>A chord: <paramref name="key"/> with Shift held.</summary>

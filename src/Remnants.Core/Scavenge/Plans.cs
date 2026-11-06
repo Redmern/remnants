@@ -3,7 +3,7 @@ using Remnants.Core.Colony;
 namespace Remnants.Core.Scavenge;
 
 /// <summary>What a queued plan entry is: a move (telegraphed) or one of the hidden actions.</summary>
-public enum PlanStepKind { Move, Strike, Card, Recover, Push, Dash }
+public enum PlanStepKind { Move, Strike, Card, Recover, Push, Dash, Defend, UseItem, Hack, DroneFire }
 
 /// <summary>What a unit fills in for a round: its walk, its action, its card.</summary>
 public enum PlanSlot { Move, Action, Card }
@@ -29,6 +29,10 @@ public sealed class PlanStep
     public string? CardId { get; set; }
     public int? TargetId { get; set; }
     public Pos? Tile { get; set; }
+
+    /// <summary>An item planned for use, and a device planned for a hack (<see cref="PlannedActions"/>).</summary>
+    public string? ItemId { get; set; }
+    public int? DeviceId { get; set; }
     public bool Boost { get; set; }
     public bool FromSlot { get; set; }
     public int DeckId { get; set; }
@@ -187,7 +191,8 @@ public static class Plans
         PlanSlot? slot = command switch
         {
             Move => PlanSlot.Move,
-            AttackTile or Push or Dash or Recover => PlanSlot.Action,
+            AttackTile or Push or Dash or Recover or Defend => PlanSlot.Action,
+            UseItem or Hack or DroneFire when sim.State.FindUnit(command.UnitId) is { } planner && PlannedActions.InFight(sim, planner) => PlanSlot.Action,
             _ => null,
         };
         return slot is { } s && sim.State.FindUnit(command.UnitId) is { } unit && !HasRoom(sim, unit, s)

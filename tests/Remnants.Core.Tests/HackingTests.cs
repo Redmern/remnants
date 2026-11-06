@@ -24,7 +24,8 @@ public class HackingTests
         return u;
     }
 
-    private static ScavengeResult Hack(ScavengeSim sim, Unit unit, ZoneDevice device) => sim.Execute(new Hack(1, unit.Id, device.Id));
+    /// <summary>The hack itself, as when its action comes up; planning it is in <see cref="PlannedActionTests"/>.</summary>
+    private static ScavengeResult Hack(ScavengeSim sim, Unit unit, ZoneDevice device) => Hacking.Hack(sim, unit, new Hack(1, unit.Id, device.Id));
 
     private static void EndTurns(ScavengeSim sim, int rounds)
     {
@@ -336,7 +337,7 @@ public class HackingTests
         var sim = Arena(8, 8, [hacker, ally, linked], data: Rolls(1));
         Assert.True(TileStrikes.Declare(sim, linked, StrikeOn(sim, linked, ally, sim.Profile(linked).Actions[0].Id)).Ok);
 
-        Assert.True(sim.Execute(new Hack(1, hacker.Id, TargetId: linked.Id)).Ok);
+        Assert.True(Now(sim, new Hack(1, hacker.Id, TargetId: linked.Id)).Ok);
 
         Assert.Equal(P1, linked.Side);
         Assert.DoesNotContain(Strikes(sim), s => s.UnitId == linked.Id);
@@ -370,7 +371,7 @@ public class HackingTests
         hacker.Hooks = Real.HooksFor(["override"]);
         Assert.Equal(ScavengeError.NotHackable, sim.Execute(new Hack(1, hacker.Id, TargetId: husk.Id)).Error);
 
-        Assert.True(sim.Execute(new Hack(1, hacker.Id, TargetId: linked.Id)).Ok);
+        Assert.True(Now(sim, new Hack(1, hacker.Id, TargetId: linked.Id)).Ok);
         Assert.Equal(P1, linked.Side);
         Assert.False(linked.HostileTo(hacker));
         Assert.True(linked.HostileTo(husk));

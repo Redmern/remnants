@@ -19,6 +19,9 @@ public sealed class ScavengeSim
     /// <summary>What is left of an action's effect right now: below 1 only while a clash resolves (<see cref="RoundResolver"/>).</summary>
     internal double EffectFactor { get; set; } = 1;
 
+    /// <summary>Who has a recover going in the action phase underway, once per recover. It starts and ends inside one resolve, so it is never saved.</summary>
+    internal List<int> Recovering { get; } = new();
+
     public ScavengeData Data { get; }
     public ScavengeState State { get; }
 
@@ -84,7 +87,8 @@ public sealed class ScavengeSim
             Move c => ScavengeCommandHandlers.Move(this, unit!, c),
             Push c => Pushes.Plan(this, unit!, c),
             Dash c => Pushes.Plan(this, unit!, c),
-            UseItem c => ScavengeCommandHandlers.UseItem(this, unit!, c),
+            Defend c => Defences.Plan(this, unit!, c),
+            UseItem c => PlannedActions.UseItem(this, unit!, c),
             PickUp c => ScavengeCommandHandlers.PickUp(this, unit!, c),
             TakeAll c => FieldLoot.TakeAll(this, unit!, c),
             DropItem c => FieldLoot.Drop(this, unit!, c),
@@ -109,7 +113,7 @@ public sealed class ScavengeSim
             GiveItem c => CoopActions.Give(this, unit!, c),
             Carry c => CoopActions.Carry(this, unit!, c),
             PutDown c => CoopActions.PutDown(this, unit!, c),
-            Hack c => Hacking.Hack(this, unit!, c),
+            Hack c => PlannedActions.Hack(this, unit!, c),
             DeployDrone c => Drones.Deploy(this, unit!, c),
             FlyDrone c => Drones.Fly(this, unit!, c),
             RecallDrone => Drones.Recall(this, unit!),
@@ -118,7 +122,7 @@ public sealed class ScavengeSim
             DroneHeal c => DroneRoles.Heal(this, unit!, c),
             DroneLoad c => DroneRoles.Load(this, unit!, c),
             DroneFerry => DroneRoles.Ferry(this, unit!),
-            DroneFire c => DroneRoles.Fire(this, unit!, c),
+            DroneFire c => PlannedActions.DroneFire(this, unit!, c),
             _ => ScavengeResult.Fail(ScavengeError.UnknownCommand, $"Unknown command {command.GetType().Name}."),
         };
 
@@ -149,7 +153,7 @@ public sealed class ScavengeSim
             if (step.Applied is null) (step.RefundMp, step.RefundAp) = (mpBefore - unit.Mp, apBefore - unit.Ap);
             step.RefundFatigue = unit.Fatigue - fatigueBefore;
         }
-        if (command is Move or AttackTile or PlayCard or Recover or Push or Dash or UndoPlan) plan.Committed = false;
+        if (command is Move or AttackTile or PlayCard or Recover or Push or Dash or Defend or UseItem or Hack or DroneFire or UndoPlan) plan.Committed = false;
     }
 
     private ScavengeResult Commit(Unit unit)
@@ -194,6 +198,8 @@ public sealed class ScavengeSim
     /// <summary>The round opens for a unit: its lookout and the round's card effects end, and it gets fresh points.</summary>
     internal void BeginRound(Unit unit)
     {
+        if (unit.RoundFrom is { } from) unit.LastMove = unit.Pos - from;
+        unit.RoundFrom = unit.Pos;
         unit.Lookout = false;
         unit.PingsUsed = 0;
         unit.Moved = false;
@@ -224,6 +230,7 @@ public sealed class ScavengeSim
             State.Log(new(State.Round, ScavengeEventType.EmpBurst, $"{unit.Name} is still down from the EMP.", unit.Id, Pos: unit.Pos));
         }
         Stuns.RoundStarted(this, unit);
+        Exposed.RoundStarted(this, unit);
         Adrenaline.RoundStarted(this, unit);
         if (Economy.Stamina(this, unit) <= 0) unit.Ap = 0;
     }

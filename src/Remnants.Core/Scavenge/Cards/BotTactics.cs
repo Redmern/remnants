@@ -15,9 +15,12 @@ public static class BotTactics
     /// <summary>Where <paramref name="side"/> should expect a unit when the round's blows fall: at the end of its telegraphed walk, or where it stands.</summary>
     public static Pos Expected(ScavengeSim sim, string side, Unit u) => TacticsView.Telegraphs(sim, side).Find(t => t.UnitId == u.Id)?.To ?? u.Pos;
 
+    /// <summary>What <paramref name="side"/> can tell a seen unit may reach this round: going by its telegraphed walk and nothing else of its plan.</summary>
+    public static HashSet<Pos> SeenThreat(ScavengeSim sim, string side, Unit u) => Combat.ThreatFrom(sim, u, Expected(sim, side, u));
+
     /// <summary>Seen hostiles that could strike <paramref name="unit"/>'s tile from where they stand.</summary>
     public static List<Unit> Threats(ScavengeSim sim, Unit unit) =>
-        sim.State.Units.Where(u => u.IsActive && unit.HostileTo(u) && Detection.SideSees(sim.Data, sim.State, unit.Side, u) && Combat.ThreatZone(sim, u).Contains(Plans.Anchor(sim.State, unit)))
+        sim.State.Units.Where(u => u.IsActive && unit.HostileTo(u) && Detection.SideSees(sim.Data, sim.State, unit.Side, u) && SeenThreat(sim, unit.Side, u).Contains(Plans.Anchor(sim.State, unit)))
             .OrderBy(u => u.Id).ToList();
 
     /// <summary>
@@ -55,11 +58,13 @@ public static class BotTactics
             .OrderBy(h => h.Pos.Chebyshev(at)).ThenBy(h => h.Id).ToList();
         var squad = state.Units.Where(u => u.PlayerId == playerId && u.PlayerControlled && u.IsActive).ToList();
         // An enemy that could strike one of us is held up; a threatened ally hurried along.
-        var aimedAtUs = hostiles.Where(h => h.PriorityBonus >= 0 && Combat.ThreatZone(sim, h) is var zone && squad.Any(s => zone.Contains(Plans.Anchor(state, s))));
+        var aimedAtUs = hostiles.Where(h => h.PriorityBonus >= 0 && SeenThreat(sim, unit.Side, h) is var zone && squad.Any(s => zone.Contains(Plans.Anchor(state, s))));
         if (Try(playable.Where(c => c.Effect.DelayInitiative), At(aimedAtUs)) is { } hold) return hold;
         var threatened = squad.Where(s => s.Id != unit.Id && s.PriorityBonus <= 0 && Threats(sim, s).Count > 0);
         if (Try(playable.Where(c => c.Effect.AdvanceInitiative), At(threatened)) is { } hurry) return hurry;
-        if (Try(playable.Where(Breaks), At(Threats(sim, unit))) is { } broken) return broken;
+        // A foe seen walking off, or that a friend is about to move, would only be a card wasted.
+        var moved = BeingMoved(sim, unit.Side);
+        if (Try(playable.Where(Breaks), At(Threats(sim, unit).Where(t => !moved.Contains(t.Id) && Expected(sim, unit.Side, t) == t.Pos))) is { } broken) return broken;
         // In reach of someone: guard where it will stand, turned toward the nearest of them.
         if (!Guarding(state, data, unit) && Threats(sim, unit).FirstOrDefault() is { } threat)
             foreach (var c in playable.Where(c => c.Effect.Block > 0))
@@ -88,6 +93,7 @@ public static class BotTactics
         if (seenBy.Count > 0 && unit.Guard == 0 && playable.FirstOrDefault(c => c.Effect.Guard > 0) is { } guard) return Play(guard);
         if (seenBy.FirstOrDefault(h => h.Pos.Chebyshev(at) > 1) is { } shooter
             && Combat.CoverAgainst(data, state.Map, at, shooter.Pos) <= 0
+            && !WalkedOnto(sim, unit, at + Combat.Face(at, shooter.Pos))
             && Try(playable.Where(c => c.Effect.PlaceBarrier > 0), [(null, at + Combat.Face(at, shooter.Pos))]) is { } barrier) return barrier;
         if (hurt >= MendInjuryAt && playable.FirstOrDefault(c => c.Effect.Mend > 0) is { } mend) return Play(mend);
         if (deck.Hand.Count <= 2 && playable.FirstOrDefault(c => c.Effect.Draw > 0) is { } draw) return Play(draw);
@@ -120,6 +126,134 @@ public static class BotTactics
                                      && actions.Any(a => Combat.CheckReach(sim.Data, sim.State.Map, t, a, h.Pos) == ScavengeError.None))
                          .OrderByDescending(t => Combat.ArcOf(h, t)).ThenBy(t => t.Chebyshev(Plans.Anchor(sim.State, unit))).ThenBy(t => sim.State.Map.Index(t)))
                 yield return (null, t);
+    }
+
+    /// <summary>Who the side's own plans are about to shove or pull off their tile.</summary>
+    public static HashSet<int> BeingMoved(ScavengeSim sim, string side)
+    {
+        var (state, moved) = (sim.State, new HashSet<int>());
+        foreach (var unit in state.Units.Where(u => u.Side == side))
+            foreach (var step in Plans.Of(state, unit)?.Steps ?? [])
+                if (step.Kind == PlanStepKind.Card && step.TargetId is { } id && sim.Data.Cards.Find(step.CardId!) is { } card && Breaks(card)) moved.Add(id);
+                else if (step.Kind == PlanStepKind.Push)
+                    foreach (var tile in Patterns.Tiles(state.Map, sim.Data.Rules.Combat.Push.Pattern, step.From, step.Direction))
+                        if (state.UnitAt(tile) is { } on) moved.Add(on.Id);
+        return moved;
+    }
+
+    /// <summary>A push on someone who is no enemy and stands where the unit must go, or null.</summary>
+    public static Push? Unblock(ScavengeSim sim, Unit unit, int playerId, IReadOnlyList<Pos> goals)
+    {
+        var (state, movement) = (sim.State, sim.Profile(unit).Movement);
+        if (!Plans.HasRoom(sim, unit, PlanSlot.Action) || unit.Ap < sim.Data.Rules.Combat.Push.ApCost) return null;
+        var at = Plans.Anchor(state, unit);
+        // Boxed in: every step that gets it closer is taken, and one of them by someone who is no enemy.
+        foreach (var goal in goals)
+        {
+            var field = Movement.DistanceField(state.Map, movement, goal);
+            if (!field.TryGetValue(at, out var here)) continue;
+            var closer = Pos.Neighbours8.Where(way => field.GetValueOrDefault(at + way, int.MaxValue) < here && (way.X == 0 || way.Y == 0 || Movement.CornerOpen(state.Map, movement, at, way))).ToList();
+            if (closer.Count == 0 || closer.Any(way => state.UnitAt(at + way) is null)) continue;
+            foreach (var way in closer)
+                if (state.UnitAt(at + way) is { } there && !unit.HostileTo(there))
+                    return new Push(playerId, unit.Id, way);
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// What to do instead of a plain blow, by what the side can see, or null to fight on: a push when it drives a seen
+    /// neighbour into something; hurt or with two on it, a dash clear of every seen reach, else a guard toward the nearest,
+    /// but nothing if it moved last round without dashing, so it fights instead of backing off every round; winded with nothing in reach, a rest. Never looks at a plan its side cannot see.
+    /// </summary>
+    public static IScavengeCommand? Counter(ScavengeSim sim, Unit unit, int playerId)
+    {
+        if (!Plans.HasRoom(sim, unit, PlanSlot.Action)) return null;
+        var (state, rules, bot) = (sim.State, sim.Data.Rules.Combat, sim.Data.Rules.Bot);
+        var at = Plans.Anchor(state, unit);
+        var threats = Threats(sim, unit);
+        if (threats.Count == 0)
+        {
+            var profile = sim.Profile(unit);
+            return profile.MaxStamina > 0 && (double)Economy.Stamina(sim, unit) / profile.MaxStamina < sim.Data.Rules.Priority.CliffBelow
+                   && state.Units.Any(u => u.IsActive && unit.HostileTo(u) && Detection.SideSees(sim.Data, state, unit.Side, u))
+                ? new Recover(playerId, unit.Id) : null;
+        }
+
+        var nearest = threats.OrderBy(t => t.Pos.Chebyshev(at)).ThenBy(t => t.Id).First();
+        if (unit.Ap >= rules.Push.ApCost)
+            foreach (var way in Pos.Neighbours8)
+                if (TacticsView.PushPreview(sim, unit, way).Any(o => o.Collides && state.FindUnit(o.UnitId) is { } v && unit.HostileTo(v) && v.LastMove == default && Expected(sim, unit.Side, v) == v.Pos && !BeingMoved(sim, unit.Side).Contains(v.Id)) && !TacticsView.PushPreview(sim, unit, way).Any(o => !unit.HostileTo(state.FindUnit(o.UnitId)!)))
+                    return new Push(playerId, unit.Id, way);
+
+        if (unit.Hp >= unit.MaxHp * bot.HurtBelow && threats.Count < 2)
+            // A neighbour that stood still will likely swing: every so often take it on the guard, for the block and the stun.
+            return (state.Round + unit.Id) % bot.GuardEvery == 0 && nearest.LastMove == default && nearest.Pos.Chebyshev(at) <= 1 && unit.Ap >= rules.Defend.ApCost
+                ? new Defend(playerId, unit.Id, Combat.Face(at, nearest.Pos)) : null;
+        // Moved last round, by a dash or on foot: stand and fight. Backing off every round can stall a run for good.
+        var dashed = unit.Ai.DashedRound > 0 && unit.Ai.DashedRound == state.Round - 1;
+        if (unit.LastMove != default && !dashed) return null;
+        if (!dashed && unit.Ap >= rules.Dash.ApCost && Clear(sim, unit) is { } clear) return new Dash(playerId, unit.Id, clear.Way, clear.Tiles);
+        return unit.Ap >= rules.Defend.ApCost ? new Defend(playerId, unit.Id, Combat.Face(at, Expected(sim, unit.Side, nearest))) : null;
+    }
+
+    /// <summary>Whether someone the side can see stands on the tile, or will once the walks are over.</summary>
+    private static bool WalkedOnto(ScavengeSim sim, Unit unit, Pos tile) =>
+        sim.State.Units.Any(u => u.Id != unit.Id && u.IsActive && u.OnMap && Detection.SideSees(sim.Data, sim.State, unit.Side, u)
+                                 && (u.Pos == tile || (u.Side == unit.Side ? Plans.MoveEnd(sim.State, u) : Expected(sim, unit.Side, u)) == tile));
+
+    /// <summary>The shortest dash that lands the unit out of every seen hostile's reach, or null.</summary>
+    private static (Pos Way, int Tiles)? Clear(ScavengeSim sim, Unit unit)
+    {
+        var state = sim.State;
+        var zones = state.Units.Where(u => u.IsActive && unit.HostileTo(u) && Detection.SideSees(sim.Data, state, unit.Side, u)).SelectMany(u => SeenThreat(sim, unit.Side, u)).ToHashSet();
+        var from = Plans.Anchor(state, unit);
+        var best = ((Pos Way, int Tiles)?)null;
+        foreach (var way in Pos.Neighbours8)
+            for (var tiles = 1; tiles <= sim.Data.Rules.Combat.Dash.Tiles; tiles++)
+            {
+                // A dash never goes through anyone it can see.
+                var landing = Pushes.PlannedLanding(sim, unit, way, tiles);
+                if (landing != from + new Pos(way.X * tiles, way.Y * tiles) || WalkedOnto(sim, unit, landing)) break;
+                if (zones.Contains(landing)) continue;
+                if (best is null || tiles < best.Value.Tiles) best = (way, tiles);
+                break;
+            }
+        return best;
+    }
+
+    /// <summary>
+    /// The move to the tile the unit's next blow on a seen hostile does the most from: its chance, its damage, the arc it comes
+    /// from, less for every seen reach the tile stands in. Null when no walk beats where it is, or it has already planned.
+    /// </summary>
+    public static Move? Position(ScavengeSim sim, Unit unit, int playerId)
+    {
+        // One walk to a tile, then the blow: circling a foe would go on for ever.
+        if (unit.LastMove != default || !Plans.HasRoom(sim, unit, PlanSlot.Move) || !Plans.HasRoom(sim, unit, PlanSlot.Action)) return null;
+        var (state, data) = (sim.State, sim.Data);
+        var seen = state.Units.Where(u => u.IsActive && u.OnMap && unit.HostileTo(u) && !u.Structure && Detection.SideSees(data, state, unit.Side, u)).ToList();
+        if (seen.Count == 0) return null;
+        var zones = seen.Select(u => SeenThreat(sim, unit.Side, u)).ToList();
+        var actions = sim.Profile(unit).Actions;
+        double Worth(Pos tile)
+        {
+            var best = 0.0;
+            foreach (var target in seen)
+                foreach (var action in actions)
+                {
+                    var to = Expected(sim, unit.Side, target);
+                    if (Combat.ApCost(action, tile, to) > unit.Ap || Combat.CheckReach(data, state.Map, tile, action, to) != ScavengeError.None) continue;
+                    var worth = Combat.ChanceToHit(sim, unit, action, target, tile) * (action.MinDamage + action.MaxDamage) / 2 * Combat.ArcDamage(data.Rules.Combat.Facing, Combat.ArcOf(target, tile));
+                    best = Math.Max(best, worth);
+                }
+            return best / (1 + data.Rules.Bot.PositionRisk * zones.Count(z => z.Contains(tile)));
+        }
+        var here = Worth(Plans.Anchor(state, unit));
+        var (top, topWorth) = ((Pos?)null, here * data.Rules.Bot.PositionGain);
+        foreach (var (tile, cost) in sim.Reachable(unit).Where(kv => kv.Value <= unit.Mp).OrderBy(kv => kv.Value).ThenBy(kv => state.Map.Index(kv.Key)))
+            if (state.UnitAt(tile) is null && Worth(tile) is var worth && worth > topWorth && worth > 0)
+                (top, topWorth) = (tile, worth);
+        return top is { } to2 ? new Move(playerId, unit.Id, to2) : null;
     }
 
     /// <summary>

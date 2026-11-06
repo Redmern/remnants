@@ -53,6 +53,7 @@ public class ProtocolTests
         Assert.ThrowsAny<Exception>(() => ProtocolJson.Deserialize(json));
         Assert.Equal(17, Protocol.TacticsVersion);
         Assert.Equal(20, Protocol.TelegraphedStrikesVersion);
+        Assert.Equal(23, Protocol.Version);
     }
 
     [Fact]
@@ -76,7 +77,7 @@ public class ProtocolTests
         Assert.Equal(19, Protocol.TileAttacksOnlyVersion);
         Assert.Equal(21, Protocol.SimultaneousVersion);
         Assert.Equal(22, Protocol.PlanSlotsVersion);
-        Assert.Equal(Protocol.PlanSlotsVersion, Protocol.Version);
+        Assert.Equal(Protocol.DefendVersion, Protocol.Version);
     }
 
     [Fact]
@@ -87,6 +88,7 @@ public class ProtocolTests
                      (new PlayCard(1, 2, "dash"), "playCard"), (new PlayCard(1, 2, "counterstrike", 9, Boost: true, FromSlot: true), "playCard"),
                      (new PlayCard(1, 2, "smoke_bomb", Tile: new Pos(4, 5)), "playCard"), (new DiscardDeadCard(1, 2, "sprint"), "discardDeadCard"),
                      (new Push(1, 2, new Pos(1, 0)), "push"), (new Dash(1, 2, new Pos(0, -1), 3), "dash"),
+                     (new Defend(1, 2, new Pos(1, 1)), "defend"),
                  })
         {
             var json = ProtocolJson.Serialize(new Command(3, command));

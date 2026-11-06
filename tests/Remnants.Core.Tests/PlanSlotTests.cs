@@ -658,7 +658,7 @@ public class PlanSlotTests
         var costs = Real.Items.Values.SelectMany(i => i.Actions.Where(x => x.CloseApPenalty == 0).Select(x => (i.Id, x.ApCost)))
             .Concat(Real.Items.Values.Where(i => i.Use is not null).Select(i => (i.Id, i.Use!.ApCost)))
             .Concat([("hack", Real.Rules.Hacking.ApCost), ("wreck", Real.Rules.Salvage.ApCost), ("push", Real.Rules.Combat.Push.ApCost),
-                     ("dash", Real.Rules.Combat.Dash.ApCost), ("recover", Real.Rules.Turn.RecoverApCost)]);
+                     ("dash", Real.Rules.Combat.Dash.ApCost), ("recover", Real.Rules.Turn.RecoverApCost), ("defend", Real.Rules.Combat.Defend.ApCost)]);
         Assert.DoesNotContain(costs, c => c.Item2 > limit);
     }
 

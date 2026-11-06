@@ -99,7 +99,7 @@ public static class Hacking
     }
 
     /// <summary>Checks and runs one hack action (see the class summary).</summary>
-    internal static ScavengeResult Hack(ScavengeSim sim, Unit unit, Hack c)
+    internal static ScavengeResult Hack(ScavengeSim sim, Unit unit, Hack c, bool checkOnly = false)
     {
         var state = sim.State;
         var data = sim.Data;
@@ -138,6 +138,7 @@ public static class Hacking
         var at = device?.Pos ?? target!.Pos;
         if (unit.Pos.Chebyshev(at) > Math.Max(kit.Range, (int)unit.Hook(Colony.PerkHooks.HackRange)) || (unit.Pos.Chebyshev(at) > 1 && !state.Map.HasLineOfSight(data, unit.Pos, at)))
             return ScavengeResult.Fail(ScavengeError.TooFar, $"The {name} is out of reach of {tool.Name} ({kit.Range} tiles).");
+        if (checkOnly) return ScavengeResult.Success("");
         var cost = ApCost(data, unit);
         if (cost > unit.Ap) return ScavengeResult.Fail(ScavengeError.NotEnoughAp, $"{unit.Name} needs {cost} AP (has {unit.Ap}).");
         unit.Ap -= cost;

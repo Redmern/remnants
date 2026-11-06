@@ -272,7 +272,7 @@ public class PlanningViewTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void A_unit_pushed_in_a_tie_dashes_from_where_the_push_left_it(bool pusherOlder)
+    public void A_dash_in_a_tie_with_a_push_slips_it_whichever_unit_is_older(bool pusherOlder)
     {
         var older = SurvivorUnit(pusherOlder ? 1 : 2, new(pusherOlder ? 2 : 3, 3));
         var younger = SurvivorUnit(pusherOlder ? 2 : 1, new(pusherOlder ? 3 : 2, 3));
@@ -281,7 +281,8 @@ public class PlanningViewTests
         Assert.True(sim.Execute(new Push(1, pusher.Id, East)).Ok);
         Assert.True(sim.Execute(new Dash(2, dasher.Id, East, 3)).Ok);
         Tie(sim, pusher, dasher);
-        Assert.True(dasher.Pos.X > 4); // pushed to (4,3), then on from there
+        Assert.Equal(new Pos(4, 3), dasher.Pos); // one tile at a clash's reduced effect, and never shoved
+        Assert.Contains(sim.State.Events, e => e.Type == ScavengeEventType.IntentFizzled && e.UnitId == pusher.Id);
     }
 
     /// <summary>Two tied hostiles walk for one tile in the given round; who got there.</summary>

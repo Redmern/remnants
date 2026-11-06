@@ -27,6 +27,71 @@ public class CardFogNetTests
     }
 
     [Fact]
+    public void A_rival_in_sight_shows_no_tile_it_was_on_before_it_came_into_view()
+    {
+        var (f, a, b, alice, bob) = Field();
+        alice.Pos = bob.Pos + new Pos(-3, 0);
+        alice.RoundFrom = alice.Pos + new Pos(-20, 0);
+        alice.LastMove = new Pos(20, 0);
+        var fog = new SideFog(b.Id, bob.Side);
+        fog.Update(f.Sim);
+        var seen = fog.View(f.Sim).Units.Single(u => u.Id == alice.Id);
+        Assert.Null(seen.RoundFrom);
+        Assert.Equal(default, seen.LastMove);
+    }
+
+    [Fact]
+    public void A_rival_that_walked_in_plain_sight_shows_that_walk()
+    {
+        var (f, a, b, alice, bob) = Field();
+        alice.Pos = bob.Pos + new Pos(-3, 0);
+        alice.RoundFrom = alice.Pos + new Pos(1, 0);
+        alice.LastMove = new Pos(-1, 0);
+        var fog = new SideFog(b.Id, bob.Side);
+        fog.Update(f.Sim);
+        var seen = fog.View(f.Sim).Units.Single(u => u.Id == alice.Id);
+        Assert.Null(seen.RoundFrom);
+        Assert.Equal(new Pos(-1, 0), seen.LastMove);
+    }
+
+    [Theory]
+    [InlineData(PlanStepKind.UseItem)]
+    [InlineData(PlanStepKind.Hack)]
+    [InlineData(PlanStepKind.DroneFire)]
+    public void A_planned_item_hack_or_shot_survives_the_wire_to_its_owner(PlanStepKind kind)
+    {
+        var (f, a, _, alice, _) = Field();
+        f.Sim.State.Plans.RemoveAll(p => p.UnitId == alice.Id);
+        f.Sim.State.Plans.Add(new UnitPlan { UnitId = alice.Id });
+        f.Sim.State.Plans.Single(p => p.UnitId == alice.Id).Steps.Add(new PlanStep { Kind = kind, ItemId = "bandage", DeviceId = 7, TargetId = 3, Tile = new Pos(2, 4), From = alice.Pos });
+        var own = new SideFog(a.Id, alice.Side);
+        own.Update(f.Sim);
+        var wire = System.Text.Json.JsonSerializer.Serialize(own.View(f.Sim).Plans.Single(p => p.UnitId == alice.Id), ProtocolJson.Options);
+        var step = System.Text.Json.JsonSerializer.Deserialize<UnitPlan>(wire, ProtocolJson.Options)!.Steps.Single();
+        Assert.Equal((kind, "bandage", 7, 3, new Pos(2, 4)), (step.Kind, step.ItemId!, step.DeviceId!.Value, step.TargetId!.Value, step.Tile!.Value));
+    }
+
+    [Fact]
+    public void A_rival_sees_nothing_of_a_planned_item_and_its_owner_does()
+    {
+        var (f, a, b, alice, bob) = Field();
+        alice.Pos = bob.Pos + new Pos(-3, 0);
+        alice.Pack.Add("bandage");
+        var pack = alice.Pack.Count;
+        var fog = new SideFog(b.Id, bob.Side);
+        Assert.True(f.Sim.Execute(new UseItem(a.Id, alice.Id, "bandage")).Ok);
+        fog.Update(f.Sim);
+        var view = fog.View(f.Sim);
+        Assert.Empty(view.Plans.Single(p => p.UnitId == alice.Id).Steps);
+        Assert.Equal((0, 0), (view.Units.Single(u => u.Id == alice.Id).Ap, view.Units.Single(u => u.Id == alice.Id).Fatigue));
+        var own = new SideFog(a.Id, alice.Side);
+        own.Update(f.Sim);
+        var step = own.View(f.Sim).Plans.Single(p => p.UnitId == alice.Id).Steps.Single();
+        Assert.Equal((PlanStepKind.UseItem, "bandage"), (step.Kind, step.ItemId));
+        Assert.Equal(pack, alice.Pack.Count);
+    }
+
+    [Fact]
     public void A_rival_in_sight_shows_its_moves_and_nothing_of_its_actions_or_what_it_spent()
     {
         var (f, a, b, alice, bob) = Field();
@@ -58,6 +123,34 @@ public class CardFogNetTests
         Assert.Equal(3, mine.Plans.Single(p => p.UnitId == alice.Id).Steps.Count);
         Assert.True(mine.Units.Single(u => u.Id == alice.Id).Ap < ap);
         Assert.True(mine.Units.Single(u => u.Id == alice.Id).Fatigue > tired);
+    }
+
+    [Fact]
+    public void A_rival_sees_nothing_of_a_defend_until_it_resolves_and_its_owner_sees_it_all()
+    {
+        var (f, a, b, alice, bob) = Field();
+        alice.Pos = bob.Pos + new Pos(-3, 0);
+        Assert.True(f.Sim.Execute(new Defend(a.Id, alice.Id, new Pos(1, 0))).Ok);
+        var fog = new SideFog(b.Id, bob.Side);
+        fog.Update(f.Sim);
+        var view = fog.View(f.Sim);
+        Assert.Empty(view.Plans.Single(p => p.UnitId == alice.Id).Steps);
+        Assert.Empty(view.Defences);
+        var seen = view.Units.Single(u => u.Id == alice.Id);
+        Assert.Equal((0, 0), (seen.Ap, seen.Fatigue));
+        var own = new SideFog(a.Id, alice.Side);
+        own.Update(f.Sim);
+        Assert.Equal(PlanStepKind.Defend, own.View(f.Sim).Plans.Single(p => p.UnitId == alice.Id).Steps.Single().Kind);
+    }
+
+    [Fact]
+    public void A_fogged_pusher_breaking_a_guard_is_not_named_to_the_defender()
+    {
+        var mine = new[] { 1 };
+        var events = new[] { new ScavengeEvent(1, ScavengeEventType.GuardBroken, "Bob's push breaks Alice's guard.", 2, 1, new Pos(3, 3), Anonymous: "Alice's guard is broken by a push.") };
+        var heard = FogLog.Filter(events, "p1", id => mine.Contains(id), _ => false, _ => false).Single();
+        Assert.Null(heard.UnitId);
+        Assert.DoesNotContain("Bob", heard.Message);
     }
 
     [Fact]

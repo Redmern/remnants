@@ -36,7 +36,7 @@ public sealed record BestiaryCard(
     int? Ap = null, MoveMode? Movement = null,
     double? Hp = null, double? Armor = null, double? Dodge = null,
     Dictionary<Survivors.AttributeKind, double>? Attributes = null, Dictionary<Survivors.Skill, double>? Skills = null,
-    string? Behaviour = null);
+    string? Behaviour = null, string? Habits = null);
 
 /// <summary>
 /// The bestiary (NPC enemies only; other players are never in it). In a run each party counts the enemies it sees
@@ -171,7 +171,7 @@ public static class Bestiary
         };
         if (tier < BestiaryTier.Fought) return card;
         var walk = profile.Movement.Primary;
-        card = card with { Ap = profile.MaxAp, Movement = walk };
+        card = card with { Ap = profile.MaxAp, Movement = walk, Habits = def.Tactics?.Read };
         if (tier < BestiaryTier.Killed) return card;
         return card with
         {

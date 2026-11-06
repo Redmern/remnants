@@ -5,6 +5,9 @@ namespace Remnants.Core.Scavenge;
 /// unit's in the order it queued them. Scores are taken afresh before each pick, so what has happened so far counts. Hostiles
 /// on the same score resolve together, each at <see cref="PriorityRules.TieEffect"/>: each from where it stood when the
 /// clash began, and even if the other strikes it down. Same plans and seed, same events.
+/// Two exceptions to going by score, the counters: a unit with a dash queued is off before a push reaches it, and runs into a
+/// blow aimed at where it lands (<see cref="DashAway"/>). A recover pays only once all the actions are done, so anything landing
+/// on the unit this round catches it (<see cref="Economy.CaughtRecovering"/>).
 /// </summary>
 internal static class RoundResolver
 {
@@ -74,6 +77,12 @@ internal static class RoundResolver
         // Cards that acted when played only held their slot until now.
         foreach (var plan in state.Plans) plan.Steps.RemoveAll(s => s.Applied is not null);
         Defences.Arm(sim);
+        sim.Recovering.Clear();
+        foreach (var plan in state.Plans.OrderBy(p => p.UnitId))
+        {
+            sim.Recovering.AddRange(plan.Steps.Where(s => s.Kind == PlanStepKind.Recover).Select(_ => plan.UnitId));
+            plan.Steps.RemoveAll(s => s.Kind == PlanStepKind.Recover);
+        }
         while (!state.Finished)
         {
             var heads = state.Plans.OrderBy(p => p.UnitId)
@@ -95,11 +104,16 @@ internal static class RoundResolver
             sim.AfterStep();
         }
         state.Defences.Clear();
+        foreach (var id in sim.Recovering.ToList())
+            if (!state.Finished && state.FindUnit(id) is { IsActive: true } unit) Economy.Recovered(sim, unit);
+        sim.Recovering.Clear();
+        sim.AfterStep();
     }
 
     /// <summary>
     /// Hostiles on one score: all their actions go off, at reduced effect, from the tiles they stood on when it began. Blows
-    /// come first, then shoves, then dashes, so nothing turns on which unit is older. A dash runs from wherever the shoves left it.
+    /// come first, then shoves, then dashes, so nothing turns on which unit is older. A dash runs from wherever the shoves left it,
+    /// unless it slips one of those shoves or runs into one of those blows (<see cref="DashAway"/>): then it goes first.
     /// </summary>
     private static void Clash(ScavengeSim sim, List<(Unit Unit, UnitPlan Plan, PlanStep Step)> group)
     {
@@ -109,10 +123,12 @@ internal static class RoundResolver
         state.Log(new(state.Round, ScavengeEventType.Clashed, $"{string.Join(" and ", group.Select(g => g.Unit.Name))} act in the same instant.",
             group[0].Unit.Id, group[1].Unit.Id, group[0].Unit.Pos));
         sim.EffectFactor = sim.Data.Rules.Priority.TieEffect;
-        foreach (var i in Enumerable.Range(0, group.Count).OrderBy(i => ClashOrder(sim, group[i].Step)))
+        var order = Enumerable.Range(0, group.Count)
+            .Select(i => (Index: i, Rank: DashGoesFirst(sim, group, i) ? -1 : ClashOrder(sim, group[i].Step))).OrderBy(x => x.Rank).ToList();
+        foreach (var (i, rank) in order)
         {
             var unit = group[i].Unit;
-            if (ClashOrder(sim, group[i].Step) == DashesLast)
+            if (rank is -1 or DashesLast)
             {
                 Resolve(sim, unit, group[i].Step);
                 continue;
@@ -130,6 +146,54 @@ internal static class RoundResolver
 
     private const int DashesLast = 2;
 
+    /// <summary>A plain dash in a clash that a hostile's shove would catch where it stands, or a hostile's blow where it lands.</summary>
+    private static bool DashGoesFirst(ScavengeSim sim, List<(Unit Unit, UnitPlan Plan, PlanStep Step)> group, int i)
+    {
+        var (dasher, _, dash) = group[i];
+        if (dash.Kind != PlanStepKind.Dash) return false;
+        foreach (var (other, _, step) in group.Where(g => g.Unit.HostileTo(dasher)))
+        {
+            if (ClashOrder(sim, step) == DashesLast) continue;
+            if (PatternOf(sim, other, step, other.Pos) is not { } tiles) continue;
+            if (ClashOrder(sim, step) == 1 ? tiles.Contains(dasher.Pos) : RunsInto(sim, dasher, dash, other, tiles)) return true;
+        }
+        return false;
+    }
+
+    /// <summary>Whether a dash leaves the tiles of a blow and lands on them, in the striker's line of sight.</summary>
+    private static bool RunsInto(ScavengeSim sim, Unit dasher, PlanStep dash, Unit striker, List<Pos> tiles)
+    {
+        if (tiles.Contains(dasher.Pos)) return false;
+        var landing = CardAbilities.Slide(sim, dasher, dash.Direction, Math.Max(1, (int)(dash.Reach * sim.EffectFactor)));
+        return landing != dasher.Pos && tiles.Contains(landing) && Combat.Clear(sim.Data, sim.State.Map, striker.Pos, landing);
+    }
+
+    /// <summary>
+    /// The unit's queued dash goes off now, ahead of its score, because something is about to catch it. Returns whether it got
+    /// away from where it stood; a dash with nowhere to go is spent all the same.
+    /// </summary>
+    internal static bool DashAway(ScavengeSim sim, Unit unit)
+    {
+        if (Plans.Of(sim.State, unit) is not { } plan || plan.Steps.Find(s => s.Kind == PlanStepKind.Dash) is not { } dash) return false;
+        var from = unit.Pos;
+        plan.Steps.Remove(dash);
+        Resolve(sim, unit, dash);
+        return unit.Pos != from;
+    }
+
+    /// <summary>A blow is about to come down: anyone hostile whose queued dash lands on its tiles runs into it.</summary>
+    private static void RunIntoBlow(ScavengeSim sim, Unit striker, PlanStep step)
+    {
+        var effect = step.CardId is { } id ? sim.Data.Cards.Find(id)?.Effect : null;
+        if (step.Kind != PlanStepKind.Strike && effect is not { Attack: true, Dash: 0 }) return;
+        if (PatternOf(sim, striker, step, striker.Pos) is not { } tiles) return;
+        var state = sim.State;
+        foreach (var plan in state.Plans.OrderBy(p => p.UnitId).ToList())
+            if (state.FindUnit(plan.UnitId) is { IsActive: true } unit && unit.HostileTo(striker)
+                && plan.Steps.Find(s => s.Kind == PlanStepKind.Dash) is { } dash && RunsInto(sim, unit, dash, striker, tiles))
+                DashAway(sim, unit);
+    }
+
     private static int ClashOrder(ScavengeSim sim, PlanStep step)
     {
         if (step.Kind == PlanStepKind.Dash || step.Landing is not null) return DashesLast;
@@ -139,6 +203,7 @@ internal static class RoundResolver
 
     private static void Resolve(ScavengeSim sim, Unit unit, PlanStep step)
     {
+        RunIntoBlow(sim, unit, step);
         var (logged, from) = (sim.State.Logged, unit.Pos);
         Act(sim, unit, step);
         if (PatternOf(sim, unit, step, from) is not { } tiles) return;
@@ -169,6 +234,9 @@ internal static class RoundResolver
                 return step.Strike.Tiles.Select(p => p + shift).Where(map.InBounds).ToList();
             case PlanStepKind.Push:
                 return Patterns.Tiles(map, sim.Data.Rules.Combat.Push.Pattern, from, step.Direction);
+            case PlanStepKind.Defend:
+                // The guard as it came up, on the unit if the walk stopped short.
+                return sim.State.Defences.Find(d => d.UnitId == unit.Id && d.CardId == Defences.ActionId)?.Tiles.ToList() ?? Defences.Tiles(sim, unit, from, step.Direction);
             case PlanStepKind.Dash:
                 var ran = unit.Pos == from ? step.Reach : unit.Pos.Chebyshev(from);
                 return Enumerable.Range(1, ran).Select(i => from + new Pos(step.Direction.X * i, step.Direction.Y * i)).Where(map.InBounds).ToList();
@@ -193,14 +261,17 @@ internal static class RoundResolver
             case PlanStepKind.Card:
                 CardPlay.Resolve(sim, unit, step);
                 break;
-            case PlanStepKind.Recover:
-                Economy.Recovered(sim, unit);
+            case PlanStepKind.Defend:
+                Defences.CameUp(sim.State, unit, Defences.ActionId);
                 break;
             case PlanStepKind.Push:
                 Pushes.Resolve(sim, unit, step);
                 break;
             case PlanStepKind.Dash:
                 Pushes.ResolveDash(sim, unit, step);
+                break;
+            case PlanStepKind.UseItem or PlanStepKind.Hack or PlanStepKind.DroneFire:
+                PlannedActions.Resolve(sim, unit, step);
                 break;
         }
     }

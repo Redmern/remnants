@@ -29,13 +29,13 @@ internal static class ScavengeCommandHandlers
         return ScavengeResult.Success($"{unit.Name} will move to {c.To}.");
     }
 
-    public static ScavengeResult UseItem(ScavengeSim sim, Unit unit, UseItem c)
+    public static ScavengeResult UseItem(ScavengeSim sim, Unit unit, UseItem c, bool checkOnly = false)
     {
         if (!unit.Pack.Contains(c.ItemId)) return ScavengeResult.Fail(ScavengeError.ItemNotCarried, $"{unit.Name} carries no '{c.ItemId}'.");
         var item = sim.Item(c.ItemId);
         if (item.Use is not { } use) return ScavengeResult.Fail(ScavengeError.NotUsable, $"{item.Name} cannot be used.");
         if (ElectronicWarfare.CheckCharges(sim.Data, unit, item) is { } flat) return flat;
-        if (use.TargetsTile) return UseOnTile(sim, unit, c, item, use);
+        if (use.TargetsTile) return UseOnTile(sim, unit, c, item, use, checkOnly);
 
         var target = c.TargetId is { } id ? sim.State.FindUnit(id) : unit;
         if (target is not { OnMap: true } || unit.HostileTo(target))
@@ -43,9 +43,13 @@ internal static class ScavengeCommandHandlers
         if (unit.Pos.Chebyshev(target.Pos) > use.Range)
             return ScavengeResult.Fail(ScavengeError.TooFar, $"{target.Name} is out of {item.Name}'s reach.");
         var apCost = FieldMedicine.ApCost(unit, use);
+        var downed = target.Status == UnitStatus.Downed;
+        if (checkOnly)
+            return downed && !use.Evacuate && !use.Stabilize
+                ? ScavengeResult.Fail(ScavengeError.NotUsable, $"{item.Name} does nothing for {target.Name} ({target.Status}).")
+                : ScavengeResult.Success("");
         if (apCost > unit.Ap) return NotEnoughAp(unit, apCost);
 
-        var downed = target.Status == UnitStatus.Downed;
         if (use.Evacuate)
         {
             target.Status = UnitStatus.Evacuated;
@@ -76,7 +80,7 @@ internal static class ScavengeCommandHandlers
     }
 
     /// <summary>A flare thrown at, or a motion sensor placed on, a tile within the item's range.</summary>
-    private static ScavengeResult UseOnTile(ScavengeSim sim, Unit unit, UseItem c, Items.ItemDef item, Items.UseEffect use)
+    private static ScavengeResult UseOnTile(ScavengeSim sim, Unit unit, UseItem c, Items.ItemDef item, Items.UseEffect use, bool checkOnly)
     {
         var state = sim.State;
         if (c.At is not { } at || !state.Map.InBounds(at))
@@ -86,6 +90,7 @@ internal static class ScavengeCommandHandlers
             return ScavengeResult.Fail(ScavengeError.InvalidTile, $"{item.Name} cannot be placed on {state.Map[at]}.");
         if (use.Decoy is not null && !ElectronicWarfare.CanPlaceDecoy(sim, at))
             return ScavengeResult.Fail(ScavengeError.InvalidTile, $"{item.Name} needs a free floor tile.");
+        if (checkOnly) return ScavengeResult.Success("");
         if (use.ApCost > unit.Ap) return NotEnoughAp(unit, use.ApCost);
         PlaceOnTile(sim, unit, item, use, at);
         return ScavengeResult.Success($"{unit.Name} used {item.Name} at {at}.");

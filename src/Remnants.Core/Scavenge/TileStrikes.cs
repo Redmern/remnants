@@ -83,6 +83,7 @@ public static class TileStrikes
         foreach (var card in plan.Steps.Where(s => s.Kind == PlanStepKind.Card)) CardPlay.Lost(sim, unit, card);
         plan.Steps.RemoveAll(s => s.Kind != PlanStepKind.Move);
         Defences.Drop(sim.State, unit);
+        sim.Recovering.RemoveAll(id => id == unit.Id);
         sim.State.Log(new(sim.State.Round, ScavengeEventType.IntentCanceled, $"{unit.Name}'s plan is off: {why}.", unit.Id, Pos: unit.Pos));
     }
 
@@ -147,7 +148,11 @@ public static class TileStrikes
         var tiles = strike.Tiles.Select(p => p + shift).Where(state.Map.InBounds).ToList();
         var at = new TileStrike { Tiles = tiles, Tile = strike.Tile + shift, Direction = strike.Direction };
         var targets = Strike(sim, unit, action, tiles, at.Tile, strike.Direction);
-        if (targets.Count == 0) Fizzle($"{action.Name} hits nothing");
+        if (targets.Count == 0)
+        {
+            Fizzle($"{action.Name} hits nothing");
+            Exposed.Mark(sim, unit);
+        }
         else state.Log(new(state.Round, ScavengeEventType.IntentResolved, $"{unit.Name}'s {action.Name} comes down.", unit.Id, Pos: unit.Pos));
     }
 

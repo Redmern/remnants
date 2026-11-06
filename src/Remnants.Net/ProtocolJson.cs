@@ -45,6 +45,7 @@ public static class ProtocolJson
                     new JsonDerivedType(typeof(Recover), "recover"),
                     new JsonDerivedType(typeof(Push), "push"),
                     new JsonDerivedType(typeof(Dash), "dash"),
+                    new JsonDerivedType(typeof(Defend), "defend"),
                     new JsonDerivedType(typeof(ProposeAlliance), "proposeAlliance"),
                     new JsonDerivedType(typeof(RespondAlliance), "respondAlliance"),
                     new JsonDerivedType(typeof(BreakAlliance), "breakAlliance"),

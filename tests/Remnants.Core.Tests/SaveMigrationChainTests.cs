@@ -78,6 +78,20 @@ public class SaveMigrationChainTests
     }
 
     [Fact]
+    public void A_v19_scavenge_run_from_before_defend_loads_and_plays_on()
+    {
+        // Written by the game's own code at 5293faf: one survivor, a recover planned.
+        var old = Fixture("scavenge-v19.json");
+        Assert.Contains("\"version\": 19", old);
+        var run = ScavengeSave.Load(ScavengeTestData.Real, old);
+        var unit = run.State.CurrentUnit!;
+        Assert.Equal(PlanStepKind.Recover, Plans.Of(run.State, unit)!.Steps.Single().Kind);
+        Assert.Equal(default, unit.LastMove);
+        Assert.True(run.Execute(new ChangePlan(1, unit.Id, new Defend(1, unit.Id, new Pos(1, 0)))).Ok);
+        Assert.Contains($"\"version\": {ScavengeSave.Version}", ScavengeSave.Save(run.State));
+    }
+
+    [Fact]
     public void A_v1_scavenge_run_is_refused()
     {
         // Old runs reset (scavenge save 15): a run file from before plans and decks no longer loads.

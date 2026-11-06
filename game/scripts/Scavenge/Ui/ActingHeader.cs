@@ -7,9 +7,9 @@ using UiKit = Remnants.Game.Colony.Ui.Ui;
 namespace Remnants.Game.Scavenge.Ui;
 
 /// <summary>
-/// The top of the right column: whose orders the column shows (the acting unit's portrait and "Silas's turn"), and one
-/// reserved two-line hint under it: what a click does while aiming, that the selected unit is not the one acting, the
-/// enemy's turn, autoplay. The hint keeps its height whatever it says, so the buttons below never move.
+/// The top of the right column: whose orders the column shows (the planning unit's portrait and name), and one
+/// reserved two-line hint under it: what a click does while aiming, that the selected unit is not the one planning,
+/// autoplay. The hint keeps its height whatever it says, so the buttons below never move.
 /// </summary>
 public partial class ActingHeader : PanelContainer
 {
@@ -32,7 +32,7 @@ public partial class ActingHeader : PanelContainer
         box.AddChild(row);
         _portrait.MouseFilter = MouseFilterEnum.Stop;
         _portrait.MouseDefaultCursorShape = CursorShape.PointingHand;
-        _portrait.TooltipText = Widgets.Tip("Select the unit whose turn it is and centre on it", Hotkeys.KeyName("scav_center"));
+        _portrait.TooltipText = Widgets.Tip("Select the unit you are planning for and centre on it", Hotkeys.KeyName("scav_center"));
         _portrait.GuiInput += e =>
         {
             if (e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left }) ActingClicked?.Invoke();
@@ -51,7 +51,7 @@ public partial class ActingHeader : PanelContainer
         row.AddChild(text);
     }
 
-    /// <param name="acting">The unit whose turn it is (null: enemy turn, another player's, or the run is over).</param>
+    /// <param name="acting">The unit being planned for (null: nothing to plan, another player's, or the run is over).</param>
     /// <param name="hint">The line under the name; never empty, so the header keeps its height.</param>
     public void Refresh(ScavengePresenter presenter, Unit? acting, string title, string hint, Color hintColor)
     {

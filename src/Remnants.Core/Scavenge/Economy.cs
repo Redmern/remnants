@@ -66,7 +66,7 @@ public static class Economy
         unit.Mp /= 2;
     }
 
-    /// <summary>Queues the recover action: spends AP now (which costs no stamina itself) to get stamina back when it comes up.</summary>
+    /// <summary>Queues the recover action: spends AP now (which costs no stamina itself) to get stamina back once the actions are done, if nobody lands a blow first.</summary>
     internal static ScavengeResult Recover(ScavengeSim sim, Unit unit)
     {
         var turn = sim.Data.Rules.Turn;
@@ -75,10 +75,21 @@ public static class Economy
         return ScavengeResult.Success($"{unit.Name} will catch their breath.");
     }
 
-    /// <summary>A queued recover comes up.</summary>
+    /// <summary>
+    /// What a landed blow on the unit adds to its damage: a recover it had going is called off and pays nothing, and the blow
+    /// does <see cref="TurnRules.RecoverHitDamage"/> more. 0 for anyone else.
+    /// </summary>
+    internal static double CaughtRecovering(ScavengeSim sim, Unit unit, Unit by)
+    {
+        if (sim.Recovering.RemoveAll(id => id == unit.Id) == 0) return 0;
+        sim.Log(ScavengeEventType.IntentCanceled, $"{unit.Name} is caught catching their breath by {by.Name}.", unit);
+        return sim.Data.Rules.Turn.RecoverHitDamage;
+    }
+
+    /// <summary>A recover nothing interrupted pays out, when the actions are done.</summary>
     internal static void Recovered(ScavengeSim sim, Unit unit)
     {
-        unit.Fatigue = Math.Max(0, unit.Fatigue - (int)Math.Round(sim.Data.Rules.Turn.RecoverStamina * sim.EffectFactor));
+        unit.Fatigue = Math.Max(0, unit.Fatigue - sim.Data.Rules.Turn.RecoverStamina);
         sim.Log(ScavengeEventType.Recovered, $"{unit.Name} catches their breath.", unit);
     }
 }

@@ -161,7 +161,7 @@ public static class DroneRoles
         return ScavengeResult.Success($"{drone.Name} ferried its load out.", drone.Id);
     }
 
-    internal static ScavengeResult Fire(ScavengeSim sim, Unit unit, DroneFire c)
+    internal static ScavengeResult Fire(ScavengeSim sim, Unit unit, DroneFire c, bool checkOnly = false)
     {
         if (Ready(sim, unit, DroneRole.Combat, out var drone, out _) is { } fail) return fail;
         var state = sim.State;
@@ -172,9 +172,10 @@ public static class DroneRoles
         if (!drone.HostileTo(target)) return ScavengeResult.Fail(ScavengeError.InvalidTarget, $"{target.Name} is not hostile.");
         var action = sim.Profile(drone).Actions.FirstOrDefault();
         if (action is null) return ScavengeResult.Fail(ScavengeError.UnknownAction, "The drone has no gun.");
-        if (action.ApCost > unit.Ap) return NotEnoughAp(unit, action.ApCost);
         var reach = Combat.CheckReach(sim.Data, state.Map, drone.Pos, action, target.Pos);
         if (reach != ScavengeError.None) return ScavengeResult.Fail(reach, $"{target.Name} is not in reach of the drone's gun ({reach}).");
+        if (checkOnly) return ScavengeResult.Success("");
+        if (action.ApCost > unit.Ap) return NotEnoughAp(unit, action.ApCost);
         unit.Ap -= action.ApCost;
         drone.Skills[Skill.Firearms] = unit.Get(Skill.DronePiloting);
         state.Log(new(state.Round, ScavengeEventType.DroneFired, $"{drone.Name} opens fire on {target.Name}!", drone.Id, target.Id, target.Pos,
@@ -183,6 +184,23 @@ public static class DroneRoles
         unit.GainSkill(Skill.DronePiloting, sim.Data.Rules.Drone.SkillPerFlight);
         unit.FieldXp += sim.Data.Rules.Drone.XpPerFlight;
         return ScavengeResult.Success($"{drone.Name} fired at {target.Name}.", target.Id);
+    }
+
+    /// <summary>A planned shot comes up: on the tile it was aimed at, whoever is there now, through block like any blow.</summary>
+    internal static ScavengeResult FireAt(ScavengeSim sim, Unit unit, Pos tile)
+    {
+        if (Ready(sim, unit, DroneRole.Combat, out var drone, out _) is { } fail) return fail;
+        var state = sim.State;
+        if (sim.Profile(drone).Actions.FirstOrDefault() is not { } action) return ScavengeResult.Fail(ScavengeError.UnknownAction, "The drone has no gun.");
+        var reach = Combat.CheckReach(sim.Data, state.Map, drone.Pos, action, tile);
+        if (reach != ScavengeError.None) return ScavengeResult.Fail(reach, $"the drone's gun no longer reaches {tile}.");
+        drone.Skills[Skill.Firearms] = unit.Get(Skill.DronePiloting);
+        state.Log(new(state.Round, ScavengeEventType.DroneFired, $"{drone.Name} opens fire on {tile}!", drone.Id, state.UnitAt(tile)?.Id, tile, Anonymous: "Gunfire from the air!"));
+        if (TileStrikes.Strike(sim, drone, action, [tile], tile, Combat.Face(drone.Pos, tile)).Count == 0)
+            return ScavengeResult.Fail(ScavengeError.NotVisible, $"{drone.Name} hits nothing.");
+        unit.GainSkill(Skill.DronePiloting, sim.Data.Rules.Drone.SkillPerFlight);
+        unit.FieldXp += sim.Data.Rules.Drone.XpPerFlight;
+        return ScavengeResult.Success($"{drone.Name} fired at {tile}.");
     }
 
     private static ScavengeResult NotEnoughAp(Unit unit, int cost) =>

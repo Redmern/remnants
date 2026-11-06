@@ -27,6 +27,35 @@ public sealed record TerrainDef
     public double Cover { get; init; }
 }
 
+/// <summary>Where an enemy puts a blow: <see cref="EnemyAim"/>.</summary>
+public enum AimKind { Current, Closest, Lead }
+
+/// <summary>What sets off a habit, all of it what the enemy can see: <see cref="EnemyHabits"/>.</summary>
+public enum HabitWhen { Always, Hurt, Threatened, AfterGuard, Cornered, FlankOpen }
+
+/// <summary>What a habit does. Strike ends the list: the unit goes on to its usual close and blow.</summary>
+public enum HabitDo { Strike, Defend, Push, Dash }
+
+public sealed record EnemyHabit
+{
+    public HabitWhen When { get; init; }
+    public HabitDo Do { get; init; }
+    /// <summary>For <see cref="HabitWhen.Hurt"/>: at under this share of its HP.</summary>
+    public double HpBelow { get; init; } = 0.5;
+}
+
+/// <summary>A type's aim and habits, first match wins, and <see cref="Read"/>, the same thing in words for the player.</summary>
+public sealed record EnemyTactics
+{
+    public AimKind Aim { get; init; }
+    /// <summary><see cref="AimKind.Closest"/>: with the target this near (and out of reach), swing at the next tile toward it.</summary>
+    public int SwingRange { get; init; } = 2;
+    /// <summary><see cref="AimKind.Lead"/>: how many tiles ahead of a target that moved last round.</summary>
+    public int LeadTiles { get; init; } = 2;
+    public List<EnemyHabit> Habits { get; init; } = new();
+    public string Read { get; init; } = "";
+}
+
 public sealed record EnemyDef
 {
     public string Id { get; init; } = "";
@@ -54,6 +83,9 @@ public sealed record EnemyDef
     /// Most enemies have none.
     /// </summary>
     public List<string> Cards { get; init; } = new();
+
+    /// <summary>How this type aims and what it does besides strike; null: it aims where the target stands and only strikes.</summary>
+    public EnemyTactics? Tactics { get; init; }
 
     /// <summary>Added to the derived stealth: Linked move like hunters, Husks shamble.</summary>
     public double Stealth { get; init; }
@@ -508,6 +540,42 @@ public sealed record DashRules
     public double AttackHit { get; init; } = 0.1;
 }
 
+/// <summary>The defend action (<see cref="Defences"/>, scavenge.json <c>combat.defend</c>): its AP, and the share and pattern of a unit with no guarding gear.</summary>
+/// <summary>The chance a landed blow is a crit, what the side and the rear add to it, and what a crit multiplies damage by (inside the damage cap).</summary>
+public sealed record CritRules
+{
+    public double Chance { get; init; } = 0.05;
+    public double Side { get; init; } = 0.05;
+    public double Rear { get; init; } = 0.15;
+    public double Damage { get; init; } = 1.5;
+}
+
+/// <summary>
+/// How the bots play (scavenge.json <c>bot</c>): how often a healthy one guards against a neighbour that stood still, the health share under
+/// which it stops trading blows, what each seen reach takes off a tile it might stand on, and how much better a tile must be to walk there.
+/// </summary>
+public sealed record BotRules
+{
+    public int GuardEvery { get; init; } = 3;
+    public double HurtBelow { get; init; } = 0.5;
+    public double PositionRisk { get; init; } = 1;
+    public double PositionGain { get; init; } = 1.05;
+}
+
+/// <summary>What an enemy pays next round for a blow or push on an empty tile.</summary>
+public sealed record ExposedRules
+{
+    public double PriorityPenalty { get; init; } = 3;
+    public int Stamina { get; init; } = 2;
+}
+
+public sealed record DefendRules
+{
+    public int ApCost { get; init; } = 1;
+    public double Block { get; init; } = 0.2;
+    public CardPattern Pattern { get; init; } = new() { Offsets = [[0, 0], [1, 0]] };
+}
+
 /// <summary>What a defended tile takes off a hit, beyond its card (<see cref="Defences"/>, scavenge.json <c>combat.block</c>).</summary>
 public sealed record BlockRules
 {
@@ -545,6 +613,9 @@ public sealed record TurnRules
 
     /// <summary>What a unit may plan a round before cards and perks: moves, actions, cards (<see cref="Plans.Limits"/>).</summary>
     public int PlanMoves { get; init; } = 1;
+
+    /// <summary>How far from its leader a recruit lets itself get before it walks: keeps it from stepping back into a doorway the leader needs.</summary>
+    public int FollowWithin { get; init; } = 1;
     public int PlanActions { get; init; } = 1;
     public int PlanCards { get; init; } = 1;
 
@@ -563,6 +634,9 @@ public sealed record TurnRules
     /// <summary>The recover action: its AP (which costs no stamina) and the stamina it gives back.</summary>
     public int RecoverApCost { get; init; } = 1;
     public int RecoverStamina { get; init; } = 4;
+
+    /// <summary>What a landed blow on a recovering unit adds to its damage, as a share; it also calls the recover off.</summary>
+    public double RecoverHitDamage { get; init; } = 0.25;
     public int PickUpApCost { get; init; } = 1;
     public int RecruitApCost { get; init; } = 1;
     public double InitiativePerAgility { get; init; } = 1.0;
@@ -613,6 +687,9 @@ public sealed record CombatRules
     /// <summary>How a landed hit resolves: graze, hit or solid (see <see cref="HitTierRules"/>).</summary>
     public HitTierRules Tiers { get; init; } = new();
 
+    /// <summary>A landed blow may crit, more so from the side and from behind (see <see cref="CritRules"/>).</summary>
+    public CritRules Crit { get; init; } = new();
+
     /// <summary>Blows from the side and from behind land harder (see <see cref="FacingRules"/>).</summary>
     public FacingRules Facing { get; init; } = new();
 
@@ -620,6 +697,8 @@ public sealed record CombatRules
     public double MaxDamageMultiplier { get; init; } = 2;
 
     public BlockRules Block { get; init; } = new();
+    public DefendRules Defend { get; init; } = new();
+    public ExposedRules Exposed { get; init; } = new();
     public PushRules Push { get; init; } = new();
     public DashRules Dash { get; init; } = new();
 
@@ -805,6 +884,9 @@ public sealed record ScavengeRules
     public Dictionary<Terrain, TerrainDef> Terrain { get; init; } = new();
     public MovementRules Movement { get; init; } = new();
     public TurnRules Turn { get; init; } = new();
+
+    /// <summary>How the bots play (<see cref="BotTactics"/>): habits, not rules of the game.</summary>
+    public BotRules Bot { get; init; } = new();
     public PriorityRules Priority { get; init; } = new();
     public StunRules Stun { get; init; } = new();
     public AdrenalineRules Adrenaline { get; init; } = new();

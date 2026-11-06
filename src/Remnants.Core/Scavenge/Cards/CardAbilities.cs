@@ -176,6 +176,7 @@ public static class CardAbilities
                     CardPlay.Lost(sim, target, next);
                     Defences.Drop(state, target, next.CardId!);
                 }
+                if (next.Kind == PlanStepKind.Defend) Defences.Drop(state, target, Defences.ActionId);
                 state.Log(new(state.Round, ScavengeEventType.IntentFizzled, $"{unit.Name} breaks {target.Name}'s next move.", target.Id, unit.Id, target.Pos));
             }
             done.Add(next is null ? $"{target.Name} had nothing to break" : $"{target.Name}'s next action broken");

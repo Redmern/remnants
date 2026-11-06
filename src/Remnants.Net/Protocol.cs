@@ -42,7 +42,7 @@ public static class Protocol
     /// without a bump: the lobby's lateZones (the host's late-zone tuning; an older 17 peer reads Current).
     /// 18 (<see cref="TileAttacksVersion"/>): tile-first attacks: the attackTile command and plannedAction's mode / direction (a tile, an action, a stab / slash
     /// mode and a direction), endTurn's wholeTurn, sub-rounds (scavenge save 16: the sub-round, pending strikes, units'
-    /// turn-over round); an older peer would read a sub-round's end as the turn's.
+    /// turn-over round; sub-rounds are gone since the simultaneous rework); an older peer would read a sub-round's end as the turn's.
     /// 19 (<see cref="TileAttacksOnlyVersion"/>): the attack command (a unit struck at once) is gone; every attack is an
     /// attackTile (or a plannedAction's), and the AI's strikes at once are tile strikes too. An older peer would send attack.
     /// <see cref="Version"/> is always the highest of these keyed versions (ProtocolTests checks it).
@@ -69,7 +69,9 @@ public static class Protocol
     public const int SimultaneousVersion = 21;
     /// <summary>One move, one action, one card a round: undoPlan's slot, the slotFull error, units' plan slot counts.</summary>
     public const int PlanSlotsVersion = 22;
-    public const int Version = PlanSlotsVersion;
+    /// <summary>The Defend action and the counters between actions: the defend command, the Defend plan entry, the guardBroken event.</summary>
+    public const int DefendVersion = 23;
+    public const int Version = DefendVersion;
     public const int DefaultPort = 7777;
 }
 
